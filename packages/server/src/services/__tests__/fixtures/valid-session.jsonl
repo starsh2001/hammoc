@@ -1,0 +1,5 @@
+{"uuid":"msg-1","type":"user","message":{"role":"user","content":"Hello"},"timestamp":"2026-01-15T10:00:00Z"}
+{"uuid":"msg-2","type":"assistant","parentUuid":"msg-1","message":{"role":"assistant","content":"Hi! How can I help you?"},"timestamp":"2026-01-15T10:00:05Z"}
+{"uuid":"msg-3","type":"tool_use","parentUuid":"msg-2","toolName":"Read","toolInput":{"file_path":"/src/index.ts"},"timestamp":"2026-01-15T10:00:10Z"}
+{"uuid":"msg-4","type":"tool_result","parentUuid":"msg-3","result":"export const app = express();","timestamp":"2026-01-15T10:00:11Z"}
+{"uuid":"msg-5","type":"assistant","parentUuid":"msg-4","message":{"role":"assistant","content":"I found the file."},"timestamp":"2026-01-15T10:00:15Z"}

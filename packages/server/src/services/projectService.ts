@@ -1,0 +1,516 @@
+/**
+ * Project Service
+ * Scans ~/.claude/projects/ directory for project list
+ * [Source: Story 3.1 - Task 2]
+ * [Extended: Story 3.6 - Task 2: Project creation service]
+ */
+
+import path from 'path';
+import os from 'os';
+import fs from 'fs/promises';
+import { existsSync } from 'fs';
+import crypto from 'crypto';
+import type {
+  ProjectInfo,
+  CreateProjectRequest,
+  CreateProjectResponse,
+  ValidatePathResponse,
+} from '@bmad-studio/shared';
+
+/**
+ * Validate path for security (path traversal prevention)
+ * Cross-platform compatible (Windows, macOS, Linux)
+ * [Source: Story 3.6 - Task 2]
+ */
+function isValidPathFormat(inputPath: string): boolean {
+  // Normalize path first for cross-platform compatibility
+  const normalizedPath = path.normalize(inputPath);
+
+  // Reject relative paths (works for both Windows and Unix)
+  if (!path.isAbsolute(normalizedPath)) {
+    return false;
+  }
+
+  // Reject path traversal sequences (check both normalized and original)
+  // Windows: ..\, Unix: ../
+  if (inputPath.includes('..') || normalizedPath.includes('..')) {
+    return false;
+  }
+
+  // Reject null bytes (security)
+  if (inputPath.includes('\0')) {
+    return false;
+  }
+
+  // Additional Windows-specific checks
+  // Reject reserved device names (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
+  if (process.platform === 'win32') {
+    const basename = path.basename(normalizedPath).toUpperCase();
+    const reservedNames = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i;
+    if (reservedNames.test(basename)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Structure of sessions-index.json file managed by Claude Code
+ * Note: This structure is based on analysis of Claude Code's internal format
+ * and may change with Claude Code updates
+ *
+ * Claude Code uses two possible formats:
+ * 1. Legacy format: { originalPath: "...", entries: [...] }
+ * 2. Current format (v1): { version: 1, entries: [{ projectPath: "...", ... }] }
+ */
+interface SessionsIndexEntry {
+  sessionId: string;
+  firstPrompt?: string;
+  summary?: string;
+  messageCount?: number;
+  created?: string;
+  modified?: string;
+  // Current Claude Code format fields
+  projectPath?: string;
+  fullPath?: string;
+  fileMtime?: number;
+  gitBranch?: string;
+  isSidechain?: boolean;
+}
+
+interface SessionsIndexFile {
+  // Legacy format
+  originalPath?: string;
+  // Current format (v1)
+  version?: number;
+  // Both formats have entries
+  entries?: SessionsIndexEntry[];
+}
+
+/**
+ * ProjectService - Scans and lists Claude Code projects
+ */
+class ProjectService {
+  /**
+   * Get the Claude projects directory path
+   * @returns Path to ~/.claude/projects/
+   */
+  getClaudeProjectsDir(): string {
+    return path.join(os.homedir(), '.claude', 'projects');
+  }
+
+  /**
+   * Scan the projects directory and return project list
+   * @returns Array of ProjectInfo sorted by lastModified (descending)
+   */
+  async scanProjects(): Promise<ProjectInfo[]> {
+    const projectsDir = this.getClaudeProjectsDir();
+
+    // Check if directory exists (AC 6: return empty array if not)
+    try {
+      await fs.access(projectsDir);
+    } catch {
+      return [];
+    }
+
+    // Read all entries in the projects directory
+    let entries: string[];
+    try {
+      entries = await fs.readdir(projectsDir);
+    } catch (error) {
+      // Permission denied or other error
+      if ((error as NodeJS.ErrnoException).code === 'EACCES') {
+        const err = new Error('디렉토리 접근 권한이 없습니다.');
+        (err as NodeJS.ErrnoException).code = 'PERMISSION_DENIED';
+        throw err;
+      }
+      throw error;
+    }
+
+    // Filter to only directories and process each
+    const projects: ProjectInfo[] = [];
+
+    for (const entry of entries) {
+      const projectPath = path.join(projectsDir, entry);
+
+      // Check if it's a directory
+      try {
+        const stat = await fs.stat(projectPath);
+        if (!stat.isDirectory()) {
+          continue;
+        }
+      } catch {
+        continue;
+      }
+
+      // Parse sessions-index.json
+      const projectInfo = await this.parseSessionsIndex(projectPath, entry);
+      if (projectInfo) {
+        // Filter out projects whose originalPath no longer exists
+        const pathExists = await this.checkPathExists(projectInfo.originalPath);
+        if (pathExists) {
+          projects.push(projectInfo);
+        }
+      }
+    }
+
+    // Sort by lastModified descending (AC 5)
+    projects.sort((a, b) => {
+      const dateA = new Date(a.lastModified).getTime();
+      const dateB = new Date(b.lastModified).getTime();
+      return dateB - dateA;
+    });
+
+    return projects;
+  }
+
+  /**
+   * Parse sessions-index.json file from a project directory
+   * @param projectPath Full path to the project directory in ~/.claude/projects/
+   * @param projectSlug The folder name (hash/slug)
+   * @returns ProjectInfo or null if parsing fails
+   */
+  async parseSessionsIndex(
+    projectPath: string,
+    projectSlug: string
+  ): Promise<ProjectInfo | null> {
+    const indexPath = path.join(projectPath, 'sessions-index.json');
+
+    try {
+      const content = await fs.readFile(indexPath, 'utf-8');
+      const index: SessionsIndexFile = JSON.parse(content);
+
+      const entries = index.entries || [];
+
+      // Determine originalPath from either format:
+      // 1. Legacy format: index.originalPath at root level
+      // 2. Current format (v1): entries[0].projectPath from first entry
+      let originalPath: string | undefined = index.originalPath;
+
+      if (!originalPath && entries.length > 0) {
+        // Try to get projectPath from the first entry (current Claude Code format)
+        originalPath = entries[0].projectPath;
+      }
+
+      // If still no originalPath, skip this project (invalid format)
+      if (!originalPath || typeof originalPath !== 'string') {
+        // Don't throw error, just skip - this might be a corrupted or empty project
+        return null;
+      }
+
+      const sessionCount = entries.length;
+
+      // Calculate lastModified from entries or use current time as fallback
+      let lastModified: string;
+      if (entries.length > 0) {
+        const modifiedDates = entries
+          .filter((e) => e.modified)
+          .map((e) => new Date(e.modified!).getTime());
+
+        if (modifiedDates.length > 0) {
+          lastModified = new Date(Math.max(...modifiedDates)).toISOString();
+        } else {
+          // Use file stat as fallback
+          const stat = await fs.stat(indexPath);
+          lastModified = stat.mtime.toISOString();
+        }
+      } else {
+        // No entries, use file stat
+        const stat = await fs.stat(indexPath);
+        lastModified = stat.mtime.toISOString();
+      }
+
+      // Check if it's a BMad project (AC 4)
+      const isBmadProject = await this.checkBmadProject(originalPath);
+
+      return {
+        originalPath,
+        projectSlug,
+        sessionCount,
+        lastModified,
+        isBmadProject,
+      };
+    } catch (error) {
+      // Re-throw specific errors
+      if ((error as NodeJS.ErrnoException).code === 'INVALID_SESSION_INDEX') {
+        throw error;
+      }
+
+      // File doesn't exist or is invalid JSON - skip this project
+      return null;
+    }
+  }
+
+  /**
+   * Check if a path exists on the filesystem
+   * @param targetPath Path to check
+   * @returns true if path exists
+   */
+  async checkPathExists(targetPath: string): Promise<boolean> {
+    try {
+      await fs.access(targetPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if a project has .bmad-core folder
+   * @param originalPath The original project path from sessions-index.json
+   * @returns true if .bmad-core folder exists
+   */
+  async checkBmadProject(originalPath: string): Promise<boolean> {
+    const bmadCorePath = path.join(originalPath, '.bmad-core');
+
+    try {
+      const stat = await fs.stat(bmadCorePath);
+      return stat.isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Validate a directory path
+   * [Source: Story 3.6 - Task 2]
+   * @param inputPath Path to validate
+   * @returns Validation result
+   */
+  async validatePath(inputPath: string): Promise<ValidatePathResponse> {
+    // Security check
+    if (!isValidPathFormat(inputPath)) {
+      return {
+        valid: false,
+        exists: false,
+        isProject: false,
+        error: '경로 형식이 올바르지 않습니다. 절대 경로를 사용해 주세요.',
+      };
+    }
+
+    // Check if path exists
+    try {
+      const stat = await fs.stat(inputPath);
+      if (!stat.isDirectory()) {
+        return {
+          valid: false,
+          exists: true,
+          isProject: false,
+          error: '지정한 경로가 디렉토리가 아닙니다.',
+        };
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return {
+          valid: false,
+          exists: false,
+          isProject: false,
+          error: '지정한 경로가 존재하지 않습니다.',
+        };
+      }
+      throw error;
+    }
+
+    // Check if already a project
+    const existingProject = await this.findProjectByPath(inputPath);
+    if (existingProject) {
+      return {
+        valid: true,
+        exists: true,
+        isProject: true,
+        projectSlug: existingProject.projectSlug,
+      };
+    }
+
+    return {
+      valid: true,
+      exists: true,
+      isProject: false,
+    };
+  }
+
+  /**
+   * Find project by original path
+   * [Source: Story 3.6 - Task 2]
+   * @param originalPath Original project path
+   * @returns ProjectInfo or null
+   */
+  async findProjectByPath(originalPath: string): Promise<ProjectInfo | null> {
+    const projects = await this.scanProjects();
+    // Normalize both paths for comparison (handle case sensitivity on Windows)
+    const normalizedInput = path.normalize(originalPath);
+    return (
+      projects.find((p) => {
+        const normalizedProject = path.normalize(p.originalPath);
+        // Case-insensitive comparison on Windows, case-sensitive on Unix
+        if (process.platform === 'win32') {
+          return normalizedProject.toLowerCase() === normalizedInput.toLowerCase();
+        }
+        return normalizedProject === normalizedInput;
+      }) || null
+    );
+  }
+
+  /**
+   * Create a new project
+   * [Source: Story 3.6 - Task 2]
+   * @param request Create project request
+   * @returns Created project info
+   */
+  async createProject(request: CreateProjectRequest): Promise<CreateProjectResponse> {
+    const { path: projectPath, setupBmad = true } = request;
+
+    // Validate path first
+    const validation = await this.validatePath(projectPath);
+    if (!validation.valid) {
+      const error = new Error(validation.error || '경로 검증 실패');
+      (error as NodeJS.ErrnoException).code = 'INVALID_PATH';
+      throw error;
+    }
+
+    // Check if already exists
+    if (validation.isProject && validation.projectSlug) {
+      const existingProject = await this.findProjectByPath(projectPath);
+      if (existingProject) {
+        return {
+          project: existingProject,
+          isExisting: true,
+        };
+      }
+    }
+
+    // Initialize Claude project (creates sessions-index.json)
+    await this.initializeClaudeProject(projectPath);
+
+    // Setup BMad if requested
+    if (setupBmad) {
+      await this.setupBmadCore(projectPath);
+    }
+
+    // Scan to get the created project info
+    const project = await this.findProjectByPath(projectPath);
+    if (!project) {
+      throw new Error('프로젝트 생성 후 조회에 실패했습니다.');
+    }
+
+    return {
+      project,
+      isExisting: false,
+    };
+  }
+
+  /**
+   * Initialize a Claude project directory
+   * Creates the necessary structure in ~/.claude/projects/
+   * [Source: Story 3.6 - Task 2]
+   *
+   * Strategy:
+   * 1. Check if project already exists with this path
+   * 2. Try to use Claude Code CLI for initialization
+   * 3. Fallback: generate own slug using SHA-256
+   *
+   * @param projectPath Original project path
+   * @returns Project slug (hash)
+   */
+  async initializeClaudeProject(projectPath: string): Promise<string> {
+    // Strategy 1: Check if project already exists with this path
+    const existingProject = await this.findProjectByPath(projectPath);
+    if (existingProject) {
+      return existingProject.projectSlug;
+    }
+
+    // Strategy 2: Try to use Claude Code CLI for initialization
+    try {
+      const { execSync } = await import('child_process');
+      // Run a minimal Claude command in the project directory to trigger project creation
+      execSync('claude --version', {
+        cwd: projectPath,
+        stdio: 'pipe',
+        timeout: 5000,
+      });
+
+      // After CLI execution, scan again to find the newly created project
+      // Wait briefly for filesystem sync
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const newProject = await this.findProjectByPath(projectPath);
+      if (newProject) {
+        return newProject.projectSlug;
+      }
+    } catch {
+      // CLI not available or failed - fall back to self-generation
+      console.warn('Claude CLI not available, using fallback hash generation');
+    }
+
+    // Strategy 3: Fallback - generate our own slug
+    const projectSlug = crypto.createHash('sha256').update(projectPath).digest('hex').substring(0, 16);
+
+    const claudeProjectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+
+    // Create directory if not exists
+    await fs.mkdir(claudeProjectDir, { recursive: true });
+
+    // Create sessions-index.json
+    const sessionsIndexPath = path.join(claudeProjectDir, 'sessions-index.json');
+
+    if (!existsSync(sessionsIndexPath)) {
+      const sessionsIndex = {
+        originalPath: projectPath,
+        entries: [],
+        _generatedBy: 'bmad-studio',
+        _warning: 'This project was created without Claude CLI and may not be fully compatible',
+      };
+      await fs.writeFile(sessionsIndexPath, JSON.stringify(sessionsIndex, null, 2));
+    }
+
+    // Note: Claude Code stores session JSONL files directly in the project folder,
+    // not in a sessions subdirectory, so we don't create one here.
+
+    return projectSlug;
+  }
+
+  /**
+   * Setup .bmad-core folder in project
+   * [Source: Story 3.6 - Task 2]
+   * @param projectPath Project directory path
+   */
+  async setupBmadCore(projectPath: string): Promise<void> {
+    const bmadCorePath = path.join(projectPath, '.bmad-core');
+
+    // Create .bmad-core directory
+    await fs.mkdir(bmadCorePath, { recursive: true });
+
+    // Create basic structure
+    const dirs = ['agents', 'tasks', 'templates', 'checklists', 'data'];
+    for (const dir of dirs) {
+      await fs.mkdir(path.join(bmadCorePath, dir), { recursive: true });
+    }
+
+    // Create core-config.yaml with defaults
+    const coreConfigPath = path.join(bmadCorePath, 'core-config.yaml');
+    if (!existsSync(coreConfigPath)) {
+      const defaultConfig = `# BMad Core Configuration
+markdownExploder: true
+qa:
+  qaLocation: docs/qa
+prd:
+  prdFile: docs/prd.md
+  prdVersion: v4
+  prdSharded: false
+architecture:
+  architectureFile: docs/architecture.md
+  architectureVersion: v4
+  architectureSharded: false
+customTechnicalDocuments: null
+devLoadAlwaysFiles: []
+devDebugLog: .ai/debug-log.md
+devStoryLocation: docs/stories
+slashPrefix: BMad
+`;
+      await fs.writeFile(coreConfigPath, defaultConfig, 'utf-8');
+    }
+  }
+}
+
+// Singleton export - consistent with authService pattern
+export const projectService = new ProjectService();

@@ -1,0 +1,158 @@
+/**
+ * Project Store - Zustand store for project list state
+ * [Source: Story 3.2 - Task 2]
+ * [Extended: Story 3.6 - Task 5: Project creation state]
+ */
+
+import { create } from 'zustand';
+import type {
+  ProjectInfo,
+  CreateProjectResponse,
+  ValidatePathResponse,
+} from '@bmad-studio/shared';
+import { projectsApi } from '../services/api/projects';
+import { ApiError } from '../services/api/client';
+
+/** Cache validity duration in milliseconds (5 minutes) */
+const CACHE_DURATION_MS = 5 * 60 * 1000;
+
+interface ProjectState {
+  projects: ProjectInfo[];
+  isLoading: boolean;
+  error: string | null;
+  /** Timestamp when projects were last fetched */
+  lastFetchedAt: number | null;
+  // Story 3.6 - Project creation state
+  isCreating: boolean;
+  createError: string | null;
+  pathValidation: ValidatePathResponse | null;
+  isValidating: boolean;
+}
+
+interface ProjectActions {
+  /** Fetch projects (uses cache unless forceRefresh is true) */
+  fetchProjects: (forceRefresh?: boolean) => Promise<void>;
+  clearError: () => void;
+  /** Invalidate cache to force next fetch */
+  invalidateCache: () => void;
+  // Story 3.6 - Project creation actions
+  createProject: (path: string, setupBmad: boolean) => Promise<CreateProjectResponse | null>;
+  validatePath: (path: string) => Promise<ValidatePathResponse>;
+  clearCreateError: () => void;
+  clearPathValidation: () => void;
+  abortCreation: () => void;
+}
+
+type ProjectStore = ProjectState & ProjectActions;
+
+// AbortController for cancellable requests
+let createAbortController: AbortController | null = null;
+
+export const useProjectStore = create<ProjectStore>((set, get) => ({
+  // State
+  projects: [],
+  isLoading: false,
+  error: null,
+  lastFetchedAt: null,
+  // Story 3.6 - Project creation state
+  isCreating: false,
+  createError: null,
+  pathValidation: null,
+  isValidating: false,
+
+  // Actions
+  fetchProjects: async (forceRefresh = false) => {
+    const state = get();
+
+    // Check if cache is valid (has data, not expired, and not force refresh)
+    if (
+      !forceRefresh &&
+      state.projects.length > 0 &&
+      state.lastFetchedAt &&
+      Date.now() - state.lastFetchedAt < CACHE_DURATION_MS
+    ) {
+      // Use cached data
+      return;
+    }
+
+    set({ isLoading: true, error: null });
+    try {
+      const { projects } = await projectsApi.list();
+      set({ projects, isLoading: false, lastFetchedAt: Date.now() });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        set({ error: err.message, isLoading: false });
+      } else {
+        set({ error: '프로젝트 목록을 불러오는 중 오류가 발생했습니다.', isLoading: false });
+      }
+    }
+  },
+
+  clearError: () => set({ error: null }),
+
+  invalidateCache: () => set({ lastFetchedAt: null }),
+
+  // Story 3.6 - Project creation actions
+  createProject: async (path: string, setupBmad: boolean) => {
+    // Create new AbortController for this request
+    createAbortController = new AbortController();
+    const signal = createAbortController.signal;
+
+    set({ isCreating: true, createError: null });
+    try {
+      const result = await projectsApi.create({ path, setupBmad }, { signal });
+
+      // Check if aborted
+      if (signal.aborted) {
+        return null;
+      }
+
+      // Refresh project list
+      await get().fetchProjects();
+
+      set({ isCreating: false });
+      createAbortController = null;
+      return result;
+    } catch (err) {
+      // Don't show error if request was aborted
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return null;
+      }
+
+      const message =
+        err instanceof ApiError ? err.message : '프로젝트 생성 중 오류가 발생했습니다.';
+      set({ createError: message, isCreating: false });
+      createAbortController = null;
+      return null;
+    }
+  },
+
+  validatePath: async (path: string) => {
+    set({ isValidating: true });
+    try {
+      const result = await projectsApi.validatePath(path);
+      set({ pathValidation: result, isValidating: false });
+      return result;
+    } catch (err) {
+      const errorResult: ValidatePathResponse = {
+        valid: false,
+        exists: false,
+        isProject: false,
+        error: '경로 검증 중 오류가 발생했습니다.',
+      };
+      set({ pathValidation: errorResult, isValidating: false });
+      return errorResult;
+    }
+  },
+
+  clearCreateError: () => set({ createError: null }),
+  clearPathValidation: () => set({ pathValidation: null }),
+
+  abortCreation: () => {
+    if (createAbortController) {
+      createAbortController.abort();
+      createAbortController = null;
+      set({ isCreating: false, createError: '프로젝트 생성이 취소되었습니다.' });
+    }
+  },
+}));

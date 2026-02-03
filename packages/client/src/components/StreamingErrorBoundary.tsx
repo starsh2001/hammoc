@@ -1,0 +1,73 @@
+/**
+ * StreamingErrorBoundary - Error boundary for streaming components
+ * [Source: Story 4.5 - Task 16]
+ *
+ * Features:
+ * - Captures errors in streaming components
+ * - Displays fallback UI with retry option
+ * - Dark/light mode support
+ * - Logs errors to console
+ */
+
+import { Component, ErrorInfo, ReactNode } from 'react';
+
+interface StreamingErrorBoundaryProps {
+  /** Child components to wrap */
+  children: ReactNode;
+  /** Custom fallback UI */
+  fallback?: ReactNode;
+  /** Callback when retry is clicked */
+  onRetry?: () => void;
+}
+
+interface StreamingErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class StreamingErrorBoundary extends Component<
+  StreamingErrorBoundaryProps,
+  StreamingErrorBoundaryState
+> {
+  state: StreamingErrorBoundaryState = {
+    hasError: false,
+    error: null,
+  };
+
+  static getDerivedStateFromError(error: Error): StreamingErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    console.error('[StreamingErrorBoundary] Error caught:', error, errorInfo);
+  }
+
+  handleRetry = (): void => {
+    this.setState({ hasError: false, error: null });
+    this.props.onRetry?.();
+  };
+
+  render(): ReactNode {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      return (
+        <div className="flex flex-col items-center gap-3 p-4 text-center">
+          <div className="text-red-500 dark:text-red-400">
+            스트리밍 중 오류가 발생했습니다.
+          </div>
+          <button
+            onClick={this.handleRetry}
+            className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            다시 시도
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}

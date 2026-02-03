@@ -1,0 +1,103 @@
+/**
+ * Auth Store - Zustand store for authentication state
+ * [Source: Story 2.2 - Task 5, Story 2.3 - Task 4]
+ */
+
+import { create } from 'zustand';
+import type { RateLimitInfo } from '@bmad-studio/shared';
+import { authApi } from '../services/api/auth';
+import { ApiError } from '../services/api/client';
+import { disconnectSocket } from '../services/socket';
+
+interface AuthState {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+  rateLimitInfo: RateLimitInfo | null;
+}
+
+interface AuthActions {
+  login: (password: string, rememberMe?: boolean) => Promise<boolean>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+  clearError: () => void;
+}
+
+type AuthStore = AuthState & AuthActions;
+
+export const useAuthStore = create<AuthStore>((set) => ({
+  // Initial state - isLoading starts true to prevent premature redirects on page refresh
+  isAuthenticated: false,
+  isLoading: true,
+  error: null,
+  rateLimitInfo: null,
+
+  // Actions
+  login: async (password: string, rememberMe: boolean = true): Promise<boolean> => {
+    set({ isLoading: true, error: null, rateLimitInfo: null });
+
+    try {
+      await authApi.login({ password, rememberMe });
+      set({ isAuthenticated: true, isLoading: false });
+      return true;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        // Handle rate limit (429)
+        if (err.status === 429 && err.details) {
+          set({
+            error: err.message,
+            rateLimitInfo: err.details as RateLimitInfo,
+            isLoading: false,
+          });
+        } else {
+          // Handle other errors (401, etc.)
+          set({
+            error: err.message,
+            isLoading: false,
+          });
+        }
+      } else {
+        set({
+          error: '로그인 중 오류가 발생했습니다.',
+          isLoading: false,
+        });
+      }
+      return false;
+    }
+  },
+
+  logout: async (): Promise<void> => {
+    set({ isLoading: true });
+
+    // Disconnect WebSocket before logout
+    disconnectSocket();
+
+    try {
+      await authApi.logout();
+    } catch {
+      // Ignore logout errors
+    } finally {
+      set({
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        rateLimitInfo: null,
+      });
+    }
+  },
+
+  checkAuth: async (): Promise<void> => {
+    set({ isLoading: true });
+
+    try {
+      const { authenticated } = await authApi.status();
+      set({ isAuthenticated: authenticated, isLoading: false });
+    } catch {
+      set({ isAuthenticated: false, isLoading: false });
+    }
+  },
+
+  clearError: (): void => {
+    set({ error: null, rateLimitInfo: null });
+  },
+}));
