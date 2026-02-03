@@ -13,15 +13,10 @@ import type {
 import { projectsApi } from '../services/api/projects';
 import { ApiError } from '../services/api/client';
 
-/** Cache validity duration in milliseconds (5 minutes) */
-const CACHE_DURATION_MS = 5 * 60 * 1000;
-
 interface ProjectState {
   projects: ProjectInfo[];
   isLoading: boolean;
   error: string | null;
-  /** Timestamp when projects were last fetched */
-  lastFetchedAt: number | null;
   // Story 3.6 - Project creation state
   isCreating: boolean;
   createError: string | null;
@@ -30,11 +25,8 @@ interface ProjectState {
 }
 
 interface ProjectActions {
-  /** Fetch projects (uses cache unless forceRefresh is true) */
-  fetchProjects: (forceRefresh?: boolean) => Promise<void>;
+  fetchProjects: () => Promise<void>;
   clearError: () => void;
-  /** Invalidate cache to force next fetch */
-  invalidateCache: () => void;
   // Story 3.6 - Project creation actions
   createProject: (path: string, setupBmad: boolean) => Promise<CreateProjectResponse | null>;
   validatePath: (path: string) => Promise<ValidatePathResponse>;
@@ -53,7 +45,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   projects: [],
   isLoading: false,
   error: null,
-  lastFetchedAt: null,
   // Story 3.6 - Project creation state
   isCreating: false,
   createError: null,
@@ -61,24 +52,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   isValidating: false,
 
   // Actions
-  fetchProjects: async (forceRefresh = false) => {
-    const state = get();
-
-    // Check if cache is valid (has data, not expired, and not force refresh)
-    if (
-      !forceRefresh &&
-      state.projects.length > 0 &&
-      state.lastFetchedAt &&
-      Date.now() - state.lastFetchedAt < CACHE_DURATION_MS
-    ) {
-      // Use cached data
-      return;
-    }
-
+  fetchProjects: async () => {
     set({ isLoading: true, error: null });
     try {
       const { projects } = await projectsApi.list();
-      set({ projects, isLoading: false, lastFetchedAt: Date.now() });
+      set({ projects, isLoading: false });
     } catch (err) {
       if (err instanceof ApiError) {
         set({ error: err.message, isLoading: false });
@@ -89,8 +67,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
-
-  invalidateCache: () => set({ lastFetchedAt: null }),
 
   // Story 3.6 - Project creation actions
   createProject: async (path: string, setupBmad: boolean) => {
