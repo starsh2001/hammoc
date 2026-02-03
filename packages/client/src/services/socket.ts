@@ -1,0 +1,39 @@
+/**
+ * Socket.io Client Singleton
+ * Story 1.4: WebSocket Server Setup
+ */
+
+import { io, Socket } from 'socket.io-client';
+import type { ClientToServerEvents, ServerToClientEvents } from '@bmad-studio/shared';
+
+let socketInstance: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
+
+/**
+ * Get the singleton Socket.io client instance
+ * Creates a new instance if one doesn't exist
+ * @returns Socket.io client instance
+ */
+export function getSocket(): Socket<ServerToClientEvents, ClientToServerEvents> {
+  if (!socketInstance) {
+    // Use current hostname for mobile/remote access, fallback to localhost
+    const socketUrl = `http://${window.location.hostname}:3000`;
+    socketInstance = io(socketUrl, {
+      autoConnect: true,
+      withCredentials: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
+  }
+  return socketInstance;
+}
+
+/**
+ * Disconnect the socket and clear the instance
+ */
+export function disconnectSocket(): void {
+  if (socketInstance) {
+    socketInstance.disconnect();
+    socketInstance = null;
+  }
+}

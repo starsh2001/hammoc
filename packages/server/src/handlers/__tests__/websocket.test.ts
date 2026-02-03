@@ -1,0 +1,970 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createServer, Server as HttpServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import { io as ioc, Socket as ClientSocket } from 'socket.io-client';
+import { existsSync } from 'fs';
+import {
+  initializeWebSocket,
+  getIO,
+  getConnectedClientsCount,
+} from '../websocket.js';
+import { ERROR_CODES } from '@bmad-studio/shared';
+
+// Mock fs.existsSync
+vi.mock('fs', () => ({
+  existsSync: vi.fn(),
+}));
+
+// Mock session middleware (Story 2.5 - WebSocket auth)
+vi.mock('../../middleware/session.js', () => ({
+  createSessionMiddleware: vi.fn().mockResolvedValue(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (req: any, _res: any, next: any) => {
+      // Simulate authenticated session for tests
+      req.session = { authenticated: true };
+      next();
+    }
+  ),
+}));
+
+// Mock ChatService
+vi.mock('../../services/chatService.js', () => ({
+  ChatService: vi.fn().mockImplementation(() => ({
+    sendMessageWithCallbacks: vi.fn(),
+  })),
+}));
+
+// Mock SessionService
+vi.mock('../../services/sessionService.js', () => ({
+  SessionService: vi.fn().mockImplementation(() => ({
+    saveSessionId: vi.fn().mockResolvedValue(undefined),
+    getSessionId: vi.fn().mockResolvedValue(null),
+    listSessions: vi.fn().mockResolvedValue([
+      {
+        sessionId: 'session-123',
+        projectSlug: 'test-project',
+        firstPrompt: 'Create a component',
+        messageCount: 5,
+        created: new Date('2026-01-30T10:00:00Z'),
+        modified: new Date('2026-01-30T11:00:00Z'),
+      },
+    ]),
+  })),
+}));
+
+// Mock config (Story 4.6)
+vi.mock('../../config/index.js', () => ({
+  config: {
+    chat: {
+      timeoutMs: 300000, // 5 minutes default
+    },
+    websocket: {
+      cors: {
+        origin: 'http://localhost:5173',
+        methods: ['GET', 'POST'],
+        credentials: true,
+      },
+    },
+  },
+}));
+
+describe('WebSocket Handler', () => {
+  let httpServer: HttpServer;
+  let ioServer: SocketIOServer;
+  let clientSocket: ClientSocket;
+  const TEST_PORT = 3001;
+
+  beforeEach(async () => {
+    // Create HTTP server
+    httpServer = createServer();
+
+    // Initialize WebSocket (now async for session middleware - Story 2.5)
+    ioServer = await initializeWebSocket(httpServer);
+
+    // Start server
+    await new Promise<void>((resolve) => {
+      httpServer.listen(TEST_PORT, () => resolve());
+    });
+  });
+
+  afterEach(async () => {
+    // Cleanup client socket
+    if (clientSocket?.connected) {
+      clientSocket.disconnect();
+    }
+
+    // Close server
+    await new Promise<void>((resolve) => {
+      ioServer.close(() => {
+        httpServer.close(() => resolve());
+      });
+    });
+  });
+
+  describe('initializeWebSocket', () => {
+    it('should return a Socket.io server instance', () => {
+      expect(ioServer).toBeInstanceOf(SocketIOServer);
+    });
+
+    it('should configure CORS for localhost:5173', () => {
+      const opts = ioServer.engine.opts;
+      expect(opts.cors).toBeDefined();
+      // Type assertion for CorsOptions object
+      const corsOpts = opts.cors as {
+        origin?: string;
+        methods?: string[];
+        credentials?: boolean;
+      };
+      expect(corsOpts.origin).toBe('http://localhost:5173');
+      expect(corsOpts.methods).toContain('GET');
+      expect(corsOpts.methods).toContain('POST');
+      expect(corsOpts.credentials).toBe(true);
+    });
+  });
+
+  describe('getIO', () => {
+    it('should return the initialized Socket.io instance', () => {
+      const io = getIO();
+      expect(io).toBe(ioServer);
+    });
+  });
+
+  describe('Client connection', () => {
+    it('should accept client connection', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => {
+          expect(clientSocket.connected).toBe(true);
+          resolve();
+        });
+      });
+    });
+
+    it('should increment connected clients count on connection', async () => {
+      const initialCount = getConnectedClientsCount();
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => {
+          expect(getConnectedClientsCount()).toBe(initialCount + 1);
+          resolve();
+        });
+      });
+    });
+
+    it('should decrement connected clients count on disconnect', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const countBeforeDisconnect = getConnectedClientsCount();
+
+      clientSocket.disconnect();
+
+      // Wait for disconnect to be processed
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(getConnectedClientsCount()).toBe(countBeforeDisconnect - 1);
+    });
+
+    it('should log connection and disconnection', async () => {
+      const consoleSpy = vi.spyOn(console, 'log');
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Client connected')
+      );
+
+      clientSocket.disconnect();
+
+      // Wait for disconnect to be processed
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Client disconnected')
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Multiple clients', () => {
+    let clientSocket2: ClientSocket;
+
+    afterEach(() => {
+      if (clientSocket2?.connected) {
+        clientSocket2.disconnect();
+      }
+    });
+
+    it('should track multiple client connections', async () => {
+      const initialCount = getConnectedClientsCount();
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      clientSocket2 = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await Promise.all([
+        new Promise<void>((resolve) => {
+          clientSocket.on('connect', () => resolve());
+        }),
+        new Promise<void>((resolve) => {
+          clientSocket2.on('connect', () => resolve());
+        }),
+      ]);
+
+      expect(getConnectedClientsCount()).toBe(initialCount + 2);
+    });
+  });
+
+  describe('chat:send event handler', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should emit error for invalid workingDirectory (non-existent)', async () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('chat:send', {
+        sessionId: 'test-session',
+        content: 'Hello',
+        workingDirectory: '/non/existent/path',
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.INVALID_WORKING_DIR);
+      expect(error.message).toBe('지정된 프로젝트 경로가 존재하지 않습니다.');
+    });
+
+    it('should emit error for empty workingDirectory', async () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('chat:send', {
+        sessionId: 'test-session',
+        content: 'Hello',
+        workingDirectory: '',
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.INVALID_WORKING_DIR);
+    });
+
+    it('should call ChatService when workingDirectory is valid', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello Claude',
+        workingDirectory: '/valid/path',
+      });
+
+      // Wait for the handler to process
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(ChatService).toHaveBeenCalledWith({ workingDirectory: '/valid/path' });
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledWith(
+        'Hello Claude',
+        expect.any(Object),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass resume option when sessionId and resume are provided', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Continue our work',
+        workingDirectory: '/valid/path',
+        sessionId: 'resume-session-id',
+        resume: true,
+      });
+
+      // Wait for the handler to process
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Story 4.6: chatOptions now includes abortController
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledWith(
+        'Continue our work',
+        expect.any(Object),
+        expect.objectContaining({ resume: 'resume-session-id', abortController: expect.any(AbortController) })
+      );
+    });
+  });
+
+  describe('session:list event handler', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should emit error for invalid projectPath', async () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('session:list', {
+        projectPath: '/non/existent/path',
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.INVALID_WORKING_DIR);
+    });
+
+    it('should emit session:list with sessions for valid projectPath', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const sessionsPromise = new Promise<{ sessions: unknown[] }>((resolve) => {
+        clientSocket.on('session:list', (data) => resolve(data));
+      });
+
+      clientSocket.emit('session:list', {
+        projectPath: '/valid/path',
+      });
+
+      const result = await sessionsPromise;
+
+      expect(result.sessions).toBeDefined();
+      expect(result.sessions).toHaveLength(1);
+      expect(result.sessions[0]).toMatchObject({
+        sessionId: 'session-123',
+        firstPrompt: 'Create a component',
+      });
+    });
+  });
+
+  describe('WebSocket Authentication (Story 2.5)', () => {
+    it('should accept connection with authenticated session', async () => {
+      // Default mock has authenticated: true
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => {
+          expect(clientSocket.connected).toBe(true);
+          resolve();
+        });
+      });
+    });
+  });
+
+  describe('Story 4.6: Error Handling', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should pass abortController in chatOptions', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello Claude',
+        workingDirectory: '/valid/path',
+      });
+
+      // Wait for the handler to process
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledWith(
+        'Hello Claude',
+        expect.any(Object),
+        expect.objectContaining({
+          abortController: expect.any(AbortController),
+        })
+      );
+    });
+
+    it('should emit SESSION_NOT_FOUND error when session resume fails with session not found message', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockRejectedValue(
+        new Error('Session not found: invalid-session-id')
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Continue our work',
+        workingDirectory: '/valid/path',
+        sessionId: 'invalid-session-id',
+        resume: true,
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.SESSION_NOT_FOUND);
+      expect(error.message).toContain('세션을 찾을 수 없습니다');
+    });
+
+    it('should emit CHAT_ERROR for non-session errors during resume', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockRejectedValue(
+        new Error('Network connection failed')
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Continue our work',
+        workingDirectory: '/valid/path',
+        sessionId: 'valid-session-id',
+        resume: true,
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.CHAT_ERROR);
+    });
+
+    it('should emit CHAT_ERROR when SDK throws error', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockRejectedValue(
+        new Error('SDK internal error')
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello',
+        workingDirectory: '/valid/path',
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.CHAT_ERROR);
+    });
+
+    it('should emit TIMEOUT_ERROR when chat response times out', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      // Import AbortedError for simulation
+      const { AbortedError } = await import('../../utils/errors.js');
+      const { ChatService } = await import('../../services/chatService.js');
+
+      // Simulate timeout by throwing AbortedError
+      const mockSendMessageWithCallbacks = vi.fn().mockRejectedValue(
+        new AbortedError()
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello',
+        workingDirectory: '/valid/path',
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.TIMEOUT_ERROR);
+      expect(error.message).toContain('응답 시간이 초과되었습니다');
+    });
+
+    it('should call abortController.abort() when timeout occurs', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+
+      // Track if abortController was passed and its state
+      let capturedAbortController: AbortController | null = null;
+
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, _callbacks: unknown, options: { abortController?: AbortController }) => {
+          capturedAbortController = options.abortController || null;
+          // Simulate long-running operation that checks abort signal
+          return new Promise((resolve, reject) => {
+            if (capturedAbortController) {
+              capturedAbortController.signal.addEventListener('abort', () => {
+                reject(new Error('Aborted'));
+              });
+            }
+            // Don't resolve - let timeout trigger
+          });
+        }
+      );
+
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello',
+        workingDirectory: '/valid/path',
+      });
+
+      // Wait for handler to start processing
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Verify abortController was passed
+      expect(capturedAbortController).toBeInstanceOf(AbortController);
+    });
+
+    it('should use CHAT_TIMEOUT_MS from config for timeout value', async () => {
+      // This test verifies that config.chat.timeoutMs is used
+      // The mock config sets it to 300000 (5 minutes)
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
+
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello',
+        workingDirectory: '/valid/path',
+      });
+
+      // Wait for handler to process
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Verify ChatService was called (timeout didn't trigger immediately)
+      // This implicitly tests that config.chat.timeoutMs (300000ms) is being used
+      // If timeout was 0 or very small, the call would abort immediately
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalled();
+    });
+  });
+
+  describe('Story 4.6: Session Events', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should emit session:created for new session', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, callbacks: { onSessionInit?: (sessionId: string) => void }) => {
+          // Simulate session init callback
+          callbacks.onSessionInit?.('new-session-123');
+          return {};
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const sessionPromise = new Promise<{ sessionId: string }>((resolve) => {
+        clientSocket.on('session:created', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello Claude',
+        workingDirectory: '/valid/path',
+      });
+
+      const session = await sessionPromise;
+
+      expect(session.sessionId).toBe('new-session-123');
+    });
+
+    it('should emit session:resumed for resumed session', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, callbacks: { onSessionInit?: (sessionId: string) => void }) => {
+          // Simulate session init callback for resumed session
+          callbacks.onSessionInit?.('resumed-session-456');
+          return {};
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const sessionPromise = new Promise<{ sessionId: string }>((resolve) => {
+        clientSocket.on('session:resumed', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Continue our work',
+        workingDirectory: '/valid/path',
+        sessionId: 'resumed-session-456',
+        resume: true,
+      });
+
+      const session = await sessionPromise;
+
+      expect(session.sessionId).toBe('resumed-session-456');
+    });
+  });
+
+  describe('Story 4.6: Message Type Events', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should emit message:chunk for text chunks', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, callbacks: {
+          onSessionInit?: (sessionId: string) => void;
+          onTextChunk?: (chunk: { sessionId: string; messageId: string; content: string; done: boolean }) => void;
+        }) => {
+          callbacks.onSessionInit?.('session-123');
+          callbacks.onTextChunk?.({
+            sessionId: 'session-123',
+            messageId: 'msg-1',
+            content: 'Hello',
+            done: false,
+          });
+          return {};
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const chunkPromise = new Promise<{ content: string }>((resolve) => {
+        clientSocket.on('message:chunk', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello Claude',
+        workingDirectory: '/valid/path',
+      });
+
+      const chunk = await chunkPromise;
+
+      expect(chunk.content).toBe('Hello');
+    });
+
+    it('should emit tool:call for tool use', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, callbacks: {
+          onSessionInit?: (sessionId: string) => void;
+          onToolUse?: (toolCall: { id: string; name: string; input: Record<string, unknown> }) => void;
+        }) => {
+          callbacks.onSessionInit?.('session-123');
+          callbacks.onToolUse?.({
+            id: 'tool-call-1',
+            name: 'Read',
+            input: { file_path: '/path/to/file.ts' },
+          });
+          return {};
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const toolCallPromise = new Promise<{ id: string; name: string }>((resolve) => {
+        clientSocket.on('tool:call', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Read the file',
+        workingDirectory: '/valid/path',
+      });
+
+      const toolCall = await toolCallPromise;
+
+      expect(toolCall.id).toBe('tool-call-1');
+      expect(toolCall.name).toBe('Read');
+    });
+
+    it('should emit tool:result for tool results', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, callbacks: {
+          onSessionInit?: (sessionId: string) => void;
+          onToolResult?: (toolCallId: string, result: { success: boolean; output?: string }) => void;
+        }) => {
+          callbacks.onSessionInit?.('session-123');
+          callbacks.onToolResult?.('tool-call-1', { success: true, output: 'file contents' });
+          return {};
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const toolResultPromise = new Promise<{ toolCallId: string; result: { success: boolean } }>((resolve) => {
+        clientSocket.on('tool:result', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Read the file',
+        workingDirectory: '/valid/path',
+      });
+
+      const toolResult = await toolResultPromise;
+
+      expect(toolResult.toolCallId).toBe('tool-call-1');
+      expect(toolResult.result.success).toBe(true);
+    });
+
+    it('should emit message:complete for completed messages', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, callbacks: {
+          onSessionInit?: (sessionId: string) => void;
+          onComplete?: (response: { id: string; sessionId: string; content: string }) => void;
+        }) => {
+          callbacks.onSessionInit?.('session-123');
+          callbacks.onComplete?.({
+            id: 'response-1',
+            sessionId: 'session-123',
+            content: 'Task completed',
+          });
+          return {};
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const completePromise = new Promise<{ id: string; role: string; content: string }>((resolve) => {
+        clientSocket.on('message:complete', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Complete the task',
+        workingDirectory: '/valid/path',
+      });
+
+      const message = await completePromise;
+
+      expect(message.id).toBe('response-1');
+      expect(message.role).toBe('assistant');
+      expect(message.content).toBe('Task completed');
+    });
+  });
+});

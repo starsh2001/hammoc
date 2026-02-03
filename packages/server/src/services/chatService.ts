@@ -1,0 +1,219 @@
+import { query, type Query, type Options, type SDKMessage } from '@anthropic-ai/claude-code';
+import type {
+  ChatServiceConfig,
+  ChatOptions,
+  ChatResponse,
+  PermissionMode,
+  StreamCallbacks,
+} from '@bmad-studio/shared';
+import path from 'path';
+import fs from 'fs/promises';
+import { InvalidPathError, parseSDKError } from '../utils/errors.js';
+import { StreamHandler } from './streamHandler.js';
+
+/**
+ * ChatService - Wrapper for Claude Agent SDK
+ * Handles communication with Claude Code through the official SDK
+ */
+export class ChatService {
+  private workingDirectory: string | undefined;
+  private permissionMode: PermissionMode;
+  private allowedTools: string[];
+  private disallowedTools: string[];
+  private currentQuery: Query | null = null;
+
+  constructor(config: ChatServiceConfig = {}) {
+    this.workingDirectory = config.workingDirectory;
+    this.permissionMode = config.permissionMode ?? 'default';
+    this.allowedTools = [];
+    this.disallowedTools = [];
+  }
+
+  /**
+   * Initialize a new session with a project directory
+   */
+  async initSession(projectPath: string): Promise<void> {
+    const resolvedPath = path.resolve(projectPath);
+    const isValid = await this.validateProjectPath(resolvedPath);
+
+    if (!isValid) {
+      throw new InvalidPathError(projectPath);
+    }
+
+    this.workingDirectory = resolvedPath;
+  }
+
+  /**
+   * Validate that a project path exists and is a directory
+   */
+  private async validateProjectPath(projectPath: string): Promise<boolean> {
+    try {
+      const stat = await fs.stat(projectPath);
+      return stat.isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Set the list of allowed tools
+   */
+  setAllowedTools(tools: string[]): void {
+    this.allowedTools = [...tools];
+  }
+
+  /**
+   * Set the list of disallowed tools
+   */
+  setDisallowedTools(tools: string[]): void {
+    this.disallowedTools = [...tools];
+  }
+
+  /**
+   * Get the current working directory
+   */
+  getWorkingDirectory(): string | undefined {
+    return this.workingDirectory;
+  }
+
+  /**
+   * Send a message and receive responses through an async generator
+   */
+  async *sendMessage(
+    content: string,
+    options: ChatOptions = {}
+  ): AsyncGenerator<SDKMessage, ChatResponse, void> {
+    const queryOptions: Options = {
+      cwd: this.workingDirectory,
+      permissionMode: this.permissionMode,
+      allowedTools: options.allowedTools ?? this.allowedTools,
+      disallowedTools: options.disallowedTools ?? this.disallowedTools,
+      maxTurns: options.maxTurns,
+      abortController: options.abortController,
+      model: options.model,
+      resume: options.resume,
+      includePartialMessages: true, // Enable real-time streaming
+    };
+
+    // Remove undefined values
+    Object.keys(queryOptions).forEach((key) => {
+      if (queryOptions[key as keyof Options] === undefined) {
+        delete queryOptions[key as keyof Options];
+      }
+    });
+
+    this.currentQuery = query({
+      prompt: content,
+      options: queryOptions,
+    });
+
+    let finalResponse: ChatResponse = {
+      id: '',
+      sessionId: '',
+      content: '',
+      done: false,
+      isError: false,
+    };
+
+    try {
+      for await (const message of this.currentQuery) {
+        yield message;
+
+        // Process result message
+        if (message.type === 'result') {
+          finalResponse = {
+            id: message.uuid,
+            sessionId: message.session_id,
+            content: message.subtype === 'success' ? message.result : '',
+            done: true,
+            isError: message.is_error,
+            usage:
+              message.subtype === 'success'
+                ? {
+                    inputTokens: message.usage.input_tokens,
+                    outputTokens: message.usage.output_tokens,
+                    totalCostUSD: message.total_cost_usd,
+                  }
+                : undefined,
+          };
+        }
+      }
+    } catch (error) {
+      throw parseSDKError(error);
+    } finally {
+      this.currentQuery = null;
+    }
+
+    return finalResponse;
+  }
+
+  /**
+   * Send a message and collect all responses (non-streaming)
+   */
+  async sendMessageSync(
+    content: string,
+    options: ChatOptions = {}
+  ): Promise<ChatResponse> {
+    const messages: SDKMessage[] = [];
+
+    const generator = this.sendMessage(content, options);
+    let result = await generator.next();
+
+    while (!result.done) {
+      messages.push(result.value);
+      result = await generator.next();
+    }
+
+    return result.value;
+  }
+
+  /**
+   * Interrupt the current query
+   */
+  async interrupt(): Promise<void> {
+    if (this.currentQuery) {
+      await this.currentQuery.interrupt();
+    }
+  }
+
+  /**
+   * Set the permission mode for the current session
+   */
+  async setPermissionMode(mode: PermissionMode): Promise<void> {
+    this.permissionMode = mode;
+    if (this.currentQuery) {
+      await this.currentQuery.setPermissionMode(mode);
+    }
+  }
+
+  /**
+   * Send a message with callback-based event handling
+   * Uses StreamHandler internally to process the async generator
+   */
+  async sendMessageWithCallbacks(
+    content: string,
+    callbacks: StreamCallbacks,
+    options: ChatOptions = {}
+  ): Promise<ChatResponse> {
+    const streamHandler = new StreamHandler();
+    const generator = this.sendMessage(content, options);
+
+    // Create a wrapper generator that yields SDKMessage without expecting a return
+    async function* wrapGenerator(): AsyncGenerator<SDKMessage, void, unknown> {
+      let result = await generator.next();
+      while (!result.done) {
+        yield result.value;
+        result = await generator.next();
+      }
+    }
+
+    return streamHandler.processStream(wrapGenerator(), callbacks);
+  }
+}
+
+/**
+ * Create a new ChatService instance
+ */
+export function createChatService(config?: ChatServiceConfig): ChatService {
+  return new ChatService(config);
+}
