@@ -103,7 +103,7 @@ export function ChatPage() {
   }, [navigate, projectSlug]);
 
   const handleRetry = useCallback(() => {
-    fetchMessages(projectSlug, sessionId, true);
+    fetchMessages(projectSlug, sessionId);
   }, [projectSlug, sessionId, fetchMessages]);
 
   const handleLoadMore = useCallback(() => {

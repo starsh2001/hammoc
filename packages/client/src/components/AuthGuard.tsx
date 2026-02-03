@@ -8,7 +8,7 @@
  * 3. CLI 상태를 Context로 제공 -> 하위 컴포넌트에서 재사용
  */
 
-import { useEffect, useState, useCallback, useRef, ReactNode } from 'react';
+import { useEffect, useState, useCallback, ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../services/api/client';
@@ -16,37 +16,28 @@ import type { CLIStatusResponse } from '@bmad-studio/shared';
 import { CliStatusProvider } from '../contexts/CliStatusContext';
 import { LoadingSpinner } from './LoadingSpinner';
 
-/** Cache validity duration in milliseconds (5 minutes) */
-const CLI_STATUS_CACHE_DURATION_MS = 5 * 60 * 1000;
-
 interface AuthGuardProps {
   children: ReactNode;
 }
+
+// Module-level flag (persists across component remounts)
+let hasFetchedCliStatus = false;
+let cachedCliStatus: CLIStatusResponse | null = null;
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, isLoading: authLoading, checkAuth } = useAuthStore();
   const location = useLocation();
 
   // CLI 상태 관리
-  const [cliStatus, setCliStatus] = useState<CLIStatusResponse | null>(null);
-  const [cliLoading, setCLILoading] = useState(true);
+  const [cliStatus, setCliStatus] = useState<CLIStatusResponse | null>(cachedCliStatus);
+  const [cliLoading, setCLILoading] = useState(!hasFetchedCliStatus);
   const [cliError, setCLIError] = useState<string | null>(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
-  // Cache timestamp for CLI status
-  const cliStatusCachedAtRef = useRef<number | null>(null);
-
   // CLI 상태 조회 함수 (재사용 가능)
   const fetchCliStatus = useCallback(async (forceRefresh = false) => {
-    // Check if cache is valid
-    if (
-      !forceRefresh &&
-      cliStatus &&
-      cliStatusCachedAtRef.current &&
-      Date.now() - cliStatusCachedAtRef.current < CLI_STATUS_CACHE_DURATION_MS
-    ) {
-      // Use cached data
-      setCLILoading(false);
+    // Skip if already fetched (unless force refresh)
+    if (!forceRefresh && hasFetchedCliStatus) {
       return;
     }
 
@@ -55,7 +46,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
     try {
       const status = await api.get<CLIStatusResponse>('/cli-status');
       setCliStatus(status);
-      cliStatusCachedAtRef.current = Date.now();
+      cachedCliStatus = status;
+      hasFetchedCliStatus = true;
       const needsSetup = !status.cliInstalled || !status.authenticated;
       setNeedsOnboarding(needsSetup);
     } catch (err) {
@@ -64,14 +56,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
     } finally {
       setCLILoading(false);
     }
-  }, [cliStatus]);
+  }, []);
 
   // Check auth status on mount
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
-  // 인증 상태 변경 또는 경로 변경 시 CLI 상태 확인
+  // 인증 완료 후 CLI 상태 확인 (앱 시작 시 한 번만)
   useEffect(() => {
     if (isAuthenticated && !authLoading && location.pathname !== '/onboarding') {
       fetchCliStatus();

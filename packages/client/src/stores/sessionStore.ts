@@ -10,15 +10,6 @@ import { ApiError } from '../services/api/client';
 
 export type ErrorType = 'none' | 'not_found' | 'network' | 'server' | 'unknown';
 
-/** Cache validity duration in milliseconds (5 minutes) */
-const CACHE_DURATION_MS = 5 * 60 * 1000;
-
-/** Cache entry for sessions per project */
-interface SessionCacheEntry {
-  sessions: SessionListItem[];
-  fetchedAt: number;
-}
-
 interface SessionState {
   sessions: SessionListItem[];
   currentProjectSlug: string | null;
@@ -26,18 +17,13 @@ interface SessionState {
   isRefreshing: boolean;
   error: string | null;
   errorType: ErrorType;
-  /** Cache for sessions by project slug */
-  cache: Map<string, SessionCacheEntry>;
 }
 
 interface SessionActions {
-  /** Fetch sessions (uses cache unless forceRefresh is true) */
-  fetchSessions: (projectSlug: string, forceRefresh?: boolean) => Promise<void>;
+  fetchSessions: (projectSlug: string) => Promise<void>;
   clearSessions: () => void;
   clearError: () => void;
   setRefreshing: (isRefreshing: boolean) => void;
-  /** Invalidate cache for a specific project or all projects */
-  invalidateCache: (projectSlug?: string) => void;
 }
 
 type SessionStore = SessionState & SessionActions;
@@ -50,33 +36,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   isRefreshing: false,
   error: null,
   errorType: 'none',
-  cache: new Map(),
 
   // Actions
-  fetchSessions: async (projectSlug: string, forceRefresh = false) => {
+  fetchSessions: async (projectSlug: string) => {
     const state = get();
-    const cached = state.cache.get(projectSlug);
 
-    // Check if cache is valid (has data, not expired, and not force refresh)
-    if (
-      !forceRefresh &&
-      cached &&
-      cached.sessions.length > 0 &&
-      Date.now() - cached.fetchedAt < CACHE_DURATION_MS
-    ) {
-      // Use cached data if switching projects
-      if (state.currentProjectSlug !== projectSlug) {
-        set({
-          sessions: cached.sessions,
-          currentProjectSlug: projectSlug,
-          error: null,
-          errorType: 'none',
-        });
-      }
-      return;
-    }
-
-    // Clear sessions if switching projects (and no valid cache)
+    // Clear sessions if switching projects
     if (state.currentProjectSlug !== projectSlug) {
       set({ sessions: [], currentProjectSlug: projectSlug });
     }
@@ -84,12 +49,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ isLoading: true, error: null, errorType: 'none' });
     try {
       const { sessions } = await sessionsApi.list(projectSlug);
-
-      // Update cache
-      const newCache = new Map(state.cache);
-      newCache.set(projectSlug, { sessions, fetchedAt: Date.now() });
-
-      set({ sessions, isLoading: false, isRefreshing: false, cache: newCache });
+      set({ sessions, isLoading: false, isRefreshing: false });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 404) {
@@ -139,15 +99,4 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   clearError: () => set({ error: null, errorType: 'none' }),
 
   setRefreshing: (isRefreshing: boolean) => set({ isRefreshing }),
-
-  invalidateCache: (projectSlug?: string) => {
-    const state = get();
-    if (projectSlug) {
-      const newCache = new Map(state.cache);
-      newCache.delete(projectSlug);
-      set({ cache: newCache });
-    } else {
-      set({ cache: new Map() });
-    }
-  },
 }));

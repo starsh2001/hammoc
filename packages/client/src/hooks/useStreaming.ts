@@ -41,12 +41,12 @@ export function useStreaming() {
     };
 
     // Handle stream completion
-    const handleComplete = (_data: Message) => {
-      completeStreaming();
-      // Refresh messages to get the complete message from server
+    const handleComplete = async (_data: Message) => {
+      // Fetch messages first (silent to avoid loading state), then clear streaming state
       if (currentProjectSlug && currentSessionId) {
-        fetchMessages(currentProjectSlug, currentSessionId);
+        await fetchMessages(currentProjectSlug, currentSessionId, { silent: true });
       }
+      completeStreaming();
     };
 
     // Handle tool call start
