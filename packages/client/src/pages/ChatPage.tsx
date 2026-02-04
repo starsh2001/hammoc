@@ -28,6 +28,7 @@ import { ToolCallCard } from '../components/ToolCallCard';
 import { MessageListSkeleton } from '../components/MessageListSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
+import { PermissionModeSelector } from '../components/PermissionModeSelector';
 
 export function ChatPage() {
   const { projectSlug, sessionId } = useParams<{
@@ -48,7 +49,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, streamingSessionId, streamingSegments, sendMessage } = useChatStore();
+  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, permissionMode, setPermissionMode } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
 
   // Get working directory from project
@@ -143,6 +144,11 @@ export function ChatPage() {
           </MessageArea>
         </main>
         <InputArea>
+          <PermissionModeSelector
+            mode={permissionMode}
+            onModeChange={setPermissionMode}
+            disabled={isStreaming}
+          />
           <ChatInput
             onSend={handleSendMessage}
             disabled={isStreaming}
@@ -178,6 +184,11 @@ export function ChatPage() {
           </section>
         </main>
         <InputArea disabled>
+          <PermissionModeSelector
+            mode={permissionMode}
+            onModeChange={setPermissionMode}
+            disabled
+          />
           <ChatInput onSend={handleSendMessage} disabled placeholder="로딩 중..." commands={commands} />
         </InputArea>
       </div>
@@ -207,6 +218,11 @@ export function ChatPage() {
           </section>
         </main>
         <InputArea disabled>
+          <PermissionModeSelector
+            mode={permissionMode}
+            onModeChange={setPermissionMode}
+            disabled
+          />
           <ChatInput onSend={handleSendMessage} disabled placeholder="오류가 발생했습니다" commands={commands} />
         </InputArea>
       </div>
@@ -242,6 +258,11 @@ export function ChatPage() {
           </MessageArea>
         </main>
         <InputArea>
+          <PermissionModeSelector
+            mode={permissionMode}
+            onModeChange={setPermissionMode}
+            disabled={isStreaming}
+          />
           <ChatInput
             onSend={handleSendMessage}
             disabled={isStreaming}
@@ -300,6 +321,11 @@ export function ChatPage() {
       </main>
 
       <InputArea>
+        <PermissionModeSelector
+          mode={permissionMode}
+          onModeChange={setPermissionMode}
+          disabled={isStreaming}
+        />
         <ChatInput
           onSend={handleSendMessage}
           disabled={isStreaming}

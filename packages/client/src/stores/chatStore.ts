@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import type { PermissionMode } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 
 /** Delay before showing "waiting" UI (ms) - gives a natural "reading" feel */
@@ -48,6 +49,8 @@ interface ChatState {
   streamingSegments: StreamingSegment[];
   /** When streaming started */
   streamingStartedAt: Date | null;
+  /** Current permission mode for Agent SDK */
+  permissionMode: PermissionMode;
 }
 
 interface SendMessageOptions {
@@ -78,6 +81,8 @@ interface ChatActions {
   completeStreaming: () => void;
   /** Abort streaming and clear state */
   abortStreaming: () => void;
+  /** Set permission mode */
+  setPermissionMode: (mode: PermissionMode) => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -89,6 +94,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingMessageId: null,
   streamingSegments: [],
   streamingStartedAt: null,
+  permissionMode: 'default',
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
@@ -127,6 +133,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       workingDirectory,
       sessionId,
       resume,
+      permissionMode: get().permissionMode,
     });
   },
 
@@ -232,4 +239,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingStartedAt: null,
     });
   },
+
+  setPermissionMode: (mode: PermissionMode) => set({ permissionMode: mode }),
 }));
