@@ -49,7 +49,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, permissionMode, setPermissionMode } = useChatStore();
+  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
 
   // Get working directory from project
@@ -90,6 +90,13 @@ export function ChatPage() {
     [sendMessage, addOptimisticMessage, workingDirectory, sessionId]
   );
 
+  // Handle abort
+  const handleAbort = useCallback(() => {
+    if (useChatStore.getState().isStreaming) {
+      abortResponse();
+    }
+  }, [abortResponse]);
+
   // Redirect if required params are missing
   if (!projectSlug || !sessionId) {
     return <Navigate to="/" replace />;
@@ -107,6 +114,19 @@ export function ChatPage() {
     navigate(`/project/${projectSlug}`);
   }, [navigate, projectSlug]);
 
+  const handleNewSession = useCallback(() => {
+    const currentIsStreaming = useChatStore.getState().isStreaming;
+
+    if (currentIsStreaming) {
+      const confirmed = window.confirm('진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?');
+      if (!confirmed) return;
+      abortResponse();
+    }
+
+    clearMessages();
+    navigate(`/project/${projectSlug}/session/new`);
+  }, [abortResponse, clearMessages, navigate, projectSlug]);
+
   const handleRetry = useCallback(() => {
     fetchMessages(projectSlug, sessionId);
   }, [projectSlug, sessionId, fetchMessages]);
@@ -122,7 +142,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -152,6 +172,8 @@ export function ChatPage() {
           <ChatInput
             onSend={handleSendMessage}
             disabled={isStreaming}
+            isStreaming={isStreaming}
+            onAbort={handleAbort}
             placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
             commands={commands}
           />
@@ -167,7 +189,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -189,7 +211,7 @@ export function ChatPage() {
             onModeChange={setPermissionMode}
             disabled
           />
-          <ChatInput onSend={handleSendMessage} disabled placeholder="로딩 중..." commands={commands} />
+          <ChatInput onSend={handleSendMessage} disabled isStreaming={isStreaming} onAbort={handleAbort} placeholder="로딩 중..." commands={commands} />
         </InputArea>
       </div>
     );
@@ -202,7 +224,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -223,7 +245,7 @@ export function ChatPage() {
             onModeChange={setPermissionMode}
             disabled
           />
-          <ChatInput onSend={handleSendMessage} disabled placeholder="오류가 발생했습니다" commands={commands} />
+          <ChatInput onSend={handleSendMessage} disabled isStreaming={isStreaming} onAbort={handleAbort} placeholder="오류가 발생했습니다" commands={commands} />
         </InputArea>
       </div>
     );
@@ -236,7 +258,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -266,6 +288,8 @@ export function ChatPage() {
           <ChatInput
             onSend={handleSendMessage}
             disabled={isStreaming}
+            isStreaming={isStreaming}
+            onAbort={handleAbort}
             placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
             commands={commands}
           />
@@ -284,6 +308,7 @@ export function ChatPage() {
         projectSlug={workingDirectory || projectSlug}
         sessionTitle={sessionId}
         onBack={handleBack}
+        onNewSession={handleNewSession}
         onRefresh={handleRetry}
       />
 
@@ -329,6 +354,8 @@ export function ChatPage() {
         <ChatInput
           onSend={handleSendMessage}
           disabled={isStreaming}
+          isStreaming={isStreaming}
+          onAbort={handleAbort}
           placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
           commands={commands}
         />

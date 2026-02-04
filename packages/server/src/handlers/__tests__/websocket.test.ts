@@ -1059,4 +1059,185 @@ describe('WebSocket Handler', () => {
       expect(message.content).toBe('Task completed');
     });
   });
+
+  describe('Story 5.4: chat:abort event handler', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should abort active request when chat:abort is received', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+
+      let capturedAbortController: AbortController | null = null;
+
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, _callbacks: unknown, options: { abortController?: AbortController }) => {
+          capturedAbortController = options.abortController || null;
+          // Simulate long-running operation
+          return new Promise((_resolve, reject) => {
+            if (capturedAbortController) {
+              capturedAbortController.signal.addEventListener('abort', () => {
+                reject(new Error('Aborted'));
+              });
+            }
+          });
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      // Start a chat request
+      clientSocket.emit('chat:send', {
+        content: 'Hello',
+        workingDirectory: '/valid/path',
+      });
+
+      // Wait for handler to start processing
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Emit abort
+      clientSocket.emit('chat:abort');
+
+      // Wait for abort to be processed
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Verify the abort controller was aborted with 'user-abort' reason
+      expect(capturedAbortController).toBeInstanceOf(AbortController);
+      expect(capturedAbortController!.signal.aborted).toBe(true);
+      expect(capturedAbortController!.signal.reason).toBe('user-abort');
+    });
+
+    it('should be no-op when no active request exists', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      // Emit abort without any active chat:send — should not throw
+      clientSocket.emit('chat:abort');
+
+      // Wait to ensure no errors
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // If we reach here, no error was thrown — test passes
+      expect(true).toBe(true);
+    });
+
+    it('should not emit error event on user-initiated abort', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const { AbortedError } = await import('../../utils/errors.js');
+
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, _callbacks: unknown, options: { abortController?: AbortController }) => {
+          return new Promise((_resolve, reject) => {
+            if (options.abortController) {
+              options.abortController.signal.addEventListener('abort', () => {
+                reject(new AbortedError());
+              });
+            }
+          });
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errors: { code: string; message: string }[] = [];
+      clientSocket.on('error', (error) => errors.push(error));
+
+      // Start a chat request
+      clientSocket.emit('chat:send', {
+        content: 'Hello',
+        workingDirectory: '/valid/path',
+      });
+
+      // Wait for handler to start
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // User-initiated abort
+      clientSocket.emit('chat:abort');
+
+      // Wait for processing
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Should NOT have received any error events
+      expect(errors).toHaveLength(0);
+    });
+
+    it('should cleanup AbortController on disconnect', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+
+      let capturedAbortController: AbortController | null = null;
+
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, _callbacks: unknown, options: { abortController?: AbortController }) => {
+          capturedAbortController = options.abortController || null;
+          return new Promise((_resolve, reject) => {
+            if (capturedAbortController) {
+              capturedAbortController.signal.addEventListener('abort', () => {
+                reject(new Error('Aborted'));
+              });
+            }
+          });
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      // Start a chat request
+      clientSocket.emit('chat:send', {
+        content: 'Hello',
+        workingDirectory: '/valid/path',
+      });
+
+      // Wait for handler to start
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Disconnect
+      clientSocket.disconnect();
+
+      // Wait for disconnect to be processed
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Verify AbortController was aborted with 'disconnect' reason
+      expect(capturedAbortController).toBeInstanceOf(AbortController);
+      expect(capturedAbortController!.signal.aborted).toBe(true);
+      expect(capturedAbortController!.signal.reason).toBe('disconnect');
+    });
+  });
 });

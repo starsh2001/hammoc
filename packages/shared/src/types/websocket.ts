@@ -28,6 +28,7 @@ export interface ClientToServerEvents {
     resume?: boolean;
     permissionMode?: PermissionMode;
   }) => void;
+  'chat:abort': () => void;
   'permission:respond': (data: { requestId: string; approved: boolean }) => void;
   'session:join': (sessionId: string) => void;
   'session:leave': (sessionId: string) => void;

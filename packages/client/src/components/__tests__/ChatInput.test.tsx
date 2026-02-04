@@ -1,12 +1,13 @@
 /**
  * ChatInput Component Tests
- * [Source: Story 4.2 - Task 8.1, Story 4.7 - Task 8]
+ * [Source: Story 4.2 - Task 8.1, Story 4.7 - Task 8, Story 5.1 - Task 4]
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChatInput } from '../ChatInput';
+import type { SlashCommand } from '@bmad-studio/shared';
 
 // Mock useWebSocket hook
 vi.mock('../../hooks/useWebSocket', () => ({
@@ -23,6 +24,29 @@ vi.mock('../../hooks/useWebSocket', () => ({
 
 // Import after mock
 import { useWebSocket } from '../../hooks/useWebSocket';
+
+const mockCommands: SlashCommand[] = [
+  {
+    command: '/BMad:agents:pm',
+    name: 'PM (Product Manager)',
+    description: 'Product Manager',
+    category: 'agent',
+    icon: '\uD83D\uDCCB',
+  },
+  {
+    command: '/BMad:agents:sm',
+    name: 'SM (Scrum Master)',
+    description: 'Scrum Master',
+    category: 'agent',
+    icon: '\uD83C\uDFC3',
+  },
+  {
+    command: '/BMad:tasks:create-doc',
+    name: 'create-doc',
+    description: 'Create document task',
+    category: 'task',
+  },
+];
 
 describe('ChatInput', () => {
   const mockOnSend = vi.fn();
@@ -473,6 +497,218 @@ describe('ChatInput', () => {
       rerender(<ChatInput onSend={mockOnSend} />);
 
       expect(screen.queryByTestId('connection-warning')).not.toBeInTheDocument();
+    });
+  });
+
+  // Story 5.1 - Task 4: Slash command autocomplete tests
+  describe('slash command autocomplete', () => {
+    it('shows CommandPalette when "/" is typed', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/' } });
+
+      expect(screen.getByTestId('command-palette')).toBeInTheDocument();
+    });
+
+    it('does not show CommandPalette without "/"', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: 'hello' } });
+
+      expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
+    });
+
+    it('does not show CommandPalette when no commands provided', () => {
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/' } });
+
+      expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
+    });
+
+    it('filters commands as user types', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/pm' } });
+
+      expect(screen.getByText('/BMad:agents:pm')).toBeInTheDocument();
+      expect(screen.queryByText('/BMad:agents:sm')).not.toBeInTheDocument();
+    });
+
+    it('inserts full command on Enter when palette is open', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/' } });
+
+      // Press Enter to select first command
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      expect(textarea).toHaveValue('/BMad:agents:pm ');
+      expect(mockOnSend).not.toHaveBeenCalled();
+    });
+
+    it('inserts full command on Tab when palette is open', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/' } });
+
+      // Press Tab to select first command
+      fireEvent.keyDown(textarea, { key: 'Tab', code: 'Tab' });
+
+      expect(textarea).toHaveValue('/BMad:agents:pm ');
+    });
+
+    it('closes palette on Escape', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/' } });
+
+      expect(screen.getByTestId('command-palette')).toBeInTheDocument();
+
+      fireEvent.keyDown(textarea, { key: 'Escape', code: 'Escape' });
+
+      expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
+    });
+
+    it('navigates down with ArrowDown', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/' } });
+
+      // First item is selected by default
+      const options = screen.getAllByRole('option');
+      expect(options[0]).toHaveAttribute('aria-selected', 'true');
+
+      // Navigate down
+      fireEvent.keyDown(textarea, { key: 'ArrowDown', code: 'ArrowDown' });
+
+      const optionsAfter = screen.getAllByRole('option');
+      expect(optionsAfter[1]).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('navigates up with ArrowUp', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/' } });
+
+      // Navigate up from first item wraps to last
+      fireEvent.keyDown(textarea, { key: 'ArrowUp', code: 'ArrowUp' });
+
+      const options = screen.getAllByRole('option');
+      expect(options[options.length - 1]).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('sends message on Enter when palette is closed', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: 'Hello' } });
+
+      // Palette not shown (no "/"), Enter should send
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      expect(mockOnSend).toHaveBeenCalledWith('Hello');
+    });
+
+    it('sets aria-expanded based on palette visibility', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+
+      // Initially no aria-expanded (not in combobox mode)
+      expect(textarea).not.toHaveAttribute('aria-expanded');
+
+      // Show palette - becomes combobox
+      fireEvent.change(textarea, { target: { value: '/' } });
+      const combobox = screen.getByRole('combobox');
+      expect(combobox).toHaveAttribute('aria-expanded', 'true');
+
+      // Hide palette - reverts to textbox
+      fireEvent.change(textarea, { target: { value: '' } });
+      expect(screen.getByRole('textbox')).not.toHaveAttribute('aria-expanded');
+    });
+
+    it('selects command on click in palette', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/' } });
+
+      fireEvent.click(screen.getByText('/BMad:tasks:create-doc'));
+
+      expect(textarea).toHaveValue('/BMad:tasks:create-doc ');
+      expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
+    });
+  });
+
+  // Story 5.4 - Task 4: Abort button toggle tests
+  describe('abort button', () => {
+    const mockOnAbort = vi.fn();
+
+    beforeEach(() => {
+      mockOnAbort.mockClear();
+    });
+
+    it('renders abort button (Square icon) when isStreaming and onAbort provided', () => {
+      render(<ChatInput onSend={mockOnSend} isStreaming onAbort={mockOnAbort} />);
+
+      const abortButton = screen.getByRole('button', { name: /중단/i });
+      expect(abortButton).toBeInTheDocument();
+      // Send button should NOT be present
+      expect(screen.queryByRole('button', { name: /전송/i })).not.toBeInTheDocument();
+    });
+
+    it('renders send button when not streaming', () => {
+      render(<ChatInput onSend={mockOnSend} isStreaming={false} onAbort={mockOnAbort} />);
+
+      expect(screen.getByRole('button', { name: /전송/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /중단/i })).not.toBeInTheDocument();
+    });
+
+    it('calls onAbort when abort button is clicked', () => {
+      render(<ChatInput onSend={mockOnSend} isStreaming onAbort={mockOnAbort} />);
+
+      const abortButton = screen.getByRole('button', { name: /중단/i });
+      fireEvent.click(abortButton);
+
+      expect(mockOnAbort).toHaveBeenCalledTimes(1);
+    });
+
+    it('abort button has aria-label="중단"', () => {
+      render(<ChatInput onSend={mockOnSend} isStreaming onAbort={mockOnAbort} />);
+
+      const abortButton = screen.getByRole('button', { name: /중단/i });
+      expect(abortButton).toHaveAttribute('aria-label', '중단');
+    });
+
+    it('abort button has red background styles', () => {
+      render(<ChatInput onSend={mockOnSend} isStreaming onAbort={mockOnAbort} />);
+
+      const abortButton = screen.getByRole('button', { name: /중단/i });
+      expect(abortButton.className).toContain('bg-red-600');
+      expect(abortButton.className).toContain('hover:bg-red-700');
+    });
+
+    it('textarea is still disabled when streaming', () => {
+      render(<ChatInput onSend={mockOnSend} disabled isStreaming onAbort={mockOnAbort} />);
+
+      expect(screen.getByRole('textbox')).toBeDisabled();
+    });
+
+    it('shows send button when isStreaming but onAbort is not provided', () => {
+      render(<ChatInput onSend={mockOnSend} disabled isStreaming />);
+
+      expect(screen.getByRole('button', { name: /전송/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /중단/i })).not.toBeInTheDocument();
     });
   });
 });
