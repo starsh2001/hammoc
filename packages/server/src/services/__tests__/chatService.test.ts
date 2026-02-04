@@ -409,6 +409,82 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
     );
   });
 
+  it('should pass AsyncIterable prompt to query() when images are provided', async () => {
+    const { query } = await import('@anthropic-ai/claude-code');
+    const mockIterator = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: 'init', session_id: 'test-session' };
+        yield {
+          type: 'result',
+          subtype: 'success',
+          result: 'Done',
+          session_id: 'test-session',
+          uuid: 'msg-1',
+          is_error: false,
+          usage: { input_tokens: 10, output_tokens: 5 },
+          total_cost_usd: 0.001,
+        };
+      },
+      interrupt: vi.fn(),
+      setPermissionMode: vi.fn(),
+    };
+
+    vi.mocked(query).mockReturnValue(mockIterator as unknown as ReturnType<typeof query>);
+
+    const callbacks = {
+      onComplete: vi.fn(),
+    };
+
+    await service.sendMessageWithCallbacks('Describe this image', callbacks, {
+      images: [
+        { mimeType: 'image/png', data: 'iVBORw0KGgo=', name: 'test.png' },
+      ],
+    });
+
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.objectContaining({
+          [Symbol.asyncIterator]: expect.any(Function),
+        }),
+      })
+    );
+  });
+
+  it('should pass string prompt to query() when no images are provided', async () => {
+    const { query } = await import('@anthropic-ai/claude-code');
+    const mockIterator = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: 'init', session_id: 'test-session' };
+        yield {
+          type: 'result',
+          subtype: 'success',
+          result: 'Done',
+          session_id: 'test-session',
+          uuid: 'msg-1',
+          is_error: false,
+          usage: { input_tokens: 10, output_tokens: 5 },
+          total_cost_usd: 0.001,
+        };
+      },
+      interrupt: vi.fn(),
+      setPermissionMode: vi.fn(),
+    };
+
+    vi.mocked(query).mockReturnValue(mockIterator as unknown as ReturnType<typeof query>);
+
+    const callbacks = {
+      onComplete: vi.fn(),
+    };
+
+    await service.sendMessageWithCallbacks('Hello no images', callbacks);
+
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: 'Hello no images',
+      })
+    );
+  });
+
   it('should call callbacks in correct order: onSessionInit → onTextChunk → onComplete', async () => {
     const { query } = await import('@anthropic-ai/claude-code');
     const callOrder: string[] = [];

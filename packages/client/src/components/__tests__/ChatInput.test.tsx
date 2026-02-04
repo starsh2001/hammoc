@@ -97,7 +97,7 @@ describe('ChatInput', () => {
       await user.type(textarea, 'Hello Claude');
       await user.keyboard('{Enter}');
 
-      expect(mockOnSend).toHaveBeenCalledWith('Hello Claude');
+      expect(mockOnSend).toHaveBeenCalledWith('Hello Claude', undefined);
       expect(textarea).toHaveValue('');
     });
 
@@ -111,7 +111,7 @@ describe('ChatInput', () => {
       const sendButton = screen.getByRole('button', { name: /전송/i });
       await user.click(sendButton);
 
-      expect(mockOnSend).toHaveBeenCalledWith('Hello Claude');
+      expect(mockOnSend).toHaveBeenCalledWith('Hello Claude', undefined);
       expect(textarea).toHaveValue('');
     });
 
@@ -123,7 +123,7 @@ describe('ChatInput', () => {
       await user.type(textarea, '  Hello Claude  ');
       await user.keyboard('{Enter}');
 
-      expect(mockOnSend).toHaveBeenCalledWith('Hello Claude');
+      expect(mockOnSend).toHaveBeenCalledWith('Hello Claude', undefined);
     });
   });
 
@@ -251,7 +251,7 @@ describe('ChatInput', () => {
         isComposing: false,
       });
 
-      expect(mockOnSend).toHaveBeenCalledWith('안녕');
+      expect(mockOnSend).toHaveBeenCalledWith('안녕', undefined);
     });
   });
 
@@ -404,7 +404,7 @@ describe('ChatInput', () => {
       fireEvent.change(textarea, { target: { value: 'Hello' } });
       fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
 
-      expect(mockOnSend).toHaveBeenCalledWith('Hello');
+      expect(mockOnSend).toHaveBeenCalledWith('Hello', undefined);
       expect(screen.queryByTestId('connection-warning')).not.toBeInTheDocument();
     });
 
@@ -616,7 +616,7 @@ describe('ChatInput', () => {
       // Palette not shown (no "/"), Enter should send
       fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
 
-      expect(mockOnSend).toHaveBeenCalledWith('Hello');
+      expect(mockOnSend).toHaveBeenCalledWith('Hello', undefined);
     });
 
     it('sets aria-expanded based on palette visibility', () => {
@@ -709,6 +709,378 @@ describe('ChatInput', () => {
 
       expect(screen.getByRole('button', { name: /전송/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /중단/i })).not.toBeInTheDocument();
+    });
+  });
+
+  // Story 5.5 - Image attachment tests
+  describe('image attachment', () => {
+    const createImageFile = (name: string, type: string, sizeKB = 10) => {
+      const content = new Uint8Array(sizeKB * 1024);
+      return new File([content], name, { type });
+    };
+
+    // Mock FileReader
+    let mockFileReaderResult: string;
+    beforeEach(() => {
+      mockFileReaderResult = 'data:image/png;base64,iVBORw0KGgo=';
+      vi.spyOn(globalThis, 'FileReader').mockImplementation(() => {
+        const reader = {
+          readAsDataURL: vi.fn(function (this: FileReader) {
+            setTimeout(() => {
+              Object.defineProperty(this, 'result', { value: mockFileReaderResult, configurable: true });
+              this.onload?.(new ProgressEvent('load') as ProgressEvent<FileReader>);
+            }, 0);
+          }),
+          onload: null as ((ev: ProgressEvent<FileReader>) => void) | null,
+          onerror: null as ((ev: ProgressEvent<FileReader>) => void) | null,
+          result: null,
+        } as unknown as FileReader;
+        return reader;
+      });
+      vi.spyOn(crypto, 'randomUUID').mockReturnValue('test-uuid-1234' as `${string}-${string}-${string}-${string}-${string}`);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('renders attach button', () => {
+      render(<ChatInput onSend={mockOnSend} />);
+
+      expect(screen.getByRole('button', { name: /이미지 첨부/i })).toBeInTheDocument();
+    });
+
+    it('triggers file input on attach button click', async () => {
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input') as HTMLInputElement;
+      const clickSpy = vi.spyOn(fileInput, 'click');
+
+      const attachButton = screen.getByRole('button', { name: /이미지 첨부/i });
+      fireEvent.click(attachButton);
+
+      expect(clickSpy).toHaveBeenCalled();
+    });
+
+    it('shows preview after file selection', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input');
+      const file = createImageFile('test.png', 'image/png');
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+        await vi.runAllTimersAsync();
+      });
+
+      expect(screen.getByTestId('image-preview-area')).toBeInTheDocument();
+      expect(screen.getByAltText('test.png')).toBeInTheDocument();
+      vi.useRealTimers();
+    });
+
+    it('removes attachment on X button click', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input');
+      const file = createImageFile('test.png', 'image/png');
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+        await vi.runAllTimersAsync();
+      });
+
+      const removeButton = screen.getByRole('button', { name: /이미지 제거: test.png/i });
+      fireEvent.click(removeButton);
+
+      expect(screen.queryByTestId('image-preview-area')).not.toBeInTheDocument();
+      vi.useRealTimers();
+    });
+
+    it('rejects files exceeding 10MB', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input');
+      const largeFile = createImageFile('large.png', 'image/png', 11 * 1024); // 11MB
+
+      // processFiles is async - trigger and flush microtasks
+      fireEvent.change(fileInput, { target: { files: [largeFile] } });
+      // Flush the promise microtasks from async processFiles
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(screen.getByTestId('validation-error')).toBeInTheDocument();
+      expect(screen.getByText('10MB를 초과하는 파일은 첨부할 수 없습니다')).toBeInTheDocument();
+      vi.useRealTimers();
+    });
+
+    it('rejects unsupported file formats', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input');
+      const pdfFile = createImageFile('doc.pdf', 'image/svg+xml'); // SVG not supported
+
+      fireEvent.change(fileInput, { target: { files: [pdfFile] } });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(screen.getByTestId('validation-error')).toBeInTheDocument();
+      expect(screen.getByText('지원되지 않는 이미지 형식입니다')).toBeInTheDocument();
+      vi.useRealTimers();
+    });
+
+    it('validation error auto-dismisses after 3 seconds', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input');
+      const largeFile = createImageFile('large.png', 'image/png', 11 * 1024);
+
+      fireEvent.change(fileInput, { target: { files: [largeFile] } });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(screen.getByTestId('validation-error')).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+
+      expect(screen.queryByTestId('validation-error')).not.toBeInTheDocument();
+      vi.useRealTimers();
+    });
+
+    it('disables attach button when streaming', () => {
+      render(<ChatInput onSend={mockOnSend} disabled isStreaming onAbort={vi.fn()} />);
+
+      expect(screen.getByRole('button', { name: /이미지 첨부/i })).toBeDisabled();
+    });
+
+    it('sends attachments with message', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input');
+      const file = createImageFile('test.png', 'image/png');
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+        await vi.runAllTimersAsync();
+      });
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: 'Check this image' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      expect(mockOnSend).toHaveBeenCalledWith('Check this image', expect.arrayContaining([
+        expect.objectContaining({
+          type: 'image',
+          name: 'test.png',
+          mimeType: 'image/png',
+        }),
+      ]));
+      vi.useRealTimers();
+    });
+
+    it('clears attachments after send', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input');
+      const file = createImageFile('test.png', 'image/png');
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+        await vi.runAllTimersAsync();
+      });
+
+      expect(screen.getByTestId('image-preview-area')).toBeInTheDocument();
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: 'msg' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      expect(screen.queryByTestId('image-preview-area')).not.toBeInTheDocument();
+      vi.useRealTimers();
+    });
+
+    // Drag and drop tests
+    it('shows visual feedback on drag over', () => {
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const inputArea = screen.getByTestId('chat-input-area');
+      fireEvent.dragOver(inputArea);
+
+      expect(inputArea.className).toContain('border-dashed');
+      expect(inputArea.className).toContain('border-blue-500');
+    });
+
+    it('removes visual feedback on drag leave', () => {
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const inputArea = screen.getByTestId('chat-input-area');
+      fireEvent.dragOver(inputArea);
+
+      expect(inputArea.className).toContain('border-dashed');
+
+      fireEvent.dragLeave(inputArea);
+
+      expect(inputArea.className).not.toContain('border-dashed');
+    });
+
+    it('attaches image on drop', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const inputArea = screen.getByTestId('chat-input-area');
+      const file = createImageFile('dropped.png', 'image/png');
+
+      await act(async () => {
+        fireEvent.drop(inputArea, {
+          dataTransfer: { files: [file] },
+        });
+        await vi.runAllTimersAsync();
+      });
+
+      expect(screen.getByTestId('image-preview-area')).toBeInTheDocument();
+      expect(screen.getByAltText('dropped.png')).toBeInTheDocument();
+      vi.useRealTimers();
+    });
+
+    it('ignores non-image files on drop', async () => {
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const inputArea = screen.getByTestId('chat-input-area');
+      const textFile = new File(['content'], 'doc.txt', { type: 'text/plain' });
+
+      await act(async () => {
+        fireEvent.drop(inputArea, {
+          dataTransfer: { files: [textFile] },
+        });
+      });
+
+      expect(screen.queryByTestId('image-preview-area')).not.toBeInTheDocument();
+    });
+
+    // Clipboard paste tests
+    it('attaches image on paste', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const textarea = screen.getByRole('textbox');
+      const file = createImageFile('clipboard-image.png', 'image/png');
+
+      await act(async () => {
+        fireEvent.paste(textarea, {
+          clipboardData: {
+            items: [
+              {
+                type: 'image/png',
+                getAsFile: () => file,
+              },
+            ],
+          },
+        });
+        await vi.runAllTimersAsync();
+      });
+
+      expect(screen.getByTestId('image-preview-area')).toBeInTheDocument();
+      vi.useRealTimers();
+    });
+
+    it('allows text paste without interference', () => {
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const textarea = screen.getByRole('textbox');
+
+      // Paste with no image items
+      const preventDefault = vi.fn();
+      fireEvent.paste(textarea, {
+        preventDefault,
+        clipboardData: {
+          items: [
+            {
+              type: 'text/plain',
+              getAsFile: () => null,
+            },
+          ],
+        },
+      });
+
+      // preventDefault should NOT have been called (no image items)
+      // The default paste behavior should proceed
+    });
+
+    it('disables attach button when 5 images are already attached', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(crypto, 'randomUUID')
+        .mockReturnValueOnce('uuid-1' as `${string}-${string}-${string}-${string}-${string}`)
+        .mockReturnValueOnce('uuid-2' as `${string}-${string}-${string}-${string}-${string}`)
+        .mockReturnValueOnce('uuid-3' as `${string}-${string}-${string}-${string}-${string}`)
+        .mockReturnValueOnce('uuid-4' as `${string}-${string}-${string}-${string}-${string}`)
+        .mockReturnValueOnce('uuid-5' as `${string}-${string}-${string}-${string}-${string}`);
+
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input');
+
+      // Add 5 images one by one
+      for (let i = 0; i < 5; i++) {
+        const file = createImageFile(`img${i}.png`, 'image/png');
+        await act(async () => {
+          fireEvent.change(fileInput, { target: { files: [file] } });
+          await vi.runAllTimersAsync();
+        });
+      }
+
+      // Attach button should be disabled at 5 images
+      expect(screen.getByRole('button', { name: /이미지 첨부/i })).toBeDisabled();
+      vi.useRealTimers();
+    });
+
+    // Keyboard accessibility for X button
+    it('removes attachment on Enter key press on X button', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input');
+      const file = createImageFile('test.png', 'image/png');
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+        await vi.runAllTimersAsync();
+      });
+
+      const removeButton = screen.getByRole('button', { name: /이미지 제거: test.png/i });
+      fireEvent.keyDown(removeButton, { key: 'Enter' });
+
+      expect(screen.queryByTestId('image-preview-area')).not.toBeInTheDocument();
+      vi.useRealTimers();
+    });
+
+    it('removes attachment on Space key press on X button', async () => {
+      vi.useFakeTimers();
+      render(<ChatInput onSend={mockOnSend} />);
+
+      const fileInput = screen.getByTestId('file-input');
+      const file = createImageFile('test.png', 'image/png');
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+        await vi.runAllTimersAsync();
+      });
+
+      const removeButton = screen.getByRole('button', { name: /이미지 제거: test.png/i });
+      fireEvent.keyDown(removeButton, { key: ' ' });
+
+      expect(screen.queryByTestId('image-preview-area')).not.toBeInTheDocument();
+      vi.useRealTimers();
     });
   });
 });

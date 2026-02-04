@@ -7,6 +7,7 @@
 import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode } from './sdk.js';
 import type { ToolResult } from './streaming.js';
 import type { SessionInfo } from './session.js';
+import type { ImageAttachment } from './message.js';
 
 // ===== Connection Status =====
 
@@ -27,6 +28,7 @@ export interface ClientToServerEvents {
     sessionId?: string;
     resume?: boolean;
     permissionMode?: PermissionMode;
+    images?: ImageAttachment[];
   }) => void;
   'chat:abort': () => void;
   'permission:respond': (data: { requestId: string; approved: boolean }) => void;

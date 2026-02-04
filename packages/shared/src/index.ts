@@ -8,6 +8,7 @@ export * from './types/streaming.js';
 export * from './types/websocket.js';
 
 // Story 1.5: Message types for display and error codes
+// Story 5.5: Attachment, ImageAttachment, IMAGE_CONSTRAINTS
 export * from './types/message.js';
 export * from './constants/errorCodes.js';
 
@@ -60,6 +61,9 @@ export {
   ValidatePathRequest,
   ValidatePathResponse,
 } from './types/project.js';
+
+// Story 5.1: SlashCommand types for command autocomplete
+export { SlashCommand, CommandListResponse } from './types/command.js';
 
 // Story 3.5: History types for Session History Loading
 export {

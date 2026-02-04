@@ -17,6 +17,7 @@ import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
 import { useProjectStore } from '../stores/projectStore';
+import type { Attachment } from '@bmad-studio/shared';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { ChatHeader } from '../components/ChatHeader';
@@ -73,7 +74,7 @@ export function ChatPage() {
 
   // Handle message send
   const handleSendMessage = useCallback(
-    (content: string) => {
+    (content: string, attachments?: Attachment[]) => {
       if (!workingDirectory) {
         console.error('[ChatPage] Cannot send message: workingDirectory not found');
         return;
@@ -85,6 +86,7 @@ export function ChatPage() {
         workingDirectory,
         sessionId: sessionId !== 'new' ? sessionId : undefined,
         resume: sessionId !== 'new',
+        attachments,
       });
     },
     [sendMessage, addOptimisticMessage, workingDirectory, sessionId]

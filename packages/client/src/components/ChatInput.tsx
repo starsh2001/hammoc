@@ -1,6 +1,6 @@
 /**
  * ChatInput Component - Multiline text input for chat messages
- * [Source: Story 4.2 - Tasks 2-6, Story 4.7 - Task 4, Story 5.1 - Task 4]
+ * [Source: Story 4.2 - Tasks 2-6, Story 4.7 - Task 4, Story 5.1 - Task 4, Story 5.5 - Tasks 2-5]
  *
  * Features:
  * - Auto-resizing textarea (1-5 lines)
@@ -9,18 +9,39 @@
  * - Streaming state disable support
  * - Connection status warning (Story 4.7)
  * - Slash command autocomplete (Story 5.1)
+ * - Image attachment via button, drag & drop, clipboard paste (Story 5.5)
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Square } from 'lucide-react';
+import { Send, Square, Paperclip, X } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { CommandPalette } from './CommandPalette';
 import { filterCommands } from './CommandPalette';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand, Attachment } from '@bmad-studio/shared';
+import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
+
+// Client-only extended attachment with preview URL and File reference
+interface ClientAttachment extends Attachment {
+  preview: string; // data:${mimeType};base64,${data} Data URL for img src
+  file: File; // Original File object reference (not sent to server)
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64Data = result.split(',')[1];
+      resolve(base64Data);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 interface ChatInputProps {
   /** Message send callback */
-  onSend: (content: string) => void;
+  onSend: (content: string, attachments?: Attachment[]) => void;
   /** Disabled state (during streaming) */
   disabled?: boolean;
   /** Placeholder text */
@@ -50,12 +71,19 @@ export function ChatInput({
   const [showCommands, setShowCommands] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
+  // Image attachment state (Story 5.5)
+  const [attachments, setAttachments] = useState<ClientAttachment[]>([]);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   // WebSocket connection status
   const { isConnected } = useWebSocket();
 
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const validationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Compute filter and filtered commands count for keyboard navigation
   const commandFilter = useMemo(() => {
@@ -119,11 +147,14 @@ export function ChatInput({
     }
   }, [disabled]);
 
-  // Clear warning timeout on unmount
+  // Clear timeouts on unmount
   useEffect(() => {
     return () => {
       if (warningTimeoutRef.current) {
         clearTimeout(warningTimeoutRef.current);
+      }
+      if (validationTimeoutRef.current) {
+        clearTimeout(validationTimeoutRef.current);
       }
     };
   }, []);
@@ -138,6 +169,127 @@ export function ChatInput({
       }
     }
   }, [isConnected, showConnectionWarning]);
+
+  // Show validation error with auto-dismiss (Story 5.5)
+  const showValidationError = useCallback((message: string) => {
+    setValidationError(message);
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
+    validationTimeoutRef.current = setTimeout(() => {
+      setValidationError(null);
+      validationTimeoutRef.current = null;
+    }, 3000);
+  }, []);
+
+  // Process files for attachment (Story 5.5)
+  const processFiles = useCallback(async (files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+
+    for (const file of imageFiles) {
+      if (!(IMAGE_CONSTRAINTS.ACCEPTED_TYPES as readonly string[]).includes(file.type)) {
+        showValidationError('지원되지 않는 이미지 형식입니다');
+        return;
+      }
+      if (file.size > IMAGE_CONSTRAINTS.MAX_SIZE_BYTES) {
+        showValidationError('10MB를 초과하는 파일은 첨부할 수 없습니다');
+        return;
+      }
+    }
+
+    if (imageFiles.length === 0) return;
+
+    // Check count limit against current state
+    const currentCount = attachments.length;
+    const remaining = IMAGE_CONSTRAINTS.MAX_COUNT - currentCount;
+    if (remaining <= 0) {
+      showValidationError('이미지는 최대 5개까지 첨부할 수 있습니다');
+      return;
+    }
+    const toAdd = imageFiles.slice(0, remaining);
+    if (imageFiles.length > remaining) {
+      showValidationError('이미지는 최대 5개까지 첨부할 수 있습니다');
+    }
+
+    // Read files and create attachments
+    const newAttachments: ClientAttachment[] = [];
+    for (const file of toAdd) {
+      try {
+        const base64Data = await readFileAsBase64(file);
+        const preview = `data:${file.type};base64,${base64Data}`;
+        newAttachments.push({
+          id: crypto.randomUUID(),
+          type: 'image',
+          name: file.name,
+          size: file.size,
+          mimeType: file.type,
+          data: base64Data,
+          preview,
+          file,
+        });
+      } catch {
+        showValidationError(`이미지를 읽을 수 없습니다: ${file.name}`);
+      }
+    }
+    if (newAttachments.length > 0) {
+      setAttachments(current => [...current, ...newAttachments]);
+    }
+  }, [showValidationError, attachments.length]);
+
+  // File input change handler (Story 5.5)
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      processFiles(files);
+    }
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  }, [processFiles]);
+
+  // Remove attachment (Story 5.5)
+  const handleRemoveAttachment = useCallback((id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  // Drag and drop handlers (Story 5.5)
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length > 0) {
+      processFiles(files);
+    }
+  }, [processFiles]);
+
+  // Clipboard paste handler (Story 5.5)
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter(item => item.type.startsWith('image/'));
+    if (imageItems.length === 0) return; // Let default text paste happen
+
+    e.preventDefault();
+    const files = imageItems
+      .map(item => item.getAsFile())
+      .filter((f): f is File => f !== null)
+      .map(f => {
+        // Clipboard images have no filename, assign a default
+        const ext = f.type.split('/')[1] || 'png';
+        return new File([f], `clipboard-image-${Date.now()}.${ext}`, { type: f.type });
+      });
+    if (files.length > 0) {
+      processFiles(files);
+    }
+  }, [processFiles]);
 
   // Command selection handler (Story 5.1)
   const handleCommandSelect = useCallback((command: SlashCommand) => {
@@ -166,14 +318,15 @@ export function ChatInput({
       return;
     }
 
-    onSend(trimmedContent);
+    onSend(trimmedContent, attachments.length > 0 ? attachments : undefined);
     setContent('');
+    setAttachments([]);
 
     // Reset height after clearing
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-  }, [content, disabled, isConnected, onSend]);
+  }, [content, disabled, isConnected, onSend, attachments]);
 
   // Keyboard handler
   const handleKeyDown = useCallback(
@@ -232,6 +385,8 @@ export function ChatInput({
 
   const isButtonDisabled = disabled || !content.trim();
 
+  const isAttachDisabled = disabled || attachments.length >= IMAGE_CONSTRAINTS.MAX_COUNT;
+
   return (
     <div className="flex flex-col gap-2">
       {/* Connection warning */}
@@ -246,7 +401,90 @@ export function ChatInput({
         </div>
       )}
 
-      <div className="flex items-end gap-2">
+      {/* Image preview area (Story 5.5) */}
+      {attachments.length > 0 && (
+        <div
+          className="flex gap-2 overflow-x-auto py-1 px-1"
+          data-testid="image-preview-area"
+        >
+          {attachments.map(attachment => (
+            <div key={attachment.id} className="relative flex-shrink-0 flex flex-col items-center gap-1">
+              <div className="relative w-16 h-16">
+                <img
+                  src={attachment.preview}
+                  alt={attachment.name}
+                  className="w-16 h-16 object-cover rounded border border-gray-300 dark:border-gray-600"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.style.display = 'none';
+                    const fallback = target.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                <div
+                  className="w-16 h-16 rounded border border-gray-300 dark:border-gray-600 items-center justify-center text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 p-1 text-center break-all"
+                  style={{ display: 'none' }}
+                >
+                  {attachment.name}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveAttachment(attachment.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleRemoveAttachment(attachment.id);
+                    }
+                  }}
+                  aria-label={`이미지 제거: ${attachment.name}`}
+                  className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center
+                             bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800
+                             rounded-full hover:bg-red-600 dark:hover:bg-red-400
+                             focus:outline-none focus:ring-2 focus:ring-red-500
+                             transition-colors"
+                >
+                  <X size={12} aria-hidden="true" />
+                </button>
+              </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[64px]">
+                {attachment.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Validation error (Story 5.5) */}
+      {validationError && (
+        <div
+          role="alert"
+          className="px-3 py-1 text-sm text-red-600 dark:text-red-400"
+          data-testid="validation-error"
+        >
+          {validationError}
+        </div>
+      )}
+
+      {/* Hidden file input (Story 5.5) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={IMAGE_CONSTRAINTS.ACCEPT_STRING}
+        multiple
+        onChange={handleFileSelect}
+        className="hidden"
+        data-testid="file-input"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+
+      <div
+        className={`flex items-end gap-2 ${isDragging ? 'border-2 border-dashed border-blue-500 rounded-lg p-1' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        data-testid="chat-input-area"
+      >
         <div className="flex-1 relative">
           {/* Command palette (Story 5.1) */}
           {showCommands && commands.length > 0 && (
@@ -264,6 +502,7 @@ export function ChatInput({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             disabled={disabled}
             placeholder={placeholder}
             role={showCommands ? 'combobox' : undefined}
@@ -290,6 +529,24 @@ export function ChatInput({
             Enter로 전송, Shift+Enter로 줄바꿈
           </span>
         </div>
+
+        {/* Attach button (Story 5.5) */}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isAttachDisabled}
+          aria-label="이미지 첨부"
+          className="p-2 rounded-lg flex-shrink-0
+                     text-gray-500 dark:text-gray-400
+                     hover:text-gray-700 dark:hover:text-gray-200
+                     hover:bg-gray-100 dark:hover:bg-gray-700
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                     transition-all duration-150"
+          style={{ height: '40px', width: '40px' }}
+        >
+          <Paperclip size={20} aria-hidden="true" />
+        </button>
 
         {isStreaming && onAbort ? (
           <button
