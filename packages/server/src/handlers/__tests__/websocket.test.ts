@@ -440,6 +440,98 @@ describe('WebSocket Handler', () => {
     });
   });
 
+  describe('Story 5.2: permissionMode handling', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should pass permissionMode to ChatService constructor when provided', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello Claude',
+        workingDirectory: '/valid/path',
+        permissionMode: 'plan',
+      });
+
+      // Wait for the handler to process
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(ChatService).toHaveBeenCalledWith({ workingDirectory: '/valid/path', permissionMode: 'plan' });
+    });
+
+    it('should pass undefined permissionMode when not provided (defaults to default)', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello Claude',
+        workingDirectory: '/valid/path',
+      });
+
+      // Wait for the handler to process
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(ChatService).toHaveBeenCalledWith({ workingDirectory: '/valid/path', permissionMode: undefined });
+    });
+
+    it('should pass acceptEdits permissionMode to ChatService', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Auto edit',
+        workingDirectory: '/valid/path',
+        permissionMode: 'acceptEdits',
+      });
+
+      // Wait for the handler to process
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(ChatService).toHaveBeenCalledWith({ workingDirectory: '/valid/path', permissionMode: 'acceptEdits' });
+    });
+  });
+
   describe('Story 4.6: Error Handling', () => {
     beforeEach(() => {
       vi.clearAllMocks();

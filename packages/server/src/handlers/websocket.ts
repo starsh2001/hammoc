@@ -15,6 +15,7 @@ import type {
   SocketData,
   TrackedToolCall,
   ToolResult,
+  PermissionMode,
 } from '@bmad-studio/shared';
 import { ERROR_CODES } from '@bmad-studio/shared';
 import { ChatService } from '../services/chatService.js';
@@ -134,9 +135,9 @@ function isSessionNotFoundError(error: Error): boolean {
  */
 async function handleChatSend(
   socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
-  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean }
+  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode }
 ): Promise<void> {
-  const { content, workingDirectory, sessionId, resume } = data;
+  const { content, workingDirectory, sessionId, resume, permissionMode } = data;
 
   // Validate workingDirectory exists
   if (!workingDirectory || !existsSync(workingDirectory)) {
@@ -155,7 +156,7 @@ async function handleChatSend(
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   try {
-    const chatService = new ChatService({ workingDirectory });
+    const chatService = new ChatService({ workingDirectory, permissionMode });
 
     // Build chat options with resume and abortController
     const chatOptions = {

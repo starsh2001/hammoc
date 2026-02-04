@@ -4,7 +4,7 @@
  * Story 1.6: Session Management - Added session events
  */
 
-import type { StreamChunk, ToolCall, Message, PermissionRequest } from './sdk.js';
+import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode } from './sdk.js';
 import type { ToolResult } from './streaming.js';
 import type { SessionInfo } from './session.js';
 
@@ -26,6 +26,7 @@ export interface ClientToServerEvents {
     workingDirectory: string;
     sessionId?: string;
     resume?: boolean;
+    permissionMode?: PermissionMode;
   }) => void;
   'permission:respond': (data: { requestId: string; approved: boolean }) => void;
   'session:join': (sessionId: string) => void;

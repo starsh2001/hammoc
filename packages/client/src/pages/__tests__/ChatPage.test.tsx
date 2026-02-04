@@ -8,6 +8,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { ChatPage } from '../ChatPage';
 import { useMessageStore } from '../../stores/messageStore';
+import { useChatStore } from '../../stores/chatStore';
 import type { HistoryMessage, PaginationInfo } from '@bmad-studio/shared';
 
 // Mock useNavigate
@@ -340,6 +341,78 @@ describe('ChatPage', () => {
       renderChatPage();
 
       expect(screen.getByRole('log')).toHaveAttribute('aria-live', 'polite');
+    });
+  });
+
+  describe('PermissionModeSelector integration (Story 5.2)', () => {
+    it('should render PermissionModeSelector in new session state', () => {
+      render(
+        <MemoryRouter initialEntries={['/project/test-project/session/new']}>
+          <Routes>
+            <Route path="/project/:projectSlug/session/:sessionId" element={<ChatPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      expect(screen.getByRole('radiogroup', { name: 'Permission mode' })).toBeInTheDocument();
+      expect(screen.getByText('Plan')).toBeInTheDocument();
+      expect(screen.getByText('Ask')).toBeInTheDocument();
+      expect(screen.getByText('Auto')).toBeInTheDocument();
+    });
+
+    it('should render PermissionModeSelector in messages state', () => {
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      expect(screen.getByRole('radiogroup', { name: 'Permission mode' })).toBeInTheDocument();
+    });
+
+    it('should render PermissionModeSelector in loading state (disabled)', () => {
+      useMessageStore.setState({ isLoading: true });
+
+      renderChatPage();
+
+      expect(screen.getByRole('radiogroup', { name: 'Permission mode' })).toBeInTheDocument();
+      const radios = screen.getAllByRole('radio');
+      radios.forEach((radio) => {
+        expect(radio).toBeDisabled();
+      });
+    });
+
+    it('should render PermissionModeSelector in error state (disabled)', () => {
+      useMessageStore.setState({ error: '오류 발생' });
+
+      renderChatPage();
+
+      expect(screen.getByRole('radiogroup', { name: 'Permission mode' })).toBeInTheDocument();
+      const radios = screen.getAllByRole('radio');
+      radios.forEach((radio) => {
+        expect(radio).toBeDisabled();
+      });
+    });
+
+    it('should render PermissionModeSelector in empty state', () => {
+      useMessageStore.setState({ messages: [] });
+
+      renderChatPage();
+
+      expect(screen.getByRole('radiogroup', { name: 'Permission mode' })).toBeInTheDocument();
+    });
+
+    it('should call setPermissionMode when a mode is clicked', () => {
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      fireEvent.click(screen.getByText('Plan'));
+      expect(useChatStore.getState().permissionMode).toBe('plan');
     });
   });
 });
