@@ -24,6 +24,11 @@ export function SessionListItem({ session, onClick }: SessionListItemProps) {
       className="w-full text-left p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
       aria-label={`세션: ${session.firstPrompt || '새 세션'}. 메시지 ${session.messageCount}개. ${formatRelativeTime(session.modified)}`}
     >
+      {/* Session ID */}
+      <p className="text-xs text-gray-400 dark:text-gray-500 truncate mb-1 font-mono">
+        {session.sessionId}
+      </p>
+
       {/* First Prompt Preview */}
       <p className="text-gray-900 dark:text-white font-medium truncate mb-2">
         {session.firstPrompt || '새 세션'}

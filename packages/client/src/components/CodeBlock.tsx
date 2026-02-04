@@ -83,7 +83,19 @@ export const CodeBlock = memo(function CodeBlock({
   // Copy handler
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(code);
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        // Fallback for non-secure contexts
+        const textarea = document.createElement('textarea');
+        textarea.value = code;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
       setCopyState('copied');
       onCopy?.(code);
       setTimeout(() => setCopyState('idle'), 2000);

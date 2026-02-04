@@ -36,6 +36,8 @@ export class StreamHandler {
   private partialJsonByIndex: Map<number, string> = new Map();
   /** Tool ID for each content block index */
   private toolIdByIndex: Map<number, string> = new Map();
+  /** Whether stream_event text deltas have been received (to avoid duplicate text from assistant messages) */
+  private receivedStreamTextDelta: boolean = false;
 
   constructor() {
     this.state = createInitialStreamingState();
@@ -56,6 +58,7 @@ export class StreamHandler {
     this.messageIdCounter = 0;
     this.partialJsonByIndex.clear();
     this.toolIdByIndex.clear();
+    this.receivedStreamTextDelta = false;
   }
 
   /**
@@ -439,11 +442,23 @@ export class StreamHandler {
 
   /**
    * Handle text content block
+   * Skip if stream_event text deltas already handled this text (avoids double emission)
    */
   private handleTextBlock(
     block: ParsedTextBlock,
     callbacks: StreamCallbacks
   ): void {
+    // When stream_event text deltas are active, assistant message text blocks
+    // contain the same accumulated text — skip to avoid duplicate output
+    if (this.receivedStreamTextDelta) {
+      return;
+    }
+
+    // Claude Code emits "(no content)" placeholder for thinking-only turns — skip
+    if (block.text.trim() === '(no content)') {
+      return;
+    }
+
     this.state.accumulatedText += block.text;
 
     callbacks.onTextChunk?.({
@@ -521,6 +536,7 @@ export class StreamHandler {
   ): void {
     // Process text deltas
     if (message.textDelta) {
+      this.receivedStreamTextDelta = true;
       this.state.accumulatedText += message.textDelta;
 
       callbacks.onTextChunk?.({

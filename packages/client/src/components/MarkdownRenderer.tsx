@@ -178,7 +178,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       },
 
       li({ children }) {
-        return <li className="ml-2">{children}</li>;
+        return <li className="ml-2 [&>p]:inline [&>p]:my-0">{children}</li>;
       },
 
       // Paragraph
@@ -197,7 +197,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
       // Horizontal rule
       hr() {
-        return <hr className="my-4 border-gray-200 dark:border-gray-700" />;
+        return <hr className="my-2 border-gray-200 dark:border-gray-700" />;
       },
 
       // Strong (bold)
@@ -214,7 +214,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   );
 
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none">
+    <div className="prose prose-sm dark:prose-invert max-w-none [&_code]:before:content-none [&_code]:after:content-none [&_hr]:my-2">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {processedContent}
       </ReactMarkdown>

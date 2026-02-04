@@ -47,7 +47,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, streamingMessage, streamingToolCalls, sendMessage } = useChatStore();
+  const { isStreaming, streamingSessionId, streamingSegments, sendMessage } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
 
   // Get working directory from project
@@ -117,17 +117,17 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={projectSlug} onBack={handleBack} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} />
         <main
           role="main"
           aria-label="채팅 페이지"
           className="flex-1 flex flex-col min-h-0"
         >
           <MessageArea
-            streamingMessage={streamingMessage}
-            streamingToolCalls={streamingToolCalls}
+            streamingSegments={streamingSegments}
+            isStreaming={isStreaming && !!streamingSessionId}
             emptyState={
-              !streamingMessage ? (
+              !isStreaming && streamingSegments.length === 0 ? (
                 <EmptyState
                   title="새 세션"
                   description="Claude와 새 대화를 시작하세요. 메시지 입력은 다음 스토리에서 구현됩니다."
@@ -156,7 +156,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={projectSlug} onBack={handleBack} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -186,7 +186,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={projectSlug} onBack={handleBack} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -215,17 +215,17 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={projectSlug} onBack={handleBack} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} />
         <main
           role="main"
           aria-label="채팅 페이지"
           className="flex-1 flex flex-col min-h-0"
         >
           <MessageArea
-            streamingMessage={streamingMessage}
-            streamingToolCalls={streamingToolCalls}
+            streamingSegments={streamingSegments}
+            isStreaming={isStreaming && !!streamingSessionId}
             emptyState={
-              !streamingMessage ? (
+              !isStreaming && streamingSegments.length === 0 ? (
                 <EmptyState
                   title="메시지가 없습니다"
                   description="이 세션에 저장된 메시지가 없습니다."
@@ -254,7 +254,8 @@ export function ChatPage() {
       className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
     >
       <ChatHeader
-        projectSlug={projectSlug}
+        projectSlug={workingDirectory || projectSlug}
+        sessionTitle={sessionId}
         onBack={handleBack}
         onRefresh={handleRetry}
       />
@@ -264,7 +265,7 @@ export function ChatPage() {
         aria-label="채팅 페이지"
         className="flex-1 flex flex-col min-h-0"
       >
-        <MessageArea scrollDependencies={[messages]} streamingMessage={streamingMessage} streamingToolCalls={streamingToolCalls} isLoadingMore={isLoadingMore}>
+        <MessageArea scrollDependencies={[messages]} streamingSegments={streamingSegments} isStreaming={isStreaming && !!streamingSessionId} isLoadingMore={isLoadingMore}>
           {/* Load older messages button */}
           {pagination?.hasMore && (
             <div className="flex justify-center py-4">

@@ -197,8 +197,9 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
         base.content = m.error || m.result || '';
       }
 
-      // Filter out messages with empty content (e.g., thinking-only blocks)
-      if (!base.content || base.content.trim() === '') {
+      // Filter out messages with empty or placeholder content
+      // Claude Code emits "(no content)" text blocks for thinking-only turns
+      if (!base.content || base.content.trim() === '' || base.content.trim() === '(no content)') {
         return null;
       }
 

@@ -1,15 +1,22 @@
 /**
  * MessageArea Component
  * Scrollable container for chat messages with auto-scroll functionality
- * [Source: Story 4.1 - Task 3, Story 4.5 - Task 7]
+ * [Source: Story 4.1 - Task 3, Story 4.5 - Task 7, Story 4.8 - Task 3]
  */
 
 import { useRef, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { ChevronDown, Wrench, Loader2, CheckCircle } from 'lucide-react';
+import { ChevronDown, Wrench, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
+import { StreamingIndicator } from './StreamingIndicator';
 import { ToolPathDisplay } from './ToolPathDisplay';
-import type { StreamingMessageState, StreamingToolCall } from '../stores/chatStore';
+import type { StreamingSegment } from '../stores/chatStore';
+import { isTextSegment, isToolSegment } from '../stores/chatStore';
+
+/** Tool display name overrides for streaming segments */
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  TodoWrite: 'Update Todos',
+};
 
 interface UseAutoScrollOptions {
   /** Threshold in pixels - auto-scroll when within this distance from bottom */
@@ -29,10 +36,10 @@ interface MessageAreaProps {
   emptyState?: ReactNode;
   /** Auto-scroll options */
   autoScrollOptions?: UseAutoScrollOptions;
-  /** Current streaming message state (Story 4.5) */
-  streamingMessage?: StreamingMessageState | null;
-  /** Streaming tool calls (shown during streaming) */
-  streamingToolCalls?: StreamingToolCall[];
+  /** Streaming segments (ordered text/tool segments) */
+  streamingSegments?: StreamingSegment[];
+  /** Whether currently streaming (for waiting indicator before first segment) */
+  isStreaming?: boolean;
   /** Whether currently loading older messages (for scroll position preservation) */
   isLoadingMore?: boolean;
 }
@@ -125,14 +132,18 @@ export function MessageArea({
   scrollDependencies = [],
   emptyState,
   autoScrollOptions,
-  streamingMessage,
-  streamingToolCalls = [],
+  streamingSegments = [],
+  isStreaming = false,
   isLoadingMore = false,
 }: MessageAreaProps) {
-  // Include streaming message content in scroll dependencies for auto-scroll during streaming
+  // Include streaming segments length in scroll dependencies for auto-scroll during streaming
+  const lastTextContent = streamingSegments.length > 0
+    ? streamingSegments.filter(isTextSegment).map((s) => s.content).join('')
+    : '';
   const allScrollDependencies = [
     ...scrollDependencies,
-    streamingMessage?.content,
+    lastTextContent,
+    streamingSegments.length,
   ];
 
   const { containerRef, bottomRef, isUserScrolledUp, scrollToBottom, handleScroll } =
@@ -141,7 +152,7 @@ export function MessageArea({
   const hasChildren = Array.isArray(children)
     ? children.length > 0
     : children !== null && children !== undefined;
-  const hasContent = hasChildren || streamingMessage;
+  const hasContent = hasChildren || streamingSegments.length > 0;
 
   // Show empty state if no children and no streaming
   if (!hasContent && emptyState) {
@@ -151,12 +162,14 @@ export function MessageArea({
         aria-label="메시지 목록"
         aria-live="polite"
         data-testid="message-area"
-        className="flex-1 flex items-center justify-center overflow-y-auto bg-gray-50 dark:bg-gray-900"
+        className="flex-1 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900"
       >
         {emptyState}
       </section>
     );
   }
+
+  const isLastSegmentIndex = (index: number) => index === streamingSegments.length - 1;
 
   return (
     <section
@@ -164,7 +177,7 @@ export function MessageArea({
       aria-label="메시지 목록"
       aria-live="polite"
       data-testid="message-area"
-      className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 relative"
+      className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900 relative"
     >
       <div
         ref={containerRef}
@@ -175,50 +188,104 @@ export function MessageArea({
         {/* History messages */}
         {children}
 
-        {/* Streaming tool calls - shown before streaming message */}
-        {streamingToolCalls.map((toolCall) => {
-          // Extract display info from tool input based on tool type
-          // file_path: Read/Write, path: Grep, pattern: Glob, command: Bash
-          const rawDisplayInfo = toolCall.input?.file_path || toolCall.input?.path || toolCall.input?.pattern || toolCall.input?.command;
-          const displayInfo = typeof rawDisplayInfo === 'string' ? rawDisplayInfo : null;
-          const isCompleted = toolCall.status === 'completed';
+        {/* Streaming segments - rendered in order */}
+        {streamingSegments.map((seg, index) => {
+          if (isTextSegment(seg)) {
+            // A text segment is still being streamed only if it's the last segment
+            const isStillStreaming = isLastSegmentIndex(index);
+            return (
+              <StreamingErrorBoundary key={`seg-text-${index}`}>
+                <StreamingMessage
+                  content={seg.content}
+                  isComplete={!isStillStreaming}
+                />
+              </StreamingErrorBoundary>
+            );
+          }
 
-          return (
-            <div
-              key={toolCall.id}
-              className="flex justify-start"
-              role="listitem"
-              aria-label={isCompleted ? `도구 완료: ${toolCall.name}` : `도구 실행 중: ${toolCall.name}`}
-            >
-              <div className="max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-2">
-                  <Wrench className="w-4 h-4 text-blue-500" aria-hidden="true" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {toolCall.name}
-                  </span>
-                  {isCompleted ? (
-                    <CheckCircle
-                      className="w-4 h-4 text-green-500 animate-scale-in"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" aria-hidden="true" />
-                  )}
+          if (isToolSegment(seg)) {
+            const rawDisplayInfo =
+              seg.toolCall.input?.file_path ||
+              seg.toolCall.input?.path ||
+              seg.toolCall.input?.pattern ||
+              seg.toolCall.input?.command;
+            const displayInfo = typeof rawDisplayInfo === 'string' ? rawDisplayInfo : null;
+            const toolDisplayName = TOOL_DISPLAY_NAMES[seg.toolCall.name] ?? seg.toolCall.name;
+
+            // Extract todos from TodoWrite input for real-time checklist display
+            const todos = seg.toolCall.name === 'TodoWrite' && Array.isArray(seg.toolCall.input?.todos)
+              ? (seg.toolCall.input.todos as Array<{ content: string; status: string }>)
+              : null;
+
+            return (
+              <div key={seg.toolCall.id}>
+                <div
+                  className="flex justify-start"
+                  role="listitem"
+                  aria-label={
+                    seg.status === 'completed'
+                      ? `도구 완료: ${toolDisplayName}`
+                      : seg.status === 'error'
+                        ? `도구 실패: ${toolDisplayName}`
+                        : `도구 실행 중: ${toolDisplayName}`
+                  }
+                >
+                  <div className="max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-blue-500" aria-hidden="true" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {toolDisplayName}
+                      </span>
+                      {seg.status === 'completed' ? (
+                        <CheckCircle
+                          className="w-4 h-4 text-green-500 animate-scale-in"
+                          aria-hidden="true"
+                        />
+                      ) : seg.status === 'error' ? (
+                        <AlertCircle
+                          className="w-4 h-4 text-red-500 animate-error-pop"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Loader2 className="w-4 h-4 text-blue-500 animate-spin" aria-hidden="true" />
+                      )}
+                    </div>
+                    {displayInfo && <ToolPathDisplay displayInfo={displayInfo} toolName={seg.toolCall.name} />}
+                    {todos && todos.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                        {todos.map((todo, i) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <span className="flex-shrink-0 mt-0.5">
+                              {todo.status === 'completed' ? '✓' : todo.status === 'in_progress' ? '▸' : '○'}
+                            </span>
+                            <span className={todo.status === 'completed' ? 'line-through opacity-60' : ''}>
+                              {todo.content}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
-                {displayInfo && <ToolPathDisplay displayInfo={displayInfo} toolName={toolCall.name} />}
+                {seg.status === 'error' && (
+                  <div className="text-xs text-red-500 mt-1 ml-2">
+                    Tool 실행 실패: {seg.toolCall.output || '알 수 없는 오류'}
+                  </div>
+                )}
               </div>
-            </div>
-          );
+            );
+          }
+
+          return null;
         })}
 
-        {/* Streaming message - rendered after history messages, wrapped in error boundary */}
-        {streamingMessage && (
-          <StreamingErrorBoundary>
-            <StreamingMessage
-              content={streamingMessage.content}
-              isComplete={false}
-            />
-          </StreamingErrorBoundary>
+        {/* Waiting indicator: streaming started but no segments received yet */}
+        {isStreaming && streamingSegments.length === 0 && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] bg-white dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
+              <StreamingIndicator />
+            </div>
+          </div>
         )}
 
         <div ref={bottomRef} aria-hidden="true" />

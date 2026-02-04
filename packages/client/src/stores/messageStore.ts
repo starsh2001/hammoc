@@ -24,6 +24,8 @@ interface MessageActions {
   clearMessages: () => void;
   /** Add user message optimistically (before server confirmation) */
   addOptimisticMessage: (content: string) => void;
+  /** Add multiple messages in batch (used by completeStreaming) */
+  addMessages: (newMessages: HistoryMessage[]) => void;
 }
 
 type MessageStore = MessageState & MessageActions;
@@ -121,5 +123,11 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       timestamp: new Date().toISOString(),
     };
     set({ messages: [...messages, optimisticMessage] });
+  },
+
+  addMessages: (newMessages: HistoryMessage[]) => {
+    if (newMessages.length === 0) return;
+    const { messages } = get();
+    set({ messages: [...messages, ...newMessages] });
   },
 }));

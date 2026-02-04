@@ -13,6 +13,7 @@ import { ProjectCard } from '../components/ProjectCard';
 import { ProjectCardSkeleton } from '../components/ProjectCardSkeleton';
 import { SettingsMenu } from '../components/SettingsMenu';
 import { NewProjectDialog } from '../components/NewProjectDialog';
+import { BrandLogo } from '../components/BrandLogo';
 
 function ProjectListPageSkeleton() {
   return (
@@ -84,10 +85,11 @@ export function ProjectListPage() {
     return (
       <div className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
         {/* Header */}
-        <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            프로젝트
-          </h1>
+        <header className="flex-shrink-0 flex items-center gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
+          <BrandLogo />
+          <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700" />
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">프로젝트</h1>
+          <div className="flex-1" />
           <div className="relative">
             <button
               onClick={() => setShowSettings(!showSettings)}
@@ -129,10 +131,11 @@ export function ProjectListPage() {
   return (
     <div className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Header */}
-      <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-          프로젝트
-        </h1>
+      <header className="flex-shrink-0 flex items-center gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
+        <BrandLogo />
+        <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700" />
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-white">프로젝트</h1>
+        <div className="flex-1" />
         <div className="flex items-center gap-2">
           {/* New Project Button */}
           <button
