@@ -403,6 +403,88 @@ describe('useChatStore', () => {
     });
   });
 
+  describe('abortResponse', () => {
+    it('emits chat:abort via socket', () => {
+      const { startStreaming, appendStreamingContent, abortResponse } =
+        useChatStore.getState();
+
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('Hello');
+      abortResponse();
+
+      expect(mockEmit).toHaveBeenCalledWith('chat:abort');
+    });
+
+    it('preserves text segments in messageStore with abort marker', () => {
+      const { startStreaming, appendStreamingContent, abortResponse } =
+        useChatStore.getState();
+
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('Partial response text');
+      abortResponse();
+
+      const messages = useMessageStore.getState().messages;
+      expect(messages).toHaveLength(1);
+      expect(messages[0].type).toBe('assistant');
+      expect(messages[0].content).toContain('Partial response text');
+      expect(messages[0].content).toContain('*[중단됨]*');
+    });
+
+    it('clears streaming state after abort', () => {
+      const { startStreaming, appendStreamingContent, abortResponse } =
+        useChatStore.getState();
+
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('content');
+      abortResponse();
+
+      const state = useChatStore.getState();
+      expect(state.isStreaming).toBe(false);
+      expect(state.streamingSessionId).toBeNull();
+      expect(state.streamingMessageId).toBeNull();
+      expect(state.streamingSegments).toEqual([]);
+      expect(state.streamingStartedAt).toBeNull();
+    });
+
+    it('is no-op when not streaming', () => {
+      const { abortResponse } = useChatStore.getState();
+
+      abortResponse();
+
+      expect(mockEmit).not.toHaveBeenCalled();
+      expect(useMessageStore.getState().messages).toEqual([]);
+    });
+
+    it('does not preserve messages when there is no text content', () => {
+      const { startStreaming, addStreamingToolCall, abortResponse } =
+        useChatStore.getState();
+
+      startStreaming('session-1', 'msg-1');
+      addStreamingToolCall({ id: 'tool-1', name: 'Read' });
+      abortResponse();
+
+      // Socket should still be notified
+      expect(mockEmit).toHaveBeenCalledWith('chat:abort');
+      // But no message should be added (only tool segments, no text)
+      expect(useMessageStore.getState().messages).toEqual([]);
+    });
+
+    it('joins multiple text segments with abort marker', () => {
+      const { startStreaming, appendStreamingContent, addStreamingToolCall, abortResponse } =
+        useChatStore.getState();
+
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('First part');
+      addStreamingToolCall({ id: 'tool-1', name: 'Read' });
+      appendStreamingContent('Second part');
+      abortResponse();
+
+      const messages = useMessageStore.getState().messages;
+      expect(messages).toHaveLength(1);
+      expect(messages[0].content).toBe('First partSecond part\n\n*[중단됨]*');
+    });
+  });
+
   describe('segment combinations', () => {
     it('handles simple text streaming', () => {
       const { startStreaming, appendStreamingContent } = useChatStore.getState();

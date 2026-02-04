@@ -32,6 +32,9 @@ let io: SocketIOServer<
 >;
 let connectedClients = 0;
 
+// Module-level map: socket.id → active AbortController
+const activeAbortControllers = new Map<string, AbortController>();
+
 /**
  * Initialize Socket.io server with the HTTP server
  * @param httpServer - HTTP server instance from Express
@@ -73,7 +76,22 @@ export async function initializeWebSocket(
 
     // Handle chat:send event
     socket.on('chat:send', async (data) => {
-      await handleChatSend(socket, data);
+      const abortController = new AbortController();
+      activeAbortControllers.set(socket.id, abortController);
+      try {
+        await handleChatSend(socket, data, abortController);
+      } finally {
+        activeAbortControllers.delete(socket.id);
+      }
+    });
+
+    // Handle chat:abort event — user-initiated abort
+    socket.on('chat:abort', () => {
+      const controller = activeAbortControllers.get(socket.id);
+      if (controller) {
+        controller.abort('user-abort');
+        activeAbortControllers.delete(socket.id);
+      }
     });
 
     // Handle session:list event
@@ -82,6 +100,11 @@ export async function initializeWebSocket(
     });
 
     socket.on('disconnect', () => {
+      const controller = activeAbortControllers.get(socket.id);
+      if (controller) {
+        controller.abort('disconnect');
+        activeAbortControllers.delete(socket.id);
+      }
       connectedClients--;
       console.log(`Client disconnected. Total: ${connectedClients}`);
     });
@@ -135,7 +158,8 @@ function isSessionNotFoundError(error: Error): boolean {
  */
 async function handleChatSend(
   socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
-  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode }
+  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode },
+  abortController: AbortController
 ): Promise<void> {
   const { content, workingDirectory, sessionId, resume, permissionMode } = data;
 
@@ -151,8 +175,6 @@ async function handleChatSend(
   const isResuming = resume && sessionId;
   const sessionService = new SessionService();
 
-  // Story 4.6 - Task 3.5: Setup abort controller for timeout handling
-  const abortController = new AbortController();
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   try {
@@ -246,8 +268,13 @@ async function handleChatSend(
   } catch (error) {
     const sdkError = parseSDKError(error);
 
-    // Story 4.6 - Task 3.5: Check for timeout (AbortedError)
+    // Check for abort (user-initiated or timeout)
     if (sdkError instanceof AbortedError || abortController.signal.aborted) {
+      if (abortController.signal.reason === 'user-abort') {
+        // User initiated abort — no error event needed, silent return
+        return;
+      }
+      // Timeout or other abort — emit timeout error
       socket.emit('error', {
         code: ERROR_CODES.TIMEOUT_ERROR,
         message: '응답 시간이 초과되었습니다. 다시 시도해 주세요.',

@@ -6,7 +6,8 @@
  * - WebSocket event listeners for message:chunk and message:complete
  * - Segment-based streaming (text/tool interleaved)
  * - Reconnection handling with streaming state recovery
- * - Escape key to abort streaming
+ * - Escape key to abort streaming (Story 5.4: uses abortResponse)
+ * - Ctrl+C / Cmd+C to abort streaming when no text selected (Story 5.4)
  * - Automatic cleanup on unmount
  */
 
@@ -25,15 +26,31 @@ export function useStreaming() {
     updateStreamingToolCall,
     completeStreaming,
     abortStreaming,
+    abortResponse,
   } = useChatStore();
 
-  // Handle Escape key to abort streaming
+  // Handle keyboard shortcuts to abort streaming (Story 5.4)
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (event.key === 'Escape' && useChatStore.getState().isStreaming) {
+    if (!useChatStore.getState().isStreaming) return;
+
+    // Escape key → abort
+    if (event.key === 'Escape') {
       event.preventDefault();
-      abortStreaming();
+      abortResponse();
+      return;
     }
-  }, [abortStreaming]);
+
+    // Ctrl+C (Windows/Linux) or Cmd+C (macOS) → abort (only if no text selected)
+    if (event.key === 'c' && (event.ctrlKey || event.metaKey)) {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) {
+        // No text selected — treat as abort
+        event.preventDefault();
+        abortResponse();
+      }
+      // If text is selected, let default copy behavior proceed
+    }
+  }, [abortResponse]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -156,6 +173,7 @@ export function useStreaming() {
     updateStreamingToolCall,
     completeStreaming,
     abortStreaming,
+    abortResponse,
     handleKeyDown,
   ]);
 }

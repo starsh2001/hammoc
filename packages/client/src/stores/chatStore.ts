@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import type { PermissionMode } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
+import { useMessageStore } from './messageStore';
 
 /** Delay before showing "waiting" UI (ms) - gives a natural "reading" feel */
 const STREAMING_UI_DELAY_MS = 600;
@@ -81,6 +82,8 @@ interface ChatActions {
   completeStreaming: () => void;
   /** Abort streaming and clear state */
   abortStreaming: () => void;
+  /** Abort response: user-initiated abort with server notification and message preservation */
+  abortResponse: () => void;
   /** Set permission mode */
   setPermissionMode: (mode: PermissionMode) => void;
 }
@@ -231,6 +234,45 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
     }
+    set({
+      isStreaming: false,
+      streamingSessionId: null,
+      streamingMessageId: null,
+      streamingSegments: [],
+      streamingStartedAt: null,
+    });
+  },
+
+  abortResponse: () => {
+    const state = get();
+    if (!state.isStreaming) return;
+
+    // Clear delay timeout
+    if (streamingDelayTimeoutId) {
+      clearTimeout(streamingDelayTimeoutId);
+      streamingDelayTimeoutId = null;
+    }
+
+    // Notify server to abort SDK request
+    const socket = getSocket();
+    socket.emit('chat:abort');
+
+    // Preserve text content from segments with abort marker
+    const textContent = state.streamingSegments
+      .filter((seg): seg is { type: 'text'; content: string } => seg.type === 'text')
+      .map((seg) => seg.content)
+      .join('');
+
+    if (textContent.trim()) {
+      useMessageStore.getState().addMessages([{
+        id: `aborted-${Date.now()}`,
+        type: 'assistant',
+        content: textContent + '\n\n*[중단됨]*',
+        timestamp: new Date().toISOString(),
+      }]);
+    }
+
+    // Clear streaming state
     set({
       isStreaming: false,
       streamingSessionId: null,
