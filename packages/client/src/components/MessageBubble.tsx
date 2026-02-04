@@ -34,12 +34,27 @@ export function MessageBubble({
 
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(message.content);
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(message.content);
+      } else {
+        // Fallback for non-secure contexts
+        const textarea = document.createElement('textarea');
+        textarea.value = message.content;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
       onCopy?.(message.content);
     } catch (err) {
       console.error('Failed to copy:', err);
+      // Brief visual feedback on failure
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 1000);
     }
   }, [message.content, onCopy]);
 
@@ -87,7 +102,7 @@ export function MessageBubble({
           onClick={handleCopy}
           aria-label={isCopied ? '복사됨' : '메시지 복사'}
           title={isCopied ? '복사됨!' : '클립보드에 복사'}
-          className={`absolute top-2 right-2 min-w-[48px] min-h-[48px] p-3 flex items-center justify-center rounded transition-opacity duration-200 ${
+          className={`absolute top-2 right-2 z-10 p-1.5 flex items-center justify-center rounded transition-opacity duration-200 ${
             isHovered ? 'opacity-100' : 'opacity-0'
           } ${
             isUser

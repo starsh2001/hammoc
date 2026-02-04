@@ -3,10 +3,11 @@
  * [Source: Story 3.4 - Task 4]
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Plus } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
+import { useProjectStore } from '../stores/projectStore';
 import { SessionListItem } from '../components/SessionListItem';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { SessionListItemSkeleton } from '../components/SessionListItemSkeleton';
@@ -15,6 +16,7 @@ import { EmptyState } from '../components/EmptyState';
 import { PullToRefreshIndicator } from '../components/PullToRefreshIndicator';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useSkeletonCount } from '../hooks/useSkeletonCount';
+import { BrandLogo } from '../components/BrandLogo';
 
 const PULL_THRESHOLD = 80;
 
@@ -30,7 +32,21 @@ export function SessionListPage() {
     fetchSessions,
     setRefreshing,
   } = useSessionStore();
+  const { projects, fetchProjects } = useProjectStore();
   const skeletonCount = useSkeletonCount(5);
+
+  // Get original project path for display
+  const projectDisplayName = useMemo(() => {
+    const project = projects.find((p) => p.projectSlug === projectSlug);
+    return project?.originalPath || projectSlug || '';
+  }, [projects, projectSlug]);
+
+  // Fetch projects if not loaded (for direct URL navigation)
+  useEffect(() => {
+    if (projects.length === 0) {
+      fetchProjects();
+    }
+  }, [projects.length, fetchProjects]);
 
   // Fetch sessions on mount or when projectSlug changes
   useEffect(() => {
@@ -74,7 +90,7 @@ export function SessionListPage() {
       <div className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900">
         {/* Header */}
         <header className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3 px-4 py-3">
             <button
               onClick={handleBack}
               className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
@@ -82,7 +98,9 @@ export function SessionListPage() {
             >
               <ArrowLeft className="w-6 h-6" />
             </button>
-            <h1 className="text-lg font-semibold truncate text-gray-900 dark:text-white">{projectSlug}</h1>
+            <BrandLogo />
+            <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700" />
+            <h1 className="flex-1 min-w-0 text-base font-semibold truncate text-gray-900 dark:text-white">{projectDisplayName}</h1>
             <ThemeToggleButton />
           </div>
         </header>
@@ -100,7 +118,7 @@ export function SessionListPage() {
     <div className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header with actions */}
       <header className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3 px-4 py-3">
           <button
             onClick={handleBack}
             className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
@@ -108,7 +126,9 @@ export function SessionListPage() {
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-lg font-semibold truncate text-gray-900 dark:text-white">{projectSlug}</h1>
+          <BrandLogo />
+          <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700" />
+          <h1 className="flex-1 min-w-0 text-base font-semibold truncate text-gray-900 dark:text-white">{projectDisplayName}</h1>
           <div className="flex items-center gap-2">
             <ThemeToggleButton />
             <button

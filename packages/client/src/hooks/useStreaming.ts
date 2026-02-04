@@ -1,9 +1,10 @@
 /**
  * useStreaming Hook - Manages real-time streaming state via WebSocket
- * [Source: Story 4.5 - Task 2]
+ * [Source: Story 4.5 - Task 2, Story 4.8 - Task 2]
  *
  * Features:
  * - WebSocket event listeners for message:chunk and message:complete
+ * - Segment-based streaming (text/tool interleaved)
  * - Reconnection handling with streaming state recovery
  * - Escape key to abort streaming
  * - Automatic cleanup on unmount
@@ -16,9 +17,15 @@ import { useMessageStore } from '../stores/messageStore';
 import type { StreamChunk, Message } from '@bmad-studio/shared';
 
 export function useStreaming() {
-  const { startStreaming, appendStreamingContent, addStreamingToolCall, updateStreamingToolCallInput, completeStreamingToolCall, completeStreaming, abortStreaming } =
-    useChatStore();
-  const { fetchMessages, currentProjectSlug, currentSessionId } = useMessageStore();
+  const {
+    startStreaming,
+    appendStreamingContent,
+    addStreamingToolCall,
+    updateStreamingToolCallInput,
+    updateStreamingToolCall,
+    completeStreaming,
+    abortStreaming,
+  } = useChatStore();
 
   // Handle Escape key to abort streaming
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -41,21 +48,36 @@ export function useStreaming() {
     };
 
     // Handle stream completion
-    const handleComplete = async (_data: Message) => {
-      // Fetch messages first (silent to avoid loading state), then clear streaming state
-      if (currentProjectSlug && currentSessionId) {
-        await fetchMessages(currentProjectSlug, currentSessionId, { silent: true });
+    const handleComplete = async (data: Message) => {
+      // Use getState() for fresh values instead of potentially stale closure values
+      const msgState = useMessageStore.getState();
+      const projectSlug = msgState.currentProjectSlug;
+      const sessId = msgState.currentSessionId;
+
+      if (projectSlug && sessId) {
+        // Fetch authoritative message list from server
+        await msgState.fetchMessages(projectSlug, sessId, { silent: true });
+      } else if (data.content && data.content.trim() && data.content.trim() !== '(no content)') {
+        // New session: server data contains the complete message — add it directly
+        // Skip empty content and placeholder "(no content)" from Claude Code
+        msgState.addMessages([{
+          id: data.id,
+          type: 'assistant',
+          content: data.content,
+          timestamp: typeof data.timestamp === 'string'
+            ? data.timestamp
+            : new Date(data.timestamp).toISOString(),
+        }]);
       }
       completeStreaming();
     };
 
-    // Handle tool call start
+    // Handle tool call start - add tool segment
     const handleToolCall = (data: { id: string; name: string; input?: Record<string, unknown> }) => {
       addStreamingToolCall({
         id: data.id,
         name: data.name,
         input: data.input,
-        status: 'pending',
       });
     };
 
@@ -64,9 +86,9 @@ export function useStreaming() {
       updateStreamingToolCallInput(data.toolCallId, data.input);
     };
 
-    // Handle tool result (mark tool as completed)
-    const handleToolResult = (data: { toolCallId: string }) => {
-      completeStreamingToolCall(data.toolCallId);
+    // Handle tool result - update tool segment status
+    const handleToolResult = (data: { toolCallId: string; output?: string; isError?: boolean }) => {
+      updateStreamingToolCall(data.toolCallId, data.output ?? '', data.isError);
     };
 
     // Handle disconnection during streaming
@@ -77,12 +99,12 @@ export function useStreaming() {
     // Handle successful reconnection
     const handleReconnect = () => {
       const state = useChatStore.getState();
-      if (state.isStreaming && state.streamingMessage) {
+      if (state.isStreaming && state.streamingSessionId) {
         // Request current streaming status from server
         socket.emit('streaming:status' as 'chat:send', {
           content: '',
           workingDirectory: '',
-          sessionId: state.streamingMessage.sessionId,
+          sessionId: state.streamingSessionId,
         });
       }
     };
@@ -131,12 +153,9 @@ export function useStreaming() {
     appendStreamingContent,
     addStreamingToolCall,
     updateStreamingToolCallInput,
-    completeStreamingToolCall,
+    updateStreamingToolCall,
     completeStreaming,
     abortStreaming,
     handleKeyDown,
-    fetchMessages,
-    currentProjectSlug,
-    currentSessionId,
   ]);
 }

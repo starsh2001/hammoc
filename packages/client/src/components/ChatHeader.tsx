@@ -8,6 +8,7 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { ThemeToggleButton } from './ThemeToggleButton';
+import { BrandLogo } from './BrandLogo';
 
 interface ChatHeaderProps {
   /** Project slug/path to display */
@@ -53,15 +54,14 @@ export function ChatHeader({
             </button>
           )}
 
+          <BrandLogo />
+          <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
           <div className="min-w-0 flex-1">
-            {/* Project path */}
-            <h1 className="text-lg font-semibold truncate text-gray-900 dark:text-white">
+            <h1 className="text-base font-semibold truncate text-gray-900 dark:text-white">
               {projectSlug || '채팅'}
             </h1>
-
-            {/* Session info */}
             {sessionTitle && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate font-mono">
                 {sessionTitle}
               </p>
             )}

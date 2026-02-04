@@ -1,6 +1,6 @@
 /**
  * Chat Store - Zustand store for real-time chat state
- * [Source: Story 4.2 - Task 1, Story 4.5 - Task 1, Story 4.6 - Task 2]
+ * [Source: Story 4.2 - Task 1, Story 4.5 - Task 1, Story 4.6 - Task 2, Story 4.8 - Task 1]
  */
 
 import { create } from 'zustand';
@@ -12,29 +12,42 @@ const STREAMING_UI_DELAY_MS = 600;
 /** Track the delay timeout so we can cancel if response arrives early */
 let streamingDelayTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-/** Streaming message state */
-export interface StreamingMessageState {
-  sessionId: string;
-  messageId: string;
-  content: string;
-  startedAt: Date;
-}
-
 /** Streaming tool call state */
 export interface StreamingToolCall {
   id: string;
   name: string;
   input?: Record<string, unknown>;
-  status: 'pending' | 'completed';
+  output?: string;
+}
+
+/** Streaming segment - discriminated union for text and tool segments */
+export type StreamingSegment =
+  | { type: 'text'; content: string }
+  | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error' };
+
+/** Type guard for text segments */
+export function isTextSegment(seg: StreamingSegment): seg is { type: 'text'; content: string } {
+  return seg.type === 'text';
+}
+
+/** Type guard for tool segments */
+export function isToolSegment(
+  seg: StreamingSegment
+): seg is { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error' } {
+  return seg.type === 'tool';
 }
 
 interface ChatState {
   /** Whether Claude is currently generating a response */
   isStreaming: boolean;
-  /** Current streaming message state */
-  streamingMessage: StreamingMessageState | null;
-  /** Streaming tool calls (shown during streaming) */
-  streamingToolCalls: StreamingToolCall[];
+  /** Current streaming session ID */
+  streamingSessionId: string | null;
+  /** Current streaming message ID */
+  streamingMessageId: string | null;
+  /** Ordered streaming segments (text/tool interleaved) */
+  streamingSegments: StreamingSegment[];
+  /** When streaming started */
+  streamingStartedAt: Date | null;
 }
 
 interface SendMessageOptions {
@@ -53,15 +66,15 @@ interface ChatActions {
   sendMessage: (content: string, options: SendMessageOptions) => void;
   /** Start streaming a new message */
   startStreaming: (sessionId: string, messageId: string) => void;
-  /** Append content to the current streaming message */
+  /** Append content to the current streaming text segment */
   appendStreamingContent: (content: string) => void;
-  /** Add a streaming tool call */
+  /** Add a streaming tool call segment */
   addStreamingToolCall: (toolCall: StreamingToolCall) => void;
   /** Update a streaming tool call's input */
   updateStreamingToolCallInput: (toolCallId: string, input: Record<string, unknown>) => void;
-  /** Mark a streaming tool call as completed */
-  completeStreamingToolCall: (toolCallId: string) => void;
-  /** Complete streaming and clear state */
+  /** Update a streaming tool call result and status */
+  updateStreamingToolCall: (toolCallId: string, result: string, isError?: boolean) => void;
+  /** Complete streaming: convert segments to HistoryMessages and clear state */
   completeStreaming: () => void;
   /** Abort streaming and clear state */
   abortStreaming: () => void;
@@ -72,8 +85,10 @@ type ChatStore = ChatState & ChatActions;
 export const useChatStore = create<ChatStore>((set, get) => ({
   // State
   isStreaming: false,
-  streamingMessage: null,
-  streamingToolCalls: [],
+  streamingSessionId: null,
+  streamingMessageId: null,
+  streamingSegments: [],
+  streamingStartedAt: null,
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
@@ -94,15 +109,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Show "waiting" UI after a short delay (natural "reading" feel)
     streamingDelayTimeoutId = setTimeout(() => {
       const state = get();
-      // Only show if still streaming and no content received yet
-      if (state.isStreaming && !state.streamingMessage) {
+      // Only show if still streaming and no segments received yet
+      if (state.isStreaming && state.streamingSegments.length === 0 && !state.streamingSessionId) {
         set({
-          streamingMessage: {
-            sessionId: sessionId || 'pending',
-            messageId: 'pending',
-            content: '',
-            startedAt: new Date(),
-          },
+          streamingSessionId: sessionId || 'pending',
+          streamingMessageId: 'pending',
+          streamingSegments: [],
+          streamingStartedAt: new Date(),
         });
       }
       streamingDelayTimeoutId = null;
@@ -126,52 +139,66 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     set({
       isStreaming: true,
-      streamingMessage: {
-        sessionId,
-        messageId,
-        content: '',
-        startedAt: new Date(),
-      },
+      streamingSessionId: sessionId,
+      streamingMessageId: messageId,
+      streamingSegments: [],
+      streamingStartedAt: new Date(),
     });
   },
 
   appendStreamingContent: (content: string) => {
-    const state = get();
-    if (!state.streamingMessage) return;
+    // Ignore empty strings to prevent unnecessary empty segments
+    if (!content) return;
 
-    set({
-      streamingMessage: {
-        ...state.streamingMessage,
-        content: state.streamingMessage.content + content,
-      },
-    });
+    const segments = get().streamingSegments;
+    const lastSegment = segments[segments.length - 1];
+
+    if (lastSegment?.type === 'text') {
+      // Append to existing text segment
+      const updated = [...segments];
+      updated[updated.length - 1] = {
+        type: 'text',
+        content: lastSegment.content + content,
+      };
+      set({ streamingSegments: updated });
+    } else {
+      // Create new text segment (first segment or after tool segment)
+      set({ streamingSegments: [...segments, { type: 'text', content }] });
+    }
   },
 
   addStreamingToolCall: (toolCall: StreamingToolCall) => {
-    const state = get();
+    const segments = get().streamingSegments;
     // Avoid duplicates
-    if (state.streamingToolCalls.some((tc) => tc.id === toolCall.id)) return;
+    if (segments.some((seg) => seg.type === 'tool' && seg.toolCall.id === toolCall.id)) return;
+    // Add tool segment (previous text segment is automatically "closed")
     set({
-      streamingToolCalls: [...state.streamingToolCalls, toolCall],
+      streamingSegments: [...segments, { type: 'tool', toolCall, status: 'pending' }],
     });
   },
 
   updateStreamingToolCallInput: (toolCallId: string, input: Record<string, unknown>) => {
-    const state = get();
-    set({
-      streamingToolCalls: state.streamingToolCalls.map((tc) =>
-        tc.id === toolCallId ? { ...tc, input } : tc
-      ),
-    });
+    const segments = get().streamingSegments;
+    const updated = segments.map((seg) =>
+      seg.type === 'tool' && seg.toolCall.id === toolCallId
+        ? { ...seg, toolCall: { ...seg.toolCall, input } }
+        : seg
+    );
+    set({ streamingSegments: updated });
   },
 
-  completeStreamingToolCall: (toolCallId: string) => {
-    const state = get();
-    set({
-      streamingToolCalls: state.streamingToolCalls.map((tc) =>
-        tc.id === toolCallId ? { ...tc, status: 'completed' } : tc
-      ),
-    });
+  updateStreamingToolCall: (toolCallId: string, result: string, isError?: boolean) => {
+    const segments = get().streamingSegments;
+    const updated = segments.map((seg) =>
+      seg.type === 'tool' && seg.toolCall.id === toolCallId
+        ? {
+            ...seg,
+            toolCall: { ...seg.toolCall, output: result },
+            status: isError ? 'error' as const : 'completed' as const,
+          }
+        : seg
+    );
+    set({ streamingSegments: updated });
   },
 
   completeStreaming: () => {
@@ -179,10 +206,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
     }
+
+    // Clear streaming state only — message persistence is handled by
+    // fetchMessages() in handleComplete (useStreaming.ts), which replaces
+    // messageStore.messages with authoritative server data.
     set({
       isStreaming: false,
-      streamingMessage: null,
-      streamingToolCalls: [],
+      streamingSessionId: null,
+      streamingMessageId: null,
+      streamingSegments: [],
+      streamingStartedAt: null,
     });
   },
 
@@ -193,8 +226,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
     set({
       isStreaming: false,
-      streamingMessage: null,
-      streamingToolCalls: [],
+      streamingSessionId: null,
+      streamingMessageId: null,
+      streamingSegments: [],
+      streamingStartedAt: null,
     });
   },
 }));

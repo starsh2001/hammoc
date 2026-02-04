@@ -11,6 +11,19 @@ interface ToolCallCardProps {
   message: HistoryMessage;
 }
 
+/** Tool display name overrides */
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  TodoWrite: 'Update Todos',
+};
+
+/**
+ * Get the display name for a tool
+ */
+function getToolDisplayName(toolName?: string): string {
+  if (!toolName) return '';
+  return TOOL_DISPLAY_NAMES[toolName] ?? toolName;
+}
+
 /**
  * Extract display info from tool input based on tool type
  * file_path: Read/Write, path: Grep, pattern: Glob, command: Bash
@@ -21,10 +34,28 @@ function extractDisplayInfo(toolInput?: Record<string, unknown>): string | null 
   return typeof rawInfo === 'string' ? rawInfo : null;
 }
 
+/** Todo item from TodoWrite input */
+interface TodoItem {
+  content: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  activeForm?: string;
+}
+
+/**
+ * Extract todo items from TodoWrite tool input
+ */
+function extractTodos(toolInput?: Record<string, unknown>): TodoItem[] | null {
+  if (!toolInput?.todos || !Array.isArray(toolInput.todos)) return null;
+  return toolInput.todos as TodoItem[];
+}
+
 export function ToolCallCard({ message }: ToolCallCardProps) {
   const isToolUse = message.type === 'tool_use';
   const isSuccess = message.toolResult?.success !== false;
   const displayInfo = isToolUse ? extractDisplayInfo(message.toolInput) : null;
+
+  const toolDisplayName = getToolDisplayName(message.toolName);
+  const todos = message.toolName === 'TodoWrite' ? extractTodos(message.toolInput) : null;
 
   // For tool_use, show compact card matching streaming style
   if (isToolUse) {
@@ -32,17 +63,31 @@ export function ToolCallCard({ message }: ToolCallCardProps) {
       <div
         className="flex justify-start"
         role="listitem"
-        aria-label={`도구 완료: ${message.toolName}`}
+        aria-label={`도구 완료: ${toolDisplayName}`}
       >
         <div className="max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <Wrench className="w-4 h-4 text-blue-500" aria-hidden="true" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {message.toolName}
+              {toolDisplayName}
             </span>
             <CheckCircle className="w-4 h-4 text-green-500" aria-hidden="true" />
           </div>
           {displayInfo && <ToolPathDisplay displayInfo={displayInfo} toolName={message.toolName} />}
+          {todos && todos.length > 0 && (
+            <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+              {todos.map((todo, i) => (
+                <li key={i} className="flex items-start gap-1.5">
+                  <span className="flex-shrink-0 mt-0.5">
+                    {todo.status === 'completed' ? '✓' : todo.status === 'in_progress' ? '▸' : '○'}
+                  </span>
+                  <span className={todo.status === 'completed' ? 'line-through opacity-60' : ''}>
+                    {todo.content}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     );
