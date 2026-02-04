@@ -18,6 +18,7 @@ import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
 import { useProjectStore } from '../stores/projectStore';
 import { useStreaming } from '../hooks/useStreaming';
+import { useSlashCommands } from '../hooks/useSlashCommands';
 import { ChatHeader } from '../components/ChatHeader';
 import { MessageArea } from '../components/MessageArea';
 import { InputArea } from '../components/InputArea';
@@ -65,6 +66,9 @@ export function ChatPage() {
 
   // Initialize streaming event handlers
   useStreaming();
+
+  // Fetch slash commands for autocomplete (Story 5.1)
+  const { commands } = useSlashCommands(projectSlug);
 
   // Handle message send
   const handleSendMessage = useCallback(
@@ -143,6 +147,7 @@ export function ChatPage() {
             onSend={handleSendMessage}
             disabled={isStreaming}
             placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
+            commands={commands}
           />
         </InputArea>
       </div>
@@ -173,7 +178,7 @@ export function ChatPage() {
           </section>
         </main>
         <InputArea disabled>
-          <ChatInput onSend={handleSendMessage} disabled placeholder="로딩 중..." />
+          <ChatInput onSend={handleSendMessage} disabled placeholder="로딩 중..." commands={commands} />
         </InputArea>
       </div>
     );
@@ -202,7 +207,7 @@ export function ChatPage() {
           </section>
         </main>
         <InputArea disabled>
-          <ChatInput onSend={handleSendMessage} disabled placeholder="오류가 발생했습니다" />
+          <ChatInput onSend={handleSendMessage} disabled placeholder="오류가 발생했습니다" commands={commands} />
         </InputArea>
       </div>
     );
@@ -241,6 +246,7 @@ export function ChatPage() {
             onSend={handleSendMessage}
             disabled={isStreaming}
             placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
+            commands={commands}
           />
         </InputArea>
       </div>
@@ -298,6 +304,7 @@ export function ChatPage() {
           onSend={handleSendMessage}
           disabled={isStreaming}
           placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
+          commands={commands}
         />
       </InputArea>
     </div>
