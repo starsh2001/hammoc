@@ -27,6 +27,9 @@ export const ERROR_CODES = {
   // Story 4.6: Timeout error code
   /** Chat response timeout */
   TIMEOUT_ERROR: 'TIMEOUT_ERROR',
+  // Story 5.5: Image Attachment validation
+  /** Input validation error (e.g., invalid image) */
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

@@ -532,6 +532,107 @@ describe('WebSocket Handler', () => {
     });
   });
 
+  describe('Story 5.5: Image validation', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should reject images exceeding 10MB', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      // 10MB = 10 * 1024 * 1024 bytes; base64 length * 0.75 = original bytes
+      // So base64 length > 10MB / 0.75 ≈ 14,000,000 chars
+      const oversizedBase64 = 'A'.repeat(15_000_000);
+
+      clientSocket.emit('chat:send', {
+        content: 'Check this',
+        workingDirectory: '/valid/path',
+        images: [
+          { mimeType: 'image/png', data: oversizedBase64, name: 'large.png' },
+        ],
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+      expect(error.message).toContain('10MB');
+    });
+
+    it('should reject unsupported MIME types', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Check this',
+        workingDirectory: '/valid/path',
+        images: [
+          { mimeType: 'image/svg+xml', data: 'PHN2Zz4=', name: 'icon.svg' },
+        ],
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+      expect(error.message).toContain('지원되지 않는 이미지 형식');
+    });
+
+    it('should reject more than 5 images', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      const sixImages = Array.from({ length: 6 }, (_, i) => ({
+        mimeType: 'image/png',
+        data: 'iVBORw0KGgo=',
+        name: `img${i}.png`,
+      }));
+
+      clientSocket.emit('chat:send', {
+        content: 'Check these',
+        workingDirectory: '/valid/path',
+        images: sixImages,
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+      expect(error.message).toContain('최대');
+    });
+  });
+
   describe('Story 4.6: Error Handling', () => {
     beforeEach(() => {
       vi.clearAllMocks();

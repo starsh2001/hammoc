@@ -16,8 +16,9 @@ import type {
   TrackedToolCall,
   ToolResult,
   PermissionMode,
+  ImageAttachment,
 } from '@bmad-studio/shared';
-import { ERROR_CODES } from '@bmad-studio/shared';
+import { ERROR_CODES, IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
 import { ChatService } from '../services/chatService.js';
 import { SessionService } from '../services/sessionService.js';
 import { parseSDKError, AbortedError } from '../utils/errors.js';
@@ -46,6 +47,7 @@ export async function initializeWebSocket(
 ): Promise<SocketIOServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>> {
   io = new SocketIOServer(httpServer, {
     cors: config.websocket.cors,
+    maxHttpBufferSize: 100 * 1024 * 1024, // 100MB for base64 image payloads
   });
 
   // Session middleware for WebSocket (Story 2.5 - Task 4)
@@ -139,6 +141,29 @@ export function getConnectedClientsCount(): number {
 }
 
 /**
+ * Validate image attachments
+ * Story 5.5: Image Attachment
+ */
+function validateImages(images: ImageAttachment[]): { valid: boolean; error?: string } {
+  if (images.length > IMAGE_CONSTRAINTS.MAX_COUNT) {
+    return { valid: false, error: `이미지는 최대 ${IMAGE_CONSTRAINTS.MAX_COUNT}개까지 첨부할 수 있습니다.` };
+  }
+
+  for (const img of images) {
+    if (!(IMAGE_CONSTRAINTS.ACCEPTED_TYPES as readonly string[]).includes(img.mimeType)) {
+      return { valid: false, error: `지원되지 않는 이미지 형식입니다: ${img.mimeType}` };
+    }
+    // base64 size approximation: base64 length * 0.75 ≈ original bytes
+    const sizeBytes = Math.ceil(img.data.length * 0.75);
+    if (sizeBytes > IMAGE_CONSTRAINTS.MAX_SIZE_BYTES) {
+      return { valid: false, error: `이미지 크기가 10MB를 초과합니다: ${img.name}` };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
  * Check if error message indicates a session not found error
  */
 function isSessionNotFoundError(error: Error): boolean {
@@ -158,10 +183,22 @@ function isSessionNotFoundError(error: Error): boolean {
  */
 async function handleChatSend(
   socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
-  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode },
+  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; images?: ImageAttachment[] },
   abortController: AbortController
 ): Promise<void> {
-  const { content, workingDirectory, sessionId, resume, permissionMode } = data;
+  const { content, workingDirectory, sessionId, resume, permissionMode, images } = data;
+
+  // Validate images if present (Story 5.5)
+  if (images && images.length > 0) {
+    const validation = validateImages(images);
+    if (!validation.valid) {
+      socket.emit('error', {
+        code: ERROR_CODES.VALIDATION_ERROR,
+        message: validation.error!,
+      });
+      return;
+    }
+  }
 
   // Validate workingDirectory exists
   if (!workingDirectory || !existsSync(workingDirectory)) {
@@ -180,10 +217,11 @@ async function handleChatSend(
   try {
     const chatService = new ChatService({ workingDirectory, permissionMode });
 
-    // Build chat options with resume and abortController
+    // Build chat options with resume, abortController, and images
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : {}),
       abortController,
+      images,
     };
 
     // Set timeout for chat response

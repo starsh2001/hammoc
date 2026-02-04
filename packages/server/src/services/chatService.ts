@@ -5,6 +5,7 @@ import type {
   ChatResponse,
   PermissionMode,
   StreamCallbacks,
+  ImageAttachment,
 } from '@bmad-studio/shared';
 import path from 'path';
 import fs from 'fs/promises';
@@ -102,10 +103,19 @@ export class ChatService {
       }
     });
 
-    this.currentQuery = query({
-      prompt: content,
-      options: queryOptions,
-    });
+    // Use AsyncIterable prompt when images are present (Story 5.5)
+    const { images } = options;
+    if (images && images.length > 0) {
+      this.currentQuery = query({
+        prompt: createMessageWithImages(content, images),
+        options: queryOptions,
+      });
+    } else {
+      this.currentQuery = query({
+        prompt: content,
+        options: queryOptions,
+      });
+    }
 
     let finalResponse: ChatResponse = {
       id: '',
@@ -216,4 +226,38 @@ export class ChatService {
  */
 export function createChatService(config?: ChatServiceConfig): ChatService {
   return new ChatService(config);
+}
+
+/**
+ * Create an AsyncIterable prompt with text and image content for SDK query()
+ * Story 5.5: Image Attachment
+ */
+async function* createMessageWithImages(
+  text: string,
+  images: ImageAttachment[]
+): AsyncGenerator<{
+  type: 'user';
+  session_id: string;
+  message: { role: 'user'; content: Array<{ type: string; [key: string]: unknown }> };
+  parent_tool_use_id: null;
+}> {
+  yield {
+    type: 'user' as const,
+    session_id: '',
+    message: {
+      role: 'user' as const,
+      content: [
+        { type: 'text', text },
+        ...images.map((img) => ({
+          type: 'image' as const,
+          source: {
+            type: 'base64' as const,
+            media_type: img.mimeType,
+            data: img.data,
+          },
+        })),
+      ],
+    },
+    parent_tool_use_id: null,
+  };
 }

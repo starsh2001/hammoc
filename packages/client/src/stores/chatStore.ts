@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { PermissionMode } from '@bmad-studio/shared';
+import type { PermissionMode, Attachment } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 
@@ -61,6 +61,8 @@ interface SendMessageOptions {
   sessionId?: string;
   /** Whether to resume an existing session */
   resume?: boolean;
+  /** Image attachments */
+  attachments?: Attachment[];
 }
 
 interface ChatActions {
@@ -104,7 +106,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   sendMessage: (content: string, options: SendMessageOptions) => {
     const socket = getSocket();
-    const { workingDirectory, sessionId, resume } = options;
+    const { workingDirectory, sessionId, resume, attachments } = options;
 
     // Clear any existing delay timeout
     if (streamingDelayTimeoutId) {
@@ -137,6 +139,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       sessionId,
       resume,
       permissionMode: get().permissionMode,
+      // Convert Attachment[] to ImageAttachment[] (strip File objects for serialization)
+      images: attachments?.map(a => ({
+        mimeType: a.mimeType,
+        data: a.data,
+        name: a.name,
+      })),
     });
   },
 

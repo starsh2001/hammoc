@@ -123,6 +123,57 @@ describe('useChatStore', () => {
         permissionMode: 'default',
       });
     });
+
+    it('includes images field when attachments are provided', () => {
+      const { sendMessage } = useChatStore.getState();
+
+      const attachments = [
+        {
+          id: 'att-1',
+          type: 'image' as const,
+          name: 'screenshot.png',
+          size: 1024,
+          mimeType: 'image/png',
+          data: 'iVBORw0KGgo=',
+        },
+        {
+          id: 'att-2',
+          type: 'image' as const,
+          name: 'photo.jpg',
+          size: 2048,
+          mimeType: 'image/jpeg',
+          data: '/9j/4AAQSkZJRg==',
+        },
+      ];
+
+      sendMessage('Check these images', {
+        workingDirectory: '/path/to/project',
+        attachments,
+      });
+
+      expect(mockEmit).toHaveBeenCalledWith('chat:send', {
+        content: 'Check these images',
+        workingDirectory: '/path/to/project',
+        sessionId: undefined,
+        resume: undefined,
+        permissionMode: 'default',
+        images: [
+          { mimeType: 'image/png', data: 'iVBORw0KGgo=', name: 'screenshot.png' },
+          { mimeType: 'image/jpeg', data: '/9j/4AAQSkZJRg==', name: 'photo.jpg' },
+        ],
+      });
+    });
+
+    it('omits images field when no attachments are provided', () => {
+      const { sendMessage } = useChatStore.getState();
+
+      sendMessage('Hello', {
+        workingDirectory: '/path/to/project',
+      });
+
+      const emittedPayload = mockEmit.mock.calls[0][1];
+      expect(emittedPayload.images).toBeUndefined();
+    });
   });
 
   describe('startStreaming', () => {

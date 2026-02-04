@@ -3,6 +3,8 @@
  * These types wrap the @anthropic-ai/claude-code SDK types for use in the application
  */
 
+import type { ImageAttachment } from './message.js';
+
 /**
  * Configuration for initializing ChatService
  */
@@ -29,6 +31,8 @@ export interface ChatOptions {
   model?: string;
   /** Session ID to resume (pass the session ID string to resume) */
   resume?: string;
+  /** Image attachments to include in the message (Story 5.5) */
+  images?: ImageAttachment[];
 }
 
 /**
