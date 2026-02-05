@@ -10,6 +10,7 @@ import { ChatPage } from '../ChatPage';
 import { useMessageStore } from '../../stores/messageStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useProjectStore } from '../../stores/projectStore';
+import { useSessionStore } from '../../stores/sessionStore';
 import type { HistoryMessage, PaginationInfo } from '@bmad-studio/shared';
 
 // Mock useNavigate
@@ -53,6 +54,22 @@ vi.mock('../../hooks/useStreaming', () => ({
   useStreaming: vi.fn(),
 }));
 
+// Mock sessionStore for SessionQuickAccessPanel (Story 5.7)
+vi.mock('../../stores/sessionStore', () => ({
+  useSessionStore: vi.fn(() => ({
+    sessions: [],
+    isLoading: false,
+    error: null,
+    errorType: 'none',
+    currentProjectSlug: null,
+    isRefreshing: false,
+    fetchSessions: vi.fn(),
+    clearSessions: vi.fn(),
+    clearError: vi.fn(),
+    setRefreshing: vi.fn(),
+  })),
+}));
+
 // Mock socket service (Story 5.4 - abortResponse calls getSocket)
 vi.mock('../../services/socket', () => ({
   getSocket: () => ({
@@ -89,6 +106,19 @@ describe('ChatPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Restore sessionStore mock (reset by vi.resetAllMocks in afterEach)
+    vi.mocked(useSessionStore).mockReturnValue({
+      sessions: [],
+      isLoading: false,
+      error: null,
+      errorType: 'none',
+      currentProjectSlug: null,
+      isRefreshing: false,
+      fetchSessions: vi.fn(),
+      clearSessions: vi.fn(),
+      clearError: vi.fn(),
+      setRefreshing: vi.fn(),
+    } as ReturnType<typeof useSessionStore>);
     useChatStore.setState({
       isStreaming: false,
       streamingSessionId: null,
@@ -678,6 +708,65 @@ describe('ChatPage', () => {
       renderChatPage();
 
       expect(mockResetContextUsage).toHaveBeenCalled();
+    });
+  });
+
+  describe('Session quick access panel (Story 5.7)', () => {
+    it('should render session history button in header', () => {
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+    });
+
+    it('should render session history button in all render paths', () => {
+      // New session state
+      const { unmount: unmount1 } = render(
+        <MemoryRouter initialEntries={['/project/test-project/session/new']}>
+          <Routes>
+            <Route path="/project/:projectSlug/session/:sessionId" element={<ChatPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+      unmount1();
+
+      // Loading state
+      useMessageStore.setState({ isLoading: true });
+      const { unmount: unmount2 } = renderChatPage();
+      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+      unmount2();
+
+      // Error state
+      useMessageStore.setState({ isLoading: false, error: '오류 발생' });
+      const { unmount: unmount3 } = renderChatPage();
+      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+      unmount3();
+
+      // Empty state
+      useMessageStore.setState({ error: null, messages: [] });
+      const { unmount: unmount4 } = renderChatPage();
+      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+      unmount4();
+    });
+
+    it('should navigate to selected session when session is selected', () => {
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      // Open the panel
+      fireEvent.click(screen.getByRole('button', { name: '세션 목록' }));
+
+      // Panel should be visible
+      expect(screen.getByTestId('session-quick-access-panel')).toBeInTheDocument();
     });
   });
 

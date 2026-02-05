@@ -136,6 +136,31 @@ describe('ChatHeader', () => {
     });
   });
 
+  // Story 5.7 - Task 1: Session history button tests
+  describe('session history button', () => {
+    const mockOnShowSessions = vi.fn();
+
+    it('should render History button when onShowSessions is provided', () => {
+      renderComponent({ onShowSessions: mockOnShowSessions });
+
+      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+    });
+
+    it('should not render History button when onShowSessions is not provided', () => {
+      renderComponent();
+
+      expect(screen.queryByRole('button', { name: '세션 목록' })).not.toBeInTheDocument();
+    });
+
+    it('should call onShowSessions when History button clicked', () => {
+      renderComponent({ onShowSessions: mockOnShowSessions });
+
+      fireEvent.click(screen.getByRole('button', { name: '세션 목록' }));
+
+      expect(mockOnShowSessions).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('refresh button', () => {
     it('should render refresh button when onRefresh is provided', () => {
       renderComponent({ onRefresh: mockOnRefresh });
