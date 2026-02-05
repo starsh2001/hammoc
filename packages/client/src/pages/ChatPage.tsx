@@ -12,7 +12,7 @@
  * - Real-time streaming support (Story 4.5)
  */
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
@@ -30,6 +30,7 @@ import { MessageListSkeleton } from '../components/MessageListSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { PermissionModeSelector } from '../components/PermissionModeSelector';
+import { SessionQuickAccessPanel } from '../components/SessionQuickAccessPanel';
 
 export function ChatPage() {
   const { projectSlug, sessionId } = useParams<{
@@ -121,6 +122,32 @@ export function ChatPage() {
     navigate(`/project/${projectSlug}`);
   }, [navigate, projectSlug]);
 
+  // Session quick access panel state
+  const [showSessionPanel, setShowSessionPanel] = useState(false);
+
+  const handleShowSessions = useCallback(() => {
+    setShowSessionPanel(true);
+  }, []);
+
+  const handleCloseSessionPanel = useCallback(() => {
+    setShowSessionPanel(false);
+  }, []);
+
+  const handleSessionSelect = useCallback((selectedSessionId: string) => {
+    setShowSessionPanel(false);
+    // Don't navigate if selecting the current session
+    if (selectedSessionId === sessionId) return;
+    // Confirm if streaming is active
+    const currentIsStreaming = useChatStore.getState().isStreaming;
+    if (currentIsStreaming) {
+      const confirmed = window.confirm('진행 중인 응답이 있습니다. 세션을 전환하시겠습니까?');
+      if (!confirmed) return;
+      abortResponse();
+    }
+    clearMessages();
+    navigate(`/project/${projectSlug}/session/${selectedSessionId}`);
+  }, [sessionId, abortResponse, clearMessages, navigate, projectSlug]);
+
   const handleNewSession = useCallback(() => {
     const currentIsStreaming = useChatStore.getState().isStreaming;
 
@@ -142,6 +169,17 @@ export function ChatPage() {
     fetchMoreMessages();
   }, [fetchMoreMessages]);
 
+  const sessionPanel = (
+    <SessionQuickAccessPanel
+      isOpen={showSessionPanel}
+      projectSlug={projectSlug}
+      currentSessionId={sessionId}
+      onSelectSession={handleSessionSelect}
+      onClose={handleCloseSessionPanel}
+      onNewSession={handleNewSession}
+    />
+  );
+
   // New session state
   if (sessionId === 'new') {
     return (
@@ -149,7 +187,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} contextUsage={contextUsage} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -185,6 +223,7 @@ export function ChatPage() {
             commands={commands}
           />
         </InputArea>
+        {sessionPanel}
       </div>
     );
   }
@@ -196,7 +235,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} contextUsage={contextUsage} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -220,6 +259,7 @@ export function ChatPage() {
           />
           <ChatInput onSend={handleSendMessage} disabled isStreaming={isStreaming} onAbort={handleAbort} placeholder="로딩 중..." commands={commands} />
         </InputArea>
+        {sessionPanel}
       </div>
     );
   }
@@ -231,7 +271,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} contextUsage={contextUsage} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -254,6 +294,7 @@ export function ChatPage() {
           />
           <ChatInput onSend={handleSendMessage} disabled isStreaming={isStreaming} onAbort={handleAbort} placeholder="오류가 발생했습니다" commands={commands} />
         </InputArea>
+        {sessionPanel}
       </div>
     );
   }
@@ -265,7 +306,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} contextUsage={contextUsage} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -301,6 +342,7 @@ export function ChatPage() {
             commands={commands}
           />
         </InputArea>
+        {sessionPanel}
       </div>
     );
   }
@@ -316,6 +358,7 @@ export function ChatPage() {
         sessionTitle={sessionId}
         onBack={handleBack}
         onNewSession={handleNewSession}
+        onShowSessions={handleShowSessions}
         onRefresh={handleRetry}
         contextUsage={contextUsage}
       />
@@ -368,6 +411,7 @@ export function ChatPage() {
           commands={commands}
         />
       </InputArea>
+      {sessionPanel}
     </div>
   );
 }
