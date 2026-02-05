@@ -4,11 +4,13 @@
  * [Source: Story 4.1 - Task 2, Story 4.7 - Task 3]
  */
 
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Plus } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
+import { ContextUsageDisplay } from './ContextUsageDisplay';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { BrandLogo } from './BrandLogo';
+import type { ChatUsage } from '@bmad-studio/shared';
 
 interface ChatHeaderProps {
   /** Project slug/path to display */
@@ -21,6 +23,10 @@ interface ChatHeaderProps {
   onRefresh?: () => void;
   /** Whether refresh is in progress */
   isRefreshing?: boolean;
+  /** Callback when new session button is clicked */
+  onNewSession?: () => void;
+  /** Context usage data from last SDK response */
+  contextUsage?: ChatUsage | null;
 }
 
 export function ChatHeader({
@@ -29,6 +35,8 @@ export function ChatHeader({
   onBack,
   onRefresh,
   isRefreshing = false,
+  onNewSession,
+  contextUsage,
 }: ChatHeaderProps) {
   const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
 
@@ -70,6 +78,12 @@ export function ChatHeader({
 
         {/* Right side: Connection status and Actions */}
         <div className="flex items-center gap-2 ml-4">
+          {/* Context usage display */}
+          <ContextUsageDisplay
+            contextUsage={contextUsage ?? null}
+            onNewSession={onNewSession}
+          />
+
           {/* Connection status indicator (compact mode) */}
           <ConnectionStatusIndicator
             status={connectionStatus}
@@ -81,6 +95,18 @@ export function ChatHeader({
 
           {/* Theme toggle */}
           <ThemeToggleButton />
+
+          {onNewSession && (
+            <button
+              onClick={onNewSession}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
+                         text-gray-700 dark:text-gray-300
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="새 세션 시작"
+            >
+              <Plus className="w-5 h-5" aria-hidden="true" />
+            </button>
+          )}
 
           {onRefresh && (
             <button

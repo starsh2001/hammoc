@@ -91,17 +91,51 @@ const mockResultSuccessMessage = {
   session_id: 'session-123',
   uuid: 'msg-456',
   is_error: false,
-  usage: { input_tokens: 100, output_tokens: 50 },
+  usage: {
+    input_tokens: 100,
+    output_tokens: 50,
+    cache_read_input_tokens: 30,
+    cache_creation_input_tokens: 20,
+  },
   total_cost_usd: 0.001,
+  modelUsage: {
+    'claude-opus-4-5-20251101': {
+      contextWindow: 200000,
+      inputTokens: 100,
+      outputTokens: 50,
+      cacheReadInputTokens: 30,
+      cacheCreationInputTokens: 20,
+      costUSD: 0.001,
+      webSearchRequests: 0,
+    },
+  },
 } as unknown as SDKMessage;
 
 const mockResultErrorMessage = {
   type: 'result',
-  subtype: 'error',
+  subtype: 'error_max_turns',
   result: 'Something went wrong',
   session_id: 'session-123',
   uuid: 'msg-789',
   is_error: true,
+  usage: {
+    input_tokens: 180000,
+    output_tokens: 200,
+    cache_read_input_tokens: 50,
+    cache_creation_input_tokens: 10,
+  },
+  total_cost_usd: 0.05,
+  modelUsage: {
+    'claude-opus-4-5-20251101': {
+      contextWindow: 200000,
+      inputTokens: 180000,
+      outputTokens: 200,
+      cacheReadInputTokens: 50,
+      cacheCreationInputTokens: 10,
+      costUSD: 0.05,
+      webSearchRequests: 0,
+    },
+  },
 } as unknown as SDKMessage;
 
 const mockSystemMessage = {
@@ -271,18 +305,74 @@ describe('StreamHandler', () => {
         expect(resultMsg.usage).toEqual({
           inputTokens: 100,
           outputTokens: 50,
+          cacheReadInputTokens: 30,
+          cacheCreationInputTokens: 20,
           totalCostUSD: 0.001,
+          contextWindow: 200000,
         });
       });
 
-      it('should parse error result message', () => {
+      it('should parse error result message with usage', () => {
         const parsed = handler.parseMessage(mockResultErrorMessage);
 
         expect(parsed.type).toBe(SDKMessageType.RESULT);
         const resultMsg = parsed as ParsedResultMessage;
-        expect(resultMsg.subtype).toBe('error');
+        expect(resultMsg.subtype).toBe('error_max_turns');
         expect(resultMsg.isError).toBe(true);
-        expect(resultMsg.usage).toBeUndefined();
+        expect(resultMsg.usage).toEqual({
+          inputTokens: 180000,
+          outputTokens: 200,
+          cacheReadInputTokens: 50,
+          cacheCreationInputTokens: 10,
+          totalCostUSD: 0.05,
+          contextWindow: 200000,
+        });
+      });
+
+      it('should capture extended usage fields (cache tokens, contextWindow)', () => {
+        const parsed = handler.parseMessage(mockResultSuccessMessage);
+        const resultMsg = parsed as ParsedResultMessage;
+        expect(resultMsg.usage?.cacheReadInputTokens).toBe(30);
+        expect(resultMsg.usage?.cacheCreationInputTokens).toBe(20);
+        expect(resultMsg.usage?.contextWindow).toBe(200000);
+      });
+
+      it('should select the largest contextWindow from multiple models', () => {
+        const multiModelMessage = {
+          type: 'result',
+          subtype: 'success',
+          result: 'done',
+          session_id: 'session-123',
+          uuid: 'msg-multi',
+          is_error: false,
+          usage: { input_tokens: 100, output_tokens: 50, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+          total_cost_usd: 0.01,
+          modelUsage: {
+            'claude-opus-4-5-20251101': { contextWindow: 200000, inputTokens: 80, outputTokens: 40, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, costUSD: 0.008, webSearchRequests: 0 },
+            'claude-haiku-3-5-20241022': { contextWindow: 100000, inputTokens: 20, outputTokens: 10, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, costUSD: 0.002, webSearchRequests: 0 },
+          },
+        } as unknown as SDKMessage;
+
+        const parsed = handler.parseMessage(multiModelMessage);
+        const resultMsg = parsed as ParsedResultMessage;
+        expect(resultMsg.usage?.contextWindow).toBe(200000);
+      });
+
+      it('should set contextWindow to 0 when modelUsage is missing', () => {
+        const noModelUsageMessage = {
+          type: 'result',
+          subtype: 'success',
+          result: 'done',
+          session_id: 'session-123',
+          uuid: 'msg-no-model',
+          is_error: false,
+          usage: { input_tokens: 100, output_tokens: 50, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+          total_cost_usd: 0.01,
+        } as unknown as SDKMessage;
+
+        const parsed = handler.parseMessage(noModelUsageMessage);
+        const resultMsg = parsed as ParsedResultMessage;
+        expect(resultMsg.usage?.contextWindow).toBe(0);
       });
     });
 

@@ -1161,6 +1161,111 @@ describe('WebSocket Handler', () => {
     });
   });
 
+  describe('Story 5.6: context:usage event', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should emit context:usage when response has usage data', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockUsage = {
+        inputTokens: 150000,
+        outputTokens: 500,
+        cacheReadInputTokens: 80000,
+        cacheCreationInputTokens: 5000,
+        totalCostUSD: 0.05,
+        contextWindow: 200000,
+      };
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, callbacks: {
+          onSessionInit?: (sessionId: string) => void;
+          onComplete?: (response: { id: string; sessionId: string; content: string; usage?: unknown }) => void;
+        }) => {
+          callbacks.onSessionInit?.('session-123');
+          callbacks.onComplete?.({
+            id: 'response-1',
+            sessionId: 'session-123',
+            content: 'Done',
+            usage: mockUsage,
+          });
+          return {};
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const usagePromise = new Promise<Record<string, unknown>>((resolve) => {
+        clientSocket.on('context:usage', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello',
+        workingDirectory: '/valid/path',
+      });
+
+      const usage = await usagePromise;
+
+      expect(usage).toEqual(mockUsage);
+    });
+
+    it('should not emit context:usage when response has no usage data', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const { ChatService } = await import('../../services/chatService.js');
+      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+        async (_content: string, callbacks: {
+          onSessionInit?: (sessionId: string) => void;
+          onComplete?: (response: { id: string; sessionId: string; content: string }) => void;
+        }) => {
+          callbacks.onSessionInit?.('session-123');
+          callbacks.onComplete?.({
+            id: 'response-1',
+            sessionId: 'session-123',
+            content: 'Done',
+          });
+          return {};
+        }
+      );
+      vi.mocked(ChatService).mockImplementation(() => ({
+        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
+      }) as unknown as InstanceType<typeof ChatService>);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      let usageReceived = false;
+      clientSocket.on('context:usage', () => {
+        usageReceived = true;
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Hello',
+        workingDirectory: '/valid/path',
+      });
+
+      // Wait to ensure no context:usage event is emitted
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect(usageReceived).toBe(false);
+    });
+  });
+
   describe('Story 5.4: chat:abort event handler', () => {
     beforeEach(() => {
       vi.clearAllMocks();

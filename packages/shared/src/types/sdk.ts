@@ -59,8 +59,20 @@ export interface ChatResponse {
 export interface ChatUsage {
   inputTokens: number;
   outputTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
   totalCostUSD: number;
+  contextWindow: number;
 }
+
+/**
+ * Context usage thresholds for visual indicators (percentage)
+ */
+export const CONTEXT_USAGE_THRESHOLDS = {
+  WARNING: 50,
+  DANGER: 80,
+  CRITICAL: 90,
+} as const;
 
 /**
  * Configuration for allowed/disallowed tools

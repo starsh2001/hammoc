@@ -633,6 +633,54 @@ describe('ChatPage', () => {
     });
   });
 
+  describe('Context usage display (Story 5.6)', () => {
+    const mockContextUsage = {
+      inputTokens: 100000,
+      outputTokens: 500,
+      cacheReadInputTokens: 50000,
+      cacheCreationInputTokens: 3000,
+      totalCostUSD: 0.03,
+      contextWindow: 200000,
+    };
+
+    it('should pass contextUsage to ChatHeader when available', () => {
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      // Set contextUsage after initial render (resetContextUsage fires on mount)
+      act(() => {
+        useChatStore.setState({ contextUsage: mockContextUsage });
+      });
+
+      expect(screen.getByTestId('context-usage-display')).toBeInTheDocument();
+    });
+
+    it('should not render ContextUsageDisplay when contextUsage is null', () => {
+      useChatStore.setState({ contextUsage: null });
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      expect(screen.queryByTestId('context-usage-display')).not.toBeInTheDocument();
+    });
+
+    it('should reset contextUsage on session change', () => {
+      const mockResetContextUsage = vi.fn();
+      useChatStore.setState({ resetContextUsage: mockResetContextUsage });
+
+      renderChatPage();
+
+      expect(mockResetContextUsage).toHaveBeenCalled();
+    });
+  });
+
   describe('Abort response (Story 5.4)', () => {
     it('should show abort button when streaming', () => {
       useChatStore.setState({ isStreaming: true, streamingSessionId: 'session-123' });

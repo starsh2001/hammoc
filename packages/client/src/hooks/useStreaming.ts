@@ -15,7 +15,7 @@ import { useEffect, useCallback } from 'react';
 import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
-import type { StreamChunk, Message } from '@bmad-studio/shared';
+import type { StreamChunk, Message, ChatUsage } from '@bmad-studio/shared';
 
 export function useStreaming() {
   const {
@@ -27,6 +27,7 @@ export function useStreaming() {
     completeStreaming,
     abortStreaming,
     abortResponse,
+    setContextUsage,
   } = useChatStore();
 
   // Handle keyboard shortcuts to abort streaming (Story 5.4)
@@ -108,6 +109,11 @@ export function useStreaming() {
       updateStreamingToolCall(data.toolCallId, data.output ?? '', data.isError);
     };
 
+    // Handle context usage update
+    const handleContextUsage = (data: ChatUsage) => {
+      setContextUsage(data);
+    };
+
     // Handle disconnection during streaming
     const handleDisconnect = () => {
       // Keep streaming state - wait for reconnect
@@ -144,6 +150,7 @@ export function useStreaming() {
     socket.on('tool:call', handleToolCall);
     socket.on('tool:input-update', handleToolInputUpdate);
     socket.on('tool:result', handleToolResult);
+    socket.on('context:usage', handleContextUsage);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect', handleReconnect);
     socket.on('error', handleError);
@@ -159,6 +166,7 @@ export function useStreaming() {
       socket.off('tool:call', handleToolCall);
       socket.off('tool:input-update', handleToolInputUpdate);
       socket.off('tool:result', handleToolResult);
+      socket.off('context:usage', handleContextUsage);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect', handleReconnect);
       socket.off('error', handleError);
@@ -174,6 +182,7 @@ export function useStreaming() {
     completeStreaming,
     abortStreaming,
     abortResponse,
+    setContextUsage,
     handleKeyDown,
   ]);
 }

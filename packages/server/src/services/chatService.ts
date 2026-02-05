@@ -12,6 +12,13 @@ import fs from 'fs/promises';
 import { InvalidPathError, parseSDKError } from '../utils/errors.js';
 import { StreamHandler } from './streamHandler.js';
 
+// Intentionally duplicated in streamHandler.ts for file independence
+function extractContextWindow(modelUsage?: { [model: string]: { contextWindow: number } }): number {
+  if (!modelUsage) return 0;
+  const windows = Object.values(modelUsage).map(m => m.contextWindow);
+  return windows.length > 0 ? Math.max(...windows) : 0;
+}
+
 /**
  * ChatService - Wrapper for Claude Agent SDK
  * Handles communication with Claude Code through the official SDK
@@ -131,20 +138,40 @@ export class ChatService {
 
         // Process result message
         if (message.type === 'result') {
+          const msg = message as unknown as {
+            type: 'result';
+            subtype: string;
+            result: string;
+            session_id: string;
+            uuid: string;
+            is_error: boolean;
+            usage: {
+              input_tokens: number;
+              output_tokens: number;
+              cache_read_input_tokens: number;
+              cache_creation_input_tokens: number;
+            };
+            total_cost_usd: number;
+            modelUsage?: {
+              [modelName: string]: {
+                contextWindow: number;
+              };
+            };
+          };
           finalResponse = {
-            id: message.uuid,
-            sessionId: message.session_id,
-            content: message.subtype === 'success' ? message.result : '',
+            id: msg.uuid,
+            sessionId: msg.session_id,
+            content: msg.subtype === 'success' ? msg.result : '',
             done: true,
-            isError: message.is_error,
-            usage:
-              message.subtype === 'success'
-                ? {
-                    inputTokens: message.usage.input_tokens,
-                    outputTokens: message.usage.output_tokens,
-                    totalCostUSD: message.total_cost_usd,
-                  }
-                : undefined,
+            isError: msg.is_error,
+            usage: {
+              inputTokens: msg.usage.input_tokens,
+              outputTokens: msg.usage.output_tokens,
+              cacheReadInputTokens: msg.usage.cache_read_input_tokens ?? 0,
+              cacheCreationInputTokens: msg.usage.cache_creation_input_tokens ?? 0,
+              totalCostUSD: msg.total_cost_usd,
+              contextWindow: extractContextWindow(msg.modelUsage),
+            },
           };
         }
       }

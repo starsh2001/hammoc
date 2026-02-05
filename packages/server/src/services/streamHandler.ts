@@ -26,6 +26,13 @@ import {
   createInitialStreamingState,
 } from '@bmad-studio/shared';
 
+// Intentionally duplicated in chatService.ts for file independence
+function extractContextWindow(modelUsage?: { [model: string]: { contextWindow: number } }): number {
+  if (!modelUsage) return 0;
+  const windows = Object.values(modelUsage).map(m => m.contextWindow);
+  return windows.length > 0 ? Math.max(...windows) : 0;
+}
+
 /**
  * StreamHandler class for processing SDK streaming messages
  */
@@ -191,7 +198,7 @@ export class StreamHandler {
   private parseResultMessage(message: SDKMessage): ParsedResultMessage {
     const msg = message as unknown as {
       type: 'result';
-      subtype: 'success' | 'error';
+      subtype: 'success' | 'error_max_turns' | 'error_during_execution';
       result: string;
       session_id: string;
       uuid: string;
@@ -199,8 +206,21 @@ export class StreamHandler {
       usage?: {
         input_tokens: number;
         output_tokens: number;
+        cache_read_input_tokens: number;
+        cache_creation_input_tokens: number;
       };
       total_cost_usd?: number;
+      modelUsage?: {
+        [modelName: string]: {
+          contextWindow: number;
+          inputTokens: number;
+          outputTokens: number;
+          cacheReadInputTokens: number;
+          cacheCreationInputTokens: number;
+          costUSD: number;
+          webSearchRequests: number;
+        };
+      };
     };
 
     return {
@@ -210,14 +230,16 @@ export class StreamHandler {
       sessionId: msg.session_id,
       uuid: msg.uuid,
       isError: msg.is_error,
-      usage:
-        msg.subtype === 'success' && msg.usage
-          ? {
-              inputTokens: msg.usage.input_tokens,
-              outputTokens: msg.usage.output_tokens,
-              totalCostUSD: msg.total_cost_usd ?? 0,
-            }
-          : undefined,
+      usage: msg.usage
+        ? {
+            inputTokens: msg.usage.input_tokens,
+            outputTokens: msg.usage.output_tokens,
+            cacheReadInputTokens: msg.usage.cache_read_input_tokens ?? 0,
+            cacheCreationInputTokens: msg.usage.cache_creation_input_tokens ?? 0,
+            totalCostUSD: msg.total_cost_usd ?? 0,
+            contextWindow: extractContextWindow(msg.modelUsage),
+          }
+        : undefined,
       rawMessage: message,
     };
   }
