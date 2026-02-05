@@ -79,6 +79,11 @@ function useAutoScroll(
     const { scrollTop, scrollHeight, clientHeight } = container;
     const isNearBottom = scrollHeight - scrollTop - clientHeight < threshold;
 
+    // When user scrolls to bottom, snap to exact position
+    if (isNearBottom && bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+    }
+
     setIsUserScrolledUp(!isNearBottom);
   }, [threshold]);
 
@@ -182,7 +187,7 @@ export function MessageArea({
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto p-4 space-y-4"
+        className="h-full overflow-y-auto px-4 pt-4 pb-0 space-y-4"
         tabIndex={0}
       >
         {/* History messages */}
