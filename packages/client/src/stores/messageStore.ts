@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { HistoryMessage, PaginationInfo } from '@bmad-studio/shared';
+import type { HistoryMessage, PaginationInfo, ImageAttachment } from '@bmad-studio/shared';
 import { sessionsApi } from '../services/api/sessions';
 import { ApiError } from '../services/api/client';
 
@@ -23,7 +23,7 @@ interface MessageActions {
   fetchMoreMessages: () => Promise<void>;
   clearMessages: () => void;
   /** Add user message optimistically (before server confirmation) */
-  addOptimisticMessage: (content: string) => void;
+  addOptimisticMessage: (content: string, images?: ImageAttachment[]) => void;
   /** Add multiple messages in batch (used by completeStreaming) */
   addMessages: (newMessages: HistoryMessage[]) => void;
 }
@@ -63,8 +63,25 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
 
     try {
       const response = await sessionsApi.getMessages(projectSlug, sessionId);
+
+      // Preserve images from existing user messages (server doesn't store images)
+      const existingImages = new Map<string, HistoryMessage['images']>();
+      for (const msg of state.messages) {
+        if (msg.type === 'user' && msg.images && msg.images.length > 0) {
+          existingImages.set(msg.content, msg.images);
+        }
+      }
+
+      // Merge preserved images into fetched messages
+      const messagesWithImages = response.messages.map((msg) => {
+        if (msg.type === 'user' && !msg.images && existingImages.has(msg.content)) {
+          return { ...msg, images: existingImages.get(msg.content) };
+        }
+        return msg;
+      });
+
       set({
-        messages: response.messages,
+        messages: messagesWithImages,
         pagination: response.pagination,
         isLoading: false,
       });
@@ -114,13 +131,14 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       error: null,
     }),
 
-  addOptimisticMessage: (content: string) => {
+  addOptimisticMessage: (content: string, images?: ImageAttachment[]) => {
     const { messages } = get();
     const optimisticMessage: HistoryMessage = {
       id: `optimistic-${Date.now()}`,
       type: 'user',
       content,
       timestamp: new Date().toISOString(),
+      ...(images && images.length > 0 ? { images } : {}),
     };
     set({ messages: [...messages, optimisticMessage] });
   },

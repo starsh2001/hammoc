@@ -68,6 +68,12 @@ export interface HistoryMessage {
   type: 'user' | 'assistant' | 'tool_use' | 'tool_result';
   content: string;
   timestamp: string; // ISO 8601 format
+  // Image attachments (user messages only)
+  images?: Array<{
+    mimeType: string;
+    data: string; // Base64 raw data
+    name: string;
+  }>;
   // Tool-specific fields
   toolName?: string;
   toolInput?: Record<string, unknown>;
