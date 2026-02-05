@@ -28,6 +28,7 @@ export function useStreaming() {
     abortStreaming,
     abortResponse,
     setContextUsage,
+    updateStreamingSessionId,
   } = useChatStore();
 
   // Handle keyboard shortcuts to abort streaming (Story 5.4)
@@ -59,7 +60,9 @@ export function useStreaming() {
     // Handle incoming stream chunks
     const handleChunk = (data: StreamChunk) => {
       const state = useChatStore.getState();
-      if (!state.isStreaming) {
+      // Start streaming if not yet started, or update sessionId if still 'pending'
+      // Note: Check explicitly for null/pending, not falsy (empty string '' is valid sessionId)
+      if (state.streamingSessionId === null || state.streamingSessionId === 'pending') {
         startStreaming(data.sessionId, data.messageId);
       }
       appendStreamingContent(data.content);
@@ -67,6 +70,15 @@ export function useStreaming() {
 
     // Handle stream completion
     const handleComplete = async (data: Message) => {
+      // Update streamingSessionId with the actual sessionId from result
+      // (SDK doesn't send 'init' message, so sessionId only comes in 'result')
+      const chatState = useChatStore.getState();
+      // Update sessionId if not yet set, pending, or empty string (from no-init resume mode)
+      // Use updateStreamingSessionId to avoid resetting segments
+      if (data.sessionId && (!chatState.streamingSessionId || chatState.streamingSessionId === 'pending')) {
+        updateStreamingSessionId(data.sessionId);
+      }
+
       // Use getState() for fresh values instead of potentially stale closure values
       const msgState = useMessageStore.getState();
       const projectSlug = msgState.currentProjectSlug;
@@ -183,6 +195,7 @@ export function useStreaming() {
     abortStreaming,
     abortResponse,
     setContextUsage,
+    updateStreamingSessionId,
     handleKeyDown,
   ]);
 }

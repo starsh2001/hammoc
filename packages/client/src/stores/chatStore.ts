@@ -54,6 +54,8 @@ interface ChatState {
   permissionMode: PermissionMode;
   /** Current context usage data from last SDK response */
   contextUsage: ChatUsage | null;
+  /** Session ID from most recently completed streaming (for new session navigation) */
+  completedSessionId: string | null;
 }
 
 interface SendMessageOptions {
@@ -94,6 +96,10 @@ interface ChatActions {
   setContextUsage: (usage: ChatUsage) => void;
   /** Reset context usage (on session change) */
   resetContextUsage: () => void;
+  /** Clear completed session ID after navigation */
+  clearCompletedSessionId: () => void;
+  /** Update streaming sessionId without resetting segments (for late sessionId arrival) */
+  updateStreamingSessionId: (sessionId: string) => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -105,6 +111,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingMessageId: null,
   streamingSegments: [],
   streamingStartedAt: null,
+  completedSessionId: null,
   permissionMode: 'default',
   contextUsage: null,
 
@@ -232,6 +239,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingDelayTimeoutId = null;
     }
 
+    // Save sessionId before clearing (for new session navigation)
+    const currentSessionId = get().streamingSessionId;
+
     // Clear streaming state only — message persistence is handled by
     // fetchMessages() in handleComplete (useStreaming.ts), which replaces
     // messageStore.messages with authoritative server data.
@@ -241,6 +251,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
+      completedSessionId: currentSessionId,
     });
   },
 
@@ -302,4 +313,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setContextUsage: (usage: ChatUsage) => set({ contextUsage: usage }),
 
   resetContextUsage: () => set({ contextUsage: null }),
+
+  clearCompletedSessionId: () => set({ completedSessionId: null }),
+
+  updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),
 }));

@@ -80,6 +80,7 @@ export class StreamHandler {
    */
   parseMessage(message: SDKMessage): ParsedSDKMessage {
     const type = message.type as string;
+    console.log('[StreamHandler] Received message type:', type);
 
     switch (type) {
       case 'init':
@@ -444,6 +445,16 @@ export class StreamHandler {
     };
 
     callbacks.onSessionInit?.(message.sessionId, this.state.metadata);
+
+    // If there's buffered text from before init, send it now
+    if (this.state.accumulatedText && this.receivedStreamTextDelta) {
+      callbacks.onTextChunk?.({
+        sessionId: message.sessionId,
+        messageId: this.generateMessageId(),
+        content: this.state.accumulatedText,
+        done: false,
+      });
+    }
   }
 
   /**
@@ -561,6 +572,7 @@ export class StreamHandler {
       this.receivedStreamTextDelta = true;
       this.state.accumulatedText += message.textDelta;
 
+      // Always emit - websocket.ts uses actualSessionId fallback
       callbacks.onTextChunk?.({
         sessionId: this.state.sessionId ?? '',
         messageId: this.generateMessageId(),

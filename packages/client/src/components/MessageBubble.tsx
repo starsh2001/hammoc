@@ -69,7 +69,7 @@ export function MessageBubble({
       <div
         className={`relative group max-w-[90%] md:max-w-[80%] ${
           isUser
-            ? 'bg-blue-600 text-white rounded-l-lg rounded-tr-lg'
+            ? 'bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-l-lg rounded-tr-lg'
             : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700'
         } p-3 shadow-sm`}
       >
@@ -91,7 +91,7 @@ export function MessageBubble({
         {/* Timestamp */}
         <div
           className={`mt-2 text-xs transition-opacity duration-200 ${
-            isUser ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'
+            isUser ? 'text-gray-600 dark:text-blue-200' : 'text-gray-400 dark:text-gray-500'
           } ${timestampMode === 'hover' ? (isHovered ? 'opacity-100' : 'opacity-0') : 'opacity-100'}`}
         >
           {formattedTime}
@@ -106,7 +106,7 @@ export function MessageBubble({
             isHovered ? 'opacity-100' : 'opacity-0'
           } ${
             isUser
-              ? 'bg-blue-500 hover:bg-blue-400 text-white'
+              ? 'bg-blue-200 hover:bg-blue-300 text-gray-700 dark:bg-blue-500 dark:hover:bg-blue-400 dark:text-white'
               : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300'
           }`}
         >

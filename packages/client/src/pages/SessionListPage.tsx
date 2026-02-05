@@ -142,7 +142,7 @@ export function SessionListPage() {
             </button>
             <button
               onClick={handleNewSession}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white text-sm rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500 transition-colors whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
               새 세션
