@@ -30,6 +30,7 @@ import { MessageListSkeleton } from '../components/MessageListSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { SessionQuickAccessPanel } from '../components/SessionQuickAccessPanel';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 export function ChatPage() {
   const { projectSlug, sessionId } = useParams<{
@@ -93,8 +94,14 @@ export function ChatPage() {
         console.error('[ChatPage] Cannot send message: workingDirectory not found');
         return;
       }
+      // Convert Attachment[] to ImageAttachment[] for optimistic message display
+      const images = attachments?.map((a) => ({
+        mimeType: a.mimeType,
+        data: a.data,
+        name: a.name,
+      }));
       // Add user message immediately (optimistic UI)
-      addOptimisticMessage(content);
+      addOptimisticMessage(content, images);
       // Send to server
       sendMessage(content, {
         workingDirectory,
@@ -139,6 +146,13 @@ export function ChatPage() {
   // Session quick access panel state
   const [showSessionPanel, setShowSessionPanel] = useState(false);
 
+  // Confirm modal state (non-blocking replacement for window.confirm)
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    action: 'newSession' | 'switchSession';
+    targetSessionId?: string;
+  }>({ isOpen: false, action: 'newSession' });
+
   const handleShowSessions = useCallback(() => {
     setShowSessionPanel(true);
   }, []);
@@ -146,6 +160,20 @@ export function ChatPage() {
   const handleCloseSessionPanel = useCallback(() => {
     setShowSessionPanel(false);
   }, []);
+
+  // Execute confirmed action (after user confirms in modal)
+  const executeConfirmedAction = useCallback(() => {
+    setConfirmModal({ isOpen: false, action: 'newSession' });
+    abortResponse();
+
+    if (confirmModal.action === 'newSession') {
+      clearMessages();
+      navigate(`/project/${projectSlug}/session/new`);
+    } else if (confirmModal.action === 'switchSession' && confirmModal.targetSessionId) {
+      clearMessages();
+      navigate(`/project/${projectSlug}/session/${confirmModal.targetSessionId}`);
+    }
+  }, [confirmModal.action, confirmModal.targetSessionId, abortResponse, clearMessages, navigate, projectSlug]);
 
   const handleSessionSelect = useCallback((selectedSessionId: string) => {
     setShowSessionPanel(false);
@@ -155,27 +183,36 @@ export function ChatPage() {
     // Confirm if streaming is active
     const currentIsStreaming = useChatStore.getState().isStreaming;
     if (currentIsStreaming) {
-      const confirmed = window.confirm('진행 중인 응답이 있습니다. 세션을 전환하시겠습니까?');
-      if (!confirmed) return;
-      abortResponse();
+      setConfirmModal({
+        isOpen: true,
+        action: 'switchSession',
+        targetSessionId: selectedSessionId,
+      });
+      return;
     }
     clearMessages();
     navigate(`/project/${projectSlug}/session/${selectedSessionId}`);
-  }, [sessionId, abortResponse, clearMessages, navigate, projectSlug]);
+  }, [sessionId, clearMessages, navigate, projectSlug]);
 
   const handleNewSession = useCallback(() => {
     if (!projectSlug) return;
     const currentIsStreaming = useChatStore.getState().isStreaming;
 
     if (currentIsStreaming) {
-      const confirmed = window.confirm('진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?');
-      if (!confirmed) return;
-      abortResponse();
+      setConfirmModal({
+        isOpen: true,
+        action: 'newSession',
+      });
+      return;
     }
 
     clearMessages();
     navigate(`/project/${projectSlug}/session/new`);
-  }, [abortResponse, clearMessages, navigate, projectSlug]);
+  }, [clearMessages, navigate, projectSlug]);
+
+  const handleCancelConfirm = useCallback(() => {
+    setConfirmModal({ isOpen: false, action: 'newSession' });
+  }, []);
 
   const handleRetry = useCallback(() => {
     if (projectSlug && sessionId) {
@@ -200,6 +237,23 @@ export function ChatPage() {
       onSelectSession={handleSessionSelect}
       onClose={handleCloseSessionPanel}
       onNewSession={handleNewSession}
+    />
+  );
+
+  const confirmModalElement = (
+    <ConfirmModal
+      isOpen={confirmModal.isOpen}
+      title="진행 중인 응답"
+      message={
+        confirmModal.action === 'newSession'
+          ? '진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?'
+          : '진행 중인 응답이 있습니다. 세션을 전환하시겠습니까?'
+      }
+      confirmText="확인"
+      cancelText="취소"
+      onConfirm={executeConfirmedAction}
+      onCancel={handleCancelConfirm}
+      variant="danger"
     />
   );
 
@@ -252,6 +306,7 @@ export function ChatPage() {
           />
         </InputArea>
         {sessionPanel}
+        {confirmModalElement}
       </div>
     );
   }
@@ -292,6 +347,7 @@ export function ChatPage() {
           />
         </InputArea>
         {sessionPanel}
+        {confirmModalElement}
       </div>
     );
   }
@@ -331,6 +387,7 @@ export function ChatPage() {
           />
         </InputArea>
         {sessionPanel}
+        {confirmModalElement}
       </div>
     );
   }
@@ -376,6 +433,7 @@ export function ChatPage() {
           />
         </InputArea>
         {sessionPanel}
+        {confirmModalElement}
       </div>
     );
   }
@@ -442,6 +500,7 @@ export function ChatPage() {
         />
       </InputArea>
       {sessionPanel}
+      {confirmModalElement}
     </div>
   );
 }

@@ -81,6 +81,21 @@ export function MessageBubble({
           </div>
         )}
 
+        {/* Attached images (user messages only) */}
+        {isUser && message.images && message.images.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {message.images.map((img, idx) => (
+              <img
+                key={`${message.id}-img-${idx}`}
+                src={`data:${img.mimeType};base64,${img.data}`}
+                alt={img.name || `첨부 이미지 ${idx + 1}`}
+                className="max-w-[200px] max-h-[150px] rounded object-cover cursor-pointer hover:opacity-90"
+                onClick={() => window.open(`data:${img.mimeType};base64,${img.data}`, '_blank')}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Message content - plain text for user, markdown for assistant */}
         {isUser ? (
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
