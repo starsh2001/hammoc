@@ -29,7 +29,6 @@ import { ToolCallCard } from '../components/ToolCallCard';
 import { MessageListSkeleton } from '../components/MessageListSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
-import { PermissionModeSelector } from '../components/PermissionModeSelector';
 import { SessionQuickAccessPanel } from '../components/SessionQuickAccessPanel';
 
 export function ChatPage() {
@@ -51,8 +50,22 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, contextUsage, resetContextUsage } = useChatStore();
+  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, contextUsage, resetContextUsage, completedSessionId, clearCompletedSessionId } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
+
+  // Navigate to the new sessionId when streaming completes (completedSessionId is set by completeStreaming)
+  useEffect(() => {
+    if (
+      sessionId === 'new' &&
+      completedSessionId &&
+      completedSessionId !== 'pending' &&
+      projectSlug
+    ) {
+      const targetSessionId = completedSessionId;
+      clearCompletedSessionId();
+      navigate(`/project/${projectSlug}/session/${targetSessionId}`, { replace: true });
+    }
+  }, [sessionId, completedSessionId, projectSlug, navigate, clearCompletedSessionId]);
 
   // Get working directory from project
   const workingDirectory = useMemo(() => {
@@ -100,18 +113,17 @@ export function ChatPage() {
     }
   }, [abortResponse]);
 
-  // Redirect if required params are missing
-  if (!projectSlug || !sessionId) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Fetch messages on mount
+  // Fetch messages on mount (only for existing sessions)
   useEffect(() => {
-    if (sessionId !== 'new') {
+    if (projectSlug && sessionId && sessionId !== 'new') {
       fetchMessages(projectSlug, sessionId);
     }
+  }, [projectSlug, sessionId, fetchMessages]);
+
+  // Clear messages only on component unmount (not on sessionId change)
+  useEffect(() => {
     return () => clearMessages();
-  }, [projectSlug, sessionId, fetchMessages, clearMessages]);
+  }, [clearMessages]);
 
   // Reset context usage on session change (separate from fetchMessages useEffect)
   useEffect(() => {
@@ -119,7 +131,9 @@ export function ChatPage() {
   }, [sessionId, resetContextUsage]);
 
   const handleBack = useCallback(() => {
-    navigate(`/project/${projectSlug}`);
+    if (projectSlug) {
+      navigate(`/project/${projectSlug}`);
+    }
   }, [navigate, projectSlug]);
 
   // Session quick access panel state
@@ -135,6 +149,7 @@ export function ChatPage() {
 
   const handleSessionSelect = useCallback((selectedSessionId: string) => {
     setShowSessionPanel(false);
+    if (!projectSlug) return;
     // Don't navigate if selecting the current session
     if (selectedSessionId === sessionId) return;
     // Confirm if streaming is active
@@ -149,6 +164,7 @@ export function ChatPage() {
   }, [sessionId, abortResponse, clearMessages, navigate, projectSlug]);
 
   const handleNewSession = useCallback(() => {
+    if (!projectSlug) return;
     const currentIsStreaming = useChatStore.getState().isStreaming;
 
     if (currentIsStreaming) {
@@ -162,12 +178,19 @@ export function ChatPage() {
   }, [abortResponse, clearMessages, navigate, projectSlug]);
 
   const handleRetry = useCallback(() => {
-    fetchMessages(projectSlug, sessionId);
+    if (projectSlug && sessionId) {
+      fetchMessages(projectSlug, sessionId);
+    }
   }, [projectSlug, sessionId, fetchMessages]);
 
   const handleLoadMore = useCallback(() => {
     fetchMoreMessages();
   }, [fetchMoreMessages]);
+
+  // Redirect if required params are missing (MUST be after all hooks)
+  if (!projectSlug || !sessionId) {
+    return <Navigate to="/" replace />;
+  }
 
   const sessionPanel = (
     <SessionQuickAccessPanel
@@ -194,26 +217,29 @@ export function ChatPage() {
           className="flex-1 flex flex-col min-h-0"
         >
           <MessageArea
+            scrollDependencies={[messages]}
             streamingSegments={streamingSegments}
             isStreaming={isStreaming && !!streamingSessionId}
             emptyState={
-              !isStreaming && streamingSegments.length === 0 ? (
+              !isStreaming && streamingSegments.length === 0 && messages.length === 0 ? (
                 <EmptyState
                   title="새 세션"
-                  description="Claude와 새 대화를 시작하세요. 메시지 입력은 다음 스토리에서 구현됩니다."
+                  description="Claude와 새 대화를 시작하세요."
                 />
               ) : undefined
             }
           >
-            {null}
+            {/* Show user messages in new session too */}
+            {messages.map((message) =>
+              message.type === 'tool_use' || message.type === 'tool_result' ? (
+                <ToolCallCard key={message.id} message={message} />
+              ) : (
+                <MessageBubble key={message.id} message={message} />
+              )
+            )}
           </MessageArea>
         </main>
         <InputArea>
-          <PermissionModeSelector
-            mode={permissionMode}
-            onModeChange={setPermissionMode}
-            disabled={isStreaming}
-          />
           <ChatInput
             onSend={handleSendMessage}
             disabled={isStreaming}
@@ -221,6 +247,8 @@ export function ChatPage() {
             onAbort={handleAbort}
             placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
             commands={commands}
+            permissionMode={permissionMode}
+            onPermissionModeChange={setPermissionMode}
           />
         </InputArea>
         {sessionPanel}
@@ -252,12 +280,16 @@ export function ChatPage() {
           </section>
         </main>
         <InputArea disabled>
-          <PermissionModeSelector
-            mode={permissionMode}
-            onModeChange={setPermissionMode}
+          <ChatInput
+            onSend={handleSendMessage}
             disabled
+            isStreaming={isStreaming}
+            onAbort={handleAbort}
+            placeholder="로딩 중..."
+            commands={commands}
+            permissionMode={permissionMode}
+            onPermissionModeChange={setPermissionMode}
           />
-          <ChatInput onSend={handleSendMessage} disabled isStreaming={isStreaming} onAbort={handleAbort} placeholder="로딩 중..." commands={commands} />
         </InputArea>
         {sessionPanel}
       </div>
@@ -287,12 +319,16 @@ export function ChatPage() {
           </section>
         </main>
         <InputArea disabled>
-          <PermissionModeSelector
-            mode={permissionMode}
-            onModeChange={setPermissionMode}
+          <ChatInput
+            onSend={handleSendMessage}
             disabled
+            isStreaming={isStreaming}
+            onAbort={handleAbort}
+            placeholder="오류가 발생했습니다"
+            commands={commands}
+            permissionMode={permissionMode}
+            onPermissionModeChange={setPermissionMode}
           />
-          <ChatInput onSend={handleSendMessage} disabled isStreaming={isStreaming} onAbort={handleAbort} placeholder="오류가 발생했습니다" commands={commands} />
         </InputArea>
         {sessionPanel}
       </div>
@@ -328,11 +364,6 @@ export function ChatPage() {
           </MessageArea>
         </main>
         <InputArea>
-          <PermissionModeSelector
-            mode={permissionMode}
-            onModeChange={setPermissionMode}
-            disabled={isStreaming}
-          />
           <ChatInput
             onSend={handleSendMessage}
             disabled={isStreaming}
@@ -340,6 +371,8 @@ export function ChatPage() {
             onAbort={handleAbort}
             placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
             commands={commands}
+            permissionMode={permissionMode}
+            onPermissionModeChange={setPermissionMode}
           />
         </InputArea>
         {sessionPanel}
@@ -397,11 +430,6 @@ export function ChatPage() {
       </main>
 
       <InputArea>
-        <PermissionModeSelector
-          mode={permissionMode}
-          onModeChange={setPermissionMode}
-          disabled={isStreaming}
-        />
         <ChatInput
           onSend={handleSendMessage}
           disabled={isStreaming}
@@ -409,6 +437,8 @@ export function ChatPage() {
           onAbort={handleAbort}
           placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
           commands={commands}
+          permissionMode={permissionMode}
+          onPermissionModeChange={setPermissionMode}
         />
       </InputArea>
       {sessionPanel}

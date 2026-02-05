@@ -17,8 +17,31 @@ import { Send, Square, Paperclip, X } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { CommandPalette } from './CommandPalette';
 import { filterCommands } from './CommandPalette';
-import type { SlashCommand, Attachment } from '@bmad-studio/shared';
+import { PermissionModeSelector } from './PermissionModeSelector';
+import type { SlashCommand, Attachment, PermissionMode } from '@bmad-studio/shared';
 import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
+
+// Permission mode color mapping for focus ring and send button
+const MODE_COLORS: Record<PermissionMode, { ring: string; button: string }> = {
+  plan: {
+    ring: 'focus:ring-blue-500 dark:focus:ring-blue-400',
+    button: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
+  },
+  default: {
+    ring: 'focus:ring-orange-500 dark:focus:ring-orange-400',
+    button: 'bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600',
+  },
+  acceptEdits: {
+    ring: 'focus:ring-gray-500 dark:focus:ring-gray-400',
+    button: 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600',
+  },
+  bypassPermissions: {
+    ring: 'focus:ring-red-500 dark:focus:ring-red-400',
+    button: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600',
+  },
+};
+
+const DEFAULT_MODE_COLORS = MODE_COLORS.default;
 
 // Client-only extended attachment with preview URL and File reference
 interface ClientAttachment extends Attachment {
@@ -52,6 +75,10 @@ interface ChatInputProps {
   isStreaming?: boolean;
   /** Callback to abort the current response */
   onAbort?: () => void;
+  /** Current permission mode */
+  permissionMode?: PermissionMode;
+  /** Permission mode change callback */
+  onPermissionModeChange?: (mode: PermissionMode) => void;
 }
 
 export function ChatInput({
@@ -61,6 +88,8 @@ export function ChatInput({
   commands = [],
   isStreaming = false,
   onAbort,
+  permissionMode,
+  onPermissionModeChange,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -95,6 +124,12 @@ export function ChatInput({
     if (!showCommands || commands.length === 0) return 0;
     return filterCommands(commands, commandFilter).length;
   }, [showCommands, commands, commandFilter]);
+
+  // Get mode colors based on current permission mode
+  const modeColors = useMemo(() => {
+    if (!permissionMode) return DEFAULT_MODE_COLORS;
+    return MODE_COLORS[permissionMode] || DEFAULT_MODE_COLORS;
+  }, [permissionMode]);
 
   // Update showCommands based on content
   // Only show palette when content starts with "/" and has no space (still typing the command)
@@ -479,12 +514,21 @@ export function ChatInput({
       />
 
       <div
-        className={`flex items-end gap-2 ${isDragging ? 'border-2 border-dashed border-blue-500 rounded-lg p-1' : ''}`}
+        className={`flex items-center gap-2 ${isDragging ? 'border-2 border-dashed border-blue-500 rounded-lg p-1' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         data-testid="chat-input-area"
       >
+        {/* Permission mode selector (Story 5.2) */}
+        {permissionMode && onPermissionModeChange && (
+          <PermissionModeSelector
+            mode={permissionMode}
+            onModeChange={onPermissionModeChange}
+            disabled={isStreaming}
+          />
+        )}
+
         <div className="flex-1 relative">
           {/* Command palette (Story 5.1) */}
           {showCommands && commands.length > 0 && (
@@ -520,10 +564,10 @@ export function ChatInput({
                        rounded-lg
                        text-gray-900 dark:text-gray-100
                        placeholder-gray-500 dark:placeholder-gray-400
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
+                       focus:outline-none focus:ring-2 ${modeColors.ring}
                        disabled:opacity-50 disabled:cursor-not-allowed
                        ${needsScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
-            style={{ minHeight: '40px', maxHeight: '120px' }}
+            style={{ minHeight: '22px', maxHeight: '120px' }}
           />
           <span id="input-hint" className="sr-only">
             Enter로 전송, Shift+Enter로 줄바꿈
@@ -536,14 +580,14 @@ export function ChatInput({
           onClick={() => fileInputRef.current?.click()}
           disabled={isAttachDisabled}
           aria-label="이미지 첨부"
-          className="p-2 rounded-lg flex-shrink-0
+          className="p-2 rounded-lg flex-shrink-0 ml-0.5 -mt-1.5
                      text-gray-500 dark:text-gray-400
                      hover:text-gray-700 dark:hover:text-gray-200
                      hover:bg-gray-100 dark:hover:bg-gray-700
                      disabled:opacity-50 disabled:cursor-not-allowed
                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                      transition-all duration-150"
-          style={{ height: '40px', width: '40px' }}
+          style={{ height: '38px', width: '38px' }}
         >
           <Paperclip size={20} aria-hidden="true" />
         </button>
@@ -553,13 +597,13 @@ export function ChatInput({
             type="button"
             onClick={onAbort}
             aria-label="중단"
-            className="p-2 rounded-lg flex-shrink-0
+            className="p-2 rounded-lg flex-shrink-0 -mt-1.5
                        bg-red-600 hover:bg-red-700
                        dark:bg-red-500 dark:hover:bg-red-600
                        text-white
                        focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
                        transition-all duration-150"
-            style={{ height: '40px', width: '40px' }}
+            style={{ height: '36px', width: '36px' }}
           >
             <Square size={20} aria-hidden="true" />
           </button>
@@ -569,14 +613,13 @@ export function ChatInput({
             onClick={handleButtonClick}
             disabled={isButtonDisabled}
             aria-label="전송"
-            className="p-2 rounded-lg flex-shrink-0
-                       bg-blue-600 hover:bg-blue-700
-                       dark:bg-blue-500 dark:hover:bg-blue-600
+            className={`p-2 rounded-lg flex-shrink-0 -mt-1.5
+                       ${modeColors.button}
                        text-white
                        disabled:opacity-50 disabled:cursor-not-allowed
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                       transition-all duration-150"
-            style={{ height: '40px', width: '40px' }}
+                       focus:outline-none focus:ring-2 ${modeColors.ring} focus:ring-offset-2
+                       transition-all duration-150`}
+            style={{ height: '36px', width: '36px' }}
           >
             <Send size={20} aria-hidden="true" />
           </button>

@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useCallback, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Plus } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import { useProjectStore } from '../stores/projectStore';
@@ -23,6 +23,7 @@ const PULL_THRESHOLD = 80;
 export function SessionListPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     sessions,
     isLoading,
@@ -48,17 +49,17 @@ export function SessionListPage() {
     }
   }, [projects.length, fetchProjects]);
 
-  // Fetch sessions on mount or when projectSlug changes
+  // Fetch sessions on mount, navigation, or when projectSlug changes
   useEffect(() => {
     if (projectSlug) {
       fetchSessions(projectSlug);
     }
-  }, [projectSlug, fetchSessions]);
+  }, [projectSlug, fetchSessions, location.key]);
 
   const handleRefresh = useCallback(async () => {
     if (projectSlug) {
       setRefreshing(true);
-      await fetchSessions(projectSlug, true);
+      await fetchSessions(projectSlug);
     }
   }, [projectSlug, fetchSessions, setRefreshing]);
 

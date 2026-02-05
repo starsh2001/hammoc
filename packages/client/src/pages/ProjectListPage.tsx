@@ -57,13 +57,13 @@ export function ProjectListPage() {
 
   // Handle refresh (force reload from server)
   const handleRefresh = useCallback(async () => {
-    await fetchProjects(true);
+    await fetchProjects();
   }, [fetchProjects]);
 
   // Handle retry after error (force reload from server)
   const handleRetry = useCallback(() => {
     clearError();
-    fetchProjects(true);
+    fetchProjects();
   }, [clearError, fetchProjects]);
 
   // Handle new project success - navigate to new session
