@@ -536,6 +536,45 @@ describe('useChatStore', () => {
     });
   });
 
+  describe('contextUsage', () => {
+    it('has initial contextUsage set to null', () => {
+      const { contextUsage } = useChatStore.getState();
+      expect(contextUsage).toBeNull();
+    });
+
+    it('updates contextUsage via setContextUsage', () => {
+      const { setContextUsage } = useChatStore.getState();
+      const mockUsage = {
+        inputTokens: 150000,
+        outputTokens: 500,
+        cacheReadInputTokens: 80000,
+        cacheCreationInputTokens: 5000,
+        totalCostUSD: 0.05,
+        contextWindow: 200000,
+      };
+
+      setContextUsage(mockUsage);
+
+      expect(useChatStore.getState().contextUsage).toEqual(mockUsage);
+    });
+
+    it('resets contextUsage to null via resetContextUsage', () => {
+      const { setContextUsage, resetContextUsage } = useChatStore.getState();
+      setContextUsage({
+        inputTokens: 100,
+        outputTokens: 50,
+        cacheReadInputTokens: 30,
+        cacheCreationInputTokens: 20,
+        totalCostUSD: 0.001,
+        contextWindow: 200000,
+      });
+
+      resetContextUsage();
+
+      expect(useChatStore.getState().contextUsage).toBeNull();
+    });
+  });
+
   describe('segment combinations', () => {
     it('handles simple text streaming', () => {
       const { startStreaming, appendStreamingContent } = useChatStore.getState();

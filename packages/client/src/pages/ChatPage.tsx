@@ -50,7 +50,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode } = useChatStore();
+  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, contextUsage, resetContextUsage } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
 
   // Get working directory from project
@@ -112,6 +112,11 @@ export function ChatPage() {
     return () => clearMessages();
   }, [projectSlug, sessionId, fetchMessages, clearMessages]);
 
+  // Reset context usage on session change (separate from fetchMessages useEffect)
+  useEffect(() => {
+    resetContextUsage();
+  }, [sessionId, resetContextUsage]);
+
   const handleBack = useCallback(() => {
     navigate(`/project/${projectSlug}`);
   }, [navigate, projectSlug]);
@@ -144,7 +149,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} contextUsage={contextUsage} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -191,7 +196,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} contextUsage={contextUsage} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -226,7 +231,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} contextUsage={contextUsage} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -260,7 +265,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} contextUsage={contextUsage} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -312,6 +317,7 @@ export function ChatPage() {
         onBack={handleBack}
         onNewSession={handleNewSession}
         onRefresh={handleRetry}
+        contextUsage={contextUsage}
       />
 
       <main

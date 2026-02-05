@@ -485,6 +485,110 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
     );
   });
 
+  it('should return extended ChatUsage fields in result', async () => {
+    const { query } = await import('@anthropic-ai/claude-code');
+    const mockIterator = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: 'init', session_id: 'test-session' };
+        yield {
+          type: 'result',
+          subtype: 'success',
+          result: 'Done',
+          session_id: 'test-session',
+          uuid: 'msg-1',
+          is_error: false,
+          usage: {
+            input_tokens: 150000,
+            output_tokens: 500,
+            cache_read_input_tokens: 80000,
+            cache_creation_input_tokens: 5000,
+          },
+          total_cost_usd: 0.05,
+          modelUsage: {
+            'claude-opus-4-5-20251101': {
+              contextWindow: 200000,
+              inputTokens: 150000,
+              outputTokens: 500,
+              cacheReadInputTokens: 80000,
+              cacheCreationInputTokens: 5000,
+              costUSD: 0.05,
+              webSearchRequests: 0,
+            },
+          },
+        };
+      },
+      interrupt: vi.fn(),
+      setPermissionMode: vi.fn(),
+    };
+
+    vi.mocked(query).mockReturnValue(mockIterator as unknown as ReturnType<typeof query>);
+
+    const callbacks = {
+      onComplete: vi.fn(),
+    };
+
+    const result = await service.sendMessageWithCallbacks('Test', callbacks);
+
+    expect(result.usage).toEqual({
+      inputTokens: 150000,
+      outputTokens: 500,
+      cacheReadInputTokens: 80000,
+      cacheCreationInputTokens: 5000,
+      totalCostUSD: 0.05,
+      contextWindow: 200000,
+    });
+  });
+
+  it('should capture usage even on error result (error_max_turns)', async () => {
+    const { query } = await import('@anthropic-ai/claude-code');
+    const mockIterator = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: 'init', session_id: 'test-session' };
+        yield {
+          type: 'result',
+          subtype: 'error_max_turns',
+          result: '',
+          session_id: 'test-session',
+          uuid: 'msg-err',
+          is_error: true,
+          usage: {
+            input_tokens: 195000,
+            output_tokens: 100,
+            cache_read_input_tokens: 10000,
+            cache_creation_input_tokens: 2000,
+          },
+          total_cost_usd: 0.08,
+          modelUsage: {
+            'claude-opus-4-5-20251101': {
+              contextWindow: 200000,
+              inputTokens: 195000,
+              outputTokens: 100,
+              cacheReadInputTokens: 10000,
+              cacheCreationInputTokens: 2000,
+              costUSD: 0.08,
+              webSearchRequests: 0,
+            },
+          },
+        };
+      },
+      interrupt: vi.fn(),
+      setPermissionMode: vi.fn(),
+    };
+
+    vi.mocked(query).mockReturnValue(mockIterator as unknown as ReturnType<typeof query>);
+
+    const callbacks = {
+      onComplete: vi.fn(),
+    };
+
+    const result = await service.sendMessageWithCallbacks('Test', callbacks);
+
+    expect(result.isError).toBe(true);
+    expect(result.usage).toBeDefined();
+    expect(result.usage?.inputTokens).toBe(195000);
+    expect(result.usage?.contextWindow).toBe(200000);
+  });
+
   it('should call callbacks in correct order: onSessionInit → onTextChunk → onComplete', async () => {
     const { query } = await import('@anthropic-ai/claude-code');
     const callOrder: string[] = [];

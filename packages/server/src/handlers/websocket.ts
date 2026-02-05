@@ -283,6 +283,11 @@ async function handleChatSend(
           content: response.content,
           timestamp: new Date(),
         });
+
+        // Emit context usage data if available
+        if (response.usage) {
+          socket.emit('context:usage', response.usage);
+        }
       },
 
       onError: (error) => {

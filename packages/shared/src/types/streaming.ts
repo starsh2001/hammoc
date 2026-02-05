@@ -114,7 +114,7 @@ export interface ParsedUserMessage extends ParsedSDKMessageBase {
  */
 export interface ParsedResultMessage extends ParsedSDKMessageBase {
   type: SDKMessageType.RESULT;
-  subtype: 'success' | 'error';
+  subtype: 'success' | 'error_max_turns' | 'error_during_execution';
   result: string;
   sessionId: string;
   uuid: string;

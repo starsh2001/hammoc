@@ -96,6 +96,46 @@ describe('ChatHeader', () => {
     });
   });
 
+  describe('new session button', () => {
+    const mockOnNewSession = vi.fn();
+
+    it('should render new session button when onNewSession is provided', () => {
+      renderComponent({ onNewSession: mockOnNewSession });
+
+      expect(screen.getByRole('button', { name: '새 세션 시작' })).toBeInTheDocument();
+    });
+
+    it('should not render new session button when onNewSession is not provided', () => {
+      renderComponent();
+
+      expect(screen.queryByRole('button', { name: '새 세션 시작' })).not.toBeInTheDocument();
+    });
+
+    it('should call onNewSession when new session button clicked', () => {
+      renderComponent({ onNewSession: mockOnNewSession });
+
+      fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
+
+      expect(mockOnNewSession).toHaveBeenCalledTimes(1);
+    });
+
+    it('should have aria-label on new session button', () => {
+      renderComponent({ onNewSession: mockOnNewSession });
+
+      const button = screen.getByRole('button', { name: '새 세션 시작' });
+      expect(button).toHaveAttribute('aria-label', '새 세션 시작');
+    });
+
+    it('should render Plus icon with aria-hidden', () => {
+      renderComponent({ onNewSession: mockOnNewSession });
+
+      const button = screen.getByRole('button', { name: '새 세션 시작' });
+      const svg = button.querySelector('svg');
+      expect(svg).toBeInTheDocument();
+      expect(svg).toHaveAttribute('aria-hidden', 'true');
+    });
+  });
+
   describe('refresh button', () => {
     it('should render refresh button when onRefresh is provided', () => {
       renderComponent({ onRefresh: mockOnRefresh });
@@ -159,6 +199,30 @@ describe('ChatHeader', () => {
       const header = screen.getByTestId('chat-header');
       expect(header.className).toContain('dark:bg-gray-800');
       expect(header.className).toContain('dark:border-gray-700');
+    });
+  });
+
+  // Story 5.6 - Task 8: Context usage display tests
+  describe('context usage display', () => {
+    it('should render ContextUsageDisplay when contextUsage is provided', () => {
+      renderComponent({
+        contextUsage: {
+          inputTokens: 100000,
+          outputTokens: 500,
+          cacheReadInputTokens: 50000,
+          cacheCreationInputTokens: 3000,
+          totalCostUSD: 0.03,
+          contextWindow: 200000,
+        },
+      });
+
+      expect(screen.getByTestId('context-usage-display')).toBeInTheDocument();
+    });
+
+    it('should not render ContextUsageDisplay when contextUsage is not provided', () => {
+      renderComponent();
+
+      expect(screen.queryByTestId('context-usage-display')).not.toBeInTheDocument();
     });
   });
 

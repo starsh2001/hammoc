@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { PermissionMode, Attachment } from '@bmad-studio/shared';
+import type { PermissionMode, Attachment, ChatUsage } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 
@@ -52,6 +52,8 @@ interface ChatState {
   streamingStartedAt: Date | null;
   /** Current permission mode for Agent SDK */
   permissionMode: PermissionMode;
+  /** Current context usage data from last SDK response */
+  contextUsage: ChatUsage | null;
 }
 
 interface SendMessageOptions {
@@ -88,6 +90,10 @@ interface ChatActions {
   abortResponse: () => void;
   /** Set permission mode */
   setPermissionMode: (mode: PermissionMode) => void;
+  /** Update context usage from server */
+  setContextUsage: (usage: ChatUsage) => void;
+  /** Reset context usage (on session change) */
+  resetContextUsage: () => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -100,6 +106,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingSegments: [],
   streamingStartedAt: null,
   permissionMode: 'default',
+  contextUsage: null,
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
@@ -291,4 +298,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   setPermissionMode: (mode: PermissionMode) => set({ permissionMode: mode }),
+
+  setContextUsage: (usage: ChatUsage) => set({ contextUsage: usage }),
+
+  resetContextUsage: () => set({ contextUsage: null }),
 }));

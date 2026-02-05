@@ -323,6 +323,35 @@ describe('useStreaming', () => {
     });
   });
 
+  describe('context:usage event', () => {
+    it('updates chatStore contextUsage on context:usage event', () => {
+      renderHook(() => useStreaming());
+
+      const mockUsage = {
+        inputTokens: 150000,
+        outputTokens: 500,
+        cacheReadInputTokens: 80000,
+        cacheCreationInputTokens: 5000,
+        totalCostUSD: 0.05,
+        contextWindow: 200000,
+      };
+
+      mockSocket.trigger('context:usage', mockUsage);
+
+      expect(useChatStore.getState().contextUsage).toEqual(mockUsage);
+    });
+
+    it('registers and cleans up context:usage listener', () => {
+      const { unmount } = renderHook(() => useStreaming());
+
+      expect(mockSocket.on).toHaveBeenCalledWith('context:usage', expect.any(Function));
+
+      unmount();
+
+      expect(mockSocket.off).toHaveBeenCalledWith('context:usage', expect.any(Function));
+    });
+  });
+
   describe('cleanup', () => {
     it('removes event listeners on unmount', () => {
       const { unmount } = renderHook(() => useStreaming());
