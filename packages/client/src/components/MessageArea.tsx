@@ -295,8 +295,8 @@ export function MessageArea({
       {isUserScrolledUp && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-4 right-4 p-2 bg-blue-600 hover:bg-blue-700
-                     dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-full
+          className="absolute bottom-4 right-4 p-2 bg-blue-100 hover:bg-blue-200
+                     dark:bg-blue-500 dark:hover:bg-blue-600 text-gray-900 dark:text-white rounded-full
                      shadow-lg transition-colors focus:outline-none focus:ring-2
                      focus:ring-blue-500 focus:ring-offset-2"
           aria-label="최신 메시지로 스크롤"

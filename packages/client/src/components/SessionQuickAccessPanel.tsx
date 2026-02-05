@@ -160,8 +160,9 @@ export function SessionQuickAccessPanel({
             <button
               onClick={onNewSession}
               className="w-full flex items-center gap-2 px-3 py-2
-                         text-blue-600 dark:text-blue-400
-                         hover:bg-blue-50 dark:hover:bg-blue-900/20
+                         bg-blue-100 dark:bg-blue-600
+                         text-gray-900 dark:text-white
+                         hover:bg-blue-200 dark:hover:bg-blue-500
                          rounded-lg transition-colors
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="새 세션"
