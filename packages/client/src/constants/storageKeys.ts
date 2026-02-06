@@ -8,4 +8,6 @@ export const STORAGE_KEYS = {
   THEME: 'bmad-studio-theme',
   /** Test page project path */
   TEST_PROJECT_PATH: 'bmad-studio-test-project-path',
+  /** Diff layout preference (side-by-side | inline) */
+  DIFF_LAYOUT: 'bmad-studio-diff-layout',
 } as const;
