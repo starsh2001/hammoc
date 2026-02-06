@@ -5,25 +5,14 @@
 
 import { useState } from 'react';
 import type { HistoryMessage } from '@bmad-studio/shared';
-import { CheckCircle, XCircle, Wrench, ChevronRight, ChevronDown, Files } from 'lucide-react';
+import { CheckCircle, XCircle, ChevronRight, ChevronDown, Files } from 'lucide-react';
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { DiffViewer } from './DiffViewer';
+import { getToolIcon, getToolDisplayName } from '../utils/toolUtils';
+import { ToolDetailToggle } from './ToolDetailToggle';
 
 interface ToolCallCardProps {
   message: HistoryMessage;
-}
-
-/** Tool display name overrides */
-const TOOL_DISPLAY_NAMES: Record<string, string> = {
-  TodoWrite: 'Update Todos',
-};
-
-/**
- * Get the display name for a tool
- */
-function getToolDisplayName(toolName?: string): string {
-  if (!toolName) return '';
-  return TOOL_DISPLAY_NAMES[toolName] ?? toolName;
 }
 
 /**
@@ -84,13 +73,15 @@ export function ToolCallCard({ message }: ToolCallCardProps) {
   const isSuccess = message.toolResult?.success !== false;
   const displayInfo = isToolUse ? extractDisplayInfo(message.toolInput) : null;
 
-  const toolDisplayName = getToolDisplayName(message.toolName);
+  const toolDisplayName = getToolDisplayName(message.toolName ?? '');
   const todos = message.toolName === 'TodoWrite' ? extractTodos(message.toolInput) : null;
 
   // Edit/Write tool - same card format with diff button
   const isEditWrite = message.toolName === 'Edit' || message.toolName === 'Write';
   const diffData = isEditWrite ? extractDiffData(message.toolName!, message.toolInput) : null;
   const lineChanges = diffData ? computeLineChanges(diffData.original, diffData.modified) : null;
+
+  const ToolIcon = getToolIcon(message.toolName ?? '');
 
   // For tool_use, show compact card matching streaming style
   if (isToolUse) {
@@ -103,13 +94,15 @@ export function ToolCallCard({ message }: ToolCallCardProps) {
         >
           <div className="max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2">
-              <Wrench className="w-4 h-4 text-blue-500" aria-hidden="true" />
+              <ToolIcon className="w-4 h-4 text-blue-500" aria-hidden="true" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {toolDisplayName}
               </span>
               <CheckCircle className="w-4 h-4 text-green-500" aria-hidden="true" />
             </div>
             {displayInfo && !isEditWrite && <ToolPathDisplay displayInfo={displayInfo} toolName={message.toolName} />}
+            {/* Generic tool detail expand/collapse (Read, Glob, Grep) */}
+            <ToolDetailToggle toolName={message.toolName ?? ''} input={message.toolInput} toolCallId={message.id} />
             {/* Edit/Write: collapsible file path with line changes */}
             {isEditWrite && diffData && lineChanges && (
               <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
