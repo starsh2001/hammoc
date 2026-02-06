@@ -4,7 +4,8 @@
  */
 
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { DiffEditor as MockDiffEditor } from '@monaco-editor/react';
 import { DiffViewer, getLanguageFromPath } from '../DiffViewer';
 
 // Store onMount callback for manual triggering in tests
@@ -31,10 +32,11 @@ function triggerMonacoMount() {
   }
 }
 
-// Mock useTheme hook
+// Mock useTheme hook (dynamic via mockTheme variable)
+let mockTheme = 'dark';
 vi.mock('../../hooks/useTheme', () => ({
   useTheme: () => ({
-    theme: 'dark',
+    theme: mockTheme,
     toggleTheme: vi.fn(),
     setTheme: vi.fn(),
   }),
@@ -64,6 +66,7 @@ describe('DiffViewer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockOnMount = null;
+    mockTheme = 'dark';
     mockDiffLayout = 'side-by-side';
     mockSetLayout.mockReset();
     mockResetToAuto.mockReset();
@@ -228,6 +231,7 @@ describe('DiffViewer - Layout Toggle (Story 6.2)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTheme = 'dark';
     mockDiffLayout = 'side-by-side';
     mockSetLayout.mockReset();
     mockResetToAuto.mockReset();
@@ -320,5 +324,99 @@ describe('getLanguageFromPath', () => {
 
   it('returns plaintext for files with only a dot', () => {
     expect(getLanguageFromPath('.gitignore')).toBe('plaintext');
+  });
+
+  // Story 6.3: AC2 missing language tests
+  it('returns go for .go files', () => {
+    expect(getLanguageFromPath('main.go')).toBe('go');
+  });
+
+  it('returns rust for .rs files', () => {
+    expect(getLanguageFromPath('lib.rs')).toBe('rust');
+  });
+
+  it('returns java for .java files', () => {
+    expect(getLanguageFromPath('Main.java')).toBe('java');
+  });
+
+  it('returns c for .c files', () => {
+    expect(getLanguageFromPath('main.c')).toBe('c');
+  });
+
+  it('returns cpp for .cpp files', () => {
+    expect(getLanguageFromPath('main.cpp')).toBe('cpp');
+  });
+
+  it('returns c for .h files', () => {
+    expect(getLanguageFromPath('header.h')).toBe('c');
+  });
+
+  it('returns html for .html files', () => {
+    expect(getLanguageFromPath('index.html')).toBe('html');
+  });
+
+  it('returns css for .css files', () => {
+    expect(getLanguageFromPath('styles.css')).toBe('css');
+  });
+});
+
+describe('DiffViewer - Syntax Highlighting (Story 6.3)', () => {
+  const defaultProps = {
+    filePath: 'packages/client/src/Example.tsx',
+    original: 'const a = 1;',
+    modified: 'const a = 2;',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockOnMount = null;
+    mockTheme = 'dark';
+    mockDiffLayout = 'side-by-side';
+    mockSetLayout.mockReset();
+    mockResetToAuto.mockReset();
+  });
+
+  // DiffEditor language prop tests
+  it('passes correct language prop to DiffEditor for TypeScript files', () => {
+    render(<DiffViewer {...defaultProps} filePath="Component.tsx" original="a" modified="b" />);
+    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
+      expect.objectContaining({ language: 'typescript' }),
+      expect.anything()
+    );
+  });
+
+  it('passes correct language prop to DiffEditor for Python files', () => {
+    render(<DiffViewer {...defaultProps} filePath="script.py" original="a" modified="b" />);
+    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
+      expect.objectContaining({ language: 'python' }),
+      expect.anything()
+    );
+  });
+
+  it('passes plaintext language for unknown file extensions', () => {
+    render(<DiffViewer {...defaultProps} filePath="data.xyz" original="a" modified="b" />);
+    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
+      expect.objectContaining({ language: 'plaintext' }),
+      expect.anything()
+    );
+  });
+
+  // Theme prop tests
+  it('passes vs-dark theme to DiffEditor in dark mode', () => {
+    mockTheme = 'dark';
+    render(<DiffViewer {...defaultProps} />);
+    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
+      expect.objectContaining({ theme: 'vs-dark' }),
+      expect.anything()
+    );
+  });
+
+  it('passes vs theme to DiffEditor in light mode', () => {
+    mockTheme = 'light';
+    render(<DiffViewer {...defaultProps} />);
+    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
+      expect.objectContaining({ theme: 'vs' }),
+      expect.anything()
+    );
   });
 });
