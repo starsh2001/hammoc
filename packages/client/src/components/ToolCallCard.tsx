@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import type { HistoryMessage } from '@bmad-studio/shared';
-import { CheckCircle, XCircle, Wrench, Code2, ChevronRight, ChevronDown } from 'lucide-react';
+import { CheckCircle, XCircle, Wrench, ChevronRight, ChevronDown, Files } from 'lucide-react';
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { DiffViewer } from './DiffViewer';
 
@@ -110,13 +110,13 @@ export function ToolCallCard({ message }: ToolCallCardProps) {
               <CheckCircle className="w-4 h-4 text-green-500" aria-hidden="true" />
             </div>
             {displayInfo && !isEditWrite && <ToolPathDisplay displayInfo={displayInfo} toolName={message.toolName} />}
-            {/* Edit/Write: collapsible file path with line changes and Diff button */}
+            {/* Edit/Write: collapsible file path with line changes */}
             {isEditWrite && diffData && lineChanges && (
-              <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                  className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 transition-colors text-left"
                   aria-expanded={isExpanded}
                   aria-label={isExpanded ? '접기' : '전체 경로 보기'}
                 >
@@ -128,22 +128,18 @@ export function ToolCallCard({ message }: ToolCallCardProps) {
                   <span className={isExpanded ? 'break-all' : 'truncate'}>
                     {isExpanded ? diffData.filePath : diffData.filePath.split(/[/\\]/).pop() || diffData.filePath}
                   </span>
-                  <span className="whitespace-nowrap ml-1">
-                    <span className="text-green-600 dark:text-green-400">+{lineChanges.added}</span>
-                    <span className="text-gray-400 mx-0.5">/</span>
-                    <span className="text-red-600 dark:text-red-400">-{lineChanges.removed}</span>
-                  </span>
                 </button>
-                {isExpanded && (
-                  <button
-                    onClick={() => setShowDiffViewer(true)}
-                    className="mt-1.5 flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 rounded transition-colors"
-                    aria-label="Diff 보기"
-                  >
-                    <Code2 className="w-3 h-3" aria-hidden="true" />
-                    Diff
-                  </button>
-                )}
+                <button
+                  onClick={() => setShowDiffViewer(true)}
+                  className="group flex items-center gap-0.5 whitespace-nowrap hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                  aria-label="Diff 보기"
+                  title="클릭하여 Diff 보기"
+                >
+                  <span className="text-green-600 dark:text-green-400">+{lineChanges.added}</span>
+                  <span className="text-gray-400">/</span>
+                  <span className="text-red-600 dark:text-red-400">-{lineChanges.removed}</span>
+                  <Files className="w-3.5 h-3.5 ml-1.5 text-blue-500 dark:text-blue-400 group-hover:text-blue-600 dark:group-hover:text-blue-300 group-hover:scale-110 transition-all" aria-hidden="true" />
+                </button>
               </div>
             )}
             {todos && todos.length > 0 && (

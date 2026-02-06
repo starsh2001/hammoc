@@ -81,6 +81,10 @@ export function sortMessagesByParentUuid(messages: RawJSONLMessage[]): RawJSONLM
     queue.push(...children);
   }
 
+  // Final sort by timestamp to handle session resume scenarios
+  // where multiple root trees exist and BFS order doesn't reflect chronological order
+  sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
   return sorted;
 }
 
