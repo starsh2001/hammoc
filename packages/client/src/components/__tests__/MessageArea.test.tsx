@@ -1,12 +1,24 @@
 /**
  * MessageArea Component Tests
- * [Source: Story 4.1 - Task 8, Story 4.5 - Task 15]
+ * [Source: Story 4.1 - Task 8, Story 4.5 - Task 15, Story 4.8 - Task 4]
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MessageArea } from '../MessageArea';
-import type { StreamingMessageState } from '../../stores/chatStore';
+import type { StreamingSegment } from '../../stores/chatStore';
+
+// Mock PermissionCard and DiffViewer for Edit/Write delegation tests
+vi.mock('../PermissionCard', () => ({
+  PermissionCard: vi.fn(({ toolName }: { toolName: string }) => (
+    <div data-testid="mock-permission-card">{toolName}</div>
+  )),
+}));
+
+vi.mock('../DiffViewer', () => ({
+  DiffViewer: vi.fn(() => <div data-testid="mock-diff-viewer" />),
+  default: vi.fn(),
+}));
 
 describe('MessageArea', () => {
   beforeEach(() => {
@@ -82,8 +94,6 @@ describe('MessageArea', () => {
 
   describe('scroll behavior', () => {
     it('should render scroll to bottom button when user scrolled up', () => {
-      // Note: Testing scroll behavior requires mocking scroll events
-      // This test verifies the button rendering logic
       const { container } = render(
         <MessageArea>
           <div style={{ height: '2000px' }}>Long content</div>
@@ -95,11 +105,8 @@ describe('MessageArea', () => {
     });
 
     it('should have aria-label on scroll button', () => {
-      // This tests the button's accessibility when it appears
       render(<MessageArea>Content</MessageArea>);
 
-      // The button only appears when user scrolls up
-      // We verify the structure is correct
       expect(screen.getByTestId('message-area')).toBeInTheDocument();
     });
   });
@@ -128,17 +135,21 @@ describe('MessageArea', () => {
     });
   });
 
-  describe('streaming message (Story 4.5)', () => {
-    const mockStreamingMessage: StreamingMessageState = {
-      sessionId: 'session-123',
-      messageId: 'msg-456',
+  describe('streaming segments (Story 4.8)', () => {
+    const mockTextSegment: StreamingSegment = {
+      type: 'text',
       content: 'Hello from Claude...',
-      startedAt: new Date(),
     };
 
-    it('should render streaming message when provided', () => {
+    const mockToolSegment: StreamingSegment = {
+      type: 'tool',
+      toolCall: { id: 'tool-1', name: 'Read' },
+      status: 'pending',
+    };
+
+    it('should render text segment when provided', () => {
       render(
-        <MessageArea streamingMessage={mockStreamingMessage}>
+        <MessageArea streamingSegments={[mockTextSegment]}>
           <div>Existing message</div>
         </MessageArea>
       );
@@ -147,9 +158,9 @@ describe('MessageArea', () => {
       expect(screen.getByText('Existing message')).toBeInTheDocument();
     });
 
-    it('should render streaming message after history messages', () => {
+    it('should render streaming text after history messages', () => {
       const { container } = render(
-        <MessageArea streamingMessage={mockStreamingMessage}>
+        <MessageArea streamingSegments={[mockTextSegment]}>
           <div data-testid="history-message">History</div>
         </MessageArea>
       );
@@ -163,11 +174,11 @@ describe('MessageArea', () => {
       );
     });
 
-    it('should not show empty state when streaming even if no children', () => {
+    it('should not show empty state when streaming segments exist', () => {
       render(
         <MessageArea
           emptyState={<div>No messages</div>}
-          streamingMessage={mockStreamingMessage}
+          streamingSegments={[mockTextSegment]}
         >
           {null}
         </MessageArea>
@@ -177,38 +188,129 @@ describe('MessageArea', () => {
       expect(screen.getByText('Hello from Claude...')).toBeInTheDocument();
     });
 
-    it('should show streaming indicator within streaming message', () => {
+    it('should render tool segment with pending spinner', () => {
       render(
-        <MessageArea streamingMessage={mockStreamingMessage}>
+        <MessageArea streamingSegments={[mockToolSegment]}>
           {null}
         </MessageArea>
       );
 
-      expect(screen.getByLabelText('Claude가 응답을 생성하고 있습니다')).toBeInTheDocument();
+      expect(screen.getByText('Read')).toBeInTheDocument();
+      expect(screen.getByLabelText('도구 실행 중: Read')).toBeInTheDocument();
     });
 
-    it('should not render streaming message when null', () => {
+    it('should render completed tool segment with check icon', () => {
+      const completedTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Grep', output: 'done' },
+        status: 'completed',
+      };
+
       render(
-        <MessageArea streamingMessage={null}>
+        <MessageArea streamingSegments={[completedTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByLabelText('도구 완료: Grep')).toBeInTheDocument();
+    });
+
+    it('should render error tool segment with error message', () => {
+      const errorTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Bash', output: 'command not found' },
+        status: 'error',
+      };
+
+      render(
+        <MessageArea streamingSegments={[errorTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByLabelText('도구 실패: Bash')).toBeInTheDocument();
+      expect(screen.getByText('Tool 실행 실패: command not found')).toBeInTheDocument();
+    });
+
+    it('should render segments in order: text → tool → text', () => {
+      const segments: StreamingSegment[] = [
+        { type: 'text', content: 'Before tool' },
+        { type: 'tool', toolCall: { id: 'tool-1', name: 'Read' }, status: 'completed' },
+        { type: 'text', content: 'After tool' },
+      ];
+
+      render(
+        <MessageArea streamingSegments={segments}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByText('Before tool')).toBeInTheDocument();
+      expect(screen.getByText('Read')).toBeInTheDocument();
+      expect(screen.getByText('After tool')).toBeInTheDocument();
+    });
+
+    it('should render no streaming content when segments is empty', () => {
+      render(
+        <MessageArea streamingSegments={[]}>
           <div>Only history</div>
         </MessageArea>
       );
 
       expect(screen.getByText('Only history')).toBeInTheDocument();
-      expect(screen.queryByLabelText('Claude 응답 중')).not.toBeInTheDocument();
     });
 
-    it('should wrap streaming message in error boundary', () => {
-      // StreamingErrorBoundary should be wrapping the StreamingMessage
-      // This test verifies the structure exists
+    it('should render streaming message in error boundary', () => {
       const { container } = render(
-        <MessageArea streamingMessage={mockStreamingMessage}>
+        <MessageArea streamingSegments={[mockTextSegment]}>
           {null}
         </MessageArea>
       );
 
-      // The StreamingMessage should be rendered
       expect(container.querySelector('[aria-label="Claude 응답 중"]')).toBeInTheDocument();
+    });
+
+    // Story 6.5 - PermissionCard delegation tests
+    it('renders PermissionCard for Edit tool streaming segment', () => {
+      const editSegment: StreamingSegment = {
+        type: 'tool',
+        toolCall: {
+          id: 'tool-edit-1',
+          name: 'Edit',
+          input: { file_path: '/src/app.ts', old_string: 'old', new_string: 'new' },
+        },
+        status: 'pending',
+      };
+
+      render(
+        <MessageArea streamingSegments={[editSegment]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
+      expect(screen.getByText('Edit')).toBeInTheDocument();
+    });
+
+    it('renders PermissionCard for Write tool streaming segment', () => {
+      const writeSegment: StreamingSegment = {
+        type: 'tool',
+        toolCall: {
+          id: 'tool-write-1',
+          name: 'Write',
+          input: { file_path: '/src/new.ts', content: 'new content' },
+        },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[writeSegment]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
+      expect(screen.getByText('Write')).toBeInTheDocument();
     });
   });
 });

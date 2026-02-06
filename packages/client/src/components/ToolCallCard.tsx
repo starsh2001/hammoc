@@ -6,6 +6,7 @@
 import type { HistoryMessage } from '@bmad-studio/shared';
 import { CheckCircle, XCircle, Wrench } from 'lucide-react';
 import { ToolPathDisplay } from './ToolPathDisplay';
+import { PermissionCard } from './PermissionCard';
 
 interface ToolCallCardProps {
   message: HistoryMessage;
@@ -56,6 +57,20 @@ export function ToolCallCard({ message }: ToolCallCardProps) {
 
   const toolDisplayName = getToolDisplayName(message.toolName);
   const todos = message.toolName === 'TodoWrite' ? extractTodos(message.toolInput) : null;
+
+  // For tool_use: Edit/Write → PermissionCard delegation
+  if (isToolUse && (message.toolName === 'Edit' || message.toolName === 'Write')) {
+    return (
+      <div className="flex justify-start" role="listitem" aria-label={`도구 완료: ${toolDisplayName}`}>
+        <PermissionCard
+          toolName={message.toolName}
+          toolInput={message.toolInput}
+          summary={message.content}
+          status="completed"
+        />
+      </div>
+    );
+  }
 
   // For tool_use, show compact card matching streaming style
   if (isToolUse) {
