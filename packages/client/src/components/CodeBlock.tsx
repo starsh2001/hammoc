@@ -59,6 +59,7 @@ export const CodeBlock = memo(function CodeBlock({
         const html = highlighter.codeToHtml(code, {
           lang,
           theme: shikiTheme,
+          defaultColor: false, // Disable inline background color
         });
 
         setHighlightedHtml(html);
@@ -133,8 +134,8 @@ export const CodeBlock = memo(function CodeBlock({
   // Fallback rendering for loading or error states
   const renderFallback = () => (
     <pre
-      className={`p-4 overflow-x-auto font-mono text-sm ${
-        isDark ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-900'
+      className={`px-5 py-4 overflow-x-auto font-mono text-sm ${
+        isDark ? 'text-gray-100' : 'text-gray-900'
       }`}
     >
       <code>{code}</code>
@@ -146,16 +147,12 @@ export const CodeBlock = memo(function CodeBlock({
       data-testid="code-block"
       role="region"
       aria-label={`${displayLang} 코드 블록`}
-      className={`relative group rounded-lg overflow-hidden my-4 ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
-      }`}
+      className="relative group my-4 mx-1"
     >
-      {/* Header with language and copy button */}
+      {/* Header with language and copy button - transparent */}
       <div
-        className={`flex items-center justify-between px-4 py-2 text-xs ${
-          isDark
-            ? 'bg-gray-800 text-gray-400 border-b border-gray-700'
-            : 'bg-gray-200 text-gray-600 border-b border-gray-300'
+        className={`flex items-center justify-between px-1 py-1 text-xs ${
+          isDark ? 'text-gray-500' : 'text-gray-400'
         }`}
       >
         <span aria-hidden="false">{displayLang}</span>
@@ -163,7 +160,7 @@ export const CodeBlock = memo(function CodeBlock({
           onClick={handleCopy}
           aria-label={getCopyAriaLabel()}
           title={getCopyAriaLabel()}
-          className={`p-1.5 rounded transition-all duration-200
+          className={`p-1 rounded transition-all duration-200
             opacity-0 group-hover:opacity-100 focus:opacity-100
             md:opacity-0 md:group-hover:opacity-100
             max-md:opacity-100
@@ -173,8 +170,8 @@ export const CodeBlock = memo(function CodeBlock({
                 : copyState === 'copied'
                   ? 'text-green-500'
                   : isDark
-                    ? 'text-gray-400 hover:text-white hover:bg-gray-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                    ? 'text-gray-500 hover:text-gray-300 hover:bg-gray-700'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
             }
           `}
         >
@@ -182,13 +179,17 @@ export const CodeBlock = memo(function CodeBlock({
         </button>
       </div>
 
-      {/* Code content */}
-      <div className="overflow-x-auto">
+      {/* Code content - with background */}
+      <div
+        className={`overflow-x-auto rounded-lg ${
+          isDark ? 'bg-gray-900' : 'bg-slate-100'
+        }`}
+      >
         {isLoading || !highlightedHtml ? (
           renderFallback()
         ) : (
           <div
-            className="shiki-container [&>pre]:p-4 [&>pre]:m-0 [&>pre]:overflow-x-auto [&>pre]:text-sm"
+            className="shiki-container [&>pre]:px-5 [&>pre]:py-4 [&>pre]:m-0 [&>pre]:overflow-x-auto [&>pre]:text-sm [&>pre]:!bg-transparent"
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
         )}

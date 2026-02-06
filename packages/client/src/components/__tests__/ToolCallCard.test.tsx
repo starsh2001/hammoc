@@ -5,19 +5,20 @@
  * The component now:
  * - Shows tool_use with compact card (tool name, checkmark, and path display)
  * - Shows tool_result only for errors (success results are not rendered)
+ * - Edit/Write tools show line changes and Diff button (same card format)
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ToolCallCard } from '../ToolCallCard';
 import type { HistoryMessage } from '@bmad-studio/shared';
 
-// Mock PermissionCard
-vi.mock('../PermissionCard', () => ({
-  PermissionCard: vi.fn(({ toolName, toolInput }: { toolName: string; toolInput?: Record<string, unknown> }) => (
-    <div data-testid="mock-permission-card">
-      <span>{toolName}</span>
-      <span>{typeof toolInput?.file_path === 'string' ? toolInput.file_path : ''}</span>
+// Mock DiffViewer
+vi.mock('../DiffViewer', () => ({
+  DiffViewer: vi.fn(({ filePath, onClose }: { filePath: string; onClose?: () => void }) => (
+    <div data-testid="mock-diff-viewer">
+      <span>DiffViewer: {filePath}</span>
+      <button onClick={onClose}>Close</button>
     </div>
   )),
 }));
@@ -170,8 +171,31 @@ describe('ToolCallCard', () => {
     expect(screen.getByText('Task 3')).toBeInTheDocument();
   });
 
-  // Story 6.5 - PermissionCard delegation tests
-  it('renders PermissionCard for Edit tool_use', () => {
+  // Edit/Write tool tests - collapsible path with Diff button
+  it('renders Edit tool with collapsed filename and line changes', () => {
+    const editMessage: HistoryMessage = {
+      id: 'msg-edit',
+      type: 'tool_use',
+      content: 'Editing file',
+      timestamp: '2026-01-15T10:00:00Z',
+      toolName: 'Edit',
+      toolInput: { file_path: '/src/app.ts', old_string: 'line1\nline2', new_string: 'line1\nline2\nline3' },
+    };
+
+    render(<ToolCallCard message={editMessage} />);
+
+    // Same card format with tool name
+    expect(screen.getByText('Edit')).toBeInTheDocument();
+    // Collapsed: shows filename only
+    expect(screen.getByText('app.ts')).toBeInTheDocument();
+    // Line changes displayed
+    expect(screen.getByText('+3')).toBeInTheDocument();
+    expect(screen.getByText('-2')).toBeInTheDocument();
+    // Diff button hidden until expanded
+    expect(screen.queryByRole('button', { name: 'Diff 보기' })).not.toBeInTheDocument();
+  });
+
+  it('expands to show full path and Diff button', () => {
     const editMessage: HistoryMessage = {
       id: 'msg-edit',
       type: 'tool_use',
@@ -183,30 +207,86 @@ describe('ToolCallCard', () => {
 
     render(<ToolCallCard message={editMessage} />);
 
-    expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
-    expect(screen.getByText('Edit')).toBeInTheDocument();
+    // Click to expand
+    fireEvent.click(screen.getByRole('button', { name: '전체 경로 보기' }));
+
+    // Full path shown
+    expect(screen.getByText('/src/app.ts')).toBeInTheDocument();
+    // Diff button now visible
+    expect(screen.getByRole('button', { name: 'Diff 보기' })).toBeInTheDocument();
   });
 
-  it('renders PermissionCard for Write tool_use', () => {
+  it('renders Write tool with line changes', () => {
     const writeMessage: HistoryMessage = {
       id: 'msg-write',
       type: 'tool_use',
       content: 'Writing file',
       timestamp: '2026-01-15T10:00:00Z',
       toolName: 'Write',
-      toolInput: { file_path: '/src/new.ts', content: 'new content' },
+      toolInput: { file_path: '/src/new.ts', content: 'line1\nline2\nline3' },
     };
 
     render(<ToolCallCard message={writeMessage} />);
 
-    expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
     expect(screen.getByText('Write')).toBeInTheDocument();
+    expect(screen.getByText('new.ts')).toBeInTheDocument();
+    // Write: original is empty, so -0
+    expect(screen.getByText('+3')).toBeInTheDocument();
+    expect(screen.getByText('-0')).toBeInTheDocument();
+  });
+
+  it('opens DiffViewer when Diff button is clicked after expanding', () => {
+    const editMessage: HistoryMessage = {
+      id: 'msg-edit',
+      type: 'tool_use',
+      content: 'Editing file',
+      timestamp: '2026-01-15T10:00:00Z',
+      toolName: 'Edit',
+      toolInput: { file_path: '/src/app.ts', old_string: 'old', new_string: 'new' },
+    };
+
+    render(<ToolCallCard message={editMessage} />);
+
+    // DiffViewer not shown initially
+    expect(screen.queryByTestId('mock-diff-viewer')).not.toBeInTheDocument();
+
+    // Expand first
+    fireEvent.click(screen.getByRole('button', { name: '전체 경로 보기' }));
+
+    // Click Diff button
+    fireEvent.click(screen.getByRole('button', { name: 'Diff 보기' }));
+
+    // DiffViewer shown
+    expect(screen.getByTestId('mock-diff-viewer')).toBeInTheDocument();
+    expect(screen.getByText('DiffViewer: /src/app.ts')).toBeInTheDocument();
+  });
+
+  it('closes DiffViewer when close button is clicked', () => {
+    const editMessage: HistoryMessage = {
+      id: 'msg-edit',
+      type: 'tool_use',
+      content: 'Editing file',
+      timestamp: '2026-01-15T10:00:00Z',
+      toolName: 'Edit',
+      toolInput: { file_path: '/src/app.ts', old_string: 'old', new_string: 'new' },
+    };
+
+    render(<ToolCallCard message={editMessage} />);
+
+    // Expand and open DiffViewer
+    fireEvent.click(screen.getByRole('button', { name: '전체 경로 보기' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Diff 보기' }));
+    expect(screen.getByTestId('mock-diff-viewer')).toBeInTheDocument();
+
+    // Close DiffViewer
+    fireEvent.click(screen.getByText('Close'));
+    expect(screen.queryByTestId('mock-diff-viewer')).not.toBeInTheDocument();
   });
 
   it('renders default card for non-Edit/Write tool_use', () => {
     render(<ToolCallCard message={toolUseMessage} />);
 
-    expect(screen.queryByTestId('mock-permission-card')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Diff 보기' })).not.toBeInTheDocument();
     expect(screen.getByText('Read')).toBeInTheDocument();
   });
 });
