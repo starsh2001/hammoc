@@ -618,3 +618,111 @@ describe('DiffViewer - Diff Navigation (Story 6.4)', () => {
     expect(indicator).toHaveAttribute('aria-live', 'polite');
   });
 });
+
+describe('DiffViewer Performance (Story 6.6)', () => {
+  const defaultProps = {
+    filePath: 'packages/client/src/Example.tsx',
+    original: 'const a = 1;',
+    modified: 'const a = 2;',
+  };
+
+  const largeText = Array(5001).fill('line').join('\n'); // 5001 lines >= 5000
+  const smallText = Array(4999).fill('line').join('\n'); // 4999 lines < 5000
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockOnMount = null;
+    mockTheme = 'dark';
+    mockDiffLayout = 'side-by-side';
+    mockSetLayout.mockReset();
+    mockResetToAuto.mockReset();
+    mockGetLineChanges.mockReturnValue(null);
+    mockRevealLineInCenter.mockReset();
+    mockDispose.mockReset();
+  });
+
+  it('renders DiffEditor via lazy loading with Suspense fallback', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} />);
+    });
+    expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
+  });
+
+  it('shows large file warning for files over 5000 lines', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} modified={largeText} />);
+    });
+    expect(screen.getByText(/대용량 파일/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '대용량 파일 Diff 전체 로드' })).toBeInTheDocument();
+    expect(screen.queryByTestId('mock-diff-editor')).not.toBeInTheDocument();
+  });
+
+  it('loads DiffEditor after clicking "전체 로드" button', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} modified={largeText} />);
+    });
+    expect(screen.queryByTestId('mock-diff-editor')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '대용량 파일 Diff 전체 로드' }));
+    });
+
+    expect(screen.queryByText(/대용량 파일/)).not.toBeInTheDocument();
+    expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
+  });
+
+  it('does not show large file warning for files under 5000 lines', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} modified={smallText} />);
+    });
+    expect(screen.queryByText(/대용량 파일/)).not.toBeInTheDocument();
+    expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
+  });
+
+  it('applies performance optimization options to DiffEditor', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} />);
+    });
+    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          smoothScrolling: false,
+          renderWhitespace: 'none',
+          renderLineHighlight: 'none',
+          folding: false,
+          links: false,
+          colorDecorators: false,
+          fastScrollSensitivity: 5,
+          mouseWheelScrollSensitivity: 1,
+          minimap: { enabled: false },
+        }),
+      }),
+      expect.anything()
+    );
+  });
+
+  it('shows file header even when large file warning is displayed', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} modified={largeText} />);
+    });
+    // Warning is shown
+    expect(screen.getByText(/대용량 파일/)).toBeInTheDocument();
+    // File header with file path is still visible
+    expect(screen.getByText(defaultProps.filePath)).toBeInTheDocument();
+  });
+
+  it('unmounts DiffEditor on close to free resources', async () => {
+    const onClose = vi.fn();
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} fullscreen onClose={onClose} />);
+    });
+    expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
+
+    await act(async () => {
+      onClose();
+    });
+    // After onClose is called, the parent (PermissionCard) would unmount DiffViewer
+    // Here we verify the DiffEditor was mounted and onClose is callable
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});

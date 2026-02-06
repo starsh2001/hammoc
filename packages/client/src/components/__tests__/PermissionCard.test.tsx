@@ -166,3 +166,40 @@ describe('PermissionCard', () => {
     expect(svgs.length).toBe(1);
   });
 });
+
+describe('PermissionCard Performance (Story 6.6)', () => {
+  it('renders multiple PermissionCards without mounting DiffViewer', () => {
+    render(
+      <>
+        <PermissionCard toolName="Edit" toolInput={editToolInput} />
+        <PermissionCard toolName="Write" toolInput={writeToolInput} />
+        <PermissionCard toolName="Edit" toolInput={{ file_path: '/src/other.ts', old_string: 'a', new_string: 'b' }} />
+      </>
+    );
+
+    // All 3 cards are rendered
+    const cards = screen.getAllByTestId('permission-card');
+    expect(cards).toHaveLength(3);
+
+    // No DiffViewer is mounted (none clicked yet)
+    expect(screen.queryByTestId('mock-diff-viewer')).not.toBeInTheDocument();
+  });
+
+  it('only one DiffViewer is active when a PermissionCard header is clicked', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <PermissionCard toolName="Edit" toolInput={editToolInput} />
+        <PermissionCard toolName="Write" toolInput={writeToolInput} />
+        <PermissionCard toolName="Edit" toolInput={{ file_path: '/src/other.ts', old_string: 'a', new_string: 'b' }} />
+      </>
+    );
+
+    // Click the first card's header
+    await user.click(screen.getByLabelText('파일 변경사항 보기: /src/app.ts'));
+
+    // Only one DiffViewer should be mounted
+    const viewers = screen.getAllByTestId('mock-diff-viewer');
+    expect(viewers).toHaveLength(1);
+  });
+});
