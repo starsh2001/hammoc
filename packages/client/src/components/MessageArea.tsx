@@ -13,6 +13,7 @@ import { ToolPathDisplay } from './ToolPathDisplay';
 import { PermissionCard } from './PermissionCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
 import { ToolDetailToggle } from './ToolDetailToggle';
+import { ToolResultRenderer } from './ToolResultRenderer';
 import type { StreamingSegment } from '../stores/chatStore';
 import { isTextSegment, isToolSegment, isInteractiveSegment, useChatStore } from '../stores/chatStore';
 import { getToolIcon, getToolDisplayName, formatDuration } from '../utils/toolUtils';
@@ -339,6 +340,14 @@ export function MessageArea({
                     )}
                   </div>
                 </div>
+                {seg.status === 'completed' && seg.toolCall.output &&
+                  seg.toolCall.name !== 'Edit' && seg.toolCall.name !== 'Write' && seg.toolCall.name !== 'TodoWrite' && (
+                  <ToolResultRenderer
+                    toolName={seg.toolCall.name}
+                    toolInput={seg.toolCall.input}
+                    result={seg.toolCall.output}
+                  />
+                )}
                 {seg.status === 'error' && (
                   <div className="text-xs text-red-500 mt-1 ml-2">
                     Tool 실행 실패: {seg.toolCall.output || '알 수 없는 오류'}

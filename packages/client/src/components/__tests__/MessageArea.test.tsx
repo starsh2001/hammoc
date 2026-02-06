@@ -20,6 +20,13 @@ vi.mock('../DiffViewer', () => ({
   default: vi.fn(),
 }));
 
+// Mock ToolResultRenderer
+vi.mock('../ToolResultRenderer', () => ({
+  ToolResultRenderer: vi.fn(({ toolName, result }: { toolName: string; result?: string }) => (
+    result ? <div data-testid="mock-tool-result-renderer" data-tool={toolName}>{result}</div> : null
+  )),
+}));
+
 describe('MessageArea', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -485,6 +492,127 @@ describe('MessageArea', () => {
       );
 
       expect(screen.getByLabelText('도구 실패: Bash')).toBeInTheDocument();
+    });
+  });
+
+  // Story 7.3 - tool result display in streaming segments
+  describe('tool result display (Story 7.3)', () => {
+    it('renders ToolResultRenderer for completed Read tool with output', () => {
+      const readTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Read', output: 'file content here', input: { file_path: '/src/app.ts' } },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[readTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      const renderer = screen.getByTestId('mock-tool-result-renderer');
+      expect(renderer).toBeInTheDocument();
+      expect(renderer).toHaveAttribute('data-tool', 'Read');
+    });
+
+    it('renders ToolResultRenderer for completed Bash tool with output', () => {
+      const bashTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Bash', output: 'test passed', input: { command: 'npm test' } },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[bashTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByTestId('mock-tool-result-renderer')).toBeInTheDocument();
+    });
+
+    it('does not render ToolResultRenderer for completed Edit tool', () => {
+      const editTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Edit', output: 'edited', input: { file_path: '/src/app.ts', old_string: 'a', new_string: 'b' } },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[editTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      // Edit uses PermissionCard, not ToolResultRenderer
+      expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
+      expect(screen.queryByTestId('mock-tool-result-renderer')).not.toBeInTheDocument();
+    });
+
+    it('does not render ToolResultRenderer for completed Write tool', () => {
+      const writeTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Write', output: 'written', input: { file_path: '/src/new.ts', content: 'code' } },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[writeTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      // Write uses PermissionCard, not ToolResultRenderer
+      expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
+      expect(screen.queryByTestId('mock-tool-result-renderer')).not.toBeInTheDocument();
+    });
+
+    it('does not render ToolResultRenderer for completed TodoWrite tool', () => {
+      const todoTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'TodoWrite', output: 'updated', input: { todos: [{ content: 'task', status: 'pending' }] } },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[todoTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.queryByTestId('mock-tool-result-renderer')).not.toBeInTheDocument();
+    });
+
+    it('does not render ToolResultRenderer for pending tool (not completed)', () => {
+      const pendingTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Read', input: { file_path: '/src/app.ts' } },
+        status: 'pending',
+      };
+
+      render(
+        <MessageArea streamingSegments={[pendingTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.queryByTestId('mock-tool-result-renderer')).not.toBeInTheDocument();
+    });
+
+    it('does not render ToolResultRenderer for completed tool without output', () => {
+      const noOutputTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Read' },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[noOutputTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.queryByTestId('mock-tool-result-renderer')).not.toBeInTheDocument();
     });
   });
 });
