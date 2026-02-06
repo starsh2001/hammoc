@@ -19,6 +19,7 @@ import {
   type ParsedTextBlock,
   type ParsedToolUseBlock,
   type ParsedToolResultBlock,
+  type ParsedThinkingBlock,
   type StreamingState,
   type StreamCallbacks,
   type TrackedToolCall,
@@ -45,6 +46,8 @@ export class StreamHandler {
   private toolIdByIndex: Map<number, string> = new Map();
   /** Whether stream_event text deltas have been received (to avoid duplicate text from assistant messages) */
   private receivedStreamTextDelta: boolean = false;
+  /** Whether stream_event thinking deltas have been received (to avoid duplicate thinking from assistant messages) */
+  private receivedStreamThinkingDelta: boolean = false;
 
   constructor() {
     this.state = createInitialStreamingState();
@@ -66,6 +69,7 @@ export class StreamHandler {
     this.partialJsonByIndex.clear();
     this.toolIdByIndex.clear();
     this.receivedStreamTextDelta = false;
+    this.receivedStreamThinkingDelta = false;
   }
 
   /**
@@ -279,12 +283,18 @@ export class StreamHandler {
     };
 
     let textDelta: string | undefined;
+    let thinkingDelta: string | undefined;
     let toolUse: { id: string; name: string } | undefined;
     let inputJsonDelta: { index: number; partialJson: string } | undefined;
 
     // Extract text delta from content_block_delta events
     if (msg.event?.type === 'content_block_delta' && msg.event.delta?.type === 'text_delta') {
       textDelta = msg.event.delta.text;
+    }
+
+    // Extract thinking delta from content_block_delta events
+    if (msg.event?.type === 'content_block_delta' && msg.event.delta?.type === 'thinking_delta') {
+      thinkingDelta = (msg.event.delta as unknown as { thinking?: string }).thinking;
     }
 
     // Extract tool_use from content_block_start events
@@ -307,6 +317,7 @@ export class StreamHandler {
       type: SDKMessageType.STREAM_EVENT,
       eventType: msg.event?.type ?? 'unknown',
       textDelta,
+      thinkingDelta,
       toolUse,
       inputJsonDelta,
       rawMessage: message,
@@ -343,6 +354,13 @@ export class StreamHandler {
           content: (block.content as string) ?? '',
           isError: (block.is_error as boolean) ?? false,
         } as ParsedToolResultBlock;
+
+      case 'thinking':
+        return {
+          type: ContentBlockType.THINKING,
+          thinking: (block.thinking as string) ?? '',
+          signature: (block.signature as string) ?? '',
+        } as ParsedThinkingBlock;
 
       default:
         // Unknown block type - ignore gracefully
@@ -465,7 +483,12 @@ export class StreamHandler {
     callbacks: StreamCallbacks
   ): void {
     for (const block of message.contentBlocks) {
-      if (block.type === ContentBlockType.TEXT) {
+      if (block.type === ContentBlockType.THINKING) {
+        // Skip if stream_event thinking deltas already handled this (avoids double emission)
+        if (!this.receivedStreamThinkingDelta) {
+          callbacks.onThinking?.(block.thinking);
+        }
+      } else if (block.type === ContentBlockType.TEXT) {
         this.handleTextBlock(block, callbacks);
       } else if (block.type === ContentBlockType.TOOL_USE) {
         this.handleToolUseBlock(block, callbacks);
@@ -567,6 +590,12 @@ export class StreamHandler {
     message: ParsedStreamEventMessage,
     callbacks: StreamCallbacks
   ): void {
+    // Process thinking deltas
+    if (message.thinkingDelta) {
+      this.receivedStreamThinkingDelta = true;
+      callbacks.onThinking?.(message.thinkingDelta);
+    }
+
     // Process text deltas
     if (message.textDelta) {
       this.receivedStreamTextDelta = true;

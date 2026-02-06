@@ -368,6 +368,10 @@ async function handleChatSend(
         });
       },
 
+      onThinking: (content: string) => {
+        socket.emit('thinking:chunk', { content });
+      },
+
       onToolUse: (toolCall: TrackedToolCall) => {
         // Track tool call ID for canUseTool correlation (Story 7.1)
         const queue = toolCallIdQueues.get(socket.id) || [];

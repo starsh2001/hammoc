@@ -27,6 +27,13 @@ vi.mock('../ToolResultRenderer', () => ({
   )),
 }));
 
+// Mock ThinkingBlock
+vi.mock('../ThinkingBlock', () => ({
+  ThinkingBlock: ({ content, defaultExpanded }: { content: string; defaultExpanded?: boolean }) => (
+    <div data-testid="mock-thinking-block" data-expanded={defaultExpanded}>{content}</div>
+  ),
+}));
+
 describe('MessageArea', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -318,6 +325,62 @@ describe('MessageArea', () => {
 
       expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
       expect(screen.getByText('Write')).toBeInTheDocument();
+    });
+  });
+
+  // Story 7.4 - thinking segment display
+  describe('thinking segment display (Story 7.4)', () => {
+    it('renders thinking segment as ThinkingBlock', () => {
+      const thinkingSegment: StreamingSegment = {
+        type: 'thinking',
+        content: 'Let me analyze this problem...',
+      };
+
+      render(
+        <MessageArea streamingSegments={[thinkingSegment]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByTestId('mock-thinking-block')).toBeInTheDocument();
+      expect(screen.getByText('Let me analyze this problem...')).toBeInTheDocument();
+    });
+
+    it('renders thinking segment with defaultExpanded=true during streaming', () => {
+      const thinkingSegment: StreamingSegment = {
+        type: 'thinking',
+        content: 'Thinking...',
+      };
+
+      render(
+        <MessageArea streamingSegments={[thinkingSegment]}>
+          {null}
+        </MessageArea>
+      );
+
+      const thinkingBlock = screen.getByTestId('mock-thinking-block');
+      expect(thinkingBlock).toHaveAttribute('data-expanded', 'true');
+    });
+
+    it('renders thinking and text segments in correct order', () => {
+      const segments: StreamingSegment[] = [
+        { type: 'thinking', content: 'Thinking first...' },
+        { type: 'text', content: 'Then the response' },
+      ];
+
+      render(
+        <MessageArea streamingSegments={segments}>
+          {null}
+        </MessageArea>
+      );
+
+      const thinkingBlock = screen.getByTestId('mock-thinking-block');
+      const textContent = screen.getByText('Then the response');
+
+      // Thinking should appear before text
+      expect(
+        thinkingBlock.compareDocumentPosition(textContent)
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
   });
 

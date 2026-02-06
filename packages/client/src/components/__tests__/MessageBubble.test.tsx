@@ -23,6 +23,13 @@ vi.mock('../MarkdownRenderer', () => ({
   ),
 }));
 
+// Mock ThinkingBlock for controlled testing
+vi.mock('../ThinkingBlock', () => ({
+  ThinkingBlock: ({ content }: { content: string }) => (
+    <div data-testid="thinking-block">{content}</div>
+  ),
+}));
+
 describe('MessageBubble', () => {
   const userMessage: HistoryMessage = {
     id: 'msg-1',
@@ -285,6 +292,55 @@ describe('MessageBubble', () => {
 
       const bubble = screen.getByRole('listitem');
       expect(bubble.getAttribute('aria-label')).toContain('5분 전');
+    });
+  });
+
+  // Story 7.4: Thinking block rendering
+  describe('thinking block (Story 7.4)', () => {
+    it('should render ThinkingBlock when assistant message has thinking field', () => {
+      const messageWithThinking: HistoryMessage = {
+        ...assistantMessage,
+        thinking: 'Let me think about this...',
+      };
+
+      render(<MessageBubble message={messageWithThinking} />);
+
+      expect(screen.getByTestId('thinking-block')).toBeInTheDocument();
+      expect(screen.getByText('Let me think about this...')).toBeInTheDocument();
+    });
+
+    it('should not render ThinkingBlock when assistant message has no thinking field', () => {
+      render(<MessageBubble message={assistantMessage} />);
+
+      expect(screen.queryByTestId('thinking-block')).not.toBeInTheDocument();
+    });
+
+    it('should not render ThinkingBlock for user messages even if thinking field exists', () => {
+      const userWithThinking: HistoryMessage = {
+        ...userMessage,
+        thinking: 'This should not render',
+      };
+
+      render(<MessageBubble message={userWithThinking} />);
+
+      expect(screen.queryByTestId('thinking-block')).not.toBeInTheDocument();
+    });
+
+    it('should render ThinkingBlock before message content', () => {
+      const messageWithThinking: HistoryMessage = {
+        ...assistantMessage,
+        thinking: 'Thinking content',
+      };
+
+      render(<MessageBubble message={messageWithThinking} />);
+
+      const thinkingBlock = screen.getByTestId('thinking-block');
+      const markdownRenderer = screen.getByTestId('markdown-renderer');
+
+      // ThinkingBlock should appear before MarkdownRenderer in DOM
+      expect(
+        thinkingBlock.compareDocumentPosition(markdownRenderer)
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
   });
 

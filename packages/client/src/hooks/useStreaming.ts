@@ -21,6 +21,7 @@ export function useStreaming() {
   const {
     startStreaming,
     appendStreamingContent,
+    addStreamingThinking,
     addStreamingToolCall,
     updateStreamingToolCallInput,
     updateStreamingToolCall,
@@ -60,6 +61,15 @@ export function useStreaming() {
 
   useEffect(() => {
     const socket = getSocket();
+
+    // Handle incoming thinking chunks
+    const handleThinkingChunk = (data: { content: string }) => {
+      const state = useChatStore.getState();
+      if (state.streamingSessionId === null || state.streamingSessionId === 'pending') {
+        startStreaming('pending', 'pending');
+      }
+      addStreamingThinking(data.content);
+    };
 
     // Handle incoming stream chunks
     const handleChunk = (data: StreamChunk) => {
@@ -205,6 +215,7 @@ export function useStreaming() {
 
     // Register socket event listeners
     socket.on('message:chunk', handleChunk);
+    socket.on('thinking:chunk', handleThinkingChunk);
     socket.on('message:complete', handleComplete);
     socket.on('tool:call', handleToolCall);
     socket.on('tool:input-update', handleToolInputUpdate);
@@ -222,6 +233,7 @@ export function useStreaming() {
     // Cleanup
     return () => {
       socket.off('message:chunk', handleChunk);
+      socket.off('thinking:chunk', handleThinkingChunk);
       socket.off('message:complete', handleComplete);
       socket.off('tool:call', handleToolCall);
       socket.off('tool:input-update', handleToolInputUpdate);
@@ -237,6 +249,7 @@ export function useStreaming() {
   }, [
     startStreaming,
     appendStreamingContent,
+    addStreamingThinking,
     addStreamingToolCall,
     updateStreamingToolCallInput,
     updateStreamingToolCall,

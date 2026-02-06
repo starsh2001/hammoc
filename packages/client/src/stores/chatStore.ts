@@ -34,9 +34,10 @@ export interface InteractiveChoice {
 /** Interactive segment status */
 export type InteractiveStatus = 'waiting' | 'sending' | 'responded' | 'error';
 
-/** Streaming segment - discriminated union for text, tool, and interactive segments */
+/** Streaming segment - discriminated union for text, tool, thinking, and interactive segments */
 export type StreamingSegment =
   | { type: 'text'; content: string }
+  | { type: 'thinking'; content: string }
   | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error' }
   | {
       type: 'interactive';
@@ -53,6 +54,11 @@ export type StreamingSegment =
 /** Type guard for text segments */
 export function isTextSegment(seg: StreamingSegment): seg is { type: 'text'; content: string } {
   return seg.type === 'text';
+}
+
+/** Type guard for thinking segments */
+export function isThinkingSegment(seg: StreamingSegment): seg is { type: 'thinking'; content: string } {
+  return seg.type === 'thinking';
 }
 
 /** Type guard for tool segments */
@@ -108,6 +114,8 @@ interface ChatActions {
   startStreaming: (sessionId: string, messageId: string) => void;
   /** Append content to the current streaming text segment */
   appendStreamingContent: (content: string) => void;
+  /** Append content to the current streaming thinking segment */
+  addStreamingThinking: (content: string) => void;
   /** Add a streaming tool call segment */
   addStreamingToolCall: (toolCall: StreamingToolCall) => void;
   /** Update a streaming tool call's input */
@@ -239,6 +247,26 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     } else {
       // Create new text segment (first segment or after tool segment)
       set({ streamingSegments: [...segments, { type: 'text', content }] });
+    }
+  },
+
+  addStreamingThinking: (content: string) => {
+    if (!content) return;
+
+    const segments = get().streamingSegments;
+    const lastSegment = segments[segments.length - 1];
+
+    if (lastSegment?.type === 'thinking') {
+      // Append to existing thinking segment
+      const updated = [...segments];
+      updated[updated.length - 1] = {
+        type: 'thinking',
+        content: lastSegment.content + content,
+      };
+      set({ streamingSegments: updated });
+    } else {
+      // Create new thinking segment
+      set({ streamingSegments: [...segments, { type: 'thinking', content }] });
     }
   },
 

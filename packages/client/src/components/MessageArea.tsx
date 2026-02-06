@@ -14,8 +14,9 @@ import { PermissionCard } from './PermissionCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
 import { ToolDetailToggle } from './ToolDetailToggle';
 import { ToolResultRenderer } from './ToolResultRenderer';
+import { ThinkingBlock } from './ThinkingBlock';
 import type { StreamingSegment } from '../stores/chatStore';
-import { isTextSegment, isToolSegment, isInteractiveSegment, useChatStore } from '../stores/chatStore';
+import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, useChatStore } from '../stores/chatStore';
 import { getToolIcon, getToolDisplayName, formatDuration } from '../utils/toolUtils';
 
 /** Real-time elapsed timer for pending tool calls (streaming only) */
@@ -214,6 +215,16 @@ export function MessageArea({
 
         {/* Streaming segments - rendered in order */}
         {streamingSegments.map((seg, index) => {
+          if (isThinkingSegment(seg)) {
+            return (
+              <div key={`seg-thinking-${index}`} className="flex justify-start">
+                <div className="max-w-[90%] md:max-w-[80%]">
+                  <ThinkingBlock content={seg.content} defaultExpanded={true} />
+                </div>
+              </div>
+            );
+          }
+
           if (isTextSegment(seg)) {
             // A text segment is still being streamed only if it's the last segment
             const isStillStreaming = isLastSegmentIndex(index);

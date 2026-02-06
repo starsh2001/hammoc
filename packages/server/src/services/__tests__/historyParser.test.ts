@@ -380,6 +380,119 @@ invalid json line
     });
   });
 
+  describe('thinking block extraction (Story 7.4)', () => {
+    it('extracts thinking field from assistant message with thinking block', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'Let me think...', signature: 'sig123' },
+              { type: 'text', text: 'Here is my answer.' },
+            ],
+          },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].thinking).toBe('Let me think...');
+      expect(transformed[0].content).toBe('Here is my answer.');
+    });
+
+    it('preserves thinking field when thinking + tool_use coexist', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'I need to read a file.', signature: 'sig456' },
+              { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file_path: '/index.ts' } },
+            ],
+          },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].thinking).toBe('I need to read a file.');
+      expect(transformed[0].type).toBe('tool_use');
+      expect(transformed[0].toolName).toBe('Read');
+    });
+
+    it('preserves thinking-only turn (no text content, only thinking)', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'Deep thinking only...', signature: 'sig789' },
+              { type: 'text', text: '(no content)' },
+            ],
+          },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].thinking).toBe('Deep thinking only...');
+      expect(transformed[0].content).toBe('');
+    });
+
+    it('filters out messages without thinking and without content', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'text', text: '(no content)' },
+            ],
+          },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(0);
+    });
+
+    it('does not set thinking field for assistant messages without thinking block', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'text', text: 'Normal response' },
+            ],
+          },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].thinking).toBeUndefined();
+    });
+  });
+
   describe('parseSessionHistory', () => {
     it('combines parsing, sorting, and transforming', async () => {
       const content = `{"uuid":"msg-2","type":"assistant","parentUuid":"msg-1","message":{"role":"assistant","content":"Hi!"},"timestamp":"2026-01-15T10:00:05Z"}
