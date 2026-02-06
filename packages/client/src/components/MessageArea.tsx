@@ -10,6 +10,7 @@ import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { StreamingIndicator } from './StreamingIndicator';
 import { ToolPathDisplay } from './ToolPathDisplay';
+import { PermissionCard } from './PermissionCard';
 import type { StreamingSegment } from '../stores/chatStore';
 import { isTextSegment, isToolSegment } from '../stores/chatStore';
 
@@ -209,6 +210,19 @@ export function MessageArea({
           }
 
           if (isToolSegment(seg)) {
+            // Edit/Write → PermissionCard delegation
+            if (seg.toolCall.name === 'Edit' || seg.toolCall.name === 'Write') {
+              return (
+                <div key={seg.toolCall.id}>
+                  <PermissionCard
+                    toolName={seg.toolCall.name}
+                    toolInput={seg.toolCall.input}
+                    status={seg.status === 'completed' ? 'completed' : seg.status === 'error' ? 'error' : 'pending'}
+                  />
+                </div>
+              );
+            }
+
             const rawDisplayInfo =
               seg.toolCall.input?.file_path ||
               seg.toolCall.input?.path ||
