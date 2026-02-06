@@ -12,6 +12,7 @@ import cliRoutes from './routes/cli.js';
 import authRoutes from './routes/auth.js';
 import projectsRoutes from './routes/projects.js';
 import sessionsRoutes from './routes/sessions.js';
+import commandsRoutes from './routes/commands.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 
@@ -66,6 +67,9 @@ export async function createApp(): Promise<Express> {
 
   // Sessions routes (Story 3.3) - mounted under /api/projects for nested resource
   app.use('/api/projects', sessionsRoutes);
+
+  // Commands routes (Story 5.1)
+  app.use('/api/projects', commandsRoutes);
 
   return app;
 }

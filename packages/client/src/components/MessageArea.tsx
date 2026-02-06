@@ -11,8 +11,9 @@ import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { StreamingIndicator } from './StreamingIndicator';
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { PermissionCard } from './PermissionCard';
+import { InteractiveResponseCard } from './InteractiveResponseCard';
 import type { StreamingSegment } from '../stores/chatStore';
-import { isTextSegment, isToolSegment } from '../stores/chatStore';
+import { isTextSegment, isToolSegment, isInteractiveSegment, useChatStore } from '../stores/chatStore';
 
 /** Tool display name overrides for streaming segments */
 const TOOL_DISPLAY_NAMES: Record<string, string> = {
@@ -209,8 +210,28 @@ export function MessageArea({
             );
           }
 
+          if (isInteractiveSegment(seg)) {
+            return (
+              <div key={`seg-interactive-${seg.id}`}>
+                <InteractiveResponseCard
+                  type={seg.interactionType}
+                  toolName={seg.toolCall?.name}
+                  toolInput={seg.toolCall?.input}
+                  choices={seg.choices}
+                  multiSelect={seg.multiSelect}
+                  status={seg.status}
+                  response={seg.response}
+                  errorMessage={seg.errorMessage}
+                  onRespond={(approved, value) => {
+                    useChatStore.getState().respondToInteractive(seg.id, { approved, value });
+                  }}
+                />
+              </div>
+            );
+          }
+
           if (isToolSegment(seg)) {
-            // Edit/Write → PermissionCard delegation
+            // Edit/Write → PermissionCard delegation with WebSocket connection (Story 7.1)
             if (seg.toolCall.name === 'Edit' || seg.toolCall.name === 'Write') {
               return (
                 <div key={seg.toolCall.id}>
@@ -218,6 +239,12 @@ export function MessageArea({
                     toolName={seg.toolCall.name}
                     toolInput={seg.toolCall.input}
                     status={seg.status === 'completed' ? 'completed' : seg.status === 'error' ? 'error' : 'pending'}
+                    onApprove={() => {
+                      useChatStore.getState().respondToInteractive(seg.toolCall.id, { approved: true });
+                    }}
+                    onReject={() => {
+                      useChatStore.getState().respondToInteractive(seg.toolCall.id, { approved: false });
+                    }}
                   />
                 </div>
               );

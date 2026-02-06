@@ -7,7 +7,8 @@ export default {
   theme: {
     extend: {
       animation: {
-        fadeIn: 'fadeIn 0.3s ease-out forwards',
+        fadeIn: 'fadeIn 0.15s ease-out forwards',
+        fadeInUp: 'fadeInUp 0.2s ease-out forwards',
         slideUp: 'slideUp 0.3s ease-out forwards',
         'scale-in': 'scale-in 0.2s ease-out forwards',
         'error-pop': 'error-pop 0.3s ease-out forwards',
@@ -16,6 +17,10 @@ export default {
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        fadeInUp: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(10px)' },

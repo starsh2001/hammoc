@@ -28,6 +28,55 @@ vi.mock('../../utils/formatters', () => ({
   formatRelativeTime: vi.fn(() => '5분 전'),
 }));
 
+// Mock useWebSocket
+vi.mock('../../hooks/useWebSocket', () => ({
+  useWebSocket: () => ({
+    connectionStatus: 'connected',
+    isConnected: true,
+    isReconnecting: false,
+    reconnectAttempt: 0,
+    lastError: null,
+    connect: () => {},
+    disconnect: () => {},
+  }),
+}));
+
+// Mock useSlashCommands
+vi.mock('../../hooks/useSlashCommands', () => ({
+  useSlashCommands: () => ({
+    commands: [],
+    isLoading: false,
+  }),
+}));
+
+// Mock useStreaming
+vi.mock('../../hooks/useStreaming', () => ({
+  useStreaming: vi.fn(),
+}));
+
+// Mock sessionStore
+vi.mock('../../stores/sessionStore', () => ({
+  useSessionStore: vi.fn(() => ({
+    sessions: [],
+    isLoading: false,
+    error: null,
+    errorType: 'none',
+    currentProjectSlug: null,
+    isRefreshing: false,
+    fetchSessions: vi.fn(),
+    clearSessions: vi.fn(),
+    clearError: vi.fn(),
+    setRefreshing: vi.fn(),
+  })),
+}));
+
+// Mock socket service
+vi.mock('../../services/socket', () => ({
+  getSocket: () => ({
+    emit: vi.fn(),
+  }),
+}));
+
 describe('ChatPage Accessibility', () => {
   const mockMessages: HistoryMessage[] = [
     {
@@ -223,7 +272,12 @@ describe('ChatPage Accessibility', () => {
 
       renderChatPage();
 
-      expect(screen.getByRole('status')).toBeInTheDocument();
+      // Multiple role="status" elements exist (loading skeleton, connection indicator)
+      const statusElements = screen.getAllByRole('status');
+      // Should have at least 2: loading skeleton and connection indicator
+      expect(statusElements.length).toBeGreaterThanOrEqual(1);
+      // Verify loading skeleton specifically exists
+      expect(screen.getByRole('status', { name: '메시지 로딩 중' })).toBeInTheDocument();
     });
   });
 

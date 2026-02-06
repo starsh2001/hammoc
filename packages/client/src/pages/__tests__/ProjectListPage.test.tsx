@@ -211,7 +211,13 @@ describe('ProjectListPage', () => {
 
       renderPage();
 
-      expect(screen.getByText('BMad')).toBeInTheDocument();
+      // There are two "BMad" texts: brand logo and badge. Look for the badge specifically.
+      const bmadElements = screen.getAllByText('BMad');
+      // Brand logo + 1 badge (only first mockProject has isBmadProject: true)
+      expect(bmadElements.length).toBeGreaterThanOrEqual(2);
+      // The badge has specific badge styling
+      const badge = bmadElements.find(el => el.classList.contains('bg-blue-100'));
+      expect(badge).toBeInTheDocument();
     });
   });
 

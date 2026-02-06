@@ -17,8 +17,10 @@ import type {
   ToolResult,
   PermissionMode,
   ImageAttachment,
+  PermissionRequest,
 } from '@bmad-studio/shared';
 import { ERROR_CODES, IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
+import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-code';
 import { ChatService } from '../services/chatService.js';
 import { SessionService } from '../services/sessionService.js';
 import { parseSDKError, AbortedError } from '../utils/errors.js';
@@ -35,6 +37,22 @@ let connectedClients = 0;
 
 // Module-level map: socket.id → active AbortController
 const activeAbortControllers = new Map<string, AbortController>();
+
+// Permission response resolver: requestId → resolve callback
+interface PendingPermission {
+  resolve: (result: { approved: boolean; response?: string | string[] }) => void;
+  interactionType: 'permission' | 'question';
+}
+const pendingPermissions = new Map<string, PendingPermission>();
+
+// Track which permission request IDs belong to which socket (for disconnect cleanup)
+const socketPendingIds = new Map<string, Set<string>>();
+
+// Track tool call IDs from stream for correlation with canUseTool
+// Queue per socket: socket.id → tool call id queue
+const toolCallIdQueues = new Map<string, string[]>();
+
+let permissionRequestCounter = 0;
 
 /**
  * Initialize Socket.io server with the HTTP server
@@ -87,6 +105,15 @@ export async function initializeWebSocket(
       }
     });
 
+    // Handle permission:respond event — user permission decision (Story 7.1)
+    socket.on('permission:respond', (data) => {
+      const pending = pendingPermissions.get(data.requestId);
+      if (pending) {
+        pending.resolve({ approved: data.approved, response: data.response });
+        pendingPermissions.delete(data.requestId);
+      }
+    });
+
     // Handle chat:abort event — user-initiated abort
     socket.on('chat:abort', () => {
       const controller = activeAbortControllers.get(socket.id);
@@ -106,6 +133,20 @@ export async function initializeWebSocket(
       if (controller) {
         controller.abort('disconnect');
         activeAbortControllers.delete(socket.id);
+      }
+      // Clean up tool call ID queue
+      toolCallIdQueues.delete(socket.id);
+      // Clean up pending permissions for this socket (MEM-001)
+      const pendingIds = socketPendingIds.get(socket.id);
+      if (pendingIds) {
+        for (const reqId of pendingIds) {
+          const pending = pendingPermissions.get(reqId);
+          if (pending) {
+            pending.resolve({ approved: false });
+            pendingPermissions.delete(reqId);
+          }
+        }
+        socketPendingIds.delete(socket.id);
       }
       connectedClients--;
       console.log(`Client disconnected. Total: ${connectedClients}`);
@@ -213,6 +254,13 @@ async function handleChatSend(
   const sessionService = new SessionService();
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  // Store the actual sessionId when onSessionInit is called (for new sessions)
+  let actualSessionId: string | undefined = sessionId;
+
+  // Initialize tool call ID queue for this socket
+  if (!toolCallIdQueues.has(socket.id)) {
+    toolCallIdQueues.set(socket.id, []);
+  }
 
   try {
     const chatService = new ChatService({ workingDirectory, permissionMode });
@@ -224,6 +272,71 @@ async function handleChatSend(
       images,
     };
 
+    // Create canUseTool callback for permission handling (Story 7.1)
+    const canUseTool: CanUseTool = async (toolName, input): Promise<PermissionResult> => {
+      const isAskUserQuestion = toolName === 'AskUserQuestion';
+
+      // For AskUserQuestion: use the tool call ID from the stream (already sent as tool:call)
+      // For other tools: generate a new request ID and emit permission:request
+      let requestId: string;
+
+      if (isAskUserQuestion) {
+        const queue = toolCallIdQueues.get(socket.id) || [];
+        const streamId = queue.shift();
+        if (streamId) {
+          requestId = streamId;
+        } else {
+          requestId = `ask-${++permissionRequestCounter}`;
+          console.warn(`[permission] AskUserQuestion ID fallback: no stream tool call ID in queue for socket ${socket.id}, using generated ID ${requestId}`);
+        }
+      } else {
+        requestId = `perm-${++permissionRequestCounter}`;
+        const queue = toolCallIdQueues.get(socket.id) || [];
+        const streamToolCallId = queue.shift();
+        if (streamToolCallId) {
+          requestId = streamToolCallId;
+        } else {
+          console.warn(`[permission] Tool ${toolName} ID fallback: no stream tool call ID in queue for socket ${socket.id}, using generated ID ${requestId}`);
+        }
+        // Emit permission:request to client
+        socket.emit('permission:request', {
+          id: requestId,
+          sessionId: actualSessionId || '',
+          toolCall: { id: requestId, name: toolName, input },
+          requiresApproval: true,
+        } as PermissionRequest);
+      }
+
+      // Wait for user response
+      const userResponse = await new Promise<{ approved: boolean; response?: string | string[] }>((resolve) => {
+        pendingPermissions.set(requestId, {
+          resolve,
+          interactionType: isAskUserQuestion ? 'question' : 'permission',
+        });
+        // Track this permission request for disconnect cleanup
+        if (!socketPendingIds.has(socket.id)) {
+          socketPendingIds.set(socket.id, new Set());
+        }
+        socketPendingIds.get(socket.id)!.add(requestId);
+      });
+      // Remove from tracking after resolution
+      socketPendingIds.get(socket.id)?.delete(requestId);
+
+      if (isAskUserQuestion) {
+        // For AskUserQuestion: always allow, pass user's answer via updatedInput
+        return {
+          behavior: 'allow',
+          updatedInput: { ...input, answers: userResponse.response },
+        };
+      }
+
+      if (userResponse.approved) {
+        return { behavior: 'allow', updatedInput: input };
+      } else {
+        return { behavior: 'deny', message: 'User denied permission', interrupt: true };
+      }
+    };
+
     // Set timeout for chat response
     timeoutId = setTimeout(() => {
       abortController.abort();
@@ -232,6 +345,8 @@ async function handleChatSend(
     await chatService.sendMessageWithCallbacks(content, {
       onSessionInit: async (sid) => {
         console.log(`Session initialized: ${sid}`);
+        // Store the actual sessionId for use in onTextChunk and onComplete
+        actualSessionId = sid;
 
         // Save session ID for future use
         await sessionService.saveSessionId(workingDirectory, sid);
@@ -246,7 +361,7 @@ async function handleChatSend(
 
       onTextChunk: (chunk) => {
         socket.emit('message:chunk', {
-          sessionId: sessionId || chunk.sessionId,
+          sessionId: actualSessionId || chunk.sessionId,
           messageId: chunk.messageId,
           content: chunk.content,
           done: chunk.done,
@@ -254,6 +369,11 @@ async function handleChatSend(
       },
 
       onToolUse: (toolCall: TrackedToolCall) => {
+        // Track tool call ID for canUseTool correlation (Story 7.1)
+        const queue = toolCallIdQueues.get(socket.id) || [];
+        queue.push(toolCall.id);
+        toolCallIdQueues.set(socket.id, queue);
+
         socket.emit('tool:call', {
           id: toolCall.id,
           name: toolCall.name,
@@ -278,7 +398,7 @@ async function handleChatSend(
       onComplete: (response) => {
         socket.emit('message:complete', {
           id: response.id,
-          sessionId: sessionId || response.sessionId,
+          sessionId: actualSessionId || response.sessionId,
           role: 'assistant',
           content: response.content,
           timestamp: new Date(),
@@ -307,7 +427,7 @@ async function handleChatSend(
           message: sdkError.message,
         });
       },
-    }, chatOptions);
+    }, chatOptions, canUseTool);
   } catch (error) {
     const sdkError = parseSDKError(error);
 

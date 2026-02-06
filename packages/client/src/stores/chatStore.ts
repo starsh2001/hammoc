@@ -22,10 +22,31 @@ export interface StreamingToolCall {
   output?: string;
 }
 
-/** Streaming segment - discriminated union for text and tool segments */
+/** Interactive choice option */
+export interface InteractiveChoice {
+  label: string;
+  description?: string;
+  value: string;
+}
+
+/** Interactive segment status */
+export type InteractiveStatus = 'waiting' | 'sending' | 'responded' | 'error';
+
+/** Streaming segment - discriminated union for text, tool, and interactive segments */
 export type StreamingSegment =
   | { type: 'text'; content: string }
-  | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error' };
+  | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error' }
+  | {
+      type: 'interactive';
+      id: string;
+      interactionType: 'permission' | 'question';
+      toolCall?: StreamingToolCall;
+      choices: InteractiveChoice[];
+      multiSelect?: boolean;
+      status: InteractiveStatus;
+      response?: string | string[];
+      errorMessage?: string;
+    };
 
 /** Type guard for text segments */
 export function isTextSegment(seg: StreamingSegment): seg is { type: 'text'; content: string } {
@@ -37,6 +58,13 @@ export function isToolSegment(
   seg: StreamingSegment
 ): seg is { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error' } {
   return seg.type === 'tool';
+}
+
+/** Type guard for interactive segments */
+export function isInteractiveSegment(
+  seg: StreamingSegment
+): seg is StreamingSegment & { type: 'interactive' } {
+  return seg.type === 'interactive';
 }
 
 interface ChatState {
@@ -100,6 +128,19 @@ interface ChatActions {
   clearCompletedSessionId: () => void;
   /** Update streaming sessionId without resetting segments (for late sessionId arrival) */
   updateStreamingSessionId: (sessionId: string) => void;
+  /** Add an interactive segment (permission request or AskUserQuestion) */
+  addInteractiveSegment: (segment: {
+    id: string;
+    interactionType: 'permission' | 'question';
+    toolCall?: StreamingToolCall;
+    choices: InteractiveChoice[];
+    multiSelect?: boolean;
+  }) => void;
+  /** Respond to an interactive segment (update status + emit via WebSocket) */
+  respondToInteractive: (
+    segmentId: string,
+    response: { approved: boolean; value?: string | string[] }
+  ) => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -317,4 +358,78 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   clearCompletedSessionId: () => set({ completedSessionId: null }),
 
   updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),
+
+  addInteractiveSegment: (segment) => {
+    const segments = get().streamingSegments;
+    // Avoid duplicates by ID
+    if (segments.some((seg) => seg.type === 'interactive' && seg.id === segment.id)) return;
+    set({
+      streamingSegments: [
+        ...segments,
+        {
+          type: 'interactive',
+          id: segment.id,
+          interactionType: segment.interactionType,
+          toolCall: segment.toolCall,
+          choices: segment.choices,
+          multiSelect: segment.multiSelect,
+          status: 'waiting',
+        },
+      ],
+    });
+  },
+
+  respondToInteractive: (segmentId, response) => {
+    const socket = getSocket();
+    const segments = get().streamingSegments;
+
+    // Find the interactive segment
+    const segIndex = segments.findIndex(
+      (seg) => seg.type === 'interactive' && seg.id === segmentId
+    );
+    if (segIndex === -1) return;
+
+    const seg = segments[segIndex];
+    if (seg.type !== 'interactive') return;
+
+    // Set to 'sending' state
+    const updated = [...segments];
+    updated[segIndex] = { ...seg, status: 'sending' as InteractiveStatus };
+    set({ streamingSegments: updated });
+
+    // Check WebSocket connection
+    if (!socket.connected) {
+      const errorSegments = [...get().streamingSegments];
+      const errorSeg = errorSegments[segIndex];
+      if (errorSeg?.type === 'interactive') {
+        errorSegments[segIndex] = {
+          ...errorSeg,
+          status: 'error' as InteractiveStatus,
+          errorMessage: '연결이 끊어졌습니다. 재연결 후 다시 시도하세요',
+        };
+        set({ streamingSegments: errorSegments });
+      }
+      return;
+    }
+
+    // Emit permission:respond
+    socket.emit('permission:respond', {
+      requestId: segmentId,
+      approved: response.approved,
+      interactionType: seg.interactionType,
+      response: response.value,
+    });
+
+    // Set to 'responded' state
+    const respondedSegments = [...get().streamingSegments];
+    const respondedSeg = respondedSegments[segIndex];
+    if (respondedSeg?.type === 'interactive') {
+      respondedSegments[segIndex] = {
+        ...respondedSeg,
+        status: 'responded' as InteractiveStatus,
+        response: response.value ?? (response.approved ? '승인됨' : '거절됨'),
+      };
+      set({ streamingSegments: respondedSegments });
+    }
+  },
 }));

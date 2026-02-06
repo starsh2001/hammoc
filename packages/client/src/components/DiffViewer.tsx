@@ -401,8 +401,8 @@ export function DiffViewer({
 
         {/* Monaco DiffEditor Container */}
         <div className="flex-1 relative" tabIndex={-1}>
-          {/* Loading Spinner (diff calculation) */}
-          {state.isLoading && (
+          {/* Loading Spinner (diff calculation) - hide when large file warning is shown */}
+          {state.isLoading && (!isLargeFile || state.largeFileAccepted) && (
             <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900 z-10">
               <Loader2 className="w-8 h-8 animate-spin text-gray-400" aria-hidden="true" />
               <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">

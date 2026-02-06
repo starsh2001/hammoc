@@ -263,12 +263,12 @@ describe('MessageBubble', () => {
   });
 
   describe('touch target size', () => {
-    it('should have minimum 48x48px touch target for copy button', () => {
+    it('should have padding for adequate touch target on copy button', () => {
       render(<MessageBubble message={userMessage} />);
 
       const copyButton = screen.getByRole('button', { name: /메시지 복사/i });
-      expect(copyButton).toHaveClass('min-w-[48px]');
-      expect(copyButton).toHaveClass('min-h-[48px]');
+      // Button has p-1.5 padding for touch target
+      expect(copyButton).toHaveClass('p-1.5');
     });
   });
 

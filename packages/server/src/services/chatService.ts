@@ -1,4 +1,4 @@
-import { query, type Query, type Options, type SDKMessage } from '@anthropic-ai/claude-code';
+import { query, type Query, type Options, type SDKMessage, type CanUseTool } from '@anthropic-ai/claude-code';
 import type {
   ChatServiceConfig,
   ChatOptions,
@@ -89,7 +89,8 @@ export class ChatService {
    */
   async *sendMessage(
     content: string,
-    options: ChatOptions = {}
+    options: ChatOptions = {},
+    canUseTool?: CanUseTool
   ): AsyncGenerator<SDKMessage, ChatResponse, void> {
     const queryOptions: Options = {
       cwd: this.workingDirectory,
@@ -101,6 +102,7 @@ export class ChatService {
       model: options.model,
       resume: options.resume,
       includePartialMessages: true, // Enable real-time streaming
+      canUseTool,
     };
 
     // Remove undefined values
@@ -230,10 +232,11 @@ export class ChatService {
   async sendMessageWithCallbacks(
     content: string,
     callbacks: StreamCallbacks,
-    options: ChatOptions = {}
+    options: ChatOptions = {},
+    canUseTool?: CanUseTool
   ): Promise<ChatResponse> {
     const streamHandler = new StreamHandler();
-    const generator = this.sendMessage(content, options);
+    const generator = this.sendMessage(content, options, canUseTool);
 
     // Create a wrapper generator that yields SDKMessage without expecting a return
     async function* wrapGenerator(): AsyncGenerator<SDKMessage, void, unknown> {

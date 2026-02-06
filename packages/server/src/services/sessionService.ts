@@ -189,36 +189,103 @@ export class SessionService {
    * List sessions for API response (by projectSlug)
    * - Sorted by modified descending (AC 3)
    * - firstPrompt truncated to 100 chars (AC 4)
+   * - Also scans for .jsonl files not yet in sessions-index.json
    */
   async listSessionsBySlug(projectSlug: string): Promise<SessionListItem[] | null> {
     const projectDir = path.join(this.claudeProjectsDir, projectSlug);
     const indexPath = path.join(projectDir, 'sessions-index.json');
 
+    // Check if project directory exists
+    if (!existsSync(projectDir)) {
+      return null;
+    }
+
+    // Build session map from index file (if exists)
+    const sessionMap = new Map<string, SessionListItem>();
+
     try {
       const content = await fs.readFile(indexPath, 'utf-8');
       const index: SessionsIndex = JSON.parse(content);
 
-      if (!index.entries || !Array.isArray(index.entries)) {
-        return [];
+      if (index.entries && Array.isArray(index.entries)) {
+        for (const entry of index.entries) {
+          sessionMap.set(entry.sessionId, {
+            sessionId: entry.sessionId,
+            firstPrompt: this.truncateFirstPrompt(entry.firstPrompt),
+            messageCount: entry.messageCount,
+            created: entry.created,
+            modified: entry.modified,
+          });
+        }
       }
-
-      // Sort by modified descending (AC 3)
-      const sorted = [...index.entries].sort(
-        (a, b) => this.parseDate(b.modified) - this.parseDate(a.modified)
-      );
-
-      // Map to API response format with truncated firstPrompt (AC 4)
-      return sorted.map((entry) => ({
-        sessionId: entry.sessionId,
-        firstPrompt: this.truncateFirstPrompt(entry.firstPrompt),
-        messageCount: entry.messageCount,
-        created: entry.created,
-        modified: entry.modified,
-      }));
     } catch {
-      // Project not found or file read error
-      return null;
+      // Index file doesn't exist or is invalid - continue with file scan
     }
+
+    // Scan for .jsonl files not in index (SDK may not have updated index yet)
+    try {
+      const files = await fs.readdir(projectDir);
+      const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
+
+      for (const file of jsonlFiles) {
+        const sessionId = file.replace('.jsonl', '');
+        if (!sessionMap.has(sessionId)) {
+          // Session file exists but not in index - add it
+          const filePath = path.join(projectDir, file);
+          const stat = await fs.stat(filePath);
+
+          // Try to extract first prompt and add session
+          try {
+            const rawMessages = await parseJSONLFile(filePath);
+            // JSONL format: type is 'user', content is in message.content
+            const userMessage = rawMessages.find(m => m.type === 'user');
+            if (userMessage) {
+              const content = userMessage.message?.content;
+              let firstPrompt: string | null = null;
+
+              if (typeof content === 'string') {
+                firstPrompt = this.truncateFirstPrompt(content);
+              } else if (Array.isArray(content)) {
+                const textBlock = content.find((b: { type: string }) => b.type === 'text');
+                if (textBlock && 'text' in textBlock) {
+                  firstPrompt = this.truncateFirstPrompt(textBlock.text as string);
+                }
+              }
+
+              // Only add session if it has a valid first prompt
+              if (firstPrompt) {
+                const messageCount = rawMessages.filter(
+                  m => m.type === 'user' || m.type === 'assistant'
+                ).length;
+
+                sessionMap.set(sessionId, {
+                  sessionId,
+                  firstPrompt,
+                  messageCount,
+                  created: stat.birthtime.toISOString(),
+                  modified: stat.mtime.toISOString(),
+                });
+              }
+            }
+          } catch {
+            // Failed to parse file - skip this session
+          }
+        }
+      }
+    } catch {
+      // Failed to read directory - return what we have from index
+    }
+
+    if (sessionMap.size === 0) {
+      return [];
+    }
+
+    // Sort by modified descending (AC 3)
+    const sorted = [...sessionMap.values()].sort(
+      (a, b) => this.parseDate(b.modified) - this.parseDate(a.modified)
+    );
+
+    return sorted;
   }
 
   // Story 3.5: Session History Loading methods

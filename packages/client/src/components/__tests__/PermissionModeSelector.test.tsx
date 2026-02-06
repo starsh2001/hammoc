@@ -1,10 +1,13 @@
 /**
  * PermissionModeSelector Tests
  * [Source: Story 5.2 - Task 3]
+ *
+ * The component is a single toggle button that cycles through modes:
+ * plan → default → acceptEdits → bypassPermissions → plan...
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PermissionModeSelector } from '../PermissionModeSelector';
 
@@ -14,47 +17,69 @@ describe('PermissionModeSelector', () => {
     onModeChange: vi.fn(),
   };
 
-  it('renders all three mode buttons (Plan, Ask, Auto)', () => {
+  it('renders a button with current mode label', () => {
     render(<PermissionModeSelector {...defaultProps} />);
 
-    expect(screen.getByText('Plan')).toBeInTheDocument();
-    expect(screen.getByText('Ask')).toBeInTheDocument();
-    expect(screen.getByText('Auto')).toBeInTheDocument();
+    const button = screen.getByRole('button');
+    expect(button).toBeInTheDocument();
+    expect(button).toHaveTextContent('Ask'); // 'default' mode shows 'Ask'
   });
 
-  it('highlights the currently selected mode', () => {
-    render(<PermissionModeSelector {...defaultProps} mode="default" />);
+  it('displays correct label for each mode', () => {
+    const { rerender } = render(<PermissionModeSelector {...defaultProps} mode="plan" />);
+    expect(screen.getByRole('button')).toHaveTextContent('Plan');
 
-    const askButton = screen.getByText('Ask');
-    expect(askButton).toHaveAttribute('aria-checked', 'true');
+    rerender(<PermissionModeSelector {...defaultProps} mode="default" />);
+    expect(screen.getByRole('button')).toHaveTextContent('Ask');
 
-    const planButton = screen.getByText('Plan');
-    expect(planButton).toHaveAttribute('aria-checked', 'false');
+    rerender(<PermissionModeSelector {...defaultProps} mode="acceptEdits" />);
+    expect(screen.getByRole('button')).toHaveTextContent('Auto');
 
-    const autoButton = screen.getByText('Auto');
-    expect(autoButton).toHaveAttribute('aria-checked', 'false');
+    rerender(<PermissionModeSelector {...defaultProps} mode="bypassPermissions" />);
+    expect(screen.getByRole('button')).toHaveTextContent('Bypass');
   });
 
-  it('calls onModeChange with correct SDK value when clicking a mode', async () => {
+  it('cycles to next mode when clicked', async () => {
     const onModeChange = vi.fn();
     const user = userEvent.setup();
 
+    // Start at 'default' (Ask), next should be 'acceptEdits' (Auto)
     render(<PermissionModeSelector mode="default" onModeChange={onModeChange} />);
 
-    await user.click(screen.getByText('Plan'));
-    expect(onModeChange).toHaveBeenCalledWith('plan');
-
-    await user.click(screen.getByText('Auto'));
+    await user.click(screen.getByRole('button'));
     expect(onModeChange).toHaveBeenCalledWith('acceptEdits');
   });
 
-  it('disables all buttons when disabled prop is true', () => {
+  it('cycles through all modes in order', async () => {
+    const onModeChange = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(<PermissionModeSelector mode="plan" onModeChange={onModeChange} />);
+
+    // plan → default
+    await user.click(screen.getByRole('button'));
+    expect(onModeChange).toHaveBeenLastCalledWith('default');
+
+    // default → acceptEdits
+    rerender(<PermissionModeSelector mode="default" onModeChange={onModeChange} />);
+    await user.click(screen.getByRole('button'));
+    expect(onModeChange).toHaveBeenLastCalledWith('acceptEdits');
+
+    // acceptEdits → bypassPermissions
+    rerender(<PermissionModeSelector mode="acceptEdits" onModeChange={onModeChange} />);
+    await user.click(screen.getByRole('button'));
+    expect(onModeChange).toHaveBeenLastCalledWith('bypassPermissions');
+
+    // bypassPermissions → plan (wrap around)
+    rerender(<PermissionModeSelector mode="bypassPermissions" onModeChange={onModeChange} />);
+    await user.click(screen.getByRole('button'));
+    expect(onModeChange).toHaveBeenLastCalledWith('plan');
+  });
+
+  it('disables button when disabled prop is true', () => {
     render(<PermissionModeSelector {...defaultProps} disabled />);
 
-    const buttons = screen.getAllByRole('radio');
-    buttons.forEach((button) => {
-      expect(button).toBeDisabled();
-    });
+    const button = screen.getByRole('button');
+    expect(button).toBeDisabled();
   });
 
   it('does not call onModeChange when disabled and clicked', async () => {
@@ -63,46 +88,30 @@ describe('PermissionModeSelector', () => {
 
     render(<PermissionModeSelector mode="default" onModeChange={onModeChange} disabled />);
 
-    await user.click(screen.getByText('Plan'));
+    await user.click(screen.getByRole('button'));
     expect(onModeChange).not.toHaveBeenCalled();
   });
 
-  it('has title attribute (tooltip) on each button', () => {
-    render(<PermissionModeSelector {...defaultProps} />);
+  it('has title attribute (tooltip) with description', () => {
+    const { rerender } = render(<PermissionModeSelector {...defaultProps} mode="plan" />);
+    expect(screen.getByRole('button')).toHaveAttribute('title', 'Claude가 계획만 세우고 파일을 수정하지 않습니다');
 
-    const planButton = screen.getByText('Plan');
-    expect(planButton).toHaveAttribute('title', 'Claude가 계획만 세우고 파일을 수정하지 않습니다');
+    rerender(<PermissionModeSelector {...defaultProps} mode="default" />);
+    expect(screen.getByRole('button')).toHaveAttribute('title', '파일 수정 전 승인을 요청합니다');
 
-    const askButton = screen.getByText('Ask');
-    expect(askButton).toHaveAttribute('title', '파일 수정 전 승인을 요청합니다');
+    rerender(<PermissionModeSelector {...defaultProps} mode="acceptEdits" />);
+    expect(screen.getByRole('button')).toHaveAttribute('title', '파일 수정을 자동으로 승인합니다');
 
-    const autoButton = screen.getByText('Auto');
-    expect(autoButton).toHaveAttribute('title', '파일 수정을 자동으로 승인합니다');
+    rerender(<PermissionModeSelector {...defaultProps} mode="bypassPermissions" />);
+    expect(screen.getByRole('button')).toHaveAttribute('title', '모든 권한 요청을 건너뜁니다');
   });
 
-  it('has correct ARIA attributes: radiogroup container, radio buttons, aria-checked', () => {
-    render(<PermissionModeSelector {...defaultProps} mode="plan" />);
+  it('has aria-label describing current mode and action', () => {
+    render(<PermissionModeSelector {...defaultProps} mode="default" />);
 
-    const radiogroup = screen.getByRole('radiogroup');
-    expect(radiogroup).toHaveAttribute('aria-label', 'Permission mode');
-
-    const radios = screen.getAllByRole('radio');
-    expect(radios).toHaveLength(3);
-
-    // Plan is selected
-    expect(radios[0]).toHaveAttribute('aria-checked', 'true');
-    expect(radios[1]).toHaveAttribute('aria-checked', 'false');
-    expect(radios[2]).toHaveAttribute('aria-checked', 'false');
-  });
-
-  it('calls onModeChange when clicking already selected mode', async () => {
-    const onModeChange = vi.fn();
-    const user = userEvent.setup();
-
-    render(<PermissionModeSelector mode="default" onModeChange={onModeChange} />);
-
-    await user.click(screen.getByText('Ask'));
-    expect(onModeChange).toHaveBeenCalledWith('default');
+    const button = screen.getByRole('button');
+    expect(button).toHaveAttribute('aria-label', expect.stringContaining('권한 모드'));
+    expect(button).toHaveAttribute('aria-label', expect.stringContaining('Ask'));
   });
 
   it('navigates to next mode with ArrowRight key', async () => {
@@ -111,9 +120,8 @@ describe('PermissionModeSelector', () => {
 
     render(<PermissionModeSelector mode="default" onModeChange={onModeChange} />);
 
-    // Focus the Ask button (currently selected, tabIndex=0)
-    const askButton = screen.getByText('Ask');
-    askButton.focus();
+    const button = screen.getByRole('button');
+    button.focus();
 
     await user.keyboard('{ArrowRight}');
     expect(onModeChange).toHaveBeenCalledWith('acceptEdits');
@@ -125,8 +133,8 @@ describe('PermissionModeSelector', () => {
 
     render(<PermissionModeSelector mode="default" onModeChange={onModeChange} />);
 
-    const askButton = screen.getByText('Ask');
-    askButton.focus();
+    const button = screen.getByRole('button');
+    button.focus();
 
     await user.keyboard('{ArrowLeft}');
     expect(onModeChange).toHaveBeenCalledWith('plan');
@@ -136,10 +144,10 @@ describe('PermissionModeSelector', () => {
     const onModeChange = vi.fn();
     const user = userEvent.setup();
 
-    render(<PermissionModeSelector mode="acceptEdits" onModeChange={onModeChange} />);
+    render(<PermissionModeSelector mode="bypassPermissions" onModeChange={onModeChange} />);
 
-    const autoButton = screen.getByText('Auto');
-    autoButton.focus();
+    const button = screen.getByRole('button');
+    button.focus();
 
     await user.keyboard('{ArrowRight}');
     expect(onModeChange).toHaveBeenCalledWith('plan');
@@ -151,23 +159,37 @@ describe('PermissionModeSelector', () => {
 
     render(<PermissionModeSelector mode="plan" onModeChange={onModeChange} />);
 
-    const planButton = screen.getByText('Plan');
-    planButton.focus();
+    const button = screen.getByRole('button');
+    button.focus();
 
     await user.keyboard('{ArrowLeft}');
+    expect(onModeChange).toHaveBeenCalledWith('bypassPermissions');
+  });
+
+  it('cycles mode with Enter key', async () => {
+    const onModeChange = vi.fn();
+    const user = userEvent.setup();
+
+    render(<PermissionModeSelector mode="default" onModeChange={onModeChange} />);
+
+    const button = screen.getByRole('button');
+    button.focus();
+
+    await user.keyboard('{Enter}');
     expect(onModeChange).toHaveBeenCalledWith('acceptEdits');
   });
 
-  it('has roving tabindex: selected button tabIndex=0, others tabIndex=-1', () => {
-    render(<PermissionModeSelector {...defaultProps} mode="default" />);
+  it('cycles mode with Space key', async () => {
+    const onModeChange = vi.fn();
+    const user = userEvent.setup();
 
-    const radios = screen.getAllByRole('radio');
-    // Plan
-    expect(radios[0]).toHaveAttribute('tabindex', '-1');
-    // Ask (selected)
-    expect(radios[1]).toHaveAttribute('tabindex', '0');
-    // Auto
-    expect(radios[2]).toHaveAttribute('tabindex', '-1');
+    render(<PermissionModeSelector mode="default" onModeChange={onModeChange} />);
+
+    const button = screen.getByRole('button');
+    button.focus();
+
+    await user.keyboard('{ }');
+    expect(onModeChange).toHaveBeenCalledWith('acceptEdits');
   });
 
   it('does not navigate with arrow keys when disabled', async () => {
@@ -176,8 +198,8 @@ describe('PermissionModeSelector', () => {
 
     render(<PermissionModeSelector mode="default" onModeChange={onModeChange} disabled />);
 
-    const askButton = screen.getByText('Ask');
-    askButton.focus();
+    const button = screen.getByRole('button');
+    button.focus();
 
     await user.keyboard('{ArrowRight}');
     expect(onModeChange).not.toHaveBeenCalled();

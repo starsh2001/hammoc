@@ -31,7 +31,12 @@ export interface ClientToServerEvents {
     images?: ImageAttachment[];
   }) => void;
   'chat:abort': () => void;
-  'permission:respond': (data: { requestId: string; approved: boolean }) => void;
+  'permission:respond': (data: {
+    requestId: string;
+    approved: boolean;
+    interactionType: 'permission' | 'question';
+    response?: string | string[];
+  }) => void;
   'session:join': (sessionId: string) => void;
   'session:leave': (sessionId: string) => void;
   'session:list': (data: { projectPath: string }) => void;

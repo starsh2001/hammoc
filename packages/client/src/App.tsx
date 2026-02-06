@@ -64,14 +64,6 @@ function AppContent() {
         }
       />
       <Route
-        path="/project/:projectSlug/session/new"
-        element={
-          <AuthGuard>
-            <ChatPage />
-          </AuthGuard>
-        }
-      />
-      <Route
         path="/project/:projectSlug/session/:sessionId"
         element={
           <AuthGuard>
