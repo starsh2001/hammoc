@@ -20,6 +20,8 @@ export interface StreamingToolCall {
   name: string;
   input?: Record<string, unknown>;
   output?: string;
+  startedAt?: number;
+  duration?: number;
 }
 
 /** Interactive choice option */
@@ -244,9 +246,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const segments = get().streamingSegments;
     // Avoid duplicates
     if (segments.some((seg) => seg.type === 'tool' && seg.toolCall.id === toolCall.id)) return;
-    // Add tool segment (previous text segment is automatically "closed")
+    // Add tool segment with startedAt timestamp (previous text segment is automatically "closed")
     set({
-      streamingSegments: [...segments, { type: 'tool', toolCall, status: 'pending' }],
+      streamingSegments: [
+        ...segments,
+        { type: 'tool', toolCall: { ...toolCall, startedAt: Date.now() }, status: 'pending' },
+      ],
     });
   },
 
@@ -262,15 +267,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   updateStreamingToolCall: (toolCallId: string, result: string, isError?: boolean) => {
     const segments = get().streamingSegments;
-    const updated = segments.map((seg) =>
-      seg.type === 'tool' && seg.toolCall.id === toolCallId
-        ? {
-            ...seg,
-            toolCall: { ...seg.toolCall, output: result },
-            status: isError ? 'error' as const : 'completed' as const,
-          }
-        : seg
-    );
+    const updated = segments.map((seg) => {
+      if (seg.type !== 'tool' || seg.toolCall.id !== toolCallId) return seg;
+      const duration = seg.toolCall.startedAt ? Date.now() - seg.toolCall.startedAt : undefined;
+      return {
+        ...seg,
+        toolCall: { ...seg.toolCall, output: result, duration },
+        status: isError ? 'error' as const : 'completed' as const,
+      };
+    });
     set({ streamingSegments: updated });
   },
 

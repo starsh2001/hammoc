@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MessageArea } from '../MessageArea';
 import type { StreamingSegment } from '../../stores/chatStore';
 
@@ -311,6 +311,180 @@ describe('MessageArea', () => {
 
       expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
       expect(screen.getByText('Write')).toBeInTheDocument();
+    });
+  });
+
+  // Story 7.2 tests
+  describe('tool execution status (Story 7.2)', () => {
+    it('renders completed tool with duration display', () => {
+      const completedTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Read', duration: 1200, startedAt: Date.now() - 1200 },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[completedTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByText('1.2s')).toBeInTheDocument();
+      expect(screen.getByLabelText('실행 시간: 1.2s')).toBeInTheDocument();
+    });
+
+    it('renders pending tool with real-time timer', () => {
+      vi.useFakeTimers();
+      const startedAt = Date.now();
+
+      const pendingTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Bash', startedAt },
+        status: 'pending',
+      };
+
+      render(
+        <MessageArea streamingSegments={[pendingTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      // Initially ~0s
+      expect(screen.getByText('0.0s')).toBeInTheDocument();
+
+      // Advance 2 seconds
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      expect(screen.getByText('2.0s')).toBeInTheDocument();
+
+      vi.useRealTimers();
+    });
+
+    it('does not show duration for pending tools without startedAt', () => {
+      const pendingTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Read' },
+        status: 'pending',
+      };
+
+      render(
+        <MessageArea streamingSegments={[pendingTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.queryByLabelText(/실행 시간/)).not.toBeInTheDocument();
+    });
+
+    it('shows expand/collapse toggle for Read tool', () => {
+      const readTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Read', input: { file_path: '/src/index.ts', limit: 50 } },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[readTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      const toggle = screen.getByRole('button', { name: '도구 상세 정보 펼치기' });
+      expect(toggle).toBeInTheDocument();
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+      // Expand
+      fireEvent.click(toggle);
+      expect(screen.getByText(/file_path/)).toBeInTheDocument();
+      expect(screen.getByText(/\/src\/index\.ts/)).toBeInTheDocument();
+      expect(screen.getByText(/limit/)).toBeInTheDocument();
+      expect(screen.getByText('50')).toBeInTheDocument();
+
+      // aria-expanded should be true now
+      expect(screen.getByRole('button', { name: '도구 상세 정보 접기' })).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('does not show expand/collapse for Bash tool', () => {
+      const bashTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Bash', input: { command: 'npm test' } },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[bashTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.queryByRole('button', { name: '도구 상세 정보 펼치기' })).not.toBeInTheDocument();
+    });
+
+    it('does not show expand/collapse for TodoWrite tool', () => {
+      const todoTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'TodoWrite', input: { todos: [{ content: 'task', status: 'pending' }] } },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[todoTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.queryByRole('button', { name: '도구 상세 정보 펼치기' })).not.toBeInTheDocument();
+    });
+
+    // AC1/AC3 regression: spinner + success/failure icons
+    it('regression: pending tool shows spinner', () => {
+      const pendingTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Grep' },
+        status: 'pending',
+      };
+
+      render(
+        <MessageArea streamingSegments={[pendingTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByLabelText('도구 실행 중: Grep')).toBeInTheDocument();
+    });
+
+    it('regression: completed tool shows success icon', () => {
+      const completedTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Glob', output: 'done' },
+        status: 'completed',
+      };
+
+      render(
+        <MessageArea streamingSegments={[completedTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByLabelText('도구 완료: Glob')).toBeInTheDocument();
+    });
+
+    it('regression: error tool shows error icon', () => {
+      const errorTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Bash', output: 'error msg' },
+        status: 'error',
+      };
+
+      render(
+        <MessageArea streamingSegments={[errorTool]}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByLabelText('도구 실패: Bash')).toBeInTheDocument();
     });
   });
 });

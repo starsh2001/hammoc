@@ -238,7 +238,7 @@ describe('useChatStore', () => {
       const segments = useChatStore.getState().streamingSegments;
       expect(segments).toHaveLength(3);
       expect(segments[0]).toEqual({ type: 'text', content: 'Before tool' });
-      expect(segments[1]).toEqual({
+      expect(segments[1]).toMatchObject({
         type: 'tool',
         toolCall: { id: 'tool-1', name: 'Read' },
         status: 'pending',
@@ -269,19 +269,24 @@ describe('useChatStore', () => {
   });
 
   describe('addStreamingToolCall', () => {
-    it('adds tool segment with pending status', () => {
+    it('adds tool segment with pending status and startedAt', () => {
       const { startStreaming, addStreamingToolCall } = useChatStore.getState();
 
+      const before = Date.now();
       startStreaming('session-1', 'msg-1');
       addStreamingToolCall({ id: 'tool-1', name: 'Edit' });
+      const after = Date.now();
 
       const segments = useChatStore.getState().streamingSegments;
       expect(segments).toHaveLength(1);
-      expect(segments[0]).toEqual({
-        type: 'tool',
-        toolCall: { id: 'tool-1', name: 'Edit' },
-        status: 'pending',
-      });
+      expect(segments[0].type).toBe('tool');
+      if (segments[0].type === 'tool') {
+        expect(segments[0].toolCall.id).toBe('tool-1');
+        expect(segments[0].toolCall.name).toBe('Edit');
+        expect(segments[0].toolCall.startedAt).toBeGreaterThanOrEqual(before);
+        expect(segments[0].toolCall.startedAt).toBeLessThanOrEqual(after);
+        expect(segments[0].status).toBe('pending');
+      }
     });
 
     it('avoids duplicate tool segments', () => {
@@ -296,7 +301,7 @@ describe('useChatStore', () => {
   });
 
   describe('updateStreamingToolCall', () => {
-    it('updates tool segment with result and completed status', () => {
+    it('updates tool segment with result, completed status, and duration', () => {
       const { startStreaming, addStreamingToolCall, updateStreamingToolCall } =
         useChatStore.getState();
 
@@ -309,10 +314,13 @@ describe('useChatStore', () => {
       if (seg.type === 'tool') {
         expect(seg.status).toBe('completed');
         expect(seg.toolCall.output).toBe('file content here');
+        // duration should be calculated (startedAt was set by addStreamingToolCall)
+        expect(seg.toolCall.duration).toBeDefined();
+        expect(seg.toolCall.duration).toBeGreaterThanOrEqual(0);
       }
     });
 
-    it('updates tool segment with error status', () => {
+    it('updates tool segment with error status and duration', () => {
       const { startStreaming, addStreamingToolCall, updateStreamingToolCall } =
         useChatStore.getState();
 
@@ -325,6 +333,7 @@ describe('useChatStore', () => {
       if (seg.type === 'tool') {
         expect(seg.status).toBe('error');
         expect(seg.toolCall.output).toBe('command failed');
+        expect(seg.toolCall.duration).toBeDefined();
       }
     });
 
@@ -340,6 +349,27 @@ describe('useChatStore', () => {
       if (seg.type === 'tool') {
         expect(seg.status).toBe('pending');
         expect(seg.toolCall.output).toBeUndefined();
+        expect(seg.toolCall.duration).toBeUndefined();
+      }
+    });
+
+    it('does not set duration when startedAt is missing', () => {
+      const { startStreaming } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+
+      // Manually add a tool segment without startedAt
+      useChatStore.setState({
+        streamingSegments: [
+          { type: 'tool', toolCall: { id: 'tool-no-start', name: 'Read' }, status: 'pending' },
+        ],
+      });
+
+      useChatStore.getState().updateStreamingToolCall('tool-no-start', 'result');
+
+      const seg = useChatStore.getState().streamingSegments[0];
+      if (seg.type === 'tool') {
+        expect(seg.status).toBe('completed');
+        expect(seg.toolCall.duration).toBeUndefined();
       }
     });
   });

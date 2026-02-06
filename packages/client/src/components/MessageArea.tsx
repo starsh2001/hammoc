@@ -5,20 +5,36 @@
  */
 
 import { useRef, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { ChevronDown, Wrench, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { ChevronDown, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { StreamingIndicator } from './StreamingIndicator';
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { PermissionCard } from './PermissionCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
+import { ToolDetailToggle } from './ToolDetailToggle';
 import type { StreamingSegment } from '../stores/chatStore';
 import { isTextSegment, isToolSegment, isInteractiveSegment, useChatStore } from '../stores/chatStore';
+import { getToolIcon, getToolDisplayName, formatDuration } from '../utils/toolUtils';
 
-/** Tool display name overrides for streaming segments */
-const TOOL_DISPLAY_NAMES: Record<string, string> = {
-  TodoWrite: 'Update Todos',
-};
+/** Real-time elapsed timer for pending tool calls (streaming only) */
+function ToolTimer({ startedAt }: { startedAt: number }) {
+  const [elapsed, setElapsed] = useState(() => Date.now() - startedAt);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Date.now() - startedAt);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startedAt]);
+
+  return (
+    <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto" aria-label={`실행 시간: ${formatDuration(elapsed)}`}>
+      {formatDuration(elapsed)}
+    </span>
+  );
+}
+
 
 interface UseAutoScrollOptions {
   /** Threshold in pixels - auto-scroll when within this distance from bottom */
@@ -256,7 +272,8 @@ export function MessageArea({
               seg.toolCall.input?.pattern ||
               seg.toolCall.input?.command;
             const displayInfo = typeof rawDisplayInfo === 'string' ? rawDisplayInfo : null;
-            const toolDisplayName = TOOL_DISPLAY_NAMES[seg.toolCall.name] ?? seg.toolCall.name;
+            const toolDisplayName = getToolDisplayName(seg.toolCall.name);
+            const ToolIcon = getToolIcon(seg.toolCall.name);
 
             // Extract todos from TodoWrite input for real-time checklist display
             const todos = seg.toolCall.name === 'TodoWrite' && Array.isArray(seg.toolCall.input?.todos)
@@ -278,7 +295,7 @@ export function MessageArea({
                 >
                   <div className="max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-2">
-                      <Wrench className="w-4 h-4 text-blue-500" aria-hidden="true" />
+                      <ToolIcon className="w-4 h-4 text-blue-500" aria-hidden="true" />
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {toolDisplayName}
                       </span>
@@ -295,8 +312,17 @@ export function MessageArea({
                       ) : (
                         <Loader2 className="w-4 h-4 text-blue-500 animate-spin" aria-hidden="true" />
                       )}
+                      {seg.status !== 'pending' && seg.toolCall.duration != null && (
+                        <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto" aria-label={`실행 시간: ${formatDuration(seg.toolCall.duration)}`}>
+                          {formatDuration(seg.toolCall.duration)}
+                        </span>
+                      )}
+                      {seg.status === 'pending' && seg.toolCall.startedAt != null && (
+                        <ToolTimer startedAt={seg.toolCall.startedAt} />
+                      )}
                     </div>
                     {displayInfo && <ToolPathDisplay displayInfo={displayInfo} toolName={seg.toolCall.name} />}
+                    <ToolDetailToggle toolName={seg.toolCall.name} input={seg.toolCall.input} toolCallId={seg.toolCall.id} />
                     {todos && todos.length > 0 && (
                       <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
                         {todos.map((todo, i) => (

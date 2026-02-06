@@ -191,8 +191,8 @@ describe('ToolCallCard', () => {
     // Line changes displayed
     expect(screen.getByText('+3')).toBeInTheDocument();
     expect(screen.getByText('-2')).toBeInTheDocument();
-    // Diff button hidden until expanded
-    expect(screen.queryByRole('button', { name: 'Diff 보기' })).not.toBeInTheDocument();
+    // Diff button always visible alongside collapsed filename
+    expect(screen.getByRole('button', { name: 'Diff 보기' })).toBeInTheDocument();
   });
 
   it('expands to show full path and Diff button', () => {
@@ -288,5 +288,86 @@ describe('ToolCallCard', () => {
 
     expect(screen.queryByRole('button', { name: 'Diff 보기' })).not.toBeInTheDocument();
     expect(screen.getByText('Read')).toBeInTheDocument();
+  });
+
+  // Story 7.2 - tool icon and expand/collapse tests
+  describe('tool detail expand/collapse (Story 7.2)', () => {
+    it('shows expand toggle for Read tool with detail params', () => {
+      const readMessage: HistoryMessage = {
+        id: 'msg-read',
+        type: 'tool_use',
+        content: 'Reading file',
+        timestamp: '2026-01-15T10:00:00Z',
+        toolName: 'Read',
+        toolInput: { file_path: '/src/app.ts', limit: 100 },
+      };
+
+      render(<ToolCallCard message={readMessage} />);
+
+      const toggle = screen.getByRole('button', { name: '도구 상세 정보 펼치기' });
+      expect(toggle).toBeInTheDocument();
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+      // Expand
+      fireEvent.click(toggle);
+      expect(screen.getByText(/file_path/)).toBeInTheDocument();
+      expect(screen.getByText(/\/src\/app\.ts/)).toBeInTheDocument();
+      expect(screen.getByText(/limit/)).toBeInTheDocument();
+
+      // aria-expanded is true
+      expect(screen.getByRole('button', { name: '도구 상세 정보 접기' })).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('shows expand toggle for Grep tool', () => {
+      const grepMessage: HistoryMessage = {
+        id: 'msg-grep',
+        type: 'tool_use',
+        content: 'Searching',
+        timestamp: '2026-01-15T10:00:00Z',
+        toolName: 'Grep',
+        toolInput: { pattern: 'import.*from', path: '/src' },
+      };
+
+      render(<ToolCallCard message={grepMessage} />);
+
+      const toggle = screen.getByRole('button', { name: '도구 상세 정보 펼치기' });
+      expect(toggle).toBeInTheDocument();
+
+      fireEvent.click(toggle);
+      expect(screen.getByText(/pattern/)).toBeInTheDocument();
+      expect(screen.getByText(/import\.\*from/)).toBeInTheDocument();
+    });
+
+    it('does not show expand toggle for Bash tool', () => {
+      const bashMessage: HistoryMessage = {
+        id: 'msg-bash',
+        type: 'tool_use',
+        content: 'Running command',
+        timestamp: '2026-01-15T10:00:00Z',
+        toolName: 'Bash',
+        toolInput: { command: 'npm test' },
+      };
+
+      render(<ToolCallCard message={bashMessage} />);
+
+      expect(screen.queryByRole('button', { name: '도구 상세 정보 펼치기' })).not.toBeInTheDocument();
+    });
+
+    it('does not show expand toggle for Edit tool (uses own collapse)', () => {
+      const editMessage: HistoryMessage = {
+        id: 'msg-edit',
+        type: 'tool_use',
+        content: 'Editing',
+        timestamp: '2026-01-15T10:00:00Z',
+        toolName: 'Edit',
+        toolInput: { file_path: '/src/app.ts', old_string: 'old', new_string: 'new' },
+      };
+
+      render(<ToolCallCard message={editMessage} />);
+
+      // Edit has its own collapse button, not the generic one
+      expect(screen.queryByRole('button', { name: '도구 상세 정보 펼치기' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '전체 경로 보기' })).toBeInTheDocument();
+    });
   });
 });
