@@ -296,6 +296,50 @@ describe('useMessageStore', () => {
     });
   });
 
+  describe('addMessages', () => {
+    it('should append new messages to existing messages', () => {
+      useMessageStore.setState({ messages: mockMessages });
+
+      const newMessages = [
+        {
+          id: 'msg-3',
+          type: 'assistant' as const,
+          content: 'New response',
+          timestamp: '2026-01-15T10:01:00Z',
+        },
+      ];
+
+      useMessageStore.getState().addMessages(newMessages);
+
+      const state = useMessageStore.getState();
+      expect(state.messages).toHaveLength(3);
+      expect(state.messages[2]).toEqual(newMessages[0]);
+    });
+
+    it('should not modify state when empty array is passed', () => {
+      useMessageStore.setState({ messages: mockMessages });
+
+      useMessageStore.getState().addMessages([]);
+
+      expect(useMessageStore.getState().messages).toEqual(mockMessages);
+    });
+
+    it('should work with empty initial messages', () => {
+      const newMessages = [
+        {
+          id: 'msg-1',
+          type: 'assistant' as const,
+          content: 'Hello',
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      useMessageStore.getState().addMessages(newMessages);
+
+      expect(useMessageStore.getState().messages).toEqual(newMessages);
+    });
+  });
+
   describe('clearMessages', () => {
     it('should clear messages and reset state', () => {
       useMessageStore.setState({

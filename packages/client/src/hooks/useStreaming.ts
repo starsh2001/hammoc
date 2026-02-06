@@ -11,11 +11,11 @@
  * - Automatic cleanup on unmount
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
-import type { StreamChunk, Message, ChatUsage } from '@bmad-studio/shared';
+import type { StreamChunk, Message, ChatUsage, PermissionRequest } from '@bmad-studio/shared';
 
 export function useStreaming() {
   const {
@@ -29,7 +29,11 @@ export function useStreaming() {
     abortResponse,
     setContextUsage,
     updateStreamingSessionId,
+    addInteractiveSegment,
   } = useChatStore();
+
+  // Track seen permission request IDs to avoid duplicates on reconnect
+  const seenPermissionIds = useRef(new Set<string>());
 
   // Handle keyboard shortcuts to abort streaming (Story 5.4)
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -102,12 +106,55 @@ export function useStreaming() {
       completeStreaming();
     };
 
-    // Handle tool call start - add tool segment
+    // Handle tool call start - add tool segment or interactive segment for AskUserQuestion
     const handleToolCall = (data: { id: string; name: string; input?: Record<string, unknown> }) => {
+      // Detect AskUserQuestion → create interactive segment instead of tool segment (Story 7.1)
+      if (data.name === 'AskUserQuestion' && data.input?.questions) {
+        const questions = data.input.questions as Array<{
+          question: string;
+          header: string;
+          options: Array<{ label: string; description?: string }>;
+          multiSelect?: boolean;
+        }>;
+        const firstQuestion = questions[0];
+        if (firstQuestion) {
+          const choices = firstQuestion.options.map((opt) => ({
+            label: opt.label,
+            description: opt.description,
+            value: opt.label,
+          }));
+          addInteractiveSegment({
+            id: data.id,
+            interactionType: 'question',
+            toolCall: { id: data.id, name: data.name, input: data.input },
+            choices,
+            multiSelect: firstQuestion.multiSelect,
+          });
+          return;
+        }
+      }
+
       addStreamingToolCall({
         id: data.id,
         name: data.name,
         input: data.input,
+      });
+    };
+
+    // Handle permission:request event — add interactive segment for permission (Story 7.1)
+    const handlePermissionRequest = (data: PermissionRequest) => {
+      // Ignore duplicate requests (reconnect guard)
+      if (seenPermissionIds.current.has(data.id)) return;
+      seenPermissionIds.current.add(data.id);
+
+      addInteractiveSegment({
+        id: data.id,
+        interactionType: 'permission',
+        toolCall: { id: data.toolCall.id, name: data.toolCall.name, input: data.toolCall.input },
+        choices: [
+          { label: '승인', value: 'approve' },
+          { label: '거절', value: 'reject' },
+        ],
       });
     };
 
@@ -162,6 +209,7 @@ export function useStreaming() {
     socket.on('tool:call', handleToolCall);
     socket.on('tool:input-update', handleToolInputUpdate);
     socket.on('tool:result', handleToolResult);
+    socket.on('permission:request', handlePermissionRequest);
     socket.on('context:usage', handleContextUsage);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect', handleReconnect);
@@ -178,6 +226,7 @@ export function useStreaming() {
       socket.off('tool:call', handleToolCall);
       socket.off('tool:input-update', handleToolInputUpdate);
       socket.off('tool:result', handleToolResult);
+      socket.off('permission:request', handlePermissionRequest);
       socket.off('context:usage', handleContextUsage);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect', handleReconnect);
@@ -196,6 +245,7 @@ export function useStreaming() {
     abortResponse,
     setContextUsage,
     updateStreamingSessionId,
+    addInteractiveSegment,
     handleKeyDown,
   ]);
 }

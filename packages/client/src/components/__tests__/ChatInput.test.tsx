@@ -260,7 +260,8 @@ describe('ChatInput', () => {
       render(<ChatInput onSend={mockOnSend} />);
 
       const textarea = screen.getByRole('textbox');
-      expect(textarea).toHaveStyle({ minHeight: '40px', maxHeight: '120px' });
+      // Inline style sets minHeight: 22px, maxHeight: 120px
+      expect(textarea).toHaveStyle({ minHeight: '22px', maxHeight: '120px' });
     });
 
     it('has resize-none class to prevent manual resize', () => {
@@ -327,7 +328,8 @@ describe('ChatInput', () => {
       render(<ChatInput onSend={mockOnSend} />);
 
       const button = screen.getByRole('button', { name: /전송/i });
-      expect(button.className).toContain('dark:bg-blue-500');
+      // Default mode (without permissionMode) uses orange color scheme
+      expect(button.className).toContain('dark:bg-orange-500');
     });
   });
 

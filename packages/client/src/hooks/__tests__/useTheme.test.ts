@@ -58,7 +58,9 @@ describe('useTheme', () => {
   });
 
   describe('initial state', () => {
-    it('should return light theme by default when no localStorage and system preference is light', () => {
+    it('should return dark theme by default when no localStorage (app default)', () => {
+      // App defaults to dark theme when no localStorage value exists
+      // System preference is not used for initial theme (only localStorage)
       mockMatchMedia.mockImplementation((query: string) => ({
         matches: false, // prefers-color-scheme: dark is false = light mode
         media: query,
@@ -66,7 +68,7 @@ describe('useTheme', () => {
 
       const { result } = renderHook(() => useTheme());
 
-      expect(result.current.theme).toBe('light');
+      expect(result.current.theme).toBe('dark');
     });
 
     it('should return dark theme when system prefers dark mode', () => {

@@ -7,6 +7,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SettingsMenu } from '../SettingsMenu';
 
+// Mock useTheme hook
+vi.mock('../../hooks/useTheme', () => ({
+  useTheme: vi.fn(() => ({
+    theme: 'light',
+    toggleTheme: vi.fn(),
+    setTheme: vi.fn(),
+  })),
+}));
+
 describe('SettingsMenu', () => {
   const mockOnLogout = vi.fn();
   const mockOnClose = vi.fn();

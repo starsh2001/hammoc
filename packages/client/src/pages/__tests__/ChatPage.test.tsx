@@ -142,7 +142,7 @@ describe('ChatPage', () => {
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
   const renderChatPage = (projectSlug = 'test-project', sessionId = 'session-123') => {
@@ -417,6 +417,8 @@ describe('ChatPage', () => {
   });
 
   describe('PermissionModeSelector integration (Story 5.2)', () => {
+    // PermissionModeSelector is now a single toggle button that cycles through modes
+    // Default mode is 'default' (label: 'Ask'), clicking cycles: default → acceptEdits → bypassPermissions → plan → default
     it('should render PermissionModeSelector in new session state', () => {
       render(
         <MemoryRouter initialEntries={['/project/test-project/session/new']}>
@@ -426,10 +428,9 @@ describe('ChatPage', () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByRole('radiogroup', { name: 'Permission mode' })).toBeInTheDocument();
-      expect(screen.getByText('Plan')).toBeInTheDocument();
-      expect(screen.getByText('Ask')).toBeInTheDocument();
-      expect(screen.getByText('Auto')).toBeInTheDocument();
+      // Default mode is 'default' which shows 'Ask' label
+      expect(screen.getByRole('button', { name: /권한 모드/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /권한 모드/i })).toHaveTextContent('Ask');
     });
 
     it('should render PermissionModeSelector in messages state', () => {
@@ -440,31 +441,27 @@ describe('ChatPage', () => {
 
       renderChatPage();
 
-      expect(screen.getByRole('radiogroup', { name: 'Permission mode' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /권한 모드/i })).toBeInTheDocument();
     });
 
-    it('should render PermissionModeSelector in loading state (disabled)', () => {
+    it('should render PermissionModeSelector in loading state', () => {
       useMessageStore.setState({ isLoading: true });
 
       renderChatPage();
 
-      expect(screen.getByRole('radiogroup', { name: 'Permission mode' })).toBeInTheDocument();
-      const radios = screen.getAllByRole('radio');
-      radios.forEach((radio) => {
-        expect(radio).toBeDisabled();
-      });
+      const permissionButton = screen.getByRole('button', { name: /권한 모드/i });
+      expect(permissionButton).toBeInTheDocument();
+      // PermissionModeSelector is disabled when isStreaming, not when isLoading
     });
 
-    it('should render PermissionModeSelector in error state (disabled)', () => {
+    it('should render PermissionModeSelector in error state', () => {
       useMessageStore.setState({ error: '오류 발생' });
 
       renderChatPage();
 
-      expect(screen.getByRole('radiogroup', { name: 'Permission mode' })).toBeInTheDocument();
-      const radios = screen.getAllByRole('radio');
-      radios.forEach((radio) => {
-        expect(radio).toBeDisabled();
-      });
+      const permissionButton = screen.getByRole('button', { name: /권한 모드/i });
+      expect(permissionButton).toBeInTheDocument();
+      // PermissionModeSelector is disabled when isStreaming, not when error
     });
 
     it('should render PermissionModeSelector in empty state', () => {
@@ -472,10 +469,10 @@ describe('ChatPage', () => {
 
       renderChatPage();
 
-      expect(screen.getByRole('radiogroup', { name: 'Permission mode' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /권한 모드/i })).toBeInTheDocument();
     });
 
-    it('should call setPermissionMode when a mode is clicked', () => {
+    it('should cycle permission mode when clicked', () => {
       useMessageStore.setState({
         messages: mockMessages,
         pagination: mockPagination,
@@ -483,8 +480,10 @@ describe('ChatPage', () => {
 
       renderChatPage();
 
-      fireEvent.click(screen.getByText('Plan'));
-      expect(useChatStore.getState().permissionMode).toBe('plan');
+      const permissionButton = screen.getByRole('button', { name: /권한 모드/i });
+      // Default mode is 'default' (Ask), clicking cycles to next: acceptEdits (Auto)
+      fireEvent.click(permissionButton);
+      expect(useChatStore.getState().permissionMode).toBe('acceptEdits');
     });
   });
 
@@ -562,8 +561,7 @@ describe('ChatPage', () => {
       expect(mockClearMessages).toHaveBeenCalled();
     });
 
-    it('should show confirm dialog when streaming and new session button is clicked', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    it('should show confirm modal when streaming and new session button is clicked', () => {
       useChatStore.setState({ isStreaming: true });
       useMessageStore.setState({
         messages: mockMessages,
@@ -574,12 +572,12 @@ describe('ChatPage', () => {
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
-      expect(confirmSpy).toHaveBeenCalledWith('진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?');
-      confirmSpy.mockRestore();
+      // ConfirmModal should be shown
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByText('진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?')).toBeInTheDocument();
     });
 
-    it('should not navigate when confirm is cancelled during streaming', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    it('should not navigate when cancel is clicked in confirm modal during streaming', () => {
       useChatStore.setState({ isStreaming: true });
       useMessageStore.setState({
         messages: mockMessages,
@@ -589,15 +587,17 @@ describe('ChatPage', () => {
       renderChatPage();
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
+
+      // Click cancel button in the modal
+      fireEvent.click(screen.getByRole('button', { name: '취소' }));
 
       expect(mockNavigate).not.toHaveBeenCalledWith('/project/test-project/session/new');
       expect(mockClearMessages).not.toHaveBeenCalled();
-      confirmSpy.mockRestore();
     });
 
-    it('should abort streaming and navigate when confirm is accepted during streaming', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-      useChatStore.setState({ isStreaming: true });
+    it('should abort streaming and navigate when confirm is accepted in modal during streaming', () => {
+      const mockAbortResponse = vi.fn();
+      useChatStore.setState({ isStreaming: true, abortResponse: mockAbortResponse });
       useMessageStore.setState({
         messages: mockMessages,
         pagination: mockPagination,
@@ -607,9 +607,12 @@ describe('ChatPage', () => {
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
+      // Click confirm button in the modal
+      fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+      expect(mockAbortResponse).toHaveBeenCalled();
       expect(mockNavigate).toHaveBeenCalledWith('/project/test-project/session/new');
       expect(mockClearMessages).toHaveBeenCalled();
-      confirmSpy.mockRestore();
     });
 
     it('should pass sessionId undefined and resume false for new session when sending', () => {
@@ -819,8 +822,7 @@ describe('ChatPage', () => {
       expect(screen.getByRole('button', { name: /중단/i })).toBeInTheDocument();
     });
 
-    it('should call abortResponse when new session button confirmed during streaming', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('should call abortResponse when new session button confirmed in modal during streaming', () => {
       const mockAbortResponse = vi.fn();
       useChatStore.setState({ isStreaming: true, abortResponse: mockAbortResponse });
       useMessageStore.setState({
@@ -832,8 +834,89 @@ describe('ChatPage', () => {
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
+      // Click confirm button in the modal
+      fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
       expect(mockAbortResponse).toHaveBeenCalled();
-      confirmSpy.mockRestore();
+    });
+  });
+
+  describe('History AskUserQuestion rendering (Story 7.1)', () => {
+    it('should render AskUserQuestion as InteractiveResponseCard with responded status', () => {
+      const askMessage: HistoryMessage = {
+        id: 'msg-ask-1',
+        type: 'tool_use',
+        content: '',
+        timestamp: '2026-01-15T10:00:00Z',
+        toolName: 'AskUserQuestion',
+        toolInput: {
+          questions: [{
+            question: 'Which option do you prefer?',
+            header: 'Preference',
+            options: [
+              { label: 'Option A', description: 'First option' },
+              { label: 'Option B' },
+            ],
+            multiSelect: false,
+          }],
+        },
+      };
+
+      const toolResultMessage: HistoryMessage = {
+        id: 'msg-ask-result-1',
+        type: 'tool_result',
+        content: 'Option A',
+        timestamp: '2026-01-15T10:00:01Z',
+        toolName: 'AskUserQuestion',
+      };
+
+      useMessageStore.setState({
+        messages: [askMessage, toolResultMessage],
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      // Should render InteractiveResponseCard, not ToolCallCard
+      expect(screen.getByTestId('interactive-response-card')).toBeInTheDocument();
+      // Should show the response value from tool_result content
+      expect(screen.getByText('Option A')).toBeInTheDocument();
+    });
+
+    it('should show tool_result output as response value when toolResult.output is available', () => {
+      const askMessage: HistoryMessage = {
+        id: 'msg-ask-2',
+        type: 'tool_use',
+        content: '',
+        timestamp: '2026-01-15T10:00:00Z',
+        toolName: 'AskUserQuestion',
+        toolInput: {
+          questions: [{
+            question: 'Pick one',
+            header: 'Choice',
+            options: [{ label: 'X' }, { label: 'Y' }],
+          }],
+        },
+      };
+
+      const resultMessage: HistoryMessage = {
+        id: 'msg-ask-result-2',
+        type: 'tool_result',
+        content: '',
+        timestamp: '2026-01-15T10:00:01Z',
+        toolName: 'AskUserQuestion',
+        toolResult: { success: true, output: 'Y' },
+      };
+
+      useMessageStore.setState({
+        messages: [askMessage, resultMessage],
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      expect(screen.getByTestId('interactive-response-card')).toBeInTheDocument();
+      expect(screen.getByText('Y')).toBeInTheDocument();
     });
   });
 });

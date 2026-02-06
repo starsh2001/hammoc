@@ -5,8 +5,19 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { TestPage } from '../TestPage';
 import { createMockSocket } from '../../test-utils/mockSocket';
+
+// Mock useNavigate
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 // Mock the hooks
 vi.mock('../../hooks/useWebSocket', () => ({
@@ -41,6 +52,24 @@ vi.mock('../../hooks/useTheme', () => ({
   })),
 }));
 
+vi.mock('../../hooks/useSession', () => ({
+  useSession: vi.fn(() => ({
+    currentSessionId: null,
+    pendingResume: false,
+    sessions: [],
+    isLoadingSessions: false,
+    resumeSession: vi.fn(),
+    startNewSession: vi.fn(),
+    listSessions: vi.fn(),
+  })),
+}));
+
+vi.mock('../../stores/authStore', () => ({
+  useAuthStore: vi.fn(() => ({
+    logout: vi.fn(),
+  })),
+}));
+
 vi.mock('../../services/socket', () => ({
   getSocket: vi.fn(() => createMockSocket()),
 }));
@@ -57,6 +86,15 @@ Object.defineProperty(window, 'localStorage', {
   writable: true,
 });
 
+// Helper to render with Router context
+const renderTestPage = () => {
+  return render(
+    <MemoryRouter>
+      <TestPage />
+    </MemoryRouter>
+  );
+};
+
 describe('TestPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -65,44 +103,44 @@ describe('TestPage', () => {
 
   describe('Layout', () => {
     it('should render header with title', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       expect(screen.getByText('BMad Studio - E2E Test')).toBeInTheDocument();
     });
 
     it('should render connection status indicator', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       expect(screen.getByText('Connected')).toBeInTheDocument();
     });
 
     it('should render theme toggle button', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const themeButton = screen.getByRole('button', { name: /테마 전환/i });
       expect(themeButton).toBeInTheDocument();
     });
 
     it('should render project path input', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       expect(screen.getByLabelText(/프로젝트 경로 입력/i)).toBeInTheDocument();
     });
 
     it('should render Set button for project path', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       expect(screen.getByRole('button', { name: 'Set' })).toBeInTheDocument();
     });
 
     it('should render message input', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       expect(screen.getByLabelText(/메시지 입력/i)).toBeInTheDocument();
     });
 
     it('should render Send button', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       expect(screen.getByRole('button', { name: /메시지 전송/i })).toBeInTheDocument();
     });
@@ -110,41 +148,41 @@ describe('TestPage', () => {
 
   describe('Accessibility', () => {
     it('should have aria-label on project path input', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const input = screen.getByLabelText(/프로젝트 경로 입력/i);
       expect(input).toHaveAttribute('aria-label', '프로젝트 경로 입력');
     });
 
     it('should have aria-label on message input', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const textarea = screen.getByLabelText(/메시지 입력/i);
       expect(textarea).toHaveAttribute('aria-label', '메시지 입력');
     });
 
     it('should have aria-label on send button', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const button = screen.getByRole('button', { name: /메시지 전송/i });
       expect(button).toHaveAttribute('aria-label', '메시지 전송');
     });
 
     it('should have aria-label on theme toggle button', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const button = screen.getByRole('button', { name: /테마 전환/i });
       expect(button).toHaveAttribute('aria-label', '테마 전환');
     });
 
     it('should have role="log" on messages area', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       expect(screen.getByRole('log')).toBeInTheDocument();
     });
 
     it('should have aria-live="polite" on messages area', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const messagesArea = screen.getByRole('log');
       expect(messagesArea).toHaveAttribute('aria-live', 'polite');
@@ -153,7 +191,7 @@ describe('TestPage', () => {
 
   describe('Project Path', () => {
     it('should update input value when typing', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const input = screen.getByLabelText(/프로젝트 경로 입력/i);
       fireEvent.change(input, { target: { value: '/test/path' } });
@@ -162,7 +200,7 @@ describe('TestPage', () => {
     });
 
     it('should save to localStorage when Set button is clicked', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const input = screen.getByLabelText(/프로젝트 경로 입력/i);
       const setButton = screen.getByRole('button', { name: 'Set' });
@@ -177,7 +215,7 @@ describe('TestPage', () => {
     });
 
     it('should display current path after setting', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const input = screen.getByLabelText(/프로젝트 경로 입력/i);
       const setButton = screen.getByRole('button', { name: 'Set' });
@@ -192,14 +230,14 @@ describe('TestPage', () => {
 
   describe('Message Input', () => {
     it('should be disabled when project path is not set', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const textarea = screen.getByLabelText(/메시지 입력/i);
       expect(textarea).toBeDisabled();
     });
 
     it('should be enabled when project path is set', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const input = screen.getByLabelText(/프로젝트 경로 입력/i);
       const setButton = screen.getByRole('button', { name: 'Set' });
@@ -212,7 +250,7 @@ describe('TestPage', () => {
     });
 
     it('should update value when typing', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       // Set project path first
       const pathInput = screen.getByLabelText(/프로젝트 경로 입력/i);
@@ -229,14 +267,14 @@ describe('TestPage', () => {
 
   describe('Send Button', () => {
     it('should be disabled when project path is not set', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       const button = screen.getByRole('button', { name: /메시지 전송/i });
       expect(button).toBeDisabled();
     });
 
     it('should be disabled when message is empty', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       // Set project path
       const pathInput = screen.getByLabelText(/프로젝트 경로 입력/i);
@@ -249,7 +287,7 @@ describe('TestPage', () => {
     });
 
     it('should be enabled when project path and message are set', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       // Set project path
       const pathInput = screen.getByLabelText(/프로젝트 경로 입력/i);
@@ -275,7 +313,7 @@ describe('TestPage', () => {
         setTheme: vi.fn(),
       });
 
-      render(<TestPage />);
+      renderTestPage();
 
       const button = screen.getByRole('button', { name: /테마 전환/i });
       expect(button).toHaveTextContent('🌙');
@@ -289,7 +327,7 @@ describe('TestPage', () => {
         setTheme: vi.fn(),
       });
 
-      render(<TestPage />);
+      renderTestPage();
 
       const button = screen.getByRole('button', { name: /테마 전환/i });
       expect(button).toHaveTextContent('☀️');
@@ -304,7 +342,7 @@ describe('TestPage', () => {
         setTheme: vi.fn(),
       });
 
-      render(<TestPage />);
+      renderTestPage();
 
       const button = screen.getByRole('button', { name: /테마 전환/i });
       fireEvent.click(button);
@@ -315,7 +353,7 @@ describe('TestPage', () => {
 
   describe('Empty State', () => {
     it('should show empty state message when no messages', () => {
-      render(<TestPage />);
+      renderTestPage();
 
       expect(
         screen.getByText('프로젝트 경로를 설정하고 메시지를 보내보세요.')
@@ -336,7 +374,7 @@ describe('TestPage', () => {
         clearMessages: vi.fn(),
       });
 
-      render(<TestPage />);
+      renderTestPage();
 
       // Set project path to enable input first
       const pathInput = screen.getByLabelText(/프로젝트 경로 입력/i);
@@ -364,7 +402,7 @@ describe('TestPage', () => {
         clearMessages: vi.fn(),
       });
 
-      render(<TestPage />);
+      renderTestPage();
 
       expect(screen.getByText('[TEST_ERROR]')).toBeInTheDocument();
       expect(screen.getByText('Test error message')).toBeInTheDocument();
@@ -383,7 +421,7 @@ describe('TestPage', () => {
         clearMessages: vi.fn(),
       });
 
-      render(<TestPage />);
+      renderTestPage();
 
       const closeButton = screen.getByRole('button', { name: /에러 닫기/i });
       fireEvent.click(closeButton);
@@ -403,7 +441,7 @@ describe('TestPage', () => {
         clearMessages: vi.fn(),
       });
 
-      render(<TestPage />);
+      renderTestPage();
 
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });

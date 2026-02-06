@@ -17,7 +17,7 @@ import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
 import { useProjectStore } from '../stores/projectStore';
-import type { Attachment } from '@bmad-studio/shared';
+import type { Attachment, HistoryMessage } from '@bmad-studio/shared';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { ChatHeader } from '../components/ChatHeader';
@@ -26,11 +26,49 @@ import { InputArea } from '../components/InputArea';
 import { ChatInput } from '../components/ChatInput';
 import { MessageBubble } from '../components/MessageBubble';
 import { ToolCallCard } from '../components/ToolCallCard';
+import { InteractiveResponseCard } from '../components/InteractiveResponseCard';
 import { MessageListSkeleton } from '../components/MessageListSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { SessionQuickAccessPanel } from '../components/SessionQuickAccessPanel';
 import { ConfirmModal } from '../components/ConfirmModal';
+
+/**
+ * Render a single history message as the appropriate component.
+ * Handles AskUserQuestion → InteractiveResponseCard, tool messages → ToolCallCard,
+ * and text messages → MessageBubble. (Story 7.1 - QA fix MAINT-001)
+ */
+function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[]) {
+  if (message.type === 'tool_use' && message.toolName === 'AskUserQuestion') {
+    const toolResult = messages.slice(index + 1).find(
+      (m) => m.type === 'tool_result' && m.toolName === message.toolName
+    );
+    const questions = message.toolInput?.questions as Array<{
+      options: Array<{ label: string; description?: string }>;
+      multiSelect?: boolean;
+    }> | undefined;
+    const choices = questions?.[0]?.options.map((opt) => ({
+      label: opt.label, description: opt.description, value: opt.label,
+    })) || [];
+    return (
+      <InteractiveResponseCard
+        key={message.id}
+        type="question"
+        toolName="AskUserQuestion"
+        toolInput={message.toolInput}
+        choices={choices}
+        multiSelect={questions?.[0]?.multiSelect}
+        status="responded"
+        response={toolResult?.toolResult?.output ?? toolResult?.content ?? '응답됨'}
+      />
+    );
+  }
+  return message.type === 'tool_use' || message.type === 'tool_result' ? (
+    <ToolCallCard key={message.id} message={message} />
+  ) : (
+    <MessageBubble key={message.id} message={message} />
+  );
+}
 
 export function ChatPage() {
   const { projectSlug, sessionId } = useParams<{
@@ -284,13 +322,7 @@ export function ChatPage() {
             }
           >
             {/* Show user messages in new session too */}
-            {messages.map((message) =>
-              message.type === 'tool_use' || message.type === 'tool_result' ? (
-                <ToolCallCard key={message.id} message={message} />
-              ) : (
-                <MessageBubble key={message.id} message={message} />
-              )
-            )}
+            {messages.map((msg, idx) => renderHistoryMessage(msg, idx, messages))}
           </MessageArea>
         </main>
         <InputArea>
@@ -477,13 +509,7 @@ export function ChatPage() {
           )}
 
           {/* Message list */}
-          {messages.map((message) =>
-            message.type === 'tool_use' || message.type === 'tool_result' ? (
-              <ToolCallCard key={message.id} message={message} />
-            ) : (
-              <MessageBubble key={message.id} message={message} />
-            )
-          )}
+          {messages.map((msg, idx) => renderHistoryMessage(msg, idx, messages))}
         </MessageArea>
       </main>
 
