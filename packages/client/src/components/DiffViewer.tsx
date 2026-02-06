@@ -120,7 +120,6 @@ export function DiffViewer({
   });
   const editorRef = useRef<monacoEditor.editor.IStandaloneDiffEditor | null>(null);
   const diffDisposableRef = useRef<monacoEditor.IDisposable | null>(null);
-  const [wrapPulse, setWrapPulse] = useState(false);
 
   const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
   const language = getLanguageFromPath(filePath);
@@ -187,36 +186,37 @@ export function DiffViewer({
       const changes = editorRef.current?.getLineChanges();
       if (!changes || changes.length === 0) return;
 
-      setState((prev) => {
-        let newIndex: number;
-        let isWrapping = false;
+      // Calculate new index based on current state
+      const currentIndex = state.currentDiffIndex;
+      let newIndex: number;
 
-        if (prev.currentDiffIndex === -1) {
-          newIndex = direction === 'next' ? 0 : changes.length - 1;
-        } else if (direction === 'next') {
-          newIndex = (prev.currentDiffIndex + 1) % changes.length;
-          isWrapping = prev.currentDiffIndex === changes.length - 1;
-        } else {
-          newIndex = (prev.currentDiffIndex - 1 + changes.length) % changes.length;
-          isWrapping = prev.currentDiffIndex === 0;
-        }
+      if (currentIndex === -1) {
+        newIndex = direction === 'next' ? 0 : changes.length - 1;
+      } else if (direction === 'next') {
+        newIndex = (currentIndex + 1) % changes.length;
+      } else {
+        newIndex = (currentIndex - 1 + changes.length) % changes.length;
+      }
 
-        const change = changes[newIndex];
-        const targetLine =
-          change.modifiedStartLineNumber > 0
-            ? change.modifiedStartLineNumber
-            : change.originalStartLineNumber;
-        editorRef.current?.getModifiedEditor().revealLineInCenter(targetLine);
+      // Scroll to the change (side effect - must be outside setState)
+      const change = changes[newIndex];
+      const targetLine =
+        change.modifiedStartLineNumber > 0
+          ? change.modifiedStartLineNumber
+          : change.originalStartLineNumber;
 
-        if (isWrapping) {
-          setWrapPulse(true);
-          setTimeout(() => setWrapPulse(false), 150);
-        }
+      const modifiedEditor = editorRef.current?.getModifiedEditor();
+      if (modifiedEditor) {
+        // Set cursor position and reveal with smooth scroll
+        modifiedEditor.setPosition({ lineNumber: targetLine, column: 1 });
+        modifiedEditor.revealLineInCenter(targetLine, 0 /* Smooth */);
+        modifiedEditor.focus();
+      }
 
-        return { ...prev, currentDiffIndex: newIndex };
-      });
+      // Update state
+      setState((prev) => ({ ...prev, currentDiffIndex: newIndex }));
     },
-    []
+    [state.currentDiffIndex]
   );
 
   // Handle Monaco Editor error (via loader API)
@@ -247,10 +247,12 @@ export function DiffViewer({
   }, [fullscreen, onClose]);
 
   // Handle F7 / Shift+F7 keyboard shortcuts for diff navigation
+  // Use capture phase to intercept before Chrome's default F7 (caret browsing)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F7') {
         e.preventDefault();
+        e.stopPropagation();
         if (e.shiftKey) {
           goToChange('previous');
         } else {
@@ -259,8 +261,8 @@ export function DiffViewer({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => document.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, [goToChange]);
 
   // Test-only: Force error state
@@ -340,7 +342,7 @@ export function DiffViewer({
                 <ChevronUp className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
               </button>
               <span
-                className={`text-xs font-mono text-gray-600 dark:text-gray-400 min-w-[2.5rem] text-center${wrapPulse ? ' animate-pulse' : ''}`}
+                className="text-xs font-mono text-gray-600 dark:text-gray-400 min-w-[2.5rem] text-center"
                 aria-live="polite"
                 data-testid="position-indicator"
               >
