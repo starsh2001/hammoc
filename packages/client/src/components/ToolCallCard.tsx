@@ -10,6 +10,7 @@ import { ToolPathDisplay } from './ToolPathDisplay';
 import { DiffViewer } from './DiffViewer';
 import { getToolIcon, getToolDisplayName } from '../utils/toolUtils';
 import { ToolDetailToggle } from './ToolDetailToggle';
+import { ToolResultRenderer } from './ToolResultRenderer';
 
 interface ToolCallCardProps {
   message: HistoryMessage;
@@ -192,6 +193,12 @@ export function ToolCallCard({ message }: ToolCallCardProps) {
     );
   }
 
-  // Success tool_result - don't render (already shown via tool_use card)
-  return null;
+  // Edit/Write/TodoWrite: already shown via tool_use card — skip
+  const SKIP_RESULT_TOOLS = ['Edit', 'Write', 'TodoWrite'];
+  if (SKIP_RESULT_TOOLS.includes(message.toolName ?? '')) {
+    return null;
+  }
+
+  // Read/Bash/Glob/Grep: render result
+  return <ToolResultRenderer toolName={message.toolName ?? ''} toolInput={message.toolInput} result={message.toolResult?.output} />;
 }

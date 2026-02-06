@@ -23,6 +23,13 @@ vi.mock('../DiffViewer', () => ({
   )),
 }));
 
+// Mock ToolResultRenderer
+vi.mock('../ToolResultRenderer', () => ({
+  ToolResultRenderer: vi.fn(({ toolName, result }: { toolName: string; result?: string }) => (
+    result ? <div data-testid="mock-tool-result-renderer">{toolName}: {result}</div> : null
+  )),
+}));
+
 describe('ToolCallCard', () => {
   const toolUseMessage: HistoryMessage = {
     id: 'msg-1',
@@ -68,11 +75,26 @@ describe('ToolCallCard', () => {
     expect(screen.getByText(/index\.ts/)).toBeInTheDocument();
   });
 
-  it('should not render successful tool_result (implicit in tool_use)', () => {
-    const { container } = render(<ToolCallCard message={toolResultSuccess} />);
+  it('should not render successful Edit tool_result (already shown via tool_use)', () => {
+    const editToolResult: HistoryMessage = {
+      ...toolResultSuccess,
+      toolName: 'Edit',
+    };
+    const { container } = render(<ToolCallCard message={editToolResult} />);
 
-    // Success results return null, so container should be empty
+    // Edit success results return null
     expect(container.firstChild).toBeNull();
+  });
+
+  it('should render successful Read tool_result via ToolResultRenderer', () => {
+    const readToolResult: HistoryMessage = {
+      ...toolResultSuccess,
+      toolName: 'Read',
+      toolInput: { file_path: '/src/index.ts' },
+    };
+    render(<ToolCallCard message={readToolResult} />);
+
+    expect(screen.getByTestId('mock-tool-result-renderer')).toBeInTheDocument();
   });
 
   it('should render failed tool_result with error', () => {
@@ -368,6 +390,133 @@ describe('ToolCallCard', () => {
       // Edit has its own collapse button, not the generic one
       expect(screen.queryByRole('button', { name: '도구 상세 정보 펼치기' })).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: '전체 경로 보기' })).toBeInTheDocument();
+    });
+  });
+
+  // Story 7.3 - tool_result rendering integration
+  describe('tool_result rendering (Story 7.3)', () => {
+    it('renders ToolResultRenderer for Read tool_result', () => {
+      const readResult: HistoryMessage = {
+        id: 'msg-read-result',
+        type: 'tool_result',
+        content: '',
+        timestamp: '2026-01-15T10:00:01Z',
+        toolName: 'Read',
+        toolInput: { file_path: '/src/index.ts' },
+        toolResult: { success: true, output: 'const x = 1;' },
+      };
+
+      render(<ToolCallCard message={readResult} />);
+
+      expect(screen.getByTestId('mock-tool-result-renderer')).toBeInTheDocument();
+      expect(screen.getByText(/Read/)).toBeInTheDocument();
+    });
+
+    it('renders ToolResultRenderer for Bash tool_result', () => {
+      const bashResult: HistoryMessage = {
+        id: 'msg-bash-result',
+        type: 'tool_result',
+        content: '',
+        timestamp: '2026-01-15T10:00:01Z',
+        toolName: 'Bash',
+        toolInput: { command: 'npm test' },
+        toolResult: { success: true, output: 'All tests passed' },
+      };
+
+      render(<ToolCallCard message={bashResult} />);
+
+      expect(screen.getByTestId('mock-tool-result-renderer')).toBeInTheDocument();
+    });
+
+    it('renders ToolResultRenderer for Glob tool_result', () => {
+      const globResult: HistoryMessage = {
+        id: 'msg-glob-result',
+        type: 'tool_result',
+        content: '',
+        timestamp: '2026-01-15T10:00:01Z',
+        toolName: 'Glob',
+        toolResult: { success: true, output: 'file1.ts\nfile2.ts' },
+      };
+
+      render(<ToolCallCard message={globResult} />);
+
+      expect(screen.getByTestId('mock-tool-result-renderer')).toBeInTheDocument();
+    });
+
+    it('renders ToolResultRenderer for Grep tool_result', () => {
+      const grepResult: HistoryMessage = {
+        id: 'msg-grep-result',
+        type: 'tool_result',
+        content: '',
+        timestamp: '2026-01-15T10:00:01Z',
+        toolName: 'Grep',
+        toolResult: { success: true, output: 'src/app.ts:1:import' },
+      };
+
+      render(<ToolCallCard message={grepResult} />);
+
+      expect(screen.getByTestId('mock-tool-result-renderer')).toBeInTheDocument();
+    });
+
+    it('skips result rendering for Edit tool_result (success)', () => {
+      const editResult: HistoryMessage = {
+        id: 'msg-edit-result',
+        type: 'tool_result',
+        content: '',
+        timestamp: '2026-01-15T10:00:01Z',
+        toolName: 'Edit',
+        toolResult: { success: true, output: 'File edited' },
+      };
+
+      const { container } = render(<ToolCallCard message={editResult} />);
+
+      expect(container.firstChild).toBeNull();
+    });
+
+    it('skips result rendering for Write tool_result (success)', () => {
+      const writeResult: HistoryMessage = {
+        id: 'msg-write-result',
+        type: 'tool_result',
+        content: '',
+        timestamp: '2026-01-15T10:00:01Z',
+        toolName: 'Write',
+        toolResult: { success: true, output: 'File written' },
+      };
+
+      const { container } = render(<ToolCallCard message={writeResult} />);
+
+      expect(container.firstChild).toBeNull();
+    });
+
+    it('skips result rendering for TodoWrite tool_result (success)', () => {
+      const todoResult: HistoryMessage = {
+        id: 'msg-todo-result',
+        type: 'tool_result',
+        content: '',
+        timestamp: '2026-01-15T10:00:01Z',
+        toolName: 'TodoWrite',
+        toolResult: { success: true, output: 'Todos updated' },
+      };
+
+      const { container } = render(<ToolCallCard message={todoResult} />);
+
+      expect(container.firstChild).toBeNull();
+    });
+
+    it('still shows error for failed tool_result (existing behavior)', () => {
+      const errorResult: HistoryMessage = {
+        id: 'msg-error-result',
+        type: 'tool_result',
+        content: '',
+        timestamp: '2026-01-15T10:00:01Z',
+        toolName: 'Read',
+        toolResult: { success: false, error: 'File not found' },
+      };
+
+      render(<ToolCallCard message={errorResult} />);
+
+      expect(screen.getByText(/File not found/)).toBeInTheDocument();
+      expect(screen.queryByTestId('mock-tool-result-renderer')).not.toBeInTheDocument();
     });
   });
 });
