@@ -11,11 +11,28 @@ import { DiffViewer, getLanguageFromPath } from '../DiffViewer';
 // Store onMount callback for manual triggering in tests
 let mockOnMount: (() => void) | null = null;
 
+// Mock editor instance for Story 6.4 navigation tests
+const mockRevealLineInCenter = vi.fn();
+const mockGetLineChanges = vi.fn<() => unknown[] | null>().mockReturnValue(null);
+const mockDispose = vi.fn();
+const mockOnDidUpdateDiff = vi.fn((callback: () => void) => {
+  callback();
+  return { dispose: mockDispose };
+});
+
+const mockEditorInstance = {
+  getLineChanges: mockGetLineChanges,
+  getModifiedEditor: () => ({
+    revealLineInCenter: mockRevealLineInCenter,
+  }),
+  onDidUpdateDiff: mockOnDidUpdateDiff,
+};
+
 // Mock @monaco-editor/react
 vi.mock('@monaco-editor/react', () => ({
   DiffEditor: vi.fn(({ original, modified, onMount }) => {
-    // Store the callback for manual triggering
-    mockOnMount = onMount;
+    // Store the callback for manual triggering — passes editor instance
+    mockOnMount = () => onMount?.(mockEditorInstance, {});
     return (
       <div data-testid="mock-diff-editor">
         <div data-testid="original-content">{original}</div>
@@ -70,6 +87,9 @@ describe('DiffViewer', () => {
     mockDiffLayout = 'side-by-side';
     mockSetLayout.mockReset();
     mockResetToAuto.mockReset();
+    mockGetLineChanges.mockReturnValue(null);
+    mockRevealLineInCenter.mockReset();
+    mockDispose.mockReset();
   });
 
   describe('Basic Rendering', () => {
@@ -418,5 +438,183 @@ describe('DiffViewer - Syntax Highlighting (Story 6.3)', () => {
       expect.objectContaining({ theme: 'vs' }),
       expect.anything()
     );
+  });
+});
+
+describe('DiffViewer - Diff Navigation (Story 6.4)', () => {
+  const defaultProps = {
+    filePath: 'packages/client/src/Example.tsx',
+    original: 'const a = 1;',
+    modified: 'const a = 2;',
+  };
+
+  const mockChanges = [
+    { originalStartLineNumber: 1, originalEndLineNumber: 3, modifiedStartLineNumber: 1, modifiedEndLineNumber: 5 },
+    { originalStartLineNumber: 10, originalEndLineNumber: 12, modifiedStartLineNumber: 13, modifiedEndLineNumber: 13 },
+    { originalStartLineNumber: 20, originalEndLineNumber: 20, modifiedStartLineNumber: 21, modifiedEndLineNumber: 25 },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockOnMount = null;
+    mockTheme = 'dark';
+    mockDiffLayout = 'side-by-side';
+    mockSetLayout.mockReset();
+    mockResetToAuto.mockReset();
+    mockGetLineChanges.mockReturnValue(mockChanges);
+    mockRevealLineInCenter.mockReset();
+    mockDispose.mockReset();
+  });
+
+  function renderAndMount(props = {}) {
+    const result = render(<DiffViewer {...defaultProps} {...props} />);
+    act(() => {
+      triggerMonacoMount();
+    });
+    return result;
+  }
+
+  it('renders navigation buttons in header', () => {
+    renderAndMount();
+    expect(screen.getByRole('button', { name: 'Go to previous change' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to next change' })).toBeInTheDocument();
+  });
+
+  it('displays change summary with added and removed line counts', () => {
+    renderAndMount();
+    // mockChanges: added = (5-1+1) + (13-13+1) + (25-21+1) = 5+1+5 = 11
+    // mockChanges: removed = (3-1+1) + (12-10+1) + (20-20+1) = 3+3+1 = 7
+    const summary = screen.getByTestId('change-summary');
+    expect(summary).toHaveTextContent('+11');
+    expect(summary).toHaveTextContent('-7');
+  });
+
+  it('displays initial position indicator as dash', () => {
+    renderAndMount();
+    const indicator = screen.getByTestId('position-indicator');
+    expect(indicator).toHaveTextContent('\u2014/3');
+  });
+
+  it('navigates to next change on next button click', () => {
+    renderAndMount();
+    const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
+
+    act(() => {
+      fireEvent.click(nextBtn);
+    });
+
+    expect(mockRevealLineInCenter).toHaveBeenCalledWith(1);
+    expect(screen.getByTestId('position-indicator')).toHaveTextContent('1/3');
+  });
+
+  it('navigates to previous change on previous button click', () => {
+    renderAndMount();
+    const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
+    const prevBtn = screen.getByRole('button', { name: 'Go to previous change' });
+
+    // First go to change 0, then 1
+    act(() => { fireEvent.click(nextBtn); });
+    act(() => { fireEvent.click(nextBtn); });
+    // Now at index 1, go previous to index 0
+    act(() => { fireEvent.click(prevBtn); });
+
+    expect(screen.getByTestId('position-indicator')).toHaveTextContent('1/3');
+  });
+
+  it('navigates to first change on next button when at initial state', () => {
+    renderAndMount();
+    const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
+
+    act(() => {
+      fireEvent.click(nextBtn);
+    });
+
+    // From initial state (-1), next should go to index 0
+    expect(mockRevealLineInCenter).toHaveBeenCalledWith(1);
+    expect(screen.getByTestId('position-indicator')).toHaveTextContent('1/3');
+  });
+
+  it('navigates to last change on previous button when at initial state', () => {
+    renderAndMount();
+    const prevBtn = screen.getByRole('button', { name: 'Go to previous change' });
+
+    act(() => {
+      fireEvent.click(prevBtn);
+    });
+
+    // From initial state (-1), previous should go to last change (index 2)
+    expect(mockRevealLineInCenter).toHaveBeenCalledWith(21);
+    expect(screen.getByTestId('position-indicator')).toHaveTextContent('3/3');
+  });
+
+  it('wraps around from last to first change', () => {
+    renderAndMount();
+    const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
+
+    // Navigate to index 0, 1, 2, then wrap to 0
+    act(() => { fireEvent.click(nextBtn); });
+    act(() => { fireEvent.click(nextBtn); });
+    act(() => { fireEvent.click(nextBtn); });
+    act(() => { fireEvent.click(nextBtn); }); // wraps to 0
+
+    expect(screen.getByTestId('position-indicator')).toHaveTextContent('1/3');
+  });
+
+  it('disables navigation buttons when no changes exist', () => {
+    mockGetLineChanges.mockReturnValue([]);
+    renderAndMount();
+
+    const prevBtn = screen.getByRole('button', { name: 'Go to previous change' });
+    const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
+
+    expect(prevBtn).toBeDisabled();
+    expect(nextBtn).toBeDisabled();
+  });
+
+  it('navigates to next change on F7 key press', () => {
+    renderAndMount();
+
+    act(() => {
+      fireEvent.keyDown(document, { key: 'F7' });
+    });
+
+    expect(mockRevealLineInCenter).toHaveBeenCalledWith(1);
+    expect(screen.getByTestId('position-indicator')).toHaveTextContent('1/3');
+  });
+
+  it('navigates to previous change on Shift+F7 key press', () => {
+    renderAndMount();
+
+    act(() => {
+      fireEvent.keyDown(document, { key: 'F7', shiftKey: true });
+    });
+
+    // From initial state, Shift+F7 goes to last change
+    expect(mockRevealLineInCenter).toHaveBeenCalledWith(21);
+    expect(screen.getByTestId('position-indicator')).toHaveTextContent('3/3');
+  });
+
+  it('passes hideUnchangedRegions option to DiffEditor', () => {
+    renderAndMount();
+    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          hideUnchangedRegions: { enabled: true },
+        }),
+      }),
+      expect.anything()
+    );
+  });
+
+  it('has correct aria-labels on navigation buttons', () => {
+    renderAndMount();
+    expect(screen.getByRole('button', { name: 'Go to previous change' })).toHaveAttribute('aria-label', 'Go to previous change');
+    expect(screen.getByRole('button', { name: 'Go to next change' })).toHaveAttribute('aria-label', 'Go to next change');
+  });
+
+  it('position indicator has aria-live attribute', () => {
+    renderAndMount();
+    const indicator = screen.getByTestId('position-indicator');
+    expect(indicator).toHaveAttribute('aria-live', 'polite');
   });
 });

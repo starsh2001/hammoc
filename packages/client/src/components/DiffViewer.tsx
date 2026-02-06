@@ -5,9 +5,10 @@
  * Displays file changes using Monaco Editor's DiffEditor
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { DiffEditor } from '@monaco-editor/react';
-import { FileText, X, Loader2, AlertCircle, Columns2, Rows2 } from 'lucide-react';
+import type * as monacoEditor from 'monaco-editor';
+import { FileText, X, Loader2, AlertCircle, Columns2, Rows2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { useDiffLayout } from '../hooks/useDiffLayout';
 
@@ -68,6 +69,10 @@ export interface DiffViewerProps {
 interface DiffViewerState {
   isLoading: boolean;
   error: Error | null;
+  currentDiffIndex: number;
+  totalDiffs: number;
+  addedLines: number;
+  removedLines: number;
 }
 
 const DEFAULT_PROPS = {
@@ -93,19 +98,122 @@ export function DiffViewer({
   const [state, setState] = useState<DiffViewerState>({
     isLoading: true,
     error: null,
+    currentDiffIndex: -1,
+    totalDiffs: 0,
+    addedLines: 0,
+    removedLines: 0,
   });
+  const editorRef = useRef<monacoEditor.editor.IStandaloneDiffEditor | null>(null);
+  const diffDisposableRef = useRef<monacoEditor.IDisposable | null>(null);
+  const [wrapPulse, setWrapPulse] = useState(false);
 
   const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
   const language = getLanguageFromPath(filePath);
 
   // Handle Monaco Editor mount
-  const handleEditorDidMount = useCallback(() => {
-    setState({ isLoading: false, error: null });
+  const handleEditorDidMount = useCallback(
+    (editor: monacoEditor.editor.IStandaloneDiffEditor) => {
+      editorRef.current = editor;
+
+      const updateDiffInfo = () => {
+        const changes = editor.getLineChanges();
+        if (!changes) {
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: null,
+            totalDiffs: 0,
+            addedLines: 0,
+            removedLines: 0,
+            currentDiffIndex: -1,
+          }));
+          return;
+        }
+
+        let added = 0;
+        let removed = 0;
+        for (const change of changes) {
+          if (change.modifiedEndLineNumber >= change.modifiedStartLineNumber) {
+            added += change.modifiedEndLineNumber - change.modifiedStartLineNumber + 1;
+          }
+          if (change.originalEndLineNumber >= change.originalStartLineNumber) {
+            removed += change.originalEndLineNumber - change.originalStartLineNumber + 1;
+          }
+        }
+
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: null,
+          totalDiffs: changes.length,
+          addedLines: added,
+          removedLines: removed,
+          currentDiffIndex: -1,
+        }));
+      };
+
+      diffDisposableRef.current = editor.onDidUpdateDiff(updateDiffInfo);
+      updateDiffInfo();
+    },
+    []
+  );
+
+  // Cleanup editor instance and diff listener on unmount
+  useEffect(() => {
+    return () => {
+      diffDisposableRef.current?.dispose();
+      editorRef.current = null;
+    };
   }, []);
+
+  // Navigate to next/previous change
+  const goToChange = useCallback(
+    (direction: 'next' | 'previous') => {
+      const changes = editorRef.current?.getLineChanges();
+      if (!changes || changes.length === 0) return;
+
+      setState((prev) => {
+        let newIndex: number;
+        let isWrapping = false;
+
+        if (prev.currentDiffIndex === -1) {
+          newIndex = direction === 'next' ? 0 : changes.length - 1;
+        } else if (direction === 'next') {
+          newIndex = (prev.currentDiffIndex + 1) % changes.length;
+          isWrapping = prev.currentDiffIndex === changes.length - 1;
+        } else {
+          newIndex = (prev.currentDiffIndex - 1 + changes.length) % changes.length;
+          isWrapping = prev.currentDiffIndex === 0;
+        }
+
+        const change = changes[newIndex];
+        const targetLine =
+          change.modifiedStartLineNumber > 0
+            ? change.modifiedStartLineNumber
+            : change.originalStartLineNumber;
+        editorRef.current?.getModifiedEditor().revealLineInCenter(targetLine);
+
+        if (isWrapping) {
+          setWrapPulse(true);
+          setTimeout(() => setWrapPulse(false), 150);
+        }
+
+        return { ...prev, currentDiffIndex: newIndex };
+      });
+    },
+    []
+  );
 
   // Handle Monaco Editor error (via loader API)
   const handleRetry = useCallback(() => {
-    setState({ isLoading: true, error: null });
+    setState({
+      isLoading: true,
+      error: null,
+      currentDiffIndex: -1,
+      totalDiffs: 0,
+      addedLines: 0,
+      removedLines: 0,
+    });
   }, []);
 
   // Handle Escape key for fullscreen mode
@@ -122,10 +230,27 @@ export function DiffViewer({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [fullscreen, onClose]);
 
+  // Handle F7 / Shift+F7 keyboard shortcuts for diff navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F7') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          goToChange('previous');
+        } else {
+          goToChange('next');
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [goToChange]);
+
   // Test-only: Force error state
   useEffect(() => {
     if (_testForceError) {
-      setState({ isLoading: false, error: new Error('Test error') });
+      setState((prev) => ({ ...prev, isLoading: false, error: new Error('Test error') }));
     }
   }, [_testForceError]);
 
@@ -177,6 +302,42 @@ export function DiffViewer({
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
             <span className="text-sm font-mono text-gray-700 dark:text-gray-300">{filePath}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Change Summary */}
+            <span className="text-xs whitespace-nowrap" data-testid="change-summary">
+              <span className="text-green-600 dark:text-green-400">+{state.addedLines}</span>
+              {' / '}
+              <span className="text-red-600 dark:text-red-400">-{state.removedLines}</span>
+            </span>
+            {/* Navigation Controls */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => goToChange('previous')}
+                disabled={state.totalDiffs === 0}
+                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Go to previous change"
+              >
+                <ChevronUp className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              </button>
+              <span
+                className={`text-xs font-mono text-gray-600 dark:text-gray-400 min-w-[2.5rem] text-center${wrapPulse ? ' animate-pulse' : ''}`}
+                aria-live="polite"
+                data-testid="position-indicator"
+              >
+                {state.currentDiffIndex === -1
+                  ? `\u2014/${state.totalDiffs}`
+                  : `${state.currentDiffIndex + 1}/${state.totalDiffs}`}
+              </span>
+              <button
+                onClick={() => goToChange('next')}
+                disabled={state.totalDiffs === 0}
+                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Go to next change"
+              >
+                <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-1">
             {responsiveLayout && (
@@ -245,6 +406,7 @@ export function DiffViewer({
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
               wordWrap: 'on',
+              hideUnchangedRegions: { enabled: true },
             }}
           />
         </div>
