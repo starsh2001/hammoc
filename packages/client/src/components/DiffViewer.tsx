@@ -5,12 +5,18 @@
  * Displays file changes using Monaco Editor's DiffEditor
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { DiffEditor } from '@monaco-editor/react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import type * as monacoEditor from 'monaco-editor';
-import { FileText, X, Loader2, AlertCircle, Columns2, Rows2, ChevronUp, ChevronDown } from 'lucide-react';
+import { FileText, X, Loader2, AlertCircle, AlertTriangle, Columns2, Rows2, ChevronUp, ChevronDown } from 'lucide-react';
+
 import { useTheme } from '../hooks/useTheme';
 import { useDiffLayout } from '../hooks/useDiffLayout';
+
+const LazyDiffEditor = lazy(() =>
+  import('@monaco-editor/react').then((mod) => ({
+    default: mod.DiffEditor,
+  }))
+);
 
 // File extension to Monaco language mapping
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
@@ -66,6 +72,13 @@ export interface DiffViewerProps {
   _testForceError?: boolean;
 }
 
+const LARGE_FILE_THRESHOLD = 5000;
+
+function countLines(text: string): number {
+  if (!text) return 0;
+  return text.split('\n').length;
+}
+
 interface DiffViewerState {
   isLoading: boolean;
   error: Error | null;
@@ -73,6 +86,7 @@ interface DiffViewerState {
   totalDiffs: number;
   addedLines: number;
   removedLines: number;
+  largeFileAccepted: boolean;
 }
 
 const DEFAULT_PROPS = {
@@ -102,6 +116,7 @@ export function DiffViewer({
     totalDiffs: 0,
     addedLines: 0,
     removedLines: 0,
+    largeFileAccepted: false,
   });
   const editorRef = useRef<monacoEditor.editor.IStandaloneDiffEditor | null>(null);
   const diffDisposableRef = useRef<monacoEditor.IDisposable | null>(null);
@@ -213,6 +228,7 @@ export function DiffViewer({
       totalDiffs: 0,
       addedLines: 0,
       removedLines: 0,
+      largeFileAccepted: false,
     });
   }, []);
 
@@ -253,6 +269,9 @@ export function DiffViewer({
       setState((prev) => ({ ...prev, isLoading: false, error: new Error('Test error') }));
     }
   }, [_testForceError]);
+
+  const maxLines = Math.max(countLines(original), countLines(modified));
+  const isLargeFile = maxLines >= LARGE_FILE_THRESHOLD;
 
   // Error UI
   if (state.error) {
@@ -380,7 +399,7 @@ export function DiffViewer({
 
         {/* Monaco DiffEditor Container */}
         <div className="flex-1 relative" tabIndex={-1}>
-          {/* Loading Spinner */}
+          {/* Loading Spinner (diff calculation) */}
           {state.isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900 z-10">
               <Loader2 className="w-8 h-8 animate-spin text-gray-400" aria-hidden="true" />
@@ -390,25 +409,63 @@ export function DiffViewer({
             </div>
           )}
 
-          <DiffEditor
-            original={original}
-            modified={modified}
-            language={language}
-            theme={monacoTheme}
-            onMount={handleEditorDidMount}
-            options={{
-              readOnly: readOnly,
-              originalEditable: false,
-              renderSideBySide: effectiveLayout === 'side-by-side',
-              renderIndicators: true,
-              ignoreTrimWhitespace: false,
-              lineNumbers: 'on',
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              wordWrap: 'on',
-              hideUnchangedRegions: { enabled: true },
-            }}
-          />
+          {/* Large file warning gate */}
+          {isLargeFile && !state.largeFileAccepted ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center" role="alert">
+              <AlertTriangle className="w-12 h-12 text-amber-500 mb-4" aria-hidden="true" />
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                대용량 파일 ({maxLines.toLocaleString()}줄)
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                이 파일은 매우 큽니다. 로드 시 브라우저 성능에 영향을 줄 수 있습니다.
+              </p>
+              <button
+                onClick={() => setState(prev => ({ ...prev, largeFileAccepted: true }))}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                aria-label="대용량 파일 Diff 전체 로드"
+              >
+                전체 로드
+              </button>
+            </div>
+          ) : (
+            <Suspense fallback={
+              <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900 z-10">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400" aria-hidden="true" />
+                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                  Loading diff viewer...
+                </span>
+              </div>
+            }>
+              <LazyDiffEditor
+                original={original}
+                modified={modified}
+                language={language}
+                theme={monacoTheme}
+                onMount={handleEditorDidMount}
+                options={{
+                  readOnly: readOnly,
+                  originalEditable: false,
+                  renderSideBySide: effectiveLayout === 'side-by-side',
+                  renderIndicators: true,
+                  ignoreTrimWhitespace: false,
+                  lineNumbers: 'on',
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  hideUnchangedRegions: { enabled: true },
+                  fastScrollSensitivity: 5,
+                  mouseWheelScrollSensitivity: 1,
+                  smoothScrolling: false,
+                  renderWhitespace: 'none',
+                  renderLineHighlight: 'none',
+                  occurrencesHighlight: 'off',
+                  folding: false,
+                  links: false,
+                  colorDecorators: false,
+                }}
+              />
+            </Suspense>
+          )}
         </div>
       </div>
     </>
