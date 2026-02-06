@@ -68,6 +68,8 @@ export interface HistoryMessage {
   type: 'user' | 'assistant' | 'tool_use' | 'tool_result';
   content: string;
   timestamp: string; // ISO 8601 format
+  // Thinking content (assistant messages only)
+  thinking?: string;
   // Image attachments (user messages only)
   images?: Array<{
     mimeType: string;

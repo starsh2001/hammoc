@@ -26,6 +26,7 @@ export enum ContentBlockType {
   TEXT = 'text',
   TOOL_USE = 'tool_use',
   TOOL_RESULT = 'tool_result',
+  THINKING = 'thinking',
 }
 
 // ===== Content Block Interfaces =====
@@ -66,12 +67,22 @@ export interface ParsedToolResultBlock extends ParsedContentBlockBase {
 }
 
 /**
+ * Parsed thinking content block
+ */
+export interface ParsedThinkingBlock extends ParsedContentBlockBase {
+  type: ContentBlockType.THINKING;
+  thinking: string;
+  signature: string;
+}
+
+/**
  * Union type for all parsed content blocks
  */
 export type ParsedContentBlock =
   | ParsedTextBlock
   | ParsedToolUseBlock
-  | ParsedToolResultBlock;
+  | ParsedToolResultBlock
+  | ParsedThinkingBlock;
 
 // ===== Parsed Message Interfaces =====
 
@@ -136,6 +147,8 @@ export interface ParsedStreamEventMessage extends ParsedSDKMessageBase {
   type: SDKMessageType.STREAM_EVENT;
   eventType: string;
   textDelta?: string;
+  /** Thinking delta from thinking_delta event */
+  thinkingDelta?: string;
   /** Tool use info from content_block_start event */
   toolUse?: {
     id: string;
@@ -212,6 +225,7 @@ export interface StreamingState {
 export interface StreamCallbacks {
   onSessionInit?: (sessionId: string, metadata: SessionMetadata) => void;
   onTextChunk?: (chunk: StreamChunk) => void;
+  onThinking?: (content: string) => void;
   onToolUse?: (toolCall: TrackedToolCall) => void;
   onToolInputUpdate?: (toolCallId: string, input: Record<string, unknown>) => void;
   onToolResult?: (toolCallId: string, result: ToolResult) => void;

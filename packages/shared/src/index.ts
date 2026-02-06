@@ -74,4 +74,5 @@ export {
   PaginationOptions,
   ContentBlock,
   TextContentBlock,
+  ThinkingContentBlock,
 } from './types/history.js';

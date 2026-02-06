@@ -8,6 +8,7 @@ import type { HistoryMessage } from '@bmad-studio/shared';
 import { formatRelativeTime } from '../utils/formatters';
 import { Bot, Copy, Check } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { ThinkingBlock } from './ThinkingBlock';
 
 interface MessageBubbleProps {
   /** Message data */
@@ -96,11 +97,16 @@ export function MessageBubble({
           </div>
         )}
 
+        {/* Thinking block for assistant messages */}
+        {!isUser && message.thinking && (
+          <ThinkingBlock content={message.thinking} />
+        )}
+
         {/* Message content - plain text for user, markdown for assistant */}
         {isUser ? (
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
         ) : (
-          <MarkdownRenderer content={message.content} isStreaming={isStreaming} />
+          message.content && <MarkdownRenderer content={message.content} isStreaming={isStreaming} />
         )}
 
         {/* Timestamp */}

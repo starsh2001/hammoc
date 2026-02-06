@@ -59,6 +59,7 @@ export interface ServerToClientEvents {
   'session:resumed': (data: { sessionId: string }) => void;
   'session:list': (data: { sessions: SessionInfo[] }) => void;
   'context:usage': (data: ChatUsage) => void;
+  'thinking:chunk': (data: { content: string }) => void;
 }
 
 // ===== Inter-server Events =====

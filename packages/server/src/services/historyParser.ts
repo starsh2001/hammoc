@@ -13,6 +13,7 @@ import type {
   HistoryMessage,
   ContentBlock,
   TextContentBlock,
+  ThinkingContentBlock,
 } from '@bmad-studio/shared';
 
 /**
@@ -176,6 +177,16 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
           base.content = cleanCommandTags(base.content);
         }
 
+        // Extract thinking content from assistant messages (independent of tool_use)
+        if (m.type === 'assistant' && Array.isArray(messageContent)) {
+          const thinkingBlock = messageContent.find(
+            (b): b is ThinkingContentBlock => b.type === 'thinking'
+          );
+          if (thinkingBlock) {
+            base.thinking = thinkingBlock.thinking;
+          }
+        }
+
         // Check for tool_use blocks in assistant messages
         if (m.type === 'assistant' && Array.isArray(messageContent)) {
           const toolUse = extractToolUseFromContent(messageContent);
@@ -203,8 +214,13 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
 
       // Filter out messages with empty or placeholder content
       // Claude Code emits "(no content)" text blocks for thinking-only turns
+      // Preserve messages that have thinking content even if text content is empty
       if (!base.content || base.content.trim() === '' || base.content.trim() === '(no content)') {
-        return null;
+        if (base.thinking) {
+          base.content = '';
+        } else {
+          return null;
+        }
       }
 
       return base;

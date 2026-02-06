@@ -8,6 +8,7 @@ import {
   type ParsedAssistantMessage,
   type ParsedUserMessage,
   type ParsedResultMessage,
+  type ParsedStreamEventMessage,
 } from '@bmad-studio/shared';
 import type { SDKMessage } from '@anthropic-ai/claude-code';
 
@@ -392,6 +393,134 @@ describe('StreamHandler', () => {
 
         const parsed = handler.parseMessage(unknownMessage);
         expect(parsed.type).toBe(SDKMessageType.SYSTEM);
+      });
+    });
+  });
+
+  describe('thinking block handling (Story 7.4)', () => {
+    describe('parseContentBlock - thinking', () => {
+      it('should parse thinking block to ParsedThinkingBlock', () => {
+        const thinkingMessage = {
+          type: 'assistant',
+          message: {
+            content: [
+              { type: 'thinking', thinking: 'Let me analyze...', signature: 'sig-abc' },
+              { type: 'text', text: 'Here is my answer.' },
+            ],
+          },
+        } as unknown as SDKMessage;
+
+        const parsed = handler.parseMessage(thinkingMessage);
+        expect(parsed.type).toBe(SDKMessageType.ASSISTANT);
+        const assistantMsg = parsed as ParsedAssistantMessage;
+        expect(assistantMsg.contentBlocks).toHaveLength(2);
+        expect(assistantMsg.contentBlocks[0].type).toBe(ContentBlockType.THINKING);
+        if (assistantMsg.contentBlocks[0].type === ContentBlockType.THINKING) {
+          expect(assistantMsg.contentBlocks[0].thinking).toBe('Let me analyze...');
+          expect(assistantMsg.contentBlocks[0].signature).toBe('sig-abc');
+        }
+      });
+    });
+
+    describe('handleAssistant - onThinking callback', () => {
+      it('should call onThinking for thinking blocks in assistant message', async () => {
+        const callbacks: StreamCallbacks = {
+          onThinking: vi.fn(),
+          onTextChunk: vi.fn(),
+          onComplete: vi.fn(),
+        };
+
+        const thinkingMessage = {
+          type: 'assistant',
+          message: {
+            content: [
+              { type: 'thinking', thinking: 'Step 1: analyze...', signature: 'sig-1' },
+              { type: 'text', text: 'My response' },
+            ],
+          },
+        } as unknown as SDKMessage;
+
+        const messages = [mockInitMessage, thinkingMessage, mockResultSuccessMessage];
+
+        await handler.processStream(createMockGenerator(messages), callbacks);
+
+        expect(callbacks.onThinking).toHaveBeenCalledWith('Step 1: analyze...');
+        expect(callbacks.onTextChunk).toHaveBeenCalled();
+      });
+
+      it('should not call onThinking when receivedStreamThinkingDelta is true (dedup)', async () => {
+        const callbacks: StreamCallbacks = {
+          onThinking: vi.fn(),
+          onComplete: vi.fn(),
+        };
+
+        // First send a stream event with thinking_delta (sets receivedStreamThinkingDelta = true)
+        const thinkingDeltaEvent = {
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            delta: { type: 'thinking_delta', thinking: 'Streamed thinking' },
+          },
+        } as unknown as SDKMessage;
+
+        // Then full assistant message with same thinking (should be skipped)
+        const thinkingMessage = {
+          type: 'assistant',
+          message: {
+            content: [
+              { type: 'thinking', thinking: 'Streamed thinking', signature: 'sig-2' },
+              { type: 'text', text: 'Response' },
+            ],
+          },
+        } as unknown as SDKMessage;
+
+        const messages = [mockInitMessage, thinkingDeltaEvent, thinkingMessage, mockResultSuccessMessage];
+
+        await handler.processStream(createMockGenerator(messages), callbacks);
+
+        // onThinking should be called only once (from the stream event), not from the assistant message
+        expect(callbacks.onThinking).toHaveBeenCalledTimes(1);
+        expect(callbacks.onThinking).toHaveBeenCalledWith('Streamed thinking');
+      });
+    });
+
+    describe('parseStreamEventMessage - thinking_delta', () => {
+      it('should extract thinkingDelta from thinking_delta event', () => {
+        const thinkingDeltaEvent = {
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            delta: { type: 'thinking_delta', thinking: 'partial thinking...' },
+          },
+        } as unknown as SDKMessage;
+
+        const parsed = handler.parseMessage(thinkingDeltaEvent);
+        expect(parsed.type).toBe(SDKMessageType.STREAM_EVENT);
+        const streamMsg = parsed as ParsedStreamEventMessage;
+        expect(streamMsg.thinkingDelta).toBe('partial thinking...');
+      });
+    });
+
+    describe('handleStreamEvent - thinking delta processing', () => {
+      it('should call onThinking when thinkingDelta is present in stream event', async () => {
+        const callbacks: StreamCallbacks = {
+          onThinking: vi.fn(),
+          onComplete: vi.fn(),
+        };
+
+        const thinkingDeltaEvent = {
+          type: 'stream_event',
+          event: {
+            type: 'content_block_delta',
+            delta: { type: 'thinking_delta', thinking: 'delta chunk' },
+          },
+        } as unknown as SDKMessage;
+
+        const messages = [mockInitMessage, thinkingDeltaEvent, mockResultSuccessMessage];
+
+        await handler.processStream(createMockGenerator(messages), callbacks);
+
+        expect(callbacks.onThinking).toHaveBeenCalledWith('delta chunk');
       });
     });
   });
