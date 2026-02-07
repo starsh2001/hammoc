@@ -22,17 +22,21 @@ interface ProjectState {
   createError: string | null;
   pathValidation: ValidatePathResponse | null;
   isValidating: boolean;
+  // BMad versions
+  bmadVersions: string[];
+  isFetchingVersions: boolean;
 }
 
 interface ProjectActions {
   fetchProjects: () => Promise<void>;
   clearError: () => void;
   // Story 3.6 - Project creation actions
-  createProject: (path: string, setupBmad: boolean) => Promise<CreateProjectResponse | null>;
+  createProject: (path: string, setupBmad: boolean, bmadVersion?: string) => Promise<CreateProjectResponse | null>;
   validatePath: (path: string) => Promise<ValidatePathResponse>;
   clearCreateError: () => void;
   clearPathValidation: () => void;
   abortCreation: () => void;
+  fetchBmadVersions: () => Promise<void>;
 }
 
 type ProjectStore = ProjectState & ProjectActions;
@@ -50,6 +54,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   createError: null,
   pathValidation: null,
   isValidating: false,
+  // BMad versions
+  bmadVersions: [],
+  isFetchingVersions: false,
 
   // Actions
   fetchProjects: async () => {
@@ -69,14 +76,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   clearError: () => set({ error: null }),
 
   // Story 3.6 - Project creation actions
-  createProject: async (path: string, setupBmad: boolean) => {
+  createProject: async (path: string, setupBmad: boolean, bmadVersion?: string) => {
     // Create new AbortController for this request
     createAbortController = new AbortController();
     const signal = createAbortController.signal;
 
     set({ isCreating: true, createError: null });
     try {
-      const result = await projectsApi.create({ path, setupBmad }, { signal });
+      const result = await projectsApi.create({ path, setupBmad, bmadVersion }, { signal });
 
       // Check if aborted
       if (signal.aborted) {
@@ -129,6 +136,16 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       createAbortController.abort();
       createAbortController = null;
       set({ isCreating: false, createError: '프로젝트 생성이 취소되었습니다.' });
+    }
+  },
+
+  fetchBmadVersions: async () => {
+    set({ isFetchingVersions: true });
+    try {
+      const { versions } = await projectsApi.bmadVersions();
+      set({ bmadVersions: versions, isFetchingVersions: false });
+    } catch {
+      set({ bmadVersions: [], isFetchingVersions: false });
     }
   },
 }));

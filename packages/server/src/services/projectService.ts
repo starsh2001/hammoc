@@ -10,12 +10,19 @@ import os from 'os';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
 import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 import type {
   ProjectInfo,
   CreateProjectRequest,
   CreateProjectResponse,
   ValidatePathResponse,
 } from '@bmad-studio/shared';
+
+// Resolve the server package root for locating bundled resources
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SERVER_PACKAGE_ROOT = path.resolve(__dirname, '..', '..');
+const BMAD_RESOURCES_DIR = path.join(SERVER_PACKAGE_ROOT, 'resources', 'bmad-method');
 
 /**
  * Validate path for security (path traversal prevention)
@@ -297,16 +304,16 @@ class ProjectService {
           valid: false,
           exists: true,
           isProject: false,
-          error: '지정한 경로가 디렉토리가 아닙니다.',
+          error: '지정한 경로가 파일입니다. 디렉토리 경로를 입력해 주세요.',
         };
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Path doesn't exist yet - valid for project creation (will be created)
         return {
-          valid: false,
+          valid: true,
           exists: false,
           isProject: false,
-          error: '지정한 경로가 존재하지 않습니다.',
         };
       }
       throw error;
@@ -359,7 +366,7 @@ class ProjectService {
    * @returns Created project info
    */
   async createProject(request: CreateProjectRequest): Promise<CreateProjectResponse> {
-    const { path: projectPath, setupBmad = true } = request;
+    const { path: projectPath, setupBmad = true, bmadVersion } = request;
 
     // Validate path first
     const validation = await this.validatePath(projectPath);
@@ -380,12 +387,21 @@ class ProjectService {
       }
     }
 
+    // Create project directory if it doesn't exist
+    if (!validation.exists) {
+      await fs.mkdir(projectPath, { recursive: true });
+    }
+
     // Initialize Claude project (creates sessions-index.json)
     await this.initializeClaudeProject(projectPath);
 
     // Setup BMad if requested
     if (setupBmad) {
-      await this.setupBmadCore(projectPath);
+      const version = bmadVersion || (await this.getLatestBmadVersion());
+      if (!version) {
+        throw new Error('사용 가능한 BMad 버전이 없습니다.');
+      }
+      await this.setupBmadCore(projectPath, version);
     }
 
     // Scan to get the created project info
@@ -470,44 +486,86 @@ class ProjectService {
   }
 
   /**
-   * Setup .bmad-core folder in project
-   * [Source: Story 3.6 - Task 2]
-   * @param projectPath Project directory path
+   * Get list of available BMad method versions from bundled resources
+   * @returns Array of version strings sorted descending (latest first)
    */
-  async setupBmadCore(projectPath: string): Promise<void> {
-    const bmadCorePath = path.join(projectPath, '.bmad-core');
+  async getBmadVersions(): Promise<string[]> {
+    try {
+      const entries = await fs.readdir(BMAD_RESOURCES_DIR);
+      const versions: string[] = [];
+      for (const entry of entries) {
+        const stat = await fs.stat(path.join(BMAD_RESOURCES_DIR, entry));
+        if (stat.isDirectory()) {
+          versions.push(entry);
+        }
+      }
+      // Sort by semver descending (latest first)
+      versions.sort((a, b) => {
+        const partsA = a.split('.').map(Number);
+        const partsB = b.split('.').map(Number);
+        for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+          const diff = (partsB[i] || 0) - (partsA[i] || 0);
+          if (diff !== 0) return diff;
+        }
+        return 0;
+      });
+      return versions;
+    } catch {
+      return [];
+    }
+  }
 
-    // Create .bmad-core directory
-    await fs.mkdir(bmadCorePath, { recursive: true });
+  /**
+   * Get the latest available BMad method version
+   * @returns Latest version string or null if none available
+   */
+  async getLatestBmadVersion(): Promise<string | null> {
+    const versions = await this.getBmadVersions();
+    return versions[0] || null;
+  }
 
-    // Create basic structure
-    const dirs = ['agents', 'tasks', 'templates', 'checklists', 'data'];
-    for (const dir of dirs) {
-      await fs.mkdir(path.join(bmadCorePath, dir), { recursive: true });
+  /**
+   * Setup .bmad-core folder in project by copying from bundled template
+   * Copies the full BMad method content (agents, tasks, templates, workflows, etc.)
+   * @param projectPath Project directory path
+   * @param version BMad method version to install
+   */
+  async setupBmadCore(projectPath: string, version: string): Promise<void> {
+    const templateDir = path.join(BMAD_RESOURCES_DIR, version);
+
+    // Validate the version exists
+    try {
+      await fs.access(templateDir);
+    } catch {
+      throw new Error(`BMad 버전 ${version}을 찾을 수 없습니다.`);
     }
 
-    // Create core-config.yaml with defaults
-    const coreConfigPath = path.join(bmadCorePath, 'core-config.yaml');
-    if (!existsSync(coreConfigPath)) {
-      const defaultConfig = `# BMad Core Configuration
-markdownExploder: true
-qa:
-  qaLocation: docs/qa
-prd:
-  prdFile: docs/prd.md
-  prdVersion: v4
-  prdSharded: false
-architecture:
-  architectureFile: docs/architecture.md
-  architectureVersion: v4
-  architectureSharded: false
-customTechnicalDocuments: null
-devLoadAlwaysFiles: []
-devDebugLog: .ai/debug-log.md
-devStoryLocation: docs/stories
-slashPrefix: BMad
-`;
-      await fs.writeFile(coreConfigPath, defaultConfig, 'utf-8');
+    // Recursively copy template to project
+    await this.copyDirRecursive(templateDir, projectPath);
+  }
+
+  /**
+   * Recursively copy directory contents from source to destination
+   * Preserves directory structure. Does not overwrite existing files.
+   * @param src Source directory path
+   * @param dest Destination directory path
+   */
+  private async copyDirRecursive(src: string, dest: string): Promise<void> {
+    await fs.mkdir(dest, { recursive: true });
+    const entries = await fs.readdir(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+
+      if (entry.isDirectory()) {
+        await this.copyDirRecursive(srcPath, destPath);
+      } else {
+        // Do not overwrite existing files
+        if (!existsSync(destPath)) {
+          await fs.copyFile(srcPath, destPath);
+        }
+      }
     }
   }
 }

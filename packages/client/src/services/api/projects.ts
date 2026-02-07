@@ -10,6 +10,7 @@ import type {
   CreateProjectRequest,
   CreateProjectResponse,
   ValidatePathResponse,
+  BmadVersionsResponse,
 } from '@bmad-studio/shared';
 
 export const projectsApi = {
@@ -23,4 +24,7 @@ export const projectsApi = {
   /** Validate a directory path */
   validatePath: (path: string, options?: { signal?: AbortSignal }) =>
     api.post<ValidatePathResponse>('/projects/validate-path', { path }, options),
+
+  /** List available BMad method versions */
+  bmadVersions: () => api.get<BmadVersionsResponse>('/projects/bmad-versions'),
 };

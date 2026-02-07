@@ -19,6 +19,7 @@ interface NewProjectDialogProps {
 export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialogProps) {
   const [path, setPath] = useState('');
   const [setupBmad, setSetupBmad] = useState(true);
+  const [selectedVersion, setSelectedVersion] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,21 +35,33 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
     clearCreateError,
     clearPathValidation,
     abortCreation,
+    bmadVersions,
+    isFetchingVersions,
+    fetchBmadVersions,
   } = useProjectStore();
 
-  // Focus input on open
+  // Fetch BMad versions on open
   useEffect(() => {
     if (isOpen) {
+      fetchBmadVersions();
       // Small delay to ensure dialog is rendered
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [isOpen]);
+  }, [isOpen, fetchBmadVersions]);
+
+  // Set default version when versions are loaded
+  useEffect(() => {
+    if (bmadVersions.length > 0 && !selectedVersion) {
+      setSelectedVersion(bmadVersions[0]);
+    }
+  }, [bmadVersions, selectedVersion]);
 
   // Reset state on close
   useEffect(() => {
     if (!isOpen) {
       setPath('');
       setSetupBmad(true);
+      setSelectedVersion('');
       setLocalError(null);
       clearCreateError();
       clearPathValidation();
@@ -93,13 +106,17 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
     }
 
     // Create project
-    const result = await createProject(trimmedPath, setupBmad);
+    const result = await createProject(
+      trimmedPath,
+      setupBmad,
+      setupBmad ? selectedVersion || undefined : undefined
+    );
 
     if (result) {
       onSuccess(result.project.projectSlug, result.isExisting);
       onClose();
     }
-  }, [path, pathValidation, validatePath, createProject, setupBmad, onSuccess, onClose]);
+  }, [path, pathValidation, validatePath, createProject, setupBmad, selectedVersion, onSuccess, onClose]);
 
   // Handle navigate to existing project
   const handleNavigateToExisting = useCallback(() => {
@@ -262,19 +279,59 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
             </p>
           )}
 
-          {/* BMad Setup Checkbox */}
-          <div className="flex items-center gap-2 min-h-[44px]">
-            <input
-              id="setup-bmad"
-              type="checkbox"
-              checked={setupBmad}
-              onChange={(e) => setSetupBmad(e.target.checked)}
-              className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              disabled={isCreating}
-            />
-            <label htmlFor="setup-bmad" className="text-sm text-gray-700 dark:text-gray-300">
-              BMad 자동 설정 (.bmad-core 폴더 생성)
-            </label>
+          {/* BMad Setup Checkbox + Version Selector */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 min-h-[44px]">
+              <input
+                id="setup-bmad"
+                type="checkbox"
+                checked={setupBmad}
+                onChange={(e) => setSetupBmad(e.target.checked)}
+                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                disabled={isCreating}
+              />
+              <label htmlFor="setup-bmad" className="text-sm text-gray-700 dark:text-gray-300">
+                BMad Method 초기화
+              </label>
+            </div>
+
+            {/* Version Selector - visible when setupBmad is checked */}
+            {setupBmad && (
+              <div className="ml-7">
+                <label
+                  htmlFor="bmad-version"
+                  className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                >
+                  버전
+                </label>
+                {isFetchingVersions ? (
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    버전 목록 로딩 중...
+                  </p>
+                ) : bmadVersions.length > 0 ? (
+                  <select
+                    id="bmad-version"
+                    value={selectedVersion}
+                    onChange={(e) => setSelectedVersion(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
+                               bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={isCreating}
+                  >
+                    {bmadVersions.map((v) => (
+                      <option key={v} value={v}>
+                        v{v}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-xs text-red-500">
+                    사용 가능한 BMad 버전이 없습니다.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

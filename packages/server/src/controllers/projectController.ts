@@ -11,6 +11,7 @@ import {
   ProjectListResponse,
   CreateProjectRequest,
   ValidatePathRequest,
+  BmadVersionsResponse,
 } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 
@@ -66,7 +67,7 @@ export const projectController = {
    */
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const { path, setupBmad } = req.body as CreateProjectRequest;
+      const { path, setupBmad, bmadVersion } = req.body as CreateProjectRequest;
 
       if (!path || typeof path !== 'string') {
         res.status(400).json({
@@ -78,7 +79,7 @@ export const projectController = {
         return;
       }
 
-      const result = await projectService.createProject({ path, setupBmad });
+      const result = await projectService.createProject({ path, setupBmad, bmadVersion });
 
       // Return 201 for new project, 200 for existing
       const status = result.isExisting ? 200 : 201;
@@ -102,6 +103,25 @@ export const projectController = {
         error: {
           code: 'PROJECT_CREATE_ERROR',
           message: '프로젝트 생성 중 오류가 발생했습니다.',
+        },
+      });
+    }
+  },
+
+  /**
+   * GET /api/projects/bmad-versions
+   * List available BMad method versions
+   */
+  async bmadVersions(_req: Request, res: Response): Promise<void> {
+    try {
+      const versions = await projectService.getBmadVersions();
+      const response: BmadVersionsResponse = { versions };
+      res.json(response);
+    } catch {
+      res.status(500).json({
+        error: {
+          code: 'BMAD_VERSIONS_ERROR',
+          message: 'BMad 버전 목록을 가져오는 중 오류가 발생했습니다.',
         },
       });
     }

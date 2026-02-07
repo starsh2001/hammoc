@@ -22,6 +22,7 @@ describe('NewProjectDialog', () => {
   const mockClearCreateError = vi.fn();
   const mockClearPathValidation = vi.fn();
   const mockAbortCreation = vi.fn();
+  const mockFetchBmadVersions = vi.fn();
 
   const defaultStoreState = {
     isCreating: false,
@@ -33,6 +34,9 @@ describe('NewProjectDialog', () => {
     clearCreateError: mockClearCreateError,
     clearPathValidation: mockClearPathValidation,
     abortCreation: mockAbortCreation,
+    bmadVersions: ['4.44.3'],
+    isFetchingVersions: false,
+    fetchBmadVersions: mockFetchBmadVersions,
   };
 
   beforeEach(() => {
@@ -75,7 +79,7 @@ describe('NewProjectDialog', () => {
         <NewProjectDialog isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
       );
 
-      const checkbox = screen.getByRole('checkbox', { name: /BMad 자동 설정/ });
+      const checkbox = screen.getByRole('checkbox', { name: /BMad Method 초기화/ });
       expect(checkbox).toBeChecked();
     });
 
@@ -128,7 +132,7 @@ describe('NewProjectDialog', () => {
         <NewProjectDialog isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
       );
 
-      const checkbox = screen.getByRole('checkbox', { name: /BMad 자동 설정/ });
+      const checkbox = screen.getByRole('checkbox', { name: /BMad Method 초기화/ });
       expect(checkbox).toBeChecked();
 
       await user.click(checkbox);
@@ -181,7 +185,7 @@ describe('NewProjectDialog', () => {
       await user.click(screen.getByRole('button', { name: '생성' }));
 
       await waitFor(() => {
-        expect(mockCreateProject).toHaveBeenCalledWith('/Users/test/project', true);
+        expect(mockCreateProject).toHaveBeenCalledWith('/Users/test/project', true, '4.44.3');
       });
 
       await waitFor(() => {

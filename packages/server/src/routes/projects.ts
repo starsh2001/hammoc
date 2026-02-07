@@ -91,6 +91,9 @@ router.get('/', projectController.list);
 // POST /api/projects - Create new project (rate limited)
 router.post('/', createProjectLimiter, projectController.create);
 
+// GET /api/projects/bmad-versions - List available BMad method versions
+router.get('/bmad-versions', projectController.bmadVersions);
+
 // POST /api/projects/validate-path - Validate directory path (rate limited)
 router.post('/validate-path', validatePathLimiter, projectController.validatePath);
 
