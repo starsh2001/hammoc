@@ -141,7 +141,7 @@ describe('useStreaming', () => {
       const segments = useChatStore.getState().streamingSegments;
       expect(segments).toHaveLength(2);
       expect(segments[0]).toEqual({ type: 'text', content: 'Let me check that file.' });
-      expect(segments[1]).toEqual({
+      expect(segments[1]).toMatchObject({
         type: 'tool',
         toolCall: { id: 'tool-1', name: 'Read', input: { file_path: '/test.ts' } },
         status: 'pending',
@@ -167,10 +167,10 @@ describe('useStreaming', () => {
         name: 'Read',
       });
 
-      // Tool result
+      // Tool result (server sends { toolCallId, result: { success, output, error } })
       mockSocket.trigger('tool:result', {
         toolCallId: 'tool-1',
-        output: 'file content',
+        result: { success: true, output: 'file content' },
       });
 
       const segments = useChatStore.getState().streamingSegments;
@@ -221,15 +221,12 @@ describe('useStreaming', () => {
       const event = new KeyboardEvent('keydown', { key: 'Escape' });
       document.dispatchEvent(event);
 
-      // abortResponse: streaming stopped, segments cleared
+      // abortResponse: streaming stopped, segments kept as fallback
       expect(useChatStore.getState().isStreaming).toBe(false);
-      expect(useChatStore.getState().streamingSegments).toEqual([]);
+      expect(useChatStore.getState().streamingSegments).toHaveLength(1);
 
-      // abortResponse preserves text with abort marker in messageStore
-      const messages = useMessageStore.getState().messages;
-      expect(messages).toHaveLength(1);
-      expect(messages[0].content).toContain('Hello');
-      expect(messages[0].content).toContain('[중단됨]');
+      // No messages added to messageStore directly (fetchMessages will load later)
+      expect(useMessageStore.getState().messages).toHaveLength(0);
     });
 
     it('does not abort when Escape is pressed while not streaming', () => {
@@ -266,12 +263,11 @@ describe('useStreaming', () => {
       const event = new KeyboardEvent('keydown', { key: 'c', ctrlKey: true });
       document.dispatchEvent(event);
 
-      // abortResponse should be called
+      // abortResponse should be called - segments kept as fallback
       expect(useChatStore.getState().isStreaming).toBe(false);
-      const messages = useMessageStore.getState().messages;
-      expect(messages).toHaveLength(1);
-      expect(messages[0].content).toContain('Partial response');
-      expect(messages[0].content).toContain('[중단됨]');
+      expect(useChatStore.getState().streamingSegments).toHaveLength(1);
+      // No messages added to messageStore directly
+      expect(useMessageStore.getState().messages).toHaveLength(0);
 
       vi.restoreAllMocks();
     });

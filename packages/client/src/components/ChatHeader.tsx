@@ -29,6 +29,8 @@ interface ChatHeaderProps {
   onShowSessions?: () => void;
   /** Context usage data from last SDK response */
   contextUsage?: ChatUsage | null;
+  /** Callback when compact button is clicked */
+  onCompact?: () => void;
 }
 
 export function ChatHeader({
@@ -40,6 +42,7 @@ export function ChatHeader({
   onNewSession,
   onShowSessions,
   contextUsage,
+  onCompact,
 }: ChatHeaderProps) {
   const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
 
@@ -85,6 +88,7 @@ export function ChatHeader({
           <ContextUsageDisplay
             contextUsage={contextUsage ?? null}
             onNewSession={onNewSession}
+            onCompact={onCompact}
           />
 
           {/* Connection status indicator (compact mode) */}

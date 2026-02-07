@@ -226,7 +226,7 @@ invalid json line
       expect(transformed[1].type).toBe('assistant');
     });
 
-    it('includes tool_use and tool_result', () => {
+    it('merges tool_result into tool_use as single message', () => {
       const messages: RawJSONLMessage[] = [
         {
           uuid: '1',
@@ -246,12 +246,13 @@ invalid json line
 
       const transformed = transformToHistoryMessages(messages);
 
-      expect(transformed).toHaveLength(2);
+      // tool_result merged into tool_use — single message
+      expect(transformed).toHaveLength(1);
       expect(transformed[0].toolName).toBe('Read');
       expect(transformed[0].toolInput).toEqual({ file_path: '/index.ts' });
       expect(transformed[0].content).toBe('Calling Read');
-      expect(transformed[1].toolResult?.success).toBe(true);
-      expect(transformed[1].toolResult?.output).toBe('file content');
+      expect(transformed[0].toolResult?.success).toBe(true);
+      expect(transformed[0].toolResult?.output).toBe('file content');
     });
 
     it('transforms user messages correctly', () => {

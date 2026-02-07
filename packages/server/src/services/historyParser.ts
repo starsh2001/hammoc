@@ -4,6 +4,10 @@
  *
  * Parses Claude Code JSONL session files and transforms them
  * into HistoryMessage format for client display.
+ *
+ * Content blocks within a single assistant/user message are split into
+ * separate HistoryMessages to match streaming segment order:
+ *   thinking → text → tool_use (each) with tool_result merged by ID
  */
 
 import fs from 'fs/promises';
@@ -14,6 +18,8 @@ import type {
   ContentBlock,
   TextContentBlock,
   ThinkingContentBlock,
+  ToolUseContentBlock,
+  ToolResultContentBlock,
 } from '@bmad-studio/shared';
 
 /**
@@ -115,24 +121,6 @@ function extractTextContent(content: string | ContentBlock[] | undefined): strin
 }
 
 /**
- * Extract tool use info from content blocks
- * @param content The message content (ContentBlock[])
- * @returns Tool use info or null
- */
-function extractToolUseFromContent(
-  content: ContentBlock[]
-): { name: string; input: Record<string, unknown> } | null {
-  const toolUseBlock = content.find((block) => block.type === 'tool_use');
-  if (toolUseBlock && toolUseBlock.type === 'tool_use') {
-    return {
-      name: toolUseBlock.name,
-      input: toolUseBlock.input,
-    };
-  }
-  return null;
-}
-
-/**
  * Clean up command tags from user messages
  * Converts "<command-message>X</command-message>\n<command-name>/Y</command-name>" to "/Y"
  * @param content The raw message content
@@ -148,84 +136,183 @@ function cleanCommandTags(content: string): string {
 }
 
 /**
- * Transform raw JSONL messages to HistoryMessage format
- * Filters out init/system/progress/meta messages and messages with empty content
- * @param raw Array of raw messages
+ * Transform raw JSONL messages to HistoryMessage format.
+ *
+ * Key behavior: splits content blocks from a single SDK message into
+ * separate HistoryMessages (thinking, text, each tool_use) and merges
+ * tool_result blocks back into their corresponding tool_use by ID.
+ * This produces an ordering that matches real-time streaming segments.
+ *
+ * @param raw Array of raw messages (sorted)
  * @returns Array of transformed HistoryMessages for display
  */
 export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessage[] {
-  const displayTypes = ['user', 'assistant', 'tool_use', 'tool_result'];
+  const results: HistoryMessage[] = [];
+  // Map tool_use block id → index in results (for merging tool_results)
+  const toolUseIndexMap = new Map<string, number>();
 
-  return raw
-    .filter((m) => displayTypes.includes(m.type))
-    // Filter out meta messages (expanded slash commands)
-    .filter((m) => !m.isMeta)
-    .map((m): HistoryMessage | null => {
-      const base: HistoryMessage = {
-        id: m.uuid,
-        type: m.type as HistoryMessage['type'],
-        timestamp: m.timestamp,
-        content: '',
-      };
+  for (const m of raw) {
+    // Skip non-display types and meta messages
+    if (!['user', 'assistant', 'tool_use', 'tool_result'].includes(m.type)) continue;
+    if (m.isMeta) continue;
 
-      if (m.type === 'user' || m.type === 'assistant') {
-        const messageContent = m.message?.content;
-        base.content = extractTextContent(messageContent);
+    if (m.type === 'assistant') {
+      const messageContent = m.message?.content;
 
-        // Clean up command tags from user messages (show "/sm" instead of full XML)
-        if (m.type === 'user' && typeof base.content === 'string') {
-          base.content = cleanCommandTags(base.content);
-        }
+      if (Array.isArray(messageContent)) {
+        // Split content blocks into separate HistoryMessages
+        let thinkingContent: string | undefined;
 
-        // Extract thinking content from assistant messages (independent of tool_use)
-        if (m.type === 'assistant' && Array.isArray(messageContent)) {
-          const thinkingBlock = messageContent.find(
-            (b): b is ThinkingContentBlock => b.type === 'thinking'
-          );
-          if (thinkingBlock) {
-            base.thinking = thinkingBlock.thinking;
-          }
-        }
-
-        // Check for tool_use blocks in assistant messages
-        if (m.type === 'assistant' && Array.isArray(messageContent)) {
-          const toolUse = extractToolUseFromContent(messageContent);
-          if (toolUse) {
-            base.type = 'tool_use';
-            base.toolName = toolUse.name;
-            base.toolInput = toolUse.input;
-            if (!base.content) {
-              base.content = `Calling ${toolUse.name}`;
+        for (const block of messageContent) {
+          if (block.type === 'thinking') {
+            thinkingContent = (block as ThinkingContentBlock).thinking;
+          } else if (block.type === 'text') {
+            const text = (block as TextContentBlock).text;
+            // Skip "(no content)" placeholder
+            if (text.trim() && text.trim() !== '(no content)') {
+              results.push({
+                id: `${m.uuid}-text-${results.length}`,
+                type: 'assistant',
+                content: text,
+                timestamp: m.timestamp,
+                thinking: thinkingContent,
+              });
+              thinkingContent = undefined;
             }
+          } else if (block.type === 'tool_use') {
+            const toolBlock = block as ToolUseContentBlock;
+            const idx = results.length;
+            results.push({
+              id: `${m.uuid}-tool-${toolBlock.id}`,
+              type: 'tool_use',
+              content: `Calling ${toolBlock.name}`,
+              timestamp: m.timestamp,
+              toolName: toolBlock.name,
+              toolInput: toolBlock.input,
+              thinking: thinkingContent,
+            });
+            toolUseIndexMap.set(toolBlock.id, idx);
+            thinkingContent = undefined;
           }
         }
-      } else if (m.type === 'tool_use') {
-        base.toolName = m.toolName;
-        base.toolInput = m.toolInput;
-        base.content = `Calling ${m.toolName}`;
-      } else if (m.type === 'tool_result') {
-        base.toolResult = {
-          success: !m.error,
-          output: m.result,
-          error: m.error,
-        };
-        base.content = m.error || m.result || '';
-      }
 
-      // Filter out messages with empty or placeholder content
-      // Claude Code emits "(no content)" text blocks for thinking-only turns
-      // Preserve messages that have thinking content even if text content is empty
-      if (!base.content || base.content.trim() === '' || base.content.trim() === '(no content)') {
-        if (base.thinking) {
-          base.content = '';
-        } else {
-          return null;
+        // If only thinking with no text/tool, create thinking-only message
+        if (thinkingContent) {
+          results.push({
+            id: `${m.uuid}-thinking`,
+            type: 'assistant',
+            content: '',
+            timestamp: m.timestamp,
+            thinking: thinkingContent,
+          });
+        }
+      } else {
+        // Simple string content
+        const text = extractTextContent(messageContent);
+        if (text.trim() && text.trim() !== '(no content)') {
+          results.push({
+            id: m.uuid,
+            type: 'assistant',
+            content: text,
+            timestamp: m.timestamp,
+          });
         }
       }
+    } else if (m.type === 'user') {
+      const messageContent = m.message?.content;
 
-      return base;
-    })
-    .filter((m): m is HistoryMessage => m !== null);
+      if (Array.isArray(messageContent)) {
+        // Merge each tool_result into its corresponding tool_use
+        const toolResultBlocks = messageContent.filter(
+          (b): b is ToolResultContentBlock => b.type === 'tool_result'
+        );
+
+        for (const block of toolResultBlocks) {
+          const toolUseId = block.tool_use_id;
+          const idx = toolUseIndexMap.get(toolUseId);
+          if (idx !== undefined) {
+            const resultContent = typeof block.content === 'string' ? block.content : '';
+            const isError = (block as unknown as { is_error?: boolean }).is_error ?? false;
+            results[idx].toolResult = {
+              success: !isError,
+              output: isError ? undefined : resultContent,
+              error: isError ? resultContent : undefined,
+            };
+          }
+        }
+
+        // If user message has text content (not just tool_results), create user message
+        if (toolResultBlocks.length === 0) {
+          const textContent = extractTextContent(messageContent);
+          if (textContent.trim()) {
+            results.push({
+              id: m.uuid,
+              type: 'user',
+              content: cleanCommandTags(textContent),
+              timestamp: m.timestamp,
+            });
+          }
+        }
+      } else {
+        // Simple string content
+        const text = extractTextContent(messageContent);
+        if (text.trim()) {
+          results.push({
+            id: m.uuid,
+            type: 'user',
+            content: cleanCommandTags(text),
+            timestamp: m.timestamp,
+          });
+        }
+      }
+    } else if (m.type === 'tool_use') {
+      // Legacy inline tool_use format
+      const idx = results.length;
+      results.push({
+        id: m.uuid,
+        type: 'tool_use',
+        content: `Calling ${m.toolName}`,
+        timestamp: m.timestamp,
+        toolName: m.toolName,
+        toolInput: m.toolInput,
+      });
+      // Legacy tool_use doesn't have a block id — use uuid as key
+      toolUseIndexMap.set(m.uuid, idx);
+    } else if (m.type === 'tool_result') {
+      // Legacy inline tool_result format — merge into last unresolved tool_use
+      let merged = false;
+      for (let i = results.length - 1; i >= 0; i--) {
+        if (results[i].type === 'tool_use' && !results[i].toolResult) {
+          results[i].toolResult = {
+            success: !m.error,
+            output: m.result,
+            error: m.error,
+          };
+          merged = true;
+          break;
+        }
+      }
+      // If no matching tool_use found, keep as standalone (error display)
+      if (!merged) {
+        const content = m.error || m.result || '';
+        if (content.trim()) {
+          results.push({
+            id: m.uuid,
+            type: 'tool_result',
+            content,
+            timestamp: m.timestamp,
+            toolResult: {
+              success: !m.error,
+              output: m.result,
+              error: m.error,
+            },
+          });
+        }
+      }
+    }
+  }
+
+  return results;
 }
 
 /**

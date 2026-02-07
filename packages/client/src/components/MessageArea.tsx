@@ -5,19 +5,18 @@
  */
 
 import { useRef, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { ChevronDown, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { StreamingIndicator } from './StreamingIndicator';
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { PermissionCard } from './PermissionCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
-import { ToolDetailToggle } from './ToolDetailToggle';
 import { ToolResultRenderer } from './ToolResultRenderer';
 import { ThinkingBlock } from './ThinkingBlock';
 import type { StreamingSegment } from '../stores/chatStore';
-import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, useChatStore } from '../stores/chatStore';
-import { getToolIcon, getToolDisplayName, formatDuration } from '../utils/toolUtils';
+import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, isSystemSegment, useChatStore } from '../stores/chatStore';
+import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } from '../utils/toolUtils';
 
 /** Real-time elapsed timer for pending tool calls (streaming only) */
 function ToolTimer({ startedAt }: { startedAt: number }) {
@@ -37,6 +36,30 @@ function ToolTimer({ startedAt }: { startedAt: number }) {
   );
 }
 
+
+/** Collapsible tool result display inside tool card */
+function CollapsibleToolResult({ toolName, toolInput, result }: { toolName: string; toolInput?: Record<string, unknown>; result: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+        aria-expanded={expanded}
+      >
+        {expanded ? <ChevronDown className="w-3 h-3" aria-hidden="true" /> : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
+        <span>결과 보기</span>
+      </button>
+      {expanded && (
+        <div className="mt-1">
+          <ToolResultRenderer toolName={toolName} toolInput={toolInput} result={result} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface UseAutoScrollOptions {
   /** Threshold in pixels - auto-scroll when within this distance from bottom */
@@ -98,11 +121,6 @@ function useAutoScroll(
 
     const { scrollTop, scrollHeight, clientHeight } = container;
     const isNearBottom = scrollHeight - scrollTop - clientHeight < threshold;
-
-    // When user scrolls to bottom, snap to exact position
-    if (isNearBottom && bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
-    }
 
     setIsUserScrolledUp(!isNearBottom);
   }, [threshold]);
@@ -225,9 +243,20 @@ export function MessageArea({
             );
           }
 
+          if (isSystemSegment(seg)) {
+            return (
+              <div key={`seg-system-${index}`} className="flex justify-center">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-xs border border-amber-200 dark:border-amber-800">
+                  <RefreshCw className="w-3 h-3 animate-spin" aria-hidden="true" />
+                  <span>{seg.message}</span>
+                </div>
+              </div>
+            );
+          }
+
           if (isTextSegment(seg)) {
-            // A text segment is still being streamed only if it's the last segment
-            const isStillStreaming = isLastSegmentIndex(index);
+            // A text segment is still being streamed only if it's the last segment AND actively streaming
+            const isStillStreaming = isStreaming && isLastSegmentIndex(index);
             return (
               <StreamingErrorBoundary key={`seg-text-${index}`}>
                 <StreamingMessage
@@ -278,12 +307,7 @@ export function MessageArea({
               );
             }
 
-            const rawDisplayInfo =
-              seg.toolCall.input?.file_path ||
-              seg.toolCall.input?.path ||
-              seg.toolCall.input?.pattern ||
-              seg.toolCall.input?.command;
-            const displayInfo = typeof rawDisplayInfo === 'string' ? rawDisplayInfo : null;
+            const displayInfo = getToolDisplayInfo(seg.toolCall.name, seg.toolCall.input);
             const toolDisplayName = getToolDisplayName(seg.toolCall.name);
             const ToolIcon = getToolIcon(seg.toolCall.name);
 
@@ -333,8 +357,14 @@ export function MessageArea({
                         <ToolTimer startedAt={seg.toolCall.startedAt} />
                       )}
                     </div>
-                    {displayInfo && <ToolPathDisplay displayInfo={displayInfo} toolName={seg.toolCall.name} />}
-                    <ToolDetailToggle toolName={seg.toolCall.name} input={seg.toolCall.input} toolCallId={seg.toolCall.id} />
+                    {displayInfo && (
+                      <ToolPathDisplay
+                        displayInfo={displayInfo}
+                        toolName={seg.toolCall.name}
+                        toolInput={seg.toolCall.input}
+                        additionalParams={seg.toolCall.name === 'Bash' && seg.status === 'completed' && seg.toolCall.output ? [{ label: 'OUT', value: seg.toolCall.output }] : undefined}
+                      />
+                    )}
                     {todos && todos.length > 0 && (
                       <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
                         {todos.map((todo, i) => (
@@ -349,21 +379,27 @@ export function MessageArea({
                         ))}
                       </ul>
                     )}
+                    {seg.status === 'completed' && seg.toolCall.output &&
+                      seg.toolCall.name === 'Grep' && (
+                      <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+                        <ToolResultRenderer toolName="Grep" result={seg.toolCall.output} />
+                      </div>
+                    )}
+                    {seg.status === 'completed' && seg.toolCall.output &&
+                      seg.toolCall.name !== 'Edit' && seg.toolCall.name !== 'Write' && seg.toolCall.name !== 'TodoWrite' && seg.toolCall.name !== 'Bash' && seg.toolCall.name !== 'Grep' && (
+                      <CollapsibleToolResult
+                        toolName={seg.toolCall.name}
+                        toolInput={seg.toolCall.input}
+                        result={seg.toolCall.output}
+                      />
+                    )}
+                    {seg.status === 'error' && (
+                      <div className="mt-2 text-xs text-red-500 border-t border-gray-200 dark:border-gray-600 pt-2">
+                        Tool 실행 실패: {seg.toolCall.output || '알 수 없는 오류'}
+                      </div>
+                    )}
                   </div>
                 </div>
-                {seg.status === 'completed' && seg.toolCall.output &&
-                  seg.toolCall.name !== 'Edit' && seg.toolCall.name !== 'Write' && seg.toolCall.name !== 'TodoWrite' && (
-                  <ToolResultRenderer
-                    toolName={seg.toolCall.name}
-                    toolInput={seg.toolCall.input}
-                    result={seg.toolCall.output}
-                  />
-                )}
-                {seg.status === 'error' && (
-                  <div className="text-xs text-red-500 mt-1 ml-2">
-                    Tool 실행 실패: {seg.toolCall.output || '알 수 없는 오류'}
-                  </div>
-                )}
               </div>
             );
           }

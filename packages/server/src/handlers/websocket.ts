@@ -15,6 +15,7 @@ import type {
   SocketData,
   TrackedToolCall,
   ToolResult,
+  CompactMetadata,
   PermissionMode,
   ImageAttachment,
   PermissionRequest,
@@ -397,6 +398,10 @@ async function handleChatSend(
           toolCallId,
           result,
         });
+      },
+
+      onCompact: (metadata: CompactMetadata) => {
+        socket.emit('system:compact', metadata);
       },
 
       onComplete: (response) => {

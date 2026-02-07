@@ -250,13 +250,32 @@ export class StreamHandler {
   }
 
   /**
-   * Parse system message
+   * Parse system message (init or compact_boundary)
    */
   private parseSystemMessage(message: SDKMessage): ParsedSystemMessage {
-    return {
+    const msg = message as unknown as {
+      type: 'system';
+      subtype?: string;
+      compact_metadata?: {
+        trigger: 'manual' | 'auto';
+        pre_tokens: number;
+      };
+    };
+
+    const parsed: ParsedSystemMessage = {
       type: SDKMessageType.SYSTEM,
       rawMessage: message,
     };
+
+    if (msg.subtype === 'compact_boundary' && msg.compact_metadata) {
+      parsed.subtype = 'compact_boundary';
+      parsed.compactMetadata = {
+        trigger: msg.compact_metadata.trigger,
+        preTokens: msg.compact_metadata.pre_tokens,
+      };
+    }
+
+    return parsed;
   }
 
   /**
@@ -440,7 +459,7 @@ export class StreamHandler {
         break;
 
       case SDKMessageType.SYSTEM:
-        // System messages are logged but not processed
+        this.handleSystem(message as ParsedSystemMessage, callbacks);
         break;
 
       case SDKMessageType.STREAM_EVENT:
@@ -656,6 +675,18 @@ export class StreamHandler {
       } catch {
         // JSON incomplete - continue accumulating
       }
+    }
+  }
+
+  /**
+   * Handle system message - detect compact_boundary
+   */
+  private handleSystem(
+    message: ParsedSystemMessage,
+    callbacks: StreamCallbacks
+  ): void {
+    if (message.subtype === 'compact_boundary' && message.compactMetadata) {
+      callbacks.onCompact?.(message.compactMetadata);
     }
   }
 

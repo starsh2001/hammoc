@@ -8,22 +8,13 @@ import type { HistoryMessage } from '@bmad-studio/shared';
 import { CheckCircle, XCircle, ChevronRight, ChevronDown, Files } from 'lucide-react';
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { DiffViewer } from './DiffViewer';
-import { getToolIcon, getToolDisplayName } from '../utils/toolUtils';
-import { ToolDetailToggle } from './ToolDetailToggle';
+import { getToolIcon, getToolDisplayName, getToolDisplayInfo } from '../utils/toolUtils';
 import { ToolResultRenderer } from './ToolResultRenderer';
 
 interface ToolCallCardProps {
   message: HistoryMessage;
-}
-
-/**
- * Extract display info from tool input based on tool type
- * file_path: Read/Write, path: Grep, pattern: Glob, command: Bash
- */
-function extractDisplayInfo(toolInput?: Record<string, unknown>): string | null {
-  if (!toolInput) return null;
-  const rawInfo = toolInput.file_path || toolInput.path || toolInput.pattern || toolInput.command;
-  return typeof rawInfo === 'string' ? rawInfo : null;
+  /** Optional result output for merged display (e.g., Bash IN/OUT in one card) */
+  resultOutput?: string;
 }
 
 /**
@@ -67,12 +58,12 @@ function extractTodos(toolInput?: Record<string, unknown>): TodoItem[] | null {
   return toolInput.todos as TodoItem[];
 }
 
-export function ToolCallCard({ message }: ToolCallCardProps) {
+export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
   const [showDiffViewer, setShowDiffViewer] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const isToolUse = message.type === 'tool_use';
   const isSuccess = message.toolResult?.success !== false;
-  const displayInfo = isToolUse ? extractDisplayInfo(message.toolInput) : null;
+  const displayInfo = isToolUse ? getToolDisplayInfo(message.toolName ?? '', message.toolInput) : null;
 
   const toolDisplayName = getToolDisplayName(message.toolName ?? '');
   const todos = message.toolName === 'TodoWrite' ? extractTodos(message.toolInput) : null;
@@ -101,9 +92,14 @@ export function ToolCallCard({ message }: ToolCallCardProps) {
               </span>
               <CheckCircle className="w-4 h-4 text-green-500" aria-hidden="true" />
             </div>
-            {displayInfo && !isEditWrite && <ToolPathDisplay displayInfo={displayInfo} toolName={message.toolName} />}
-            {/* Generic tool detail expand/collapse (Read, Glob, Grep) */}
-            <ToolDetailToggle toolName={message.toolName ?? ''} input={message.toolInput} toolCallId={message.id} />
+            {displayInfo && !isEditWrite && (
+              <ToolPathDisplay
+                displayInfo={displayInfo}
+                toolName={message.toolName}
+                toolInput={message.toolInput}
+                additionalParams={message.toolName === 'Bash' && resultOutput ? [{ label: 'OUT', value: resultOutput }] : undefined}
+              />
+            )}
             {/* Edit/Write: collapsible file path with line changes */}
             {isEditWrite && diffData && lineChanges && (
               <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
@@ -150,6 +146,11 @@ export function ToolCallCard({ message }: ToolCallCardProps) {
                 ))}
               </ul>
             )}
+            {message.toolName === 'Grep' && resultOutput && (
+              <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+                <ToolResultRenderer toolName="Grep" result={resultOutput} />
+              </div>
+            )}
           </div>
         </div>
         {/* Fullscreen DiffViewer for Edit/Write */}
@@ -193,8 +194,8 @@ export function ToolCallCard({ message }: ToolCallCardProps) {
     );
   }
 
-  // Edit/Write/TodoWrite: already shown via tool_use card — skip
-  const SKIP_RESULT_TOOLS = ['Edit', 'Write', 'TodoWrite'];
+  // Edit/Write/TodoWrite/AskUserQuestion: already shown via tool_use card — skip
+  const SKIP_RESULT_TOOLS = ['Edit', 'Write', 'TodoWrite', 'AskUserQuestion'];
   if (SKIP_RESULT_TOOLS.includes(message.toolName ?? '')) {
     return null;
   }

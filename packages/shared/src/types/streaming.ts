@@ -138,6 +138,8 @@ export interface ParsedResultMessage extends ParsedSDKMessageBase {
  */
 export interface ParsedSystemMessage extends ParsedSDKMessageBase {
   type: SDKMessageType.SYSTEM;
+  subtype?: 'init' | 'compact_boundary';
+  compactMetadata?: CompactMetadata;
 }
 
 /**
@@ -231,6 +233,15 @@ export interface StreamCallbacks {
   onToolResult?: (toolCallId: string, result: ToolResult) => void;
   onComplete?: (response: ChatResponse) => void;
   onError?: (error: Error) => void;
+  onCompact?: (metadata: CompactMetadata) => void;
+}
+
+/**
+ * Compaction metadata from SDK compact_boundary system message
+ */
+export interface CompactMetadata {
+  trigger: 'manual' | 'auto';
+  preTokens: number;
 }
 
 /**

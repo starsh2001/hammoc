@@ -34,10 +34,11 @@ export interface InteractiveChoice {
 /** Interactive segment status */
 export type InteractiveStatus = 'waiting' | 'sending' | 'responded' | 'error';
 
-/** Streaming segment - discriminated union for text, tool, thinking, and interactive segments */
+/** Streaming segment - discriminated union for text, tool, thinking, system, and interactive segments */
 export type StreamingSegment =
   | { type: 'text'; content: string }
   | { type: 'thinking'; content: string }
+  | { type: 'system'; subtype: 'compact'; message: string }
   | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error' }
   | {
       type: 'interactive';
@@ -66,6 +67,13 @@ export function isToolSegment(
   seg: StreamingSegment
 ): seg is { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error' } {
   return seg.type === 'tool';
+}
+
+/** Type guard for system segments */
+export function isSystemSegment(
+  seg: StreamingSegment
+): seg is { type: 'system'; subtype: 'compact'; message: string } {
+  return seg.type === 'system';
 }
 
 /** Type guard for interactive segments */
@@ -138,6 +146,8 @@ interface ChatActions {
   clearCompletedSessionId: () => void;
   /** Update streaming sessionId without resetting segments (for late sessionId arrival) */
   updateStreamingSessionId: (sessionId: string) => void;
+  /** Add a system segment (e.g., context compaction notification) */
+  addSystemSegment: (message: string) => void;
   /** Add an interactive segment (permission request or AskUserQuestion) */
   addInteractiveSegment: (segment: {
     id: string;
@@ -357,29 +367,36 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const socket = getSocket();
     socket.emit('chat:abort');
 
-    // Preserve text content from segments with abort marker
-    const textContent = state.streamingSegments
-      .filter((seg): seg is { type: 'text'; content: string } => seg.type === 'text')
-      .map((seg) => seg.content)
-      .join('');
+    // Mark pending tool segments as aborted (stop spinners/timers)
+    const finalSegments = state.streamingSegments.map((seg) => {
+      if (seg.type === 'tool' && seg.status === 'pending') {
+        return {
+          ...seg,
+          status: 'error' as const,
+          toolCall: { ...seg.toolCall, output: '중단됨' },
+        };
+      }
+      return seg;
+    });
 
-    if (textContent.trim()) {
-      useMessageStore.getState().addMessages([{
-        id: `aborted-${Date.now()}`,
-        type: 'assistant',
-        content: textContent + '\n\n*[중단됨]*',
-        timestamp: new Date().toISOString(),
-      }]);
-    }
-
-    // Clear streaming state
+    // Keep segments visible as immediate fallback
     set({
       isStreaming: false,
       streamingSessionId: null,
       streamingMessageId: null,
-      streamingSegments: [],
+      streamingSegments: finalSegments,
       streamingStartedAt: null,
     });
+
+    // Fetch authoritative history from server, then clear segments
+    const msgState = useMessageStore.getState();
+    const projectSlug = msgState.currentProjectSlug;
+    const sessId = msgState.currentSessionId;
+    if (projectSlug && sessId) {
+      msgState.fetchMessages(projectSlug, sessId, { silent: true }).then(() => {
+        set({ streamingSegments: [] });
+      });
+    }
   },
 
   setPermissionMode: (mode: PermissionMode) => set({ permissionMode: mode }),
@@ -391,6 +408,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   clearCompletedSessionId: () => set({ completedSessionId: null }),
 
   updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),
+
+  addSystemSegment: (message: string) => {
+    const segments = get().streamingSegments;
+    set({
+      streamingSegments: [...segments, { type: 'system', subtype: 'compact' as const, message }],
+    });
+  },
 
   addInteractiveSegment: (segment) => {
     const segments = get().streamingSegments;

@@ -15,7 +15,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
-import type { StreamChunk, Message, ChatUsage, PermissionRequest } from '@bmad-studio/shared';
+import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata } from '@bmad-studio/shared';
 
 export function useStreaming() {
   const {
@@ -31,6 +31,7 @@ export function useStreaming() {
     setContextUsage,
     updateStreamingSessionId,
     addInteractiveSegment,
+    addSystemSegment,
   } = useChatStore();
 
   // Track seen permission request IDs to avoid duplicates on reconnect
@@ -65,7 +66,8 @@ export function useStreaming() {
     // Handle incoming thinking chunks
     const handleThinkingChunk = (data: { content: string }) => {
       const state = useChatStore.getState();
-      if (state.streamingSessionId === null || state.streamingSessionId === 'pending') {
+      // Only call startStreaming when null (first chunk) — 'pending' means already started
+      if (state.streamingSessionId === null) {
         startStreaming('pending', 'pending');
       }
       addStreamingThinking(data.content);
@@ -74,10 +76,12 @@ export function useStreaming() {
     // Handle incoming stream chunks
     const handleChunk = (data: StreamChunk) => {
       const state = useChatStore.getState();
-      // Start streaming if not yet started, or update sessionId if still 'pending'
-      // Note: Check explicitly for null/pending, not falsy (empty string '' is valid sessionId)
-      if (state.streamingSessionId === null || state.streamingSessionId === 'pending') {
+      if (state.streamingSessionId === null) {
+        // First chunk — initialize streaming state
         startStreaming(data.sessionId, data.messageId);
+      } else if (state.streamingSessionId === 'pending') {
+        // Update sessionId without resetting segments (preserves thinking content)
+        updateStreamingSessionId(data.sessionId);
       }
       appendStreamingContent(data.content);
     };
@@ -174,8 +178,14 @@ export function useStreaming() {
     };
 
     // Handle tool result - update tool segment status
-    const handleToolResult = (data: { toolCallId: string; output?: string; isError?: boolean }) => {
-      updateStreamingToolCall(data.toolCallId, data.output ?? '', data.isError);
+    const handleToolResult = (data: { toolCallId: string; result: ToolResult }) => {
+      const { success, output, error } = data.result;
+      updateStreamingToolCall(data.toolCallId, output ?? error ?? '', !success);
+    };
+
+    // Handle context compaction notification
+    const handleCompact = (data: CompactMetadata) => {
+      addSystemSegment(`Context compaction (${data.trigger})...`);
     };
 
     // Handle context usage update
@@ -222,6 +232,7 @@ export function useStreaming() {
     socket.on('tool:result', handleToolResult);
     socket.on('permission:request', handlePermissionRequest);
     socket.on('context:usage', handleContextUsage);
+    socket.on('system:compact', handleCompact);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect', handleReconnect);
     socket.on('error', handleError);
@@ -240,6 +251,7 @@ export function useStreaming() {
       socket.off('tool:result', handleToolResult);
       socket.off('permission:request', handlePermissionRequest);
       socket.off('context:usage', handleContextUsage);
+      socket.off('system:compact', handleCompact);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect', handleReconnect);
       socket.off('error', handleError);
@@ -259,6 +271,7 @@ export function useStreaming() {
     setContextUsage,
     updateStreamingSessionId,
     addInteractiveSegment,
+    addSystemSegment,
     handleKeyDown,
   ]);
 }
