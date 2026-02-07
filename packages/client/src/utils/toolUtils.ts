@@ -11,6 +11,7 @@ import {
   FolderSearch,
   Search,
   ListChecks,
+  GitBranch,
   Wrench,
 } from 'lucide-react';
 
@@ -23,6 +24,7 @@ const TOOL_ICONS: Record<string, typeof Wrench> = {
   Glob: FolderSearch,
   Grep: Search,
   TodoWrite: ListChecks,
+  Task: GitBranch,
 };
 
 /**
@@ -59,32 +61,67 @@ export function formatDuration(durationMs: number): string {
 }
 
 /**
- * Tools that support generic expand/collapse for detail parameters.
- * Excludes: Edit/Write (own collapse), Bash (ToolPathDisplay shows full command), TodoWrite (separate rendering)
+ * Get primary display info for a tool, considering tool-specific priorities.
+ * For Glob/Grep: pattern is the primary info.
+ * For others: file_path > path > pattern > command.
  */
-export const EXPANDABLE_TOOLS = new Set(['Read', 'Glob', 'Grep']);
+export function getToolDisplayInfo(toolName: string, input?: Record<string, unknown>): string | null {
+  if (!input) return null;
+
+  // Glob/Grep: pattern is the most informative primary display
+  if (toolName === 'Glob' || toolName === 'Grep') {
+    if (typeof input.pattern === 'string') return input.pattern;
+  }
+
+  // Bash: description first, fallback to command
+  if (toolName === 'Bash') {
+    if (typeof input.description === 'string') return input.description;
+    if (typeof input.command === 'string') return input.command;
+  }
+
+  // Task: show short description
+  if (toolName === 'Task') {
+    if (typeof input.description === 'string') return input.description;
+  }
+
+  const rawInfo = input.file_path || input.path || input.pattern || input.command;
+  return typeof rawInfo === 'string' ? rawInfo : null;
+}
 
 /**
- * Extract detail parameters to show in expand/collapse panel for a tool.
+ * Get extra params for Glob/Grep to show in ToolPathDisplay when expanded.
+ * Only returns params not already shown as primary displayInfo.
  */
-export function getToolDetailParams(
+export function getToolExtraParams(
   toolName: string,
   input?: Record<string, unknown>
 ): { label: string; value: string }[] | null {
-  if (!input || !EXPANDABLE_TOOLS.has(toolName)) return null;
-
+  if (!input) return null;
   const params: { label: string; value: string }[] = [];
 
-  if (toolName === 'Read') {
-    if (typeof input.file_path === 'string') params.push({ label: 'file_path', value: input.file_path });
-    if (input.limit != null) params.push({ label: 'limit', value: String(input.limit) });
-    if (input.offset != null) params.push({ label: 'offset', value: String(input.offset) });
-  } else if (toolName === 'Glob') {
-    if (typeof input.pattern === 'string') params.push({ label: 'pattern', value: input.pattern });
-    if (typeof input.path === 'string') params.push({ label: 'path', value: input.path });
-  } else if (toolName === 'Grep') {
-    if (typeof input.pattern === 'string') params.push({ label: 'pattern', value: input.pattern });
-    if (typeof input.path === 'string') params.push({ label: 'path', value: input.path });
+  if (toolName === 'Glob' || toolName === 'Grep') {
+    if (typeof input.path === 'string') {
+      params.push({ label: 'path', value: input.path });
+    }
+  }
+
+  if (toolName === 'Bash') {
+    // Show command as extra param only when description is the primary display
+    if (typeof input.description === 'string' && typeof input.command === 'string') {
+      params.push({ label: 'IN', value: input.command });
+    }
+  }
+
+  if (toolName === 'Task') {
+    if (typeof input.subagent_type === 'string') {
+      params.push({ label: 'agent', value: input.subagent_type });
+    }
+    if (typeof input.model === 'string') {
+      params.push({ label: 'model', value: input.model });
+    }
+    if (typeof input.prompt === 'string') {
+      params.push({ label: 'prompt', value: input.prompt });
+    }
   }
 
   return params.length > 0 ? params : null;

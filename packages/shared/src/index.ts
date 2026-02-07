@@ -75,4 +75,6 @@ export {
   ContentBlock,
   TextContentBlock,
   ThinkingContentBlock,
+  ToolUseContentBlock,
+  ToolResultContentBlock,
 } from './types/history.js';

@@ -1,17 +1,23 @@
 /**
  * ToolPathDisplay - Collapsible path display for tool calls
  * Shows filename by default, expands to full path on click
+ * For Glob/Grep: shows extra params (path) when expanded
  * [Source: Story 4.5 - Mobile UX improvement]
  */
 
 import { useState, useRef, useEffect } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
+import { getToolExtraParams } from '../utils/toolUtils';
 
 interface ToolPathDisplayProps {
   /** Full path or command string */
   displayInfo: string;
   /** Tool name to determine display behavior */
   toolName?: string;
+  /** Tool input for extra params display (Glob/Grep) */
+  toolInput?: Record<string, unknown>;
+  /** Additional params to show when expanded (e.g., Bash output) */
+  additionalParams?: { label: string; value: string }[];
 }
 
 /**
@@ -19,7 +25,6 @@ interface ToolPathDisplayProps {
  * Handles both Windows (backslash) and Unix (forward slash) paths
  */
 function extractFileName(fullPath: string): string {
-  // Handle both Windows and Unix paths
   const parts = fullPath.split(/[/\\]/);
   return parts[parts.length - 1] || fullPath;
 }
@@ -33,11 +38,10 @@ function isPath(displayInfo: string): boolean {
 
 /**
  * Tools that should show full content by default (truncated if needed)
- * These typically use patterns or commands where the full text is important
  */
 const SHOW_FULL_BY_DEFAULT = ['Glob', 'Grep', 'Bash'];
 
-export function ToolPathDisplay({ displayInfo, toolName }: ToolPathDisplayProps) {
+export function ToolPathDisplay({ displayInfo, toolName, toolInput, additionalParams }: ToolPathDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
   const textRef = useRef<HTMLSpanElement>(null);
@@ -45,14 +49,17 @@ export function ToolPathDisplay({ displayInfo, toolName }: ToolPathDisplayProps)
   const showFullByDefault = toolName && SHOW_FULL_BY_DEFAULT.includes(toolName);
   const isPathType = isPath(displayInfo);
 
-  // For tools like Glob/Grep/Bash, show full content; for Read/Edit, show filename
+  // Extra params for Glob/Grep/Bash/Task (e.g., path, command, agent)
+  const computedParams = toolName && toolInput ? getToolExtraParams(toolName, toolInput) : null;
+  const allParams = [...(computedParams || []), ...(additionalParams || [])];
+  const extraParams = allParams.length > 0 ? allParams : null;
+
   const collapsedText = showFullByDefault
     ? displayInfo
     : isPathType
       ? extractFileName(displayInfo)
       : displayInfo;
 
-  // Check if text is truncated
   useEffect(() => {
     const el = textRef.current;
     if (el && !isExpanded) {
@@ -60,11 +67,8 @@ export function ToolPathDisplay({ displayInfo, toolName }: ToolPathDisplayProps)
     }
   }, [collapsedText, isExpanded]);
 
-  // If showing full by default and not truncated, no need for expand button
-  const needsExpandButton = !showFullByDefault || isTruncated || isExpanded;
-
-  // For Glob/Grep/Bash that aren't truncated, just show text without button
-  if (showFullByDefault && !isTruncated && !isExpanded) {
+  // For Glob/Grep/Bash that aren't truncated AND have no extra params, just show text
+  if (showFullByDefault && !isTruncated && !isExpanded && !extraParams) {
     return (
       <div className="mt-1">
         <span
@@ -86,12 +90,10 @@ export function ToolPathDisplay({ displayInfo, toolName }: ToolPathDisplayProps)
         aria-expanded={isExpanded}
         aria-label={isExpanded ? '접기' : '전체 내용 보기'}
       >
-        {needsExpandButton && (
-          isExpanded ? (
-            <ChevronDown className="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true" />
-          ) : (
-            <ChevronRight className="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true" />
-          )
+        {isExpanded ? (
+          <ChevronDown className="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true" />
+        ) : (
+          <ChevronRight className="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true" />
         )}
         <span
           ref={!showFullByDefault || isExpanded ? undefined : textRef}
@@ -100,6 +102,15 @@ export function ToolPathDisplay({ displayInfo, toolName }: ToolPathDisplayProps)
           {isExpanded ? displayInfo : collapsedText}
         </span>
       </button>
+      {isExpanded && extraParams && (
+        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 pl-4">
+          {extraParams.map((p) => (
+            <div key={p.label} className="break-all whitespace-pre-wrap">
+              <span className="font-medium">{p.label}:</span> {p.value}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

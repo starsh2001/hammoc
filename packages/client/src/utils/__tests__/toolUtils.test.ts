@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getToolIcon, getToolDisplayName, formatDuration, getToolDetailParams, EXPANDABLE_TOOLS } from '../toolUtils';
+import { getToolIcon, getToolDisplayName, formatDuration, getToolDisplayInfo, getToolExtraParams } from '../toolUtils';
 import {
   FileSearch,
   Pencil,
@@ -13,6 +13,7 @@ import {
   FolderSearch,
   Search,
   ListChecks,
+  GitBranch,
   Wrench,
 } from 'lucide-react';
 
@@ -45,6 +46,10 @@ describe('getToolIcon', () => {
     expect(getToolIcon('TodoWrite')).toBe(ListChecks);
   });
 
+  it('returns GitBranch for Task', () => {
+    expect(getToolIcon('Task')).toBe(GitBranch);
+  });
+
   it('returns Wrench for unknown tools (fallback)', () => {
     expect(getToolIcon('UnknownTool')).toBe(Wrench);
     expect(getToolIcon('')).toBe(Wrench);
@@ -71,58 +76,94 @@ describe('formatDuration', () => {
   });
 });
 
-describe('getToolDetailParams', () => {
-  it('returns null for non-expandable tools', () => {
-    expect(getToolDetailParams('Edit', { file_path: '/foo' })).toBeNull();
-    expect(getToolDetailParams('Write', { file_path: '/foo' })).toBeNull();
-    expect(getToolDetailParams('Bash', { command: 'ls' })).toBeNull();
-    expect(getToolDetailParams('TodoWrite', { todos: [] })).toBeNull();
+describe('getToolDisplayInfo', () => {
+  it('returns file_path for Read tool', () => {
+    expect(getToolDisplayInfo('Read', { file_path: '/src/index.ts' })).toBe('/src/index.ts');
+  });
+
+  it('returns description for Bash tool when available', () => {
+    expect(getToolDisplayInfo('Bash', { command: 'ls -la', description: 'List files' })).toBe('List files');
+  });
+
+  it('returns command for Bash tool when no description', () => {
+    expect(getToolDisplayInfo('Bash', { command: 'ls -la' })).toBe('ls -la');
+  });
+
+  it('returns pattern as primary for Glob tool', () => {
+    expect(getToolDisplayInfo('Glob', { pattern: '**/*.ts', path: '/src' })).toBe('**/*.ts');
+  });
+
+  it('returns pattern as primary for Grep tool', () => {
+    expect(getToolDisplayInfo('Grep', { pattern: 'import.*from', path: '/src' })).toBe('import.*from');
+  });
+
+  it('returns description for Task tool', () => {
+    expect(getToolDisplayInfo('Task', { description: 'Search codebase', prompt: 'Find all usages', subagent_type: 'Explore' })).toBe('Search codebase');
   });
 
   it('returns null when input is undefined', () => {
-    expect(getToolDetailParams('Read', undefined)).toBeNull();
+    expect(getToolDisplayInfo('Read', undefined)).toBeNull();
   });
 
-  it('returns file_path for Read tool', () => {
-    const params = getToolDetailParams('Read', { file_path: '/src/index.ts' });
-    expect(params).toEqual([{ label: 'file_path', value: '/src/index.ts' }]);
-  });
-
-  it('returns file_path with limit and offset for Read tool', () => {
-    const params = getToolDetailParams('Read', { file_path: '/src/index.ts', limit: 50, offset: 10 });
-    expect(params).toEqual([
-      { label: 'file_path', value: '/src/index.ts' },
-      { label: 'limit', value: '50' },
-      { label: 'offset', value: '10' },
-    ]);
-  });
-
-  it('returns pattern for Glob tool', () => {
-    const params = getToolDetailParams('Glob', { pattern: '**/*.ts' });
-    expect(params).toEqual([{ label: 'pattern', value: '**/*.ts' }]);
-  });
-
-  it('returns pattern and path for Grep tool', () => {
-    const params = getToolDetailParams('Grep', { pattern: 'import.*from', path: '/src' });
-    expect(params).toEqual([
-      { label: 'pattern', value: 'import.*from' },
-      { label: 'path', value: '/src' },
-    ]);
+  it('falls back through priority for non-Glob/Grep tools', () => {
+    expect(getToolDisplayInfo('Unknown', { path: '/foo', pattern: 'bar' })).toBe('/foo');
   });
 });
 
-describe('EXPANDABLE_TOOLS', () => {
-  it('includes Read, Glob, Grep', () => {
-    expect(EXPANDABLE_TOOLS.has('Read')).toBe(true);
-    expect(EXPANDABLE_TOOLS.has('Glob')).toBe(true);
-    expect(EXPANDABLE_TOOLS.has('Grep')).toBe(true);
+describe('getToolExtraParams', () => {
+  it('returns path for Glob tool', () => {
+    expect(getToolExtraParams('Glob', { pattern: '**/*.ts', path: '/src' })).toEqual([
+      { label: 'path', value: '/src' },
+    ]);
   });
 
-  it('excludes Edit, Write, Bash, TodoWrite', () => {
-    expect(EXPANDABLE_TOOLS.has('Edit')).toBe(false);
-    expect(EXPANDABLE_TOOLS.has('Write')).toBe(false);
-    expect(EXPANDABLE_TOOLS.has('Bash')).toBe(false);
-    expect(EXPANDABLE_TOOLS.has('TodoWrite')).toBe(false);
+  it('returns path for Grep tool', () => {
+    expect(getToolExtraParams('Grep', { pattern: 'import', path: '/src' })).toEqual([
+      { label: 'path', value: '/src' },
+    ]);
+  });
+
+  it('returns agent, model, and prompt for Task tool', () => {
+    expect(getToolExtraParams('Task', { description: 'Search', subagent_type: 'Explore', model: 'haiku', prompt: 'Find usages' })).toEqual([
+      { label: 'agent', value: 'Explore' },
+      { label: 'model', value: 'haiku' },
+      { label: 'prompt', value: 'Find usages' },
+    ]);
+  });
+
+  it('returns only agent for Task tool without model/prompt', () => {
+    expect(getToolExtraParams('Task', { description: 'Search', subagent_type: 'Bash' })).toEqual([
+      { label: 'agent', value: 'Bash' },
+    ]);
+  });
+
+  it('returns full prompt without truncation for Task tool', () => {
+    const longPrompt = 'A'.repeat(500);
+    const result = getToolExtraParams('Task', { description: 'Search', subagent_type: 'Explore', prompt: longPrompt });
+    const promptParam = result?.find(p => p.label === 'prompt');
+    expect(promptParam?.value).toBe(longPrompt);
+  });
+
+  it('returns IN for Bash tool when description is primary', () => {
+    expect(getToolExtraParams('Bash', { command: 'npm test', description: 'Run tests' })).toEqual([
+      { label: 'IN', value: 'npm test' },
+    ]);
+  });
+
+  it('returns null for Bash tool without description (command is primary)', () => {
+    expect(getToolExtraParams('Bash', { command: 'npm test' })).toBeNull();
+  });
+
+  it('returns null when no extra params exist', () => {
+    expect(getToolExtraParams('Glob', { pattern: '**/*.ts' })).toBeNull();
+  });
+
+  it('returns null for non-Glob/Grep/Task/Bash tools', () => {
+    expect(getToolExtraParams('Read', { file_path: '/foo', path: '/bar' })).toBeNull();
+  });
+
+  it('returns null when input is undefined', () => {
+    expect(getToolExtraParams('Glob', undefined)).toBeNull();
   });
 });
 

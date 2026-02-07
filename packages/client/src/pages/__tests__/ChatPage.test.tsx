@@ -843,6 +843,7 @@ describe('ChatPage', () => {
 
   describe('History AskUserQuestion rendering (Story 7.1)', () => {
     it('should render AskUserQuestion as InteractiveResponseCard with responded status', () => {
+      // After parser merge, tool_result is merged into tool_use's toolResult field
       const askMessage: HistoryMessage = {
         id: 'msg-ask-1',
         type: 'tool_use',
@@ -860,18 +861,11 @@ describe('ChatPage', () => {
             multiSelect: false,
           }],
         },
-      };
-
-      const toolResultMessage: HistoryMessage = {
-        id: 'msg-ask-result-1',
-        type: 'tool_result',
-        content: 'Option A',
-        timestamp: '2026-01-15T10:00:01Z',
-        toolName: 'AskUserQuestion',
+        toolResult: { success: true, output: 'Option A' },
       };
 
       useMessageStore.setState({
-        messages: [askMessage, toolResultMessage],
+        messages: [askMessage],
         pagination: mockPagination,
       });
 
@@ -884,6 +878,7 @@ describe('ChatPage', () => {
     });
 
     it('should show tool_result output as response value when toolResult.output is available', () => {
+      // After parser merge, tool_result is merged into tool_use's toolResult field
       const askMessage: HistoryMessage = {
         id: 'msg-ask-2',
         type: 'tool_use',
@@ -897,19 +892,11 @@ describe('ChatPage', () => {
             options: [{ label: 'X' }, { label: 'Y' }],
           }],
         },
-      };
-
-      const resultMessage: HistoryMessage = {
-        id: 'msg-ask-result-2',
-        type: 'tool_result',
-        content: '',
-        timestamp: '2026-01-15T10:00:01Z',
-        toolName: 'AskUserQuestion',
         toolResult: { success: true, output: 'Y' },
       };
 
       useMessageStore.setState({
-        messages: [askMessage, resultMessage],
+        messages: [askMessage],
         pagination: mockPagination,
       });
 

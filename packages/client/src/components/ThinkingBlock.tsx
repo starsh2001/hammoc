@@ -3,7 +3,7 @@
  * Story 7.4: Thinking Message Display - Task 1
  *
  * Features:
- * - Collapsed by default with Brain icon + "사고 과정" text
+ * - Collapsed by default with Brain icon + "Thinking" text
  * - Toggle to expand/collapse with smooth CSS transition
  * - Expanded content with distinct styling (purple border + background)
  * - Markdown rendering via MarkdownRenderer
@@ -44,7 +44,7 @@ export function ThinkingBlock({ content, defaultExpanded = false }: ThinkingBloc
                    text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800`}
       >
         <Brain className={`w-4 h-4 ${isExpanded ? 'text-purple-500' : ''}`} aria-hidden="true" />
-        <span className={`text-xs ${isExpanded ? 'text-purple-600 dark:text-purple-400' : ''}`}>사고 과정</span>
+        <span className={`text-xs ${isExpanded ? 'text-purple-600 dark:text-purple-400' : ''}`}>Thinking</span>
         {isExpanded
           ? <ChevronDown className="w-3 h-3" aria-hidden="true" />
           : <ChevronRight className="w-3 h-3" aria-hidden="true" />
@@ -53,7 +53,7 @@ export function ThinkingBlock({ content, defaultExpanded = false }: ThinkingBloc
       <div
         id={contentId}
         role={isExpanded ? 'region' : undefined}
-        aria-label={isExpanded ? '사고 과정 내용' : undefined}
+        aria-label={isExpanded ? 'Thinking content' : undefined}
         className={`transition-all duration-200 ease-in-out overflow-hidden ${
           isExpanded ? 'max-h-96 overflow-y-auto opacity-100 mt-2' : 'max-h-0 opacity-0'
         }`}

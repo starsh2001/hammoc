@@ -496,7 +496,7 @@ describe('useChatStore', () => {
       expect(mockEmit).toHaveBeenCalledWith('chat:abort');
     });
 
-    it('preserves text segments in messageStore with abort marker', () => {
+    it('keeps streaming segments visible after abort (fetchMessages will clear later)', () => {
       const { startStreaming, appendStreamingContent, abortResponse } =
         useChatStore.getState();
 
@@ -504,14 +504,17 @@ describe('useChatStore', () => {
       appendStreamingContent('Partial response text');
       abortResponse();
 
+      // Segments are kept as immediate fallback (not added to messageStore)
+      const state = useChatStore.getState();
+      expect(state.streamingSegments).toHaveLength(1);
+      expect(state.streamingSegments[0].type).toBe('text');
+
+      // No messages added to messageStore directly
       const messages = useMessageStore.getState().messages;
-      expect(messages).toHaveLength(1);
-      expect(messages[0].type).toBe('assistant');
-      expect(messages[0].content).toContain('Partial response text');
-      expect(messages[0].content).toContain('*[중단됨]*');
+      expect(messages).toHaveLength(0);
     });
 
-    it('clears streaming state after abort', () => {
+    it('clears streaming flags but keeps segments after abort', () => {
       const { startStreaming, appendStreamingContent, abortResponse } =
         useChatStore.getState();
 
@@ -523,7 +526,8 @@ describe('useChatStore', () => {
       expect(state.isStreaming).toBe(false);
       expect(state.streamingSessionId).toBeNull();
       expect(state.streamingMessageId).toBeNull();
-      expect(state.streamingSegments).toEqual([]);
+      // Segments are kept until fetchMessages resolves
+      expect(state.streamingSegments).toHaveLength(1);
       expect(state.streamingStartedAt).toBeNull();
     });
 
@@ -550,7 +554,7 @@ describe('useChatStore', () => {
       expect(useMessageStore.getState().messages).toEqual([]);
     });
 
-    it('joins multiple text segments with abort marker', () => {
+    it('marks pending tool segments as error with abort output', () => {
       const { startStreaming, appendStreamingContent, addStreamingToolCall, abortResponse } =
         useChatStore.getState();
 
@@ -560,9 +564,18 @@ describe('useChatStore', () => {
       appendStreamingContent('Second part');
       abortResponse();
 
-      const messages = useMessageStore.getState().messages;
-      expect(messages).toHaveLength(1);
-      expect(messages[0].content).toBe('First partSecond part\n\n*[중단됨]*');
+      const state = useChatStore.getState();
+      // All segments preserved
+      expect(state.streamingSegments).toHaveLength(3);
+      // Pending tool segment marked as error
+      const toolSeg = state.streamingSegments[1];
+      expect(toolSeg.type).toBe('tool');
+      if (toolSeg.type === 'tool') {
+        expect(toolSeg.status).toBe('error');
+        expect(toolSeg.toolCall.output).toBe('중단됨');
+      }
+      // No messages added to messageStore
+      expect(useMessageStore.getState().messages).toHaveLength(0);
     });
   });
 

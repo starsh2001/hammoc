@@ -295,9 +295,9 @@ describe('MessageBubble', () => {
     });
   });
 
-  // Story 7.4: Thinking block rendering
+  // Story 7.4: ThinkingBlock is now rendered separately by ChatPage, not inside MessageBubble
   describe('thinking block (Story 7.4)', () => {
-    it('should render ThinkingBlock when assistant message has thinking field', () => {
+    it('should NOT render ThinkingBlock in MessageBubble (rendered separately by ChatPage)', () => {
       const messageWithThinking: HistoryMessage = {
         ...assistantMessage,
         thinking: 'Let me think about this...',
@@ -305,8 +305,8 @@ describe('MessageBubble', () => {
 
       render(<MessageBubble message={messageWithThinking} />);
 
-      expect(screen.getByTestId('thinking-block')).toBeInTheDocument();
-      expect(screen.getByText('Let me think about this...')).toBeInTheDocument();
+      // ThinkingBlock is now rendered as a separate card by ChatPage
+      expect(screen.queryByTestId('thinking-block')).not.toBeInTheDocument();
     });
 
     it('should not render ThinkingBlock when assistant message has no thinking field', () => {
@@ -324,23 +324,6 @@ describe('MessageBubble', () => {
       render(<MessageBubble message={userWithThinking} />);
 
       expect(screen.queryByTestId('thinking-block')).not.toBeInTheDocument();
-    });
-
-    it('should render ThinkingBlock before message content', () => {
-      const messageWithThinking: HistoryMessage = {
-        ...assistantMessage,
-        thinking: 'Thinking content',
-      };
-
-      render(<MessageBubble message={messageWithThinking} />);
-
-      const thinkingBlock = screen.getByTestId('thinking-block');
-      const markdownRenderer = screen.getByTestId('markdown-renderer');
-
-      // ThinkingBlock should appear before MarkdownRenderer in DOM
-      expect(
-        thinkingBlock.compareDocumentPosition(markdownRenderer)
-      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
   });
 

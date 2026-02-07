@@ -314,7 +314,7 @@ describe('ToolCallCard', () => {
 
   // Story 7.2 - tool icon and expand/collapse tests
   describe('tool detail expand/collapse (Story 7.2)', () => {
-    it('shows expand toggle for Read tool with detail params', () => {
+    it('shows path display for Read tool via ToolPathDisplay', () => {
       const readMessage: HistoryMessage = {
         id: 'msg-read',
         type: 'tool_use',
@@ -326,21 +326,16 @@ describe('ToolCallCard', () => {
 
       render(<ToolCallCard message={readMessage} />);
 
-      const toggle = screen.getByRole('button', { name: '도구 상세 정보 펼치기' });
-      expect(toggle).toBeInTheDocument();
-      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      // Shows collapsed filename via ToolPathDisplay
+      expect(screen.getByText('app.ts')).toBeInTheDocument();
 
-      // Expand
+      // Expand to see full path
+      const toggle = screen.getByRole('button', { name: '전체 내용 보기' });
       fireEvent.click(toggle);
-      expect(screen.getByText(/file_path/)).toBeInTheDocument();
-      expect(screen.getByText(/\/src\/app\.ts/)).toBeInTheDocument();
-      expect(screen.getByText(/limit/)).toBeInTheDocument();
-
-      // aria-expanded is true
-      expect(screen.getByRole('button', { name: '도구 상세 정보 접기' })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByText('/src/app.ts')).toBeInTheDocument();
     });
 
-    it('shows expand toggle for Grep tool', () => {
+    it('shows expand toggle for Grep tool with extra params', () => {
       const grepMessage: HistoryMessage = {
         id: 'msg-grep',
         type: 'tool_use',
@@ -352,15 +347,17 @@ describe('ToolCallCard', () => {
 
       render(<ToolCallCard message={grepMessage} />);
 
-      const toggle = screen.getByRole('button', { name: '도구 상세 정보 펼치기' });
-      expect(toggle).toBeInTheDocument();
+      // Shows pattern as primary display info
+      expect(screen.getByText('import.*from')).toBeInTheDocument();
 
+      // Expand to see extra params (path)
+      const toggle = screen.getByRole('button', { name: '전체 내용 보기' });
       fireEvent.click(toggle);
-      expect(screen.getByText(/pattern/)).toBeInTheDocument();
-      expect(screen.getByText(/import\.\*from/)).toBeInTheDocument();
+      expect(screen.getByText(/path/)).toBeInTheDocument();
+      expect(screen.getByText('/src')).toBeInTheDocument();
     });
 
-    it('does not show expand toggle for Bash tool', () => {
+    it('does not show detail toggle for Bash tool (shows full command)', () => {
       const bashMessage: HistoryMessage = {
         id: 'msg-bash',
         type: 'tool_use',
@@ -372,10 +369,11 @@ describe('ToolCallCard', () => {
 
       render(<ToolCallCard message={bashMessage} />);
 
-      expect(screen.queryByRole('button', { name: '도구 상세 정보 펼치기' })).not.toBeInTheDocument();
+      // Bash shows command text directly via ToolPathDisplay
+      expect(screen.getByText('npm test')).toBeInTheDocument();
     });
 
-    it('does not show expand toggle for Edit tool (uses own collapse)', () => {
+    it('does not show detail toggle for Edit tool (uses own collapse)', () => {
       const editMessage: HistoryMessage = {
         id: 'msg-edit',
         type: 'tool_use',
@@ -387,8 +385,7 @@ describe('ToolCallCard', () => {
 
       render(<ToolCallCard message={editMessage} />);
 
-      // Edit has its own collapse button, not the generic one
-      expect(screen.queryByRole('button', { name: '도구 상세 정보 펼치기' })).not.toBeInTheDocument();
+      // Edit has its own collapse button for path
       expect(screen.getByRole('button', { name: '전체 경로 보기' })).toBeInTheDocument();
     });
   });
@@ -501,6 +498,48 @@ describe('ToolCallCard', () => {
       const { container } = render(<ToolCallCard message={todoResult} />);
 
       expect(container.firstChild).toBeNull();
+    });
+
+    it('renders Bash tool_use with description collapsed, expands to show command and output', () => {
+      const bashUse: HistoryMessage = {
+        id: 'msg-bash-use',
+        type: 'tool_use',
+        content: 'Running command',
+        timestamp: '2026-01-15T10:00:00Z',
+        toolName: 'Bash',
+        toolInput: { command: 'npm test', description: 'Run tests' },
+      };
+
+      render(<ToolCallCard message={bashUse} resultOutput="All tests passed" />);
+
+      // Collapsed: shows description
+      expect(screen.getByText('Bash')).toBeInTheDocument();
+      expect(screen.getByText('Run tests')).toBeInTheDocument();
+
+      // Expand to see command (IN) and output (OUT)
+      const toggle = screen.getByRole('button', { name: '전체 내용 보기' });
+      fireEvent.click(toggle);
+      expect(screen.getByText(/IN/)).toBeInTheDocument();
+      expect(screen.getByText('npm test')).toBeInTheDocument();
+      expect(screen.getByText(/OUT/)).toBeInTheDocument();
+      expect(screen.getByText('All tests passed')).toBeInTheDocument();
+    });
+
+    it('does not show output when Bash tool_use has no resultOutput', () => {
+      const bashUse: HistoryMessage = {
+        id: 'msg-bash-use',
+        type: 'tool_use',
+        content: 'Running command',
+        timestamp: '2026-01-15T10:00:00Z',
+        toolName: 'Bash',
+        toolInput: { command: 'npm test' },
+      };
+
+      render(<ToolCallCard message={bashUse} />);
+
+      // Shows command directly (no description, so command is primary)
+      expect(screen.getByText('Bash')).toBeInTheDocument();
+      expect(screen.getByText('npm test')).toBeInTheDocument();
     });
 
     it('still shows error for failed tool_result (existing behavior)', () => {

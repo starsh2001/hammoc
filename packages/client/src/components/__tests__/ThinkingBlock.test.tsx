@@ -18,10 +18,10 @@ describe('ThinkingBlock', () => {
   const thinkingContent = 'Let me think about this problem step by step...';
 
   describe('collapsed state (default)', () => {
-    it('should render collapsed by default with "사고 과정" text', () => {
+    it('should render collapsed by default with "Thinking" text', () => {
       render(<ThinkingBlock content={thinkingContent} />);
 
-      expect(screen.getByText('사고 과정')).toBeInTheDocument();
+      expect(screen.getByText('Thinking')).toBeInTheDocument();
     });
 
     it('should show Brain icon in collapsed state', () => {
@@ -99,7 +99,7 @@ describe('ThinkingBlock', () => {
 
       fireEvent.click(screen.getByRole('button'));
 
-      expect(screen.getByRole('region')).toHaveAttribute('aria-label', '사고 과정 내용');
+      expect(screen.getByRole('region')).toHaveAttribute('aria-label', 'Thinking content');
     });
   });
 

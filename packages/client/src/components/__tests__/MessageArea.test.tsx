@@ -448,7 +448,7 @@ describe('MessageArea', () => {
       expect(screen.queryByLabelText(/실행 시간/)).not.toBeInTheDocument();
     });
 
-    it('shows expand/collapse toggle for Read tool', () => {
+    it('shows path display for Read tool via ToolPathDisplay', () => {
       const readTool: StreamingSegment = {
         type: 'tool',
         toolCall: { id: 'tool-1', name: 'Read', input: { file_path: '/src/index.ts', limit: 50 } },
@@ -461,22 +461,16 @@ describe('MessageArea', () => {
         </MessageArea>
       );
 
-      const toggle = screen.getByRole('button', { name: '도구 상세 정보 펼치기' });
-      expect(toggle).toBeInTheDocument();
-      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      // Shows collapsed filename via ToolPathDisplay
+      expect(screen.getByText('index.ts')).toBeInTheDocument();
 
-      // Expand
+      // Expand to see full path
+      const toggle = screen.getByRole('button', { name: '전체 내용 보기' });
       fireEvent.click(toggle);
-      expect(screen.getByText(/file_path/)).toBeInTheDocument();
-      expect(screen.getByText(/\/src\/index\.ts/)).toBeInTheDocument();
-      expect(screen.getByText(/limit/)).toBeInTheDocument();
-      expect(screen.getByText('50')).toBeInTheDocument();
-
-      // aria-expanded should be true now
-      expect(screen.getByRole('button', { name: '도구 상세 정보 접기' })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByText('/src/index.ts')).toBeInTheDocument();
     });
 
-    it('does not show expand/collapse for Bash tool', () => {
+    it('shows Bash command via ToolPathDisplay', () => {
       const bashTool: StreamingSegment = {
         type: 'tool',
         toolCall: { id: 'tool-1', name: 'Bash', input: { command: 'npm test' } },
@@ -489,10 +483,11 @@ describe('MessageArea', () => {
         </MessageArea>
       );
 
-      expect(screen.queryByRole('button', { name: '도구 상세 정보 펼치기' })).not.toBeInTheDocument();
+      // Bash shows command text directly
+      expect(screen.getByText('npm test')).toBeInTheDocument();
     });
 
-    it('does not show expand/collapse for TodoWrite tool', () => {
+    it('does not show path display for TodoWrite tool', () => {
       const todoTool: StreamingSegment = {
         type: 'tool',
         toolCall: { id: 'tool-1', name: 'TodoWrite', input: { todos: [{ content: 'task', status: 'pending' }] } },
@@ -505,7 +500,8 @@ describe('MessageArea', () => {
         </MessageArea>
       );
 
-      expect(screen.queryByRole('button', { name: '도구 상세 정보 펼치기' })).not.toBeInTheDocument();
+      // TodoWrite has no displayInfo, so no ToolPathDisplay
+      expect(screen.getByText('Update Todos')).toBeInTheDocument();
     });
 
     // AC1/AC3 regression: spinner + success/failure icons
@@ -560,7 +556,7 @@ describe('MessageArea', () => {
 
   // Story 7.3 - tool result display in streaming segments
   describe('tool result display (Story 7.3)', () => {
-    it('renders ToolResultRenderer for completed Read tool with output', () => {
+    it('renders ToolResultRenderer for completed Read tool with output (collapsible)', () => {
       const readTool: StreamingSegment = {
         type: 'tool',
         toolCall: { id: 'tool-1', name: 'Read', output: 'file content here', input: { file_path: '/src/app.ts' } },
@@ -573,15 +569,22 @@ describe('MessageArea', () => {
         </MessageArea>
       );
 
+      // Result is collapsed by default
+      expect(screen.queryByTestId('mock-tool-result-renderer')).not.toBeInTheDocument();
+
+      // Click "결과 보기" to expand
+      const toggleBtn = screen.getByText('결과 보기');
+      fireEvent.click(toggleBtn);
+
       const renderer = screen.getByTestId('mock-tool-result-renderer');
       expect(renderer).toBeInTheDocument();
       expect(renderer).toHaveAttribute('data-tool', 'Read');
     });
 
-    it('renders ToolResultRenderer for completed Bash tool with output', () => {
+    it('renders Bash output inside ToolPathDisplay when expanded (IN/OUT in one card)', () => {
       const bashTool: StreamingSegment = {
         type: 'tool',
-        toolCall: { id: 'tool-1', name: 'Bash', output: 'test passed', input: { command: 'npm test' } },
+        toolCall: { id: 'tool-1', name: 'Bash', output: 'test passed', input: { command: 'npm test', description: 'Run tests' } },
         status: 'completed',
       };
 
@@ -591,7 +594,16 @@ describe('MessageArea', () => {
         </MessageArea>
       );
 
-      expect(screen.getByTestId('mock-tool-result-renderer')).toBeInTheDocument();
+      // Collapsed: shows description
+      expect(screen.getByText('Run tests')).toBeInTheDocument();
+
+      // Expand to see command (IN) and output (OUT)
+      const toggle = screen.getByRole('button', { name: '전체 내용 보기' });
+      fireEvent.click(toggle);
+      expect(screen.getByText(/IN/)).toBeInTheDocument();
+      expect(screen.getByText('npm test')).toBeInTheDocument();
+      expect(screen.getByText(/OUT/)).toBeInTheDocument();
+      expect(screen.getByText('test passed')).toBeInTheDocument();
     });
 
     it('does not render ToolResultRenderer for completed Edit tool', () => {

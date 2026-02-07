@@ -5,7 +5,7 @@
  */
 
 import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage } from './sdk.js';
-import type { ToolResult } from './streaming.js';
+import type { ToolResult, CompactMetadata } from './streaming.js';
 import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
 
@@ -60,6 +60,7 @@ export interface ServerToClientEvents {
   'session:list': (data: { sessions: SessionInfo[] }) => void;
   'context:usage': (data: ChatUsage) => void;
   'thinking:chunk': (data: { content: string }) => void;
+  'system:compact': (data: CompactMetadata) => void;
 }
 
 // ===== Inter-server Events =====

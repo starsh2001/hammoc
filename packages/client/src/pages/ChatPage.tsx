@@ -12,7 +12,7 @@
  * - Real-time streaming support (Story 4.5)
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
@@ -32,17 +32,22 @@ import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { SessionQuickAccessPanel } from '../components/SessionQuickAccessPanel';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { ThinkingBlock } from '../components/ThinkingBlock';
 
 /**
  * Render a single history message as the appropriate component.
  * Handles AskUserQuestion → InteractiveResponseCard, tool messages → ToolCallCard,
  * and text messages → MessageBubble. (Story 7.1 - QA fix MAINT-001)
  */
+const COMPACT_MESSAGE_PREFIX = 'This session is being continued from a previous conversation';
+
 function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[]) {
+  // Skip context compaction summary messages
+  if (message.type === 'user' && typeof message.content === 'string' && message.content.startsWith(COMPACT_MESSAGE_PREFIX)) {
+    return null;
+  }
+
   if (message.type === 'tool_use' && message.toolName === 'AskUserQuestion') {
-    const toolResult = messages.slice(index + 1).find(
-      (m) => m.type === 'tool_result' && m.toolName === message.toolName
-    );
     const questions = message.toolInput?.questions as Array<{
       options: Array<{ label: string; description?: string }>;
       multiSelect?: boolean;
@@ -59,15 +64,38 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
         choices={choices}
         multiSelect={questions?.[0]?.multiSelect}
         status="responded"
-        response={toolResult?.toolResult?.output ?? toolResult?.content ?? '응답됨'}
+        response={message.toolResult?.output ?? '응답됨'}
       />
     );
   }
-  return message.type === 'tool_use' || message.type === 'tool_result' ? (
-    <ToolCallCard key={message.id} message={message} />
-  ) : (
-    <MessageBubble key={message.id} message={message} />
-  );
+  // tool_use: result already merged by parser — pass as resultOutput
+  if (message.type === 'tool_use') {
+    return <ToolCallCard key={message.id} message={message} resultOutput={message.toolResult?.output} />;
+  }
+  // Skip successful tool_result — already merged into tool_use by parser
+  if (message.type === 'tool_result' && message.toolResult?.success !== false) {
+    return null;
+  }
+  // Failed tool_result that couldn't be merged
+  if (message.type === 'tool_result') {
+    return <ToolCallCard key={message.id} message={message} />;
+  }
+
+  // Assistant message with thinking → separate ThinkingBlock card + MessageBubble
+  if (message.type === 'assistant' && message.thinking) {
+    return (
+      <Fragment key={message.id}>
+        <div className="flex justify-start">
+          <div className="max-w-[90%] md:max-w-[80%]">
+            <ThinkingBlock content={message.thinking} />
+          </div>
+        </div>
+        {message.content && <MessageBubble message={message} />}
+      </Fragment>
+    );
+  }
+
+  return <MessageBubble key={message.id} message={message} />;
 }
 
 export function ChatPage() {
@@ -157,6 +185,16 @@ export function ChatPage() {
       abortResponse();
     }
   }, [abortResponse]);
+
+  // Handle manual compaction
+  const handleCompact = useCallback(() => {
+    if (!workingDirectory || isStreaming || sessionId === 'new') return;
+    sendMessage('/compact', {
+      workingDirectory,
+      sessionId,
+      resume: true,
+    });
+  }, [sendMessage, workingDirectory, sessionId, isStreaming]);
 
   // Fetch messages on mount (only for existing sessions)
   useEffect(() => {
@@ -302,7 +340,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -350,7 +388,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -391,7 +429,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -431,7 +469,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -484,6 +522,7 @@ export function ChatPage() {
         onShowSessions={handleShowSessions}
         onRefresh={handleRetry}
         contextUsage={contextUsage}
+        onCompact={handleCompact}
       />
 
       <main
