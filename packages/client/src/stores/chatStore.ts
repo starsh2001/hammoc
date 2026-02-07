@@ -34,6 +34,15 @@ export interface InteractiveChoice {
 /** Interactive segment status */
 export type InteractiveStatus = 'waiting' | 'sending' | 'responded' | 'error';
 
+/** Result error data (persisted across completeStreaming) */
+export interface ResultErrorData {
+  subtype: string;
+  errors?: string[];
+  totalCostUSD?: number;
+  numTurns?: number;
+  result: string;
+}
+
 /** Streaming segment - discriminated union for text, tool, thinking, system, and interactive segments */
 export type StreamingSegment =
   | { type: 'text'; content: string }
@@ -50,7 +59,10 @@ export type StreamingSegment =
       status: InteractiveStatus;
       response?: string | string[];
       errorMessage?: string;
-    };
+    }
+  | { type: 'task_notification'; taskId: string; status: 'completed' | 'failed' | 'stopped'; outputFile?: string; summary?: string }
+  | { type: 'tool_summary'; summary: string; precedingToolUseIds: string[] }
+  | { type: 'result_error'; subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string };
 
 /** Type guard for text segments */
 export function isTextSegment(seg: StreamingSegment): seg is { type: 'text'; content: string } {
@@ -83,6 +95,27 @@ export function isInteractiveSegment(
   return seg.type === 'interactive';
 }
 
+/** Type guard for task notification segments */
+export function isTaskNotificationSegment(
+  seg: StreamingSegment
+): seg is StreamingSegment & { type: 'task_notification' } {
+  return seg.type === 'task_notification';
+}
+
+/** Type guard for tool summary segments */
+export function isToolSummarySegment(
+  seg: StreamingSegment
+): seg is StreamingSegment & { type: 'tool_summary' } {
+  return seg.type === 'tool_summary';
+}
+
+/** Type guard for result error segments */
+export function isResultErrorSegment(
+  seg: StreamingSegment
+): seg is StreamingSegment & { type: 'result_error' } {
+  return seg.type === 'result_error';
+}
+
 interface ChatState {
   /** Whether Claude is currently generating a response */
   isStreaming: boolean;
@@ -100,6 +133,12 @@ interface ChatState {
   contextUsage: ChatUsage | null;
   /** Session ID from most recently completed streaming (for new session navigation) */
   completedSessionId: string | null;
+  /** Last result error (persisted after completeStreaming clears segments) */
+  lastResultError: ResultErrorData | null;
+  /** Selected model for next message */
+  selectedModel: string;
+  /** Actual model reported by SDK (from session init) */
+  activeModel: string | null;
 }
 
 interface SendMessageOptions {
@@ -161,6 +200,18 @@ interface ChatActions {
     segmentId: string,
     response: { approved: boolean; value?: string | string[] }
   ) => void;
+  /** Update a tool call's elapsed time from tool_progress event */
+  updateToolProgress: (toolUseId: string, elapsedTimeSeconds: number) => void;
+  /** Add a task notification segment */
+  addTaskNotification: (data: { taskId: string; status: 'completed' | 'failed' | 'stopped'; outputFile?: string; summary?: string }) => void;
+  /** Add a tool summary segment */
+  addToolSummary: (summary: string, precedingToolUseIds: string[]) => void;
+  /** Add a result error segment and persist it */
+  addResultError: (data: ResultErrorData) => void;
+  /** Set model for next message */
+  setSelectedModel: (model: string) => void;
+  /** Set active model reported by SDK */
+  setActiveModel: (model: string | null) => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -173,6 +224,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingSegments: [],
   streamingStartedAt: null,
   completedSessionId: null,
+  lastResultError: null,
+  selectedModel: '',
+  activeModel: null,
   permissionMode: 'default',
   contextUsage: null,
 
@@ -214,6 +268,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       sessionId,
       resume,
       permissionMode: get().permissionMode,
+      ...(get().selectedModel ? { model: get().selectedModel } : {}),
       // Convert Attachment[] to ImageAttachment[] (strip File objects for serialization)
       images: attachments?.map(a => ({
         mimeType: a.mimeType,
@@ -236,6 +291,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingMessageId: messageId,
       streamingSegments: [],
       streamingStartedAt: new Date(),
+      lastResultError: null,
     });
   },
 
@@ -488,5 +544,67 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       };
       set({ streamingSegments: respondedSegments });
     }
+  },
+
+  updateToolProgress: (toolUseId: string, elapsedTimeSeconds: number) => {
+    const segments = get().streamingSegments;
+    const updated = segments.map((seg) => {
+      if (seg.type !== 'tool' || seg.toolCall.id !== toolUseId) return seg;
+      // Sync startedAt so ToolTimer shows correct elapsed time
+      const syntheticStartedAt = Date.now() - (elapsedTimeSeconds * 1000);
+      return {
+        ...seg,
+        toolCall: { ...seg.toolCall, startedAt: syntheticStartedAt },
+      };
+    });
+    set({ streamingSegments: updated });
+  },
+
+  addTaskNotification: (data) => {
+    const segments = get().streamingSegments;
+    set({
+      streamingSegments: [
+        ...segments,
+        {
+          type: 'task_notification' as const,
+          taskId: data.taskId,
+          status: data.status,
+          outputFile: data.outputFile,
+          summary: data.summary,
+        },
+      ],
+    });
+  },
+
+  addToolSummary: (summary: string, precedingToolUseIds: string[]) => {
+    const segments = get().streamingSegments;
+    set({
+      streamingSegments: [
+        ...segments,
+        { type: 'tool_summary' as const, summary, precedingToolUseIds },
+      ],
+    });
+  },
+
+  setSelectedModel: (model: string) => set({ selectedModel: model }),
+
+  setActiveModel: (model: string | null) => set({ activeModel: model }),
+
+  addResultError: (data: ResultErrorData) => {
+    const segments = get().streamingSegments;
+    set({
+      lastResultError: data,
+      streamingSegments: [
+        ...segments,
+        {
+          type: 'result_error' as const,
+          subtype: data.subtype,
+          errors: data.errors,
+          totalCostUSD: data.totalCostUSD,
+          numTurns: data.numTurns,
+          result: data.result,
+        },
+      ],
+    });
   },
 }));

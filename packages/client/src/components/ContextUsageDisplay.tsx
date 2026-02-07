@@ -1,6 +1,6 @@
 /**
  * ContextUsageDisplay Component
- * Displays context window usage with progress bar, color thresholds, and tooltip
+ * Displays context window usage with circular donut chart, color thresholds, and tooltip
  * [Source: Story 5.6 - Task 7]
  */
 
@@ -15,11 +15,17 @@ interface ContextUsageDisplayProps {
   onCompact?: () => void;
 }
 
-function getBarColor(percent: number): string {
-  if (percent > CONTEXT_USAGE_THRESHOLDS.DANGER) return 'bg-red-500';
-  if (percent >= CONTEXT_USAGE_THRESHOLDS.WARNING) return 'bg-yellow-500';
-  return 'bg-green-500';
+function getStrokeColor(percent: number): string {
+  if (percent > CONTEXT_USAGE_THRESHOLDS.DANGER) return '#ef4444';   // red-500
+  if (percent >= CONTEXT_USAGE_THRESHOLDS.WARNING) return '#eab308'; // yellow-500
+  return '#22c55e'; // green-500
 }
+
+// SVG donut chart constants
+const SIZE = 28;
+const STROKE_WIDTH = 3;
+const RADIUS = (SIZE - STROKE_WIDTH) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: ContextUsageDisplayProps) {
   if (!contextUsage || contextUsage.contextWindow === 0) return null;
@@ -28,7 +34,8 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: C
     (contextUsage.inputTokens / contextUsage.contextWindow) * 100
   );
   const isCritical = usagePercent > CONTEXT_USAGE_THRESHOLDS.CRITICAL;
-  const barColor = getBarColor(usagePercent);
+  const strokeColor = getStrokeColor(usagePercent);
+  const dashOffset = CIRCUMFERENCE - (Math.min(usagePercent, 100) / 100) * CIRCUMFERENCE;
 
   const handleClick = () => {
     if (isCritical && onNewSession) {
@@ -55,20 +62,58 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: C
       role="status"
       aria-label={`컨텍스트 사용량 ${usagePercent}%`}
       title={tooltipText}
-      className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+      className="flex items-center gap-2 mr-2.5 cursor-pointer hover:opacity-80 transition-opacity"
       onClick={handleClick}
       data-testid="context-usage-display"
     >
-      <div className="w-20 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-        <div
-          className={`h-full ${barColor} transition-colors duration-300 rounded-full`}
-          style={{ width: `${Math.min(usagePercent, 100)}%` }}
-          data-testid="context-usage-bar"
-        />
-      </div>
-      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-        {usagePercent}%
+      <span className="hidden md:inline text-xs text-gray-500 dark:text-gray-400">
+        Context
       </span>
+      <svg
+        width={SIZE}
+        height={SIZE}
+        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        className="flex-shrink-0"
+        data-testid="context-usage-ring"
+      >
+        {/* Background ring */}
+        <circle
+          cx={SIZE / 2}
+          cy={SIZE / 2}
+          r={RADIUS}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={STROKE_WIDTH}
+          className="text-gray-200 dark:text-gray-600"
+        />
+        {/* Progress ring */}
+        <circle
+          cx={SIZE / 2}
+          cy={SIZE / 2}
+          r={RADIUS}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={STROKE_WIDTH}
+          strokeLinecap="round"
+          strokeDasharray={CIRCUMFERENCE}
+          strokeDashoffset={dashOffset}
+          transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+          className="transition-all duration-300"
+          data-testid="context-usage-progress"
+        />
+        {/* Center percentage text */}
+        <text
+          x={SIZE / 2}
+          y={SIZE / 2 - 1}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize="8"
+          fontWeight="600"
+          className="fill-gray-600 dark:fill-gray-300"
+        >
+          {usagePercent}
+        </text>
+      </svg>
       {isCritical && (
         <AlertTriangle className="w-4 h-4 text-red-500" data-testid="context-usage-warning" />
       )}

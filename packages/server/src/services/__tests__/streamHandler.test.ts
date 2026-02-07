@@ -310,6 +310,7 @@ describe('StreamHandler', () => {
           cacheCreationInputTokens: 20,
           totalCostUSD: 0.001,
           contextWindow: 200000,
+          model: 'claude-opus-4-5-20251101',
         });
       });
 
@@ -327,6 +328,7 @@ describe('StreamHandler', () => {
           cacheCreationInputTokens: 10,
           totalCostUSD: 0.05,
           contextWindow: 200000,
+          model: 'claude-opus-4-5-20251101',
         });
       });
 

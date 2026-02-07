@@ -63,6 +63,8 @@ export interface ChatUsage {
   cacheCreationInputTokens: number;
   totalCostUSD: number;
   contextWindow: number;
+  /** Primary model used (extracted from result modelUsage) */
+  model?: string;
 }
 
 /**
