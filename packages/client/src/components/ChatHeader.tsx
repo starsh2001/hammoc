@@ -2,6 +2,10 @@
  * ChatHeader Component
  * Header for chat page with project path and session info
  * [Source: Story 4.1 - Task 2, Story 4.7 - Task 3]
+ *
+ * Responsive:
+ * - Mobile (< md): ContextUsage + ConnectionStatus + overflow menu (⋮)
+ * - Desktop (≥ md): All icons inline
  */
 
 import { ArrowLeft, RefreshCw, Plus, History } from 'lucide-react';
@@ -9,6 +13,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
 import { ThemeToggleButton } from './ThemeToggleButton';
+import { HeaderOverflowMenu } from './HeaderOverflowMenu';
 import { BrandLogo } from './BrandLogo';
 import type { ChatUsage } from '@bmad-studio/shared';
 
@@ -83,15 +88,17 @@ export function ChatHeader({
         </div>
 
         {/* Right side: Connection status and Actions */}
-        <div className="flex items-center gap-2 ml-4">
-          {/* Context usage display */}
-          <ContextUsageDisplay
-            contextUsage={contextUsage ?? null}
-            onNewSession={onNewSession}
-            onCompact={onCompact}
-          />
+        <div className="flex items-center gap-1 ml-4">
+          {/* Context usage display + separator (only when usage data exists) */}
+          {contextUsage && contextUsage.contextWindow > 0 && (
+            <ContextUsageDisplay
+              contextUsage={contextUsage}
+              onNewSession={onNewSession}
+              onCompact={onCompact}
+            />
+          )}
 
-          {/* Connection status indicator (compact mode) */}
+          {/* Connection status indicator - always visible */}
           <ConnectionStatusIndicator
             status={connectionStatus}
             reconnectAttempt={reconnectAttempt}
@@ -100,13 +107,15 @@ export function ChatHeader({
             compact
           />
 
-          {/* Theme toggle */}
-          <ThemeToggleButton />
+          {/* Desktop-only: inline action buttons */}
+          <div className="hidden md:block">
+            <ThemeToggleButton />
+          </div>
 
           {onShowSessions && (
             <button
               onClick={onShowSessions}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
+              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
                          text-gray-700 dark:text-gray-300
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="세션 목록"
@@ -118,7 +127,7 @@ export function ChatHeader({
           {onNewSession && (
             <button
               onClick={onNewSession}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
+              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
                          text-gray-700 dark:text-gray-300
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="새 세션 시작"
@@ -131,7 +140,7 @@ export function ChatHeader({
             <button
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
+              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
                          text-gray-700 dark:text-gray-300 disabled:opacity-50
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label={isRefreshing ? '새로고침 중' : '새로고침'}
@@ -142,6 +151,16 @@ export function ChatHeader({
               />
             </button>
           )}
+
+          {/* Mobile-only: overflow menu */}
+          <div className="md:hidden">
+            <HeaderOverflowMenu
+              onShowSessions={onShowSessions}
+              onNewSession={onNewSession}
+              onRefresh={onRefresh}
+              isRefreshing={isRefreshing}
+            />
+          </div>
         </div>
       </div>
     </header>

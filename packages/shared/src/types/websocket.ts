@@ -5,7 +5,7 @@
  */
 
 import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage } from './sdk.js';
-import type { ToolResult, CompactMetadata } from './streaming.js';
+import type { ToolResult, CompactMetadata, TaskNotificationData } from './streaming.js';
 import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
 
@@ -28,6 +28,7 @@ export interface ClientToServerEvents {
     sessionId?: string;
     resume?: boolean;
     permissionMode?: PermissionMode;
+    model?: string;
     images?: ImageAttachment[];
   }) => void;
   'chat:abort': () => void;
@@ -55,12 +56,16 @@ export interface ServerToClientEvents {
   'tool:result': (data: { toolCallId: string; result: ToolResult }) => void;
   'permission:request': (data: PermissionRequest) => void;
   'error': (data: { code: string; message: string }) => void;
-  'session:created': (data: { sessionId: string }) => void;
-  'session:resumed': (data: { sessionId: string }) => void;
+  'session:created': (data: { sessionId: string; model?: string }) => void;
+  'session:resumed': (data: { sessionId: string; model?: string }) => void;
   'session:list': (data: { sessions: SessionInfo[] }) => void;
   'context:usage': (data: ChatUsage) => void;
   'thinking:chunk': (data: { content: string }) => void;
   'system:compact': (data: CompactMetadata) => void;
+  'tool:progress': (data: { toolUseId: string; elapsedTimeSeconds: number; toolName: string }) => void;
+  'system:task-notification': (data: TaskNotificationData) => void;
+  'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
+  'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
 }
 
 // ===== Inter-server Events =====

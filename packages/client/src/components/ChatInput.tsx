@@ -18,6 +18,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { CommandPalette } from './CommandPalette';
 import { filterCommands } from './CommandPalette';
 import { PermissionModeSelector } from './PermissionModeSelector';
+import { ModelSelector } from './ModelSelector';
 import type { SlashCommand, Attachment, PermissionMode } from '@bmad-studio/shared';
 import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
 
@@ -87,6 +88,12 @@ interface ChatInputProps {
   permissionMode?: PermissionMode;
   /** Permission mode change callback */
   onPermissionModeChange?: (mode: PermissionMode) => void;
+  /** Currently selected model */
+  selectedModel?: string;
+  /** Model change callback */
+  onModelChange?: (model: string) => void;
+  /** Actual model reported by SDK */
+  activeModel?: string | null;
 }
 
 export function ChatInput({
@@ -98,6 +105,9 @@ export function ChatInput({
   onAbort,
   permissionMode,
   onPermissionModeChange,
+  selectedModel,
+  onModelChange,
+  activeModel,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -528,6 +538,16 @@ export function ChatInput({
         onDrop={handleDrop}
         data-testid="chat-input-area"
       >
+        {/* Model selector */}
+        {selectedModel !== undefined && onModelChange && (
+          <ModelSelector
+            model={selectedModel}
+            onModelChange={onModelChange}
+            disabled={isStreaming}
+            activeModel={activeModel}
+          />
+        )}
+
         {/* Permission mode selector (Story 5.2) */}
         {permissionMode && onPermissionModeChange && (
           <PermissionModeSelector

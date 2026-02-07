@@ -5,7 +5,7 @@
  */
 
 import { useRef, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, CheckCircle, AlertCircle, RefreshCw, Bell, FileText, XOctagon } from 'lucide-react';
 import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { StreamingIndicator } from './StreamingIndicator';
@@ -15,7 +15,7 @@ import { InteractiveResponseCard } from './InteractiveResponseCard';
 import { ToolResultRenderer } from './ToolResultRenderer';
 import { ThinkingBlock } from './ThinkingBlock';
 import type { StreamingSegment } from '../stores/chatStore';
-import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, isSystemSegment, useChatStore } from '../stores/chatStore';
+import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, isSystemSegment, isTaskNotificationSegment, isToolSummarySegment, isResultErrorSegment, useChatStore } from '../stores/chatStore';
 import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } from '../utils/toolUtils';
 
 /** Real-time elapsed timer for pending tool calls (streaming only) */
@@ -398,8 +398,114 @@ export function MessageArea({
             );
           }
 
+          if (isTaskNotificationSegment(seg)) {
+            const isSuccess = seg.status === 'completed';
+            const isFailed = seg.status === 'failed';
+            return (
+              <div key={`seg-task-${seg.taskId}-${index}`} className="flex justify-center">
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border ${
+                  isSuccess
+                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+                    : isFailed
+                      ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
+                      : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800'
+                }`}>
+                  {isSuccess ? (
+                    <CheckCircle className="w-4 h-4" aria-hidden="true" />
+                  ) : isFailed ? (
+                    <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                  ) : (
+                    <Bell className="w-4 h-4" aria-hidden="true" />
+                  )}
+                  <span>Task {seg.status}{seg.summary ? `: ${seg.summary}` : ''}</span>
+                </div>
+              </div>
+            );
+          }
+
+          if (isToolSummarySegment(seg)) {
+            return (
+              <div key={`seg-summary-${index}`} className="flex justify-start">
+                <div className="max-w-[80%] bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-500" aria-hidden="true" />
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                      Tool Summary
+                    </span>
+                    <span className="text-xs text-blue-500 dark:text-blue-400">
+                      ({seg.precedingToolUseIds.length} tools)
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{seg.summary}</p>
+                </div>
+              </div>
+            );
+          }
+
+          if (isResultErrorSegment(seg)) {
+            const errorLabel = seg.subtype.replace(/^error_/, '').replace(/_/g, ' ');
+            return (
+              <div key={`seg-error-${index}`} className="flex justify-start">
+                <div className="max-w-[90%] bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800">
+                  <div className="flex items-center gap-2">
+                    <XOctagon className="w-5 h-5 text-red-500" aria-hidden="true" />
+                    <span className="text-sm font-bold text-red-700 dark:text-red-400">
+                      Error: {errorLabel}
+                    </span>
+                  </div>
+                  {seg.result && (
+                    <p className="mt-2 text-sm text-red-600 dark:text-red-400">{seg.result}</p>
+                  )}
+                  {seg.errors && seg.errors.length > 0 && (
+                    <ul className="mt-2 space-y-1 text-xs text-red-500">
+                      {seg.errors.map((err, i) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+                    {seg.totalCostUSD != null && <span>Cost: ${seg.totalCostUSD.toFixed(4)}</span>}
+                    {seg.numTurns != null && <span>Turns: {seg.numTurns}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
           return null;
         })}
+
+        {/* Last result error (persisted after streaming completes) */}
+        {!isStreaming && useChatStore.getState().lastResultError && (() => {
+          const err = useChatStore.getState().lastResultError!;
+          const errorLabel = err.subtype.replace(/^error_/, '').replace(/_/g, ' ');
+          return (
+            <div className="flex justify-start">
+              <div className="max-w-[90%] bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800">
+                <div className="flex items-center gap-2">
+                  <XOctagon className="w-5 h-5 text-red-500" aria-hidden="true" />
+                  <span className="text-sm font-bold text-red-700 dark:text-red-400">
+                    Error: {errorLabel}
+                  </span>
+                </div>
+                {err.result && (
+                  <p className="mt-2 text-sm text-red-600 dark:text-red-400">{err.result}</p>
+                )}
+                {err.errors && err.errors.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-xs text-red-500">
+                    {err.errors.map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+                  {err.totalCostUSD != null && <span>Cost: ${err.totalCostUSD.toFixed(4)}</span>}
+                  {err.numTurns != null && <span>Turns: {err.numTurns}</span>}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Waiting indicator: streaming started but no segments received yet */}
         {isStreaming && streamingSegments.length === 0 && (

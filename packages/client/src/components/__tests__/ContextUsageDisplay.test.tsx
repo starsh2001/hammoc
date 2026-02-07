@@ -35,34 +35,34 @@ describe('ContextUsageDisplay', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('shows green progress bar when under 50%', () => {
+  it('shows green ring stroke when under 50%', () => {
     render(
       <ContextUsageDisplay
         contextUsage={createUsage({ inputTokens: 80000, contextWindow: 200000 })}
       />
     );
-    const bar = screen.getByTestId('context-usage-bar');
-    expect(bar.className).toContain('bg-green-500');
+    const ring = screen.getByTestId('context-usage-progress');
+    expect(ring.getAttribute('stroke')).toBe('#22c55e');
   });
 
-  it('shows yellow progress bar between 50-80%', () => {
+  it('shows yellow ring stroke between 50-80%', () => {
     render(
       <ContextUsageDisplay
         contextUsage={createUsage({ inputTokens: 120000, contextWindow: 200000 })}
       />
     );
-    const bar = screen.getByTestId('context-usage-bar');
-    expect(bar.className).toContain('bg-yellow-500');
+    const ring = screen.getByTestId('context-usage-progress');
+    expect(ring.getAttribute('stroke')).toBe('#eab308');
   });
 
-  it('shows red progress bar above 80%', () => {
+  it('shows red ring stroke above 80%', () => {
     render(
       <ContextUsageDisplay
         contextUsage={createUsage({ inputTokens: 170000, contextWindow: 200000 })}
       />
     );
-    const bar = screen.getByTestId('context-usage-bar');
-    expect(bar.className).toContain('bg-red-500');
+    const ring = screen.getByTestId('context-usage-progress');
+    expect(ring.getAttribute('stroke')).toBe('#ef4444');
   });
 
   it('shows warning icon when above 90%', () => {
@@ -124,13 +124,22 @@ describe('ContextUsageDisplay', () => {
     expect(onNewSession).not.toHaveBeenCalled();
   });
 
-  it('displays percent text correctly', () => {
+  it('displays percent number in SVG center text', () => {
     render(
       <ContextUsageDisplay
         contextUsage={createUsage({ inputTokens: 134000, contextWindow: 200000 })}
       />
     );
-    expect(screen.getByText('67%')).toBeTruthy();
+    expect(screen.getByText('67')).toBeTruthy();
+  });
+
+  it('renders SVG donut ring', () => {
+    render(
+      <ContextUsageDisplay
+        contextUsage={createUsage({ inputTokens: 100000, contextWindow: 200000 })}
+      />
+    );
+    expect(screen.getByTestId('context-usage-ring')).toBeTruthy();
   });
 
   it('has role="status" attribute', () => {

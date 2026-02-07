@@ -15,7 +15,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
-import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata } from '@bmad-studio/shared';
+import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData } from '@bmad-studio/shared';
 
 export function useStreaming() {
   const {
@@ -32,6 +32,10 @@ export function useStreaming() {
     updateStreamingSessionId,
     addInteractiveSegment,
     addSystemSegment,
+    updateToolProgress,
+    addTaskNotification,
+    addToolSummary,
+    addResultError,
   } = useChatStore();
 
   // Track seen permission request IDs to avoid duplicates on reconnect
@@ -205,9 +209,32 @@ export function useStreaming() {
       addSystemSegment(`Context compaction (${data.trigger})...`);
     };
 
-    // Handle context usage update
+    // Handle tool:progress — update elapsed time on existing tool segment
+    const handleToolProgress = (data: { toolUseId: string; elapsedTimeSeconds: number; toolName: string }) => {
+      updateToolProgress(data.toolUseId, data.elapsedTimeSeconds);
+    };
+
+    // Handle system:task-notification — add task notification segment
+    const handleTaskNotification = (data: TaskNotificationData) => {
+      addTaskNotification(data);
+    };
+
+    // Handle tool:summary — add tool summary segment
+    const handleToolSummary = (data: { summary: string; precedingToolUseIds: string[] }) => {
+      addToolSummary(data.summary, data.precedingToolUseIds);
+    };
+
+    // Handle result:error — add result error segment before completion
+    const handleResultError = (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => {
+      addResultError(data);
+    };
+
+    // Handle context usage update (also extracts model from result)
     const handleContextUsage = (data: ChatUsage) => {
       setContextUsage(data);
+      if (data.model) {
+        useChatStore.getState().setActiveModel(data.model);
+      }
     };
 
     // Handle disconnection during streaming
@@ -250,6 +277,10 @@ export function useStreaming() {
     socket.on('permission:request', handlePermissionRequest);
     socket.on('context:usage', handleContextUsage);
     socket.on('system:compact', handleCompact);
+    socket.on('tool:progress', handleToolProgress);
+    socket.on('system:task-notification', handleTaskNotification);
+    socket.on('tool:summary', handleToolSummary);
+    socket.on('result:error', handleResultError);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect', handleReconnect);
     socket.on('error', handleError);
@@ -269,6 +300,10 @@ export function useStreaming() {
       socket.off('permission:request', handlePermissionRequest);
       socket.off('context:usage', handleContextUsage);
       socket.off('system:compact', handleCompact);
+      socket.off('tool:progress', handleToolProgress);
+      socket.off('system:task-notification', handleTaskNotification);
+      socket.off('tool:summary', handleToolSummary);
+      socket.off('result:error', handleResultError);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect', handleReconnect);
       socket.off('error', handleError);
@@ -289,6 +324,10 @@ export function useStreaming() {
     updateStreamingSessionId,
     addInteractiveSegment,
     addSystemSegment,
+    updateToolProgress,
+    addTaskNotification,
+    addToolSummary,
+    addResultError,
     handleKeyDown,
   ]);
 }

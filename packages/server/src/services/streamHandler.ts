@@ -16,6 +16,8 @@ import {
   type ParsedResultMessage,
   type ParsedSystemMessage,
   type ParsedStreamEventMessage,
+  type ParsedToolProgressMessage,
+  type ParsedToolUseSummaryMessage,
   type ParsedTextBlock,
   type ParsedToolUseBlock,
   type ParsedToolResultBlock,
@@ -99,6 +101,10 @@ export class StreamHandler {
         return this.parseSystemMessage(message);
       case 'stream_event':
         return this.parseStreamEventMessage(message);
+      case 'tool_progress':
+        return this.parseToolProgressMessage(message);
+      case 'tool_use_summary':
+        return this.parseToolUseSummaryMessage(message);
       default:
         // Handle unknown message types gracefully
         return {
@@ -203,11 +209,13 @@ export class StreamHandler {
   private parseResultMessage(message: SDKMessage): ParsedResultMessage {
     const msg = message as unknown as {
       type: 'result';
-      subtype: 'success' | 'error_max_turns' | 'error_during_execution';
+      subtype: 'success' | 'error_max_turns' | 'error_during_execution' | 'error_max_budget_usd' | 'error_max_structured_output_retries';
       result: string;
       session_id: string;
       uuid: string;
       is_error: boolean;
+      errors?: string[];
+      num_turns?: number;
       usage?: {
         input_tokens: number;
         output_tokens: number;
@@ -235,6 +243,9 @@ export class StreamHandler {
       sessionId: msg.session_id,
       uuid: msg.uuid,
       isError: msg.is_error,
+      errors: msg.errors,
+      totalCostUSD: msg.total_cost_usd,
+      numTurns: msg.num_turns,
       usage: msg.usage
         ? {
             inputTokens: msg.usage.input_tokens,
@@ -243,6 +254,7 @@ export class StreamHandler {
             cacheCreationInputTokens: msg.usage.cache_creation_input_tokens ?? 0,
             totalCostUSD: msg.total_cost_usd ?? 0,
             contextWindow: extractContextWindow(msg.modelUsage),
+            model: msg.modelUsage ? Object.keys(msg.modelUsage)[0] : undefined,
           }
         : undefined,
       rawMessage: message,
@@ -272,6 +284,22 @@ export class StreamHandler {
       parsed.compactMetadata = {
         trigger: msg.compact_metadata.trigger,
         preTokens: msg.compact_metadata.pre_tokens,
+      };
+    }
+
+    if (msg.subtype === 'task_notification') {
+      const taskMsg = message as unknown as {
+        task_id: string;
+        status: 'completed' | 'failed' | 'stopped';
+        output_file?: string;
+        summary?: string;
+      };
+      parsed.subtype = 'task_notification';
+      parsed.taskNotification = {
+        taskId: taskMsg.task_id ?? '',
+        status: taskMsg.status ?? 'completed',
+        outputFile: taskMsg.output_file,
+        summary: taskMsg.summary,
       };
     }
 
@@ -339,6 +367,46 @@ export class StreamHandler {
       thinkingDelta,
       toolUse,
       inputJsonDelta,
+      rawMessage: message,
+    };
+  }
+
+  /**
+   * Parse tool_progress message
+   */
+  private parseToolProgressMessage(message: SDKMessage): ParsedToolProgressMessage {
+    const msg = message as unknown as {
+      type: 'tool_progress';
+      tool_use_id: string;
+      tool_name: string;
+      parent_tool_use_id?: string;
+      elapsed_time_seconds: number;
+    };
+
+    return {
+      type: SDKMessageType.TOOL_PROGRESS,
+      toolUseId: msg.tool_use_id,
+      toolName: msg.tool_name,
+      parentToolUseId: msg.parent_tool_use_id ?? undefined,
+      elapsedTimeSeconds: msg.elapsed_time_seconds,
+      rawMessage: message,
+    };
+  }
+
+  /**
+   * Parse tool_use_summary message
+   */
+  private parseToolUseSummaryMessage(message: SDKMessage): ParsedToolUseSummaryMessage {
+    const msg = message as unknown as {
+      type: 'tool_use_summary';
+      summary: string;
+      preceding_tool_use_ids: string[];
+    };
+
+    return {
+      type: SDKMessageType.TOOL_USE_SUMMARY,
+      summary: msg.summary ?? '',
+      precedingToolUseIds: msg.preceding_tool_use_ids ?? [],
       rawMessage: message,
     };
   }
@@ -464,6 +532,14 @@ export class StreamHandler {
 
       case SDKMessageType.STREAM_EVENT:
         this.handleStreamEvent(message as ParsedStreamEventMessage, callbacks);
+        break;
+
+      case SDKMessageType.TOOL_PROGRESS:
+        this.handleToolProgress(message as ParsedToolProgressMessage, callbacks);
+        break;
+
+      case SDKMessageType.TOOL_USE_SUMMARY:
+        this.handleToolUseSummary(message as ParsedToolUseSummaryMessage, callbacks);
         break;
     }
   }
@@ -696,6 +772,30 @@ export class StreamHandler {
     if (message.subtype === 'compact_boundary' && message.compactMetadata) {
       callbacks.onCompact?.(message.compactMetadata);
     }
+
+    if (message.subtype === 'task_notification' && message.taskNotification) {
+      callbacks.onTaskNotification?.(message.taskNotification);
+    }
+  }
+
+  /**
+   * Handle tool_progress message - update elapsed time for a running tool
+   */
+  private handleToolProgress(
+    message: ParsedToolProgressMessage,
+    callbacks: StreamCallbacks
+  ): void {
+    callbacks.onToolProgress?.(message.toolUseId, message.elapsedTimeSeconds, message.toolName);
+  }
+
+  /**
+   * Handle tool_use_summary message - summary of preceding tool calls
+   */
+  private handleToolUseSummary(
+    message: ParsedToolUseSummaryMessage,
+    callbacks: StreamCallbacks
+  ): void {
+    callbacks.onToolUseSummary?.(message.summary, message.precedingToolUseIds);
   }
 
   /**
@@ -706,6 +806,17 @@ export class StreamHandler {
     callbacks: StreamCallbacks
   ): void {
     this.state.isComplete = true;
+
+    // Dispatch error details for error subtypes (before onComplete)
+    if (message.isError && message.subtype !== 'success') {
+      callbacks.onResultError?.({
+        subtype: message.subtype,
+        errors: message.errors,
+        totalCostUSD: message.totalCostUSD,
+        numTurns: message.numTurns,
+        result: message.result,
+      });
+    }
 
     const response: ChatResponse = {
       id: message.uuid,

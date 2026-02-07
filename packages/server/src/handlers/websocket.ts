@@ -16,6 +16,7 @@ import type {
   TrackedToolCall,
   ToolResult,
   CompactMetadata,
+  TaskNotificationData,
   PermissionMode,
   ImageAttachment,
   PermissionRequest,
@@ -219,10 +220,10 @@ function isSessionNotFoundError(error: Error): boolean {
  */
 async function handleChatSend(
   socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
-  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; images?: ImageAttachment[] },
+  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[] },
   abortController: AbortController
 ): Promise<void> {
-  const { content, workingDirectory, sessionId, resume, permissionMode, images } = data;
+  const { content, workingDirectory, sessionId, resume, permissionMode, model, images } = data;
 
   // Validate images if present (Story 5.5)
   if (images && images.length > 0) {
@@ -259,6 +260,7 @@ async function handleChatSend(
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : {}),
       abortController,
+      model,
       images,
     };
 
@@ -321,19 +323,19 @@ async function handleChatSend(
     }, config.chat.timeoutMs);
 
     await chatService.sendMessageWithCallbacks(content, {
-      onSessionInit: async (sid) => {
-        console.log(`Session initialized: ${sid}`);
+      onSessionInit: async (sid, metadata) => {
+        console.log(`Session initialized: ${sid} (model: ${metadata?.model ?? 'unknown'})`);
         // Store the actual sessionId for use in onTextChunk and onComplete
         actualSessionId = sid;
 
         // Save session ID for future use
         await sessionService.saveSessionId(workingDirectory, sid);
 
-        // Emit appropriate session event
+        // Emit appropriate session event (include model from SDK init)
         if (isResuming) {
-          socket.emit('session:resumed', { sessionId: sid });
+          socket.emit('session:resumed', { sessionId: sid, model: metadata?.model });
         } else {
-          socket.emit('session:created', { sessionId: sid });
+          socket.emit('session:created', { sessionId: sid, model: metadata?.model });
         }
       },
 
@@ -374,6 +376,22 @@ async function handleChatSend(
 
       onCompact: (metadata: CompactMetadata) => {
         socket.emit('system:compact', metadata);
+      },
+
+      onToolProgress: (toolUseId: string, elapsedTimeSeconds: number, toolName: string) => {
+        socket.emit('tool:progress', { toolUseId, elapsedTimeSeconds, toolName });
+      },
+
+      onTaskNotification: (data: TaskNotificationData) => {
+        socket.emit('system:task-notification', data);
+      },
+
+      onToolUseSummary: (summary: string, precedingToolUseIds: string[]) => {
+        socket.emit('tool:summary', { summary, precedingToolUseIds });
+      },
+
+      onResultError: (data) => {
+        socket.emit('result:error', data);
       },
 
       onComplete: (response) => {

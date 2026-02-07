@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getSocket } from '../services/socket';
+import { useChatStore } from '../stores/chatStore';
 import type { SessionInfo } from '@bmad-studio/shared';
 
 export interface UseSessionReturn {
@@ -64,17 +65,23 @@ export function useSession(): UseSessionReturn {
     /**
      * Handle session:created event
      */
-    const handleSessionCreated = (data: { sessionId: string }) => {
+    const handleSessionCreated = (data: { sessionId: string; model?: string }) => {
       setCurrentSessionId(data.sessionId);
       setPendingResume(null);
+      if (data.model) {
+        useChatStore.getState().setActiveModel(data.model);
+      }
     };
 
     /**
      * Handle session:resumed event
      */
-    const handleSessionResumed = (data: { sessionId: string }) => {
+    const handleSessionResumed = (data: { sessionId: string; model?: string }) => {
       setCurrentSessionId(data.sessionId);
       setPendingResume(null);
+      if (data.model) {
+        useChatStore.getState().setActiveModel(data.model);
+      }
     };
 
     /**

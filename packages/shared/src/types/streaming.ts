@@ -17,6 +17,8 @@ export enum SDKMessageType {
   RESULT = 'result',
   SYSTEM = 'system',
   STREAM_EVENT = 'stream_event',
+  TOOL_PROGRESS = 'tool_progress',
+  TOOL_USE_SUMMARY = 'tool_use_summary',
 }
 
 /**
@@ -125,21 +127,36 @@ export interface ParsedUserMessage extends ParsedSDKMessageBase {
  */
 export interface ParsedResultMessage extends ParsedSDKMessageBase {
   type: SDKMessageType.RESULT;
-  subtype: 'success' | 'error_max_turns' | 'error_during_execution';
+  subtype: 'success' | 'error_max_turns' | 'error_during_execution' | 'error_max_budget_usd' | 'error_max_structured_output_retries';
   result: string;
   sessionId: string;
   uuid: string;
   isError: boolean;
   usage?: ChatUsage;
+  /** Error details (for error subtypes) */
+  errors?: string[];
+  /** Total cost for this session */
+  totalCostUSD?: number;
+  /** Number of turns used */
+  numTurns?: number;
 }
 
 /**
  * Parsed system message
  */
+/** Task notification data from system subtype */
+export interface TaskNotificationData {
+  taskId: string;
+  status: 'completed' | 'failed' | 'stopped';
+  outputFile?: string;
+  summary?: string;
+}
+
 export interface ParsedSystemMessage extends ParsedSDKMessageBase {
   type: SDKMessageType.SYSTEM;
-  subtype?: 'init' | 'compact_boundary';
+  subtype?: 'init' | 'compact_boundary' | 'task_notification';
   compactMetadata?: CompactMetadata;
+  taskNotification?: TaskNotificationData;
 }
 
 /**
@@ -164,6 +181,26 @@ export interface ParsedStreamEventMessage extends ParsedSDKMessageBase {
 }
 
 /**
+ * Parsed tool_progress message
+ */
+export interface ParsedToolProgressMessage extends ParsedSDKMessageBase {
+  type: SDKMessageType.TOOL_PROGRESS;
+  toolUseId: string;
+  toolName: string;
+  parentToolUseId?: string;
+  elapsedTimeSeconds: number;
+}
+
+/**
+ * Parsed tool_use_summary message
+ */
+export interface ParsedToolUseSummaryMessage extends ParsedSDKMessageBase {
+  type: SDKMessageType.TOOL_USE_SUMMARY;
+  summary: string;
+  precedingToolUseIds: string[];
+}
+
+/**
  * Union type for all parsed SDK messages
  */
 export type ParsedSDKMessage =
@@ -172,7 +209,9 @@ export type ParsedSDKMessage =
   | ParsedUserMessage
   | ParsedResultMessage
   | ParsedSystemMessage
-  | ParsedStreamEventMessage;
+  | ParsedStreamEventMessage
+  | ParsedToolProgressMessage
+  | ParsedToolUseSummaryMessage;
 
 // ===== Streaming State =====
 
@@ -234,6 +273,10 @@ export interface StreamCallbacks {
   onComplete?: (response: ChatResponse) => void;
   onError?: (error: Error) => void;
   onCompact?: (metadata: CompactMetadata) => void;
+  onToolProgress?: (toolUseId: string, elapsedTimeSeconds: number, toolName: string) => void;
+  onTaskNotification?: (data: TaskNotificationData) => void;
+  onToolUseSummary?: (summary: string, precedingToolUseIds: string[]) => void;
+  onResultError?: (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
 }
 
 /**

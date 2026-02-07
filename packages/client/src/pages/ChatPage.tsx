@@ -117,7 +117,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, contextUsage, resetContextUsage, completedSessionId, clearCompletedSessionId } = useChatStore();
+  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, completedSessionId, clearCompletedSessionId } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
 
   // Navigate to the new sessionId when streaming completes (completedSessionId is set by completeStreaming)
@@ -373,6 +373,9 @@ export function ChatPage() {
             commands={commands}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            activeModel={activeModel}
           />
         </InputArea>
         {sessionPanel}
@@ -414,6 +417,9 @@ export function ChatPage() {
             commands={commands}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            activeModel={activeModel}
           />
         </InputArea>
         {sessionPanel}
@@ -454,6 +460,9 @@ export function ChatPage() {
             commands={commands}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            activeModel={activeModel}
           />
         </InputArea>
         {sessionPanel}
@@ -500,6 +509,9 @@ export function ChatPage() {
             commands={commands}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            activeModel={activeModel}
           />
         </InputArea>
         {sessionPanel}
@@ -562,6 +574,9 @@ export function ChatPage() {
           commands={commands}
           permissionMode={permissionMode}
           onPermissionModeChange={setPermissionMode}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          activeModel={activeModel}
         />
       </InputArea>
       {sessionPanel}
