@@ -3,9 +3,10 @@
  * Story 7.4: Thinking Message Display - Task 4
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ThinkingBlock } from '../ThinkingBlock';
+import { useChatStore } from '../../stores/chatStore';
 
 // Mock MarkdownRenderer for controlled testing
 vi.mock('../MarkdownRenderer', () => ({
@@ -16,6 +17,11 @@ vi.mock('../MarkdownRenderer', () => ({
 
 describe('ThinkingBlock', () => {
   const thinkingContent = 'Let me think about this problem step by step...';
+
+  beforeEach(() => {
+    // Reset global thinking state to collapsed before each test
+    useChatStore.setState({ thinkingExpanded: false });
+  });
 
   describe('collapsed state (default)', () => {
     it('should render collapsed by default with "Thinking" text', () => {
@@ -103,10 +109,33 @@ describe('ThinkingBlock', () => {
     });
   });
 
-  describe('defaultExpanded prop', () => {
-    it('should start expanded when defaultExpanded=true', () => {
-      render(<ThinkingBlock content={thinkingContent} defaultExpanded={true} />);
+  describe('global toggle (all blocks share state)', () => {
+    it('should expand all blocks when one is toggled', () => {
+      const { unmount } = render(
+        <>
+          <ThinkingBlock content="Block 1" />
+          <ThinkingBlock content="Block 2" />
+        </>
+      );
 
+      // Click the first block's button
+      const buttons = screen.getAllByRole('button');
+      fireEvent.click(buttons[0]);
+
+      // Both should be expanded
+      const renderers = screen.getAllByTestId('markdown-renderer');
+      expect(renderers).toHaveLength(2);
+
+      unmount();
+    });
+
+    it('should persist expanded state for new blocks', () => {
+      // First, expand via store
+      useChatStore.setState({ thinkingExpanded: true });
+
+      render(<ThinkingBlock content={thinkingContent} />);
+
+      // Should be expanded immediately
       expect(screen.getByTestId('markdown-renderer')).toBeInTheDocument();
       expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'true');
     });
@@ -114,8 +143,9 @@ describe('ThinkingBlock', () => {
 
   describe('markdown rendering', () => {
     it('should render thinking content through MarkdownRenderer', () => {
+      useChatStore.setState({ thinkingExpanded: true });
       const markdownContent = '## Step 1\n\nAnalyze the problem...';
-      render(<ThinkingBlock content={markdownContent} defaultExpanded={true} />);
+      render(<ThinkingBlock content={markdownContent} />);
 
       const renderer = screen.getByTestId('markdown-renderer');
       expect(renderer).toBeInTheDocument();
@@ -124,19 +154,20 @@ describe('ThinkingBlock', () => {
     });
   });
 
-  describe('transition classes', () => {
-    it('should have transition-all and overflow-hidden classes on content area', () => {
-      render(<ThinkingBlock content={thinkingContent} defaultExpanded={true} />);
+  describe('content area classes', () => {
+    it('should have overflow-hidden class on content area', () => {
+      useChatStore.setState({ thinkingExpanded: true });
+      render(<ThinkingBlock content={thinkingContent} />);
 
       const contentArea = screen.getByRole('region');
-      expect(contentArea).toHaveClass('transition-all');
       expect(contentArea).toHaveClass('overflow-hidden');
     });
   });
 
   describe('scroll handling for long content', () => {
     it('should have max-h-96 and overflow-y-auto classes for expanded content', () => {
-      render(<ThinkingBlock content={thinkingContent} defaultExpanded={true} />);
+      useChatStore.setState({ thinkingExpanded: true });
+      render(<ThinkingBlock content={thinkingContent} />);
 
       const contentArea = screen.getByRole('region');
       expect(contentArea).toHaveClass('max-h-96');

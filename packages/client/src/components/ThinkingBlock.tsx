@@ -3,30 +3,50 @@
  * Story 7.4: Thinking Message Display - Task 1
  *
  * Features:
- * - Collapsed by default with Brain icon + "Thinking" text
- * - Toggle to expand/collapse with smooth CSS transition
+ * - Collapsed by default; toggling one block toggles ALL blocks globally
+ * - Global state persists as the default for new blocks
  * - Expanded content with distinct styling (purple border + background)
  * - Markdown rendering via MarkdownRenderer
  * - Max height with scroll for long thinking content
  * - Full accessibility (aria-expanded, aria-controls, button element)
  */
 
-import { useState, useId } from 'react';
+import { useId, useRef, useCallback } from 'react';
 import { Brain, ChevronRight, ChevronDown } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { useChatStore } from '../stores/chatStore';
 
 interface ThinkingBlockProps {
   /** Thinking content (markdown string) */
   content: string;
-  /** Whether to start in expanded state */
-  defaultExpanded?: boolean;
 }
 
-export function ThinkingBlock({ content, defaultExpanded = false }: ThinkingBlockProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+export function ThinkingBlock({ content }: ThinkingBlockProps) {
+  const isExpanded = useChatStore((s) => s.thinkingExpanded);
+  const toggleThinkingExpanded = useChatStore((s) => s.toggleThinkingExpanded);
   const contentId = useId();
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const toggle = () => setIsExpanded((prev) => !prev);
+  const handleToggle = useCallback(() => {
+    // Record the clicked button's viewport position before toggle
+    const topBefore = buttonRef.current?.getBoundingClientRect().top ?? 0;
+    toggleThinkingExpanded();
+    // After re-render, adjust scroll so the clicked button stays in place
+    requestAnimationFrame(() => {
+      if (!buttonRef.current) return;
+      const topAfter = buttonRef.current.getBoundingClientRect().top;
+      const delta = topAfter - topBefore;
+      if (delta !== 0) {
+        // Find the nearest scrollable ancestor
+        const scrollParent = buttonRef.current.closest('[class*="overflow-y"]') ?? window;
+        if (scrollParent instanceof Window) {
+          scrollParent.scrollBy(0, delta);
+        } else {
+          scrollParent.scrollTop += delta;
+        }
+      }
+    });
+  }, [toggleThinkingExpanded]);
 
   return (
     <div
@@ -37,7 +57,8 @@ export function ThinkingBlock({ content, defaultExpanded = false }: ThinkingBloc
       }
     >
       <button
-        onClick={toggle}
+        ref={buttonRef}
+        onClick={handleToggle}
         aria-expanded={isExpanded}
         aria-controls={contentId}
         className={`flex items-center gap-2 cursor-pointer rounded py-1 px-2
@@ -54,8 +75,8 @@ export function ThinkingBlock({ content, defaultExpanded = false }: ThinkingBloc
         id={contentId}
         role={isExpanded ? 'region' : undefined}
         aria-label={isExpanded ? 'Thinking content' : undefined}
-        className={`transition-all duration-200 ease-in-out overflow-hidden ${
-          isExpanded ? 'max-h-96 overflow-y-auto opacity-100 mt-2' : 'max-h-0 opacity-0'
+        className={`overflow-hidden ${
+          isExpanded ? 'max-h-96 overflow-y-auto mt-2' : 'max-h-0'
         }`}
       >
         {isExpanded && (

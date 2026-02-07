@@ -237,7 +237,7 @@ export function MessageArea({
             return (
               <div key={`seg-thinking-${index}`} className="flex justify-start">
                 <div className="max-w-[90%] md:max-w-[80%]">
-                  <ThinkingBlock content={seg.content} defaultExpanded={true} />
+                  <ThinkingBlock content={seg.content} />
                 </div>
               </div>
             );
