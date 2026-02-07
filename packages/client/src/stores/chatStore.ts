@@ -139,6 +139,8 @@ interface ChatState {
   selectedModel: string;
   /** Actual model reported by SDK (from session init) */
   activeModel: string | null;
+  /** Global thinking blocks expanded state (all blocks share this) */
+  thinkingExpanded: boolean;
 }
 
 interface SendMessageOptions {
@@ -212,6 +214,8 @@ interface ChatActions {
   setSelectedModel: (model: string) => void;
   /** Set active model reported by SDK */
   setActiveModel: (model: string | null) => void;
+  /** Toggle all thinking blocks expanded/collapsed */
+  toggleThinkingExpanded: () => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -227,6 +231,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   lastResultError: null,
   selectedModel: '',
   activeModel: null,
+  thinkingExpanded: false,
   permissionMode: 'default',
   contextUsage: null,
 
@@ -589,6 +594,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setSelectedModel: (model: string) => set({ selectedModel: model }),
 
   setActiveModel: (model: string | null) => set({ activeModel: model }),
+
+  toggleThinkingExpanded: () => set((state) => ({ thinkingExpanded: !state.thinkingExpanded })),
 
   addResultError: (data: ResultErrorData) => {
     const segments = get().streamingSegments;
