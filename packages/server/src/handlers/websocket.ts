@@ -42,7 +42,7 @@ const activeAbortControllers = new Map<string, AbortController>();
 
 // Permission response resolver: requestId → resolve callback
 interface PendingPermission {
-  resolve: (result: { approved: boolean; response?: string | string[] }) => void;
+  resolve: (result: { approved: boolean; response?: string | string[] | Record<string, string | string[]> }) => void;
   interactionType: 'permission' | 'question';
 }
 const pendingPermissions = new Map<string, PendingPermission>();
@@ -238,7 +238,9 @@ async function handleChatSend(
   }
 
   // Validate workingDirectory exists
+  console.log(`[websocket] chat:send workingDirectory="${workingDirectory}", sessionId="${sessionId}", resume=${resume}`);
   if (!workingDirectory || !existsSync(workingDirectory)) {
+    console.error(`[websocket] Invalid workingDirectory: "${workingDirectory}" (exists: ${workingDirectory ? existsSync(workingDirectory) : 'N/A'})`);
     socket.emit('error', {
       code: ERROR_CODES.INVALID_WORKING_DIR,
       message: '지정된 프로젝트 경로가 존재하지 않습니다.',
@@ -283,7 +285,7 @@ async function handleChatSend(
       } as PermissionRequest);
 
       // Wait for user response
-      const userResponse = await new Promise<{ approved: boolean; response?: string | string[] }>((resolve) => {
+      const userResponse = await new Promise<{ approved: boolean; response?: string | string[] | Record<string, string | string[]> }>((resolve) => {
         pendingPermissions.set(requestId, {
           resolve,
           interactionType: isAskUserQuestion ? 'question' : 'permission',
@@ -298,14 +300,24 @@ async function handleChatSend(
       if (isAskUserQuestion) {
         // Per official docs: return { behavior: 'allow', updatedInput: { questions, answers } }
         const questions = (input as Record<string, unknown>).questions as Array<{ question: string }>;
-        const answer = typeof userResponse.response === 'string'
-          ? userResponse.response
-          : Array.isArray(userResponse.response) ? userResponse.response.join(', ') : '';
+        let answers: Record<string, string | string[]>;
+
+        if (typeof userResponse.response === 'object' && !Array.isArray(userResponse.response) && userResponse.response !== null) {
+          // Multi-question: response is Record<questionText, answer>
+          answers = userResponse.response as Record<string, string | string[]>;
+        } else {
+          // Single question: response is string or string[]
+          const answer = typeof userResponse.response === 'string'
+            ? userResponse.response
+            : Array.isArray(userResponse.response) ? userResponse.response.join(', ') : '';
+          answers = { [questions[0].question]: answer };
+        }
+
         return {
           behavior: 'allow',
           updatedInput: {
             questions,
-            answers: { [questions[0].question]: answer },
+            answers,
           },
         };
       }

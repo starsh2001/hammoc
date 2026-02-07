@@ -48,21 +48,32 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
   }
 
   if (message.type === 'tool_use' && message.toolName === 'AskUserQuestion') {
-    const questions = message.toolInput?.questions as Array<{
+    const rawQuestions = message.toolInput?.questions as Array<{
+      question: string;
+      header: string;
       options: Array<{ label: string; description?: string }>;
       multiSelect?: boolean;
     }> | undefined;
-    const choices = questions?.[0]?.options?.map((opt) => ({
-      label: opt.label, description: opt.description, value: opt.label,
-    })) || [];
+    // Map all questions with their choices
+    const mappedQuestions = rawQuestions?.map((q) => ({
+      question: q.question,
+      header: q.header,
+      choices: q.options.map((opt) => ({
+        label: opt.label, description: opt.description, value: opt.label,
+      })),
+      multiSelect: q.multiSelect,
+    }));
+    // First question's choices as top-level for backward compat
+    const firstChoices = mappedQuestions?.[0]?.choices || [];
     return (
       <InteractiveResponseCard
         key={message.id}
         type="question"
         toolName="AskUserQuestion"
         toolInput={message.toolInput}
-        choices={choices}
-        multiSelect={questions?.[0]?.multiSelect}
+        choices={firstChoices}
+        questions={mappedQuestions}
+        multiSelect={rawQuestions?.[0]?.multiSelect}
         status="responded"
         response={message.toolResult?.output ?? '응답됨'}
       />
