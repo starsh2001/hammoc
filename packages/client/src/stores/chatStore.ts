@@ -185,6 +185,8 @@ interface ChatActions {
   resetContextUsage: () => void;
   /** Clear completed session ID after navigation */
   clearCompletedSessionId: () => void;
+  /** Clear leftover streaming segments (on session switch) */
+  clearStreamingSegments: () => void;
   /** Update streaming sessionId without resetting segments (for late sessionId arrival) */
   updateStreamingSessionId: (sessionId: string) => void;
   /** Add a system segment (e.g., context compaction notification) */
@@ -387,9 +389,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Save sessionId before clearing (for new session navigation)
     const currentSessionId = get().streamingSessionId;
 
-    // Clear streaming state only — message persistence is handled by
-    // fetchMessages() in handleComplete (useStreaming.ts), which replaces
-    // messageStore.messages with authoritative server data.
+    // Clear all streaming segments. History (fetched via URL-change effect
+    // or deferred fetchMessages) renders identical cards via ToolCard/ThinkingBlock.
     set({
       isStreaming: false,
       streamingSessionId: null,
@@ -467,6 +468,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   resetContextUsage: () => set({ contextUsage: null }),
 
   clearCompletedSessionId: () => set({ completedSessionId: null }),
+
+  clearStreamingSegments: () => set({ streamingSegments: [] }),
 
   updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),
 
