@@ -449,14 +449,13 @@ describe('ProjectService', () => {
       expect(result.isProject).toBe(false);
     });
 
-    it('should return valid=false for non-existent path', async () => {
+    it('should return valid=true for non-existent path (will be created)', async () => {
       mockFs.stat.mockRejectedValue({ code: 'ENOENT' });
 
       const result = await projectService.validatePath('/non/existent/path');
 
-      expect(result.valid).toBe(false);
+      expect(result.valid).toBe(true);
       expect(result.exists).toBe(false);
-      expect(result.error).toContain('존재하지 않습니다');
     });
 
     it('should return valid=false for relative paths', async () => {
@@ -487,7 +486,7 @@ describe('ProjectService', () => {
 
       expect(result.valid).toBe(false);
       expect(result.exists).toBe(true);
-      expect(result.error).toContain('디렉토리가 아닙니다');
+      expect(result.error).toContain('파일입니다');
     });
 
     it('should detect existing project and return projectSlug', async () => {
@@ -590,8 +589,22 @@ describe('ProjectService', () => {
       });
       mockSyncFs.existsSync.mockReturnValue(false);
 
-      // Mock readdir to return new project after files are written
-      mockFs.readdir.mockImplementation(async () => {
+      mockFs.copyFile.mockResolvedValue(undefined);
+
+      // Mock readdir to handle both project scanning (strings) and template copying (withFileTypes)
+      let withFileTypesCallCount = 0;
+      mockFs.readdir.mockImplementation(async (...args: unknown[]) => {
+        const opts = args[1] as { withFileTypes?: boolean } | undefined;
+        if (opts?.withFileTypes) {
+          withFileTypesCallCount++;
+          // First call: return a file entry; subsequent calls: empty (stop recursion)
+          if (withFileTypesCallCount === 1) {
+            return [
+              { name: 'core-config.yaml', isDirectory: () => false },
+            ] as never;
+          }
+          return [] as never;
+        }
         if (projectCreated) {
           return ['new-hash'] as never;
         }
@@ -651,44 +664,48 @@ describe('ProjectService', () => {
   });
 
   describe('setupBmadCore', () => {
-    it('should create .bmad-core directory structure', async () => {
-      mockFs.mkdir.mockResolvedValue(undefined);
-      mockFs.writeFile.mockResolvedValue(undefined);
-      mockSyncFs.existsSync.mockReturnValue(false);
+    it('should throw error when version template not found', async () => {
+      mockFs.access.mockRejectedValue({ code: 'ENOENT' });
 
-      await projectService.setupBmadCore('/Users/test/project');
-
-      // Should create main directory
-      expect(mockFs.mkdir).toHaveBeenCalledWith(
-        path.join('/Users/test/project', '.bmad-core'),
-        { recursive: true }
-      );
-
-      // Should create subdirectories
-      const expectedDirs = ['agents', 'tasks', 'templates', 'checklists', 'data'];
-      for (const dir of expectedDirs) {
-        expect(mockFs.mkdir).toHaveBeenCalledWith(
-          path.join('/Users/test/project', '.bmad-core', dir),
-          { recursive: true }
-        );
-      }
-
-      // Should create core-config.yaml
-      expect(mockFs.writeFile).toHaveBeenCalledWith(
-        path.join('/Users/test/project', '.bmad-core', 'core-config.yaml'),
-        expect.stringContaining('markdownExploder: true'),
-        'utf-8'
-      );
+      await expect(
+        projectService.setupBmadCore('/Users/test/project', '9.99.99')
+      ).rejects.toThrow('BMad 버전 9.99.99을 찾을 수 없습니다.');
     });
 
-    it('should not overwrite existing core-config.yaml', async () => {
+    it('should recursively copy template when version exists', async () => {
+      mockFs.access.mockResolvedValue(undefined);
       mockFs.mkdir.mockResolvedValue(undefined);
+      mockFs.copyFile.mockResolvedValue(undefined);
+      mockSyncFs.existsSync.mockReturnValue(false);
+
+      // Mock readdir to return a simple structure
+      mockFs.readdir.mockResolvedValue([
+        { name: 'core-config.yaml', isDirectory: () => false },
+      ] as never);
+
+      await projectService.setupBmadCore('/Users/test/project', '4.44.3');
+
+      // Should create destination directory
+      expect(mockFs.mkdir).toHaveBeenCalled();
+      // Should copy files
+      expect(mockFs.copyFile).toHaveBeenCalled();
+    });
+
+    it('should not overwrite existing files', async () => {
+      mockFs.access.mockResolvedValue(undefined);
+      mockFs.mkdir.mockResolvedValue(undefined);
+      mockFs.copyFile.mockResolvedValue(undefined);
+      // existsSync returns true = file already exists
       mockSyncFs.existsSync.mockReturnValue(true);
 
-      await projectService.setupBmadCore('/Users/test/project');
+      mockFs.readdir.mockResolvedValue([
+        { name: 'core-config.yaml', isDirectory: () => false },
+      ] as never);
 
-      // Should NOT write config file if it exists
-      expect(mockFs.writeFile).not.toHaveBeenCalled();
+      await projectService.setupBmadCore('/Users/test/project', '4.44.3');
+
+      // Should NOT copy file if it already exists
+      expect(mockFs.copyFile).not.toHaveBeenCalled();
     });
   });
 

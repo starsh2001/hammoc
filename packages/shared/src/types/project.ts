@@ -91,6 +91,16 @@ export interface CreateProjectRequest {
   path: string;
   /** Whether to initialize .bmad-core folder (default: true) */
   setupBmad?: boolean;
+  /** BMad method version to install (e.g., "4.44.3"). Required when setupBmad is true. */
+  bmadVersion?: string;
+}
+
+/**
+ * Response for GET /api/projects/bmad-versions
+ */
+export interface BmadVersionsResponse {
+  /** Available BMad method versions, sorted descending (latest first) */
+  versions: string[];
 }
 
 /**
