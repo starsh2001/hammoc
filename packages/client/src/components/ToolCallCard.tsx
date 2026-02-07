@@ -58,6 +58,29 @@ function extractTodos(toolInput?: Record<string, unknown>): TodoItem[] | null {
   return toolInput.todos as TodoItem[];
 }
 
+/** Collapsible tool output section (Bash, Grep, etc.) */
+function CollapsibleToolOutput({ toolName, output, toolInput }: { toolName: string; output: string; toolInput?: Record<string, unknown> }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+        aria-expanded={expanded}
+      >
+        {expanded ? <ChevronDown className="w-3 h-3" aria-hidden="true" /> : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
+        <span>결과 보기</span>
+      </button>
+      {expanded && (
+        <div className="mt-1">
+          <ToolResultRenderer toolName={toolName} toolInput={toolInput} result={output} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
   const [showDiffViewer, setShowDiffViewer] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -97,7 +120,7 @@ export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
                 displayInfo={displayInfo}
                 toolName={message.toolName}
                 toolInput={message.toolInput}
-                additionalParams={message.toolName === 'Bash' && resultOutput ? [{ label: 'OUT', value: resultOutput }] : undefined}
+                additionalParams={undefined}
               />
             )}
             {/* Edit/Write: collapsible file path with line changes */}
@@ -146,10 +169,8 @@ export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
                 ))}
               </ul>
             )}
-            {message.toolName === 'Grep' && resultOutput && (
-              <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
-                <ToolResultRenderer toolName="Grep" result={resultOutput} />
-              </div>
+            {(message.toolName === 'Grep' || message.toolName === 'Bash') && resultOutput && (
+              <CollapsibleToolOutput toolName={message.toolName} output={resultOutput} toolInput={message.toolInput} />
             )}
           </div>
         </div>
@@ -195,7 +216,7 @@ export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
   }
 
   // Edit/Write/TodoWrite/AskUserQuestion: already shown via tool_use card — skip
-  const SKIP_RESULT_TOOLS = ['Edit', 'Write', 'TodoWrite', 'AskUserQuestion'];
+  const SKIP_RESULT_TOOLS = ['Read', 'Edit', 'Write', 'TodoWrite', 'AskUserQuestion'];
   if (SKIP_RESULT_TOOLS.includes(message.toolName ?? '')) {
     return null;
   }

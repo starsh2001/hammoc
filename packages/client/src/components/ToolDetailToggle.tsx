@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { getToolDetailParams } from '../utils/toolUtils';
+import { getToolExtraParams } from '../utils/toolUtils';
 
 interface ToolDetailToggleProps {
   toolName: string;
@@ -16,7 +16,7 @@ interface ToolDetailToggleProps {
 
 export function ToolDetailToggle({ toolName, input, toolCallId }: ToolDetailToggleProps) {
   const [expanded, setExpanded] = useState(false);
-  const params = getToolDetailParams(toolName, input);
+  const params = getToolExtraParams(toolName, input);
   if (!params) return null;
 
   const panelId = `tool-detail-${toolCallId}`;

@@ -325,7 +325,8 @@ describe('WebSocket Handler', () => {
       expect(mockSendMessageWithCallbacks).toHaveBeenCalledWith(
         'Hello Claude',
         expect.any(Object),
-        expect.any(Object)
+        expect.any(Object),
+        expect.any(Function)
       );
     });
 
@@ -360,7 +361,8 @@ describe('WebSocket Handler', () => {
       expect(mockSendMessageWithCallbacks).toHaveBeenCalledWith(
         'Continue our work',
         expect.any(Object),
-        expect.objectContaining({ resume: 'resume-session-id', abortController: expect.any(AbortController) })
+        expect.objectContaining({ resume: 'resume-session-id', abortController: expect.any(AbortController) }),
+        expect.any(Function)
       );
     });
   });
@@ -668,7 +670,8 @@ describe('WebSocket Handler', () => {
         expect.any(Object),
         expect.objectContaining({
           abortController: expect.any(AbortController),
-        })
+        }),
+        expect.any(Function)
       );
     });
 

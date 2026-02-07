@@ -1,4 +1,4 @@
-import { query, type Query, type Options, type SDKMessage, type CanUseTool } from '@anthropic-ai/claude-code';
+import { query, type Query, type Options, type SDKMessage, type CanUseTool } from '@anthropic-ai/claude-agent-sdk';
 import type {
   ChatServiceConfig,
   ChatOptions,
@@ -92,11 +92,14 @@ export class ChatService {
     options: ChatOptions = {},
     canUseTool?: CanUseTool
   ): AsyncGenerator<SDKMessage, ChatResponse, void> {
+    const resolvedAllowed = options.allowedTools ?? this.allowedTools;
+    const resolvedDisallowed = options.disallowedTools ?? this.disallowedTools;
+
     const queryOptions: Options = {
       cwd: this.workingDirectory,
       permissionMode: this.permissionMode,
-      allowedTools: options.allowedTools ?? this.allowedTools,
-      disallowedTools: options.disallowedTools ?? this.disallowedTools,
+      allowedTools: resolvedAllowed.length > 0 ? resolvedAllowed : undefined,
+      disallowedTools: resolvedDisallowed.length > 0 ? resolvedDisallowed : undefined,
       maxTurns: options.maxTurns,
       abortController: options.abortController,
       model: options.model,

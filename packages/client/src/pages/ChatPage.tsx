@@ -52,7 +52,7 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
       options: Array<{ label: string; description?: string }>;
       multiSelect?: boolean;
     }> | undefined;
-    const choices = questions?.[0]?.options.map((opt) => ({
+    const choices = questions?.[0]?.options?.map((opt) => ({
       label: opt.label, description: opt.description, value: opt.label,
     })) || [];
     return (

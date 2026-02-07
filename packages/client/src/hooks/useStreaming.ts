@@ -102,12 +102,10 @@ export function useStreaming() {
       const projectSlug = msgState.currentProjectSlug;
       const sessId = msgState.currentSessionId;
 
-      if (projectSlug && sessId) {
-        // Fetch authoritative message list from server
-        await msgState.fetchMessages(projectSlug, sessId, { silent: true });
-      } else if (data.content && data.content.trim() && data.content.trim() !== '(no content)') {
-        // New session: server data contains the complete message — add it directly
-        // Skip empty content and placeholder "(no content)" from Claude Code
+      // Always add the assistant message from completion data first.
+      // This prevents content loss when fetchMessages returns stale data
+      // (race condition: SDK may not have flushed JSONL to disk yet).
+      if (data.content && data.content.trim() && data.content.trim() !== '(no content)') {
         msgState.addMessages([{
           id: data.id,
           type: 'assistant',
@@ -117,14 +115,45 @@ export function useStreaming() {
             : new Date(data.timestamp).toISOString(),
         }]);
       }
+
       completeStreaming();
+
+      // Background sync: fetch authoritative history (includes tool calls, thinking blocks, etc.)
+      // Deferred to allow SDK time to flush JSONL session file to disk.
+      if (projectSlug && sessId) {
+        setTimeout(() => {
+          const store = useMessageStore.getState();
+          const currentCount = store.messages.length;
+          store.fetchMessages(projectSlug, sessId, { silent: true, minMessageCount: currentCount });
+        }, 2000);
+      }
     };
 
-    // Handle tool call start - add tool segment or interactive segment for AskUserQuestion
+    // Handle tool call start - add tool segment (skip AskUserQuestion — handled via permission:request)
     const handleToolCall = (data: { id: string; name: string; input?: Record<string, unknown> }) => {
-      // Detect AskUserQuestion → create interactive segment instead of tool segment (Story 7.1)
-      if (data.name === 'AskUserQuestion' && data.input?.questions) {
-        const questions = data.input.questions as Array<{
+      // Skip AskUserQuestion from stream events — stream-based tool:call has empty input
+      // because input_json_delta hasn't been fully received yet. The interactive card is
+      // created later via permission:request (from canUseTool) which has the full input.
+      if (data.name === 'AskUserQuestion') {
+        return;
+      }
+
+      addStreamingToolCall({
+        id: data.id,
+        name: data.name,
+        input: data.input,
+      });
+    };
+
+    // Handle permission:request event — add interactive segment for permission or question (Story 7.1)
+    const handlePermissionRequest = (data: PermissionRequest) => {
+      // Ignore duplicate requests (reconnect guard)
+      if (seenPermissionIds.current.has(data.id)) return;
+      seenPermissionIds.current.add(data.id);
+
+      // AskUserQuestion: show question card with choices from full input
+      if (data.toolCall.name === 'AskUserQuestion' && data.toolCall.input?.questions) {
+        const questions = data.toolCall.input.questions as Array<{
           question: string;
           header: string;
           options: Array<{ label: string; description?: string }>;
@@ -140,7 +169,7 @@ export function useStreaming() {
           addInteractiveSegment({
             id: data.id,
             interactionType: 'question',
-            toolCall: { id: data.id, name: data.name, input: data.input },
+            toolCall: { id: data.toolCall.id, name: data.toolCall.name, input: data.toolCall.input },
             choices,
             multiSelect: firstQuestion.multiSelect,
           });
@@ -148,19 +177,7 @@ export function useStreaming() {
         }
       }
 
-      addStreamingToolCall({
-        id: data.id,
-        name: data.name,
-        input: data.input,
-      });
-    };
-
-    // Handle permission:request event — add interactive segment for permission (Story 7.1)
-    const handlePermissionRequest = (data: PermissionRequest) => {
-      // Ignore duplicate requests (reconnect guard)
-      if (seenPermissionIds.current.has(data.id)) return;
-      seenPermissionIds.current.add(data.id);
-
+      // Default: permission approval card
       addInteractiveSegment({
         id: data.id,
         interactionType: 'permission',

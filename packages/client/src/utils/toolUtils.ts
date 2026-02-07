@@ -62,7 +62,8 @@ export function formatDuration(durationMs: number): string {
 
 /**
  * Get primary display info for a tool, considering tool-specific priorities.
- * For Glob/Grep: pattern is the primary info.
+ * For Glob: pattern is the primary info.
+ * For Grep: path is primary (shows filename collapsed), fallback to pattern.
  * For others: file_path > path > pattern > command.
  */
 export function getToolDisplayInfo(toolName: string, input?: Record<string, unknown>): string | null {

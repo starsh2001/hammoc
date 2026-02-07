@@ -109,9 +109,9 @@ describe('CommandService', () => {
       // agents readdir
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
-        if (p.includes('agents')) return ['pm.md'] as unknown as import('fs').Dirent[];
-        if (p.includes('tasks')) return ['create-doc.md'] as unknown as import('fs').Dirent[];
-        return [];
+        if (p.includes('agents')) return ['pm.md'] as any;
+        if (p.includes('tasks')) return ['create-doc.md'] as any;
+        return [] as any;
       });
 
       const result = await commandService.getCommands('test-slug');
@@ -142,8 +142,8 @@ describe('CommandService', () => {
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
-        if (p.includes('agents')) return ['pm.md'] as unknown as import('fs').Dirent[];
-        if (p.includes('tasks')) return [] as unknown as import('fs').Dirent[];
+        if (p.includes('agents')) return ['pm.md'] as any;
+        if (p.includes('tasks')) return [] as any;
         return [];
       });
 
@@ -162,8 +162,8 @@ describe('CommandService', () => {
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
-        if (p.includes('agents')) return ['pm.md'] as unknown as import('fs').Dirent[];
-        if (p.includes('tasks')) return [] as unknown as import('fs').Dirent[];
+        if (p.includes('agents')) return ['pm.md'] as any;
+        if (p.includes('tasks')) return [] as any;
         return [];
       });
 
@@ -182,8 +182,8 @@ describe('CommandService', () => {
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
-        if (p.includes('agents')) return ['no-yaml.md'] as unknown as import('fs').Dirent[];
-        if (p.includes('tasks')) return [] as unknown as import('fs').Dirent[];
+        if (p.includes('agents')) return ['no-yaml.md'] as any;
+        if (p.includes('tasks')) return [] as any;
         return [];
       });
 
@@ -202,8 +202,8 @@ describe('CommandService', () => {
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
-        if (p.includes('agents')) return ['invalid.md'] as unknown as import('fs').Dirent[];
-        if (p.includes('tasks')) return [] as unknown as import('fs').Dirent[];
+        if (p.includes('agents')) return ['invalid.md'] as any;
+        if (p.includes('tasks')) return [] as any;
         return [];
       });
 
@@ -236,8 +236,8 @@ describe('CommandService', () => {
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
-        if (p.includes('agents')) return ['readme.txt', '.DS_Store'] as unknown as import('fs').Dirent[];
-        if (p.includes('tasks')) return ['config.yaml'] as unknown as import('fs').Dirent[];
+        if (p.includes('agents')) return ['readme.txt', '.DS_Store'] as any;
+        if (p.includes('tasks')) return ['config.yaml'] as any;
         return [];
       });
 

@@ -21,7 +21,7 @@ import type {
   PermissionRequest,
 } from '@bmad-studio/shared';
 import { ERROR_CODES, IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
-import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-code';
+import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import { ChatService } from '../services/chatService.js';
 import { SessionService } from '../services/sessionService.js';
 import { parseSDKError, AbortedError } from '../utils/errors.js';
@@ -48,10 +48,6 @@ const pendingPermissions = new Map<string, PendingPermission>();
 
 // Track which permission request IDs belong to which socket (for disconnect cleanup)
 const socketPendingIds = new Map<string, Set<string>>();
-
-// Track tool call IDs from stream for correlation with canUseTool
-// Queue per socket: socket.id → tool call id queue
-const toolCallIdQueues = new Map<string, string[]>();
 
 let permissionRequestCounter = 0;
 
@@ -135,8 +131,6 @@ export async function initializeWebSocket(
         controller.abort('disconnect');
         activeAbortControllers.delete(socket.id);
       }
-      // Clean up tool call ID queue
-      toolCallIdQueues.delete(socket.id);
       // Clean up pending permissions for this socket (MEM-001)
       const pendingIds = socketPendingIds.get(socket.id);
       if (pendingIds) {
@@ -258,55 +252,33 @@ async function handleChatSend(
   // Store the actual sessionId when onSessionInit is called (for new sessions)
   let actualSessionId: string | undefined = sessionId;
 
-  // Initialize tool call ID queue for this socket
-  if (!toolCallIdQueues.has(socket.id)) {
-    toolCallIdQueues.set(socket.id, []);
-  }
-
   try {
     const chatService = new ChatService({ workingDirectory, permissionMode });
 
-    // Build chat options with resume, abortController, and images
+    // Build chat options with resume, abortController, images
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : {}),
       abortController,
       images,
     };
 
-    // Create canUseTool callback for permission handling (Story 7.1)
-    const canUseTool: CanUseTool = async (toolName, input): Promise<PermissionResult> => {
+    // Create canUseTool callback for permission & AskUserQuestion handling
+    // Per official docs: AskUserQuestion is a built-in tool that triggers canUseTool
+    const canUseTool: CanUseTool = async (toolName, input, options): Promise<PermissionResult> => {
       const isAskUserQuestion = toolName === 'AskUserQuestion';
 
-      // For AskUserQuestion: use the tool call ID from the stream (already sent as tool:call)
-      // For other tools: generate a new request ID and emit permission:request
-      let requestId: string;
+      // Use toolUseID from SDK options directly (no queue needed)
+      const requestId = options.toolUseID || `perm-${++permissionRequestCounter}`;
 
-      if (isAskUserQuestion) {
-        const queue = toolCallIdQueues.get(socket.id) || [];
-        const streamId = queue.shift();
-        if (streamId) {
-          requestId = streamId;
-        } else {
-          requestId = `ask-${++permissionRequestCounter}`;
-          console.warn(`[permission] AskUserQuestion ID fallback: no stream tool call ID in queue for socket ${socket.id}, using generated ID ${requestId}`);
-        }
-      } else {
-        requestId = `perm-${++permissionRequestCounter}`;
-        const queue = toolCallIdQueues.get(socket.id) || [];
-        const streamToolCallId = queue.shift();
-        if (streamToolCallId) {
-          requestId = streamToolCallId;
-        } else {
-          console.warn(`[permission] Tool ${toolName} ID fallback: no stream tool call ID in queue for socket ${socket.id}, using generated ID ${requestId}`);
-        }
-        // Emit permission:request to client
-        socket.emit('permission:request', {
-          id: requestId,
-          sessionId: actualSessionId || '',
-          toolCall: { id: requestId, name: toolName, input },
-          requiresApproval: true,
-        } as PermissionRequest);
-      }
+      // Emit permission:request for both regular tools and AskUserQuestion.
+      // For AskUserQuestion, stream-based tool:call has empty input (input_json_delta hasn't arrived),
+      // so we emit permission:request here with the full input from canUseTool.
+      socket.emit('permission:request', {
+        id: requestId,
+        sessionId: actualSessionId || '',
+        toolCall: { id: requestId, name: toolName, input },
+        requiresApproval: true,
+      } as PermissionRequest);
 
       // Wait for user response
       const userResponse = await new Promise<{ approved: boolean; response?: string | string[] }>((resolve) => {
@@ -314,20 +286,25 @@ async function handleChatSend(
           resolve,
           interactionType: isAskUserQuestion ? 'question' : 'permission',
         });
-        // Track this permission request for disconnect cleanup
         if (!socketPendingIds.has(socket.id)) {
           socketPendingIds.set(socket.id, new Set());
         }
         socketPendingIds.get(socket.id)!.add(requestId);
       });
-      // Remove from tracking after resolution
       socketPendingIds.get(socket.id)?.delete(requestId);
 
       if (isAskUserQuestion) {
-        // For AskUserQuestion: always allow, pass user's answer via updatedInput
+        // Per official docs: return { behavior: 'allow', updatedInput: { questions, answers } }
+        const questions = (input as Record<string, unknown>).questions as Array<{ question: string }>;
+        const answer = typeof userResponse.response === 'string'
+          ? userResponse.response
+          : Array.isArray(userResponse.response) ? userResponse.response.join(', ') : '';
         return {
           behavior: 'allow',
-          updatedInput: { ...input, answers: userResponse.response },
+          updatedInput: {
+            questions,
+            answers: { [questions[0].question]: answer },
+          },
         };
       }
 
@@ -374,11 +351,6 @@ async function handleChatSend(
       },
 
       onToolUse: (toolCall: TrackedToolCall) => {
-        // Track tool call ID for canUseTool correlation (Story 7.1)
-        const queue = toolCallIdQueues.get(socket.id) || [];
-        queue.push(toolCall.id);
-        toolCallIdQueues.set(socket.id, queue);
-
         socket.emit('tool:call', {
           id: toolCall.id,
           name: toolCall.name,

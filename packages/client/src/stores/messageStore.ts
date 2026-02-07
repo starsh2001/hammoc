@@ -19,7 +19,7 @@ interface MessageState {
 }
 
 interface MessageActions {
-  fetchMessages: (projectSlug: string, sessionId: string, options?: { silent?: boolean }) => Promise<void>;
+  fetchMessages: (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number }) => Promise<void>;
   fetchMoreMessages: () => Promise<void>;
   clearMessages: () => void;
   /** Add user message optimistically (before server confirmation) */
@@ -41,7 +41,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
   pagination: null,
 
   // Actions
-  fetchMessages: async (projectSlug: string, sessionId: string, options?: { silent?: boolean }) => {
+  fetchMessages: async (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number }) => {
     const state = get();
     const isSameSession = state.currentSessionId === sessionId;
 
@@ -64,9 +64,15 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     try {
       const response = await sessionsApi.getMessages(projectSlug, sessionId);
 
+      // Stale data guard: if caller specified a minimum message count and
+      // the server returned fewer messages, the SDK hasn't flushed yet — skip update.
+      if (options?.minMessageCount && response.messages.length < options.minMessageCount) {
+        return;
+      }
+
       // Preserve images from existing user messages (server doesn't store images)
       const existingImages = new Map<string, HistoryMessage['images']>();
-      for (const msg of state.messages) {
+      for (const msg of get().messages) {
         if (msg.type === 'user' && msg.images && msg.images.length > 0) {
           existingImages.set(msg.content, msg.images);
         }
@@ -86,6 +92,10 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         isLoading: false,
       });
     } catch (err) {
+      // For silent background fetches, don't set error state (preserves current messages)
+      if (options?.silent) {
+        return;
+      }
       const message =
         err instanceof ApiError
           ? err.message

@@ -1,6 +1,6 @@
 /**
  * SDK Types for ChatService
- * These types wrap the @anthropic-ai/claude-code SDK types for use in the application
+ * These types wrap the @anthropic-ai/claude-agent-sdk types for use in the application
  */
 
 import type { ImageAttachment } from './message.js';
@@ -99,7 +99,7 @@ export const DEFAULT_ALLOWED_TOOLS: string[] = [
 /**
  * Permission modes for tool usage
  */
-export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan';
+export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan' | 'delegate' | 'dontAsk';
 
 /**
  * Stream chunk for real-time message streaming

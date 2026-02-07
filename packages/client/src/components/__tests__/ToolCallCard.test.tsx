@@ -500,7 +500,7 @@ describe('ToolCallCard', () => {
       expect(container.firstChild).toBeNull();
     });
 
-    it('renders Bash tool_use with description collapsed, expands to show command and output', () => {
+    it('renders Bash tool_use with description collapsed, expands to show command and collapsible output', () => {
       const bashUse: HistoryMessage = {
         id: 'msg-bash-use',
         type: 'tool_use',
@@ -516,13 +516,17 @@ describe('ToolCallCard', () => {
       expect(screen.getByText('Bash')).toBeInTheDocument();
       expect(screen.getByText('Run tests')).toBeInTheDocument();
 
-      // Expand to see command (IN) and output (OUT)
+      // Expand ToolPathDisplay to see command (IN)
       const toggle = screen.getByRole('button', { name: '전체 내용 보기' });
       fireEvent.click(toggle);
       expect(screen.getByText(/IN/)).toBeInTheDocument();
       expect(screen.getByText('npm test')).toBeInTheDocument();
-      expect(screen.getByText(/OUT/)).toBeInTheDocument();
-      expect(screen.getByText('All tests passed')).toBeInTheDocument();
+
+      // Output is in collapsible "결과 보기" section
+      const resultToggle = screen.getByRole('button', { name: /결과 보기/ });
+      expect(resultToggle).toBeInTheDocument();
+      fireEvent.click(resultToggle);
+      expect(screen.getByText(/All tests passed/)).toBeInTheDocument();
     });
 
     it('does not show output when Bash tool_use has no resultOutput', () => {
