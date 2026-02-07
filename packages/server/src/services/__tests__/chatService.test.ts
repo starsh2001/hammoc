@@ -17,7 +17,7 @@ import fs from 'fs/promises';
 import os from 'os';
 
 // Mock the SDK query function
-vi.mock('@anthropic-ai/claude-code', () => ({
+vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
   query: vi.fn(),
 }));
 
@@ -305,7 +305,7 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
   });
 
   it('should pass resume option to SDK when provided', async () => {
-    const { query } = await import('@anthropic-ai/claude-code');
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
     const mockIterator = {
       [Symbol.asyncIterator]: async function* () {
         yield { type: 'init', session_id: 'test-session' };
@@ -345,7 +345,7 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
   });
 
   it('should call onError callback when error occurs in stream', async () => {
-    const { query } = await import('@anthropic-ai/claude-code');
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
     const mockIterator = {
       [Symbol.asyncIterator]: async function* () {
         yield { type: 'init', session_id: 'test-session' };
@@ -370,7 +370,7 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
   });
 
   it('should pass abortController to SDK', async () => {
-    const { query } = await import('@anthropic-ai/claude-code');
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
     const mockIterator = {
       [Symbol.asyncIterator]: async function* () {
         yield { type: 'init', session_id: 'test-session' };
@@ -410,7 +410,7 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
   });
 
   it('should pass AsyncIterable prompt to query() when images are provided', async () => {
-    const { query } = await import('@anthropic-ai/claude-code');
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
     const mockIterator = {
       [Symbol.asyncIterator]: async function* () {
         yield { type: 'init', session_id: 'test-session' };
@@ -451,7 +451,7 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
   });
 
   it('should pass string prompt to query() when no images are provided', async () => {
-    const { query } = await import('@anthropic-ai/claude-code');
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
     const mockIterator = {
       [Symbol.asyncIterator]: async function* () {
         yield { type: 'init', session_id: 'test-session' };
@@ -486,7 +486,7 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
   });
 
   it('should return extended ChatUsage fields in result', async () => {
-    const { query } = await import('@anthropic-ai/claude-code');
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
     const mockIterator = {
       [Symbol.asyncIterator]: async function* () {
         yield { type: 'init', session_id: 'test-session' };
@@ -540,7 +540,7 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
   });
 
   it('should capture usage even on error result (error_max_turns)', async () => {
-    const { query } = await import('@anthropic-ai/claude-code');
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
     const mockIterator = {
       [Symbol.asyncIterator]: async function* () {
         yield { type: 'init', session_id: 'test-session' };
@@ -590,7 +590,7 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
   });
 
   it('should call callbacks in correct order: onSessionInit → onTextChunk → onComplete', async () => {
-    const { query } = await import('@anthropic-ai/claude-code');
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
     const callOrder: string[] = [];
 
     const mockIterator = {

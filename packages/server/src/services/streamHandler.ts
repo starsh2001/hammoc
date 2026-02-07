@@ -3,7 +3,7 @@
  * Processes SDK streaming responses and dispatches events via callbacks
  */
 
-import type { SDKMessage } from '@anthropic-ai/claude-code';
+import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { ChatResponse } from '@bmad-studio/shared';
 import {
   SDKMessageType,
@@ -685,6 +685,14 @@ export class StreamHandler {
     message: ParsedSystemMessage,
     callbacks: StreamCallbacks
   ): void {
+    // Log available tools from system init message for debugging
+    const raw = message.rawMessage as unknown as { subtype?: string; tools?: string[] };
+    if (raw.subtype === 'init' && raw.tools) {
+      console.log(`[StreamHandler] Available tools: ${raw.tools.join(', ')}`);
+      const hasMcpAsk = raw.tools.some(t => t.includes('AskUserQuestion'));
+      console.log(`[StreamHandler] AskUserQuestion available: ${hasMcpAsk}`);
+    }
+
     if (message.subtype === 'compact_boundary' && message.compactMetadata) {
       callbacks.onCompact?.(message.compactMetadata);
     }

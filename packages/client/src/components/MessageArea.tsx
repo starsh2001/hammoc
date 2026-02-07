@@ -380,13 +380,7 @@ export function MessageArea({
                       </ul>
                     )}
                     {seg.status === 'completed' && seg.toolCall.output &&
-                      seg.toolCall.name === 'Grep' && (
-                      <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
-                        <ToolResultRenderer toolName="Grep" result={seg.toolCall.output} />
-                      </div>
-                    )}
-                    {seg.status === 'completed' && seg.toolCall.output &&
-                      seg.toolCall.name !== 'Edit' && seg.toolCall.name !== 'Write' && seg.toolCall.name !== 'TodoWrite' && seg.toolCall.name !== 'Bash' && seg.toolCall.name !== 'Grep' && (
+                      seg.toolCall.name !== 'Edit' && seg.toolCall.name !== 'Write' && seg.toolCall.name !== 'TodoWrite' && (
                       <CollapsibleToolResult
                         toolName={seg.toolCall.name}
                         toolInput={seg.toolCall.input}

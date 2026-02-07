@@ -39,6 +39,14 @@ const MODE_COLORS: Record<PermissionMode, { ring: string; button: string }> = {
     ring: 'focus:ring-red-500 dark:focus:ring-red-400',
     button: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600',
   },
+  delegate: {
+    ring: 'focus:ring-purple-500 dark:focus:ring-purple-400',
+    button: 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600',
+  },
+  dontAsk: {
+    ring: 'focus:ring-yellow-500 dark:focus:ring-yellow-400',
+    button: 'bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600',
+  },
 };
 
 const DEFAULT_MODE_COLORS = MODE_COLORS.default;
