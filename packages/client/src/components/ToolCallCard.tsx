@@ -21,16 +21,17 @@ export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
 
   // For tool_use, delegate to unified ToolCard
   if (isToolUse) {
-    const wasDenied = message.toolResult?.success === false;
-    const deniedMessage = wasDenied ? (message.toolResult?.error ?? '') : '';
-    const isUserDenied = wasDenied && /denied|거절/i.test(deniedMessage);
+    const failed = message.toolResult?.success === false;
+    const errorMessage = failed ? (message.toolResult?.error ?? '') : '';
+    const isUserDenied = failed && /denied|거절/i.test(errorMessage);
 
     return (
       <ToolCard
         toolName={message.toolName ?? ''}
         toolInput={message.toolInput}
-        status={wasDenied ? 'denied' : 'completed'}
+        status={failed ? (isUserDenied ? 'denied' : 'error') : 'completed'}
         resultOutput={resultOutput}
+        output={failed && !isUserDenied ? errorMessage : undefined}
         isUserDenied={isUserDenied}
       />
     );

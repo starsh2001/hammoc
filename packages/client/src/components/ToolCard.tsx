@@ -125,8 +125,8 @@ export function ToolCard({
   // Collapsible result: for completed tools except Edit/Write/TodoWrite
   const showCollapsibleResult = isCompleted && output && !isEditWrite && toolName !== 'TodoWrite';
 
-  // Bash/Grep result output (from history merged result)
-  const showResultOutput = (toolName === 'Grep' || toolName === 'Bash') && resultOutput;
+  // Bash/Grep/Glob result output (from history merged result)
+  const showResultOutput = (toolName === 'Grep' || toolName === 'Bash' || toolName === 'Glob') && resultOutput;
 
   // Bash additionalParams for ToolPathDisplay (streaming completed)
   const bashAdditionalParams = toolName === 'Bash' && isCompleted && output

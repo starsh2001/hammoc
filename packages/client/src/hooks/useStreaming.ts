@@ -157,24 +157,32 @@ export function useStreaming() {
 
       // AskUserQuestion: show question card with choices from full input
       if (data.toolCall.name === 'AskUserQuestion' && data.toolCall.input?.questions) {
-        const questions = data.toolCall.input.questions as Array<{
+        const rawQuestions = data.toolCall.input.questions as Array<{
           question: string;
           header: string;
           options: Array<{ label: string; description?: string }>;
           multiSelect?: boolean;
         }>;
-        const firstQuestion = questions[0];
-        if (firstQuestion) {
-          const choices = firstQuestion.options.map((opt) => ({
-            label: opt.label,
-            description: opt.description,
-            value: opt.label,
+        if (rawQuestions.length > 0) {
+          // Map all questions with their choices
+          const mappedQuestions = rawQuestions.map((q) => ({
+            question: q.question,
+            header: q.header,
+            choices: q.options.map((opt) => ({
+              label: opt.label,
+              description: opt.description,
+              value: opt.label,
+            })),
+            multiSelect: q.multiSelect,
           }));
+          // First question's choices as top-level for backward compat
+          const firstQuestion = mappedQuestions[0];
           addInteractiveSegment({
             id: data.id,
             interactionType: 'question',
             toolCall: { id: data.toolCall.id, name: data.toolCall.name, input: data.toolCall.input },
-            choices,
+            choices: firstQuestion.choices,
+            questions: mappedQuestions,
             multiSelect: firstQuestion.multiSelect,
           });
           return;

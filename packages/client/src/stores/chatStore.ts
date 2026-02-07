@@ -31,6 +31,14 @@ export interface InteractiveChoice {
   value: string;
 }
 
+/** Individual question in AskUserQuestion (supports up to 4 questions) */
+export interface InteractiveQuestion {
+  question: string;
+  header: string;
+  choices: InteractiveChoice[];
+  multiSelect?: boolean;
+}
+
 /** Interactive segment status */
 export type InteractiveStatus = 'waiting' | 'sending' | 'responded' | 'error';
 
@@ -55,9 +63,10 @@ export type StreamingSegment =
       interactionType: 'permission' | 'question';
       toolCall?: StreamingToolCall;
       choices: InteractiveChoice[];
+      questions?: InteractiveQuestion[];
       multiSelect?: boolean;
       status: InteractiveStatus;
-      response?: string | string[];
+      response?: string | string[] | Record<string, string | string[]>;
       errorMessage?: string;
     }
   | { type: 'task_notification'; taskId: string; status: 'completed' | 'failed' | 'stopped'; outputFile?: string; summary?: string }
@@ -197,12 +206,13 @@ interface ChatActions {
     interactionType: 'permission' | 'question';
     toolCall?: StreamingToolCall;
     choices: InteractiveChoice[];
+    questions?: InteractiveQuestion[];
     multiSelect?: boolean;
   }) => void;
   /** Respond to an interactive segment (update status + emit via WebSocket) */
   respondToInteractive: (
     segmentId: string,
-    response: { approved: boolean; value?: string | string[] }
+    response: { approved: boolean; value?: string | string[] | Record<string, string | string[]> }
   ) => void;
   /** Update a tool call's elapsed time from tool_progress event */
   updateToolProgress: (toolUseId: string, elapsedTimeSeconds: number) => void;
@@ -493,6 +503,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           interactionType: segment.interactionType,
           toolCall: segment.toolCall,
           choices: segment.choices,
+          questions: segment.questions,
           multiSelect: segment.multiSelect,
           status: 'waiting',
         },
