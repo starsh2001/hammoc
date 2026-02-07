@@ -36,7 +36,7 @@ export interface ClientToServerEvents {
     requestId: string;
     approved: boolean;
     interactionType: 'permission' | 'question';
-    response?: string | string[];
+    response?: string | string[] | Record<string, string | string[]>;
   }) => void;
   'session:join': (sessionId: string) => void;
   'session:leave': (sessionId: string) => void;

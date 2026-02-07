@@ -23,6 +23,8 @@ interface UseAutoScrollOptions {
   smooth?: boolean;
   /** Whether currently loading older messages (for scroll position preservation) */
   isLoadingMore?: boolean;
+  /** Whether currently streaming (disables smooth scroll to prevent race conditions) */
+  isStreaming?: boolean;
 }
 
 interface MessageAreaProps {
@@ -49,7 +51,7 @@ function useAutoScroll(
   dependencies: unknown[],
   options: UseAutoScrollOptions = {}
 ) {
-  const { threshold = 100, smooth = true, isLoadingMore = false } = options;
+  const { threshold = 100, smooth = true, isLoadingMore = false, isStreaming = false } = options;
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
@@ -61,6 +63,9 @@ function useAutoScroll(
   const prevScrollHeightRef = useRef<number>(0);
   const wasLoadingMoreRef = useRef<boolean>(false);
 
+  // Track programmatic scroll to avoid false "scrolled up" detection
+  const isProgrammaticScrollRef = useRef(false);
+
   // Capture scroll height when starting to load more
   useEffect(() => {
     if (isLoadingMore && !wasLoadingMoreRef.current && containerRef.current) {
@@ -71,6 +76,9 @@ function useAutoScroll(
 
   // Detect when user scrolls up
   const handleScroll = useCallback(() => {
+    // Skip scroll detection during programmatic scroll
+    if (isProgrammaticScrollRef.current) return;
+
     const container = containerRef.current;
     if (!container) return;
 
@@ -100,15 +108,22 @@ function useAutoScroll(
 
     // Normal auto-scroll behavior (for new messages at bottom)
     if (!isUserScrolledUp && bottomRef.current && !isLoadingMore) {
-      // Use instant scroll on initial mount, smooth scroll for subsequent updates
-      const useSmooth = smooth && !isInitialMountRef.current;
+      // During streaming, use instant scroll to prevent race condition:
+      // smooth animation can lag behind new content → handleScroll detects "not near bottom"
+      // → isUserScrolledUp becomes true → auto-scroll permanently stops
+      const useSmooth = smooth && !isInitialMountRef.current && !isStreaming;
+      isProgrammaticScrollRef.current = true;
       bottomRef.current.scrollIntoView({
         behavior: useSmooth ? 'smooth' : 'auto',
         block: 'end',
       });
+      // Reset programmatic scroll flag after a tick (allows scroll event to fire and be ignored)
+      requestAnimationFrame(() => {
+        isProgrammaticScrollRef.current = false;
+      });
       isInitialMountRef.current = false;
     }
-  }, [dependencies, isUserScrolledUp, smooth, isLoadingMore]);
+  }, [dependencies, isUserScrolledUp, smooth, isLoadingMore, isStreaming]);
 
   // Force scroll to bottom (for "new messages" button)
   const scrollToBottom = useCallback(() => {
@@ -134,18 +149,29 @@ export function MessageArea({
   isStreaming = false,
   isLoadingMore = false,
 }: MessageAreaProps) {
-  // Include streaming segments length in scroll dependencies for auto-scroll during streaming
+  // Include streaming content changes in scroll dependencies for auto-scroll during streaming
   const lastTextContent = streamingSegments.length > 0
     ? streamingSegments.filter(isTextSegment).map((s) => s.content).join('')
     : '';
+  // Track thinking content growth for auto-scroll during thinking
+  const thinkingContentLength = streamingSegments
+    .filter(isThinkingSegment)
+    .reduce((acc, s) => acc + s.content.length, 0);
+  // Track tool status changes for auto-scroll when tool results arrive
+  const toolStatuses = streamingSegments
+    .filter(isToolSegment)
+    .map((s) => s.status)
+    .join(',');
   const allScrollDependencies = [
     ...scrollDependencies,
     lastTextContent,
     streamingSegments.length,
+    thinkingContentLength,
+    toolStatuses,
   ];
 
   const { containerRef, bottomRef, isUserScrolledUp, scrollToBottom, handleScroll } =
-    useAutoScroll(allScrollDependencies, { ...autoScrollOptions, isLoadingMore });
+    useAutoScroll(allScrollDependencies, { ...autoScrollOptions, isLoadingMore, isStreaming });
 
   const hasChildren = Array.isArray(children)
     ? children.length > 0
@@ -232,6 +258,7 @@ export function MessageArea({
                   toolName={seg.toolCall?.name}
                   toolInput={seg.toolCall?.input}
                   choices={seg.choices}
+                  questions={seg.questions}
                   multiSelect={seg.multiSelect}
                   status={seg.status}
                   response={seg.response}
