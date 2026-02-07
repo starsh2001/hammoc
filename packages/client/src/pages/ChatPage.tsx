@@ -76,6 +76,10 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
   if (message.type === 'tool_result' && message.toolResult?.success !== false) {
     return null;
   }
+  // Skip user-denied tool_result — already shown as denied in the tool_use card
+  if (message.type === 'tool_result' && /denied|거절/i.test(message.toolResult?.error ?? '')) {
+    return null;
+  }
   // Failed tool_result that couldn't be merged
   if (message.type === 'tool_result') {
     return <ToolCallCard key={message.id} message={message} />;
@@ -117,7 +121,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, completedSessionId, clearCompletedSessionId } = useChatStore();
+  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, completedSessionId, clearCompletedSessionId, clearStreamingSegments } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
 
   // Navigate to the new sessionId when streaming completes (completedSessionId is set by completeStreaming)
@@ -244,12 +248,14 @@ export function ChatPage() {
 
     if (confirmModal.action === 'newSession') {
       clearMessages();
+      clearStreamingSegments();
       navigate(`/project/${projectSlug}/session/new`);
     } else if (confirmModal.action === 'switchSession' && confirmModal.targetSessionId) {
       clearMessages();
+      clearStreamingSegments();
       navigate(`/project/${projectSlug}/session/${confirmModal.targetSessionId}`);
     }
-  }, [confirmModal.action, confirmModal.targetSessionId, abortResponse, clearMessages, navigate, projectSlug]);
+  }, [confirmModal.action, confirmModal.targetSessionId, abortResponse, clearMessages, clearStreamingSegments, navigate, projectSlug]);
 
   const handleSessionSelect = useCallback((selectedSessionId: string) => {
     setShowSessionPanel(false);
@@ -267,8 +273,9 @@ export function ChatPage() {
       return;
     }
     clearMessages();
+    clearStreamingSegments();
     navigate(`/project/${projectSlug}/session/${selectedSessionId}`);
-  }, [sessionId, clearMessages, navigate, projectSlug]);
+  }, [sessionId, clearMessages, clearStreamingSegments, navigate, projectSlug]);
 
   const handleNewSession = useCallback(() => {
     if (!projectSlug) return;
@@ -283,8 +290,9 @@ export function ChatPage() {
     }
 
     clearMessages();
+    clearStreamingSegments();
     navigate(`/project/${projectSlug}/session/new`);
-  }, [clearMessages, navigate, projectSlug]);
+  }, [clearMessages, clearStreamingSegments, navigate, projectSlug]);
 
   const handleCancelConfirm = useCallback(() => {
     setConfirmModal({ isOpen: false, action: 'newSession' });

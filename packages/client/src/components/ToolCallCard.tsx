@@ -1,14 +1,12 @@
 /**
- * ToolCallCard - Component for displaying tool_use/tool_result messages
- * [Source: Story 3.5 - Task 6]
+ * ToolCallCard - History adapter for ToolCard
+ * Converts HistoryMessage to unified ToolCard props.
+ * [Source: Story 3.5 - Task 6, refactored to use ToolCard]
  */
 
-import { useState } from 'react';
 import type { HistoryMessage } from '@bmad-studio/shared';
-import { CheckCircle, XCircle, ChevronRight, ChevronDown, Files } from 'lucide-react';
-import { ToolPathDisplay } from './ToolPathDisplay';
-import { DiffViewer } from './DiffViewer';
-import { getToolIcon, getToolDisplayName, getToolDisplayInfo } from '../utils/toolUtils';
+import { XCircle } from 'lucide-react';
+import { ToolCard } from './ToolCard';
 import { ToolResultRenderer } from './ToolResultRenderer';
 
 interface ToolCallCardProps {
@@ -17,176 +15,24 @@ interface ToolCallCardProps {
   resultOutput?: string;
 }
 
-/**
- * Extract diff data from Edit/Write tool input
- */
-function extractDiffData(toolName: string, toolInput?: Record<string, unknown>) {
-  const filePath = typeof toolInput?.file_path === 'string' ? toolInput.file_path : '';
-  if (toolName === 'Edit') {
-    const original = typeof toolInput?.old_string === 'string' ? toolInput.old_string : '';
-    const modified = typeof toolInput?.new_string === 'string' ? toolInput.new_string : '';
-    return { filePath, original, modified };
-  }
-  // Write
-  const modified = typeof toolInput?.content === 'string' ? toolInput.content : '';
-  return { filePath, original: '', modified };
-}
-
-/**
- * Compute approximate line changes from original/modified strings
- */
-function computeLineChanges(original: string, modified: string): { added: number; removed: number } {
-  const countLines = (s: string) => (s ? s.split('\n').length : 0);
-  return {
-    added: countLines(modified),
-    removed: countLines(original),
-  };
-}
-
-/** Todo item from TodoWrite input */
-interface TodoItem {
-  content: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  activeForm?: string;
-}
-
-/**
- * Extract todo items from TodoWrite tool input
- */
-function extractTodos(toolInput?: Record<string, unknown>): TodoItem[] | null {
-  if (!toolInput?.todos || !Array.isArray(toolInput.todos)) return null;
-  return toolInput.todos as TodoItem[];
-}
-
-/** Collapsible tool output section (Bash, Grep, etc.) */
-function CollapsibleToolOutput({ toolName, output, toolInput }: { toolName: string; output: string; toolInput?: Record<string, unknown> }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-        aria-expanded={expanded}
-      >
-        {expanded ? <ChevronDown className="w-3 h-3" aria-hidden="true" /> : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
-        <span>결과 보기</span>
-      </button>
-      {expanded && (
-        <div className="mt-1">
-          <ToolResultRenderer toolName={toolName} toolInput={toolInput} result={output} />
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
-  const [showDiffViewer, setShowDiffViewer] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const isToolUse = message.type === 'tool_use';
   const isSuccess = message.toolResult?.success !== false;
-  const displayInfo = isToolUse ? getToolDisplayInfo(message.toolName ?? '', message.toolInput) : null;
 
-  const toolDisplayName = getToolDisplayName(message.toolName ?? '');
-  const todos = message.toolName === 'TodoWrite' ? extractTodos(message.toolInput) : null;
-
-  // Edit/Write tool - same card format with diff button
-  const isEditWrite = message.toolName === 'Edit' || message.toolName === 'Write';
-  const diffData = isEditWrite ? extractDiffData(message.toolName!, message.toolInput) : null;
-  const lineChanges = diffData ? computeLineChanges(diffData.original, diffData.modified) : null;
-
-  const ToolIcon = getToolIcon(message.toolName ?? '');
-
-  // For tool_use, show compact card matching streaming style
+  // For tool_use, delegate to unified ToolCard
   if (isToolUse) {
+    const wasDenied = message.toolResult?.success === false;
+    const deniedMessage = wasDenied ? (message.toolResult?.error ?? '') : '';
+    const isUserDenied = wasDenied && /denied|거절/i.test(deniedMessage);
+
     return (
-      <>
-        <div
-          className="flex justify-start"
-          role="listitem"
-          aria-label={`도구 완료: ${toolDisplayName}`}
-        >
-          <div className="max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2">
-              <ToolIcon className="w-4 h-4 text-blue-500" aria-hidden="true" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {toolDisplayName}
-              </span>
-              <CheckCircle className="w-4 h-4 text-green-500" aria-hidden="true" />
-            </div>
-            {displayInfo && !isEditWrite && (
-              <ToolPathDisplay
-                displayInfo={displayInfo}
-                toolName={message.toolName}
-                toolInput={message.toolInput}
-                additionalParams={undefined}
-              />
-            )}
-            {/* Edit/Write: collapsible file path with line changes */}
-            {isEditWrite && diffData && lineChanges && (
-              <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 transition-colors text-left"
-                  aria-expanded={isExpanded}
-                  aria-label={isExpanded ? '접기' : '전체 경로 보기'}
-                >
-                  {isExpanded ? (
-                    <ChevronDown className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
-                  ) : (
-                    <ChevronRight className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
-                  )}
-                  <span className={isExpanded ? 'break-all' : 'truncate'}>
-                    {isExpanded ? diffData.filePath : diffData.filePath.split(/[/\\]/).pop() || diffData.filePath}
-                  </span>
-                </button>
-                <button
-                  onClick={() => setShowDiffViewer(true)}
-                  className="group flex items-center gap-0.5 whitespace-nowrap hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                  aria-label="Diff 보기"
-                  title="클릭하여 Diff 보기"
-                >
-                  <span className="text-green-600 dark:text-green-400">+{lineChanges.added}</span>
-                  <span className="text-gray-400">/</span>
-                  <span className="text-red-600 dark:text-red-400">-{lineChanges.removed}</span>
-                  <Files className="w-3.5 h-3.5 ml-1.5 text-blue-500 dark:text-blue-400 group-hover:text-blue-600 dark:group-hover:text-blue-300 group-hover:scale-110 transition-all" aria-hidden="true" />
-                </button>
-              </div>
-            )}
-            {todos && todos.length > 0 && (
-              <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                {todos.map((todo, i) => (
-                  <li key={i} className="flex items-start gap-1.5">
-                    <span className="flex-shrink-0 mt-0.5">
-                      {todo.status === 'completed' ? '✓' : todo.status === 'in_progress' ? '▸' : '○'}
-                    </span>
-                    <span className={todo.status === 'completed' ? 'line-through opacity-60' : ''}>
-                      {todo.content}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {(message.toolName === 'Grep' || message.toolName === 'Bash') && resultOutput && (
-              <CollapsibleToolOutput toolName={message.toolName} output={resultOutput} toolInput={message.toolInput} />
-            )}
-          </div>
-        </div>
-        {/* Fullscreen DiffViewer for Edit/Write */}
-        {showDiffViewer && diffData && (
-          <DiffViewer
-            filePath={diffData.filePath}
-            original={diffData.original}
-            modified={diffData.modified}
-            fullscreen={true}
-            responsiveLayout={true}
-            onClose={() => setShowDiffViewer(false)}
-            readOnly={true}
-          />
-        )}
-      </>
+      <ToolCard
+        toolName={message.toolName ?? ''}
+        toolInput={message.toolInput}
+        status={wasDenied ? 'denied' : 'completed'}
+        resultOutput={resultOutput}
+        isUserDenied={isUserDenied}
+      />
     );
   }
 
@@ -221,6 +67,6 @@ export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
     return null;
   }
 
-  // Read/Bash/Glob/Grep: render result
+  // Bash/Glob/Grep: render result
   return <ToolResultRenderer toolName={message.toolName ?? ''} toolInput={message.toolInput} result={message.toolResult?.output} />;
 }

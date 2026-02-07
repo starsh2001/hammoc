@@ -9,8 +9,73 @@ import type {
 } from '@bmad-studio/shared';
 import path from 'path';
 import fs from 'fs/promises';
+import { execSync } from 'child_process';
 import { InvalidPathError, parseSDKError } from '../utils/errors.js';
 import { StreamHandler } from './streamHandler.js';
+
+/**
+ * Build workspace context to append to the system prompt.
+ * Replicates the VS Code extension's appended context (~3,500 tokens) almost
+ * verbatim — only the environment name differs ("BMad Studio" vs "VSCode").
+ * Without this grounding (code-reference rules, git status with real file paths),
+ * the model hallucinates paths like /Users/jake/test.txt.
+ */
+function buildWorkspaceContext(cwd: string): string {
+  // --- Header & Code References (mirrors VS Code extension context) ---
+  const header = [
+    '',
+    '# BMad Studio Context',
+    '',
+    'You are running inside BMad Studio, a web-based IDE.',
+    '',
+    '## Code References in Text',
+    'IMPORTANT: When referencing files or code locations, use markdown link syntax to make them clickable:',
+    '- For files: [filename.ts](src/filename.ts)',
+    '- For specific lines: [filename.ts:42](src/filename.ts#L42)',
+    '- For a range of lines: [filename.ts:42-51](src/filename.ts#L42-L51)',
+    '- For folders: [src/utils/](src/utils/)',
+    'Unless explicitly asked for by the user, DO NOT USE backticks ` or HTML tags like code for file references - always use markdown [text](link) format.',
+    "The URL links should be relative paths from the root of the user's workspace.",
+  ].join('\n');
+
+  // --- Git status (same format as VS Code) ---
+  let gitSection = '';
+  try {
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd, encoding: 'utf-8', timeout: 3000 }).trim();
+    let mainBranch = 'main';
+    try {
+      execSync('git rev-parse --verify refs/heads/main', { cwd, encoding: 'utf-8', timeout: 3000 });
+      mainBranch = 'main';
+    } catch {
+      try {
+        execSync('git rev-parse --verify refs/heads/master', { cwd, encoding: 'utf-8', timeout: 3000 });
+        mainBranch = 'master';
+      } catch {
+        // fallback
+      }
+    }
+    const gitStatus = execSync('git status --short', { cwd, encoding: 'utf-8', timeout: 5000 }).trim();
+    const statusLines = gitStatus ? gitStatus.split('\n') : [];
+    const truncatedStatus = statusLines.length > 30
+      ? [...statusLines.slice(0, 30), `... and ${statusLines.length - 30} more files`].join('\n')
+      : gitStatus;
+
+    gitSection = [
+      '',
+      'gitStatus: This is the git status at the start of the conversation. Note that this status is a snapshot in time, and will not update during the conversation.',
+      `Current branch: ${branch}`,
+      '',
+      `Main branch (you will usually use this for PRs): ${mainBranch}`,
+      '',
+      'Status:',
+      truncatedStatus || '(clean)',
+    ].join('\n');
+  } catch {
+    // Not a git repo or git not available
+  }
+
+  return [header, gitSection].join('\n');
+}
 
 // Intentionally duplicated in streamHandler.ts for file independence
 function extractContextWindow(modelUsage?: { [model: string]: { contextWindow: number } }): number {
@@ -105,6 +170,13 @@ export class ChatService {
       model: options.model,
       resume: options.resume,
       includePartialMessages: true, // Enable real-time streaming
+      settingSources: ['user', 'project', 'local'], // Load settings & .claude/commands/ for skill discovery
+      // Append workspace context to system prompt to prevent path hallucination
+      systemPrompt: this.workingDirectory ? {
+        type: 'preset' as const,
+        preset: 'claude_code' as const,
+        append: buildWorkspaceContext(this.workingDirectory),
+      } : undefined,
       canUseTool,
     };
 
@@ -114,6 +186,8 @@ export class ChatService {
         delete queryOptions[key as keyof Options];
       }
     });
+
+    console.log(`[chatService] SDK query cwd="${queryOptions.cwd}", resume="${queryOptions.resume}", model="${queryOptions.model}"`);
 
     // Use AsyncIterable prompt when images are present (Story 5.5)
     const { images } = options;

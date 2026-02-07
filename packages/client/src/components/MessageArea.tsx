@@ -5,61 +5,16 @@
  */
 
 import { useRef, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight, Loader2, CheckCircle, AlertCircle, RefreshCw, Bell, FileText, XOctagon } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, AlertCircle, RefreshCw, Bell, FileText, XOctagon } from 'lucide-react';
 import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { StreamingIndicator } from './StreamingIndicator';
-import { ToolPathDisplay } from './ToolPathDisplay';
-import { PermissionCard } from './PermissionCard';
+import { ToolCard } from './ToolCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
-import { ToolResultRenderer } from './ToolResultRenderer';
 import { ThinkingBlock } from './ThinkingBlock';
 import type { StreamingSegment } from '../stores/chatStore';
 import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, isSystemSegment, isTaskNotificationSegment, isToolSummarySegment, isResultErrorSegment, useChatStore } from '../stores/chatStore';
-import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } from '../utils/toolUtils';
 
-/** Real-time elapsed timer for pending tool calls (streaming only) */
-function ToolTimer({ startedAt }: { startedAt: number }) {
-  const [elapsed, setElapsed] = useState(() => Date.now() - startedAt);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsed(Date.now() - startedAt);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [startedAt]);
-
-  return (
-    <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto" aria-label={`실행 시간: ${formatDuration(elapsed)}`}>
-      {formatDuration(elapsed)}
-    </span>
-  );
-}
-
-
-/** Collapsible tool result display inside tool card */
-function CollapsibleToolResult({ toolName, toolInput, result }: { toolName: string; toolInput?: Record<string, unknown>; result: string }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-        aria-expanded={expanded}
-      >
-        {expanded ? <ChevronDown className="w-3 h-3" aria-hidden="true" /> : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
-        <span>결과 보기</span>
-      </button>
-      {expanded && (
-        <div className="mt-1">
-          <ToolResultRenderer toolName={toolName} toolInput={toolInput} result={result} />
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface UseAutoScrollOptions {
   /** Threshold in pixels - auto-scroll when within this distance from bottom */
@@ -255,6 +210,8 @@ export function MessageArea({
           }
 
           if (isTextSegment(seg)) {
+            // Skip empty/whitespace-only text segments (e.g., before thinking blocks)
+            if (!seg.content.trim()) return null;
             // A text segment is still being streamed only if it's the last segment AND actively streaming
             const isStillStreaming = isStreaming && isLastSegmentIndex(index);
             return (
@@ -288,112 +245,16 @@ export function MessageArea({
           }
 
           if (isToolSegment(seg)) {
-            // Edit/Write → PermissionCard delegation with WebSocket connection (Story 7.1)
-            if (seg.toolCall.name === 'Edit' || seg.toolCall.name === 'Write') {
-              return (
-                <div key={seg.toolCall.id}>
-                  <PermissionCard
-                    toolName={seg.toolCall.name}
-                    toolInput={seg.toolCall.input}
-                    status={seg.status === 'completed' ? 'completed' : seg.status === 'error' ? 'error' : 'pending'}
-                    onApprove={() => {
-                      useChatStore.getState().respondToInteractive(seg.toolCall.id, { approved: true });
-                    }}
-                    onReject={() => {
-                      useChatStore.getState().respondToInteractive(seg.toolCall.id, { approved: false });
-                    }}
-                  />
-                </div>
-              );
-            }
-
-            const displayInfo = getToolDisplayInfo(seg.toolCall.name, seg.toolCall.input);
-            const toolDisplayName = getToolDisplayName(seg.toolCall.name);
-            const ToolIcon = getToolIcon(seg.toolCall.name);
-
-            // Extract todos from TodoWrite input for real-time checklist display
-            const todos = seg.toolCall.name === 'TodoWrite' && Array.isArray(seg.toolCall.input?.todos)
-              ? (seg.toolCall.input.todos as Array<{ content: string; status: string }>)
-              : null;
-
             return (
               <div key={seg.toolCall.id}>
-                <div
-                  className="flex justify-start"
-                  role="listitem"
-                  aria-label={
-                    seg.status === 'completed'
-                      ? `도구 완료: ${toolDisplayName}`
-                      : seg.status === 'error'
-                        ? `도구 실패: ${toolDisplayName}`
-                        : `도구 실행 중: ${toolDisplayName}`
-                  }
-                >
-                  <div className="max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center gap-2">
-                      <ToolIcon className="w-4 h-4 text-blue-500" aria-hidden="true" />
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {toolDisplayName}
-                      </span>
-                      {seg.status === 'completed' ? (
-                        <CheckCircle
-                          className="w-4 h-4 text-green-500 animate-scale-in"
-                          aria-hidden="true"
-                        />
-                      ) : seg.status === 'error' ? (
-                        <AlertCircle
-                          className="w-4 h-4 text-red-500 animate-error-pop"
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <Loader2 className="w-4 h-4 text-blue-500 animate-spin" aria-hidden="true" />
-                      )}
-                      {seg.status !== 'pending' && seg.toolCall.duration != null && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto" aria-label={`실행 시간: ${formatDuration(seg.toolCall.duration)}`}>
-                          {formatDuration(seg.toolCall.duration)}
-                        </span>
-                      )}
-                      {seg.status === 'pending' && seg.toolCall.startedAt != null && (
-                        <ToolTimer startedAt={seg.toolCall.startedAt} />
-                      )}
-                    </div>
-                    {displayInfo && (
-                      <ToolPathDisplay
-                        displayInfo={displayInfo}
-                        toolName={seg.toolCall.name}
-                        toolInput={seg.toolCall.input}
-                        additionalParams={seg.toolCall.name === 'Bash' && seg.status === 'completed' && seg.toolCall.output ? [{ label: 'OUT', value: seg.toolCall.output }] : undefined}
-                      />
-                    )}
-                    {todos && todos.length > 0 && (
-                      <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                        {todos.map((todo, i) => (
-                          <li key={i} className="flex items-start gap-1.5">
-                            <span className="flex-shrink-0 mt-0.5">
-                              {todo.status === 'completed' ? '✓' : todo.status === 'in_progress' ? '▸' : '○'}
-                            </span>
-                            <span className={todo.status === 'completed' ? 'line-through opacity-60' : ''}>
-                              {todo.content}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {seg.status === 'completed' && seg.toolCall.output &&
-                      seg.toolCall.name !== 'Edit' && seg.toolCall.name !== 'Write' && seg.toolCall.name !== 'TodoWrite' && (
-                      <CollapsibleToolResult
-                        toolName={seg.toolCall.name}
-                        toolInput={seg.toolCall.input}
-                        result={seg.toolCall.output}
-                      />
-                    )}
-                    {seg.status === 'error' && (
-                      <div className="mt-2 text-xs text-red-500 border-t border-gray-200 dark:border-gray-600 pt-2">
-                        Tool 실행 실패: {seg.toolCall.output || '알 수 없는 오류'}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ToolCard
+                  toolName={seg.toolCall.name}
+                  toolInput={seg.toolCall.input}
+                  status={seg.status === 'error' ? 'error' : seg.status === 'completed' ? 'completed' : 'pending'}
+                  startedAt={seg.toolCall.startedAt}
+                  duration={seg.toolCall.duration}
+                  output={seg.toolCall.output}
+                />
               </div>
             );
           }
