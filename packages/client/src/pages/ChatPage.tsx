@@ -378,7 +378,6 @@ export function ChatPage() {
       currentSessionId={sessionId}
       onSelectSession={handleSessionSelect}
       onClose={handleCloseSessionPanel}
-      onNewSession={handleNewSession}
     />
   );
 
