@@ -169,6 +169,7 @@ export class ChatService {
       abortController: options.abortController,
       model: options.model,
       resume: options.resume,
+      sessionId: options.sessionId,
       includePartialMessages: true, // Enable real-time streaming
       settingSources: ['user', 'project', 'local'], // Load settings & .claude/commands/ for skill discovery
       // Append workspace context to system prompt to prevent path hallucination

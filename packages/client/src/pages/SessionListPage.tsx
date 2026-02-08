@@ -17,6 +17,7 @@ import { PullToRefreshIndicator } from '../components/PullToRefreshIndicator';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useSkeletonCount } from '../hooks/useSkeletonCount';
 import { BrandLogo } from '../components/BrandLogo';
+import { generateUUID } from '../utils/uuid';
 
 const PULL_THRESHOLD = 80;
 
@@ -75,7 +76,8 @@ export function SessionListPage() {
   }, [navigate]);
 
   const handleNewSession = useCallback(() => {
-    navigate(`/project/${projectSlug}/session/new`);
+    const newSessionId = generateUUID();
+    navigate(`/project/${projectSlug}/session/${newSessionId}`);
   }, [navigate, projectSlug]);
 
   const handleSessionClick = useCallback(

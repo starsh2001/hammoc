@@ -59,7 +59,6 @@ describe('useStreaming interactive events', () => {
       streamingStartedAt: new Date(),
       permissionMode: 'default',
       contextUsage: null,
-      completedSessionId: null,
     });
   });
 

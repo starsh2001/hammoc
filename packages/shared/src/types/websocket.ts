@@ -67,6 +67,8 @@ export interface ServerToClientEvents {
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
   'stream:status': (data: { active: boolean; sessionId: string }) => void;
+  'stream:detached': (data: { sessionId: string; reason: string }) => void;
+  'user:message': (data: { content: string; sessionId: string }) => void;
 }
 
 // ===== Inter-server Events =====

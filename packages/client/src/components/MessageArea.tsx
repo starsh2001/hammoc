@@ -5,7 +5,7 @@
  */
 
 import { useRef, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight, CheckCircle, AlertCircle, RefreshCw, Bell, FileText, XOctagon, Database } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, AlertCircle, RefreshCw, Bell, FileText, XOctagon, Database, Info } from 'lucide-react';
 import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { StreamingIndicator } from './StreamingIndicator';
@@ -228,11 +228,16 @@ export function MessageArea({
           }
 
           if (isSystemSegment(seg)) {
+            const isCompact = seg.subtype === 'compact';
+            const Icon = isCompact ? Database : Info;
+            const colorClasses = isCompact
+              ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+              : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800';
             return (
               <div key={`seg-system-${index}`} className="flex justify-center">
-                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
-                  <Database className="w-4 h-4" aria-hidden="true" />
-                  <span>컨텍스트 압축 중...</span>
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border ${colorClasses}`}>
+                  <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>{seg.message}</span>
                 </div>
               </div>
             );

@@ -55,7 +55,7 @@ export interface ResultErrorData {
 export type StreamingSegment =
   | { type: 'text'; content: string }
   | { type: 'thinking'; content: string }
-  | { type: 'system'; subtype: 'compact'; message: string }
+  | { type: 'system'; subtype: 'compact' | 'info'; message: string }
   | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error'; permissionId?: string; permissionStatus?: 'waiting' | 'approved' | 'denied' }
   | {
       type: 'interactive';
@@ -93,7 +93,7 @@ export function isToolSegment(
 /** Type guard for system segments */
 export function isSystemSegment(
   seg: StreamingSegment
-): seg is { type: 'system'; subtype: 'compact'; message: string } {
+): seg is { type: 'system'; subtype: 'compact' | 'info'; message: string } {
   return seg.type === 'system';
 }
 
@@ -140,8 +140,6 @@ interface ChatState {
   permissionMode: PermissionMode;
   /** Current context usage data from last SDK response */
   contextUsage: ChatUsage | null;
-  /** Session ID from most recently completed streaming (for new session navigation) */
-  completedSessionId: string | null;
   /** Last result error (persisted after completeStreaming clears segments) */
   lastResultError: ResultErrorData | null;
   /** Selected model for next message */
@@ -194,14 +192,12 @@ interface ChatActions {
   setContextUsage: (usage: ChatUsage) => void;
   /** Reset context usage (on session change) */
   resetContextUsage: () => void;
-  /** Clear completed session ID after navigation */
-  clearCompletedSessionId: () => void;
   /** Clear leftover streaming segments (on session switch) */
   clearStreamingSegments: () => void;
   /** Update streaming sessionId without resetting segments (for late sessionId arrival) */
   updateStreamingSessionId: (sessionId: string) => void;
-  /** Add a system segment (e.g., context compaction notification) */
-  addSystemSegment: (message: string) => void;
+  /** Add a system segment (e.g., context compaction notification, info messages) */
+  addSystemSegment: (message: string, subtype?: 'compact' | 'info') => void;
   /** Add an interactive segment (permission request or AskUserQuestion) */
   addInteractiveSegment: (segment: {
     id: string;
@@ -247,7 +243,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingMessageId: null,
   streamingSegments: [],
   streamingStartedAt: null,
-  completedSessionId: null,
   lastResultError: null,
   selectedModel: '',
   activeModel: null,
@@ -280,7 +275,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       // Only show if still streaming and no segments received yet
       if (state.isStreaming && state.streamingSegments.length === 0 && !state.streamingSessionId) {
         set({
-          streamingSessionId: sessionId || 'pending',
+          streamingSessionId: sessionId ?? 'pending',
           streamingMessageId: 'pending',
           streamingSegments: [],
           streamingStartedAt: new Date(),
@@ -407,9 +402,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingDelayTimeoutId = null;
     }
 
-    // Save sessionId before clearing (for new session navigation)
-    const currentSessionId = get().streamingSessionId;
-
     // Keep ALL streaming segments to preserve interleaved order (text ↔ tool).
     // Segments will be cleared by clearStreamingSegments() after fetchMessages
     // loads the authoritative history with correct ordering.
@@ -419,7 +411,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSessionId: null,
       streamingMessageId: null,
       streamingStartedAt: null,
-      completedSessionId: currentSessionId,
     });
   },
 
@@ -490,17 +481,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   resetContextUsage: () => set({ contextUsage: null }),
 
-  clearCompletedSessionId: () => set({ completedSessionId: null }),
-
   clearStreamingSegments: () => set({ streamingSegments: [] }),
 
   updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),
 
-  addSystemSegment: (message: string) => {
+  addSystemSegment: (message: string, subtype: 'compact' | 'info' = 'compact') => {
     const segments = get().streamingSegments;
     set({
-      isCompacting: true,
-      streamingSegments: [...segments, { type: 'system', subtype: 'compact' as const, message }],
+      ...(subtype === 'compact' && { isCompacting: true }),
+      streamingSegments: [...segments, { type: 'system', subtype, message }],
     });
   },
 

@@ -8,6 +8,7 @@ import { useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, FolderOpen, AlertCircle, Settings, Plus } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
+import { generateUUID } from '../utils/uuid';
 import { useAuthStore } from '../stores/authStore';
 import { ProjectCard } from '../components/ProjectCard';
 import { ProjectCardSkeleton } from '../components/ProjectCardSkeleton';
@@ -82,7 +83,8 @@ export function ProjectListPage() {
         navigate(`/project/${projectSlug}`);
       } else {
         // Navigate to new session in the newly created project
-        navigate(`/project/${projectSlug}/session/new`);
+        const newSessionId = generateUUID();
+        navigate(`/project/${projectSlug}/session/${newSessionId}`);
       }
     },
     [navigate]
