@@ -235,7 +235,9 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
           const toolUseId = block.tool_use_id;
           const idx = toolUseIndexMap.get(toolUseId);
           if (idx !== undefined) {
-            const resultContent = typeof block.content === 'string' ? block.content : '';
+            const rawContent = typeof block.content === 'string' ? block.content : '';
+            // Strip SDK XML wrapper tags (e.g. <tool_use_error>...</tool_use_error>)
+            const resultContent = rawContent.replace(/<\/?(?:tool_use_error|error|result)>/g, '').trim();
             const isError = (block as unknown as { is_error?: boolean }).is_error ?? false;
             results[idx].toolResult = {
               success: !isError,

@@ -95,18 +95,26 @@ function computeLineChanges(original: string, modified: string): { added: number
   };
 }
 
+/** Strip SDK XML wrapper tags (e.g. <tool_use_error>...</tool_use_error>) from tool output */
+function stripXmlWrapperTags(text: string | undefined): string | undefined {
+  if (!text) return text;
+  return text.replace(/<\/?(?:tool_use_error|error|result)>/g, '').trim();
+}
+
 export function ToolCard({
   toolName,
   toolInput,
   status,
   startedAt,
   duration,
-  output,
-  resultOutput,
+  output: rawOutput,
+  resultOutput: rawResultOutput,
   isUserDenied,
   permissionStatus,
   onPermissionRespond,
 }: ToolCardProps) {
+  const output = stripXmlWrapperTags(rawOutput);
+  const resultOutput = stripXmlWrapperTags(rawResultOutput);
   const [showDiffViewer, setShowDiffViewer] = useState(false);
   const [isPathExpanded, setIsPathExpanded] = useState(false);
 

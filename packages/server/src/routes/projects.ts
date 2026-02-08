@@ -94,6 +94,9 @@ router.post('/', createProjectLimiter, projectController.create);
 // GET /api/projects/bmad-versions - List available BMad method versions
 router.get('/bmad-versions', projectController.bmadVersions);
 
+// POST /api/projects/:projectSlug/setup-bmad - Setup BMad for existing project
+router.post('/:projectSlug/setup-bmad', createProjectLimiter, projectController.setupBmad);
+
 // DELETE /api/projects/:projectSlug - Delete a project
 router.delete('/:projectSlug', projectController.delete);
 

@@ -32,15 +32,16 @@ function ProjectListPageSkeleton() {
 
 export function ProjectListPage() {
   const navigate = useNavigate();
-  const { projects, isLoading, error, fetchProjects, clearError, deleteProject } = useProjectStore();
+  const { projects, isLoading, error, fetchProjects, clearError, deleteProject, setupBmad, bmadVersions, fetchBmadVersions } = useProjectStore();
   const { logout } = useAuthStore();
   const [showSettings, setShowSettings] = useState(false);
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
 
-  // Fetch projects on mount
+  // Fetch projects and BMad versions on mount
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+    fetchBmadVersions();
+  }, [fetchProjects, fetchBmadVersions]);
 
   // Handle logout
   const handleLogout = useCallback(async () => {
@@ -73,6 +74,14 @@ export function ProjectListPage() {
       await deleteProject(projectSlug, deleteFiles);
     },
     [deleteProject]
+  );
+
+  // Handle BMad setup for existing project
+  const handleSetupBmad = useCallback(
+    async (projectSlug: string, bmadVersion: string) => {
+      await setupBmad(projectSlug, bmadVersion);
+    },
+    [setupBmad]
   );
 
   // Handle new project success - navigate to new session
@@ -222,6 +231,8 @@ export function ProjectListPage() {
                 project={project}
                 onClick={handleProjectClick}
                 onDelete={handleProjectDelete}
+                onSetupBmad={handleSetupBmad}
+                bmadVersions={bmadVersions}
               />
             ))}
           </div>
