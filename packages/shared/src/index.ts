@@ -58,6 +58,7 @@ export {
   ProjectErrorCode,
   CreateProjectRequest,
   CreateProjectResponse,
+  DeleteProjectResponse,
   ValidatePathRequest,
   ValidatePathResponse,
   BmadVersionsResponse,

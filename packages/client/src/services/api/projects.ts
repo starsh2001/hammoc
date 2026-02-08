@@ -9,6 +9,7 @@ import type {
   ProjectListResponse,
   CreateProjectRequest,
   CreateProjectResponse,
+  DeleteProjectResponse,
   ValidatePathResponse,
   BmadVersionsResponse,
 } from '@bmad-studio/shared';
@@ -20,6 +21,10 @@ export const projectsApi = {
   /** Create a new project */
   create: (data: CreateProjectRequest, options?: { signal?: AbortSignal }) =>
     api.post<CreateProjectResponse>('/projects', data, options),
+
+  /** Delete a project. Optionally also deletes project files on disk. */
+  delete: (projectSlug: string, deleteFiles = false) =>
+    api.delete<DeleteProjectResponse>(`/projects/${projectSlug}${deleteFiles ? '?deleteFiles=true' : ''}`),
 
   /** Validate a directory path */
   validatePath: (path: string, options?: { signal?: AbortSignal }) =>
