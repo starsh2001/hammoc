@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Clock, MoreVertical, Trash2 } from 'lucide-react';
+import { MessageSquare, Clock, MoreVertical, Trash2, Wand2 } from 'lucide-react';
 import type { ProjectInfo } from '@bmad-studio/shared';
 import { formatRelativeTime, formatProjectPath } from '../utils/formatters';
 import { ConfirmModal } from './ConfirmModal';
@@ -13,12 +13,16 @@ interface ProjectCardProps {
   project: ProjectInfo;
   onClick: (projectSlug: string) => void;
   onDelete?: (projectSlug: string, deleteFiles?: boolean) => void;
+  onSetupBmad?: (projectSlug: string, bmadVersion: string) => void;
+  bmadVersions?: string[];
 }
 
-export function ProjectCard({ project, onClick, onDelete }: ProjectCardProps) {
+export function ProjectCard({ project, onClick, onDelete, onSetupBmad, bmadVersions = [] }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
+  const [showBmadConfirm, setShowBmadConfirm] = useState(false);
+  const [selectedBmadVersion, setSelectedBmadVersion] = useState(bmadVersions[0] || '');
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleClick = () => {
@@ -36,6 +40,24 @@ export function ProjectCard({ project, onClick, onDelete }: ProjectCardProps) {
     e.stopPropagation();
     setMenuOpen(false);
     setShowDeleteConfirm(true);
+  };
+
+  const handleSetupBmadClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    setSelectedBmadVersion(bmadVersions[0] || '');
+    setShowBmadConfirm(true);
+  };
+
+  const handleBmadConfirm = () => {
+    setShowBmadConfirm(false);
+    if (selectedBmadVersion) {
+      onSetupBmad?.(project.projectSlug, selectedBmadVersion);
+    }
+  };
+
+  const handleBmadCancel = () => {
+    setShowBmadConfirm(false);
   };
 
   const handleDeleteConfirm = () => {
@@ -79,7 +101,7 @@ export function ProjectCard({ project, onClick, onDelete }: ProjectCardProps) {
         aria-label={`프로젝트: ${formatProjectPath(project.originalPath)}, 세션 ${project.sessionCount}개`}
       >
         {/* Kebab menu */}
-        {onDelete && (
+        {(onDelete || onSetupBmad) && (
           <div ref={menuRef} className="absolute top-2 right-2 z-10">
             <button
               type="button"
@@ -93,18 +115,31 @@ export function ProjectCard({ project, onClick, onDelete }: ProjectCardProps) {
 
             {menuOpen && (
               <div
-                className="absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1"
+                className="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1"
                 role="menu"
               >
-                <button
-                  type="button"
-                  onClick={handleDeleteClick}
-                  role="menuitem"
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" aria-hidden="true" />
-                  프로젝트 삭제
-                </button>
+                {onSetupBmad && !project.isBmadProject && (
+                  <button
+                    type="button"
+                    onClick={handleSetupBmadClick}
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  >
+                    <Wand2 className="w-4 h-4" aria-hidden="true" />
+                    BMad 전환
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteClick}
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                    프로젝트 삭제
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -164,6 +199,35 @@ export function ProjectCard({ project, onClick, onDelete }: ProjectCardProps) {
           <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">
             디스크의 프로젝트 파일이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
           </p>
+        )}
+      </ConfirmModal>
+
+      {/* BMad setup confirmation modal */}
+      <ConfirmModal
+        isOpen={showBmadConfirm}
+        title="BMad 전환"
+        message="이 프로젝트에 BMad Method를 설치합니다."
+        confirmText="설치"
+        cancelText="취소"
+        onConfirm={handleBmadConfirm}
+        onCancel={handleBmadCancel}
+      >
+        {bmadVersions.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label htmlFor="bmad-version-select" className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+              버전
+            </label>
+            <select
+              id="bmad-version-select"
+              value={selectedBmadVersion}
+              onChange={(e) => setSelectedBmadVersion(e.target.value)}
+              className="flex-1 px-2 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {bmadVersions.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </div>
         )}
       </ConfirmModal>
     </>

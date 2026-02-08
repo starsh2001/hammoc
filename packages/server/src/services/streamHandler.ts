@@ -668,10 +668,12 @@ export class StreamHandler {
     block: ParsedToolResultBlock,
     callbacks: StreamCallbacks
   ): void {
+    // Strip SDK XML wrapper tags (e.g. <tool_use_error>...</tool_use_error>)
+    const cleanContent = block.content.replace(/<\/?(?:tool_use_error|error|result)>/g, '').trim();
     const result: ToolResult = {
       success: !block.isError,
-      output: block.isError ? undefined : block.content,
-      error: block.isError ? block.content : undefined,
+      output: block.isError ? undefined : cleanContent,
+      error: block.isError ? cleanContent : undefined,
     };
 
     // Move tool call from pending to completed

@@ -173,6 +173,47 @@ export const projectController = {
   },
 
   /**
+   * POST /api/projects/:projectSlug/setup-bmad
+   * Setup BMad for an existing non-BMad project
+   */
+  async setupBmad(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      const { bmadVersion } = req.body as { bmadVersion?: string };
+
+      if (!projectSlug) {
+        res.status(400).json({
+          error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' },
+        });
+        return;
+      }
+
+      const project = await projectService.setupBmadForProject(projectSlug, bmadVersion);
+      res.json({ project });
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({
+          error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message },
+        });
+        return;
+      }
+
+      if (nodeError.code === 'NO_BMAD_VERSION') {
+        res.status(500).json({
+          error: { code: 'NO_BMAD_VERSION', message: nodeError.message },
+        });
+        return;
+      }
+
+      res.status(500).json({
+        error: { code: 'BMAD_SETUP_ERROR', message: 'BMad 설정 중 오류가 발생했습니다.' },
+      });
+    }
+  },
+
+  /**
    * POST /api/projects/validate-path
    * Validate a directory path
    * [Source: Story 3.6 - Task 3]
