@@ -23,6 +23,14 @@ interface AgentYaml {
   };
 }
 
+/** Built-in Claude Code system commands that work via SDK programmatic API.
+ * Most built-in commands (e.g. /cost, /help, /model) are CLI-only interactive
+ * commands and do NOT work through the SDK conversation API.
+ * Only /compact is confirmed to work programmatically. */
+const BUILTIN_COMMANDS: SlashCommand[] = [
+  { command: '/compact', name: 'compact', description: 'Compact conversation context', category: 'builtin' },
+];
+
 class CommandService {
   /**
    * Get slash commands for a project
@@ -34,7 +42,7 @@ class CommandService {
     const projects = await projectService.scanProjects();
     const project = projects.find((p) => p.projectSlug === projectSlug);
     if (!project) {
-      return [];
+      return [...BUILTIN_COMMANDS];
     }
 
     const originalPath = project.originalPath;
@@ -43,9 +51,9 @@ class CommandService {
     // Check if .bmad-core directory exists
     try {
       const stat = await fs.stat(bmadCorePath);
-      if (!stat.isDirectory()) return [];
+      if (!stat.isDirectory()) return [...BUILTIN_COMMANDS];
     } catch {
-      return [];
+      return [...BUILTIN_COMMANDS];
     }
 
     // Read slashPrefix from core-config.yaml
@@ -57,7 +65,7 @@ class CommandService {
       this.scanTasks(bmadCorePath, slashPrefix),
     ]);
 
-    return [...agents, ...tasks];
+    return [...BUILTIN_COMMANDS, ...agents, ...tasks];
   }
 
   /**
