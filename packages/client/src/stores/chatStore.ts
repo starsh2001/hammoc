@@ -228,6 +228,8 @@ interface ChatActions {
   addToolSummary: (summary: string, precedingToolUseIds: string[]) => void;
   /** Add a result error segment and persist it */
   addResultError: (data: ResultErrorData) => void;
+  /** Restore streaming state for background stream reconnection */
+  restoreStreaming: (sessionId: string) => void;
   /** Set model for next message */
   setSelectedModel: (model: string) => void;
   /** Set active model reported by SDK */
@@ -651,6 +653,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         ...segments,
         { type: 'tool_summary' as const, summary, precedingToolUseIds },
       ],
+    });
+  },
+
+  restoreStreaming: (sessionId: string) => {
+    if (streamingDelayTimeoutId) {
+      clearTimeout(streamingDelayTimeoutId);
+      streamingDelayTimeoutId = null;
+    }
+    set({
+      isStreaming: true,
+      streamingSessionId: sessionId,
+      streamingMessageId: 'restoring',
+      streamingSegments: [],
+      streamingStartedAt: new Date(),
+      lastResultError: null,
     });
   },
 

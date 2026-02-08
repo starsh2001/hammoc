@@ -37,6 +37,7 @@ export function useStreaming() {
     addTaskNotification,
     addToolSummary,
     addResultError,
+    restoreStreaming,
   } = useChatStore();
 
   // Track seen permission request IDs to avoid duplicates on reconnect
@@ -226,6 +227,15 @@ export function useStreaming() {
       addResultError(data);
     };
 
+    // Handle session:created / session:resumed — update streamingSessionId as early as possible
+    // (fires before message:chunk, so URL can navigate from /new to real sessionId immediately)
+    const handleSessionInit = (data: { sessionId: string; model?: string }) => {
+      const state = useChatStore.getState();
+      if (!state.streamingSessionId || state.streamingSessionId === 'pending') {
+        updateStreamingSessionId(data.sessionId);
+      }
+    };
+
     // Handle context usage update (also extracts model from result)
     const handleContextUsage = (data: ChatUsage) => {
       setContextUsage(data);
@@ -234,21 +244,26 @@ export function useStreaming() {
       }
     };
 
+    // Handle stream:status — server tells us if a background stream exists
+    const handleStreamStatus = (data: { active: boolean; sessionId: string }) => {
+      if (data.active) {
+        // Clear seen permissions so replayed permission:request events are processed
+        seenPermissionIds.current.clear();
+        restoreStreaming(data.sessionId);
+      }
+    };
+
     // Handle disconnection during streaming
     const handleDisconnect = () => {
       // Keep streaming state - wait for reconnect
     };
 
-    // Handle successful reconnection
+    // Handle successful reconnection — probe for active background stream
     const handleReconnect = () => {
-      const state = useChatStore.getState();
-      if (state.isStreaming && state.streamingSessionId) {
-        // Request current streaming status from server
-        socket.emit('streaming:status' as 'chat:send', {
-          content: '',
-          workingDirectory: '',
-          sessionId: state.streamingSessionId,
-        });
+      const sessionId = useChatStore.getState().streamingSessionId
+        || useMessageStore.getState().currentSessionId;
+      if (sessionId && sessionId !== 'new' && sessionId !== 'pending') {
+        socket.emit('session:join', sessionId);
       }
     };
 
@@ -265,6 +280,8 @@ export function useStreaming() {
     };
 
     // Register socket event listeners
+    socket.on('session:created', handleSessionInit);
+    socket.on('session:resumed', handleSessionInit);
     socket.on('message:chunk', handleChunk);
     socket.on('thinking:chunk', handleThinkingChunk);
     socket.on('message:complete', handleComplete);
@@ -278,6 +295,7 @@ export function useStreaming() {
     socket.on('system:task-notification', handleTaskNotification);
     socket.on('tool:summary', handleToolSummary);
     socket.on('result:error', handleResultError);
+    socket.on('stream:status', handleStreamStatus);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect', handleReconnect);
     socket.on('error', handleError);
@@ -288,6 +306,8 @@ export function useStreaming() {
 
     // Cleanup
     return () => {
+      socket.off('session:created', handleSessionInit);
+      socket.off('session:resumed', handleSessionInit);
       socket.off('message:chunk', handleChunk);
       socket.off('thinking:chunk', handleThinkingChunk);
       socket.off('message:complete', handleComplete);
@@ -301,6 +321,7 @@ export function useStreaming() {
       socket.off('system:task-notification', handleTaskNotification);
       socket.off('tool:summary', handleToolSummary);
       socket.off('result:error', handleResultError);
+      socket.off('stream:status', handleStreamStatus);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect', handleReconnect);
       socket.off('error', handleError);
@@ -326,6 +347,7 @@ export function useStreaming() {
     addTaskNotification,
     addToolSummary,
     addResultError,
+    restoreStreaming,
     handleKeyDown,
   ]);
 }

@@ -7,6 +7,7 @@
 import { Request, Response } from 'express';
 import { SESSION_ERRORS, SessionListResponse, HistoryMessagesResponse } from '@bmad-studio/shared';
 import { sessionService } from '../services/sessionService.js';
+import { getActiveStreamSessionIds } from '../handlers/websocket.js';
 
 export const sessionController = {
   /**
@@ -31,7 +32,14 @@ export const sessionController = {
       }
 
       // Note: Empty array is a valid response (project exists but no sessions)
-      const response: SessionListResponse = { sessions };
+      // Mark sessions that have an active background stream
+      const activeIds = new Set(getActiveStreamSessionIds());
+      const response: SessionListResponse = {
+        sessions: sessions.map(s => ({
+          ...s,
+          ...(activeIds.has(s.sessionId) && { isStreaming: true }),
+        })),
+      };
       res.json(response);
     } catch {
       res.status(SESSION_ERRORS.SESSION_LIST_ERROR.httpStatus).json({
