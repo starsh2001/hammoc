@@ -66,6 +66,7 @@ export interface ServerToClientEvents {
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
+  'stream:status': (data: { active: boolean; sessionId: string }) => void;
 }
 
 // ===== Inter-server Events =====

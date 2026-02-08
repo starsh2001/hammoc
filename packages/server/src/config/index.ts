@@ -39,6 +39,16 @@ export const config = {
       credentials: true as const,
     },
   },
+
+  /**
+   * Telegram notification settings (optional)
+   * Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to enable
+   */
+  telegram: {
+    botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+    chatId: process.env.TELEGRAM_CHAT_ID || '',
+    enabled: !!process.env.TELEGRAM_BOT_TOKEN && !!process.env.TELEGRAM_CHAT_ID,
+  },
 } as const;
 
 export type Config = typeof config;
