@@ -54,6 +54,7 @@ export interface SessionListItem {
   messageCount: number;
   created: string; // ISO 8601 format
   modified: string; // ISO 8601 format
+  isStreaming?: boolean; // true if an active stream is running for this session
 }
 
 /**

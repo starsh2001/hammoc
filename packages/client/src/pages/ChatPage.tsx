@@ -20,6 +20,7 @@ import { useProjectStore } from '../stores/projectStore';
 import type { Attachment, HistoryMessage } from '@bmad-studio/shared';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
+import { getSocket } from '../services/socket';
 import { ChatHeader } from '../components/ChatHeader';
 import { MessageArea } from '../components/MessageArea';
 import { InputArea } from '../components/InputArea';
@@ -135,7 +136,21 @@ export function ChatPage() {
   const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, completedSessionId, clearCompletedSessionId, clearStreamingSegments } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
 
-  // Navigate to the new sessionId when streaming completes (completedSessionId is set by completeStreaming)
+  // Navigate to the real session URL as soon as streamingSessionId is known
+  // (fires when session:created is received — before streaming completes)
+  // This ensures the URL has the real sessionId if the user refreshes mid-stream.
+  useEffect(() => {
+    if (
+      sessionId === 'new' &&
+      streamingSessionId &&
+      streamingSessionId !== 'pending' &&
+      projectSlug
+    ) {
+      navigate(`/project/${projectSlug}/session/${streamingSessionId}`, { replace: true });
+    }
+  }, [sessionId, streamingSessionId, projectSlug, navigate]);
+
+  // Fallback: navigate on completion if URL is still /new (e.g., session:created was missed)
   useEffect(() => {
     if (
       sessionId === 'new' &&
@@ -230,6 +245,29 @@ export function ChatPage() {
   useEffect(() => {
     return () => clearMessages();
   }, [clearMessages]);
+
+  // Probe for active background stream on session mount
+  // Must also handle case where socket connects AFTER this effect runs (fresh page load)
+  // Skip if already streaming (e.g., navigated from /new to real sessionId mid-stream)
+  useEffect(() => {
+    if (!sessionId || sessionId === 'new') return;
+
+    const socket = getSocket();
+    const emitJoin = () => {
+      // Don't probe if we're already streaming on this session (avoids duplicate buffer replay)
+      if (useChatStore.getState().isStreaming) return;
+      socket.emit('session:join', sessionId);
+    };
+
+    if (socket.connected) {
+      emitJoin();
+    }
+    socket.on('connect', emitJoin);
+
+    return () => {
+      socket.off('connect', emitJoin);
+    };
+  }, [sessionId]);
 
   // Reset context usage on session change (separate from fetchMessages useEffect)
   useEffect(() => {

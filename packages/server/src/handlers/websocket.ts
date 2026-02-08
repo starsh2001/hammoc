@@ -28,6 +28,7 @@ import { SessionService } from '../services/sessionService.js';
 import { parseSDKError, AbortedError } from '../utils/errors.js';
 import { createSessionMiddleware } from '../middleware/session.js';
 import { config } from '../config/index.js';
+import { notificationService } from '../services/notificationService.js';
 
 let io: SocketIOServer<
   ClientToServerEvents,
@@ -37,20 +38,56 @@ let io: SocketIOServer<
 >;
 let connectedClients = 0;
 
-// Module-level map: socket.id → active AbortController
-const activeAbortControllers = new Map<string, AbortController>();
+// --- ActiveStream: Background streaming with reconnect support ---
 
-// Permission response resolver: requestId → resolve callback
+type SocketType = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+
 interface PendingPermission {
   resolve: (result: { approved: boolean; response?: string | string[] | Record<string, string | string[]> }) => void;
   interactionType: 'permission' | 'question';
 }
-const pendingPermissions = new Map<string, PendingPermission>();
 
-// Track which permission request IDs belong to which socket (for disconnect cleanup)
-const socketPendingIds = new Map<string, Set<string>>();
+interface ActiveStream {
+  sessionId: string;
+  socketRef: { current: SocketType | null };
+  abortController: AbortController;
+  buffer: Array<{ event: string; data: unknown }>;
+  pendingPermissions: Map<string, PendingPermission>;
+  status: 'running' | 'completed' | 'error';
+  startedAt: number;
+}
+
+// Primary maps: sessionId → ActiveStream, socketId → sessionId
+const activeStreams = new Map<string, ActiveStream>();
+const socketToSession = new Map<string, string>();
 
 let permissionRequestCounter = 0;
+
+/** Create a buffered emit function that always buffers and forwards to connected socket */
+function createStreamEmit(stream: ActiveStream) {
+  return (event: string, data: unknown) => {
+    stream.buffer.push({ event, data });
+    if (stream.socketRef.current?.connected) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (stream.socketRef.current.emit as any)(event, data);
+    }
+  };
+}
+
+/** Get session IDs of all currently running active streams */
+export function getActiveStreamSessionIds(): string[] {
+  return [...activeStreams.entries()]
+    .filter(([, stream]) => stream.status === 'running')
+    .map(([key]) => key);
+}
+
+/** Clean up a stream from all maps */
+function cleanupStream(streamKey: string) {
+  activeStreams.delete(streamKey);
+  for (const [sockId, sessId] of socketToSession.entries()) {
+    if (sessId === streamKey) socketToSession.delete(sockId);
+  }
+}
 
 /**
  * Initialize Socket.io server with the HTTP server
@@ -92,32 +129,77 @@ export async function initializeWebSocket(
     connectedClients++;
     console.log(`Client connected. Total: ${connectedClients}`);
 
-    // Handle chat:send event
+    // Handle chat:send event — background streaming with reconnect support
     socket.on('chat:send', async (data) => {
       const abortController = new AbortController();
-      activeAbortControllers.set(socket.id, abortController);
+      const streamKey = data.sessionId || `pending-${socket.id}`;
+
+      const stream: ActiveStream = {
+        sessionId: streamKey,
+        socketRef: { current: socket },
+        abortController,
+        buffer: [],
+        pendingPermissions: new Map(),
+        status: 'running',
+        startedAt: Date.now(),
+      };
+      activeStreams.set(streamKey, stream);
+      socketToSession.set(socket.id, streamKey);
+
       try {
-        await handleChatSend(socket, data, abortController);
+        await handleChatSend(stream, data, abortController);
       } finally {
-        activeAbortControllers.delete(socket.id);
+        stream.status = 'completed';
+        cleanupStream(stream.sessionId);
       }
     });
 
-    // Handle permission:respond event — user permission decision (Story 7.1)
+    // Handle permission:respond event — route to ActiveStream
     socket.on('permission:respond', (data) => {
-      const pending = pendingPermissions.get(data.requestId);
+      const sessionId = socketToSession.get(socket.id);
+      if (!sessionId) return;
+      const stream = activeStreams.get(sessionId);
+      if (!stream) return;
+      const pending = stream.pendingPermissions.get(data.requestId);
       if (pending) {
         pending.resolve({ approved: data.approved, response: data.response });
-        pendingPermissions.delete(data.requestId);
+        stream.pendingPermissions.delete(data.requestId);
       }
     });
 
-    // Handle chat:abort event — user-initiated abort
+    // Handle chat:abort event — find stream and abort
     socket.on('chat:abort', () => {
-      const controller = activeAbortControllers.get(socket.id);
-      if (controller) {
-        controller.abort('user-abort');
-        activeAbortControllers.delete(socket.id);
+      const sessionId = socketToSession.get(socket.id);
+      if (!sessionId) return;
+      const stream = activeStreams.get(sessionId);
+      if (stream && stream.status === 'running') {
+        stream.abortController.abort('user-abort');
+      }
+    });
+
+    // Handle session:join event — attach socket to active running stream
+    socket.on('session:join', (sessionId: string) => {
+      const stream = activeStreams.get(sessionId);
+
+      if (!stream || stream.status !== 'running') {
+        socket.emit('stream:status', { active: false, sessionId });
+        return;
+      }
+
+      // Detach previous socket if different
+      if (stream.socketRef.current && stream.socketRef.current.id !== socket.id) {
+        socketToSession.delete(stream.socketRef.current.id);
+      }
+
+      // Attach new socket
+      stream.socketRef.current = socket;
+      socketToSession.set(socket.id, sessionId);
+
+      // Notify client that stream is active, then replay entire buffer
+      socket.emit('stream:status', { active: true, sessionId });
+      for (const entry of stream.buffer) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (socket.emit as any)(entry.event, entry.data);
       }
     });
 
@@ -126,23 +208,15 @@ export async function initializeWebSocket(
       await handleSessionList(socket, data);
     });
 
+    // Disconnect: detach socket from stream, DON'T abort or deny permissions
     socket.on('disconnect', () => {
-      const controller = activeAbortControllers.get(socket.id);
-      if (controller) {
-        controller.abort('disconnect');
-        activeAbortControllers.delete(socket.id);
-      }
-      // Clean up pending permissions for this socket (MEM-001)
-      const pendingIds = socketPendingIds.get(socket.id);
-      if (pendingIds) {
-        for (const reqId of pendingIds) {
-          const pending = pendingPermissions.get(reqId);
-          if (pending) {
-            pending.resolve({ approved: false });
-            pendingPermissions.delete(reqId);
-          }
+      const sessionId = socketToSession.get(socket.id);
+      if (sessionId) {
+        const stream = activeStreams.get(sessionId);
+        if (stream) {
+          stream.socketRef.current = null; // Detach only
         }
-        socketPendingIds.delete(socket.id);
+        socketToSession.delete(socket.id);
       }
       connectedClients--;
       console.log(`Client disconnected. Total: ${connectedClients}`);
@@ -216,20 +290,21 @@ function isSessionNotFoundError(error: Error): boolean {
 /**
  * Handle chat:send event from client
  * Processes user message through ChatService and streams response back
- * Story 4.6: Added timeout handling and SESSION_NOT_FOUND error handling
+ * All emit calls are buffered via createStreamEmit for reconnect support.
  */
 async function handleChatSend(
-  socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
+  stream: ActiveStream,
   data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[] },
   abortController: AbortController
 ): Promise<void> {
+  const emit = createStreamEmit(stream);
   const { content, workingDirectory, sessionId, resume, permissionMode, model, images } = data;
 
   // Validate images if present (Story 5.5)
   if (images && images.length > 0) {
     const validation = validateImages(images);
     if (!validation.valid) {
-      socket.emit('error', {
+      emit('error', {
         code: ERROR_CODES.VALIDATION_ERROR,
         message: validation.error!,
       });
@@ -241,7 +316,7 @@ async function handleChatSend(
   console.log(`[websocket] chat:send workingDirectory="${workingDirectory}", sessionId="${sessionId}", resume=${resume}`);
   if (!workingDirectory || !existsSync(workingDirectory)) {
     console.error(`[websocket] Invalid workingDirectory: "${workingDirectory}" (exists: ${workingDirectory ? existsSync(workingDirectory) : 'N/A'})`);
-    socket.emit('error', {
+    emit('error', {
       code: ERROR_CODES.INVALID_WORKING_DIR,
       message: '지정된 프로젝트 경로가 존재하지 않습니다.',
     });
@@ -252,13 +327,11 @@ async function handleChatSend(
   const sessionService = new SessionService();
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  // Store the actual sessionId when onSessionInit is called (for new sessions)
   let actualSessionId: string | undefined = sessionId;
 
   try {
     const chatService = new ChatService({ workingDirectory, permissionMode });
 
-    // Build chat options with resume, abortController, images
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : {}),
       abortController,
@@ -267,46 +340,43 @@ async function handleChatSend(
     };
 
     // Create canUseTool callback for permission & AskUserQuestion handling
-    // Per official docs: AskUserQuestion is a built-in tool that triggers canUseTool
+    // Promise stays pending if socket disconnected — SDK naturally waits
     const canUseTool: CanUseTool = async (toolName, input, options): Promise<PermissionResult> => {
       const isAskUserQuestion = toolName === 'AskUserQuestion';
 
-      // Use toolUseID from SDK options directly (no queue needed)
       const requestId = options.toolUseID || `perm-${++permissionRequestCounter}`;
 
-      // Emit permission:request for both regular tools and AskUserQuestion.
-      // For AskUserQuestion, stream-based tool:call has empty input (input_json_delta hasn't arrived),
-      // so we emit permission:request here with the full input from canUseTool.
-      socket.emit('permission:request', {
+      // Emit permission:request (buffered + forwarded to connected socket)
+      emit('permission:request', {
         id: requestId,
         sessionId: actualSessionId || '',
         toolCall: { id: requestId, name: toolName, input },
         requiresApproval: true,
       } as PermissionRequest);
 
-      // Wait for user response
+      // Notify via Telegram if no socket connected (user not watching)
+      if (!stream.socketRef.current) {
+        const prompt = isAskUserQuestion
+          ? ((input as Record<string, unknown>).questions as Array<{ question: string }>)?.[0]?.question
+          : `${toolName}`;
+        notificationService.notifyInputRequired(stream.sessionId, toolName, prompt);
+      }
+
+      // Wait for user response — Promise stays pending if no socket connected
       const userResponse = await new Promise<{ approved: boolean; response?: string | string[] | Record<string, string | string[]> }>((resolve) => {
-        pendingPermissions.set(requestId, {
+        stream.pendingPermissions.set(requestId, {
           resolve,
           interactionType: isAskUserQuestion ? 'question' : 'permission',
         });
-        if (!socketPendingIds.has(socket.id)) {
-          socketPendingIds.set(socket.id, new Set());
-        }
-        socketPendingIds.get(socket.id)!.add(requestId);
       });
-      socketPendingIds.get(socket.id)?.delete(requestId);
 
       if (isAskUserQuestion) {
-        // Per official docs: return { behavior: 'allow', updatedInput: { questions, answers } }
         const questions = (input as Record<string, unknown>).questions as Array<{ question: string }>;
         let answers: Record<string, string | string[]>;
 
         if (typeof userResponse.response === 'object' && !Array.isArray(userResponse.response) && userResponse.response !== null) {
-          // Multi-question: response is Record<questionText, answer>
           answers = userResponse.response as Record<string, string | string[]>;
         } else {
-          // Single question: response is string or string[]
           const answer = typeof userResponse.response === 'string'
             ? userResponse.response
             : Array.isArray(userResponse.response) ? userResponse.response.join(', ') : '';
@@ -337,22 +407,31 @@ async function handleChatSend(
     await chatService.sendMessageWithCallbacks(content, {
       onSessionInit: async (sid, metadata) => {
         console.log(`Session initialized: ${sid} (model: ${metadata?.model ?? 'unknown'})`);
-        // Store the actual sessionId for use in onTextChunk and onComplete
         actualSessionId = sid;
 
-        // Save session ID for future use
-        await sessionService.saveSessionId(workingDirectory, sid);
-
-        // Emit appropriate session event (include model from SDK init)
-        if (isResuming) {
-          socket.emit('session:resumed', { sessionId: sid, model: metadata?.model });
-        } else {
-          socket.emit('session:created', { sessionId: sid, model: metadata?.model });
+        // Re-key stream from pending key to actual sessionId
+        if (stream.sessionId !== sid) {
+          activeStreams.delete(stream.sessionId);
+          stream.sessionId = sid;
+          activeStreams.set(sid, stream);
+          if (stream.socketRef.current) {
+            socketToSession.set(stream.socketRef.current.id, sid);
+          }
         }
+
+        // Emit session event BEFORE disk write for faster client navigation
+        if (isResuming) {
+          emit('session:resumed', { sessionId: sid, model: metadata?.model });
+        } else {
+          emit('session:created', { sessionId: sid, model: metadata?.model });
+        }
+
+        // Disk write is best-effort (don't block streaming)
+        sessionService.saveSessionId(workingDirectory, sid).catch(() => {});
       },
 
       onTextChunk: (chunk) => {
-        socket.emit('message:chunk', {
+        emit('message:chunk', {
           sessionId: actualSessionId || chunk.sessionId,
           messageId: chunk.messageId,
           content: chunk.content,
@@ -361,11 +440,11 @@ async function handleChatSend(
       },
 
       onThinking: (content: string) => {
-        socket.emit('thinking:chunk', { content });
+        emit('thinking:chunk', { content });
       },
 
       onToolUse: (toolCall: TrackedToolCall) => {
-        socket.emit('tool:call', {
+        emit('tool:call', {
           id: toolCall.id,
           name: toolCall.name,
           input: toolCall.input,
@@ -373,41 +452,41 @@ async function handleChatSend(
       },
 
       onToolInputUpdate: (toolCallId: string, input: Record<string, unknown>) => {
-        socket.emit('tool:input-update', {
+        emit('tool:input-update', {
           toolCallId,
           input,
         });
       },
 
       onToolResult: (toolCallId: string, result: ToolResult) => {
-        socket.emit('tool:result', {
+        emit('tool:result', {
           toolCallId,
           result,
         });
       },
 
       onCompact: (metadata: CompactMetadata) => {
-        socket.emit('system:compact', metadata);
+        emit('system:compact', metadata);
       },
 
       onToolProgress: (toolUseId: string, elapsedTimeSeconds: number, toolName: string) => {
-        socket.emit('tool:progress', { toolUseId, elapsedTimeSeconds, toolName });
+        emit('tool:progress', { toolUseId, elapsedTimeSeconds, toolName });
       },
 
       onTaskNotification: (data: TaskNotificationData) => {
-        socket.emit('system:task-notification', data);
+        emit('system:task-notification', data);
       },
 
       onToolUseSummary: (summary: string, precedingToolUseIds: string[]) => {
-        socket.emit('tool:summary', { summary, precedingToolUseIds });
+        emit('tool:summary', { summary, precedingToolUseIds });
       },
 
       onResultError: (data) => {
-        socket.emit('result:error', data);
+        emit('result:error', data);
       },
 
       onComplete: (response) => {
-        socket.emit('message:complete', {
+        emit('message:complete', {
           id: response.id,
           sessionId: actualSessionId || response.sessionId,
           role: 'assistant',
@@ -415,62 +494,65 @@ async function handleChatSend(
           timestamp: new Date(),
         });
 
-        // Emit context usage data if available
         if (response.usage) {
-          socket.emit('context:usage', response.usage);
+          emit('context:usage', response.usage);
+        }
+
+        // Notify via Telegram if no socket connected
+        if (!stream.socketRef.current) {
+          notificationService.notifyComplete(stream.sessionId);
         }
       },
 
       onError: (error) => {
         const sdkError = parseSDKError(error);
 
-        // Story 4.6 - Task 3.3: Check for session not found error
         if (isResuming && isSessionNotFoundError(error)) {
-          socket.emit('error', {
+          emit('error', {
             code: ERROR_CODES.SESSION_NOT_FOUND,
             message: '세션을 찾을 수 없습니다. 새 세션을 시작해주세요.',
           });
           return;
         }
 
-        socket.emit('error', {
+        emit('error', {
           code: ERROR_CODES.CHAT_ERROR,
           message: sdkError.message,
         });
+
+        // Notify via Telegram if no socket connected
+        if (!stream.socketRef.current) {
+          notificationService.notifyError(stream.sessionId, sdkError.message);
+        }
       },
     }, chatOptions, canUseTool);
   } catch (error) {
     const sdkError = parseSDKError(error);
 
-    // Check for abort (user-initiated or timeout)
     if (sdkError instanceof AbortedError || abortController.signal.aborted) {
       if (abortController.signal.reason === 'user-abort') {
-        // User initiated abort — no error event needed, silent return
         return;
       }
-      // Timeout or other abort — emit timeout error
-      socket.emit('error', {
+      emit('error', {
         code: ERROR_CODES.TIMEOUT_ERROR,
         message: '응답 시간이 초과되었습니다. 다시 시도해 주세요.',
       });
       return;
     }
 
-    // Story 4.6 - Task 3.3: Check for session not found error
     if (isResuming && error instanceof Error && isSessionNotFoundError(error)) {
-      socket.emit('error', {
+      emit('error', {
         code: ERROR_CODES.SESSION_NOT_FOUND,
         message: '세션을 찾을 수 없습니다. 새 세션을 시작해주세요.',
       });
       return;
     }
 
-    socket.emit('error', {
+    emit('error', {
       code: ERROR_CODES.CHAT_ERROR,
       message: sdkError.message,
     });
   } finally {
-    // Clear timeout to prevent memory leaks
     if (timeoutId) {
       clearTimeout(timeoutId);
     }

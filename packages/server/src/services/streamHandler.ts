@@ -577,6 +577,14 @@ export class StreamHandler {
     message: ParsedAssistantMessage,
     callbacks: StreamCallbacks
   ): void {
+    // Fallback: extract session_id from assistant message if not yet set
+    const rawSessionId = (message.rawMessage as unknown as { session_id?: string }).session_id;
+    if (rawSessionId && !this.state.sessionId) {
+      this.state.sessionId = rawSessionId;
+      this.state.metadata = this.state.metadata || {};
+      callbacks.onSessionInit?.(rawSessionId, this.state.metadata);
+    }
+
     for (const block of message.contentBlocks) {
       if (block.type === ContentBlockType.THINKING) {
         // Skip if stream_event thinking deltas already handled this (avoids double emission)
@@ -685,6 +693,15 @@ export class StreamHandler {
     message: ParsedStreamEventMessage,
     callbacks: StreamCallbacks
   ): void {
+    // Extract session_id from SDKPartialAssistantMessage (available on all stream_event messages)
+    // The SDK does NOT send a separate 'init' message — session_id is carried on stream_event/assistant/result
+    const rawSessionId = (message.rawMessage as unknown as { session_id?: string }).session_id;
+    if (rawSessionId && !this.state.sessionId) {
+      this.state.sessionId = rawSessionId;
+      this.state.metadata = this.state.metadata || {};
+      callbacks.onSessionInit?.(rawSessionId, this.state.metadata);
+    }
+
     // Process thinking deltas
     if (message.thinkingDelta) {
       this.receivedStreamThinkingDelta = true;
@@ -761,12 +778,20 @@ export class StreamHandler {
     message: ParsedSystemMessage,
     callbacks: StreamCallbacks
   ): void {
-    // Log available tools from system init message for debugging
-    const raw = message.rawMessage as unknown as { subtype?: string; tools?: string[] };
-    if (raw.subtype === 'init' && raw.tools) {
-      console.log(`[StreamHandler] Available tools: ${raw.tools.join(', ')}`);
-      const hasMcpAsk = raw.tools.some(t => t.includes('AskUserQuestion'));
-      console.log(`[StreamHandler] AskUserQuestion available: ${hasMcpAsk}`);
+    // Extract session_id and metadata from system/init message (the FIRST SDK message)
+    const raw = message.rawMessage as unknown as { subtype?: string; tools?: string[]; session_id?: string; model?: string };
+    if (raw.subtype === 'init') {
+      if (raw.tools) {
+        console.log(`[StreamHandler] Available tools: ${raw.tools.join(', ')}`);
+        const hasMcpAsk = raw.tools.some(t => t.includes('AskUserQuestion'));
+        console.log(`[StreamHandler] AskUserQuestion available: ${hasMcpAsk}`);
+      }
+      // system/init is the first SDK message — extract session_id for early URL navigation
+      if (raw.session_id && !this.state.sessionId) {
+        this.state.sessionId = raw.session_id;
+        this.state.metadata = { model: raw.model };
+        callbacks.onSessionInit?.(raw.session_id, this.state.metadata);
+      }
     }
 
     if (message.subtype === 'compact_boundary' && message.compactMetadata) {
