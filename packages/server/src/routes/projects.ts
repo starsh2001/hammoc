@@ -94,6 +94,9 @@ router.post('/', createProjectLimiter, projectController.create);
 // GET /api/projects/bmad-versions - List available BMad method versions
 router.get('/bmad-versions', projectController.bmadVersions);
 
+// DELETE /api/projects/:projectSlug - Delete a project
+router.delete('/:projectSlug', projectController.delete);
+
 // POST /api/projects/validate-path - Validate directory path (rate limited)
 router.post('/validate-path', validatePathLimiter, projectController.validatePath);
 

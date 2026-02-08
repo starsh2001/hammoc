@@ -31,7 +31,7 @@ function ProjectListPageSkeleton() {
 
 export function ProjectListPage() {
   const navigate = useNavigate();
-  const { projects, isLoading, error, fetchProjects, clearError } = useProjectStore();
+  const { projects, isLoading, error, fetchProjects, clearError, deleteProject } = useProjectStore();
   const { logout } = useAuthStore();
   const [showSettings, setShowSettings] = useState(false);
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
@@ -65,6 +65,14 @@ export function ProjectListPage() {
     clearError();
     fetchProjects();
   }, [clearError, fetchProjects]);
+
+  // Handle project delete
+  const handleProjectDelete = useCallback(
+    async (projectSlug: string, deleteFiles?: boolean) => {
+      await deleteProject(projectSlug, deleteFiles);
+    },
+    [deleteProject]
+  );
 
   // Handle new project success - navigate to new session
   const handleNewProjectSuccess = useCallback(
@@ -211,6 +219,7 @@ export function ProjectListPage() {
                 key={project.projectSlug}
                 project={project}
                 onClick={handleProjectClick}
+                onDelete={handleProjectDelete}
               />
             ))}
           </div>

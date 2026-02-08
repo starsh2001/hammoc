@@ -9,7 +9,6 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
-import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import type {
   ProjectInfo,
@@ -424,10 +423,10 @@ class ProjectService {
    * Strategy:
    * 1. Check if project already exists with this path
    * 2. Try to use Claude Code CLI for initialization
-   * 3. Fallback: generate own slug using SHA-256
+   * 3. Fallback: use same path-encoding as Claude Code
    *
    * @param projectPath Original project path
-   * @returns Project slug (hash)
+   * @returns Project slug (path-encoded or existing)
    */
   async initializeClaudeProject(projectPath: string): Promise<string> {
     // Strategy 1: Check if project already exists with this path
@@ -455,11 +454,12 @@ class ProjectService {
       }
     } catch {
       // CLI not available or failed - fall back to self-generation
-      console.warn('Claude CLI not available, using fallback hash generation');
+      console.warn('Claude CLI not available, using fallback path-encoding');
     }
 
-    // Strategy 3: Fallback - generate our own slug
-    const projectSlug = crypto.createHash('sha256').update(projectPath).digest('hex').substring(0, 16);
+    // Strategy 3: Fallback - use same path-encoding as Claude Code
+    // Claude Code encodes project paths by replacing path separators with hyphens
+    const projectSlug = projectPath.replace(/[/\\:]/g, '-').replace(/^-/, '');
 
     const claudeProjectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
 
@@ -542,6 +542,58 @@ class ProjectService {
 
     // Recursively copy template to project
     await this.copyDirRecursive(templateDir, projectPath);
+  }
+
+  /**
+   * Delete a project's session data from ~/.claude/projects/
+   * Optionally also deletes the actual project files on disk.
+   * @param projectSlug Project slug (folder name in ~/.claude/projects/)
+   * @param deleteFiles If true, also delete the project directory on disk
+   * @returns true if deleted successfully
+   */
+  async deleteProject(projectSlug: string, deleteFiles = false): Promise<boolean> {
+    if (!projectSlug || projectSlug.includes('..') || projectSlug.includes('/') || projectSlug.includes('\\')) {
+      return false;
+    }
+
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+
+    // Read originalPath before deleting session data (needed for file deletion)
+    let originalPath: string | undefined;
+    if (deleteFiles) {
+      const indexPath = path.join(projectDir, 'sessions-index.json');
+      try {
+        const content = await fs.readFile(indexPath, 'utf-8');
+        const index = JSON.parse(content);
+        originalPath = index.originalPath || index.entries?.[0]?.projectPath;
+      } catch {
+        // Can't read originalPath — skip file deletion
+      }
+    }
+
+    try {
+      const stat = await fs.stat(projectDir);
+      if (!stat.isDirectory()) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+
+    // Delete session data
+    await fs.rm(projectDir, { recursive: true, force: true });
+
+    // Delete project files on disk if requested
+    if (deleteFiles && originalPath) {
+      try {
+        await fs.rm(originalPath, { recursive: true, force: true });
+      } catch {
+        // Session data already deleted, log but don't fail
+        console.warn(`[projectService] Failed to delete project files at: ${originalPath}`);
+      }
+    }
+
+    return true;
   }
 
   /**

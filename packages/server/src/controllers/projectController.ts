@@ -12,6 +12,7 @@ import {
   CreateProjectRequest,
   ValidatePathRequest,
   BmadVersionsResponse,
+  DeleteProjectResponse,
 } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 
@@ -122,6 +123,50 @@ export const projectController = {
         error: {
           code: 'BMAD_VERSIONS_ERROR',
           message: 'BMad 버전 목록을 가져오는 중 오류가 발생했습니다.',
+        },
+      });
+    }
+  },
+
+  /**
+   * DELETE /api/projects/:projectSlug?deleteFiles=true
+   * Delete a project. Optionally also deletes project files on disk.
+   */
+  async delete(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      const deleteFiles = req.query.deleteFiles === 'true';
+
+      if (!projectSlug) {
+        res.status(400).json({
+          error: {
+            code: 'INVALID_REQUEST',
+            message: '프로젝트 식별자가 필요합니다.',
+          },
+        });
+        return;
+      }
+
+      const success = await projectService.deleteProject(projectSlug, deleteFiles);
+
+      if (!success) {
+        res.status(404).json({
+          error: {
+            code: 'PROJECT_NOT_FOUND',
+            message: '해당 프로젝트를 찾을 수 없습니다.',
+          },
+        });
+        return;
+      }
+
+      const response: DeleteProjectResponse = { success: true };
+      res.json(response);
+    } catch (error) {
+      console.error('[projectController] Error deleting project:', error);
+      res.status(500).json({
+        error: {
+          code: 'PROJECT_DELETE_ERROR',
+          message: '프로젝트 삭제 중 오류가 발생했습니다.',
         },
       });
     }

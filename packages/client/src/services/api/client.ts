@@ -62,6 +62,10 @@ class ApiClient {
       signal: options?.signal,
     });
   }
+
+  async delete<T>(path: string): Promise<T> {
+    return this.request<T>(path, { method: 'DELETE' });
+  }
 }
 
 export const api = new ApiClient({ baseURL: '/api' });

@@ -3,7 +3,7 @@
  * Replaces window.confirm() to avoid blocking the main thread
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 interface ConfirmModalProps {
@@ -15,6 +15,7 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   variant?: 'default' | 'danger';
+  children?: ReactNode;
 }
 
 export function ConfirmModal({
@@ -26,6 +27,7 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
   variant = 'default',
+  children,
 }: ConfirmModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
@@ -110,6 +112,7 @@ export function ConfirmModal({
           >
             {message}
           </p>
+          {children && <div className="mt-3">{children}</div>}
         </div>
 
         {/* Footer */}
