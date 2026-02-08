@@ -5,7 +5,7 @@
  */
 
 import { useRef, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight, CheckCircle, AlertCircle, RefreshCw, Bell, FileText, XOctagon } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, AlertCircle, RefreshCw, Bell, FileText, XOctagon, Database } from 'lucide-react';
 import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { StreamingIndicator } from './StreamingIndicator';
@@ -40,6 +40,8 @@ interface MessageAreaProps {
   streamingSegments?: StreamingSegment[];
   /** Whether currently streaming (for waiting indicator before first segment) */
   isStreaming?: boolean;
+  /** Whether context compaction is in progress */
+  isCompacting?: boolean;
   /** Whether currently loading older messages (for scroll position preservation) */
   isLoadingMore?: boolean;
 }
@@ -147,6 +149,7 @@ export function MessageArea({
   autoScrollOptions,
   streamingSegments = [],
   isStreaming = false,
+  isCompacting = false,
   isLoadingMore = false,
 }: MessageAreaProps) {
   // Include streaming content changes in scroll dependencies for auto-scroll during streaming
@@ -227,9 +230,9 @@ export function MessageArea({
           if (isSystemSegment(seg)) {
             return (
               <div key={`seg-system-${index}`} className="flex justify-center">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-xs border border-amber-200 dark:border-amber-800">
-                  <RefreshCw className="w-3 h-3 animate-spin" aria-hidden="true" />
-                  <span>{seg.message}</span>
+                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
+                  <Database className="w-4 h-4" aria-hidden="true" />
+                  <span>컨텍스트 압축 중...</span>
                 </div>
               </div>
             );
@@ -281,6 +284,10 @@ export function MessageArea({
                   startedAt={seg.toolCall.startedAt}
                   duration={seg.toolCall.duration}
                   output={seg.toolCall.output}
+                  permissionStatus={seg.permissionStatus}
+                  onPermissionRespond={seg.permissionStatus === 'waiting' ? (approved) => {
+                    useChatStore.getState().respondToolPermission(seg.toolCall.id, approved);
+                  } : undefined}
                 />
               </div>
             );
@@ -397,8 +404,29 @@ export function MessageArea({
 
         {/* Waiting indicator: streaming started but no segments received yet */}
         {isStreaming && streamingSegments.length === 0 && (
-          <div className="flex justify-start">
-            <div className="max-w-[80%] bg-white dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
+          isCompacting ? (
+            <div className="flex justify-center">
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
+                <Database className="w-4 h-4 animate-pulse" aria-hidden="true" />
+                <span>컨텍스트 압축 중...</span>
+                <StreamingIndicator />
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-start">
+              <div className="max-w-[80%] bg-white dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
+                <StreamingIndicator />
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Post-compaction indicator: compact_boundary received, waiting for new response */}
+        {isStreaming && isCompacting && streamingSegments.length > 0 && !streamingSegments.some(s => s.type === 'text' && s.content.trim()) && (
+          <div className="flex justify-center">
+            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
+              <Database className="w-4 h-4 animate-pulse" aria-hidden="true" />
+              <span>컨텍스트 압축 완료 — 응답 재생성 중...</span>
               <StreamingIndicator />
             </div>
           </div>

@@ -42,9 +42,9 @@ import { ThinkingBlock } from '../components/ThinkingBlock';
 const COMPACT_MESSAGE_PREFIX = 'This session is being continued from a previous conversation';
 
 function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[]) {
-  // Skip context compaction summary messages
+  // Render context compaction as a simple assistant "Compacted" bubble
   if (message.type === 'user' && typeof message.content === 'string' && message.content.startsWith(COMPACT_MESSAGE_PREFIX)) {
-    return null;
+    return <MessageBubble key={message.id} message={{ ...message, type: 'assistant', content: 'Compacted' }} />;
   }
 
   if (message.type === 'tool_use' && message.toolName === 'AskUserQuestion') {
@@ -132,7 +132,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, completedSessionId, clearCompletedSessionId, clearStreamingSegments } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, completedSessionId, clearCompletedSessionId, clearStreamingSegments } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
 
   // Navigate to the new sessionId when streaming completes (completedSessionId is set by completeStreaming)
@@ -204,19 +204,27 @@ export function ChatPage() {
   // Handle manual compaction
   const handleCompact = useCallback(() => {
     if (!workingDirectory || isStreaming || sessionId === 'new') return;
+    addOptimisticMessage('/compact');
     sendMessage('/compact', {
       workingDirectory,
       sessionId,
       resume: true,
     });
-  }, [sendMessage, workingDirectory, sessionId, isStreaming]);
+  }, [sendMessage, addOptimisticMessage, workingDirectory, sessionId, isStreaming]);
 
   // Fetch messages on mount (only for existing sessions)
+  // After fetch completes, clear any lingering streaming tool segments
+  // (handles new session → real session URL navigation case)
   useEffect(() => {
     if (projectSlug && sessionId && sessionId !== 'new') {
-      fetchMessages(projectSlug, sessionId);
+      fetchMessages(projectSlug, sessionId).then(() => {
+        const chat = useChatStore.getState();
+        if (!chat.isStreaming && chat.streamingSegments.length > 0) {
+          clearStreamingSegments();
+        }
+      });
     }
-  }, [projectSlug, sessionId, fetchMessages]);
+  }, [projectSlug, sessionId, fetchMessages, clearStreamingSegments]);
 
   // Clear messages only on component unmount (not on sessionId change)
   useEffect(() => {
@@ -369,6 +377,7 @@ export function ChatPage() {
             scrollDependencies={[messages]}
             streamingSegments={streamingSegments}
             isStreaming={isStreaming && !!streamingSessionId}
+            isCompacting={isCompacting}
             emptyState={
               !isStreaming && streamingSegments.length === 0 && messages.length === 0 ? (
                 <EmptyState
@@ -506,6 +515,7 @@ export function ChatPage() {
           <MessageArea
             streamingSegments={streamingSegments}
             isStreaming={isStreaming && !!streamingSessionId}
+            isCompacting={isCompacting}
             emptyState={
               !isStreaming && streamingSegments.length === 0 ? (
                 <EmptyState
@@ -561,7 +571,7 @@ export function ChatPage() {
         aria-label="채팅 페이지"
         className="flex-1 flex flex-col min-h-0"
       >
-        <MessageArea scrollDependencies={[messages]} streamingSegments={streamingSegments} isStreaming={isStreaming && !!streamingSessionId} isLoadingMore={isLoadingMore}>
+        <MessageArea scrollDependencies={[messages]} streamingSegments={streamingSegments} isStreaming={isStreaming && !!streamingSessionId} isCompacting={isCompacting} isLoadingMore={isLoadingMore}>
           {/* Load older messages button */}
           {pagination?.hasMore && (
             <div className="flex justify-center py-4">

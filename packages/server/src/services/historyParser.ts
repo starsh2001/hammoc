@@ -127,6 +127,10 @@ function extractTextContent(content: string | ContentBlock[] | undefined): strin
  * @returns Cleaned content showing just the command
  */
 function cleanCommandTags(content: string): string {
+  // Skip local command output (CLI-only messages like "Compacted", "Login successful")
+  if (content.includes('<local-command-stdout>')) {
+    return '';
+  }
   // Check if this is a command message
   const commandNameMatch = content.match(/<command-name>([^<]+)<\/command-name>/);
   if (commandNameMatch) {
@@ -244,11 +248,12 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
         // If user message has text content (not just tool_results), create user message
         if (toolResultBlocks.length === 0) {
           const textContent = extractTextContent(messageContent);
-          if (textContent.trim()) {
+          const cleaned = cleanCommandTags(textContent);
+          if (cleaned.trim()) {
             results.push({
               id: m.uuid,
               type: 'user',
-              content: cleanCommandTags(textContent),
+              content: cleaned,
               timestamp: m.timestamp,
             });
           }
@@ -256,11 +261,12 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
       } else {
         // Simple string content
         const text = extractTextContent(messageContent);
-        if (text.trim()) {
+        const cleaned = cleanCommandTags(text);
+        if (cleaned.trim()) {
           results.push({
             id: m.uuid,
             type: 'user',
-            content: cleanCommandTags(text),
+            content: cleaned,
             timestamp: m.timestamp,
           });
         }
