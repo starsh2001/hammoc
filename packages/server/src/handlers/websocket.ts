@@ -150,7 +150,9 @@ export async function initializeWebSocket(
         await handleChatSend(stream, data, abortController);
       } finally {
         stream.status = 'completed';
-        cleanupStream(stream.sessionId);
+        const endedSessionId = stream.sessionId;
+        cleanupStream(endedSessionId);
+        io.emit('session:stream-change', { sessionId: endedSessionId, active: false });
       }
     });
 
@@ -430,6 +432,9 @@ async function handleChatSend(
         } else {
           emit('session:created', { sessionId: sid, model: metadata?.model });
         }
+
+        // Broadcast stream-active so session lists can update in real-time
+        io.emit('session:stream-change', { sessionId: sid, active: true });
 
         // Disk write is best-effort (don't block streaming)
         sessionService.saveSessionId(workingDirectory, sid).catch(() => {});

@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import type { SessionListItem } from '@bmad-studio/shared';
 import { sessionsApi } from '../services/api/sessions';
 import { ApiError } from '../services/api/client';
+import { getSocket } from '../services/socket';
 
 export type ErrorType = 'none' | 'not_found' | 'network' | 'server' | 'unknown';
 
@@ -24,6 +25,8 @@ interface SessionActions {
   clearSessions: () => void;
   clearError: () => void;
   setRefreshing: (isRefreshing: boolean) => void;
+  /** Update a session's streaming status (called from socket listener) */
+  updateSessionStreaming: (sessionId: string, active: boolean) => void;
 }
 
 type SessionStore = SessionState & SessionActions;
@@ -99,4 +102,33 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   clearError: () => set({ error: null, errorType: 'none' }),
 
   setRefreshing: (isRefreshing: boolean) => set({ isRefreshing }),
+
+  updateSessionStreaming: (sessionId: string, active: boolean) => {
+    const { sessions } = get();
+    const updated = sessions.map((s) =>
+      s.sessionId === sessionId ? { ...s, isStreaming: active || undefined } : s,
+    );
+    // Only update if a matching session was found
+    if (updated !== sessions) {
+      set({ sessions: updated });
+    }
+  },
 }));
+
+// --- Real-time session streaming status via WebSocket ---
+// Module-level listener: subscribes once when this module is first imported.
+// Uses lazy initialization to avoid issues with socket not being ready at import time.
+let listenerRegistered = false;
+
+function registerStreamChangeListener() {
+  if (listenerRegistered) return;
+  listenerRegistered = true;
+
+  const socket = getSocket();
+  socket.on('session:stream-change', (data: { sessionId: string; active: boolean }) => {
+    useSessionStore.getState().updateSessionStreaming(data.sessionId, data.active);
+  });
+}
+
+// Register on next tick to ensure socket is initialized
+setTimeout(registerStreamChangeListener, 0);

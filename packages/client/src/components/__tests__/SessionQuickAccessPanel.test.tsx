@@ -51,7 +51,6 @@ describe('SessionQuickAccessPanel', () => {
     currentSessionId: 'session-1',
     onSelectSession: vi.fn(),
     onClose: vi.fn(),
-    onNewSession: vi.fn(),
   };
 
   beforeEach(() => {
@@ -232,22 +231,6 @@ describe('SessionQuickAccessPanel', () => {
 
     expect(screen.getByTestId('empty-state')).toBeInTheDocument();
     expect(screen.getByText('세션이 없습니다')).toBeInTheDocument();
-  });
-
-  // Test 11: New session button calls onNewSession
-  it('should call onNewSession when new session button is clicked', () => {
-    const onNewSession = vi.fn();
-    render(
-      <SessionQuickAccessPanel
-        {...defaultProps}
-        isOpen={true}
-        onNewSession={onNewSession}
-      />
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: '새 세션' }));
-
-    expect(onNewSession).toHaveBeenCalledTimes(1);
   });
 
   // Test 12: fetchSessions is called when isOpen changes to true

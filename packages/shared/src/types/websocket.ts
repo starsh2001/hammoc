@@ -68,6 +68,7 @@ export interface ServerToClientEvents {
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
   'stream:status': (data: { active: boolean; sessionId: string }) => void;
   'stream:detached': (data: { sessionId: string; reason: string }) => void;
+  'session:stream-change': (data: { sessionId: string; active: boolean }) => void;
   'user:message': (data: { content: string; sessionId: string }) => void;
 }
 
