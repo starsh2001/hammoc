@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, AlertCircle, ChevronRight, ChevronDown, Loader2, Files } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, ChevronRight, ChevronDown, Loader2, Files, ShieldCheck, ShieldX } from 'lucide-react';
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { DiffViewer } from './DiffViewer';
 import { ToolResultRenderer } from './ToolResultRenderer';
@@ -25,6 +25,10 @@ export interface ToolCardProps {
   resultOutput?: string;
   /** Whether the denial was user-initiated (vs tool failure) */
   isUserDenied?: boolean;
+  /** Permission request status (streaming only) */
+  permissionStatus?: 'waiting' | 'approved' | 'denied';
+  /** Callback when user responds to permission request */
+  onPermissionRespond?: (approved: boolean) => void;
 }
 
 /** Real-time elapsed timer for pending tool calls */
@@ -100,6 +104,8 @@ export function ToolCard({
   output,
   resultOutput,
   isUserDenied,
+  permissionStatus,
+  onPermissionRespond,
 }: ToolCardProps) {
   const [showDiffViewer, setShowDiffViewer] = useState(false);
   const [isPathExpanded, setIsPathExpanded] = useState(false);
@@ -255,6 +261,30 @@ export function ToolCard({
           {isError && (
             <div className="mt-2 text-xs text-red-500 border-t border-gray-200 dark:border-gray-600 pt-2 whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
               {output ? output.slice(0, 500) : '알 수 없는 오류'}
+            </div>
+          )}
+
+          {/* Permission approve/deny buttons */}
+          {permissionStatus === 'waiting' && onPermissionRespond && (
+            <div className="mt-2 flex items-center gap-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+              <button
+                type="button"
+                onClick={() => onPermissionRespond(true)}
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 rounded border border-green-200 dark:border-green-800 transition-colors"
+                aria-label="도구 실행 허용"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                Allow
+              </button>
+              <button
+                type="button"
+                onClick={() => onPermissionRespond(false)}
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded border border-red-200 dark:border-red-800 transition-colors"
+                aria-label="도구 실행 거절"
+              >
+                <ShieldX className="w-3.5 h-3.5" aria-hidden="true" />
+                Deny
+              </button>
             </div>
           )}
         </div>

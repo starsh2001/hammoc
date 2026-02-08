@@ -31,6 +31,7 @@ export function useStreaming() {
     setContextUsage,
     updateStreamingSessionId,
     addInteractiveSegment,
+    setToolPermission,
     addSystemSegment,
     updateToolProgress,
     addTaskNotification,
@@ -101,35 +102,31 @@ export function useStreaming() {
         updateStreamingSessionId(data.sessionId);
       }
 
-      // Use getState() for fresh values instead of potentially stale closure values
-      const msgState = useMessageStore.getState();
-      const projectSlug = msgState.currentProjectSlug;
-      const sessId = msgState.currentSessionId;
-
-      // Always add the assistant message from completion data first.
-      // This prevents content loss when fetchMessages returns stale data
-      // (race condition: SDK may not have flushed JSONL to disk yet).
-      if (data.content && data.content.trim() && data.content.trim() !== '(no content)') {
-        msgState.addMessages([{
-          id: data.id,
-          type: 'assistant',
-          content: data.content,
-          timestamp: typeof data.timestamp === 'string'
-            ? data.timestamp
-            : new Date(data.timestamp).toISOString(),
-        }]);
-      }
-
       completeStreaming();
 
       // Background sync: fetch authoritative history (includes tool calls, thinking blocks, etc.)
       // Deferred to allow SDK time to flush JSONL session file to disk.
+      // Streaming segments are kept visible (correct interleaved order) until history loads.
+      // After successful fetch, clear streaming segments to avoid duplication with history.
+      const msgState = useMessageStore.getState();
+      const projectSlug = msgState.currentProjectSlug;
+      const sessId = msgState.currentSessionId;
+
       if (projectSlug && sessId) {
-        setTimeout(() => {
+        const attemptFetch = async (retryMs?: number) => {
           const store = useMessageStore.getState();
-          const currentCount = store.messages.length;
-          store.fetchMessages(projectSlug, sessId, { silent: true, minMessageCount: currentCount });
-        }, 2000);
+          const countBefore = store.messages.length;
+          await store.fetchMessages(projectSlug, sessId, { silent: true, minMessageCount: countBefore });
+          const countAfter = useMessageStore.getState().messages.length;
+          if (countAfter > countBefore) {
+            // History updated — safe to clear streaming segments
+            useChatStore.getState().clearStreamingSegments();
+          } else if (retryMs) {
+            // Stale data (SDK hasn't flushed JSONL yet) — retry once
+            setTimeout(() => attemptFetch(), retryMs);
+          }
+        };
+        setTimeout(() => attemptFetch(3000), 2000);
       }
     };
 
@@ -189,16 +186,8 @@ export function useStreaming() {
         }
       }
 
-      // Default: permission approval card
-      addInteractiveSegment({
-        id: data.id,
-        interactionType: 'permission',
-        toolCall: { id: data.toolCall.id, name: data.toolCall.name, input: data.toolCall.input },
-        choices: [
-          { label: '승인', value: 'approve' },
-          { label: '거절', value: 'reject' },
-        ],
-      });
+      // Default: attach permission to existing tool segment
+      setToolPermission(data.toolCall.id, data.id);
     };
 
     // Handle tool input update (for real-time file path display)
@@ -331,6 +320,7 @@ export function useStreaming() {
     setContextUsage,
     updateStreamingSessionId,
     addInteractiveSegment,
+    setToolPermission,
     addSystemSegment,
     updateToolProgress,
     addTaskNotification,

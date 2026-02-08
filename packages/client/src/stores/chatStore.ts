@@ -56,7 +56,7 @@ export type StreamingSegment =
   | { type: 'text'; content: string }
   | { type: 'thinking'; content: string }
   | { type: 'system'; subtype: 'compact'; message: string }
-  | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error' }
+  | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error'; permissionId?: string; permissionStatus?: 'waiting' | 'approved' | 'denied' }
   | {
       type: 'interactive';
       id: string;
@@ -86,7 +86,7 @@ export function isThinkingSegment(seg: StreamingSegment): seg is { type: 'thinki
 /** Type guard for tool segments */
 export function isToolSegment(
   seg: StreamingSegment
-): seg is { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error' } {
+): seg is { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error'; permissionId?: string; permissionStatus?: 'waiting' | 'approved' | 'denied' } {
   return seg.type === 'tool';
 }
 
@@ -150,6 +150,8 @@ interface ChatState {
   activeModel: string | null;
   /** Global thinking blocks expanded state (all blocks share this) */
   thinkingExpanded: boolean;
+  /** Whether context compaction is in progress */
+  isCompacting: boolean;
 }
 
 interface SendMessageOptions {
@@ -214,6 +216,10 @@ interface ChatActions {
     segmentId: string,
     response: { approved: boolean; value?: string | string[] | Record<string, string | string[]> }
   ) => void;
+  /** Set permission request on a tool segment */
+  setToolPermission: (toolCallId: string, permissionId: string) => void;
+  /** Respond to a tool permission (approve/deny) and emit via WebSocket */
+  respondToolPermission: (toolCallId: string, approved: boolean) => void;
   /** Update a tool call's elapsed time from tool_progress event */
   updateToolProgress: (toolUseId: string, elapsedTimeSeconds: number) => void;
   /** Add a task notification segment */
@@ -244,6 +250,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   selectedModel: '',
   activeModel: null,
   thinkingExpanded: false,
+  isCompacting: false,
   permissionMode: 'default',
   contextUsage: null,
 
@@ -261,7 +268,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
 
     // Set isStreaming true immediately (disables input), but delay the visual "waiting" UI
-    set({ isStreaming: true });
+    // Detect /compact command to show compaction-specific indicator early
+    const isCompactCommand = content.trim() === '/compact';
+    set({ isStreaming: true, ...(isCompactCommand && { isCompacting: true }) });
 
     // Show "waiting" UI after a short delay (natural "reading" feel)
     streamingDelayTimeoutId = setTimeout(() => {
@@ -399,13 +408,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Save sessionId before clearing (for new session navigation)
     const currentSessionId = get().streamingSessionId;
 
-    // Clear all streaming segments. History (fetched via URL-change effect
-    // or deferred fetchMessages) renders identical cards via ToolCard/ThinkingBlock.
+    // Keep ALL streaming segments to preserve interleaved order (text ↔ tool).
+    // Segments will be cleared by clearStreamingSegments() after fetchMessages
+    // loads the authoritative history with correct ordering.
     set({
       isStreaming: false,
+      isCompacting: false,
       streamingSessionId: null,
       streamingMessageId: null,
-      streamingSegments: [],
       streamingStartedAt: null,
       completedSessionId: currentSessionId,
     });
@@ -418,6 +428,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
     set({
       isStreaming: false,
+      isCompacting: false,
       streamingSessionId: null,
       streamingMessageId: null,
       streamingSegments: [],
@@ -486,6 +497,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   addSystemSegment: (message: string) => {
     const segments = get().streamingSegments;
     set({
+      isCompacting: true,
       streamingSegments: [...segments, { type: 'system', subtype: 'compact' as const, message }],
     });
   },
@@ -509,6 +521,43 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         },
       ],
     });
+  },
+
+  setToolPermission: (toolCallId: string, permissionId: string) => {
+    const segments = get().streamingSegments;
+    const idx = segments.findIndex(
+      (seg) => seg.type === 'tool' && seg.toolCall.id === toolCallId
+    );
+    if (idx === -1) return;
+    const updated = [...segments];
+    const seg = updated[idx];
+    if (seg.type === 'tool') {
+      updated[idx] = { ...seg, permissionId, permissionStatus: 'waiting' as const };
+      set({ streamingSegments: updated });
+    }
+  },
+
+  respondToolPermission: (toolCallId: string, approved: boolean) => {
+    const socket = getSocket();
+    const segments = get().streamingSegments;
+    const idx = segments.findIndex(
+      (seg) => seg.type === 'tool' && seg.toolCall.id === toolCallId
+    );
+    if (idx === -1) return;
+    const seg = segments[idx];
+    if (seg.type !== 'tool' || !seg.permissionId) return;
+
+    // Emit permission:respond
+    socket.emit('permission:respond', {
+      requestId: seg.permissionId,
+      approved,
+      interactionType: 'permission' as const,
+    });
+
+    // Update permission status
+    const updated = [...segments];
+    updated[idx] = { ...seg, permissionStatus: approved ? 'approved' as const : 'denied' as const };
+    set({ streamingSegments: updated });
   },
 
   respondToInteractive: (segmentId, response) => {
