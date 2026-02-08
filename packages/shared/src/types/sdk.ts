@@ -31,6 +31,8 @@ export interface ChatOptions {
   model?: string;
   /** Session ID to resume (pass the session ID string to resume) */
   resume?: string;
+  /** Pre-allocated session ID for new sessions (must be a valid UUID) */
+  sessionId?: string;
   /** Image attachments to include in the message (Story 5.5) */
   images?: ImageAttachment[];
 }

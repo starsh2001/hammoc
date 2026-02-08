@@ -84,17 +84,11 @@ export const sessionController = {
         offset,
       });
 
-      if (!result) {
-        res.status(SESSION_ERRORS.SESSION_NOT_FOUND.httpStatus).json({
-          error: {
-            code: SESSION_ERRORS.SESSION_NOT_FOUND.code,
-            message: SESSION_ERRORS.SESSION_NOT_FOUND.message,
-          },
-        });
-        return;
-      }
-
-      const response: HistoryMessagesResponse = result;
+      // Return empty messages for non-existent sessions (e.g., pre-allocated UUID with no messages yet)
+      const response: HistoryMessagesResponse = result ?? {
+        messages: [],
+        pagination: { total: 0, limit, offset, hasMore: false },
+      };
       res.json(response);
     } catch {
       res.status(SESSION_ERRORS.SESSION_PARSE_ERROR.httpStatus).json({

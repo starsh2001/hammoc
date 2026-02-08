@@ -21,6 +21,7 @@ import type { Attachment, HistoryMessage } from '@bmad-studio/shared';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { getSocket } from '../services/socket';
+import { generateUUID } from '../utils/uuid';
 import { ChatHeader } from '../components/ChatHeader';
 import { MessageArea } from '../components/MessageArea';
 import { InputArea } from '../components/InputArea';
@@ -133,36 +134,8 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, completedSessionId, clearCompletedSessionId, clearStreamingSegments } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, clearStreamingSegments } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
-
-  // Navigate to the real session URL as soon as streamingSessionId is known
-  // (fires when session:created is received — before streaming completes)
-  // This ensures the URL has the real sessionId if the user refreshes mid-stream.
-  useEffect(() => {
-    if (
-      sessionId === 'new' &&
-      streamingSessionId &&
-      streamingSessionId !== 'pending' &&
-      projectSlug
-    ) {
-      navigate(`/project/${projectSlug}/session/${streamingSessionId}`, { replace: true });
-    }
-  }, [sessionId, streamingSessionId, projectSlug, navigate]);
-
-  // Fallback: navigate on completion if URL is still /new (e.g., session:created was missed)
-  useEffect(() => {
-    if (
-      sessionId === 'new' &&
-      completedSessionId &&
-      completedSessionId !== 'pending' &&
-      projectSlug
-    ) {
-      const targetSessionId = completedSessionId;
-      clearCompletedSessionId();
-      navigate(`/project/${projectSlug}/session/${targetSessionId}`, { replace: true });
-    }
-  }, [sessionId, completedSessionId, projectSlug, navigate, clearCompletedSessionId]);
 
   // Get working directory from project
   const workingDirectory = useMemo(() => {
@@ -198,11 +171,12 @@ export function ChatPage() {
       }));
       // Add user message immediately (optimistic UI)
       addOptimisticMessage(content, images);
-      // Send to server
+      // Send to server — sessionId is always a UUID (pre-allocated),
+      // resume when messages already exist in this session
       sendMessage(content, {
         workingDirectory,
-        sessionId: sessionId !== 'new' ? sessionId : undefined,
-        resume: sessionId !== 'new',
+        sessionId,
+        resume: messages.length > 0,
         attachments,
       });
     },
@@ -218,7 +192,7 @@ export function ChatPage() {
 
   // Handle manual compaction
   const handleCompact = useCallback(() => {
-    if (!workingDirectory || isStreaming || sessionId === 'new') return;
+    if (!workingDirectory || isStreaming || messages.length === 0) return;
     addOptimisticMessage('/compact');
     sendMessage('/compact', {
       workingDirectory,
@@ -230,11 +204,36 @@ export function ChatPage() {
   // Fetch messages on mount (only for existing sessions)
   // After fetch completes, clear any lingering streaming tool segments
   // (handles new session → real session URL navigation case)
+  // If a background stream was restored during fetch, trim the last
+  // assistant message to avoid duplication with buffer replay.
   useEffect(() => {
-    if (projectSlug && sessionId && sessionId !== 'new') {
+    if (projectSlug && sessionId) {
       fetchMessages(projectSlug, sessionId).then(() => {
         const chat = useChatStore.getState();
-        if (!chat.isStreaming && chat.streamingSegments.length > 0) {
+        if (chat.isStreaming) {
+          // Only trim last assistant message when buffer replay contains text
+          // content (assistant is generating). During compact-only streams the
+          // buffer has no text chunks, so trimming would remove legitimate history.
+          const hasTextContent = chat.streamingSegments.some(
+            (seg) => seg.type === 'text',
+          );
+          if (hasTextContent) {
+            const msgs = useMessageStore.getState().messages;
+            for (let i = msgs.length - 1; i >= 0; i--) {
+              if (msgs[i].type === 'assistant') {
+                useMessageStore.setState({ messages: msgs.slice(0, i) });
+                break;
+              }
+            }
+          }
+          // If messages are empty during active streaming (SDK may be rewriting
+          // JSONL during compaction), schedule a retry to pick up flushed history
+          if (useMessageStore.getState().messages.length === 0) {
+            setTimeout(() => {
+              useMessageStore.getState().fetchMessages(projectSlug, sessionId, { silent: true });
+            }, 3000);
+          }
+        } else if (chat.streamingSegments.length > 0) {
           clearStreamingSegments();
         }
       });
@@ -250,7 +249,7 @@ export function ChatPage() {
   // Must also handle case where socket connects AFTER this effect runs (fresh page load)
   // Skip if already streaming (e.g., navigated from /new to real sessionId mid-stream)
   useEffect(() => {
-    if (!sessionId || sessionId === 'new') return;
+    if (!sessionId) return;
 
     const socket = getSocket();
     const emitJoin = () => {
@@ -306,7 +305,8 @@ export function ChatPage() {
     if (confirmModal.action === 'newSession') {
       clearMessages();
       clearStreamingSegments();
-      navigate(`/project/${projectSlug}/session/new`);
+      const newSessionId = generateUUID();
+      navigate(`/project/${projectSlug}/session/${newSessionId}`);
     } else if (confirmModal.action === 'switchSession' && confirmModal.targetSessionId) {
       clearMessages();
       clearStreamingSegments();
@@ -348,7 +348,8 @@ export function ChatPage() {
 
     clearMessages();
     clearStreamingSegments();
-    navigate(`/project/${projectSlug}/session/new`);
+    const newSessionId = generateUUID();
+    navigate(`/project/${projectSlug}/session/${newSessionId}`);
   }, [clearMessages, clearStreamingSegments, navigate, projectSlug]);
 
   const handleCancelConfirm = useCallback(() => {
@@ -397,58 +398,6 @@ export function ChatPage() {
       variant="danger"
     />
   );
-
-  // New session state
-  if (sessionId === 'new') {
-    return (
-      <div
-        data-testid="chat-page"
-        className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
-      >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} />
-        <main
-          role="main"
-          aria-label="채팅 페이지"
-          className="flex-1 flex flex-col min-h-0"
-        >
-          <MessageArea
-            scrollDependencies={[messages]}
-            streamingSegments={streamingSegments}
-            isStreaming={isStreaming && !!streamingSessionId}
-            isCompacting={isCompacting}
-            emptyState={
-              !isStreaming && streamingSegments.length === 0 && messages.length === 0 ? (
-                <EmptyState
-                  title="새 세션"
-                  description="Claude와 새 대화를 시작하세요."
-                />
-              ) : undefined
-            }
-          >
-            {/* Show user messages in new session too */}
-            {messages.map((msg, idx) => renderHistoryMessage(msg, idx, messages))}
-          </MessageArea>
-        </main>
-        <InputArea>
-          <ChatInput
-            onSend={handleSendMessage}
-            disabled={isStreaming}
-            isStreaming={isStreaming}
-            onAbort={handleAbort}
-            placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
-            commands={commands}
-            permissionMode={permissionMode}
-            onPermissionModeChange={setPermissionMode}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            activeModel={activeModel}
-          />
-        </InputArea>
-        {sessionPanel}
-        {confirmModalElement}
-      </div>
-    );
-  }
 
   // Loading state
   if (isLoading) {
@@ -557,8 +506,8 @@ export function ChatPage() {
             emptyState={
               !isStreaming && streamingSegments.length === 0 ? (
                 <EmptyState
-                  title="메시지가 없습니다"
-                  description="이 세션에 저장된 메시지가 없습니다."
+                  title="새 세션"
+                  description="Claude와 새 대화를 시작하세요."
                 />
               ) : undefined
             }

@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import type { HistoryMessage, PaginationInfo, ImageAttachment } from '@bmad-studio/shared';
 import { sessionsApi } from '../services/api/sessions';
 import { ApiError } from '../services/api/client';
+import { useChatStore } from './chatStore';
 
 interface MessageState {
   messages: HistoryMessage[];
@@ -85,6 +86,15 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         }
         return msg;
       });
+
+      // Guard: don't overwrite optimistic messages with stale empty response
+      // while streaming is active (buffer replay may have added messages
+      // between request send and response arrival)
+      const currentMessages = get().messages;
+      if (messagesWithImages.length < currentMessages.length && useChatStore.getState().isStreaming) {
+        set({ isLoading: false });
+        return;
+      }
 
       set({
         messages: messagesWithImages,
