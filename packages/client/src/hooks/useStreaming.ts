@@ -69,6 +69,23 @@ export function useStreaming() {
   useEffect(() => {
     const socket = getSocket();
 
+    // Handle user:message from buffer replay (restores the user's sent message
+    // when reconnecting before SDK has flushed the JSONL file)
+    const handleUserMessage = (data: { content: string; sessionId: string }) => {
+      if (!data.content) return;
+      const msgs = useMessageStore.getState().messages;
+      // Add if not already present as the last user message (handles both
+      // empty store and existing history where JSONL hasn't flushed the latest message)
+      const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
+      if (!lastUserMsg || lastUserMsg.content !== data.content) {
+        useMessageStore.getState().addOptimisticMessage(data.content);
+      }
+      // Detect /compact command and restore compacting indicator
+      if (data.content.trim().startsWith('/compact')) {
+        useChatStore.setState({ isCompacting: true });
+      }
+    };
+
     // Handle incoming thinking chunks
     const handleThinkingChunk = (data: { content: string }) => {
       const state = useChatStore.getState();
@@ -250,6 +267,30 @@ export function useStreaming() {
         // Clear seen permissions so replayed permission:request events are processed
         seenPermissionIds.current.clear();
         restoreStreaming(data.sessionId);
+        // Trim the last assistant message from history to avoid duplication
+        // with buffer replay (which provides the complete streaming version)
+        trimLastAssistantMessage();
+      }
+    };
+
+    // Remove the last assistant message from the message store.
+    // Called when restoring a background stream to prevent overlap between
+    // fetched history (JSONL) and replayed buffer events.
+    const trimLastAssistantMessage = () => {
+      const msgs = useMessageStore.getState().messages;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].type === 'assistant') {
+          useMessageStore.setState({ messages: msgs.slice(0, i) });
+          break;
+        }
+      }
+    };
+
+    // Handle stream:detached — another browser took over this stream
+    const handleStreamDetached = () => {
+      if (useChatStore.getState().isStreaming) {
+        addSystemSegment('다른 브라우저에서 이 세션에 연결되어 실시간 스트리밍이 중단되었습니다.', 'info');
+        completeStreaming();
       }
     };
 
@@ -258,11 +299,14 @@ export function useStreaming() {
       // Keep streaming state - wait for reconnect
     };
 
-    // Handle successful reconnection — probe for active background stream
+    // Handle successful reconnection — re-join session mid-stream.
+    // Initial background-stream probe is handled by ChatPage's emitJoin,
+    // so this only fires for genuine reconnections while already streaming.
     const handleReconnect = () => {
+      if (!useChatStore.getState().isStreaming) return;
       const sessionId = useChatStore.getState().streamingSessionId
         || useMessageStore.getState().currentSessionId;
-      if (sessionId && sessionId !== 'new' && sessionId !== 'pending') {
+      if (sessionId && sessionId !== 'pending') {
         socket.emit('session:join', sessionId);
       }
     };
@@ -280,6 +324,7 @@ export function useStreaming() {
     };
 
     // Register socket event listeners
+    socket.on('user:message', handleUserMessage);
     socket.on('session:created', handleSessionInit);
     socket.on('session:resumed', handleSessionInit);
     socket.on('message:chunk', handleChunk);
@@ -296,6 +341,7 @@ export function useStreaming() {
     socket.on('tool:summary', handleToolSummary);
     socket.on('result:error', handleResultError);
     socket.on('stream:status', handleStreamStatus);
+    socket.on('stream:detached', handleStreamDetached);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect', handleReconnect);
     socket.on('error', handleError);
@@ -306,6 +352,7 @@ export function useStreaming() {
 
     // Cleanup
     return () => {
+      socket.off('user:message', handleUserMessage);
       socket.off('session:created', handleSessionInit);
       socket.off('session:resumed', handleSessionInit);
       socket.off('message:chunk', handleChunk);
@@ -322,6 +369,7 @@ export function useStreaming() {
       socket.off('tool:summary', handleToolSummary);
       socket.off('result:error', handleResultError);
       socket.off('stream:status', handleStreamStatus);
+      socket.off('stream:detached', handleStreamDetached);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect', handleReconnect);
       socket.off('error', handleError);

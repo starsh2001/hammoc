@@ -27,7 +27,6 @@ describe('chatStore interactive segments', () => {
       streamingStartedAt: new Date(),
       permissionMode: 'default',
       contextUsage: null,
-      completedSessionId: null,
     });
   });
 

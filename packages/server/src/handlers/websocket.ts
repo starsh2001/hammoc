@@ -186,8 +186,9 @@ export async function initializeWebSocket(
         return;
       }
 
-      // Detach previous socket if different
+      // Detach previous socket if different — notify it before replacing
       if (stream.socketRef.current && stream.socketRef.current.id !== socket.id) {
+        stream.socketRef.current.emit('stream:detached', { sessionId, reason: 'another-client' });
         socketToSession.delete(stream.socketRef.current.id);
       }
 
@@ -323,6 +324,10 @@ async function handleChatSend(
     return;
   }
 
+  // Buffer the user's message so reconnecting clients can display it
+  // (SDK may not have written the JSONL file yet at reconnect time)
+  emit('user:message', { content, sessionId: sessionId || '' });
+
   const isResuming = resume && sessionId;
   const sessionService = new SessionService();
 
@@ -333,7 +338,7 @@ async function handleChatSend(
     const chatService = new ChatService({ workingDirectory, permissionMode });
 
     const chatOptions = {
-      ...(isResuming ? { resume: sessionId } : {}),
+      ...(isResuming ? { resume: sessionId } : { sessionId }),
       abortController,
       model,
       images,
