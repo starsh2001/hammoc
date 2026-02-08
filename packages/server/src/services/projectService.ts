@@ -205,24 +205,35 @@ class ProjectService {
         return null;
       }
 
-      const sessionCount = entries.length;
+      // Count sessions from index entries + unindexed .jsonl files
+      const indexedSessionIds = new Set(entries.map((e) => e.sessionId));
+      let sessionCount = entries.length;
 
-      // Calculate lastModified from entries or use current time as fallback
-      let lastModified: string;
-      if (entries.length > 0) {
-        const modifiedDates = entries
-          .filter((e) => e.modified)
-          .map((e) => new Date(e.modified!).getTime());
+      // Collect modification timestamps from index entries
+      const modifiedTimestamps = entries
+        .filter((e) => e.modified)
+        .map((e) => new Date(e.modified!).getTime());
 
-        if (modifiedDates.length > 0) {
-          lastModified = new Date(Math.max(...modifiedDates)).toISOString();
-        } else {
-          // Use file stat as fallback
-          const stat = await fs.stat(indexPath);
-          lastModified = stat.mtime.toISOString();
+      // Scan for .jsonl files not in index (BMad-Studio sessions, SDK not yet synced)
+      // and collect their mtimes for lastModified calculation
+      try {
+        const files = await fs.readdir(projectPath);
+        for (const f of files) {
+          if (!f.endsWith('.jsonl') || indexedSessionIds.has(f.replace('.jsonl', ''))) continue;
+          sessionCount++;
+          const fileStat = await fs.stat(path.join(projectPath, f));
+          modifiedTimestamps.push(fileStat.mtime.getTime());
         }
+      } catch {
+        // Failed to read directory - use index data only
+      }
+
+      // Calculate lastModified
+      let lastModified: string;
+      if (modifiedTimestamps.length > 0) {
+        lastModified = new Date(Math.max(...modifiedTimestamps)).toISOString();
       } else {
-        // No entries, use file stat
+        // Fallback to index file mtime
         const stat = await fs.stat(indexPath);
         lastModified = stat.mtime.toISOString();
       }
@@ -542,6 +553,32 @@ class ProjectService {
 
     // Recursively copy template to project
     await this.copyDirRecursive(templateDir, projectPath);
+  }
+
+  /**
+   * Setup BMad for an existing project by slug
+   * @param projectSlug Project slug (folder name in ~/.claude/projects/)
+   * @param version BMad version to install (defaults to latest)
+   * @returns Updated ProjectInfo with isBmadProject = true
+   */
+  async setupBmadForProject(projectSlug: string, version?: string): Promise<ProjectInfo> {
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+    const info = await this.parseSessionsIndex(projectDir, projectSlug);
+    if (!info) {
+      const err = new Error('프로젝트를 찾을 수 없습니다.');
+      (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
+      throw err;
+    }
+
+    const resolvedVersion = version || await this.getLatestBmadVersion();
+    if (!resolvedVersion) {
+      const err = new Error('사용 가능한 BMad 버전이 없습니다.');
+      (err as NodeJS.ErrnoException).code = 'NO_BMAD_VERSION';
+      throw err;
+    }
+
+    await this.setupBmadCore(info.originalPath, resolvedVersion);
+    return { ...info, isBmadProject: true };
   }
 
   /**

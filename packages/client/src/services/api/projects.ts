@@ -6,6 +6,7 @@
 
 import { api } from './client';
 import type {
+  ProjectInfo,
   ProjectListResponse,
   CreateProjectRequest,
   CreateProjectResponse,
@@ -29,6 +30,10 @@ export const projectsApi = {
   /** Validate a directory path */
   validatePath: (path: string, options?: { signal?: AbortSignal }) =>
     api.post<ValidatePathResponse>('/projects/validate-path', { path }, options),
+
+  /** Setup BMad for an existing non-BMad project */
+  setupBmad: (projectSlug: string, bmadVersion?: string) =>
+    api.post<{ project: ProjectInfo }>(`/projects/${projectSlug}/setup-bmad`, { bmadVersion }),
 
   /** List available BMad method versions */
   bmadVersions: () => api.get<BmadVersionsResponse>('/projects/bmad-versions'),
