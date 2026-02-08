@@ -732,7 +732,7 @@ describe('ProjectService', () => {
       expect(result).toBe('existing-slug');
     });
 
-    it('should create new project with fallback hash when CLI unavailable', async () => {
+    it('should create new project with path-encoded slug when CLI unavailable', async () => {
       // Mock no existing project
       mockFs.access.mockRejectedValue({ code: 'ENOENT' });
       mockFs.mkdir.mockResolvedValue(undefined);
@@ -755,8 +755,8 @@ describe('ProjectService', () => {
 
       const result = await projectService.initializeClaudeProject('/Users/test/new-project');
 
-      // Should return a 16-character hash
-      expect(result).toHaveLength(16);
+      // Should return path-encoded slug (same format as Claude Code)
+      expect(result).toBe('Users-test-new-project');
       expect(mockFs.mkdir).toHaveBeenCalled();
       expect(mockFs.writeFile).toHaveBeenCalled();
     });

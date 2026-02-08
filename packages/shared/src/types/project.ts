@@ -124,6 +124,14 @@ export interface ValidatePathRequest {
 }
 
 /**
+ * Response for DELETE /api/projects/:projectSlug
+ */
+export interface DeleteProjectResponse {
+  /** Whether deletion was successful */
+  success: boolean;
+}
+
+/**
  * Response for POST /api/projects/validate-path
  * [Source: Story 3.6 - Task 1]
  */
