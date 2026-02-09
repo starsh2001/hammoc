@@ -20,7 +20,8 @@ import { filterCommands } from './CommandPalette';
 import { PermissionModeSelector } from './PermissionModeSelector';
 import { ModelSelector } from './ModelSelector';
 import { BmadAgentButton } from './BmadAgentButton';
-import type { SlashCommand, Attachment, PermissionMode } from '@bmad-studio/shared';
+import { ContextUsageDisplay } from './ContextUsageDisplay';
+import type { SlashCommand, Attachment, PermissionMode, ChatUsage } from '@bmad-studio/shared';
 import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
 
 // Permission mode color mapping for focus ring and send button
@@ -99,10 +100,16 @@ interface ChatInputProps {
   isBmadProject?: boolean;
   /** Callback when a BMad agent is selected */
   onAgentSelect?: (agentId: string) => void;
-  /** Recently used agent commands for quick access */
-  recentAgentCommands?: string[];
   /** External trigger to open agent list (increment to open) */
   agentListOpenTrigger?: number;
+  /** Currently active agent command (for checkmark indicator) */
+  activeAgentCommand?: string | null;
+  /** Context usage data for donut indicator */
+  contextUsage?: ChatUsage | null;
+  /** Callback for new session (critical usage) */
+  onNewSession?: () => void;
+  /** Callback for context compaction */
+  onCompact?: () => void;
 }
 
 export function ChatInput({
@@ -119,8 +126,11 @@ export function ChatInput({
   activeModel,
   isBmadProject,
   onAgentSelect,
-  recentAgentCommands,
   agentListOpenTrigger,
+  activeAgentCommand,
+  contextUsage,
+  onNewSession,
+  onCompact,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -544,13 +554,69 @@ export function ChatInput({
         tabIndex={-1}
       />
 
+      {/* Textarea row */}
       <div
-        className={`flex items-center gap-2 ${isDragging ? 'border-2 border-dashed border-blue-500 rounded-lg p-1' : ''}`}
+        className={`relative ${isDragging ? 'border-2 border-dashed border-blue-500 rounded-lg p-1' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         data-testid="chat-input-area"
       >
+        {/* Command palette (Story 5.1) */}
+        {showCommands && commands.length > 0 && (
+          <CommandPalette
+            commands={commands}
+            filter={commandFilter}
+            selectedIndex={selectedIndex}
+            onSelect={handleCommandSelect}
+            onClose={() => setShowCommands(false)}
+          />
+        )}
+
+        <textarea
+          ref={textareaRef}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          disabled={disabled}
+          placeholder={placeholder}
+          role={showCommands ? 'combobox' : undefined}
+          aria-label="메시지 입력"
+          aria-describedby="input-hint"
+          aria-disabled={disabled}
+          aria-expanded={showCommands ? true : undefined}
+          aria-controls={showCommands ? 'command-palette' : undefined}
+          aria-activedescendant={showCommands && filteredCommandsCount > 0 ? `command-option-${selectedIndex}` : undefined}
+          aria-autocomplete={showCommands ? 'list' : undefined}
+          rows={1}
+          className={`w-full resize-none px-4 py-2
+                     bg-white dark:bg-gray-800
+                     border border-gray-300 dark:border-gray-600
+                     rounded-lg
+                     text-gray-900 dark:text-gray-100
+                     placeholder-gray-500 dark:placeholder-gray-400
+                     focus:outline-none focus:ring-2 ${modeColors.ring}
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     ${needsScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
+          style={{ minHeight: '22px', maxHeight: '120px' }}
+        />
+        <span id="input-hint" className="sr-only">
+          Enter로 전송, Shift+Enter로 줄바꿈
+        </span>
+      </div>
+
+      {/* Button row */}
+      <div className="flex items-center gap-2 mt-1">
+        {/* Permission mode selector (Story 5.2) */}
+        {permissionMode && onPermissionModeChange && (
+          <PermissionModeSelector
+            mode={permissionMode}
+            onModeChange={onPermissionModeChange}
+            disabled={isStreaming}
+          />
+        )}
+
         {/* Model selector */}
         {selectedModel !== undefined && onModelChange && (
           <ModelSelector
@@ -558,15 +624,6 @@ export function ChatInput({
             onModelChange={onModelChange}
             disabled={isStreaming}
             activeModel={activeModel}
-          />
-        )}
-
-        {/* Permission mode selector (Story 5.2) */}
-        {permissionMode && onPermissionModeChange && (
-          <PermissionModeSelector
-            mode={permissionMode}
-            onModeChange={onPermissionModeChange}
-            disabled={isStreaming}
           />
         )}
 
@@ -579,55 +636,19 @@ export function ChatInput({
               onAgentSelect(agentCommand);
             }}
             disabled={isStreaming}
-            recentAgentCommands={recentAgentCommands}
             openTrigger={agentListOpenTrigger}
+            activeAgentCommand={activeAgentCommand}
           />
         )}
 
-        <div className="flex-1 relative">
-          {/* Command palette (Story 5.1) */}
-          {showCommands && commands.length > 0 && (
-            <CommandPalette
-              commands={commands}
-              filter={commandFilter}
-              selectedIndex={selectedIndex}
-              onSelect={handleCommandSelect}
-              onClose={() => setShowCommands(false)}
-            />
-          )}
+        <div className="flex-1" />
 
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            disabled={disabled}
-            placeholder={placeholder}
-            role={showCommands ? 'combobox' : undefined}
-            aria-label="메시지 입력"
-            aria-describedby="input-hint"
-            aria-disabled={disabled}
-            aria-expanded={showCommands ? true : undefined}
-            aria-controls={showCommands ? 'command-palette' : undefined}
-            aria-activedescendant={showCommands && filteredCommandsCount > 0 ? `command-option-${selectedIndex}` : undefined}
-            aria-autocomplete={showCommands ? 'list' : undefined}
-            rows={1}
-            className={`w-full resize-none px-4 py-2
-                       bg-white dark:bg-gray-800
-                       border border-gray-300 dark:border-gray-600
-                       rounded-lg
-                       text-gray-900 dark:text-gray-100
-                       placeholder-gray-500 dark:placeholder-gray-400
-                       focus:outline-none focus:ring-2 ${modeColors.ring}
-                       disabled:opacity-50 disabled:cursor-not-allowed
-                       ${needsScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
-            style={{ minHeight: '22px', maxHeight: '120px' }}
-          />
-          <span id="input-hint" className="sr-only">
-            Enter로 전송, Shift+Enter로 줄바꿈
-          </span>
-        </div>
+        {/* Context usage donut indicator (always visible) */}
+        <ContextUsageDisplay
+          contextUsage={contextUsage ?? null}
+          onNewSession={onNewSession}
+          onCompact={onCompact}
+        />
 
         {/* Attach button (Story 5.5) */}
         <button
@@ -635,7 +656,7 @@ export function ChatInput({
           onClick={() => fileInputRef.current?.click()}
           disabled={isAttachDisabled}
           aria-label="이미지 첨부"
-          className="p-2 rounded-lg flex-shrink-0 ml-0.5 -mt-1.5
+          className="p-2 rounded-lg flex-shrink-0
                      text-gray-500 dark:text-gray-400
                      hover:text-gray-700 dark:hover:text-gray-200
                      hover:bg-gray-100 dark:hover:bg-gray-700
@@ -652,7 +673,7 @@ export function ChatInput({
             type="button"
             onClick={onAbort}
             aria-label="중단"
-            className="p-2 rounded-lg flex-shrink-0 -mt-1.5
+            className="p-2 rounded-lg flex-shrink-0
                        bg-red-600 hover:bg-red-700
                        dark:bg-red-500 dark:hover:bg-red-600
                        text-white
@@ -668,7 +689,7 @@ export function ChatInput({
             onClick={handleButtonClick}
             disabled={isButtonDisabled}
             aria-label="전송"
-            className={`p-2 rounded-lg flex-shrink-0 -mt-1.5
+            className={`p-2 rounded-lg flex-shrink-0
                        ${modeColors.button}
                        text-white
                        disabled:opacity-50 disabled:cursor-not-allowed

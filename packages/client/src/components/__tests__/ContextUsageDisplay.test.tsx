@@ -21,18 +21,19 @@ function createUsage(overrides: Partial<ChatUsage> = {}): ChatUsage {
 }
 
 describe('ContextUsageDisplay', () => {
-  it('renders nothing when contextUsage is null', () => {
-    const { container } = render(
+  it('renders 0% donut when contextUsage is null', () => {
+    render(
       <ContextUsageDisplay contextUsage={null} />
     );
-    expect(container.firstChild).toBeNull();
+    expect(screen.getByTestId('context-usage-display')).toBeInTheDocument();
+    expect(screen.getByTestId('context-usage-ring')).toBeInTheDocument();
   });
 
-  it('renders nothing when contextWindow is 0', () => {
-    const { container } = render(
+  it('renders 0% donut when contextWindow is 0', () => {
+    render(
       <ContextUsageDisplay contextUsage={createUsage({ contextWindow: 0 })} />
     );
-    expect(container.firstChild).toBeNull();
+    expect(screen.getByTestId('context-usage-display')).toBeInTheDocument();
   });
 
   it('shows green ring stroke when under 50%', () => {

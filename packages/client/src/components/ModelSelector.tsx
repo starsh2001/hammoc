@@ -162,7 +162,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={`
-          w-[40px] h-[40px] self-center -mt-1.5 rounded-lg transition-all
+          w-[40px] h-[40px] -mt-1.5 rounded-lg transition-all
           flex items-center justify-center
           border border-gray-300 dark:border-gray-600
           bg-white dark:bg-gray-800
@@ -183,7 +183,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
         <div
           role="listbox"
           aria-label="모델 선택"
-          className="absolute bottom-full left-0 mb-1 w-64 max-h-80 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
+          className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
         >
           {MODEL_GROUPS.map((group, gi) => (
             <div key={group.label}>

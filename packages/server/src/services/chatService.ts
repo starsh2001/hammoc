@@ -41,20 +41,22 @@ function buildWorkspaceContext(cwd: string): string {
   // --- Git status (same format as VS Code) ---
   let gitSection = '';
   try {
-    const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd, encoding: 'utf-8', timeout: 3000 }).trim();
+    const stdio: ['pipe', 'pipe', 'pipe'] = ['pipe', 'pipe', 'pipe'];
+    const execOpts = { cwd, encoding: 'utf-8' as const, timeout: 3000, stdio };
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', execOpts).toString().trim();
     let mainBranch = 'main';
     try {
-      execSync('git rev-parse --verify refs/heads/main', { cwd, encoding: 'utf-8', timeout: 3000 });
+      execSync('git rev-parse --verify refs/heads/main', execOpts);
       mainBranch = 'main';
     } catch {
       try {
-        execSync('git rev-parse --verify refs/heads/master', { cwd, encoding: 'utf-8', timeout: 3000 });
+        execSync('git rev-parse --verify refs/heads/master', execOpts);
         mainBranch = 'master';
       } catch {
         // fallback
       }
     }
-    const gitStatus = execSync('git status --short', { cwd, encoding: 'utf-8', timeout: 5000 }).trim();
+    const gitStatus = execSync('git status --short', { ...execOpts, timeout: 5000 }).toString().trim();
     const statusLines = gitStatus ? gitStatus.split('\n') : [];
     const truncatedStatus = statusLines.length > 30
       ? [...statusLines.slice(0, 30), `... and ${statusLines.length - 30} more files`].join('\n')
@@ -188,7 +190,7 @@ export class ChatService {
       }
     });
 
-    console.log(`[chatService] SDK query cwd="${queryOptions.cwd}", resume="${queryOptions.resume}", model="${queryOptions.model}"`);
+    console.log(`[chatService] SDK query cwd="${queryOptions.cwd}"${queryOptions.resume ? `, resume="${queryOptions.resume}"` : ''}${queryOptions.model ? `, model="${queryOptions.model}"` : ''}${queryOptions.sessionId ? `, sessionId="${queryOptions.sessionId}"` : ''}`);
 
     // Use AsyncIterable prompt when images are present (Story 5.5)
     const { images } = options;
