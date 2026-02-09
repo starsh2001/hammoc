@@ -100,6 +100,9 @@ router.post('/:projectSlug/setup-bmad', createProjectLimiter, projectController.
 // DELETE /api/projects/:projectSlug - Delete a project
 router.delete('/:projectSlug', projectController.delete);
 
+// PATCH /api/projects/:projectSlug/settings - Update project settings
+router.patch('/:projectSlug/settings', projectController.updateSettings);
+
 // POST /api/projects/validate-path - Validate directory path (rate limited)
 router.post('/validate-path', validatePathLimiter, projectController.validatePath);
 

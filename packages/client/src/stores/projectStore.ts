@@ -25,6 +25,8 @@ interface ProjectState {
   // BMad versions
   bmadVersions: string[];
   isFetchingVersions: boolean;
+  // Hidden projects (server-based via .bmad-studio/settings.json)
+  showHidden: boolean;
 }
 
 interface ProjectActions {
@@ -39,6 +41,10 @@ interface ProjectActions {
   clearPathValidation: () => void;
   abortCreation: () => void;
   fetchBmadVersions: () => Promise<void>;
+  // Hidden projects (server-based)
+  hideProject: (projectSlug: string) => Promise<void>;
+  unhideProject: (projectSlug: string) => Promise<void>;
+  setShowHidden: (show: boolean) => void;
 }
 
 type ProjectStore = ProjectState & ProjectActions;
@@ -59,6 +65,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   // BMad versions
   bmadVersions: [],
   isFetchingVersions: false,
+  // Hidden projects
+  showHidden: false,
 
   // Actions
   fetchProjects: async () => {
@@ -184,4 +192,44 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({ bmadVersions: [], isFetchingVersions: false });
     }
   },
+
+  hideProject: async (projectSlug: string) => {
+    // Optimistic update
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.projectSlug === projectSlug ? { ...p, hidden: true } : p,
+      ),
+    }));
+    try {
+      await projectsApi.updateSettings(projectSlug, { hidden: true });
+    } catch {
+      // Revert on failure
+      set((state) => ({
+        projects: state.projects.map((p) =>
+          p.projectSlug === projectSlug ? { ...p, hidden: undefined } : p,
+        ),
+      }));
+    }
+  },
+
+  unhideProject: async (projectSlug: string) => {
+    // Optimistic update
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.projectSlug === projectSlug ? { ...p, hidden: undefined } : p,
+      ),
+    }));
+    try {
+      await projectsApi.updateSettings(projectSlug, { hidden: false });
+    } catch {
+      // Revert on failure
+      set((state) => ({
+        projects: state.projects.map((p) =>
+          p.projectSlug === projectSlug ? { ...p, hidden: true } : p,
+        ),
+      }));
+    }
+  },
+
+  setShowHidden: (show: boolean) => set({ showHidden: show }),
 }));

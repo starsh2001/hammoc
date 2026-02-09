@@ -8,12 +8,14 @@
  * - Desktop (≥ md): All icons inline
  */
 
-import { ArrowLeft, RefreshCw, Plus, History } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, RefreshCw, Plus, History, Settings } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { HeaderOverflowMenu } from './HeaderOverflowMenu';
+import { SettingsMenu } from './SettingsMenu';
 import { BrandLogo } from './BrandLogo';
 import type { ChatUsage } from '@bmad-studio/shared';
 
@@ -36,6 +38,8 @@ interface ChatHeaderProps {
   contextUsage?: ChatUsage | null;
   /** Callback when compact button is clicked */
   onCompact?: () => void;
+  /** Callback when logout is clicked */
+  onLogout?: () => void;
 }
 
 export function ChatHeader({
@@ -48,8 +52,10 @@ export function ChatHeader({
   onShowSessions,
   contextUsage,
   onCompact,
+  onLogout,
 }: ChatHeaderProps) {
   const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <header
@@ -152,6 +158,28 @@ export function ChatHeader({
             </button>
           )}
 
+          {/* Desktop-only: settings menu */}
+          {onLogout && (
+            <div className="relative hidden md:block">
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                aria-label="설정 메뉴"
+                aria-expanded={showSettings}
+                aria-haspopup="menu"
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
+                           text-gray-700 dark:text-gray-300 transition-colors
+                           focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <Settings className="w-5 h-5" aria-hidden="true" />
+              </button>
+              <SettingsMenu
+                isOpen={showSettings}
+                onClose={() => setShowSettings(false)}
+                onLogout={onLogout}
+              />
+            </div>
+          )}
+
           {/* Mobile-only: overflow menu */}
           <div className="md:hidden">
             <HeaderOverflowMenu
@@ -159,6 +187,7 @@ export function ChatHeader({
               onNewSession={onNewSession}
               onRefresh={onRefresh}
               isRefreshing={isRefreshing}
+              onLogout={onLogout}
             />
           </div>
         </div>
