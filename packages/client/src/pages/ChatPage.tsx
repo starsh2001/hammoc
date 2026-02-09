@@ -132,6 +132,7 @@ export function ChatPage() {
     isLoadingMore,
     error,
     pagination,
+    lastAgentCommand,
     fetchMessages,
     fetchMoreMessages,
     clearMessages,
@@ -186,7 +187,7 @@ export function ChatPage() {
   const { recentAgentCommands, addRecentAgent } = useRecentAgents(projectSlug);
 
   // Active agent detection (Story 8.5)
-  const { activeAgent } = useActiveAgent(messages, commands);
+  const { activeAgent } = useActiveAgent(messages, commands, lastAgentCommand);
   const [agentListOpenTrigger, setAgentListOpenTrigger] = useState(0);
   const handleAgentIndicatorClick = useCallback(() => {
     setAgentListOpenTrigger((prev) => prev + 1);
