@@ -251,6 +251,73 @@ describe('ChatHeader', () => {
     });
   });
 
+  // Story 8.5 - Agent indicator tests
+  describe('agent indicator', () => {
+    it('should show agent icon and name when activeAgent is provided (AC 1, 2)', () => {
+      renderComponent({
+        sessionTitle: 'test-session',
+        activeAgent: { name: 'PM (Product Manager)', icon: '📋' },
+        isBmadProject: true,
+      });
+
+      const indicator = screen.getByTestId('agent-indicator');
+      expect(indicator).toBeInTheDocument();
+      expect(indicator).toHaveTextContent('📋');
+      expect(indicator).toHaveTextContent('PM (Product Manager)');
+    });
+
+    it('should show "Claude" when activeAgent is null and isBmadProject is true (AC 3)', () => {
+      renderComponent({
+        sessionTitle: 'test-session',
+        activeAgent: null,
+        isBmadProject: true,
+      });
+
+      const indicator = screen.getByTestId('agent-indicator');
+      expect(indicator).toHaveTextContent('Claude');
+    });
+
+    it('should not show indicator when isBmadProject is false', () => {
+      renderComponent({
+        sessionTitle: 'test-session',
+        activeAgent: { name: 'PM', icon: '📋' },
+        isBmadProject: false,
+      });
+
+      expect(screen.queryByTestId('agent-indicator')).not.toBeInTheDocument();
+    });
+
+    it('should call onAgentIndicatorClick when clicked (AC 4)', () => {
+      const mockOnAgentIndicatorClick = vi.fn();
+      renderComponent({
+        sessionTitle: 'test-session',
+        activeAgent: { name: 'PM', icon: '📋' },
+        isBmadProject: true,
+        onAgentIndicatorClick: mockOnAgentIndicatorClick,
+      });
+
+      fireEvent.click(screen.getByTestId('agent-indicator'));
+      expect(mockOnAgentIndicatorClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onAgentIndicatorClick on Enter/Space key (keyboard accessibility)', () => {
+      const mockOnAgentIndicatorClick = vi.fn();
+      renderComponent({
+        sessionTitle: 'test-session',
+        activeAgent: { name: 'PM', icon: '📋' },
+        isBmadProject: true,
+        onAgentIndicatorClick: mockOnAgentIndicatorClick,
+      });
+
+      const indicator = screen.getByTestId('agent-indicator');
+      fireEvent.keyDown(indicator, { key: 'Enter' });
+      expect(mockOnAgentIndicatorClick).toHaveBeenCalledTimes(1);
+
+      fireEvent.keyDown(indicator, { key: ' ' });
+      expect(mockOnAgentIndicatorClick).toHaveBeenCalledTimes(2);
+    });
+  });
+
   // Story 4.7 - Task 7: Connection status display tests
   describe('connection status', () => {
     beforeEach(() => {

@@ -16,13 +16,15 @@ interface SessionListItemProps {
   selectionMode?: boolean;
   selected?: boolean;
   onToggleSelect?: (sessionId: string) => void;
+  /** Agent info for this session */
+  agentInfo?: { name: string; icon?: string } | null;
   /** Controlled inline edit mode */
   isEditing?: boolean;
   onEditStart?: (sessionId: string) => void;
   onEditEnd?: () => void;
 }
 
-export function SessionListItem({ session, onClick, onDelete, onRename, selectionMode, selected, onToggleSelect, isEditing, onEditStart, onEditEnd }: SessionListItemProps) {
+export function SessionListItem({ session, onClick, onDelete, onRename, selectionMode, selected, onToggleSelect, agentInfo, isEditing, onEditStart, onEditEnd }: SessionListItemProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [editValue, setEditValue] = useState(session.name || '');
@@ -139,6 +141,14 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
             {session.name && (
               <span className="flex-shrink-0 inline-block text-[11px] leading-tight font-medium px-1.5 py-px rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 max-w-[40%] truncate">
                 {session.name}
+              </span>
+            )}
+            {agentInfo && (
+              <span
+                className="flex-shrink-0 inline-block text-[11px] leading-tight font-medium px-1.5 py-px rounded bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300"
+                data-testid="session-agent-badge"
+              >
+                {agentInfo.icon && <span>{agentInfo.icon}</span>} {agentInfo.name}
               </span>
             )}
             <span className="text-xs text-gray-400 dark:text-gray-500 truncate font-mono">

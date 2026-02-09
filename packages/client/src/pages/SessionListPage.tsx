@@ -23,6 +23,8 @@ import { useClickOutside } from '../hooks/useClickOutside';
 import { useTheme } from '../hooks/useTheme';
 import { BrandLogo } from '../components/BrandLogo';
 import { generateUUID } from '../utils/uuid';
+import { useSlashCommands } from '../hooks/useSlashCommands';
+import { detectAgentFromPrompt } from '../utils/agentUtils';
 
 const PULL_THRESHOLD = 80;
 
@@ -47,6 +49,7 @@ export function SessionListPage() {
   const { projects, fetchProjects } = useProjectStore();
   const { logout } = useAuthStore();
   const skeletonCount = useSkeletonCount(5);
+  const { commands } = useSlashCommands(projectSlug);
   const [showSettings, setShowSettings] = useState(false);
 
   // Selection mode state
@@ -509,6 +512,7 @@ export function SessionListPage() {
               <SessionListItem
                 key={session.sessionId}
                 session={session}
+                agentInfo={detectAgentFromPrompt(session.firstPrompt, commands)}
                 onClick={handleSessionClick}
                 onDelete={handleDeleteRequest}
                 onRename={handleRenameSession}

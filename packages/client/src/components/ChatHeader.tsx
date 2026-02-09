@@ -44,6 +44,12 @@ interface ChatHeaderProps {
   onLogout?: () => void;
   /** Callback when session is renamed (null to remove name) */
   onRenameSession?: (name: string | null) => void;
+  /** Active agent info (name + optional icon) */
+  activeAgent?: { name: string; icon?: string } | null;
+  /** Callback when agent indicator is clicked */
+  onAgentIndicatorClick?: () => void;
+  /** Whether current project is a BMad project */
+  isBmadProject?: boolean;
 }
 
 export function ChatHeader({
@@ -59,6 +65,9 @@ export function ChatHeader({
   onCompact,
   onLogout,
   onRenameSession,
+  activeAgent,
+  onAgentIndicatorClick,
+  isBmadProject,
 }: ChatHeaderProps) {
   const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
   const [showSettings, setShowSettings] = useState(false);
@@ -147,6 +156,36 @@ export function ChatHeader({
                   <span className={`text-xs text-gray-500 dark:text-gray-400 truncate font-mono ${onRenameSession ? 'group-hover:text-blue-500 dark:group-hover:text-blue-400' : ''}`}>
                     {sessionTitle}
                   </span>
+                  {isBmadProject && (
+                    <>
+                      <span className="text-gray-300 dark:text-gray-600 mx-1">|</span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); onAgentIndicatorClick?.(); }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onAgentIndicatorClick?.();
+                          }
+                        }}
+                        aria-label={`현재 에이전트: ${activeAgent?.name ?? 'Claude'}. 클릭하여 에이전트 목록 열기`}
+                        data-testid="agent-indicator"
+                        className={`flex-shrink-0 cursor-pointer ${
+                          activeAgent
+                            ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 rounded px-2 py-0.5'
+                            : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        {activeAgent ? (
+                          <>{activeAgent.icon && <span>{activeAgent.icon}</span>} {activeAgent.name}</>
+                        ) : (
+                          'Claude'
+                        )}
+                      </span>
+                    </>
+                  )}
                 </div>
               )
             )}
