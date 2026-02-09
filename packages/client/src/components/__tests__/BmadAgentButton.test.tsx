@@ -1,12 +1,18 @@
 /**
  * BmadAgentButton Tests
- * [Source: Story 8.1 - Task 5]
+ * [Source: Story 8.1 - Task 5, Story 8.2 - Task 4]
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { BmadAgentButton } from '../BmadAgentButton';
 import type { SlashCommand } from '@bmad-studio/shared';
+
+// Mock useIsMobile
+let mockIsMobile = false;
+vi.mock('../../hooks/useIsMobile', () => ({
+  useIsMobile: () => mockIsMobile,
+}));
 
 const mockAgents: SlashCommand[] = [
   { command: '/BMad:agents:pm', name: 'PM (Product Manager)', category: 'agent', icon: '📋' },
@@ -23,6 +29,7 @@ describe('BmadAgentButton', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsMobile = false;
   });
 
   // TC1: isBmadProject=false → button not rendered
@@ -184,5 +191,167 @@ describe('BmadAgentButton', () => {
     expect(screen.getByText('📋')).toBeInTheDocument();
     expect(screen.getByText('💻')).toBeInTheDocument();
     expect(screen.getByText('🧪')).toBeInTheDocument();
+  });
+
+  // ===== Story 8.2 Tests =====
+
+  // TC11: Hover tooltip shows full agent name
+  it('shows full agent name in title attribute on hover', () => {
+    render(<BmadAgentButton {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    const agentItem = screen.getByTestId('bmad-agent-item-0');
+    const nameSpan = agentItem.querySelector('.truncate');
+    expect(nameSpan).toHaveAttribute('title', 'PM (Product Manager)');
+  });
+
+  // TC12: Tooltip shows name + description when description exists
+  it('shows name and description in title when description exists', () => {
+    const agentsWithDescription: SlashCommand[] = [
+      { ...mockAgents[0], description: 'Product Manager' },
+      mockAgents[1],
+    ];
+    render(<BmadAgentButton {...defaultProps} agents={agentsWithDescription} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    const agentItem0 = screen.getByTestId('bmad-agent-item-0');
+    const nameSpan0 = agentItem0.querySelector('.truncate');
+    expect(nameSpan0).toHaveAttribute('title', 'PM (Product Manager) - Product Manager');
+
+    // Agent without description shows only name
+    const agentItem1 = screen.getByTestId('bmad-agent-item-1');
+    const nameSpan1 = agentItem1.querySelector('.truncate');
+    expect(nameSpan1).toHaveAttribute('title', 'Dev (Developer)');
+  });
+
+  // TC13: Mobile bottom sheet renders instead of popup
+  it('renders bottom sheet on mobile instead of popup', () => {
+    mockIsMobile = true;
+    render(<BmadAgentButton {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    // Bottom sheet should be visible, not desktop popup
+    expect(screen.queryByTestId('bmad-agent-popup')).not.toBeInTheDocument();
+    expect(screen.getByTestId('bmad-bottom-sheet')).toBeInTheDocument();
+    expect(screen.getByTestId('bmad-bottom-sheet')).toHaveAttribute('role', 'dialog');
+    expect(screen.getByTestId('bmad-bottom-sheet')).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByTestId('bmad-bottom-sheet')).toHaveAttribute('aria-label', '에이전트 선택');
+  });
+
+  // TC14: Mobile backdrop click closes bottom sheet
+  it('triggers close animation on mobile backdrop click', () => {
+    mockIsMobile = true;
+    render(<BmadAgentButton {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+    expect(screen.getByTestId('bmad-bottom-sheet')).toBeInTheDocument();
+
+    // Click backdrop
+    fireEvent.click(screen.getByTestId('bmad-bottom-sheet-backdrop'));
+
+    // Should be in closing state (animate-bottomSheetDown)
+    const bottomSheet = screen.getByTestId('bmad-bottom-sheet');
+    expect(bottomSheet.className).toContain('animate-bottomSheetDown');
+
+    // After animation ends, bottom sheet should be removed
+    fireEvent.animationEnd(bottomSheet);
+    expect(screen.queryByTestId('bmad-bottom-sheet')).not.toBeInTheDocument();
+  });
+
+  // TC15: Mobile bottom sheet has drag handle bar
+  it('shows drag handle bar in mobile bottom sheet', () => {
+    mockIsMobile = true;
+    render(<BmadAgentButton {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    expect(screen.getByTestId('bmad-bottom-sheet-handle')).toBeInTheDocument();
+  });
+
+  // TC16: Mobile bottom sheet has header and close button
+  it('shows header text and close button in mobile bottom sheet', () => {
+    mockIsMobile = true;
+    render(<BmadAgentButton {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    expect(screen.getByText('에이전트 선택')).toBeInTheDocument();
+    expect(screen.getByTestId('bmad-bottom-sheet-close')).toBeInTheDocument();
+    expect(screen.getByTestId('bmad-bottom-sheet-close')).toHaveAttribute('aria-label', '닫기');
+  });
+
+  // TC17: Mobile bottom sheet locks body scroll
+  it('sets body overflow to hidden when bottom sheet opens and restores on close', () => {
+    mockIsMobile = true;
+    document.body.style.overflow = 'auto';
+
+    render(<BmadAgentButton {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    expect(document.body.style.overflow).toBe('hidden');
+
+    // Trigger close
+    fireEvent.click(screen.getByTestId('bmad-bottom-sheet-close'));
+    fireEvent.animationEnd(screen.getByTestId('bmad-bottom-sheet'));
+
+    expect(document.body.style.overflow).toBe('auto');
+  });
+
+  // TC18: Mobile close animation applies animate-bottomSheetDown then closes on animationEnd
+  it('applies animate-bottomSheetDown on close and removes on animationEnd', () => {
+    mockIsMobile = true;
+    render(<BmadAgentButton {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    const bottomSheet = screen.getByTestId('bmad-bottom-sheet');
+    expect(bottomSheet.className).toContain('animate-bottomSheetUp');
+
+    // Trigger close via close button
+    fireEvent.click(screen.getByTestId('bmad-bottom-sheet-close'));
+
+    // Should now have close animation
+    const closingSheet = screen.getByTestId('bmad-bottom-sheet');
+    expect(closingSheet.className).toContain('animate-bottomSheetDown');
+
+    // Fire animationEnd to complete close
+    fireEvent.animationEnd(closingSheet);
+    expect(screen.queryByTestId('bmad-bottom-sheet')).not.toBeInTheDocument();
+  });
+
+  // TC19: Focus trapping in mobile bottom sheet
+  it('focuses close button on open and traps focus within bottom sheet', () => {
+    mockIsMobile = true;
+    render(<BmadAgentButton {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    const closeButton = screen.getByTestId('bmad-bottom-sheet-close');
+    expect(document.activeElement).toBe(closeButton);
+
+    const bottomSheet = screen.getByTestId('bmad-bottom-sheet');
+
+    // Tab from last focusable wraps to first (close button is only focusable element)
+    fireEvent.keyDown(bottomSheet, { key: 'Tab' });
+    expect(document.activeElement).toBe(closeButton);
+
+    // Shift+Tab from first focusable wraps to last
+    fireEvent.keyDown(bottomSheet, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(closeButton);
+  });
+
+  // TC20: Viewport change auto-closes bottom sheet
+  it('auto-closes bottom sheet when viewport changes to desktop', () => {
+    mockIsMobile = true;
+    document.body.style.overflow = 'auto';
+
+    const { rerender } = render(<BmadAgentButton {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+    expect(screen.getByTestId('bmad-bottom-sheet')).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe('hidden');
+
+    // Simulate viewport change to desktop
+    mockIsMobile = false;
+    rerender(<BmadAgentButton {...defaultProps} />);
+
+    // Bottom sheet should be closed
+    expect(screen.queryByTestId('bmad-bottom-sheet')).not.toBeInTheDocument();
+    // body overflow should be restored
+    expect(document.body.style.overflow).toBe('auto');
   });
 });
