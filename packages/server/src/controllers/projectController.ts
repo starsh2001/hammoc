@@ -13,6 +13,7 @@ import {
   ValidatePathRequest,
   BmadVersionsResponse,
   DeleteProjectResponse,
+  UpdateProjectSettingsRequest,
 } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 
@@ -240,6 +241,40 @@ export const projectController = {
           code: 'VALIDATION_ERROR',
           message: '경로 검증 중 오류가 발생했습니다.',
         },
+      });
+    }
+  },
+
+  /**
+   * PATCH /api/projects/:projectSlug/settings
+   * Update project settings (.bmad-studio/settings.json)
+   */
+  async updateSettings(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      const settings = req.body as UpdateProjectSettingsRequest;
+
+      if (!projectSlug) {
+        res.status(400).json({
+          error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' },
+        });
+        return;
+      }
+
+      const updated = await projectService.updateProjectSettings(projectSlug, settings);
+      res.json(updated);
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({
+          error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message },
+        });
+        return;
+      }
+
+      res.status(500).json({
+        error: { code: 'SETTINGS_UPDATE_ERROR', message: '설정 저장 중 오류가 발생했습니다.' },
       });
     }
   },

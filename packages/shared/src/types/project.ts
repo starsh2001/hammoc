@@ -19,6 +19,22 @@ export interface ProjectInfo {
   lastModified: string;
   /** Whether this project has .bmad-core folder */
   isBmadProject: boolean;
+  /** Whether this project is hidden (from .bmad-studio/settings.json) */
+  hidden?: boolean;
+}
+
+/**
+ * Project-level settings stored in <project>/.bmad-studio/settings.json
+ */
+export interface ProjectSettings {
+  hidden?: boolean;
+}
+
+/**
+ * Request for PATCH /api/projects/:projectSlug/settings
+ */
+export interface UpdateProjectSettingsRequest {
+  hidden?: boolean;
 }
 
 /**

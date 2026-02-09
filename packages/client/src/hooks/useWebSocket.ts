@@ -26,9 +26,11 @@ export interface UseWebSocketReturn {
 export function useWebSocket(): UseWebSocketReturn {
   const socket = getSocket();
 
-  // Initialize state based on current socket connection status
+  // Initialize state based on current socket connection status.
+  // Use 'reconnecting' instead of 'disconnected' when not yet connected
+  // to avoid a brief red disconnect flash while connection is being established.
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(() =>
-    socket.connected ? 'connected' : 'disconnected'
+    socket.connected ? 'connected' : 'reconnecting'
   );
   const [reconnectAttempt, setReconnectAttempt] = useState<number>(0);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -51,6 +53,12 @@ export function useWebSocket(): UseWebSocketReturn {
   }, [socket]);
 
   useEffect(() => {
+    // If socket is not connected (e.g., created before auth, exhausted reconnection attempts),
+    // force a fresh connection attempt now that user may be authenticated.
+    if (!socket.connected) {
+      socket.connect();
+    }
+
     const handleConnect = () => {
       const wasReconnecting = wasConnectedRef.current;
       setConnectionStatus('connected');

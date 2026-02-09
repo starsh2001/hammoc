@@ -7,7 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MoreVertical, Moon, Sun, History, Plus, RefreshCw } from 'lucide-react';
+import { MoreVertical, Moon, Sun, History, Plus, RefreshCw, LogOut } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 interface HeaderOverflowMenuProps {
@@ -15,6 +15,7 @@ interface HeaderOverflowMenuProps {
   onNewSession?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  onLogout?: () => void;
 }
 
 export function HeaderOverflowMenu({
@@ -22,6 +23,7 @@ export function HeaderOverflowMenu({
   onNewSession,
   onRefresh,
   isRefreshing = false,
+  onLogout,
 }: HeaderOverflowMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +81,11 @@ export function HeaderOverflowMenu({
     onRefresh?.();
     setIsOpen(false);
   }, [onRefresh]);
+
+  const handleLogout = useCallback(() => {
+    onLogout?.();
+    setIsOpen(false);
+  }, [onLogout]);
 
   const itemClass =
     'w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
@@ -164,6 +171,22 @@ export function HeaderOverflowMenu({
               />
               {isRefreshing ? '새로고침 중...' : '새로고침'}
             </button>
+          )}
+
+          {/* Logout */}
+          {onLogout && (
+            <>
+              <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <LogOut className="w-4 h-4" aria-hidden="true" />
+                로그아웃
+              </button>
+            </>
           )}
         </div>
       )}
