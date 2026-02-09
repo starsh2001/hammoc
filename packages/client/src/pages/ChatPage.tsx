@@ -17,6 +17,7 @@ import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
 import { useProjectStore } from '../stores/projectStore';
+import { useSessionStore } from '../stores/sessionStore';
 import { useAuthStore } from '../stores/authStore';
 import type { Attachment, HistoryMessage } from '@bmad-studio/shared';
 import { useStreaming } from '../hooks/useStreaming';
@@ -137,13 +138,26 @@ export function ChatPage() {
 
   const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, clearStreamingSegments } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
+  const { sessions, renameSession } = useSessionStore();
   const { logout } = useAuthStore();
+
+  // Get session name from sessionStore (populated when coming from session list)
+  const sessionName = useMemo(() => {
+    return sessions.find((s) => s.sessionId === sessionId)?.name;
+  }, [sessions, sessionId]);
 
   // Handle logout
   const handleLogout = useCallback(async () => {
     await logout();
     navigate('/login', { replace: true });
   }, [logout, navigate]);
+
+  // Handle session rename
+  const handleRenameSession = useCallback((name: string | null) => {
+    if (projectSlug && sessionId) {
+      renameSession(projectSlug, sessionId, name);
+    }
+  }, [projectSlug, sessionId, renameSession]);
 
   // Get working directory from project
   const workingDirectory = useMemo(() => {
@@ -413,7 +427,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -457,7 +471,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -500,7 +514,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -551,7 +565,7 @@ export function ChatPage() {
     >
       <ChatHeader
         projectSlug={workingDirectory || projectSlug}
-        sessionTitle={sessionId}
+        sessionTitle={sessionId} sessionName={sessionName}
         onBack={handleBack}
         onNewSession={handleNewSession}
         onShowSessions={handleShowSessions}
@@ -559,6 +573,7 @@ export function ChatPage() {
         contextUsage={contextUsage}
         onCompact={handleCompact}
         onLogout={handleLogout}
+        onRenameSession={handleRenameSession}
       />
 
       <main

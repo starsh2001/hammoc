@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Clock, MoreVertical, Trash2, Wand2 } from 'lucide-react';
+import { MessageSquare, Clock, MoreVertical, Trash2, Wand2, EyeOff, Eye } from 'lucide-react';
 import type { ProjectInfo } from '@bmad-studio/shared';
 import { formatRelativeTime, formatProjectPath } from '../utils/formatters';
 import { ConfirmModal } from './ConfirmModal';
@@ -14,10 +14,13 @@ interface ProjectCardProps {
   onClick: (projectSlug: string) => void;
   onDelete?: (projectSlug: string, deleteFiles?: boolean) => void;
   onSetupBmad?: (projectSlug: string, bmadVersion: string) => void;
+  onHide?: (projectSlug: string) => void;
+  onUnhide?: (projectSlug: string) => void;
+  isHidden?: boolean;
   bmadVersions?: string[];
 }
 
-export function ProjectCard({ project, onClick, onDelete, onSetupBmad, bmadVersions = [] }: ProjectCardProps) {
+export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, onUnhide, isHidden, bmadVersions = [] }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
@@ -34,6 +37,16 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, bmadVersi
   const handleMenuToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     setMenuOpen((prev) => !prev);
+  };
+
+  const handleHideClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    if (isHidden) {
+      onUnhide?.(project.projectSlug);
+    } else {
+      onHide?.(project.projectSlug);
+    }
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
@@ -97,11 +110,11 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, bmadVersi
             handleClick();
           }
         }}
-        className="relative w-full text-left bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer"
+        className={`relative w-full text-left bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer ${isHidden ? 'opacity-50' : ''}`}
         aria-label={`프로젝트: ${formatProjectPath(project.originalPath)}, 세션 ${project.sessionCount}개`}
       >
         {/* Kebab menu */}
-        {(onDelete || onSetupBmad) && (
+        {(onDelete || onSetupBmad || onHide || onUnhide) && (
           <div ref={menuRef} className="absolute top-2 right-2 z-10">
             <button
               type="button"
@@ -127,6 +140,20 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, bmadVersi
                   >
                     <Wand2 className="w-4 h-4" aria-hidden="true" />
                     BMad 전환
+                  </button>
+                )}
+                {(onHide || onUnhide) && (
+                  <button
+                    type="button"
+                    onClick={handleHideClick}
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    {isHidden ? (
+                      <><Eye className="w-4 h-4" aria-hidden="true" />숨김 해제</>
+                    ) : (
+                      <><EyeOff className="w-4 h-4" aria-hidden="true" />숨기기</>
+                    )}
                   </button>
                 )}
                 {onDelete && (

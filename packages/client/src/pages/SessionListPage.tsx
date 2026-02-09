@@ -40,6 +40,7 @@ export function SessionListPage() {
     setRefreshing,
     deleteSession,
     deleteSessions,
+    renameSession,
     includeEmpty,
     setIncludeEmpty,
   } = useSessionStore();
@@ -51,6 +52,9 @@ export function SessionListPage() {
   // Selection mode state
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Inline rename state
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // single session delete
@@ -135,6 +139,13 @@ export function SessionListPage() {
     },
     [navigate, projectSlug]
   );
+
+  // Rename session
+  const handleRenameSession = useCallback((sessionId: string, name: string | null) => {
+    if (projectSlug) {
+      renameSession(projectSlug, sessionId, name);
+    }
+  }, [projectSlug, renameSession]);
 
   // Individual delete: show confirm modal
   const handleDeleteRequest = useCallback((sessionId: string) => {
@@ -500,9 +511,13 @@ export function SessionListPage() {
                 session={session}
                 onClick={handleSessionClick}
                 onDelete={handleDeleteRequest}
+                onRename={handleRenameSession}
                 selectionMode={selectionMode}
                 selected={selectedIds.has(session.sessionId)}
                 onToggleSelect={handleToggleSelect}
+                isEditing={editingSessionId === session.sessionId}
+                onEditStart={(id) => setEditingSessionId(id)}
+                onEditEnd={() => setEditingSessionId(null)}
               />
             ))}
           </div>

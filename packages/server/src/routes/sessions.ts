@@ -22,4 +22,7 @@ router.get('/:projectSlug/sessions/:sessionId/messages', sessionController.getMe
 // DELETE /api/projects/:projectSlug/sessions/:sessionId - Delete a session
 router.delete('/:projectSlug/sessions/:sessionId', sessionController.delete);
 
+// PATCH /api/projects/:projectSlug/sessions/:sessionId/name - Update session name
+router.patch('/:projectSlug/sessions/:sessionId/name', sessionController.updateName);
+
 export default router;

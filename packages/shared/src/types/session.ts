@@ -55,6 +55,7 @@ export interface SessionListItem {
   created: string; // ISO 8601 format
   modified: string; // ISO 8601 format
   isStreaming?: boolean; // true if an active stream is running for this session
+  name?: string; // User-assigned session name (from .bmad-studio/session-names.json)
 }
 
 /**
@@ -134,3 +135,18 @@ export const SESSION_ERRORS = {
 } as const;
 
 export type SessionErrorCode = keyof typeof SESSION_ERRORS;
+
+/**
+ * Request for PATCH /api/projects/:projectSlug/sessions/:sessionId/name
+ */
+export interface UpdateSessionNameRequest {
+  name: string | null;
+}
+
+/**
+ * Response for PATCH /api/projects/:projectSlug/sessions/:sessionId/name
+ */
+export interface UpdateSessionNameResponse {
+  sessionId: string;
+  name: string | null;
+}
