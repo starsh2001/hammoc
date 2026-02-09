@@ -17,6 +17,8 @@ interface MessageState {
   isLoadingMore: boolean;
   error: string | null;
   pagination: PaginationInfo | null;
+  /** Last slash command from full session history (server-provided, survives pagination) */
+  lastAgentCommand: string | null;
 }
 
 interface MessageActions {
@@ -40,6 +42,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
   isLoadingMore: false,
   error: null,
   pagination: null,
+  lastAgentCommand: null,
 
   // Actions
   fetchMessages: async (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number }) => {
@@ -99,6 +102,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       set({
         messages: messagesWithImages,
         pagination: response.pagination,
+        lastAgentCommand: response.lastAgentCommand ?? null,
         isLoading: false,
       });
     } catch (err) {
@@ -135,6 +139,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         // Prepend older messages to the beginning (they come before current messages)
         messages: [...response.messages, ...messages],
         pagination: response.pagination,
+        lastAgentCommand: response.lastAgentCommand ?? get().lastAgentCommand,
         isLoadingMore: false,
       });
     } catch {
@@ -148,6 +153,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       currentProjectSlug: null,
       currentSessionId: null,
       pagination: null,
+      lastAgentCommand: null,
       error: null,
     }),
 

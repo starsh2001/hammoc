@@ -56,14 +56,51 @@ describe('useActiveAgent', () => {
     expect(result.current.activeAgent).toBeNull();
   });
 
-  it('only checks the first user message among multiple messages', () => {
+  it('detects the last agent command when multiple user messages exist', () => {
     const messages: HistoryMessage[] = [
-      makeMessage('assistant', 'System init'),
-      makeMessage('user', 'Hello world'),
+      makeMessage('user', '/BMad:agents:pm'),
+      makeMessage('assistant', 'PM mode'),
+      makeMessage('user', 'some chat'),
       makeMessage('user', '/BMad:agents:dev'),
+      makeMessage('assistant', 'Dev mode'),
     ];
 
     const { result } = renderHook(() => useActiveAgent(messages, mockCommands));
+    expect(result.current.activeAgent).toEqual(mockCommands[1]); // dev, not pm
+  });
+
+  it('falls back to serverLastAgentCommand when no agent in loaded messages', () => {
+    const messages: HistoryMessage[] = [
+      makeMessage('assistant', 'Continuing from earlier...'),
+      makeMessage('user', 'What was I doing?'),
+    ];
+
+    const { result } = renderHook(() =>
+      useActiveAgent(messages, mockCommands, '/BMad:agents:pm')
+    );
+    expect(result.current.activeAgent).toEqual(mockCommands[0]); // pm from server
+  });
+
+  it('prefers loaded message agent over serverLastAgentCommand', () => {
+    const messages: HistoryMessage[] = [
+      makeMessage('user', '/BMad:agents:dev'),
+      makeMessage('assistant', 'Dev mode'),
+    ];
+
+    const { result } = renderHook(() =>
+      useActiveAgent(messages, mockCommands, '/BMad:agents:pm')
+    );
+    expect(result.current.activeAgent).toEqual(mockCommands[1]); // dev from messages, not pm from server
+  });
+
+  it('returns null when serverLastAgentCommand does not match any command', () => {
+    const messages: HistoryMessage[] = [
+      makeMessage('user', 'Hello'),
+    ];
+
+    const { result } = renderHook(() =>
+      useActiveAgent(messages, mockCommands, '/some-unknown-command')
+    );
     expect(result.current.activeAgent).toBeNull();
   });
 });

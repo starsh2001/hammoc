@@ -438,7 +438,7 @@ export class SessionService {
     projectSlug: string,
     sessionId: string,
     options: PaginationOptions = {}
-  ): Promise<{ messages: HistoryMessage[]; pagination: PaginationInfo } | null> {
+  ): Promise<{ messages: HistoryMessage[]; pagination: PaginationInfo; lastAgentCommand: string | null } | null> {
     const { limit = 50, offset = 0 } = options;
 
     const filePath = this.getSessionFilePath(projectSlug, sessionId);
@@ -460,6 +460,16 @@ export class SessionService {
     const endIndex = Math.max(0, total - offset);
     const paginated = transformed.slice(startIndex, endIndex);
 
+    // Scan full message list (reverse) for last slash command in user messages
+    // Used by client to detect active agent even when first message is not loaded
+    let lastAgentCommand: string | null = null;
+    for (let i = transformed.length - 1; i >= 0; i--) {
+      if (transformed[i].type === 'user' && transformed[i].content.startsWith('/')) {
+        lastAgentCommand = transformed[i].content;
+        break;
+      }
+    }
+
     return {
       messages: paginated,
       pagination: {
@@ -468,6 +478,7 @@ export class SessionService {
         offset,
         hasMore: startIndex > 0, // There are older messages to load
       },
+      lastAgentCommand,
     };
   }
 }

@@ -102,6 +102,8 @@ export interface PaginationInfo {
 export interface HistoryMessagesResponse {
   messages: HistoryMessage[];
   pagination: PaginationInfo;
+  /** Last slash command found in user messages (for agent detection across pagination) */
+  lastAgentCommand?: string | null;
 }
 
 /**
