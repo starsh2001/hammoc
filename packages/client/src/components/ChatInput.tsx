@@ -570,9 +570,7 @@ export function ChatInput({
             isBmadProject={isBmadProject}
             agents={commands.filter((cmd) => cmd.category === 'agent')}
             onAgentSelect={(agentCommand) => {
-              setContent(agentCommand + ' ');
               onAgentSelect(agentCommand);
-              textareaRef.current?.focus();
             }}
             disabled={isStreaming}
           />

@@ -42,11 +42,17 @@ vi.mock('../../hooks/useWebSocket', () => ({
 }));
 
 // Mock useSlashCommands to prevent URL parse and act() warnings (TEST-002 fix)
+const mockUseSlashCommands = vi.fn(() => ({
+  commands: [] as import('@bmad-studio/shared').SlashCommand[],
+  isLoading: false,
+}));
 vi.mock('../../hooks/useSlashCommands', () => ({
-  useSlashCommands: () => ({
-    commands: [],
-    isLoading: false,
-  }),
+  useSlashCommands: (...args: unknown[]) => mockUseSlashCommands(...args),
+}));
+
+// Mock useIsMobile for BmadAgentButton (Story 8.3)
+vi.mock('../../hooks/useIsMobile', () => ({
+  useIsMobile: () => false,
 }));
 
 // Mock useStreaming hook (Story 5.4 - avoid real socket connection)
@@ -74,6 +80,9 @@ vi.mock('../../stores/sessionStore', () => ({
 vi.mock('../../services/socket', () => ({
   getSocket: () => ({
     emit: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    connected: false,
   }),
 }));
 
@@ -100,7 +109,7 @@ describe('ChatPage', () => {
     hasMore: false,
   };
 
-  const mockFetchMessages = vi.fn();
+  const mockFetchMessages = vi.fn().mockResolvedValue(undefined);
   const mockFetchMoreMessages = vi.fn();
   const mockClearMessages = vi.fn();
 
@@ -211,7 +220,7 @@ describe('ChatPage', () => {
       expect(mockClearMessages).toHaveBeenCalled();
     });
 
-    it('should not fetch messages for new session', () => {
+    it('should fetch messages for new session (sessionId is truthy)', () => {
       render(
         <MemoryRouter initialEntries={['/project/test-project/session/new']}>
           <Routes>
@@ -220,7 +229,7 @@ describe('ChatPage', () => {
         </MemoryRouter>
       );
 
-      expect(mockFetchMessages).not.toHaveBeenCalled();
+      expect(mockFetchMessages).toHaveBeenCalledWith('test-project', 'new');
     });
   });
 
@@ -262,7 +271,7 @@ describe('ChatPage', () => {
 
       renderChatPage();
 
-      expect(screen.getByText('메시지가 없습니다')).toBeInTheDocument();
+      expect(screen.getByText('새 세션')).toBeInTheDocument();
     });
   });
 
@@ -545,7 +554,7 @@ describe('ChatPage', () => {
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
-      expect(mockNavigate).toHaveBeenCalledWith('/project/test-project/session/new');
+      expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/project\/test-project\/session\/.+/));
     });
 
     it('should call clearMessages when new session button is clicked', () => {
@@ -611,11 +620,11 @@ describe('ChatPage', () => {
       fireEvent.click(screen.getByRole('button', { name: '확인' }));
 
       expect(mockAbortResponse).toHaveBeenCalled();
-      expect(mockNavigate).toHaveBeenCalledWith('/project/test-project/session/new');
+      expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/project\/test-project\/session\/.+/));
       expect(mockClearMessages).toHaveBeenCalled();
     });
 
-    it('should pass sessionId undefined and resume false for new session when sending', () => {
+    it('should pass sessionId and resume false for new session when sending', () => {
       // Spy on chatStore sendMessage to verify the arguments
       const sendMessageSpy = vi.fn();
       useChatStore.setState({ sendMessage: sendMessageSpy });
@@ -643,9 +652,9 @@ describe('ChatPage', () => {
       fireEvent.change(textarea, { target: { value: 'Test message' } });
       fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
 
-      // Verify sendMessage was called with sessionId:undefined and resume:false
+      // Verify sendMessage was called with sessionId:'new' and resume:false
       expect(sendMessageSpy).toHaveBeenCalledWith('Test message', expect.objectContaining({
-        sessionId: undefined,
+        sessionId: 'new',
         resume: false,
         workingDirectory: '/test/path',
       }));
@@ -838,6 +847,174 @@ describe('ChatPage', () => {
       fireEvent.click(screen.getByRole('button', { name: '확인' }));
 
       expect(mockAbortResponse).toHaveBeenCalled();
+    });
+  });
+
+  describe('Agent Quick Launch (Story 8.3)', () => {
+    const agentCommands = [
+      {
+        command: '/BMad:agents:dev',
+        name: 'Dev',
+        description: 'Full Stack Developer',
+        category: 'agent' as const,
+        icon: '\uD83D\uDCBB',
+      },
+    ];
+
+    const setupBmadProject = () => {
+      useProjectStore.setState({
+        projects: [{
+          projectSlug: 'test-project',
+          originalPath: '/test/path',
+          sessionCount: 0,
+          lastModified: '2026-01-01T00:00:00Z',
+          isBmadProject: true,
+        }],
+      });
+      mockUseSlashCommands.mockReturnValue({
+        commands: agentCommands,
+        isLoading: false,
+      });
+    };
+
+    beforeEach(() => {
+      // Reset project store to clean state before each agent test
+      useProjectStore.setState({
+        projects: [],
+        isLoading: false,
+        error: null,
+      });
+    });
+
+    afterEach(() => {
+      mockUseSlashCommands.mockReturnValue({
+        commands: [],
+        isLoading: false,
+      });
+    });
+
+    it('should call handleSendMessage directly when session is empty', () => {
+      setupBmadProject();
+      const sendMessageSpy = vi.fn();
+      useChatStore.setState({ sendMessage: sendMessageSpy });
+      useMessageStore.setState({ messages: [] });
+
+      renderChatPage();
+
+      // Open agent popup
+      fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+      // Click the agent
+      fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
+
+      // Should call sendMessage directly (via handleSendMessage)
+      expect(sendMessageSpy).toHaveBeenCalledWith('/BMad:agents:dev', expect.objectContaining({
+        workingDirectory: '/test/path',
+        resume: false,
+      }));
+    });
+
+    it('should show confirm dialog when messages exist', () => {
+      setupBmadProject();
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      // Open agent popup
+      fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+      // Click the agent
+      fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
+
+      // Confirm dialog should appear
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByText('진행 중인 대화가 있습니다. 에이전트를 새 세션에서 시작하시겠습니까?')).toBeInTheDocument();
+    });
+
+    it('should disable agent button during streaming to prevent launch', () => {
+      setupBmadProject();
+      useChatStore.setState({ isStreaming: true });
+      useMessageStore.setState({ messages: [] });
+
+      renderChatPage();
+
+      // BmadAgentButton is disabled during streaming — clicking does nothing
+      const agentButton = screen.getByTestId('bmad-agent-button');
+      fireEvent.click(agentButton);
+
+      // Agent popup should not open, so no agent items are rendered
+      expect(screen.queryByTestId('bmad-agent-item-0')).not.toBeInTheDocument();
+      // No confirm dialog either
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('should navigate to new session after confirm', () => {
+      setupBmadProject();
+      const mockAbortResponse = vi.fn();
+      useChatStore.setState({ abortResponse: mockAbortResponse });
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      // Open agent popup and click agent
+      fireEvent.click(screen.getByTestId('bmad-agent-button'));
+      fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
+
+      // Confirm
+      fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+      expect(mockAbortResponse).toHaveBeenCalled();
+      expect(mockClearMessages).toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/project\/test-project\/session\/.+/));
+    });
+
+    it('should auto-send agent command via pendingAgentCommandRef after confirm', () => {
+      setupBmadProject();
+      const mockAbortResponse = vi.fn();
+      useChatStore.setState({ abortResponse: mockAbortResponse });
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      // Open agent popup and click agent
+      fireEvent.click(screen.getByTestId('bmad-agent-button'));
+      fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
+
+      // Confirm → executes agentLaunch action
+      fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+      // Verify the agentLaunch action: navigate to new session
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringMatching(/\/project\/test-project\/session\/[a-f0-9-]+/)
+      );
+      // clearMessages and clearStreamingSegments should be called
+      expect(mockClearMessages).toHaveBeenCalled();
+    });
+
+    it('should show agentLaunch title in confirm dialog', () => {
+      setupBmadProject();
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      // Open agent popup and click agent
+      fireEvent.click(screen.getByTestId('bmad-agent-button'));
+      fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
+
+      // Check dialog title
+      expect(screen.getByText('에이전트 시작 확인')).toBeInTheDocument();
     });
   });
 

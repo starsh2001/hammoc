@@ -12,7 +12,7 @@
  * - Real-time streaming support (Story 4.5)
  */
 
-import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
@@ -214,13 +214,23 @@ export function ChatPage() {
     }
   }, [abortResponse]);
 
-  // Handle BMad agent selection (Story 8.1)
-  // ChatInput inserts command into textarea; user sends manually via Enter.
-  // This callback is a no-op placeholder for Story 8.3 (new-session + auto-send).
-  const handleAgentSelect = useCallback((_agentCommand: string) => {
-    // No-op: ChatInput handles textarea insertion internally.
-    // Story 8.3 will add new-session creation + auto-send here.
-  }, []);
+  // Handle BMad agent selection (Story 8.3) - Quick Launch
+  const handleAgentSelect = useCallback((agentCommand: string) => {
+    const currentMessages = useMessageStore.getState().messages;
+    const currentIsStreaming = useChatStore.getState().isStreaming;
+
+    if (currentMessages.length === 0 && !currentIsStreaming) {
+      // Empty session: send agent command directly
+      handleSendMessage(agentCommand);
+    } else {
+      // Active session: show confirmation dialog
+      setConfirmModal({ isOpen: true, action: 'agentLaunch', agentCommand });
+    }
+  }, [handleSendMessage]);
+
+  // Ref to keep latest handleSendMessage for use in fetchMessages callback (Story 8.3)
+  const handleSendMessageRef = useRef(handleSendMessage);
+  useEffect(() => { handleSendMessageRef.current = handleSendMessage; }, [handleSendMessage]);
 
   // Handle manual compaction
   const handleCompact = useCallback(() => {
@@ -267,6 +277,13 @@ export function ChatPage() {
           }
         } else if (chat.streamingSegments.length > 0) {
           clearStreamingSegments();
+        }
+
+        // Auto-send pending agent command after navigation (Story 8.3)
+        if (pendingAgentCommandRef.current) {
+          const command = pendingAgentCommandRef.current;
+          pendingAgentCommandRef.current = null;
+          handleSendMessageRef.current(command);
         }
       });
     }
@@ -317,9 +334,13 @@ export function ChatPage() {
   // Confirm modal state (non-blocking replacement for window.confirm)
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
-    action: 'newSession' | 'switchSession';
+    action: 'newSession' | 'switchSession' | 'agentLaunch';
     targetSessionId?: string;
+    agentCommand?: string;
   }>({ isOpen: false, action: 'newSession' });
+
+  // Ref to store pending agent command for auto-send after navigation (Story 8.3)
+  const pendingAgentCommandRef = useRef<string | null>(null);
 
   const handleShowSessions = useCallback(() => {
     setShowSessionPanel(true);
@@ -343,8 +364,14 @@ export function ChatPage() {
       clearMessages();
       clearStreamingSegments();
       navigate(`/project/${projectSlug}/session/${confirmModal.targetSessionId}`);
+    } else if (confirmModal.action === 'agentLaunch') {
+      clearMessages();
+      clearStreamingSegments();
+      pendingAgentCommandRef.current = confirmModal.agentCommand ?? null;
+      const newSessionId = generateUUID();
+      navigate(`/project/${projectSlug}/session/${newSessionId}`);
     }
-  }, [confirmModal.action, confirmModal.targetSessionId, abortResponse, clearMessages, clearStreamingSegments, navigate, projectSlug]);
+  }, [confirmModal.action, confirmModal.targetSessionId, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, navigate, projectSlug]);
 
   const handleSessionSelect = useCallback((selectedSessionId: string) => {
     setShowSessionPanel(false);
@@ -416,11 +443,13 @@ export function ChatPage() {
   const confirmModalElement = (
     <ConfirmModal
       isOpen={confirmModal.isOpen}
-      title="진행 중인 응답"
+      title={confirmModal.action === 'agentLaunch' ? '에이전트 시작 확인' : '진행 중인 응답'}
       message={
-        confirmModal.action === 'newSession'
-          ? '진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?'
-          : '진행 중인 응답이 있습니다. 세션을 전환하시겠습니까?'
+        confirmModal.action === 'agentLaunch'
+          ? '진행 중인 대화가 있습니다. 에이전트를 새 세션에서 시작하시겠습니까?'
+          : confirmModal.action === 'newSession'
+            ? '진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?'
+            : '진행 중인 응답이 있습니다. 세션을 전환하시겠습니까?'
       }
       confirmText="확인"
       cancelText="취소"
