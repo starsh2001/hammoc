@@ -318,7 +318,6 @@ export function SessionListPage() {
                 </button>
 
                 {/* Wide screen: inline buttons */}
-                <ThemeToggleButton className="hidden sm:block" />
                 <button
                   onClick={handleToggleIncludeEmpty}
                   className={`hidden sm:block p-2 rounded-lg transition-colors ${
@@ -358,6 +357,7 @@ export function SessionListPage() {
                 >
                   <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
                 </button>
+                <ThemeToggleButton className="hidden sm:block" />
                 <div className="relative hidden sm:block">
                   <button
                     onClick={() => setShowSettings(!showSettings)}

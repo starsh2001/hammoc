@@ -214,7 +214,6 @@ export function ProjectListPage() {
           </button>
 
           {/* Wide screen: inline buttons */}
-          <ThemeToggleButton className="hidden sm:block" />
           {hiddenCount > 0 && (
             <button
               onClick={() => setShowHidden(!showHidden)}
@@ -240,6 +239,7 @@ export function ProjectListPage() {
               aria-hidden="true"
             />
           </button>
+          <ThemeToggleButton className="hidden sm:block" />
           <div className="relative hidden sm:block">
             <button
               onClick={() => setShowSettings(!showSettings)}
