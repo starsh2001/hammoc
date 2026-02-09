@@ -227,43 +227,19 @@ describe('ChatHeader', () => {
     });
   });
 
-  // Story 5.6 - Task 8: Context usage display tests
-  describe('context usage display', () => {
-    it('should render ContextUsageDisplay when contextUsage is provided', () => {
-      renderComponent({
-        contextUsage: {
-          inputTokens: 100000,
-          outputTokens: 500,
-          cacheReadInputTokens: 50000,
-          cacheCreationInputTokens: 3000,
-          totalCostUSD: 0.03,
-          contextWindow: 200000,
-        },
-      });
-
-      expect(screen.getByTestId('context-usage-display')).toBeInTheDocument();
-    });
-
-    it('should not render ContextUsageDisplay when contextUsage is not provided', () => {
-      renderComponent();
-
-      expect(screen.queryByTestId('context-usage-display')).not.toBeInTheDocument();
-    });
-  });
-
   // Story 8.5 - Agent indicator tests
   describe('agent indicator', () => {
-    it('should show agent icon and name when activeAgent is provided (AC 1, 2)', () => {
+    it('should show agent icon and role label when activeAgent is provided (AC 1, 2)', () => {
       renderComponent({
         sessionTitle: 'test-session',
-        activeAgent: { name: 'PM (Product Manager)', icon: '📋' },
+        activeAgent: { name: 'Bob', command: '/BMad:agents:pm', icon: '📋' },
         isBmadProject: true,
       });
 
       const indicator = screen.getByTestId('agent-indicator');
       expect(indicator).toBeInTheDocument();
       expect(indicator).toHaveTextContent('📋');
-      expect(indicator).toHaveTextContent('PM (Product Manager)');
+      expect(indicator).toHaveTextContent('PM');
     });
 
     it('should show "Claude" when activeAgent is null and isBmadProject is true (AC 3)', () => {
@@ -280,7 +256,7 @@ describe('ChatHeader', () => {
     it('should not show indicator when isBmadProject is false', () => {
       renderComponent({
         sessionTitle: 'test-session',
-        activeAgent: { name: 'PM', icon: '📋' },
+        activeAgent: { name: 'Bob', command: '/BMad:agents:pm', icon: '📋' },
         isBmadProject: false,
       });
 
@@ -291,7 +267,7 @@ describe('ChatHeader', () => {
       const mockOnAgentIndicatorClick = vi.fn();
       renderComponent({
         sessionTitle: 'test-session',
-        activeAgent: { name: 'PM', icon: '📋' },
+        activeAgent: { name: 'Bob', command: '/BMad:agents:pm', icon: '📋' },
         isBmadProject: true,
         onAgentIndicatorClick: mockOnAgentIndicatorClick,
       });
@@ -304,7 +280,7 @@ describe('ChatHeader', () => {
       const mockOnAgentIndicatorClick = vi.fn();
       renderComponent({
         sessionTitle: 'test-session',
-        activeAgent: { name: 'PM', icon: '📋' },
+        activeAgent: { name: 'Bob', command: '/BMad:agents:pm', icon: '📋' },
         isBmadProject: true,
         onAgentIndicatorClick: mockOnAgentIndicatorClick,
       });

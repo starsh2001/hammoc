@@ -28,16 +28,16 @@ const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: ContextUsageDisplayProps) {
-  if (!contextUsage || contextUsage.contextWindow === 0) return null;
-
-  const usagePercent = Math.round(
-    (contextUsage.inputTokens / contextUsage.contextWindow) * 100
-  );
+  const hasData = contextUsage && contextUsage.contextWindow > 0;
+  const usagePercent = hasData
+    ? Math.round((contextUsage.inputTokens / contextUsage.contextWindow) * 100)
+    : 0;
   const isCritical = usagePercent > CONTEXT_USAGE_THRESHOLDS.CRITICAL;
   const strokeColor = getStrokeColor(usagePercent);
   const dashOffset = CIRCUMFERENCE - (Math.min(usagePercent, 100) / 100) * CIRCUMFERENCE;
 
   const handleClick = () => {
+    if (!hasData) return;
     if (isCritical && onNewSession) {
       onNewSession();
     } else if (onCompact) {
@@ -45,16 +45,17 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: C
     }
   };
 
-  const tooltipLines = [
-    ...(isCritical
-      ? [`⚠ 컨텍스트가 거의 찼습니다 (${usagePercent}%)`, '클릭하여 새 세션 시작', '---']
-      : ['클릭하여 Context Compaction 실행']),
-    `컨텍스트: ${contextUsage.inputTokens.toLocaleString()} / ${contextUsage.contextWindow.toLocaleString()} 토큰 (${usagePercent}%)`,
-    `출력 토큰: ${contextUsage.outputTokens.toLocaleString()}`,
-    `캐시 읽기: ${contextUsage.cacheReadInputTokens.toLocaleString()}`,
-    `비용: $${contextUsage.totalCostUSD.toFixed(4)}`,
-  ];
-  const tooltipText = tooltipLines.join('\n');
+  const tooltipText = hasData
+    ? [
+        ...(isCritical
+          ? [`⚠ 컨텍스트가 거의 찼습니다 (${usagePercent}%)`, '클릭하여 새 세션 시작', '---']
+          : ['클릭하여 Context Compaction 실행']),
+        `컨텍스트: ${contextUsage.inputTokens.toLocaleString()} / ${contextUsage.contextWindow.toLocaleString()} 토큰 (${usagePercent}%)`,
+        `출력 토큰: ${contextUsage.outputTokens.toLocaleString()}`,
+        `캐시 읽기: ${contextUsage.cacheReadInputTokens.toLocaleString()}`,
+        `비용: $${contextUsage.totalCostUSD.toFixed(4)}`,
+      ].join('\n')
+    : '컨텍스트 사용량 (대기 중)';
 
   return (
     <button
@@ -62,13 +63,10 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: C
       role="status"
       aria-label={`컨텍스트 사용량 ${usagePercent}%`}
       title={tooltipText}
-      className="flex items-center gap-2 mr-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+      className={`flex items-center gap-2 ml-3 mr-0.5 transition-opacity ${hasData ? 'cursor-pointer hover:opacity-80' : 'cursor-default opacity-50'}`}
       onClick={handleClick}
       data-testid="context-usage-display"
     >
-      <span className="hidden md:inline text-xs text-gray-500 dark:text-gray-400">
-        Context
-      </span>
       <svg
         width={SIZE}
         height={SIZE}

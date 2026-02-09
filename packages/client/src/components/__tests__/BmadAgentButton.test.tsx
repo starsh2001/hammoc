@@ -3,21 +3,27 @@
  * [Source: Story 8.1 - Task 5, Story 8.2 - Task 4]
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { BmadAgentButton } from '../BmadAgentButton';
 import type { SlashCommand } from '@bmad-studio/shared';
 
-// Mock useIsMobile
-let mockIsMobile = false;
-vi.mock('../../hooks/useIsMobile', () => ({
-  useIsMobile: () => mockIsMobile,
-}));
-
+// Agents spanning planning + implementation categories
 const mockAgents: SlashCommand[] = [
-  { command: '/BMad:agents:pm', name: 'PM (Product Manager)', category: 'agent', icon: '📋' },
-  { command: '/BMad:agents:dev', name: 'Dev (Developer)', category: 'agent', icon: '💻' },
-  { command: '/BMad:agents:qa', name: 'QA (Quality Assurance)', category: 'agent', icon: '🧪' },
+  { command: '/BMad:agents:pm', name: 'Bob', description: 'Product Manager', category: 'agent', icon: '📋' },
+  { command: '/BMad:agents:dev', name: 'Mary', description: 'Developer', category: 'agent', icon: '💻' },
+  { command: '/BMad:agents:qa', name: 'James', description: 'Quality Assurance', category: 'agent', icon: '🧪' },
+];
+
+// Extended agents with all categories for category tests
+const fullMockAgents: SlashCommand[] = [
+  { command: '/BMad:agents:analyst', name: 'Alice', description: 'Business Analyst', category: 'agent', icon: '🔍' },
+  { command: '/BMad:agents:pm', name: 'Bob', description: 'Product Manager', category: 'agent', icon: '📋' },
+  { command: '/BMad:agents:architect', name: 'Charlie', description: 'Solution Architect', category: 'agent', icon: '🏗️' },
+  { command: '/BMad:agents:dev', name: 'Mary', description: 'Developer', category: 'agent', icon: '💻' },
+  { command: '/BMad:agents:qa', name: 'James', description: 'Quality Assurance', category: 'agent', icon: '🧪' },
+  { command: '/BMad:agents:bmad-master', name: 'BMad Master', description: 'Project Orchestrator', category: 'agent', icon: '⭐' },
+  { command: '/BMad:agents:bmad-orchestrator', name: 'BMad Orchestrator', description: 'Workflow Orchestrator', category: 'agent', icon: '🎯' },
 ];
 
 describe('BmadAgentButton', () => {
@@ -29,7 +35,6 @@ describe('BmadAgentButton', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIsMobile = false;
   });
 
   // TC1: isBmadProject=false → button not rendered
@@ -38,31 +43,40 @@ describe('BmadAgentButton', () => {
     expect(screen.queryByTestId('bmad-agent-button')).not.toBeInTheDocument();
   });
 
-  // TC2: isBmadProject=true → Ⓑ button is shown
-  it('renders Ⓑ button when isBmadProject is true', () => {
+  // TC2: isBmadProject=true → icon button is shown
+  it('renders agent button when isBmadProject is true', () => {
     render(<BmadAgentButton {...defaultProps} />);
     const button = screen.getByTestId('bmad-agent-button');
     expect(button).toBeInTheDocument();
-    expect(button).toHaveTextContent('Ⓑ');
   });
 
-  // TC3: click opens agent list popup
-  it('shows agent list popup when button is clicked', () => {
+  // TC3: click opens agent list popup with role labels and descriptions
+  it('shows agent list popup with role labels and descriptions', () => {
     render(<BmadAgentButton {...defaultProps} />);
     expect(screen.queryByTestId('bmad-agent-popup')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
     expect(screen.getByTestId('bmad-agent-popup')).toBeInTheDocument();
-    expect(screen.getByText('PM (Product Manager)')).toBeInTheDocument();
-    expect(screen.getByText('Dev (Developer)')).toBeInTheDocument();
-    expect(screen.getByText('QA (Quality Assurance)')).toBeInTheDocument();
+
+    // Role labels displayed as main text
+    const item0 = screen.getByTestId('bmad-agent-item-0');
+    expect(item0).toHaveTextContent('PM');
+    expect(item0).toHaveTextContent('Product Manager');
+
+    const item1 = screen.getByTestId('bmad-agent-item-1');
+    expect(item1).toHaveTextContent('Dev');
+    expect(item1).toHaveTextContent('Developer');
+
+    const item2 = screen.getByTestId('bmad-agent-item-2');
+    expect(item2).toHaveTextContent('QA');
+    expect(item2).toHaveTextContent('Quality Advisor');
   });
 
   // TC4: agent click calls onAgentSelect
   it('calls onAgentSelect when an agent is clicked', () => {
     render(<BmadAgentButton {...defaultProps} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
-    fireEvent.click(screen.getByText('PM (Product Manager)'));
+    fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
 
     expect(defaultProps.onAgentSelect).toHaveBeenCalledWith('/BMad:agents:pm');
   });
@@ -107,13 +121,13 @@ describe('BmadAgentButton', () => {
     expect(screen.queryByTestId('bmad-agent-popup')).not.toBeInTheDocument();
   });
 
-  // TC8: dark/light mode styles applied
-  it('applies neon purple styling', () => {
+  // TC8: ModelSelector-matching neutral gray styling
+  it('applies neutral gray styling matching ModelSelector', () => {
     render(<BmadAgentButton {...defaultProps} />);
     const button = screen.getByTestId('bmad-agent-button');
-    expect(button.className).toContain('bg-purple-100');
-    expect(button.className).toContain('border-purple-500');
-    expect(button.className).toContain('text-purple-700');
+    expect(button.className).toContain('bg-white');
+    expect(button.className).toContain('border-gray-300');
+    expect(button.className).toContain('text-gray-600');
   });
 
   // TC9: keyboard navigation (ArrowDown/ArrowUp/Enter)
@@ -123,11 +137,11 @@ describe('BmadAgentButton', () => {
 
     const container = screen.getByTestId('bmad-agent-button').parentElement!;
 
-    // ArrowDown selects first item
+    // ArrowDown selects first item (PM in Planning group)
     fireEvent.keyDown(container, { key: 'ArrowDown' });
     expect(screen.getByTestId('bmad-agent-item-0').getAttribute('aria-selected')).toBe('true');
 
-    // ArrowDown again selects second item
+    // ArrowDown again selects second item (Dev in Implementation group)
     fireEvent.keyDown(container, { key: 'ArrowDown' });
     expect(screen.getByTestId('bmad-agent-item-1').getAttribute('aria-selected')).toBe('true');
 
@@ -163,7 +177,7 @@ describe('BmadAgentButton', () => {
   });
 
   // Toggle: re-click button closes popup
-  it('closes popup when Ⓑ button is clicked again (toggle)', () => {
+  it('closes popup when button is clicked again (toggle)', () => {
     render(<BmadAgentButton {...defaultProps} />);
     const button = screen.getByTestId('bmad-agent-button');
 
@@ -178,7 +192,7 @@ describe('BmadAgentButton', () => {
   it('closes popup after selecting an agent', () => {
     render(<BmadAgentButton {...defaultProps} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
-    fireEvent.click(screen.getByText('Dev (Developer)'));
+    fireEvent.click(screen.getByTestId('bmad-agent-item-1'));
 
     expect(screen.queryByTestId('bmad-agent-popup')).not.toBeInTheDocument();
     expect(defaultProps.onAgentSelect).toHaveBeenCalledWith('/BMad:agents:dev');
@@ -195,278 +209,190 @@ describe('BmadAgentButton', () => {
 
   // ===== Story 8.2 Tests =====
 
-  // TC11: Hover tooltip shows full agent name
-  it('shows full agent name in title attribute on hover', () => {
+  // TC11: Hover tooltip shows role label and description
+  it('shows role label and description in title attribute', () => {
     render(<BmadAgentButton {...defaultProps} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
     const agentItem = screen.getByTestId('bmad-agent-item-0');
-    const nameSpan = agentItem.querySelector('.truncate');
-    expect(nameSpan).toHaveAttribute('title', 'PM (Product Manager)');
+    expect(agentItem).toHaveAttribute('title', 'PM - Product Manager');
   });
 
-  // TC12: Tooltip shows name + description when description exists
-  it('shows name and description in title when description exists', () => {
-    const agentsWithDescription: SlashCommand[] = [
-      { ...mockAgents[0], description: 'Product Manager' },
-      mockAgents[1],
+  // TC12: Tooltip shows role label only when no description
+  it('shows role label only in title when no description', () => {
+    const agentsNoDesc: SlashCommand[] = [
+      { command: '/BMad:agents:pm', name: 'Bob', category: 'agent', icon: '📋' },
     ];
-    render(<BmadAgentButton {...defaultProps} agents={agentsWithDescription} />);
+    render(<BmadAgentButton {...defaultProps} agents={agentsNoDesc} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    const agentItem0 = screen.getByTestId('bmad-agent-item-0');
-    const nameSpan0 = agentItem0.querySelector('.truncate');
-    expect(nameSpan0).toHaveAttribute('title', 'PM (Product Manager) - Product Manager');
-
-    // Agent without description shows only name
-    const agentItem1 = screen.getByTestId('bmad-agent-item-1');
-    const nameSpan1 = agentItem1.querySelector('.truncate');
-    expect(nameSpan1).toHaveAttribute('title', 'Dev (Developer)');
+    const agentItem = screen.getByTestId('bmad-agent-item-0');
+    expect(agentItem).toHaveAttribute('title', 'PM');
   });
 
-  // TC13: Mobile bottom sheet renders instead of popup
-  it('renders bottom sheet on mobile instead of popup', () => {
-    mockIsMobile = true;
+  // ===== Category Group Tests =====
+
+  // Agents are grouped by workflow phase with English labels
+  it('groups agents into Planning and Implementation categories', () => {
     render(<BmadAgentButton {...defaultProps} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    // Bottom sheet should be visible, not desktop popup
-    expect(screen.queryByTestId('bmad-agent-popup')).not.toBeInTheDocument();
-    expect(screen.getByTestId('bmad-bottom-sheet')).toBeInTheDocument();
-    expect(screen.getByTestId('bmad-bottom-sheet')).toHaveAttribute('role', 'dialog');
-    expect(screen.getByTestId('bmad-bottom-sheet')).toHaveAttribute('aria-modal', 'true');
-    expect(screen.getByTestId('bmad-bottom-sheet')).toHaveAttribute('aria-label', '에이전트 선택');
+    const planningGroup = screen.getByTestId('bmad-group-planning');
+    expect(planningGroup).toHaveAttribute('role', 'group');
+    expect(planningGroup).toHaveAttribute('aria-label', 'Planning');
+    expect(screen.getByText('Planning')).toBeInTheDocument();
+
+    const implGroup = screen.getByTestId('bmad-group-implementation');
+    expect(implGroup).toHaveAttribute('role', 'group');
+    expect(implGroup).toHaveAttribute('aria-label', 'Implementation');
+    expect(screen.getByText('Implementation')).toBeInTheDocument();
   });
 
-  // TC14: Mobile backdrop click closes bottom sheet
-  it('triggers close animation on mobile backdrop click', () => {
-    mockIsMobile = true;
-    render(<BmadAgentButton {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('bmad-agent-button'));
-    expect(screen.getByTestId('bmad-bottom-sheet')).toBeInTheDocument();
-
-    // Click backdrop
-    fireEvent.click(screen.getByTestId('bmad-bottom-sheet-backdrop'));
-
-    // Should be in closing state (animate-bottomSheetDown)
-    const bottomSheet = screen.getByTestId('bmad-bottom-sheet');
-    expect(bottomSheet.className).toContain('animate-bottomSheetDown');
-
-    // After animation ends, bottom sheet should be removed
-    fireEvent.animationEnd(bottomSheet);
-    expect(screen.queryByTestId('bmad-bottom-sheet')).not.toBeInTheDocument();
-  });
-
-  // TC15: Mobile bottom sheet has drag handle bar
-  it('shows drag handle bar in mobile bottom sheet', () => {
-    mockIsMobile = true;
-    render(<BmadAgentButton {...defaultProps} />);
+  // Full agent set shows all three categories in correct order
+  it('shows Planning, Implementation, Other groups with correct agent ordering', () => {
+    render(<BmadAgentButton {...defaultProps} agents={fullMockAgents} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    expect(screen.getByTestId('bmad-bottom-sheet-handle')).toBeInTheDocument();
+    // Planning group: Analyst(0), PM(1), Architect(2)
+    const planningGroup = screen.getByTestId('bmad-group-planning');
+    const planningItems = planningGroup.querySelectorAll('[role="option"]');
+    expect(planningItems).toHaveLength(3);
+    expect(planningItems[0]).toHaveTextContent('Analyst');
+    expect(planningItems[1]).toHaveTextContent('PM');
+    expect(planningItems[2]).toHaveTextContent('Architect');
+
+    // Implementation group: Dev(3), QA(4)
+    const implGroup = screen.getByTestId('bmad-group-implementation');
+    const implItems = implGroup.querySelectorAll('[role="option"]');
+    expect(implItems).toHaveLength(2);
+    expect(implItems[0]).toHaveTextContent('Dev');
+    expect(implItems[1]).toHaveTextContent('QA');
+
+    // Other group: BMad Master(5), BMad Orchestrator(6)
+    const otherGroup = screen.getByTestId('bmad-group-other');
+    const otherItems = otherGroup.querySelectorAll('[role="option"]');
+    expect(otherItems).toHaveLength(2);
+    expect(otherItems[0]).toHaveTextContent('Bmad Master');
+    expect(otherItems[1]).toHaveTextContent('Bmad Orchestrator');
   });
 
-  // TC16: Mobile bottom sheet has header and close button
-  it('shows header text and close button in mobile bottom sheet', () => {
-    mockIsMobile = true;
-    render(<BmadAgentButton {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('bmad-agent-button'));
-
-    expect(screen.getByText('에이전트 선택')).toBeInTheDocument();
-    expect(screen.getByTestId('bmad-bottom-sheet-close')).toBeInTheDocument();
-    expect(screen.getByTestId('bmad-bottom-sheet-close')).toHaveAttribute('aria-label', '닫기');
-  });
-
-  // TC17: Mobile bottom sheet locks body scroll
-  it('sets body overflow to hidden when bottom sheet opens and restores on close', () => {
-    mockIsMobile = true;
-    document.body.style.overflow = 'auto';
-
+  // Description displayed as secondary text next to role label
+  it('displays description as secondary text next to role label', () => {
     render(<BmadAgentButton {...defaultProps} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    expect(document.body.style.overflow).toBe('hidden');
-
-    // Trigger close
-    fireEvent.click(screen.getByTestId('bmad-bottom-sheet-close'));
-    fireEvent.animationEnd(screen.getByTestId('bmad-bottom-sheet'));
-
-    expect(document.body.style.overflow).toBe('auto');
+    const item = screen.getByTestId('bmad-agent-item-0');
+    const roleSpan = item.querySelector('.text-sm');
+    const descSpan = item.querySelector('.text-xs');
+    expect(roleSpan?.textContent).toBe('PM');
+    expect(descSpan?.textContent).toBe('Product Manager');
   });
 
-  // TC18: Mobile close animation applies animate-bottomSheetDown then closes on animationEnd
-  it('applies animate-bottomSheetDown on close and removes on animationEnd', () => {
-    mockIsMobile = true;
-    render(<BmadAgentButton {...defaultProps} />);
+  // No description → only role label shown
+  it('shows only role label when agent has no description', () => {
+    const agentsNoDesc: SlashCommand[] = [
+      { command: '/BMad:agents:dev', name: 'Mary', category: 'agent', icon: '💻' },
+    ];
+    render(<BmadAgentButton {...defaultProps} agents={agentsNoDesc} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    const bottomSheet = screen.getByTestId('bmad-bottom-sheet');
-    expect(bottomSheet.className).toContain('animate-bottomSheetUp');
-
-    // Trigger close via close button
-    fireEvent.click(screen.getByTestId('bmad-bottom-sheet-close'));
-
-    // Should now have close animation
-    const closingSheet = screen.getByTestId('bmad-bottom-sheet');
-    expect(closingSheet.className).toContain('animate-bottomSheetDown');
-
-    // Fire animationEnd to complete close
-    fireEvent.animationEnd(closingSheet);
-    expect(screen.queryByTestId('bmad-bottom-sheet')).not.toBeInTheDocument();
+    const item = screen.getByTestId('bmad-agent-item-0');
+    const descSpan = item.querySelector('.text-xs');
+    expect(descSpan).toBeNull();
+    expect(item).toHaveTextContent('Dev');
   });
 
-  // TC19: Focus trapping in mobile bottom sheet
-  it('focuses close button on open and traps focus within bottom sheet', () => {
-    mockIsMobile = true;
-    render(<BmadAgentButton {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+  // ===== Active Agent Indicator Tests =====
 
-    const closeButton = screen.getByTestId('bmad-bottom-sheet-close');
-    expect(document.activeElement).toBe(closeButton);
-
-    const bottomSheet = screen.getByTestId('bmad-bottom-sheet');
-
-    // Tab from last focusable wraps to first (close button is only focusable element)
-    fireEvent.keyDown(bottomSheet, { key: 'Tab' });
-    expect(document.activeElement).toBe(closeButton);
-
-    // Shift+Tab from first focusable wraps to last
-    fireEvent.keyDown(bottomSheet, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(closeButton);
-  });
-
-  // ===== Story 8.4 Tests =====
-
-  // TC21: No sections when recentAgentCommands is not provided (AC 5)
-  it('shows flat list without sections when recentAgentCommands is not provided', () => {
-    render(<BmadAgentButton {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('bmad-agent-button'));
-
-    expect(screen.queryByTestId('bmad-recent-section')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('bmad-all-section')).not.toBeInTheDocument();
-    expect(screen.getByText('PM (Product Manager)')).toBeInTheDocument();
-  });
-
-  // TC22: Sections displayed when recentAgentCommands is provided (AC 2)
-  it('shows "최근 사용" and "전체" sections when recentAgentCommands is provided', () => {
+  // Shows checkmark on active agent
+  it('shows checkmark on the active agent', () => {
     render(
-      <BmadAgentButton
-        {...defaultProps}
-        recentAgentCommands={['/BMad:agents:pm', '/BMad:agents:dev']}
-      />
+      <BmadAgentButton {...defaultProps} activeAgentCommand="/BMad:agents:dev" />
     );
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    expect(screen.getByTestId('bmad-recent-section')).toBeInTheDocument();
-    expect(screen.getByTestId('bmad-all-section')).toBeInTheDocument();
-    expect(screen.getByText('최근 사용')).toBeInTheDocument();
-    expect(screen.getByText('전체')).toBeInTheDocument();
+    // Dev (item-1) should have checkmark
+    const devItem = screen.getByTestId('bmad-agent-item-1');
+    expect(devItem.querySelector('[data-testid="bmad-agent-check"]')).toBeInTheDocument();
+
+    // PM (item-0) should NOT have checkmark
+    const pmItem = screen.getByTestId('bmad-agent-item-0');
+    expect(pmItem.querySelector('[data-testid="bmad-agent-check"]')).not.toBeInTheDocument();
   });
 
-  // TC23: Recent agents displayed in correct order (AC 1)
-  it('shows recent agents in the correct order', () => {
+  // Active agent has blue highlight styling
+  it('applies blue highlight to active agent', () => {
     render(
-      <BmadAgentButton
-        {...defaultProps}
-        recentAgentCommands={['/BMad:agents:qa', '/BMad:agents:pm']}
-      />
+      <BmadAgentButton {...defaultProps} activeAgentCommand="/BMad:agents:pm" />
     );
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    const recentSection = screen.getByTestId('bmad-recent-section');
-    const recentItems = recentSection.querySelectorAll('[role="option"]');
-    expect(recentItems).toHaveLength(2);
-    expect(recentItems[0]).toHaveTextContent('QA (Quality Assurance)');
-    expect(recentItems[1]).toHaveTextContent('PM (Product Manager)');
+    const pmItem = screen.getByTestId('bmad-agent-item-0');
+    expect(pmItem.className).toContain('bg-blue-50');
+
+    const roleSpan = pmItem.querySelector('.text-sm');
+    expect(roleSpan?.className).toContain('font-semibold');
+    expect(roleSpan?.className).toContain('text-blue-700');
   });
 
-  // TC24: Mobile bottom sheet also shows sections
-  it('shows sections in mobile bottom sheet', () => {
-    mockIsMobile = true;
-    render(
-      <BmadAgentButton
-        {...defaultProps}
-        recentAgentCommands={['/BMad:agents:dev']}
-      />
-    );
+  // No checkmark when no active agent
+  it('shows no checkmark when activeAgentCommand is not set', () => {
+    render(<BmadAgentButton {...defaultProps} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    expect(screen.getByTestId('bmad-recent-section')).toBeInTheDocument();
-    expect(screen.getByTestId('bmad-all-section')).toBeInTheDocument();
+    expect(screen.queryByTestId('bmad-agent-check')).not.toBeInTheDocument();
   });
 
-  // TC25: No sections when recentAgentCommands is empty array (AC 5)
-  it('shows flat list without sections when recentAgentCommands is empty', () => {
-    render(<BmadAgentButton {...defaultProps} recentAgentCommands={[]} />);
+  // ===== Description Override Tests =====
+
+  // QA shows "Quality Advisor" instead of original description
+  it('overrides QA description to "Quality Advisor"', () => {
+    render(<BmadAgentButton {...defaultProps} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    expect(screen.queryByTestId('bmad-recent-section')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('bmad-all-section')).not.toBeInTheDocument();
+    const qaItem = screen.getByTestId('bmad-agent-item-2');
+    expect(qaItem).toHaveTextContent('Quality Advisor');
+    expect(qaItem).not.toHaveTextContent('Quality Assurance');
   });
 
-  // TC26: Keyboard navigation works across combined list (recent + all)
-  it('keyboard navigation traverses recent + all combined list', () => {
-    render(
-      <BmadAgentButton
-        {...defaultProps}
-        recentAgentCommands={['/BMad:agents:pm']}
-      />
-    );
+  // BMad Master has no description displayed
+  it('suppresses description for BMad Master', () => {
+    render(<BmadAgentButton {...defaultProps} agents={fullMockAgents} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    const container = screen.getByTestId('bmad-agent-button').parentElement!;
-
-    // Item 0 = recent PM, Item 1 = all PM, Item 2 = all Dev, Item 3 = all QA
-    fireEvent.keyDown(container, { key: 'ArrowDown' }); // index 0 (recent PM)
-    expect(screen.getByTestId('bmad-agent-item-0').getAttribute('aria-selected')).toBe('true');
-
-    fireEvent.keyDown(container, { key: 'ArrowDown' }); // index 1 (all PM)
-    expect(screen.getByTestId('bmad-agent-item-1').getAttribute('aria-selected')).toBe('true');
-
-    fireEvent.keyDown(container, { key: 'ArrowDown' }); // index 2 (all Dev)
-    expect(screen.getByTestId('bmad-agent-item-2').getAttribute('aria-selected')).toBe('true');
-
-    // Enter selects the combined list item
-    fireEvent.keyDown(container, { key: 'Enter' });
-    expect(defaultProps.onAgentSelect).toHaveBeenCalledWith('/BMad:agents:dev');
+    const otherGroup = screen.getByTestId('bmad-group-other');
+    const otherItems = otherGroup.querySelectorAll('[role="option"]');
+    const masterItem = otherItems[0];
+    expect(masterItem).toHaveTextContent('Bmad Master');
+    const descSpan = masterItem.querySelector('.text-xs');
+    expect(descSpan).toBeNull();
   });
 
-  // TC27: Sections have accessibility attributes
-  it('has correct accessibility attributes on sections', () => {
-    render(
-      <BmadAgentButton
-        {...defaultProps}
-        recentAgentCommands={['/BMad:agents:pm']}
-      />
-    );
+  // BMad Orchestrator has no description displayed
+  it('suppresses description for BMad Orchestrator', () => {
+    render(<BmadAgentButton {...defaultProps} agents={fullMockAgents} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
-    const recentSection = screen.getByTestId('bmad-recent-section');
-    expect(recentSection).toHaveAttribute('role', 'group');
-    expect(recentSection).toHaveAttribute('aria-label', '최근 사용');
-
-    const allSection = screen.getByTestId('bmad-all-section');
-    expect(allSection).toHaveAttribute('role', 'group');
-    expect(allSection).toHaveAttribute('aria-label', '전체');
+    const otherGroup = screen.getByTestId('bmad-group-other');
+    const otherItems = otherGroup.querySelectorAll('[role="option"]');
+    // BMad Orchestrator (index 1 in Other group)
+    const orchestratorItem = otherItems[1];
+    expect(orchestratorItem).toHaveTextContent('Bmad Orchestrator');
+    const descSpan = orchestratorItem.querySelector('.text-xs');
+    expect(descSpan).toBeNull();
   });
 
-  // TC20: Viewport change auto-closes bottom sheet
-  it('auto-closes bottom sheet when viewport changes to desktop', () => {
-    mockIsMobile = true;
-    document.body.style.overflow = 'auto';
-
-    const { rerender } = render(<BmadAgentButton {...defaultProps} />);
+  // Category groups have accessibility attributes
+  it('has correct accessibility attributes on category groups', () => {
+    render(<BmadAgentButton {...defaultProps} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
-    expect(screen.getByTestId('bmad-bottom-sheet')).toBeInTheDocument();
-    expect(document.body.style.overflow).toBe('hidden');
 
-    // Simulate viewport change to desktop
-    mockIsMobile = false;
-    rerender(<BmadAgentButton {...defaultProps} />);
+    const planningGroup = screen.getByTestId('bmad-group-planning');
+    expect(planningGroup).toHaveAttribute('role', 'group');
+    expect(planningGroup).toHaveAttribute('aria-label', 'Planning');
 
-    // Bottom sheet should be closed
-    expect(screen.queryByTestId('bmad-bottom-sheet')).not.toBeInTheDocument();
-    // body overflow should be restored
-    expect(document.body.style.overflow).toBe('auto');
+    const implGroup = screen.getByTestId('bmad-group-implementation');
+    expect(implGroup).toHaveAttribute('role', 'group');
+    expect(implGroup).toHaveAttribute('aria-label', 'Implementation');
   });
 });
