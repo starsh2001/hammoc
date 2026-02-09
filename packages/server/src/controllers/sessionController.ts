@@ -5,7 +5,7 @@
  */
 
 import { Request, Response } from 'express';
-import { SESSION_ERRORS, SessionListResponse, HistoryMessagesResponse } from '@bmad-studio/shared';
+import { SESSION_ERRORS, SessionListResponse, HistoryMessagesResponse, DeleteSessionsBatchRequest } from '@bmad-studio/shared';
 import { sessionService } from '../services/sessionService.js';
 import { getActiveStreamSessionIds } from '../handlers/websocket.js';
 
@@ -95,6 +95,77 @@ export const sessionController = {
         error: {
           code: SESSION_ERRORS.SESSION_PARSE_ERROR.code,
           message: SESSION_ERRORS.SESSION_PARSE_ERROR.message,
+        },
+      });
+    }
+  },
+
+  /**
+   * DELETE /api/projects/:projectSlug/sessions/:sessionId
+   * Delete a single session
+   */
+  async delete(req: Request, res: Response): Promise<void> {
+    const { projectSlug, sessionId } = req.params;
+
+    if (!sessionService.isValidPathParam(projectSlug) || !sessionService.isValidPathParam(sessionId)) {
+      res.status(SESSION_ERRORS.INVALID_PATH.httpStatus).json({
+        error: {
+          code: SESSION_ERRORS.INVALID_PATH.code,
+          message: SESSION_ERRORS.INVALID_PATH.message,
+        },
+      });
+      return;
+    }
+
+    try {
+      await sessionService.deleteSession(projectSlug, sessionId);
+      res.json({ success: true });
+    } catch {
+      res.status(SESSION_ERRORS.SESSION_DELETE_ERROR.httpStatus).json({
+        error: {
+          code: SESSION_ERRORS.SESSION_DELETE_ERROR.code,
+          message: SESSION_ERRORS.SESSION_DELETE_ERROR.message,
+        },
+      });
+    }
+  },
+
+  /**
+   * POST /api/projects/:projectSlug/sessions/delete-batch
+   * Delete multiple sessions at once
+   */
+  async deleteBatch(req: Request, res: Response): Promise<void> {
+    const { projectSlug } = req.params;
+    const { sessionIds } = req.body as DeleteSessionsBatchRequest;
+
+    if (!sessionService.isValidPathParam(projectSlug)) {
+      res.status(SESSION_ERRORS.INVALID_PATH.httpStatus).json({
+        error: {
+          code: SESSION_ERRORS.INVALID_PATH.code,
+          message: SESSION_ERRORS.INVALID_PATH.message,
+        },
+      });
+      return;
+    }
+
+    if (!sessionIds || !Array.isArray(sessionIds) || sessionIds.length === 0) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_REQUEST',
+          message: '삭제할 세션 ID 목록이 필요합니다.',
+        },
+      });
+      return;
+    }
+
+    try {
+      const result = await sessionService.deleteSessions(projectSlug, sessionIds);
+      res.json(result);
+    } catch {
+      res.status(SESSION_ERRORS.SESSION_DELETE_ERROR.httpStatus).json({
+        error: {
+          code: SESSION_ERRORS.SESSION_DELETE_ERROR.code,
+          message: SESSION_ERRORS.SESSION_DELETE_ERROR.message,
         },
       });
     }

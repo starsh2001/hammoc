@@ -65,6 +65,28 @@ export interface SessionListResponse {
 }
 
 /**
+ * Response for DELETE /api/projects/:projectSlug/sessions/:sessionId
+ */
+export interface DeleteSessionResponse {
+  success: boolean;
+}
+
+/**
+ * Request for POST /api/projects/:projectSlug/sessions/delete-batch
+ */
+export interface DeleteSessionsBatchRequest {
+  sessionIds: string[];
+}
+
+/**
+ * Response for POST /api/projects/:projectSlug/sessions/delete-batch
+ */
+export interface DeleteSessionsBatchResponse {
+  deleted: number;
+  failed: number;
+}
+
+/**
  * Session-related error codes and messages
  *
  * NOTE: PROJECT_NOT_FOUND is used when a project is not found during session list query.
@@ -102,6 +124,12 @@ export const SESSION_ERRORS = {
     code: 'INVALID_PATH',
     message: '잘못된 경로 파라미터입니다.',
     httpStatus: 400,
+  },
+  /** Session delete error */
+  SESSION_DELETE_ERROR: {
+    code: 'SESSION_DELETE_ERROR',
+    message: '세션 삭제 중 오류가 발생했습니다.',
+    httpStatus: 500,
   },
 } as const;
 
