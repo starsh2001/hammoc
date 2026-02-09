@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { SessionListResponse, HistoryMessagesResponse } from '@bmad-studio/shared';
+import type { SessionListResponse, HistoryMessagesResponse, DeleteSessionResponse, DeleteSessionsBatchResponse } from '@bmad-studio/shared';
 
 export const sessionsApi = {
   /**
@@ -37,4 +37,12 @@ export const sessionsApi = {
 
     return api.get<HistoryMessagesResponse>(url);
   },
+
+  /** Delete a single session */
+  delete: (projectSlug: string, sessionId: string) =>
+    api.delete<DeleteSessionResponse>(`/projects/${projectSlug}/sessions/${sessionId}`),
+
+  /** Delete multiple sessions at once */
+  deleteBatch: (projectSlug: string, sessionIds: string[]) =>
+    api.post<DeleteSessionsBatchResponse>(`/projects/${projectSlug}/sessions/delete-batch`, { sessionIds }),
 };

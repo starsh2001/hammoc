@@ -288,6 +288,85 @@ export class SessionService {
     return sorted;
   }
 
+  // Session deletion methods
+
+  /**
+   * Remove a session entry from sessions-index.json
+   */
+  private async removeFromSessionsIndex(projectSlug: string, sessionId: string): Promise<void> {
+    const indexPath = path.join(this.claudeProjectsDir, projectSlug, 'sessions-index.json');
+    try {
+      const content = await fs.readFile(indexPath, 'utf-8');
+      const index: SessionsIndex = JSON.parse(content);
+      const before = index.entries.length;
+      index.entries = index.entries.filter(e => e.sessionId !== sessionId);
+      if (index.entries.length < before) {
+        await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf-8');
+      }
+    } catch {
+      // Index file doesn't exist or is invalid - skip
+    }
+  }
+
+  /**
+   * Remove multiple session entries from sessions-index.json in one write
+   */
+  private async removeMultipleFromSessionsIndex(projectSlug: string, sessionIds: Set<string>): Promise<void> {
+    const indexPath = path.join(this.claudeProjectsDir, projectSlug, 'sessions-index.json');
+    try {
+      const content = await fs.readFile(indexPath, 'utf-8');
+      const index: SessionsIndex = JSON.parse(content);
+      const before = index.entries.length;
+      index.entries = index.entries.filter(e => !sessionIds.has(e.sessionId));
+      if (index.entries.length < before) {
+        await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf-8');
+      }
+    } catch {
+      // Index file doesn't exist or is invalid - skip
+    }
+  }
+
+  /**
+   * Delete a single session (.jsonl file + index entry)
+   */
+  async deleteSession(projectSlug: string, sessionId: string): Promise<void> {
+    const filePath = this.getSessionFilePath(projectSlug, sessionId);
+    await fs.unlink(filePath);
+    await this.removeFromSessionsIndex(projectSlug, sessionId);
+  }
+
+  /**
+   * Delete multiple sessions (batch)
+   * Returns count of successfully deleted and failed sessions
+   */
+  async deleteSessions(projectSlug: string, sessionIds: string[]): Promise<{ deleted: number; failed: number }> {
+    let deleted = 0;
+    let failed = 0;
+    const deletedIds = new Set<string>();
+
+    for (const sessionId of sessionIds) {
+      if (!this.isValidPathParam(sessionId)) {
+        failed++;
+        continue;
+      }
+      try {
+        const filePath = this.getSessionFilePath(projectSlug, sessionId);
+        await fs.unlink(filePath);
+        deleted++;
+        deletedIds.add(sessionId);
+      } catch {
+        failed++;
+      }
+    }
+
+    // Remove all deleted sessions from index in one write
+    if (deletedIds.size > 0) {
+      await this.removeMultipleFromSessionsIndex(projectSlug, deletedIds);
+    }
+
+    return { deleted, failed };
+  }
+
   // Story 3.5: Session History Loading methods
 
   /**

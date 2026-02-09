@@ -27,6 +27,10 @@ interface SessionActions {
   setRefreshing: (isRefreshing: boolean) => void;
   /** Update a session's streaming status (called from socket listener) */
   updateSessionStreaming: (sessionId: string, active: boolean) => void;
+  /** Delete a single session */
+  deleteSession: (projectSlug: string, sessionId: string) => Promise<boolean>;
+  /** Delete multiple sessions at once */
+  deleteSessions: (projectSlug: string, sessionIds: string[]) => Promise<boolean>;
 }
 
 type SessionStore = SessionState & SessionActions;
@@ -111,6 +115,39 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     // Only update if a matching session was found
     if (updated !== sessions) {
       set({ sessions: updated });
+    }
+  },
+
+  deleteSession: async (projectSlug: string, sessionId: string) => {
+    try {
+      await sessionsApi.delete(projectSlug, sessionId);
+      // Remove from local state immediately
+      set((state) => ({
+        sessions: state.sessions.filter((s) => s.sessionId !== sessionId),
+      }));
+      return true;
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : '세션 삭제 중 오류가 발생했습니다.';
+      set({ error: message, errorType: 'unknown' });
+      return false;
+    }
+  },
+
+  deleteSessions: async (projectSlug: string, sessionIds: string[]) => {
+    try {
+      const deletedSet = new Set(sessionIds);
+      await sessionsApi.deleteBatch(projectSlug, sessionIds);
+      // Remove all deleted sessions from local state
+      set((state) => ({
+        sessions: state.sessions.filter((s) => !deletedSet.has(s.sessionId)),
+      }));
+      return true;
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : '세션 삭제 중 오류가 발생했습니다.';
+      set({ error: message, errorType: 'unknown' });
+      return false;
     }
   },
 }));
