@@ -42,12 +42,12 @@ vi.mock('../../hooks/useWebSocket', () => ({
 }));
 
 // Mock useSlashCommands to prevent URL parse and act() warnings (TEST-002 fix)
-const mockUseSlashCommands = vi.fn(() => ({
+const mockUseSlashCommands = vi.fn((_projectSlug?: string) => ({
   commands: [] as import('@bmad-studio/shared').SlashCommand[],
   isLoading: false,
 }));
 vi.mock('../../hooks/useSlashCommands', () => ({
-  useSlashCommands: (...args: unknown[]) => mockUseSlashCommands(...args),
+  useSlashCommands: (projectSlug?: string) => mockUseSlashCommands(projectSlug),
 }));
 
 // Mock useIsMobile for BmadAgentButton (Story 8.3)

@@ -92,6 +92,7 @@ export const sessionController = {
       const response: HistoryMessagesResponse = result ?? {
         messages: [],
         pagination: { total: 0, limit, offset, hasMore: false },
+        lastAgentCommand: null,
       };
       res.json(response);
     } catch {
