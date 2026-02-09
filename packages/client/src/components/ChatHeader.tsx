@@ -12,12 +12,11 @@ import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, RefreshCw, Plus, History, Settings } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
-import { ContextUsageDisplay } from './ContextUsageDisplay';
+import { formatAgentRoleLabel } from '../utils/agentUtils';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { HeaderOverflowMenu } from './HeaderOverflowMenu';
 import { SettingsMenu } from './SettingsMenu';
 import { BrandLogo } from './BrandLogo';
-import type { ChatUsage } from '@bmad-studio/shared';
 
 interface ChatHeaderProps {
   /** Project slug/path to display */
@@ -36,16 +35,12 @@ interface ChatHeaderProps {
   onNewSession?: () => void;
   /** Callback when session history button is clicked */
   onShowSessions?: () => void;
-  /** Context usage data from last SDK response */
-  contextUsage?: ChatUsage | null;
-  /** Callback when compact button is clicked */
-  onCompact?: () => void;
   /** Callback when logout is clicked */
   onLogout?: () => void;
   /** Callback when session is renamed (null to remove name) */
   onRenameSession?: (name: string | null) => void;
-  /** Active agent info (name + optional icon) */
-  activeAgent?: { name: string; icon?: string } | null;
+  /** Active agent info (name, command, optional icon) */
+  activeAgent?: { name: string; command: string; icon?: string } | null;
   /** Callback when agent indicator is clicked */
   onAgentIndicatorClick?: () => void;
   /** Whether current project is a BMad project */
@@ -61,8 +56,6 @@ export function ChatHeader({
   isRefreshing = false,
   onNewSession,
   onShowSessions,
-  contextUsage,
-  onCompact,
   onLogout,
   onRenameSession,
   activeAgent,
@@ -170,7 +163,7 @@ export function ChatHeader({
                             onAgentIndicatorClick?.();
                           }
                         }}
-                        aria-label={`현재 에이전트: ${activeAgent?.name ?? 'Claude'}. 클릭하여 에이전트 목록 열기`}
+                        aria-label={`현재 에이전트: ${activeAgent ? formatAgentRoleLabel(activeAgent.command) || activeAgent.name : 'Claude'}. 클릭하여 에이전트 목록 열기`}
                         data-testid="agent-indicator"
                         className={`flex-shrink-0 cursor-pointer ${
                           activeAgent
@@ -179,7 +172,7 @@ export function ChatHeader({
                         }`}
                       >
                         {activeAgent ? (
-                          <>{activeAgent.icon && <span>{activeAgent.icon}</span>} {activeAgent.name}</>
+                          <>{activeAgent.icon && <span>{activeAgent.icon}</span>} {formatAgentRoleLabel(activeAgent.command) || activeAgent.name}</>
                         ) : (
                           'Claude'
                         )}
@@ -194,15 +187,6 @@ export function ChatHeader({
 
         {/* Right side: Connection status and Actions */}
         <div className="flex items-center gap-1 ml-4">
-          {/* Context usage display + separator (only when usage data exists) */}
-          {contextUsage && contextUsage.contextWindow > 0 && (
-            <ContextUsageDisplay
-              contextUsage={contextUsage}
-              onNewSession={onNewSession}
-              onCompact={onCompact}
-            />
-          )}
-
           {/* Connection status indicator - always visible */}
           <ConnectionStatusIndicator
             status={connectionStatus}

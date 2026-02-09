@@ -184,7 +184,7 @@ export function ChatPage() {
   const { commands } = useSlashCommands(projectSlug);
 
   // Recent agents tracking (Story 8.4)
-  const { recentAgentCommands, addRecentAgent } = useRecentAgents(projectSlug);
+  const { addRecentAgent } = useRecentAgents(projectSlug);
 
   // Active agent detection (Story 8.5)
   const { activeAgent } = useActiveAgent(messages, commands, lastAgentCommand);
@@ -200,6 +200,11 @@ export function ChatPage() {
         console.error('[ChatPage] Cannot send message: workingDirectory not found');
         return;
       }
+      // Read latest messages from store BEFORE adding optimistic message
+      // to correctly detect whether this is a new or existing session.
+      // Uses getState() to avoid stale closure (messages may have loaded
+      // after this callback was created).
+      const currentMessages = useMessageStore.getState().messages;
       // Convert Attachment[] to ImageAttachment[] for optimistic message display
       const images = attachments?.map((a) => ({
         mimeType: a.mimeType,
@@ -209,11 +214,11 @@ export function ChatPage() {
       // Add user message immediately (optimistic UI)
       addOptimisticMessage(content, images);
       // Send to server — sessionId is always a UUID (pre-allocated),
-      // resume when messages already exist in this session
+      // resume when messages already exist in this session.
       sendMessage(content, {
         workingDirectory,
         sessionId,
-        resume: messages.length > 0,
+        resume: currentMessages.length > 0,
         attachments,
       });
     },
@@ -239,10 +244,15 @@ export function ChatPage() {
       // Empty session: send agent command directly
       handleSendMessage(agentCommand);
     } else {
-      // Active session: show confirmation dialog
-      setConfirmModal({ isOpen: true, action: 'agentLaunch', agentCommand });
+      // Active session: start new session immediately (no confirmation)
+      abortResponse();
+      clearMessages();
+      clearStreamingSegments();
+      pendingAgentCommandRef.current = agentCommand;
+      const newSessionId = generateUUID();
+      navigate(`/project/${projectSlug}/session/${newSessionId}`);
     }
-  }, [handleSendMessage, addRecentAgent]);
+  }, [handleSendMessage, addRecentAgent, abortResponse, clearMessages, clearStreamingSegments, navigate, projectSlug]);
 
   // Ref to keep latest handleSendMessage for use in fetchMessages callback (Story 8.3)
   const handleSendMessageRef = useRef(handleSendMessage);
@@ -482,7 +492,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -513,8 +523,8 @@ export function ChatPage() {
             activeModel={activeModel}
             isBmadProject={isBmadProject}
             onAgentSelect={handleAgentSelect}
-            recentAgentCommands={recentAgentCommands}
             agentListOpenTrigger={agentListOpenTrigger}
+            activeAgentCommand={activeAgent?.command}
           />
         </InputArea>
         {sessionPanel}
@@ -530,7 +540,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -560,8 +570,8 @@ export function ChatPage() {
             activeModel={activeModel}
             isBmadProject={isBmadProject}
             onAgentSelect={handleAgentSelect}
-            recentAgentCommands={recentAgentCommands}
             agentListOpenTrigger={agentListOpenTrigger}
+            activeAgentCommand={activeAgent?.command}
           />
         </InputArea>
         {sessionPanel}
@@ -577,7 +587,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -614,8 +624,8 @@ export function ChatPage() {
             activeModel={activeModel}
             isBmadProject={isBmadProject}
             onAgentSelect={handleAgentSelect}
-            recentAgentCommands={recentAgentCommands}
             agentListOpenTrigger={agentListOpenTrigger}
+            activeAgentCommand={activeAgent?.command}
           />
         </InputArea>
         {sessionPanel}
@@ -637,11 +647,9 @@ export function ChatPage() {
         onNewSession={handleNewSession}
         onShowSessions={handleShowSessions}
         onRefresh={handleRetry}
-        contextUsage={contextUsage}
-        onCompact={handleCompact}
         onLogout={handleLogout}
         onRenameSession={handleRenameSession}
-        activeAgent={activeAgent ? { name: activeAgent.name, icon: activeAgent.icon } : null}
+        activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null}
         onAgentIndicatorClick={handleAgentIndicatorClick}
         isBmadProject={isBmadProject}
       />
@@ -688,8 +696,11 @@ export function ChatPage() {
           activeModel={activeModel}
           isBmadProject={isBmadProject}
           onAgentSelect={handleAgentSelect}
-          recentAgentCommands={recentAgentCommands}
           agentListOpenTrigger={agentListOpenTrigger}
+          activeAgentCommand={activeAgent?.command}
+          contextUsage={contextUsage}
+          onNewSession={handleNewSession}
+          onCompact={handleCompact}
         />
       </InputArea>
       {sessionPanel}
