@@ -4,14 +4,14 @@
  */
 
 import { api } from './client';
-import type { SessionListResponse, HistoryMessagesResponse, DeleteSessionResponse, DeleteSessionsBatchResponse } from '@bmad-studio/shared';
+import type { SessionListResponse, HistoryMessagesResponse, DeleteSessionResponse, DeleteSessionsBatchResponse, UpdateSessionNameResponse } from '@bmad-studio/shared';
 
 export const sessionsApi = {
   /**
    * List all sessions for a project
    */
-  list: (projectSlug: string) =>
-    api.get<SessionListResponse>(`/projects/${projectSlug}/sessions`),
+  list: (projectSlug: string, options?: { includeEmpty?: boolean }) =>
+    api.get<SessionListResponse>(`/projects/${projectSlug}/sessions${options?.includeEmpty ? '?includeEmpty=true' : ''}`),
 
   /**
    * Get session messages with pagination
@@ -45,4 +45,8 @@ export const sessionsApi = {
   /** Delete multiple sessions at once */
   deleteBatch: (projectSlug: string, sessionIds: string[]) =>
     api.post<DeleteSessionsBatchResponse>(`/projects/${projectSlug}/sessions/delete-batch`, { sessionIds }),
+
+  /** Update or remove a session's custom name */
+  updateName: (projectSlug: string, sessionId: string, name: string | null) =>
+    api.patch<UpdateSessionNameResponse>(`/projects/${projectSlug}/sessions/${sessionId}/name`, { name }),
 };

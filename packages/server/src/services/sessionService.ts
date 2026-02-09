@@ -191,7 +191,7 @@ export class SessionService {
    * - firstPrompt truncated to 100 chars (AC 4)
    * - Also scans for .jsonl files not yet in sessions-index.json
    */
-  async listSessionsBySlug(projectSlug: string): Promise<SessionListItem[] | null> {
+  async listSessionsBySlug(projectSlug: string, includeEmpty = false): Promise<SessionListItem[] | null> {
     const projectDir = path.join(this.claudeProjectsDir, projectSlug);
     const indexPath = path.join(projectDir, 'sessions-index.json');
 
@@ -252,23 +252,41 @@ export class SessionService {
                 }
               }
 
-              // Only add session if it has a valid first prompt
-              if (firstPrompt) {
+              // Only add session if it has a valid first prompt (or includeEmpty is true)
+              if (firstPrompt || includeEmpty) {
                 const messageCount = rawMessages.filter(
                   m => m.type === 'user' || m.type === 'assistant'
                 ).length;
 
                 sessionMap.set(sessionId, {
                   sessionId,
-                  firstPrompt,
+                  firstPrompt: firstPrompt || '',
                   messageCount,
                   created: stat.birthtime.toISOString(),
                   modified: stat.mtime.toISOString(),
                 });
               }
+            } else if (includeEmpty) {
+              // No user message found but includeEmpty is true
+              sessionMap.set(sessionId, {
+                sessionId,
+                firstPrompt: '',
+                messageCount: 0,
+                created: stat.birthtime.toISOString(),
+                modified: stat.mtime.toISOString(),
+              });
             }
           } catch {
-            // Failed to parse file - skip this session
+            // Failed to parse file - add as empty if includeEmpty
+            if (includeEmpty) {
+              sessionMap.set(sessionId, {
+                sessionId,
+                firstPrompt: '',
+                messageCount: 0,
+                created: stat.birthtime.toISOString(),
+                modified: stat.mtime.toISOString(),
+              });
+            }
           }
         }
       }

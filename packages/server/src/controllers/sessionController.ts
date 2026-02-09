@@ -5,8 +5,9 @@
  */
 
 import { Request, Response } from 'express';
-import { SESSION_ERRORS, SessionListResponse, HistoryMessagesResponse, DeleteSessionsBatchRequest } from '@bmad-studio/shared';
+import { SESSION_ERRORS, SessionListResponse, HistoryMessagesResponse, DeleteSessionsBatchRequest, UpdateSessionNameRequest } from '@bmad-studio/shared';
 import { sessionService } from '../services/sessionService.js';
+import { projectService } from '../services/projectService.js';
 import { getActiveStreamSessionIds } from '../handlers/websocket.js';
 
 export const sessionController = {
@@ -18,7 +19,8 @@ export const sessionController = {
     const { projectSlug } = req.params;
 
     try {
-      const sessions = await sessionService.listSessionsBySlug(projectSlug);
+      const includeEmpty = req.query.includeEmpty === 'true';
+      const sessions = await sessionService.listSessionsBySlug(projectSlug, includeEmpty);
 
       // AC 6: Return 404 for non-existent project
       if (sessions === null) {
@@ -32,12 +34,14 @@ export const sessionController = {
       }
 
       // Note: Empty array is a valid response (project exists but no sessions)
-      // Mark sessions that have an active background stream
+      // Mark sessions that have an active background stream + merge session names
       const activeIds = new Set(getActiveStreamSessionIds());
+      const sessionNames = await projectService.readSessionNamesBySlug(projectSlug);
       const response: SessionListResponse = {
         sessions: sessions.map(s => ({
           ...s,
           ...(activeIds.has(s.sessionId) && { isStreaming: true }),
+          ...(sessionNames[s.sessionId] && { name: sessionNames[s.sessionId] }),
         })),
       };
       res.json(response);
@@ -167,6 +171,46 @@ export const sessionController = {
           code: SESSION_ERRORS.SESSION_DELETE_ERROR.code,
           message: SESSION_ERRORS.SESSION_DELETE_ERROR.message,
         },
+      });
+    }
+  },
+
+  /**
+   * PATCH /api/projects/:projectSlug/sessions/:sessionId/name
+   * Update or remove a session's custom name
+   */
+  async updateName(req: Request, res: Response): Promise<void> {
+    const { projectSlug, sessionId } = req.params;
+
+    if (!sessionService.isValidPathParam(projectSlug) || !sessionService.isValidPathParam(sessionId)) {
+      res.status(SESSION_ERRORS.INVALID_PATH.httpStatus).json({
+        error: {
+          code: SESSION_ERRORS.INVALID_PATH.code,
+          message: SESSION_ERRORS.INVALID_PATH.message,
+        },
+      });
+      return;
+    }
+
+    try {
+      const { name } = req.body as UpdateSessionNameRequest;
+      const trimmedName = typeof name === 'string' ? name.trim() : null;
+      const updatedName = await projectService.updateSessionName(
+        projectSlug,
+        sessionId,
+        trimmedName || null,
+      );
+      res.json({ sessionId, name: updatedName });
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({
+          error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message },
+        });
+        return;
+      }
+      res.status(500).json({
+        error: { code: 'SESSION_NAME_UPDATE_ERROR', message: '세션 이름 저장 중 오류가 발생했습니다.' },
       });
     }
   },
