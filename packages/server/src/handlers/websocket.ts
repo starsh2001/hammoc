@@ -181,6 +181,17 @@ export async function initializeWebSocket(
 
     // Handle session:join event — attach socket to active running stream
     socket.on('session:join', (sessionId: string) => {
+      // Detach this socket from any previously-attached stream to prevent
+      // events from the old stream leaking to a different session's listeners
+      const prevSessionId = socketToSession.get(socket.id);
+      if (prevSessionId && prevSessionId !== sessionId) {
+        const prevStream = activeStreams.get(prevSessionId);
+        if (prevStream && prevStream.socketRef.current?.id === socket.id) {
+          prevStream.socketRef.current = null;
+        }
+        socketToSession.delete(socket.id);
+      }
+
       const stream = activeStreams.get(sessionId);
 
       if (!stream || stream.status !== 'running') {
@@ -203,6 +214,19 @@ export async function initializeWebSocket(
       for (const entry of stream.buffer) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (socket.emit as any)(entry.event, entry.data);
+      }
+    });
+
+    // Handle session:leave event — detach socket from current stream
+    // (client navigating away from a session while streaming continues in background)
+    socket.on('session:leave', (_sessionId: string) => {
+      const prevSessionId = socketToSession.get(socket.id);
+      if (prevSessionId) {
+        const prevStream = activeStreams.get(prevSessionId);
+        if (prevStream && prevStream.socketRef.current?.id === socket.id) {
+          prevStream.socketRef.current = null;
+        }
+        socketToSession.delete(socket.id);
       }
     });
 

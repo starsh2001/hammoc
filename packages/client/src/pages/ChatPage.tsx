@@ -315,9 +315,20 @@ export function ChatPage() {
     }
   }, [projectSlug, sessionId, fetchMessages, clearStreamingSegments]);
 
-  // Clear messages only on component unmount (not on sessionId change)
+  // Clean up on component unmount (not on sessionId change):
+  // - Clear messages
+  // - Detach socket from server-side stream (session:leave)
+  // - Clear client-side streaming state (without aborting server-side stream,
+  //   which continues in background for reconnection support)
   useEffect(() => {
-    return () => clearMessages();
+    return () => {
+      clearMessages();
+      const socket = getSocket();
+      socket.emit('session:leave', '');
+      if (useChatStore.getState().isStreaming) {
+        useChatStore.getState().abortStreaming();
+      }
+    };
   }, [clearMessages]);
 
   // Probe for active background stream on session mount
