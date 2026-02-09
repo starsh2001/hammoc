@@ -113,6 +113,34 @@ describe('SessionListItem', () => {
     expect(screen.getByText('0개 메시지')).toBeInTheDocument();
   });
 
+  // Story 8.5 - Agent badge tests
+  it('displays agent badge when agentInfo is provided (AC 5)', () => {
+    render(
+      <SessionListItem
+        session={mockSession}
+        onClick={vi.fn()}
+        agentInfo={{ name: 'PM (Product Manager)', icon: '📋' }}
+      />
+    );
+
+    const badge = screen.getByTestId('session-agent-badge');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('📋');
+    expect(badge).toHaveTextContent('PM (Product Manager)');
+  });
+
+  it('does not display agent badge when agentInfo is null', () => {
+    render(
+      <SessionListItem
+        session={mockSession}
+        onClick={vi.fn()}
+        agentInfo={null}
+      />
+    );
+
+    expect(screen.queryByTestId('session-agent-badge')).not.toBeInTheDocument();
+  });
+
   it('uses aria-hidden on decorative icon', () => {
     render(<SessionListItem session={mockSession} onClick={vi.fn()} />);
 

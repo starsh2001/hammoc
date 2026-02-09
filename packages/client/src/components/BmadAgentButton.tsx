@@ -29,6 +29,8 @@ interface BmadAgentButtonProps {
   disabled?: boolean;
   /** Recently used agent commands (ordered by most recent first) */
   recentAgentCommands?: string[];
+  /** External trigger to open the popup (increment to open) */
+  openTrigger?: number;
 }
 
 export function BmadAgentButton({
@@ -37,6 +39,7 @@ export function BmadAgentButton({
   onAgentSelect,
   disabled = false,
   recentAgentCommands,
+  openTrigger,
 }: BmadAgentButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -47,6 +50,17 @@ export function BmadAgentButton({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const isMobile = useIsMobile();
   const prevIsMobileRef = useRef(isMobile);
+  const prevTriggerRef = useRef(openTrigger ?? 0);
+
+  // External open trigger
+  useEffect(() => {
+    if (openTrigger !== undefined && openTrigger !== prevTriggerRef.current) {
+      prevTriggerRef.current = openTrigger;
+      if (openTrigger > 0) {
+        setIsOpen(true);
+      }
+    }
+  }, [openTrigger]);
 
   // Build recent agents list and combined list for keyboard navigation
   const recentAgents = useMemo(() => {
