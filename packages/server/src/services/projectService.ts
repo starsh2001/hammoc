@@ -12,6 +12,7 @@ import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import type {
   ProjectInfo,
+  ProjectSettings,
   CreateProjectRequest,
   CreateProjectResponse,
   ValidatePathResponse,
@@ -241,12 +242,16 @@ class ProjectService {
       // Check if it's a BMad project (AC 4)
       const isBmadProject = await this.checkBmadProject(originalPath);
 
+      // Read project settings from .bmad-studio/settings.json
+      const settings = await this.readProjectSettings(originalPath);
+
       return {
         originalPath,
         projectSlug,
         sessionCount,
         lastModified,
         isBmadProject,
+        ...(settings.hidden !== undefined && { hidden: settings.hidden }),
       };
     } catch (error) {
       // Re-throw specific errors
@@ -257,6 +262,51 @@ class ProjectService {
       // File doesn't exist or is invalid JSON - skip this project
       return null;
     }
+  }
+
+  /**
+   * Read project settings from <originalPath>/.bmad-studio/settings.json
+   * Returns default values if file doesn't exist
+   */
+  async readProjectSettings(originalPath: string): Promise<ProjectSettings> {
+    const settingsPath = path.join(originalPath, '.bmad-studio', 'settings.json');
+    try {
+      const content = await fs.readFile(settingsPath, 'utf-8');
+      return JSON.parse(content) as ProjectSettings;
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Write project settings to <originalPath>/.bmad-studio/settings.json
+   * Creates .bmad-studio directory if it doesn't exist
+   */
+  async writeProjectSettings(originalPath: string, settings: ProjectSettings): Promise<void> {
+    const bmadStudioDir = path.join(originalPath, '.bmad-studio');
+    await fs.mkdir(bmadStudioDir, { recursive: true });
+    const settingsPath = path.join(bmadStudioDir, 'settings.json');
+
+    // Merge with existing settings
+    const existing = await this.readProjectSettings(originalPath);
+    const merged = { ...existing, ...settings };
+    await fs.writeFile(settingsPath, JSON.stringify(merged, null, 2), 'utf-8');
+  }
+
+  /**
+   * Update settings for a project identified by its slug
+   * @returns Updated ProjectSettings
+   */
+  async updateProjectSettings(projectSlug: string, settings: ProjectSettings): Promise<ProjectSettings> {
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+    const info = await this.parseSessionsIndex(projectDir, projectSlug);
+    if (!info) {
+      const err = new Error('프로젝트를 찾을 수 없습니다.');
+      (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
+      throw err;
+    }
+    await this.writeProjectSettings(info.originalPath, settings);
+    return this.readProjectSettings(info.originalPath);
   }
 
   /**

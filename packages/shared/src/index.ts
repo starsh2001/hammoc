@@ -62,6 +62,8 @@ export {
   ValidatePathRequest,
   ValidatePathResponse,
   BmadVersionsResponse,
+  ProjectSettings,
+  UpdateProjectSettingsRequest,
 } from './types/project.js';
 
 // Story 5.1: SlashCommand types for command autocomplete

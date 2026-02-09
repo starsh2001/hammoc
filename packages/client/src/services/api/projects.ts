@@ -7,12 +7,14 @@
 import { api } from './client';
 import type {
   ProjectInfo,
+  ProjectSettings,
   ProjectListResponse,
   CreateProjectRequest,
   CreateProjectResponse,
   DeleteProjectResponse,
   ValidatePathResponse,
   BmadVersionsResponse,
+  UpdateProjectSettingsRequest,
 } from '@bmad-studio/shared';
 
 export const projectsApi = {
@@ -37,4 +39,8 @@ export const projectsApi = {
 
   /** List available BMad method versions */
   bmadVersions: () => api.get<BmadVersionsResponse>('/projects/bmad-versions'),
+
+  /** Update project settings (.bmad-studio/settings.json) */
+  updateSettings: (projectSlug: string, settings: UpdateProjectSettingsRequest) =>
+    api.patch<ProjectSettings>(`/projects/${projectSlug}/settings`, settings),
 };
