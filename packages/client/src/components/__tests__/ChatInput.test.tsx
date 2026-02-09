@@ -22,6 +22,11 @@ vi.mock('../../hooks/useWebSocket', () => ({
   })),
 }));
 
+// Mock useIsMobile for BmadAgentButton (Story 8.3)
+vi.mock('../../hooks/useIsMobile', () => ({
+  useIsMobile: () => false,
+}));
+
 // Import after mock
 import { useWebSocket } from '../../hooks/useWebSocket';
 
@@ -649,6 +654,39 @@ describe('ChatInput', () => {
 
       expect(textarea).toHaveValue('/BMad:tasks:create-doc ');
       expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
+    });
+  });
+
+  // Story 8.3 - Agent select pass-through
+  describe('BMad agent select pass-through', () => {
+    it('calls onAgentSelect without modifying textarea content', () => {
+      const mockOnAgentSelect = vi.fn();
+
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          isBmadProject
+          onAgentSelect={mockOnAgentSelect}
+        />
+      );
+
+      // Verify textarea is initially empty
+      const textarea = screen.getByRole('textbox');
+      expect(textarea).toHaveValue('');
+
+      // Open agent popup
+      const agentButton = screen.getByTestId('bmad-agent-button');
+      fireEvent.click(agentButton);
+
+      // Click an agent
+      const agentItem = screen.getByTestId('bmad-agent-item-0');
+      fireEvent.click(agentItem);
+
+      // onAgentSelect should be called with the command
+      expect(mockOnAgentSelect).toHaveBeenCalledWith('/BMad:agents:pm');
+      // Textarea should NOT have the command inserted (pass-through only)
+      expect(textarea).toHaveValue('');
     });
   });
 
