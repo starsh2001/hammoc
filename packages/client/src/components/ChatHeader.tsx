@@ -114,9 +114,17 @@ export function ChatHeader({
           />
 
           {/* Desktop-only: inline action buttons */}
-          <div className="hidden md:block">
-            <ThemeToggleButton />
-          </div>
+          {onNewSession && (
+            <button
+              onClick={onNewSession}
+              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
+                         text-gray-700 dark:text-gray-300
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="새 세션 시작"
+            >
+              <Plus className="w-5 h-5" aria-hidden="true" />
+            </button>
+          )}
 
           {onShowSessions && (
             <button
@@ -127,18 +135,6 @@ export function ChatHeader({
               aria-label="세션 목록"
             >
               <History className="w-5 h-5" aria-hidden="true" />
-            </button>
-          )}
-
-          {onNewSession && (
-            <button
-              onClick={onNewSession}
-              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                         text-gray-700 dark:text-gray-300
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="새 세션 시작"
-            >
-              <Plus className="w-5 h-5" aria-hidden="true" />
             </button>
           )}
 
@@ -157,6 +153,10 @@ export function ChatHeader({
               />
             </button>
           )}
+
+          <div className="hidden md:block">
+            <ThemeToggleButton />
+          </div>
 
           {/* Desktop-only: settings menu */}
           {onLogout && (
