@@ -101,6 +101,8 @@ interface ChatInputProps {
   onAgentSelect?: (agentId: string) => void;
   /** Recently used agent commands for quick access */
   recentAgentCommands?: string[];
+  /** External trigger to open agent list (increment to open) */
+  agentListOpenTrigger?: number;
 }
 
 export function ChatInput({
@@ -118,6 +120,7 @@ export function ChatInput({
   isBmadProject,
   onAgentSelect,
   recentAgentCommands,
+  agentListOpenTrigger,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -577,6 +580,7 @@ export function ChatInput({
             }}
             disabled={isStreaming}
             recentAgentCommands={recentAgentCommands}
+            openTrigger={agentListOpenTrigger}
           />
         )}
 

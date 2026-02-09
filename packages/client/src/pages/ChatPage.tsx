@@ -23,6 +23,7 @@ import type { Attachment, HistoryMessage } from '@bmad-studio/shared';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { useRecentAgents } from '../hooks/useRecentAgents';
+import { useActiveAgent } from '../hooks/useActiveAgent';
 import { getSocket } from '../services/socket';
 import { generateUUID } from '../utils/uuid';
 import { ChatHeader } from '../components/ChatHeader';
@@ -183,6 +184,13 @@ export function ChatPage() {
 
   // Recent agents tracking (Story 8.4)
   const { recentAgentCommands, addRecentAgent } = useRecentAgents(projectSlug);
+
+  // Active agent detection (Story 8.5)
+  const { activeAgent } = useActiveAgent(messages, commands);
+  const [agentListOpenTrigger, setAgentListOpenTrigger] = useState(0);
+  const handleAgentIndicatorClick = useCallback(() => {
+    setAgentListOpenTrigger((prev) => prev + 1);
+  }, []);
 
   // Handle message send
   const handleSendMessage = useCallback(
@@ -473,7 +481,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -505,6 +513,7 @@ export function ChatPage() {
             isBmadProject={isBmadProject}
             onAgentSelect={handleAgentSelect}
             recentAgentCommands={recentAgentCommands}
+            agentListOpenTrigger={agentListOpenTrigger}
           />
         </InputArea>
         {sessionPanel}
@@ -520,7 +529,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -551,6 +560,7 @@ export function ChatPage() {
             isBmadProject={isBmadProject}
             onAgentSelect={handleAgentSelect}
             recentAgentCommands={recentAgentCommands}
+            agentListOpenTrigger={agentListOpenTrigger}
           />
         </InputArea>
         {sessionPanel}
@@ -566,7 +576,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} contextUsage={contextUsage} onCompact={handleCompact} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -604,6 +614,7 @@ export function ChatPage() {
             isBmadProject={isBmadProject}
             onAgentSelect={handleAgentSelect}
             recentAgentCommands={recentAgentCommands}
+            agentListOpenTrigger={agentListOpenTrigger}
           />
         </InputArea>
         {sessionPanel}
@@ -629,6 +640,9 @@ export function ChatPage() {
         onCompact={handleCompact}
         onLogout={handleLogout}
         onRenameSession={handleRenameSession}
+        activeAgent={activeAgent ? { name: activeAgent.name, icon: activeAgent.icon } : null}
+        onAgentIndicatorClick={handleAgentIndicatorClick}
+        isBmadProject={isBmadProject}
       />
 
       <main
@@ -674,6 +688,7 @@ export function ChatPage() {
           isBmadProject={isBmadProject}
           onAgentSelect={handleAgentSelect}
           recentAgentCommands={recentAgentCommands}
+          agentListOpenTrigger={agentListOpenTrigger}
         />
       </InputArea>
       {sessionPanel}
