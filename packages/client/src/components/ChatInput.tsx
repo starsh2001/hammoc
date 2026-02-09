@@ -99,6 +99,8 @@ interface ChatInputProps {
   isBmadProject?: boolean;
   /** Callback when a BMad agent is selected */
   onAgentSelect?: (agentId: string) => void;
+  /** Recently used agent commands for quick access */
+  recentAgentCommands?: string[];
 }
 
 export function ChatInput({
@@ -115,6 +117,7 @@ export function ChatInput({
   activeModel,
   isBmadProject,
   onAgentSelect,
+  recentAgentCommands,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -573,6 +576,7 @@ export function ChatInput({
               onAgentSelect(agentCommand);
             }}
             disabled={isStreaming}
+            recentAgentCommands={recentAgentCommands}
           />
         )}
 

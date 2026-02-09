@@ -335,6 +335,121 @@ describe('BmadAgentButton', () => {
     expect(document.activeElement).toBe(closeButton);
   });
 
+  // ===== Story 8.4 Tests =====
+
+  // TC21: No sections when recentAgentCommands is not provided (AC 5)
+  it('shows flat list without sections when recentAgentCommands is not provided', () => {
+    render(<BmadAgentButton {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    expect(screen.queryByTestId('bmad-recent-section')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('bmad-all-section')).not.toBeInTheDocument();
+    expect(screen.getByText('PM (Product Manager)')).toBeInTheDocument();
+  });
+
+  // TC22: Sections displayed when recentAgentCommands is provided (AC 2)
+  it('shows "최근 사용" and "전체" sections when recentAgentCommands is provided', () => {
+    render(
+      <BmadAgentButton
+        {...defaultProps}
+        recentAgentCommands={['/BMad:agents:pm', '/BMad:agents:dev']}
+      />
+    );
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    expect(screen.getByTestId('bmad-recent-section')).toBeInTheDocument();
+    expect(screen.getByTestId('bmad-all-section')).toBeInTheDocument();
+    expect(screen.getByText('최근 사용')).toBeInTheDocument();
+    expect(screen.getByText('전체')).toBeInTheDocument();
+  });
+
+  // TC23: Recent agents displayed in correct order (AC 1)
+  it('shows recent agents in the correct order', () => {
+    render(
+      <BmadAgentButton
+        {...defaultProps}
+        recentAgentCommands={['/BMad:agents:qa', '/BMad:agents:pm']}
+      />
+    );
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    const recentSection = screen.getByTestId('bmad-recent-section');
+    const recentItems = recentSection.querySelectorAll('[role="option"]');
+    expect(recentItems).toHaveLength(2);
+    expect(recentItems[0]).toHaveTextContent('QA (Quality Assurance)');
+    expect(recentItems[1]).toHaveTextContent('PM (Product Manager)');
+  });
+
+  // TC24: Mobile bottom sheet also shows sections
+  it('shows sections in mobile bottom sheet', () => {
+    mockIsMobile = true;
+    render(
+      <BmadAgentButton
+        {...defaultProps}
+        recentAgentCommands={['/BMad:agents:dev']}
+      />
+    );
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    expect(screen.getByTestId('bmad-recent-section')).toBeInTheDocument();
+    expect(screen.getByTestId('bmad-all-section')).toBeInTheDocument();
+  });
+
+  // TC25: No sections when recentAgentCommands is empty array (AC 5)
+  it('shows flat list without sections when recentAgentCommands is empty', () => {
+    render(<BmadAgentButton {...defaultProps} recentAgentCommands={[]} />);
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    expect(screen.queryByTestId('bmad-recent-section')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('bmad-all-section')).not.toBeInTheDocument();
+  });
+
+  // TC26: Keyboard navigation works across combined list (recent + all)
+  it('keyboard navigation traverses recent + all combined list', () => {
+    render(
+      <BmadAgentButton
+        {...defaultProps}
+        recentAgentCommands={['/BMad:agents:pm']}
+      />
+    );
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    const container = screen.getByTestId('bmad-agent-button').parentElement!;
+
+    // Item 0 = recent PM, Item 1 = all PM, Item 2 = all Dev, Item 3 = all QA
+    fireEvent.keyDown(container, { key: 'ArrowDown' }); // index 0 (recent PM)
+    expect(screen.getByTestId('bmad-agent-item-0').getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(container, { key: 'ArrowDown' }); // index 1 (all PM)
+    expect(screen.getByTestId('bmad-agent-item-1').getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(container, { key: 'ArrowDown' }); // index 2 (all Dev)
+    expect(screen.getByTestId('bmad-agent-item-2').getAttribute('aria-selected')).toBe('true');
+
+    // Enter selects the combined list item
+    fireEvent.keyDown(container, { key: 'Enter' });
+    expect(defaultProps.onAgentSelect).toHaveBeenCalledWith('/BMad:agents:dev');
+  });
+
+  // TC27: Sections have accessibility attributes
+  it('has correct accessibility attributes on sections', () => {
+    render(
+      <BmadAgentButton
+        {...defaultProps}
+        recentAgentCommands={['/BMad:agents:pm']}
+      />
+    );
+    fireEvent.click(screen.getByTestId('bmad-agent-button'));
+
+    const recentSection = screen.getByTestId('bmad-recent-section');
+    expect(recentSection).toHaveAttribute('role', 'group');
+    expect(recentSection).toHaveAttribute('aria-label', '최근 사용');
+
+    const allSection = screen.getByTestId('bmad-all-section');
+    expect(allSection).toHaveAttribute('role', 'group');
+    expect(allSection).toHaveAttribute('aria-label', '전체');
+  });
+
   // TC20: Viewport change auto-closes bottom sheet
   it('auto-closes bottom sheet when viewport changes to desktop', () => {
     mockIsMobile = true;

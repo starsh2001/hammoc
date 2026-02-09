@@ -12,7 +12,7 @@
  * - Mobile bottom sheet UI (Story 8.2)
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { X } from 'lucide-react';
@@ -27,6 +27,8 @@ interface BmadAgentButtonProps {
   onAgentSelect: (agentId: string) => void;
   /** Disabled state (during streaming) */
   disabled?: boolean;
+  /** Recently used agent commands (ordered by most recent first) */
+  recentAgentCommands?: string[];
 }
 
 export function BmadAgentButton({
@@ -34,6 +36,7 @@ export function BmadAgentButton({
   agents,
   onAgentSelect,
   disabled = false,
+  recentAgentCommands,
 }: BmadAgentButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -44,6 +47,18 @@ export function BmadAgentButton({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const isMobile = useIsMobile();
   const prevIsMobileRef = useRef(isMobile);
+
+  // Build recent agents list and combined list for keyboard navigation
+  const recentAgents = useMemo(() => {
+    if (!recentAgentCommands || recentAgentCommands.length === 0) return [];
+    return recentAgentCommands
+      .map((cmd) => agents.find((a) => a.command === cmd))
+      .filter((a): a is SlashCommand => !!a);
+  }, [recentAgentCommands, agents]);
+
+  const combinedAgents = useMemo(() => {
+    return recentAgents.length > 0 ? [...recentAgents, ...agents] : agents;
+  }, [recentAgents, agents]);
 
   // Close handler that respects mobile animation
   const handleClose = useCallback(() => {
@@ -128,26 +143,26 @@ export function BmadAgentButton({
         return;
       }
 
-      if (agents.length === 0) return;
+      if (combinedAgents.length === 0) return;
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev >= agents.length - 1 ? 0 : prev + 1));
+        setSelectedIndex((prev) => (prev >= combinedAgents.length - 1 ? 0 : prev + 1));
         return;
       }
 
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev <= 0 ? agents.length - 1 : prev - 1));
+        setSelectedIndex((prev) => (prev <= 0 ? combinedAgents.length - 1 : prev - 1));
         return;
       }
 
-      if (e.key === 'Enter' && selectedIndex >= 0 && agents[selectedIndex]) {
+      if (e.key === 'Enter' && selectedIndex >= 0 && combinedAgents[selectedIndex]) {
         e.preventDefault();
-        handleAgentClick(agents[selectedIndex].command);
+        handleAgentClick(combinedAgents[selectedIndex].command);
       }
     },
-    [isOpen, agents, selectedIndex, handleAgentClick, handleClose]
+    [isOpen, combinedAgents, selectedIndex, handleAgentClick, handleClose]
   );
 
   // Focus trapping for mobile bottom sheet
@@ -204,36 +219,54 @@ export function BmadAgentButton({
   // Don't render if not a BMad project
   if (!isBmadProject) return null;
 
-  // Shared agent list items renderer
-  const renderAgentItems = (isMobileView: boolean) => (
-    agents.map((agent, index) => (
-      <li
-        key={agent.command}
-        role="option"
-        aria-selected={index === selectedIndex}
-        onClick={() => handleAgentClick(agent.command)}
-        onMouseEnter={() => setSelectedIndex(index)}
-        className={`
-          flex items-center gap-2 px-3 ${isMobileView ? 'py-3' : 'py-2'} cursor-pointer
-          text-sm text-gray-800 dark:text-gray-200
-          transition-colors duration-75
-          ${index === selectedIndex
-            ? 'bg-purple-100 dark:bg-purple-900/40'
-            : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-          }
-        `}
-        data-testid={`bmad-agent-item-${index}`}
+  // Render a single agent item with combinedAgents-based index
+  const renderAgentItem = (agent: SlashCommand, combinedIndex: number, isMobileView: boolean) => (
+    <li
+      key={`${agent.command}-${combinedIndex}`}
+      role="option"
+      aria-selected={combinedIndex === selectedIndex}
+      onClick={() => handleAgentClick(agent.command)}
+      onMouseEnter={() => setSelectedIndex(combinedIndex)}
+      className={`
+        flex items-center gap-2 px-3 ${isMobileView ? 'py-3' : 'py-2'} cursor-pointer
+        text-sm text-gray-800 dark:text-gray-200
+        transition-colors duration-75
+        ${combinedIndex === selectedIndex
+          ? 'bg-purple-100 dark:bg-purple-900/40'
+          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+        }
+      `}
+      data-testid={`bmad-agent-item-${combinedIndex}`}
+    >
+      {agent.icon && <span className="text-base flex-shrink-0">{agent.icon}</span>}
+      <span
+        className="truncate"
+        title={agent.description ? `${agent.name} - ${agent.description}` : agent.name}
       >
-        {agent.icon && <span className="text-base flex-shrink-0">{agent.icon}</span>}
-        <span
-          className="truncate"
-          title={agent.description ? `${agent.name} - ${agent.description}` : agent.name}
-        >
-          {agent.name}
-        </span>
-      </li>
-    ))
+        {agent.name}
+      </span>
+    </li>
   );
+
+  // Shared agent list items renderer with optional sections
+  const renderAgentItems = (isMobileView: boolean) => {
+    if (recentAgents.length === 0) {
+      return agents.map((agent, index) => renderAgentItem(agent, index, isMobileView));
+    }
+
+    return (
+      <>
+        <div role="group" aria-label="최근 사용" data-testid="bmad-recent-section">
+          <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">최근 사용</div>
+          {recentAgents.map((agent, index) => renderAgentItem(agent, index, isMobileView))}
+        </div>
+        <div role="group" aria-label="전체" data-testid="bmad-all-section">
+          <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-600">전체</div>
+          {agents.map((agent, index) => renderAgentItem(agent, recentAgents.length + index, isMobileView))}
+        </div>
+      </>
+    );
+  };
 
   return (
     <div ref={containerRef} className="relative self-center -mt-1.5" onKeyDown={!isMobile ? handleKeyDown : undefined}>
