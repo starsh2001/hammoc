@@ -18,6 +18,7 @@ interface SessionState {
   isRefreshing: boolean;
   error: string | null;
   errorType: ErrorType;
+  includeEmpty: boolean;
 }
 
 interface SessionActions {
@@ -31,6 +32,10 @@ interface SessionActions {
   deleteSession: (projectSlug: string, sessionId: string) => Promise<boolean>;
   /** Delete multiple sessions at once */
   deleteSessions: (projectSlug: string, sessionIds: string[]) => Promise<boolean>;
+  /** Toggle include empty sessions */
+  setIncludeEmpty: (includeEmpty: boolean) => void;
+  /** Rename a session (optimistic update + API call) */
+  renameSession: (projectSlug: string, sessionId: string, name: string | null) => Promise<boolean>;
 }
 
 type SessionStore = SessionState & SessionActions;
@@ -43,6 +48,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   isRefreshing: false,
   error: null,
   errorType: 'none',
+  includeEmpty: false,
 
   // Actions
   fetchSessions: async (projectSlug: string) => {
@@ -55,7 +61,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     set({ isLoading: true, error: null, errorType: 'none' });
     try {
-      const { sessions } = await sessionsApi.list(projectSlug);
+      const { includeEmpty } = get();
+      const { sessions } = await sessionsApi.list(projectSlug, { includeEmpty });
       set({ sessions, isLoading: false, isRefreshing: false });
     } catch (err) {
       if (err instanceof ApiError) {
@@ -130,6 +137,31 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       const message =
         err instanceof ApiError ? err.message : '세션 삭제 중 오류가 발생했습니다.';
       set({ error: message, errorType: 'unknown' });
+      return false;
+    }
+  },
+
+  setIncludeEmpty: (includeEmpty: boolean) => set({ includeEmpty }),
+
+  renameSession: async (projectSlug: string, sessionId: string, name: string | null) => {
+    // Save previous name for revert
+    const prev = get().sessions.find((s) => s.sessionId === sessionId)?.name;
+    // Optimistic update
+    set((state) => ({
+      sessions: state.sessions.map((s) =>
+        s.sessionId === sessionId ? { ...s, name: name || undefined } : s,
+      ),
+    }));
+    try {
+      await sessionsApi.updateName(projectSlug, sessionId, name);
+      return true;
+    } catch {
+      // Revert on failure
+      set((state) => ({
+        sessions: state.sessions.map((s) =>
+          s.sessionId === sessionId ? { ...s, name: prev } : s,
+        ),
+      }));
       return false;
     }
   },

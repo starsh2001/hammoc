@@ -310,6 +310,67 @@ class ProjectService {
   }
 
   /**
+   * Read session names from <originalPath>/.bmad-studio/session-names.json
+   * Returns empty object if file doesn't exist
+   */
+  async readSessionNames(originalPath: string): Promise<Record<string, string>> {
+    const namesPath = path.join(originalPath, '.bmad-studio', 'session-names.json');
+    try {
+      const content = await fs.readFile(namesPath, 'utf-8');
+      return JSON.parse(content) as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Write session names to <originalPath>/.bmad-studio/session-names.json
+   */
+  private async writeSessionNames(originalPath: string, names: Record<string, string>): Promise<void> {
+    const bmadStudioDir = path.join(originalPath, '.bmad-studio');
+    await fs.mkdir(bmadStudioDir, { recursive: true });
+    const namesPath = path.join(bmadStudioDir, 'session-names.json');
+    await fs.writeFile(namesPath, JSON.stringify(names, null, 2), 'utf-8');
+  }
+
+  /**
+   * Update a session name for a project identified by slug
+   * @param name null to remove the name
+   */
+  async updateSessionName(
+    projectSlug: string,
+    sessionId: string,
+    name: string | null,
+  ): Promise<string | null> {
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+    const info = await this.parseSessionsIndex(projectDir, projectSlug);
+    if (!info) {
+      const err = new Error('프로젝트를 찾을 수 없습니다.');
+      (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
+      throw err;
+    }
+
+    const names = await this.readSessionNames(info.originalPath);
+    if (name) {
+      names[sessionId] = name;
+    } else {
+      delete names[sessionId];
+    }
+    await this.writeSessionNames(info.originalPath, names);
+    return name;
+  }
+
+  /**
+   * Read session names for a project identified by slug
+   */
+  async readSessionNamesBySlug(projectSlug: string): Promise<Record<string, string>> {
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+    const info = await this.parseSessionsIndex(projectDir, projectSlug);
+    if (!info) return {};
+    return this.readSessionNames(info.originalPath);
+  }
+
+  /**
    * Check if a path exists on the filesystem
    * @param targetPath Path to check
    * @returns true if path exists

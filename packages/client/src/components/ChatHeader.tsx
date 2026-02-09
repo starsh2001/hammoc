@@ -8,7 +8,7 @@
  * - Desktop (≥ md): All icons inline
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, RefreshCw, Plus, History, Settings } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
@@ -24,6 +24,8 @@ interface ChatHeaderProps {
   projectSlug?: string;
   /** Session title or ID to display */
   sessionTitle?: string;
+  /** User-assigned session name (shown as badge) */
+  sessionName?: string;
   /** Callback when back button is clicked */
   onBack?: () => void;
   /** Callback when refresh button is clicked */
@@ -40,11 +42,14 @@ interface ChatHeaderProps {
   onCompact?: () => void;
   /** Callback when logout is clicked */
   onLogout?: () => void;
+  /** Callback when session is renamed (null to remove name) */
+  onRenameSession?: (name: string | null) => void;
 }
 
 export function ChatHeader({
   projectSlug,
   sessionTitle,
+  sessionName,
   onBack,
   onRefresh,
   isRefreshing = false,
@@ -53,9 +58,37 @@ export function ChatHeader({
   contextUsage,
   onCompact,
   onLogout,
+  onRenameSession,
 }: ChatHeaderProps) {
   const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
   const [showSettings, setShowSettings] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [isEditingTitle]);
+
+  const handleTitleClick = () => {
+    if (!onRenameSession) return;
+    setEditTitleValue(sessionName || '');
+    setIsEditingTitle(true);
+  };
+
+  const handleTitleSubmit = () => {
+    const trimmed = editTitleValue.trim();
+    onRenameSession?.(trimmed || null);
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleCancel = () => {
+    setIsEditingTitle(false);
+  };
 
   return (
     <header
@@ -86,9 +119,36 @@ export function ChatHeader({
               {projectSlug || '채팅'}
             </h1>
             {sessionTitle && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate font-mono">
-                {sessionTitle}
-              </p>
+              isEditingTitle ? (
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={editTitleValue}
+                  onChange={(e) => setEditTitleValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); handleTitleSubmit(); }
+                    if (e.key === 'Escape') { e.preventDefault(); handleTitleCancel(); }
+                  }}
+                  onBlur={handleTitleSubmit}
+                  placeholder="세션 이름 입력..."
+                  className="w-full text-xs bg-white dark:bg-gray-700 border border-blue-500 rounded px-1.5 py-0.5 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              ) : (
+                <div
+                  className={`flex items-baseline gap-1.5 min-w-0 ${onRenameSession ? 'cursor-pointer group' : ''}`}
+                  onClick={onRenameSession ? handleTitleClick : undefined}
+                  title={onRenameSession ? '클릭하여 세션 이름 변경' : undefined}
+                >
+                  {sessionName && (
+                    <span className="flex-shrink-0 text-[11px] leading-tight font-medium px-1.5 py-px rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 max-w-[40%] truncate">
+                      {sessionName}
+                    </span>
+                  )}
+                  <span className={`text-xs text-gray-500 dark:text-gray-400 truncate font-mono ${onRenameSession ? 'group-hover:text-blue-500 dark:group-hover:text-blue-400' : ''}`}>
+                    {sessionTitle}
+                  </span>
+                </div>
+              )
             )}
           </div>
         </div>
