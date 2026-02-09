@@ -159,11 +159,13 @@ export function ChatPage() {
     }
   }, [projectSlug, sessionId, renameSession]);
 
-  // Get working directory from project
-  const workingDirectory = useMemo(() => {
-    const project = projects.find((p) => p.projectSlug === projectSlug);
-    return project?.originalPath || '';
+  // Get working directory and isBmadProject from project
+  const currentProject = useMemo(() => {
+    return projects.find((p) => p.projectSlug === projectSlug);
   }, [projects, projectSlug]);
+
+  const workingDirectory = currentProject?.originalPath || '';
+  const isBmadProject = currentProject?.isBmadProject ?? false;
 
   // Fetch projects if not loaded (for direct URL navigation)
   useEffect(() => {
@@ -211,6 +213,14 @@ export function ChatPage() {
       abortResponse();
     }
   }, [abortResponse]);
+
+  // Handle BMad agent selection (Story 8.1)
+  // ChatInput inserts command into textarea; user sends manually via Enter.
+  // This callback is a no-op placeholder for Story 8.3 (new-session + auto-send).
+  const handleAgentSelect = useCallback((_agentCommand: string) => {
+    // No-op: ChatInput handles textarea insertion internally.
+    // Story 8.3 will add new-session creation + auto-send here.
+  }, []);
 
   // Handle manual compaction
   const handleCompact = useCallback(() => {
@@ -456,6 +466,8 @@ export function ChatPage() {
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             activeModel={activeModel}
+            isBmadProject={isBmadProject}
+            onAgentSelect={handleAgentSelect}
           />
         </InputArea>
         {sessionPanel}
@@ -499,6 +511,8 @@ export function ChatPage() {
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             activeModel={activeModel}
+            isBmadProject={isBmadProject}
+            onAgentSelect={handleAgentSelect}
           />
         </InputArea>
         {sessionPanel}
@@ -549,6 +563,8 @@ export function ChatPage() {
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             activeModel={activeModel}
+            isBmadProject={isBmadProject}
+            onAgentSelect={handleAgentSelect}
           />
         </InputArea>
         {sessionPanel}
@@ -616,6 +632,8 @@ export function ChatPage() {
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
           activeModel={activeModel}
+          isBmadProject={isBmadProject}
+          onAgentSelect={handleAgentSelect}
         />
       </InputArea>
       {sessionPanel}
