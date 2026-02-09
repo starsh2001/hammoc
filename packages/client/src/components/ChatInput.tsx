@@ -19,6 +19,7 @@ import { CommandPalette } from './CommandPalette';
 import { filterCommands } from './CommandPalette';
 import { PermissionModeSelector } from './PermissionModeSelector';
 import { ModelSelector } from './ModelSelector';
+import { BmadAgentButton } from './BmadAgentButton';
 import type { SlashCommand, Attachment, PermissionMode } from '@bmad-studio/shared';
 import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
 
@@ -94,6 +95,10 @@ interface ChatInputProps {
   onModelChange?: (model: string) => void;
   /** Actual model reported by SDK */
   activeModel?: string | null;
+  /** Whether current project is a BMad project */
+  isBmadProject?: boolean;
+  /** Callback when a BMad agent is selected */
+  onAgentSelect?: (agentId: string) => void;
 }
 
 export function ChatInput({
@@ -108,6 +113,8 @@ export function ChatInput({
   selectedModel,
   onModelChange,
   activeModel,
+  isBmadProject,
+  onAgentSelect,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -553,6 +560,20 @@ export function ChatInput({
           <PermissionModeSelector
             mode={permissionMode}
             onModeChange={onPermissionModeChange}
+            disabled={isStreaming}
+          />
+        )}
+
+        {/* BMad agent button (Story 8.1) */}
+        {isBmadProject && onAgentSelect && (
+          <BmadAgentButton
+            isBmadProject={isBmadProject}
+            agents={commands.filter((cmd) => cmd.category === 'agent')}
+            onAgentSelect={(agentCommand) => {
+              setContent(agentCommand + ' ');
+              onAgentSelect(agentCommand);
+              textareaRef.current?.focus();
+            }}
             disabled={isStreaming}
           />
         )}
