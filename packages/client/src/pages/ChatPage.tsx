@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
+import { toast } from 'sonner';
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
@@ -187,8 +188,23 @@ export function ChatPage() {
   // Recent agents tracking (Story 8.4)
   const { addRecentAgent } = useRecentAgents(projectSlug);
 
-  // Command favorites (Story 9.4) — destructure in Story 9.5~9.7 when UI integration begins
-  useFavoriteCommands(projectSlug);
+  // Command favorites (Story 9.4/9.5)
+  const { favoriteCommands, addFavorite, removeFavorite, isFavorite } = useFavoriteCommands(projectSlug);
+
+  // Toggle favorite command handler (Story 9.5)
+  const handleToggleFavorite = useCallback((command: string) => {
+    if (isFavorite(command)) {
+      removeFavorite(command);
+      toast.success(`${command} 즐겨찾기에서 제거되었습니다`);
+    } else {
+      if (favoriteCommands.length >= 20) {
+        toast.warning('즐겨찾기는 최대 20개까지 추가할 수 있습니다');
+        return;
+      }
+      addFavorite(command);
+      toast.success(`${command} 즐겨찾기에 추가되었습니다`);
+    }
+  }, [isFavorite, addFavorite, removeFavorite, favoriteCommands.length]);
 
   // Active agent detection (Story 8.5)
   const { activeAgent } = useActiveAgent(messages, commands, lastAgentCommand);
@@ -641,6 +657,8 @@ export function ChatPage() {
             onAgentSelect={handleAgentSelect}
             agentListOpenTrigger={agentListOpenTrigger}
             activeAgentCommand={activeAgent?.command}
+            isFavorite={isFavorite}
+            onToggleFavorite={handleToggleFavorite}
           />
         </InputArea>
         {sessionPanel}
@@ -716,6 +734,8 @@ export function ChatPage() {
           contextUsage={contextUsage}
           onNewSession={handleNewSession}
           onCompact={handleCompact}
+          isFavorite={isFavorite}
+          onToggleFavorite={handleToggleFavorite}
         />
       </InputArea>
       {sessionPanel}
