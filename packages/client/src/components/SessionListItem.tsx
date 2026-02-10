@@ -164,8 +164,8 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); handleEditSubmit(); }
-                if (e.key === 'Escape') { e.preventDefault(); handleEditCancel(); }
+                if (e.key === 'Enter') { e.stopPropagation(); e.preventDefault(); handleEditSubmit(); }
+                if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); handleEditCancel(); }
               }}
               onBlur={handleEditSubmit}
               onClick={(e) => e.stopPropagation()}

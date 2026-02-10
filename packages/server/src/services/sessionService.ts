@@ -23,6 +23,7 @@ import {
   parseJSONLFile,
   sortMessagesByParentUuid,
   transformToHistoryMessages,
+  cleanCommandTags,
 } from './historyParser.js';
 
 /**
@@ -172,8 +173,13 @@ export class SessionService {
    */
   truncateFirstPrompt(text: string, maxLength: number = 100): string {
     if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength - 3) + '...';
+    const cleaned = cleanCommandTags(text);
+    if (!cleaned) return '';
+    // Use first non-empty line as preview
+    const firstLine = cleaned.split('\n').find(line => line.trim())?.trim() || '';
+    if (!firstLine) return '';
+    if (firstLine.length <= maxLength) return firstLine;
+    return firstLine.slice(0, maxLength - 3) + '...';
   }
 
   /**
@@ -241,19 +247,21 @@ export class SessionService {
             const userMessage = rawMessages.find(m => m.type === 'user');
             if (userMessage) {
               const content = userMessage.message?.content;
-              let firstPrompt: string | null = null;
+              let rawText: string | null = null;
 
               if (typeof content === 'string') {
-                firstPrompt = this.truncateFirstPrompt(content);
+                rawText = content;
               } else if (Array.isArray(content)) {
                 const textBlock = content.find((b: { type: string }) => b.type === 'text');
                 if (textBlock && 'text' in textBlock) {
-                  firstPrompt = this.truncateFirstPrompt(textBlock.text as string);
+                  rawText = textBlock.text as string;
                 }
               }
 
+              const firstPrompt = rawText ? this.truncateFirstPrompt(rawText) : null;
+
               // Only add session if it has a valid first prompt (or includeEmpty is true)
-              if (firstPrompt || includeEmpty) {
+              if (rawText || includeEmpty) {
                 const messageCount = rawMessages.filter(
                   m => m.type === 'user' || m.type === 'assistant'
                 ).length;
