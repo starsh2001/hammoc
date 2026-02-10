@@ -45,6 +45,7 @@ vi.mock('../../hooks/useWebSocket', () => ({
 vi.mock('../../hooks/useSlashCommands', () => ({
   useSlashCommands: () => ({
     commands: [],
+    starCommands: {},
     isLoading: false,
   }),
 }));

@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChatInput } from '../ChatInput';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
 
 // Mock useWebSocket hook
 vi.mock('../../hooks/useWebSocket', () => ({
@@ -1297,6 +1297,200 @@ describe('ChatInput', () => {
       render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
 
       expect(screen.queryByTestId('favorites-chip-bar')).not.toBeInTheDocument();
+    });
+  });
+
+  // Story 9.9 - Star Command Palette integration tests
+  describe('star command palette', () => {
+    const mockStarCommands: StarCommand[] = [
+      { agentId: 'sm', command: 'help', description: 'Show numbered list of commands' },
+      { agentId: 'sm', command: 'draft', description: 'Execute task create-next-story.md' },
+      { agentId: 'sm', command: 'exit', description: 'Say goodbye as the Scrum Master' },
+    ];
+
+    const mockActiveAgent: SlashCommand = {
+      command: '/BMad:agents:sm',
+      name: 'SM (Bob)',
+      description: 'Scrum Master',
+      category: 'agent',
+      icon: '\uD83C\uDFC3',
+    };
+
+    // TC15: * input + activeAgent + starCommands shows StarCommandPalette
+    it('shows StarCommandPalette when * is typed with activeAgent and starCommands', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          starCommands={mockStarCommands}
+          activeAgent={mockActiveAgent}
+        />
+      );
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '*' } });
+
+      expect(screen.getByTestId('star-command-palette')).toBeInTheDocument();
+    });
+
+    // TC16: * input without activeAgent does not show StarCommandPalette
+    it('does not show StarCommandPalette when activeAgent is null', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          starCommands={mockStarCommands}
+          activeAgent={null}
+        />
+      );
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '*' } });
+
+      expect(screen.queryByTestId('star-command-palette')).not.toBeInTheDocument();
+    });
+
+    // TC17: CommandPalette and StarCommandPalette are mutually exclusive
+    it('CommandPalette and StarCommandPalette are mutually exclusive', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          starCommands={mockStarCommands}
+          activeAgent={mockActiveAgent}
+        />
+      );
+
+      const textarea = screen.getByRole('textbox');
+
+      // Type "/" to show CommandPalette
+      fireEvent.change(textarea, { target: { value: '/' } });
+      expect(screen.getByTestId('command-palette')).toBeInTheDocument();
+      expect(screen.queryByTestId('star-command-palette')).not.toBeInTheDocument();
+
+      // Type "*" to show StarCommandPalette
+      fireEvent.change(textarea, { target: { value: '*' } });
+      expect(screen.getByTestId('star-command-palette')).toBeInTheDocument();
+      expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
+    });
+
+    // TC18: filter text is passed to StarCommandPalette
+    it('passes filter text to StarCommandPalette', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          starCommands={mockStarCommands}
+          activeAgent={mockActiveAgent}
+        />
+      );
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '*hel' } });
+
+      expect(screen.getByTestId('star-command-palette')).toBeInTheDocument();
+      expect(screen.getByText('*help')).toBeInTheDocument();
+      expect(screen.queryByText('*draft')).not.toBeInTheDocument();
+    });
+
+    // TC19: Escape closes StarCommandPalette
+    it('closes StarCommandPalette on Escape key', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          starCommands={mockStarCommands}
+          activeAgent={mockActiveAgent}
+        />
+      );
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '*' } });
+
+      expect(screen.getByTestId('star-command-palette')).toBeInTheDocument();
+
+      fireEvent.keyDown(textarea, { key: 'Escape', code: 'Escape' });
+
+      expect(screen.queryByTestId('star-command-palette')).not.toBeInTheDocument();
+    });
+
+    // TC: Enter selects star command
+    it('selects star command on Enter and inserts into textarea', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          starCommands={mockStarCommands}
+          activeAgent={mockActiveAgent}
+        />
+      );
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '*' } });
+
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      expect(textarea).toHaveValue('*help ');
+      expect(mockOnSend).not.toHaveBeenCalled();
+    });
+
+    // TC: ArrowDown navigates
+    it('navigates star commands with ArrowDown', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          starCommands={mockStarCommands}
+          activeAgent={mockActiveAgent}
+        />
+      );
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '*' } });
+
+      const options = screen.getAllByRole('option');
+      expect(options[0]).toHaveAttribute('aria-selected', 'true');
+
+      fireEvent.keyDown(textarea, { key: 'ArrowDown', code: 'ArrowDown' });
+
+      const optionsAfter = screen.getAllByRole('option');
+      expect(optionsAfter[1]).toHaveAttribute('aria-selected', 'true');
+    });
+
+    // TC: does not show when * has space
+    it('does not show StarCommandPalette when * input has a space', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          starCommands={mockStarCommands}
+          activeAgent={mockActiveAgent}
+        />
+      );
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '*help text' } });
+
+      expect(screen.queryByTestId('star-command-palette')).not.toBeInTheDocument();
+    });
+
+    // TC: ARIA combobox mode when star palette shown
+    it('sets combobox role when star command palette is shown', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          starCommands={mockStarCommands}
+          activeAgent={mockActiveAgent}
+        />
+      );
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '*' } });
+
+      const combobox = screen.getByRole('combobox');
+      expect(combobox).toHaveAttribute('aria-expanded', 'true');
+      expect(combobox).toHaveAttribute('aria-controls', 'star-command-palette');
     });
   });
 });

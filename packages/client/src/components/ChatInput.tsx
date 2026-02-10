@@ -18,13 +18,14 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CommandPalette } from './CommandPalette';
 import { filterCommands } from './CommandPalette';
+import { StarCommandPalette, filterStarCommands } from './StarCommandPalette';
 import { PermissionModeSelector } from './PermissionModeSelector';
 import { ModelSelector } from './ModelSelector';
 import { BmadAgentButton } from './BmadAgentButton';
 import { FavoritesPopup } from './FavoritesPopup';
 import { FavoritesChipBar } from './FavoritesChipBar';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
-import type { SlashCommand, Attachment, PermissionMode, ChatUsage } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage } from '@bmad-studio/shared';
 import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
 
 // Permission mode color mapping for focus ring and send button
@@ -125,6 +126,10 @@ interface ChatInputProps {
   onRemoveFavorite?: (command: string) => void;
   /** Execute favorite command immediately (Story 9.7) */
   onExecuteFavorite?: (command: string) => void;
+  /** Star commands for the active agent (Story 9.9) */
+  starCommands?: StarCommand[];
+  /** Active agent info for star command palette header (Story 9.9) */
+  activeAgent?: SlashCommand | null;
 }
 
 export function ChatInput({
@@ -152,6 +157,8 @@ export function ChatInput({
   onReorderFavorites,
   onRemoveFavorite,
   onExecuteFavorite,
+  starCommands,
+  activeAgent,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -161,6 +168,10 @@ export function ChatInput({
   // Command palette state (Story 5.1)
   const [showCommands, setShowCommands] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // Star command palette state (Story 9.9)
+  const [showStarCommands, setShowStarCommands] = useState(false);
+  const [starSelectedIndex, setStarSelectedIndex] = useState(0);
 
   // Favorites popup state (Story 9.6)
   const [showFavorites, setShowFavorites] = useState(false);
@@ -192,6 +203,17 @@ export function ChatInput({
     return filterCommands(commands, commandFilter).length;
   }, [showCommands, commands, commandFilter]);
 
+  // Star command filter (Story 9.9)
+  const starCommandFilter = useMemo(() => {
+    if (!content.startsWith('*')) return '';
+    return content.slice(1);
+  }, [content]);
+
+  const filteredStarCommandsCount = useMemo(() => {
+    if (!showStarCommands || !starCommands || starCommands.length === 0) return 0;
+    return filterStarCommands(starCommands, starCommandFilter).length;
+  }, [showStarCommands, starCommands, starCommandFilter]);
+
   // Get mode colors based on current permission mode
   const modeColors = useMemo(() => {
     if (!permissionMode) return DEFAULT_MODE_COLORS;
@@ -203,16 +225,27 @@ export function ChatInput({
   useEffect(() => {
     if (content.startsWith('/') && !content.includes(' ') && commands.length > 0) {
       setShowCommands(true);
-      setShowFavorites(false); // Mutual exclusion with FavoritesPopup
+      setShowFavorites(false);
+      setShowStarCommands(false);
+    } else if (content.startsWith('*') && !content.includes(' ') && activeAgent && starCommands && starCommands.length > 0) {
+      setShowStarCommands(true);
+      setShowCommands(false);
+      setShowFavorites(false);
     } else {
       setShowCommands(false);
+      setShowStarCommands(false);
     }
-  }, [content, commands.length]);
+  }, [content, commands.length, activeAgent, starCommands]);
 
   // Reset selectedIndex when filter changes
   useEffect(() => {
     setSelectedIndex(0);
   }, [commandFilter]);
+
+  // Reset starSelectedIndex when star filter changes (Story 9.9)
+  useEffect(() => {
+    setStarSelectedIndex(0);
+  }, [starCommandFilter]);
 
   // Height adjustment
   const adjustHeight = useCallback(() => {
@@ -397,7 +430,8 @@ export function ChatInput({
   // Command palette: close on outside click
   useClickOutside(commandPaletteAreaRef, useCallback(() => {
     if (showCommands) setShowCommands(false);
-  }, [showCommands]));
+    if (showStarCommands) setShowStarCommands(false);
+  }, [showCommands, showStarCommands]));
 
   // Favorites popup: close on outside click (Story 9.6)
   useClickOutside(favoritesContainerRef, useCallback(() => {
@@ -407,7 +441,10 @@ export function ChatInput({
   // Favorites popup: toggle handler (Story 9.6)
   const handleToggleFavorites = useCallback(() => {
     setShowFavorites((prev) => {
-      if (!prev) setShowCommands(false); // Mutual exclusion
+      if (!prev) {
+        setShowCommands(false);      // Mutual exclusion
+        setShowStarCommands(false);   // Mutual exclusion (Story 9.9)
+      }
       return !prev;
     });
   }, []);
@@ -416,6 +453,14 @@ export function ChatInput({
   const handleFavoriteSelect = useCallback((command: string) => {
     setContent(command + ' ');
     setShowFavorites(false);
+    textareaRef.current?.focus();
+  }, []);
+
+  // Star command selection handler (Story 9.9)
+  const handleStarCommandSelect = useCallback((command: string) => {
+    setContent('*' + command + ' ');
+    setShowStarCommands(false);
+    setStarSelectedIndex(0);
     textareaRef.current?.focus();
   }, []);
 
@@ -495,6 +540,37 @@ export function ChatInput({
         }
       }
 
+      // Star command palette keyboard navigation (Story 9.9)
+      if (showStarCommands && filteredStarCommandsCount > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setStarSelectedIndex((prev) =>
+            prev >= filteredStarCommandsCount - 1 ? 0 : prev + 1
+          );
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setStarSelectedIndex((prev) =>
+            prev <= 0 ? filteredStarCommandsCount - 1 : prev - 1
+          );
+          return;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          const filtered = filterStarCommands(starCommands ?? [], starCommandFilter);
+          if (filtered[starSelectedIndex]) {
+            handleStarCommandSelect(filtered[starSelectedIndex].command);
+          }
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setShowStarCommands(false);
+          return;
+        }
+      }
+
       // Close favorites popup on Escape (Story 9.6)
       if (e.key === 'Escape' && showFavorites) {
         e.preventDefault();
@@ -508,7 +584,7 @@ export function ChatInput({
       }
       // Shift+Enter: default behavior (newline)
     },
-    [handleSubmit, showCommands, showFavorites, filteredCommandsCount, commands, commandFilter, selectedIndex, handleCommandSelect]
+    [handleSubmit, showCommands, showFavorites, showStarCommands, filteredCommandsCount, filteredStarCommandsCount, commands, commandFilter, selectedIndex, handleCommandSelect, starCommands, starCommandFilter, starSelectedIndex, handleStarCommandSelect]
   );
 
   // Button click handler
@@ -663,6 +739,17 @@ export function ChatInput({
           />
         )}
 
+        {/* Star Command palette (Story 9.9) */}
+        {showStarCommands && activeAgent && starCommands && starCommands.length > 0 && (
+          <StarCommandPalette
+            commands={starCommands}
+            agent={activeAgent}
+            filter={starCommandFilter}
+            selectedIndex={starSelectedIndex}
+            onSelect={handleStarCommandSelect}
+          />
+        )}
+
         <textarea
           ref={textareaRef}
           value={content}
@@ -671,14 +758,18 @@ export function ChatInput({
           onPaste={handlePaste}
           disabled={disabled}
           placeholder={placeholder}
-          role={showCommands ? 'combobox' : undefined}
+          role={showCommands || showStarCommands ? 'combobox' : undefined}
           aria-label="메시지 입력"
           aria-describedby="input-hint"
           aria-disabled={disabled}
-          aria-expanded={showCommands ? true : undefined}
-          aria-controls={showCommands ? 'command-palette' : undefined}
-          aria-activedescendant={showCommands && filteredCommandsCount > 0 ? `command-option-${selectedIndex}` : undefined}
-          aria-autocomplete={showCommands ? 'list' : undefined}
+          aria-expanded={showCommands || showStarCommands ? true : undefined}
+          aria-controls={showCommands ? 'command-palette' : showStarCommands ? 'star-command-palette' : undefined}
+          aria-activedescendant={
+            showCommands && filteredCommandsCount > 0 ? `command-option-${selectedIndex}` :
+            showStarCommands && filteredStarCommandsCount > 0 ? `star-command-option-${starSelectedIndex}` :
+            undefined
+          }
+          aria-autocomplete={showCommands || showStarCommands ? 'list' : undefined}
           rows={1}
           className={`w-full resize-none px-4 py-2
                      bg-white dark:bg-gray-800
