@@ -44,6 +44,7 @@ vi.mock('../../hooks/useWebSocket', () => ({
 // Mock useSlashCommands to prevent URL parse and act() warnings (TEST-002 fix)
 const mockUseSlashCommands = vi.fn((_projectSlug?: string) => ({
   commands: [] as import('@bmad-studio/shared').SlashCommand[],
+  starCommands: {} as Record<string, import('@bmad-studio/shared').StarCommand[]>,
   isLoading: false,
 }));
 vi.mock('../../hooks/useSlashCommands', () => ({
@@ -873,6 +874,7 @@ describe('ChatPage', () => {
       });
       mockUseSlashCommands.mockReturnValue({
         commands: agentCommands,
+        starCommands: {},
         isLoading: false,
       });
     };
@@ -889,6 +891,7 @@ describe('ChatPage', () => {
     afterEach(() => {
       mockUseSlashCommands.mockReturnValue({
         commands: [],
+        starCommands: {},
         isLoading: false,
       });
     });

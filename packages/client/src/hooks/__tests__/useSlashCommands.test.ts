@@ -6,7 +6,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useSlashCommands } from '../useSlashCommands';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
 
 const mockList = vi.fn();
 
@@ -33,8 +33,13 @@ const mockCommands: SlashCommand[] = [
 ];
 
 describe('useSlashCommands', () => {
+  const mockStarCommands: Record<string, StarCommand[]> = {
+    pm: [{ agentId: 'pm', command: 'help', description: 'Show help' }],
+    sm: [{ agentId: 'sm', command: 'draft', description: 'Draft story' }],
+  };
+
   beforeEach(() => {
-    mockList.mockResolvedValue({ commands: mockCommands });
+    mockList.mockResolvedValue({ commands: mockCommands, starCommands: mockStarCommands });
   });
 
   afterEach(() => {
@@ -78,6 +83,39 @@ describe('useSlashCommands', () => {
     expect(result.current.commands).toEqual([]);
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+
+  // TC12: starCommands is returned
+  it('should return starCommands from API response', async () => {
+    const { result } = renderHook(() => useSlashCommands('test-slug'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.starCommands).toEqual(mockStarCommands);
+  });
+
+  // TC13: API error returns empty starCommands
+  it('should return empty starCommands on API error', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockList.mockRejectedValue(new Error('Network error'));
+
+    const { result } = renderHook(() => useSlashCommands('test-slug'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.starCommands).toEqual({});
+    consoleSpy.mockRestore();
+  });
+
+  // TC14: no projectSlug returns empty starCommands
+  it('should return empty starCommands when projectSlug is undefined', () => {
+    const { result } = renderHook(() => useSlashCommands(undefined));
+
+    expect(result.current.starCommands).toEqual({});
   });
 
   it('should refetch when projectSlug changes', async () => {
