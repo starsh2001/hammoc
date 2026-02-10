@@ -189,7 +189,7 @@ export function ChatPage() {
   const { addRecentAgent } = useRecentAgents(projectSlug);
 
   // Command favorites (Story 9.4/9.5)
-  const { favoriteCommands, addFavorite, removeFavorite, isFavorite } = useFavoriteCommands(projectSlug);
+  const { favoriteCommands, addFavorite, removeFavorite, reorderFavorites, isFavorite } = useFavoriteCommands(projectSlug);
 
   // Toggle favorite command handler (Story 9.5)
   const handleToggleFavorite = useCallback((command: string) => {
@@ -659,6 +659,9 @@ export function ChatPage() {
             activeAgentCommand={activeAgent?.command}
             isFavorite={isFavorite}
             onToggleFavorite={handleToggleFavorite}
+            favoriteCommands={favoriteCommands}
+            onReorderFavorites={reorderFavorites}
+            onRemoveFavorite={removeFavorite}
           />
         </InputArea>
         {sessionPanel}
@@ -736,6 +739,9 @@ export function ChatPage() {
           onCompact={handleCompact}
           isFavorite={isFavorite}
           onToggleFavorite={handleToggleFavorite}
+          favoriteCommands={favoriteCommands}
+          onReorderFavorites={reorderFavorites}
+          onRemoveFavorite={removeFavorite}
         />
       </InputArea>
       {sessionPanel}

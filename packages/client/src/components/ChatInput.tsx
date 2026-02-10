@@ -13,13 +13,15 @@
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Square, Paperclip, X } from 'lucide-react';
+import { Send, Square, Paperclip, X, Star } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { CommandPalette } from './CommandPalette';
 import { filterCommands } from './CommandPalette';
 import { PermissionModeSelector } from './PermissionModeSelector';
 import { ModelSelector } from './ModelSelector';
 import { BmadAgentButton } from './BmadAgentButton';
+import { FavoritesPopup } from './FavoritesPopup';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
 import type { SlashCommand, Attachment, PermissionMode, ChatUsage } from '@bmad-studio/shared';
 import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
@@ -114,6 +116,12 @@ interface ChatInputProps {
   isFavorite?: (command: string) => boolean;
   /** Toggle favorite status for a command (Story 9.5) */
   onToggleFavorite?: (command: string) => void;
+  /** Favorite command strings (Story 9.6) */
+  favoriteCommands?: string[];
+  /** Reorder favorites callback (Story 9.6) */
+  onReorderFavorites?: (commands: string[]) => void;
+  /** Remove favorite callback (Story 9.6) */
+  onRemoveFavorite?: (command: string) => void;
 }
 
 export function ChatInput({
@@ -137,6 +145,9 @@ export function ChatInput({
   onCompact,
   isFavorite,
   onToggleFavorite,
+  favoriteCommands,
+  onReorderFavorites,
+  onRemoveFavorite,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -146,6 +157,10 @@ export function ChatInput({
   // Command palette state (Story 5.1)
   const [showCommands, setShowCommands] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // Favorites popup state (Story 9.6)
+  const [showFavorites, setShowFavorites] = useState(false);
+  const favoritesContainerRef = useRef<HTMLDivElement>(null);
 
   // Image attachment state (Story 5.5)
   const [attachments, setAttachments] = useState<ClientAttachment[]>([]);
@@ -183,6 +198,7 @@ export function ChatInput({
   useEffect(() => {
     if (content.startsWith('/') && !content.includes(' ') && commands.length > 0) {
       setShowCommands(true);
+      setShowFavorites(false); // Mutual exclusion with FavoritesPopup
     } else {
       setShowCommands(false);
     }
@@ -373,6 +389,26 @@ export function ChatInput({
     }
   }, [processFiles]);
 
+  // Favorites popup: close on outside click (Story 9.6)
+  useClickOutside(favoritesContainerRef, useCallback(() => {
+    if (showFavorites) setShowFavorites(false);
+  }, [showFavorites]));
+
+  // Favorites popup: toggle handler (Story 9.6)
+  const handleToggleFavorites = useCallback(() => {
+    setShowFavorites((prev) => {
+      if (!prev) setShowCommands(false); // Mutual exclusion
+      return !prev;
+    });
+  }, []);
+
+  // Favorites popup: command select handler (Story 9.6)
+  const handleFavoriteSelect = useCallback((command: string) => {
+    setContent(command + ' ');
+    setShowFavorites(false);
+    textareaRef.current?.focus();
+  }, []);
+
   // Command selection handler (Story 5.1)
   const handleCommandSelect = useCallback((command: SlashCommand) => {
     setContent(command.command + ' ');
@@ -449,13 +485,20 @@ export function ChatInput({
         }
       }
 
+      // Close favorites popup on Escape (Story 9.6)
+      if (e.key === 'Escape' && showFavorites) {
+        e.preventDefault();
+        setShowFavorites(false);
+        return;
+      }
+
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
       }
       // Shift+Enter: default behavior (newline)
     },
-    [handleSubmit, showCommands, filteredCommandsCount, commands, commandFilter, selectedIndex, handleCommandSelect]
+    [handleSubmit, showCommands, showFavorites, filteredCommandsCount, commands, commandFilter, selectedIndex, handleCommandSelect]
   );
 
   // Button click handler
@@ -581,6 +624,18 @@ export function ChatInput({
           />
         )}
 
+        {/* Favorites popup (Story 9.6) */}
+        {showFavorites && favoriteCommands && (
+          <FavoritesPopup
+            favoriteCommands={favoriteCommands}
+            commands={commands}
+            onSelect={handleFavoriteSelect}
+            onClose={() => setShowFavorites(false)}
+            onReorder={onReorderFavorites || (() => {})}
+            onRemoveFavorite={onRemoveFavorite || (() => {})}
+          />
+        )}
+
         <textarea
           ref={textareaRef}
           value={content}
@@ -647,6 +702,32 @@ export function ChatInput({
             openTrigger={agentListOpenTrigger}
             activeAgentCommand={activeAgentCommand}
           />
+        )}
+
+        {/* Favorites quick access button (Story 9.6) */}
+        {favoriteCommands && (
+          <div ref={favoritesContainerRef} className="relative">
+            <button
+              type="button"
+              onClick={handleToggleFavorites}
+              aria-label="즐겨찾기 커맨드"
+              data-testid="favorites-button"
+              className={`p-2 rounded-lg flex-shrink-0
+                         hover:bg-gray-100 dark:hover:bg-gray-700
+                         focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2
+                         transition-all duration-150
+                         ${favoriteCommands.length > 0
+                           ? 'text-yellow-400'
+                           : 'text-gray-400'}`}
+              style={{ height: '38px', width: '38px' }}
+            >
+              <Star
+                size={20}
+                aria-hidden="true"
+                className={favoriteCommands.length > 0 ? 'fill-yellow-400' : ''}
+              />
+            </button>
+          </div>
         )}
 
         <div className="flex-1" />
