@@ -1130,7 +1130,6 @@ describe('ChatInput', () => {
       favoriteCommands: ['/BMad:agents:pm', '/BMad:tasks:create-doc'],
       onReorderFavorites: vi.fn(),
       onRemoveFavorite: vi.fn(),
-      onExecuteFavorite: vi.fn(),
     };
 
     // TC10: FavoritesChipBar renders when favoriteCommands has items
@@ -1190,22 +1189,21 @@ describe('ChatInput', () => {
       expect(screen.queryByTestId('favorites-button')).not.toBeInTheDocument();
     });
 
-    // TC14: onExecuteFavorite prop is called when chip is clicked
-    it('calls onExecuteFavorite when a chip is clicked', () => {
-      const onExecuteFavorite = vi.fn();
+    // TC14: Clicking a chip inserts command into textarea
+    it('inserts command into textarea when a chip is clicked', () => {
       render(
         <ChatInput
           onSend={mockOnSend}
           commands={mockCommands}
           {...favoritesProps}
-          onExecuteFavorite={onExecuteFavorite}
         />
       );
 
       // Click the PM chip (name from mockCommands is 'PM (Product Manager)')
       fireEvent.click(screen.getByText('PM (Product Manager)'));
 
-      expect(onExecuteFavorite).toHaveBeenCalledWith('/BMad:agents:pm');
+      const textarea = screen.getByRole('textbox');
+      expect(textarea).toHaveValue('/BMad:agents:pm ');
     });
 
     // Selecting a command from FavoritesPopup inserts it into textarea
