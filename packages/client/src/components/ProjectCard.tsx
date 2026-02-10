@@ -111,7 +111,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
           }
         }}
         className={`relative w-full text-left bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer ${isHidden ? 'opacity-50' : ''}`}
-        aria-label={`프로젝트: ${formatProjectPath(project.originalPath)}, 세션 ${project.sessionCount}개`}
+        aria-label={`프로젝트: ${project.originalPath.split(/[/\\]/).filter(Boolean).pop() || project.originalPath}, 세션 ${project.sessionCount}개`}
       >
         {/* Kebab menu */}
         {(onDelete || onSetupBmad || onHide || onUnhide) && (
@@ -172,17 +172,22 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
           </div>
         )}
 
-        {/* Project Path */}
-        <h3 className="font-medium text-gray-900 dark:text-white truncate mb-2 pr-6">
+        {/* Full path */}
+        <p className="text-xs text-gray-400 dark:text-gray-500 truncate pr-6 mb-1">
           {formatProjectPath(project.originalPath)}
-        </h3>
+        </p>
 
-        {/* BMad Badge */}
-        {project.isBmadProject && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 mb-3">
-            BMad
-          </span>
-        )}
+        {/* Project Name + BMad badge */}
+        <div className="flex items-center gap-2 pr-6">
+          <h3 className="font-medium text-gray-900 dark:text-white truncate">
+            {project.originalPath.split(/[/\\]/).filter(Boolean).pop() || project.originalPath}
+          </h3>
+          {project.isBmadProject && (
+            <span className="flex-shrink-0 inline-flex items-center px-1 py-px rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 translate-y-[3px]">
+              BMad
+            </span>
+          )}
+        </div>
 
         {/* Meta Information */}
         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
