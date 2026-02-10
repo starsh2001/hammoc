@@ -134,6 +134,14 @@ interface ChatInputProps {
   isStarFavorite?: (command: string) => boolean;
   /** Toggle star favorite status (Story 9.11) */
   onToggleStarFavorite?: (command: string) => void;
+  /** Star favorites for active agent (Story 9.12) */
+  starFavorites?: string[];
+  /** Reorder star favorites callback (Story 9.12) */
+  onReorderStarFavorites?: (commands: string[]) => void;
+  /** Remove star favorite callback (Story 9.12) */
+  onRemoveStarFavorite?: (command: string) => void;
+  /** Execute star favorite command (Story 9.12) */
+  onExecuteStarFavorite?: (command: string) => void;
 }
 
 export function ChatInput({
@@ -165,6 +173,10 @@ export function ChatInput({
   activeAgent,
   isStarFavorite,
   onToggleStarFavorite,
+  starFavorites,
+  onReorderStarFavorites,
+  onRemoveStarFavorite,
+  onExecuteStarFavorite,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -462,6 +474,13 @@ export function ChatInput({
     textareaRef.current?.focus();
   }, []);
 
+  // Star favorite popup select handler (Story 9.12)
+  const handleStarFavoriteSelect = useCallback((command: string) => {
+    setContent('*' + command + ' ');
+    setShowFavorites(false);
+    textareaRef.current?.focus();
+  }, []);
+
   // Star command selection handler (Story 9.9)
   const handleStarCommandSelect = useCallback((command: string) => {
     setContent('*' + command + ' ');
@@ -671,11 +690,11 @@ export function ChatInput({
         </div>
       )}
 
-      {/* Favorites chip bar + popup wrapper (Story 9.7) */}
-      {favoriteCommands && favoriteCommands.length > 0 && (
+      {/* Favorites chip bar + popup wrapper (Story 9.7, 9.12) */}
+      {((favoriteCommands && favoriteCommands.length > 0) || (activeAgent && starFavorites && starFavorites.length > 0)) && (
         <div ref={favoritesContainerRef} className="relative mb-1">
           <FavoritesChipBar
-            favoriteCommands={favoriteCommands}
+            favoriteCommands={favoriteCommands || []}
             commands={commands}
             onExecute={(cmd) => {
               if (onExecuteFavorite) {
@@ -685,15 +704,24 @@ export function ChatInput({
             }}
             onOpenDialog={handleToggleFavorites}
             disabled={disabled}
+            starFavorites={starFavorites}
+            activeAgent={activeAgent}
+            onExecuteStarFavorite={onExecuteStarFavorite}
           />
           {showFavorites && (
             <FavoritesPopup
-              favoriteCommands={favoriteCommands}
+              favoriteCommands={favoriteCommands || []}
               commands={commands}
               onSelect={handleFavoriteSelect}
               onClose={() => setShowFavorites(false)}
               onReorder={onReorderFavorites || (() => {})}
               onRemoveFavorite={onRemoveFavorite || (() => {})}
+              starFavorites={starFavorites}
+              starCommands={starCommands}
+              activeAgent={activeAgent}
+              onReorderStarFavorites={onReorderStarFavorites}
+              onRemoveStarFavorite={onRemoveStarFavorite}
+              onSelectStarFavorite={handleStarFavoriteSelect}
             />
           )}
         </div>
