@@ -12,6 +12,7 @@
  */
 
 import { useRef, useEffect, useMemo } from 'react';
+import { Star } from 'lucide-react';
 import type { SlashCommand } from '@bmad-studio/shared';
 
 interface CommandPaletteProps {
@@ -25,6 +26,10 @@ interface CommandPaletteProps {
   onSelect: (command: SlashCommand) => void;
   /** Callback to close the palette */
   onClose: () => void;
+  /** Check if a command is favorited (Story 9.5) */
+  isFavorite?: (command: string) => boolean;
+  /** Toggle favorite status for a command (Story 9.5) */
+  onToggleFavorite?: (command: string) => void;
 }
 
 /**
@@ -68,6 +73,8 @@ export function CommandPalette({
   selectedIndex,
   onSelect,
   onClose,
+  isFavorite,
+  onToggleFavorite,
 }: CommandPaletteProps) {
   const listRef = useRef<HTMLUListElement>(null);
 
@@ -147,6 +154,21 @@ export function CommandPalette({
                       </div>
                     )}
                   </div>
+                  {isFavorite && onToggleFavorite && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFavorite(cmd.command);
+                      }}
+                      aria-label={isFavorite(cmd.command) ? '즐겨찾기 제거' : '즐겨찾기 추가'}
+                      className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      <Star
+                        className={`w-4 h-4 ${isFavorite(cmd.command) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
+                      />
+                    </button>
+                  )}
                 </li>
               );
             })}

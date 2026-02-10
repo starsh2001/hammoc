@@ -110,6 +110,10 @@ interface ChatInputProps {
   onNewSession?: () => void;
   /** Callback for context compaction */
   onCompact?: () => void;
+  /** Check if a command is favorited (Story 9.5) */
+  isFavorite?: (command: string) => boolean;
+  /** Toggle favorite status for a command (Story 9.5) */
+  onToggleFavorite?: (command: string) => void;
 }
 
 export function ChatInput({
@@ -131,6 +135,8 @@ export function ChatInput({
   contextUsage,
   onNewSession,
   onCompact,
+  isFavorite,
+  onToggleFavorite,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -570,6 +576,8 @@ export function ChatInput({
             selectedIndex={selectedIndex}
             onSelect={handleCommandSelect}
             onClose={() => setShowCommands(false)}
+            isFavorite={isFavorite}
+            onToggleFavorite={onToggleFavorite}
           />
         )}
 

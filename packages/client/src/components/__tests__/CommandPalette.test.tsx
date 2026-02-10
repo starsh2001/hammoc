@@ -151,6 +151,98 @@ describe('CommandPalette', () => {
       expect(screen.getByRole('listbox')).toHaveAttribute('aria-label', '슬래시 커맨드 목록');
     });
   });
+
+  describe('favorites (Story 9.5)', () => {
+    const favoritesProps = {
+      isFavorite: vi.fn().mockReturnValue(false),
+      onToggleFavorite: vi.fn(),
+    };
+
+    it('TC1: should not render star buttons when isFavorite/onToggleFavorite props are absent', () => {
+      render(<CommandPalette {...defaultProps} />);
+
+      const buttons = screen.queryAllByRole('button');
+      expect(buttons).toHaveLength(0);
+    });
+
+    it('TC2: should render outline star for non-favorited commands', () => {
+      const isFavorite = vi.fn().mockReturnValue(false);
+      render(<CommandPalette {...defaultProps} isFavorite={isFavorite} onToggleFavorite={vi.fn()} />);
+
+      const buttons = screen.getAllByRole('button');
+      expect(buttons).toHaveLength(4);
+      // All stars should not have fill class
+      buttons.forEach((btn) => {
+        const svg = btn.querySelector('svg');
+        expect(svg).not.toHaveClass('fill-yellow-400');
+      });
+    });
+
+    it('TC3: should render filled star for favorited commands', () => {
+      const isFavorite = vi.fn().mockImplementation((cmd: string) => cmd === '/BMad:agents:pm');
+      render(<CommandPalette {...defaultProps} isFavorite={isFavorite} onToggleFavorite={vi.fn()} />);
+
+      const buttons = screen.getAllByRole('button');
+      // First button (pm) should be filled
+      const pmSvg = buttons[0].querySelector('svg');
+      expect(pmSvg).toHaveClass('fill-yellow-400');
+      // Second button (sm) should be outline
+      const smSvg = buttons[1].querySelector('svg');
+      expect(smSvg).not.toHaveClass('fill-yellow-400');
+    });
+
+    it('TC4: should call onToggleFavorite with command string when star is clicked', () => {
+      const onToggleFavorite = vi.fn();
+      render(<CommandPalette {...defaultProps} isFavorite={vi.fn().mockReturnValue(false)} onToggleFavorite={onToggleFavorite} />);
+
+      const buttons = screen.getAllByRole('button');
+      fireEvent.click(buttons[0]);
+
+      expect(onToggleFavorite).toHaveBeenCalledWith('/BMad:agents:pm');
+    });
+
+    it('TC5: should not call onSelect when star button is clicked (stopPropagation)', () => {
+      const onSelect = vi.fn();
+      const onToggleFavorite = vi.fn();
+      render(
+        <CommandPalette
+          {...defaultProps}
+          onSelect={onSelect}
+          isFavorite={vi.fn().mockReturnValue(false)}
+          onToggleFavorite={onToggleFavorite}
+        />
+      );
+
+      const buttons = screen.getAllByRole('button');
+      fireEvent.click(buttons[0]);
+
+      expect(onToggleFavorite).toHaveBeenCalled();
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('TC6: should render star buttons for agent commands', () => {
+      const agentOnlyCommands = mockCommands.filter((c) => c.category === 'agent');
+      render(
+        <CommandPalette
+          {...defaultProps}
+          commands={agentOnlyCommands}
+          isFavorite={vi.fn().mockReturnValue(false)}
+          onToggleFavorite={vi.fn()}
+        />
+      );
+
+      const buttons = screen.getAllByRole('button');
+      expect(buttons).toHaveLength(2);
+    });
+
+    it('TC7: should have appropriate aria-label on star buttons', () => {
+      const isFavorite = vi.fn().mockImplementation((cmd: string) => cmd === '/BMad:agents:pm');
+      render(<CommandPalette {...defaultProps} isFavorite={isFavorite} onToggleFavorite={vi.fn()} />);
+
+      expect(screen.getByLabelText('즐겨찾기 제거')).toBeInTheDocument();
+      expect(screen.getAllByLabelText('즐겨찾기 추가')).toHaveLength(3);
+    });
+  });
 });
 
 describe('filterCommands', () => {
