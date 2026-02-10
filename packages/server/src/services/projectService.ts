@@ -151,8 +151,11 @@ class ProjectService {
         continue;
       }
 
-      // Parse sessions-index.json
-      const projectInfo = await this.parseSessionsIndex(projectPath, entry);
+      // Try sessions-index.json first, fall back to JSONL-based discovery
+      let projectInfo = await this.parseSessionsIndex(projectPath, entry);
+      if (!projectInfo) {
+        projectInfo = await this.buildProjectFromDirectory(projectPath, entry);
+      }
       if (projectInfo) {
         // Filter out projects whose originalPath no longer exists
         const pathExists = await this.checkPathExists(projectInfo.originalPath);
@@ -368,6 +371,92 @@ class ProjectService {
     const info = await this.parseSessionsIndex(projectDir, projectSlug);
     if (!info) return {};
     return this.readSessionNames(info.originalPath);
+  }
+
+  /**
+   * Extract originalPath (cwd) from a .jsonl session file's first few lines.
+   * Used as fallback when sessions-index.json doesn't exist (e.g., VS Code extension projects).
+   * Only reads the first 4KB to avoid loading large conversation logs.
+   */
+  private async extractCwdFromSessionFiles(projectDir: string): Promise<string | null> {
+    try {
+      const files = await fs.readdir(projectDir);
+      const jsonlFiles = files.filter((f) => f.endsWith('.jsonl'));
+      if (jsonlFiles.length === 0) return null;
+
+      const filePath = path.join(projectDir, jsonlFiles[0]);
+      const handle = await fs.open(filePath, 'r');
+      try {
+        const buffer = Buffer.alloc(4096);
+        const { bytesRead } = await handle.read(buffer, 0, 4096, 0);
+        const chunk = buffer.toString('utf-8', 0, bytesRead);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const entry = JSON.parse(line);
+            if (entry.cwd && typeof entry.cwd === 'string') {
+              return entry.cwd;
+            }
+          } catch {
+            continue; // incomplete JSON line at buffer boundary
+          }
+        }
+      } finally {
+        await handle.close();
+      }
+    } catch {
+      // Failed to read directory or file
+    }
+    return null;
+  }
+
+  /**
+   * Build ProjectInfo from a project directory without sessions-index.json.
+   * Scans .jsonl files for session count, timestamps, and originalPath.
+   */
+  private async buildProjectFromDirectory(
+    projectDir: string,
+    projectSlug: string
+  ): Promise<ProjectInfo | null> {
+    const originalPath = await this.extractCwdFromSessionFiles(projectDir);
+    if (!originalPath) return null;
+
+    let sessionCount = 0;
+    const mtimes: number[] = [];
+
+    try {
+      const files = await fs.readdir(projectDir);
+      for (const f of files) {
+        if (!f.endsWith('.jsonl')) continue;
+        sessionCount++;
+        const fileStat = await fs.stat(path.join(projectDir, f));
+        mtimes.push(fileStat.mtime.getTime());
+      }
+    } catch {
+      // Failed to read directory
+    }
+
+    let lastModified: string;
+    if (mtimes.length > 0) {
+      lastModified = new Date(Math.max(...mtimes)).toISOString();
+    } else {
+      const stat = await fs.stat(projectDir);
+      lastModified = stat.mtime.toISOString();
+    }
+
+    const isBmadProject = await this.checkBmadProject(originalPath);
+    const settings = await this.readProjectSettings(originalPath);
+
+    return {
+      originalPath,
+      projectSlug,
+      sessionCount,
+      lastModified,
+      isBmadProject,
+      ...(settings.hidden !== undefined && { hidden: settings.hidden }),
+    };
   }
 
   /**
