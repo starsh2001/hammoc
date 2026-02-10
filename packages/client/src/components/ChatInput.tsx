@@ -27,6 +27,7 @@ import { FavoritesChipBar } from './FavoritesChipBar';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
 import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage } from '@bmad-studio/shared';
 import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
+import { generateUUID } from '../utils/uuid';
 
 // Permission mode color mapping for focus ring and send button
 const MODE_COLORS: Record<PermissionMode, { ring: string; button: string }> = {
@@ -68,11 +69,19 @@ function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const result = reader.result as string;
+      const result = reader.result;
+      if (typeof result !== 'string') {
+        reject(new Error('FileReader result is not a string'));
+        return;
+      }
       const base64Data = result.split(',')[1];
+      if (!base64Data) {
+        reject(new Error('Failed to extract base64 data from Data URL'));
+        return;
+      }
       resolve(base64Data);
     };
-    reader.onerror = reject;
+    reader.onerror = () => reject(reader.error ?? new Error('FileReader error'));
     reader.readAsDataURL(file);
   });
 }
@@ -334,6 +343,11 @@ export function ChatInput({
   const processFiles = useCallback(async (files: File[]) => {
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
 
+    if (files.length > 0 && imageFiles.length === 0) {
+      showValidationError('이미지 파일만 첨부할 수 있습니다 (PNG, JPEG, GIF, WebP)');
+      return;
+    }
+
     for (const file of imageFiles) {
       if (!(IMAGE_CONSTRAINTS.ACCEPTED_TYPES as readonly string[]).includes(file.type)) {
         showValidationError('지원되지 않는 이미지 형식입니다');
@@ -366,7 +380,7 @@ export function ChatInput({
         const base64Data = await readFileAsBase64(file);
         const preview = `data:${file.type};base64,${base64Data}`;
         newAttachments.push({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           type: 'image',
           name: file.name,
           size: file.size,
@@ -375,7 +389,8 @@ export function ChatInput({
           preview,
           file,
         });
-      } catch {
+      } catch (err) {
+        console.error(`[ChatInput] Failed to read image file: ${file.name}`, err);
         showValidationError(`이미지를 읽을 수 없습니다: ${file.name}`);
       }
     }
@@ -703,6 +718,17 @@ export function ChatInput({
         </div>
       )}
 
+      {/* Validation error (Story 5.5) */}
+      {validationError && (
+        <div
+          role="alert"
+          className="px-3 py-1 text-sm text-red-600 dark:text-red-400"
+          data-testid="validation-error"
+        >
+          {validationError}
+        </div>
+      )}
+
       {/* Favorites chip bar + popup wrapper (Story 9.7, 9.12) */}
       {((favoriteCommands && favoriteCommands.length > 0) || (activeAgent && starFavorites && starFavorites.length > 0)) && (
         <div ref={favoritesContainerRef} className="relative mb-1">
@@ -741,17 +767,6 @@ export function ChatInput({
               onSelectStarFavorite={handleStarFavoriteSelect}
             />
           )}
-        </div>
-      )}
-
-      {/* Validation error (Story 5.5) */}
-      {validationError && (
-        <div
-          role="alert"
-          className="px-3 py-1 text-sm text-red-600 dark:text-red-400"
-          data-testid="validation-error"
-        >
-          {validationError}
         </div>
       )}
 
