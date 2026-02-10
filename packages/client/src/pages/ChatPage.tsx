@@ -23,6 +23,7 @@ import type { Attachment, HistoryMessage } from '@bmad-studio/shared';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { useRecentAgents } from '../hooks/useRecentAgents';
+import { useFavoriteCommands } from '../hooks/useFavoriteCommands';
 import { useActiveAgent } from '../hooks/useActiveAgent';
 import { getSocket } from '../services/socket';
 import { generateUUID } from '../utils/uuid';
@@ -185,6 +186,9 @@ export function ChatPage() {
 
   // Recent agents tracking (Story 8.4)
   const { addRecentAgent } = useRecentAgents(projectSlug);
+
+  // Command favorites (Story 9.4) — destructure in Story 9.5~9.7 when UI integration begins
+  useFavoriteCommands(projectSlug);
 
   // Active agent detection (Story 8.5)
   const { activeAgent } = useActiveAgent(messages, commands, lastAgentCommand);
