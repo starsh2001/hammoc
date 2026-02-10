@@ -11,6 +11,7 @@
  */
 
 import { useRef, useEffect, useMemo } from 'react';
+import { Star } from 'lucide-react';
 import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
 
 interface StarCommandPaletteProps {
@@ -24,6 +25,10 @@ interface StarCommandPaletteProps {
   selectedIndex: number;
   /** Command selection callback — receives command name without * prefix */
   onSelect: (command: string) => void;
+  /** Check if a star command is favorited */
+  isStarFavorite?: (command: string) => boolean;
+  /** Toggle star favorite callback */
+  onToggleStarFavorite?: (command: string) => void;
 }
 
 /**
@@ -44,6 +49,8 @@ export function StarCommandPalette({
   filter,
   selectedIndex,
   onSelect,
+  isStarFavorite,
+  onToggleStarFavorite,
 }: StarCommandPaletteProps) {
   const listRef = useRef<HTMLUListElement>(null);
 
@@ -117,6 +124,21 @@ export function StarCommandPalette({
                     </div>
                   )}
                 </div>
+                {isStarFavorite && onToggleStarFavorite && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleStarFavorite(cmd.command);
+                    }}
+                    aria-label={isStarFavorite(cmd.command) ? '즐겨찾기 제거' : '즐겨찾기 추가'}
+                    className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    <Star
+                      className={`w-4 h-4 ${isStarFavorite(cmd.command) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
+                    />
+                  </button>
+                )}
               </li>
             );
           })}

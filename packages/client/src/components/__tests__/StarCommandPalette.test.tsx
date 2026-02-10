@@ -188,6 +188,92 @@ describe('StarCommandPalette', () => {
   });
 });
 
+describe('favorites (Story 9.11)', () => {
+  it('TC-F1: should not render star buttons when isStarFavorite/onToggleStarFavorite props are absent', () => {
+    render(<StarCommandPalette commands={mockStarCommands} agent={mockAgent} filter="" selectedIndex={0} onSelect={vi.fn()} />);
+    const buttons = screen.queryAllByRole('button');
+    expect(buttons).toHaveLength(0);
+  });
+
+  it('TC-F2: should render outline star for non-favorited commands', () => {
+    render(
+      <StarCommandPalette
+        commands={mockStarCommands} agent={mockAgent} filter="" selectedIndex={0}
+        onSelect={vi.fn()} isStarFavorite={vi.fn().mockReturnValue(false)}
+        onToggleStarFavorite={vi.fn()}
+      />
+    );
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(mockStarCommands.length);
+    // All should have '즐겨찾기 추가' aria-label
+    buttons.forEach((btn) => {
+      expect(btn).toHaveAttribute('aria-label', '즐겨찾기 추가');
+    });
+  });
+
+  it('TC-F3: should render filled star for favorited commands', () => {
+    render(
+      <StarCommandPalette
+        commands={mockStarCommands} agent={mockAgent} filter="" selectedIndex={0}
+        onSelect={vi.fn()} isStarFavorite={vi.fn().mockReturnValue(true)}
+        onToggleStarFavorite={vi.fn()}
+      />
+    );
+    const buttons = screen.getAllByRole('button');
+    buttons.forEach((btn) => {
+      expect(btn).toHaveAttribute('aria-label', '즐겨찾기 제거');
+    });
+  });
+
+  it('TC-F4: should call onToggleStarFavorite with command string when star is clicked', () => {
+    const onToggleStarFavorite = vi.fn();
+    render(
+      <StarCommandPalette
+        commands={mockStarCommands} agent={mockAgent} filter="" selectedIndex={0}
+        onSelect={vi.fn()} isStarFavorite={vi.fn().mockReturnValue(false)}
+        onToggleStarFavorite={onToggleStarFavorite}
+      />
+    );
+    const buttons = screen.getAllByRole('button');
+    fireEvent.click(buttons[0]);
+    expect(onToggleStarFavorite).toHaveBeenCalledWith('help');
+  });
+
+  it('TC-F5: should not call onSelect when star button is clicked (stopPropagation)', () => {
+    const onSelect = vi.fn();
+    const onToggleStarFavorite = vi.fn();
+    render(
+      <StarCommandPalette
+        commands={mockStarCommands} agent={mockAgent} filter="" selectedIndex={0}
+        onSelect={onSelect} isStarFavorite={vi.fn().mockReturnValue(false)}
+        onToggleStarFavorite={onToggleStarFavorite}
+      />
+    );
+    const buttons = screen.getAllByRole('button');
+    fireEvent.click(buttons[0]);
+    expect(onToggleStarFavorite).toHaveBeenCalledWith('help');
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('TC-F6: should have correct aria-labels based on favorite state', () => {
+    const isStarFavorite = vi.fn().mockImplementation((cmd: string) => cmd === 'help' || cmd === 'exit');
+    render(
+      <StarCommandPalette
+        commands={mockStarCommands} agent={mockAgent} filter="" selectedIndex={0}
+        onSelect={vi.fn()} isStarFavorite={isStarFavorite}
+        onToggleStarFavorite={vi.fn()}
+      />
+    );
+    const buttons = screen.getAllByRole('button');
+    // help (index 0) is favorited
+    expect(buttons[0]).toHaveAttribute('aria-label', '즐겨찾기 제거');
+    // draft (index 1) is not favorited
+    expect(buttons[1]).toHaveAttribute('aria-label', '즐겨찾기 추가');
+    // exit (index 4) is favorited
+    expect(buttons[4]).toHaveAttribute('aria-label', '즐겨찾기 제거');
+  });
+});
+
 describe('filterStarCommands', () => {
   // TC8: empty query returns all
   it('returns all commands for empty query', () => {
