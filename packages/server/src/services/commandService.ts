@@ -7,7 +7,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import yaml from 'js-yaml';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand, CommandsResponse } from '@bmad-studio/shared';
 import { projectService } from './projectService.js';
 
 interface CoreConfig {
@@ -21,6 +21,7 @@ interface AgentYaml {
     title?: string;
     icon?: string;
   };
+  commands?: Array<Record<string, string>> | Record<string, string>;
 }
 
 /** Built-in Claude Code system commands that work via SDK programmatic API.
@@ -33,39 +34,64 @@ const BUILTIN_COMMANDS: SlashCommand[] = [
 
 class CommandService {
   /**
+   * Resolve projectSlug to bmadCorePath.
+   * Returns null if project not found or .bmad-core is not a directory.
+   */
+  private async resolveBmadCorePath(projectSlug: string): Promise<string | null> {
+    const projects = await projectService.scanProjects();
+    const project = projects.find((p) => p.projectSlug === projectSlug);
+    if (!project) return null;
+
+    const bmadCorePath = path.join(project.originalPath, '.bmad-core');
+    try {
+      const stat = await fs.stat(bmadCorePath);
+      if (!stat.isDirectory()) return null;
+    } catch {
+      return null;
+    }
+    return bmadCorePath;
+  }
+
+  /**
    * Get slash commands for a project
    * @param projectSlug Project slug from URL
    * @returns Array of SlashCommand
    */
   async getCommands(projectSlug: string): Promise<SlashCommand[]> {
-    // Resolve originalPath from projectSlug
-    const projects = await projectService.scanProjects();
-    const project = projects.find((p) => p.projectSlug === projectSlug);
-    if (!project) {
-      return [...BUILTIN_COMMANDS];
-    }
+    const bmadCorePath = await this.resolveBmadCorePath(projectSlug);
+    if (!bmadCorePath) return [...BUILTIN_COMMANDS];
 
-    const originalPath = project.originalPath;
-    const bmadCorePath = path.join(originalPath, '.bmad-core');
-
-    // Check if .bmad-core directory exists
-    try {
-      const stat = await fs.stat(bmadCorePath);
-      if (!stat.isDirectory()) return [...BUILTIN_COMMANDS];
-    } catch {
-      return [...BUILTIN_COMMANDS];
-    }
-
-    // Read slashPrefix from core-config.yaml
     const slashPrefix = await this.getSlashPrefix(bmadCorePath);
-
-    // Scan agents and tasks in parallel
     const [agents, tasks] = await Promise.all([
       this.scanAgents(bmadCorePath, slashPrefix),
       this.scanTasks(bmadCorePath, slashPrefix),
     ]);
 
     return [...BUILTIN_COMMANDS, ...agents, ...tasks];
+  }
+
+  /**
+   * Get commands with star commands for a project
+   * [Source: Story 9.8 - Task 2]
+   */
+  async getCommandsWithStarCommands(projectSlug: string): Promise<CommandsResponse> {
+    const bmadCorePath = await this.resolveBmadCorePath(projectSlug);
+    if (!bmadCorePath) {
+      return { commands: [...BUILTIN_COMMANDS], starCommands: {} };
+    }
+
+    const slashPrefix = await this.getSlashPrefix(bmadCorePath);
+
+    const [agents, tasks, starCommands] = await Promise.all([
+      this.scanAgents(bmadCorePath, slashPrefix),
+      this.scanTasks(bmadCorePath, slashPrefix),
+      this.scanStarCommands(bmadCorePath),
+    ]);
+
+    return {
+      commands: [...BUILTIN_COMMANDS, ...agents, ...tasks],
+      starCommands,
+    };
   }
 
   /**
@@ -107,7 +133,7 @@ class CommandService {
         if (agentData?.agent?.id) {
           commands.push({
             command: `/${slashPrefix}:agents:${agentData.agent.id}`,
-            name: agentData.agent.name || agentData.agent.id,
+            name: agentData.agent.id.toUpperCase(),
             description: agentData.agent.title,
             category: 'agent',
             icon: agentData.agent.icon,
@@ -149,6 +175,69 @@ class CommandService {
     }
 
     return commands;
+  }
+
+  /**
+   * Parse star commands from agent YAML commands section
+   * [Source: Story 9.8 - Task 2]
+   */
+  parseStarCommands(agentId: string, agentYaml: AgentYaml): StarCommand[] {
+    if (!agentYaml.commands) return [];
+
+    // Normalize: plain object format (e.g., bmad-orchestrator) → array of single-key objects
+    const commandsList = Array.isArray(agentYaml.commands)
+      ? agentYaml.commands
+      : Object.entries(agentYaml.commands).map(([k, v]) => ({ [k]: v }));
+
+    if (commandsList.length === 0) return [];
+
+    return commandsList
+      .map((item) => {
+        const entries = Object.entries(item);
+        if (entries.length === 0) return null;
+        const [command, description] = entries[0];
+        // Skip commands with non-string descriptions (e.g., nested workflow objects)
+        if (typeof description !== 'string') return null;
+        return { agentId, command, description };
+      })
+      .filter((cmd): cmd is StarCommand => cmd !== null);
+  }
+
+  /**
+   * Scan agents directory for star commands
+   * [Source: Story 9.8 - Task 2]
+   */
+  async scanStarCommands(bmadCorePath: string): Promise<Record<string, StarCommand[]>> {
+    const agentsDir = path.join(bmadCorePath, 'agents');
+    const result: Record<string, StarCommand[]> = {};
+
+    let files: string[];
+    try {
+      files = await fs.readdir(agentsDir);
+    } catch {
+      return {};
+    }
+
+    for (const file of files) {
+      if (!file.endsWith('.md')) continue;
+
+      try {
+        const filePath = path.join(agentsDir, file);
+        const content = await fs.readFile(filePath, 'utf-8');
+        const agentData = this.parseAgentYaml(content);
+
+        if (!agentData?.agent?.id) continue;
+
+        const starCommands = this.parseStarCommands(agentData.agent.id, agentData);
+        if (starCommands.length > 0) {
+          result[agentData.agent.id] = starCommands;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return result;
   }
 
   /**

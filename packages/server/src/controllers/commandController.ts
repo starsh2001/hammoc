@@ -5,7 +5,7 @@
  */
 
 import { Request, Response } from 'express';
-import type { CommandListResponse } from '@bmad-studio/shared';
+import type { CommandsResponse } from '@bmad-studio/shared';
 import { commandService } from '../services/commandService.js';
 
 export const commandController = {
@@ -16,9 +16,7 @@ export const commandController = {
   async list(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
-      const commands = await commandService.getCommands(projectSlug);
-
-      const response: CommandListResponse = { commands };
+      const response: CommandsResponse = await commandService.getCommandsWithStarCommands(projectSlug);
       res.json(response);
     } catch (error) {
       console.error('[commandController] Error listing commands:', error);
