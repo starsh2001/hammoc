@@ -14,6 +14,7 @@ vi.mock('../../services/api/projects', () => ({
     list: vi.fn(),
     create: vi.fn(),
     validatePath: vi.fn(),
+    setupBmad: vi.fn(),
   },
 }));
 
@@ -294,6 +295,60 @@ describe('useProjectStore', () => {
 
       expect(result.valid).toBe(false);
       expect(result.error).toBe('경로 검증 중 오류가 발생했습니다.');
+    });
+  });
+
+  // Story 9.3 - setupBmad tests
+  describe('setupBmad', () => {
+    beforeEach(() => {
+      useProjectStore.setState({
+        projects: [
+          {
+            originalPath: '/Users/user/my-project',
+            projectSlug: 'abc123',
+            sessionCount: 2,
+            lastModified: '2026-02-01T10:00:00Z',
+            isBmadProject: false,
+          },
+        ],
+      });
+    });
+
+    it('should return { success: true } and update isBmadProject on success', async () => {
+      vi.mocked(projectsApi.setupBmad).mockResolvedValue({
+        project: {
+          originalPath: '/Users/user/my-project',
+          projectSlug: 'abc123',
+          sessionCount: 2,
+          lastModified: '2026-02-01T10:00:00Z',
+          isBmadProject: true,
+        },
+      });
+
+      const result = await useProjectStore.getState().setupBmad('abc123', '4.44.3');
+
+      expect(result).toEqual({ success: true });
+      expect(useProjectStore.getState().projects[0].isBmadProject).toBe(true);
+    });
+
+    it('should return { success: false, error } on failure', async () => {
+      vi.mocked(projectsApi.setupBmad).mockRejectedValue(
+        new ApiError(500, 'SETUP_FAILED', 'BMad 설정 실패')
+      );
+
+      const result = await useProjectStore.getState().setupBmad('abc123');
+
+      expect(result).toEqual({ success: false, error: 'BMad 설정 실패' });
+    });
+
+    it('should NOT set global error state on failure', async () => {
+      vi.mocked(projectsApi.setupBmad).mockRejectedValue(
+        new ApiError(500, 'SETUP_FAILED', 'BMad 설정 실패')
+      );
+
+      await useProjectStore.getState().setupBmad('abc123');
+
+      expect(useProjectStore.getState().error).toBeNull();
     });
   });
 
