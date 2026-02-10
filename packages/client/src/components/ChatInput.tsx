@@ -177,6 +177,7 @@ export function ChatInput({
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const commandPaletteAreaRef = useRef<HTMLDivElement>(null);
   const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const validationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -393,6 +394,11 @@ export function ChatInput({
     }
   }, [processFiles]);
 
+  // Command palette: close on outside click
+  useClickOutside(commandPaletteAreaRef, useCallback(() => {
+    if (showCommands) setShowCommands(false);
+  }, [showCommands]));
+
   // Favorites popup: close on outside click (Story 9.6)
   useClickOutside(favoritesContainerRef, useCallback(() => {
     if (showFavorites) setShowFavorites(false);
@@ -585,7 +591,7 @@ export function ChatInput({
 
       {/* Favorites chip bar + popup wrapper (Story 9.7) */}
       {favoriteCommands && favoriteCommands.length > 0 && (
-        <div ref={favoritesContainerRef} className="relative">
+        <div ref={favoritesContainerRef} className="relative mb-1">
           <FavoritesChipBar
             favoriteCommands={favoriteCommands}
             commands={commands}
@@ -637,6 +643,7 @@ export function ChatInput({
 
       {/* Textarea row */}
       <div
+        ref={commandPaletteAreaRef}
         className={`relative ${isDragging ? 'border-2 border-dashed border-blue-500 rounded-lg p-1' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

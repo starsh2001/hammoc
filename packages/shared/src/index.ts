@@ -69,7 +69,8 @@ export {
 } from './types/project.js';
 
 // Story 5.1: SlashCommand types for command autocomplete
-export { SlashCommand, CommandListResponse } from './types/command.js';
+// Story 9.8: StarCommand, CommandsResponse types
+export { SlashCommand, CommandListResponse, StarCommand, CommandsResponse } from './types/command.js';
 
 // Story 3.5: History types for Session History Loading
 export {
