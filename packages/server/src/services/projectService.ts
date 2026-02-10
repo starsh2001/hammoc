@@ -516,13 +516,18 @@ class ProjectService {
     // Initialize Claude project (creates sessions-index.json)
     await this.initializeClaudeProject(projectPath);
 
-    // Setup BMad if requested
+    // Setup BMad if requested (graceful handling: project creation succeeds even if BMad setup fails)
+    let bmadSetupError: string | undefined;
     if (setupBmad) {
-      const version = bmadVersion || (await this.getLatestBmadVersion());
-      if (!version) {
-        throw new Error('사용 가능한 BMad 버전이 없습니다.');
+      try {
+        const version = bmadVersion || (await this.getLatestBmadVersion());
+        if (!version) {
+          throw new Error('사용 가능한 BMad 버전이 없습니다.');
+        }
+        await this.setupBmadCore(projectPath, version);
+      } catch (err) {
+        bmadSetupError = err instanceof Error ? err.message : 'BMad 설정 중 오류가 발생했습니다.';
       }
-      await this.setupBmadCore(projectPath, version);
     }
 
     // Scan to get the created project info
@@ -534,6 +539,7 @@ class ProjectService {
     return {
       project,
       isExisting: false,
+      bmadSetupError,
     };
   }
 
@@ -670,14 +676,25 @@ class ProjectService {
    * Setup BMad for an existing project by slug
    * @param projectSlug Project slug (folder name in ~/.claude/projects/)
    * @param version BMad version to install (defaults to latest)
-   * @returns Updated ProjectInfo with isBmadProject = true
+   * @param force Force setup even if project already has .bmad-core
+   * @returns Object with updated ProjectInfo and installed version
    */
-  async setupBmadForProject(projectSlug: string, version?: string): Promise<ProjectInfo> {
+  async setupBmadForProject(
+    projectSlug: string,
+    version?: string,
+    force?: boolean
+  ): Promise<{ project: ProjectInfo; installedVersion: string }> {
     const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
     const info = await this.parseSessionsIndex(projectDir, projectSlug);
     if (!info) {
       const err = new Error('프로젝트를 찾을 수 없습니다.');
       (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
+      throw err;
+    }
+
+    if (info.isBmadProject && !force) {
+      const err = new Error('이미 BMad가 설정된 프로젝트입니다.');
+      (err as NodeJS.ErrnoException).code = 'ALREADY_BMAD';
       throw err;
     }
 
@@ -689,7 +706,7 @@ class ProjectService {
     }
 
     await this.setupBmadCore(info.originalPath, resolvedVersion);
-    return { ...info, isBmadProject: true };
+    return { project: { ...info, isBmadProject: true }, installedVersion: resolvedVersion };
   }
 
   /**

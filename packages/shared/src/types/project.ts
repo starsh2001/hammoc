@@ -89,6 +89,11 @@ export const PROJECT_ERRORS = {
     message: 'BMad 설정 중 오류가 발생했습니다.',
     httpStatus: 500,
   },
+  ALREADY_BMAD: {
+    code: 'ALREADY_BMAD',
+    message: '이미 BMad가 설정된 프로젝트입니다. 재설정하려면 force 옵션을 사용하세요.',
+    httpStatus: 409,
+  },
   PROJECT_ALREADY_EXISTS: {
     code: 'PROJECT_ALREADY_EXISTS',
     message: '이미 등록된 프로젝트입니다.',
@@ -120,6 +125,28 @@ export interface BmadVersionsResponse {
 }
 
 /**
+ * Request for POST /api/projects/:projectSlug/setup-bmad
+ * [Source: Story 9.1 - Task 1]
+ */
+export interface SetupBmadRequest {
+  /** BMad method version to install (e.g., "4.44.3"). Defaults to latest. */
+  bmadVersion?: string;
+  /** Force setup even if project already has .bmad-core (default: false) */
+  force?: boolean;
+}
+
+/**
+ * Response for POST /api/projects/:projectSlug/setup-bmad
+ * [Source: Story 9.1 - Task 1]
+ */
+export interface SetupBmadResponse {
+  /** Updated project info with isBmadProject = true */
+  project: ProjectInfo;
+  /** BMad version that was installed */
+  installedVersion: string;
+}
+
+/**
  * Response for POST /api/projects
  * [Source: Story 3.6 - Task 1]
  */
@@ -128,6 +155,8 @@ export interface CreateProjectResponse {
   project: ProjectInfo;
   /** True if project already existed */
   isExisting: boolean;
+  /** BMad setup error message if project was created but BMad setup failed */
+  bmadSetupError?: string;
 }
 
 /**
