@@ -1,6 +1,6 @@
 /**
  * FavoritesChipBar Component Tests
- * [Source: Story 9.7 - Task 4]
+ * [Source: Story 9.7 - Task 4, Story 9.12 - Task 5]
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -140,5 +140,200 @@ describe('FavoritesChipBar', () => {
 
     // Dev has no icon field
     expect(screen.getByText('Dev')).toBeInTheDocument();
+  });
+
+  // Star favorites tests (Story 9.12)
+  describe('star favorites (Story 9.12)', () => {
+    const mockActiveAgent: SlashCommand = {
+      command: '/BMad:agents:sm',
+      name: 'SM (Bob)',
+      description: 'Scrum Master',
+      category: 'agent',
+      icon: '🏃',
+    };
+
+    const mockStarFavorites = ['help', 'draft', 'story-checklist'];
+
+    // TC-S1: Both slash + star favorites render together
+    it('renders both slash and star favorite chips', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          starFavorites={mockStarFavorites}
+          activeAgent={mockActiveAgent}
+          onExecuteStarFavorite={vi.fn()}
+        />
+      );
+
+      // Slash chips
+      expect(screen.getByText('PM')).toBeInTheDocument();
+      expect(screen.getByText('create-doc')).toBeInTheDocument();
+      // Star chips
+      expect(screen.getByTestId('star-favorite-chip-help')).toBeInTheDocument();
+      expect(screen.getByTestId('star-favorite-chip-draft')).toBeInTheDocument();
+      expect(screen.getByTestId('star-favorite-chip-story-checklist')).toBeInTheDocument();
+    });
+
+    // TC-S2: Divider shown only when both sections exist
+    it('shows divider when both slash and star favorites exist', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          starFavorites={mockStarFavorites}
+          activeAgent={mockActiveAgent}
+          onExecuteStarFavorite={vi.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('chip-bar-divider')).toBeInTheDocument();
+    });
+
+    // TC-S3: Star chips have * prefix
+    it('displays * prefix on star favorite chips', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          favoriteCommands={[]}
+          starFavorites={['help']}
+          activeAgent={mockActiveAgent}
+          onExecuteStarFavorite={vi.fn()}
+        />
+      );
+
+      const chip = screen.getByTestId('star-favorite-chip-help');
+      expect(chip.textContent).toContain('*');
+      expect(chip.textContent).toContain('help');
+    });
+
+    // TC-S4: Star chip click calls onExecuteStarFavorite
+    it('calls onExecuteStarFavorite when star chip is clicked', () => {
+      const onExecuteStarFavorite = vi.fn();
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          starFavorites={mockStarFavorites}
+          activeAgent={mockActiveAgent}
+          onExecuteStarFavorite={onExecuteStarFavorite}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('star-favorite-chip-help'));
+
+      expect(onExecuteStarFavorite).toHaveBeenCalledWith('help');
+    });
+
+    // TC-S5: Star section hidden when no activeAgent
+    it('hides star section when activeAgent is null', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          starFavorites={mockStarFavorites}
+          activeAgent={null}
+          onExecuteStarFavorite={vi.fn()}
+        />
+      );
+
+      expect(screen.queryByTestId('star-favorite-chip-help')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('chip-bar-divider')).not.toBeInTheDocument();
+    });
+
+    // TC-S6: Only slash favorites — no divider
+    it('does not show divider when only slash favorites exist', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          starFavorites={[]}
+          activeAgent={mockActiveAgent}
+          onExecuteStarFavorite={vi.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('favorites-chip-bar')).toBeInTheDocument();
+      expect(screen.queryByTestId('chip-bar-divider')).not.toBeInTheDocument();
+    });
+
+    // TC-S7: Only star favorites — no divider, chip bar visible
+    it('shows chip bar with star favorites only (no slash, no divider)', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          favoriteCommands={[]}
+          starFavorites={mockStarFavorites}
+          activeAgent={mockActiveAgent}
+          onExecuteStarFavorite={vi.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('favorites-chip-bar')).toBeInTheDocument();
+      expect(screen.queryByTestId('chip-bar-divider')).not.toBeInTheDocument();
+      expect(screen.getByTestId('star-favorite-chip-help')).toBeInTheDocument();
+    });
+
+    // TC-S8: Both empty — chip bar hidden (AC: 8)
+    it('hides chip bar when both slash and star favorites are empty', () => {
+      const { container } = render(
+        <FavoritesChipBar
+          {...defaultProps}
+          favoriteCommands={[]}
+          starFavorites={[]}
+          activeAgent={mockActiveAgent}
+          onExecuteStarFavorite={vi.fn()}
+        />
+      );
+
+      expect(container.innerHTML).toBe('');
+    });
+
+    // TC-S9: Star chips have yellow style
+    it('applies yellow styling to star favorite chips', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          favoriteCommands={[]}
+          starFavorites={['help']}
+          activeAgent={mockActiveAgent}
+          onExecuteStarFavorite={vi.fn()}
+        />
+      );
+
+      const chip = screen.getByTestId('star-favorite-chip-help');
+      expect(chip.className).toContain('bg-yellow-50');
+      expect(chip.className).toContain('border-yellow-200');
+    });
+
+    // TC-S10: activeAgent change updates star favorites (AC: 4)
+    it('updates star favorites when activeAgent changes', () => {
+      const { rerender } = render(
+        <FavoritesChipBar
+          {...defaultProps}
+          starFavorites={['help']}
+          activeAgent={mockActiveAgent}
+          onExecuteStarFavorite={vi.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('star-favorite-chip-help')).toBeInTheDocument();
+
+      const newAgent: SlashCommand = {
+        command: '/BMad:agents:po',
+        name: 'PO (Sarah)',
+        description: 'Product Owner',
+        category: 'agent',
+        icon: '👩‍💼',
+      };
+
+      rerender(
+        <FavoritesChipBar
+          {...defaultProps}
+          starFavorites={['review', 'validate']}
+          activeAgent={newAgent}
+          onExecuteStarFavorite={vi.fn()}
+        />
+      );
+
+      expect(screen.queryByTestId('star-favorite-chip-help')).not.toBeInTheDocument();
+      expect(screen.getByTestId('star-favorite-chip-review')).toBeInTheDocument();
+      expect(screen.getByTestId('star-favorite-chip-validate')).toBeInTheDocument();
+    });
   });
 });
