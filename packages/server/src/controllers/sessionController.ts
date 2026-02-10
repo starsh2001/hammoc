@@ -20,7 +20,8 @@ export const sessionController = {
 
     try {
       const includeEmpty = req.query.includeEmpty === 'true';
-      const sessions = await sessionService.listSessionsBySlug(projectSlug, includeEmpty);
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 0;
+      const sessions = await sessionService.listSessionsBySlug(projectSlug, includeEmpty, limit > 0 ? limit : 0);
 
       // AC 6: Return 404 for non-existent project
       if (sessions === null) {

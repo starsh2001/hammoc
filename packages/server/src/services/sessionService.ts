@@ -197,7 +197,7 @@ export class SessionService {
    * - firstPrompt truncated to 100 chars (AC 4)
    * - Also scans for .jsonl files not yet in sessions-index.json
    */
-  async listSessionsBySlug(projectSlug: string, includeEmpty = false): Promise<SessionListItem[] | null> {
+  async listSessionsBySlug(projectSlug: string, includeEmpty = false, limit = 0): Promise<SessionListItem[] | null> {
     const projectDir = path.join(this.claudeProjectsDir, projectSlug);
     const indexPath = path.join(projectDir, 'sessions-index.json');
 
@@ -206,7 +206,60 @@ export class SessionService {
       return null;
     }
 
-    // Build session map from index file (if exists)
+    // Fast path: stat files for mtime, sort, parse only top N
+    if (limit > 0) {
+      try {
+        const files = await fs.readdir(projectDir);
+        const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
+
+        // Stat all files (cheap) to get modified time
+        const fileStats = await Promise.all(
+          jsonlFiles.map(async (file) => {
+            const stat = await fs.stat(path.join(projectDir, file));
+            return { file, sessionId: file.replace('.jsonl', ''), stat };
+          })
+        );
+
+        // Sort by mtime descending, take top N
+        fileStats.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
+        const topFiles = fileStats.slice(0, limit);
+
+        // Parse only the top N files (expensive part, but limited)
+        const sessions: SessionListItem[] = [];
+        for (const { file, sessionId, stat } of topFiles) {
+          try {
+            const rawMessages = await parseJSONLFile(path.join(projectDir, file));
+            const userMessage = rawMessages.find(m => m.type === 'user');
+            const content = userMessage?.message?.content;
+            let rawText: string | null = null;
+
+            if (typeof content === 'string') {
+              rawText = content;
+            } else if (Array.isArray(content)) {
+              const textBlock = content.find((b: { type: string }) => b.type === 'text');
+              if (textBlock && 'text' in textBlock) {
+                rawText = textBlock.text as string;
+              }
+            }
+
+            sessions.push({
+              sessionId,
+              firstPrompt: rawText ? this.truncateFirstPrompt(rawText) : '',
+              messageCount: rawMessages.filter(m => m.type === 'user' || m.type === 'assistant').length,
+              created: stat.birthtime.toISOString(),
+              modified: stat.mtime.toISOString(),
+            });
+          } catch {
+            // Skip unparseable files
+          }
+        }
+        return sessions;
+      } catch {
+        return [];
+      }
+    }
+
+    // Full path: build complete session map from index + file scan
     const sessionMap = new Map<string, SessionListItem>();
 
     try {
@@ -236,14 +289,11 @@ export class SessionService {
       for (const file of jsonlFiles) {
         const sessionId = file.replace('.jsonl', '');
         if (!sessionMap.has(sessionId)) {
-          // Session file exists but not in index - add it
           const filePath = path.join(projectDir, file);
           const stat = await fs.stat(filePath);
 
-          // Try to extract first prompt and add session
           try {
             const rawMessages = await parseJSONLFile(filePath);
-            // JSONL format: type is 'user', content is in message.content
             const userMessage = rawMessages.find(m => m.type === 'user');
             if (userMessage) {
               const content = userMessage.message?.content;
@@ -260,22 +310,16 @@ export class SessionService {
 
               const firstPrompt = rawText ? this.truncateFirstPrompt(rawText) : null;
 
-              // Only add session if it has a valid first prompt (or includeEmpty is true)
               if (rawText || includeEmpty) {
-                const messageCount = rawMessages.filter(
-                  m => m.type === 'user' || m.type === 'assistant'
-                ).length;
-
                 sessionMap.set(sessionId, {
                   sessionId,
                   firstPrompt: firstPrompt || '',
-                  messageCount,
+                  messageCount: rawMessages.filter(m => m.type === 'user' || m.type === 'assistant').length,
                   created: stat.birthtime.toISOString(),
                   modified: stat.mtime.toISOString(),
                 });
               }
             } else if (includeEmpty) {
-              // No user message found but includeEmpty is true
               sessionMap.set(sessionId, {
                 sessionId,
                 firstPrompt: '',
@@ -285,7 +329,6 @@ export class SessionService {
               });
             }
           } catch {
-            // Failed to parse file - add as empty if includeEmpty
             if (includeEmpty) {
               sessionMap.set(sessionId, {
                 sessionId,
