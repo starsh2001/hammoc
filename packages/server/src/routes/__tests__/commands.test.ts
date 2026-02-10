@@ -8,13 +8,13 @@ import request from 'supertest';
 import express from 'express';
 import type { SlashCommand } from '@bmad-studio/shared';
 
-const { mockGetCommands } = vi.hoisted(() => ({
-  mockGetCommands: vi.fn(),
+const { mockGetCommandsWithStarCommands } = vi.hoisted(() => ({
+  mockGetCommandsWithStarCommands: vi.fn(),
 }));
 
 vi.mock('../../services/commandService', () => ({
   commandService: {
-    getCommands: mockGetCommands,
+    getCommandsWithStarCommands: mockGetCommandsWithStarCommands,
   },
 }));
 
@@ -35,7 +35,7 @@ describe('Commands Routes', () => {
   });
 
   describe('GET /api/projects/:projectSlug/commands', () => {
-    it('should return 200 with commands array', async () => {
+    it('should return 200 with commands and starCommands', async () => {
       const mockCommands: SlashCommand[] = [
         {
           command: '/BMad:agents:pm',
@@ -51,26 +51,34 @@ describe('Commands Routes', () => {
           category: 'task',
         },
       ];
-      mockGetCommands.mockResolvedValue(mockCommands);
+      mockGetCommandsWithStarCommands.mockResolvedValue({
+        commands: mockCommands,
+        starCommands: { sm: [{ agentId: 'sm', command: 'help', description: 'Show help' }] },
+      });
 
       const response = await request(app).get('/api/projects/test-slug/commands');
 
       expect(response.status).toBe(200);
       expect(response.body.commands).toHaveLength(2);
-      expect(mockGetCommands).toHaveBeenCalledWith('test-slug');
+      expect(response.body.starCommands).toBeDefined();
+      expect(mockGetCommandsWithStarCommands).toHaveBeenCalledWith('test-slug');
     });
 
     it('should return empty commands for non-bmad project', async () => {
-      mockGetCommands.mockResolvedValue([]);
+      mockGetCommandsWithStarCommands.mockResolvedValue({
+        commands: [],
+        starCommands: {},
+      });
 
       const response = await request(app).get('/api/projects/unknown-slug/commands');
 
       expect(response.status).toBe(200);
       expect(response.body.commands).toEqual([]);
+      expect(response.body.starCommands).toEqual({});
     });
 
     it('should return 500 on service error', async () => {
-      mockGetCommands.mockRejectedValue(new Error('Service error'));
+      mockGetCommandsWithStarCommands.mockRejectedValue(new Error('Service error'));
 
       const response = await request(app).get('/api/projects/test-slug/commands');
 

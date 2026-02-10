@@ -16,6 +16,29 @@ export interface SlashCommand {
   icon?: string;
 }
 
+/** @deprecated Use CommandsResponse instead */
 export interface CommandListResponse {
   commands: SlashCommand[];
+}
+
+/**
+ * Star command definition parsed from agent YAML commands: section
+ * [Source: Story 9.8 - Task 1]
+ */
+export interface StarCommand {
+  /** Agent ID this command belongs to (e.g., 'pm', 'dev', 'sm') */
+  agentId: string;
+  /** Star command name without * prefix (e.g., 'create-story', 'help') */
+  command: string;
+  /** Command description */
+  description: string;
+}
+
+/**
+ * Extended commands response with star commands
+ * [Source: Story 9.8 - Task 1]
+ */
+export interface CommandsResponse {
+  commands: SlashCommand[];
+  starCommands: Record<string, StarCommand[]>;
 }

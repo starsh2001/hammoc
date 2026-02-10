@@ -4,10 +4,10 @@
  */
 
 import { api } from './client';
-import type { CommandListResponse } from '@bmad-studio/shared';
+import type { CommandsResponse } from '@bmad-studio/shared';
 
 export const commandsApi = {
   /** List available slash commands for a project */
   list: (projectSlug: string) =>
-    api.get<CommandListResponse>(`/projects/${projectSlug}/commands`),
+    api.get<CommandsResponse>(`/projects/${projectSlug}/commands`),
 };

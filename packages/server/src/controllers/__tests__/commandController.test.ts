@@ -7,13 +7,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Request, Response } from 'express';
 import type { SlashCommand } from '@bmad-studio/shared';
 
-const { mockGetCommands } = vi.hoisted(() => ({
-  mockGetCommands: vi.fn(),
+const { mockGetCommandsWithStarCommands } = vi.hoisted(() => ({
+  mockGetCommandsWithStarCommands: vi.fn(),
 }));
 
 vi.mock('../../services/commandService', () => ({
   commandService: {
-    getCommands: mockGetCommands,
+    getCommandsWithStarCommands: mockGetCommandsWithStarCommands,
   },
 }));
 
@@ -39,7 +39,7 @@ describe('commandController', () => {
   });
 
   describe('list', () => {
-    it('should return 200 with commands array on success', async () => {
+    it('should return 200 with commands and starCommands on success', async () => {
       const mockCommands: SlashCommand[] = [
         {
           command: '/BMad:agents:pm',
@@ -49,16 +49,27 @@ describe('commandController', () => {
           icon: '\uD83D\uDCCB',
         },
       ];
-      mockGetCommands.mockResolvedValue(mockCommands);
+      const mockStarCommands = {
+        sm: [
+          { agentId: 'sm', command: 'help', description: 'Show help' },
+        ],
+      };
+      mockGetCommandsWithStarCommands.mockResolvedValue({
+        commands: mockCommands,
+        starCommands: mockStarCommands,
+      });
 
       await commandController.list(mockReq as Request, mockRes as Response);
 
-      expect(mockGetCommands).toHaveBeenCalledWith('test-slug');
-      expect(mockRes.json).toHaveBeenCalledWith({ commands: mockCommands });
+      expect(mockGetCommandsWithStarCommands).toHaveBeenCalledWith('test-slug');
+      expect(mockRes.json).toHaveBeenCalledWith({
+        commands: mockCommands,
+        starCommands: mockStarCommands,
+      });
     });
 
     it('should return 500 on service error', async () => {
-      mockGetCommands.mockRejectedValue(new Error('Service error'));
+      mockGetCommandsWithStarCommands.mockRejectedValue(new Error('Service error'));
 
       await commandController.list(mockReq as Request, mockRes as Response);
 
