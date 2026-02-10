@@ -197,14 +197,12 @@ export function ChatPage() {
   const handleToggleFavorite = useCallback((command: string) => {
     if (isFavorite(command)) {
       removeFavorite(command);
-      toast.success(`${command} 즐겨찾기에서 제거되었습니다`);
     } else {
       if (favoriteCommands.length >= 20) {
         toast.warning('즐겨찾기는 최대 20개까지 추가할 수 있습니다');
         return;
       }
       addFavorite(command);
-      toast.success(`${command} 즐겨찾기에 추가되었습니다`);
     }
   }, [isFavorite, addFavorite, removeFavorite, favoriteCommands.length]);
 
@@ -227,25 +225,21 @@ export function ChatPage() {
 
   const handleToggleStarFavorite = useCallback((command: string) => {
     if (!activeAgent) return;
-    const agentName = activeAgent.name;
     if (isStarFavorite(command)) {
       removeStarFavorite(command);
-      toast.success(`${agentName}: *${command} 즐겨찾기에서 제거되었습니다`);
     } else {
       if (starFavorites.length >= 10) {
         toast.warning('별표 즐겨찾기는 최대 10개까지 추가할 수 있습니다');
         return;
       }
       addStarFavorite(command);
-      toast.success(`${agentName}: *${command} 즐겨찾기에 추가되었습니다`);
     }
   }, [activeAgent, isStarFavorite, addStarFavorite, removeStarFavorite, starFavorites.length]);
 
-  // Remove star favorite with toast (Story 9.12)
+  // Remove star favorite (Story 9.12)
   const handleRemoveStarFavorite = useCallback((command: string) => {
     if (!activeAgent) return;
     removeStarFavorite(command);
-    toast.success(`${activeAgent.name}: *${command} 즐겨찾기에서 제거되었습니다`);
   }, [activeAgent, removeStarFavorite]);
 
   const [agentListOpenTrigger, setAgentListOpenTrigger] = useState(0);
@@ -284,16 +278,6 @@ export function ChatPage() {
     },
     [sendMessage, addOptimisticMessage, workingDirectory, sessionId]
   );
-
-  // Handle favorite command execution (Story 9.7) — immediate send
-  const handleExecuteFavorite = useCallback((command: string) => {
-    handleSendMessage(command);
-  }, [handleSendMessage]);
-
-  // Execute star favorite command — send as *command (Story 9.12)
-  const handleExecuteStarFavorite = useCallback((command: string) => {
-    handleSendMessage('*' + command);
-  }, [handleSendMessage]);
 
   // Handle abort
   const handleAbort = useCallback(() => {
@@ -613,13 +597,13 @@ export function ChatPage() {
             favoriteCommands={favoriteCommands}
             onReorderFavorites={reorderFavorites}
             onRemoveFavorite={removeFavorite}
-            onExecuteFavorite={handleExecuteFavorite}
+
             isStarFavorite={isStarFavorite}
             onToggleStarFavorite={handleToggleStarFavorite}
             starFavorites={starFavorites}
             onReorderStarFavorites={reorderStarFavorites}
             onRemoveStarFavorite={handleRemoveStarFavorite}
-            onExecuteStarFavorite={handleExecuteStarFavorite}
+
           />
         </InputArea>
         {sessionPanel}
@@ -674,13 +658,13 @@ export function ChatPage() {
             favoriteCommands={favoriteCommands}
             onReorderFavorites={reorderFavorites}
             onRemoveFavorite={removeFavorite}
-            onExecuteFavorite={handleExecuteFavorite}
+
             isStarFavorite={isStarFavorite}
             onToggleStarFavorite={handleToggleStarFavorite}
             starFavorites={starFavorites}
             onReorderStarFavorites={reorderStarFavorites}
             onRemoveStarFavorite={handleRemoveStarFavorite}
-            onExecuteStarFavorite={handleExecuteStarFavorite}
+
           />
         </InputArea>
         {sessionPanel}
@@ -742,13 +726,13 @@ export function ChatPage() {
             favoriteCommands={favoriteCommands}
             onReorderFavorites={reorderFavorites}
             onRemoveFavorite={removeFavorite}
-            onExecuteFavorite={handleExecuteFavorite}
+
             isStarFavorite={isStarFavorite}
             onToggleStarFavorite={handleToggleStarFavorite}
             starFavorites={starFavorites}
             onReorderStarFavorites={reorderStarFavorites}
             onRemoveStarFavorite={handleRemoveStarFavorite}
-            onExecuteStarFavorite={handleExecuteStarFavorite}
+
           />
         </InputArea>
         {sessionPanel}
@@ -831,13 +815,11 @@ export function ChatPage() {
           favoriteCommands={favoriteCommands}
           onReorderFavorites={reorderFavorites}
           onRemoveFavorite={removeFavorite}
-          onExecuteFavorite={handleExecuteFavorite}
           isStarFavorite={isStarFavorite}
           onToggleStarFavorite={handleToggleStarFavorite}
           starFavorites={starFavorites}
           onReorderStarFavorites={reorderStarFavorites}
           onRemoveStarFavorite={handleRemoveStarFavorite}
-          onExecuteStarFavorite={handleExecuteStarFavorite}
         />
       </InputArea>
       {sessionPanel}

@@ -86,6 +86,40 @@ export function FavoritesChipBar({
         className="flex-1 overflow-x-auto flex gap-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         data-testid="chip-scroll-area"
       >
+        {/* Star favorites section — shown first (Story 9.12) */}
+        {hasStarFavorites && (
+          <>
+            {starFavorites!.map((commandStr) => (
+              <button
+                key={`star-${commandStr}`}
+                type="button"
+                role="button"
+                aria-label={`*${commandStr} 실행`}
+                disabled={disabled}
+                onClick={() => onExecuteStarFavorite?.(commandStr)}
+                className={`px-2 py-1 rounded-full text-xs
+                           bg-yellow-50 dark:bg-yellow-900/30
+                           text-yellow-700 dark:text-yellow-300
+                           border border-yellow-200 dark:border-yellow-700
+                           hover:bg-yellow-100 dark:hover:bg-yellow-800/40
+                           whitespace-nowrap flex-shrink-0 cursor-pointer
+                           transition-colors min-h-[28px]
+                           flex items-center gap-1
+                           disabled:opacity-50 disabled:cursor-not-allowed`}
+                data-testid={`star-favorite-chip-${commandStr}`}
+              >
+                <span className="text-yellow-500">*</span>
+                <span>{commandStr}</span>
+              </button>
+            ))}
+            {/* Divider — only show if slash favorites also exist */}
+            {favoriteCommands.length > 0 && (
+              <div className="flex-shrink-0 w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1"
+                   data-testid="chip-bar-divider" aria-hidden="true" />
+            )}
+          </>
+        )}
+
         {favoriteCommands.map((commandStr) => {
           const cmd = findCommand(commandStr);
           const label = getChipLabel(commandStr, cmd);
@@ -113,40 +147,6 @@ export function FavoritesChipBar({
             </button>
           );
         })}
-
-        {/* Star favorites section (Story 9.12) */}
-        {hasStarFavorites && (
-          <>
-            {/* Divider — only show if slash favorites also exist */}
-            {favoriteCommands.length > 0 && (
-              <div className="flex-shrink-0 w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1"
-                   data-testid="chip-bar-divider" aria-hidden="true" />
-            )}
-            {starFavorites!.map((commandStr) => (
-              <button
-                key={`star-${commandStr}`}
-                type="button"
-                role="button"
-                aria-label={`*${commandStr} 실행`}
-                disabled={disabled}
-                onClick={() => onExecuteStarFavorite?.(commandStr)}
-                className={`px-2 py-1 rounded-full text-xs
-                           bg-yellow-50 dark:bg-yellow-900/30
-                           text-yellow-700 dark:text-yellow-300
-                           border border-yellow-200 dark:border-yellow-700
-                           hover:bg-yellow-100 dark:hover:bg-yellow-800/40
-                           whitespace-nowrap flex-shrink-0 cursor-pointer
-                           transition-colors min-h-[28px]
-                           flex items-center gap-1
-                           disabled:opacity-50 disabled:cursor-not-allowed`}
-                data-testid={`star-favorite-chip-${commandStr}`}
-              >
-                <span className="text-yellow-500">*</span>
-                <span>{commandStr}</span>
-              </button>
-            ))}
-          </>
-        )}
       </div>
     </div>
   );
