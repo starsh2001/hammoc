@@ -22,7 +22,7 @@ interface SessionState {
 }
 
 interface SessionActions {
-  fetchSessions: (projectSlug: string) => Promise<void>;
+  fetchSessions: (projectSlug: string, options?: { limit?: number }) => Promise<void>;
   clearSessions: () => void;
   clearError: () => void;
   setRefreshing: (isRefreshing: boolean) => void;
@@ -51,7 +51,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   includeEmpty: false,
 
   // Actions
-  fetchSessions: async (projectSlug: string) => {
+  fetchSessions: async (projectSlug: string, options?: { limit?: number }) => {
     const state = get();
 
     // Clear sessions if switching projects
@@ -62,7 +62,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ isLoading: true, error: null, errorType: 'none' });
     try {
       const { includeEmpty } = get();
-      const { sessions } = await sessionsApi.list(projectSlug, { includeEmpty });
+      const { sessions } = await sessionsApi.list(projectSlug, { includeEmpty, limit: options?.limit });
       set({ sessions, isLoading: false, isRefreshing: false });
     } catch (err) {
       if (err instanceof ApiError) {
