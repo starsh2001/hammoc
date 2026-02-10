@@ -64,6 +64,8 @@ export {
   BmadVersionsResponse,
   ProjectSettings,
   UpdateProjectSettingsRequest,
+  SetupBmadRequest,
+  SetupBmadResponse,
 } from './types/project.js';
 
 // Story 5.1: SlashCommand types for command autocomplete

@@ -12,8 +12,8 @@ interface NewProjectDialogProps {
   isOpen: boolean;
   /** Close callback */
   onClose: () => void;
-  /** Success callback with project slug and isExisting flag */
-  onSuccess: (projectSlug: string, isExisting: boolean) => void;
+  /** Success callback with project slug, isExisting flag, and optional BMad setup error */
+  onSuccess: (projectSlug: string, isExisting: boolean, bmadSetupError?: string) => void;
 }
 
 export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialogProps) {
@@ -113,7 +113,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
     );
 
     if (result) {
-      onSuccess(result.project.projectSlug, result.isExisting);
+      onSuccess(result.project.projectSlug, result.isExisting, result.bmadSetupError);
       onClose();
     }
   }, [path, pathValidation, validatePath, createProject, setupBmad, selectedVersion, onSuccess, onClose]);

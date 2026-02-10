@@ -6,6 +6,7 @@
 
 import { useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { RefreshCw, FolderOpen, AlertCircle, Settings, Plus, Eye, EyeOff, MoreVertical, Moon, Sun, LogOut } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { generateUUID } from '../utils/uuid';
@@ -106,12 +107,19 @@ export function ProjectListPage() {
 
   // Handle new project success - navigate to new session
   const handleNewProjectSuccess = useCallback(
-    (projectSlug: string, isExisting: boolean) => {
+    (projectSlug: string, isExisting: boolean, bmadSetupError?: string) => {
       if (isExisting) {
-        // Navigate to existing project's session list
+        toast.info('기존 프로젝트로 이동합니다.');
         navigate(`/project/${projectSlug}`);
       } else {
-        // Navigate to new session in the newly created project
+        if (bmadSetupError) {
+          // NOTE: type is 'info' not 'error' — project creation itself succeeded (PO v1.1)
+          toast.info(`프로젝트가 생성되었지만 BMad 설정에 실패했습니다: ${bmadSetupError}`, {
+            duration: 7000,
+          });
+        } else {
+          toast.success('새 프로젝트가 생성되었습니다.');
+        }
         const newSessionId = generateUUID();
         navigate(`/project/${projectSlug}/session/${newSessionId}`);
       }

@@ -14,6 +14,8 @@ import {
   BmadVersionsResponse,
   DeleteProjectResponse,
   UpdateProjectSettingsRequest,
+  SetupBmadRequest,
+  SetupBmadResponse,
 } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 
@@ -180,7 +182,7 @@ export const projectController = {
   async setupBmad(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
-      const { bmadVersion } = req.body as { bmadVersion?: string };
+      const { bmadVersion, force } = req.body as SetupBmadRequest;
 
       if (!projectSlug) {
         res.status(400).json({
@@ -189,10 +191,21 @@ export const projectController = {
         return;
       }
 
-      const project = await projectService.setupBmadForProject(projectSlug, bmadVersion);
-      res.json({ project });
+      const result = await projectService.setupBmadForProject(projectSlug, bmadVersion, Boolean(force));
+      const response: SetupBmadResponse = {
+        project: result.project,
+        installedVersion: result.installedVersion,
+      };
+      res.json(response);
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
+
+      if (nodeError.code === 'ALREADY_BMAD') {
+        res.status(409).json({
+          error: { code: 'ALREADY_BMAD', message: nodeError.message },
+        });
+        return;
+      }
 
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
         res.status(404).json({
