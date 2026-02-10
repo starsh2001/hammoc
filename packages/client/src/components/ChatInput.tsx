@@ -124,8 +124,6 @@ interface ChatInputProps {
   onReorderFavorites?: (commands: string[]) => void;
   /** Remove favorite callback (Story 9.6) */
   onRemoveFavorite?: (command: string) => void;
-  /** Execute favorite command immediately (Story 9.7) */
-  onExecuteFavorite?: (command: string) => void;
   /** Star commands for the active agent (Story 9.9) */
   starCommands?: StarCommand[];
   /** Active agent info for star command palette header (Story 9.9) */
@@ -140,8 +138,6 @@ interface ChatInputProps {
   onReorderStarFavorites?: (commands: string[]) => void;
   /** Remove star favorite callback (Story 9.12) */
   onRemoveStarFavorite?: (command: string) => void;
-  /** Execute star favorite command (Story 9.12) */
-  onExecuteStarFavorite?: (command: string) => void;
 }
 
 export function ChatInput({
@@ -168,7 +164,6 @@ export function ChatInput({
   favoriteCommands,
   onReorderFavorites,
   onRemoveFavorite,
-  onExecuteFavorite,
   starCommands,
   activeAgent,
   isStarFavorite,
@@ -176,7 +171,6 @@ export function ChatInput({
   starFavorites,
   onReorderStarFavorites,
   onRemoveStarFavorite,
-  onExecuteStarFavorite,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -467,6 +461,23 @@ export function ChatInput({
     });
   }, []);
 
+  // Select all {placeholder}s in text after inserting into textarea
+  // e.g. "*shard-doc {document} {destination} " → selects "{document} {destination}"
+  const selectPlaceholders = useCallback((text: string) => {
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      const first = text.indexOf('{');
+      const last = text.lastIndexOf('}');
+      if (first !== -1 && last > first) {
+        textarea.setSelectionRange(first, last + 1);
+      } else {
+        textarea.setSelectionRange(text.length, text.length);
+      }
+    });
+  }, []);
+
   // Favorites popup: command select handler (Story 9.6)
   const handleFavoriteSelect = useCallback((command: string) => {
     setContent(command + ' ');
@@ -476,18 +487,20 @@ export function ChatInput({
 
   // Star favorite popup select handler (Story 9.12)
   const handleStarFavoriteSelect = useCallback((command: string) => {
-    setContent('*' + command + ' ');
+    const text = '*' + command + ' ';
+    setContent(text);
     setShowFavorites(false);
-    textareaRef.current?.focus();
-  }, []);
+    selectPlaceholders(text);
+  }, [selectPlaceholders]);
 
   // Star command selection handler (Story 9.9)
   const handleStarCommandSelect = useCallback((command: string) => {
-    setContent('*' + command + ' ');
+    const text = '*' + command + ' ';
+    setContent(text);
     setShowStarCommands(false);
     setStarSelectedIndex(0);
-    textareaRef.current?.focus();
-  }, []);
+    selectPlaceholders(text);
+  }, [selectPlaceholders]);
 
   // Command selection handler (Story 5.1)
   const handleCommandSelect = useCallback((command: SlashCommand) => {
@@ -697,16 +710,20 @@ export function ChatInput({
             favoriteCommands={favoriteCommands || []}
             commands={commands}
             onExecute={(cmd) => {
-              if (onExecuteFavorite) {
-                onExecuteFavorite(cmd);
-              }
+              setContent(cmd + ' ');
               setShowFavorites(false);
+              textareaRef.current?.focus();
             }}
             onOpenDialog={handleToggleFavorites}
             disabled={disabled}
             starFavorites={starFavorites}
             activeAgent={activeAgent}
-            onExecuteStarFavorite={onExecuteStarFavorite}
+            onExecuteStarFavorite={(cmd) => {
+              const text = '*' + cmd + ' ';
+              setContent(text);
+              setShowFavorites(false);
+              selectPlaceholders(text);
+            }}
           />
           {showFavorites && (
             <FavoritesPopup

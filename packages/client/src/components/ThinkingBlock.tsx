@@ -19,9 +19,11 @@ import { useChatStore } from '../stores/chatStore';
 interface ThinkingBlockProps {
   /** Thinking content (markdown string) */
   content: string;
+  /** Whether thinking is still streaming */
+  isStreaming?: boolean;
 }
 
-export function ThinkingBlock({ content }: ThinkingBlockProps) {
+export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockProps) {
   const isExpanded = useChatStore((s) => s.thinkingExpanded);
   const toggleThinkingExpanded = useChatStore((s) => s.toggleThinkingExpanded);
   const contentId = useId();
@@ -65,7 +67,7 @@ export function ThinkingBlock({ content }: ThinkingBlockProps) {
                    text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800`}
       >
         <Brain className={`w-4 h-4 ${isExpanded ? 'text-purple-500' : ''}`} aria-hidden="true" />
-        <span className={`text-xs ${isExpanded ? 'text-purple-600 dark:text-purple-400' : ''}`}>Thinking</span>
+        <span className={`text-xs ${isExpanded ? 'text-purple-600 dark:text-purple-400' : ''}`}>{isStreaming ? 'Thinking...' : 'Thinking'}</span>
         {isExpanded
           ? <ChevronDown className="w-3 h-3" aria-hidden="true" />
           : <ChevronRight className="w-3 h-3" aria-hidden="true" />
