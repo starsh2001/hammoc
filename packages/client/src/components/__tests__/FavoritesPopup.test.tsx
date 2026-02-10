@@ -1,12 +1,12 @@
 /**
  * FavoritesPopup Component Tests
- * [Source: Story 9.6 - Task 4]
+ * [Source: Story 9.6 - Task 4, Story 9.12 - Task 6]
  */
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { FavoritesPopup } from '../FavoritesPopup';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
 
 const mockCommands: SlashCommand[] = [
   { command: '/BMad:agents:pm', name: 'PM', description: 'Product Manager', category: 'agent', icon: '📋' },
@@ -151,5 +151,117 @@ describe('FavoritesPopup', () => {
     fireEvent.keyDown(screen.getByTestId('favorite-item-0'), { key: ' ' });
 
     expect(onSelect).toHaveBeenCalledWith('/BMad:agents:pm');
+  });
+
+  // Star favorites tests (Story 9.12)
+  describe('star favorites (Story 9.12)', () => {
+    const mockActiveAgent: SlashCommand = {
+      command: '/BMad:agents:sm',
+      name: 'SM (Bob)',
+      description: 'Scrum Master',
+      category: 'agent',
+      icon: '🏃',
+    };
+
+    const mockStarFavorites = ['help', 'draft', 'story-checklist'];
+
+    const mockStarCommands: StarCommand[] = [
+      { agentId: 'sm', command: 'help', description: 'Show commands' },
+      { agentId: 'sm', command: 'draft', description: 'Create next story' },
+      { agentId: 'sm', command: 'story-checklist', description: 'Run story checklist' },
+    ];
+
+    const starProps = {
+      ...defaultProps,
+      starFavorites: mockStarFavorites,
+      starCommands: mockStarCommands,
+      activeAgent: mockActiveAgent,
+      onReorderStarFavorites: vi.fn(),
+      onRemoveStarFavorite: vi.fn(),
+      onSelectStarFavorite: vi.fn(),
+    };
+
+    // TC-P1: Section header with agent name/icon
+    it('shows star section header with agent name and icon', () => {
+      render(<FavoritesPopup {...starProps} />);
+
+      const header = screen.getByTestId('star-section-header');
+      expect(header.textContent).toContain('🏃');
+      expect(header.textContent).toContain('SM (Bob)');
+      expect(header.textContent).toContain('별표 즐겨찾기');
+    });
+
+    // TC-P2: Star items show * prefix, command name, and description
+    it('shows star items with * prefix, name, and description', () => {
+      render(<FavoritesPopup {...starProps} />);
+
+      const item = screen.getByTestId('star-favorite-item-0');
+      expect(item.textContent).toContain('*');
+      expect(item.textContent).toContain('help');
+      expect(item.textContent).toContain('Show commands');
+    });
+
+    // TC-P3: Remove button calls onRemoveStarFavorite
+    it('calls onRemoveStarFavorite when star remove button is clicked', () => {
+      const onRemoveStarFavorite = vi.fn();
+      render(<FavoritesPopup {...starProps} onRemoveStarFavorite={onRemoveStarFavorite} />);
+
+      fireEvent.click(screen.getByTestId('star-favorite-remove-0'));
+
+      expect(onRemoveStarFavorite).toHaveBeenCalledWith('help');
+    });
+
+    // TC-P4: Item click calls onSelectStarFavorite
+    it('calls onSelectStarFavorite when star item is clicked', () => {
+      const onSelectStarFavorite = vi.fn();
+      render(<FavoritesPopup {...starProps} onSelectStarFavorite={onSelectStarFavorite} />);
+
+      fireEvent.click(screen.getByTestId('star-favorite-item-1'));
+
+      expect(onSelectStarFavorite).toHaveBeenCalledWith('draft');
+    });
+
+    // TC-P5: DnD calls onReorderStarFavorites
+    it('calls onReorderStarFavorites after drag and drop', () => {
+      const onReorderStarFavorites = vi.fn();
+      render(<FavoritesPopup {...starProps} onReorderStarFavorites={onReorderStarFavorites} />);
+
+      const item0 = screen.getByTestId('star-favorite-item-0');
+      const item1 = screen.getByTestId('star-favorite-item-1');
+
+      fireEvent.dragStart(item0);
+      fireEvent.dragOver(item1, { preventDefault: vi.fn() });
+      fireEvent.drop(item1);
+
+      expect(onReorderStarFavorites).toHaveBeenCalledWith(['draft', 'help', 'story-checklist']);
+    });
+
+    // TC-P6: Divider between slash and star sections
+    it('shows divider between slash and star sections', () => {
+      render(<FavoritesPopup {...starProps} />);
+
+      expect(screen.getByTestId('popup-star-divider')).toBeInTheDocument();
+    });
+
+    // TC-P7: Star section hidden when no activeAgent
+    it('hides star section when activeAgent is null', () => {
+      render(<FavoritesPopup {...starProps} activeAgent={null} />);
+
+      expect(screen.queryByTestId('star-section-header')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('star-favorite-item-0')).not.toBeInTheDocument();
+    });
+
+    // TC-P8: Both empty — shows empty state message
+    it('shows empty state when both slash and star favorites are empty', () => {
+      render(
+        <FavoritesPopup
+          {...starProps}
+          favoriteCommands={[]}
+          starFavorites={[]}
+        />
+      );
+
+      expect(screen.getByTestId('favorites-empty-message')).toBeInTheDocument();
+    });
   });
 });
