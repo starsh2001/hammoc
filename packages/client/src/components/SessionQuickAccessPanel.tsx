@@ -56,7 +56,7 @@ export function SessionQuickAccessPanel({
   // Fetch sessions when panel opens
   useEffect(() => {
     if (isOpen) {
-      fetchSessions(projectSlug);
+      fetchSessions(projectSlug, { limit: 20 });
     }
   }, [isOpen, projectSlug, fetchSessions]);
 
@@ -178,9 +178,16 @@ export function SessionQuickAccessPanel({
                   data-testid={`session-item-${session.sessionId}`}
                   aria-current={isCurrent ? 'true' : undefined}
                 >
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {session.firstPrompt || '(빈 세션)'}
-                  </p>
+                  <div className="flex items-baseline gap-1.5 min-w-0">
+                    {session.name && (
+                      <span className="flex-shrink-0 inline-block text-[11px] leading-tight font-medium px-1.5 py-px rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 max-w-[40%] truncate">
+                        {session.name}
+                      </span>
+                    )}
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {session.firstPrompt || '(빈 세션)'}
+                    </p>
+                  </div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
                     <span className="relative flex h-2 w-2" title={session.isStreaming ? '스트리밍 중' : '대기 중'}>
                       {session.isStreaming && (

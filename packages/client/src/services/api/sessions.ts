@@ -10,8 +10,13 @@ export const sessionsApi = {
   /**
    * List all sessions for a project
    */
-  list: (projectSlug: string, options?: { includeEmpty?: boolean }) =>
-    api.get<SessionListResponse>(`/projects/${projectSlug}/sessions${options?.includeEmpty ? '?includeEmpty=true' : ''}`),
+  list: (projectSlug: string, options?: { includeEmpty?: boolean; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (options?.includeEmpty) params.set('includeEmpty', 'true');
+    if (options?.limit) params.set('limit', String(options.limit));
+    const qs = params.toString();
+    return api.get<SessionListResponse>(`/projects/${projectSlug}/sessions${qs ? `?${qs}` : ''}`);
+  },
 
   /**
    * Get session messages with pagination

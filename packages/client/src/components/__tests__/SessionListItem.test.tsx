@@ -59,7 +59,7 @@ describe('SessionListItem', () => {
     const emptySession = { ...mockSession, firstPrompt: '' };
     render(<SessionListItem session={emptySession} onClick={vi.fn()} />);
 
-    expect(screen.getByText('새 세션')).toBeInTheDocument();
+    expect(screen.getByText('(빈 세션)')).toBeInTheDocument();
   });
 
   it('is accessible as a button element with aria-label', () => {

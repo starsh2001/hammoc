@@ -117,7 +117,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
           ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
           : 'border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400'
       }`}
-      aria-label={`세션: ${session.firstPrompt || '새 세션'}. 메시지 ${session.messageCount}개. ${formatRelativeTime(session.modified)}`}
+      aria-label={`세션: ${session.firstPrompt || '(빈 세션)'}. 메시지 ${session.messageCount}개. ${formatRelativeTime(session.modified)}`}
     >
       <div className="flex items-start gap-3">
         {/* Selection checkbox */}
@@ -129,7 +129,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
               onChange={handleCheckboxChange}
               onClick={(e) => e.stopPropagation()}
               className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
-              aria-label={`${session.firstPrompt || '새 세션'} 선택`}
+              aria-label={`${session.firstPrompt || '(빈 세션)'} 선택`}
             />
           </div>
         )}
@@ -175,7 +175,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
           ) : (
             /* Primary title: always firstPrompt */
             <p className="text-gray-900 dark:text-white font-medium truncate mb-1">
-              {session.firstPrompt || '새 세션'}
+              {session.firstPrompt || '(빈 세션)'}
             </p>
           )}
 
