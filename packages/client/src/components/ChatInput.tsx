@@ -130,6 +130,10 @@ interface ChatInputProps {
   starCommands?: StarCommand[];
   /** Active agent info for star command palette header (Story 9.9) */
   activeAgent?: SlashCommand | null;
+  /** Check if a star command is favorited (Story 9.11) */
+  isStarFavorite?: (command: string) => boolean;
+  /** Toggle star favorite status (Story 9.11) */
+  onToggleStarFavorite?: (command: string) => void;
 }
 
 export function ChatInput({
@@ -159,6 +163,8 @@ export function ChatInput({
   onExecuteFavorite,
   starCommands,
   activeAgent,
+  isStarFavorite,
+  onToggleStarFavorite,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -747,6 +753,8 @@ export function ChatInput({
             filter={starCommandFilter}
             selectedIndex={starSelectedIndex}
             onSelect={handleStarCommandSelect}
+            isStarFavorite={isStarFavorite}
+            onToggleStarFavorite={onToggleStarFavorite}
           />
         )}
 
