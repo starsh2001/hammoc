@@ -28,6 +28,7 @@ import { useFavoriteCommands } from '../hooks/useFavoriteCommands';
 import { useActiveAgent } from '../hooks/useActiveAgent';
 import { getSocket } from '../services/socket';
 import { generateUUID } from '../utils/uuid';
+import { getAgentId } from '../utils/agentUtils';
 import { ChatHeader } from '../components/ChatHeader';
 import { MessageArea } from '../components/MessageArea';
 import { InputArea } from '../components/InputArea';
@@ -183,7 +184,7 @@ export function ChatPage() {
   useStreaming();
 
   // Fetch slash commands for autocomplete (Story 5.1)
-  const { commands } = useSlashCommands(projectSlug);
+  const { commands, starCommands } = useSlashCommands(projectSlug);
 
   // Recent agents tracking (Story 8.4)
   const { addRecentAgent } = useRecentAgents(projectSlug);
@@ -208,6 +209,13 @@ export function ChatPage() {
 
   // Active agent detection (Story 8.5)
   const { activeAgent } = useActiveAgent(messages, commands, lastAgentCommand);
+
+  // Current agent's star commands (Story 9.9)
+  const activeAgentStarCommands = useMemo(() => {
+    if (!activeAgent) return undefined;
+    const agentId = getAgentId(activeAgent.command);
+    return starCommands[agentId] ?? [];
+  }, [activeAgent, starCommands]);
   const [agentListOpenTrigger, setAgentListOpenTrigger] = useState(0);
   const handleAgentIndicatorClick = useCallback(() => {
     setAgentListOpenTrigger((prev) => prev + 1);
@@ -561,6 +569,14 @@ export function ChatPage() {
             onAgentSelect={handleAgentSelect}
             agentListOpenTrigger={agentListOpenTrigger}
             activeAgentCommand={activeAgent?.command}
+            starCommands={activeAgentStarCommands}
+            activeAgent={activeAgent}
+            isFavorite={isFavorite}
+            onToggleFavorite={handleToggleFavorite}
+            favoriteCommands={favoriteCommands}
+            onReorderFavorites={reorderFavorites}
+            onRemoveFavorite={removeFavorite}
+            onExecuteFavorite={handleExecuteFavorite}
           />
         </InputArea>
         {sessionPanel}
@@ -608,6 +624,14 @@ export function ChatPage() {
             onAgentSelect={handleAgentSelect}
             agentListOpenTrigger={agentListOpenTrigger}
             activeAgentCommand={activeAgent?.command}
+            starCommands={activeAgentStarCommands}
+            activeAgent={activeAgent}
+            isFavorite={isFavorite}
+            onToggleFavorite={handleToggleFavorite}
+            favoriteCommands={favoriteCommands}
+            onReorderFavorites={reorderFavorites}
+            onRemoveFavorite={removeFavorite}
+            onExecuteFavorite={handleExecuteFavorite}
           />
         </InputArea>
         {sessionPanel}
@@ -662,6 +686,8 @@ export function ChatPage() {
             onAgentSelect={handleAgentSelect}
             agentListOpenTrigger={agentListOpenTrigger}
             activeAgentCommand={activeAgent?.command}
+            starCommands={activeAgentStarCommands}
+            activeAgent={activeAgent}
             isFavorite={isFavorite}
             onToggleFavorite={handleToggleFavorite}
             favoriteCommands={favoriteCommands}
@@ -740,6 +766,8 @@ export function ChatPage() {
           onAgentSelect={handleAgentSelect}
           agentListOpenTrigger={agentListOpenTrigger}
           activeAgentCommand={activeAgent?.command}
+          starCommands={activeAgentStarCommands}
+          activeAgent={activeAgent}
           contextUsage={contextUsage}
           onNewSession={handleNewSession}
           onCompact={handleCompact}

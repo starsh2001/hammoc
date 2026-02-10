@@ -4,11 +4,12 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
 import { commandsApi } from '../services/api/commands';
 
 interface UseSlashCommandsResult {
   commands: SlashCommand[];
+  starCommands: Record<string, StarCommand[]>;
   isLoading: boolean;
 }
 
@@ -20,6 +21,7 @@ interface UseSlashCommandsResult {
  */
 export function useSlashCommands(projectSlug?: string): UseSlashCommandsResult {
   const [commands, setCommands] = useState<SlashCommand[]>([]);
+  const [starCommands, setStarCommands] = useState<Record<string, StarCommand[]>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchCommands = useCallback(async (slug: string) => {
@@ -27,9 +29,11 @@ export function useSlashCommands(projectSlug?: string): UseSlashCommandsResult {
     try {
       const response = await commandsApi.list(slug);
       setCommands(response.commands);
+      setStarCommands(response.starCommands ?? {});
     } catch (error) {
       console.error('[useSlashCommands] Failed to fetch commands:', error);
       setCommands([]);
+      setStarCommands({});
     } finally {
       setIsLoading(false);
     }
@@ -40,8 +44,9 @@ export function useSlashCommands(projectSlug?: string): UseSlashCommandsResult {
       fetchCommands(projectSlug);
     } else {
       setCommands([]);
+      setStarCommands({});
     }
   }, [projectSlug, fetchCommands]);
 
-  return { commands, isLoading };
+  return { commands, starCommands, isLoading };
 }
