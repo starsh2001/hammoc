@@ -126,17 +126,19 @@ function extractTextContent(content: string | ContentBlock[] | undefined): strin
  * @param content The raw message content
  * @returns Cleaned content showing just the command
  */
-function cleanCommandTags(content: string): string {
+export function cleanCommandTags(content: string): string {
   // Skip local command output (CLI-only messages like "Compacted", "Login successful")
   if (content.includes('<local-command-stdout>')) {
     return '';
   }
-  // Check if this is a command message
-  const commandNameMatch = content.match(/<command-name>([^<]+)<\/command-name>/);
-  if (commandNameMatch) {
-    return commandNameMatch[1]; // Return just the command name like "/sm"
-  }
-  return content;
+  let cleaned = content;
+  // Remove <ide_opened_file> blocks entirely (content included)
+  cleaned = cleaned.replace(/<ide_opened_file>[\s\S]*?<\/ide_opened_file>/g, '');
+  // Remove <command-message> blocks entirely (content included)
+  cleaned = cleaned.replace(/<command-message>[\s\S]*?<\/command-message>/g, '');
+  // Strip <command-name> tags but keep inner text
+  cleaned = cleaned.replace(/<\/?command-name>/g, '');
+  return cleaned.trim();
 }
 
 /**
