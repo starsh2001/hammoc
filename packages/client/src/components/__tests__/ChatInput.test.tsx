@@ -1124,16 +1124,17 @@ describe('ChatInput', () => {
     });
   });
 
-  // Story 9.6 - Task 4: Favorites quick access tests
+  // Story 9.6/9.7 - Favorites quick access tests (updated for chip bar)
   describe('favorites quick access', () => {
     const favoritesProps = {
       favoriteCommands: ['/BMad:agents:pm', '/BMad:tasks:create-doc'],
       onReorderFavorites: vi.fn(),
       onRemoveFavorite: vi.fn(),
+      onExecuteFavorite: vi.fn(),
     };
 
-    // TC9: Star button renders when favoriteCommands prop is provided
-    it('renders star button when favoriteCommands prop is provided', () => {
+    // TC10: FavoritesChipBar renders when favoriteCommands has items
+    it('renders FavoritesChipBar when favoriteCommands has items', () => {
       render(
         <ChatInput
           onSend={mockOnSend}
@@ -1142,18 +1143,26 @@ describe('ChatInput', () => {
         />
       );
 
-      expect(screen.getByTestId('favorites-button')).toBeInTheDocument();
+      expect(screen.getByTestId('favorites-chip-bar')).toBeInTheDocument();
     });
 
-    // TC10: Star button does not render when favoriteCommands prop is absent
-    it('does not render star button when favoriteCommands prop is absent', () => {
-      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+    // TC11: FavoritesChipBar does not render when favoriteCommands is empty
+    it('does not render FavoritesChipBar when favoriteCommands is empty', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          favoriteCommands={[]}
+          onReorderFavorites={vi.fn()}
+          onRemoveFavorite={vi.fn()}
+        />
+      );
 
-      expect(screen.queryByTestId('favorites-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('favorites-chip-bar')).not.toBeInTheDocument();
     });
 
-    // TC11: Star button click shows FavoritesPopup
-    it('shows FavoritesPopup when star button is clicked', () => {
+    // TC12: Chip bar star button click shows FavoritesPopup
+    it('shows FavoritesPopup when chip bar star button is clicked', () => {
       render(
         <ChatInput
           onSend={mockOnSend}
@@ -1162,12 +1171,44 @@ describe('ChatInput', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('favorites-button'));
+      fireEvent.click(screen.getByTestId('chip-bar-star-button'));
 
       expect(screen.getByTestId('favorites-popup')).toBeInTheDocument();
     });
 
-    // TC12: Selecting a command from FavoritesPopup inserts it into textarea
+    // TC13: Button row no longer has the old star button (9.6 → 9.7 migration)
+    it('does not have star button in the button row', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          {...favoritesProps}
+        />
+      );
+
+      // Old button row star button should be gone
+      expect(screen.queryByTestId('favorites-button')).not.toBeInTheDocument();
+    });
+
+    // TC14: onExecuteFavorite prop is called when chip is clicked
+    it('calls onExecuteFavorite when a chip is clicked', () => {
+      const onExecuteFavorite = vi.fn();
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          {...favoritesProps}
+          onExecuteFavorite={onExecuteFavorite}
+        />
+      );
+
+      // Click the PM chip (name from mockCommands is 'PM (Product Manager)')
+      fireEvent.click(screen.getByText('PM (Product Manager)'));
+
+      expect(onExecuteFavorite).toHaveBeenCalledWith('/BMad:agents:pm');
+    });
+
+    // Selecting a command from FavoritesPopup inserts it into textarea
     it('inserts command into textarea when selected from FavoritesPopup', () => {
       render(
         <ChatInput
@@ -1177,8 +1218,8 @@ describe('ChatInput', () => {
         />
       );
 
-      // Open favorites popup
-      fireEvent.click(screen.getByTestId('favorites-button'));
+      // Open favorites popup via chip bar star button
+      fireEvent.click(screen.getByTestId('chip-bar-star-button'));
 
       // Click first favorite item
       fireEvent.click(screen.getByTestId('favorite-item-0'));
@@ -1189,7 +1230,7 @@ describe('ChatInput', () => {
       expect(screen.queryByTestId('favorites-popup')).not.toBeInTheDocument();
     });
 
-    // TC13: CommandPalette and FavoritesPopup are mutually exclusive
+    // CommandPalette and FavoritesPopup are mutually exclusive
     it('closes FavoritesPopup when CommandPalette opens', () => {
       render(
         <ChatInput
@@ -1200,7 +1241,7 @@ describe('ChatInput', () => {
       );
 
       // Open favorites popup
-      fireEvent.click(screen.getByTestId('favorites-button'));
+      fireEvent.click(screen.getByTestId('chip-bar-star-button'));
       expect(screen.getByTestId('favorites-popup')).toBeInTheDocument();
 
       // Type "/" to trigger command palette
@@ -1212,7 +1253,7 @@ describe('ChatInput', () => {
       expect(screen.queryByTestId('favorites-popup')).not.toBeInTheDocument();
     });
 
-    it('closes CommandPalette when star button is clicked', () => {
+    it('closes CommandPalette when chip bar star button is clicked', () => {
       render(
         <ChatInput
           onSend={mockOnSend}
@@ -1226,8 +1267,8 @@ describe('ChatInput', () => {
       fireEvent.change(textarea, { target: { value: '/' } });
       expect(screen.getByTestId('command-palette')).toBeInTheDocument();
 
-      // Click star button
-      fireEvent.click(screen.getByTestId('favorites-button'));
+      // Click chip bar star button
+      fireEvent.click(screen.getByTestId('chip-bar-star-button'));
 
       // FavoritesPopup should show, CommandPalette should close
       expect(screen.getByTestId('favorites-popup')).toBeInTheDocument();
@@ -1243,7 +1284,7 @@ describe('ChatInput', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('favorites-button'));
+      fireEvent.click(screen.getByTestId('chip-bar-star-button'));
       expect(screen.getByTestId('favorites-popup')).toBeInTheDocument();
 
       const textarea = screen.getByRole('textbox');
@@ -1252,32 +1293,10 @@ describe('ChatInput', () => {
       expect(screen.queryByTestId('favorites-popup')).not.toBeInTheDocument();
     });
 
-    it('star button shows filled style when favorites exist', () => {
-      render(
-        <ChatInput
-          onSend={mockOnSend}
-          commands={mockCommands}
-          {...favoritesProps}
-        />
-      );
+    it('does not render chip bar when favoriteCommands prop is absent', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
 
-      const button = screen.getByTestId('favorites-button');
-      expect(button.className).toContain('text-yellow-400');
-    });
-
-    it('star button shows gray style when favorites are empty', () => {
-      render(
-        <ChatInput
-          onSend={mockOnSend}
-          commands={mockCommands}
-          favoriteCommands={[]}
-          onReorderFavorites={vi.fn()}
-          onRemoveFavorite={vi.fn()}
-        />
-      );
-
-      const button = screen.getByTestId('favorites-button');
-      expect(button.className).toContain('text-gray-400');
+      expect(screen.queryByTestId('favorites-chip-bar')).not.toBeInTheDocument();
     });
   });
 });

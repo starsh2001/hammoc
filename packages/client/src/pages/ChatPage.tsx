@@ -245,6 +245,11 @@ export function ChatPage() {
     [sendMessage, addOptimisticMessage, workingDirectory, sessionId]
   );
 
+  // Handle favorite command execution (Story 9.7) — immediate send
+  const handleExecuteFavorite = useCallback((command: string) => {
+    handleSendMessage(command);
+  }, [handleSendMessage]);
+
   // Handle abort
   const handleAbort = useCallback(() => {
     if (useChatStore.getState().isStreaming) {
@@ -662,6 +667,7 @@ export function ChatPage() {
             favoriteCommands={favoriteCommands}
             onReorderFavorites={reorderFavorites}
             onRemoveFavorite={removeFavorite}
+            onExecuteFavorite={handleExecuteFavorite}
           />
         </InputArea>
         {sessionPanel}
@@ -742,6 +748,7 @@ export function ChatPage() {
           favoriteCommands={favoriteCommands}
           onReorderFavorites={reorderFavorites}
           onRemoveFavorite={removeFavorite}
+          onExecuteFavorite={handleExecuteFavorite}
         />
       </InputArea>
       {sessionPanel}

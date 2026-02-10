@@ -13,7 +13,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Square, Paperclip, X, Star } from 'lucide-react';
+import { Send, Square, Paperclip, X } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CommandPalette } from './CommandPalette';
@@ -22,6 +22,7 @@ import { PermissionModeSelector } from './PermissionModeSelector';
 import { ModelSelector } from './ModelSelector';
 import { BmadAgentButton } from './BmadAgentButton';
 import { FavoritesPopup } from './FavoritesPopup';
+import { FavoritesChipBar } from './FavoritesChipBar';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
 import type { SlashCommand, Attachment, PermissionMode, ChatUsage } from '@bmad-studio/shared';
 import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
@@ -122,6 +123,8 @@ interface ChatInputProps {
   onReorderFavorites?: (commands: string[]) => void;
   /** Remove favorite callback (Story 9.6) */
   onRemoveFavorite?: (command: string) => void;
+  /** Execute favorite command immediately (Story 9.7) */
+  onExecuteFavorite?: (command: string) => void;
 }
 
 export function ChatInput({
@@ -148,6 +151,7 @@ export function ChatInput({
   favoriteCommands,
   onReorderFavorites,
   onRemoveFavorite,
+  onExecuteFavorite,
 }: ChatInputProps) {
   // Local state
   const [content, setContent] = useState('');
@@ -579,6 +583,34 @@ export function ChatInput({
         </div>
       )}
 
+      {/* Favorites chip bar + popup wrapper (Story 9.7) */}
+      {favoriteCommands && favoriteCommands.length > 0 && (
+        <div ref={favoritesContainerRef} className="relative">
+          <FavoritesChipBar
+            favoriteCommands={favoriteCommands}
+            commands={commands}
+            onExecute={(cmd) => {
+              if (onExecuteFavorite) {
+                onExecuteFavorite(cmd);
+              }
+              setShowFavorites(false);
+            }}
+            onOpenDialog={handleToggleFavorites}
+            disabled={disabled}
+          />
+          {showFavorites && (
+            <FavoritesPopup
+              favoriteCommands={favoriteCommands}
+              commands={commands}
+              onSelect={handleFavoriteSelect}
+              onClose={() => setShowFavorites(false)}
+              onReorder={onReorderFavorites || (() => {})}
+              onRemoveFavorite={onRemoveFavorite || (() => {})}
+            />
+          )}
+        </div>
+      )}
+
       {/* Validation error (Story 5.5) */}
       {validationError && (
         <div
@@ -621,18 +653,6 @@ export function ChatInput({
             onClose={() => setShowCommands(false)}
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
-          />
-        )}
-
-        {/* Favorites popup (Story 9.6) */}
-        {showFavorites && favoriteCommands && (
-          <FavoritesPopup
-            favoriteCommands={favoriteCommands}
-            commands={commands}
-            onSelect={handleFavoriteSelect}
-            onClose={() => setShowFavorites(false)}
-            onReorder={onReorderFavorites || (() => {})}
-            onRemoveFavorite={onRemoveFavorite || (() => {})}
           />
         )}
 
@@ -702,32 +722,6 @@ export function ChatInput({
             openTrigger={agentListOpenTrigger}
             activeAgentCommand={activeAgentCommand}
           />
-        )}
-
-        {/* Favorites quick access button (Story 9.6) */}
-        {favoriteCommands && (
-          <div ref={favoritesContainerRef} className="relative">
-            <button
-              type="button"
-              onClick={handleToggleFavorites}
-              aria-label="즐겨찾기 커맨드"
-              data-testid="favorites-button"
-              className={`p-2 rounded-lg flex-shrink-0
-                         hover:bg-gray-100 dark:hover:bg-gray-700
-                         focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2
-                         transition-all duration-150
-                         ${favoriteCommands.length > 0
-                           ? 'text-yellow-400'
-                           : 'text-gray-400'}`}
-              style={{ height: '38px', width: '38px' }}
-            >
-              <Star
-                size={20}
-                aria-hidden="true"
-                className={favoriteCommands.length > 0 ? 'fill-yellow-400' : ''}
-              />
-            </button>
-          </div>
         )}
 
         <div className="flex-1" />
