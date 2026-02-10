@@ -100,7 +100,12 @@ export function ProjectListPage() {
   // Handle BMad setup for existing project
   const handleSetupBmad = useCallback(
     async (projectSlug: string, bmadVersion: string) => {
-      await setupBmad(projectSlug, bmadVersion);
+      const result = await setupBmad(projectSlug, bmadVersion);
+      if (result.success) {
+        toast.success('BMad 설정이 완료되었습니다.');
+      } else {
+        toast.error(result.error || 'BMad 설정에 실패했습니다.');
+      }
     },
     [setupBmad]
   );

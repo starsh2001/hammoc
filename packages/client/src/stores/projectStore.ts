@@ -33,7 +33,7 @@ interface ProjectActions {
   fetchProjects: () => Promise<void>;
   clearError: () => void;
   deleteProject: (projectSlug: string, deleteFiles?: boolean) => Promise<boolean>;
-  setupBmad: (projectSlug: string, bmadVersion?: string) => Promise<boolean>;
+  setupBmad: (projectSlug: string, bmadVersion?: string) => Promise<{ success: boolean; error?: string }>;
   // Story 3.6 - Project creation actions
   createProject: (path: string, setupBmad: boolean, bmadVersion?: string) => Promise<CreateProjectResponse | null>;
   validatePath: (path: string) => Promise<ValidatePathResponse>;
@@ -103,19 +103,20 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   setupBmad: async (projectSlug: string, bmadVersion?: string) => {
     try {
-      const { project } = await projectsApi.setupBmad(projectSlug, bmadVersion);
+      await projectsApi.setupBmad(projectSlug, bmadVersion);
       // Update local state immediately for instant UI feedback
       set((state) => ({
         projects: state.projects.map((p) =>
           p.projectSlug === projectSlug ? { ...p, isBmadProject: true } : p,
         ),
       }));
-      return true;
+      return { success: true };
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : 'BMad 설정 중 오류가 발생했습니다.';
-      set({ error: message });
-      return false;
+      // Do NOT set global error — it triggers full-page error screen
+      // Return error message so caller can show specific toast
+      return { success: false, error: message };
     }
   },
 
