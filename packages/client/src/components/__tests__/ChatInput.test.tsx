@@ -1123,4 +1123,161 @@ describe('ChatInput', () => {
       vi.useRealTimers();
     });
   });
+
+  // Story 9.6 - Task 4: Favorites quick access tests
+  describe('favorites quick access', () => {
+    const favoritesProps = {
+      favoriteCommands: ['/BMad:agents:pm', '/BMad:tasks:create-doc'],
+      onReorderFavorites: vi.fn(),
+      onRemoveFavorite: vi.fn(),
+    };
+
+    // TC9: Star button renders when favoriteCommands prop is provided
+    it('renders star button when favoriteCommands prop is provided', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          {...favoritesProps}
+        />
+      );
+
+      expect(screen.getByTestId('favorites-button')).toBeInTheDocument();
+    });
+
+    // TC10: Star button does not render when favoriteCommands prop is absent
+    it('does not render star button when favoriteCommands prop is absent', () => {
+      render(<ChatInput onSend={mockOnSend} commands={mockCommands} />);
+
+      expect(screen.queryByTestId('favorites-button')).not.toBeInTheDocument();
+    });
+
+    // TC11: Star button click shows FavoritesPopup
+    it('shows FavoritesPopup when star button is clicked', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          {...favoritesProps}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('favorites-button'));
+
+      expect(screen.getByTestId('favorites-popup')).toBeInTheDocument();
+    });
+
+    // TC12: Selecting a command from FavoritesPopup inserts it into textarea
+    it('inserts command into textarea when selected from FavoritesPopup', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          {...favoritesProps}
+        />
+      );
+
+      // Open favorites popup
+      fireEvent.click(screen.getByTestId('favorites-button'));
+
+      // Click first favorite item
+      fireEvent.click(screen.getByTestId('favorite-item-0'));
+
+      const textarea = screen.getByRole('textbox');
+      expect(textarea).toHaveValue('/BMad:agents:pm ');
+      // Popup should close
+      expect(screen.queryByTestId('favorites-popup')).not.toBeInTheDocument();
+    });
+
+    // TC13: CommandPalette and FavoritesPopup are mutually exclusive
+    it('closes FavoritesPopup when CommandPalette opens', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          {...favoritesProps}
+        />
+      );
+
+      // Open favorites popup
+      fireEvent.click(screen.getByTestId('favorites-button'));
+      expect(screen.getByTestId('favorites-popup')).toBeInTheDocument();
+
+      // Type "/" to trigger command palette
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/' } });
+
+      // CommandPalette should show, FavoritesPopup should close
+      expect(screen.getByTestId('command-palette')).toBeInTheDocument();
+      expect(screen.queryByTestId('favorites-popup')).not.toBeInTheDocument();
+    });
+
+    it('closes CommandPalette when star button is clicked', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          {...favoritesProps}
+        />
+      );
+
+      // Open command palette by typing "/"
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: '/' } });
+      expect(screen.getByTestId('command-palette')).toBeInTheDocument();
+
+      // Click star button
+      fireEvent.click(screen.getByTestId('favorites-button'));
+
+      // FavoritesPopup should show, CommandPalette should close
+      expect(screen.getByTestId('favorites-popup')).toBeInTheDocument();
+      expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
+    });
+
+    it('closes FavoritesPopup on Escape key', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          {...favoritesProps}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('favorites-button'));
+      expect(screen.getByTestId('favorites-popup')).toBeInTheDocument();
+
+      const textarea = screen.getByRole('textbox');
+      fireEvent.keyDown(textarea, { key: 'Escape', code: 'Escape' });
+
+      expect(screen.queryByTestId('favorites-popup')).not.toBeInTheDocument();
+    });
+
+    it('star button shows filled style when favorites exist', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          {...favoritesProps}
+        />
+      );
+
+      const button = screen.getByTestId('favorites-button');
+      expect(button.className).toContain('text-yellow-400');
+    });
+
+    it('star button shows gray style when favorites are empty', () => {
+      render(
+        <ChatInput
+          onSend={mockOnSend}
+          commands={mockCommands}
+          favoriteCommands={[]}
+          onReorderFavorites={vi.fn()}
+          onRemoveFavorite={vi.fn()}
+        />
+      );
+
+      const button = screen.getByTestId('favorites-button');
+      expect(button.className).toContain('text-gray-400');
+    });
+  });
 });
