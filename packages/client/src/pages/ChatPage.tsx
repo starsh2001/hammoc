@@ -25,6 +25,7 @@ import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { useRecentAgents } from '../hooks/useRecentAgents';
 import { useFavoriteCommands } from '../hooks/useFavoriteCommands';
+import { useStarFavorites } from '../hooks/useStarFavorites';
 import { useActiveAgent } from '../hooks/useActiveAgent';
 import { getSocket } from '../services/socket';
 import { generateUUID } from '../utils/uuid';
@@ -210,12 +211,36 @@ export function ChatPage() {
   // Active agent detection (Story 8.5)
   const { activeAgent } = useActiveAgent(messages, commands, lastAgentCommand);
 
+  // Star favorites per agent (Story 9.11)
+  const activeAgentId = useMemo(() => {
+    if (!activeAgent) return null;
+    return getAgentId(activeAgent.command);
+  }, [activeAgent]);
+
   // Current agent's star commands (Story 9.9)
   const activeAgentStarCommands = useMemo(() => {
-    if (!activeAgent) return undefined;
-    const agentId = getAgentId(activeAgent.command);
-    return starCommands[agentId] ?? [];
-  }, [activeAgent, starCommands]);
+    if (!activeAgentId) return undefined;
+    return starCommands[activeAgentId] ?? [];
+  }, [activeAgentId, starCommands]);
+
+  const { starFavorites, addStarFavorite, removeStarFavorite, isStarFavorite } = useStarFavorites(projectSlug, activeAgentId);
+
+  const handleToggleStarFavorite = useCallback((command: string) => {
+    if (!activeAgent) return;
+    const agentName = activeAgent.name;
+    if (isStarFavorite(command)) {
+      removeStarFavorite(command);
+      toast.success(`${agentName}: *${command} 즐겨찾기에서 제거되었습니다`);
+    } else {
+      if (starFavorites.length >= 10) {
+        toast.warning('별표 즐겨찾기는 최대 10개까지 추가할 수 있습니다');
+        return;
+      }
+      addStarFavorite(command);
+      toast.success(`${agentName}: *${command} 즐겨찾기에 추가되었습니다`);
+    }
+  }, [activeAgent, isStarFavorite, addStarFavorite, removeStarFavorite, starFavorites.length]);
+
   const [agentListOpenTrigger, setAgentListOpenTrigger] = useState(0);
   const handleAgentIndicatorClick = useCallback(() => {
     setAgentListOpenTrigger((prev) => prev + 1);
@@ -577,6 +602,8 @@ export function ChatPage() {
             onReorderFavorites={reorderFavorites}
             onRemoveFavorite={removeFavorite}
             onExecuteFavorite={handleExecuteFavorite}
+            isStarFavorite={isStarFavorite}
+            onToggleStarFavorite={handleToggleStarFavorite}
           />
         </InputArea>
         {sessionPanel}
@@ -632,6 +659,8 @@ export function ChatPage() {
             onReorderFavorites={reorderFavorites}
             onRemoveFavorite={removeFavorite}
             onExecuteFavorite={handleExecuteFavorite}
+            isStarFavorite={isStarFavorite}
+            onToggleStarFavorite={handleToggleStarFavorite}
           />
         </InputArea>
         {sessionPanel}
@@ -694,6 +723,8 @@ export function ChatPage() {
             onReorderFavorites={reorderFavorites}
             onRemoveFavorite={removeFavorite}
             onExecuteFavorite={handleExecuteFavorite}
+            isStarFavorite={isStarFavorite}
+            onToggleStarFavorite={handleToggleStarFavorite}
           />
         </InputArea>
         {sessionPanel}
@@ -777,6 +808,8 @@ export function ChatPage() {
           onReorderFavorites={reorderFavorites}
           onRemoveFavorite={removeFavorite}
           onExecuteFavorite={handleExecuteFavorite}
+          isStarFavorite={isStarFavorite}
+          onToggleStarFavorite={handleToggleStarFavorite}
         />
       </InputArea>
       {sessionPanel}
