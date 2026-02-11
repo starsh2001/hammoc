@@ -122,7 +122,7 @@ export function SessionQuickAccessPanel({
         ref={panelRef}
         data-testid="session-quick-access-panel"
         role="dialog"
-        aria-label="세션 목록 패널"
+        aria-label="퀵 히스토리 패널"
         aria-modal="true"
         className={`fixed inset-0 z-50 bg-white dark:bg-gray-900
                     md:inset-auto md:top-0 md:right-0 md:bottom-0 md:w-80
@@ -137,7 +137,7 @@ export function SessionQuickAccessPanel({
         <div className="flex items-center justify-between px-4 py-3
                         border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            세션 목록
+            퀵 히스토리
           </h2>
           <button
             ref={closeButtonRef}
