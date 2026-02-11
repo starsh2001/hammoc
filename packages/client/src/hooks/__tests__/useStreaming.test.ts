@@ -111,11 +111,12 @@ describe('useStreaming', () => {
         timestamp: new Date(),
       });
 
-      // Wait for async handleComplete (fetchMessages + completeStreaming)
+      // Wait for async handleComplete (completeStreaming sets isStreaming=false)
       await vi.waitFor(() => {
         expect(useChatStore.getState().isStreaming).toBe(false);
       });
-      expect(useChatStore.getState().streamingSegments).toEqual([]);
+      // Segments are kept pending clear until fetchMessages loads authoritative history
+      expect(useChatStore.getState().segmentsPendingClear).toBe(true);
     });
   });
 

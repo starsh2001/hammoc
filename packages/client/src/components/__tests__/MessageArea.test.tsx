@@ -163,7 +163,7 @@ describe('MessageArea', () => {
 
     it('should render text segment when provided', () => {
       render(
-        <MessageArea streamingSegments={[mockTextSegment]}>
+        <MessageArea streamingSegments={[mockTextSegment]} isStreaming={true}>
           <div>Existing message</div>
         </MessageArea>
       );
@@ -174,7 +174,7 @@ describe('MessageArea', () => {
 
     it('should render streaming text after history messages', () => {
       const { container } = render(
-        <MessageArea streamingSegments={[mockTextSegment]}>
+        <MessageArea streamingSegments={[mockTextSegment]} isStreaming={true}>
           <div data-testid="history-message">History</div>
         </MessageArea>
       );
@@ -193,6 +193,7 @@ describe('MessageArea', () => {
         <MessageArea
           emptyState={<div>No messages</div>}
           streamingSegments={[mockTextSegment]}
+          isStreaming={true}
         >
           {null}
         </MessageArea>
@@ -204,7 +205,7 @@ describe('MessageArea', () => {
 
     it('should render tool segment with pending spinner', () => {
       render(
-        <MessageArea streamingSegments={[mockToolSegment]}>
+        <MessageArea streamingSegments={[mockToolSegment]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -221,7 +222,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[completedTool]}>
+        <MessageArea streamingSegments={[completedTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -237,7 +238,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[errorTool]}>
+        <MessageArea streamingSegments={[errorTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -254,7 +255,7 @@ describe('MessageArea', () => {
       ];
 
       render(
-        <MessageArea streamingSegments={segments}>
+        <MessageArea streamingSegments={segments} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -276,7 +277,7 @@ describe('MessageArea', () => {
 
     it('should render streaming message in error boundary', () => {
       const { container } = render(
-        <MessageArea streamingSegments={[mockTextSegment]}>
+        <MessageArea streamingSegments={[mockTextSegment]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -297,7 +298,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[editSegment]}>
+        <MessageArea streamingSegments={[editSegment]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -318,7 +319,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[writeSegment]}>
+        <MessageArea streamingSegments={[writeSegment]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -337,7 +338,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[thinkingSegment]}>
+        <MessageArea streamingSegments={[thinkingSegment]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -353,7 +354,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[thinkingSegment]}>
+        <MessageArea streamingSegments={[thinkingSegment]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -369,7 +370,7 @@ describe('MessageArea', () => {
       ];
 
       render(
-        <MessageArea streamingSegments={segments}>
+        <MessageArea streamingSegments={segments} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -394,7 +395,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[completedTool]}>
+        <MessageArea streamingSegments={[completedTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -414,7 +415,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[pendingTool]}>
+        <MessageArea streamingSegments={[pendingTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -440,7 +441,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[pendingTool]}>
+        <MessageArea streamingSegments={[pendingTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -456,7 +457,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[readTool]}>
+        <MessageArea streamingSegments={[readTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -478,7 +479,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[bashTool]}>
+        <MessageArea streamingSegments={[bashTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -495,7 +496,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[todoTool]}>
+        <MessageArea streamingSegments={[todoTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -513,7 +514,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[pendingTool]}>
+        <MessageArea streamingSegments={[pendingTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -529,7 +530,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[completedTool]}>
+        <MessageArea streamingSegments={[completedTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -545,12 +546,63 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[errorTool]}>
+        <MessageArea streamingSegments={[errorTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
 
       expect(screen.getByLabelText('도구 실패: Bash')).toBeInTheDocument();
+    });
+  });
+
+  // Story 18.2 - segmentsPendingClear dedup guard
+  describe('segmentsPendingClear dedup guard (Story 18.2)', () => {
+    const mockTextSegment: StreamingSegment = {
+      type: 'text',
+      content: 'Streaming content here',
+    };
+
+    it('TC-M1: renders segments when isStreaming=true', () => {
+      render(
+        <MessageArea
+          streamingSegments={[mockTextSegment]}
+          isStreaming={true}
+          segmentsPendingClear={false}
+        >
+          <div>History</div>
+        </MessageArea>
+      );
+
+      expect(screen.getByText('Streaming content here')).toBeInTheDocument();
+    });
+
+    it('TC-M2: renders segments when isStreaming=false but segmentsPendingClear=true', () => {
+      render(
+        <MessageArea
+          streamingSegments={[mockTextSegment]}
+          isStreaming={false}
+          segmentsPendingClear={true}
+        >
+          <div>History</div>
+        </MessageArea>
+      );
+
+      expect(screen.getByText('Streaming content here')).toBeInTheDocument();
+    });
+
+    it('TC-M3: does NOT render segments when isStreaming=false and segmentsPendingClear=false', () => {
+      render(
+        <MessageArea
+          streamingSegments={[mockTextSegment]}
+          isStreaming={false}
+          segmentsPendingClear={false}
+        >
+          <div>History</div>
+        </MessageArea>
+      );
+
+      expect(screen.queryByText('Streaming content here')).not.toBeInTheDocument();
+      expect(screen.getByText('History')).toBeInTheDocument();
     });
   });
 
@@ -564,7 +616,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[readTool]}>
+        <MessageArea streamingSegments={[readTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -589,7 +641,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[bashTool]}>
+        <MessageArea streamingSegments={[bashTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -614,7 +666,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[editTool]}>
+        <MessageArea streamingSegments={[editTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -632,7 +684,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[writeTool]}>
+        <MessageArea streamingSegments={[writeTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -650,7 +702,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[todoTool]}>
+        <MessageArea streamingSegments={[todoTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -666,7 +718,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[pendingTool]}>
+        <MessageArea streamingSegments={[pendingTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );
@@ -682,7 +734,7 @@ describe('MessageArea', () => {
       };
 
       render(
-        <MessageArea streamingSegments={[noOutputTool]}>
+        <MessageArea streamingSegments={[noOutputTool]} isStreaming={true}>
           {null}
         </MessageArea>
       );

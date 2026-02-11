@@ -143,7 +143,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, clearStreamingSegments } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, clearStreamingSegments } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   const { logout } = useAuthStore();
@@ -692,6 +692,7 @@ export function ChatPage() {
             streamingSegments={streamingSegments}
             isStreaming={isStreaming && !!streamingSessionId}
             isCompacting={isCompacting}
+            segmentsPendingClear={segmentsPendingClear}
             emptyState={
               !isStreaming && streamingSegments.length === 0 ? (
                 <EmptyState
@@ -768,7 +769,7 @@ export function ChatPage() {
         aria-label="채팅 페이지"
         className="flex-1 flex flex-col min-h-0"
       >
-        <MessageArea scrollDependencies={[messages]} streamingSegments={streamingSegments} isStreaming={isStreaming && !!streamingSessionId} isCompacting={isCompacting} isLoadingMore={isLoadingMore}>
+        <MessageArea scrollDependencies={[messages]} streamingSegments={streamingSegments} isStreaming={isStreaming && !!streamingSessionId} isCompacting={isCompacting} isLoadingMore={isLoadingMore} segmentsPendingClear={segmentsPendingClear}>
           {/* Load older messages button */}
           {pagination?.hasMore && (
             <div className="flex justify-center py-4">
