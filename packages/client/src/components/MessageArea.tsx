@@ -189,7 +189,7 @@ export function MessageArea({
         aria-label="메시지 목록"
         aria-live="polite"
         data-testid="message-area"
-        className="flex-1 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900"
+        className="flex-1 flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900"
       >
         {emptyState}
       </section>
@@ -204,24 +204,27 @@ export function MessageArea({
       aria-label="메시지 목록"
       aria-live="polite"
       data-testid="message-area"
-      className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900 relative"
+      className="flex-1 overflow-hidden bg-white dark:bg-gray-900 relative"
     >
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto px-4 pt-4 pb-0 space-y-4"
+        className="h-full overflow-y-auto"
         tabIndex={0}
       >
+      <div className="content-container px-4 pt-4 pb-0 space-y-4">
         {/* History messages */}
         {children}
 
         {/* Streaming segments - rendered in order */}
         {streamingSegments.map((seg, index) => {
           if (isThinkingSegment(seg)) {
+            // Thinking is still streaming only if it's the last segment and overall streaming is active
+            const isThinkingStillStreaming = isStreaming && isLastSegmentIndex(index);
             return (
               <div key={`seg-thinking-${index}`} className="flex justify-start">
                 <div className="max-w-[90%] md:max-w-[80%]">
-                  <ThinkingBlock content={seg.content} isStreaming />
+                  <ThinkingBlock content={seg.content} isStreaming={isThinkingStillStreaming} />
                 </div>
               </div>
             );
@@ -419,7 +422,7 @@ export function MessageArea({
             </div>
           ) : (
             <div className="flex justify-start">
-              <div className="max-w-[80%] bg-white dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
+              <div className="max-w-[80%] bg-gray-50 dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
                 <StreamingIndicator />
               </div>
             </div>
@@ -438,6 +441,7 @@ export function MessageArea({
         )}
 
         <div ref={bottomRef} aria-hidden="true" />
+      </div>
       </div>
 
       {/* "Scroll to bottom" button when user scrolled up */}

@@ -183,98 +183,13 @@ export function FavoritesPopup({
       aria-label="즐겨찾기 커맨드 목록"
       data-testid="favorites-popup"
     >
-      {/* Slash favorites section */}
-      {favoriteCommands.map((commandStr, index) => {
-        const cmd = findCommand(commandStr);
-        const isDragging = dragIndex === index;
-        const isDragOver = dragOverIndex === index && dragIndex !== index;
-
-        return (
-          <div
-            key={commandStr}
-            role="option"
-            aria-selected={false}
-            tabIndex={0}
-            draggable
-            onDragStart={() => handleDragStart(index)}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDrop={() => handleDrop(index)}
-            onDragEnd={handleDragEnd}
-            onClick={() => onSelect(commandStr)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onSelect(commandStr);
-              }
-            }}
-            className={`flex items-center gap-2 px-3 py-2 cursor-pointer
-                       hover:bg-gray-100 dark:hover:bg-gray-700
-                       transition-colors
-                       ${isDragging ? 'opacity-50' : ''}
-                       ${isDragOver ? 'border-t-2 border-blue-500' : ''}`}
-            data-testid={`favorite-item-${index}`}
-          >
-            {/* Drag handle */}
-            <span
-              className="flex-shrink-0 cursor-grab text-gray-400"
-              aria-label="순서 변경"
-            >
-              <GripVertical className="w-4 h-4" />
-            </span>
-
-            {/* Icon */}
-            <span className="w-5 flex-shrink-0 text-center text-base">
-              {cmd?.icon || ''}
-            </span>
-
-            {/* Name and description */}
-            <span className="flex-1 min-w-0">
-              <span className="text-sm text-gray-900 dark:text-gray-100">
-                {cmd?.name || commandStr}
-              </span>
-              {cmd?.description && (
-                <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
-                  {cmd.description}
-                </span>
-              )}
-            </span>
-
-            {/* Remove button */}
-            <button
-              type="button"
-              onClick={(e) => handleRemove(e, commandStr)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onRemoveFavorite(commandStr);
-                }
-              }}
-              aria-label={`즐겨찾기에서 제거: ${commandStr}`}
-              className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600
-                         text-gray-400 hover:text-red-500 dark:hover:text-red-400
-                         transition-colors"
-              data-testid={`favorite-remove-${index}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        );
-      })}
-
-      {/* Star favorites section (Story 9.12) */}
+      {/* Star favorites section (Story 9.12) — agent commands first */}
       {hasStarFavorites && (
         <>
-          {/* Divider between slash and star sections */}
-          {hasSlashFavorites && (
-            <div className="border-t border-gray-200 dark:border-gray-700 my-1"
-                 data-testid="popup-star-divider" aria-hidden="true" />
-          )}
-
           {/* Section header */}
           <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400"
                data-testid="star-section-header">
-            {activeAgent!.icon} {activeAgent!.name} 별표 즐겨찾기
+            {activeAgent!.icon} Agent Command
           </div>
 
           {starFavorites!.map((commandStr, index) => {
@@ -356,6 +271,97 @@ export function FavoritesPopup({
           })}
         </>
       )}
+
+      {/* Divider between star and slash sections */}
+      {hasStarFavorites && hasSlashFavorites && (
+        <div className="border-t border-gray-200 dark:border-gray-700 my-1"
+             data-testid="popup-star-divider" aria-hidden="true" />
+      )}
+
+      {/* Slash favorites section */}
+      {hasSlashFavorites && (
+        <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400"
+             data-testid="slash-section-header">
+          Slash Command
+        </div>
+      )}
+      {favoriteCommands.map((commandStr, index) => {
+        const cmd = findCommand(commandStr);
+        const isDragging = dragIndex === index;
+        const isDragOver = dragOverIndex === index && dragIndex !== index;
+
+        return (
+          <div
+            key={commandStr}
+            role="option"
+            aria-selected={false}
+            tabIndex={0}
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDrop={() => handleDrop(index)}
+            onDragEnd={handleDragEnd}
+            onClick={() => onSelect(commandStr)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelect(commandStr);
+              }
+            }}
+            className={`flex items-center gap-2 px-3 py-2 cursor-pointer
+                       hover:bg-gray-100 dark:hover:bg-gray-700
+                       transition-colors
+                       ${isDragging ? 'opacity-50' : ''}
+                       ${isDragOver ? 'border-t-2 border-blue-500' : ''}`}
+            data-testid={`favorite-item-${index}`}
+          >
+            {/* Drag handle */}
+            <span
+              className="flex-shrink-0 cursor-grab text-gray-400"
+              aria-label="순서 변경"
+            >
+              <GripVertical className="w-4 h-4" />
+            </span>
+
+            {/* Icon */}
+            <span className="w-5 flex-shrink-0 text-center text-base">
+              {cmd?.icon || ''}
+            </span>
+
+            {/* Name and description */}
+            <span className="flex-1 min-w-0">
+              <span className="text-sm text-gray-900 dark:text-gray-100">
+                {cmd?.name || commandStr}
+              </span>
+              {cmd?.description && (
+                <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
+                  {cmd.description}
+                </span>
+              )}
+            </span>
+
+            {/* Remove button */}
+            <button
+              type="button"
+              onClick={(e) => handleRemove(e, commandStr)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRemoveFavorite(commandStr);
+                }
+              }}
+              aria-label={`즐겨찾기에서 제거: ${commandStr}`}
+              className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600
+                         text-gray-400 hover:text-red-500 dark:hover:text-red-400
+                         transition-colors"
+              data-testid={`favorite-remove-${index}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

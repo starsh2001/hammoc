@@ -196,9 +196,8 @@ class CommandService {
         const entries = Object.entries(item);
         if (entries.length === 0) return null;
         const [command, description] = entries[0];
-        // Skip commands with non-string descriptions (e.g., nested workflow objects)
-        if (typeof description !== 'string') return null;
-        return { agentId, command, description };
+        // Non-string descriptions (e.g., nested workflow objects) → include with fallback description
+        return { agentId, command, description: typeof description === 'string' ? description : 'Complex workflow command' };
       })
       .filter((cmd): cmd is StarCommand => cmd !== null);
   }

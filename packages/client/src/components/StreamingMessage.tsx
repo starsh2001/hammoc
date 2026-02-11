@@ -66,7 +66,7 @@ export function StreamingMessage({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative group max-w-[90%] md:max-w-[80%] bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
+      <div className="relative group max-w-[90%] md:max-w-[80%] bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
         {/* Claude icon and name */}
         <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 dark:text-gray-400">
           <Bot className="w-4 h-4" aria-hidden="true" />

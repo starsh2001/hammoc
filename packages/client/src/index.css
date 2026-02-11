@@ -16,3 +16,10 @@
 .animate-blink {
   animation: blink 1s step-end infinite;
 }
+
+/* Layout mode: narrow (1280px max-width) vs wide (full-width) */
+html.narrow-layout .content-container {
+  max-width: 80rem; /* 1280px */
+  margin-left: auto;
+  margin-right: auto;
+}
