@@ -221,7 +221,7 @@ export function MessageArea({
         className="h-full overflow-y-auto"
         tabIndex={0}
       >
-      <div className="content-container px-4 pt-4 pb-32 space-y-4">
+      <div className="content-container px-4 pt-4 pb-4 space-y-4">
         {/* History messages */}
         {children}
 
@@ -458,7 +458,7 @@ export function MessageArea({
           </div>
         )}
 
-        <div ref={bottomRef} aria-hidden="true" />
+        <div ref={bottomRef} aria-hidden="true" className="h-40" />
       </div>
       </div>
 
