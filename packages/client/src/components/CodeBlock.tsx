@@ -9,7 +9,7 @@
  * - Dark/light theme support
  */
 
-import { memo, useState, useEffect, useCallback } from 'react';
+import { memo, useState, useEffect, useCallback, useRef } from 'react';
 import { Copy, Check, X } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { getHighlighter, isSupportedLanguage } from '../utils/shiki';
@@ -41,45 +41,66 @@ export const CodeBlock = memo(function CodeBlock({
   const normalizedLang = language?.toLowerCase() || 'text';
   const displayLang = language || 'text';
 
-  // Shiki highlighting effect
+  // Shiki highlighting effect — debounced to avoid re-highlighting on every
+  // keystroke/chunk during streaming. The previous highlighted HTML is kept
+  // visible while waiting (no flash of unstyled content).
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
-    async function highlight() {
+  useEffect(() => {
+    // Clear pending debounce timer
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+
+    const doHighlight = async () => {
       try {
-        setIsLoading(true);
         const highlighter = await getHighlighter();
+        if (!mountedRef.current) return;
 
-        if (!mounted) return;
-
-        // Use supported language or fallback to 'text'
         const lang = isSupportedLanguage(normalizedLang) ? normalizedLang : 'text';
         const shikiTheme = isDark ? 'github-dark' : 'github-light';
 
         const html = highlighter.codeToHtml(code, {
           lang,
           theme: shikiTheme,
-          defaultColor: false, // Disable inline background color
+          defaultColor: false,
         });
 
-        setHighlightedHtml(html);
+        if (mountedRef.current) {
+          setHighlightedHtml(html);
+          setIsLoading(false);
+        }
       } catch (err) {
         console.error('Shiki highlighting failed:', err);
-        if (mounted) {
+        if (mountedRef.current) {
           setHighlightedHtml(null);
-        }
-      } finally {
-        if (mounted) {
           setIsLoading(false);
         }
       }
+    };
+
+    if (isLoading) {
+      // First highlight — run immediately (no debounce)
+      doHighlight();
+    } else {
+      // Subsequent updates — debounce 150ms to avoid excessive Shiki calls
+      // during streaming. Previous highlighted HTML remains visible.
+      highlightTimerRef.current = setTimeout(doHighlight, 150);
     }
 
-    highlight();
     return () => {
-      mounted = false;
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+        highlightTimerRef.current = null;
+      }
     };
-  }, [code, normalizedLang, isDark]);
+  }, [code, normalizedLang, isDark]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Copy handler
   const handleCopy = useCallback(async () => {

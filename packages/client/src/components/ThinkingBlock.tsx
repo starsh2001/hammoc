@@ -11,7 +11,7 @@
  * - Full accessibility (aria-expanded, aria-controls, button element)
  */
 
-import { useId, useRef, useCallback } from 'react';
+import { useId, useRef, useCallback, useEffect } from 'react';
 import { Brain, ChevronRight, ChevronDown } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatStore } from '../stores/chatStore';
@@ -28,6 +28,14 @@ export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockPro
   const toggleThinkingExpanded = useChatStore((s) => s.toggleThinkingExpanded);
   const contentId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll the inner content container to bottom during streaming
+  useEffect(() => {
+    if (isStreaming && isExpanded && contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+    }
+  }, [content, isStreaming, isExpanded]);
 
   const handleToggle = useCallback(() => {
     // Record the clicked button's viewport position before toggle
@@ -74,6 +82,7 @@ export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockPro
         }
       </button>
       <div
+        ref={contentRef}
         id={contentId}
         role={isExpanded ? 'region' : undefined}
         aria-label={isExpanded ? 'Thinking content' : undefined}

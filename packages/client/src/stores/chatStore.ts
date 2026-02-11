@@ -425,6 +425,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         ...seg,
         toolCall: { ...seg.toolCall, output: result, duration },
         status: isError ? 'error' as const : 'completed' as const,
+        // Auto-resolve stale permission on reconnect replay: if the tool
+        // completed, the permission must have been handled already.
+        ...(seg.permissionStatus === 'waiting' && {
+          permissionStatus: (isError ? 'denied' : 'approved') as 'denied' | 'approved',
+        }),
       };
     });
     set({ streamingSegments: updated });

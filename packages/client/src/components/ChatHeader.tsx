@@ -118,8 +118,11 @@ export function ChatHeader({
           <BrandLogo />
           <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
           <div className="min-w-0 flex-1">
-            <h1 className="text-base font-semibold truncate text-gray-900 dark:text-white">
-              {projectSlug || '채팅'}
+            <h1
+              className="text-base font-semibold truncate text-gray-900 dark:text-white"
+              title={projectSlug}
+            >
+              {projectSlug ? projectSlug.replace(/[\\/]+$/, '').split(/[\\/]/).pop() : '채팅'}
             </h1>
             {sessionTitle && (
               isEditingTitle ? (

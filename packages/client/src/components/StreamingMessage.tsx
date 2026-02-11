@@ -12,7 +12,6 @@
 import { useState, useCallback } from 'react';
 import { Bot, Copy, Check } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { StreamingIndicator } from './StreamingIndicator';
 
 interface StreamingMessageProps {
   /** Current streaming content */
@@ -75,13 +74,6 @@ export function StreamingMessage({
 
         {/* Streaming markdown content */}
         <MarkdownRenderer content={content} isStreaming={!isComplete} />
-
-        {/* Streaming indicator - shown while streaming */}
-        {!isComplete && (
-          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-            <StreamingIndicator />
-          </div>
-        )}
 
         {/* Copy button - only visible and enabled when complete */}
         {isComplete && (

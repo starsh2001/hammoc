@@ -17,6 +17,7 @@ import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
 import { debugLog } from '../utils/debugLogger';
 import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData } from '@bmad-studio/shared';
+import type { InteractiveStatus } from '../stores/chatStore';
 
 export function useStreaming() {
   const {
@@ -72,6 +73,54 @@ export function useStreaming() {
     let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
     const RECONNECT_TIMEOUT = 10000; // 10 seconds
 
+    // --- Frame-based chunk coalescing ---
+    // Incoming text chunks are accumulated into a buffer and flushed once per
+    // animation frame. This prevents multiple React state updates per frame
+    // (reducing stutter) while keeping content appearance near-instant (no
+    // artificial typing delay). Before tool/thinking/system segments are
+    // inserted, the buffer is flushed so text stays in its correct segment.
+    let frameBuffer = '';
+    let frameRequestId: number | null = null;
+
+    const flushFrameBuffer = () => {
+      frameRequestId = null;
+      if (frameBuffer.length > 0) {
+        const text = frameBuffer;
+        frameBuffer = '';
+        appendStreamingContent(text);
+      }
+    };
+
+    /** Enqueue text content for coalesced rendering (one state update per frame) */
+    const enqueueChunk = (content: string) => {
+      frameBuffer += content;
+      if (frameRequestId === null) {
+        frameRequestId = requestAnimationFrame(flushFrameBuffer);
+      }
+    };
+
+    /** Flush all buffered text immediately (before segment insertion / completion) */
+    const flushChunkQueue = () => {
+      if (frameRequestId !== null) {
+        cancelAnimationFrame(frameRequestId);
+        frameRequestId = null;
+      }
+      if (frameBuffer.length > 0) {
+        const text = frameBuffer;
+        frameBuffer = '';
+        appendStreamingContent(text);
+      }
+    };
+
+    /** Discard all pending text (for abort/error) */
+    const clearChunkQueue = () => {
+      frameBuffer = '';
+      if (frameRequestId !== null) {
+        cancelAnimationFrame(frameRequestId);
+        frameRequestId = null;
+      }
+    };
+
     // Handle user:message from buffer replay (restores the user's sent message
     // when reconnecting before SDK has flushed the JSONL file)
     const handleUserMessage = (data: { content: string; sessionId: string }) => {
@@ -105,6 +154,8 @@ export function useStreaming() {
       if (state.streamingSessionId === null) {
         startStreaming('pending', 'pending');
       }
+      // Flush pending text before thinking segment to maintain correct ordering
+      flushChunkQueue();
       addStreamingThinking(data.content);
     };
 
@@ -126,11 +177,45 @@ export function useStreaming() {
         // Update sessionId without resetting segments (preserves thinking content)
         updateStreamingSessionId(data.sessionId);
       }
-      appendStreamingContent(data.content);
+      // Auto-resolve any stale 'waiting' interactive segments — if the SDK is
+      // still generating text, all prior questions/permissions were already handled.
+      // This is a safety net for reconnect replay scenarios.
+      autoResolveStaleInteractiveSegments();
+
+      enqueueChunk(data.content);
+    };
+
+    /**
+     * Auto-resolve interactive segments still in 'waiting' status.
+     * During reconnect buffer replay, permission:request events recreate cards
+     * as 'waiting', but subsequent events prove the SDK already continued.
+     * Called when new content (chunks/tool calls) arrives after those segments.
+     */
+    const autoResolveStaleInteractiveSegments = () => {
+      const segments = useChatStore.getState().streamingSegments;
+      const hasStale = segments.some(
+        (s) => s.type === 'interactive' && s.status === 'waiting'
+      );
+      if (!hasStale) return;
+
+      const updated = segments.map((seg) => {
+        if (seg.type === 'interactive' && seg.status === 'waiting') {
+          return {
+            ...seg,
+            status: 'responded' as InteractiveStatus,
+            response: '(reconnect 전 응답됨)',
+          };
+        }
+        return seg;
+      });
+      useChatStore.setState({ streamingSegments: updated });
     };
 
     // Handle stream completion
     const handleComplete = async (data: Message) => {
+      // Flush any buffered chunks before completing
+      flushChunkQueue();
+
       // Update streamingSessionId with the actual sessionId from result
       // (SDK doesn't send 'init' message, so sessionId only comes in 'result')
       const chatState = useChatStore.getState();
@@ -221,6 +306,11 @@ export function useStreaming() {
         return;
       }
 
+      // Flush pending text BEFORE inserting tool segment to prevent message splitting.
+      // Without this, buffered text would drain after the tool segment and create a
+      // new text segment (visually splitting the assistant's response).
+      flushChunkQueue();
+
       addStreamingToolCall({
         id: data.id,
         name: data.name,
@@ -230,6 +320,8 @@ export function useStreaming() {
 
     // Handle permission:request event — add interactive segment for permission or question (Story 7.1)
     const handlePermissionRequest = (data: PermissionRequest) => {
+      // Flush pending text before interactive/permission segment
+      flushChunkQueue();
       debugLog.stream('permission:request received', {
         permissionId: data.id,
         toolCallId: data.toolCall.id,
@@ -291,10 +383,32 @@ export function useStreaming() {
     const handleToolResult = (data: { toolCallId: string; result: ToolResult }) => {
       const { success, output, error } = data.result;
       updateStreamingToolCall(data.toolCallId, output ?? error ?? '', !success);
+
+      // Auto-resolve interactive segments (e.g., AskUserQuestion) associated
+      // with this tool call. During reconnect replay, tool:result arrives for
+      // questions that were already answered — mark them as responded.
+      const segments = useChatStore.getState().streamingSegments;
+      const staleIdx = segments.findIndex(
+        (s) => s.type === 'interactive' && s.status === 'waiting' &&
+               s.toolCall?.id === data.toolCallId
+      );
+      if (staleIdx !== -1) {
+        const updated = [...segments];
+        const seg = updated[staleIdx];
+        if (seg.type === 'interactive') {
+          updated[staleIdx] = {
+            ...seg,
+            status: 'responded' as InteractiveStatus,
+            response: '(reconnect 전 응답됨)',
+          };
+          useChatStore.setState({ streamingSegments: updated });
+        }
+      }
     };
 
     // Handle context compaction notification
     const handleCompact = (data: CompactMetadata) => {
+      flushChunkQueue();
       addSystemSegment(`Context compaction (${data.trigger})...`);
     };
 
@@ -305,16 +419,19 @@ export function useStreaming() {
 
     // Handle system:task-notification — add task notification segment
     const handleTaskNotification = (data: TaskNotificationData) => {
+      flushChunkQueue();
       addTaskNotification(data);
     };
 
     // Handle tool:summary — add tool summary segment
     const handleToolSummary = (data: { summary: string; precedingToolUseIds: string[] }) => {
+      flushChunkQueue();
       addToolSummary(data.summary, data.precedingToolUseIds);
     };
 
     // Handle result:error — add result error segment before completion
     const handleResultError = (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => {
+      flushChunkQueue();
       addResultError(data);
     };
 
@@ -372,6 +489,7 @@ export function useStreaming() {
         // Stream not active — if we were streaming, the stream completed during disconnect.
         // Clean up stale streaming state and fetch authoritative history.
         if (chatState.isStreaming) {
+          flushChunkQueue();
           debugLog.stream('stream:status → completing stale stream', {
             sessionId: data.sessionId,
           });
@@ -417,6 +535,7 @@ export function useStreaming() {
         isStreaming: useChatStore.getState().isStreaming,
       });
       if (useChatStore.getState().isStreaming) {
+        flushChunkQueue();
         addSystemSegment('다른 브라우저에서 이 세션에 연결되어 실시간 스트리밍이 중단되었습니다.', 'info');
         completeStreaming();
       }
@@ -473,6 +592,7 @@ export function useStreaming() {
         isStreaming: useChatStore.getState().isStreaming,
       });
       if (useChatStore.getState().isStreaming) {
+        clearChunkQueue();
         abortStreaming();
       }
     };
@@ -480,6 +600,7 @@ export function useStreaming() {
     // Handle server errors
     const handleError = () => {
       debugLog.socket('error', { isStreaming: useChatStore.getState().isStreaming });
+      clearChunkQueue();
       abortStreaming();
     };
 
@@ -512,6 +633,8 @@ export function useStreaming() {
 
     // Cleanup
     return () => {
+      // Clear chunk smoothing timer
+      clearChunkQueue();
       // Clear reconnect timeout if pending — prevents stale timeout from
       // firing after session switch or unmount, which would call
       // handleStreamStatus on a no-longer-active session
