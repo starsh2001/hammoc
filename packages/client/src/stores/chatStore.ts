@@ -14,6 +14,9 @@ const STREAMING_UI_DELAY_MS = 600;
 /** Track the delay timeout so we can cancel if response arrives early */
 let streamingDelayTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
+/** Track the absolute timeout for segment cleanup so it can be cancelled on new streaming */
+let segmentCleanupTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
 /** Streaming tool call state */
 export interface StreamingToolCall {
   id: string;
@@ -150,6 +153,8 @@ interface ChatState {
   thinkingExpanded: boolean;
   /** Whether context compaction is in progress */
   isCompacting: boolean;
+  /** Whether segments are being held pending history fetch (post-completeStreaming) */
+  segmentsPendingClear: boolean;
 }
 
 interface SendMessageOptions {
@@ -226,6 +231,8 @@ interface ChatActions {
   addResultError: (data: ResultErrorData) => void;
   /** Restore streaming state for background stream reconnection */
   restoreStreaming: (sessionId: string) => void;
+  /** Store segment cleanup timeout ID (for cancellation on rapid successive completions) */
+  setSegmentCleanupTimeoutId: (id: ReturnType<typeof setTimeout>) => void;
   /** Set model for next message */
   setSelectedModel: (model: string) => void;
   /** Set active model reported by SDK */
@@ -248,6 +255,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   activeModel: null,
   thinkingExpanded: false,
   isCompacting: false,
+  segmentsPendingClear: false,
   permissionMode: 'default',
   contextUsage: null,
 
@@ -262,6 +270,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
+    }
+
+    // Clear stale segments from previous response (e.g., segmentsPendingClear state)
+    if (get().streamingSegments.length > 0) {
+      set({ streamingSegments: [], segmentsPendingClear: false });
+    }
+    // Cancel previous handleComplete's absolute timeout (prevents old timer from clearing new segments)
+    if (segmentCleanupTimeoutId) {
+      clearTimeout(segmentCleanupTimeoutId);
+      segmentCleanupTimeoutId = null;
     }
 
     // Set isStreaming true immediately (disables input), but delay the visual "waiting" UI
@@ -307,6 +325,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
     }
+    // Cancel any pending segment cleanup timeout from previous completion
+    // (guards against rapid successive completions where old timeout would
+    //  clear the NEW response's segments)
+    if (segmentCleanupTimeoutId) {
+      clearTimeout(segmentCleanupTimeoutId);
+      segmentCleanupTimeoutId = null;
+    }
 
     set({
       isStreaming: true,
@@ -315,6 +340,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       streamingStartedAt: new Date(),
       lastResultError: null,
+      segmentsPendingClear: false,
     });
   },
 
@@ -411,6 +437,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSessionId: null,
       streamingMessageId: null,
       streamingStartedAt: null,
+      segmentsPendingClear: true,
     });
   },
 
@@ -419,6 +446,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
     }
+    if (segmentCleanupTimeoutId) {
+      clearTimeout(segmentCleanupTimeoutId);
+      segmentCleanupTimeoutId = null;
+    }
     set({
       isStreaming: false,
       isCompacting: false,
@@ -426,6 +457,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
+      segmentsPendingClear: false,
     });
   },
 
@@ -462,6 +494,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingMessageId: null,
       streamingSegments: finalSegments,
       streamingStartedAt: null,
+      segmentsPendingClear: true,
     });
 
     // Fetch authoritative history from server, then clear segments
@@ -470,7 +503,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const sessId = msgState.currentSessionId;
     if (projectSlug && sessId) {
       msgState.fetchMessages(projectSlug, sessId, { silent: true }).then(() => {
-        set({ streamingSegments: [] });
+        set({ streamingSegments: [], segmentsPendingClear: false });
       });
     }
   },
@@ -481,7 +514,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   resetContextUsage: () => set({ contextUsage: null }),
 
-  clearStreamingSegments: () => set({ streamingSegments: [] }),
+  clearStreamingSegments: () => set({ streamingSegments: [], segmentsPendingClear: false }),
 
   updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),
 
@@ -650,6 +683,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
     }
+    // Cancel any pending segment cleanup timeout from previous completion
+    if (segmentCleanupTimeoutId) {
+      clearTimeout(segmentCleanupTimeoutId);
+      segmentCleanupTimeoutId = null;
+    }
     set({
       isStreaming: true,
       streamingSessionId: sessionId,
@@ -657,7 +695,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       streamingStartedAt: new Date(),
       lastResultError: null,
+      segmentsPendingClear: false,
     });
+  },
+
+  setSegmentCleanupTimeoutId: (id) => {
+    // Cancel previous timeout if exists (rapid successive completions guard)
+    if (segmentCleanupTimeoutId) {
+      clearTimeout(segmentCleanupTimeoutId);
+    }
+    segmentCleanupTimeoutId = id;
   },
 
   setSelectedModel: (model: string) => set({ selectedModel: model }),

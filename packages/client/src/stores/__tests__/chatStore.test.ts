@@ -375,7 +375,7 @@ describe('useChatStore', () => {
   });
 
   describe('completeStreaming', () => {
-    it('clears streaming state', () => {
+    it('clears streaming flags but keeps segments with segmentsPendingClear=true', () => {
       const { startStreaming, appendStreamingContent, completeStreaming } =
         useChatStore.getState();
 
@@ -385,7 +385,9 @@ describe('useChatStore', () => {
 
       const state = useChatStore.getState();
       expect(state.isStreaming).toBe(false);
-      expect(state.streamingSegments).toEqual([]);
+      // Segments are kept as fallback until fetchMessages loads authoritative history
+      expect(state.streamingSegments).toHaveLength(1);
+      expect(state.segmentsPendingClear).toBe(true);
       expect(state.streamingSessionId).toBeNull();
       expect(state.streamingMessageId).toBeNull();
     });
@@ -615,6 +617,130 @@ describe('useChatStore', () => {
       resetContextUsage();
 
       expect(useChatStore.getState().contextUsage).toBeNull();
+    });
+  });
+
+  describe('segmentsPendingClear lifecycle (Story 18.2)', () => {
+    it('TC-L1: completeStreaming keeps segments and sets segmentsPendingClear=true', () => {
+      const { startStreaming, appendStreamingContent, completeStreaming } =
+        useChatStore.getState();
+
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('Hello');
+      completeStreaming();
+
+      const state = useChatStore.getState();
+      expect(state.isStreaming).toBe(false);
+      expect(state.streamingSegments).toHaveLength(1);
+      expect(state.segmentsPendingClear).toBe(true);
+    });
+
+    it('TC-L2: clearStreamingSegments clears segments and sets segmentsPendingClear=false', () => {
+      useChatStore.setState({
+        streamingSegments: [{ type: 'text', content: 'hello' }],
+        segmentsPendingClear: true,
+      });
+
+      useChatStore.getState().clearStreamingSegments();
+
+      const state = useChatStore.getState();
+      expect(state.streamingSegments).toEqual([]);
+      expect(state.segmentsPendingClear).toBe(false);
+    });
+
+    it('TC-L3: abortStreaming clears segments and sets segmentsPendingClear=false', () => {
+      const { startStreaming, appendStreamingContent, abortStreaming } =
+        useChatStore.getState();
+
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('partial');
+      abortStreaming();
+
+      const state = useChatStore.getState();
+      expect(state.streamingSegments).toEqual([]);
+      expect(state.segmentsPendingClear).toBe(false);
+    });
+
+    it('TC-L4: startStreaming sets segmentsPendingClear=false', () => {
+      // Simulate a state where segments are pending clear from previous completion
+      useChatStore.setState({
+        segmentsPendingClear: true,
+        streamingSegments: [{ type: 'text', content: 'old' }],
+      });
+
+      useChatStore.getState().startStreaming('session-2', 'msg-2');
+
+      const state = useChatStore.getState();
+      expect(state.segmentsPendingClear).toBe(false);
+      expect(state.streamingSegments).toEqual([]);
+      expect(state.isStreaming).toBe(true);
+    });
+
+    it('TC-L5: sendMessage clears existing stale segments', () => {
+      // Simulate stale segments from previous response
+      useChatStore.setState({
+        streamingSegments: [{ type: 'text', content: 'stale' }],
+        segmentsPendingClear: true,
+      });
+
+      useChatStore.getState().sendMessage('New message', {
+        workingDirectory: '/path',
+      });
+
+      const state = useChatStore.getState();
+      expect(state.streamingSegments).toEqual([]);
+      expect(state.segmentsPendingClear).toBe(false);
+      expect(state.isStreaming).toBe(true);
+    });
+
+    it('TC-L6: abortResponse sets segmentsPendingClear=true', () => {
+      const { startStreaming, appendStreamingContent, abortResponse } =
+        useChatStore.getState();
+
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('content');
+      abortResponse();
+
+      const state = useChatStore.getState();
+      expect(state.isStreaming).toBe(false);
+      expect(state.streamingSegments).toHaveLength(1);
+      expect(state.segmentsPendingClear).toBe(true);
+    });
+
+    it('TC-L7: setSegmentCleanupTimeoutId cancels previous timeout and stores new one', () => {
+      vi.useFakeTimers();
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+
+      const timeoutId1 = setTimeout(callback1, 10000) as unknown as ReturnType<typeof setTimeout>;
+      useChatStore.getState().setSegmentCleanupTimeoutId(timeoutId1);
+
+      // Set new timeout — should cancel previous
+      const timeoutId2 = setTimeout(callback2, 10000) as unknown as ReturnType<typeof setTimeout>;
+      useChatStore.getState().setSegmentCleanupTimeoutId(timeoutId2);
+
+      vi.advanceTimersByTime(10000);
+
+      // First callback should have been cancelled
+      expect(callback1).not.toHaveBeenCalled();
+      // Second callback should fire
+      expect(callback2).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
+    });
+
+    it('TC-L8: restoreStreaming resets segmentsPendingClear=false', () => {
+      useChatStore.setState({
+        segmentsPendingClear: true,
+        streamingSegments: [{ type: 'text', content: 'old' }],
+      });
+
+      useChatStore.getState().restoreStreaming('session-2');
+
+      const state = useChatStore.getState();
+      expect(state.segmentsPendingClear).toBe(false);
+      expect(state.isStreaming).toBe(true);
+      expect(state.streamingSegments).toEqual([]);
     });
   });
 

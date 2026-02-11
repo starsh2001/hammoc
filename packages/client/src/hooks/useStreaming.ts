@@ -131,20 +131,42 @@ export function useStreaming() {
       const sessId = msgState.currentSessionId;
 
       if (projectSlug && sessId) {
-        const attemptFetch = async (retryMs?: number) => {
+        const INITIAL_DELAY = 2000; // completeStreaming → first fetch wait (SDK JSONL flush time)
+        const MAX_RETRIES = 3;
+        const RETRY_DELAYS = [2000, 3000, 5000]; // Progressive retry delays
+        const ABSOLUTE_TIMEOUT = 15000; // 15s absolute timeout
+
+        // Absolute timeout fallback: clear segments no matter what
+        const timeoutId = setTimeout(() => {
+          useChatStore.getState().clearStreamingSegments();
+        }, ABSOLUTE_TIMEOUT);
+
+        // Store timeoutId in chatStore for cleanup on rapid successive completions
+        useChatStore.getState().setSegmentCleanupTimeoutId(timeoutId);
+
+        const attemptFetch = async (attempt: number) => {
           const store = useMessageStore.getState();
           const countBefore = store.messages.length;
           await store.fetchMessages(projectSlug, sessId, { silent: true, minMessageCount: countBefore });
           const countAfter = useMessageStore.getState().messages.length;
           if (countAfter > countBefore) {
-            // History updated — safe to clear streaming segments
+            // History updated — safe to clear segments
+            clearTimeout(timeoutId);
             useChatStore.getState().clearStreamingSegments();
-          } else if (retryMs) {
-            // Stale data (SDK hasn't flushed JSONL yet) — retry once
-            setTimeout(() => attemptFetch(), retryMs);
+          } else if (attempt < MAX_RETRIES) {
+            // Retry with increasing delay
+            setTimeout(() => attemptFetch(attempt + 1), RETRY_DELAYS[attempt] ?? 5000);
+          } else {
+            // All retries exhausted — force clear segments
+            clearTimeout(timeoutId);
+            useChatStore.getState().clearStreamingSegments();
           }
         };
-        setTimeout(() => attemptFetch(3000), 2000);
+
+        setTimeout(() => attemptFetch(0), INITIAL_DELAY);
+      } else {
+        // No session context — clear segments immediately
+        useChatStore.getState().clearStreamingSegments();
       }
     };
 
