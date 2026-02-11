@@ -893,7 +893,6 @@ export function ChatInput({
           <PermissionModeSelector
             mode={permissionMode}
             onModeChange={onPermissionModeChange}
-            disabled={isStreaming}
           />
         )}
 
