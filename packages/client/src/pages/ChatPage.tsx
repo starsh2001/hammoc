@@ -404,8 +404,10 @@ export function ChatPage() {
       emitJoin();
 
       // On RECONNECTION (not initial load), do a silent history refresh
-      // to pick up any messages that arrived while disconnected
-      if (!isInitialConnect && projectSlug && sessionId) {
+      // to pick up any messages that arrived while disconnected.
+      // Skip during active streaming — useStreaming handles reconnection separately,
+      // and fetchMessages could replace messages with stale history (JSONL not yet flushed).
+      if (!isInitialConnect && projectSlug && sessionId && !useChatStore.getState().isStreaming) {
         const msgState = useMessageStore.getState();
         if (msgState.currentSessionId === sessionId && msgState.messages.length > 0) {
           msgState.fetchMessages(projectSlug, sessionId, { silent: true });
