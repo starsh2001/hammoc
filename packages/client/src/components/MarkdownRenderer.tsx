@@ -10,7 +10,7 @@
  * - Links open in new tabs
  * - Responsive tables
  * - XSS protection (built into react-markdown)
- * - Debounced rendering during streaming (100ms)
+ * - Throttled rendering during streaming (50ms leading+trailing)
  * - Incomplete code block handling during streaming
  */
 
@@ -18,7 +18,7 @@ import { memo, useMemo } from 'react';
 import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './CodeBlock';
-import { useDebounce } from '../hooks/useDebounce';
+import { useThrottle } from '../hooks/useThrottle';
 
 interface MarkdownRendererProps {
   /** Markdown content to render */
@@ -34,24 +34,27 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   isStreaming = false,
   onCodeCopy,
 }: MarkdownRendererProps) {
-  // Debounce content during streaming (100ms), immediate when complete
-  const debouncedContent = useDebounce(content, isStreaming ? 100 : 0);
+  // Throttle content during streaming (~20fps), immediate when complete.
+  // Throttle (leading + trailing) renders the first change instantly, then
+  // coalesces updates for 50ms — unlike debounce which never fires during
+  // continuous input and causes "burst rendering".
+  const throttledContent = useThrottle(content, isStreaming ? 50 : 0);
 
   // Process content for incomplete code blocks during streaming
   const processedContent = useMemo(() => {
-    if (!isStreaming) return debouncedContent;
+    if (!isStreaming) return throttledContent;
 
     // Check for unclosed code blocks
     const codeBlockPattern = /```/g;
-    const matches = debouncedContent.match(codeBlockPattern) || [];
+    const matches = throttledContent.match(codeBlockPattern) || [];
 
     // If odd number of ```, add closing ```
     if (matches.length % 2 !== 0) {
-      return debouncedContent + '\n```';
+      return throttledContent + '\n```';
     }
 
-    return debouncedContent;
-  }, [debouncedContent, isStreaming]);
+    return throttledContent;
+  }, [throttledContent, isStreaming]);
 
   // Memoize components object to prevent unnecessary re-renders
   const components = useMemo<Components>(
