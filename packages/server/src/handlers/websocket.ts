@@ -55,6 +55,7 @@ interface ActiveStream {
   pendingPermissions: Map<string, PendingPermission>;
   status: 'running' | 'completed' | 'error';
   startedAt: number;
+  chatService?: ChatService;
 }
 
 // Primary maps: sessionId → ActiveStream, socketId → sessionId
@@ -176,6 +177,20 @@ export async function initializeWebSocket(
       const stream = activeStreams.get(sessionId);
       if (stream && stream.status === 'running') {
         stream.abortController.abort('user-abort');
+      }
+    });
+
+    // Handle permission:mode-change — update SDK permission mode during active stream
+    socket.on('permission:mode-change', async (data) => {
+      const sessionId = socketToSession.get(socket.id);
+      if (!sessionId) return;
+      const stream = activeStreams.get(sessionId);
+      if (!stream?.chatService || stream.status !== 'running') return;
+      try {
+        await stream.chatService.setPermissionMode(data.mode);
+        console.log(`[websocket] Permission mode changed to "${data.mode}" for session ${sessionId}`);
+      } catch (err) {
+        console.error('[websocket] Failed to change permission mode:', err);
       }
     });
 
@@ -363,6 +378,7 @@ async function handleChatSend(
   try {
     console.log(`[websocket] Creating ChatService: permissionMode="${permissionMode}", workingDirectory="${workingDirectory}"`);
     const chatService = new ChatService({ workingDirectory, permissionMode });
+    stream.chatService = chatService;
 
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : { sessionId }),

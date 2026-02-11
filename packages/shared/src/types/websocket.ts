@@ -38,6 +38,7 @@ export interface ClientToServerEvents {
     interactionType: 'permission' | 'question';
     response?: string | string[] | Record<string, string | string[]>;
   }) => void;
+  'permission:mode-change': (data: { mode: PermissionMode }) => void;
   'session:join': (sessionId: string) => void;
   'session:leave': (sessionId: string) => void;
   'session:list': (data: { projectPath: string }) => void;

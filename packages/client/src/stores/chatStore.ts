@@ -535,7 +535,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
   },
 
-  setPermissionMode: (mode: PermissionMode) => set({ permissionMode: mode }),
+  setPermissionMode: (mode: PermissionMode) => {
+    set({ permissionMode: mode });
+    // If streaming, notify server to update SDK's permission mode in real-time
+    if (get().isStreaming) {
+      const socket = getSocket();
+      socket.emit('permission:mode-change', { mode });
+    }
+  },
 
   setContextUsage: (usage: ChatUsage) => set({ contextUsage: usage }),
 
