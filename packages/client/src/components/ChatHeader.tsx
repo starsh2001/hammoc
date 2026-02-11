@@ -99,7 +99,7 @@ export function ChatHeader({
       className="flex-shrink-0 sticky top-0 z-10 bg-white dark:bg-gray-800
                  border-b border-gray-200 dark:border-gray-700"
     >
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-4 py-3 min-h-16">
         {/* Left side: Back button and project info */}
         <div className="flex items-center min-w-0 flex-1">
           {onBack && (
@@ -151,7 +151,7 @@ export function ChatHeader({
                   </span>
                   {isBmadProject && (
                     <>
-                      <span className="text-gray-300 dark:text-gray-600 mx-1">|</span>
+                      <span className="text-xs text-gray-300 dark:text-gray-600 mx-1">|</span>
                       <span
                         role="button"
                         tabIndex={0}
@@ -165,7 +165,7 @@ export function ChatHeader({
                         }}
                         aria-label={`현재 에이전트: ${activeAgent ? formatAgentRoleLabel(activeAgent.command) || activeAgent.name : 'Claude'}. 클릭하여 에이전트 목록 열기`}
                         data-testid="agent-indicator"
-                        className={`flex-shrink-0 cursor-pointer ${
+                        className={`flex-shrink-0 text-xs cursor-pointer ${
                           activeAgent
                             ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 rounded px-2 py-0.5'
                             : 'text-gray-500 dark:text-gray-400'

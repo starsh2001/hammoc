@@ -23,7 +23,7 @@ import { useTheme } from '../hooks/useTheme';
 function ProjectListPageSkeleton() {
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
       aria-label="로딩 중"
       role="status"
     >
@@ -137,53 +137,56 @@ export function ProjectListPage() {
     return (
       <div className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
         {/* Header */}
-        <header className="flex-shrink-0 flex items-center gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
-          <BrandLogo />
-          <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700" />
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">프로젝트</h1>
-          <div className="flex-1" />
-          <div className="flex items-center gap-2">
-            <ThemeToggleButton className="hidden sm:block" />
-            <div className="relative hidden sm:block">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                aria-label="설정 메뉴"
-                aria-expanded={showSettings}
-                aria-haspopup="menu"
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-              >
-                <Settings className="w-5 h-5" aria-hidden="true" />
-              </button>
-              <SettingsMenu
-                isOpen={showSettings}
-                onClose={() => setShowSettings(false)}
-                onLogout={handleLogout}
-              />
+        <header className="flex-shrink-0 sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 py-3 min-h-16">
+            <div className="flex items-center min-w-0 flex-1">
+              <BrandLogo />
+              <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
+              <h1 className="text-base font-semibold text-gray-900 dark:text-white">프로젝트</h1>
             </div>
-            {/* Narrow screen: overflow menu */}
-            <div className="relative sm:hidden" ref={overflowMenuRef}>
-              <button
-                onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
-                aria-label="메뉴"
-                aria-expanded={overflowMenuOpen}
-                aria-haspopup="menu"
-              >
-                <MoreVertical className="w-5 h-5" />
-              </button>
-              {overflowMenuOpen && (
-                <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1">
-                  <button role="menuitem" onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                    {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    {theme === 'dark' ? '라이트 모드' : '다크 모드'}
-                  </button>
-                  <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                  <button role="menuitem" onClick={() => { handleLogout(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                    <LogOut className="w-4 h-4" />
-                    로그아웃
-                  </button>
-                </div>
-              )}
+            <div className="flex items-center gap-1 ml-4">
+              <ThemeToggleButton className="hidden sm:block" />
+              <div className="relative hidden sm:block">
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  aria-label="설정 메뉴"
+                  aria-expanded={showSettings}
+                  aria-haspopup="menu"
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+                >
+                  <Settings className="w-5 h-5" aria-hidden="true" />
+                </button>
+                <SettingsMenu
+                  isOpen={showSettings}
+                  onClose={() => setShowSettings(false)}
+                  onLogout={handleLogout}
+                />
+              </div>
+              {/* Narrow screen: overflow menu */}
+              <div className="relative sm:hidden" ref={overflowMenuRef}>
+                <button
+                  onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
+                  aria-label="메뉴"
+                  aria-expanded={overflowMenuOpen}
+                  aria-haspopup="menu"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+                {overflowMenuOpen && (
+                  <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1">
+                    <button role="menuitem" onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                      {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                      {theme === 'dark' ? '라이트 모드' : '다크 모드'}
+                    </button>
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                    <button role="menuitem" onClick={() => { handleLogout(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                      <LogOut className="w-4 h-4" />
+                      로그아웃
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -211,106 +214,107 @@ export function ProjectListPage() {
   return (
     <div className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Header */}
-      <header className="flex-shrink-0 flex items-center gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
-        <BrandLogo />
-        <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700" />
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-white">프로젝트</h1>
-        <div className="flex-1" />
-        <div className="flex items-center gap-2">
-          {/* New Project Button - wide screen only, leftmost */}
-          <button
-            onClick={() => setIsNewProjectDialogOpen(true)}
-            className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-600 hover:bg-blue-200 dark:hover:bg-blue-500 text-gray-900 dark:text-white text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" aria-hidden="true" />
-            새 프로젝트
-          </button>
-
-          {/* Wide screen: inline buttons */}
-          {hiddenCount > 0 && (
-            <button
-              onClick={() => setShowHidden(!showHidden)}
-              className={`hidden sm:block p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
-                showHidden
-                  ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
-              }`}
-              aria-label={showHidden ? '숨긴 항목 감추기' : `숨긴 항목 보기 (${hiddenCount})`}
-              title={showHidden ? '숨긴 항목 감추기' : `숨긴 항목 보기 (${hiddenCount})`}
-            >
-              {showHidden ? <Eye className="w-5 h-5" aria-hidden="true" /> : <EyeOff className="w-5 h-5" aria-hidden="true" />}
-            </button>
-          )}
-          <button
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-            aria-label={isLoading ? '새로고침 중...' : '새로고침'}
-          >
-            <RefreshCw
-              className={`w-5 h-5 text-gray-600 dark:text-gray-400 ${isLoading ? 'animate-spin' : ''}`}
-              aria-hidden="true"
-            />
-          </button>
-          <ThemeToggleButton className="hidden sm:block" />
-          <div className="relative hidden sm:block">
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              aria-label="설정 메뉴"
-              aria-expanded={showSettings}
-              aria-haspopup="menu"
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-            >
-              <Settings className="w-5 h-5" aria-hidden="true" />
-            </button>
-            <SettingsMenu
-              isOpen={showSettings}
-              onClose={() => setShowSettings(false)}
-              onLogout={handleLogout}
-            />
+      <header className="flex-shrink-0 sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-4 py-3 min-h-16">
+          <div className="flex items-center min-w-0 flex-1">
+            <BrandLogo />
+            <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
+            <h1 className="text-base font-semibold text-gray-900 dark:text-white">프로젝트</h1>
           </div>
-
-          {/* Narrow screen: overflow menu */}
-          <div className="relative sm:hidden" ref={overflowMenuRef}>
+          <div className="flex items-center gap-1 ml-4">
+            {/* New Project Button - wide screen only */}
             <button
-              onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
-              aria-label="메뉴"
-              aria-expanded={overflowMenuOpen}
-              aria-haspopup="menu"
+              onClick={() => setIsNewProjectDialogOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-600 hover:bg-blue-200 dark:hover:bg-blue-500 text-gray-900 dark:text-white text-sm transition-colors whitespace-nowrap"
             >
-              <MoreVertical className="w-5 h-5" />
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              새 프로젝트
             </button>
-            {overflowMenuOpen && (
-              <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1">
-                <button role="menuitem" onClick={() => { setIsNewProjectDialogOpen(true); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  새 프로젝트
-                </button>
-                <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                <button role="menuitem" onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                  {theme === 'dark' ? '라이트 모드' : '다크 모드'}
-                </button>
-                {hiddenCount > 0 && (
-                  <button role="menuitem" onClick={() => { setShowHidden(!showHidden); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                    {showHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    {showHidden ? '숨긴 항목 감추기' : `숨긴 항목 보기 (${hiddenCount})`}
-                  </button>
-                )}
-                <button role="menuitem" onClick={() => { handleRefresh(); setOverflowMenuOpen(false); }} disabled={isLoading} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 flex items-center gap-2">
-                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  새로고침
-                </button>
-                <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                <button role="menuitem" onClick={() => { handleLogout(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                  <LogOut className="w-4 h-4" />
-                  로그아웃
-                </button>
-              </div>
+
+            {hiddenCount > 0 && (
+              <button
+                onClick={() => setShowHidden(!showHidden)}
+                className={`hidden sm:block p-2 rounded-lg transition-colors ${
+                  showHidden
+                    ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                }`}
+                aria-label={showHidden ? '숨긴 항목 감추기' : `숨긴 항목 보기 (${hiddenCount})`}
+                title={showHidden ? '숨긴 항목 감추기' : `숨긴 항목 보기 (${hiddenCount})`}
+              >
+                {showHidden ? <Eye className="w-5 h-5" aria-hidden="true" /> : <EyeOff className="w-5 h-5" aria-hidden="true" />}
+              </button>
             )}
-          </div>
+            <button
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 text-gray-700 dark:text-gray-300"
+              aria-label={isLoading ? '새로고침 중...' : '새로고침'}
+            >
+              <RefreshCw
+                className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`}
+                aria-hidden="true"
+              />
+            </button>
+            <ThemeToggleButton className="hidden sm:block" />
+            <div className="relative hidden sm:block">
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                aria-label="설정 메뉴"
+                aria-expanded={showSettings}
+                aria-haspopup="menu"
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+              >
+                <Settings className="w-5 h-5" aria-hidden="true" />
+              </button>
+              <SettingsMenu
+                isOpen={showSettings}
+                onClose={() => setShowSettings(false)}
+                onLogout={handleLogout}
+              />
+            </div>
 
+            {/* Narrow screen: overflow menu */}
+            <div className="relative sm:hidden" ref={overflowMenuRef}>
+              <button
+                onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
+                aria-label="메뉴"
+                aria-expanded={overflowMenuOpen}
+                aria-haspopup="menu"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+              {overflowMenuOpen && (
+                <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1">
+                  <button role="menuitem" onClick={() => { setIsNewProjectDialogOpen(true); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    새 프로젝트
+                  </button>
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                  <button role="menuitem" onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                    {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                    {theme === 'dark' ? '라이트 모드' : '다크 모드'}
+                  </button>
+                  {hiddenCount > 0 && (
+                    <button role="menuitem" onClick={() => { setShowHidden(!showHidden); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                      {showHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      {showHidden ? '숨긴 항목 감추기' : `숨긴 항목 보기 (${hiddenCount})`}
+                    </button>
+                  )}
+                  <button role="menuitem" onClick={() => { handleRefresh(); setOverflowMenuOpen(false); }} disabled={isLoading} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 flex items-center gap-2">
+                    <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    새로고침
+                  </button>
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                  <button role="menuitem" onClick={() => { handleLogout(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                    <LogOut className="w-4 h-4" />
+                    로그아웃
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
@@ -344,7 +348,7 @@ export function ProjectListPage() {
 
         {/* Project Grid */}
         {!isLoading && visibleProjects.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {visibleProjects.map((project) => (
               <ProjectCard
                 key={project.projectSlug}
