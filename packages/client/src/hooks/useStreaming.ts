@@ -161,51 +161,47 @@ export function useStreaming() {
         const INITIAL_DELAY = 2000; // completeStreaming → first fetch wait (SDK JSONL flush time)
         const MAX_RETRIES = 3;
         const RETRY_DELAYS = [2000, 3000, 5000]; // Progressive retry delays
-        const ABSOLUTE_TIMEOUT = 15000; // 15s absolute timeout
 
-        // Absolute timeout fallback: clear segments no matter what
-        const timeoutId = setTimeout(() => {
-          useChatStore.getState().clearStreamingSegments();
-        }, ABSOLUTE_TIMEOUT);
-
-        // Store timeoutId in chatStore for cleanup on rapid successive completions
-        useChatStore.getState().setSegmentCleanupTimeoutId(timeoutId);
+        // Baseline: pagination total BEFORE fetch attempts.
+        // Used to detect real new content vs optimistic ID reconciliation.
+        const baselineTotal = msgState.pagination?.total ?? 0;
 
         const attemptFetch = async (attempt: number) => {
-          const store = useMessageStore.getState();
-          // Track by last message ID, not count — count-based comparison fails
-          // when sessions hit pagination limit (e.g., 50 msgs: new assistant response
-          // replaces oldest msg, total stays 50, countAfter === countBefore).
-          const lastMsgId = store.messages[store.messages.length - 1]?.id;
           debugLog.stream('complete → fetchMessages attempt', {
             attempt,
-            msgCount: store.messages.length,
-            lastMsgId,
+            baselineTotal,
             projectSlug,
             sessId,
           });
+          const store = useMessageStore.getState();
           await store.fetchMessages(projectSlug, sessId, { silent: true });
-          const afterMsgs = useMessageStore.getState().messages;
-          const lastMsgIdAfter = afterMsgs[afterMsgs.length - 1]?.id;
-          const hasNewContent = lastMsgIdAfter !== lastMsgId;
+          const afterStore = useMessageStore.getState();
+          const afterTotal = afterStore.pagination?.total ?? 0;
+          // Server must have at least 2 more messages than baseline
+          // (user message + at least one assistant message).
+          // This prevents false positives from optimistic → server ID reconciliation
+          // where only the user message was returned (total +1 but no assistant response).
+          const hasNewContent = afterTotal >= baselineTotal + 2;
           debugLog.stream('complete → fetchMessages result', {
             attempt,
-            msgCountAfter: afterMsgs.length,
-            lastMsgIdAfter,
+            afterTotal,
+            baselineTotal,
             hasNewContent,
+            msgCountAfter: afterStore.messages.length,
           });
           if (hasNewContent) {
-            // History updated — safe to clear segments
-            clearTimeout(timeoutId);
+            // History updated with assistant response — safe to clear segments
             useChatStore.getState().clearStreamingSegments();
           } else if (attempt < MAX_RETRIES) {
             // Retry with increasing delay
             setTimeout(() => attemptFetch(attempt + 1), RETRY_DELAYS[attempt] ?? 5000);
           } else {
-            // All retries exhausted — force clear segments
-            debugLog.stream('complete → all retries exhausted, force clearing segments');
-            clearTimeout(timeoutId);
-            useChatStore.getState().clearStreamingSegments();
+            // All retries exhausted — keep segments visible as fallback.
+            // They will be cleared on next message send, navigation, or refresh.
+            debugLog.stream('complete → all retries exhausted, keeping segments as fallback', {
+              afterTotal,
+              baselineTotal,
+            });
           }
         };
 
@@ -234,6 +230,16 @@ export function useStreaming() {
 
     // Handle permission:request event — add interactive segment for permission or question (Story 7.1)
     const handlePermissionRequest = (data: PermissionRequest) => {
+      debugLog.stream('permission:request received', {
+        permissionId: data.id,
+        toolCallId: data.toolCall.id,
+        toolName: data.toolCall.name,
+        alreadySeen: seenPermissionIds.current.has(data.id),
+        segmentCount: useChatStore.getState().streamingSegments.length,
+        existingToolIds: useChatStore.getState().streamingSegments
+          .filter(s => s.type === 'tool')
+          .map(s => (s as { type: 'tool'; toolCall: { id: string } }).toolCall.id),
+      });
       // Ignore duplicate requests (reconnect guard)
       if (seenPermissionIds.current.has(data.id)) return;
       seenPermissionIds.current.add(data.id);

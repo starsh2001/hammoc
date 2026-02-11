@@ -277,6 +277,8 @@ export interface StreamCallbacks {
   onTaskNotification?: (data: TaskNotificationData) => void;
   onToolUseSummary?: (summary: string, precedingToolUseIds: string[]) => void;
   onResultError?: (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
+  /** Fired for every SDK message received — used for activity-based timeout reset */
+  onActivity?: (messageType: string) => void;
 }
 
 /**

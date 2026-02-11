@@ -239,6 +239,17 @@ export function ToolCard({
             </div>
           )}
 
+          {/* Write/Edit streaming content preview (pending only) */}
+          {isEditWrite && isPending && diffData && diffData.modified.length > 0 && (
+            <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+              <pre className="text-xs text-gray-600 dark:text-gray-400 max-h-40 overflow-y-auto whitespace-pre-wrap break-words font-mono">
+                {diffData.modified.length > 2000
+                  ? diffData.modified.slice(0, 2000) + '\n...'
+                  : diffData.modified}
+              </pre>
+            </div>
+          )}
+
           {/* TodoWrite checklist */}
           {todos && todos.length > 0 && (
             <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">

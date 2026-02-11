@@ -175,14 +175,17 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       }
 
       // Guard: don't overwrite optimistic messages with stale empty response
-      // while streaming is active (buffer replay may have added messages
-      // between request send and response arrival)
+      // while streaming is active or segments are pending clear (buffer replay
+      // may have added messages between request send and response arrival,
+      // and post-streaming fetches may return stale data before JSONL flushes)
       const currentMessages = get().messages;
-      if (response.messages.length < currentMessages.length && useChatStore.getState().isStreaming) {
+      const chatState = useChatStore.getState();
+      if (response.messages.length < currentMessages.length && (chatState.isStreaming || chatState.segmentsPendingClear)) {
         debugLog.message('fetchMessages → streaming guard (server < current)', {
           serverCount: response.messages.length,
           currentCount: currentMessages.length,
-          isStreaming: true,
+          isStreaming: chatState.isStreaming,
+          segmentsPendingClear: chatState.segmentsPendingClear,
         });
         set({ isLoading: false });
         return;

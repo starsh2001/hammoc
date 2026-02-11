@@ -584,6 +584,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const idx = segments.findIndex(
       (seg) => seg.type === 'tool' && seg.toolCall.id === toolCallId
     );
+    debugLog.state('setToolPermission', {
+      toolCallId,
+      permissionId,
+      foundIdx: idx,
+      segmentToolIds: segments
+        .filter(s => s.type === 'tool')
+        .map(s => (s as { type: 'tool'; toolCall: { id: string } }).toolCall.id),
+    });
     if (idx === -1) return;
     const updated = [...segments];
     const seg = updated[idx];
