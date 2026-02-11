@@ -44,6 +44,8 @@ interface MessageAreaProps {
   isCompacting?: boolean;
   /** Whether currently loading older messages (for scroll position preservation) */
   isLoadingMore?: boolean;
+  /** Whether segments are pending clear (post-streaming, awaiting history fetch) */
+  segmentsPendingClear?: boolean;
 }
 
 /**
@@ -151,6 +153,7 @@ export function MessageArea({
   isStreaming = false,
   isCompacting = false,
   isLoadingMore = false,
+  segmentsPendingClear = false,
 }: MessageAreaProps) {
   // Include streaming content changes in scroll dependencies for auto-scroll during streaming
   const lastTextContent = streamingSegments.length > 0
@@ -175,6 +178,12 @@ export function MessageArea({
 
   const { containerRef, bottomRef, isUserScrolledUp, scrollToBottom, handleScroll } =
     useAutoScroll(allScrollDependencies, { ...autoScrollOptions, isLoadingMore, isStreaming });
+
+  // Determine whether to render streaming segments:
+  // - Always render during active streaming
+  // - Render while pending clear (post-streaming fallback until history loads)
+  // - Hide once segments have been cleared (history is authoritative)
+  const shouldRenderSegments = isStreaming || (segmentsPendingClear === true && streamingSegments.length > 0);
 
   const hasChildren = Array.isArray(children)
     ? children.length > 0
@@ -217,7 +226,7 @@ export function MessageArea({
         {children}
 
         {/* Streaming segments - rendered in order */}
-        {streamingSegments.map((seg, index) => {
+        {shouldRenderSegments && streamingSegments.map((seg, index) => {
           if (isThinkingSegment(seg)) {
             // Thinking is still streaming only if it's the last segment and overall streaming is active
             const isThinkingStillStreaming = isStreaming && isLastSegmentIndex(index);
