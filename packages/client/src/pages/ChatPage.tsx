@@ -415,7 +415,7 @@ export function ChatPage() {
 
   const handleBack = useCallback(() => {
     if (projectSlug) {
-      navigate(`/project/${projectSlug}`);
+      navigate(`/project/${projectSlug}/sessions`);
     }
   }, [navigate, projectSlug]);
 
@@ -555,7 +555,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
+        className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
@@ -568,9 +568,11 @@ export function ChatPage() {
             aria-label="메시지 목록"
             aria-live="polite"
             data-testid="message-area"
-            className="flex-1 overflow-y-auto p-4"
+            className="flex-1 overflow-y-auto"
           >
-            <MessageListSkeleton />
+            <div className="content-container p-4">
+              <MessageListSkeleton />
+            </div>
           </section>
         </main>
         <InputArea disabled>
@@ -617,7 +619,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
+        className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
@@ -678,7 +680,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
+        className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
@@ -745,7 +747,7 @@ export function ChatPage() {
   return (
     <div
       data-testid="chat-page"
-      className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900"
+      className="h-dvh flex flex-col bg-white dark:bg-gray-900"
     >
       <ChatHeader
         projectSlug={workingDirectory || projectSlug}

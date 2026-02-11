@@ -123,7 +123,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   if (cliLoading && location.pathname !== '/onboarding') {
     return (
       <div
-        className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900"
+        className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900"
         role="status"
         aria-label="로딩 중"
       >

@@ -42,8 +42,7 @@ export async function parseJSONLFile(filePath: string): Promise<RawJSONLMessage[
       const parsed = JSON.parse(line) as RawJSONLMessage;
       messages.push(parsed);
     } catch {
-      // Skip invalid JSON lines
-      console.warn('Invalid JSON line in session file:', line.slice(0, 50));
+      // Skip invalid JSON lines (e.g. trailing newlines, partial writes)
     }
   }
 

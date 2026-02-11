@@ -18,7 +18,11 @@ import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ProjectListPage } from './pages/ProjectListPage';
 import { SessionListPage } from './pages/SessionListPage';
+import { ProjectDashboardPage } from './pages/ProjectDashboardPage';
+import { ProjectSessionsPage } from './pages/ProjectSessionsPage';
+import { ProjectQueuePage } from './pages/ProjectBatchPage';
 import { ChatPage } from './pages/ChatPage';
+import { ProjectTabLayout } from './layouts/ProjectTabLayout';
 import { AuthGuard } from './components/AuthGuard';
 import { PublicRoute } from './components/PublicRoute';
 import { useTheme } from './hooks/useTheme';
@@ -59,10 +63,14 @@ function AppContent() {
         path="/project/:projectSlug"
         element={
           <AuthGuard>
-            <SessionListPage />
+            <ProjectTabLayout />
           </AuthGuard>
         }
-      />
+      >
+        <Route index element={<ProjectDashboardPage />} />
+        <Route path="sessions" element={<ProjectSessionsPage />} />
+        <Route path="queue" element={<ProjectQueuePage />} />
+      </Route>
       <Route
         path="/project/:projectSlug/session/:sessionId"
         element={

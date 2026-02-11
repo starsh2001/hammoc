@@ -112,7 +112,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
           handleClick();
         }
       }}
-      className={`relative w-full text-left p-4 bg-white dark:bg-gray-800 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer ${
+      className={`relative w-full text-left p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer ${
         selected
           ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
           : 'border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400'

@@ -110,7 +110,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
             handleClick();
           }
         }}
-        className={`relative w-full text-left bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer ${isHidden ? 'opacity-50' : ''}`}
+        className={`relative w-full text-left bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer ${isHidden ? 'opacity-50' : ''}`}
         aria-label={`프로젝트: ${project.originalPath.split(/[/\\]/).filter(Boolean).pop() || project.originalPath}, 세션 ${project.sessionCount}개`}
       >
         {/* Kebab menu */}
