@@ -9,8 +9,11 @@ import { sessionsApi } from '../services/api/sessions';
 import { ApiError } from '../services/api/client';
 import { useChatStore } from './chatStore';
 
+/** Client-local extension: marks optimistic messages for reconciliation */
+type OptimisticHistoryMessage = HistoryMessage & { _optimistic?: boolean };
+
 interface MessageState {
-  messages: HistoryMessage[];
+  messages: OptimisticHistoryMessage[];
   currentProjectSlug: string | null;
   currentSessionId: string | null;
   isLoading: boolean;
@@ -32,6 +35,88 @@ interface MessageActions {
 }
 
 type MessageStore = MessageState & MessageActions;
+
+/**
+ * Reconcile optimistic messages with server-authoritative messages.
+ * Matches optimistic user messages to server user messages by content (trim),
+ * preserving images from optimistic messages (server doesn't store images).
+ */
+function reconcileOptimisticMessages(
+  currentMessages: OptimisticHistoryMessage[],
+  serverMessages: HistoryMessage[]
+): HistoryMessage[] {
+  if (serverMessages.length === 0) return currentMessages;
+  if (currentMessages.length === 0) return serverMessages;
+
+  // 1. Index server user messages by trimmed content
+  const serverUserByContent = new Map<string, HistoryMessage[]>();
+  for (const msg of serverMessages) {
+    if (msg.type === 'user') {
+      const key = msg.content.trim();
+      const arr = serverUserByContent.get(key) ?? [];
+      arr.push(msg);
+      serverUserByContent.set(key, arr);
+    }
+  }
+
+  // 2. Match optimistic messages to server messages (consume in order via shift)
+  const matchedServerIds = new Set<string>();
+  const matchedOptimisticIds = new Set<string>();
+  const optimisticToServer = new Map<string, string>();
+  for (const msg of currentMessages) {
+    if (msg._optimistic && msg.type === 'user') {
+      const key = msg.content.trim();
+      const candidates = serverUserByContent.get(key);
+      if (candidates && candidates.length > 0) {
+        const matched = candidates.shift()!;
+        matchedServerIds.add(matched.id);
+        matchedOptimisticIds.add(msg.id);
+        optimisticToServer.set(matched.id, msg.id);
+      }
+    }
+  }
+
+  // 3. Build result from server messages, restoring images from optimistic originals
+  const optimisticById = new Map(
+    currentMessages.filter((m) => m._optimistic).map((m) => [m.id, m])
+  );
+
+  // Also build image map from non-optimistic existing user messages (for image preservation)
+  const existingImages = new Map<string, HistoryMessage['images']>();
+  for (const msg of currentMessages) {
+    if (msg.type === 'user' && msg.images && msg.images.length > 0 && !msg._optimistic) {
+      existingImages.set(msg.content, msg.images);
+    }
+  }
+
+  const result: HistoryMessage[] = [];
+  for (const serverMsg of serverMessages) {
+    if (serverMsg.type === 'user' && matchedServerIds.has(serverMsg.id)) {
+      // Matched server message — restore images from optimistic original
+      const optimisticId = optimisticToServer.get(serverMsg.id);
+      const optimistic = optimisticId ? optimisticById.get(optimisticId) : undefined;
+      if (optimistic?.images && optimistic.images.length > 0) {
+        result.push({ ...serverMsg, images: optimistic.images });
+      } else {
+        result.push(serverMsg);
+      }
+    } else if (serverMsg.type === 'user' && !serverMsg.images && existingImages.has(serverMsg.content)) {
+      // Non-matched user message — preserve images from existing messages
+      result.push({ ...serverMsg, images: existingImages.get(serverMsg.content) });
+    } else {
+      result.push(serverMsg);
+    }
+  }
+
+  // 4. Append unmatched optimistic messages (not yet on server)
+  for (const msg of currentMessages) {
+    if (msg._optimistic && !matchedOptimisticIds.has(msg.id)) {
+      result.push(msg);
+    }
+  }
+
+  return result;
+}
 
 export const useMessageStore = create<MessageStore>((set, get) => ({
   // State
@@ -74,33 +159,21 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         return;
       }
 
-      // Preserve images from existing user messages (server doesn't store images)
-      const existingImages = new Map<string, HistoryMessage['images']>();
-      for (const msg of get().messages) {
-        if (msg.type === 'user' && msg.images && msg.images.length > 0) {
-          existingImages.set(msg.content, msg.images);
-        }
-      }
-
-      // Merge preserved images into fetched messages
-      const messagesWithImages = response.messages.map((msg) => {
-        if (msg.type === 'user' && !msg.images && existingImages.has(msg.content)) {
-          return { ...msg, images: existingImages.get(msg.content) };
-        }
-        return msg;
-      });
-
       // Guard: don't overwrite optimistic messages with stale empty response
       // while streaming is active (buffer replay may have added messages
       // between request send and response arrival)
       const currentMessages = get().messages;
-      if (messagesWithImages.length < currentMessages.length && useChatStore.getState().isStreaming) {
+      if (response.messages.length < currentMessages.length && useChatStore.getState().isStreaming) {
         set({ isLoading: false });
         return;
       }
 
+      // Reconcile optimistic messages with server-authoritative messages
+      // (includes image preservation from optimistic originals)
+      const reconciledMessages = reconcileOptimisticMessages(currentMessages, response.messages);
+
       set({
-        messages: messagesWithImages,
+        messages: reconciledMessages,
         pagination: response.pagination,
         lastAgentCommand: response.lastAgentCommand ?? null,
         isLoading: false,
@@ -158,12 +231,26 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     }),
 
   addOptimisticMessage: (content: string, images?: ImageAttachment[]) => {
-    const { messages } = get();
-    const optimisticMessage: HistoryMessage = {
-      id: `optimistic-${Date.now()}`,
+    const state = get();
+    const { messages } = state;
+
+    // Rapid fire guard: skip if same content within 1 second (Task 4.1)
+    const lastMessage = messages[messages.length - 1];
+    if (
+      (lastMessage as OptimisticHistoryMessage)?._optimistic &&
+      lastMessage?.type === 'user' &&
+      lastMessage?.content.trim() === content.trim() &&
+      Date.now() - new Date(lastMessage.timestamp).getTime() < 1000
+    ) {
+      return;
+    }
+
+    const optimisticMessage: OptimisticHistoryMessage = {
+      id: `optimistic-${crypto.randomUUID()}`,
       type: 'user',
-      content,
+      content: content.trim(),
       timestamp: new Date().toISOString(),
+      _optimistic: true,
       ...(images && images.length > 0 ? { images } : {}),
     };
     set({ messages: [...messages, optimisticMessage] });
@@ -171,7 +258,11 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
 
   addMessages: (newMessages: HistoryMessage[]) => {
     if (newMessages.length === 0) return;
-    const { messages } = get();
-    set({ messages: [...messages, ...newMessages] });
+    set((state) => {
+      const existingIds = new Set(state.messages.map((m) => m.id));
+      const uniqueNewMessages = newMessages.filter((m) => !existingIds.has(m.id));
+      if (uniqueNewMessages.length === 0) return state;
+      return { messages: [...state.messages, ...uniqueNewMessages] };
+    });
   },
 }));
