@@ -8,6 +8,7 @@ import type { HistoryMessage, PaginationInfo, ImageAttachment } from '@bmad-stud
 import { sessionsApi } from '../services/api/sessions';
 import { ApiError } from '../services/api/client';
 import { useChatStore } from './chatStore';
+import { generateUUID } from '../utils/uuid';
 
 /** Client-local extension: marks optimistic messages for reconciliation */
 type OptimisticHistoryMessage = HistoryMessage & { _optimistic?: boolean };
@@ -246,7 +247,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     }
 
     const optimisticMessage: OptimisticHistoryMessage = {
-      id: `optimistic-${crypto.randomUUID()}`,
+      id: `optimistic-${generateUUID()}`,
       type: 'user',
       content: content.trim(),
       timestamp: new Date().toISOString(),
