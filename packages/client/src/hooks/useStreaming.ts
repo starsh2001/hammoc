@@ -68,20 +68,23 @@ export function useStreaming() {
 
   useEffect(() => {
     const socket = getSocket();
+    let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    const RECONNECT_TIMEOUT = 10000; // 10 seconds
 
     // Handle user:message from buffer replay (restores the user's sent message
     // when reconnecting before SDK has flushed the JSONL file)
     const handleUserMessage = (data: { content: string; sessionId: string }) => {
       if (!data.content) return;
       const msgs = useMessageStore.getState().messages;
-      // Add if not already present as the last user message (handles both
-      // empty store and existing history where JSONL hasn't flushed the latest message)
+      const incomingTrimmed = data.content.trim();
+      // Check against the last user message with trimmed comparison
+      // (addOptimisticMessage stores content.trim(), so comparison must also trim)
       const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
-      if (!lastUserMsg || lastUserMsg.content !== data.content) {
+      if (!lastUserMsg || lastUserMsg.content.trim() !== incomingTrimmed) {
         useMessageStore.getState().addOptimisticMessage(data.content);
       }
       // Detect /compact command and restore compacting indicator
-      if (data.content.trim().startsWith('/compact')) {
+      if (incomingTrimmed.startsWith('/compact')) {
         useChatStore.setState({ isCompacting: true });
       }
     };
@@ -285,6 +288,12 @@ export function useStreaming() {
 
     // Handle stream:status — server tells us if a background stream exists
     const handleStreamStatus = (data: { active: boolean; sessionId: string }) => {
+      // Clear reconnect timeout if set (Task 3)
+      if (reconnectTimeoutId) {
+        clearTimeout(reconnectTimeoutId);
+        reconnectTimeoutId = null;
+      }
+
       if (data.active) {
         // Clear seen permissions so replayed permission:request events are processed
         seenPermissionIds.current.clear();
@@ -292,6 +301,26 @@ export function useStreaming() {
         // Trim the last assistant message from history to avoid duplication
         // with buffer replay (which provides the complete streaming version)
         trimLastAssistantMessage();
+      } else {
+        // Stream not active — if we were streaming, the stream completed during disconnect.
+        // Clean up stale streaming state and fetch authoritative history.
+        const chatState = useChatStore.getState();
+        if (chatState.isStreaming) {
+          completeStreaming(); // sets isStreaming: false, segmentsPendingClear: true
+
+          // Fetch authoritative history to pick up completed responses
+          const msgState = useMessageStore.getState();
+          const projectSlug = msgState.currentProjectSlug;
+          const sessId = msgState.currentSessionId;
+
+          if (projectSlug && sessId) {
+            useMessageStore.getState().fetchMessages(projectSlug, sessId, { silent: true }).then(() => {
+              useChatStore.getState().clearStreamingSegments();
+            });
+          } else {
+            useChatStore.getState().clearStreamingSegments();
+          }
+        }
       }
     };
 
@@ -330,6 +359,15 @@ export function useStreaming() {
         || useMessageStore.getState().currentSessionId;
       if (sessionId && sessionId !== 'pending') {
         socket.emit('session:join', sessionId);
+
+        // Set timeout — if no stream:status received, assume stream completed
+        reconnectTimeoutId = setTimeout(() => {
+          reconnectTimeoutId = null;
+          if (useChatStore.getState().isStreaming) {
+            // Treat as inactive stream (stream completed or server unreachable)
+            handleStreamStatus({ active: false, sessionId });
+          }
+        }, RECONNECT_TIMEOUT);
       }
     };
 
@@ -374,6 +412,13 @@ export function useStreaming() {
 
     // Cleanup
     return () => {
+      // Clear reconnect timeout if pending — prevents stale timeout from
+      // firing after session switch or unmount, which would call
+      // handleStreamStatus on a no-longer-active session
+      if (reconnectTimeoutId) {
+        clearTimeout(reconnectTimeoutId);
+        reconnectTimeoutId = null;
+      }
       socket.off('user:message', handleUserMessage);
       socket.off('session:created', handleSessionInit);
       socket.off('session:resumed', handleSessionInit);

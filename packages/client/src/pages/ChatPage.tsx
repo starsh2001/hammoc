@@ -392,21 +392,37 @@ export function ChatPage() {
     if (!sessionId) return;
 
     const socket = getSocket();
+    let isInitialConnect = true; // Track whether this is first connect or reconnect
+
     const emitJoin = () => {
       // Don't probe if we're already streaming on this session (avoids duplicate buffer replay)
       if (useChatStore.getState().isStreaming) return;
       socket.emit('session:join', sessionId);
     };
 
-    if (socket.connected) {
+    const handleConnect = () => {
       emitJoin();
+
+      // On RECONNECTION (not initial load), do a silent history refresh
+      // to pick up any messages that arrived while disconnected
+      if (!isInitialConnect && projectSlug && sessionId) {
+        const msgState = useMessageStore.getState();
+        if (msgState.currentSessionId === sessionId && msgState.messages.length > 0) {
+          msgState.fetchMessages(projectSlug, sessionId, { silent: true });
+        }
+      }
+      isInitialConnect = false;
+    };
+
+    if (socket.connected) {
+      handleConnect();
     }
-    socket.on('connect', emitJoin);
+    socket.on('connect', handleConnect);
 
     return () => {
-      socket.off('connect', emitJoin);
+      socket.off('connect', handleConnect);
     };
-  }, [sessionId]);
+  }, [sessionId, projectSlug]);
 
   // Reset context usage on session change (separate from fetchMessages useEffect)
   useEffect(() => {

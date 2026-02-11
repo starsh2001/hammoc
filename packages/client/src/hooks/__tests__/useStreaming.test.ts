@@ -364,4 +364,205 @@ describe('useStreaming', () => {
       expect(mockSocket.off).toHaveBeenCalledWith('message:complete', expect.any(Function));
     });
   });
+
+  describe('handleUserMessage — reconnection buffer replay (Story 18.3)', () => {
+    it('TC-R1: prevents duplicate when buffer replay has trailing whitespace', () => {
+      useMessageStore.setState({
+        messages: [
+          { id: 'msg-1', type: 'user', content: 'hello world', timestamp: new Date().toISOString() },
+        ] as ReturnType<typeof useMessageStore.getState>['messages'],
+        currentProjectSlug: 'test-project',
+        currentSessionId: 'test-session',
+      });
+
+      renderHook(() => useStreaming());
+
+      // Buffer replay sends content with trailing whitespace
+      mockSocket.trigger('user:message', { content: 'hello world  ', sessionId: 'test-session' });
+
+      // Should NOT add duplicate — trimmed comparison matches
+      expect(useMessageStore.getState().messages).toHaveLength(1);
+    });
+
+    it('TC-R2: adds optimistic message when content does not match last user message', () => {
+      useMessageStore.setState({
+        messages: [
+          { id: 'msg-1', type: 'user', content: 'first message', timestamp: new Date().toISOString() },
+        ] as ReturnType<typeof useMessageStore.getState>['messages'],
+        currentProjectSlug: 'test-project',
+        currentSessionId: 'test-session',
+      });
+
+      renderHook(() => useStreaming());
+
+      mockSocket.trigger('user:message', { content: 'different message', sessionId: 'test-session' });
+
+      // Should add new message
+      expect(useMessageStore.getState().messages).toHaveLength(2);
+    });
+
+    it('TC-R10: multiple buffer replay calls preserve message order', () => {
+      useMessageStore.setState({
+        messages: [
+          { id: 'msg-1', type: 'user', content: 'first', timestamp: new Date().toISOString() },
+          { id: 'msg-2', type: 'assistant', content: 'response 1', timestamp: new Date().toISOString() },
+        ] as ReturnType<typeof useMessageStore.getState>['messages'],
+        currentProjectSlug: 'test-project',
+        currentSessionId: 'test-session',
+      });
+
+      renderHook(() => useStreaming());
+
+      // Buffer replays a new user message (not matching last user msg)
+      mockSocket.trigger('user:message', { content: 'second', sessionId: 'test-session' });
+
+      const msgs = useMessageStore.getState().messages;
+      expect(msgs).toHaveLength(3);
+      // Original messages remain in order, new message appended at end
+      expect(msgs[0].content).toBe('first');
+      expect(msgs[1].content).toBe('response 1');
+      expect(msgs[2].content).toBe('second');
+    });
+  });
+
+  describe('handleStreamStatus — inactive handling (Story 18.3)', () => {
+    it('TC-R3: calls completeStreaming when stream:status active=false and isStreaming=true', () => {
+      useChatStore.setState({
+        isStreaming: true,
+        streamingSessionId: 'session-1',
+        streamingMessageId: 'msg-1',
+        streamingSegments: [{ type: 'text', content: 'partial' }],
+        streamingStartedAt: new Date(),
+      });
+      useMessageStore.setState({
+        messages: [],
+        currentProjectSlug: 'test-project',
+        currentSessionId: 'session-1',
+      });
+
+      renderHook(() => useStreaming());
+
+      mockSocket.trigger('stream:status', { active: false, sessionId: 'session-1' });
+
+      // completeStreaming sets isStreaming: false, segmentsPendingClear: true
+      expect(useChatStore.getState().isStreaming).toBe(false);
+      expect(useChatStore.getState().segmentsPendingClear).toBe(true);
+    });
+
+    it('TC-R4: calls fetchMessages in silent mode when stream:status active=false', async () => {
+      const fetchMessagesSpy = vi.fn().mockResolvedValue(undefined);
+      useChatStore.setState({
+        isStreaming: true,
+        streamingSessionId: 'session-1',
+        streamingMessageId: 'msg-1',
+        streamingSegments: [{ type: 'text', content: 'partial' }],
+        streamingStartedAt: new Date(),
+      });
+      useMessageStore.setState({
+        messages: [],
+        currentProjectSlug: 'test-project',
+        currentSessionId: 'session-1',
+        fetchMessages: fetchMessagesSpy,
+      } as unknown as ReturnType<typeof useMessageStore.getState>);
+
+      renderHook(() => useStreaming());
+
+      mockSocket.trigger('stream:status', { active: false, sessionId: 'session-1' });
+
+      // fetchMessages should be called with silent: true
+      await vi.waitFor(() => {
+        expect(fetchMessagesSpy).toHaveBeenCalledWith('test-project', 'session-1', { silent: true });
+      });
+    });
+
+    it('TC-R5: does nothing when stream:status active=false and isStreaming=false', () => {
+      useChatStore.setState({
+        isStreaming: false,
+        streamingSessionId: null,
+        streamingSegments: [],
+      });
+
+      renderHook(() => useStreaming());
+
+      mockSocket.trigger('stream:status', { active: false, sessionId: 'session-1' });
+
+      // No state change
+      expect(useChatStore.getState().isStreaming).toBe(false);
+      expect(useChatStore.getState().segmentsPendingClear).toBeFalsy();
+    });
+  });
+
+  describe('reconnection timeout (Story 18.3)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('TC-R6: triggers completeStreaming after 10s timeout when no stream:status received', () => {
+      useChatStore.setState({
+        isStreaming: true,
+        streamingSessionId: 'session-1',
+        streamingMessageId: 'msg-1',
+        streamingSegments: [{ type: 'text', content: 'partial' }],
+        streamingStartedAt: new Date(),
+      });
+      useMessageStore.setState({
+        messages: [],
+        currentProjectSlug: 'test-project',
+        currentSessionId: 'session-1',
+      });
+
+      renderHook(() => useStreaming());
+
+      // Simulate reconnection
+      mockSocket.trigger('connect');
+
+      // Verify session:join was emitted
+      expect(mockSocket.emit).toHaveBeenCalledWith('session:join', 'session-1');
+
+      // Before timeout: still streaming
+      expect(useChatStore.getState().isStreaming).toBe(true);
+
+      // Advance time by 10 seconds
+      vi.advanceTimersByTime(10000);
+
+      // After timeout: streaming should be completed
+      expect(useChatStore.getState().isStreaming).toBe(false);
+      expect(useChatStore.getState().segmentsPendingClear).toBe(true);
+    });
+
+    it('TC-R7: cancels timeout when stream:status is received', () => {
+      useChatStore.setState({
+        isStreaming: true,
+        streamingSessionId: 'session-1',
+        streamingMessageId: 'msg-1',
+        streamingSegments: [{ type: 'text', content: 'partial' }],
+        streamingStartedAt: new Date(),
+      });
+      useMessageStore.setState({
+        messages: [
+          { id: 'msg-1', type: 'user', content: 'hello', timestamp: new Date().toISOString() },
+        ] as ReturnType<typeof useMessageStore.getState>['messages'],
+        currentProjectSlug: 'test-project',
+        currentSessionId: 'session-1',
+      });
+
+      renderHook(() => useStreaming());
+
+      // Simulate reconnection
+      mockSocket.trigger('connect');
+
+      // Receive stream:status before timeout
+      mockSocket.trigger('stream:status', { active: true, sessionId: 'session-1' });
+
+      // Advance time past the timeout threshold
+      vi.advanceTimersByTime(10000);
+
+      // Should still be streaming (restored by active: true, not timed out)
+      expect(useChatStore.getState().isStreaming).toBe(true);
+    });
+  });
 });
