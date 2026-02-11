@@ -236,7 +236,9 @@ export class SessionService {
             if (typeof content === 'string') {
               rawText = content;
             } else if (Array.isArray(content)) {
-              const textBlock = content.find((b: { type: string }) => b.type === 'text');
+              const textBlock = content
+                .filter((b: { type: string }) => b.type === 'text')
+                .find((b) => 'text' in b && cleanCommandTags(b.text as string).trim());
               if (textBlock && 'text' in textBlock) {
                 rawText = textBlock.text as string;
               }
@@ -302,7 +304,9 @@ export class SessionService {
               if (typeof content === 'string') {
                 rawText = content;
               } else if (Array.isArray(content)) {
-                const textBlock = content.find((b: { type: string }) => b.type === 'text');
+                const textBlock = content
+                  .filter((b: { type: string }) => b.type === 'text')
+                  .find((b) => 'text' in b && cleanCommandTags(b.text as string).trim());
                 if (textBlock && 'text' in textBlock) {
                   rawText = textBlock.text as string;
                 }

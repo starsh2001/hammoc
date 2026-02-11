@@ -10,4 +10,6 @@ export const STORAGE_KEYS = {
   TEST_PROJECT_PATH: 'bmad-studio-test-project-path',
   /** Diff layout preference (side-by-side | inline) */
   DIFF_LAYOUT: 'bmad-studio-diff-layout',
+  /** Layout mode preference (narrow | wide) */
+  LAYOUT_MODE: 'bmad-studio-layout-mode',
 } as const;

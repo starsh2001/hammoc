@@ -340,7 +340,7 @@ describe('CommandService', () => {
       });
     });
 
-    it('TC12: should skip commands with non-string description values (nested objects)', () => {
+    it('TC12: should include commands with non-string description values using empty description', () => {
       const agentYaml = {
         agent: { id: 'dev', name: 'James', title: 'Developer' },
         commands: [
@@ -352,9 +352,10 @@ describe('CommandService', () => {
 
       const result = commandService.parseStarCommands('dev', agentYaml);
 
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(3);
       expect(result[0].command).toBe('help');
-      expect(result[1].command).toBe('exit');
+      expect(result[1]).toEqual({ agentId: 'dev', command: 'develop-story', description: 'Complex workflow command' });
+      expect(result[2].command).toBe('exit');
     });
   });
 

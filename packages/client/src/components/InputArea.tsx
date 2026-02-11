@@ -19,15 +19,17 @@ export function InputArea({ children, disabled = false }: InputAreaProps) {
       aria-label="메시지 입력"
       data-testid="input-area"
       className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700
-                  bg-white dark:bg-gray-800 p-4
+                  bg-[#fbfbfc] dark:bg-[#151d2c]
                   pb-[max(1rem,env(safe-area-inset-bottom))]
                   ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
     >
+      <div className="content-container p-4 pb-0">
       {children || (
         <div className="text-center text-gray-500 dark:text-gray-400 text-sm">
           메시지 입력은 Story 4.2에서 구현됩니다.
         </div>
       )}
+      </div>
     </footer>
   );
 }

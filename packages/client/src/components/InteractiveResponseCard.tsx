@@ -380,7 +380,7 @@ export function InteractiveResponseCard({
 
   return (
     <div
-      className="max-w-[80%] rounded-lg border shadow-sm bg-white dark:bg-gray-800 animate-fadeInUp motion-reduce:animate-none"
+      className="max-w-[80%] rounded-lg border shadow-sm bg-gray-50 dark:bg-gray-800 animate-fadeInUp motion-reduce:animate-none"
       role="group"
       aria-labelledby={`interactive-header-${toolName || 'question'}`}
       data-testid="interactive-response-card"

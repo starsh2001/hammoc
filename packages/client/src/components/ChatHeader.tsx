@@ -14,6 +14,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { formatAgentRoleLabel } from '../utils/agentUtils';
 import { ThemeToggleButton } from './ThemeToggleButton';
+import { LayoutToggleButton } from './LayoutToggleButton';
 import { HeaderOverflowMenu } from './HeaderOverflowMenu';
 import { SettingsMenu } from './SettingsMenu';
 import { BrandLogo } from './BrandLogo';
@@ -96,10 +97,10 @@ export function ChatHeader({
     <header
       aria-label="채팅 헤더"
       data-testid="chat-header"
-      className="flex-shrink-0 sticky top-0 z-10 bg-white dark:bg-gray-800
+      className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800
                  border-b border-gray-200 dark:border-gray-700"
     >
-      <div className="flex items-center justify-between px-4 py-3 min-h-16">
+      <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
         {/* Left side: Back button and project info */}
         <div className="flex items-center min-w-0 flex-1">
           {onBack && (
@@ -237,7 +238,8 @@ export function ChatHeader({
             </button>
           )}
 
-          <div className="hidden md:block">
+          <div className="hidden md:flex items-center">
+            <LayoutToggleButton />
             <ThemeToggleButton />
           </div>
 

@@ -70,7 +70,7 @@ export function MessageBubble({
         className={`relative group max-w-[90%] md:max-w-[80%] ${
           isUser
             ? 'bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-l-lg rounded-tr-lg'
-            : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700'
+            : 'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700'
         } p-3 shadow-sm`}
       >
         {/* Icon for assistant */}

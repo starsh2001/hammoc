@@ -83,7 +83,7 @@ export function SessionListPage() {
 
   // Compute empty session IDs
   const emptySessionIds = useMemo(
-    () => sessions.filter((s) => !s.firstPrompt || s.messageCount === 0).map((s) => s.sessionId),
+    () => sessions.filter((s) => s.messageCount === 0).map((s) => s.sessionId),
     [sessions]
   );
 
@@ -247,9 +247,9 @@ export function SessionListPage() {
   // Error state rendering
   if (error && errorType !== 'none') {
     return (
-      <div className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="h-dvh flex flex-col bg-white dark:bg-gray-900">
         {/* Header */}
-        <header className="flex-shrink-0 sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between px-4 py-3 min-h-16">
             <div className="flex items-center min-w-0 flex-1">
               <button
@@ -280,9 +280,9 @@ export function SessionListPage() {
   }
 
   return (
-    <div className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-dvh flex flex-col bg-white dark:bg-gray-900">
       {/* Header with actions */}
-      <header className="flex-shrink-0 sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between px-4 py-3 min-h-16">
           <div className="flex items-center min-w-0 flex-1">
             <button

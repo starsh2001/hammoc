@@ -74,7 +74,7 @@ export function PermissionCard({
   return (
     <>
       <div
-        className="max-w-[80%] rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-800"
+        className="max-w-[80%] rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm bg-gray-50 dark:bg-gray-800"
         data-testid="permission-card"
       >
         {/* File Header - clickable to open fullscreen DiffViewer */}

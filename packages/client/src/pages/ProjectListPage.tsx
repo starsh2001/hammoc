@@ -17,6 +17,7 @@ import { SettingsMenu } from '../components/SettingsMenu';
 import { NewProjectDialog } from '../components/NewProjectDialog';
 import { BrandLogo } from '../components/BrandLogo';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
+import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useTheme } from '../hooks/useTheme';
 
@@ -135,16 +136,17 @@ export function ProjectListPage() {
   // Error state
   if (error) {
     return (
-      <div className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+      <div className="h-dvh flex flex-col bg-white dark:bg-gray-900 transition-colors duration-200">
         {/* Header */}
-        <header className="flex-shrink-0 sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between px-4 py-3 min-h-16">
+        <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
             <div className="flex items-center min-w-0 flex-1">
               <BrandLogo />
               <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
               <h1 className="text-base font-semibold text-gray-900 dark:text-white">프로젝트</h1>
             </div>
             <div className="flex items-center gap-1 ml-4">
+              <LayoutToggleButton className="hidden sm:block" />
               <ThemeToggleButton className="hidden sm:block" />
               <div className="relative hidden sm:block">
                 <button
@@ -212,10 +214,10 @@ export function ProjectListPage() {
   }
 
   return (
-    <div className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <div className="h-dvh flex flex-col bg-white dark:bg-gray-900 transition-colors duration-200">
       {/* Header */}
-      <header className="flex-shrink-0 sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between px-4 py-3 min-h-16">
+      <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
           <div className="flex items-center min-w-0 flex-1">
             <BrandLogo />
             <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
@@ -230,7 +232,7 @@ export function ProjectListPage() {
               <Plus className="w-4 h-4" aria-hidden="true" />
               새 프로젝트
             </button>
-
+            <div className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700 ml-2" />
             {hiddenCount > 0 && (
               <button
                 onClick={() => setShowHidden(!showHidden)}
@@ -256,6 +258,7 @@ export function ProjectListPage() {
                 aria-hidden="true"
               />
             </button>
+            <LayoutToggleButton className="hidden sm:block" />
             <ThemeToggleButton className="hidden sm:block" />
             <div className="relative hidden sm:block">
               <button
@@ -319,7 +322,8 @@ export function ProjectListPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto p-4" role="main">
+      <main className="flex-1 overflow-auto" role="main">
+        <div className="content-container p-4">
         {/* Loading State */}
         {isLoading && <ProjectListPageSkeleton />}
 
@@ -364,6 +368,7 @@ export function ProjectListPage() {
             ))}
           </div>
         )}
+        </div>
       </main>
 
       {/* New Project Dialog */}

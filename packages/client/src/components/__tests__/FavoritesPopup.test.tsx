@@ -187,8 +187,7 @@ describe('FavoritesPopup', () => {
 
       const header = screen.getByTestId('star-section-header');
       expect(header.textContent).toContain('🏃');
-      expect(header.textContent).toContain('SM (Bob)');
-      expect(header.textContent).toContain('별표 즐겨찾기');
+      expect(header.textContent).toContain('Agent Command');
     });
 
     // TC-P2: Star items show * prefix, command name, and description
