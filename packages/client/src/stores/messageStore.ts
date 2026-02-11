@@ -9,6 +9,7 @@ import { sessionsApi } from '../services/api/sessions';
 import { ApiError } from '../services/api/client';
 import { useChatStore } from './chatStore';
 import { generateUUID } from '../utils/uuid';
+import { debugLog } from '../utils/debugLogger';
 
 /** Client-local extension: marks optimistic messages for reconciliation */
 type OptimisticHistoryMessage = HistoryMessage & { _optimistic?: boolean };
@@ -134,6 +135,15 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
   fetchMessages: async (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number }) => {
     const state = get();
     const isSameSession = state.currentSessionId === sessionId;
+    debugLog.message('fetchMessages called', {
+      projectSlug,
+      sessionId,
+      silent: options?.silent,
+      minMessageCount: options?.minMessageCount,
+      isSameSession,
+      currentMsgCount: state.messages.length,
+      isStreaming: useChatStore.getState().isStreaming,
+    });
 
     // Clear if switching session
     if (!isSameSession) {
@@ -157,6 +167,10 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       // Stale data guard: if caller specified a minimum message count and
       // the server returned fewer messages, the SDK hasn't flushed yet — skip update.
       if (options?.minMessageCount && response.messages.length < options.minMessageCount) {
+        debugLog.message('fetchMessages → stale data guard (minMessageCount)', {
+          serverCount: response.messages.length,
+          minRequired: options.minMessageCount,
+        });
         return;
       }
 
@@ -165,6 +179,11 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       // between request send and response arrival)
       const currentMessages = get().messages;
       if (response.messages.length < currentMessages.length && useChatStore.getState().isStreaming) {
+        debugLog.message('fetchMessages → streaming guard (server < current)', {
+          serverCount: response.messages.length,
+          currentCount: currentMessages.length,
+          isStreaming: true,
+        });
         set({ isLoading: false });
         return;
       }
@@ -172,6 +191,14 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       // Reconcile optimistic messages with server-authoritative messages
       // (includes image preservation from optimistic originals)
       const reconciledMessages = reconcileOptimisticMessages(currentMessages, response.messages);
+
+      debugLog.message('fetchMessages → messages updated', {
+        serverCount: response.messages.length,
+        currentCount: currentMessages.length,
+        reconciledCount: reconciledMessages.length,
+        lastMsgType: reconciledMessages[reconciledMessages.length - 1]?.type,
+        lastMsgPreview: reconciledMessages[reconciledMessages.length - 1]?.content?.slice(0, 50),
+      });
 
       set({
         messages: reconciledMessages,

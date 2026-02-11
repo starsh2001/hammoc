@@ -15,6 +15,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
+import { debugLog } from '../utils/debugLogger';
 import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData } from '@bmad-studio/shared';
 
 export function useStreaming() {
@@ -80,7 +81,15 @@ export function useStreaming() {
       // Check against the last user message with trimmed comparison
       // (addOptimisticMessage stores content.trim(), so comparison must also trim)
       const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
-      if (!lastUserMsg || lastUserMsg.content.trim() !== incomingTrimmed) {
+      const isDuplicate = lastUserMsg && lastUserMsg.content.trim() === incomingTrimmed;
+      debugLog.message('user:message', {
+        sessionId: data.sessionId,
+        contentPreview: data.content.slice(0, 50),
+        msgCount: msgs.length,
+        isDuplicate,
+        lastUserMsgId: lastUserMsg?.id,
+      });
+      if (!isDuplicate) {
         useMessageStore.getState().addOptimisticMessage(data.content);
       }
       // Detect /compact command and restore compacting indicator
@@ -102,6 +111,14 @@ export function useStreaming() {
     // Handle incoming stream chunks
     const handleChunk = (data: StreamChunk) => {
       const state = useChatStore.getState();
+      debugLog.stream('message:chunk', {
+        sessionId: data.sessionId,
+        messageId: data.messageId,
+        contentLen: data.content.length,
+        isStreaming: state.isStreaming,
+        streamingSessionId: state.streamingSessionId,
+        segmentCount: state.streamingSegments.length,
+      });
       if (state.streamingSessionId === null) {
         // First chunk — initialize streaming state
         startStreaming(data.sessionId, data.messageId);
@@ -117,6 +134,13 @@ export function useStreaming() {
       // Update streamingSessionId with the actual sessionId from result
       // (SDK doesn't send 'init' message, so sessionId only comes in 'result')
       const chatState = useChatStore.getState();
+      debugLog.stream('message:complete', {
+        sessionId: data.sessionId,
+        isStreaming: chatState.isStreaming,
+        streamingSessionId: chatState.streamingSessionId,
+        segmentCount: chatState.streamingSegments.length,
+        msgCount: useMessageStore.getState().messages.length,
+      });
       // Update sessionId if not yet set, pending, or empty string (from no-init resume mode)
       // Use updateStreamingSessionId to avoid resetting segments
       if (data.sessionId && (!chatState.streamingSessionId || chatState.streamingSessionId === 'pending')) {
@@ -150,8 +174,20 @@ export function useStreaming() {
         const attemptFetch = async (attempt: number) => {
           const store = useMessageStore.getState();
           const countBefore = store.messages.length;
+          debugLog.stream('complete → fetchMessages attempt', {
+            attempt,
+            countBefore,
+            projectSlug,
+            sessId,
+          });
           await store.fetchMessages(projectSlug, sessId, { silent: true, minMessageCount: countBefore });
           const countAfter = useMessageStore.getState().messages.length;
+          debugLog.stream('complete → fetchMessages result', {
+            attempt,
+            countBefore,
+            countAfter,
+            updated: countAfter > countBefore,
+          });
           if (countAfter > countBefore) {
             // History updated — safe to clear segments
             clearTimeout(timeoutId);
@@ -161,6 +197,7 @@ export function useStreaming() {
             setTimeout(() => attemptFetch(attempt + 1), RETRY_DELAYS[attempt] ?? 5000);
           } else {
             // All retries exhausted — force clear segments
+            debugLog.stream('complete → all retries exhausted, force clearing segments');
             clearTimeout(timeoutId);
             useChatStore.getState().clearStreamingSegments();
           }
@@ -273,6 +310,12 @@ export function useStreaming() {
     // (fires before message:chunk, so URL can navigate from /new to real sessionId immediately)
     const handleSessionInit = (data: { sessionId: string; model?: string }) => {
       const state = useChatStore.getState();
+      debugLog.stream('session:init', {
+        sessionId: data.sessionId,
+        model: data.model,
+        currentStreamingSessionId: state.streamingSessionId,
+        isStreaming: state.isStreaming,
+      });
       if (!state.streamingSessionId || state.streamingSessionId === 'pending') {
         updateStreamingSessionId(data.sessionId);
       }
@@ -288,6 +331,17 @@ export function useStreaming() {
 
     // Handle stream:status — server tells us if a background stream exists
     const handleStreamStatus = (data: { active: boolean; sessionId: string }) => {
+      const chatState = useChatStore.getState();
+      debugLog.stream('stream:status', {
+        active: data.active,
+        sessionId: data.sessionId,
+        isStreaming: chatState.isStreaming,
+        streamingSessionId: chatState.streamingSessionId,
+        segmentCount: chatState.streamingSegments.length,
+        hadTimeout: !!reconnectTimeoutId,
+        msgCount: useMessageStore.getState().messages.length,
+      });
+
       // Clear reconnect timeout if set (Task 3)
       if (reconnectTimeoutId) {
         clearTimeout(reconnectTimeoutId);
@@ -301,11 +355,14 @@ export function useStreaming() {
         // Trim the last assistant message from history to avoid duplication
         // with buffer replay (which provides the complete streaming version)
         trimLastAssistantMessage();
+        debugLog.stream('stream:status → restored', { sessionId: data.sessionId });
       } else {
         // Stream not active — if we were streaming, the stream completed during disconnect.
         // Clean up stale streaming state and fetch authoritative history.
-        const chatState = useChatStore.getState();
         if (chatState.isStreaming) {
+          debugLog.stream('stream:status → completing stale stream', {
+            sessionId: data.sessionId,
+          });
           completeStreaming(); // sets isStreaming: false, segmentsPendingClear: true
 
           // Fetch authoritative history to pick up completed responses
@@ -315,11 +372,16 @@ export function useStreaming() {
 
           if (projectSlug && sessId) {
             useMessageStore.getState().fetchMessages(projectSlug, sessId, { silent: true }).then(() => {
+              debugLog.stream('stream:status → fetchMessages done, clearing segments', {
+                msgCount: useMessageStore.getState().messages.length,
+              });
               useChatStore.getState().clearStreamingSegments();
             });
           } else {
             useChatStore.getState().clearStreamingSegments();
           }
+        } else {
+          debugLog.stream('stream:status → inactive, no-op (not streaming)');
         }
       }
     };
@@ -339,6 +401,9 @@ export function useStreaming() {
 
     // Handle stream:detached — another browser took over this stream
     const handleStreamDetached = () => {
+      debugLog.stream('stream:detached', {
+        isStreaming: useChatStore.getState().isStreaming,
+      });
       if (useChatStore.getState().isStreaming) {
         addSystemSegment('다른 브라우저에서 이 세션에 연결되어 실시간 스트리밍이 중단되었습니다.', 'info');
         completeStreaming();
@@ -347,6 +412,13 @@ export function useStreaming() {
 
     // Handle disconnection during streaming
     const handleDisconnect = () => {
+      const state = useChatStore.getState();
+      debugLog.reconnect('disconnect', {
+        isStreaming: state.isStreaming,
+        streamingSessionId: state.streamingSessionId,
+        segmentCount: state.streamingSegments.length,
+        msgCount: useMessageStore.getState().messages.length,
+      });
       // Keep streaming state - wait for reconnect
     };
 
@@ -354,15 +426,27 @@ export function useStreaming() {
     // Initial background-stream probe is handled by ChatPage's emitJoin,
     // so this only fires for genuine reconnections while already streaming.
     const handleReconnect = () => {
-      if (!useChatStore.getState().isStreaming) return;
-      const sessionId = useChatStore.getState().streamingSessionId
+      const state = useChatStore.getState();
+      debugLog.reconnect('connect (reconnect handler)', {
+        isStreaming: state.isStreaming,
+        streamingSessionId: state.streamingSessionId,
+        segmentCount: state.streamingSegments.length,
+        msgCount: useMessageStore.getState().messages.length,
+      });
+      if (!state.isStreaming) return;
+      const sessionId = state.streamingSessionId
         || useMessageStore.getState().currentSessionId;
       if (sessionId && sessionId !== 'pending') {
+        debugLog.reconnect('session:join emitted', { sessionId });
         socket.emit('session:join', sessionId);
 
         // Set timeout — if no stream:status received, assume stream completed
         reconnectTimeoutId = setTimeout(() => {
           reconnectTimeoutId = null;
+          debugLog.reconnect('timeout fired (10s)', {
+            isStreaming: useChatStore.getState().isStreaming,
+            sessionId,
+          });
           if (useChatStore.getState().isStreaming) {
             // Treat as inactive stream (stream completed or server unreachable)
             handleStreamStatus({ active: false, sessionId });
@@ -373,6 +457,9 @@ export function useStreaming() {
 
     // Handle reconnection failure
     const handleReconnectFailed = () => {
+      debugLog.reconnect('reconnect_failed', {
+        isStreaming: useChatStore.getState().isStreaming,
+      });
       if (useChatStore.getState().isStreaming) {
         abortStreaming();
       }
@@ -380,6 +467,7 @@ export function useStreaming() {
 
     // Handle server errors
     const handleError = () => {
+      debugLog.socket('error', { isStreaming: useChatStore.getState().isStreaming });
       abortStreaming();
     };
 
