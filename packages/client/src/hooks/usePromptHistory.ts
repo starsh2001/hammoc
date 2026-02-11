@@ -1,78 +1,83 @@
 /**
  * usePromptHistory - Terminal-like prompt history navigation with ArrowUp/Down
  *
- * Stores user-sent messages in localStorage per project.
+ * Stores user-sent messages per session on the server.
  * Supports navigating through history with ArrowUp/Down keys,
  * preserving the current draft when entering history mode.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { sessionsApi } from '../services/api/sessions';
 
 const MAX_HISTORY = 50;
-const STORAGE_KEY_PREFIX = 'bmad-studio:prompt-history';
+const SAVE_DEBOUNCE_MS = 500;
 
-function getStorageKey(projectSlug: string): string {
-  return `${STORAGE_KEY_PREFIX}:${projectSlug}`;
-}
-
-function loadHistory(projectSlug: string | null): string[] {
-  if (!projectSlug) return [];
-  try {
-    const raw = localStorage.getItem(getStorageKey(projectSlug));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveHistory(projectSlug: string | null, history: string[]): void {
-  if (!projectSlug) return;
-  try {
-    localStorage.setItem(
-      getStorageKey(projectSlug),
-      JSON.stringify(history.slice(-MAX_HISTORY)),
-    );
-  } catch {
-    // localStorage full or unavailable - silently ignore
-  }
-}
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function usePromptHistory() {
-  const { projectSlug } = useParams<{ projectSlug: string }>();
+  const { projectSlug, sessionId } = useParams<{ projectSlug: string; sessionId: string }>();
   const [historyIndex, setHistoryIndex] = useState(-1);
   const draftRef = useRef('');
   const historyCache = useRef<string[]>([]);
+  const currentKeyRef = useRef<string>('');
 
-  // Sync cache when project changes
+  // Debounced save to server
+  const saveToServer = useCallback((slug: string, sid: string, history: string[]) => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      sessionsApi.savePromptHistory(slug, sid, { history: history.slice(-MAX_HISTORY) }).catch((err) => {
+        console.error('[usePromptHistory] Failed to save:', err);
+      });
+    }, SAVE_DEBOUNCE_MS);
+  }, []);
+
+  // Load from server when session changes
   useEffect(() => {
-    historyCache.current = loadHistory(projectSlug ?? null);
+    const key = `${projectSlug}:${sessionId}`;
+    if (key === currentKeyRef.current) return;
+    currentKeyRef.current = key;
+
     setHistoryIndex(-1);
     draftRef.current = '';
-  }, [projectSlug]);
+    historyCache.current = [];
+
+    if (!projectSlug || !sessionId) return;
+
+    sessionsApi.getPromptHistory(projectSlug, sessionId)
+      .then((data) => {
+        // Only apply if still on the same session
+        if (currentKeyRef.current === key) {
+          historyCache.current = data.history ?? [];
+        }
+      })
+      .catch(() => {
+        // Server unreachable — start with empty history
+      });
+  }, [projectSlug, sessionId]);
 
   const addToHistory = useCallback(
     (prompt: string) => {
       const trimmed = prompt.trim();
-      if (!trimmed || !projectSlug) return;
+      if (!trimmed || !projectSlug || !sessionId) return;
 
-      const history = loadHistory(projectSlug);
+      const history = historyCache.current;
       // Avoid consecutive duplicates
       if (history.length > 0 && history[history.length - 1] === trimmed) {
-        historyCache.current = history;
         setHistoryIndex(-1);
         draftRef.current = '';
         return;
       }
       history.push(trimmed);
-      saveHistory(projectSlug, history);
-      historyCache.current = history;
+      // Trim to max
+      if (history.length > MAX_HISTORY) {
+        historyCache.current = history.slice(-MAX_HISTORY);
+      }
       setHistoryIndex(-1);
       draftRef.current = '';
+      saveToServer(projectSlug, sessionId, historyCache.current);
     },
-    [projectSlug],
+    [projectSlug, sessionId, saveToServer],
   );
 
   const navigateUp = useCallback(

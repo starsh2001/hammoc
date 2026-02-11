@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { SessionListResponse, HistoryMessagesResponse, DeleteSessionResponse, DeleteSessionsBatchResponse, UpdateSessionNameResponse } from '@bmad-studio/shared';
+import type { SessionListResponse, HistoryMessagesResponse, DeleteSessionResponse, DeleteSessionsBatchResponse, UpdateSessionNameResponse, PromptHistoryData } from '@bmad-studio/shared';
 
 export const sessionsApi = {
   /**
@@ -54,4 +54,12 @@ export const sessionsApi = {
   /** Update or remove a session's custom name */
   updateName: (projectSlug: string, sessionId: string, name: string | null) =>
     api.patch<UpdateSessionNameResponse>(`/projects/${projectSlug}/sessions/${sessionId}/name`, { name }),
+
+  /** Get prompt history for a session */
+  getPromptHistory: (projectSlug: string, sessionId: string) =>
+    api.get<PromptHistoryData>(`/projects/${projectSlug}/sessions/${sessionId}/prompt-history`),
+
+  /** Save prompt history for a session */
+  savePromptHistory: (projectSlug: string, sessionId: string, data: PromptHistoryData) =>
+    api.post<void>(`/projects/${projectSlug}/sessions/${sessionId}/prompt-history`, data),
 };

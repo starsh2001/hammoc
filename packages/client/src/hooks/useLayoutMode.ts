@@ -1,11 +1,11 @@
 /**
  * Layout Mode Hook
  * Manages narrow (1280px) / wide (full-width) layout preference
- * with localStorage persistence
+ * with server-side persistence (via preferencesStore)
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { STORAGE_KEYS } from '../constants/storageKeys';
+import { usePreferencesStore } from '../stores/preferencesStore';
 
 export type LayoutMode = 'narrow' | 'wide';
 
@@ -16,14 +16,22 @@ export interface UseLayoutModeReturn {
 }
 
 function getInitialMode(): LayoutMode {
-  if (typeof window === 'undefined') return 'narrow';
-  const stored = localStorage.getItem(STORAGE_KEYS.LAYOUT_MODE);
+  const stored = usePreferencesStore.getState().preferences.layoutMode;
   if (stored === 'narrow' || stored === 'wide') return stored;
   return 'narrow';
 }
 
 export function useLayoutMode(): UseLayoutModeReturn {
   const [layoutMode, setModeState] = useState<LayoutMode>(getInitialMode);
+
+  // Sync with preferencesStore when server data arrives
+  const storeMode = usePreferencesStore((s) => s.preferences.layoutMode);
+  useEffect(() => {
+    if (storeMode && storeMode !== layoutMode) {
+      setModeState(storeMode);
+      applyMode(storeMode);
+    }
+  }, [storeMode]);
 
   const applyMode = useCallback((mode: LayoutMode) => {
     if (mode === 'narrow') {
@@ -36,8 +44,8 @@ export function useLayoutMode(): UseLayoutModeReturn {
   const setLayoutMode = useCallback(
     (mode: LayoutMode) => {
       setModeState(mode);
-      localStorage.setItem(STORAGE_KEYS.LAYOUT_MODE, mode);
       applyMode(mode);
+      usePreferencesStore.getState().updatePreference('layoutMode', mode);
     },
     [applyMode]
   );

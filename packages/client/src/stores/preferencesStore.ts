@@ -1,0 +1,172 @@
+/**
+ * Preferences Store - Zustand store for server-persisted user preferences
+ *
+ * Strategy: Write-through cache
+ * - localStorage = fast cache (prevents flash on initial load)
+ * - Server = persistent source of truth
+ * - Writes: state + localStorage + debounced server PATCH
+ * - Reads: localStorage immediately → server fetch in background → reconcile
+ */
+
+import { create } from 'zustand';
+import type { UserPreferences } from '@bmad-studio/shared';
+import { preferencesApi } from '../services/api/preferences';
+
+const CACHE_KEY = 'bmad-studio-preferences';
+const DEBOUNCE_MS = 300;
+
+// localStorage helpers
+function readCache(): UserPreferences {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeCache(prefs: UserPreferences): void {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(prefs));
+  } catch {
+    // quota exceeded — in-memory state is still updated
+  }
+}
+
+// Legacy localStorage keys for one-time migration
+const LEGACY_KEYS = {
+  theme: 'bmad-studio-theme',
+  layoutMode: 'bmad-studio-layout-mode',
+  diffLayout: 'bmad-studio-diff-layout',
+} as const;
+
+const LEGACY_FAVORITES_PREFIX = 'bmad-command-favorites';
+const LEGACY_STAR_PREFIX = 'bmad-star-favorites';
+
+function collectLegacyPreferences(): UserPreferences {
+  const prefs: UserPreferences = {};
+
+  // Simple global settings
+  const theme = localStorage.getItem(LEGACY_KEYS.theme);
+  if (theme === 'light' || theme === 'dark') prefs.theme = theme;
+
+  const layoutMode = localStorage.getItem(LEGACY_KEYS.layoutMode);
+  if (layoutMode === 'narrow' || layoutMode === 'wide') prefs.layoutMode = layoutMode;
+
+  const diffLayout = localStorage.getItem(LEGACY_KEYS.diffLayout);
+  if (diffLayout === 'side-by-side' || diffLayout === 'inline') prefs.diffLayout = diffLayout;
+
+  // Collect command favorites from all projects (merge into global list)
+  const allFavorites = new Set<string>();
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith(LEGACY_FAVORITES_PREFIX + ':')) {
+      try {
+        const arr = JSON.parse(localStorage.getItem(key) || '[]');
+        if (Array.isArray(arr)) arr.forEach((c: string) => allFavorites.add(c));
+      } catch { /* skip */ }
+    }
+  }
+  if (allFavorites.size > 0) prefs.commandFavorites = [...allFavorites].slice(0, 20);
+
+  // Collect star favorites from all projects (key by agentId only)
+  const allStars: Record<string, Set<string>> = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith(LEGACY_STAR_PREFIX + ':')) {
+      // Format: bmad-star-favorites:{projectSlug}:{agentId}
+      const parts = key.split(':');
+      const agentId = parts.slice(2).join(':'); // agentId may contain colons
+      if (!agentId) continue;
+      try {
+        const arr = JSON.parse(localStorage.getItem(key) || '[]');
+        if (!Array.isArray(arr)) continue;
+        if (!allStars[agentId]) allStars[agentId] = new Set();
+        arr.forEach((c: string) => allStars[agentId].add(c));
+      } catch { /* skip */ }
+    }
+  }
+  if (Object.keys(allStars).length > 0) {
+    prefs.starFavorites = {};
+    for (const [agentId, cmds] of Object.entries(allStars)) {
+      prefs.starFavorites[agentId] = [...cmds].slice(0, 10);
+    }
+  }
+
+  return prefs;
+}
+
+interface PreferencesStore {
+  preferences: UserPreferences;
+  loaded: boolean;
+  init: () => Promise<void>;
+  updatePreference: <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => void;
+  updatePreferences: (partial: Partial<UserPreferences>) => void;
+}
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingPatch: Partial<UserPreferences> = {};
+
+function flushToServer() {
+  if (Object.keys(pendingPatch).length === 0) return;
+  const patch = { ...pendingPatch };
+  pendingPatch = {};
+  preferencesApi.update(patch).catch((err) => {
+    console.error('[preferencesStore] Failed to save preferences:', err);
+  });
+}
+
+function schedulePatch(partial: Partial<UserPreferences>) {
+  Object.assign(pendingPatch, partial);
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(flushToServer, DEBOUNCE_MS);
+}
+
+export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
+  preferences: readCache(),
+  loaded: false,
+
+  init: async () => {
+    if (get().loaded) return;
+    try {
+      const serverPrefs = await preferencesApi.get();
+      const hasServerData = Object.keys(serverPrefs).length > 0;
+
+      if (hasServerData) {
+        // Server has data — it's the source of truth
+        set({ preferences: serverPrefs, loaded: true });
+        writeCache(serverPrefs);
+      } else {
+        // Server empty — migrate from localStorage
+        const legacy = collectLegacyPreferences();
+        const hasLegacy = Object.keys(legacy).length > 0;
+        if (hasLegacy) {
+          // Send legacy data to server
+          const saved = await preferencesApi.update(legacy);
+          set({ preferences: saved, loaded: true });
+          writeCache(saved);
+        } else {
+          set({ loaded: true });
+        }
+      }
+    } catch (err) {
+      console.error('[preferencesStore] Failed to init preferences:', err);
+      // Fall back to cache — already in state from readCache()
+      set({ loaded: true });
+    }
+  },
+
+  updatePreference: (key, value) => {
+    const updated = { ...get().preferences, [key]: value };
+    set({ preferences: updated });
+    writeCache(updated);
+    schedulePatch({ [key]: value } as Partial<UserPreferences>);
+  },
+
+  updatePreferences: (partial) => {
+    const updated = { ...get().preferences, ...partial };
+    set({ preferences: updated });
+    writeCache(updated);
+    schedulePatch(partial);
+  },
+}));
