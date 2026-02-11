@@ -15,6 +15,8 @@ export const config = {
     /**
      * Chat response timeout in milliseconds
      * Default: 300000 (5 minutes)
+     * Activity-based: resets on every SDK message AND every 30s heartbeat while
+     * generator.next() is pending (SDK alive but not yielding messages).
      * Configurable via CHAT_TIMEOUT_MS environment variable
      */
     timeoutMs: parseInt(process.env.CHAT_TIMEOUT_MS || '300000', 10),

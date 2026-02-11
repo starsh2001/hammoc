@@ -419,6 +419,15 @@ export function MessageArea({
           );
         })()}
 
+        {/* Streaming indicator: always visible while streaming is active (after segments) */}
+        {isStreaming && streamingSegments.length > 0 && !isCompacting && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] bg-gray-50 dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
+              <StreamingIndicator />
+            </div>
+          </div>
+        )}
+
         {/* Waiting indicator: streaming started but no segments received yet */}
         {isStreaming && streamingSegments.length === 0 && (
           isCompacting ? (
