@@ -172,22 +172,22 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
           </div>
         )}
 
-        {/* Full path */}
-        <p className="text-xs text-gray-400 dark:text-gray-500 truncate pr-6 mb-1">
-          {formatProjectPath(project.originalPath)}
-        </p>
-
-        {/* Project Name + BMad badge */}
-        <div className="flex items-center gap-2 pr-6">
-          <h3 className="font-medium text-gray-900 dark:text-white truncate">
-            {project.originalPath.split(/[/\\]/).filter(Boolean).pop() || project.originalPath}
-          </h3>
+        {/* Full path + BMad badge */}
+        <div className="flex items-center gap-1.5 pr-6 mb-1">
           {project.isBmadProject && (
-            <span className="flex-shrink-0 inline-flex items-center px-1 py-px rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 translate-y-[3px]">
+            <span className="flex-shrink-0 inline-flex items-center px-1 py-0 rounded text-[10px] leading-[14px] font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
               BMad
             </span>
           )}
+          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+            {formatProjectPath(project.originalPath)}
+          </p>
         </div>
+
+        {/* Project Name */}
+        <h3 className="font-medium text-gray-900 dark:text-white truncate pr-6">
+          {project.originalPath.split(/[/\\]/).filter(Boolean).pop() || project.originalPath}
+        </h3>
 
         {/* Meta Information */}
         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
