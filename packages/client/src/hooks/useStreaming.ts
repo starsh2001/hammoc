@@ -173,22 +173,28 @@ export function useStreaming() {
 
         const attemptFetch = async (attempt: number) => {
           const store = useMessageStore.getState();
-          const countBefore = store.messages.length;
+          // Track by last message ID, not count — count-based comparison fails
+          // when sessions hit pagination limit (e.g., 50 msgs: new assistant response
+          // replaces oldest msg, total stays 50, countAfter === countBefore).
+          const lastMsgId = store.messages[store.messages.length - 1]?.id;
           debugLog.stream('complete → fetchMessages attempt', {
             attempt,
-            countBefore,
+            msgCount: store.messages.length,
+            lastMsgId,
             projectSlug,
             sessId,
           });
-          await store.fetchMessages(projectSlug, sessId, { silent: true, minMessageCount: countBefore });
-          const countAfter = useMessageStore.getState().messages.length;
+          await store.fetchMessages(projectSlug, sessId, { silent: true });
+          const afterMsgs = useMessageStore.getState().messages;
+          const lastMsgIdAfter = afterMsgs[afterMsgs.length - 1]?.id;
+          const hasNewContent = lastMsgIdAfter !== lastMsgId;
           debugLog.stream('complete → fetchMessages result', {
             attempt,
-            countBefore,
-            countAfter,
-            updated: countAfter > countBefore,
+            msgCountAfter: afterMsgs.length,
+            lastMsgIdAfter,
+            hasNewContent,
           });
-          if (countAfter > countBefore) {
+          if (hasNewContent) {
             // History updated — safe to clear segments
             clearTimeout(timeoutId);
             useChatStore.getState().clearStreamingSegments();
