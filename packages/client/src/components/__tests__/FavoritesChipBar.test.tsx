@@ -78,19 +78,6 @@ describe('FavoritesChipBar', () => {
     expect(onOpenDialog).toHaveBeenCalledTimes(1);
   });
 
-  // TC6: Disabled state disables chips and star button
-  it('disables chips and star button when disabled is true', () => {
-    render(<FavoritesChipBar {...defaultProps} disabled />);
-
-    const starButton = screen.getByTestId('chip-bar-star-button');
-    expect(starButton).toBeDisabled();
-    expect(starButton.className).toContain('opacity-50');
-
-    // Chips should be disabled
-    const pmChip = screen.getByRole('button', { name: /PM 실행/i });
-    expect(pmChip).toBeDisabled();
-  });
-
   // TC7: Graceful degradation for unmatched commands
   it('shows fallback label for commands not found in command list', () => {
     render(

@@ -188,34 +188,6 @@ describe('ChatInput', () => {
     });
   });
 
-  describe('disabled state', () => {
-    it('disables textarea when disabled prop is true', () => {
-      render(<ChatInput onSend={mockOnSend} disabled />);
-
-      expect(screen.getByRole('textbox')).toBeDisabled();
-    });
-
-    it('disables button when disabled prop is true', () => {
-      render(<ChatInput onSend={mockOnSend} disabled />);
-
-      expect(screen.getByRole('button', { name: /전송/i })).toBeDisabled();
-    });
-
-    it('does not send on Enter when disabled', () => {
-      render(<ChatInput onSend={mockOnSend} disabled />);
-
-      // Can't type when disabled, verify disabled state
-      expect(screen.getByRole('textbox')).toBeDisabled();
-      expect(mockOnSend).not.toHaveBeenCalled();
-    });
-
-    it('shows streaming placeholder when disabled', () => {
-      render(<ChatInput onSend={mockOnSend} disabled placeholder="응답 중..." />);
-
-      expect(screen.getByPlaceholderText('응답 중...')).toBeInTheDocument();
-    });
-  });
-
   describe('IME composition handling', () => {
     // Note: IME composition tests use fireEvent because userEvent cannot simulate
     // the isComposing state. We set isComposing directly on the event object
@@ -299,16 +271,6 @@ describe('ChatInput', () => {
       expect(hint).toBeInTheDocument();
       expect(hint).toHaveTextContent('Enter로 전송, Shift+Enter로 줄바꿈');
       expect(hint).toHaveClass('sr-only');
-    });
-
-    it('has aria-disabled attribute reflecting disabled state', () => {
-      const { rerender } = render(<ChatInput onSend={mockOnSend} />);
-
-      const textarea = screen.getByRole('textbox');
-      expect(textarea).toHaveAttribute('aria-disabled', 'false');
-
-      rerender(<ChatInput onSend={mockOnSend} disabled />);
-      expect(textarea).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('send button has aria-label', () => {
@@ -738,14 +700,8 @@ describe('ChatInput', () => {
       expect(abortButton.className).toContain('hover:bg-red-700');
     });
 
-    it('textarea is still disabled when streaming', () => {
-      render(<ChatInput onSend={mockOnSend} disabled isStreaming onAbort={mockOnAbort} />);
-
-      expect(screen.getByRole('textbox')).toBeDisabled();
-    });
-
     it('shows send button when isStreaming but onAbort is not provided', () => {
-      render(<ChatInput onSend={mockOnSend} disabled isStreaming />);
+      render(<ChatInput onSend={mockOnSend} isStreaming />);
 
       expect(screen.getByRole('button', { name: /전송/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /중단/i })).not.toBeInTheDocument();
@@ -894,12 +850,6 @@ describe('ChatInput', () => {
 
       expect(screen.queryByTestId('validation-error')).not.toBeInTheDocument();
       vi.useRealTimers();
-    });
-
-    it('disables attach button when streaming', () => {
-      render(<ChatInput onSend={mockOnSend} disabled isStreaming onAbort={vi.fn()} />);
-
-      expect(screen.getByRole('button', { name: /이미지 첨부/i })).toBeDisabled();
     });
 
     it('sends attachments with message', async () => {

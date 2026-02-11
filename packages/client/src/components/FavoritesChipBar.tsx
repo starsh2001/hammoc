@@ -22,8 +22,6 @@ interface FavoritesChipBarProps {
   onExecute: (command: string) => void;
   /** Callback to open the favorites dialog */
   onOpenDialog: () => void;
-  /** Whether input is disabled (streaming) */
-  disabled?: boolean;
   /** Star favorite command strings for active agent (Story 9.12) */
   starFavorites?: string[];
   /** Active agent info — null/undefined hides star section (Story 9.12) */
@@ -45,7 +43,6 @@ export function FavoritesChipBar({
   commands,
   onExecute,
   onOpenDialog,
-  disabled = false,
   starFavorites,
   activeAgent,
   onExecuteStarFavorite,
@@ -71,12 +68,11 @@ export function FavoritesChipBar({
       <button
         type="button"
         onClick={onOpenDialog}
-        disabled={disabled}
         aria-label="즐겨찾기 편집"
         data-testid="chip-bar-star-button"
-        className={`flex-shrink-0 w-7 h-7 flex items-center justify-center rounded
-                   ${disabled ? 'opacity-50 pointer-events-none' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}
-                   transition-colors`}
+        className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded
+                   hover:bg-gray-100 dark:hover:bg-gray-700
+                   transition-colors"
       >
         <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" aria-hidden="true" />
       </button>
@@ -95,17 +91,15 @@ export function FavoritesChipBar({
                 type="button"
                 role="button"
                 aria-label={`*${commandStr} 실행`}
-                disabled={disabled}
                 onClick={() => onExecuteStarFavorite?.(commandStr)}
-                className={`px-2 py-1 rounded-full text-xs
+                className="px-2 py-1 rounded-full text-xs
                            bg-yellow-50 dark:bg-yellow-900/30
                            text-yellow-700 dark:text-yellow-300
                            border border-yellow-200 dark:border-yellow-700
                            hover:bg-yellow-100 dark:hover:bg-yellow-800/40
                            whitespace-nowrap flex-shrink-0 cursor-pointer
                            transition-colors min-h-[28px]
-                           flex items-center gap-1
-                           disabled:opacity-50 disabled:cursor-not-allowed`}
+                           flex items-center gap-1"
                 data-testid={`star-favorite-chip-${commandStr}`}
               >
                 <span className="text-yellow-500">*</span>
@@ -130,16 +124,14 @@ export function FavoritesChipBar({
               type="button"
               role="button"
               aria-label={`${label} 실행`}
-              disabled={disabled}
               onClick={() => onExecute(commandStr)}
-              className={`px-2 py-1 rounded-full text-xs
+              className="px-2 py-1 rounded-full text-xs
                          bg-gray-100 dark:bg-gray-700
                          text-gray-700 dark:text-gray-300
                          hover:bg-gray-200 dark:hover:bg-gray-600
                          whitespace-nowrap flex-shrink-0 cursor-pointer
                          transition-colors min-h-[28px]
-                         flex items-center gap-1
-                         disabled:opacity-50 disabled:cursor-not-allowed`}
+                         flex items-center gap-1"
               data-testid={`favorite-chip-${commandStr}`}
             >
               {cmd?.icon && <span className="text-sm">{cmd.icon}</span>}
