@@ -16,6 +16,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Send, Square, Paperclip, X } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { usePromptHistory } from '../hooks/usePromptHistory';
 import { CommandPalette } from './CommandPalette';
 import { filterCommands } from './CommandPalette';
 import { StarCommandPalette, filterStarCommands } from './StarCommandPalette';
@@ -184,7 +185,6 @@ export function ChatInput({
   // Local state
   const [content, setContent] = useState('');
   const [showConnectionWarning, setShowConnectionWarning] = useState(false);
-  const [needsScroll, setNeedsScroll] = useState(false);
 
   // Command palette state (Story 5.1)
   const [showCommands, setShowCommands] = useState(false);
@@ -205,6 +205,12 @@ export function ChatInput({
 
   // WebSocket connection status
   const { isConnected } = useWebSocket();
+
+  // Detect touch device (mobile) - Enter becomes newline, send via button only
+  const isTouchDevice = useMemo(() => window.matchMedia('(pointer: coarse)').matches, []);
+
+  // Prompt history (ArrowUp/Down navigation)
+  const { addToHistory, navigateUp, navigateDown, resetNavigation, isNavigating } = usePromptHistory();
 
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -268,24 +274,13 @@ export function ChatInput({
     setStarSelectedIndex(0);
   }, [starCommandFilter]);
 
-  // Height adjustment
+  // Height adjustment - textarea grows freely, wrapper div constrains visible area
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // Reset height to calculate scrollHeight
     textarea.style.height = 'auto';
-
-    // Calculate new height (min: 40px, max: 120px for 5 lines)
-    const minHeight = 40;
-    const maxHeight = 120; // ~5 lines
-
-    const scrollHeight = textarea.scrollHeight;
-    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
-    textarea.style.height = `${newHeight}px`;
-
-    // Only show scrollbar when content exceeds max height
-    setNeedsScroll(scrollHeight > maxHeight);
+    textarea.style.height = `${Math.max(textarea.scrollHeight, 40)}px`;
   }, []);
 
   // Adjust height on content change
@@ -295,14 +290,10 @@ export function ChatInput({
 
   // Auto-focus on mount (desktop only - skip on touch devices to prevent keyboard popup)
   useEffect(() => {
-    if (!disabled && textareaRef.current) {
-      // Check if device has coarse pointer (touch) - skip auto-focus on mobile
-      const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
-      if (!isTouchDevice) {
-        textareaRef.current.focus();
-      }
+    if (!disabled && textareaRef.current && !isTouchDevice) {
+      textareaRef.current.focus();
     }
-  }, [disabled]);
+  }, [disabled, isTouchDevice]);
 
   // Clear timeouts on unmount
   useEffect(() => {
@@ -544,6 +535,7 @@ export function ChatInput({
       return;
     }
 
+    addToHistory(trimmedContent);
     onSend(trimmedContent, attachments.length > 0 ? attachments : undefined);
     setContent('');
     setAttachments([]);
@@ -631,13 +623,40 @@ export function ChatInput({
         return;
       }
 
-      if (e.key === 'Enter' && !e.shiftKey) {
+      // Prompt history navigation (ArrowUp/Down when no palette is open)
+      if (e.key === 'ArrowUp' && !e.shiftKey) {
+        const textarea = e.currentTarget;
+        // Only activate when cursor is at the very start or input is empty
+        if (textarea.selectionStart === 0 && textarea.selectionEnd === 0) {
+          const result = navigateUp(content);
+          if (result !== null) {
+            e.preventDefault();
+            setContent(result);
+          }
+          return;
+        }
+      }
+
+      if (e.key === 'ArrowDown' && !e.shiftKey) {
+        const textarea = e.currentTarget;
+        // Only activate when cursor is at the very end or navigating history
+        if (isNavigating && textarea.selectionStart === textarea.value.length) {
+          const result = navigateDown();
+          if (result !== null) {
+            e.preventDefault();
+            setContent(result);
+          }
+          return;
+        }
+      }
+
+      if (e.key === 'Enter' && !e.shiftKey && !isTouchDevice) {
         e.preventDefault();
         handleSubmit();
       }
-      // Shift+Enter: default behavior (newline)
+      // Shift+Enter (desktop) / Enter (mobile): default behavior (newline)
     },
-    [handleSubmit, showCommands, showFavorites, showStarCommands, filteredCommandsCount, filteredStarCommandsCount, commands, commandFilter, selectedIndex, handleCommandSelect, starCommands, starCommandFilter, starSelectedIndex, handleStarCommandSelect]
+    [handleSubmit, showCommands, showFavorites, showStarCommands, filteredCommandsCount, filteredStarCommandsCount, commands, commandFilter, selectedIndex, handleCommandSelect, starCommands, starCommandFilter, starSelectedIndex, handleStarCommandSelect, content, navigateUp, navigateDown, isNavigating, isTouchDevice]
   );
 
   // Button click handler
@@ -818,38 +837,50 @@ export function ChatInput({
           />
         )}
 
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          disabled={disabled}
-          placeholder={placeholder}
-          role={showCommands || showStarCommands ? 'combobox' : undefined}
-          aria-label="메시지 입력"
-          aria-describedby="input-hint"
-          aria-disabled={disabled}
-          aria-expanded={showCommands || showStarCommands ? true : undefined}
-          aria-controls={showCommands ? 'command-palette' : showStarCommands ? 'star-command-palette' : undefined}
-          aria-activedescendant={
-            showCommands && filteredCommandsCount > 0 ? `command-option-${selectedIndex}` :
-            showStarCommands && filteredStarCommandsCount > 0 ? `star-command-option-${starSelectedIndex}` :
-            undefined
-          }
-          aria-autocomplete={showCommands || showStarCommands ? 'list' : undefined}
-          rows={1}
-          className={`w-full resize-none px-4 py-2
+        <div
+          className={`overflow-y-auto overscroll-contain
                      bg-white dark:bg-gray-800
                      border border-gray-300 dark:border-gray-600
                      rounded-lg
-                     text-gray-900 dark:text-gray-100
-                     placeholder-gray-500 dark:placeholder-gray-400
-                     focus:outline-none focus:ring-2 ${modeColors.ring}
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     ${needsScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
-          style={{ minHeight: '22px', maxHeight: '120px' }}
-        />
+                     focus-within:ring-2 ${modeColors.ring}
+                     ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          style={{ maxHeight: '120px' }}
+          onClick={() => textareaRef.current?.focus()}
+        >
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => {
+              setContent(e.target.value);
+              resetNavigation();
+            }}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            disabled={disabled}
+            placeholder={placeholder}
+            role={showCommands || showStarCommands ? 'combobox' : undefined}
+            aria-label="메시지 입력"
+            aria-describedby="input-hint"
+            aria-disabled={disabled}
+            aria-expanded={showCommands || showStarCommands ? true : undefined}
+            aria-controls={showCommands ? 'command-palette' : showStarCommands ? 'star-command-palette' : undefined}
+            aria-activedescendant={
+              showCommands && filteredCommandsCount > 0 ? `command-option-${selectedIndex}` :
+              showStarCommands && filteredStarCommandsCount > 0 ? `star-command-option-${starSelectedIndex}` :
+              undefined
+            }
+            aria-autocomplete={showCommands || showStarCommands ? 'list' : undefined}
+            rows={1}
+            className={`w-full resize-none px-4 py-2
+                       bg-transparent
+                       text-gray-900 dark:text-gray-100
+                       placeholder-gray-500 dark:placeholder-gray-400
+                       focus:outline-none
+                       disabled:cursor-not-allowed
+                       overflow-hidden`}
+            style={{ minHeight: '22px' }}
+          />
+        </div>
         <span id="input-hint" className="sr-only">
           Enter로 전송, Shift+Enter로 줄바꿈
         </span>
