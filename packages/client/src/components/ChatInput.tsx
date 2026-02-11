@@ -218,6 +218,7 @@ export function ChatInput({
   const commandPaletteAreaRef = useRef<HTMLDivElement>(null);
   const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const validationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userHasFocusedRef = useRef(false);
 
   // Compute filter and filtered commands count for keyboard navigation
   const commandFilter = useMemo(() => {
@@ -290,10 +291,23 @@ export function ChatInput({
 
   // Auto-focus on mount (desktop only - skip on touch devices to prevent keyboard popup)
   useEffect(() => {
-    if (!disabled && textareaRef.current && !isTouchDevice) {
+    if (textareaRef.current && !isTouchDevice) {
       textareaRef.current.focus();
     }
-  }, [disabled, isTouchDevice]);
+  }, [isTouchDevice]);
+
+  // Keep focus on mobile during streaming (prevent keyboard from hiding)
+  useEffect(() => {
+    if (!isTouchDevice || !isStreaming) return;
+
+    const interval = setInterval(() => {
+      if (userHasFocusedRef.current && textareaRef.current && document.activeElement !== textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [isTouchDevice, isStreaming]);
 
   // Clear timeouts on unmount
   useEffect(() => {
@@ -519,7 +533,7 @@ export function ChatInput({
   // Submit handler
   const handleSubmit = useCallback(() => {
     const trimmedContent = content.trim();
-    if (!trimmedContent || disabled) return;
+    if (!trimmedContent) return;
 
     // Show warning if not connected
     if (!isConnected) {
@@ -544,7 +558,7 @@ export function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-  }, [content, disabled, isConnected, onSend, attachments]);
+  }, [content, isConnected, onSend, attachments]);
 
   // Keyboard handler
   const handleKeyDown = useCallback(
@@ -666,9 +680,9 @@ export function ChatInput({
     textareaRef.current?.focus();
   }, [handleSubmit]);
 
-  const isButtonDisabled = disabled || !content.trim();
+  const isButtonDisabled = !content.trim();
 
-  const isAttachDisabled = disabled || attachments.length >= IMAGE_CONSTRAINTS.MAX_COUNT;
+  const isAttachDisabled = attachments.length >= IMAGE_CONSTRAINTS.MAX_COUNT;
 
   return (
     <div className="flex flex-col gap-2">
@@ -760,7 +774,6 @@ export function ChatInput({
               textareaRef.current?.focus();
             }}
             onOpenDialog={handleToggleFavorites}
-            disabled={disabled}
             starFavorites={starFavorites}
             activeAgent={activeAgent}
             onExecuteStarFavorite={(cmd) => {
@@ -842,8 +855,7 @@ export function ChatInput({
                      bg-white dark:bg-gray-800
                      border border-gray-300 dark:border-gray-600
                      rounded-lg
-                     focus-within:ring-2 ${modeColors.ring}
-                     ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                     focus-within:ring-2 ${modeColors.ring}`}
           style={{ maxHeight: '120px' }}
           onClick={() => textareaRef.current?.focus()}
         >
@@ -856,12 +868,16 @@ export function ChatInput({
             }}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            disabled={disabled}
+            onFocus={() => {
+              userHasFocusedRef.current = true;
+            }}
+            onBlur={() => {
+              userHasFocusedRef.current = false;
+            }}
             placeholder={placeholder}
             role={showCommands || showStarCommands ? 'combobox' : undefined}
             aria-label="메시지 입력"
             aria-describedby="input-hint"
-            aria-disabled={disabled}
             aria-expanded={showCommands || showStarCommands ? true : undefined}
             aria-controls={showCommands ? 'command-palette' : showStarCommands ? 'star-command-palette' : undefined}
             aria-activedescendant={
@@ -901,7 +917,6 @@ export function ChatInput({
           <ModelSelector
             model={selectedModel}
             onModelChange={onModelChange}
-            disabled={isStreaming}
             activeModel={activeModel}
           />
         )}
@@ -914,7 +929,6 @@ export function ChatInput({
             onAgentSelect={(agentCommand) => {
               onAgentSelect(agentCommand);
             }}
-            disabled={isStreaming}
             openTrigger={agentListOpenTrigger}
             activeAgentCommand={activeAgentCommand}
           />

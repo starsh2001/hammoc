@@ -736,7 +736,6 @@ export function ChatPage() {
         <InputArea>
           <ChatInput
             onSend={handleSendMessage}
-            disabled={isStreaming}
             isStreaming={isStreaming}
             onAbort={handleAbort}
             placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
@@ -822,7 +821,6 @@ export function ChatPage() {
       <InputArea>
         <ChatInput
           onSend={handleSendMessage}
-          disabled={isStreaming}
           isStreaming={isStreaming}
           onAbort={handleAbort}
           placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
