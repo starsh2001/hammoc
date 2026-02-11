@@ -2,12 +2,12 @@
  * Diff Layout Hook
  * Story 6.2: Responsive Diff Layout
  *
- * Manages responsive diff layout with localStorage persistence
- * and screen size auto-detection via matchMedia
+ * Manages responsive diff layout with server-side persistence
+ * (via preferencesStore) and screen size auto-detection via matchMedia
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { STORAGE_KEYS } from '../constants/storageKeys';
+import { usePreferencesStore } from '../stores/preferencesStore';
 
 const BREAKPOINT = 768; // px
 
@@ -16,11 +16,11 @@ export type DiffLayout = 'side-by-side' | 'inline';
 export interface UseDiffLayoutReturn {
   /** Current effective layout */
   layout: DiffLayout;
-  /** Manually set layout (saves to localStorage) */
+  /** Manually set layout (saves to server) */
   setLayout: (layout: DiffLayout) => void;
   /** Whether user has manually overridden auto layout */
   isManualOverride: boolean;
-  /** Reset to auto-detect mode (removes localStorage) */
+  /** Reset to auto-detect mode */
   resetToAuto: () => void;
 }
 
@@ -34,13 +34,8 @@ function getAutoLayout(): DiffLayout {
 }
 
 function getSavedLayout(): DiffLayout | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  const saved = localStorage.getItem(STORAGE_KEYS.DIFF_LAYOUT);
-  if (saved === 'side-by-side' || saved === 'inline') {
-    return saved;
-  }
+  const saved = usePreferencesStore.getState().preferences.diffLayout;
+  if (saved === 'side-by-side' || saved === 'inline') return saved;
   return null;
 }
 
@@ -49,6 +44,21 @@ export function useDiffLayout(): UseDiffLayoutReturn {
   const [layout, setLayoutState] = useState<DiffLayout>(saved ?? getAutoLayout());
   const [isManualOverride, setIsManualOverride] = useState<boolean>(saved !== null);
   const isManualRef = useRef(saved !== null);
+
+  // Sync with preferencesStore when server data arrives
+  const storeDiffLayout = usePreferencesStore((s) => s.preferences.diffLayout);
+  useEffect(() => {
+    if (storeDiffLayout && storeDiffLayout !== layout) {
+      setLayoutState(storeDiffLayout);
+      setIsManualOverride(true);
+      isManualRef.current = true;
+    } else if (storeDiffLayout === undefined && isManualOverride) {
+      // Server has no preference — reset to auto
+      setIsManualOverride(false);
+      isManualRef.current = false;
+      setLayoutState(getAutoLayout());
+    }
+  }, [storeDiffLayout]);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -59,18 +69,14 @@ export function useDiffLayout(): UseDiffLayoutReturn {
     setLayoutState(newLayout);
     setIsManualOverride(true);
     isManualRef.current = true;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEYS.DIFF_LAYOUT, newLayout);
-    }
+    usePreferencesStore.getState().updatePreference('diffLayout', newLayout);
   }, []);
 
   const resetToAuto = useCallback(() => {
     setIsManualOverride(false);
     isManualRef.current = false;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(STORAGE_KEYS.DIFF_LAYOUT);
-    }
     setLayoutState(getAutoLayout());
+    usePreferencesStore.getState().updatePreference('diffLayout', undefined);
   }, []);
 
   // Listen for matchMedia changes

@@ -72,6 +72,9 @@ export {
 // Story 9.8: StarCommand, CommandsResponse types
 export { SlashCommand, CommandListResponse, StarCommand, CommandsResponse } from './types/command.js';
 
+// User Preferences types (server-side settings)
+export { UserPreferences, PromptHistoryData } from './types/preferences.js';
+
 // Story 3.5: History types for Session History Loading
 export {
   RawJSONLMessage,

@@ -11,6 +11,7 @@ import fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import type {
+  PromptHistoryData,
   ProjectInfo,
   ProjectSettings,
   CreateProjectRequest,
@@ -371,6 +372,53 @@ class ProjectService {
     const info = await this.parseSessionsIndex(projectDir, projectSlug);
     if (!info) return {};
     return this.readSessionNames(info.originalPath);
+  }
+
+  /**
+   * Read prompt history for a session within a project
+   */
+  async readPromptHistory(originalPath: string, sessionId: string): Promise<PromptHistoryData> {
+    const historyPath = path.join(originalPath, '.bmad-studio', 'prompt-history', `${sessionId}.json`);
+    try {
+      const content = await fs.readFile(historyPath, 'utf-8');
+      return JSON.parse(content) as PromptHistoryData;
+    } catch {
+      return { history: [] };
+    }
+  }
+
+  /**
+   * Write prompt history for a session within a project
+   */
+  async writePromptHistory(originalPath: string, sessionId: string, data: PromptHistoryData): Promise<void> {
+    const historyDir = path.join(originalPath, '.bmad-studio', 'prompt-history');
+    await fs.mkdir(historyDir, { recursive: true });
+    const historyPath = path.join(historyDir, `${sessionId}.json`);
+    await fs.writeFile(historyPath, JSON.stringify(data, null, 2), 'utf-8');
+  }
+
+  /**
+   * Read prompt history for a session identified by project slug
+   */
+  async readPromptHistoryBySlug(projectSlug: string, sessionId: string): Promise<PromptHistoryData> {
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+    const info = await this.parseSessionsIndex(projectDir, projectSlug);
+    if (!info) return { history: [] };
+    return this.readPromptHistory(info.originalPath, sessionId);
+  }
+
+  /**
+   * Write prompt history for a session identified by project slug
+   */
+  async writePromptHistoryBySlug(projectSlug: string, sessionId: string, data: PromptHistoryData): Promise<void> {
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+    const info = await this.parseSessionsIndex(projectDir, projectSlug);
+    if (!info) {
+      const err = new Error('프로젝트를 찾을 수 없습니다.');
+      (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
+      throw err;
+    }
+    await this.writePromptHistory(info.originalPath, sessionId, data);
   }
 
   /**

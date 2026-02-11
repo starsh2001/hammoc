@@ -2,12 +2,12 @@
  * Theme Hook
  * Story 1.5: End-to-End Test Page
  *
- * Manages dark/light theme with localStorage persistence
- * and system preference detection
+ * Manages dark/light theme with server-side persistence
+ * and localStorage write-through cache (via preferencesStore)
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { STORAGE_KEYS } from '../constants/storageKeys';
+import { usePreferencesStore } from '../stores/preferencesStore';
 
 export type Theme = 'light' | 'dark';
 
@@ -17,30 +17,9 @@ export interface UseThemeReturn {
   setTheme: (theme: Theme) => void;
 }
 
-/**
- * Detect system preferred color scheme
- */
-function getSystemTheme(): Theme {
-  if (typeof window === 'undefined') {
-    return 'light';
-  }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-/**
- * Get initial theme from localStorage or default to dark
- */
 function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') {
-    return 'dark';
-  }
-
-  const stored = localStorage.getItem(STORAGE_KEYS.THEME);
-  if (stored === 'light' || stored === 'dark') {
-    return stored;
-  }
-
-  // Default to dark theme
+  const stored = usePreferencesStore.getState().preferences.theme;
+  if (stored === 'light' || stored === 'dark') return stored;
   return 'dark';
 }
 
@@ -51,9 +30,15 @@ function getInitialTheme(): Theme {
 export function useTheme(): UseThemeReturn {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
-  /**
-   * Apply theme to document
-   */
+  // Sync with preferencesStore when server data arrives
+  const storeTheme = usePreferencesStore((s) => s.preferences.theme);
+  useEffect(() => {
+    if (storeTheme && storeTheme !== theme) {
+      setThemeState(storeTheme);
+      applyTheme(storeTheme);
+    }
+  }, [storeTheme]);
+
   const applyTheme = useCallback((newTheme: Theme) => {
     if (newTheme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -62,21 +47,15 @@ export function useTheme(): UseThemeReturn {
     }
   }, []);
 
-  /**
-   * Set theme and persist to localStorage
-   */
   const setTheme = useCallback(
     (newTheme: Theme) => {
       setThemeState(newTheme);
-      localStorage.setItem(STORAGE_KEYS.THEME, newTheme);
       applyTheme(newTheme);
+      usePreferencesStore.getState().updatePreference('theme', newTheme);
     },
     [applyTheme]
   );
 
-  /**
-   * Toggle between light and dark theme
-   */
   const toggleTheme = useCallback(() => {
     setTheme(theme === 'light' ? 'dark' : 'light');
   }, [theme, setTheme]);

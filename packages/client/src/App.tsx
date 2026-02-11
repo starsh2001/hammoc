@@ -26,8 +26,14 @@ import { ProjectTabLayout } from './layouts/ProjectTabLayout';
 import { AuthGuard } from './components/AuthGuard';
 import { PublicRoute } from './components/PublicRoute';
 import { useTheme } from './hooks/useTheme';
+import { usePreferencesStore } from './stores/preferencesStore';
 
 function AppContent() {
+  // Initialize server-side preferences (fetches from server, migrates localStorage if needed)
+  useEffect(() => {
+    usePreferencesStore.getState().init();
+  }, []);
+
   // Initialize theme on app mount
   const { theme } = useTheme();
 

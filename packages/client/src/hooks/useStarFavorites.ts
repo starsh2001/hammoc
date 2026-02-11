@@ -1,84 +1,58 @@
-import { useState, useCallback, useEffect } from 'react';
+/**
+ * useStarFavorites - Global agent-specific star command favorites
+ * Backed by server-side preferences (via preferencesStore)
+ * Keyed by agentId only (no longer project-scoped)
+ */
+
+import { useCallback } from 'react';
+import { usePreferencesStore } from '../stores/preferencesStore';
 
 const MAX_STAR_FAVORITES = 10;
-const STORAGE_KEY_PREFIX = 'bmad-star-favorites';
+const EMPTY: string[] = [];
 
-function getStorageKey(projectSlug: string, agentId: string): string {
-  return `${STORAGE_KEY_PREFIX}:${projectSlug}:${agentId}`;
-}
-
-function loadFromStorage(projectSlug: string, agentId: string): string[] {
-  try {
-    const stored = localStorage.getItem(getStorageKey(projectSlug, agentId));
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveToStorage(projectSlug: string, agentId: string, items: string[]): void {
-  try {
-    localStorage.setItem(getStorageKey(projectSlug, agentId), JSON.stringify(items));
-  } catch {
-    // localStorage quota exceeded — in-memory state is still updated
-  }
-}
-
-export function useStarFavorites(
-  projectSlug: string | undefined,
-  agentId: string | null | undefined
-) {
-  const [starFavorites, setStarFavorites] = useState<string[]>(() => {
-    if (!projectSlug || !agentId) return [];
-    return loadFromStorage(projectSlug, agentId);
+export function useStarFavorites(agentId: string | null | undefined) {
+  const starFavorites = usePreferencesStore((s) => {
+    if (!agentId) return EMPTY;
+    return s.preferences.starFavorites?.[agentId] ?? EMPTY;
   });
 
-  // Reload when projectSlug or agentId changes (useState initializer only runs on mount)
-  useEffect(() => {
-    if (!projectSlug || !agentId) {
-      setStarFavorites([]);
-      return;
-    }
-    setStarFavorites(loadFromStorage(projectSlug, agentId));
-  }, [projectSlug, agentId]);
+  const updateAgentStars = useCallback((newStars: string[]) => {
+    if (!agentId) return;
+    const store = usePreferencesStore.getState();
+    const allStars = { ...store.preferences.starFavorites };
+    allStars[agentId] = newStars;
+    store.updatePreference('starFavorites', allStars);
+  }, [agentId]);
 
   const addStarFavorite = useCallback((command: string) => {
-    if (!projectSlug || !agentId) return;
-    setStarFavorites((prev) => {
-      if (prev.includes(command)) return prev;
-      if (prev.length >= MAX_STAR_FAVORITES) return prev;
-      const next = [...prev, command];
-      saveToStorage(projectSlug, agentId, next);
-      return next;
-    });
-  }, [projectSlug, agentId]);
+    if (!agentId) return;
+    const store = usePreferencesStore.getState();
+    const prev = store.preferences.starFavorites?.[agentId] ?? [];
+    if (prev.includes(command) || prev.length >= MAX_STAR_FAVORITES) return;
+    updateAgentStars([...prev, command]);
+  }, [agentId, updateAgentStars]);
 
   const removeStarFavorite = useCallback((command: string) => {
-    if (!projectSlug || !agentId) return;
-    setStarFavorites((prev) => {
-      const next = prev.filter((c) => c !== command);
-      saveToStorage(projectSlug, agentId, next);
-      return next;
-    });
-  }, [projectSlug, agentId]);
+    if (!agentId) return;
+    const store = usePreferencesStore.getState();
+    const prev = store.preferences.starFavorites?.[agentId] ?? [];
+    updateAgentStars(prev.filter((c) => c !== command));
+  }, [agentId, updateAgentStars]);
 
   const reorderStarFavorites = useCallback((commands: string[]) => {
-    if (!projectSlug || !agentId) return;
-    setStarFavorites((prev) => {
-      if (commands.length === 0) return prev;
-      // Only keep items that exist in the current favorites
-      const validReordered = commands.filter((c) => prev.includes(c));
-      // Add back any items from prev that were missing in the input
-      const missing = prev.filter((c) => !commands.includes(c));
-      const next = [...validReordered, ...missing];
-      saveToStorage(projectSlug, agentId, next);
-      return next;
-    });
-  }, [projectSlug, agentId]);
+    if (!agentId) return;
+    const store = usePreferencesStore.getState();
+    const prev = store.preferences.starFavorites?.[agentId] ?? [];
+    if (commands.length === 0) return;
+    const validReordered = commands.filter((c) => prev.includes(c));
+    const missing = prev.filter((c) => !commands.includes(c));
+    updateAgentStars([...validReordered, ...missing]);
+  }, [agentId, updateAgentStars]);
 
   const isStarFavorite = useCallback((command: string): boolean => {
-    return starFavorites.includes(command);
-  }, [starFavorites]);
+    if (!agentId) return false;
+    return (usePreferencesStore.getState().preferences.starFavorites?.[agentId] ?? []).includes(command);
+  }, [agentId]);
 
   return { starFavorites, addStarFavorite, removeStarFavorite, reorderStarFavorites, isStarFavorite };
 }

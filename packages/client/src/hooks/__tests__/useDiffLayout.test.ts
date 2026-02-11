@@ -1,12 +1,13 @@
 /**
  * useDiffLayout Hook Tests
  * Story 6.2: Responsive Diff Layout
+ * Updated: Now backed by preferencesStore (global, server-persisted)
  */
 
 import { renderHook, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { useDiffLayout } from '../useDiffLayout';
-import { STORAGE_KEYS } from '../../constants/storageKeys';
+import { usePreferencesStore } from '../../stores/preferencesStore';
 
 // --- matchMedia mock helper ---
 function createMockMatchMedia(matches: boolean) {
@@ -43,6 +44,7 @@ beforeEach(() => {
   mockMql = createMockMatchMedia(true); // desktop by default
   vi.spyOn(window, 'matchMedia').mockReturnValue(mockMql as unknown as MediaQueryList);
   localStorage.clear();
+  usePreferencesStore.setState({ preferences: {}, loaded: true });
 });
 
 afterEach(() => {
@@ -66,8 +68,8 @@ describe('useDiffLayout', () => {
       expect(result.current.isManualOverride).toBe(false);
     });
 
-    it('uses saved localStorage value on initial load', () => {
-      localStorage.setItem(STORAGE_KEYS.DIFF_LAYOUT, 'inline');
+    it('uses saved preferencesStore value on initial load', () => {
+      usePreferencesStore.setState({ preferences: { diffLayout: 'inline' }, loaded: true });
       mockMql.matches = true; // desktop, but saved is inline
       const { result } = renderHook(() => useDiffLayout());
       expect(result.current.layout).toBe('inline');
@@ -93,7 +95,7 @@ describe('useDiffLayout', () => {
   });
 
   describe('Manual Override', () => {
-    it('setLayout saves to localStorage and sets manual override', () => {
+    it('setLayout saves to preferencesStore and sets manual override', () => {
       const { result } = renderHook(() => useDiffLayout());
 
       act(() => {
@@ -102,7 +104,7 @@ describe('useDiffLayout', () => {
 
       expect(result.current.layout).toBe('inline');
       expect(result.current.isManualOverride).toBe(true);
-      expect(localStorage.getItem(STORAGE_KEYS.DIFF_LAYOUT)).toBe('inline');
+      expect(usePreferencesStore.getState().preferences.diffLayout).toBe('inline');
     });
 
     it('manual override ignores matchMedia changes', () => {
@@ -128,7 +130,7 @@ describe('useDiffLayout', () => {
   });
 
   describe('resetToAuto', () => {
-    it('removes localStorage and returns to auto mode', () => {
+    it('clears preference and returns to auto mode', () => {
       const { result } = renderHook(() => useDiffLayout());
 
       // Set manual override
@@ -136,7 +138,7 @@ describe('useDiffLayout', () => {
         result.current.setLayout('inline');
       });
       expect(result.current.isManualOverride).toBe(true);
-      expect(localStorage.getItem(STORAGE_KEYS.DIFF_LAYOUT)).toBe('inline');
+      expect(usePreferencesStore.getState().preferences.diffLayout).toBe('inline');
 
       // Reset to auto
       act(() => {
@@ -144,7 +146,7 @@ describe('useDiffLayout', () => {
       });
 
       expect(result.current.isManualOverride).toBe(false);
-      expect(localStorage.getItem(STORAGE_KEYS.DIFF_LAYOUT)).toBeNull();
+      expect(usePreferencesStore.getState().preferences.diffLayout).toBeUndefined();
       // Should reflect current matchMedia (desktop = side-by-side)
       expect(result.current.layout).toBe('side-by-side');
     });
