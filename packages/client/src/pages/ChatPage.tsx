@@ -30,6 +30,7 @@ import { useActiveAgent } from '../hooks/useActiveAgent';
 import { getSocket } from '../services/socket';
 import { generateUUID } from '../utils/uuid';
 import { getAgentId } from '../utils/agentUtils';
+import { debugLog } from '../utils/debugLogger';
 import { ChatHeader } from '../components/ChatHeader';
 import { MessageArea } from '../components/MessageArea';
 import { InputArea } from '../components/InputArea';
@@ -395,12 +396,24 @@ export function ChatPage() {
     let isInitialConnect = true; // Track whether this is first connect or reconnect
 
     const emitJoin = () => {
+      const isStreaming = useChatStore.getState().isStreaming;
+      debugLog.chatpage('emitJoin', { sessionId, isStreaming });
       // Don't probe if we're already streaming on this session (avoids duplicate buffer replay)
-      if (useChatStore.getState().isStreaming) return;
+      if (isStreaming) return;
       socket.emit('session:join', sessionId);
     };
 
     const handleConnect = () => {
+      const chatState = useChatStore.getState();
+      debugLog.chatpage('handleConnect', {
+        isInitialConnect,
+        isStreaming: chatState.isStreaming,
+        streamingSessionId: chatState.streamingSessionId,
+        sessionId,
+        projectSlug,
+        socketConnected: socket.connected,
+        msgCount: useMessageStore.getState().messages.length,
+      });
       emitJoin();
 
       // On RECONNECTION (not initial load), do a silent history refresh
@@ -410,6 +423,10 @@ export function ChatPage() {
       if (!isInitialConnect && projectSlug && sessionId && !useChatStore.getState().isStreaming) {
         const msgState = useMessageStore.getState();
         if (msgState.currentSessionId === sessionId && msgState.messages.length > 0) {
+          debugLog.chatpage('handleConnect → fetchMessages (reconnection)', {
+            currentSessionId: msgState.currentSessionId,
+            msgCount: msgState.messages.length,
+          });
           msgState.fetchMessages(projectSlug, sessionId, { silent: true });
         }
       }
