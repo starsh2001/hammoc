@@ -313,17 +313,34 @@ export class ChatService {
     content: string,
     callbacks: StreamCallbacks,
     options: ChatOptions = {},
-    canUseTool?: CanUseTool
+    canUseTool?: CanUseTool,
+    /** Called for every raw SDK message yielded — use for timeout reset */
+    onRawMessage?: (messageType: string) => void
   ): Promise<ChatResponse> {
     const streamHandler = new StreamHandler();
     const generator = this.sendMessage(content, options, canUseTool);
 
-    // Create a wrapper generator that yields SDKMessage without expecting a return
+    // Wrapper generator: calls onRawMessage for every SDK message,
+    // and emits heartbeat while waiting for generator.next() to confirm SDK is alive.
     async function* wrapGenerator(): AsyncGenerator<SDKMessage, void, unknown> {
       let result = await generator.next();
       while (!result.done) {
+        onRawMessage?.((result.value as { type?: string }).type ?? 'unknown');
         yield result.value;
-        result = await generator.next();
+
+        // Wait for next message with 30s heartbeat to confirm SDK is alive
+        const nextPromise = generator.next();
+        let heartbeatId: ReturnType<typeof setInterval> | null = setInterval(() => {
+          console.log('[SDK heartbeat] generator.next() still pending — SDK is alive');
+          onRawMessage?.('heartbeat');
+        }, 30000);
+
+        result = await nextPromise;
+
+        if (heartbeatId) {
+          clearInterval(heartbeatId);
+          heartbeatId = null;
+        }
       }
     }
 

@@ -361,6 +361,7 @@ async function handleChatSend(
   let actualSessionId: string | undefined = sessionId;
 
   try {
+    console.log(`[websocket] Creating ChatService: permissionMode="${permissionMode}", workingDirectory="${workingDirectory}"`);
     const chatService = new ChatService({ workingDirectory, permissionMode });
 
     const chatOptions = {
@@ -376,6 +377,8 @@ async function handleChatSend(
       const isAskUserQuestion = toolName === 'AskUserQuestion';
 
       const requestId = options.toolUseID || `perm-${++permissionRequestCounter}`;
+
+      console.log(`[websocket] canUseTool called: tool=${toolName}, toolUseID=${options.toolUseID}, requestId=${requestId}`);
 
       // Emit permission:request (buffered + forwarded to connected socket)
       emit('permission:request', {
@@ -430,12 +433,24 @@ async function handleChatSend(
       }
     };
 
-    // Set timeout for chat response
-    timeoutId = setTimeout(() => {
-      abortController.abort();
-    }, config.chat.timeoutMs);
+    // Activity-based timeout: resets on every SDK callback event
+    // Prevents cancellation while SDK is actively working (e.g., large Write input streaming)
+    let lastResetSource = 'initial';
+    const resetTimeout = (source?: string) => {
+      if (source) lastResetSource = source;
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.log(`[websocket] ⏰ TIMEOUT FIRED after ${config.chat.timeoutMs}ms inactivity (last reset by: ${lastResetSource})`);
+        abortController.abort('timeout');
+      }, config.chat.timeoutMs);
+    };
+    resetTimeout('initial');
 
     await chatService.sendMessageWithCallbacks(content, {
+      onActivity: (messageType: string) => {
+        resetTimeout(`onActivity:${messageType}`);
+      },
+
       onSessionInit: async (sid, metadata) => {
         console.log(`Session initialized: ${sid} (model: ${metadata?.model ?? 'unknown'})`);
         actualSessionId = sid;
@@ -465,6 +480,7 @@ async function handleChatSend(
       },
 
       onTextChunk: (chunk) => {
+        resetTimeout('onTextChunk');
         emit('message:chunk', {
           sessionId: actualSessionId || chunk.sessionId,
           messageId: chunk.messageId,
@@ -474,10 +490,13 @@ async function handleChatSend(
       },
 
       onThinking: (content: string) => {
+        resetTimeout('onThinking');
         emit('thinking:chunk', { content });
       },
 
       onToolUse: (toolCall: TrackedToolCall) => {
+        resetTimeout('onToolUse');
+        console.log(`[websocket] onToolUse: tool=${toolCall.name}, id=${toolCall.id}`);
         emit('tool:call', {
           id: toolCall.id,
           name: toolCall.name,
@@ -486,6 +505,7 @@ async function handleChatSend(
       },
 
       onToolInputUpdate: (toolCallId: string, input: Record<string, unknown>) => {
+        resetTimeout('onToolInputUpdate');
         emit('tool:input-update', {
           toolCallId,
           input,
@@ -493,6 +513,8 @@ async function handleChatSend(
       },
 
       onToolResult: (toolCallId: string, result: ToolResult) => {
+        resetTimeout('onToolResult');
+        console.log(`[websocket] onToolResult: id=${toolCallId}, success=${result.success}`);
         emit('tool:result', {
           toolCallId,
           result,
@@ -500,18 +522,22 @@ async function handleChatSend(
       },
 
       onCompact: (metadata: CompactMetadata) => {
+        resetTimeout('onCompact');
         emit('system:compact', metadata);
       },
 
       onToolProgress: (toolUseId: string, elapsedTimeSeconds: number, toolName: string) => {
+        resetTimeout('onToolProgress');
         emit('tool:progress', { toolUseId, elapsedTimeSeconds, toolName });
       },
 
       onTaskNotification: (data: TaskNotificationData) => {
+        resetTimeout('onTaskNotification');
         emit('system:task-notification', data);
       },
 
       onToolUseSummary: (summary: string, precedingToolUseIds: string[]) => {
+        resetTimeout('onToolUseSummary');
         emit('tool:summary', { summary, precedingToolUseIds });
       },
 
@@ -559,14 +585,19 @@ async function handleChatSend(
           notificationService.notifyError(stream.sessionId, sdkError.message);
         }
       },
-    }, chatOptions, canUseTool);
+    }, chatOptions, canUseTool, (messageType: string) => {
+      resetTimeout(`raw:${messageType}`);
+    });
   } catch (error) {
     const sdkError = parseSDKError(error);
+    console.log(`[websocket] ❌ catch block: error=${sdkError.message}, aborted=${abortController.signal.aborted}, reason=${abortController.signal.reason}, isAbortedError=${sdkError instanceof AbortedError}`);
 
     if (sdkError instanceof AbortedError || abortController.signal.aborted) {
       if (abortController.signal.reason === 'user-abort') {
+        console.log('[websocket] User abort — silently returning');
         return;
       }
+      console.log('[websocket] Timeout abort — emitting TIMEOUT_ERROR');
       emit('error', {
         code: ERROR_CODES.TIMEOUT_ERROR,
         message: '응답 시간이 초과되었습니다. 다시 시도해 주세요.',
@@ -582,6 +613,7 @@ async function handleChatSend(
       return;
     }
 
+    console.log(`[websocket] Non-abort error — emitting CHAT_ERROR: ${sdkError.message}`);
     emit('error', {
       code: ERROR_CODES.CHAT_ERROR,
       message: sdkError.message,

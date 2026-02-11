@@ -51,8 +51,67 @@ export class StreamHandler {
   /** Whether stream_event thinking deltas have been received (to avoid duplicate thinking from assistant messages) */
   private receivedStreamThinkingDelta: boolean = false;
 
+  /** Throttle tracker: last emit time per tool ID for partial input updates */
+  private lastPartialEmitByTool: Map<string, number> = new Map();
+
   constructor() {
     this.state = createInitialStreamingState();
+  }
+
+  /**
+   * Extract partial fields from incomplete JSON for streaming preview.
+   * Called when JSON.parse fails during input_json_delta accumulation.
+   * Extracts file_path and content fields using string matching.
+   */
+  static extractPartialInput(rawJson: string): Record<string, unknown> | null {
+    const result: Record<string, unknown> = {};
+
+    // Extract file_path (should be complete early in the stream)
+    const pathMatch = rawJson.match(/"file_path"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    if (pathMatch) result.file_path = pathMatch[1].replace(/\\\\/g, '\\').replace(/\\"/g, '"');
+
+    // Extract partial content (may be incomplete — no closing quote)
+    const contentStart = rawJson.match(/"content"\s*:\s*"/);
+    if (contentStart) {
+      const start = contentStart.index! + contentStart[0].length;
+      let partial = rawJson.slice(start);
+      // Remove trailing quote/brace if JSON happened to close
+      if (partial.endsWith('"}')) partial = partial.slice(0, -2);
+      else if (partial.endsWith('"')) partial = partial.slice(0, -1);
+      // Unescape JSON string escapes
+      result.content = partial
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '\t')
+        .replace(/\\r/g, '\r')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+    }
+
+    // Extract old_string for Edit tool
+    const oldStart = rawJson.match(/"old_string"\s*:\s*"/);
+    if (oldStart) {
+      const start = oldStart.index! + oldStart[0].length;
+      // Find the closing quote (not escaped)
+      const remaining = rawJson.slice(start);
+      const closeMatch = remaining.match(/(?<!\\)"/);
+      if (closeMatch) {
+        result.old_string = remaining.slice(0, closeMatch.index)
+          .replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+      }
+    }
+
+    // Extract new_string for Edit tool
+    const newStart = rawJson.match(/"new_string"\s*:\s*"/);
+    if (newStart) {
+      const start = newStart.index! + newStart[0].length;
+      let partial = rawJson.slice(start);
+      if (partial.endsWith('"}')) partial = partial.slice(0, -2);
+      else if (partial.endsWith('"')) partial = partial.slice(0, -1);
+      result.new_string = partial
+        .replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+
+    return Object.keys(result).length > 0 ? result : null;
   }
 
   /**
@@ -70,6 +129,7 @@ export class StreamHandler {
     this.messageIdCounter = 0;
     this.partialJsonByIndex.clear();
     this.toolIdByIndex.clear();
+    this.lastPartialEmitByTool.clear();
     this.receivedStreamTextDelta = false;
     this.receivedStreamThinkingDelta = false;
   }
@@ -509,6 +569,9 @@ export class StreamHandler {
     message: ParsedSDKMessage,
     callbacks: StreamCallbacks
   ): void {
+    // Fire activity callback for every SDK message (timeout reset)
+    callbacks.onActivity?.(message.type);
+
     switch (message.type) {
       case SDKMessageType.INIT:
         this.handleInit(message, callbacks);
@@ -752,10 +815,11 @@ export class StreamHandler {
       const updatedJson = currentJson + partialJson;
       this.partialJsonByIndex.set(index, updatedJson);
 
+      const toolId = this.toolIdByIndex.get(index);
+
       // Try to parse accumulated JSON (may fail if incomplete)
       try {
         const parsedInput = JSON.parse(updatedJson) as Record<string, unknown>;
-        const toolId = this.toolIdByIndex.get(index);
 
         if (toolId) {
           // Update pending tool call with parsed input
@@ -764,11 +828,24 @@ export class StreamHandler {
             pendingCall.input = parsedInput;
           }
 
+          console.log(`[StreamHandler] input_json_delta COMPLETE: toolId=${toolId}, keys=${Object.keys(parsedInput).join(',')}`);
           // Invoke callback with parsed input
           callbacks.onToolInputUpdate?.(toolId, parsedInput);
         }
       } catch {
-        // JSON incomplete - continue accumulating
+        // JSON incomplete — extract partial fields for streaming preview (throttled to 200ms)
+        if (toolId) {
+          const now = Date.now();
+          const lastEmit = this.lastPartialEmitByTool.get(toolId) ?? 0;
+          if (now - lastEmit >= 200) {
+            const partial = StreamHandler.extractPartialInput(updatedJson);
+            if (partial) {
+              this.lastPartialEmitByTool.set(toolId, now);
+              console.log(`[StreamHandler] input_json_delta PARTIAL: toolId=${toolId}, keys=${Object.keys(partial).join(',')}, jsonLen=${updatedJson.length}`);
+              callbacks.onToolInputUpdate?.(toolId, partial);
+            }
+          }
+        }
       }
     }
   }
