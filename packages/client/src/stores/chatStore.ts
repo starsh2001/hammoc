@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import type { PermissionMode, Attachment, ChatUsage } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
+import { usePreferencesStore } from './preferencesStore';
 import { debugLog } from '../utils/debugLogger';
 
 /** Delay before showing "waiting" UI (ms) - gives a natural "reading" feel */
@@ -257,7 +258,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   thinkingExpanded: false,
   isCompacting: false,
   segmentsPendingClear: false,
-  permissionMode: 'default',
+  permissionMode: usePreferencesStore.getState().preferences.permissionMode ?? 'default',
   contextUsage: null,
 
   // Actions
@@ -537,6 +538,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   setPermissionMode: (mode: PermissionMode) => {
     set({ permissionMode: mode });
+    // Persist to server preferences
+    usePreferencesStore.getState().updatePreference('permissionMode', mode);
     // If streaming, notify server to update SDK's permission mode in real-time
     if (get().isStreaming) {
       const socket = getSocket();

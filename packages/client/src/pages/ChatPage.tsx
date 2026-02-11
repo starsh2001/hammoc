@@ -23,7 +23,6 @@ import { useAuthStore } from '../stores/authStore';
 import type { Attachment, HistoryMessage } from '@bmad-studio/shared';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
-import { useRecentAgents } from '../hooks/useRecentAgents';
 import { useFavoriteCommands } from '../hooks/useFavoriteCommands';
 import { useStarFavorites } from '../hooks/useStarFavorites';
 import { useActiveAgent } from '../hooks/useActiveAgent';
@@ -188,11 +187,8 @@ export function ChatPage() {
   // Fetch slash commands for autocomplete (Story 5.1)
   const { commands, starCommands } = useSlashCommands(projectSlug);
 
-  // Recent agents tracking (Story 8.4)
-  const { addRecentAgent } = useRecentAgents(projectSlug);
-
   // Command favorites (Story 9.4/9.5)
-  const { favoriteCommands, addFavorite, removeFavorite, reorderFavorites, isFavorite } = useFavoriteCommands(projectSlug);
+  const { favoriteCommands, addFavorite, removeFavorite, reorderFavorites, isFavorite } = useFavoriteCommands();
 
   // Toggle favorite command handler (Story 9.5)
   const handleToggleFavorite = useCallback((command: string) => {
@@ -222,7 +218,7 @@ export function ChatPage() {
     return starCommands[activeAgentId] ?? [];
   }, [activeAgentId, starCommands]);
 
-  const { starFavorites, addStarFavorite, removeStarFavorite, reorderStarFavorites, isStarFavorite } = useStarFavorites(projectSlug, activeAgentId);
+  const { starFavorites, addStarFavorite, removeStarFavorite, reorderStarFavorites, isStarFavorite } = useStarFavorites(activeAgentId);
 
   const handleToggleStarFavorite = useCallback((command: string) => {
     if (!activeAgent) return;
@@ -289,9 +285,6 @@ export function ChatPage() {
 
   // Handle BMad agent selection (Story 8.3) - Quick Launch
   const handleAgentSelect = useCallback((agentCommand: string) => {
-    // Track agent usage regardless of branch (Story 8.4)
-    addRecentAgent(agentCommand);
-
     const currentMessages = useMessageStore.getState().messages;
     const currentIsStreaming = useChatStore.getState().isStreaming;
 
@@ -307,7 +300,7 @@ export function ChatPage() {
       const newSessionId = generateUUID();
       navigate(`/project/${projectSlug}/session/${newSessionId}`);
     }
-  }, [handleSendMessage, addRecentAgent, abortResponse, clearMessages, clearStreamingSegments, navigate, projectSlug]);
+  }, [handleSendMessage, abortResponse, clearMessages, clearStreamingSegments, navigate, projectSlug]);
 
   // Ref to keep latest handleSendMessage for use in fetchMessages callback (Story 8.3)
   const handleSendMessageRef = useRef(handleSendMessage);
