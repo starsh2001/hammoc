@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import type { PermissionMode, Attachment, ChatUsage } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
+import { debugLog } from '../utils/debugLogger';
 
 /** Delay before showing "waiting" UI (ms) - gives a natural "reading" feel */
 const STREAMING_UI_DELAY_MS = 600;
@@ -320,6 +321,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   startStreaming: (sessionId: string, messageId: string) => {
+    debugLog.state('startStreaming', {
+      sessionId,
+      messageId,
+      hadDelayTimeout: !!streamingDelayTimeoutId,
+      hadCleanupTimeout: !!segmentCleanupTimeoutId,
+      msgCount: useMessageStore.getState().messages.length,
+    });
     // Cancel delay timeout if response arrived early
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
@@ -423,6 +431,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   completeStreaming: () => {
+    const prev = get();
+    debugLog.state('completeStreaming', {
+      sessionId: prev.streamingSessionId,
+      messageId: prev.streamingMessageId,
+      segmentCount: prev.streamingSegments.length,
+      segmentTypes: prev.streamingSegments.map(s => s.type),
+      msgCount: useMessageStore.getState().messages.length,
+    });
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
@@ -442,6 +458,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   abortStreaming: () => {
+    const prev = get();
+    debugLog.state('abortStreaming', {
+      sessionId: prev.streamingSessionId,
+      segmentCount: prev.streamingSegments.length,
+      msgCount: useMessageStore.getState().messages.length,
+    });
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
@@ -514,7 +536,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   resetContextUsage: () => set({ contextUsage: null }),
 
-  clearStreamingSegments: () => set({ streamingSegments: [], segmentsPendingClear: false }),
+  clearStreamingSegments: () => {
+    const prev = get();
+    debugLog.state('clearStreamingSegments', {
+      clearedSegmentCount: prev.streamingSegments.length,
+      segmentTypes: prev.streamingSegments.map(s => s.type),
+      msgCount: useMessageStore.getState().messages.length,
+      isStreaming: prev.isStreaming,
+      wasPending: prev.segmentsPendingClear,
+    });
+    set({ streamingSegments: [], segmentsPendingClear: false });
+  },
 
   updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),
 
@@ -679,6 +711,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   restoreStreaming: (sessionId: string) => {
+    debugLog.state('restoreStreaming', {
+      sessionId,
+      prevSessionId: get().streamingSessionId,
+      prevSegmentCount: get().streamingSegments.length,
+      msgCount: useMessageStore.getState().messages.length,
+    });
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
@@ -700,6 +738,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   setSegmentCleanupTimeoutId: (id) => {
+    debugLog.state('setSegmentCleanupTimeoutId (15s absolute timeout)', {
+      hadPrevious: !!segmentCleanupTimeoutId,
+      segmentCount: get().streamingSegments.length,
+      msgCount: useMessageStore.getState().messages.length,
+    });
     // Cancel previous timeout if exists (rapid successive completions guard)
     if (segmentCleanupTimeoutId) {
       clearTimeout(segmentCleanupTimeoutId);
