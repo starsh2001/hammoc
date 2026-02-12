@@ -61,5 +61,5 @@ export const sessionsApi = {
 
   /** Save prompt history for a session */
   savePromptHistory: (projectSlug: string, sessionId: string, data: PromptHistoryData) =>
-    api.post<void>(`/projects/${projectSlug}/sessions/${sessionId}/prompt-history`, data),
+    api.put<void>(`/projects/${projectSlug}/sessions/${sessionId}/prompt-history`, data),
 };

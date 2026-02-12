@@ -87,4 +87,5 @@ export {
   ThinkingContentBlock,
   ToolUseContentBlock,
   ToolResultContentBlock,
+  ImageContentBlock,
 } from './types/history.js';

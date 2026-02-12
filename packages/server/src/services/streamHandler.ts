@@ -146,7 +146,6 @@ export class StreamHandler {
    */
   parseMessage(message: SDKMessage): ParsedSDKMessage {
     const type = message.type as string;
-    console.log('[StreamHandler] Received message type:', type);
 
     switch (type) {
       case 'init':
@@ -200,6 +199,7 @@ export class StreamHandler {
   private parseAssistantMessage(message: SDKMessage): ParsedAssistantMessage {
     const msg = message as unknown as {
       type: 'assistant';
+      parent_tool_use_id?: string | null;
       message: {
         content: Array<{
           type: string;
@@ -208,6 +208,12 @@ export class StreamHandler {
           name?: string;
           input?: unknown;
         }>;
+        usage?: {
+          input_tokens: number;
+          output_tokens: number;
+          cache_creation_input_tokens?: number;
+          cache_read_input_tokens?: number;
+        };
       };
     };
 
@@ -222,9 +228,22 @@ export class StreamHandler {
       }
     }
 
+    // Extract usage from assistant message (for context window tracking, not billing)
+    // Only main chain messages (parent_tool_use_id === null) represent actual context
+    const isSidechain = msg.parent_tool_use_id !== null;
+    const messageUsage = !isSidechain && msg.message?.usage
+      ? {
+          inputTokens: msg.message.usage.input_tokens,
+          outputTokens: msg.message.usage.output_tokens,
+          cacheCreationInputTokens: msg.message.usage.cache_creation_input_tokens ?? 0,
+          cacheReadInputTokens: msg.message.usage.cache_read_input_tokens ?? 0,
+        }
+      : undefined;
+
     return {
       type: SDKMessageType.ASSISTANT,
       contentBlocks,
+      messageUsage,
       rawMessage: message,
     };
   }
@@ -659,6 +678,11 @@ export class StreamHandler {
       } else if (block.type === ContentBlockType.TOOL_USE) {
         this.handleToolUseBlock(block, callbacks);
       }
+    }
+
+    // Emit assistant message usage for context window tracking (main chain only)
+    if (message.messageUsage) {
+      callbacks.onAssistantUsage?.(message.messageUsage);
     }
   }
 

@@ -174,14 +174,35 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         return;
       }
 
-      // Guard: don't overwrite optimistic messages with stale empty response
-      // while streaming is active or segments are pending clear (buffer replay
-      // may have added messages between request send and response arrival,
-      // and post-streaming fetches may return stale data before JSONL flushes)
+      // Guard: don't overwrite optimistic/current messages with incomplete server response
+      // Block update when server returns FEWER messages than we already have, but only when:
+      // 1. Actively streaming (buffer replay may not be complete), OR
+      // 2. Segments pending clear (post-streaming, but server JSONL hasn't flushed yet)
+      // Exception: If pagination intentionally returns fewer (offset > 0), always allow.
       const currentMessages = get().messages;
       const chatState = useChatStore.getState();
-      if (response.messages.length < currentMessages.length && (chatState.isStreaming || chatState.segmentsPendingClear)) {
-        debugLog.message('fetchMessages → streaming guard (server < current)', {
+      const isPaginationFetch = (response.pagination?.offset ?? 0) > 0;
+      const shouldGuard = !isPaginationFetch &&
+                          response.messages.length < currentMessages.length &&
+                          (chatState.isStreaming || chatState.segmentsPendingClear);
+
+      // DETAILED GUARD DEBUG: Track why messages might disappear
+      debugLog.message('fetchMessages → guard check', {
+        shouldGuard,
+        isPaginationFetch,
+        serverCount: response.messages.length,
+        currentCount: currentMessages.length,
+        serverLessThanCurrent: response.messages.length < currentMessages.length,
+        isStreaming: chatState.isStreaming,
+        segmentsPendingClear: chatState.segmentsPendingClear,
+        guardConditionMet: chatState.isStreaming || chatState.segmentsPendingClear,
+        paginationOffset: response.pagination?.offset,
+        currentAssistantCount: currentMessages.filter(m => m.type === 'assistant').length,
+        serverAssistantCount: response.messages.filter(m => m.type === 'assistant').length,
+      });
+
+      if (shouldGuard) {
+        debugLog.message('fetchMessages → streaming guard BLOCKED update', {
           serverCount: response.messages.length,
           currentCount: currentMessages.length,
           isStreaming: chatState.isStreaming,
@@ -195,14 +216,32 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       // (includes image preservation from optimistic originals)
       const reconciledMessages = reconcileOptimisticMessages(currentMessages, response.messages);
 
+      // Detailed debug: message type sequences for history loss tracking
+      const summarize = (msgs: { type: string; content?: string }[]) =>
+        msgs.map((m, i) => `${i}:${m.type}:${(m.content || '').slice(0, 30)}`);
+
       debugLog.message('fetchMessages → messages updated', {
         serverCount: response.messages.length,
         currentCount: currentMessages.length,
         reconciledCount: reconciledMessages.length,
-        lastMsgType: reconciledMessages[reconciledMessages.length - 1]?.type,
-        lastMsgPreview: reconciledMessages[reconciledMessages.length - 1]?.content?.slice(0, 50),
+        serverTypes: response.messages.map(m => m.type),
+        currentTypes: currentMessages.map(m => m.type),
+        reconciledTypes: reconciledMessages.map(m => m.type),
+        serverMsgs: summarize(response.messages),
+        currentMsgs: summarize(currentMessages),
+        reconciledMsgs: summarize(reconciledMessages),
+        paginationTotal: response.pagination?.total,
+        paginationOffset: response.pagination?.offset,
+        paginationHasMore: response.pagination?.hasMore,
       });
 
+      console.log('[DEDUP] fetchMessages → setting messages', {
+        serverCount: response.messages.length,
+        reconciledCount: reconciledMessages.length,
+        reconciledTypes: reconciledMessages.map(m => m.type),
+        isStreaming: useChatStore.getState().isStreaming,
+        segCount: useChatStore.getState().streamingSegments.length,
+      });
       set({
         messages: reconciledMessages,
         pagination: response.pagination,
@@ -292,6 +331,14 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     set((state) => {
       const existingIds = new Set(state.messages.map((m) => m.id));
       const uniqueNewMessages = newMessages.filter((m) => !existingIds.has(m.id));
+      console.log('[DEDUP] addMessages', {
+        incomingCount: newMessages.length,
+        incomingTypes: newMessages.map(m => m.type),
+        existingCount: state.messages.length,
+        existingTypes: state.messages.map(m => m.type),
+        uniqueCount: uniqueNewMessages.length,
+        duplicateCount: newMessages.length - uniqueNewMessages.length,
+      });
       if (uniqueNewMessages.length === 0) return state;
       return { messages: [...state.messages, ...uniqueNewMessages] };
     });
