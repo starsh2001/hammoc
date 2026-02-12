@@ -583,7 +583,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className="h-dvh flex flex-col bg-white dark:bg-gray-900"
+        className="h-dvh grid grid-rows-[auto_1fr_auto] bg-white dark:bg-gray-900"
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
@@ -647,7 +647,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className="h-dvh flex flex-col bg-white dark:bg-gray-900"
+        className="h-dvh grid grid-rows-[auto_1fr_auto] bg-white dark:bg-gray-900"
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
@@ -708,7 +708,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className="h-dvh flex flex-col bg-white dark:bg-gray-900"
+        className="h-dvh grid grid-rows-[auto_1fr_auto] bg-white dark:bg-gray-900"
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main

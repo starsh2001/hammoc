@@ -18,7 +18,7 @@ export function InputArea({ children, disabled = false }: InputAreaProps) {
     <footer
       aria-label="메시지 입력"
       data-testid="input-area"
-      className={`sticky bottom-0 z-10 flex-shrink-0 border-t border-gray-200 dark:border-gray-700
+      className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700
                   bg-[#fbfbfc] dark:bg-[#151d2c]
                   pb-[max(1rem,env(safe-area-inset-bottom))]
                   ${disabled ? 'opacity-50 pointer-events-none' : ''}`}

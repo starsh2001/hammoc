@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/constants/errorcodes.ts","./src/types/auth.ts","./src/types/cli.ts","./src/types/command.ts","./src/types/history.ts","./src/types/message.ts","./src/types/project.ts","./src/types/sdk.ts","./src/types/session.ts","./src/types/streaming.ts","./src/types/websocket.ts"],"version":"5.9.3"}
