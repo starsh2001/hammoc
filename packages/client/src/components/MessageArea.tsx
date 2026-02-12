@@ -458,7 +458,7 @@ export function MessageArea({
           </div>
         )}
 
-        <div ref={bottomRef} aria-hidden="true" className="h-40" />
+        <div ref={bottomRef} aria-hidden="true" />
       </div>
       </div>
 
