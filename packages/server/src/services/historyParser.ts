@@ -20,6 +20,7 @@ import type {
   ThinkingContentBlock,
   ToolUseContentBlock,
   ToolResultContentBlock,
+  ImageContentBlock,
 } from '@bmad-studio/shared';
 
 /**
@@ -117,6 +118,25 @@ function extractTextContent(content: string | ContentBlock[] | undefined): strin
   }
 
   return '';
+}
+
+/**
+ * Extract image attachments from message content
+ * @param content The message content (array of ContentBlock)
+ * @returns Array of image attachments in HistoryMessage format
+ */
+function extractImages(content: ContentBlock[] | undefined): Array<{ mimeType: string; data: string; name: string }> | undefined {
+  if (!content || !Array.isArray(content)) return undefined;
+
+  const images = content
+    .filter((block): block is ImageContentBlock => block.type === 'image')
+    .map((block, index) => ({
+      mimeType: block.source.media_type,
+      data: block.source.data,
+      name: `image-${index + 1}`, // Generate name from index
+    }));
+
+  return images.length > 0 ? images : undefined;
 }
 
 /**
@@ -253,11 +273,13 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
           const textContent = extractTextContent(messageContent);
           const cleaned = cleanCommandTags(textContent);
           if (cleaned.trim()) {
+            const images = extractImages(messageContent);
             results.push({
               id: m.uuid,
               type: 'user',
               content: cleaned,
               timestamp: m.timestamp,
+              ...(images && { images }),
             });
           }
         }

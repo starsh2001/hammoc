@@ -326,20 +326,32 @@ export function ChatPage() {
     if (projectSlug && sessionId) {
       fetchMessages(projectSlug, sessionId).then(() => {
         const chat = useChatStore.getState();
+        const msgState = useMessageStore.getState();
+        console.log('[DEDUP] fetchMessages.then() callback', {
+          isStreaming: chat.isStreaming,
+          isCompacting: chat.isCompacting,
+          segCount: chat.streamingSegments.length,
+          segTypes: chat.streamingSegments.map(s => s.type),
+          msgCount: msgState.messages.length,
+          msgTypes: msgState.messages.map(m => m.type),
+        });
         if (chat.isStreaming) {
-          // Only trim last assistant message when buffer replay contains text
-          // content (assistant is generating). During compact-only streams the
-          // buffer has no text chunks, so trimming would remove legitimate history.
-          const hasTextContent = chat.streamingSegments.some(
-            (seg) => seg.type === 'text',
-          );
-          if (hasTextContent) {
+          // During active streaming, trim all messages after the last user message
+          // to avoid duplication with buffer replay. The entire assistant turn
+          // will be recreated from streaming segments via completeStreaming.
+          // Exception: during compaction, don't trim — there's no assistant turn
+          // being replayed, trimming would remove legitimate history.
+          if (!chat.isCompacting) {
             const msgs = useMessageStore.getState().messages;
+            let lastUserIdx = -1;
             for (let i = msgs.length - 1; i >= 0; i--) {
-              if (msgs[i].type === 'assistant') {
-                useMessageStore.setState({ messages: msgs.slice(0, i) });
+              if (msgs[i].type === 'user') {
+                lastUserIdx = i;
                 break;
               }
+            }
+            if (lastUserIdx >= 0 && lastUserIdx < msgs.length - 1) {
+              useMessageStore.setState({ messages: msgs.slice(0, lastUserIdx + 1) });
             }
           }
           // If messages are empty during active streaming (SDK may be rewriting
@@ -370,6 +382,11 @@ export function ChatPage() {
   //   which continues in background for reconnection support)
   useEffect(() => {
     return () => {
+      console.log('[DEDUP] ChatPage UNMOUNT cleanup', {
+        isStreaming: useChatStore.getState().isStreaming,
+        segCount: useChatStore.getState().streamingSegments.length,
+        msgCount: useMessageStore.getState().messages.length,
+      });
       clearMessages();
       const socket = getSocket();
       socket.emit('session:leave', '');
@@ -387,12 +404,23 @@ export function ChatPage() {
 
     const socket = getSocket();
     let isInitialConnect = true; // Track whether this is first connect or reconnect
+    let hasJoined = false; // Prevent duplicate session:join (React Strict Mode / rapid navigation)
 
     const emitJoin = () => {
       const isStreaming = useChatStore.getState().isStreaming;
+      console.log('[DEDUP] emitJoin', {
+        sessionId,
+        isStreaming,
+        hasJoined,
+        segCount: useChatStore.getState().streamingSegments.length,
+        msgCount: useMessageStore.getState().messages.length,
+      });
       debugLog.chatpage('emitJoin', { sessionId, isStreaming });
       // Don't probe if we're already streaming on this session (avoids duplicate buffer replay)
       if (isStreaming) return;
+      // Prevent duplicate join for the same effect lifecycle
+      if (hasJoined) return;
+      hasJoined = true;
       socket.emit('session:join', sessionId);
     };
 
@@ -407,6 +435,10 @@ export function ChatPage() {
         socketConnected: socket.connected,
         msgCount: useMessageStore.getState().messages.length,
       });
+      // On reconnection, allow re-joining (server needs to know we're back)
+      if (!isInitialConnect) {
+        hasJoined = false;
+      }
       emitJoin();
 
       // On RECONNECTION (not initial load), do a silent history refresh
@@ -539,6 +571,47 @@ export function ChatPage() {
       fetchMessages(projectSlug, sessionId);
     }
   }, [projectSlug, sessionId, fetchMessages]);
+
+  // During active streaming (non-compaction), hide history messages after
+  // the last user message to prevent duplication with streaming segments.
+  // This render-level filter avoids timing races between fetchMessages (HTTP)
+  // and buffer replay (WebSocket) that state-based trims can't handle.
+  const displayMessages = useMemo(() => {
+    const segCount = useChatStore.getState().streamingSegments.length;
+    if (!isStreaming || isCompacting) {
+      console.log('[DEDUP] displayMessages: NO FILTER', {
+        isStreaming, isCompacting, msgCount: messages.length,
+        msgTypes: messages.map(m => m.type),
+        segCount,
+      });
+      return messages;
+    }
+    let lastUserIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].type === 'user') {
+        lastUserIdx = i;
+        break;
+      }
+    }
+    if (lastUserIdx >= 0 && lastUserIdx < messages.length - 1) {
+      const filtered = messages.slice(0, lastUserIdx + 1);
+      console.log('[DEDUP] displayMessages: FILTERED', {
+        isStreaming, isCompacting,
+        totalMsgCount: messages.length,
+        filteredMsgCount: filtered.length,
+        removedCount: messages.length - filtered.length,
+        removedTypes: messages.slice(lastUserIdx + 1).map(m => m.type),
+        segCount,
+      });
+      return filtered;
+    }
+    console.log('[DEDUP] displayMessages: NO TRIM NEEDED (user is last)', {
+      isStreaming, msgCount: messages.length,
+      msgTypes: messages.map(m => m.type),
+      segCount,
+    });
+    return messages;
+  }, [messages, isStreaming, isCompacting]);
 
   const handleLoadMore = useCallback(() => {
     fetchMoreMessages();
@@ -814,7 +887,7 @@ export function ChatPage() {
           )}
 
           {/* Message list */}
-          {messages.map((msg, idx) => renderHistoryMessage(msg, idx, messages))}
+          {displayMessages.map((msg, idx) => renderHistoryMessage(msg, idx, displayMessages))}
         </MessageArea>
       </main>
 

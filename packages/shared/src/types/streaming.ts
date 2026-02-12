@@ -112,6 +112,13 @@ export interface ParsedInitMessage extends ParsedSDKMessageBase {
 export interface ParsedAssistantMessage extends ParsedSDKMessageBase {
   type: SDKMessageType.ASSISTANT;
   contentBlocks: ParsedContentBlock[];
+  /** Usage from assistant message (main chain only, for context tracking) */
+  messageUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheCreationInputTokens: number;
+    cacheReadInputTokens: number;
+  };
 }
 
 /**
@@ -277,6 +284,8 @@ export interface StreamCallbacks {
   onTaskNotification?: (data: TaskNotificationData) => void;
   onToolUseSummary?: (summary: string, precedingToolUseIds: string[]) => void;
   onResultError?: (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
+  /** Assistant message usage (main chain only) for context window tracking */
+  onAssistantUsage?: (usage: { inputTokens: number; outputTokens: number; cacheCreationInputTokens: number; cacheReadInputTokens: number }) => void;
   /** Fired for every SDK message received — used for activity-based timeout reset */
   onActivity?: (messageType: string) => void;
 }

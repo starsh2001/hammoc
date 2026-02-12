@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { PermissionMode, Attachment, ChatUsage } from '@bmad-studio/shared';
+import type { PermissionMode, Attachment, ChatUsage, HistoryMessage } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { usePreferencesStore } from './preferencesStore';
@@ -268,15 +268,26 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const socket = getSocket();
     const { workingDirectory, sessionId, resume, attachments } = options;
 
+    const msgState = useMessageStore.getState();
+    debugLog.state('sendMessage', {
+      content: content.slice(0, 50),
+      sessionId,
+      resume,
+      currentMsgCount: msgState.messages.length,
+      currentMsgTypes: msgState.messages.map(m => m.type),
+      segmentCount: get().streamingSegments.length,
+      segmentsPendingClear: get().segmentsPendingClear,
+    });
+
     // Clear any existing delay timeout
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
     }
 
-    // Clear stale segments from previous response (e.g., segmentsPendingClear state)
+    // Clear stale segments from previous response
     if (get().streamingSegments.length > 0) {
-      set({ streamingSegments: [], segmentsPendingClear: false });
+      set({ streamingSegments: [] });
     }
     // Cancel previous handleComplete's absolute timeout (prevents old timer from clearing new segments)
     if (segmentCleanupTimeoutId) {
@@ -450,16 +461,113 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingDelayTimeoutId = null;
     }
 
-    // Keep ALL streaming segments to preserve interleaved order (text ↔ tool).
-    // Segments will be cleared by clearStreamingSegments() after fetchMessages
-    // loads the authoritative history with correct ordering.
+    // Convert segments to HistoryMessages matching server's JSONL parsing logic
+    // Thinking is included in the next content block (text or tool_use)
+    const messages: HistoryMessage[] = [];
+    let pendingThinking: string | undefined;
+
+    for (const seg of prev.streamingSegments) {
+      if (seg.type === 'thinking') {
+        // If there's already pending thinking (e.g. system segment in between),
+        // flush it as a thinking-only message to avoid losing it
+        if (pendingThinking && prev.streamingMessageId) {
+          messages.push({
+            id: `${prev.streamingMessageId}-thinking-${messages.length}`,
+            type: 'assistant' as const,
+            content: '',
+            timestamp: new Date().toISOString(),
+            thinking: pendingThinking,
+          });
+        }
+        pendingThinking = seg.content;
+      } else if (seg.type === 'text') {
+        messages.push({
+          id: `${prev.streamingMessageId}-text-${messages.length}`,
+          type: 'assistant' as const,
+          content: seg.content,
+          timestamp: new Date().toISOString(),
+          thinking: pendingThinking,
+        });
+        pendingThinking = undefined;
+      } else if (seg.type === 'tool') {
+        messages.push({
+          id: `${prev.streamingMessageId}-tool-${seg.toolCall.id}`,
+          type: 'tool_use' as const,
+          content: `Calling ${seg.toolCall.name}`,
+          timestamp: new Date().toISOString(),
+          toolName: seg.toolCall.name,
+          toolInput: seg.toolCall.input,
+          thinking: pendingThinking,
+          // Include tool result if completed or errored
+          ...(seg.status !== 'pending' && seg.toolCall.output && {
+            toolResult: {
+              success: seg.status === 'completed',
+              output: seg.status === 'completed' ? seg.toolCall.output : undefined,
+              error: seg.status === 'error' ? seg.toolCall.output : undefined,
+            },
+          }),
+        });
+        pendingThinking = undefined;
+      }
+    }
+
+    // If only thinking with no text/tool, create thinking-only message
+    if (pendingThinking && prev.streamingMessageId) {
+      messages.push({
+        id: `${prev.streamingMessageId}-thinking`,
+        type: 'assistant' as const,
+        content: '',
+        timestamp: new Date().toISOString(),
+        thinking: pendingThinking,
+      });
+    }
+
+    if (messages.length > 0) {
+      // Safety net: remove any existing messages after the last user message
+      // to prevent duplication when fetchMessages loaded JSONL data that
+      // overlaps with the streaming segments we're about to convert.
+      const msgStore = useMessageStore.getState();
+      const existing = msgStore.messages;
+      let lastUserIdx = -1;
+      for (let i = existing.length - 1; i >= 0; i--) {
+        if (existing[i].type === 'user') {
+          lastUserIdx = i;
+          break;
+        }
+      }
+      console.log('[DEDUP] completeStreaming → safety net trim', {
+        existingCount: existing.length,
+        existingTypes: existing.map(m => m.type),
+        lastUserIdx,
+        willTrim: lastUserIdx >= 0 && lastUserIdx < existing.length - 1,
+        convertedCount: messages.length,
+        convertedTypes: messages.map(m => m.type),
+      });
+      if (lastUserIdx >= 0 && lastUserIdx < existing.length - 1) {
+        useMessageStore.setState({ messages: existing.slice(0, lastUserIdx + 1) });
+      }
+
+      useMessageStore.getState().addMessages(messages);
+      console.log('[DEDUP] completeStreaming → after addMessages', {
+        totalMsgCount: useMessageStore.getState().messages.length,
+        totalMsgTypes: useMessageStore.getState().messages.map(m => m.type),
+      });
+      debugLog.state('completeStreaming → converted segments to messages', {
+        messageCount: messages.length,
+        messageTypes: messages.map(m => m.type),
+        totalMsgCount: useMessageStore.getState().messages.length,
+      });
+    }
+
+    // Clear segments immediately now that data is in messageStore
     set({
       isStreaming: false,
       isCompacting: false,
       streamingSessionId: null,
       streamingMessageId: null,
       streamingStartedAt: null,
-      segmentsPendingClear: true,
+      streamingSegments: [],
+      segmentsPendingClear: false,
     });
   },
 
@@ -515,25 +623,82 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       return seg;
     });
 
-    // Keep segments visible as immediate fallback
+    // Convert segments to HistoryMessages (preserve partial response)
+    const messages: HistoryMessage[] = [];
+    let pendingThinking: string | undefined;
+
+    for (const seg of finalSegments) {
+      if (seg.type === 'thinking') {
+        // If there's already pending thinking, flush it as thinking-only message
+        if (pendingThinking && state.streamingMessageId) {
+          messages.push({
+            id: `${state.streamingMessageId}-thinking-${messages.length}`,
+            type: 'assistant' as const,
+            content: '',
+            timestamp: new Date().toISOString(),
+            thinking: pendingThinking,
+          });
+        }
+        pendingThinking = seg.content;
+      } else if (seg.type === 'text') {
+        messages.push({
+          id: `${state.streamingMessageId}-text-${messages.length}`,
+          type: 'assistant' as const,
+          content: seg.content,
+          timestamp: new Date().toISOString(),
+          thinking: pendingThinking,
+        });
+        pendingThinking = undefined;
+      } else if (seg.type === 'tool') {
+        messages.push({
+          id: `${state.streamingMessageId}-tool-${seg.toolCall.id}`,
+          type: 'tool_use' as const,
+          content: `Calling ${seg.toolCall.name}`,
+          timestamp: new Date().toISOString(),
+          toolName: seg.toolCall.name,
+          toolInput: seg.toolCall.input,
+          thinking: pendingThinking,
+          // Include tool result if completed or errored (including abort error)
+          ...(seg.status !== 'pending' && seg.toolCall.output && {
+            toolResult: {
+              success: seg.status === 'completed',
+              output: seg.status === 'completed' ? seg.toolCall.output : undefined,
+              error: seg.status === 'error' ? seg.toolCall.output : undefined,
+            },
+          }),
+        });
+        pendingThinking = undefined;
+      }
+    }
+
+    // If only thinking with no text/tool, create thinking-only message
+    if (pendingThinking && state.streamingMessageId) {
+      messages.push({
+        id: `${state.streamingMessageId}-thinking`,
+        type: 'assistant' as const,
+        content: '',
+        timestamp: new Date().toISOString(),
+        thinking: pendingThinking,
+      });
+    }
+
+    if (messages.length > 0) {
+      useMessageStore.getState().addMessages(messages);
+      debugLog.state('abortResponse → converted partial segments to messages', {
+        messageCount: messages.length,
+        messageTypes: messages.map(m => m.type),
+      });
+    }
+
+    // Clear streaming state
     set({
       isStreaming: false,
       streamingSessionId: null,
       streamingMessageId: null,
-      streamingSegments: finalSegments,
+      streamingSegments: [],
       streamingStartedAt: null,
-      segmentsPendingClear: true,
+      segmentsPendingClear: false,
     });
-
-    // Fetch authoritative history from server, then clear segments
-    const msgState = useMessageStore.getState();
-    const projectSlug = msgState.currentProjectSlug;
-    const sessId = msgState.currentSessionId;
-    if (projectSlug && sessId) {
-      msgState.fetchMessages(projectSlug, sessId, { silent: true }).then(() => {
-        set({ streamingSegments: [], segmentsPendingClear: false });
-      });
-    }
   },
 
   setPermissionMode: (mode: PermissionMode) => {
@@ -734,6 +899,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   restoreStreaming: (sessionId: string) => {
+    console.log('[DEDUP] restoreStreaming called', {
+      sessionId,
+      prevSessionId: get().streamingSessionId,
+      prevIsStreaming: get().isStreaming,
+      prevSegmentCount: get().streamingSegments.length,
+      msgCount: useMessageStore.getState().messages.length,
+      msgTypes: useMessageStore.getState().messages.map(m => m.type),
+    });
     debugLog.state('restoreStreaming', {
       sessionId,
       prevSessionId: get().streamingSessionId,

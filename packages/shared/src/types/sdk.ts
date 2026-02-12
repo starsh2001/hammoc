@@ -145,4 +145,6 @@ export interface Message {
   timestamp: Date;
   toolCalls?: ToolCall[];
   streaming?: boolean;
+  /** Usage data included in message:complete for reliable delivery */
+  usage?: ChatUsage;
 }

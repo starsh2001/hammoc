@@ -63,6 +63,13 @@ class ApiClient {
     });
   }
 
+  async put<T>(path: string, data?: unknown): Promise<T> {
+    return this.request<T>(path, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
   async patch<T>(path: string, data?: unknown): Promise<T> {
     return this.request<T>(path, {
       method: 'PATCH',

@@ -557,6 +557,10 @@ async function handleChatSend(
         emit('tool:summary', { summary, precedingToolUseIds });
       },
 
+      onAssistantUsage: (usage) => {
+        emit('assistant:usage', usage);
+      },
+
       onResultError: (data) => {
         emit('result:error', data);
       },
@@ -568,6 +572,7 @@ async function handleChatSend(
           role: 'assistant',
           content: response.content,
           timestamp: new Date(),
+          usage: response.usage,
         });
 
         if (response.usage) {

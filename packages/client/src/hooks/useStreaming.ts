@@ -131,6 +131,15 @@ export function useStreaming() {
       // (addOptimisticMessage stores content.trim(), so comparison must also trim)
       const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
       const isDuplicate = lastUserMsg && lastUserMsg.content.trim() === incomingTrimmed;
+      console.log('[DEDUP] user:message received', {
+        sessionId: data.sessionId,
+        contentPreview: data.content.slice(0, 50),
+        msgCount: msgs.length,
+        msgTypes: msgs.map(m => m.type),
+        isDuplicate,
+        lastUserContent: lastUserMsg?.content?.slice(0, 50),
+        isStreaming: useChatStore.getState().isStreaming,
+      });
       debugLog.message('user:message', {
         sessionId: data.sessionId,
         contentPreview: data.content.slice(0, 50),
@@ -140,6 +149,9 @@ export function useStreaming() {
       });
       if (!isDuplicate) {
         useMessageStore.getState().addOptimisticMessage(data.content);
+        console.log('[DEDUP] user:message → added optimistic', {
+          newMsgCount: useMessageStore.getState().messages.length,
+        });
       }
       // Detect /compact command and restore compacting indicator
       if (incomingTrimmed.startsWith('/compact')) {
@@ -225,6 +237,7 @@ export function useStreaming() {
         streamingSessionId: chatState.streamingSessionId,
         segmentCount: chatState.streamingSegments.length,
         msgCount: useMessageStore.getState().messages.length,
+        hasUsage: !!data.usage,
       });
       // Update sessionId if not yet set, pending, or empty string (from no-init resume mode)
       // Use updateStreamingSessionId to avoid resetting segments
@@ -232,69 +245,54 @@ export function useStreaming() {
         updateStreamingSessionId(data.sessionId);
       }
 
-      completeStreaming();
-
-      // Background sync: fetch authoritative history (includes tool calls, thinking blocks, etc.)
-      // Deferred to allow SDK time to flush JSONL session file to disk.
-      // Streaming segments are kept visible (correct interleaved order) until history loads.
-      // After successful fetch, clear streaming segments to avoid duplication with history.
-      const msgState = useMessageStore.getState();
-      const projectSlug = msgState.currentProjectSlug;
-      const sessId = msgState.currentSessionId;
-
-      if (projectSlug && sessId) {
-        const INITIAL_DELAY = 2000; // completeStreaming → first fetch wait (SDK JSONL flush time)
-        const MAX_RETRIES = 3;
-        const RETRY_DELAYS = [2000, 3000, 5000]; // Progressive retry delays
-
-        // Baseline: pagination total BEFORE fetch attempts.
-        // Used to detect real new content vs optimistic ID reconciliation.
-        const baselineTotal = msgState.pagination?.total ?? 0;
-
-        const attemptFetch = async (attempt: number) => {
-          debugLog.stream('complete → fetchMessages attempt', {
-            attempt,
-            baselineTotal,
-            projectSlug,
-            sessId,
-          });
-          const store = useMessageStore.getState();
-          await store.fetchMessages(projectSlug, sessId, { silent: true });
-          const afterStore = useMessageStore.getState();
-          const afterTotal = afterStore.pagination?.total ?? 0;
-          // Server must have at least 2 more messages than baseline
-          // (user message + at least one assistant message).
-          // This prevents false positives from optimistic → server ID reconciliation
-          // where only the user message was returned (total +1 but no assistant response).
-          const hasNewContent = afterTotal >= baselineTotal + 2;
-          debugLog.stream('complete → fetchMessages result', {
-            attempt,
-            afterTotal,
-            baselineTotal,
-            hasNewContent,
-            msgCountAfter: afterStore.messages.length,
-          });
-          if (hasNewContent) {
-            // History updated with assistant response — safe to clear segments
-            useChatStore.getState().clearStreamingSegments();
-          } else if (attempt < MAX_RETRIES) {
-            // Retry with increasing delay
-            setTimeout(() => attemptFetch(attempt + 1), RETRY_DELAYS[attempt] ?? 5000);
-          } else {
-            // All retries exhausted — keep segments visible as fallback.
-            // They will be cleared on next message send, navigation, or refresh.
-            debugLog.stream('complete → all retries exhausted, keeping segments as fallback', {
-              afterTotal,
-              baselineTotal,
-            });
-          }
-        };
-
-        setTimeout(() => attemptFetch(0), INITIAL_DELAY);
-      } else {
-        // No session context — clear segments immediately
-        useChatStore.getState().clearStreamingSegments();
+      // Update streamingMessageId with the actual message ID from completion
+      if (data.id) {
+        useChatStore.setState({ streamingMessageId: data.id });
+        debugLog.stream('message:complete → set streamingMessageId', { messageId: data.id });
       }
+
+      // Extract metadata from result usage (contextWindow, model, totalCostUSD).
+      // Token counts are NOT used here — result usage is cumulative billing data.
+      // Accurate per-turn context usage comes from assistant:usage events instead.
+      if (data.usage) {
+        debugLog.stream('usage from message:complete (metadata only)', {
+          contextWindow: data.usage.contextWindow,
+          model: data.usage.model,
+          totalCostUSD: data.usage.totalCostUSD,
+        });
+        const existing = useChatStore.getState().contextUsage;
+        if (existing) {
+          // Merge metadata into existing assistant:usage data
+          setContextUsage({
+            ...existing,
+            contextWindow: data.usage.contextWindow,
+            totalCostUSD: data.usage.totalCostUSD,
+            model: data.usage.model ?? existing.model,
+          });
+        } else {
+          // No assistant:usage received yet — use result data as fallback
+          setContextUsage(data.usage);
+        }
+        if (data.usage.model) {
+          useChatStore.getState().setActiveModel(data.usage.model);
+        }
+      }
+
+      // Complete streaming: converts segments to messages and clears them
+      // No need to fetch from JSONL - data is already in memory
+      console.log('[DEDUP] message:complete → before completeStreaming', {
+        segCount: useChatStore.getState().streamingSegments.length,
+        segTypes: useChatStore.getState().streamingSegments.map(s => s.type),
+        msgCount: useMessageStore.getState().messages.length,
+        msgTypes: useMessageStore.getState().messages.map(m => m.type),
+      });
+      completeStreaming();
+      console.log('[DEDUP] message:complete → after completeStreaming', {
+        msgCount: useMessageStore.getState().messages.length,
+        msgTypes: useMessageStore.getState().messages.map(m => m.type),
+        isStreaming: useChatStore.getState().isStreaming,
+        segCount: useChatStore.getState().streamingSegments.length,
+      });
     };
 
     // Handle tool call start - add tool segment (skip AskUserQuestion — handled via permission:request)
@@ -409,7 +407,9 @@ export function useStreaming() {
     // Handle context compaction notification
     const handleCompact = (data: CompactMetadata) => {
       flushChunkQueue();
-      addSystemSegment(`Context compaction (${data.trigger})...`);
+      // Set isCompacting first (before adding segment) so MessageArea shows correct indicator
+      useChatStore.setState({ isCompacting: true });
+      addSystemSegment(`Context compaction (${data.trigger})...`, 'compact');
     };
 
     // Handle tool:progress — update elapsed time on existing tool segment
@@ -450,12 +450,42 @@ export function useStreaming() {
       }
     };
 
-    // Handle context usage update (also extracts model from result)
+    // Handle context usage update from result message (cumulative billing data + model info)
     const handleContextUsage = (data: ChatUsage) => {
-      setContextUsage(data);
+      debugLog.stream('context:usage received', {
+        inputTokens: data.inputTokens,
+        outputTokens: data.outputTokens,
+        cacheCreationInputTokens: data.cacheCreationInputTokens,
+        cacheReadInputTokens: data.cacheReadInputTokens,
+        model: data.model,
+      });
+      // Only use result usage for model extraction and cost tracking;
+      // context window percentage comes from assistant:usage instead
       if (data.model) {
         useChatStore.getState().setActiveModel(data.model);
       }
+    };
+
+    // Handle assistant message usage (per-turn snapshot for context window tracking)
+    const handleAssistantUsage = (data: { inputTokens: number; outputTokens: number; cacheCreationInputTokens: number; cacheReadInputTokens: number }) => {
+      const totalContext = data.inputTokens + data.cacheCreationInputTokens + data.cacheReadInputTokens;
+      debugLog.stream('assistant:usage received', {
+        inputTokens: data.inputTokens,
+        cacheCreationInputTokens: data.cacheCreationInputTokens,
+        cacheReadInputTokens: data.cacheReadInputTokens,
+        totalContext,
+      });
+      // Build ChatUsage from assistant message data + existing context usage for cost/model
+      const existing = useChatStore.getState().contextUsage;
+      setContextUsage({
+        inputTokens: data.inputTokens,
+        outputTokens: data.outputTokens,
+        cacheCreationInputTokens: data.cacheCreationInputTokens,
+        cacheReadInputTokens: data.cacheReadInputTokens,
+        totalCostUSD: existing?.totalCostUSD ?? 0,
+        contextWindow: existing?.contextWindow ?? 200000,
+        model: existing?.model,
+      });
     };
 
     // Handle stream:status — server tells us if a background stream exists
@@ -480,10 +510,25 @@ export function useStreaming() {
       if (data.active) {
         // Clear seen permissions so replayed permission:request events are processed
         seenPermissionIds.current.clear();
+        // Clear any pending text chunks from a previous buffer replay to prevent
+        // doubled text when multiple session:join → stream:status cycles occur
+        // (e.g., React Strict Mode double-mount or rapid navigation)
+        clearChunkQueue();
+        console.log('[DEDUP] stream:status ACTIVE → before restoreStreaming', {
+          sessionId: data.sessionId,
+          msgCount: useMessageStore.getState().messages.length,
+          msgTypes: useMessageStore.getState().messages.map(m => m.type),
+          prevIsStreaming: chatState.isStreaming,
+          prevSegCount: chatState.streamingSegments.length,
+        });
         restoreStreaming(data.sessionId);
-        // Trim the last assistant message from history to avoid duplication
-        // with buffer replay (which provides the complete streaming version)
-        trimLastAssistantMessage();
+        // Trim all messages after the last user message to avoid duplication
+        // with buffer replay (which replays the entire assistant turn)
+        trimMessagesAfterLastUser();
+        console.log('[DEDUP] stream:status ACTIVE → after trim', {
+          msgCount: useMessageStore.getState().messages.length,
+          msgTypes: useMessageStore.getState().messages.map(m => m.type),
+        });
         debugLog.stream('stream:status → restored', { sessionId: data.sessionId });
       } else {
         // Stream not active — if we were streaming, the stream completed during disconnect.
@@ -493,39 +538,30 @@ export function useStreaming() {
           debugLog.stream('stream:status → completing stale stream', {
             sessionId: data.sessionId,
           });
-          completeStreaming(); // sets isStreaming: false, segmentsPendingClear: true
-
-          // Fetch authoritative history to pick up completed responses
-          const msgState = useMessageStore.getState();
-          const projectSlug = msgState.currentProjectSlug;
-          const sessId = msgState.currentSessionId;
-
-          if (projectSlug && sessId) {
-            useMessageStore.getState().fetchMessages(projectSlug, sessId, { silent: true }).then(() => {
-              debugLog.stream('stream:status → fetchMessages done, clearing segments', {
-                msgCount: useMessageStore.getState().messages.length,
-              });
-              useChatStore.getState().clearStreamingSegments();
-            });
-          } else {
-            useChatStore.getState().clearStreamingSegments();
-          }
+          // Complete streaming: converts segments to messages and clears them
+          completeStreaming();
         } else {
           debugLog.stream('stream:status → inactive, no-op (not streaming)');
         }
       }
     };
 
-    // Remove the last assistant message from the message store.
+    // Remove all messages after the last user message from the message store.
     // Called when restoring a background stream to prevent overlap between
-    // fetched history (JSONL) and replayed buffer events.
-    const trimLastAssistantMessage = () => {
+    // fetched history (JSONL) and replayed buffer events. The entire assistant
+    // turn (multiple assistant/tool_use messages) will be recreated from
+    // streaming segments via completeStreaming.
+    const trimMessagesAfterLastUser = () => {
       const msgs = useMessageStore.getState().messages;
+      let lastUserIdx = -1;
       for (let i = msgs.length - 1; i >= 0; i--) {
-        if (msgs[i].type === 'assistant') {
-          useMessageStore.setState({ messages: msgs.slice(0, i) });
+        if (msgs[i].type === 'user') {
+          lastUserIdx = i;
           break;
         }
+      }
+      if (lastUserIdx >= 0 && lastUserIdx < msgs.length - 1) {
+        useMessageStore.setState({ messages: msgs.slice(0, lastUserIdx + 1) });
       }
     };
 
@@ -616,6 +652,7 @@ export function useStreaming() {
     socket.on('tool:result', handleToolResult);
     socket.on('permission:request', handlePermissionRequest);
     socket.on('context:usage', handleContextUsage);
+    socket.on('assistant:usage', handleAssistantUsage);
     socket.on('system:compact', handleCompact);
     socket.on('tool:progress', handleToolProgress);
     socket.on('system:task-notification', handleTaskNotification);
@@ -653,6 +690,7 @@ export function useStreaming() {
       socket.off('tool:result', handleToolResult);
       socket.off('permission:request', handlePermissionRequest);
       socket.off('context:usage', handleContextUsage);
+      socket.off('assistant:usage', handleAssistantUsage);
       socket.off('system:compact', handleCompact);
       socket.off('tool:progress', handleToolProgress);
       socket.off('system:task-notification', handleTaskNotification);

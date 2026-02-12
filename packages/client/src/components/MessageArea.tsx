@@ -135,6 +135,50 @@ function useAutoScroll(
     setIsUserScrolledUp(false);
   }, []);
 
+  // Handle mobile keyboard show/hide (visualViewport resize)
+  // When keyboard opens/closes and user is near bottom, scroll to bottom
+  useEffect(() => {
+    if (!window.visualViewport) {
+      console.log('[MessageArea] visualViewport not supported');
+      return;
+    }
+
+    const handleViewportResize = () => {
+      const container = containerRef.current;
+      if (!container || !bottomRef.current) {
+        console.log('[MessageArea] viewport resize - missing refs');
+        return;
+      }
+
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+      const isNearBottom = distanceFromBottom < threshold;
+
+      console.log('[MessageArea] viewport resize', {
+        scrollTop,
+        scrollHeight,
+        clientHeight,
+        distanceFromBottom,
+        threshold,
+        isNearBottom,
+        viewportHeight: window.visualViewport?.height,
+      });
+
+      // If user is near bottom, maintain scroll at bottom (for keyboard open/close)
+      if (isNearBottom) {
+        console.log('[MessageArea] scrolling to bottom');
+        bottomRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+        setIsUserScrolledUp(false);
+      }
+    };
+
+    const vv = window.visualViewport;
+    vv.addEventListener('resize', handleViewportResize);
+    return () => {
+      vv.removeEventListener('resize', handleViewportResize);
+    };
+  }, [threshold]);
+
   return {
     containerRef,
     bottomRef,
@@ -222,7 +266,7 @@ export function MessageArea({
         tabIndex={0}
       >
       <div className="content-container px-4 pt-4 pb-4 space-y-4">
-        {/* History messages */}
+        {/* History messages - always show (segments append to history) */}
         {children}
 
         {/* Streaming segments - rendered in order */}
@@ -419,8 +463,23 @@ export function MessageArea({
           );
         })()}
 
-        {/* Streaming indicator: always visible while streaming is active (after segments) */}
-        {isStreaming && streamingSegments.length > 0 && !isCompacting && (
+        {/* Compaction in progress: show amber indicator (highest priority) */}
+        {isStreaming && isCompacting && !streamingSegments.some(s => s.type === 'text' && s.content.trim()) && (
+          <div className="flex justify-center">
+            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
+              <Database className="w-4 h-4 animate-pulse" aria-hidden="true" />
+              <span>
+                {streamingSegments.length === 0 || streamingSegments.every(s => s.type === 'system')
+                  ? '컨텍스트 압축 중...'
+                  : '컨텍스트 압축 완료 — 응답 재생성 중...'}
+              </span>
+              <StreamingIndicator />
+            </div>
+          </div>
+        )}
+
+        {/* Normal streaming indicator: text is being generated (not compacting) */}
+        {isStreaming && !isCompacting && streamingSegments.length > 0 && (
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
               <StreamingIndicator />
@@ -428,31 +487,10 @@ export function MessageArea({
           </div>
         )}
 
-        {/* Waiting indicator: streaming started but no segments received yet */}
-        {isStreaming && streamingSegments.length === 0 && (
-          isCompacting ? (
-            <div className="flex justify-center">
-              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
-                <Database className="w-4 h-4 animate-pulse" aria-hidden="true" />
-                <span>컨텍스트 압축 중...</span>
-                <StreamingIndicator />
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-start">
-              <div className="max-w-[80%] bg-gray-50 dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
-                <StreamingIndicator />
-              </div>
-            </div>
-          )
-        )}
-
-        {/* Post-compaction indicator: compact_boundary received, waiting for new response */}
-        {isStreaming && isCompacting && streamingSegments.length > 0 && !streamingSegments.some(s => s.type === 'text' && s.content.trim()) && (
-          <div className="flex justify-center">
-            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
-              <Database className="w-4 h-4 animate-pulse" aria-hidden="true" />
-              <span>컨텍스트 압축 완료 — 응답 재생성 중...</span>
+        {/* Waiting indicator: streaming started but no content yet (not compacting) */}
+        {isStreaming && !isCompacting && streamingSegments.length === 0 && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] bg-gray-50 dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
               <StreamingIndicator />
             </div>
           </div>

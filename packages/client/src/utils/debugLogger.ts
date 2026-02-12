@@ -14,6 +14,7 @@
  */
 
 const MAX_ENTRIES = 2000;
+const SERVER_FLUSH_INTERVAL = 500; // ms between server flushes
 
 interface LogEntry {
   ts: string;
@@ -25,6 +26,35 @@ interface LogEntry {
 class DebugLogger {
   private buffer: LogEntry[] = [];
   private enabled = true;
+  private serverLoggingEnabled = true;
+  private serverQueue: LogEntry[] = [];
+  private serverFlushTimer: ReturnType<typeof setInterval> | null = null;
+
+  constructor() {
+    // Start server flush timer
+    this.startServerFlush();
+  }
+
+  private startServerFlush() {
+    if (this.serverFlushTimer) return;
+    this.serverFlushTimer = setInterval(() => this.flushToServer(), SERVER_FLUSH_INTERVAL);
+  }
+
+  private async flushToServer() {
+    if (!this.serverLoggingEnabled || this.serverQueue.length === 0) return;
+
+    const batch = this.serverQueue.splice(0, this.serverQueue.length);
+    try {
+      await fetch('/api/debug/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batch }),
+        credentials: 'include',
+      });
+    } catch {
+      // Silently ignore — debug logging should never break the app
+    }
+  }
 
   log(category: string, event: string, data?: Record<string, unknown>) {
     if (!this.enabled) return;
@@ -39,6 +69,11 @@ class DebugLogger {
     this.buffer.push(entry);
     if (this.buffer.length > MAX_ENTRIES) {
       this.buffer.shift();
+    }
+
+    // Queue for server-side file logging
+    if (this.serverLoggingEnabled) {
+      this.serverQueue.push(entry);
     }
 
     // Also log to console in dev mode with color coding
@@ -57,6 +92,11 @@ class DebugLogger {
       'color: inherit',
       data || '',
     );
+  }
+
+  setServerLogging(enabled: boolean) {
+    this.serverLoggingEnabled = enabled;
+    console.log(`[DebugLogger] Server logging ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   dump(): string {

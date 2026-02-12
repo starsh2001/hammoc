@@ -30,11 +30,21 @@ export interface ToolResultContentBlock {
   content: string | unknown[];
 }
 
+export interface ImageContentBlock {
+  type: 'image';
+  source: {
+    type: 'base64';
+    media_type: string;
+    data: string;
+  };
+}
+
 export type ContentBlock =
   | TextContentBlock
   | ThinkingContentBlock
   | ToolUseContentBlock
-  | ToolResultContentBlock;
+  | ToolResultContentBlock
+  | ImageContentBlock;
 
 /**
  * Raw JSONL message structure from Claude Code session file
