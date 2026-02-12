@@ -14,6 +14,7 @@ import projectsRoutes from './routes/projects.js';
 import sessionsRoutes from './routes/sessions.js';
 import commandsRoutes from './routes/commands.js';
 import preferencesRoutes from './routes/preferences.js';
+import debugRoutes from './routes/debug.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 
@@ -74,6 +75,9 @@ export async function createApp(): Promise<Express> {
 
   // Preferences routes (global user settings)
   app.use('/api/preferences', preferencesRoutes);
+
+  // Debug routes (server-side logging for client debugging)
+  app.use('/api/debug', debugRoutes);
 
   return app;
 }

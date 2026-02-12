@@ -870,20 +870,6 @@ export function ChatInput({
             onPaste={handlePaste}
             onFocus={() => {
               userHasFocusedRef.current = true;
-              // On mobile, scroll message area to bottom when keyboard opens
-              if (isTouchDevice) {
-                const scrollToBottom = () => {
-                  const scrollContainer = document.querySelector('[role="log"] > div') as HTMLElement;
-                  if (scrollContainer) {
-                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
-                  }
-                };
-                // Retry multiple times as keyboard animation affects layout
-                scrollToBottom();
-                setTimeout(scrollToBottom, 100);
-                setTimeout(scrollToBottom, 200);
-                setTimeout(scrollToBottom, 300);
-              }
             }}
             onBlur={() => {
               userHasFocusedRef.current = false;

@@ -29,15 +29,21 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: ContextUsageDisplayProps) {
   const hasData = contextUsage && contextUsage.contextWindow > 0;
-  const usagePercent = hasData
-    ? Math.round((contextUsage.inputTokens / contextUsage.contextWindow) * 100)
-    : 0;
+
+  // Don't render until we have actual usage data (prevents misleading 0% display)
+  if (!hasData) {
+    return null;
+  }
+
+  // Calculate total input tokens including cache (SDK's inputTokens only includes uncached tokens)
+  const totalInputTokens = contextUsage.inputTokens + contextUsage.cacheCreationInputTokens + contextUsage.cacheReadInputTokens;
+  const usagePercent = Math.round((totalInputTokens / contextUsage.contextWindow) * 100);
+
   const isCritical = usagePercent > CONTEXT_USAGE_THRESHOLDS.CRITICAL;
   const strokeColor = getStrokeColor(usagePercent);
   const dashOffset = CIRCUMFERENCE - (Math.min(usagePercent, 100) / 100) * CIRCUMFERENCE;
 
   const handleClick = () => {
-    if (!hasData) return;
     if (isCritical && onNewSession) {
       onNewSession();
     } else if (onCompact) {
@@ -45,17 +51,17 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: C
     }
   };
 
-  const tooltipText = hasData
-    ? [
-        ...(isCritical
-          ? [`⚠ 컨텍스트가 거의 찼습니다 (${usagePercent}%)`, '클릭하여 새 세션 시작', '---']
-          : ['클릭하여 Context Compaction 실행']),
-        `컨텍스트: ${contextUsage.inputTokens.toLocaleString()} / ${contextUsage.contextWindow.toLocaleString()} 토큰 (${usagePercent}%)`,
-        `출력 토큰: ${contextUsage.outputTokens.toLocaleString()}`,
-        `캐시 읽기: ${contextUsage.cacheReadInputTokens.toLocaleString()}`,
-        `비용: $${contextUsage.totalCostUSD.toFixed(4)}`,
-      ].join('\n')
-    : '컨텍스트 사용량 (대기 중)';
+  const tooltipText = [
+    ...(isCritical
+      ? [`⚠ 컨텍스트가 거의 찼습니다 (${usagePercent}%)`, '클릭하여 새 세션 시작', '---']
+      : ['클릭하여 Context Compaction 실행']),
+    `컨텍스트: ${totalInputTokens.toLocaleString()} / ${contextUsage.contextWindow.toLocaleString()} 토큰 (${usagePercent}%)`,
+    `  - 신규: ${contextUsage.inputTokens.toLocaleString()}`,
+    `  - 캐시 생성: ${contextUsage.cacheCreationInputTokens.toLocaleString()}`,
+    `  - 캐시 읽기: ${contextUsage.cacheReadInputTokens.toLocaleString()}`,
+    `출력 토큰: ${contextUsage.outputTokens.toLocaleString()}`,
+    `비용: $${contextUsage.totalCostUSD.toFixed(4)}`,
+  ].join('\n');
 
   return (
     <button
@@ -63,7 +69,7 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: C
       role="status"
       aria-label={`컨텍스트 사용량 ${usagePercent}%`}
       title={tooltipText}
-      className={`flex items-center gap-2 ml-3 mr-0.5 transition-opacity ${hasData ? 'cursor-pointer hover:opacity-80' : 'cursor-default opacity-50'}`}
+      className="flex items-center gap-2 ml-3 mr-0.5 transition-opacity cursor-pointer hover:opacity-80"
       onClick={handleClick}
       data-testid="context-usage-display"
     >
