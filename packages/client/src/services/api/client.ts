@@ -39,12 +39,21 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => null);
+      if (errorData?.error?.message) {
+        throw new ApiError(
+          response.status,
+          errorData.error.code || 'UNKNOWN_ERROR',
+          errorData.error.message,
+          errorData.error.details
+        );
+      }
+      // Non-JSON error response (e.g. proxy 502, HTML error page)
+      const url = `${this.baseURL}${path}`;
       throw new ApiError(
         response.status,
-        errorData.error?.code || 'UNKNOWN_ERROR',
-        errorData.error?.message || 'An error occurred',
-        errorData.error?.details
+        'UNKNOWN_ERROR',
+        `요청 실패 (${response.status} ${response.statusText}) - ${url}`,
       );
     }
 

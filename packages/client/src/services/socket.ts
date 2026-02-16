@@ -16,7 +16,9 @@ let socketInstance: Socket<ServerToClientEvents, ClientToServerEvents> | null = 
 export function getSocket(): Socket<ServerToClientEvents, ClientToServerEvents> {
   if (!socketInstance) {
     // Use current hostname for mobile/remote access, fallback to localhost
-    const socketUrl = `http://${window.location.hostname}:3000`;
+    // Server port is configurable via VITE_SERVER_PORT env var (for multi-instance setup)
+    const serverPort = import.meta.env.VITE_SERVER_PORT || '3000';
+    const socketUrl = `http://${window.location.hostname}:${serverPort}`;
     socketInstance = io(socketUrl, {
       autoConnect: true,
       withCredentials: true,

@@ -501,7 +501,7 @@ export function SessionListPage() {
       />
 
       {/* Content area with ref for pull-to-refresh */}
-      <div ref={containerRef} className="flex-1 overflow-auto">
+      <div ref={containerRef} className="flex-1 overflow-auto overscroll-contain">
         {/* Loading state */}
         {isLoading && !isRefreshing && (
           <div className="p-4 space-y-3" aria-label="로딩 중" role="status">

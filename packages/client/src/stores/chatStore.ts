@@ -155,6 +155,8 @@ interface ChatState {
   thinkingExpanded: boolean;
   /** Whether context compaction is in progress */
   isCompacting: boolean;
+  /** Whether this session was taken over by another browser (locks UI until refresh) */
+  isSessionLocked: boolean;
   /** Whether segments are being held pending history fetch (post-completeStreaming) */
   segmentsPendingClear: boolean;
 }
@@ -257,6 +259,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   activeModel: null,
   thinkingExpanded: false,
   isCompacting: false,
+  isSessionLocked: false,
   segmentsPendingClear: false,
   permissionMode: usePreferencesStore.getState().preferences.permissionMode ?? 'default',
   contextUsage: null,

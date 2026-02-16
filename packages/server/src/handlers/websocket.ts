@@ -135,6 +135,13 @@ export async function initializeWebSocket(
       const abortController = new AbortController();
       const streamKey = data.sessionId || `pending-${socket.id}`;
 
+      // Abort existing active stream for same session from a different socket
+      const existingStream = activeStreams.get(streamKey);
+      if (existingStream && existingStream.status === 'running' && existingStream.socketRef.current && existingStream.socketRef.current.id !== socket.id) {
+        existingStream.socketRef.current.emit('stream:detached', { sessionId: streamKey, reason: 'another-client' });
+        existingStream.abortController.abort('another-client');
+      }
+
       const stream: ActiveStream = {
         sessionId: streamKey,
         socketRef: { current: socket },

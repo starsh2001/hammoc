@@ -27,15 +27,15 @@ export function EmptyState({
   onAction,
 }: EmptyStateProps) {
   return (
-    <div className="text-center py-12" role="status" aria-label={title}>
+    <div className="text-center py-6 md:py-12 px-4" role="status" aria-label={title}>
       <Icon
-        className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4"
+        className="w-10 h-10 md:w-16 md:h-16 mx-auto text-gray-300 dark:text-gray-600 mb-3 md:mb-4"
         aria-hidden="true"
       />
-      <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+      <p className="text-base md:text-lg font-medium text-gray-900 dark:text-white mb-1 md:mb-2">
         {title}
       </p>
-      <p className="text-gray-500 dark:text-gray-400 mb-4">
+      <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mb-3 md:mb-4">
         {description}
       </p>
       {actionLabel && onAction && (

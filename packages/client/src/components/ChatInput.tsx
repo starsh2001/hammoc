@@ -13,8 +13,9 @@
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Square, Paperclip, X } from 'lucide-react';
+import { Send, Square, Paperclip, X, Lock } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useChatStore } from '../stores/chatStore';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { usePromptHistory } from '../hooks/usePromptHistory';
 import { CommandPalette } from './CommandPalette';
@@ -182,6 +183,9 @@ export function ChatInput({
   onReorderStarFavorites,
   onRemoveStarFavorite,
 }: ChatInputProps) {
+  // Session lock state (another browser took over this session)
+  const isSessionLocked = useChatStore((s) => s.isSessionLocked);
+
   // Local state
   const [content, setContent] = useState('');
   const [showConnectionWarning, setShowConnectionWarning] = useState(false);
@@ -275,13 +279,14 @@ export function ChatInput({
     setStarSelectedIndex(0);
   }, [starCommandFilter]);
 
-  // Height adjustment - textarea grows freely, wrapper div constrains visible area
+  // Height adjustment - textarea grows up to max-height, then scrolls internally
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
     textarea.style.height = 'auto';
-    textarea.style.height = `${Math.max(textarea.scrollHeight, 40)}px`;
+    const scrollH = Math.max(textarea.scrollHeight, 40);
+    textarea.style.height = `${scrollH}px`;
   }, []);
 
   // Adjust height on content change
@@ -532,6 +537,7 @@ export function ChatInput({
 
   // Submit handler
   const handleSubmit = useCallback(() => {
+    if (isSessionLocked) return;
     const trimmedContent = content.trim();
     if (!trimmedContent) return;
 
@@ -558,7 +564,7 @@ export function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-  }, [content, isConnected, onSend, attachments]);
+  }, [content, isConnected, isSessionLocked, onSend, attachments]);
 
   // Keyboard handler
   const handleKeyDown = useCallback(
@@ -851,18 +857,17 @@ export function ChatInput({
         )}
 
         <div
-          className={`overflow-y-auto overscroll-contain
-                     bg-white dark:bg-gray-800
+          className={`bg-white dark:bg-gray-800
                      border border-gray-300 dark:border-gray-600
                      rounded-lg
                      focus-within:ring-2 ${modeColors.ring}`}
-          style={{ maxHeight: '120px' }}
           onClick={() => textareaRef.current?.focus()}
         >
           <textarea
             ref={textareaRef}
             value={content}
             onChange={(e) => {
+              if (isSessionLocked) return;
               setContent(e.target.value);
               resetNavigation();
             }}
@@ -874,7 +879,8 @@ export function ChatInput({
             onBlur={() => {
               userHasFocusedRef.current = false;
             }}
-            placeholder={placeholder}
+            disabled={isSessionLocked || undefined}
+            placeholder={isSessionLocked ? '다른 브라우저에서 사용 중 — 새로고침 후 사용 가능' : placeholder}
             role={showCommands || showStarCommands ? 'combobox' : undefined}
             aria-label="메시지 입력"
             aria-describedby="input-hint"
@@ -893,8 +899,8 @@ export function ChatInput({
                        placeholder-gray-500 dark:placeholder-gray-400
                        focus:outline-none
                        disabled:cursor-not-allowed
-                       overflow-hidden`}
-            style={{ minHeight: '22px' }}
+                       overflow-y-auto overscroll-contain`}
+            style={{ minHeight: '22px', maxHeight: '120px' }}
           />
         </div>
         <span id="input-hint" className="sr-only">
@@ -961,7 +967,20 @@ export function ChatInput({
           <Paperclip size={20} aria-hidden="true" />
         </button>
 
-        {isStreaming && onAbort ? (
+        {isSessionLocked ? (
+          <button
+            type="button"
+            disabled
+            aria-label="세션 잠김"
+            className="p-2 rounded-lg flex-shrink-0
+                       bg-gray-400 dark:bg-gray-600
+                       text-white
+                       opacity-50 cursor-not-allowed"
+            style={{ height: '36px', width: '36px' }}
+          >
+            <Lock size={20} aria-hidden="true" />
+          </button>
+        ) : isStreaming && onAbort ? (
           <button
             type="button"
             onClick={onAbort}

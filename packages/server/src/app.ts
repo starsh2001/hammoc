@@ -6,6 +6,9 @@
  * loading persisted session secret from config file.
  */
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import cliRoutes from './routes/cli.js';
@@ -78,6 +81,23 @@ export async function createApp(): Promise<Express> {
 
   // Debug routes (server-side logging for client debugging)
   app.use('/api/debug', debugRoutes);
+
+  // Production: serve built client static files
+  if (process.env.NODE_ENV === 'production') {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const clientDistPath = path.resolve(__dirname, '../../client/dist');
+
+    if (existsSync(clientDistPath)) {
+      app.use(express.static(clientDistPath));
+      // SPA fallback: non-API routes → index.html
+      app.get('*', (_req: Request, res: Response) => {
+        res.sendFile(path.join(clientDistPath, 'index.html'));
+      });
+      console.log(`Serving client from ${clientDistPath}`);
+    } else {
+      console.warn(`Client build not found at ${clientDistPath} — run "npm run build" first`);
+    }
+  }
 
   return app;
 }
