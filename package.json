@@ -9,18 +9,23 @@
     "dev": "concurrently -n server,client -c blue,green \"npm run dev -w packages/server\" \"npm run dev -w packages/client\"",
     "build": "npm run build -w packages/shared && npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "start": "concurrently -n server,client -c blue,green \"npm run start -w packages/server\" \"npm run start -w packages/client\"",
+    "start": "npm run start -w packages/server",
+    "prod": "npm run build && npm run start",
     "lint": "eslint \"packages/*/src/**/*.{ts,tsx}\"",
     "format": "prettier --write packages/*/src",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "bmad:refresh": "bmad-method install -f -i codex",
+    "bmad:list": "bmad-method list:agents",
+    "bmad:validate": "bmad-method validate"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0",
-    "typescript": "^5.6.0",
-    "eslint": "^9.0.0",
     "@eslint/js": "^9.0.0",
-    "typescript-eslint": "^8.0.0",
-    "prettier": "^3.3.0"
+    "concurrently": "^8.2.0",
+    "cross-env": "^10.1.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.0.0"
   },
   "bin": {
     "bmad-studio": "./bin/bmad-studio.js"

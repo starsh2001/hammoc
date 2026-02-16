@@ -28,6 +28,7 @@ export const authController = {
    * Authenticate user with password
    */
   async login(req: Request, res: Response): Promise<void> {
+    try {
     // Get client IP
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
 
@@ -100,6 +101,15 @@ export const authController = {
       success: true,
       message: '로그인 성공',
     });
+    } catch (err) {
+      console.error('[auth] Login handler error:', err);
+      res.status(500).json({
+        error: {
+          code: 'LOGIN_ERROR',
+          message: `로그인 처리 중 서버 오류: ${err instanceof Error ? err.message : String(err)}`,
+        },
+      });
+    }
   },
 
   /**

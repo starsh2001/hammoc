@@ -35,3 +35,6 @@ out/
 
 # Debug
 .ai/debug-log.md
+# BMAD (local only)
+.bmad-core/
+.bmad-*/

@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
@@ -572,8 +573,24 @@ export function useStreaming() {
       });
       if (useChatStore.getState().isStreaming) {
         flushChunkQueue();
-        addSystemSegment('다른 브라우저에서 이 세션에 연결되어 실시간 스트리밍이 중단되었습니다.', 'info');
         completeStreaming();
+      }
+      // Lock this session until page refresh — prevents sending messages
+      // from a stale browser while another browser is actively using this session
+      useChatStore.setState({ isSessionLocked: true });
+      toast.warning('다른 브라우저에서 이 세션을 사용 중입니다. 새로고침 후 다시 사용할 수 있습니다.', {
+        duration: Infinity,
+      });
+
+      // Fetch latest messages from server so this client has up-to-date history
+      // (the other browser may receive additional responses after taking over)
+      const msgState = useMessageStore.getState();
+      const { currentProjectSlug, currentSessionId } = msgState;
+      if (currentProjectSlug && currentSessionId) {
+        // Delay slightly to allow server JSONL to flush
+        setTimeout(() => {
+          useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true });
+        }, 1000);
       }
     };
 

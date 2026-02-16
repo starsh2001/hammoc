@@ -23,8 +23,14 @@ export async function createSessionMiddleware(): Promise<RequestHandler> {
   const authConfig = new AuthConfigService();
   const secret = await authConfig.getSessionSecret();
 
+  // Use environment-specific cookie name to prevent session conflicts
+  // when running multiple instances on same hostname (different ports)
+  const cookieName = process.env.NODE_ENV === 'production'
+    ? 'bmad-session'
+    : `bmad-session-${process.env.PORT || '3000'}`;
+
   return cookieSession({
-    name: 'bmad-session',
+    name: cookieName,
     keys: [secret],
     maxAge: THIRTY_DAYS_MS,
     httpOnly: true,

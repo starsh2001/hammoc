@@ -111,16 +111,21 @@ function useAutoScroll(
     }
 
     // Normal auto-scroll behavior (for new messages at bottom)
-    if (!isUserScrolledUp && bottomRef.current && !isLoadingMore) {
+    if (!isUserScrolledUp && !isLoadingMore) {
       // During streaming, use instant scroll to prevent race condition:
       // smooth animation can lag behind new content → handleScroll detects "not near bottom"
       // → isUserScrolledUp becomes true → auto-scroll permanently stops
       const useSmooth = smooth && !isInitialMountRef.current && !isStreaming;
       isProgrammaticScrollRef.current = true;
-      bottomRef.current.scrollIntoView({
-        behavior: useSmooth ? 'smooth' : 'auto',
-        block: 'end',
-      });
+
+      if (!useSmooth && container) {
+        // Instant scroll: use scrollTop instead of scrollIntoView to prevent
+        // mobile browsers from scrolling the entire page (pushing InputArea off-screen)
+        container.scrollTop = container.scrollHeight;
+      } else if (bottomRef.current) {
+        bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+
       // Reset programmatic scroll flag after a tick (allows scroll event to fire and be ignored)
       requestAnimationFrame(() => {
         isProgrammaticScrollRef.current = false;
@@ -165,9 +170,10 @@ function useAutoScroll(
       });
 
       // If user is near bottom, maintain scroll at bottom (for keyboard open/close)
+      // Use scrollTop instead of scrollIntoView to avoid scrolling the entire page on mobile
       if (isNearBottom) {
         console.log('[MessageArea] scrolling to bottom');
-        bottomRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+        container.scrollTop = container.scrollHeight;
         setIsUserScrolledUp(false);
       }
     };
@@ -242,7 +248,7 @@ export function MessageArea({
         aria-label="메시지 목록"
         aria-live="polite"
         data-testid="message-area"
-        className="flex-1 flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900"
+        className="flex-1 flex items-center justify-center overflow-y-auto bg-white dark:bg-gray-900"
       >
         {emptyState}
       </section>
