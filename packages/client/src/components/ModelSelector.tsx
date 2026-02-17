@@ -32,7 +32,7 @@ interface ModelGroup {
   models: ModelOption[];
 }
 
-const MODEL_GROUPS: ModelGroup[] = [
+export const MODEL_GROUPS: ModelGroup[] = [
   {
     label: 'Default',
     models: [

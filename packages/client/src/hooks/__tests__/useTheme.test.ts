@@ -1,6 +1,7 @@
 /**
  * useTheme Hook Tests
  * Story 1.5: End-to-End Test Page
+ * Story 10.2: Added 'system' theme support tests
  * Updated: Now backed by preferencesStore (global, server-persisted)
  */
 
@@ -11,21 +12,31 @@ import { usePreferencesStore } from '../../stores/preferencesStore';
 
 describe('useTheme', () => {
   // Mock matchMedia
+  let mediaQueryMatches = false;
+  const mockChangeListeners: Array<(e: MediaQueryListEvent) => void> = [];
+
   const mockMatchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: false,
+    matches: mediaQueryMatches,
     media: query,
     onchange: null,
     addListener: vi.fn(),
     removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
+    addEventListener: vi.fn((_event: string, handler: (e: MediaQueryListEvent) => void) => {
+      mockChangeListeners.push(handler);
+    }),
+    removeEventListener: vi.fn((_event: string, handler: (e: MediaQueryListEvent) => void) => {
+      const idx = mockChangeListeners.indexOf(handler);
+      if (idx >= 0) mockChangeListeners.splice(idx, 1);
+    }),
     dispatchEvent: vi.fn(),
   }));
 
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    usePreferencesStore.setState({ preferences: {}, loaded: true });
+    mediaQueryMatches = false;
+    mockChangeListeners.length = 0;
+    usePreferencesStore.setState({ preferences: {}, overrides: [], loaded: true });
     Object.defineProperty(window, 'matchMedia', {
       value: mockMatchMedia,
       writable: true,
@@ -55,6 +66,12 @@ describe('useTheme', () => {
       const { result } = renderHook(() => useTheme());
       expect(result.current.theme).toBe('light');
     });
+
+    it('should use system theme when stored in preferencesStore', () => {
+      usePreferencesStore.setState({ preferences: { theme: 'system' }, loaded: true });
+      const { result } = renderHook(() => useTheme());
+      expect(result.current.theme).toBe('system');
+    });
   });
 
   describe('toggleTheme', () => {
@@ -80,6 +97,30 @@ describe('useTheme', () => {
       });
 
       expect(result.current.theme).toBe('light');
+    });
+
+    it('should toggle from system (OS dark) to light', () => {
+      mediaQueryMatches = true;
+      usePreferencesStore.setState({ preferences: { theme: 'system' }, loaded: true });
+      const { result } = renderHook(() => useTheme());
+
+      act(() => {
+        result.current.toggleTheme();
+      });
+
+      expect(result.current.theme).toBe('light');
+    });
+
+    it('should toggle from system (OS light) to dark', () => {
+      mediaQueryMatches = false;
+      usePreferencesStore.setState({ preferences: { theme: 'system' }, loaded: true });
+      const { result } = renderHook(() => useTheme());
+
+      act(() => {
+        result.current.toggleTheme();
+      });
+
+      expect(result.current.theme).toBe('dark');
     });
 
     it('should save theme to preferencesStore', () => {
@@ -115,6 +156,17 @@ describe('useTheme', () => {
       });
 
       expect(result.current.theme).toBe('light');
+    });
+
+    it('should set theme to system', () => {
+      usePreferencesStore.setState({ preferences: { theme: 'dark' }, loaded: true });
+      const { result } = renderHook(() => useTheme());
+
+      act(() => {
+        result.current.setTheme('system');
+      });
+
+      expect(result.current.theme).toBe('system');
     });
 
     it('should save theme to preferencesStore', () => {
@@ -159,6 +211,38 @@ describe('useTheme', () => {
       });
 
       expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+
+    it('should apply dark class when system theme is set and OS prefers dark', () => {
+      mediaQueryMatches = true;
+      usePreferencesStore.setState({ preferences: { theme: 'system' }, loaded: true });
+      renderHook(() => useTheme());
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+
+    it('should remove dark class when system theme is set and OS prefers light', () => {
+      mediaQueryMatches = false;
+      document.documentElement.classList.add('dark');
+      usePreferencesStore.setState({ preferences: { theme: 'system' }, loaded: true });
+      renderHook(() => useTheme());
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+
+    it('should respond to OS theme changes when in system mode', () => {
+      mediaQueryMatches = false;
+      usePreferencesStore.setState({ preferences: { theme: 'system' }, loaded: true });
+      renderHook(() => useTheme());
+
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+
+      // Simulate OS switching to dark mode
+      act(() => {
+        mockChangeListeners.forEach(handler =>
+          handler({ matches: true } as MediaQueryListEvent)
+        );
+      });
+
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
     });
   });
 });

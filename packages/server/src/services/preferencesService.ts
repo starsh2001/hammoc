@@ -6,6 +6,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { DEFAULT_PREFERENCES } from '@bmad-studio/shared';
 import type { UserPreferences } from '@bmad-studio/shared';
 
 class PreferencesService {
@@ -22,8 +23,24 @@ class PreferencesService {
       const content = await fs.readFile(this.getPreferencesPath(), 'utf-8');
       return JSON.parse(content) as UserPreferences;
     } catch {
-      return {};
+      // File doesn't exist — create with defaults (write directly to avoid recursion)
+      const dataDir = this.getDataDir();
+      await fs.mkdir(dataDir, { recursive: true });
+      await fs.writeFile(this.getPreferencesPath(), JSON.stringify(DEFAULT_PREFERENCES, null, 2), 'utf-8');
+      return { ...DEFAULT_PREFERENCES };
     }
+  }
+
+  /**
+   * Returns preferences with environment variable overrides applied.
+   * Env vars take precedence over file values.
+   */
+  async getEffectivePreferences(): Promise<UserPreferences> {
+    const prefs = await this.readPreferences();
+    if (process.env.CHAT_TIMEOUT_MS) {
+      prefs.chatTimeoutMs = parseInt(process.env.CHAT_TIMEOUT_MS, 10);
+    }
+    return prefs;
   }
 
   async writePreferences(partial: Partial<UserPreferences>): Promise<UserPreferences> {

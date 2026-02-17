@@ -98,6 +98,7 @@ function collectLegacyPreferences(): UserPreferences {
 
 interface PreferencesStore {
   preferences: UserPreferences;
+  overrides: string[];
   loaded: boolean;
   init: () => Promise<void>;
   updatePreference: <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => void;
@@ -124,18 +125,20 @@ function schedulePatch(partial: Partial<UserPreferences>) {
 
 export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
   preferences: readCache(),
+  overrides: [],
   loaded: false,
 
   init: async () => {
     if (get().loaded) return;
     try {
       const serverPrefs = await preferencesApi.get();
-      const hasServerData = Object.keys(serverPrefs).length > 0;
+      const { _overrides, ...prefs } = serverPrefs;
+      const hasServerData = Object.keys(prefs).length > 0;
 
       if (hasServerData) {
         // Server has data — it's the source of truth
-        set({ preferences: serverPrefs, loaded: true });
-        writeCache(serverPrefs);
+        set({ preferences: prefs, overrides: _overrides ?? [], loaded: true });
+        writeCache(prefs);
       } else {
         // Server empty — migrate from localStorage
         const legacy = collectLegacyPreferences();

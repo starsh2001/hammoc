@@ -143,7 +143,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, activeModel, contextUsage, resetContextUsage, clearStreamingSegments } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, activeModel, contextUsage, resetContextUsage, clearStreamingSegments } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   const { logout } = useAuthStore();
@@ -296,11 +296,12 @@ export function ChatPage() {
       abortResponse();
       clearMessages();
       clearStreamingSegments();
+      resetSelectedModel();
       pendingAgentCommandRef.current = agentCommand;
       const newSessionId = generateUUID();
       navigate(`/project/${projectSlug}/session/${newSessionId}`);
     }
-  }, [handleSendMessage, abortResponse, clearMessages, clearStreamingSegments, navigate, projectSlug]);
+  }, [handleSendMessage, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
 
   // Ref to keep latest handleSendMessage for use in fetchMessages callback (Story 8.3)
   const handleSendMessageRef = useRef(handleSendMessage);
@@ -509,20 +510,23 @@ export function ChatPage() {
     if (confirmModal.action === 'newSession') {
       clearMessages();
       clearStreamingSegments();
+      resetSelectedModel();
       const newSessionId = generateUUID();
       navigate(`/project/${projectSlug}/session/${newSessionId}`);
     } else if (confirmModal.action === 'switchSession' && confirmModal.targetSessionId) {
       clearMessages();
       clearStreamingSegments();
+      resetSelectedModel();
       navigate(`/project/${projectSlug}/session/${confirmModal.targetSessionId}`);
     } else if (confirmModal.action === 'agentLaunch') {
       clearMessages();
       clearStreamingSegments();
+      resetSelectedModel();
       pendingAgentCommandRef.current = confirmModal.agentCommand ?? null;
       const newSessionId = generateUUID();
       navigate(`/project/${projectSlug}/session/${newSessionId}`);
     }
-  }, [confirmModal.action, confirmModal.targetSessionId, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, navigate, projectSlug]);
+  }, [confirmModal.action, confirmModal.targetSessionId, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
 
   const handleSessionSelect = useCallback((selectedSessionId: string) => {
     setShowSessionPanel(false);
@@ -541,8 +545,9 @@ export function ChatPage() {
     }
     clearMessages();
     clearStreamingSegments();
+    resetSelectedModel();
     navigate(`/project/${projectSlug}/session/${selectedSessionId}`);
-  }, [sessionId, clearMessages, clearStreamingSegments, navigate, projectSlug]);
+  }, [sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
 
   const handleNewSession = useCallback(() => {
     if (!projectSlug) return;
@@ -558,9 +563,10 @@ export function ChatPage() {
 
     clearMessages();
     clearStreamingSegments();
+    resetSelectedModel();
     const newSessionId = generateUUID();
     navigate(`/project/${projectSlug}/session/${newSessionId}`);
-  }, [clearMessages, clearStreamingSegments, navigate, projectSlug]);
+  }, [clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
 
   const handleCancelConfirm = useCallback(() => {
     setConfirmModal({ isOpen: false, action: 'newSession' });
