@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Settings, FolderCog, Bell, HelpCircle, Info } from 'lucide-react';
 import { SettingsSection } from '../components/SettingsSection';
+import { GlobalSettingsSection } from '../components/settings/GlobalSettingsSection';
 
 const settingsSections = [
   { id: 'global', title: '전역 설정', icon: Settings },
@@ -38,12 +39,17 @@ export function SettingsPage() {
     setExpandedSection(prev => prev === id ? null : id);
   };
 
-  const renderSectionContent = (_sectionId: SectionId) => {
-    return (
-      <div className="text-gray-500 dark:text-gray-400 text-sm">
-        이 섹션은 준비 중입니다.
-      </div>
-    );
+  const renderSectionContent = (sectionId: SectionId) => {
+    switch (sectionId) {
+      case 'global':
+        return <GlobalSettingsSection />;
+      default:
+        return (
+          <div className="text-gray-500 dark:text-gray-400 text-sm">
+            이 섹션은 준비 중입니다.
+          </div>
+        );
+    }
   };
 
   return (

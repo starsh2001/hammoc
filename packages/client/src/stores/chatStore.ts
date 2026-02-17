@@ -241,6 +241,8 @@ interface ChatActions {
   setSegmentCleanupTimeoutId: (id: ReturnType<typeof setTimeout>) => void;
   /** Set model for next message */
   setSelectedModel: (model: string) => void;
+  /** Reset selected model to user's default preference */
+  resetSelectedModel: () => void;
   /** Set active model reported by SDK */
   setActiveModel: (model: string | null) => void;
   /** Toggle all thinking blocks expanded/collapsed */
@@ -328,7 +330,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       sessionId,
       resume,
       permissionMode: get().permissionMode,
-      ...(get().selectedModel ? { model: get().selectedModel } : {}),
+      ...(() => {
+        const model = get().selectedModel || usePreferencesStore.getState().preferences.defaultModel || '';
+        return model ? { model } : {};
+      })(),
       // Convert Attachment[] to ImageAttachment[] (strip File objects for serialization)
       images: attachments?.map(a => ({
         mimeType: a.mimeType,
@@ -959,6 +964,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   setSelectedModel: (model: string) => set({ selectedModel: model }),
+
+  resetSelectedModel: () => {
+    const defaultModel = usePreferencesStore.getState().preferences.defaultModel || '';
+    set({ selectedModel: defaultModel });
+  },
 
   setActiveModel: (model: string | null) => set({ activeModel: model }),
 
