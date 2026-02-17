@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { PermissionMode, Attachment, ChatUsage, HistoryMessage } from '@bmad-studio/shared';
+import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { usePreferencesStore } from './preferencesStore';
@@ -161,6 +161,8 @@ interface ChatState {
   segmentsPendingClear: boolean;
   /** Timestamp when streaming completed (cooldown guard for fetchMessages) */
   streamCompletedAt: number | null;
+  /** Project-level settings for override application */
+  projectSettings: ProjectSettings | null;
 }
 
 interface SendMessageOptions {
@@ -247,6 +249,8 @@ interface ChatActions {
   setActiveModel: (model: string | null) => void;
   /** Toggle all thinking blocks expanded/collapsed */
   toggleThinkingExpanded: () => void;
+  /** Set project settings for override application */
+  setProjectSettings: (settings: ProjectSettings | null) => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -266,6 +270,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   isSessionLocked: false,
   segmentsPendingClear: false,
   streamCompletedAt: null,
+  projectSettings: null,
   permissionMode: usePreferencesStore.getState().preferences.permissionMode ?? 'default',
   contextUsage: null,
 
@@ -323,15 +328,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingDelayTimeoutId = null;
     }, STREAMING_UI_DELAY_MS);
 
+    // Project override application (Story 10.3)
+    const projectSettings = get().projectSettings;
+    const effectivePermissionMode = projectSettings?.permissionModeOverride ?? get().permissionMode;
+
     // Emit chat:send event to server
     socket.emit('chat:send', {
       content,
       workingDirectory,
       sessionId,
       resume,
-      permissionMode: get().permissionMode,
+      permissionMode: effectivePermissionMode,
       ...(() => {
-        const model = get().selectedModel || usePreferencesStore.getState().preferences.defaultModel || '';
+        const globalDefault = usePreferencesStore.getState().preferences.defaultModel || '';
+        const effectiveDefault = projectSettings?.modelOverride ?? globalDefault;
+        const model = get().selectedModel || effectiveDefault;
         return model ? { model } : {};
       })(),
       // Convert Attachment[] to ImageAttachment[] (strip File objects for serialization)
@@ -966,13 +977,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setSelectedModel: (model: string) => set({ selectedModel: model }),
 
   resetSelectedModel: () => {
-    const defaultModel = usePreferencesStore.getState().preferences.defaultModel || '';
-    set({ selectedModel: defaultModel });
+    const projectSettings = get().projectSettings;
+    const globalDefault = usePreferencesStore.getState().preferences.defaultModel || '';
+    const effectiveDefault = projectSettings?.modelOverride ?? globalDefault;
+    set({ selectedModel: effectiveDefault });
   },
 
   setActiveModel: (model: string | null) => set({ activeModel: model }),
 
   toggleThinkingExpanded: () => set((state) => ({ thinkingExpanded: !state.thinkingExpanded })),
+
+  setProjectSettings: (settings: ProjectSettings | null) => set({ projectSettings: settings }),
 
   addResultError: (data: ResultErrorData) => {
     const segments = get().streamingSegments;
