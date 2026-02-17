@@ -9,7 +9,6 @@ import { ArrowLeft, RefreshCw, Plus, CheckSquare, Trash2, X, Eye, EyeOff, MoreVe
 import { useSessionStore } from '../stores/sessionStore';
 import { useProjectStore } from '../stores/projectStore';
 import { useAuthStore } from '../stores/authStore';
-import { SettingsMenu } from '../components/SettingsMenu';
 import { SessionListItem } from '../components/SessionListItem';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { SessionListItemSkeleton } from '../components/SessionListItemSkeleton';
@@ -49,8 +48,6 @@ export function SessionListPage() {
   const { projects, fetchProjects } = useProjectStore();
   const { logout } = useAuthStore();
   const skeletonCount = useSkeletonCount(5);
-
-  const [showSettings, setShowSettings] = useState(false);
 
   // Selection mode state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -388,22 +385,20 @@ export function SessionListPage() {
                 <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
               <ThemeToggleButton className="hidden sm:block" />
-              <div className="relative hidden sm:block">
-                <button
-                  onClick={() => setShowSettings(!showSettings)}
-                  aria-label="설정 메뉴"
-                  aria-expanded={showSettings}
-                  aria-haspopup="menu"
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-                >
-                  <Settings className="w-5 h-5" aria-hidden="true" />
-                </button>
-                <SettingsMenu
-                  isOpen={showSettings}
-                  onClose={() => setShowSettings(false)}
-                  onLogout={handleLogout}
-                />
-              </div>
+              <button
+                onClick={() => navigate('/settings')}
+                aria-label="설정"
+                className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+              >
+                <Settings className="w-5 h-5" aria-hidden="true" />
+              </button>
+              <button
+                onClick={handleLogout}
+                aria-label="로그아웃"
+                className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-colors"
+              >
+                <LogOut className="w-5 h-5" aria-hidden="true" />
+              </button>
 
               {/* Narrow screen: overflow menu */}
               <div className="relative sm:hidden" ref={overflowMenuRef}>
@@ -474,6 +469,15 @@ export function SessionListPage() {
                     >
                       <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                       새로고침
+                    </button>
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                    <button
+                      role="menuitem"
+                      onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }}
+                      className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <Settings className="w-4 h-4" />
+                      설정
                     </button>
                     <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                     <button

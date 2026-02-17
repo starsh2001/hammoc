@@ -7,7 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MoreVertical, Moon, Sun, History, Plus, RefreshCw, LogOut } from 'lucide-react';
+import { MoreVertical, Moon, Sun, History, Plus, RefreshCw, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 interface HeaderOverflowMenuProps {
@@ -15,6 +15,7 @@ interface HeaderOverflowMenuProps {
   onNewSession?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  onNavigateSettings?: () => void;
   onLogout?: () => void;
 }
 
@@ -23,6 +24,7 @@ export function HeaderOverflowMenu({
   onNewSession,
   onRefresh,
   isRefreshing = false,
+  onNavigateSettings,
   onLogout,
 }: HeaderOverflowMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -81,6 +83,11 @@ export function HeaderOverflowMenu({
     onRefresh?.();
     setIsOpen(false);
   }, [onRefresh]);
+
+  const handleNavigateSettings = useCallback(() => {
+    onNavigateSettings?.();
+    setIsOpen(false);
+  }, [onNavigateSettings]);
 
   const handleLogout = useCallback(() => {
     onLogout?.();
@@ -171,6 +178,22 @@ export function HeaderOverflowMenu({
               />
               {isRefreshing ? '새로고침 중...' : '새로고침'}
             </button>
+          )}
+
+          {/* Settings */}
+          {onNavigateSettings && (
+            <>
+              <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleNavigateSettings}
+                className={itemClass}
+              >
+                <Settings className="w-4 h-4" aria-hidden="true" />
+                설정
+              </button>
+            </>
           )}
 
           {/* Logout */}

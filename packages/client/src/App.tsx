@@ -22,6 +22,7 @@ import { ProjectDashboardPage } from './pages/ProjectDashboardPage';
 import { ProjectSessionsPage } from './pages/ProjectSessionsPage';
 import { ProjectQueuePage } from './pages/ProjectBatchPage';
 import { ChatPage } from './pages/ChatPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { ProjectTabLayout } from './layouts/ProjectTabLayout';
 import { AuthGuard } from './components/AuthGuard';
 import { PublicRoute } from './components/PublicRoute';
@@ -77,6 +78,22 @@ function AppContent() {
         <Route path="sessions" element={<ProjectSessionsPage />} />
         <Route path="queue" element={<ProjectQueuePage />} />
       </Route>
+      <Route
+        path="/settings"
+        element={
+          <AuthGuard>
+            <SettingsPage />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path="/settings/:tab"
+        element={
+          <AuthGuard>
+            <SettingsPage />
+          </AuthGuard>
+        }
+      />
       <Route
         path="/project/:projectSlug/session/:sessionId"
         element={

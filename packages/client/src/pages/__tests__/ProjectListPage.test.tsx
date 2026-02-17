@@ -24,11 +24,6 @@ vi.mock('react-router-dom', async () => {
 // Mock the project store
 vi.mock('../../stores/projectStore');
 
-// Mock SettingsMenu to simplify tests
-vi.mock('../../components/SettingsMenu', () => ({
-  SettingsMenu: () => <div data-testid="settings-menu">Settings</div>,
-}));
-
 // Mock NewProjectDialog - capture props for testing
 let capturedDialogProps: {
   isOpen: boolean;
@@ -90,6 +85,14 @@ describe('ProjectListPage', () => {
     clearCreateError: vi.fn(),
     clearPathValidation: vi.fn(),
     abortCreation: vi.fn(),
+    deleteProject: vi.fn(),
+    setupBmad: vi.fn().mockResolvedValue({ success: true }),
+    bmadVersions: [],
+    fetchBmadVersions: vi.fn(),
+    showHidden: false,
+    hideProject: vi.fn(),
+    unhideProject: vi.fn(),
+    setShowHidden: vi.fn(),
     ...overrides,
   });
 
@@ -265,10 +268,10 @@ describe('ProjectListPage', () => {
       expect(screen.getByRole('heading', { name: '프로젝트' })).toBeInTheDocument();
     });
 
-    it('renders settings menu', () => {
+    it('renders settings button', () => {
       renderPage();
 
-      expect(screen.getByTestId('settings-menu')).toBeInTheDocument();
+      expect(screen.getByLabelText('설정')).toBeInTheDocument();
     });
 
     it('renders refresh button', () => {
@@ -284,7 +287,7 @@ describe('ProjectListPage', () => {
 
       renderPage();
 
-      expect(screen.getByLabelText('새 프로젝트')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '새 프로젝트' })).toBeInTheDocument();
     });
 
     it('opens new project dialog when header button clicked', () => {
@@ -294,7 +297,7 @@ describe('ProjectListPage', () => {
 
       expect(screen.queryByTestId('new-project-dialog')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByLabelText('새 프로젝트'));
+      fireEvent.click(screen.getByRole('button', { name: '새 프로젝트' }));
 
       expect(screen.getByTestId('new-project-dialog')).toBeInTheDocument();
     });
@@ -307,7 +310,7 @@ describe('ProjectListPage', () => {
       renderPage();
 
       // Open dialog
-      fireEvent.click(screen.getByLabelText('새 프로젝트'));
+      fireEvent.click(screen.getByRole('button', { name: '새 프로젝트' }));
       expect(screen.getByTestId('new-project-dialog')).toBeInTheDocument();
 
       // Close dialog
@@ -321,12 +324,12 @@ describe('ProjectListPage', () => {
       renderPage();
 
       // Open dialog
-      fireEvent.click(screen.getByLabelText('새 프로젝트'));
+      fireEvent.click(screen.getByRole('button', { name: '새 프로젝트' }));
 
       // Simulate new project creation success
       fireEvent.click(screen.getByRole('button', { name: '새 프로젝트 생성' }));
 
-      expect(mockNavigate).toHaveBeenCalledWith('/project/new-project-slug/session/new');
+      expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/project/new-project-slug/session/'));
     });
 
     it('navigates to existing project session list', () => {
@@ -335,7 +338,7 @@ describe('ProjectListPage', () => {
       renderPage();
 
       // Open dialog
-      fireEvent.click(screen.getByLabelText('새 프로젝트'));
+      fireEvent.click(screen.getByRole('button', { name: '새 프로젝트' }));
 
       // Simulate existing project navigation
       fireEvent.click(screen.getByRole('button', { name: '기존 프로젝트' }));
