@@ -52,6 +52,18 @@ vi.mock('../../services/sessionService.js', () => ({
   })),
 }));
 
+// Mock preferencesService (Story 10.2)
+vi.mock('../../services/preferencesService.js', () => ({
+  preferencesService: {
+    getEffectivePreferences: vi.fn().mockResolvedValue({
+      theme: 'dark',
+      defaultModel: '',
+      permissionMode: 'default',
+      chatTimeoutMs: 300000,
+    }),
+  },
+}));
+
 // Mock config (Story 4.6)
 vi.mock('../../config/index.js', () => ({
   config: {

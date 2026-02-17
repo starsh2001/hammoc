@@ -8,11 +8,13 @@ import { preferencesService } from '../services/preferencesService.js';
 
 const router = Router();
 
-// GET /api/preferences — Read all preferences
+// GET /api/preferences — Read all preferences (with env var overrides)
 router.get('/', async (_req: Request, res: Response) => {
   try {
-    const preferences = await preferencesService.readPreferences();
-    res.json(preferences);
+    const preferences = await preferencesService.getEffectivePreferences();
+    const overrides: string[] = [];
+    if (process.env.CHAT_TIMEOUT_MS) overrides.push('chatTimeoutMs');
+    res.json({ ...preferences, _overrides: overrides });
   } catch {
     res.status(500).json({ error: { code: 'PREFERENCES_READ_ERROR', message: 'Failed to read preferences' } });
   }

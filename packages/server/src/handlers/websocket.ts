@@ -29,6 +29,7 @@ import { parseSDKError, AbortedError } from '../utils/errors.js';
 import { createSessionMiddleware } from '../middleware/session.js';
 import { config } from '../config/index.js';
 import { notificationService } from '../services/notificationService.js';
+import { preferencesService } from '../services/preferencesService.js';
 
 let io: SocketIOServer<
   ClientToServerEvents,
@@ -458,14 +459,18 @@ async function handleChatSend(
 
     // Activity-based timeout: resets on every SDK callback event
     // Prevents cancellation while SDK is actively working (e.g., large Write input streaming)
+    // Timeout value from preferences (with env var override), clamped to 30s–30min range
+    const effectivePrefs = await preferencesService.getEffectivePreferences();
+    const rawTimeoutMs = effectivePrefs.chatTimeoutMs ?? config.chat.timeoutMs;
+    const timeoutMs = (rawTimeoutMs >= 30000 && rawTimeoutMs <= 1800000) ? rawTimeoutMs : 300000;
     let lastResetSource = 'initial';
     const resetTimeout = (source?: string) => {
       if (source) lastResetSource = source;
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        console.log(`[websocket] ⏰ TIMEOUT FIRED after ${config.chat.timeoutMs}ms inactivity (last reset by: ${lastResetSource})`);
+        console.log(`[websocket] ⏰ TIMEOUT FIRED after ${timeoutMs}ms inactivity (last reset by: ${lastResetSource})`);
         abortController.abort('timeout');
-      }, config.chat.timeoutMs);
+      }, timeoutMs);
     };
     resetTimeout('initial');
 
