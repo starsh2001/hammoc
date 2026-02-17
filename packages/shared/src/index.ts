@@ -74,7 +74,16 @@ export {
 export { SlashCommand, CommandListResponse, StarCommand, CommandsResponse } from './types/command.js';
 
 // User Preferences types (server-side settings)
-export { UserPreferences, PromptHistoryData, DEFAULT_PREFERENCES, PreferencesApiResponse } from './types/preferences.js';
+export {
+  UserPreferences,
+  PromptHistoryData,
+  DEFAULT_PREFERENCES,
+  PreferencesApiResponse,
+  TelegramSettings,
+  TelegramSettingsApiResponse,
+  UpdateTelegramSettingsRequest,
+  TelegramTestRequest,
+} from './types/preferences.js';
 
 // Story 3.5: History types for Session History Loading
 export {

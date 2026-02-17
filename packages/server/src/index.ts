@@ -3,6 +3,7 @@ import os from 'os';
 import { createApp } from './app.js';
 import { initializeWebSocket } from './handlers/websocket.js';
 import { AuthConfigService } from './services/authConfigService.js';
+import { notificationService } from './services/notificationService.js';
 import { setupInitialPassword, resetPassword } from './cli/passwordSetup.js';
 
 const PORT = process.env.PORT || 3000;
@@ -48,6 +49,11 @@ async function main() {
 
   // Initialize WebSocket (async for session middleware - Story 2.5)
   await initializeWebSocket(httpServer);
+
+  // Load Telegram notification settings from preferences
+  notificationService.reload().catch(() => {
+    // Silent — env var config still works as fallback
+  });
 
   // Listen with retry logic for EADDRINUSE (Windows port release delay on tsx watch restart)
   const MAX_RETRIES = 5;

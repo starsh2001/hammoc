@@ -10,6 +10,9 @@ import { ArrowLeft, Settings, FolderCog, Bell, HelpCircle, Info } from 'lucide-r
 import { SettingsSection } from '../components/SettingsSection';
 import { GlobalSettingsSection } from '../components/settings/GlobalSettingsSection';
 import { ProjectSettingsSection } from '../components/settings/ProjectSettingsSection';
+import { TelegramSettingsSection } from '../components/settings/TelegramSettingsSection';
+import { HelpSection } from '../components/settings/HelpSection';
+import { AboutSection } from '../components/settings/AboutSection';
 
 const settingsSections = [
   { id: 'global', title: '전역 설정', icon: Settings },
@@ -46,12 +49,12 @@ export function SettingsPage() {
         return <GlobalSettingsSection />;
       case 'project':
         return <ProjectSettingsSection />;
-      default:
-        return (
-          <div className="text-gray-500 dark:text-gray-400 text-sm">
-            이 섹션은 준비 중입니다.
-          </div>
-        );
+      case 'telegram':
+        return <TelegramSettingsSection />;
+      case 'help':
+        return <HelpSection />;
+      case 'about':
+        return <AboutSection />;
     }
   };
 
