@@ -62,6 +62,7 @@ export interface ServerToClientEvents {
   'session:list': (data: { sessions: SessionInfo[] }) => void;
   'context:usage': (data: ChatUsage) => void;
   'assistant:usage': (data: { inputTokens: number; outputTokens: number; cacheCreationInputTokens: number; cacheReadInputTokens: number }) => void;
+  'context:estimate': (data: { estimatedTokens: number; contextWindow: number }) => void;
   'thinking:chunk': (data: { content: string }) => void;
   'system:compact': (data: CompactMetadata) => void;
   'tool:progress': (data: { toolUseId: string; elapsedTimeSeconds: number; toolName: string }) => void;
