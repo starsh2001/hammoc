@@ -3,7 +3,10 @@
  * Types for project list API
  * [Source: Story 3.1 - Task 1]
  * [Extended: Story 3.6 - Task 1: New Project Creation types]
+ * [Extended: Story 10.3 - Task 1: Project settings overrides]
  */
+
+import type { PermissionMode } from './sdk.js';
 
 /**
  * Project information returned by the API
@@ -28,13 +31,33 @@ export interface ProjectInfo {
  */
 export interface ProjectSettings {
   hidden?: boolean;
+  /** undefined = use global, '' = CLI default, 'model-id' = specific model */
+  modelOverride?: string;
+  /** undefined = use global */
+  permissionModeOverride?: PermissionMode;
 }
 
 /**
  * Request for PATCH /api/projects/:projectSlug/settings
+ * null = clear override (use global), undefined = no change
  */
 export interface UpdateProjectSettingsRequest {
   hidden?: boolean;
+  modelOverride?: string | null;
+  permissionModeOverride?: PermissionMode | null;
+}
+
+/**
+ * Response for GET /api/projects/:projectSlug/settings
+ * Includes effective values after merging with global preferences
+ */
+export interface ProjectSettingsApiResponse extends ProjectSettings {
+  /** Effective model after merging with global preferences */
+  effectiveModel: string;
+  /** Effective permission mode after merging with global preferences */
+  effectivePermissionMode: PermissionMode;
+  /** Which fields have project-level overrides (for UI indicator) */
+  _overrides: string[];
 }
 
 /**

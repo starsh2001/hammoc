@@ -14,10 +14,13 @@ import type {
   PromptHistoryData,
   ProjectInfo,
   ProjectSettings,
+  UpdateProjectSettingsRequest,
+  ProjectSettingsApiResponse,
   CreateProjectRequest,
   CreateProjectResponse,
   ValidatePathResponse,
 } from '@bmad-studio/shared';
+import { preferencesService } from './preferencesService.js';
 
 // Resolve the server package root for locating bundled resources
 const __filename = fileURLToPath(import.meta.url);
@@ -285,23 +288,70 @@ class ProjectService {
   /**
    * Write project settings to <originalPath>/.bmad-studio/settings.json
    * Creates .bmad-studio directory if it doesn't exist
+   * Supports null values to delete overrides (null = remove field, undefined = no change)
    */
-  async writeProjectSettings(originalPath: string, settings: ProjectSettings): Promise<void> {
+  async writeProjectSettings(originalPath: string, settings: UpdateProjectSettingsRequest): Promise<void> {
     const bmadStudioDir = path.join(originalPath, '.bmad-studio');
     await fs.mkdir(bmadStudioDir, { recursive: true });
     const settingsPath = path.join(bmadStudioDir, 'settings.json');
 
-    // Merge with existing settings
     const existing = await this.readProjectSettings(originalPath);
-    const merged = { ...existing, ...settings };
+    const merged = { ...existing };
+
+    // Apply updates: null = delete override, undefined = no change, value = set
+    for (const [key, value] of Object.entries(settings)) {
+      if (value === null) {
+        delete (merged as Record<string, unknown>)[key];
+      } else if (value !== undefined) {
+        (merged as Record<string, unknown>)[key] = value;
+      }
+    }
+
     await fs.writeFile(settingsPath, JSON.stringify(merged, null, 2), 'utf-8');
   }
 
   /**
-   * Update settings for a project identified by its slug
-   * @returns Updated ProjectSettings
+   * Internal helper: builds ProjectSettingsApiResponse from an already-resolved originalPath.
+   * Used by both getProjectSettingsWithEffective() and updateProjectSettings() to avoid
+   * redundant parseSessionsIndex() calls.
    */
-  async updateProjectSettings(projectSlug: string, settings: ProjectSettings): Promise<ProjectSettings> {
+  private async _buildEffectiveResponse(originalPath: string): Promise<ProjectSettingsApiResponse> {
+    const projectSettings = await this.readProjectSettings(originalPath);
+    const globalPrefs = await preferencesService.getEffectivePreferences();
+
+    const _overrides: string[] = [];
+    if (projectSettings.modelOverride !== undefined) _overrides.push('modelOverride');
+    if (projectSettings.permissionModeOverride !== undefined) _overrides.push('permissionModeOverride');
+
+    return {
+      ...projectSettings,
+      effectiveModel: projectSettings.modelOverride ?? globalPrefs.defaultModel ?? '',
+      effectivePermissionMode: projectSettings.permissionModeOverride ?? globalPrefs.permissionMode ?? 'default',
+      _overrides,
+    };
+  }
+
+  /**
+   * Returns project settings merged with global preferences.
+   * Calculates effective values and identifies which fields are overridden.
+   */
+  async getProjectSettingsWithEffective(projectSlug: string): Promise<ProjectSettingsApiResponse> {
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+    const info = await this.parseSessionsIndex(projectDir, projectSlug);
+    if (!info) {
+      const err = new Error('프로젝트를 찾을 수 없습니다.');
+      (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
+      throw err;
+    }
+
+    return this._buildEffectiveResponse(info.originalPath);
+  }
+
+  /**
+   * Update settings for a project identified by its slug
+   * @returns Updated ProjectSettingsApiResponse with effective values
+   */
+  async updateProjectSettings(projectSlug: string, settings: UpdateProjectSettingsRequest): Promise<ProjectSettingsApiResponse> {
     const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
     const info = await this.parseSessionsIndex(projectDir, projectSlug);
     if (!info) {
@@ -310,7 +360,7 @@ class ProjectService {
       throw err;
     }
     await this.writeProjectSettings(info.originalPath, settings);
-    return this.readProjectSettings(info.originalPath);
+    return this._buildEffectiveResponse(info.originalPath);
   }
 
   /**

@@ -5,17 +5,19 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Request, Response } from 'express';
-import type { ProjectInfo } from '@bmad-studio/shared';
+import type { ProjectInfo, ProjectSettingsApiResponse } from '@bmad-studio/shared';
 
 // Create hoisted mock for projectService
-const { mockScanProjects } = vi.hoisted(() => ({
+const { mockScanProjects, mockUpdateProjectSettings } = vi.hoisted(() => ({
   mockScanProjects: vi.fn(),
+  mockUpdateProjectSettings: vi.fn(),
 }));
 
 // Mock projectService
 vi.mock('../../services/projectService', () => ({
   projectService: {
     scanProjects: mockScanProjects,
+    updateProjectSettings: mockUpdateProjectSettings,
   },
 }));
 
@@ -117,6 +119,82 @@ describe('projectController', () => {
           message: '프로젝트 목록을 가져오는 중 오류가 발생했습니다.',
         },
       });
+    });
+  });
+
+  describe('updateSettings', () => {
+    const mockUpdatedResponse: ProjectSettingsApiResponse = {
+      hidden: false,
+      effectiveModel: 'sonnet',
+      effectivePermissionMode: 'default',
+      _overrides: [],
+    };
+
+    it('TC-S6: returns 400 for invalid permissionModeOverride', async () => {
+      mockReq = {
+        params: { projectSlug: 'test-project' },
+        body: { permissionModeOverride: 'invalidMode' },
+      };
+
+      await projectController.updateSettings(mockReq as Request, mockRes as Response);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        error: {
+          code: 'INVALID_PERMISSION_MODE',
+          message: '유효하지 않은 Permission Mode: invalidMode',
+        },
+      });
+      expect(mockUpdateProjectSettings).not.toHaveBeenCalled();
+    });
+
+    it('TC-S7: permissionModeOverride null clears override successfully', async () => {
+      mockUpdateProjectSettings.mockResolvedValue(mockUpdatedResponse);
+      mockReq = {
+        params: { projectSlug: 'test-project' },
+        body: { permissionModeOverride: null },
+      };
+
+      await projectController.updateSettings(mockReq as Request, mockRes as Response);
+
+      expect(mockUpdateProjectSettings).toHaveBeenCalledWith('test-project', { permissionModeOverride: null });
+      expect(mockRes.json).toHaveBeenCalledWith(mockUpdatedResponse);
+      expect(mockRes.status).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when projectSlug is missing', async () => {
+      mockReq = {
+        params: {},
+        body: { hidden: true },
+      };
+
+      await projectController.updateSettings(mockReq as Request, mockRes as Response);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        error: {
+          code: 'INVALID_REQUEST',
+          message: '프로젝트 식별자가 필요합니다.',
+        },
+      });
+    });
+
+    it('accepts valid permissionModeOverride values', async () => {
+      mockUpdateProjectSettings.mockResolvedValue({
+        ...mockUpdatedResponse,
+        permissionModeOverride: 'plan',
+        effectivePermissionMode: 'plan',
+        _overrides: ['permissionModeOverride'],
+      });
+      mockReq = {
+        params: { projectSlug: 'test-project' },
+        body: { permissionModeOverride: 'plan' },
+      };
+
+      await projectController.updateSettings(mockReq as Request, mockRes as Response);
+
+      expect(mockUpdateProjectSettings).toHaveBeenCalledWith('test-project', { permissionModeOverride: 'plan' });
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 });
