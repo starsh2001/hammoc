@@ -469,20 +469,29 @@ export function MessageArea({
           );
         })()}
 
-        {/* Compaction in progress: show amber indicator (highest priority) */}
-        {isStreaming && isCompacting && !streamingSegments.some(s => s.type === 'text' && s.content.trim()) && (
-          <div className="flex justify-center">
-            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
-              <Database className="w-4 h-4 animate-pulse" aria-hidden="true" />
-              <span>
-                {streamingSegments.length === 0 || streamingSegments.every(s => s.type === 'system')
-                  ? '컨텍스트 압축 중...'
-                  : '컨텍스트 압축 완료 — 응답 재생성 중...'}
-              </span>
-              <StreamingIndicator />
+        {/* Compaction in progress: show amber indicator (highest priority, persists even when text arrives) */}
+        {isStreaming && isCompacting && (() => {
+          const ctx = useChatStore.getState().contextUsage;
+          const usagePct = ctx && ctx.contextWindow > 0
+            ? Math.round(((ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens) / ctx.contextWindow) * 100)
+            : null;
+          const hasResponse = streamingSegments.length > 0 && !streamingSegments.every(s => s.type === 'system');
+          return (
+            <div className="flex justify-center">
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
+                <Database className="w-4 h-4 animate-pulse" aria-hidden="true" />
+                <span>
+                  {hasResponse
+                    ? '컨텍스트 압축 완료 — 응답 재생성 중...'
+                    : usagePct !== null
+                      ? `컨텍스트 압축 중... (${usagePct}%)`
+                      : '컨텍스트 압축 중...'}
+                </span>
+                <StreamingIndicator />
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Normal streaming indicator: text is being generated (not compacting) */}
         {isStreaming && !isCompacting && streamingSegments.length > 0 && (

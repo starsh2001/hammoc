@@ -286,6 +286,8 @@ export interface StreamCallbacks {
   onResultError?: (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
   /** Assistant message usage (main chain only) for context window tracking */
   onAssistantUsage?: (usage: { inputTokens: number; outputTokens: number; cacheCreationInputTokens: number; cacheReadInputTokens: number }) => void;
+  /** Estimated running context token count (updates between assistant messages, e.g. after tool results) */
+  onContextEstimate?: (estimatedTokens: number, contextWindow: number) => void;
   /** Fired for every SDK message received — used for activity-based timeout reset */
   onActivity?: (messageType: string) => void;
 }

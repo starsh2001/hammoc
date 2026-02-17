@@ -159,6 +159,8 @@ interface ChatState {
   isSessionLocked: boolean;
   /** Whether segments are being held pending history fetch (post-completeStreaming) */
   segmentsPendingClear: boolean;
+  /** Timestamp when streaming completed (cooldown guard for fetchMessages) */
+  streamCompletedAt: number | null;
 }
 
 interface SendMessageOptions {
@@ -261,6 +263,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   isCompacting: false,
   isSessionLocked: false,
   segmentsPendingClear: false,
+  streamCompletedAt: null,
   permissionMode: usePreferencesStore.getState().preferences.permissionMode ?? 'default',
   contextUsage: null,
 
@@ -364,6 +367,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingStartedAt: new Date(),
       lastResultError: null,
       segmentsPendingClear: false,
+      streamCompletedAt: null,
     });
   },
 
@@ -562,7 +566,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       });
     }
 
-    // Clear segments immediately now that data is in messageStore
+    // Clear segments immediately now that data is in messageStore.
+    // Set streamCompletedAt for cooldown guard — prevents fetchMessages from
+    // overwriting in-memory messages with stale JSONL data (SDK write delay).
     set({
       isStreaming: false,
       isCompacting: false,
@@ -571,6 +577,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingStartedAt: null,
       streamingSegments: [],
       segmentsPendingClear: false,
+      streamCompletedAt: Date.now(),
     });
   },
 
@@ -597,6 +604,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       streamingStartedAt: null,
       segmentsPendingClear: false,
+      streamCompletedAt: Date.now(),
     });
   },
 
@@ -701,6 +709,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       streamingStartedAt: null,
       segmentsPendingClear: false,
+      streamCompletedAt: Date.now(),
     });
   },
 
