@@ -9,14 +9,14 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, RefreshCw, Plus, History, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, RefreshCw, Plus, History, Settings, LogOut } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { formatAgentRoleLabel } from '../utils/agentUtils';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { LayoutToggleButton } from './LayoutToggleButton';
 import { HeaderOverflowMenu } from './HeaderOverflowMenu';
-import { SettingsMenu } from './SettingsMenu';
 import { BrandLogo } from './BrandLogo';
 
 interface ChatHeaderProps {
@@ -63,8 +63,8 @@ export function ChatHeader({
   onAgentIndicatorClick,
   isBmadProject,
 }: ChatHeaderProps) {
+  const navigate = useNavigate();
   const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
-  const [showSettings, setShowSettings] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -246,26 +246,26 @@ export function ChatHeader({
             <ThemeToggleButton />
           </div>
 
-          {/* Desktop-only: settings menu */}
+          {/* Desktop-only: settings + logout */}
+          <button
+            onClick={() => navigate('/settings')}
+            aria-label="설정"
+            className="hidden md:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
+                       text-gray-700 dark:text-gray-300 transition-colors
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <Settings className="w-5 h-5" aria-hidden="true" />
+          </button>
           {onLogout && (
-            <div className="relative hidden md:block">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                aria-label="설정 메뉴"
-                aria-expanded={showSettings}
-                aria-haspopup="menu"
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
-                           text-gray-700 dark:text-gray-300 transition-colors
-                           focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <Settings className="w-5 h-5" aria-hidden="true" />
-              </button>
-              <SettingsMenu
-                isOpen={showSettings}
-                onClose={() => setShowSettings(false)}
-                onLogout={onLogout}
-              />
-            </div>
+            <button
+              onClick={onLogout}
+              aria-label="로그아웃"
+              className="hidden md:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
+                         text-red-600 dark:text-red-400 transition-colors
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <LogOut className="w-5 h-5" aria-hidden="true" />
+            </button>
           )}
 
           {/* Mobile-only: overflow menu */}
@@ -275,6 +275,7 @@ export function ChatHeader({
               onNewSession={onNewSession}
               onRefresh={onRefresh}
               isRefreshing={isRefreshing}
+              onNavigateSettings={() => navigate('/settings')}
               onLogout={onLogout}
             />
           </div>
