@@ -8,14 +8,13 @@
 
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useChatMessages } from '../hooks/useChatMessages';
 import { useTheme } from '../hooks/useTheme';
 import { useSession } from '../hooks/useSession';
 import { useAuthStore } from '../stores/authStore';
 import { ConnectionStatusIndicator } from '../components/ConnectionStatusIndicator';
-import { SettingsMenu } from '../components/SettingsMenu';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import type { DisplayMessage } from '@bmad-studio/shared';
 
@@ -134,8 +133,6 @@ export function TestPage() {
   });
   const [inputPath, setInputPath] = useState<string>(projectPath);
   const [inputMessage, setInputMessage] = useState<string>('');
-  const [showSettings, setShowSettings] = useState(false);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -323,23 +320,21 @@ export function TestPage() {
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
 
-            {/* Settings Menu */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                aria-label="Settings menu"
-                aria-expanded={showSettings}
-                aria-haspopup="menu"
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              <SettingsMenu
-                isOpen={showSettings}
-                onClose={() => setShowSettings(false)}
-                onLogout={handleLogout}
-              />
-            </div>
+            {/* Settings + Logout */}
+            <button
+              onClick={() => navigate('/settings')}
+              aria-label="설정"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            <button
+              onClick={handleLogout}
+              aria-label="로그아웃"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </header>

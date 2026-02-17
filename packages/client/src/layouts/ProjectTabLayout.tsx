@@ -12,7 +12,6 @@ import { useAuthStore } from '../stores/authStore';
 import { BrandLogo } from '../components/BrandLogo';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
-import { SettingsMenu } from '../components/SettingsMenu';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useTheme } from '../hooks/useTheme';
 
@@ -30,7 +29,6 @@ export function ProjectTabLayout() {
   const { logout } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
 
-  const [showSettings, setShowSettings] = useState(false);
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   useClickOutside(overflowMenuRef, () => setOverflowMenuOpen(false));
@@ -93,22 +91,20 @@ export function ProjectTabLayout() {
           <div className="flex items-center gap-1 ml-4">
             <LayoutToggleButton className="hidden sm:block" />
             <ThemeToggleButton className="hidden sm:block" />
-            <div className="relative hidden sm:block">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                aria-label="설정 메뉴"
-                aria-expanded={showSettings}
-                aria-haspopup="menu"
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-              >
-                <Settings className="w-5 h-5" aria-hidden="true" />
-              </button>
-              <SettingsMenu
-                isOpen={showSettings}
-                onClose={() => setShowSettings(false)}
-                onLogout={handleLogout}
-              />
-            </div>
+            <button
+              onClick={() => navigate('/settings')}
+              aria-label="설정"
+              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+            >
+              <Settings className="w-5 h-5" aria-hidden="true" />
+            </button>
+            <button
+              onClick={handleLogout}
+              aria-label="로그아웃"
+              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-colors"
+            >
+              <LogOut className="w-5 h-5" aria-hidden="true" />
+            </button>
 
             {/* Narrow screen: overflow menu */}
             <div className="relative sm:hidden" ref={overflowMenuRef}>
@@ -133,6 +129,15 @@ export function ProjectTabLayout() {
                   >
                     {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                     {theme === 'dark' ? '라이트 모드' : '다크 모드'}
+                  </button>
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                  <button
+                    role="menuitem"
+                    onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }}
+                    className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <Settings className="w-4 h-4" />
+                    설정
                   </button>
                   <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                   <button
