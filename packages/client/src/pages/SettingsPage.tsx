@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Settings, FolderCog, Bell, HelpCircle, Info } from 'lucide-react';
 import { SettingsSection } from '../components/SettingsSection';
 import { GlobalSettingsSection } from '../components/settings/GlobalSettingsSection';
+import { ProjectSettingsSection } from '../components/settings/ProjectSettingsSection';
 
 const settingsSections = [
   { id: 'global', title: '전역 설정', icon: Settings },
@@ -43,6 +44,8 @@ export function SettingsPage() {
     switch (sectionId) {
       case 'global':
         return <GlobalSettingsSection />;
+      case 'project':
+        return <ProjectSettingsSection />;
       default:
         return (
           <div className="text-gray-500 dark:text-gray-400 text-sm">

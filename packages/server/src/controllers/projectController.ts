@@ -17,6 +17,7 @@ import {
   SetupBmadRequest,
   SetupBmadResponse,
 } from '@bmad-studio/shared';
+import type { PermissionMode } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 
 export const projectController = {
@@ -259,6 +260,35 @@ export const projectController = {
   },
 
   /**
+   * GET /api/projects/:projectSlug/settings
+   * Get project settings with effective (merged) values
+   */
+  async getSettings(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      if (!projectSlug) {
+        res.status(400).json({
+          error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' },
+        });
+        return;
+      }
+      const settings = await projectService.getProjectSettingsWithEffective(projectSlug);
+      res.json(settings);
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({
+          error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message },
+        });
+        return;
+      }
+      res.status(500).json({
+        error: { code: 'SETTINGS_READ_ERROR', message: '설정을 불러오는 중 오류가 발생했습니다.' },
+      });
+    }
+  },
+
+  /**
    * PATCH /api/projects/:projectSlug/settings
    * Update project settings (.bmad-studio/settings.json)
    */
@@ -272,6 +302,27 @@ export const projectController = {
           error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' },
         });
         return;
+      }
+
+      // Validate permissionModeOverride (null is allowed = clear override)
+      const VALID_PERMISSION_MODES: PermissionMode[] = ['plan', 'default', 'acceptEdits'];
+      if (settings.permissionModeOverride !== undefined && settings.permissionModeOverride !== null) {
+        if (!VALID_PERMISSION_MODES.includes(settings.permissionModeOverride)) {
+          res.status(400).json({
+            error: { code: 'INVALID_PERMISSION_MODE', message: `유효하지 않은 Permission Mode: ${settings.permissionModeOverride}` },
+          });
+          return;
+        }
+      }
+
+      // Validate modelOverride (null is allowed = clear override, '' is allowed = CLI default)
+      if (settings.modelOverride !== undefined && settings.modelOverride !== null) {
+        if (typeof settings.modelOverride !== 'string') {
+          res.status(400).json({
+            error: { code: 'INVALID_MODEL', message: '유효하지 않은 모델 ID입니다.' },
+          });
+          return;
+        }
       }
 
       const updated = await projectService.updateProjectSettings(projectSlug, settings);

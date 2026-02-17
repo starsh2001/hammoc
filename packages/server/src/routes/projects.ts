@@ -100,6 +100,9 @@ router.post('/:projectSlug/setup-bmad', createProjectLimiter, projectController.
 // DELETE /api/projects/:projectSlug - Delete a project
 router.delete('/:projectSlug', projectController.delete);
 
+// GET /api/projects/:projectSlug/settings - Get project settings with effective values
+router.get('/:projectSlug/settings', projectController.getSettings);
+
 // PATCH /api/projects/:projectSlug/settings - Update project settings
 router.patch('/:projectSlug/settings', projectController.updateSettings);
 

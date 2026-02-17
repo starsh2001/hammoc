@@ -64,6 +64,7 @@ export {
   BmadVersionsResponse,
   ProjectSettings,
   UpdateProjectSettingsRequest,
+  ProjectSettingsApiResponse,
   SetupBmadRequest,
   SetupBmadResponse,
 } from './types/project.js';

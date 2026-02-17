@@ -21,6 +21,7 @@ import { useProjectStore } from '../stores/projectStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { useAuthStore } from '../stores/authStore';
 import type { Attachment, HistoryMessage } from '@bmad-studio/shared';
+import { projectsApi } from '../services/api/projects';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { useFavoriteCommands } from '../hooks/useFavoriteCommands';
@@ -180,6 +181,30 @@ export function ChatPage() {
       fetchProjects();
     }
   }, [projects.length, fetchProjects]);
+
+  // Fetch project settings for override application (Story 10.3)
+  const setProjectSettings = useChatStore((s) => s.setProjectSettings);
+  useEffect(() => {
+    if (!projectSlug) {
+      setProjectSettings(null);
+      return;
+    }
+
+    let cancelled = false;
+    projectsApi.getSettings(projectSlug)
+      .then((settings) => {
+        if (!cancelled) {
+          setProjectSettings(settings);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProjectSettings(null);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [projectSlug, setProjectSettings]);
 
   // Initialize streaming event handlers
   useStreaming();
