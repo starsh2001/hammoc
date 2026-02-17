@@ -61,6 +61,8 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: C
     `  - 캐시 읽기: ${contextUsage.cacheReadInputTokens.toLocaleString()}`,
     `출력 토큰: ${contextUsage.outputTokens.toLocaleString()}`,
     `비용: $${contextUsage.totalCostUSD.toFixed(4)}`,
+    '---',
+    '※ tool 실행 중에는 추정치 (실제 값과 약간 차이날 수 있음)',
   ].join('\n');
 
   return (

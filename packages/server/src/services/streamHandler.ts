@@ -54,6 +54,11 @@ export class StreamHandler {
   /** Throttle tracker: last emit time per tool ID for partial input updates */
   private lastPartialEmitByTool: Map<string, number> = new Map();
 
+  /** Running estimate of context window token consumption (updated from assistant usage + tool results) */
+  private estimatedContextTokens = 0;
+  /** Known context window size from modelUsage (defaults to 200K) */
+  private contextWindowSize = 200000;
+
   constructor() {
     this.state = createInitialStreamingState();
   }
@@ -132,6 +137,8 @@ export class StreamHandler {
     this.lastPartialEmitByTool.clear();
     this.receivedStreamTextDelta = false;
     this.receivedStreamThinkingDelta = false;
+    this.estimatedContextTokens = 0;
+    // Keep contextWindowSize across resets (learned from previous result)
   }
 
   /**
@@ -683,6 +690,9 @@ export class StreamHandler {
     // Emit assistant message usage for context window tracking (main chain only)
     if (message.messageUsage) {
       callbacks.onAssistantUsage?.(message.messageUsage);
+      // Update running estimate: input context + output tokens (output will be part of next turn's input)
+      const u = message.messageUsage;
+      this.estimatedContextTokens = u.inputTokens + u.cacheCreationInputTokens + u.cacheReadInputTokens + u.outputTokens;
     }
   }
 
@@ -741,10 +751,26 @@ export class StreamHandler {
     message: ParsedUserMessage,
     callbacks: StreamCallbacks
   ): void {
+    // Check if this is a main-chain message (sidechain tool results don't affect main context)
+    const rawMsg = message.rawMessage as { parent_tool_use_id?: string | null };
+    const isMainChain = !rawMsg.parent_tool_use_id;
+
     for (const block of message.contentBlocks) {
       if (block.type === ContentBlockType.TOOL_RESULT) {
         this.handleToolResultBlock(block, callbacks);
+
+        // Estimate tokens added by tool result content (main chain only)
+        if (isMainChain && this.estimatedContextTokens > 0) {
+          const contentLength = block.content?.length || 0;
+          // Rough estimate: ~4 chars per token for English/code, slightly less for JSON
+          this.estimatedContextTokens += Math.ceil(contentLength / 4);
+        }
       }
+    }
+
+    // Emit updated context estimate after processing main-chain tool results
+    if (isMainChain && this.estimatedContextTokens > 0) {
+      callbacks.onContextEstimate?.(this.estimatedContextTokens, this.contextWindowSize);
     }
   }
 
@@ -898,6 +924,10 @@ export class StreamHandler {
     }
 
     if (message.subtype === 'compact_boundary' && message.compactMetadata) {
+      // Sync running estimate with actual pre-compact token count from SDK
+      if (message.compactMetadata.preTokens > 0) {
+        this.estimatedContextTokens = message.compactMetadata.preTokens;
+      }
       callbacks.onCompact?.(message.compactMetadata);
     }
 
@@ -934,6 +964,11 @@ export class StreamHandler {
     callbacks: StreamCallbacks
   ): void {
     this.state.isComplete = true;
+
+    // Update known context window size from result's modelUsage
+    if (message.usage?.contextWindow && message.usage.contextWindow > 0) {
+      this.contextWindowSize = message.usage.contextWindow;
+    }
 
     // Dispatch error details for error subtypes (before onComplete)
     if (message.isError && message.subtype !== 'success') {

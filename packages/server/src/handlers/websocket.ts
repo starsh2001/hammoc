@@ -568,6 +568,10 @@ async function handleChatSend(
         emit('assistant:usage', usage);
       },
 
+      onContextEstimate: (estimatedTokens, contextWindow) => {
+        emit('context:estimate', { estimatedTokens, contextWindow });
+      },
+
       onResultError: (data) => {
         emit('result:error', data);
       },

@@ -175,16 +175,21 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       }
 
       // Guard: don't overwrite optimistic/current messages with incomplete server response
-      // Block update when server returns FEWER messages than we already have, but only when:
+      // Block update when server returns FEWER messages than we already have, when:
       // 1. Actively streaming (buffer replay may not be complete), OR
-      // 2. Segments pending clear (post-streaming, but server JSONL hasn't flushed yet)
+      // 2. Segments pending clear (post-streaming, but server JSONL hasn't flushed yet), OR
+      // 3. Within cooldown after stream completion (SDK may not have flushed JSONL yet,
+      //    especially after compaction when JSONL may be rewritten)
       // Exception: If pagination intentionally returns fewer (offset > 0), always allow.
       const currentMessages = get().messages;
       const chatState = useChatStore.getState();
       const isPaginationFetch = (response.pagination?.offset ?? 0) > 0;
+      const STREAM_COMPLETE_COOLDOWN_MS = 10000; // 10s cooldown after streaming ends
+      const isInCooldown = chatState.streamCompletedAt !== null &&
+                           (Date.now() - chatState.streamCompletedAt) < STREAM_COMPLETE_COOLDOWN_MS;
       const shouldGuard = !isPaginationFetch &&
                           response.messages.length < currentMessages.length &&
-                          (chatState.isStreaming || chatState.segmentsPendingClear);
+                          (chatState.isStreaming || chatState.segmentsPendingClear || isInCooldown);
 
       // DETAILED GUARD DEBUG: Track why messages might disappear
       debugLog.message('fetchMessages → guard check', {
@@ -195,7 +200,9 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         serverLessThanCurrent: response.messages.length < currentMessages.length,
         isStreaming: chatState.isStreaming,
         segmentsPendingClear: chatState.segmentsPendingClear,
-        guardConditionMet: chatState.isStreaming || chatState.segmentsPendingClear,
+        isInCooldown,
+        streamCompletedAt: chatState.streamCompletedAt,
+        guardConditionMet: chatState.isStreaming || chatState.segmentsPendingClear || isInCooldown,
         paginationOffset: response.pagination?.offset,
         currentAssistantCount: currentMessages.filter(m => m.type === 'assistant').length,
         serverAssistantCount: response.messages.filter(m => m.type === 'assistant').length,
@@ -207,6 +214,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
           currentCount: currentMessages.length,
           isStreaming: chatState.isStreaming,
           segmentsPendingClear: chatState.segmentsPendingClear,
+          isInCooldown,
         });
         set({ isLoading: false });
         return;

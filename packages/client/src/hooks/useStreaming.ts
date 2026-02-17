@@ -408,6 +408,21 @@ export function useStreaming() {
     // Handle context compaction notification
     const handleCompact = (data: CompactMetadata) => {
       flushChunkQueue();
+      // Update context usage with actual pre-compact token count from SDK
+      // This is the real context size when compact was triggered (more accurate than stale assistant:usage)
+      if (data.preTokens > 0) {
+        const existing = useChatStore.getState().contextUsage;
+        const contextWindow = existing?.contextWindow ?? 200000;
+        setContextUsage({
+          inputTokens: data.preTokens,
+          outputTokens: existing?.outputTokens ?? 0,
+          cacheCreationInputTokens: 0,
+          cacheReadInputTokens: 0,
+          totalCostUSD: existing?.totalCostUSD ?? 0,
+          contextWindow,
+          model: existing?.model,
+        });
+      }
       // Set isCompacting first (before adding segment) so MessageArea shows correct indicator
       useChatStore.setState({ isCompacting: true });
       addSystemSegment(`Context compaction (${data.trigger})...`, 'compact');
@@ -487,6 +502,27 @@ export function useStreaming() {
         contextWindow: existing?.contextWindow ?? 200000,
         model: existing?.model,
       });
+    };
+
+    // Handle context estimate from server (updates between assistant messages, e.g. after tool results)
+    const handleContextEstimate = (data: { estimatedTokens: number; contextWindow: number }) => {
+      debugLog.stream('context:estimate received', data);
+      const existing = useChatStore.getState().contextUsage;
+      // Only update if estimate is higher than current display (context only grows between compactions)
+      const currentTotal = existing
+        ? existing.inputTokens + existing.cacheCreationInputTokens + existing.cacheReadInputTokens
+        : 0;
+      if (data.estimatedTokens > currentTotal) {
+        setContextUsage({
+          inputTokens: data.estimatedTokens,
+          outputTokens: existing?.outputTokens ?? 0,
+          cacheCreationInputTokens: 0,
+          cacheReadInputTokens: 0,
+          totalCostUSD: existing?.totalCostUSD ?? 0,
+          contextWindow: data.contextWindow,
+          model: existing?.model,
+        });
+      }
     };
 
     // Handle stream:status — server tells us if a background stream exists
@@ -670,6 +706,7 @@ export function useStreaming() {
     socket.on('permission:request', handlePermissionRequest);
     socket.on('context:usage', handleContextUsage);
     socket.on('assistant:usage', handleAssistantUsage);
+    socket.on('context:estimate', handleContextEstimate);
     socket.on('system:compact', handleCompact);
     socket.on('tool:progress', handleToolProgress);
     socket.on('system:task-notification', handleTaskNotification);
@@ -708,6 +745,7 @@ export function useStreaming() {
       socket.off('permission:request', handlePermissionRequest);
       socket.off('context:usage', handleContextUsage);
       socket.off('assistant:usage', handleAssistantUsage);
+      socket.off('context:estimate', handleContextEstimate);
       socket.off('system:compact', handleCompact);
       socket.off('tool:progress', handleToolProgress);
       socket.off('system:task-notification', handleTaskNotification);

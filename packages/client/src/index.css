@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* Prevent browser native pull-to-refresh on the entire page */
+html, body {
+  overscroll-behavior-y: none;
+}
+
 /* Cursor blink animation for streaming indicator */
 @keyframes blink {
   0%,
