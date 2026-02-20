@@ -4,12 +4,13 @@
  * [Source: Story 11.3 - Task 3]
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { FileText, X, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { FileText, X, Loader2, Eye, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useFileStore } from '../../stores/fileStore';
 import { ConfirmModal } from '../ConfirmModal';
+import { MarkdownPreview } from './MarkdownPreview';
 
 export function TextEditor() {
   const {
@@ -20,14 +21,19 @@ export function TextEditor() {
     isSaving,
     isTruncated,
     error,
+    isMarkdownPreview,
     saveFile,
     closeEditor,
     setContent,
     resetError,
     openFileInEditor,
+    toggleMarkdownPreview,
   } = useFileStore();
 
   const [showConfirm, setShowConfirm] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const isMarkdownFile = openFile ? openFile.path.toLowerCase().endsWith('.md') : false;
 
   const handleSave = useCallback(async () => {
     if (!isDirty || isSaving) return;
@@ -79,6 +85,13 @@ export function TextEditor() {
     };
   }, [openFile]);
 
+  // Restore textarea focus when switching from preview to edit mode
+  useEffect(() => {
+    if (!isMarkdownPreview && isMarkdownFile) {
+      textareaRef.current?.focus();
+    }
+  }, [isMarkdownPreview, isMarkdownFile]);
+
   if (!openFile) return null;
 
   const filePath = openFile.path;
@@ -102,6 +115,26 @@ export function TextEditor() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {isMarkdownFile && (
+              <button
+                onClick={toggleMarkdownPreview}
+                className="flex items-center gap-1 px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                title={isMarkdownPreview ? 'Switch to edit mode' : 'Switch to preview mode'}
+                aria-label={isMarkdownPreview ? 'Switch to edit mode' : 'Switch to preview mode'}
+              >
+                {isMarkdownPreview ? (
+                  <>
+                    <Pencil className="w-4 h-4" />
+                    <span>Edit</span>
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4" />
+                    <span>Preview</span>
+                  </>
+                )}
+              </button>
+            )}
             <button
               onClick={handleSave}
               disabled={!isDirty || isSaving}
@@ -149,14 +182,19 @@ export function TextEditor() {
                 표시된 내용만 저장됩니다.
               </div>
             )}
-            <textarea
-              className="flex-1 w-full p-4 font-mono text-sm resize-none outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              spellCheck={false}
-              aria-label={`Editing ${filePath}`}
-              autoFocus
-            />
+            {isMarkdownPreview && isMarkdownFile ? (
+              <MarkdownPreview content={content} />
+            ) : (
+              <textarea
+                ref={textareaRef}
+                className="flex-1 w-full p-4 font-mono text-sm resize-none outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                spellCheck={false}
+                aria-label={`Editing ${filePath}`}
+                autoFocus
+              />
+            )}
           </>
         )}
       </div>
