@@ -43,12 +43,20 @@ vi.mock('../../ConfirmModal', () => ({
     ) : null,
 }));
 
+// Mock MarkdownPreview
+vi.mock('../MarkdownPreview', () => ({
+  MarkdownPreview: ({ content }: { content: string }) => (
+    <div data-testid="markdown-preview">{content}</div>
+  ),
+}));
+
 // Mock fileStore
 const mockSaveFile = vi.fn();
 const mockCloseEditor = vi.fn();
 const mockSetContent = vi.fn();
 const mockResetError = vi.fn();
 const mockOpenFileInEditor = vi.fn();
+const mockToggleMarkdownPreview = vi.fn();
 
 let mockStoreState = {
   openFile: null as { projectSlug: string; path: string } | null,
@@ -57,12 +65,14 @@ let mockStoreState = {
   isLoading: false,
   isSaving: false,
   isTruncated: false,
+  isMarkdownPreview: false,
   error: null as string | null,
   saveFile: mockSaveFile,
   closeEditor: mockCloseEditor,
   setContent: mockSetContent,
   resetError: mockResetError,
   openFileInEditor: mockOpenFileInEditor,
+  toggleMarkdownPreview: mockToggleMarkdownPreview,
 };
 
 vi.mock('../../../stores/fileStore', () => ({
@@ -81,12 +91,14 @@ describe('TextEditor', () => {
       isLoading: false,
       isSaving: false,
       isTruncated: false,
+      isMarkdownPreview: false,
       error: null,
       saveFile: mockSaveFile,
       closeEditor: mockCloseEditor,
       setContent: mockSetContent,
       resetError: mockResetError,
       openFileInEditor: mockOpenFileInEditor,
+      toggleMarkdownPreview: mockToggleMarkdownPreview,
     };
     vi.clearAllMocks();
     mockSaveFile.mockResolvedValue(true);
@@ -235,5 +247,79 @@ describe('TextEditor', () => {
       expect(screen.queryByTestId('confirm-modal')).toBeNull();
     });
     expect(mockCloseEditor).not.toHaveBeenCalled();
+  });
+
+  it('TC-TE13: should show Preview toggle button for .md files', () => {
+    mockStoreState.openFile = { projectSlug: 'test', path: 'README.md' };
+    mockStoreState.content = '# Hello';
+
+    render(<TextEditor />);
+
+    expect(screen.getByText('Preview')).toBeDefined();
+    expect(screen.getByLabelText('Switch to preview mode')).toBeDefined();
+  });
+
+  it('TC-TE14: should not show Preview toggle button for non-.md files', () => {
+    mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
+    mockStoreState.content = 'code';
+
+    render(<TextEditor />);
+
+    expect(screen.queryByText('Preview')).toBeNull();
+    expect(screen.queryByText('Edit')).toBeNull();
+  });
+
+  it('TC-TE15: should call toggleMarkdownPreview on toggle button click', () => {
+    mockStoreState.openFile = { projectSlug: 'test', path: 'README.md' };
+    mockStoreState.content = '# Hello';
+
+    render(<TextEditor />);
+
+    fireEvent.click(screen.getByText('Preview'));
+    expect(mockToggleMarkdownPreview).toHaveBeenCalled();
+  });
+
+  it('TC-TE16: should render MarkdownPreview instead of textarea in preview mode', () => {
+    mockStoreState.openFile = { projectSlug: 'test', path: 'README.md' };
+    mockStoreState.content = '# Hello World';
+    mockStoreState.isMarkdownPreview = true;
+
+    render(<TextEditor />);
+
+    expect(screen.getByTestId('markdown-preview')).toBeDefined();
+    expect(screen.getByTestId('markdown-preview').textContent).toBe('# Hello World');
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('TC-TE17: should be read-only in preview mode (no textarea)', () => {
+    mockStoreState.openFile = { projectSlug: 'test', path: 'docs/guide.md' };
+    mockStoreState.content = '## Guide';
+    mockStoreState.isMarkdownPreview = true;
+
+    render(<TextEditor />);
+
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.getByTestId('markdown-preview')).toBeDefined();
+    // Toggle button should show "Edit" in preview mode
+    expect(screen.getByText('Edit')).toBeDefined();
+    expect(screen.getByLabelText('Switch to edit mode')).toBeDefined();
+  });
+
+  it('TC-TE18: should restore textarea focus when switching from preview to edit', () => {
+    // Start in preview mode (no textarea visible)
+    mockStoreState.openFile = { projectSlug: 'test', path: 'README.md' };
+    mockStoreState.content = '# Hello';
+    mockStoreState.isMarkdownPreview = true;
+
+    const { rerender } = render(<TextEditor />);
+    expect(screen.queryByRole('textbox')).toBeNull();
+
+    // Switch to edit mode — textarea should appear and receive focus
+    mockStoreState.isMarkdownPreview = false;
+    rerender(<TextEditor />);
+
+    const textarea = screen.getByRole('textbox');
+    expect(textarea).toBeDefined();
+    expect(document.activeElement).toBe(textarea);
   });
 });

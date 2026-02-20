@@ -26,6 +26,7 @@ const initialState = {
   isLoading: false,
   isSaving: false,
   isTruncated: false,
+  isMarkdownPreview: false,
   error: null,
 };
 
@@ -203,6 +204,50 @@ describe('useFileStore', () => {
       useFileStore.getState().resetError();
 
       expect(useFileStore.getState().error).toBeNull();
+    });
+  });
+
+  describe('toggleMarkdownPreview', () => {
+    it('TC-FS12: should toggle isMarkdownPreview false → true → false', () => {
+      expect(useFileStore.getState().isMarkdownPreview).toBe(false);
+
+      useFileStore.getState().toggleMarkdownPreview();
+      expect(useFileStore.getState().isMarkdownPreview).toBe(true);
+
+      useFileStore.getState().toggleMarkdownPreview();
+      expect(useFileStore.getState().isMarkdownPreview).toBe(false);
+    });
+
+    it('TC-FS13: closeEditor should reset isMarkdownPreview to false', () => {
+      useFileStore.setState({
+        openFile: { projectSlug: 'test', path: 'README.md' },
+        isMarkdownPreview: true,
+      });
+
+      useFileStore.getState().closeEditor();
+
+      expect(useFileStore.getState().isMarkdownPreview).toBe(false);
+    });
+
+    it('TC-FS14: openFileInEditor should reset isMarkdownPreview to false', async () => {
+      mockedReadFile.mockResolvedValue({
+        content: '# New file',
+        isBinary: false,
+        isTruncated: false,
+        size: 10,
+        mimeType: 'text/plain',
+      });
+
+      // Set preview mode on current file
+      useFileStore.setState({
+        openFile: { projectSlug: 'test', path: 'README.md' },
+        isMarkdownPreview: true,
+      });
+
+      // Open a different file — should reset preview state
+      await useFileStore.getState().openFileInEditor('test', 'OTHER.md');
+
+      expect(useFileStore.getState().isMarkdownPreview).toBe(false);
     });
   });
 });
