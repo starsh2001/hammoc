@@ -1,11 +1,26 @@
 /**
  * Path Utilities
- * Binary file detection, MIME type mapping, and file size constants.
- * [Source: Story 11.1 - Task 3]
+ * Binary file detection, MIME type mapping, file size constants, and protected path validation.
+ * [Source: Story 11.1 - Task 3, Story 11.2 - Task 2]
  */
 
 import fs from 'fs/promises';
 import path from 'path';
+
+/** Directories protected from deletion without force flag */
+export const PROTECTED_DIRECTORIES = ['.git', 'node_modules', '.bmad-core'] as const;
+
+/**
+ * Checks if the given relative path is under a protected directory.
+ * Protected directories require force=true for deletion.
+ * @param relativePath Relative path to check
+ * @returns true if the path is under a protected directory
+ */
+export function isProtectedPath(relativePath: string): boolean {
+  const normalized = path.normalize(relativePath);
+  const firstSegment = normalized.split(path.sep)[0];
+  return PROTECTED_DIRECTORIES.includes(firstSegment as typeof PROTECTED_DIRECTORIES[number]);
+}
 
 /** Maximum file size for full content response (1MB) */
 export const MAX_FILE_SIZE = 1 * 1024 * 1024;

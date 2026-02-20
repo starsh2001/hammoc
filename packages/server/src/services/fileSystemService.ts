@@ -7,8 +7,15 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { validateProjectPath } from '../middleware/pathGuard.js';
-import { isBinaryFile, getMimeType, MAX_FILE_SIZE } from '../utils/pathUtils.js';
-import type { FileReadResponse, DirectoryListResponse } from '@bmad-studio/shared';
+import { isBinaryFile, getMimeType, MAX_FILE_SIZE, isProtectedPath } from '../utils/pathUtils.js';
+import type {
+  FileReadResponse,
+  DirectoryListResponse,
+  FileWriteResponse,
+  FileCreateResponse,
+  FileDeleteResponse,
+  FileRenameResponse,
+} from '@bmad-studio/shared';
 
 /**
  * FileSystemService - Read files and list directories within project roots
@@ -124,6 +131,240 @@ class FileSystemService {
     }
 
     return { path: relativePath, entries };
+  }
+  /**
+   * Write content to a file within a project root.
+   * Creates the file if it doesn't exist, overwrites if it does.
+   * @param projectRoot Absolute path to the project root
+   * @param relativePath Relative path to the file
+   * @param content File content to write
+   * @returns FileWriteResponse
+   */
+  async writeFile(projectRoot: string, relativePath: string, content: string): Promise<FileWriteResponse> {
+    const absolutePath = validateProjectPath(projectRoot, relativePath);
+
+    // Check parent directory exists
+    const parentDir = path.dirname(absolutePath);
+    try {
+      const parentStat = await fs.stat(parentDir);
+      if (!parentStat.isDirectory()) {
+        const err = new Error('Parent path is not a directory');
+        (err as NodeJS.ErrnoException).code = 'PARENT_NOT_FOUND';
+        throw err;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('Parent directory not found');
+        (err as NodeJS.ErrnoException).code = 'PARENT_NOT_FOUND';
+        throw err;
+      }
+      if ((error as NodeJS.ErrnoException).code === 'PARENT_NOT_FOUND') {
+        throw error;
+      }
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+
+    try {
+      await fs.writeFile(absolutePath, content, 'utf-8');
+      const stat = await fs.stat(absolutePath);
+      return { success: true, size: stat.size };
+    } catch {
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+  }
+
+  /**
+   * Create a new file or directory within a project root.
+   * @param projectRoot Absolute path to the project root
+   * @param relativePath Relative path for the new entry
+   * @param type Entry type ('file' or 'directory')
+   * @returns FileCreateResponse
+   */
+  async createEntry(projectRoot: string, relativePath: string, type: 'file' | 'directory'): Promise<FileCreateResponse> {
+    const absolutePath = validateProjectPath(projectRoot, relativePath);
+
+    // Check if already exists
+    try {
+      await fs.stat(absolutePath);
+      // If stat succeeds, the entry already exists
+      const err = new Error('Entry already exists');
+      (err as NodeJS.ErrnoException).code = 'FILE_ALREADY_EXISTS';
+      throw err;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'FILE_ALREADY_EXISTS') {
+        throw error;
+      }
+      // ENOENT is expected — entry doesn't exist yet
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        const err = new Error('File system write error');
+        (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+        throw err;
+      }
+    }
+
+    // Check parent directory exists
+    const parentDir = path.dirname(absolutePath);
+    try {
+      const parentStat = await fs.stat(parentDir);
+      if (!parentStat.isDirectory()) {
+        const err = new Error('Parent path is not a directory');
+        (err as NodeJS.ErrnoException).code = 'PARENT_NOT_FOUND';
+        throw err;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('Parent directory not found');
+        (err as NodeJS.ErrnoException).code = 'PARENT_NOT_FOUND';
+        throw err;
+      }
+      if ((error as NodeJS.ErrnoException).code === 'PARENT_NOT_FOUND') {
+        throw error;
+      }
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+
+    try {
+      if (type === 'directory') {
+        await fs.mkdir(absolutePath);
+      } else {
+        await fs.writeFile(absolutePath, '', 'utf-8');
+      }
+      return { success: true, type, path: relativePath };
+    } catch {
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+  }
+
+  /**
+   * Delete a file or directory within a project root.
+   * Protected directories require force=true.
+   * @param projectRoot Absolute path to the project root
+   * @param relativePath Relative path to delete
+   * @param force Allow deletion of protected directories
+   * @returns FileDeleteResponse
+   */
+  async deleteEntry(projectRoot: string, relativePath: string, force: boolean = false): Promise<FileDeleteResponse> {
+    const absolutePath = validateProjectPath(projectRoot, relativePath);
+
+    // Check existence
+    let stat;
+    try {
+      stat = await fs.stat(absolutePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('File not found');
+        (err as NodeJS.ErrnoException).code = 'FILE_NOT_FOUND';
+        throw err;
+      }
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+
+    // Protected path check
+    if (isProtectedPath(relativePath) && !force) {
+      const err = new Error('Protected path requires force flag');
+      (err as NodeJS.ErrnoException).code = 'PROTECTED_PATH';
+      throw err;
+    }
+
+    try {
+      if (stat.isDirectory()) {
+        await fs.rm(absolutePath, { recursive: true });
+      } else {
+        await fs.unlink(absolutePath);
+      }
+      return { success: true, path: relativePath };
+    } catch {
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+  }
+
+  /**
+   * Rename a file or directory within a project root.
+   * Both source and target paths are validated against traversal.
+   * @param projectRoot Absolute path to the project root
+   * @param relativePath Source relative path
+   * @param newRelativePath Target relative path
+   * @returns FileRenameResponse
+   */
+  async renameEntry(projectRoot: string, relativePath: string, newRelativePath: string): Promise<FileRenameResponse> {
+    const sourceAbsolute = validateProjectPath(projectRoot, relativePath);
+    const targetAbsolute = validateProjectPath(projectRoot, newRelativePath);
+
+    // Check source exists
+    try {
+      await fs.stat(sourceAbsolute);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('Source not found');
+        (err as NodeJS.ErrnoException).code = 'FILE_NOT_FOUND';
+        throw err;
+      }
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+
+    // Check target doesn't exist
+    try {
+      await fs.stat(targetAbsolute);
+      // If stat succeeds, target exists
+      const err = new Error('Target already exists');
+      (err as NodeJS.ErrnoException).code = 'RENAME_TARGET_EXISTS';
+      throw err;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'RENAME_TARGET_EXISTS') {
+        throw error;
+      }
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        const err = new Error('File system write error');
+        (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+        throw err;
+      }
+    }
+
+    // Check target parent directory exists
+    const targetParentDir = path.dirname(targetAbsolute);
+    try {
+      const parentStat = await fs.stat(targetParentDir);
+      if (!parentStat.isDirectory()) {
+        const err = new Error('Target parent path is not a directory');
+        (err as NodeJS.ErrnoException).code = 'PARENT_NOT_FOUND';
+        throw err;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('Target parent directory not found');
+        (err as NodeJS.ErrnoException).code = 'PARENT_NOT_FOUND';
+        throw err;
+      }
+      if ((error as NodeJS.ErrnoException).code === 'PARENT_NOT_FOUND') {
+        throw error;
+      }
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+
+    try {
+      await fs.rename(sourceAbsolute, targetAbsolute);
+      return { success: true, oldPath: relativePath, newPath: newRelativePath };
+    } catch {
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
   }
 }
 
