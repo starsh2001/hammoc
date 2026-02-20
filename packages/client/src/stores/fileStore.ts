@@ -14,6 +14,7 @@ interface FileState {
   isLoading: boolean;
   isSaving: boolean;
   isTruncated: boolean;
+  isMarkdownPreview: boolean;
   error: string | null;
 }
 
@@ -23,6 +24,7 @@ interface FileActions {
   closeEditor: () => void;
   setContent: (content: string) => void;
   resetError: () => void;
+  toggleMarkdownPreview: () => void;
 }
 
 type FileStore = FileState & FileActions;
@@ -35,6 +37,7 @@ const initialState: FileState = {
   isLoading: false,
   isSaving: false,
   isTruncated: false,
+  isMarkdownPreview: false,
   error: null,
 };
 
@@ -47,6 +50,7 @@ export const useFileStore = create<FileStore>((set, get) => ({
       isLoading: true,
       error: null,
       isTruncated: false,
+      isMarkdownPreview: false,
       content: '',
       originalContent: '',
       isDirty: false,
@@ -92,4 +96,8 @@ export const useFileStore = create<FileStore>((set, get) => ({
   },
 
   resetError: () => set({ error: null }),
+
+  toggleMarkdownPreview: () => {
+    set({ isMarkdownPreview: !get().isMarkdownPreview });
+  },
 }));
