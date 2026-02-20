@@ -157,3 +157,240 @@ describe('fileSystemService.listDirectory', () => {
     }
   });
 });
+
+describe('fileSystemService.writeFile', () => {
+  // TC-WR1: Normal file write
+  it('writes file and returns success with size', async () => {
+    const content = 'Hello, World!';
+    const result = await fileSystemService.writeFile(tmpDir, 'src/newfile.ts', content);
+
+    expect(result.success).toBe(true);
+    expect(result.size).toBeGreaterThan(0);
+
+    // Verify content was written
+    const written = await fs.readFile(path.join(tmpDir, 'src', 'newfile.ts'), 'utf-8');
+    expect(written).toBe(content);
+  });
+
+  // TC-WR2: Overwrite existing file
+  it('overwrites existing file content', async () => {
+    const newContent = 'console.log("updated");';
+    const result = await fileSystemService.writeFile(tmpDir, 'src/index.ts', newContent);
+
+    expect(result.success).toBe(true);
+
+    const written = await fs.readFile(path.join(tmpDir, 'src', 'index.ts'), 'utf-8');
+    expect(written).toBe(newContent);
+  });
+
+  // TC-WR3: Parent directory not found
+  it('throws PARENT_NOT_FOUND when parent directory does not exist', async () => {
+    try {
+      await fileSystemService.writeFile(tmpDir, 'nonexistent/dir/file.ts', 'content');
+      expect.fail('Should have thrown');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('PARENT_NOT_FOUND');
+    }
+  });
+
+  // TC-WR4: Empty string content writes 0-byte file
+  it('writes empty string content as 0-byte file', async () => {
+    const result = await fileSystemService.writeFile(tmpDir, 'src/empty.ts', '');
+
+    expect(result.success).toBe(true);
+    expect(result.size).toBe(0);
+
+    const written = await fs.readFile(path.join(tmpDir, 'src', 'empty.ts'), 'utf-8');
+    expect(written).toBe('');
+  });
+});
+
+describe('fileSystemService.createEntry', () => {
+  // TC-CR1: Create empty file
+  it('creates empty file', async () => {
+    const result = await fileSystemService.createEntry(tmpDir, 'src/newfile.ts', 'file');
+
+    expect(result.success).toBe(true);
+    expect(result.type).toBe('file');
+    expect(result.path).toBe('src/newfile.ts');
+
+    const stat = await fs.stat(path.join(tmpDir, 'src', 'newfile.ts'));
+    expect(stat.isFile()).toBe(true);
+    expect(stat.size).toBe(0);
+  });
+
+  // TC-CR2: Create directory
+  it('creates directory', async () => {
+    const result = await fileSystemService.createEntry(tmpDir, 'src/components', 'directory');
+
+    expect(result.success).toBe(true);
+    expect(result.type).toBe('directory');
+    expect(result.path).toBe('src/components');
+
+    const stat = await fs.stat(path.join(tmpDir, 'src', 'components'));
+    expect(stat.isDirectory()).toBe(true);
+  });
+
+  // TC-CR3: Already exists
+  it('throws FILE_ALREADY_EXISTS when path already exists', async () => {
+    try {
+      await fileSystemService.createEntry(tmpDir, 'src/index.ts', 'file');
+      expect.fail('Should have thrown');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('FILE_ALREADY_EXISTS');
+    }
+  });
+
+  // TC-CR4: Parent directory not found
+  it('throws PARENT_NOT_FOUND when parent directory does not exist', async () => {
+    try {
+      await fileSystemService.createEntry(tmpDir, 'nonexistent/dir/file.ts', 'file');
+      expect.fail('Should have thrown');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('PARENT_NOT_FOUND');
+    }
+  });
+});
+
+describe('fileSystemService.deleteEntry', () => {
+  // TC-DE1: Delete file
+  it('deletes a file', async () => {
+    const result = await fileSystemService.deleteEntry(tmpDir, 'readme.md');
+
+    expect(result.success).toBe(true);
+    expect(result.path).toBe('readme.md');
+
+    // Verify file is gone
+    try {
+      await fs.stat(path.join(tmpDir, 'readme.md'));
+      expect.fail('File should have been deleted');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('ENOENT');
+    }
+  });
+
+  // TC-DE2: Delete directory recursively
+  it('deletes a directory recursively', async () => {
+    const result = await fileSystemService.deleteEntry(tmpDir, 'src');
+
+    expect(result.success).toBe(true);
+    expect(result.path).toBe('src');
+
+    try {
+      await fs.stat(path.join(tmpDir, 'src'));
+      expect.fail('Directory should have been deleted');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('ENOENT');
+    }
+  });
+
+  // TC-DE3: Non-existent file
+  it('throws FILE_NOT_FOUND for non-existent file', async () => {
+    try {
+      await fileSystemService.deleteEntry(tmpDir, 'nonexistent.txt');
+      expect.fail('Should have thrown');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('FILE_NOT_FOUND');
+    }
+  });
+
+  // TC-DE4: Protected path without force
+  it('throws PROTECTED_PATH for .git without force', async () => {
+    await fs.mkdir(path.join(tmpDir, '.git'));
+    await fs.writeFile(path.join(tmpDir, '.git', 'config'), 'test');
+
+    try {
+      await fileSystemService.deleteEntry(tmpDir, '.git', false);
+      expect.fail('Should have thrown');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('PROTECTED_PATH');
+    }
+  });
+
+  // TC-DE5: Protected path with force
+  it('deletes .git directory with force=true', async () => {
+    await fs.mkdir(path.join(tmpDir, '.git'));
+    await fs.writeFile(path.join(tmpDir, '.git', 'config'), 'test');
+
+    const result = await fileSystemService.deleteEntry(tmpDir, '.git', true);
+
+    expect(result.success).toBe(true);
+    expect(result.path).toBe('.git');
+  });
+
+  // TC-DE6: Protected sub-path without force
+  it('throws PROTECTED_PATH for .git/config without force', async () => {
+    await fs.mkdir(path.join(tmpDir, '.git'));
+    await fs.writeFile(path.join(tmpDir, '.git', 'config'), 'test');
+
+    try {
+      await fileSystemService.deleteEntry(tmpDir, '.git/config', false);
+      expect.fail('Should have thrown');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('PROTECTED_PATH');
+    }
+  });
+});
+
+describe('fileSystemService.renameEntry', () => {
+  // TC-RN1: Rename file
+  it('renames a file', async () => {
+    const result = await fileSystemService.renameEntry(tmpDir, 'readme.md', 'docs.md');
+
+    expect(result.success).toBe(true);
+    expect(result.oldPath).toBe('readme.md');
+    expect(result.newPath).toBe('docs.md');
+
+    // Verify rename
+    const stat = await fs.stat(path.join(tmpDir, 'docs.md'));
+    expect(stat.isFile()).toBe(true);
+
+    // Verify old file is gone
+    try {
+      await fs.stat(path.join(tmpDir, 'readme.md'));
+      expect.fail('Old file should not exist');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('ENOENT');
+    }
+  });
+
+  // TC-RN2: Target already exists
+  it('throws RENAME_TARGET_EXISTS when target already exists', async () => {
+    try {
+      await fileSystemService.renameEntry(tmpDir, 'readme.md', 'src/index.ts');
+      expect.fail('Should have thrown');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('RENAME_TARGET_EXISTS');
+    }
+  });
+
+  // TC-RN3: Source not found
+  it('throws FILE_NOT_FOUND when source does not exist', async () => {
+    try {
+      await fileSystemService.renameEntry(tmpDir, 'nonexistent.txt', 'new.txt');
+      expect.fail('Should have thrown');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('FILE_NOT_FOUND');
+    }
+  });
+
+  // TC-RN4: Target parent directory not found
+  it('throws PARENT_NOT_FOUND when target parent does not exist', async () => {
+    try {
+      await fileSystemService.renameEntry(tmpDir, 'readme.md', 'nonexistent/dir/readme.md');
+      expect.fail('Should have thrown');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('PARENT_NOT_FOUND');
+    }
+  });
+
+  // TC-RN5: Path traversal on newPath
+  it('throws PATH_TRAVERSAL for traversal attempt on newPath', async () => {
+    try {
+      await fileSystemService.renameEntry(tmpDir, 'readme.md', '../../../etc/evil');
+      expect.fail('Should have thrown');
+    } catch (error) {
+      expect((error as NodeJS.ErrnoException).code).toBe('PATH_TRAVERSAL');
+    }
+  });
+});
