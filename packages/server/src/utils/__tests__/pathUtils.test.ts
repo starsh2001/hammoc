@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
-import { isBinaryFile, getMimeType, MAX_FILE_SIZE } from '../pathUtils.js';
+import { isBinaryFile, getMimeType, MAX_FILE_SIZE, isProtectedPath, PROTECTED_DIRECTORIES } from '../pathUtils.js';
 
 describe('isBinaryFile', () => {
   let tmpDir: string;
@@ -101,5 +101,37 @@ describe('getMimeType', () => {
 describe('MAX_FILE_SIZE', () => {
   it('equals 1MB (1048576 bytes)', () => {
     expect(MAX_FILE_SIZE).toBe(1 * 1024 * 1024);
+  });
+});
+
+describe('isProtectedPath', () => {
+  // TC-PP1: .git → returns true
+  it('returns true for .git', () => {
+    expect(isProtectedPath('.git')).toBe(true);
+  });
+
+  // TC-PP2: .git/config → returns true
+  it('returns true for .git/config', () => {
+    expect(isProtectedPath('.git/config')).toBe(true);
+  });
+
+  // TC-PP3: node_modules/express → returns true
+  it('returns true for node_modules/express', () => {
+    expect(isProtectedPath('node_modules/express')).toBe(true);
+  });
+
+  // TC-PP4: .bmad-core/config.yaml → returns true
+  it('returns true for .bmad-core/config.yaml', () => {
+    expect(isProtectedPath('.bmad-core/config.yaml')).toBe(true);
+  });
+
+  // TC-PP5: src/app.ts → returns false
+  it('returns false for src/app.ts', () => {
+    expect(isProtectedPath('src/app.ts')).toBe(false);
+  });
+
+  // TC-PP6: my-git-project/index.ts → returns false (not a .git prefix)
+  it('returns false for my-git-project/index.ts', () => {
+    expect(isProtectedPath('my-git-project/index.ts')).toBe(false);
   });
 });
