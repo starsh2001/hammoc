@@ -99,3 +99,6 @@ export {
   ToolResultContentBlock,
   ImageContentBlock,
 } from './types/history.js';
+
+// Story 11.1: File System types for file read and directory list API
+export * from './types/fileSystem.js';

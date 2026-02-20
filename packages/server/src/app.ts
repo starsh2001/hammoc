@@ -18,6 +18,7 @@ import sessionsRoutes from './routes/sessions.js';
 import commandsRoutes from './routes/commands.js';
 import preferencesRoutes from './routes/preferences.js';
 import debugRoutes from './routes/debug.js';
+import fileSystemRoutes from './routes/fileSystem.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 
@@ -78,6 +79,9 @@ export async function createApp(): Promise<Express> {
 
   // Preferences routes (global user settings)
   app.use('/api/preferences', preferencesRoutes);
+
+  // File System routes (Story 11.1) - file reading and directory listing
+  app.use('/api/projects', fileSystemRoutes);
 
   // Debug routes (server-side logging for client debugging)
   app.use('/api/debug', debugRoutes);
