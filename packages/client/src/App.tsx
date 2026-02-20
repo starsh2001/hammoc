@@ -7,6 +7,7 @@
  * Story 3.4: Session List UI
  * Story 3.5: Session History Loading
  * Story 4.7: Connection Status Display - Added toast notifications
+ * Story 11.3: TextEditor global mount
  *
  * Main application entry point with routing and auth guard
  */
@@ -28,6 +29,7 @@ import { AuthGuard } from './components/AuthGuard';
 import { PublicRoute } from './components/PublicRoute';
 import { useTheme } from './hooks/useTheme';
 import { usePreferencesStore } from './stores/preferencesStore';
+import { TextEditor } from './components/editor/TextEditor';
 
 function AppContent() {
   // Initialize server-side preferences (fetches from server, migrates localStorage if needed)
@@ -110,6 +112,7 @@ function App() {
   return (
     <BrowserRouter>
       <Toaster position="top-right" richColors duration={3000} />
+      <TextEditor />
       <AppContent />
     </BrowserRouter>
   );
