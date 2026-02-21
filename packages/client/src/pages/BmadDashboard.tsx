@@ -5,7 +5,7 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { BarChart3, Zap, Plus, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Zap, Plus, ArrowRight, AlertTriangle } from 'lucide-react';
 import type { BmadStatusResponse } from '@bmad-studio/shared';
 
 import { useProjectStore } from '../stores/projectStore.js';
@@ -13,6 +13,7 @@ import { useBmadStatus } from '../hooks/useBmadStatus.js';
 
 import { ProjectDashboardPage } from './ProjectDashboardPage.js';
 import { DocumentStatusCard } from '../components/dashboard/DocumentStatusCard.js';
+import { EpicProgressCard } from '../components/dashboard/EpicProgressCard.js';
 
 import { generateUUID } from '../utils/uuid.js';
 
@@ -91,35 +92,8 @@ function DashboardContent({
           projectSlug={projectSlug}
         />
 
-        {/* Epic progress card */}
-        <div
-          role="region"
-          aria-label="에픽 진행률"
-          className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5"
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            <h2 className="font-semibold text-gray-900 dark:text-white">에픽 진행률</h2>
-          </div>
-          <div className="space-y-2 text-sm">
-            {data.epics.map((epic) => {
-              const epicDone = epic.stories.filter((s) => s.status === 'Done').length;
-              return (
-                <div key={epic.number} className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300 truncate mr-2">
-                    {epic.number}. {epic.name}
-                  </span>
-                  <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">
-                    {epicDone}/{epic.stories.length}
-                  </span>
-                </div>
-              );
-            })}
-            {data.epics.length === 0 && (
-              <p className="text-gray-500 dark:text-gray-400">에픽이 없습니다.</p>
-            )}
-          </div>
-        </div>
+        {/* Epic progress card (Story 12.4) */}
+        <EpicProgressCard epics={data.epics} />
 
         {/* Quick actions card */}
         <div
