@@ -43,6 +43,13 @@ vi.mock('../../components/dashboard/DocumentStatusCard.js', () => ({
   ),
 }));
 
+// Mock EpicProgressCard (Story 12.4)
+vi.mock('../../components/dashboard/EpicProgressCard.js', () => ({
+  EpicProgressCard: () => (
+    <div role="region" aria-label="에픽 진행률">에픽 진행률</div>
+  ),
+}));
+
 const mockBmadData: BmadStatusResponse = {
   config: { prdFile: 'docs/prd.md' },
   documents: {
@@ -176,10 +183,8 @@ describe('BmadDashboard', () => {
     // Document status section (mocked DocumentStatusCard)
     expect(screen.getByText('문서 현황')).toBeInTheDocument();
 
-    // Epic progress section
+    // Epic progress section (mocked EpicProgressCard)
     expect(screen.getByText('에픽 진행률')).toBeInTheDocument();
-    expect(screen.getByText('1. Foundation')).toBeInTheDocument();
-    expect(screen.getByText('2. Chat')).toBeInTheDocument();
 
     // Epic summary in header
     expect(screen.getByText(/에픽 2개 · 스토리 3\/5 Done/)).toBeInTheDocument();
