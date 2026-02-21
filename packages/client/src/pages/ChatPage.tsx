@@ -396,6 +396,13 @@ export function ChatPage() {
           const command = pendingAgentCommandRef.current;
           pendingAgentCommandRef.current = null;
           handleSendMessageRef.current(command);
+        } else {
+          // Auto-send agent command from URL search params (Story 12.3)
+          const agentParam = new URLSearchParams(window.location.search).get('agent');
+          if (agentParam && useMessageStore.getState().messages.length === 0) {
+            window.history.replaceState(null, '', window.location.pathname);
+            handleSendMessageRef.current(agentParam);
+          }
         }
       });
     }
