@@ -109,6 +109,16 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       a({ href, children, ...props }) {
         // File link: relative path (not external URL)
         if (href && !isExternalUrl(href)) {
+          // Parse fragment: #L42 or #L42-L51
+          const hashIdx = href.indexOf('#');
+          const filePath = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
+          let targetLine: number | undefined;
+          if (hashIdx >= 0) {
+            const fragment = href.slice(hashIdx + 1);
+            const lineMatch = fragment.match(/^L(\d+)/);
+            if (lineMatch) targetLine = parseInt(lineMatch[1], 10);
+          }
+
           return (
             <a
               href={href}
@@ -116,7 +126,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
                 e.preventDefault();
                 const projectSlug = useMessageStore.getState().currentProjectSlug;
                 if (!projectSlug) return;
-                useFileStore.getState().requestFileNavigation(projectSlug, href);
+                useFileStore.getState().requestFileNavigation(projectSlug, filePath, targetLine);
               }}
               className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
               title={`파일 열기: ${href}`}

@@ -123,6 +123,27 @@ export function TextEditor() {
     }
   }, [isMarkdownPreview, isMarkdownFile]);
 
+  // Scroll to target line when editor is created
+  const handleEditorCreated = useCallback((view: EditorView) => {
+    editorRef.current = view;
+    const line = useFileStore.getState().targetLine;
+    if (!line) return;
+    // Wait a frame for CodeMirror to finish layout
+    requestAnimationFrame(() => {
+      try {
+        const clampedLine = Math.min(line, view.state.doc.lines);
+        const docLine = view.state.doc.line(clampedLine);
+        view.dispatch({
+          selection: { anchor: docLine.from },
+          effects: EditorView.scrollIntoView(docLine.from, { y: 'start', yMargin: 8 }),
+        });
+      } catch {
+        // Line number out of range — ignore
+      }
+      useFileStore.setState({ targetLine: null });
+    });
+  }, []);
+
   if (!openFile) return null;
 
   const filePath = openFile.path;
@@ -233,7 +254,7 @@ export function TextEditor() {
                     extensions={extensions}
                     theme={theme === 'dark' ? oneDark : 'light'}
                     onChange={(value: string) => setContent(value)}
-                    onCreateEditor={(view: EditorView) => { editorRef.current = view; }}
+                    onCreateEditor={handleEditorCreated}
                     height="100%"
                     style={{ height: '100%' }}
                     basicSetup={{
