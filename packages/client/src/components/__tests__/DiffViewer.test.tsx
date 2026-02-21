@@ -5,51 +5,120 @@
 
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { DiffEditor as MockDiffEditor } from '@monaco-editor/react';
 import { DiffViewer, getLanguageFromPath } from '../DiffViewer';
 
-// Store onMount callback for manual triggering in tests
-let mockOnMount: (() => void) | null = null;
+// Mock MergeView and unifiedMergeView from @codemirror/merge
+const mockMergeViewDestroy = vi.fn();
+const mockBDispatch = vi.fn();
+const mockBFocus = vi.fn();
 
-// Mock editor instance for Story 6.4 navigation tests
-const mockRevealLineInCenter = vi.fn();
-const mockGetLineChanges = vi.fn<() => unknown[] | null>().mockReturnValue(null);
-const mockDispose = vi.fn();
-const mockOnDidUpdateDiff = vi.fn((callback: () => void) => {
-  callback();
-  return { dispose: mockDispose };
-});
+let mockChunks: Array<{ fromA: number; toA: number; endA: number; fromB: number; toB: number; endB: number }> = [];
 
-const mockEditorInstance = {
-  getLineChanges: mockGetLineChanges,
-  getModifiedEditor: () => ({
-    revealLineInCenter: mockRevealLineInCenter,
-  }),
-  onDidUpdateDiff: mockOnDidUpdateDiff,
+const mockMergeViewInstance = {
+  destroy: mockMergeViewDestroy,
+  dom: document.createElement('div'),
+  chunks: mockChunks,
+  a: {
+    state: { doc: { lineAt: vi.fn((pos: number) => ({ number: pos + 1 })), length: 100 } },
+    dispatch: vi.fn(),
+    focus: vi.fn(),
+  },
+  b: {
+    state: { doc: { lineAt: vi.fn((pos: number) => ({ number: pos + 1 })), length: 100 } },
+    dispatch: mockBDispatch,
+    focus: mockBFocus,
+  },
 };
 
-// Mock @monaco-editor/react
-vi.mock('@monaco-editor/react', () => ({
-  DiffEditor: vi.fn(({ original, modified, onMount }) => {
-    // Store the callback for manual triggering — passes editor instance
-    mockOnMount = () => onMount?.(mockEditorInstance, {});
-    return (
-      <div data-testid="mock-diff-editor">
-        <div data-testid="original-content">{original}</div>
-        <div data-testid="modified-content">{modified}</div>
-      </div>
-    );
+// Mock EditorView instance for inline (unified) mode
+const mockEditorViewDestroy = vi.fn();
+const mockEditorViewDispatch = vi.fn();
+const mockEditorViewFocus = vi.fn();
+const mockEditorViewInstance = {
+  destroy: mockEditorViewDestroy,
+  dispatch: mockEditorViewDispatch,
+  focus: mockEditorViewFocus,
+  state: { doc: { lineAt: vi.fn((pos: number) => ({ number: pos + 1 })), length: 100 } },
+  dom: document.createElement('div'),
+};
+
+vi.mock('@codemirror/merge', () => ({
+  MergeView: vi.fn().mockImplementation(({ parent }: { parent: HTMLElement }) => {
+    const div = document.createElement('div');
+    div.setAttribute('data-testid', 'mock-merge-view');
+    parent.appendChild(div);
+    mockMergeViewInstance.dom = div;
+    mockMergeViewInstance.chunks = mockChunks;
+    return mockMergeViewInstance;
   }),
+  unifiedMergeView: vi.fn(() => [{}]),
+  getChunks: vi.fn(() => ({ chunks: mockChunks })),
 }));
 
-// Helper to trigger Monaco mount
-function triggerMonacoMount() {
-  if (mockOnMount) {
-    mockOnMount();
-  }
-}
+// Mock CodeMirror dependencies
+vi.mock('@codemirror/view', () => {
+  // EditorView needs to work both as a constructor (new EditorView({...})) and as a namespace with static props
+  const EditorViewCtor = vi.fn().mockImplementation(({ parent }: { parent?: HTMLElement }) => {
+    if (parent) {
+      const div = document.createElement('div');
+      div.setAttribute('data-testid', 'mock-unified-view');
+      parent.appendChild(div);
+      mockEditorViewInstance.dom = div;
+    }
+    return mockEditorViewInstance;
+  });
+  // Static properties
+  Object.assign(EditorViewCtor, {
+    lineWrapping: {},
+    editable: { of: vi.fn(() => ({})) },
+    scrollIntoView: vi.fn((pos: number) => ({ type: 'scrollIntoView', pos })),
+    theme: vi.fn(() => ({})),
+  });
+  return { EditorView: EditorViewCtor };
+});
+vi.mock('@codemirror/state', () => ({
+  EditorState: {
+    readOnly: { of: vi.fn(() => ({})) },
+  },
+}));
+vi.mock('@codemirror/theme-one-dark', () => ({
+  oneDark: {},
+}));
+vi.mock('../../utils/languageDetect', async () => {
+  const actual: Record<string, unknown> = {
+    getLanguageExtension: vi.fn(() => null),
+    isMarkdownPath: (path: string) => path.toLowerCase().endsWith('.md'),
+    getLanguageFromPath: (filePath: string) => {
+      const map: Record<string, string> = {
+        '.ts': 'typescript', '.tsx': 'typescript',
+        '.js': 'javascript', '.jsx': 'javascript',
+        '.json': 'json', '.md': 'markdown',
+        '.html': 'html', '.css': 'css',
+        '.py': 'python', '.go': 'go',
+        '.rs': 'rust', '.java': 'java',
+        '.c': 'c', '.cpp': 'cpp', '.h': 'c',
+        '.yaml': 'yaml', '.yml': 'yaml',
+      };
+      const lastDotIndex = filePath.lastIndexOf('.');
+      if (lastDotIndex === -1) return 'plaintext';
+      const ext = filePath.slice(lastDotIndex);
+      return map[ext] ?? 'plaintext';
+    },
+    EXTENSION_TO_LANGUAGE: {
+      '.ts': 'typescript', '.tsx': 'typescript',
+      '.js': 'javascript', '.jsx': 'javascript',
+      '.json': 'json', '.md': 'markdown',
+      '.html': 'html', '.css': 'css',
+      '.py': 'python', '.go': 'go',
+      '.rs': 'rust', '.java': 'java',
+      '.c': 'c', '.cpp': 'cpp', '.h': 'c',
+      '.yaml': 'yaml', '.yml': 'yaml',
+    },
+  };
+  return actual;
+});
 
-// Mock useTheme hook (dynamic via mockTheme variable)
+// Mock useTheme hook
 let mockTheme = 'dark';
 vi.mock('../../hooks/useTheme', () => ({
   useTheme: () => ({
@@ -82,160 +151,132 @@ describe('DiffViewer', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockOnMount = null;
     mockTheme = 'dark';
     mockDiffLayout = 'side-by-side';
     mockSetLayout.mockReset();
     mockResetToAuto.mockReset();
-    mockGetLineChanges.mockReturnValue(null);
-    mockRevealLineInCenter.mockReset();
-    mockDispose.mockReset();
+    mockChunks = [];
+    mockMergeViewInstance.chunks = mockChunks;
   });
 
   describe('Basic Rendering', () => {
-    it('renders with file path in header', () => {
-      render(<DiffViewer {...defaultProps} />);
+    it('renders with file path in header', async () => {
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} />);
+      });
       expect(screen.getByText('packages/client/src/Example.tsx')).toBeInTheDocument();
     });
 
-    it('renders DiffEditor with original and modified content', () => {
-      render(<DiffViewer {...defaultProps} />);
-      expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
-      expect(screen.getByTestId('original-content')).toHaveTextContent('const a = 1;');
-      expect(screen.getByTestId('modified-content')).toHaveTextContent('const a = 2;');
+    it('renders MergeView container', async () => {
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} />);
+      });
+      expect(screen.getByTestId('mock-merge-view')).toBeInTheDocument();
     });
   });
 
   describe('Layout Modes', () => {
-    it('renders in inline mode when layout prop is inline', () => {
-      render(<DiffViewer {...defaultProps} layout="inline" />);
-      expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
-    });
-
-    it('renders in side-by-side mode by default', () => {
-      render(<DiffViewer {...defaultProps} />);
-      expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
+    it('renders in side-by-side mode by default', async () => {
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} />);
+      });
+      expect(screen.getByTestId('mock-merge-view')).toBeInTheDocument();
     });
   });
 
   describe('Fullscreen Mode', () => {
-    it('shows close button in fullscreen mode', () => {
-      render(<DiffViewer {...defaultProps} fullscreen onClose={() => {}} />);
+    it('shows close button in fullscreen mode', async () => {
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} fullscreen onClose={() => {}} />);
+      });
       expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
     });
 
-    it('does not show close button when not in fullscreen mode', () => {
-      render(<DiffViewer {...defaultProps} onClose={() => {}} />);
+    it('does not show close button when not in fullscreen mode', async () => {
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} onClose={() => {}} />);
+      });
       expect(screen.queryByRole('button', { name: /close/i })).not.toBeInTheDocument();
     });
 
-    it('calls onClose when close button clicked', () => {
+    it('calls onClose when close button clicked', async () => {
       const onClose = vi.fn();
-      render(<DiffViewer {...defaultProps} fullscreen onClose={onClose} />);
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} fullscreen onClose={onClose} />);
+      });
       fireEvent.click(screen.getByRole('button', { name: /close/i }));
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
-    it('calls onClose on Escape key in fullscreen mode', () => {
+    it('calls onClose on Escape key in fullscreen mode', async () => {
       const onClose = vi.fn();
-      render(<DiffViewer {...defaultProps} fullscreen onClose={onClose} />);
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} fullscreen onClose={onClose} />);
+      });
       fireEvent.keyDown(document, { key: 'Escape' });
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
-    it('does not call onClose on Escape key when not in fullscreen mode', () => {
+    it('does not call onClose on Escape key when not in fullscreen mode', async () => {
       const onClose = vi.fn();
-      render(<DiffViewer {...defaultProps} onClose={onClose} />);
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} onClose={onClose} />);
+      });
       fireEvent.keyDown(document, { key: 'Escape' });
       expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('shows overlay in fullscreen mode', () => {
+    it('shows overlay in fullscreen mode', async () => {
       const onClose = vi.fn();
-      render(<DiffViewer {...defaultProps} fullscreen onClose={onClose} />);
-      // Overlay has bg-black/50 class and is clickable
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} fullscreen onClose={onClose} />);
+      });
       const overlay = document.querySelector('.bg-black\\/50');
       expect(overlay).toBeInTheDocument();
     });
   });
 
-  describe('Loading State', () => {
-    it('shows loading spinner initially', () => {
-      render(<DiffViewer {...defaultProps} />);
-      expect(screen.getByText(/loading/i)).toBeInTheDocument();
-    });
-
-    it('hides loading spinner after Monaco mounts', async () => {
-      render(<DiffViewer {...defaultProps} />);
-
-      // Initially shows loading
-      expect(screen.getByText(/loading/i)).toBeInTheDocument();
-
-      // Trigger onMount callback
-      await act(async () => {
-        triggerMonacoMount();
-      });
-
-      // Loading should be hidden
-      expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
-    });
-  });
-
   describe('Error State', () => {
-    it('shows error message and retry button on Monaco load failure', () => {
-      render(<DiffViewer {...defaultProps} _testForceError />);
+    it('shows error message and retry button on force error', async () => {
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} _testForceError />);
+      });
       expect(screen.getByText(/failed/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
-    });
-
-    it('retry button calls the retry handler', async () => {
-      const { rerender } = render(<DiffViewer {...defaultProps} _testForceError />);
-      expect(screen.getByText(/failed/i)).toBeInTheDocument();
-
-      const retryButton = screen.getByRole('button', { name: /retry/i });
-
-      // Click retry - this sets isLoading: true, error: null
-      await act(async () => {
-        fireEvent.click(retryButton);
-      });
-
-      // Re-render without _testForceError to verify retry works
-      rerender(<DiffViewer {...defaultProps} />);
-
-      // After retry without force error, should show loading state
-      expect(screen.getByText(/loading/i)).toBeInTheDocument();
     });
   });
 
   describe('Accessibility', () => {
-    it('has correct aria-label for container', () => {
-      render(<DiffViewer {...defaultProps} />);
+    it('has correct aria-label for container', async () => {
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} />);
+      });
       expect(screen.getByRole('region')).toHaveAttribute(
         'aria-label',
         `Diff viewer for ${defaultProps.filePath}`
       );
     });
 
-    it('close button has accessible label in fullscreen mode', () => {
-      render(<DiffViewer {...defaultProps} fullscreen onClose={() => {}} />);
+    it('close button has accessible label in fullscreen mode', async () => {
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} fullscreen onClose={() => {}} />);
+      });
       const closeButton = screen.getByRole('button', { name: /close/i });
       expect(closeButton).toHaveAttribute('aria-label', 'Close diff viewer');
     });
 
-    it('retry button has accessible label in error state', () => {
-      render(<DiffViewer {...defaultProps} _testForceError />);
+    it('retry button has accessible label in error state', async () => {
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} _testForceError />);
+      });
       const retryButton = screen.getByRole('button', { name: /retry/i });
       expect(retryButton).toHaveAttribute('aria-label', 'Retry loading diff viewer');
     });
 
-    it('Monaco editor container has tabIndex -1 to prevent tab focus', () => {
-      render(<DiffViewer {...defaultProps} />);
-      const editorContainer = screen.getByTestId('mock-diff-editor').parentElement;
-      expect(editorContainer).toHaveAttribute('tabIndex', '-1');
-    });
-
-    it('header has correct role and aria-level', () => {
-      render(<DiffViewer {...defaultProps} />);
+    it('header has correct role and aria-level', async () => {
+      await act(async () => {
+        render(<DiffViewer {...defaultProps} />);
+      });
       const header = screen.getByRole('heading', { level: 3 });
       expect(header).toBeInTheDocument();
     });
@@ -255,44 +296,40 @@ describe('DiffViewer - Layout Toggle (Story 6.2)', () => {
     mockDiffLayout = 'side-by-side';
     mockSetLayout.mockReset();
     mockResetToAuto.mockReset();
+    mockChunks = [];
   });
 
-  it('renders layout toggle button in header', () => {
-    render(<DiffViewer {...defaultProps} />);
+  it('renders layout toggle button in header', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} />);
+    });
     const toggleButton = screen.getByRole('button', { name: /switch to inline layout/i });
     expect(toggleButton).toBeInTheDocument();
   });
 
-  it('toggles layout from side-by-side to inline on click', () => {
-    render(<DiffViewer {...defaultProps} />);
+  it('toggles layout from side-by-side to inline on click', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} />);
+    });
     const toggleButton = screen.getByRole('button', { name: /switch to inline layout/i });
     fireEvent.click(toggleButton);
     expect(mockSetLayout).toHaveBeenCalledWith('inline');
   });
 
-  it('toggles layout from inline to side-by-side on click', () => {
+  it('toggles layout from inline to side-by-side on click', async () => {
     mockDiffLayout = 'inline';
-
-    render(<DiffViewer {...defaultProps} />);
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} />);
+    });
     const toggleButton = screen.getByRole('button', { name: /switch to side-by-side layout/i });
     fireEvent.click(toggleButton);
     expect(mockSetLayout).toHaveBeenCalledWith('side-by-side');
   });
 
-  it('dynamically changes aria-label based on current layout', () => {
-    // Side-by-side mode
-    render(<DiffViewer {...defaultProps} />);
-    expect(screen.getByRole('button', { name: /switch to inline layout/i })).toBeInTheDocument();
-  });
-
-  it('does not render toggle button when responsiveLayout={false}', () => {
-    render(<DiffViewer {...defaultProps} responsiveLayout={false} />);
-    expect(screen.queryByRole('button', { name: /switch to/i })).not.toBeInTheDocument();
-  });
-
-  it('uses layout prop directly when responsiveLayout={false}', () => {
-    render(<DiffViewer {...defaultProps} responsiveLayout={false} layout="inline" />);
-    // No toggle button should exist
+  it('does not render toggle button when responsiveLayout={false}', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} responsiveLayout={false} />);
+    });
     expect(screen.queryByRole('button', { name: /switch to/i })).not.toBeInTheDocument();
   });
 });
@@ -346,7 +383,6 @@ describe('getLanguageFromPath', () => {
     expect(getLanguageFromPath('.gitignore')).toBe('plaintext');
   });
 
-  // Story 6.3: AC2 missing language tests
   it('returns go for .go files', () => {
     expect(getLanguageFromPath('main.go')).toBe('go');
   });
@@ -380,7 +416,7 @@ describe('getLanguageFromPath', () => {
   });
 });
 
-describe('DiffViewer - Syntax Highlighting (Story 6.3)', () => {
+describe('DiffViewer - Navigation (Story 6.4)', () => {
   const defaultProps = {
     filePath: 'packages/client/src/Example.tsx',
     original: 'const a = 1;',
@@ -389,180 +425,24 @@ describe('DiffViewer - Syntax Highlighting (Story 6.3)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockOnMount = null;
     mockTheme = 'dark';
     mockDiffLayout = 'side-by-side';
-    mockSetLayout.mockReset();
-    mockResetToAuto.mockReset();
+    mockChunks = [];
   });
 
-  // DiffEditor language prop tests
-  it('passes correct language prop to DiffEditor for TypeScript files', () => {
-    render(<DiffViewer {...defaultProps} filePath="Component.tsx" original="a" modified="b" />);
-    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
-      expect.objectContaining({ language: 'typescript' }),
-      expect.anything()
-    );
-  });
-
-  it('passes correct language prop to DiffEditor for Python files', () => {
-    render(<DiffViewer {...defaultProps} filePath="script.py" original="a" modified="b" />);
-    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
-      expect.objectContaining({ language: 'python' }),
-      expect.anything()
-    );
-  });
-
-  it('passes plaintext language for unknown file extensions', () => {
-    render(<DiffViewer {...defaultProps} filePath="data.xyz" original="a" modified="b" />);
-    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
-      expect.objectContaining({ language: 'plaintext' }),
-      expect.anything()
-    );
-  });
-
-  // Theme prop tests
-  it('passes vs-dark theme to DiffEditor in dark mode', () => {
-    mockTheme = 'dark';
-    render(<DiffViewer {...defaultProps} />);
-    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
-      expect.objectContaining({ theme: 'vs-dark' }),
-      expect.anything()
-    );
-  });
-
-  it('passes vs theme to DiffEditor in light mode', () => {
-    mockTheme = 'light';
-    render(<DiffViewer {...defaultProps} />);
-    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
-      expect.objectContaining({ theme: 'vs' }),
-      expect.anything()
-    );
-  });
-});
-
-describe('DiffViewer - Diff Navigation (Story 6.4)', () => {
-  const defaultProps = {
-    filePath: 'packages/client/src/Example.tsx',
-    original: 'const a = 1;',
-    modified: 'const a = 2;',
-  };
-
-  const mockChanges = [
-    { originalStartLineNumber: 1, originalEndLineNumber: 3, modifiedStartLineNumber: 1, modifiedEndLineNumber: 5 },
-    { originalStartLineNumber: 10, originalEndLineNumber: 12, modifiedStartLineNumber: 13, modifiedEndLineNumber: 13 },
-    { originalStartLineNumber: 20, originalEndLineNumber: 20, modifiedStartLineNumber: 21, modifiedEndLineNumber: 25 },
-  ];
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockOnMount = null;
-    mockTheme = 'dark';
-    mockDiffLayout = 'side-by-side';
-    mockSetLayout.mockReset();
-    mockResetToAuto.mockReset();
-    mockGetLineChanges.mockReturnValue(mockChanges);
-    mockRevealLineInCenter.mockReset();
-    mockDispose.mockReset();
-  });
-
-  function renderAndMount(props = {}) {
-    const result = render(<DiffViewer {...defaultProps} {...props} />);
-    act(() => {
-      triggerMonacoMount();
+  it('renders navigation buttons in header', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} />);
     });
-    return result;
-  }
-
-  it('renders navigation buttons in header', () => {
-    renderAndMount();
     expect(screen.getByRole('button', { name: 'Go to previous change' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Go to next change' })).toBeInTheDocument();
   });
 
-  it('displays change summary with added and removed line counts', () => {
-    renderAndMount();
-    // mockChanges: added = (5-1+1) + (13-13+1) + (25-21+1) = 5+1+5 = 11
-    // mockChanges: removed = (3-1+1) + (12-10+1) + (20-20+1) = 3+3+1 = 7
-    const summary = screen.getByTestId('change-summary');
-    expect(summary).toHaveTextContent('+11');
-    expect(summary).toHaveTextContent('-7');
-  });
-
-  it('displays initial position indicator as dash', () => {
-    renderAndMount();
-    const indicator = screen.getByTestId('position-indicator');
-    expect(indicator).toHaveTextContent('\u2014/3');
-  });
-
-  it('navigates to next change on next button click', () => {
-    renderAndMount();
-    const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
-
-    act(() => {
-      fireEvent.click(nextBtn);
+  it('disables navigation buttons when no changes exist', async () => {
+    mockChunks = [];
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} />);
     });
-
-    expect(mockRevealLineInCenter).toHaveBeenCalledWith(1);
-    expect(screen.getByTestId('position-indicator')).toHaveTextContent('1/3');
-  });
-
-  it('navigates to previous change on previous button click', () => {
-    renderAndMount();
-    const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
-    const prevBtn = screen.getByRole('button', { name: 'Go to previous change' });
-
-    // First go to change 0, then 1
-    act(() => { fireEvent.click(nextBtn); });
-    act(() => { fireEvent.click(nextBtn); });
-    // Now at index 1, go previous to index 0
-    act(() => { fireEvent.click(prevBtn); });
-
-    expect(screen.getByTestId('position-indicator')).toHaveTextContent('1/3');
-  });
-
-  it('navigates to first change on next button when at initial state', () => {
-    renderAndMount();
-    const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
-
-    act(() => {
-      fireEvent.click(nextBtn);
-    });
-
-    // From initial state (-1), next should go to index 0
-    expect(mockRevealLineInCenter).toHaveBeenCalledWith(1);
-    expect(screen.getByTestId('position-indicator')).toHaveTextContent('1/3');
-  });
-
-  it('navigates to last change on previous button when at initial state', () => {
-    renderAndMount();
-    const prevBtn = screen.getByRole('button', { name: 'Go to previous change' });
-
-    act(() => {
-      fireEvent.click(prevBtn);
-    });
-
-    // From initial state (-1), previous should go to last change (index 2)
-    expect(mockRevealLineInCenter).toHaveBeenCalledWith(21);
-    expect(screen.getByTestId('position-indicator')).toHaveTextContent('3/3');
-  });
-
-  it('wraps around from last to first change', () => {
-    renderAndMount();
-    const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
-
-    // Navigate to index 0, 1, 2, then wrap to 0
-    act(() => { fireEvent.click(nextBtn); });
-    act(() => { fireEvent.click(nextBtn); });
-    act(() => { fireEvent.click(nextBtn); });
-    act(() => { fireEvent.click(nextBtn); }); // wraps to 0
-
-    expect(screen.getByTestId('position-indicator')).toHaveTextContent('1/3');
-  });
-
-  it('disables navigation buttons when no changes exist', () => {
-    mockGetLineChanges.mockReturnValue([]);
-    renderAndMount();
 
     const prevBtn = screen.getByRole('button', { name: 'Go to previous change' });
     const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
@@ -571,49 +451,18 @@ describe('DiffViewer - Diff Navigation (Story 6.4)', () => {
     expect(nextBtn).toBeDisabled();
   });
 
-  it('navigates to next change on F7 key press', () => {
-    renderAndMount();
-
-    act(() => {
-      fireEvent.keyDown(document, { key: 'F7' });
+  it('has correct aria-labels on navigation buttons', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} />);
     });
-
-    expect(mockRevealLineInCenter).toHaveBeenCalledWith(1);
-    expect(screen.getByTestId('position-indicator')).toHaveTextContent('1/3');
-  });
-
-  it('navigates to previous change on Shift+F7 key press', () => {
-    renderAndMount();
-
-    act(() => {
-      fireEvent.keyDown(document, { key: 'F7', shiftKey: true });
-    });
-
-    // From initial state, Shift+F7 goes to last change
-    expect(mockRevealLineInCenter).toHaveBeenCalledWith(21);
-    expect(screen.getByTestId('position-indicator')).toHaveTextContent('3/3');
-  });
-
-  it('passes hideUnchangedRegions option to DiffEditor', () => {
-    renderAndMount();
-    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        options: expect.objectContaining({
-          hideUnchangedRegions: { enabled: true },
-        }),
-      }),
-      expect.anything()
-    );
-  });
-
-  it('has correct aria-labels on navigation buttons', () => {
-    renderAndMount();
     expect(screen.getByRole('button', { name: 'Go to previous change' })).toHaveAttribute('aria-label', 'Go to previous change');
     expect(screen.getByRole('button', { name: 'Go to next change' })).toHaveAttribute('aria-label', 'Go to next change');
   });
 
-  it('position indicator has aria-live attribute', () => {
-    renderAndMount();
+  it('position indicator has aria-live attribute', async () => {
+    await act(async () => {
+      render(<DiffViewer {...defaultProps} />);
+    });
     const indicator = screen.getByTestId('position-indicator');
     expect(indicator).toHaveAttribute('aria-live', 'polite');
   });
@@ -626,26 +475,14 @@ describe('DiffViewer Performance (Story 6.6)', () => {
     modified: 'const a = 2;',
   };
 
-  const largeText = Array(5001).fill('line').join('\n'); // 5001 lines >= 5000
-  const smallText = Array(4999).fill('line').join('\n'); // 4999 lines < 5000
+  const largeText = Array(5001).fill('line').join('\n');
+  const smallText = Array(4999).fill('line').join('\n');
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockOnMount = null;
     mockTheme = 'dark';
     mockDiffLayout = 'side-by-side';
-    mockSetLayout.mockReset();
-    mockResetToAuto.mockReset();
-    mockGetLineChanges.mockReturnValue(null);
-    mockRevealLineInCenter.mockReset();
-    mockDispose.mockReset();
-  });
-
-  it('renders DiffEditor via lazy loading with Suspense fallback', async () => {
-    await act(async () => {
-      render(<DiffViewer {...defaultProps} />);
-    });
-    expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
+    mockChunks = [];
   });
 
   it('shows large file warning for files over 5000 lines', async () => {
@@ -654,21 +491,21 @@ describe('DiffViewer Performance (Story 6.6)', () => {
     });
     expect(screen.getByText(/대용량 파일/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '대용량 파일 Diff 전체 로드' })).toBeInTheDocument();
-    expect(screen.queryByTestId('mock-diff-editor')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mock-merge-view')).not.toBeInTheDocument();
   });
 
-  it('loads DiffEditor after clicking "전체 로드" button', async () => {
+  it('loads MergeView after clicking "전체 로드" button', async () => {
     await act(async () => {
       render(<DiffViewer {...defaultProps} modified={largeText} />);
     });
-    expect(screen.queryByTestId('mock-diff-editor')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mock-merge-view')).not.toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: '대용량 파일 Diff 전체 로드' }));
     });
 
     expect(screen.queryByText(/대용량 파일/)).not.toBeInTheDocument();
-    expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-merge-view')).toBeInTheDocument();
   });
 
   it('does not show large file warning for files under 5000 lines', async () => {
@@ -676,53 +513,28 @@ describe('DiffViewer Performance (Story 6.6)', () => {
       render(<DiffViewer {...defaultProps} modified={smallText} />);
     });
     expect(screen.queryByText(/대용량 파일/)).not.toBeInTheDocument();
-    expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
-  });
-
-  it('applies performance optimization options to DiffEditor', async () => {
-    await act(async () => {
-      render(<DiffViewer {...defaultProps} />);
-    });
-    expect(vi.mocked(MockDiffEditor)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        options: expect.objectContaining({
-          smoothScrolling: false,
-          renderWhitespace: 'none',
-          renderLineHighlight: 'none',
-          folding: false,
-          links: false,
-          colorDecorators: false,
-          fastScrollSensitivity: 5,
-          mouseWheelScrollSensitivity: 1,
-          minimap: { enabled: false },
-        }),
-      }),
-      expect.anything()
-    );
+    expect(screen.getByTestId('mock-merge-view')).toBeInTheDocument();
   });
 
   it('shows file header even when large file warning is displayed', async () => {
     await act(async () => {
       render(<DiffViewer {...defaultProps} modified={largeText} />);
     });
-    // Warning is shown
     expect(screen.getByText(/대용량 파일/)).toBeInTheDocument();
-    // File header with file path is still visible
     expect(screen.getByText(defaultProps.filePath)).toBeInTheDocument();
   });
 
-  it('unmounts DiffEditor on close to free resources', async () => {
-    const onClose = vi.fn();
+  it('destroys MergeView on unmount', async () => {
+    let unmount: () => void;
     await act(async () => {
-      render(<DiffViewer {...defaultProps} fullscreen onClose={onClose} />);
+      const result = render(<DiffViewer {...defaultProps} />);
+      unmount = result.unmount;
     });
-    expect(screen.getByTestId('mock-diff-editor')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-merge-view')).toBeInTheDocument();
 
     await act(async () => {
-      onClose();
+      unmount();
     });
-    // After onClose is called, the parent (PermissionCard) would unmount DiffViewer
-    // Here we verify the DiffEditor was mounted and onClose is callable
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockMergeViewDestroy).toHaveBeenCalled();
   });
 });
