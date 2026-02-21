@@ -104,3 +104,6 @@ export {
 
 // Story 11.1: File System types for file read and directory list API
 export * from './types/fileSystem.js';
+
+// Story 12.1: BMad Status types for BMad Dashboard API
+export * from './types/bmadStatus.js';

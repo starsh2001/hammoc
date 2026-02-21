@@ -59,7 +59,7 @@ export function FavoritesChipBar({
 
   return (
     <div
-      className="flex items-center gap-1 px-1"
+      className="flex items-center gap-1 -mx-[1px]"
       role="toolbar"
       aria-label="즐겨찾기 커맨드 바로실행"
       data-testid="favorites-chip-bar"
@@ -79,7 +79,7 @@ export function FavoritesChipBar({
 
       {/* Horizontal scrollable chip area */}
       <div
-        className="flex-1 overflow-x-auto flex gap-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        className="flex-1 overflow-x-auto flex gap-1 px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         data-testid="chip-scroll-area"
       >
         {/* Star favorites section — shown first (Story 9.12) */}

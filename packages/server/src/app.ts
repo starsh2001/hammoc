@@ -19,6 +19,7 @@ import commandsRoutes from './routes/commands.js';
 import preferencesRoutes from './routes/preferences.js';
 import debugRoutes from './routes/debug.js';
 import fileSystemRoutes from './routes/fileSystem.js';
+import bmadStatusRoutes from './routes/bmadStatus.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 
@@ -82,6 +83,9 @@ export async function createApp(): Promise<Express> {
 
   // File System routes (Story 11.1) - file reading and directory listing
   app.use('/api/projects', fileSystemRoutes);
+
+  // BMad Dashboard Status routes (Story 12.1)
+  app.use('/api/projects', bmadStatusRoutes);
 
   // Debug routes (server-side logging for client debugging)
   app.use('/api/debug', debugRoutes);
