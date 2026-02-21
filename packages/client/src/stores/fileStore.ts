@@ -16,13 +16,15 @@ interface FileState {
   isTruncated: boolean;
   isMarkdownPreview: boolean;
   error: string | null;
-  pendingNavigation: { projectSlug: string; path: string } | null;
+  pendingNavigation: { projectSlug: string; path: string; targetLine?: number } | null;
+  /** Line number to scroll to after file loads */
+  targetLine: number | null;
 }
 
 interface FileActions {
-  openFileInEditor: (projectSlug: string, path: string) => Promise<void>;
+  openFileInEditor: (projectSlug: string, path: string, targetLine?: number) => Promise<void>;
   saveFile: () => Promise<boolean>;
-  requestFileNavigation: (projectSlug: string, path: string) => void;
+  requestFileNavigation: (projectSlug: string, path: string, targetLine?: number) => void;
   confirmPendingNavigation: () => void;
   cancelPendingNavigation: () => void;
   closeEditor: () => void;
@@ -44,12 +46,13 @@ const initialState: FileState = {
   isMarkdownPreview: false,
   error: null,
   pendingNavigation: null,
+  targetLine: null,
 };
 
 export const useFileStore = create<FileStore>((set, get) => ({
   ...initialState,
 
-  openFileInEditor: async (projectSlug, path) => {
+  openFileInEditor: async (projectSlug, path, targetLine) => {
     set({
       openFile: { projectSlug, path },
       isLoading: true,
@@ -59,6 +62,7 @@ export const useFileStore = create<FileStore>((set, get) => ({
       content: '',
       originalContent: '',
       isDirty: false,
+      targetLine: targetLine ?? null,
     });
     try {
       const response = await fileSystemApi.readFile(projectSlug, path);
@@ -92,11 +96,11 @@ export const useFileStore = create<FileStore>((set, get) => ({
     }
   },
 
-  requestFileNavigation: (projectSlug, path) => {
+  requestFileNavigation: (projectSlug, path, targetLine) => {
     if (get().isDirty) {
-      set({ pendingNavigation: { projectSlug, path } });
+      set({ pendingNavigation: { projectSlug, path, targetLine } });
     } else {
-      get().openFileInEditor(projectSlug, path);
+      get().openFileInEditor(projectSlug, path, targetLine);
     }
   },
 
@@ -104,7 +108,7 @@ export const useFileStore = create<FileStore>((set, get) => ({
     const { pendingNavigation } = get();
     if (pendingNavigation) {
       set({ pendingNavigation: null });
-      get().openFileInEditor(pendingNavigation.projectSlug, pendingNavigation.path);
+      get().openFileInEditor(pendingNavigation.projectSlug, pendingNavigation.path, pendingNavigation.targetLine);
     }
   },
 
