@@ -1,5 +1,5 @@
 /**
- * LoginPage - User login page
+ * LoginPage - User login & initial password setup page
  * [Source: Story 2.2 - Task 7, Story 2.3 - Task 6]
  */
 
@@ -11,11 +11,21 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 export function LoginPage() {
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [countdown, setCountdown] = useState(0);
 
-  const { isAuthenticated, isLoading, error, rateLimitInfo, login, clearError } =
-    useAuthStore();
+  const {
+    isAuthenticated, isLoading, isPasswordConfigured, error, rateLimitInfo,
+    login, setupPassword, checkAuth, clearError,
+  } = useAuthStore();
+
+  const isSetupMode = isPasswordConfigured === false;
+
+  // Check auth status on mount
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -46,13 +56,29 @@ export function LoginPage() {
     e.preventDefault();
     if (isLoading || countdown > 0) return;
 
-    const success = await login(password, rememberMe);
-    if (success) {
-      navigate('/', { replace: true });
+    if (isSetupMode) {
+      const success = await setupPassword(password, confirmPassword);
+      if (success) {
+        navigate('/', { replace: true });
+      }
+    } else {
+      const success = await login(password, rememberMe);
+      if (success) {
+        navigate('/', { replace: true });
+      }
     }
   };
 
   const isDisabled = isLoading || countdown > 0;
+
+  // Show nothing while checking initial auth status
+  if (isPasswordConfigured === null && isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-4">
@@ -63,11 +89,13 @@ export function LoginPage() {
             BMad Studio
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            로그인하여 시작하세요
+            {isSetupMode
+              ? '시작하려면 패스워드를 설정하세요'
+              : '로그인하여 시작하세요'}
           </p>
         </div>
 
-        {/* Login Form */}
+        {/* Form */}
         <form
           onSubmit={handleSubmit}
           className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-8 space-y-6"
@@ -91,36 +119,62 @@ export function LoginPage() {
                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent
                          disabled:opacity-50 disabled:cursor-not-allowed"
-              placeholder="패스워드를 입력하세요"
+              placeholder={isSetupMode ? '패스워드를 설정하세요 (4자 이상)' : '패스워드를 입력하세요'}
             />
           </div>
 
-          {/* Remember Me Checkbox */}
-          <div>
-            <label
-              htmlFor="rememberMe"
-              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer"
-            >
+          {/* Confirm Password (setup mode only) */}
+          {isSetupMode && (
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                패스워드 확인
+              </label>
               <input
-                id="rememberMe"
-                name="rememberMe"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isDisabled}
-                aria-describedby="rememberMe-description"
-                className="w-4 h-4 text-blue-500 border-gray-300 rounded
-                           focus:ring-blue-500 focus:ring-2 focus:ring-offset-2
-                           dark:border-gray-600 dark:bg-gray-700
-                           dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md
+                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                           focus:ring-2 focus:ring-blue-500 focus:border-transparent
                            disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="패스워드를 다시 입력하세요"
               />
-              자동 로그인 유지
-            </label>
-            <span id="rememberMe-description" className="sr-only">
-              체크하면 브라우저를 닫아도 로그인이 30일간 유지됩니다
-            </span>
-          </div>
+            </div>
+          )}
+
+          {/* Remember Me Checkbox (login mode only) */}
+          {!isSetupMode && (
+            <div>
+              <label
+                htmlFor="rememberMe"
+                className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer"
+              >
+                <input
+                  id="rememberMe"
+                  name="rememberMe"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  disabled={isDisabled}
+                  aria-describedby="rememberMe-description"
+                  className="w-4 h-4 text-blue-500 border-gray-300 rounded
+                             focus:ring-blue-500 focus:ring-2 focus:ring-offset-2
+                             dark:border-gray-600 dark:bg-gray-700
+                             dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800
+                             disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                자동 로그인 유지
+              </label>
+              <span id="rememberMe-description" className="sr-only">
+                체크하면 브라우저를 닫아도 로그인이 30일간 유지됩니다
+              </span>
+            </div>
+          )}
 
           {/* Error Message */}
           {error && countdown === 0 && (
@@ -150,10 +204,10 @@ export function LoginPage() {
             {isLoading ? (
               <>
                 <LoadingSpinner size="sm" className="mr-2" />
-                로그인 중...
+                {isSetupMode ? '설정 중...' : '로그인 중...'}
               </>
             ) : (
-              '로그인'
+              isSetupMode ? '설정 완료' : '로그인'
             )}
           </button>
         </form>

@@ -13,6 +13,7 @@ import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES } from '@bmad-studio/shared';
 const PUBLIC_ROUTES = [
   '/api/auth/login',
   '/api/auth/status',
+  '/api/auth/setup',
   '/api/health',
 ];
 

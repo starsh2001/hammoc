@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const serverPort = env.VITE_SERVER_PORT || '3000';
+  const serverPort = env.VITE_SERVER_PORT || '3001';
   const serverTarget = `http://localhost:${serverPort}`;
 
   return {

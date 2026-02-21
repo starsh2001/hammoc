@@ -8,15 +8,17 @@ import request from 'supertest';
 import express from 'express';
 import cookieSession from 'cookie-session';
 
-// Create hoisted mock for verifyPassword
-const { mockVerifyPassword } = vi.hoisted(() => ({
+// Create hoisted mocks
+const { mockVerifyPassword, mockIsPasswordConfigured } = vi.hoisted(() => ({
   mockVerifyPassword: vi.fn().mockResolvedValue(true),
+  mockIsPasswordConfigured: vi.fn().mockReturnValue(true),
 }));
 
 // Mock authConfigService before importing routes
 vi.mock('../../services/authConfigService', () => ({
   AuthConfigService: vi.fn().mockImplementation(() => ({
     verifyPassword: mockVerifyPassword,
+    isPasswordConfigured: mockIsPasswordConfigured,
   })),
 }));
 
@@ -52,6 +54,7 @@ describe('Auth Routes', () => {
     vi.clearAllMocks();
     vi.mocked(rateLimiter.canAttempt).mockReturnValue({ allowed: true });
     mockVerifyPassword.mockResolvedValue(true);
+    mockIsPasswordConfigured.mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -129,7 +132,7 @@ describe('Auth Routes', () => {
     it('should return authenticated: false for new session', async () => {
       const response = await request(app).get('/api/auth/status').expect(200);
 
-      expect(response.body).toEqual({ authenticated: false });
+      expect(response.body).toEqual({ authenticated: false, passwordConfigured: true });
     });
 
     it('should return authenticated: true after successful login', async () => {
@@ -149,7 +152,7 @@ describe('Auth Routes', () => {
         .set('Cookie', cookies)
         .expect(200);
 
-      expect(statusResponse.body).toEqual({ authenticated: true });
+      expect(statusResponse.body).toEqual({ authenticated: true, passwordConfigured: true });
     });
   });
 
@@ -181,7 +184,7 @@ describe('Auth Routes', () => {
         .set('Cookie', logoutResponse.headers['set-cookie'] || cookies)
         .expect(200);
 
-      expect(statusResponse.body).toEqual({ authenticated: false });
+      expect(statusResponse.body).toEqual({ authenticated: false, passwordConfigured: true });
     });
   });
 });

@@ -86,16 +86,18 @@ export class AuthConfigService {
 
     this.ensureConfigDirectory();
 
+    const existingConfig = this.getConfig();
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const now = new Date().toISOString();
-    const sessionSecret = crypto.randomBytes(32).toString('hex');
+    // Preserve existing session secret if server already generated one via getSessionSecret()
+    const sessionSecret = existingConfig?.sessionSecret || crypto.randomBytes(32).toString('hex');
 
     const config: AuthConfig = {
       passwordHash: hash,
       createdAt: now,
       updatedAt: now,
       sessionSecret,
-      secretVersion: 1,
+      secretVersion: existingConfig?.secretVersion || 1,
     };
 
     fs.writeFileSync(this.getConfigPath(), JSON.stringify(config, null, 2));
