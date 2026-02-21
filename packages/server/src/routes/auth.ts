@@ -15,6 +15,9 @@ router.post('/login', authController.login);
 // GET /api/auth/status - Check authentication status
 router.get('/status', authController.status);
 
+// POST /api/auth/setup - Initial password setup (web UI)
+router.post('/setup', authController.setup);
+
 // POST /api/auth/logout - Logout user (Story 2.4 준비용)
 router.post('/logout', authController.logout);
 

@@ -186,7 +186,7 @@ describe('useAuthStore', () => {
 
   describe('checkAuth', () => {
     it('should set isAuthenticated to true when authenticated', async () => {
-      vi.mocked(authApi.status).mockResolvedValue({ authenticated: true });
+      vi.mocked(authApi.status).mockResolvedValue({ authenticated: true, passwordConfigured: true });
 
       await useAuthStore.getState().checkAuth();
 
@@ -195,7 +195,7 @@ describe('useAuthStore', () => {
     });
 
     it('should set isAuthenticated to false when not authenticated', async () => {
-      vi.mocked(authApi.status).mockResolvedValue({ authenticated: false });
+      vi.mocked(authApi.status).mockResolvedValue({ authenticated: false, passwordConfigured: true });
 
       await useAuthStore.getState().checkAuth();
 
