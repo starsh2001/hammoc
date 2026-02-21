@@ -37,7 +37,12 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: C
 
   // Calculate total input tokens including cache (SDK's inputTokens only includes uncached tokens)
   const totalInputTokens = contextUsage.inputTokens + contextUsage.cacheCreationInputTokens + contextUsage.cacheReadInputTokens;
-  const usagePercent = Math.round((totalInputTokens / contextUsage.contextWindow) * 100);
+  // Match Claude Code's used_percentage: divide by effective available space
+  // (context window minus output token reserve and safety buffer)
+  const OUTPUT_TOKEN_RESERVE = 20000;
+  const SAFETY_BUFFER = 13000;
+  const effectiveLimit = contextUsage.contextWindow - OUTPUT_TOKEN_RESERVE - SAFETY_BUFFER;
+  const usagePercent = Math.min(100, Math.round((totalInputTokens / effectiveLimit) * 100));
 
   const isCritical = usagePercent > CONTEXT_USAGE_THRESHOLDS.CRITICAL;
   const strokeColor = getStrokeColor(usagePercent);
@@ -55,7 +60,8 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: C
     ...(isCritical
       ? [`⚠ 컨텍스트가 거의 찼습니다 (${usagePercent}%)`, '클릭하여 새 세션 시작', '---']
       : ['클릭하여 Context Compaction 실행']),
-    `컨텍스트: ${totalInputTokens.toLocaleString()} / ${contextUsage.contextWindow.toLocaleString()} 토큰 (${usagePercent}%)`,
+    `컨텍스트: ${totalInputTokens.toLocaleString()} / ${effectiveLimit.toLocaleString()} 토큰 (${usagePercent}%)`,
+    `  (전체 윈도우: ${contextUsage.contextWindow.toLocaleString()} - 출력 예약: ${OUTPUT_TOKEN_RESERVE.toLocaleString()} - 버퍼: ${SAFETY_BUFFER.toLocaleString()})`,
     `  - 신규: ${contextUsage.inputTokens.toLocaleString()}`,
     `  - 캐시 생성: ${contextUsage.cacheCreationInputTokens.toLocaleString()}`,
     `  - 캐시 읽기: ${contextUsage.cacheReadInputTokens.toLocaleString()}`,
