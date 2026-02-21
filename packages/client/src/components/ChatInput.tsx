@@ -686,6 +686,15 @@ export function ChatInput({
     textareaRef.current?.focus();
   }, [handleSubmit]);
 
+  // Prevent textarea blur when tapping send/abort buttons on mobile.
+  // Without this, the button tap blurs the textarea → keyboard closes → layout shifts
+  // → then focus() reopens keyboard, causing a visual "bounce".
+  const preventFocusLoss = useCallback((e: React.PointerEvent) => {
+    if (isTouchDevice) {
+      e.preventDefault();
+    }
+  }, [isTouchDevice]);
+
   const isButtonDisabled = !content.trim();
 
   const isAttachDisabled = attachments.length >= IMAGE_CONSTRAINTS.MAX_COUNT;
@@ -953,6 +962,7 @@ export function ChatInput({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
+          onPointerDown={preventFocusLoss}
           disabled={isAttachDisabled}
           aria-label="이미지 첨부"
           className="p-2 rounded-lg flex-shrink-0
@@ -971,6 +981,7 @@ export function ChatInput({
           <button
             type="button"
             disabled
+            onPointerDown={preventFocusLoss}
             aria-label="세션 잠김"
             className="p-2 rounded-lg flex-shrink-0
                        bg-gray-400 dark:bg-gray-600
@@ -984,6 +995,7 @@ export function ChatInput({
           <button
             type="button"
             onClick={onAbort}
+            onPointerDown={preventFocusLoss}
             aria-label="중단"
             className="p-2 rounded-lg flex-shrink-0
                        bg-red-600 hover:bg-red-700
@@ -999,6 +1011,7 @@ export function ChatInput({
           <button
             type="button"
             onClick={handleButtonClick}
+            onPointerDown={preventFocusLoss}
             disabled={isButtonDisabled}
             aria-label="전송"
             className={`p-2 rounded-lg flex-shrink-0

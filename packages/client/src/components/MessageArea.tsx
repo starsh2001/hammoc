@@ -70,6 +70,11 @@ function useAutoScroll(
   // Track programmatic scroll to avoid false "scrolled up" detection
   const isProgrammaticScrollRef = useRef(false);
 
+  // Track "at bottom" state via ref for visualViewport resize handler.
+  // The state variable isUserScrolledUp can't be used directly in the resize handler
+  // because the handler closure would capture a stale value.
+  const isAtBottomRef = useRef(true);
+
   // Capture scroll height when starting to load more
   useEffect(() => {
     if (isLoadingMore && !wasLoadingMoreRef.current && containerRef.current) {
@@ -89,6 +94,7 @@ function useAutoScroll(
     const { scrollTop, scrollHeight, clientHeight } = container;
     const isNearBottom = scrollHeight - scrollTop - clientHeight < threshold;
 
+    isAtBottomRef.current = isNearBottom;
     setIsUserScrolledUp(!isNearBottom);
   }, [threshold]);
 
@@ -126,6 +132,8 @@ function useAutoScroll(
         bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
 
+      isAtBottomRef.current = true;
+
       // Reset programmatic scroll flag after a tick (allows scroll event to fire and be ignored)
       requestAnimationFrame(() => {
         isProgrammaticScrollRef.current = false;
@@ -137,6 +145,7 @@ function useAutoScroll(
   // Force scroll to bottom (for "new messages" button)
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    isAtBottomRef.current = true;
     setIsUserScrolledUp(false);
   }, []);
 
@@ -150,29 +159,13 @@ function useAutoScroll(
 
     const handleViewportResize = () => {
       const container = containerRef.current;
-      if (!container || !bottomRef.current) {
-        console.log('[MessageArea] viewport resize - missing refs');
-        return;
-      }
+      if (!container) return;
 
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-      const isNearBottom = distanceFromBottom < threshold;
-
-      console.log('[MessageArea] viewport resize', {
-        scrollTop,
-        scrollHeight,
-        clientHeight,
-        distanceFromBottom,
-        threshold,
-        isNearBottom,
-        viewportHeight: window.visualViewport?.height,
-      });
-
-      // If user is near bottom, maintain scroll at bottom (for keyboard open/close)
-      // Use scrollTop instead of scrollIntoView to avoid scrolling the entire page on mobile
-      if (isNearBottom) {
-        console.log('[MessageArea] scrolling to bottom');
+      // Use the pre-resize "at bottom" state from the ref.
+      // We can't recalculate isNearBottom here because the container has already
+      // resized (keyboard opened → clientHeight shrunk → distanceFromBottom
+      // jumped by keyboard height, exceeding threshold even though user was at bottom).
+      if (isAtBottomRef.current) {
         container.scrollTop = container.scrollHeight;
         setIsUserScrolledUp(false);
       }

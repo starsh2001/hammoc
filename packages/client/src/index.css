@@ -1,9 +1,11 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
-/* Prevent browser native pull-to-refresh on the entire page */
+/* Prevent browser native pull-to-refresh and body scrolling on mobile */
 html, body {
   overscroll-behavior-y: none;
+  overflow: hidden;
+  height: 100%;
 }
 
 /* Cursor blink animation for streaming indicator */
