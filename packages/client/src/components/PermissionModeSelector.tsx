@@ -97,7 +97,7 @@ export function PermissionModeSelector({ mode, onModeChange, disabled }: Permiss
       title={currentOption.description}
       aria-label={`권한 모드: ${currentOption.label}. ${currentOption.description}. 클릭하여 다음 모드로 전환`}
       className={`
-        w-[60px] h-[38px] self-center -mt-1.5 ml-0.4 mr-1.0 text-sm font-semibold rounded-lg transition-all
+        w-[60px] h-[28px] self-center ml-0.4 mr-1.0 text-xs font-semibold rounded-md transition-all
         border-1
         focus:outline-none focus:ring-2 focus:ring-offset-1
         disabled:opacity-50 disabled:cursor-not-allowed

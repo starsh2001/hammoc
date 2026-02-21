@@ -1,0 +1,72 @@
+/** BMad core-config.yaml parsed result (relevant fields only) */
+export interface BmadConfig {
+  prdFile?: string;
+  prdSharded?: boolean;
+  prdShardedLocation?: string;
+  epicFilePattern?: string;
+  architectureFile?: string;
+  architectureSharded?: boolean;
+  architectureShardedLocation?: string;
+  devStoryLocation?: string;
+  qaLocation?: string;
+}
+
+/** Document existence status */
+export interface BmadDocumentStatus {
+  exists: boolean;
+  path: string;
+}
+
+/** Documents section of the response */
+export interface BmadDocuments {
+  prd: BmadDocumentStatus;
+  architecture: BmadDocumentStatus;
+}
+
+/** Individual story status within an epic */
+export interface BmadStoryStatus {
+  file: string;
+  status: string; // 'Draft' | 'Approved' | 'In Progress' | 'Done' | 'Blocked' | etc.
+}
+
+/** Epic with its stories */
+export interface BmadEpicStatus {
+  number: number;
+  name: string;
+  stories: BmadStoryStatus[];
+}
+
+/** Auxiliary document info */
+export interface BmadAuxDocument {
+  type: string; // 'stories' | 'qa' | etc.
+  path: string;
+  fileCount: number;
+}
+
+/** Response for GET /api/projects/:projectSlug/bmad-status */
+export interface BmadStatusResponse {
+  config: BmadConfig;
+  documents: BmadDocuments;
+  auxiliaryDocuments: BmadAuxDocument[];
+  epics: BmadEpicStatus[];
+}
+
+export const BMAD_STATUS_ERRORS = {
+  NOT_BMAD_PROJECT: {
+    code: 'NOT_BMAD_PROJECT',
+    message: 'BMad 프로젝트가 아닙니다. (.bmad-core/core-config.yaml 없음)',
+    httpStatus: 404,
+  },
+  CONFIG_PARSE_ERROR: {
+    code: 'CONFIG_PARSE_ERROR',
+    message: 'core-config.yaml 파싱 중 오류가 발생했습니다.',
+    httpStatus: 500,
+  },
+  SCAN_ERROR: {
+    code: 'SCAN_ERROR',
+    message: '프로젝트 스캔 중 오류가 발생했습니다.',
+    httpStatus: 500,
+  },
+} as const;
+
+export type BmadStatusErrorCode = keyof typeof BMAD_STATUS_ERRORS;

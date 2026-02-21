@@ -162,7 +162,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={`
-          w-[40px] h-[40px] -mt-1.5 rounded-lg transition-all
+          w-[28px] h-[28px] rounded-md transition-all
           flex items-center justify-center
           border border-gray-300 dark:border-gray-600
           bg-white dark:bg-gray-800
@@ -175,7 +175,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
           ${isOpen ? 'bg-gray-100 dark:bg-gray-700 ring-2 ring-gray-400 ring-offset-1' : ''}
         `}
       >
-        <Cpu className="w-5 h-5" aria-hidden="true" />
+        <Cpu className="w-4 h-4" aria-hidden="true" />
       </button>
 
       {/* Dropdown menu (opens upward) */}

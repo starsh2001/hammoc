@@ -212,7 +212,7 @@ export function BmadAgentButton({
         aria-haspopup="listbox"
         data-testid="bmad-agent-button"
         className={`
-          w-[40px] h-[40px] -mt-1.5 ml-0.4 rounded-lg transition-all
+          w-[28px] h-[28px] ml-0.4 rounded-md transition-all
           flex items-center justify-center
           border border-gray-300 dark:border-gray-600
           bg-white dark:bg-gray-800
@@ -225,7 +225,7 @@ export function BmadAgentButton({
           ${isOpen ? 'bg-gray-100 dark:bg-gray-700 ring-2 ring-gray-400 ring-offset-1' : ''}
         `}
       >
-        <Users className="w-5 h-5" aria-hidden="true" />
+        <Users className="w-4 h-4" aria-hidden="true" />
       </button>
 
       {/* Dropdown menu (matches ModelSelector style, same on all screen sizes) */}

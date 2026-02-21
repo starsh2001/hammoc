@@ -285,7 +285,7 @@ export function ChatInput({
     if (!textarea) return;
 
     textarea.style.height = 'auto';
-    const scrollH = Math.max(textarea.scrollHeight, 40);
+    const scrollH = Math.max(textarea.scrollHeight, 28);
     textarea.style.height = `${scrollH}px`;
   }, []);
 
@@ -700,7 +700,7 @@ export function ChatInput({
   const isAttachDisabled = attachments.length >= IMAGE_CONSTRAINTS.MAX_COUNT;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {/* Connection warning */}
       {showConnectionWarning && (
         <div
@@ -779,7 +779,7 @@ export function ChatInput({
 
       {/* Favorites chip bar + popup wrapper (Story 9.7, 9.12) */}
       {((favoriteCommands && favoriteCommands.length > 0) || (activeAgent && starFavorites && starFavorites.length > 0)) && (
-        <div ref={favoritesContainerRef} className="relative mb-1">
+        <div ref={favoritesContainerRef} className="relative">
           <FavoritesChipBar
             favoriteCommands={favoriteCommands || []}
             commands={commands}
@@ -866,7 +866,8 @@ export function ChatInput({
         )}
 
         <div
-          className={`bg-white dark:bg-gray-800
+          className={`flex items-center
+                     bg-white dark:bg-gray-800
                      border border-gray-300 dark:border-gray-600
                      rounded-lg
                      focus-within:ring-2 ${modeColors.ring}`}
@@ -902,7 +903,7 @@ export function ChatInput({
             }
             aria-autocomplete={showCommands || showStarCommands ? 'list' : undefined}
             rows={1}
-            className={`w-full resize-none px-4 py-2
+            className={`w-full resize-none px-2 py-1
                        bg-transparent
                        text-gray-900 dark:text-gray-100
                        placeholder-gray-500 dark:placeholder-gray-400
@@ -918,7 +919,7 @@ export function ChatInput({
       </div>
 
       {/* Button row */}
-      <div className="flex items-center gap-2 mt-1">
+      <div className="flex items-center gap-2 mt-[1px] ml-[-2px]">
         {/* Permission mode selector (Story 5.2) */}
         {permissionMode && onPermissionModeChange && (
           <PermissionModeSelector
@@ -951,6 +952,8 @@ export function ChatInput({
 
         <div className="flex-1" />
 
+        {/* Right-side buttons with slight right offset */}
+        <div className="flex items-center gap-2 mr-[-2px]">
         {/* Context usage donut indicator (always visible) */}
         <ContextUsageDisplay
           contextUsage={contextUsage ?? null}
@@ -965,16 +968,16 @@ export function ChatInput({
           onPointerDown={preventFocusLoss}
           disabled={isAttachDisabled}
           aria-label="이미지 첨부"
-          className="p-2 rounded-lg flex-shrink-0
+          className="p-1 rounded-md flex-shrink-0
                      text-gray-500 dark:text-gray-400
                      hover:text-gray-700 dark:hover:text-gray-200
                      hover:bg-gray-100 dark:hover:bg-gray-700
                      disabled:opacity-50 disabled:cursor-not-allowed
                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                      transition-all duration-150"
-          style={{ height: '38px', width: '38px' }}
+          style={{ height: '28px', width: '28px' }}
         >
-          <Paperclip size={20} aria-hidden="true" />
+          <Paperclip size={16} aria-hidden="true" />
         </button>
 
         {isSessionLocked ? (
@@ -983,13 +986,13 @@ export function ChatInput({
             disabled
             onPointerDown={preventFocusLoss}
             aria-label="세션 잠김"
-            className="p-2 rounded-lg flex-shrink-0
+            className="p-1 rounded-md flex-shrink-0
                        bg-gray-400 dark:bg-gray-600
                        text-white
                        opacity-50 cursor-not-allowed"
-            style={{ height: '36px', width: '36px' }}
+            style={{ height: '28px', width: '28px' }}
           >
-            <Lock size={20} aria-hidden="true" />
+            <Lock size={16} aria-hidden="true" />
           </button>
         ) : isStreaming && onAbort ? (
           <button
@@ -997,15 +1000,15 @@ export function ChatInput({
             onClick={onAbort}
             onPointerDown={preventFocusLoss}
             aria-label="중단"
-            className="p-2 rounded-lg flex-shrink-0
+            className="p-1 rounded-md flex-shrink-0
                        bg-red-600 hover:bg-red-700
                        dark:bg-red-500 dark:hover:bg-red-600
                        text-white
                        focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
                        transition-all duration-150"
-            style={{ height: '36px', width: '36px' }}
+            style={{ height: '28px', width: '28px' }}
           >
-            <Square size={20} aria-hidden="true" />
+            <Square size={16} aria-hidden="true" />
           </button>
         ) : (
           <button
@@ -1014,17 +1017,18 @@ export function ChatInput({
             onPointerDown={preventFocusLoss}
             disabled={isButtonDisabled}
             aria-label="전송"
-            className={`p-2 rounded-lg flex-shrink-0
+            className={`p-1 rounded-md flex-shrink-0
                        ${modeColors.button}
                        text-white
                        disabled:opacity-50 disabled:cursor-not-allowed
                        focus:outline-none focus:ring-2 ${modeColors.ring} focus:ring-offset-2
                        transition-all duration-150`}
-            style={{ height: '36px', width: '36px' }}
+            style={{ height: '28px', width: '28px' }}
           >
-            <Send size={20} aria-hidden="true" />
+            <Send size={16} aria-hidden="true" />
           </button>
         )}
+        </div>
       </div>
     </div>
   );
