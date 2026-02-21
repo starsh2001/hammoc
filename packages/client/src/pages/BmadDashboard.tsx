@@ -5,13 +5,14 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, BarChart3, Zap, Plus, ArrowRight, AlertTriangle } from 'lucide-react';
+import { BarChart3, Zap, Plus, ArrowRight, AlertTriangle } from 'lucide-react';
 import type { BmadStatusResponse } from '@bmad-studio/shared';
 
 import { useProjectStore } from '../stores/projectStore.js';
 import { useBmadStatus } from '../hooks/useBmadStatus.js';
 
 import { ProjectDashboardPage } from './ProjectDashboardPage.js';
+import { DocumentStatusCard } from '../components/dashboard/DocumentStatusCard.js';
 
 import { generateUUID } from '../utils/uuid.js';
 
@@ -83,38 +84,12 @@ function DashboardContent({
 
       {/* Card grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Document status card */}
-        <div
-          role="region"
-          aria-label="문서 현황"
-          className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5"
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            <h2 className="font-semibold text-gray-900 dark:text-white">문서 현황</h2>
-          </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <span className={data.documents.prd.exists ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                {data.documents.prd.exists ? '\u2713' : '\u2717'}
-              </span>
-              <span className="text-gray-700 dark:text-gray-300">PRD</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={data.documents.architecture.exists ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                {data.documents.architecture.exists ? '\u2713' : '\u2717'}
-              </span>
-              <span className="text-gray-700 dark:text-gray-300">Architecture</span>
-            </div>
-            {data.auxiliaryDocuments.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <span className="text-gray-500 dark:text-gray-400">
-                  보조 문서 {data.auxiliaryDocuments.reduce((sum, d) => sum + d.fileCount, 0)}개
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Document status card (Story 12.3) */}
+        <DocumentStatusCard
+          documents={data.documents}
+          auxiliaryDocuments={data.auxiliaryDocuments}
+          projectSlug={projectSlug}
+        />
 
         {/* Epic progress card */}
         <div
