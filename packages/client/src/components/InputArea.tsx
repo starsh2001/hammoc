@@ -20,11 +20,11 @@ export function InputArea({ children, disabled = false }: InputAreaProps) {
       data-testid="input-area"
       className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700
                   bg-[#fbfbfc] dark:bg-[#151d2c]
-                  pb-[max(1rem,env(safe-area-inset-bottom))]
+                  pb-[max(0.25rem,env(safe-area-inset-bottom))]
                   overscroll-contain
                   ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
     >
-      <div className="content-container p-4 pb-0">
+      <div className="content-container px-4 pt-[10px] pb-1">
       {children || (
         <div className="text-center text-gray-500 dark:text-gray-400 text-sm">
           메시지 입력은 Story 4.2에서 구현됩니다.
