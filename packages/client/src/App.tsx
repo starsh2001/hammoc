@@ -19,7 +19,7 @@ import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ProjectListPage } from './pages/ProjectListPage';
 import { SessionListPage } from './pages/SessionListPage';
-import { ProjectDashboardPage } from './pages/ProjectDashboardPage';
+import { BmadDashboard } from './pages/BmadDashboard';
 import { ProjectSessionsPage } from './pages/ProjectSessionsPage';
 import { ProjectQueuePage } from './pages/ProjectBatchPage';
 import { ChatPage } from './pages/ChatPage';
@@ -76,7 +76,7 @@ function AppContent() {
           </AuthGuard>
         }
       >
-        <Route index element={<ProjectDashboardPage />} />
+        <Route index element={<BmadDashboard />} />
         <Route path="sessions" element={<ProjectSessionsPage />} />
         <Route path="queue" element={<ProjectQueuePage />} />
       </Route>
