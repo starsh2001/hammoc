@@ -18,11 +18,15 @@ interface FileState {
   isMarkdownPreview: boolean;
   language: string;
   error: string | null;
+  pendingNavigation: { projectSlug: string; path: string } | null;
 }
 
 interface FileActions {
   openFileInEditor: (projectSlug: string, path: string) => Promise<void>;
   saveFile: () => Promise<boolean>;
+  requestFileNavigation: (projectSlug: string, path: string) => void;
+  confirmPendingNavigation: () => void;
+  cancelPendingNavigation: () => void;
   closeEditor: () => void;
   setContent: (content: string) => void;
   resetError: () => void;
@@ -42,6 +46,7 @@ const initialState: FileState = {
   isMarkdownPreview: false,
   language: 'plaintext',
   error: null,
+  pendingNavigation: null,
 };
 
 export const useFileStore = create<FileStore>((set, get) => ({
@@ -90,6 +95,26 @@ export const useFileStore = create<FileStore>((set, get) => ({
       set({ isSaving: false });
       return false;
     }
+  },
+
+  requestFileNavigation: (projectSlug, path) => {
+    if (get().isDirty) {
+      set({ pendingNavigation: { projectSlug, path } });
+    } else {
+      get().openFileInEditor(projectSlug, path);
+    }
+  },
+
+  confirmPendingNavigation: () => {
+    const { pendingNavigation } = get();
+    if (pendingNavigation) {
+      set({ pendingNavigation: null });
+      get().openFileInEditor(pendingNavigation.projectSlug, pendingNavigation.path);
+    }
+  },
+
+  cancelPendingNavigation: () => {
+    set({ pendingNavigation: null });
   },
 
   closeEditor: () => {
