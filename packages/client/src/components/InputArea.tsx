@@ -21,6 +21,7 @@ export function InputArea({ children, disabled = false }: InputAreaProps) {
       className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700
                   bg-[#fbfbfc] dark:bg-[#151d2c]
                   pb-[max(1rem,env(safe-area-inset-bottom))]
+                  overscroll-contain
                   ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
     >
       <div className="content-container p-4 pb-0">

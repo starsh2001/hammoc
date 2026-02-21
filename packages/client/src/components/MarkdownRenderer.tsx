@@ -207,15 +207,15 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
       // Lists with proper indentation
       ul({ children }) {
-        return <ul className="list-disc list-inside my-2 space-y-1">{children}</ul>;
+        return <ul className="list-disc list-outside pl-5 my-2 space-y-1">{children}</ul>;
       },
 
       ol({ children }) {
-        return <ol className="list-decimal list-inside my-2 space-y-1">{children}</ol>;
+        return <ol className="list-decimal list-outside pl-5 my-2 space-y-1">{children}</ol>;
       },
 
       li({ children }) {
-        return <li className="ml-2 [&>p]:inline [&>p]:my-0">{children}</li>;
+        return <li className="[&>p]:inline [&>p]:my-0">{children}</li>;
       },
 
       // Paragraph
@@ -251,7 +251,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   );
 
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none [&_code]:before:content-none [&_code]:after:content-none [&_hr]:my-2">
+    <div className="prose prose-sm dark:prose-invert max-w-none break-words [&_code]:before:content-none [&_code]:after:content-none [&_hr]:my-2">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {processedContent}
       </ReactMarkdown>
