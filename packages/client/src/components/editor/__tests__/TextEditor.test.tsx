@@ -3,8 +3,9 @@
  * [Source: Story 11.3 - Task 5.2]
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { Editor as _MockEditor } from '@monaco-editor/react';
 import { TextEditor } from '../TextEditor';
 
 // Mock sonner toast
@@ -50,6 +51,41 @@ vi.mock('../MarkdownPreview', () => ({
   ),
 }));
 
+// Mock useTheme
+vi.mock('../../../hooks/useTheme', () => ({
+  useTheme: () => ({
+    theme: 'dark',
+    toggleTheme: vi.fn(),
+    setTheme: vi.fn(),
+  }),
+}));
+
+// Mock Monaco Editor
+const mockEditorInstance = {
+  focus: vi.fn(),
+};
+let mockOnMount: (() => void) | null = null;
+vi.mock('@monaco-editor/react', () => ({
+  Editor: vi.fn(({ value, language, onChange, onMount }: {
+    value: string;
+    language: string;
+    onChange?: (value: string | undefined) => void;
+    onMount?: (editor: typeof mockEditorInstance, monaco: unknown) => void;
+  }) => {
+    mockOnMount = () => onMount?.(mockEditorInstance, {});
+    return (
+      <div data-testid="monaco-editor" data-language={language}>
+        <textarea
+          data-testid="monaco-textarea"
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          aria-label="mock-monaco"
+        />
+      </div>
+    );
+  }),
+}));
+
 // Mock fileStore
 const mockSaveFile = vi.fn();
 const mockCloseEditor = vi.fn();
@@ -66,6 +102,7 @@ let mockStoreState = {
   isSaving: false,
   isTruncated: false,
   isMarkdownPreview: false,
+  language: 'plaintext',
   error: null as string | null,
   saveFile: mockSaveFile,
   closeEditor: mockCloseEditor,
@@ -82,6 +119,15 @@ vi.mock('../../../stores/fileStore', () => ({
   },
 }));
 
+// Helper to render and wait for lazy Monaco Editor to load
+async function renderAndWaitForEditor(ui: React.ReactElement) {
+  let result: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(ui);
+  });
+  return result!;
+}
+
 describe('TextEditor', () => {
   beforeEach(() => {
     mockStoreState = {
@@ -92,6 +138,7 @@ describe('TextEditor', () => {
       isSaving: false,
       isTruncated: false,
       isMarkdownPreview: false,
+      language: 'plaintext',
       error: null,
       saveFile: mockSaveFile,
       closeEditor: mockCloseEditor,
@@ -102,102 +149,102 @@ describe('TextEditor', () => {
     };
     vi.clearAllMocks();
     mockSaveFile.mockResolvedValue(true);
+    mockOnMount = null;
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
     document.body.style.overflow = '';
   });
 
-  it('TC-TE1: should render nothing when openFile is null', () => {
-    const { container } = render(<TextEditor />);
+  it('TC-TE1: should render nothing when openFile is null', async () => {
+    const { container } = await renderAndWaitForEditor(<TextEditor />);
     expect(container.innerHTML).toBe('');
   });
 
-  it('TC-TE2: should render fullscreen overlay when openFile is set', () => {
+  it('TC-TE2: should render fullscreen overlay when openFile is set', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.content = 'file content';
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
-    // Check z-50 panel exists
     const panel = document.querySelector('.fixed.inset-0.z-50');
     expect(panel).not.toBeNull();
   });
 
-  it('TC-TE3: should display file path in header', () => {
+  it('TC-TE3: should display file path in header', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/components/App.tsx' };
     mockStoreState.content = '';
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     expect(screen.getByText('src/components/App.tsx')).toBeDefined();
   });
 
-  it('TC-TE4: should display content in textarea and allow editing', () => {
+  it('TC-TE4: should display content in Monaco Editor and allow editing', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.content = 'hello world';
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
-    const textarea = screen.getByRole('textbox');
-    expect(textarea).toBeDefined();
+    const editor = await screen.findByTestId('monaco-editor');
+    expect(editor).toBeDefined();
+
+    const textarea = screen.getByTestId('monaco-textarea');
     expect((textarea as HTMLTextAreaElement).value).toBe('hello world');
 
     fireEvent.change(textarea, { target: { value: 'changed' } });
     expect(mockSetContent).toHaveBeenCalledWith('changed');
   });
 
-  it('TC-TE5: should show loading state', () => {
+  it('TC-TE5: should show loading state', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.isLoading = true;
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     expect(screen.getByText('Loading file...')).toBeDefined();
   });
 
-  it('TC-TE6: should show error message', () => {
+  it('TC-TE6: should show error message', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.error = '파일을 찾을 수 없습니다.';
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     expect(screen.getByText('파일을 찾을 수 없습니다.')).toBeDefined();
   });
 
-  it('TC-TE7: should call handleClose on Escape', () => {
+  it('TC-TE7: should call handleClose on Escape', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.content = '';
     mockStoreState.isDirty = false;
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(mockCloseEditor).toHaveBeenCalled();
   });
 
-  it('TC-TE8: should show confirm dialog when closing with dirty state', () => {
+  it('TC-TE8: should show confirm dialog when closing with dirty state', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.content = 'modified';
     mockStoreState.isDirty = true;
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
-    // Click close button
     const closeButton = screen.getByLabelText('Close editor');
     fireEvent.click(closeButton);
 
-    // Confirm modal should appear
     expect(screen.getByTestId('confirm-modal')).toBeDefined();
   });
 
-  it('TC-TE9: should close directly when not dirty', () => {
+  it('TC-TE9: should close directly when not dirty', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.content = '';
     mockStoreState.isDirty = false;
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     const closeButton = screen.getByLabelText('Close editor');
     fireEvent.click(closeButton);
@@ -205,21 +252,21 @@ describe('TextEditor', () => {
     expect(mockCloseEditor).toHaveBeenCalled();
   });
 
-  it('TC-TE10: should show truncation warning when isTruncated is true', () => {
+  it('TC-TE10: should show truncation warning when isTruncated is true', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'large-file.txt' };
     mockStoreState.content = 'partial...';
     mockStoreState.isTruncated = true;
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     expect(screen.getByText(/크기 제한/)).toBeDefined();
   });
 
-  it('TC-TE11: should call resetError and openFileInEditor on retry', () => {
+  it('TC-TE11: should call resetError and openFileInEditor on retry', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.error = 'Network error';
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     const retryButton = screen.getByText('다시 시도');
     fireEvent.click(retryButton);
@@ -233,14 +280,12 @@ describe('TextEditor', () => {
     mockStoreState.content = 'modified';
     mockStoreState.isDirty = true;
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
-    // Open confirm dialog
     const closeButton = screen.getByLabelText('Close editor');
     fireEvent.click(closeButton);
     expect(screen.getByTestId('confirm-modal')).toBeDefined();
 
-    // Press Escape — should dismiss dialog, not close editor
     fireEvent.keyDown(document, { key: 'Escape' });
 
     await waitFor(() => {
@@ -249,77 +294,122 @@ describe('TextEditor', () => {
     expect(mockCloseEditor).not.toHaveBeenCalled();
   });
 
-  it('TC-TE13: should show Preview toggle button for .md files', () => {
+  it('TC-TE13: should show Preview toggle button for .md files', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'README.md' };
     mockStoreState.content = '# Hello';
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     expect(screen.getByText('Preview')).toBeDefined();
     expect(screen.getByLabelText('Switch to preview mode')).toBeDefined();
   });
 
-  it('TC-TE14: should not show Preview toggle button for non-.md files', () => {
+  it('TC-TE14: should not show Preview toggle button for non-.md files', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.content = 'code';
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     expect(screen.queryByText('Preview')).toBeNull();
     expect(screen.queryByText('Edit')).toBeNull();
   });
 
-  it('TC-TE15: should call toggleMarkdownPreview on toggle button click', () => {
+  it('TC-TE15: should call toggleMarkdownPreview on toggle button click', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'README.md' };
     mockStoreState.content = '# Hello';
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     fireEvent.click(screen.getByText('Preview'));
     expect(mockToggleMarkdownPreview).toHaveBeenCalled();
   });
 
-  it('TC-TE16: should render MarkdownPreview instead of textarea in preview mode', () => {
+  it('TC-TE16: should render MarkdownPreview instead of Monaco Editor in preview mode', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'README.md' };
     mockStoreState.content = '# Hello World';
     mockStoreState.isMarkdownPreview = true;
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
     expect(screen.getByTestId('markdown-preview')).toBeDefined();
     expect(screen.getByTestId('markdown-preview').textContent).toBe('# Hello World');
-    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByTestId('monaco-editor')).toBeNull();
   });
 
-  it('TC-TE17: should be read-only in preview mode (no textarea)', () => {
+  it('TC-TE17: should be read-only in preview mode (no Monaco Editor)', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'docs/guide.md' };
     mockStoreState.content = '## Guide';
     mockStoreState.isMarkdownPreview = true;
 
-    render(<TextEditor />);
+    await renderAndWaitForEditor(<TextEditor />);
 
-    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByTestId('monaco-editor')).toBeNull();
     expect(screen.getByTestId('markdown-preview')).toBeDefined();
-    // Toggle button should show "Edit" in preview mode
     expect(screen.getByText('Edit')).toBeDefined();
     expect(screen.getByLabelText('Switch to edit mode')).toBeDefined();
   });
 
-  it('TC-TE18: should restore textarea focus when switching from preview to edit', () => {
-    // Start in preview mode (no textarea visible)
+  it('TC-TE18: should restore editor focus when switching from preview to edit', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'README.md' };
     mockStoreState.content = '# Hello';
     mockStoreState.isMarkdownPreview = true;
 
-    const { rerender } = render(<TextEditor />);
-    expect(screen.queryByRole('textbox')).toBeNull();
+    const { rerender } = await renderAndWaitForEditor(<TextEditor />);
+    expect(screen.queryByTestId('monaco-editor')).toBeNull();
 
-    // Switch to edit mode — textarea should appear and receive focus
+    // Switch to edit mode
     mockStoreState.isMarkdownPreview = false;
-    rerender(<TextEditor />);
+    await act(async () => {
+      rerender(<TextEditor />);
+    });
 
-    const textarea = screen.getByRole('textbox');
-    expect(textarea).toBeDefined();
-    expect(document.activeElement).toBe(textarea);
+    await screen.findByTestId('monaco-editor');
+    // Trigger onMount to set editorRef
+    if (mockOnMount) {
+      act(() => { mockOnMount!(); });
+    }
+    expect(mockEditorInstance.focus).toHaveBeenCalled();
+  });
+
+  it('TC-TE19: should pass language prop to Monaco Editor for .ts file', async () => {
+    mockStoreState.openFile = { projectSlug: 'test', path: 'src/app.ts' };
+    mockStoreState.content = 'const x = 1;';
+    mockStoreState.language = 'typescript';
+
+    await renderAndWaitForEditor(<TextEditor />);
+
+    const editor = await screen.findByTestId('monaco-editor');
+    expect(editor.getAttribute('data-language')).toBe('typescript');
+  });
+
+  it('TC-TE20: should pass plaintext language for files without extension', async () => {
+    mockStoreState.openFile = { projectSlug: 'test', path: 'Dockerfile' };
+    mockStoreState.content = 'FROM node:22';
+    mockStoreState.language = 'plaintext';
+
+    await renderAndWaitForEditor(<TextEditor />);
+
+    const editor = await screen.findByTestId('monaco-editor');
+    expect(editor.getAttribute('data-language')).toBe('plaintext');
+  });
+
+  it('TC-TE21: should render Monaco Editor within Suspense', async () => {
+    mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
+    mockStoreState.content = 'code';
+
+    await renderAndWaitForEditor(<TextEditor />);
+
+    expect(await screen.findByTestId('monaco-editor')).toBeDefined();
+  });
+
+  it('TC-TE22: should call setContent via Monaco onChange', async () => {
+    mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
+    mockStoreState.content = 'original';
+
+    await renderAndWaitForEditor(<TextEditor />);
+
+    const textarea = await screen.findByTestId('monaco-textarea');
+    fireEvent.change(textarea, { target: { value: 'new content' } });
+    expect(mockSetContent).toHaveBeenCalledWith('new content');
   });
 });
