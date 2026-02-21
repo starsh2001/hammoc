@@ -4,8 +4,10 @@
  * [Source: Story 11.3 - Task 3]
  */
 
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import type * as monacoEditor from 'monaco-editor';
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
+import { EditorView } from '@codemirror/view';
+import type { Extension } from '@codemirror/state';
+import { oneDark } from '@codemirror/theme-one-dark';
 import { FileText, X, Loader2, Eye, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,12 +15,9 @@ import { useFileStore } from '../../stores/fileStore';
 import { useTheme } from '../../hooks/useTheme';
 import { ConfirmModal } from '../ConfirmModal';
 import { MarkdownPreview } from './MarkdownPreview';
+import { getLanguageExtension, isMarkdownPath } from '../../utils/languageDetect';
 
-const LazyEditor = lazy(() =>
-  import('@monaco-editor/react').then((mod) => ({
-    default: mod.Editor,
-  }))
-);
+const LazyCodeMirror = lazy(() => import('@uiw/react-codemirror'));
 
 export function TextEditor() {
   const {
@@ -30,7 +29,6 @@ export function TextEditor() {
     isTruncated,
     error,
     isMarkdownPreview,
-    language,
     saveFile,
     closeEditor,
     setContent,
@@ -43,12 +41,25 @@ export function TextEditor() {
   } = useFileStore();
 
   const [showConfirm, setShowConfirm] = useState(false);
-  const editorRef = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
+  const editorRef = useRef<EditorView | null>(null);
 
   const { theme } = useTheme();
-  const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
 
-  const isMarkdownFile = openFile ? openFile.path.toLowerCase().endsWith('.md') : false;
+  const isMarkdownFile = openFile ? isMarkdownPath(openFile.path) : false;
+
+  const extensions = useMemo(() => {
+    const exts: Extension[] = [
+      EditorView.lineWrapping,
+    ];
+    if (openFile) {
+      const lang = getLanguageExtension(openFile.path);
+      if (lang) exts.push(lang);
+    }
+    if (isTruncated) {
+      exts.push(EditorView.editable.of(false));
+    }
+    return exts;
+  }, [openFile, isTruncated]);
 
   const handleSave = useCallback(async () => {
     if (!isDirty || isSaving) return;
@@ -70,14 +81,6 @@ export function TextEditor() {
       closeEditor();
     }
   }, [isDirty, closeEditor, pendingNavigation, cancelPendingNavigation]);
-
-  const handleEditorDidMount = useCallback(
-    (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
-      editorRef.current = editor;
-      editor.focus();
-    },
-    []
-  );
 
   // Ctrl+S / Cmd+S save and Escape close
   useEffect(() => {
@@ -139,10 +142,10 @@ export function TextEditor() {
               {filePath}
             </span>
             {isDirty && (
-              <span className="text-xs text-amber-500 shrink-0">Modified</span>
+              <span className="text-xs font-bold text-amber-500 shrink-0">M</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-3">
             {isMarkdownFile && (
               <button
                 onClick={toggleMarkdownPreview}
@@ -213,34 +216,33 @@ export function TextEditor() {
             {isMarkdownPreview && isMarkdownFile ? (
               <MarkdownPreview content={content} />
             ) : (
-              <div className="flex-1 relative" aria-label={`Editing ${filePath}`}>
+              <div
+                className="flex-1 min-h-0 [&_.cm-editor]:h-full [&_.cm-scroller]:!overflow-auto"
+                aria-label={`Editing ${filePath}`}
+              >
                 <Suspense fallback={
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-full flex items-center justify-center">
                     <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
                     <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
                       Loading editor...
                     </span>
                   </div>
                 }>
-                  <LazyEditor
+                  <LazyCodeMirror
                     value={content}
-                    language={language}
-                    theme={monacoTheme}
-                    onChange={(value) => setContent(value ?? '')}
-                    onMount={handleEditorDidMount}
-                    options={{
-                      readOnly: isTruncated,
-                      minimap: { enabled: false },
-                      scrollBeyondLastLine: false,
-                      wordWrap: 'on',
-                      lineNumbers: 'on',
-                      renderLineHighlight: 'line',
-                      fontSize: 14,
-                      automaticLayout: true,
+                    extensions={extensions}
+                    theme={theme === 'dark' ? oneDark : 'light'}
+                    onChange={(value: string) => setContent(value)}
+                    onCreateEditor={(view: EditorView) => { editorRef.current = view; }}
+                    height="100%"
+                    style={{ height: '100%' }}
+                    basicSetup={{
+                      lineNumbers: true,
+                      highlightActiveLine: true,
                       tabSize: 2,
-                      insertSpaces: true,
-                      padding: { top: 16 },
+                      foldGutter: false,
                     }}
+                    readOnly={isTruncated}
                   />
                 </Suspense>
               </div>

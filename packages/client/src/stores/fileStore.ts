@@ -5,7 +5,6 @@
 
 import { create } from 'zustand';
 import { fileSystemApi } from '../services/api/fileSystem';
-import { getLanguageFromPath } from '../utils/languageDetect';
 
 interface FileState {
   openFile: { projectSlug: string; path: string } | null;
@@ -16,7 +15,6 @@ interface FileState {
   isSaving: boolean;
   isTruncated: boolean;
   isMarkdownPreview: boolean;
-  language: string;
   error: string | null;
   pendingNavigation: { projectSlug: string; path: string } | null;
 }
@@ -44,7 +42,6 @@ const initialState: FileState = {
   isSaving: false,
   isTruncated: false,
   isMarkdownPreview: false,
-  language: 'plaintext',
   error: null,
   pendingNavigation: null,
 };
@@ -59,7 +56,6 @@ export const useFileStore = create<FileStore>((set, get) => ({
       error: null,
       isTruncated: false,
       isMarkdownPreview: false,
-      language: 'plaintext',
       content: '',
       originalContent: '',
       isDirty: false,
@@ -76,7 +72,6 @@ export const useFileStore = create<FileStore>((set, get) => ({
         originalContent: fileContent,
         isLoading: false,
         isTruncated: response.isTruncated,
-        language: getLanguageFromPath(path),
       });
     } catch (err) {
       set({ error: (err as Error).message, isLoading: false });

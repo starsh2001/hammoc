@@ -5,7 +5,6 @@
 
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { Editor as _MockEditor } from '@monaco-editor/react';
 import { TextEditor } from '../TextEditor';
 
 // Mock sonner toast
@@ -60,31 +59,51 @@ vi.mock('../../../hooks/useTheme', () => ({
   }),
 }));
 
-// Mock Monaco Editor
-const mockEditorInstance = {
+// Mock CodeMirror
+const mockEditorView = {
   focus: vi.fn(),
+  dom: document.createElement('div'),
+  dispatch: vi.fn(),
 };
-let mockOnMount: (() => void) | null = null;
-vi.mock('@monaco-editor/react', () => ({
-  Editor: vi.fn(({ value, language, onChange, onMount }: {
+let mockOnCreateEditor: (() => void) | null = null;
+vi.mock('@uiw/react-codemirror', () => ({
+  default: vi.fn(({ value, onChange, onCreateEditor, readOnly }: {
     value: string;
-    language: string;
-    onChange?: (value: string | undefined) => void;
-    onMount?: (editor: typeof mockEditorInstance, monaco: unknown) => void;
+    onChange?: (value: string) => void;
+    onCreateEditor?: (view: typeof mockEditorView) => void;
+    readOnly?: boolean;
   }) => {
-    mockOnMount = () => onMount?.(mockEditorInstance, {});
+    mockOnCreateEditor = () => onCreateEditor?.(mockEditorView);
     return (
-      <div data-testid="monaco-editor" data-language={language}>
+      <div data-testid="codemirror-editor">
         <textarea
-          data-testid="monaco-textarea"
+          data-testid="codemirror-textarea"
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
-          aria-label="mock-monaco"
+          readOnly={readOnly}
+          aria-label="mock-codemirror"
         />
       </div>
     );
   }),
 }));
+
+// Mock CodeMirror dependencies
+vi.mock('@codemirror/view', () => ({
+  EditorView: {
+    lineWrapping: {},
+    editable: { of: vi.fn(() => ({})) },
+  },
+}));
+vi.mock('@codemirror/theme-one-dark', () => ({
+  oneDark: {},
+}));
+vi.mock('../../utils/languageDetect', async () => {
+  return {
+    getLanguageExtension: vi.fn(() => null),
+    isMarkdownPath: (path: string) => path.toLowerCase().endsWith('.md'),
+  };
+});
 
 // Mock fileStore
 const mockSaveFile = vi.fn();
@@ -102,7 +121,6 @@ let mockStoreState = {
   isSaving: false,
   isTruncated: false,
   isMarkdownPreview: false,
-  language: 'plaintext',
   error: null as string | null,
   saveFile: mockSaveFile,
   closeEditor: mockCloseEditor,
@@ -110,6 +128,9 @@ let mockStoreState = {
   resetError: mockResetError,
   openFileInEditor: mockOpenFileInEditor,
   toggleMarkdownPreview: mockToggleMarkdownPreview,
+  pendingNavigation: null as { projectSlug: string; path: string } | null,
+  confirmPendingNavigation: vi.fn(),
+  cancelPendingNavigation: vi.fn(),
 };
 
 vi.mock('../../../stores/fileStore', () => ({
@@ -119,7 +140,7 @@ vi.mock('../../../stores/fileStore', () => ({
   },
 }));
 
-// Helper to render and wait for lazy Monaco Editor to load
+// Helper to render and wait for lazy CodeMirror to load
 async function renderAndWaitForEditor(ui: React.ReactElement) {
   let result: ReturnType<typeof render>;
   await act(async () => {
@@ -138,7 +159,6 @@ describe('TextEditor', () => {
       isSaving: false,
       isTruncated: false,
       isMarkdownPreview: false,
-      language: 'plaintext',
       error: null,
       saveFile: mockSaveFile,
       closeEditor: mockCloseEditor,
@@ -146,10 +166,13 @@ describe('TextEditor', () => {
       resetError: mockResetError,
       openFileInEditor: mockOpenFileInEditor,
       toggleMarkdownPreview: mockToggleMarkdownPreview,
+      pendingNavigation: null,
+      confirmPendingNavigation: vi.fn(),
+      cancelPendingNavigation: vi.fn(),
     };
     vi.clearAllMocks();
     mockSaveFile.mockResolvedValue(true);
-    mockOnMount = null;
+    mockOnCreateEditor = null;
   });
 
   afterEach(() => {
@@ -181,16 +204,16 @@ describe('TextEditor', () => {
     expect(screen.getByText('src/components/App.tsx')).toBeDefined();
   });
 
-  it('TC-TE4: should display content in Monaco Editor and allow editing', async () => {
+  it('TC-TE4: should display content in CodeMirror editor and allow editing', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.content = 'hello world';
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    const editor = await screen.findByTestId('monaco-editor');
+    const editor = await screen.findByTestId('codemirror-editor');
     expect(editor).toBeDefined();
 
-    const textarea = screen.getByTestId('monaco-textarea');
+    const textarea = screen.getByTestId('codemirror-textarea');
     expect((textarea as HTMLTextAreaElement).value).toBe('hello world');
 
     fireEvent.change(textarea, { target: { value: 'changed' } });
@@ -324,7 +347,7 @@ describe('TextEditor', () => {
     expect(mockToggleMarkdownPreview).toHaveBeenCalled();
   });
 
-  it('TC-TE16: should render MarkdownPreview instead of Monaco Editor in preview mode', async () => {
+  it('TC-TE16: should render MarkdownPreview instead of editor in preview mode', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'README.md' };
     mockStoreState.content = '# Hello World';
     mockStoreState.isMarkdownPreview = true;
@@ -333,82 +356,67 @@ describe('TextEditor', () => {
 
     expect(screen.getByTestId('markdown-preview')).toBeDefined();
     expect(screen.getByTestId('markdown-preview').textContent).toBe('# Hello World');
-    expect(screen.queryByTestId('monaco-editor')).toBeNull();
+    expect(screen.queryByTestId('codemirror-editor')).toBeNull();
   });
 
-  it('TC-TE17: should be read-only in preview mode (no Monaco Editor)', async () => {
+  it('TC-TE17: should be read-only in preview mode (no editor)', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'docs/guide.md' };
     mockStoreState.content = '## Guide';
     mockStoreState.isMarkdownPreview = true;
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    expect(screen.queryByTestId('monaco-editor')).toBeNull();
+    expect(screen.queryByTestId('codemirror-editor')).toBeNull();
     expect(screen.getByTestId('markdown-preview')).toBeDefined();
     expect(screen.getByText('Edit')).toBeDefined();
     expect(screen.getByLabelText('Switch to edit mode')).toBeDefined();
   });
 
   it('TC-TE18: should restore editor focus when switching from preview to edit', async () => {
+    // Start in edit mode to get editorRef set via onCreateEditor
     mockStoreState.openFile = { projectSlug: 'test', path: 'README.md' };
     mockStoreState.content = '# Hello';
-    mockStoreState.isMarkdownPreview = true;
+    mockStoreState.isMarkdownPreview = false;
 
     const { rerender } = await renderAndWaitForEditor(<TextEditor />);
-    expect(screen.queryByTestId('monaco-editor')).toBeNull();
+    await screen.findByTestId('codemirror-editor');
+    // Trigger onCreateEditor to set editorRef
+    if (mockOnCreateEditor) {
+      act(() => { mockOnCreateEditor!(); });
+    }
+    vi.clearAllMocks();
 
-    // Switch to edit mode
+    // Switch to preview mode
+    mockStoreState.isMarkdownPreview = true;
+    await act(async () => {
+      rerender(<TextEditor />);
+    });
+
+    // Switch back to edit mode — should call focus on editorRef
     mockStoreState.isMarkdownPreview = false;
     await act(async () => {
       rerender(<TextEditor />);
     });
 
-    await screen.findByTestId('monaco-editor');
-    // Trigger onMount to set editorRef
-    if (mockOnMount) {
-      act(() => { mockOnMount!(); });
-    }
-    expect(mockEditorInstance.focus).toHaveBeenCalled();
+    expect(mockEditorView.focus).toHaveBeenCalled();
   });
 
-  it('TC-TE19: should pass language prop to Monaco Editor for .ts file', async () => {
-    mockStoreState.openFile = { projectSlug: 'test', path: 'src/app.ts' };
-    mockStoreState.content = 'const x = 1;';
-    mockStoreState.language = 'typescript';
-
-    await renderAndWaitForEditor(<TextEditor />);
-
-    const editor = await screen.findByTestId('monaco-editor');
-    expect(editor.getAttribute('data-language')).toBe('typescript');
-  });
-
-  it('TC-TE20: should pass plaintext language for files without extension', async () => {
-    mockStoreState.openFile = { projectSlug: 'test', path: 'Dockerfile' };
-    mockStoreState.content = 'FROM node:22';
-    mockStoreState.language = 'plaintext';
-
-    await renderAndWaitForEditor(<TextEditor />);
-
-    const editor = await screen.findByTestId('monaco-editor');
-    expect(editor.getAttribute('data-language')).toBe('plaintext');
-  });
-
-  it('TC-TE21: should render Monaco Editor within Suspense', async () => {
+  it('TC-TE19: should render CodeMirror editor within Suspense', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.content = 'code';
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    expect(await screen.findByTestId('monaco-editor')).toBeDefined();
+    expect(await screen.findByTestId('codemirror-editor')).toBeDefined();
   });
 
-  it('TC-TE22: should call setContent via Monaco onChange', async () => {
+  it('TC-TE20: should call setContent via CodeMirror onChange', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.content = 'original';
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    const textarea = await screen.findByTestId('monaco-textarea');
+    const textarea = await screen.findByTestId('codemirror-textarea');
     fireEvent.change(textarea, { target: { value: 'new content' } });
     expect(mockSetContent).toHaveBeenCalledWith('new content');
   });
