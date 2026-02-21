@@ -36,6 +36,13 @@ vi.mock('../../utils/uuid.js', () => ({
   generateUUID: () => 'mock-uuid-1234',
 }));
 
+// Mock DocumentStatusCard (Story 12.3)
+vi.mock('../../components/dashboard/DocumentStatusCard.js', () => ({
+  DocumentStatusCard: () => (
+    <div role="region" aria-label="문서 현황">문서 현황</div>
+  ),
+}));
+
 const mockBmadData: BmadStatusResponse = {
   config: { prdFile: 'docs/prd.md' },
   documents: {
@@ -166,10 +173,8 @@ describe('BmadDashboard', () => {
 
     render(<BmadDashboard />);
 
-    // Document status section
+    // Document status section (mocked DocumentStatusCard)
     expect(screen.getByText('문서 현황')).toBeInTheDocument();
-    expect(screen.getByText('PRD')).toBeInTheDocument();
-    expect(screen.getByText('Architecture')).toBeInTheDocument();
 
     // Epic progress section
     expect(screen.getByText('에픽 진행률')).toBeInTheDocument();
