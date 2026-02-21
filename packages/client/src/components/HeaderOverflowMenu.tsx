@@ -137,19 +137,6 @@ export function HeaderOverflowMenu({
           {/* Divider */}
           <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
 
-          {/* Session list */}
-          {onShowSessions && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={handleShowSessions}
-              className={itemClass}
-            >
-              <History className="w-4 h-4" aria-hidden="true" />
-              세션 목록
-            </button>
-          )}
-
           {/* New session */}
           {onNewSession && (
             <button
@@ -160,6 +147,19 @@ export function HeaderOverflowMenu({
             >
               <Plus className="w-4 h-4" aria-hidden="true" />
               새 세션
+            </button>
+          )}
+
+          {/* Session list */}
+          {onShowSessions && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleShowSessions}
+              className={itemClass}
+            >
+              <History className="w-4 h-4" aria-hidden="true" />
+              세션 목록
             </button>
           )}
 
