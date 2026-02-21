@@ -4,13 +4,21 @@
  * [Source: Story 11.3 - Task 3]
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import type * as monacoEditor from 'monaco-editor';
 import { FileText, X, Loader2, Eye, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useFileStore } from '../../stores/fileStore';
+import { useTheme } from '../../hooks/useTheme';
 import { ConfirmModal } from '../ConfirmModal';
 import { MarkdownPreview } from './MarkdownPreview';
+
+const LazyEditor = lazy(() =>
+  import('@monaco-editor/react').then((mod) => ({
+    default: mod.Editor,
+  }))
+);
 
 export function TextEditor() {
   const {
@@ -22,6 +30,7 @@ export function TextEditor() {
     isTruncated,
     error,
     isMarkdownPreview,
+    language,
     saveFile,
     closeEditor,
     setContent,
@@ -31,7 +40,10 @@ export function TextEditor() {
   } = useFileStore();
 
   const [showConfirm, setShowConfirm] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
+
+  const { theme } = useTheme();
+  const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
 
   const isMarkdownFile = openFile ? openFile.path.toLowerCase().endsWith('.md') : false;
 
@@ -52,6 +64,14 @@ export function TextEditor() {
       closeEditor();
     }
   }, [isDirty, closeEditor]);
+
+  const handleEditorDidMount = useCallback(
+    (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
+      editorRef.current = editor;
+      editor.focus();
+    },
+    []
+  );
 
   // Ctrl+S / Cmd+S save and Escape close
   useEffect(() => {
@@ -85,10 +105,10 @@ export function TextEditor() {
     };
   }, [openFile]);
 
-  // Restore textarea focus when switching from preview to edit mode
+  // Restore editor focus when switching from preview to edit mode
   useEffect(() => {
     if (!isMarkdownPreview && isMarkdownFile) {
-      textareaRef.current?.focus();
+      editorRef.current?.focus();
     }
   }, [isMarkdownPreview, isMarkdownFile]);
 
@@ -185,15 +205,37 @@ export function TextEditor() {
             {isMarkdownPreview && isMarkdownFile ? (
               <MarkdownPreview content={content} />
             ) : (
-              <textarea
-                ref={textareaRef}
-                className="flex-1 w-full p-4 font-mono text-sm resize-none outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                spellCheck={false}
-                aria-label={`Editing ${filePath}`}
-                autoFocus
-              />
+              <div className="flex-1 relative" aria-label={`Editing ${filePath}`}>
+                <Suspense fallback={
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                      Loading editor...
+                    </span>
+                  </div>
+                }>
+                  <LazyEditor
+                    value={content}
+                    language={language}
+                    theme={monacoTheme}
+                    onChange={(value) => setContent(value ?? '')}
+                    onMount={handleEditorDidMount}
+                    options={{
+                      readOnly: isTruncated,
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      wordWrap: 'on',
+                      lineNumbers: 'on',
+                      renderLineHighlight: 'line',
+                      fontSize: 14,
+                      automaticLayout: true,
+                      tabSize: 2,
+                      insertSpaces: true,
+                      padding: { top: 16 },
+                    }}
+                  />
+                </Suspense>
+              </div>
             )}
           </>
         )}
