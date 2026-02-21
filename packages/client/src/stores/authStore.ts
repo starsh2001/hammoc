@@ -11,6 +11,7 @@ import { disconnectSocket } from '../services/socket';
 
 interface AuthState {
   isAuthenticated: boolean;
+  isPasswordConfigured: boolean | null;
   isLoading: boolean;
   error: string | null;
   rateLimitInfo: RateLimitInfo | null;
@@ -20,6 +21,7 @@ interface AuthActions {
   login: (password: string, rememberMe?: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  setupPassword: (password: string, confirmPassword: string) => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -28,6 +30,7 @@ type AuthStore = AuthState & AuthActions;
 export const useAuthStore = create<AuthStore>((set) => ({
   // Initial state - isLoading starts true to prevent premature redirects on page refresh
   isAuthenticated: false,
+  isPasswordConfigured: null,
   isLoading: true,
   error: null,
   rateLimitInfo: null,
@@ -90,10 +93,27 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ isLoading: true });
 
     try {
-      const { authenticated } = await authApi.status();
-      set({ isAuthenticated: authenticated, isLoading: false });
+      const { authenticated, passwordConfigured } = await authApi.status();
+      set({ isAuthenticated: authenticated, isPasswordConfigured: passwordConfigured, isLoading: false });
     } catch {
-      set({ isAuthenticated: false, isLoading: false });
+      set({ isAuthenticated: false, isPasswordConfigured: null, isLoading: false });
+    }
+  },
+
+  setupPassword: async (password: string, confirmPassword: string): Promise<boolean> => {
+    set({ isLoading: true, error: null });
+
+    try {
+      await authApi.setup({ password, confirmPassword });
+      set({ isAuthenticated: true, isPasswordConfigured: true, isLoading: false });
+      return true;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        set({ error: err.message, isLoading: false });
+      } else {
+        set({ error: '패스워드 설정 중 오류가 발생했습니다.', isLoading: false });
+      }
+      return false;
     }
   },
 

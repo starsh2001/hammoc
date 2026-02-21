@@ -4,7 +4,7 @@ import { createApp } from './app.js';
 import { initializeWebSocket } from './handlers/websocket.js';
 import { AuthConfigService } from './services/authConfigService.js';
 import { notificationService } from './services/notificationService.js';
-import { setupInitialPassword, resetPassword } from './cli/passwordSetup.js';
+import { resetPassword } from './cli/passwordSetup.js';
 
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
@@ -36,9 +36,9 @@ async function main() {
     process.exit(0);
   }
 
-  // 최초 실행 시 패스워드 설정
+  // Password not configured: skip CLI prompt, let web UI handle setup
   if (!authConfig.isPasswordConfigured()) {
-    await setupInitialPassword();
+    console.log('No password configured. Please set up via web browser.');
   }
 
   // Create Express app (async for session secret loading)

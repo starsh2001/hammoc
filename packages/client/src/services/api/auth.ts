@@ -9,10 +9,13 @@ import type {
   LoginResponse,
   LogoutResponse,
   AuthStatus,
+  SetupPasswordRequest,
+  SetupPasswordResponse,
 } from '@bmad-studio/shared';
 
 export const authApi = {
   login: (data: LoginRequest) => api.post<LoginResponse>('/auth/login', data),
   logout: () => api.post<LogoutResponse>('/auth/logout'),
   status: () => api.get<AuthStatus>('/auth/status'),
+  setup: (data: SetupPasswordRequest) => api.post<SetupPasswordResponse>('/auth/setup', data),
 };

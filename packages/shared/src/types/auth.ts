@@ -48,6 +48,10 @@ export const AUTH_CONFIG_ERRORS = {
     code: 'PASSWORD_MISMATCH',
     message: '패스워드가 일치하지 않습니다.',
   },
+  ALREADY_CONFIGURED: {
+    code: 'ALREADY_CONFIGURED',
+    message: '패스워드가 이미 설정되어 있습니다.',
+  },
 } as const;
 
 /** 에러 코드 타입 */
@@ -129,6 +133,23 @@ export interface LogoutResponse {
  */
 export interface AuthStatus {
   authenticated: boolean;
+  passwordConfigured: boolean;
+}
+
+/**
+ * 초기 패스워드 설정 요청 DTO
+ */
+export interface SetupPasswordRequest {
+  password: string;
+  confirmPassword: string;
+}
+
+/**
+ * 초기 패스워드 설정 응답 DTO
+ */
+export interface SetupPasswordResponse {
+  success: boolean;
+  message?: string;
 }
 
 /**

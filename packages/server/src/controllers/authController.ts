@@ -11,6 +11,8 @@ import {
   RateLimitErrorResponse,
   LogoutResponse,
   AUTH_ERROR_CODES,
+  AuthConfigError,
+  MIN_PASSWORD_LENGTH,
 } from '@bmad-studio/shared';
 import { AuthConfigService } from '../services/authConfigService.js';
 import { rateLimiter } from '../services/rateLimiter.js';
@@ -18,6 +20,11 @@ import { rateLimiter } from '../services/rateLimiter.js';
 const loginSchema = z.object({
   password: z.string().min(1, '패스워드를 입력해주세요.'),
   rememberMe: z.boolean().optional().default(true),
+});
+
+const setupSchema = z.object({
+  password: z.string().min(MIN_PASSWORD_LENGTH, `패스워드는 최소 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다.`),
+  confirmPassword: z.string().min(1, '패스워드 확인을 입력해주세요.'),
 });
 
 const authConfigService = new AuthConfigService();
@@ -114,11 +121,77 @@ export const authController = {
 
   /**
    * GET /api/auth/status
-   * Check if user is authenticated
+   * Check if user is authenticated and if password is configured
    */
   status(req: Request, res: Response): void {
     const authenticated = req.session?.authenticated === true;
-    res.json({ authenticated });
+    const passwordConfigured = authConfigService.isPasswordConfigured();
+    res.json({ authenticated, passwordConfigured });
+  },
+
+  /**
+   * POST /api/auth/setup
+   * Initial password setup (only works when no password is configured)
+   */
+  async setup(req: Request, res: Response): Promise<void> {
+    try {
+      if (authConfigService.isPasswordConfigured()) {
+        res.status(403).json({
+          error: {
+            code: 'ALREADY_CONFIGURED',
+            message: '패스워드가 이미 설정되어 있습니다.',
+          },
+        });
+        return;
+      }
+
+      const validation = setupSchema.safeParse(req.body);
+      if (!validation.success) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: validation.error.issues[0]?.message || '잘못된 요청입니다.',
+          },
+        });
+        return;
+      }
+
+      const { password, confirmPassword } = validation.data;
+
+      if (password !== confirmPassword) {
+        res.status(400).json({
+          error: {
+            code: 'PASSWORD_MISMATCH',
+            message: '패스워드가 일치하지 않습니다.',
+          },
+        });
+        return;
+      }
+
+      await authConfigService.setPassword(password);
+
+      // Auto-login after setup
+      if (req.session) {
+        req.session.authenticated = true;
+        req.session.rememberMe = true;
+      }
+
+      res.json({ success: true, message: '패스워드가 설정되었습니다.' });
+    } catch (err) {
+      if (err instanceof AuthConfigError) {
+        res.status(400).json({
+          error: { code: err.code, message: err.message },
+        });
+        return;
+      }
+      console.error('[auth] Setup handler error:', err);
+      res.status(500).json({
+        error: {
+          code: 'SETUP_ERROR',
+          message: '패스워드 설정 중 서버 오류가 발생했습니다.',
+        },
+      });
+    }
   },
 
   /**

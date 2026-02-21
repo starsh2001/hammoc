@@ -44,6 +44,8 @@ export {
   AuthStatus,
   AUTH_ERROR_CODES,
   AuthErrorCode,
+  SetupPasswordRequest,
+  SetupPasswordResponse,
 } from './types/auth.js';
 
 // Story 2.5: Auth error messages

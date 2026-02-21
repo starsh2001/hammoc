@@ -75,12 +75,14 @@ function createAuthState(overrides: {
 } = {}) {
   return {
     isAuthenticated: true,
+    isPasswordConfigured: true as boolean | null,
     isLoading: false,
     error: null as string | null,
     rateLimitInfo: null as null,
     checkAuth: vi.fn() as () => Promise<void>,
     logout: vi.fn() as () => Promise<void>,
     login: vi.fn() as (password: string, rememberMe?: boolean) => Promise<boolean>,
+    setupPassword: vi.fn() as (password: string, confirmPassword: string) => Promise<boolean>,
     clearError: vi.fn() as () => void,
     ...overrides,
   };

@@ -6,15 +6,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Request, Response } from 'express';
 
-// Create hoisted mock for verifyPassword (must be hoisted to be available in vi.mock)
-const { mockVerifyPassword } = vi.hoisted(() => ({
+// Create hoisted mocks (must be hoisted to be available in vi.mock)
+const { mockVerifyPassword, mockIsPasswordConfigured } = vi.hoisted(() => ({
   mockVerifyPassword: vi.fn(),
+  mockIsPasswordConfigured: vi.fn().mockReturnValue(true),
 }));
 
 // Mock dependencies
 vi.mock('../../services/authConfigService', () => ({
   AuthConfigService: vi.fn().mockImplementation(() => ({
     verifyPassword: mockVerifyPassword,
+    isPasswordConfigured: mockIsPasswordConfigured,
   })),
 }));
 
@@ -55,6 +57,7 @@ describe('authController', () => {
 
     // Setup default mock behavior
     vi.mocked(rateLimiter.canAttempt).mockReturnValue({ allowed: true });
+    mockIsPasswordConfigured.mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -200,7 +203,7 @@ describe('authController', () => {
 
       authController.status(mockReq as Request, mockRes as Response);
 
-      expect(mockRes.json).toHaveBeenCalledWith({ authenticated: true });
+      expect(mockRes.json).toHaveBeenCalledWith({ authenticated: true, passwordConfigured: true });
     });
 
     it('should return authenticated: false when session is not authenticated', () => {
@@ -208,7 +211,7 @@ describe('authController', () => {
 
       authController.status(mockReq as Request, mockRes as Response);
 
-      expect(mockRes.json).toHaveBeenCalledWith({ authenticated: false });
+      expect(mockRes.json).toHaveBeenCalledWith({ authenticated: false, passwordConfigured: true });
     });
 
     it('should return authenticated: false when session is null', () => {
@@ -216,7 +219,7 @@ describe('authController', () => {
 
       authController.status(mockReq as Request, mockRes as Response);
 
-      expect(mockRes.json).toHaveBeenCalledWith({ authenticated: false });
+      expect(mockRes.json).toHaveBeenCalledWith({ authenticated: false, passwordConfigured: true });
     });
   });
 
