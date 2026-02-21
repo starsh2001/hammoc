@@ -3,8 +3,8 @@
  * Story 4.4: Markdown Rendering - Task 6
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 
 // Mock CodeBlock component
@@ -16,7 +16,32 @@ vi.mock('../CodeBlock', () => ({
   ),
 }));
 
+// fileStore mock
+const mockRequestFileNavigation = vi.fn();
+vi.mock('../../stores/fileStore', () => ({
+  useFileStore: {
+    getState: () => ({
+      requestFileNavigation: mockRequestFileNavigation,
+    }),
+  },
+}));
+
+// messageStore mock
+const mockGetMessageState = vi.fn().mockReturnValue({
+  currentProjectSlug: 'test-project',
+});
+vi.mock('../../stores/messageStore', () => ({
+  useMessageStore: {
+    getState: () => mockGetMessageState(),
+  },
+}));
+
 describe('MarkdownRenderer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetMessageState.mockReturnValue({ currentProjectSlug: 'test-project' });
+  });
+
   describe('basic markdown', () => {
     it('should render h1 heading', () => {
       render(<MarkdownRenderer content="# Hello" />);
@@ -256,6 +281,87 @@ describe('MarkdownRenderer', () => {
       );
       // CodeBlock is rendered (mocked, so we just check it exists)
       expect(screen.getByTestId('code-block')).toBeInTheDocument();
+    });
+  });
+
+  describe('file links', () => {
+    it('TC-MR-FL1: should render relative path file link without target="_blank"', () => {
+      render(<MarkdownRenderer content="[app.ts](src/app.ts)" />);
+      const link = screen.getByRole('link', { name: 'app.ts' });
+      expect(link).toHaveAttribute('href', 'src/app.ts');
+      expect(link).not.toHaveAttribute('target');
+    });
+
+    it('TC-MR-FL2: should call requestFileNavigation on file link click', () => {
+      render(<MarkdownRenderer content="[app.ts](src/app.ts)" />);
+      const link = screen.getByRole('link', { name: 'app.ts' });
+      fireEvent.click(link);
+      expect(mockRequestFileNavigation).toHaveBeenCalledWith('test-project', 'src/app.ts');
+    });
+
+    it('TC-MR-FL3: should prevent default navigation on file link click', () => {
+      render(<MarkdownRenderer content="[app.ts](src/app.ts)" />);
+      const link = screen.getByRole('link', { name: 'app.ts' });
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+      link.dispatchEvent(event);
+      expect(preventDefaultSpy).toHaveBeenCalled();
+    });
+
+    it('TC-MR-FL4: should open external URL links in new tab', () => {
+      render(<MarkdownRenderer content="[Google](https://google.com)" />);
+      const link = screen.getByRole('link', { name: 'Google' });
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    });
+
+    it('TC-MR-FL5: should treat mailto: links as external', () => {
+      render(<MarkdownRenderer content="[Email](mailto:test@test.com)" />);
+      const link = screen.getByRole('link', { name: 'Email' });
+      expect(link).toHaveAttribute('target', '_blank');
+    });
+
+    it('TC-MR-FL6: should treat anchor links as external', () => {
+      render(<MarkdownRenderer content="[Section](#section)" />);
+      const link = screen.getByRole('link', { name: 'Section' });
+      expect(link).toHaveAttribute('target', '_blank');
+    });
+
+    it('TC-MR-FL7: should detect ./ relative paths as file links', () => {
+      render(<MarkdownRenderer content="[readme](./README.md)" />);
+      const link = screen.getByRole('link', { name: 'readme' });
+      fireEvent.click(link);
+      expect(mockRequestFileNavigation).toHaveBeenCalledWith('test-project', './README.md');
+    });
+
+    it('TC-MR-FL8: should not call requestFileNavigation when projectSlug is null', () => {
+      mockGetMessageState.mockReturnValueOnce({ currentProjectSlug: null });
+      render(<MarkdownRenderer content="[app.ts](src/app.ts)" />);
+      const link = screen.getByRole('link', { name: 'app.ts' });
+      fireEvent.click(link);
+      expect(mockRequestFileNavigation).not.toHaveBeenCalled();
+    });
+
+    it('TC-MR-FL9: should set title attribute on file links', () => {
+      render(<MarkdownRenderer content="[app.ts](src/app.ts)" />);
+      const link = screen.getByRole('link', { name: 'app.ts' });
+      expect(link).toHaveAttribute('title', '파일 열기: src/app.ts');
+    });
+
+    it('TC-MR-FL10: should treat blob: URLs as external (sanitized by react-markdown)', () => {
+      render(<MarkdownRenderer content="[Blob](blob:http://localhost/uuid)" />);
+      const el = screen.getByText('Blob');
+      // react-markdown sanitizes blob: URLs (strips href), but the element is still rendered
+      // as an external link with target="_blank"
+      expect(el.closest('a')).toHaveAttribute('target', '_blank');
+    });
+
+    it('TC-MR-FL11: should treat ws:// URLs as external (sanitized by react-markdown)', () => {
+      render(<MarkdownRenderer content="[WS](ws://localhost:8080)" />);
+      const el = screen.getByText('WS');
+      // react-markdown sanitizes ws: URLs (strips href), but the element is still rendered
+      // as an external link with target="_blank"
+      expect(el.closest('a')).toHaveAttribute('target', '_blank');
     });
   });
 

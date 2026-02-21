@@ -29,6 +29,7 @@ const initialState = {
   isMarkdownPreview: false,
   language: 'plaintext',
   error: null,
+  pendingNavigation: null,
 };
 
 describe('useFileStore', () => {
@@ -250,6 +251,97 @@ describe('useFileStore', () => {
       useFileStore.getState().closeEditor();
 
       expect(useFileStore.getState().language).toBe('plaintext');
+    });
+  });
+
+  describe('requestFileNavigation', () => {
+    it('TC-FS-PN1: should call openFileInEditor directly when isDirty is false', async () => {
+      mockedReadFile.mockResolvedValue({
+        content: 'file content',
+        isBinary: false,
+        isTruncated: false,
+        size: 12,
+        mimeType: 'text/plain',
+      });
+
+      useFileStore.getState().requestFileNavigation('my-project', 'src/app.ts');
+
+      // Wait for async openFileInEditor to complete
+      await vi.waitFor(() => {
+        expect(useFileStore.getState().isLoading).toBe(false);
+      });
+
+      const state = useFileStore.getState();
+      expect(state.openFile).toEqual({ projectSlug: 'my-project', path: 'src/app.ts' });
+      expect(state.pendingNavigation).toBeNull();
+    });
+
+    it('TC-FS-PN2: should set pendingNavigation when isDirty is true', () => {
+      useFileStore.setState({
+        openFile: { projectSlug: 'my-project', path: 'src/old.ts' },
+        content: 'modified',
+        originalContent: 'original',
+        isDirty: true,
+      });
+
+      useFileStore.getState().requestFileNavigation('my-project', 'src/new.ts');
+
+      const state = useFileStore.getState();
+      expect(state.pendingNavigation).toEqual({ projectSlug: 'my-project', path: 'src/new.ts' });
+      // openFile should not change
+      expect(state.openFile).toEqual({ projectSlug: 'my-project', path: 'src/old.ts' });
+    });
+
+    it('TC-FS-PN3: confirmPendingNavigation should open target file and clear pending', async () => {
+      mockedReadFile.mockResolvedValue({
+        content: 'new file content',
+        isBinary: false,
+        isTruncated: false,
+        size: 16,
+        mimeType: 'text/plain',
+      });
+
+      useFileStore.setState({
+        openFile: { projectSlug: 'my-project', path: 'src/old.ts' },
+        isDirty: true,
+        pendingNavigation: { projectSlug: 'my-project', path: 'src/new.ts' },
+      });
+
+      useFileStore.getState().confirmPendingNavigation();
+
+      await vi.waitFor(() => {
+        expect(useFileStore.getState().isLoading).toBe(false);
+      });
+
+      const state = useFileStore.getState();
+      expect(state.pendingNavigation).toBeNull();
+      expect(state.openFile).toEqual({ projectSlug: 'my-project', path: 'src/new.ts' });
+      expect(state.content).toBe('new file content');
+    });
+
+    it('TC-FS-PN4: cancelPendingNavigation should clear pendingNavigation only', () => {
+      useFileStore.setState({
+        openFile: { projectSlug: 'my-project', path: 'src/old.ts' },
+        isDirty: true,
+        pendingNavigation: { projectSlug: 'my-project', path: 'src/new.ts' },
+      });
+
+      useFileStore.getState().cancelPendingNavigation();
+
+      const state = useFileStore.getState();
+      expect(state.pendingNavigation).toBeNull();
+      // openFile should remain unchanged
+      expect(state.openFile).toEqual({ projectSlug: 'my-project', path: 'src/old.ts' });
+    });
+
+    it('TC-FS-PN5: confirmPendingNavigation should do nothing when no pending', () => {
+      const stateBefore = useFileStore.getState();
+
+      useFileStore.getState().confirmPendingNavigation();
+
+      const stateAfter = useFileStore.getState();
+      expect(stateAfter.openFile).toEqual(stateBefore.openFile);
+      expect(stateAfter.pendingNavigation).toBeNull();
     });
   });
 

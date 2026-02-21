@@ -37,6 +37,9 @@ export function TextEditor() {
     resetError,
     openFileInEditor,
     toggleMarkdownPreview,
+    pendingNavigation,
+    confirmPendingNavigation,
+    cancelPendingNavigation,
   } = useFileStore();
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -58,12 +61,15 @@ export function TextEditor() {
   }, [isDirty, isSaving, saveFile]);
 
   const handleClose = useCallback(() => {
+    if (pendingNavigation) {
+      cancelPendingNavigation();
+    }
     if (isDirty) {
       setShowConfirm(true);
     } else {
       closeEditor();
     }
-  }, [isDirty, closeEditor]);
+  }, [isDirty, closeEditor, pendingNavigation, cancelPendingNavigation]);
 
   const handleEditorDidMount = useCallback(
     (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
@@ -84,6 +90,8 @@ export function TextEditor() {
         return;
       }
       if (e.key === 'Escape') {
+        // Pending navigation ConfirmModal is open — let it handle its own Escape
+        if (pendingNavigation) return;
         if (showConfirm) {
           setShowConfirm(false);
           return;
@@ -94,7 +102,7 @@ export function TextEditor() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [openFile, handleSave, handleClose, showConfirm]);
+  }, [openFile, handleSave, handleClose, showConfirm, pendingNavigation]);
 
   // Body scroll lock
   useEffect(() => {
@@ -254,6 +262,18 @@ export function TextEditor() {
           setShowConfirm(false);
         }}
         onCancel={() => setShowConfirm(false)}
+      />
+
+      {/* Pending Navigation Confirm Dialog */}
+      <ConfirmModal
+        isOpen={!!pendingNavigation}
+        title="저장하지 않은 변경 사항"
+        message={`저장하지 않은 변경 사항이 있습니다. '${pendingNavigation?.path ?? ''}'을(를) 열까요?`}
+        confirmText="저장하지 않고 열기"
+        cancelText="취소"
+        variant="danger"
+        onConfirm={confirmPendingNavigation}
+        onCancel={cancelPendingNavigation}
       />
     </>
   );

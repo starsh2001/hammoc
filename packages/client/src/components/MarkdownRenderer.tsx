@@ -19,6 +19,19 @@ import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './CodeBlock';
 import { useThrottle } from '../hooks/useThrottle';
+import { useFileStore } from '../stores/fileStore';
+import { useMessageStore } from '../stores/messageStore';
+
+/**
+ * Check if a URL is an external link (not a relative file path).
+ * External: http(s), mailto, tel, ftp, data, javascript, blob, ws(s) protocols, protocol-relative, anchors
+ * Non-external: relative paths like "src/app.ts", "./README.md", "docs/guide.md"
+ */
+function isExternalUrl(href: string): boolean {
+  return /^(?:https?|mailto|tel|ftp|data|javascript|blob|wss?):/i.test(href)
+    || href.startsWith('//')
+    || href.startsWith('#');
+}
 
 interface MarkdownRendererProps {
   /** Markdown content to render */
@@ -92,8 +105,29 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
         return <>{children}</>;
       },
 
-      // Links - open in new tab
+      // Links - file links open in editor, external links in new tab
       a({ href, children, ...props }) {
+        // File link: relative path (not external URL)
+        if (href && !isExternalUrl(href)) {
+          return (
+            <a
+              href={href}
+              onClick={(e) => {
+                e.preventDefault();
+                const projectSlug = useMessageStore.getState().currentProjectSlug;
+                if (!projectSlug) return;
+                useFileStore.getState().requestFileNavigation(projectSlug, href);
+              }}
+              className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+              title={`파일 열기: ${href}`}
+              {...props}
+            >
+              {children}
+            </a>
+          );
+        }
+
+        // External link: open in new tab (existing behavior)
         return (
           <a
             href={href}
