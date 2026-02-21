@@ -27,7 +27,6 @@ const initialState = {
   isSaving: false,
   isTruncated: false,
   isMarkdownPreview: false,
-  language: 'plaintext',
   error: null,
   pendingNavigation: null,
 };
@@ -196,61 +195,6 @@ describe('useFileStore', () => {
       expect(state.isSaving).toBe(false);
       expect(state.isTruncated).toBe(false);
       expect(state.error).toBeNull();
-    });
-  });
-
-  describe('language detection', () => {
-    it('TC-FS15: should set language to typescript for .ts files', async () => {
-      mockedReadFile.mockResolvedValue({
-        content: 'const x = 1;',
-        isBinary: false,
-        isTruncated: false,
-        size: 12,
-        mimeType: 'text/plain',
-      });
-
-      await useFileStore.getState().openFileInEditor('my-project', 'src/index.ts');
-
-      expect(useFileStore.getState().language).toBe('typescript');
-    });
-
-    it('TC-FS16: should set language to python for .py files', async () => {
-      mockedReadFile.mockResolvedValue({
-        content: 'print("hello")',
-        isBinary: false,
-        isTruncated: false,
-        size: 14,
-        mimeType: 'text/plain',
-      });
-
-      await useFileStore.getState().openFileInEditor('my-project', 'main.py');
-
-      expect(useFileStore.getState().language).toBe('python');
-    });
-
-    it('TC-FS17: should set language to plaintext for files without extension', async () => {
-      mockedReadFile.mockResolvedValue({
-        content: 'FROM node:22',
-        isBinary: false,
-        isTruncated: false,
-        size: 12,
-        mimeType: 'text/plain',
-      });
-
-      await useFileStore.getState().openFileInEditor('my-project', 'Dockerfile');
-
-      expect(useFileStore.getState().language).toBe('plaintext');
-    });
-
-    it('TC-FS18: closeEditor should reset language to plaintext', () => {
-      useFileStore.setState({
-        openFile: { projectSlug: 'my-project', path: 'src/index.ts' },
-        language: 'typescript',
-      });
-
-      useFileStore.getState().closeEditor();
-
-      expect(useFileStore.getState().language).toBe('plaintext');
     });
   });
 
