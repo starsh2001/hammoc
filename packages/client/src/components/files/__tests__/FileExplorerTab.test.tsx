@@ -1,6 +1,7 @@
 /**
  * FileExplorerTab Tests
  * [Source: Story 13.2 - Task 4.1]
+ * [Extended: Story 13.3 - Task 6.3 — CRUD integration tests]
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -15,6 +16,9 @@ vi.mock('../../../services/api/fileSystem.js', () => ({
     listDirectory: vi.fn(),
     readFile: vi.fn(),
     writeFile: vi.fn(),
+    createEntry: vi.fn(),
+    deleteEntry: vi.fn(),
+    renameEntry: vi.fn(),
   },
 }));
 
@@ -242,5 +246,56 @@ describe('FileExplorerTab', () => {
     // Now Root should be aria-current again
     const updatedCurrent = breadcrumbNav.querySelector('[aria-current="page"]');
     expect(updatedCurrent?.textContent).toBe('Root');
+  });
+
+  // --- Story 13.3: CRUD Integration Tests ---
+
+  // TC-FET-9: FileTree receives enableContextMenu={true} prop
+  it('passes enableContextMenu={true} to FileTree', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    // Verify context menu works (which means enableContextMenu=true was passed)
+    fireEvent.contextMenu(screen.getByText('src'));
+
+    await waitFor(() => {
+      expect(screen.getByText('새 파일')).toBeInTheDocument();
+    });
+  });
+
+  // TC-FET-10: FileTree receives CRUD callback props
+  it('passes CRUD callbacks to FileTree', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+    vi.mocked(fileSystemApi.createEntry).mockResolvedValue({ success: true, type: 'file', path: 'test.txt' });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    // Test that create callback works through the flow
+    fireEvent.contextMenu(screen.getByText('src'));
+    await waitFor(() => {
+      expect(screen.getByText('새 파일')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('새 파일'));
+    await waitFor(() => {
+      expect(screen.getByLabelText('새 항목 이름')).toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText('새 항목 이름');
+    fireEvent.change(input, { target: { value: 'test.txt' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(fileSystemApi.createEntry).toHaveBeenCalledWith('test-project', 'src/test.txt', 'file');
+    });
   });
 });
