@@ -23,7 +23,7 @@ import type { DirectoryEntry } from '@bmad-studio/shared';
 import { fileSystemApi } from '../../services/api/fileSystem.js';
 import { useFileStore } from '../../stores/fileStore.js';
 
-const HIDDEN_PATTERNS = ['.git', 'node_modules', '.next', '.cache', '__pycache__', '.DS_Store', '.env'];
+const HIDDEN_PATTERNS = ['.env', '.git', 'node_modules', '.next', '.cache', '__pycache__', '.DS_Store', 'dist', '.turbo'];
 
 function sortEntries(entries: DirectoryEntry[]): DirectoryEntry[] {
   return [...entries].sort((a, b) => {
@@ -37,26 +37,21 @@ function buildFlatList(
   dirCache: Map<string, DirectoryEntry[]>,
   expandedDirs: Set<string>,
   showHidden: boolean,
-  filterText?: string,
 ): string[] {
   const result: string[] = [];
   const entries = dirCache.get(basePath);
   if (!entries) return result;
 
   const sorted = sortEntries(entries);
-  let filtered = showHidden
+  const filtered = showHidden
     ? sorted
     : sorted.filter((e) => !HIDDEN_PATTERNS.includes(e.name));
-  if (filterText) {
-    const lower = filterText.toLowerCase();
-    filtered = filtered.filter((e) => e.name.toLowerCase().includes(lower));
-  }
 
   for (const entry of filtered) {
     const fullPath = basePath === '.' ? entry.name : `${basePath}/${entry.name}`;
     result.push(fullPath);
     if (entry.type === 'directory' && expandedDirs.has(fullPath)) {
-      result.push(...buildFlatList(fullPath, dirCache, expandedDirs, showHidden, filterText));
+      result.push(...buildFlatList(fullPath, dirCache, expandedDirs, showHidden));
     }
   }
   return result;
@@ -257,7 +252,7 @@ function InlineInput({ initialValue, entryType, depth, onConfirm, onCancel }: In
   return (
     <div
       className="flex items-center gap-1.5 px-2 py-1"
-      style={{ paddingLeft: `${depth * 16 + 8 + 14}px` }}
+      style={{ paddingLeft: `${depth * 16 + 8 + 20}px` }}
     >
       {entryType === 'directory' ? (
         <Folder className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
@@ -271,7 +266,7 @@ function InlineInput({ initialValue, entryType, depth, onConfirm, onCancel }: In
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
-        className="text-sm bg-white dark:bg-gray-900 border border-blue-500 rounded px-1 py-0.5 outline-none flex-1"
+        className="text-sm bg-white dark:bg-gray-900 dark:text-white border border-blue-500 rounded px-1 py-0 outline-none flex-1 h-5 leading-5"
         aria-label={initialValue ? '이름 변경' : '새 항목 이름'}
       />
     </div>
@@ -343,7 +338,6 @@ interface FileTreeProps {
   onFileSelect: (path: string) => void;
   showHidden?: boolean;
   enableContextMenu?: boolean;
-  filterText?: string;
   onNavigate?: (path: string) => void;
   onCreateEntry?: (parentPath: string, type: 'file' | 'directory', name: string) => Promise<void>;
   onDeleteEntry?: (path: string) => Promise<void>;
@@ -356,7 +350,6 @@ export function FileTree({
   onFileSelect,
   showHidden = false,
   enableContextMenu = false,
-  filterText,
   onNavigate,
   onCreateEntry,
   onDeleteEntry,
@@ -496,8 +489,11 @@ export function FileTree({
         await onCreateEntry?.(inlineInput.parentPath, inlineInput.entryType, value.trim());
         await loadDirectory(inlineInput.parentPath);
       } else if (inlineInput.mode === 'rename' && inlineInput.targetPath) {
-        await onRenameEntry?.(inlineInput.targetPath, value.trim());
-        await loadDirectory(inlineInput.parentPath);
+        // Skip API call if name unchanged
+        if (value.trim() !== inlineInput.initialValue) {
+          await onRenameEntry?.(inlineInput.targetPath, value.trim());
+          await loadDirectory(inlineInput.parentPath);
+        }
       }
     } catch {
       // Error handling is done in parent via callback
@@ -535,12 +531,15 @@ export function FileTree({
   }, [deleteConfirm, onDeleteEntry, loadDirectory]);
 
   const flattenedVisibleItems = useMemo(
-    () => buildFlatList(basePath, dirCache, expandedDirs, showHidden, filterText),
-    [basePath, dirCache, expandedDirs, showHidden, filterText],
+    () => buildFlatList(basePath, dirCache, expandedDirs, showHidden),
+    [basePath, dirCache, expandedDirs, showHidden],
   );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Skip tree navigation when inline input (rename/create) is active
+      if (inlineInput) return;
+
       const items = flattenedVisibleItems;
       if (items.length === 0) return;
 
@@ -617,7 +616,7 @@ export function FileTree({
         }
       }
     },
-    [flattenedVisibleItems, focusedPath, basePath, dirCache, expandedDirs, toggleDir, onFileSelect],
+    [flattenedVisibleItems, focusedPath, basePath, dirCache, expandedDirs, toggleDir, onFileSelect, inlineInput],
   );
 
   const rootEntries = dirCache.get(basePath);
@@ -625,13 +624,8 @@ export function FileTree({
   const filteredRootEntries = useMemo(() => {
     if (!rootEntries) return [];
     const sorted = sortEntries(rootEntries);
-    let filtered = showHidden ? sorted : sorted.filter((e) => !HIDDEN_PATTERNS.includes(e.name));
-    if (filterText) {
-      const lower = filterText.toLowerCase();
-      filtered = filtered.filter((e) => e.name.toLowerCase().includes(lower));
-    }
-    return filtered;
-  }, [rootEntries, showHidden, filterText]);
+    return showHidden ? sorted : sorted.filter((e) => !HIDDEN_PATTERNS.includes(e.name));
+  }, [rootEntries, showHidden]);
 
   if (loadingDirs.has(basePath) && !rootEntries) {
     return (
@@ -692,7 +686,6 @@ export function FileTree({
             loadingDirs={loadingDirs}
             dirErrors={dirErrors}
             showHidden={showHidden}
-            filterText={filterText}
             currentOpenPath={openFilePath}
             focusedPath={focusedPath}
             onToggleDir={toggleDir}
@@ -747,7 +740,6 @@ interface FileTreeNodeProps {
   loadingDirs: Set<string>;
   dirErrors: Map<string, string>;
   showHidden: boolean;
-  filterText?: string;
   currentOpenPath: string | null;
   focusedPath: string | null;
   onToggleDir: (path: string) => void;
@@ -771,7 +763,6 @@ function FileTreeNode({
   loadingDirs,
   dirErrors,
   showHidden,
-  filterText,
   currentOpenPath,
   focusedPath,
   onToggleDir,
@@ -797,13 +788,8 @@ function FileTreeNode({
   const filteredChildren = useMemo(() => {
     if (!childEntries) return [];
     const sorted = sortEntries(childEntries);
-    let filtered = showHidden ? sorted : sorted.filter((e) => !HIDDEN_PATTERNS.includes(e.name));
-    if (filterText) {
-      const lower = filterText.toLowerCase();
-      filtered = filtered.filter((e) => e.name.toLowerCase().includes(lower));
-    }
-    return filtered;
-  }, [childEntries, showHidden, filterText]);
+    return showHidden ? sorted : sorted.filter((e) => !HIDDEN_PATTERNS.includes(e.name));
+  }, [childEntries, showHidden]);
 
   const handleClick = () => {
     if (isDirectory) {
@@ -844,7 +830,6 @@ function FileTreeNode({
                   loadingDirs={loadingDirs}
                   dirErrors={dirErrors}
                   showHidden={showHidden}
-                  filterText={filterText}
                   currentOpenPath={currentOpenPath}
                   focusedPath={focusedPath}
                   onToggleDir={onToggleDir}
@@ -979,7 +964,6 @@ function FileTreeNode({
                 loadingDirs={loadingDirs}
                 dirErrors={dirErrors}
                 showHidden={showHidden}
-                filterText={filterText}
                 currentOpenPath={currentOpenPath}
                 focusedPath={focusedPath}
                 onToggleDir={onToggleDir}
