@@ -10,7 +10,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Plus, History, Settings, LogOut } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Plus, History, FolderOpen, Settings, LogOut } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { formatAgentRoleLabel } from '../utils/agentUtils';
@@ -36,6 +36,8 @@ interface ChatHeaderProps {
   onNewSession?: () => void;
   /** Callback when session history button is clicked */
   onShowSessions?: () => void;
+  /** Callback when file explorer button is clicked */
+  onShowFileExplorer?: () => void;
   /** Callback when logout is clicked */
   onLogout?: () => void;
   /** Callback when session is renamed (null to remove name) */
@@ -57,6 +59,7 @@ export function ChatHeader({
   isRefreshing = false,
   onNewSession,
   onShowSessions,
+  onShowFileExplorer,
   onLogout,
   onRenameSession,
   activeAgent,
@@ -213,6 +216,18 @@ export function ChatHeader({
             </button>
           )}
 
+          {onShowFileExplorer && (
+            <button
+              onClick={onShowFileExplorer}
+              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
+                         text-gray-700 dark:text-gray-300
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="파일 탐색기"
+            >
+              <FolderOpen className="w-5 h-5" aria-hidden="true" />
+            </button>
+          )}
+
           {onShowSessions && (
             <button
               onClick={onShowSessions}
@@ -272,6 +287,7 @@ export function ChatHeader({
           <div className="md:hidden">
             <HeaderOverflowMenu
               onShowSessions={onShowSessions}
+              onShowFileExplorer={onShowFileExplorer}
               onNewSession={onNewSession}
               onRefresh={onRefresh}
               isRefreshing={isRefreshing}
