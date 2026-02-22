@@ -29,6 +29,8 @@ const initialState = {
   isMarkdownPreview: false,
   error: null,
   pendingNavigation: null,
+  targetLine: null,
+  recentFiles: {},
 };
 
 describe('useFileStore', () => {
@@ -196,6 +198,18 @@ describe('useFileStore', () => {
       expect(state.isTruncated).toBe(false);
       expect(state.error).toBeNull();
     });
+
+    it('TC-FS-REC-5: should preserve recentFiles across closeEditor', () => {
+      useFileStore.setState({
+        openFile: { projectSlug: 'my-project', path: 'src/index.ts' },
+        content: 'some content',
+        recentFiles: { 'session-1': ['a.ts', 'b.ts'] },
+      });
+
+      useFileStore.getState().closeEditor();
+
+      expect(useFileStore.getState().recentFiles).toEqual({ 'session-1': ['a.ts', 'b.ts'] });
+    });
   });
 
   describe('requestFileNavigation', () => {
@@ -340,6 +354,43 @@ describe('useFileStore', () => {
       await useFileStore.getState().openFileInEditor('test', 'OTHER.md');
 
       expect(useFileStore.getState().isMarkdownPreview).toBe(false);
+    });
+  });
+
+  describe('recentFiles', () => {
+    beforeEach(() => {
+      useFileStore.setState({ recentFiles: {} });
+    });
+
+    it('TC-FS-REC-1: adds a file to recent files for a session', () => {
+      useFileStore.getState().addRecentFile('session-1', 'src/App.tsx');
+      expect(useFileStore.getState().recentFiles['session-1']).toEqual(['src/App.tsx']);
+    });
+
+    it('TC-FS-REC-2: moves duplicate to top', () => {
+      const store = useFileStore.getState();
+      store.addRecentFile('session-1', 'a.ts');
+      store.addRecentFile('session-1', 'b.ts');
+      store.addRecentFile('session-1', 'a.ts');
+      expect(useFileStore.getState().recentFiles['session-1']).toEqual(['a.ts', 'b.ts']);
+    });
+
+    it('TC-FS-REC-3: limits to 5 recent files', () => {
+      const store = useFileStore.getState();
+      for (let i = 1; i <= 7; i++) {
+        store.addRecentFile('session-1', `file${i}.ts`);
+      }
+      const recent = useFileStore.getState().recentFiles['session-1'];
+      expect(recent).toHaveLength(5);
+      expect(recent![0]).toBe('file7.ts');
+    });
+
+    it('TC-FS-REC-4: keeps sessions independent', () => {
+      const store = useFileStore.getState();
+      store.addRecentFile('session-1', 'a.ts');
+      store.addRecentFile('session-2', 'b.ts');
+      expect(useFileStore.getState().recentFiles['session-1']).toEqual(['a.ts']);
+      expect(useFileStore.getState().recentFiles['session-2']).toEqual(['b.ts']);
     });
   });
 });

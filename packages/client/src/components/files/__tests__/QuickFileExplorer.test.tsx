@@ -1,20 +1,32 @@
 /**
  * QuickFileExplorer Component Tests
- * [Source: Story 14.1 - Task 5.1]
+ * [Source: Story 14.1 - Task 5.1, Story 14.2 - Task 5.2]
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { QuickFileExplorer } from '../QuickFileExplorer';
 
 const mockRequestFileNavigation = vi.fn();
+const mockAddRecentFile = vi.fn();
 
 vi.mock('../../../stores/fileStore.js', () => ({
-  useFileStore: {
-    getState: vi.fn(() => ({
-      requestFileNavigation: mockRequestFileNavigation,
-    })),
-  },
+  useFileStore: Object.assign(
+    vi.fn((selector: any) => {
+      if (selector) {
+        return selector({
+          recentFiles: { 'test-session': ['recent/file1.ts', 'recent/file2.ts'] },
+        });
+      }
+      return {};
+    }),
+    {
+      getState: vi.fn(() => ({
+        requestFileNavigation: mockRequestFileNavigation,
+        addRecentFile: mockAddRecentFile,
+      })),
+    }
+  ),
 }));
 
 vi.mock('../FileTree.js', () => ({
@@ -27,10 +39,19 @@ vi.mock('../FileTree.js', () => ({
   )),
 }));
 
+vi.mock('../../../services/api/fileSystem.js', () => ({
+  fileSystemApi: {
+    searchFiles: vi.fn(),
+  },
+}));
+
+import { fileSystemApi } from '../../../services/api/fileSystem.js';
+
 describe('QuickFileExplorer', () => {
   const defaultProps = {
     isOpen: true,
     projectSlug: 'test-project',
+    sessionId: 'test-session',
     onClose: vi.fn(),
   };
 
@@ -100,12 +121,13 @@ describe('QuickFileExplorer', () => {
   });
 
   // TC-QFE-8
-  it('should call requestFileNavigation and onClose when a file is selected', () => {
+  it('should call requestFileNavigation, addRecentFile, and onClose when a file is selected', () => {
     render(<QuickFileExplorer {...defaultProps} />);
 
     fireEvent.click(screen.getByTestId('mock-file'));
 
     expect(mockRequestFileNavigation).toHaveBeenCalledWith('test-project', 'src/test.ts');
+    expect(mockAddRecentFile).toHaveBeenCalledWith('test-session', 'src/test.ts');
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -129,5 +151,142 @@ describe('QuickFileExplorer', () => {
     expect(document.activeElement).toBe(triggerButton);
 
     document.body.removeChild(triggerButton);
+  });
+
+  // TC-QFE-10
+  it('should display search input', () => {
+    render(<QuickFileExplorer {...defaultProps} />);
+
+    expect(screen.getByPlaceholderText('파일 검색...')).toBeInTheDocument();
+  });
+
+  // TC-QFE-11
+  it('should call search API after 300ms debounce', async () => {
+    const mockSearchFiles = vi.mocked(fileSystemApi.searchFiles);
+    mockSearchFiles.mockResolvedValue({
+      query: 'test',
+      results: [{ path: 'src/test.ts', name: 'test.ts', type: 'file' as const }],
+    });
+
+    render(<QuickFileExplorer {...defaultProps} />);
+
+    const searchInput = screen.getByPlaceholderText('파일 검색...');
+    fireEvent.change(searchInput, { target: { value: 'test' } });
+
+    // Should not call immediately
+    expect(mockSearchFiles).not.toHaveBeenCalled();
+
+    // Advance past debounce
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(mockSearchFiles).toHaveBeenCalledWith('test-project', 'test', false);
+  });
+
+  // TC-QFE-12
+  it('should call requestFileNavigation and addRecentFile when search result file is clicked', async () => {
+    const mockSearchFiles = vi.mocked(fileSystemApi.searchFiles);
+    mockSearchFiles.mockResolvedValue({
+      query: 'app',
+      results: [{ path: 'src/App.tsx', name: 'App.tsx', type: 'file' as const }],
+    });
+
+    render(<QuickFileExplorer {...defaultProps} />);
+
+    const searchInput = screen.getByPlaceholderText('파일 검색...');
+    fireEvent.change(searchInput, { target: { value: 'app' } });
+
+    // Advance past debounce and flush async promise resolution
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Search results should now be rendered
+    expect(screen.getByText('App.tsx')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /App\.tsx/i }));
+
+    expect(mockRequestFileNavigation).toHaveBeenCalledWith('test-project', 'src/App.tsx');
+    expect(mockAddRecentFile).toHaveBeenCalledWith('test-session', 'src/App.tsx');
+  });
+
+  // TC-QFE-13
+  it('should show loading indicator while searching', () => {
+    render(<QuickFileExplorer {...defaultProps} />);
+
+    const searchInput = screen.getByPlaceholderText('파일 검색...');
+    fireEvent.change(searchInput, { target: { value: 'test' } });
+
+    // searchLoading is set to true synchronously in the useEffect
+    expect(screen.getByText('검색 중...')).toBeInTheDocument();
+  });
+
+  // TC-QFE-14
+  it('should show "검색 결과가 없습니다." when no results', async () => {
+    const mockSearchFiles = vi.mocked(fileSystemApi.searchFiles);
+    mockSearchFiles.mockResolvedValue({
+      query: 'nonexistent',
+      results: [],
+    });
+
+    render(<QuickFileExplorer {...defaultProps} />);
+
+    const searchInput = screen.getByPlaceholderText('파일 검색...');
+    fireEvent.change(searchInput, { target: { value: 'nonexistent' } });
+
+    // Advance past debounce and flush async promise resolution
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(screen.getByText('검색 결과가 없습니다.')).toBeInTheDocument();
+  });
+
+  // TC-QFE-15
+  it('should show recent files section when recent files exist', () => {
+    render(<QuickFileExplorer {...defaultProps} />);
+
+    expect(screen.getByText('최근 열기')).toBeInTheDocument();
+    expect(screen.getByText('file1.ts')).toBeInTheDocument();
+    expect(screen.getByText('file2.ts')).toBeInTheDocument();
+  });
+
+  // TC-QFE-16
+  it('should open file when recent file is clicked', () => {
+    render(<QuickFileExplorer {...defaultProps} />);
+
+    fireEvent.click(screen.getByText('file1.ts'));
+
+    expect(mockRequestFileNavigation).toHaveBeenCalledWith('test-project', 'recent/file1.ts');
+    expect(mockAddRecentFile).toHaveBeenCalledWith('test-session', 'recent/file1.ts');
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // TC-QFE-17
+  it('should add to recent files when FileTree file is selected', () => {
+    render(<QuickFileExplorer {...defaultProps} />);
+
+    fireEvent.click(screen.getByTestId('mock-file'));
+
+    expect(mockAddRecentFile).toHaveBeenCalledWith('test-session', 'src/test.ts');
+  });
+
+  // TC-QFE-18
+  it('should clear search text when panel reopens', () => {
+    const { rerender } = render(<QuickFileExplorer {...defaultProps} />);
+
+    const searchInput = screen.getByPlaceholderText('파일 검색...');
+    fireEvent.change(searchInput, { target: { value: 'test' } });
+
+    // Close then reopen
+    rerender(<QuickFileExplorer {...defaultProps} isOpen={false} />);
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    rerender(<QuickFileExplorer {...defaultProps} isOpen={true} />);
+
+    const newSearchInput = screen.getByPlaceholderText('파일 검색...');
+    expect(newSearchInput).toHaveValue('');
   });
 });
