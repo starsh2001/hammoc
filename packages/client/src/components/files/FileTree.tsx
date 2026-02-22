@@ -23,9 +23,9 @@ import type { DirectoryEntry } from '@bmad-studio/shared';
 import { fileSystemApi } from '../../services/api/fileSystem.js';
 import { useFileStore } from '../../stores/fileStore.js';
 
-const HIDDEN_PATTERNS = ['.env', '.git', 'node_modules', '.next', '.cache', '__pycache__', '.DS_Store', 'dist', '.turbo'];
+export const HIDDEN_PATTERNS = ['.env', '.git', 'node_modules', '.next', '.cache', '__pycache__', '.DS_Store', 'dist', '.turbo'];
 
-function sortEntries(entries: DirectoryEntry[]): DirectoryEntry[] {
+export function sortEntries(entries: DirectoryEntry[]): DirectoryEntry[] {
   return [...entries].sort((a, b) => {
     if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
     return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
@@ -87,7 +87,7 @@ interface DeleteConfirmState {
 
 // --- FileTreeContextMenu Component ---
 
-interface FileTreeContextMenuProps {
+export interface FileTreeContextMenuProps {
   x: number;
   y: number;
   targetType: 'file' | 'directory';
@@ -98,7 +98,7 @@ interface FileTreeContextMenuProps {
   onClose: () => void;
 }
 
-function FileTreeContextMenu({
+export function FileTreeContextMenu({
   x,
   y,
   targetType: _targetType,
@@ -209,7 +209,7 @@ function FileTreeContextMenu({
 
 // --- InlineInput Component ---
 
-interface InlineInputProps {
+export interface InlineInputProps {
   initialValue: string;
   entryType: 'file' | 'directory';
   depth: number;
@@ -217,7 +217,7 @@ interface InlineInputProps {
   onCancel: () => void;
 }
 
-function InlineInput({ initialValue, entryType, depth, onConfirm, onCancel }: InlineInputProps) {
+export function InlineInput({ initialValue, entryType, depth, onConfirm, onCancel }: InlineInputProps) {
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -275,14 +275,14 @@ function InlineInput({ initialValue, entryType, depth, onConfirm, onCancel }: In
 
 // --- DeleteConfirmDialog Component ---
 
-interface DeleteConfirmDialogProps {
+export interface DeleteConfirmDialogProps {
   name: string;
   type: 'file' | 'directory';
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-function DeleteConfirmDialog({ name, type, onConfirm, onCancel }: DeleteConfirmDialogProps) {
+export function DeleteConfirmDialog({ name, type, onConfirm, onCancel }: DeleteConfirmDialogProps) {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel();
