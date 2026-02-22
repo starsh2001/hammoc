@@ -1,6 +1,7 @@
 /**
  * FileExplorerTab - File explorer tab for project view
  * [Source: Story 13.2 - Task 2]
+ * [Extended: Story 13.3 - Task 5 — CRUD callbacks and toast integration]
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -8,13 +9,33 @@ import { useParams } from 'react-router-dom';
 import { ChevronRight, Search, X, Eye, EyeOff } from 'lucide-react';
 
 import { useFileStore } from '../../stores/fileStore.js';
+import { useToast } from '../../hooks/useToast.js';
+import { ToastContainer } from '../common/Toast.js';
+import { fileSystemApi } from '../../services/api/fileSystem.js';
 import { FileTree } from './FileTree.js';
+
+const CRUD_ERROR_MESSAGES: Record<string, string> = {
+  FILE_ALREADY_EXISTS: '파일 또는 디렉토리가 이미 존재합니다.',
+  PARENT_NOT_FOUND: '상위 디렉토리가 존재하지 않습니다.',
+  PROTECTED_PATH: '보호된 경로는 삭제할 수 없습니다.',
+  RENAME_TARGET_EXISTS: '대상 경로에 파일이 이미 존재합니다.',
+  PATH_TRAVERSAL: '프로젝트 루트 외부 경로에 접근할 수 없습니다.',
+};
+
+function getCrudErrorMessage(err: unknown, fallbackPrefix: string): string {
+  const apiErr = err as { code?: string; message?: string };
+  if (apiErr.code && CRUD_ERROR_MESSAGES[apiErr.code]) {
+    return `${fallbackPrefix}: ${CRUD_ERROR_MESSAGES[apiErr.code]}`;
+  }
+  return `${fallbackPrefix}: ${(err as Error).message}`;
+}
 
 export function FileExplorerTab() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const [filterText, setFilterText] = useState('');
   const [showHidden, setShowHidden] = useState(false);
   const [currentPath, setCurrentPath] = useState('.');
+  const { toasts, showToast, removeToast } = useToast();
 
   const handleFileSelect = useCallback(
     (path: string) => {
@@ -22,6 +43,40 @@ export function FileExplorerTab() {
     },
     [projectSlug],
   );
+
+  const handleCreateEntry = useCallback(async (parentPath: string, type: 'file' | 'directory', name: string) => {
+    try {
+      const fullPath = parentPath === '.' ? name : `${parentPath}/${name}`;
+      await fileSystemApi.createEntry(projectSlug!, fullPath, type);
+      showToast({ message: type === 'directory' ? `'${name}' 폴더가 생성되었습니다.` : `'${name}' 파일이 생성되었습니다.`, type: 'success' });
+    } catch (err) {
+      showToast({ message: getCrudErrorMessage(err, '생성 실패'), type: 'error' });
+      throw err;
+    }
+  }, [projectSlug, showToast]);
+
+  const handleDeleteEntry = useCallback(async (path: string) => {
+    try {
+      const name = path.includes('/') ? path.split('/').pop()! : path;
+      await fileSystemApi.deleteEntry(projectSlug!, path);
+      showToast({ message: `'${name}'이(가) 삭제되었습니다.`, type: 'success' });
+    } catch (err) {
+      showToast({ message: getCrudErrorMessage(err, '삭제 실패'), type: 'error' });
+      throw err;
+    }
+  }, [projectSlug, showToast]);
+
+  const handleRenameEntry = useCallback(async (path: string, newName: string) => {
+    try {
+      const parentPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '.';
+      const newPath = parentPath === '.' ? newName : `${parentPath}/${newName}`;
+      await fileSystemApi.renameEntry(projectSlug!, path, newPath);
+      showToast({ message: `'${newName}'(으)로 이름이 변경되었습니다.`, type: 'success' });
+    } catch (err) {
+      showToast({ message: getCrudErrorMessage(err, '이름 변경 실패'), type: 'error' });
+      throw err;
+    }
+  }, [projectSlug, showToast]);
 
   const segments = useMemo(() => {
     if (currentPath === '.') {
@@ -119,8 +174,15 @@ export function FileExplorerTab() {
           showHidden={showHidden}
           filterText={filterText}
           onNavigate={setCurrentPath}
+          enableContextMenu={true}
+          onCreateEntry={handleCreateEntry}
+          onDeleteEntry={handleDeleteEntry}
+          onRenameEntry={handleRenameEntry}
         />
       </div>
+
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );
 }
