@@ -15,12 +15,28 @@ export interface BmadConfig {
 export interface BmadDocumentStatus {
   exists: boolean;
   path: string;
+  /** Whether this document is sharded into multiple files */
+  sharded?: boolean;
+  /** Path to the sharded directory (present only when sharded is true) */
+  shardedPath?: string;
+}
+
+/** Well-known supplementary document (brief, front-end-spec, brainstorming, etc.) */
+export interface BmadSupplementaryDoc {
+  /** Machine key, e.g. "brief", "front-end-spec" */
+  key: string;
+  /** Human-readable label, e.g. "Project Brief" */
+  label: string;
+  exists: boolean;
+  path: string;
 }
 
 /** Documents section of the response */
 export interface BmadDocuments {
   prd: BmadDocumentStatus;
   architecture: BmadDocumentStatus;
+  /** Well-known supplementary documents discovered in docs/ */
+  supplementary: BmadSupplementaryDoc[];
 }
 
 /** Individual story status within an epic */
@@ -34,6 +50,8 @@ export interface BmadEpicStatus {
   number: number;
   name: string;
   stories: BmadStoryStatus[];
+  /** Number of stories defined in the PRD epic file (may exceed stories.length) */
+  plannedStories?: number;
 }
 
 /** Auxiliary document info */

@@ -558,6 +558,25 @@ class ProjectService {
   }
 
   /**
+   * Resolve a project slug to its originalPath.
+   * Tries sessions-index.json first, falls back to JSONL-based discovery.
+   * @throws Error with code 'PROJECT_NOT_FOUND' if project cannot be resolved
+   */
+  async resolveOriginalPath(projectSlug: string): Promise<string> {
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+    let info = await this.parseSessionsIndex(projectDir, projectSlug);
+    if (!info) {
+      info = await this.buildProjectFromDirectory(projectDir, projectSlug);
+    }
+    if (!info) {
+      const err = new Error('프로젝트를 찾을 수 없습니다.');
+      (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
+      throw err;
+    }
+    return info.originalPath;
+  }
+
+  /**
    * Check if a path exists on the filesystem
    * @param targetPath Path to check
    * @returns true if path exists
