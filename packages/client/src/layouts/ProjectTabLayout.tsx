@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, LayoutDashboard, MessageSquare, ListOrdered, Settings, MoreVertical, Moon, Sun, LogOut } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, Settings, MoreVertical, Moon, Sun, LogOut } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAuthStore } from '../stores/authStore';
 import { BrandLogo } from '../components/BrandLogo';
@@ -17,6 +17,7 @@ import { useTheme } from '../hooks/useTheme';
 
 const tabs = [
   { id: 'dashboard', label: '대시보드', icon: LayoutDashboard, path: '' },
+  { id: 'files', label: '파일', icon: FolderOpen, path: '/files' },
   { id: 'sessions', label: '세션', icon: MessageSquare, path: '/sessions' },
   { id: 'queue', label: '큐 러너', icon: ListOrdered, path: '/queue' },
 ] as const;
@@ -50,11 +51,11 @@ export function ProjectTabLayout() {
     return parts[parts.length - 1] || projectFullPath;
   }, [projectFullPath]);
 
-  // Determine active tab from URL
+  // Determine active tab from URL (reverse order for longest prefix match)
   const activeTabId = useMemo(() => {
     const basePath = `/project/${projectSlug}`;
-    for (const tab of tabs) {
-      if (tab.path && location.pathname === `${basePath}${tab.path}`) {
+    for (const tab of [...tabs].reverse()) {
+      if (tab.path && location.pathname.startsWith(`${basePath}${tab.path}`)) {
         return tab.id;
       }
     }
@@ -187,7 +188,7 @@ export function ProjectTabLayout() {
 
       {/* Tab content */}
       <main className="flex-1 overflow-auto">
-        <div className="content-container">
+        <div className="content-container h-full">
           <Outlet />
         </div>
       </main>
