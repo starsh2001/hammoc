@@ -216,18 +216,6 @@ export function ChatHeader({
             </button>
           )}
 
-          {onShowFileExplorer && (
-            <button
-              onClick={onShowFileExplorer}
-              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                         text-gray-700 dark:text-gray-300
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="파일 탐색기"
-            >
-              <FolderOpen className="w-5 h-5" aria-hidden="true" />
-            </button>
-          )}
-
           {onShowSessions && (
             <button
               onClick={onShowSessions}
@@ -237,6 +225,18 @@ export function ChatHeader({
               aria-label="세션 목록"
             >
               <History className="w-5 h-5" aria-hidden="true" />
+            </button>
+          )}
+
+          {onShowFileExplorer && (
+            <button
+              onClick={onShowFileExplorer}
+              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
+                         text-gray-700 dark:text-gray-300
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="파일 리스트"
+            >
+              <FolderOpen className="w-5 h-5" aria-hidden="true" />
             </button>
           )}
 

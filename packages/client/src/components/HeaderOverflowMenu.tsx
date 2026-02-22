@@ -157,19 +157,6 @@ export function HeaderOverflowMenu({
             </button>
           )}
 
-          {/* File explorer */}
-          {onShowFileExplorer && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={handleShowFileExplorer}
-              className={itemClass}
-            >
-              <FolderOpen className="w-4 h-4" aria-hidden="true" />
-              파일 탐색기
-            </button>
-          )}
-
           {/* Session list */}
           {onShowSessions && (
             <button
@@ -180,6 +167,19 @@ export function HeaderOverflowMenu({
             >
               <History className="w-4 h-4" aria-hidden="true" />
               세션 목록
+            </button>
+          )}
+
+          {/* File list */}
+          {onShowFileExplorer && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleShowFileExplorer}
+              className={itemClass}
+            >
+              <FolderOpen className="w-4 h-4" aria-hidden="true" />
+              파일 리스트
             </button>
           )}
 

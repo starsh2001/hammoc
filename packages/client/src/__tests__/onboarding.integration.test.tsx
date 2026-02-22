@@ -83,6 +83,7 @@ function createAuthState(overrides: {
     logout: vi.fn() as () => Promise<void>,
     login: vi.fn() as (password: string, rememberMe?: boolean) => Promise<boolean>,
     setupPassword: vi.fn() as (password: string, confirmPassword: string) => Promise<boolean>,
+    recheckAuth: vi.fn() as () => Promise<void>,
     clearError: vi.fn() as () => void,
     ...overrides,
   };
