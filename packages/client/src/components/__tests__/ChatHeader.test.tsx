@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { ChatHeader } from '../ChatHeader';
 
 // Mock useWebSocket hook
@@ -34,11 +35,13 @@ describe('ChatHeader', () => {
 
   const renderComponent = (props = {}) => {
     return render(
-      <ChatHeader
-        projectSlug="test-project"
-        onBack={mockOnBack}
-        {...props}
-      />
+      <MemoryRouter>
+        <ChatHeader
+          projectSlug="test-project"
+          onBack={mockOnBack}
+          {...props}
+        />
+      </MemoryRouter>
     );
   };
 
@@ -158,6 +161,31 @@ describe('ChatHeader', () => {
       fireEvent.click(screen.getByRole('button', { name: '세션 목록' }));
 
       expect(mockOnShowSessions).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // Story 14.1 - Task 5.2: File explorer button tests
+  describe('file explorer button', () => {
+    const mockOnShowFileExplorer = vi.fn();
+
+    it('should render file explorer button when onShowFileExplorer is provided (TC-CH-NEW-1)', () => {
+      renderComponent({ onShowFileExplorer: mockOnShowFileExplorer });
+
+      expect(screen.getByRole('button', { name: '파일 탐색기' })).toBeInTheDocument();
+    });
+
+    it('should call onShowFileExplorer when button is clicked (TC-CH-NEW-2)', () => {
+      renderComponent({ onShowFileExplorer: mockOnShowFileExplorer });
+
+      fireEvent.click(screen.getByRole('button', { name: '파일 탐색기' }));
+
+      expect(mockOnShowFileExplorer).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not render file explorer button when onShowFileExplorer is not provided (TC-CH-NEW-3)', () => {
+      renderComponent();
+
+      expect(screen.queryByRole('button', { name: '파일 탐색기' })).not.toBeInTheDocument();
     });
   });
 

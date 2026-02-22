@@ -7,11 +7,12 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MoreVertical, Moon, Sun, History, Plus, RefreshCw, Settings, LogOut } from 'lucide-react';
+import { MoreVertical, Moon, Sun, History, Plus, FolderOpen, RefreshCw, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 interface HeaderOverflowMenuProps {
   onShowSessions?: () => void;
+  onShowFileExplorer?: () => void;
   onNewSession?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
@@ -21,6 +22,7 @@ interface HeaderOverflowMenuProps {
 
 export function HeaderOverflowMenu({
   onShowSessions,
+  onShowFileExplorer,
   onNewSession,
   onRefresh,
   isRefreshing = false,
@@ -73,6 +75,11 @@ export function HeaderOverflowMenu({
     onShowSessions?.();
     setIsOpen(false);
   }, [onShowSessions]);
+
+  const handleShowFileExplorer = useCallback(() => {
+    onShowFileExplorer?.();
+    setIsOpen(false);
+  }, [onShowFileExplorer]);
 
   const handleNewSession = useCallback(() => {
     onNewSession?.();
@@ -147,6 +154,19 @@ export function HeaderOverflowMenu({
             >
               <Plus className="w-4 h-4" aria-hidden="true" />
               새 세션
+            </button>
+          )}
+
+          {/* File explorer */}
+          {onShowFileExplorer && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleShowFileExplorer}
+              className={itemClass}
+            >
+              <FolderOpen className="w-4 h-4" aria-hidden="true" />
+              파일 탐색기
             </button>
           )}
 
