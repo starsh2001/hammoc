@@ -38,6 +38,12 @@ vi.mock('../../../stores/fileStore.js', () => ({
   ),
 }));
 
+// Mock preferencesStore
+vi.mock('../../../stores/preferencesStore.js', () => ({
+  usePreferencesStore: (selector: (state: { preferences: { fileExplorerViewMode?: string } }) => unknown) =>
+    selector({ preferences: { fileExplorerViewMode: 'list' } }),
+}));
+
 import { fileSystemApi } from '../../../services/api/fileSystem.js';
 
 const mockRootEntries: DirectoryEntry[] = [
@@ -315,5 +321,105 @@ describe('FileExplorerTab', () => {
     await waitFor(() => {
       expect(fileSystemApi.createEntry).toHaveBeenCalledWith('test-project', 'src/test.txt', 'file');
     });
+  });
+
+  // --- View Mode Toggle Tests ---
+
+  // TC-FET-11: View mode toggle button exists and switches between list/grid
+  it('toggles between list and grid view', async () => {
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    // Default is list view (tree role present)
+    expect(screen.getByRole('tree')).toBeInTheDocument();
+
+    // Toggle to grid view
+    const toggleButton = screen.getByLabelText('그리드 뷰');
+    fireEvent.click(toggleButton);
+
+    // Tree should be gone, grid items should appear
+    await waitFor(() => {
+      expect(screen.queryByRole('tree')).not.toBeInTheDocument();
+    });
+
+    // Should still show entries (loaded by FileGridView)
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    // Toggle back to list view
+    const listButton = screen.getByLabelText('리스트 뷰');
+    fireEvent.click(listButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('tree')).toBeInTheDocument();
+    });
+  });
+
+  // TC-FET-12: Grid view shows current directory items
+  it('shows grid view with current directory items', async () => {
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    // Switch to grid
+    fireEvent.click(screen.getByLabelText('그리드 뷰'));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('tree')).not.toBeInTheDocument();
+    });
+
+    // Grid should show non-hidden entries
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+    expect(screen.getByText('package.json')).toBeInTheDocument();
+    expect(screen.getByText('README.md')).toBeInTheDocument();
+  });
+
+  // TC-FET-13: Grid view folder click updates breadcrumb
+  it('updates breadcrumb when folder is clicked in grid view', async () => {
+    vi.mocked(fileSystemApi.listDirectory)
+      .mockResolvedValueOnce({ path: '.', entries: mockRootEntries })
+      .mockResolvedValueOnce({ path: '.', entries: mockRootEntries })
+      .mockResolvedValueOnce({
+        path: 'src',
+        entries: [
+          { name: 'App.tsx', type: 'file', size: 2048, modifiedAt: '2026-02-20T10:00:00Z' },
+        ],
+      });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    // Switch to grid
+    fireEvent.click(screen.getByLabelText('그리드 뷰'));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('tree')).not.toBeInTheDocument();
+    });
+
+    // Click src folder in grid
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('src'));
+
+    // Breadcrumb should update to "Root > src"
+    await waitFor(() => {
+      expect(screen.getByText('App.tsx')).toBeInTheDocument();
+    });
+
+    const breadcrumbNav = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    const currentPage = breadcrumbNav.querySelector('[aria-current="page"]');
+    expect(currentPage?.textContent).toBe('src');
   });
 });
