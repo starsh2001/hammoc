@@ -80,10 +80,10 @@ describe('QuickFileExplorer', () => {
   });
 
   // TC-QFE-3
-  it('should display "파일 탐색기" title in header', () => {
+  it('should display "퀵 파일 리스트" title in header', () => {
     render(<QuickFileExplorer {...defaultProps} />);
 
-    expect(screen.getByText('파일 탐색기')).toBeInTheDocument();
+    expect(screen.getByText('퀵 파일 리스트')).toBeInTheDocument();
   });
 
   // TC-QFE-4

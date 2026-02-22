@@ -11,6 +11,8 @@ import { FileTree } from './FileTree.js';
 import { useFileStore } from '../../stores/fileStore.js';
 import { fileSystemApi } from '../../services/api/fileSystem.js';
 
+const EMPTY_RECENT_FILES: string[] = [];
+
 interface QuickFileExplorerProps {
   isOpen: boolean;
   projectSlug: string;
@@ -37,7 +39,7 @@ export function QuickFileExplorer({
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Recent files from store
-  const recentFiles = useFileStore((state) => state.recentFiles[sessionId] ?? []);
+  const recentFiles = useFileStore((state) => state.recentFiles[sessionId] ?? EMPTY_RECENT_FILES);
 
   // Handle open/close with animation + focus save/restore
   useEffect(() => {
@@ -170,7 +172,7 @@ export function QuickFileExplorer({
         ref={panelRef}
         data-testid="quick-file-explorer-panel"
         role="dialog"
-        aria-label="퀵 파일 탐색기"
+        aria-label="퀵 파일 리스트"
         aria-modal="true"
         className={`fixed inset-0 z-50 bg-white dark:bg-gray-900
                     md:inset-auto md:top-0 md:right-0 md:bottom-0 md:w-80
@@ -187,7 +189,7 @@ export function QuickFileExplorer({
                         border-b border-gray-200 dark:border-gray-700"
         >
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            파일 탐색기
+            퀵 파일 리스트
           </h2>
           <button
             ref={closeButtonRef}

@@ -171,13 +171,13 @@ describe('ChatHeader', () => {
     it('should render file explorer button when onShowFileExplorer is provided (TC-CH-NEW-1)', () => {
       renderComponent({ onShowFileExplorer: mockOnShowFileExplorer });
 
-      expect(screen.getByRole('button', { name: '파일 탐색기' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '파일 리스트' })).toBeInTheDocument();
     });
 
     it('should call onShowFileExplorer when button is clicked (TC-CH-NEW-2)', () => {
       renderComponent({ onShowFileExplorer: mockOnShowFileExplorer });
 
-      fireEvent.click(screen.getByRole('button', { name: '파일 탐색기' }));
+      fireEvent.click(screen.getByRole('button', { name: '파일 리스트' }));
 
       expect(mockOnShowFileExplorer).toHaveBeenCalledTimes(1);
     });
@@ -185,7 +185,7 @@ describe('ChatHeader', () => {
     it('should not render file explorer button when onShowFileExplorer is not provided (TC-CH-NEW-3)', () => {
       renderComponent();
 
-      expect(screen.queryByRole('button', { name: '파일 탐색기' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: '파일 리스트' })).not.toBeInTheDocument();
     });
   });
 

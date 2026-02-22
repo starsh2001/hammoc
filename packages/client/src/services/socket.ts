@@ -22,9 +22,9 @@ export function getSocket(): Socket<ServerToClientEvents, ClientToServerEvents> 
     socketInstance = io(socketUrl, {
       autoConnect: true,
       withCredentials: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
+      reconnectionDelayMax: 30000,
     });
   }
   return socketInstance;
