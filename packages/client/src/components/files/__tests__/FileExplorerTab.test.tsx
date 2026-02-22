@@ -4,16 +4,17 @@
  * [Extended: Story 13.3 - Task 6.3 — CRUD integration tests]
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { FileExplorerTab } from '../FileExplorerTab.js';
-import type { DirectoryEntry, DirectoryListResponse } from '@bmad-studio/shared';
+import type { DirectoryEntry } from '@bmad-studio/shared';
 
 // Mock fileSystemApi
 vi.mock('../../../services/api/fileSystem.js', () => ({
   fileSystemApi: {
     listDirectory: vi.fn(),
+    searchFiles: vi.fn(),
     readFile: vi.fn(),
     writeFile: vi.fn(),
     createEntry: vi.fn(),
@@ -48,11 +49,6 @@ const mockRootEntries: DirectoryEntry[] = [
   { name: '.env', type: 'file', size: 128, modifiedAt: '2026-02-18T12:00:00Z' },
 ];
 
-const mockRootResponse: DirectoryListResponse = {
-  path: '.',
-  entries: mockRootEntries,
-};
-
 function renderWithRouter(initialPath = '/project/test-project/files') {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
@@ -66,13 +62,16 @@ function renderWithRouter(initialPath = '/project/test-project/files') {
 beforeEach(() => {
   vi.clearAllMocks();
   mockOpenFile = null;
+  vi.mocked(fileSystemApi.listDirectory).mockResolvedValue({ path: '.', entries: mockRootEntries });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('FileExplorerTab', () => {
   // TC-FET-1: FileExplorerTab renders and FileTree is displayed (AC2)
   it('renders and displays FileTree', async () => {
-    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
-
     renderWithRouter();
 
     await waitFor(() => {
@@ -85,8 +84,6 @@ describe('FileExplorerTab', () => {
 
   // TC-FET-2: Breadcrumb shows initial "Root" (AC3)
   it('displays breadcrumb with Root initially', async () => {
-    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
-
     renderWithRouter();
 
     await waitFor(() => {
@@ -96,15 +93,12 @@ describe('FileExplorerTab', () => {
     const breadcrumbNav = screen.getByRole('navigation', { name: 'Breadcrumb' });
     expect(breadcrumbNav).toBeInTheDocument();
 
-    // Root should have aria-current="page" as it's the only/last segment
     const currentPage = breadcrumbNav.querySelector('[aria-current="page"]');
     expect(currentPage?.textContent).toBe('Root');
   });
 
   // TC-FET-3: Search input exists with placeholder (AC4)
   it('has search input with placeholder', async () => {
-    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
-
     renderWithRouter();
 
     await waitFor(() => {
@@ -115,9 +109,16 @@ describe('FileExplorerTab', () => {
     expect(searchInput).toBeInTheDocument();
   });
 
-  // TC-FET-4: Search input filters FileTree entries (AC4)
-  it('filters entries when typing in search input', async () => {
-    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+  // TC-FET-4: Search input shows search results from server API (AC4)
+  it('shows search results from server API when typing', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    vi.mocked(fileSystemApi.searchFiles).mockResolvedValue({
+      query: 'App',
+      results: [
+        { path: 'src/App.tsx', name: 'App.tsx', type: 'file' },
+      ],
+    });
 
     renderWithRouter();
 
@@ -126,20 +127,29 @@ describe('FileExplorerTab', () => {
     });
 
     const searchInput = screen.getByPlaceholderText('파일 검색...');
-    fireEvent.change(searchInput, { target: { value: 'package' } });
+    fireEvent.change(searchInput, { target: { value: 'App' } });
 
-    // package.json should remain visible
-    expect(screen.getByText('package.json')).toBeInTheDocument();
+    // Advance debounce timer
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
 
-    // src and README.md should be filtered out
-    expect(screen.queryByText('src')).not.toBeInTheDocument();
-    expect(screen.queryByText('README.md')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(fileSystemApi.searchFiles).toHaveBeenCalledWith('test-project', 'App', false);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('App.tsx')).toBeInTheDocument();
+    });
+
+    // FileTree should be replaced by search results (tree role gone)
+    expect(screen.queryByRole('tree')).not.toBeInTheDocument();
+
+    vi.useRealTimers();
   });
 
   // TC-FET-5: Hidden files toggle works
   it('toggles hidden files visibility', async () => {
-    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
-
     renderWithRouter();
 
     await waitFor(() => {
@@ -163,8 +173,6 @@ describe('FileExplorerTab', () => {
 
   // TC-FET-6: File selection calls requestFileNavigation (AC2)
   it('calls requestFileNavigation when file is selected', async () => {
-    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
-
     renderWithRouter();
 
     await waitFor(() => {
@@ -176,9 +184,16 @@ describe('FileExplorerTab', () => {
     expect(mockRequestFileNavigation).toHaveBeenCalledWith('test-project', 'package.json');
   });
 
-  // TC-FET-7: Clear button resets search text (AC4)
+  // TC-FET-7: Clear button resets search text and shows FileTree (AC4)
   it('clears search text when X button is clicked', async () => {
-    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    vi.mocked(fileSystemApi.searchFiles).mockResolvedValue({
+      query: 'App',
+      results: [
+        { path: 'src/App.tsx', name: 'App.tsx', type: 'file' },
+      ],
+    });
 
     renderWithRouter();
 
@@ -187,36 +202,42 @@ describe('FileExplorerTab', () => {
     });
 
     const searchInput = screen.getByPlaceholderText('파일 검색...');
-    fireEvent.change(searchInput, { target: { value: 'package' } });
+    fireEvent.change(searchInput, { target: { value: 'App' } });
 
-    // src should be filtered out
-    expect(screen.queryByText('src')).not.toBeInTheDocument();
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Should show search results (no tree)
+    await waitFor(() => {
+      expect(screen.queryByRole('tree')).not.toBeInTheDocument();
+    });
 
     // Click clear button
     const clearButton = screen.getByLabelText('검색어 지우기');
     fireEvent.click(clearButton);
 
-    // All entries should be visible again
+    // FileTree should be back
     await waitFor(() => {
-      expect(screen.getByText('src')).toBeInTheDocument();
+      expect(screen.getByRole('tree')).toBeInTheDocument();
     });
-    expect(screen.getByText('package.json')).toBeInTheDocument();
     expect((searchInput as HTMLInputElement).value).toBe('');
+
+    vi.useRealTimers();
   });
 
   // TC-FET-8: Breadcrumb updates on directory navigation (AC3)
   it('updates breadcrumb when directory is expanded', async () => {
-    const mockSrcResponse: DirectoryListResponse = {
-      path: 'src',
-      entries: [
-        { name: 'components', type: 'directory', size: 0, modifiedAt: '2026-02-20T10:00:00Z' },
-        { name: 'App.tsx', type: 'file', size: 2048, modifiedAt: '2026-02-20T10:00:00Z' },
-      ],
-    };
-
     vi.mocked(fileSystemApi.listDirectory)
-      .mockResolvedValueOnce(mockRootResponse)
-      .mockResolvedValueOnce(mockSrcResponse);
+      .mockResolvedValueOnce({ path: '.', entries: mockRootEntries })
+      .mockResolvedValueOnce({
+        path: 'src',
+        entries: [
+          { name: 'components', type: 'directory', size: 0, modifiedAt: '2026-02-20T10:00:00Z' },
+          { name: 'App.tsx', type: 'file', size: 2048, modifiedAt: '2026-02-20T10:00:00Z' },
+          { name: 'main.tsx', type: 'file', size: 256, modifiedAt: '2026-02-19T14:00:00Z' },
+        ],
+      });
 
     renderWithRouter();
 
@@ -252,8 +273,6 @@ describe('FileExplorerTab', () => {
 
   // TC-FET-9: FileTree receives enableContextMenu={true} prop
   it('passes enableContextMenu={true} to FileTree', async () => {
-    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
-
     renderWithRouter();
 
     await waitFor(() => {
@@ -270,8 +289,7 @@ describe('FileExplorerTab', () => {
 
   // TC-FET-10: FileTree receives CRUD callback props
   it('passes CRUD callbacks to FileTree', async () => {
-    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
-    vi.mocked(fileSystemApi.createEntry).mockResolvedValue({ success: true, type: 'file', path: 'test.txt' });
+    vi.mocked(fileSystemApi.createEntry).mockResolvedValue({ success: true, type: 'file', path: 'src/test.txt' });
 
     renderWithRouter();
 

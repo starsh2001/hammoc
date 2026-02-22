@@ -11,11 +11,16 @@ import { isBinaryFile, getMimeType, MAX_FILE_SIZE, isProtectedPath } from '../ut
 import type {
   FileReadResponse,
   DirectoryListResponse,
+  DirectoryTreeEntry,
+  DirectoryTreeResponse,
   FileWriteResponse,
   FileCreateResponse,
   FileDeleteResponse,
   FileRenameResponse,
+  FileSearchResult,
+  FileSearchResponse,
 } from '@bmad-studio/shared';
+
 
 /**
  * FileSystemService - Read files and list directories within project roots
@@ -132,6 +137,140 @@ class FileSystemService {
 
     return { path: relativePath, entries };
   }
+
+  /**
+   * Build a full recursive directory tree.
+   * Skips heavy/hidden directories like .git, node_modules, etc.
+   * @param projectRoot Absolute path to the project root
+   * @param relativePath Relative path to start from
+   * @returns DirectoryTreeResponse
+   */
+  async listDirectoryTree(projectRoot: string, relativePath: string): Promise<DirectoryTreeResponse> {
+    const absolutePath = validateProjectPath(projectRoot, relativePath);
+
+    let stat;
+    try {
+      stat = await fs.stat(absolutePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('Directory not found');
+        (err as NodeJS.ErrnoException).code = 'DIRECTORY_NOT_FOUND';
+        throw err;
+      }
+      throw error;
+    }
+
+    if (!stat.isDirectory()) {
+      const err = new Error('Path is not a directory');
+      (err as NodeJS.ErrnoException).code = 'NOT_A_DIRECTORY';
+      throw err;
+    }
+
+    const tree = await this.buildTree(absolutePath);
+    return { path: relativePath, tree };
+  }
+
+  /** Directories too large to recurse into (listed as entries but with empty children in tree, skipped in search). */
+  private static readonly SKIP_DIRS = new Set([
+    'node_modules', '.git', '.next', '.cache', '__pycache__', 'dist', '.turbo',
+  ]);
+
+  /**
+   * Recursively build a tree of DirectoryTreeEntry from the filesystem.
+   */
+  private async buildTree(absolutePath: string): Promise<DirectoryTreeEntry[]> {
+    const dirEntries = await fs.readdir(absolutePath);
+    const results: DirectoryTreeEntry[] = [];
+
+    for (const name of dirEntries) {
+      try {
+        const entryPath = path.join(absolutePath, name);
+        const entryStat = await fs.stat(entryPath);
+
+        if (entryStat.isDirectory()) {
+          const children = FileSystemService.SKIP_DIRS.has(name)
+            ? []
+            : await this.buildTree(entryPath);
+          results.push({ name, type: 'directory', children });
+        } else {
+          results.push({ name, type: 'file' });
+        }
+      } catch {
+        // Skip entries that can't be stat'd (e.g., broken symlinks)
+        continue;
+      }
+    }
+
+    // Sort: directories first, then alphabetical
+    results.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
+
+    return results;
+  }
+
+  /**
+   * Search files and directories by name within a project root.
+   * Recursively searches directories for files matching the query.
+   * When includeHidden is false (default), SKIP_DIRS are not recursed into.
+   * When includeHidden is true, all directories are searched.
+   * @param projectRoot Absolute path to the project root
+   * @param query Search query (case-insensitive name match)
+   * @param maxResults Maximum number of results to return
+   * @param includeHidden Whether to search inside SKIP_DIRS
+   * @returns FileSearchResponse
+   */
+  async searchFiles(projectRoot: string, query: string, maxResults: number = 100, includeHidden: boolean = false): Promise<FileSearchResponse> {
+    const lowerQuery = query.toLowerCase();
+    const results: FileSearchResult[] = [];
+    await this.searchRecursive(projectRoot, '', lowerQuery, results, maxResults, includeHidden);
+    return { query, results };
+  }
+
+  private async searchRecursive(
+    absoluteBase: string,
+    relativePath: string,
+    query: string,
+    results: FileSearchResult[],
+    maxResults: number,
+    includeHidden: boolean,
+  ): Promise<void> {
+    if (results.length >= maxResults) return;
+
+    const currentAbsolute = relativePath
+      ? path.join(absoluteBase, relativePath)
+      : absoluteBase;
+
+    let dirEntries: string[];
+    try {
+      dirEntries = await fs.readdir(currentAbsolute);
+    } catch {
+      return;
+    }
+
+    for (const name of dirEntries) {
+      if (results.length >= maxResults) return;
+
+      try {
+        const entryAbsolute = path.join(currentAbsolute, name);
+        const entryStat = await fs.stat(entryAbsolute);
+        const entryRelative = relativePath ? `${relativePath}/${name}` : name;
+        const entryType: 'file' | 'directory' = entryStat.isDirectory() ? 'directory' : 'file';
+
+        if (name.toLowerCase().includes(query)) {
+          results.push({ path: entryRelative, name, type: entryType });
+        }
+
+        if (entryStat.isDirectory() && (includeHidden || !FileSystemService.SKIP_DIRS.has(name))) {
+          await this.searchRecursive(absoluteBase, entryRelative, query, results, maxResults, includeHidden);
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
   /**
    * Write content to a file within a project root.
    * Creates the file if it doesn't exist, overwrites if it does.

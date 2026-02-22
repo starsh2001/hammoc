@@ -142,3 +142,47 @@ export const FILE_SYSTEM_ERRORS = {
 } as const;
 
 export type FileSystemErrorCode = keyof typeof FILE_SYSTEM_ERRORS;
+
+/**
+ * Single search result entry
+ */
+export interface FileSearchResult {
+  /** Relative path from project root */
+  path: string;
+  /** File/folder name */
+  name: string;
+  /** Entry type */
+  type: 'file' | 'directory';
+}
+
+/**
+ * Response for GET /api/projects/:projectSlug/fs/search
+ */
+export interface FileSearchResponse {
+  /** Search query */
+  query: string;
+  /** Matching entries */
+  results: FileSearchResult[];
+}
+
+/**
+ * Recursive directory tree entry (for full-tree API)
+ */
+export interface DirectoryTreeEntry {
+  /** File/folder name */
+  name: string;
+  /** Entry type */
+  type: 'file' | 'directory';
+  /** Children entries (directory only) */
+  children?: DirectoryTreeEntry[];
+}
+
+/**
+ * Response for GET /api/projects/:projectSlug/fs/tree
+ */
+export interface DirectoryTreeResponse {
+  /** Requested base path */
+  path: string;
+  /** Recursive tree of entries */
+  tree: DirectoryTreeEntry[];
+}

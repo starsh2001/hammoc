@@ -16,6 +16,8 @@ const largeBodyParser = express.json({ limit: '5mb' });
 // Read routes (Story 11.1)
 router.get('/:projectSlug/fs/read', fileSystemController.readFile);
 router.get('/:projectSlug/fs/list', fileSystemController.listDirectory);
+router.get('/:projectSlug/fs/tree', fileSystemController.listDirectoryTree);
+router.get('/:projectSlug/fs/search', fileSystemController.searchFiles);
 
 // Write routes (Story 11.2)
 router.put('/:projectSlug/fs/write', largeBodyParser, fileSystemController.writeFile);

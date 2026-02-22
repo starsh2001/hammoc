@@ -9,9 +9,11 @@ import type {
   FileReadResponse,
   FileWriteResponse,
   DirectoryListResponse,
+  DirectoryTreeResponse,
   FileCreateResponse,
   FileDeleteResponse,
   FileRenameResponse,
+  FileSearchResponse,
 } from '@bmad-studio/shared';
 
 export const fileSystemApi = {
@@ -23,6 +25,9 @@ export const fileSystemApi = {
 
   listDirectory: (projectSlug: string, path: string = '.') =>
     api.get<DirectoryListResponse>(`/projects/${projectSlug}/fs/list?path=${encodeURIComponent(path)}`),
+
+  listDirectoryTree: (projectSlug: string, path: string = '.') =>
+    api.get<DirectoryTreeResponse>(`/projects/${projectSlug}/fs/tree?path=${encodeURIComponent(path)}`),
 
   createEntry: (projectSlug: string, path: string, type: 'file' | 'directory' = 'file') =>
     api.post<FileCreateResponse>(
@@ -39,4 +44,7 @@ export const fileSystemApi = {
     api.patch<FileRenameResponse>(
       `/projects/${projectSlug}/fs/rename?path=${encodeURIComponent(path)}&newPath=${encodeURIComponent(newPath)}`,
     ),
+
+  searchFiles: (projectSlug: string, query: string, includeHidden: boolean = false) =>
+    api.get<FileSearchResponse>(`/projects/${projectSlug}/fs/search?query=${encodeURIComponent(query)}${includeHidden ? '&includeHidden=true' : ''}`),
 };
