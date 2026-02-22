@@ -6,16 +6,18 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, Loader2 } from 'lucide-react';
+import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, Loader2, List, LayoutGrid } from 'lucide-react';
 
 import type { FileSearchResult } from '@bmad-studio/shared';
 import { useFileStore } from '../../stores/fileStore.js';
+import { usePreferencesStore } from '../../stores/preferencesStore.js';
 
 const HIDDEN_PATTERNS = ['.env', '.git', 'node_modules', '.next', '.cache', '__pycache__', '.DS_Store', 'dist', '.turbo'];
 import { useToast } from '../../hooks/useToast.js';
 import { ToastContainer } from '../common/Toast.js';
 import { fileSystemApi } from '../../services/api/fileSystem.js';
 import { FileTree } from './FileTree.js';
+import { FileGridView } from './FileGridView.js';
 
 const CRUD_ERROR_MESSAGES: Record<string, string> = {
   FILE_ALREADY_EXISTS: '파일 또는 디렉토리가 이미 존재합니다.',
@@ -37,6 +39,8 @@ export function FileExplorerTab() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const [filterText, setFilterText] = useState('');
   const [showHidden, setShowHidden] = useState(false);
+  const defaultViewMode = usePreferencesStore((s) => s.preferences.fileExplorerViewMode ?? 'grid');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(defaultViewMode);
   const [currentPath, setCurrentPath] = useState('.');
   const { toasts, showToast, removeToast } = useToast();
 
@@ -213,6 +217,15 @@ export function FileExplorerTab() {
         >
           {showHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
         </button>
+
+        {/* View mode toggle */}
+        <button
+          onClick={() => setViewMode((prev) => (prev === 'list' ? 'grid' : 'list'))}
+          className="p-1.5 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+          aria-label={viewMode === 'list' ? '그리드 뷰' : '리스트 뷰'}
+        >
+          {viewMode === 'list' ? <LayoutGrid className="w-4 h-4" /> : <List className="w-4 h-4" />}
+        </button>
       </div>
 
       {/* Content: Search results or FileTree */}
@@ -252,6 +265,18 @@ export function FileExplorerTab() {
               ))
             )}
           </div>
+        ) : viewMode === 'grid' ? (
+          <FileGridView
+            projectSlug={projectSlug}
+            currentPath={currentPath}
+            showHidden={showHidden}
+            onFileSelect={handleFileSelect}
+            onNavigate={setCurrentPath}
+            enableContextMenu={true}
+            onCreateEntry={handleCreateEntry}
+            onDeleteEntry={handleDeleteEntry}
+            onRenameEntry={handleRenameEntry}
+          />
         ) : (
           <FileTree
             projectSlug={projectSlug}

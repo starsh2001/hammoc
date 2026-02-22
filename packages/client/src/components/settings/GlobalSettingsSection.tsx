@@ -23,6 +23,7 @@ const PERMISSION_OPTIONS: { value: PermissionMode; label: string; description: s
   { value: 'plan', label: 'Plan', description: '코드 변경 전 계획을 먼저 제안합니다' },
   { value: 'default', label: 'Ask before edits', description: '파일 수정 전 항상 확인을 요청합니다' },
   { value: 'acceptEdits', label: 'Edit Automatically', description: '파일 수정을 자동으로 수행합니다' },
+  { value: 'bypassPermissions', label: 'Bypass', description: '모든 권한 확인을 건너뜁니다 (Bash 포함)' },
 ];
 
 export function GlobalSettingsSection() {
@@ -205,6 +206,48 @@ export function GlobalSettingsSection() {
         </div>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           마크다운 파일을 열 때 기본으로 사용할 모드입니다.
+        </p>
+      </fieldset>
+
+      {/* File Explorer Default View Mode */}
+      <fieldset>
+        <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          파일 탐색기 기본 뷰
+        </legend>
+        <div className="flex flex-wrap gap-3">
+          {([
+            { value: 'grid' as const, label: '파인더 뷰' },
+            { value: 'list' as const, label: '리스트 뷰' },
+          ]).map((opt) => (
+            <label
+              key={opt.value}
+              htmlFor={`explorer-view-${opt.value}`}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                ${(preferences.fileExplorerViewMode ?? 'grid') === opt.value
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }
+              `}
+            >
+              <input
+                type="radio"
+                id={`explorer-view-${opt.value}`}
+                name="fileExplorerViewMode"
+                value={opt.value}
+                checked={(preferences.fileExplorerViewMode ?? 'grid') === opt.value}
+                onChange={() => {
+                  updatePreference('fileExplorerViewMode', opt.value);
+                  toast.success('파일 탐색기 기본 뷰가 변경되었습니다');
+                }}
+                className="sr-only"
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          파일 탐색기를 열 때 기본으로 사용할 뷰 모드입니다.
         </p>
       </fieldset>
 
