@@ -56,8 +56,7 @@ function buildOrderedDocs(documents: BmadDocuments): DocEntry[] {
   }
 
   const suppOrder = ['brainstorming', 'market-research', 'competitor-analysis', 'brief'];
-  const suppOrderAfterPrd = ['front-end-spec'];
-  const suppOrderAfterArch = ['ui-architecture'];
+  const suppOrderAfterPrd = ['front-end-spec', 'ui-architecture'];
 
   const entries: DocEntry[] = [];
 
@@ -92,11 +91,6 @@ function buildOrderedDocs(documents: BmadDocuments): DocEntry[] {
     shardedPath: documents.architecture.shardedPath,
     shardedFiles: documents.architecture.shardedFiles,
   });
-
-  for (const key of suppOrderAfterArch) {
-    const doc = suppMap.get(key);
-    if (doc) entries.push({ key: doc.key, label: doc.label, exists: doc.exists, path: doc.path, optional: true, agentCommand: CREATE_AGENT[doc.key] });
-  }
 
   return entries;
 }
