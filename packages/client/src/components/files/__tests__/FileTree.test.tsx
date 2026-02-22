@@ -1,0 +1,399 @@
+/**
+ * FileTree Tests
+ * [Source: Story 13.1 - Task 4.1]
+ */
+
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { FileTree } from '../FileTree.js';
+import type { DirectoryEntry, DirectoryListResponse } from '@bmad-studio/shared';
+
+// Mock fileSystemApi
+vi.mock('../../../services/api/fileSystem.js', () => ({
+  fileSystemApi: {
+    listDirectory: vi.fn(),
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
+  },
+}));
+
+// Mock fileStore
+let mockOpenFile: { path: string } | null = null;
+vi.mock('../../../stores/fileStore.js', () => ({
+  useFileStore: (selector: (state: { openFile: { path: string } | null }) => unknown) =>
+    selector({ openFile: mockOpenFile }),
+}));
+
+import { fileSystemApi } from '../../../services/api/fileSystem.js';
+
+const mockRootEntries: DirectoryEntry[] = [
+  { name: 'src', type: 'directory', size: 0, modifiedAt: '2026-02-20T10:00:00Z' },
+  { name: 'node_modules', type: 'directory', size: 0, modifiedAt: '2026-02-20T09:00:00Z' },
+  { name: '.git', type: 'directory', size: 0, modifiedAt: '2026-02-20T08:00:00Z' },
+  { name: 'package.json', type: 'file', size: 1024, modifiedAt: '2026-02-20T10:00:00Z' },
+  { name: 'README.md', type: 'file', size: 512, modifiedAt: '2026-02-19T15:00:00Z' },
+  { name: '.env', type: 'file', size: 128, modifiedAt: '2026-02-18T12:00:00Z' },
+];
+
+const mockRootResponse: DirectoryListResponse = {
+  path: '.',
+  entries: mockRootEntries,
+};
+
+const mockSrcEntries: DirectoryEntry[] = [
+  { name: 'components', type: 'directory', size: 0, modifiedAt: '2026-02-20T10:00:00Z' },
+  { name: 'App.tsx', type: 'file', size: 2048, modifiedAt: '2026-02-20T10:00:00Z' },
+  { name: 'main.tsx', type: 'file', size: 256, modifiedAt: '2026-02-19T14:00:00Z' },
+];
+
+const mockSrcResponse: DirectoryListResponse = {
+  path: 'src',
+  entries: mockSrcEntries,
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('FileTree', () => {
+  // TC-FT-1: Root directory loads and displays on mount (AC1)
+  it('loads and displays root directory on mount', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    render(<FileTree projectSlug="test-project" onFileSelect={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('package.json')).toBeInTheDocument();
+    expect(screen.getByText('README.md')).toBeInTheDocument();
+    expect(fileSystemApi.listDirectory).toHaveBeenCalledWith('test-project', '.');
+  });
+
+  // TC-FT-2: Folder click lazy-loads subdirectory (AC2)
+  it('lazy-loads subdirectory on folder click', async () => {
+    vi.mocked(fileSystemApi.listDirectory)
+      .mockResolvedValueOnce(mockRootResponse)
+      .mockResolvedValueOnce(mockSrcResponse);
+
+    render(<FileTree projectSlug="test-project" onFileSelect={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('src'));
+
+    await waitFor(() => {
+      expect(screen.getByText('App.tsx')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('main.tsx')).toBeInTheDocument();
+    expect(screen.getByText('components')).toBeInTheDocument();
+    expect(fileSystemApi.listDirectory).toHaveBeenCalledWith('test-project', 'src');
+  });
+
+  // TC-FT-3: Clicking expanded folder collapses it (AC2)
+  it('collapses expanded folder on second click', async () => {
+    vi.mocked(fileSystemApi.listDirectory)
+      .mockResolvedValueOnce(mockRootResponse)
+      .mockResolvedValueOnce(mockSrcResponse);
+
+    render(<FileTree projectSlug="test-project" onFileSelect={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    // Expand
+    fireEvent.click(screen.getByText('src'));
+    await waitFor(() => {
+      expect(screen.getByText('App.tsx')).toBeInTheDocument();
+    });
+
+    // Collapse
+    fireEvent.click(screen.getByText('src'));
+    expect(screen.queryByText('App.tsx')).not.toBeInTheDocument();
+  });
+
+  // TC-FT-4: File and folder icons are differentiated (AC3)
+  it('differentiates file and folder icons', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    const { container } = render(
+      <FileTree projectSlug="test-project" onFileSelect={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    // Folders should have blue icon class
+    const blueIcons = container.querySelectorAll('.text-blue-500');
+    expect(blueIcons.length).toBeGreaterThan(0);
+
+    // Files should have gray icon class
+    const grayFileIcons = container.querySelectorAll('.text-gray-500');
+    expect(grayFileIcons.length).toBeGreaterThan(0);
+  });
+
+  // TC-FT-5: File click calls onFileSelect (AC4)
+  it('calls onFileSelect when file is clicked', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    const onFileSelect = vi.fn();
+    render(<FileTree projectSlug="test-project" onFileSelect={onFileSelect} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('package.json')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('package.json'));
+    expect(onFileSelect).toHaveBeenCalledWith('package.json');
+  });
+
+  // TC-FT-6: Currently open file path is highlighted (AC5)
+  it('highlights currently open file path', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    // Set mock open file
+    mockOpenFile = { path: 'package.json' };
+
+    const { container } = render(
+      <FileTree projectSlug="test-project" onFileSelect={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('package.json')).toBeInTheDocument();
+    });
+
+    const highlighted = container.querySelector('.bg-blue-50');
+    expect(highlighted).toBeInTheDocument();
+    expect(highlighted?.textContent).toContain('package.json');
+
+    // Restore default
+    mockOpenFile = null;
+  });
+
+  // TC-FT-7: Hidden files are filtered by default (AC6)
+  it('filters hidden files by default', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    render(<FileTree projectSlug="test-project" onFileSelect={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('.git')).not.toBeInTheDocument();
+    expect(screen.queryByText('node_modules')).not.toBeInTheDocument();
+    expect(screen.queryByText('.env')).not.toBeInTheDocument();
+  });
+
+  // TC-FT-8: showHidden=true shows hidden files (AC6)
+  it('shows hidden files when showHidden is true', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    render(
+      <FileTree projectSlug="test-project" onFileSelect={vi.fn()} showHidden />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('.git')).toBeInTheDocument();
+    expect(screen.getByText('node_modules')).toBeInTheDocument();
+    expect(screen.getByText('.env')).toBeInTheDocument();
+  });
+
+  // TC-FT-9: Entries sorted directories-first, then alphabetical
+  it('sorts entries with directories first then alphabetical', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    const { container } = render(
+      <FileTree projectSlug="test-project" onFileSelect={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    const treeItems = container.querySelectorAll('[role="treeitem"]');
+    const names = Array.from(treeItems).map((el) => el.textContent?.trim());
+
+    // With hidden filtered: src (dir), package.json (file), README.md (file)
+    expect(names[0]).toBe('src');
+    expect(names[1]).toBe('package.json');
+    expect(names[2]).toBe('README.md');
+  });
+
+  // TC-FT-10: Loading spinner shown during directory load (AC2)
+  it('shows loading spinner during directory load', async () => {
+    let resolveList!: (value: DirectoryListResponse) => void;
+    vi.mocked(fileSystemApi.listDirectory).mockImplementation(
+      () => new Promise((resolve) => { resolveList = resolve; }),
+    );
+
+    render(<FileTree projectSlug="test-project" onFileSelect={vi.fn()} />);
+
+    // Should show loading state
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+
+    // Resolve the promise
+    resolveList(mockRootResponse);
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+  });
+
+  // TC-FT-11: ArrowDown/ArrowUp keyboard navigation (a11y)
+  it('navigates focus with ArrowDown and ArrowUp keys', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    const { container } = render(
+      <FileTree projectSlug="test-project" onFileSelect={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    const tree = container.querySelector('[role="tree"]')!;
+
+    // ArrowDown to focus first item
+    fireEvent.keyDown(tree, { key: 'ArrowDown' });
+    await waitFor(() => {
+      const focused = container.querySelector('.ring-2.ring-blue-500');
+      expect(focused).toBeInTheDocument();
+    });
+
+    // ArrowDown again to move to second item
+    fireEvent.keyDown(tree, { key: 'ArrowDown' });
+    await waitFor(() => {
+      const focused = container.querySelector('.ring-2.ring-blue-500');
+      expect(focused?.textContent).toContain('package.json');
+    });
+
+    // ArrowUp to go back
+    fireEvent.keyDown(tree, { key: 'ArrowUp' });
+    await waitFor(() => {
+      const focused = container.querySelector('.ring-2.ring-blue-500');
+      expect(focused?.textContent).toContain('src');
+    });
+  });
+
+  // TC-FT-12: ArrowRight expands, ArrowLeft collapses folders (a11y)
+  it('expands folder with ArrowRight and collapses with ArrowLeft', async () => {
+    vi.mocked(fileSystemApi.listDirectory)
+      .mockResolvedValueOnce(mockRootResponse)
+      .mockResolvedValueOnce(mockSrcResponse);
+
+    const { container } = render(
+      <FileTree projectSlug="test-project" onFileSelect={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    const tree = container.querySelector('[role="tree"]')!;
+
+    // Focus src folder
+    fireEvent.keyDown(tree, { key: 'ArrowDown' });
+
+    // ArrowRight to expand
+    fireEvent.keyDown(tree, { key: 'ArrowRight' });
+    await waitFor(() => {
+      expect(screen.getByText('App.tsx')).toBeInTheDocument();
+    });
+
+    // ArrowLeft to collapse
+    fireEvent.keyDown(tree, { key: 'ArrowLeft' });
+    expect(screen.queryByText('App.tsx')).not.toBeInTheDocument();
+  });
+
+  // TC-FT-13: Enter key selects file and toggles folder (a11y)
+  it('selects file with Enter key and toggles folder', async () => {
+    vi.mocked(fileSystemApi.listDirectory)
+      .mockResolvedValueOnce(mockRootResponse)
+      .mockResolvedValueOnce(mockSrcResponse);
+
+    const onFileSelect = vi.fn();
+    const { container } = render(
+      <FileTree projectSlug="test-project" onFileSelect={onFileSelect} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    const tree = container.querySelector('[role="tree"]')!;
+
+    // Focus src, press Enter to toggle
+    fireEvent.keyDown(tree, { key: 'ArrowDown' });
+    fireEvent.keyDown(tree, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(screen.getByText('App.tsx')).toBeInTheDocument();
+    });
+
+    // Navigate to file, press Enter to select
+    fireEvent.keyDown(tree, { key: 'ArrowDown' }); // components (dir)
+    fireEvent.keyDown(tree, { key: 'ArrowDown' }); // App.tsx (file)
+    fireEvent.keyDown(tree, { key: 'Enter' });
+
+    expect(onFileSelect).toHaveBeenCalledWith('src/App.tsx');
+  });
+
+  // TC-FT-14: Empty directory shows "Empty folder" message (UX)
+  it('shows "Empty folder" for empty directories', async () => {
+    vi.mocked(fileSystemApi.listDirectory)
+      .mockResolvedValueOnce(mockRootResponse)
+      .mockResolvedValueOnce({ path: 'src', entries: [] });
+
+    render(<FileTree projectSlug="test-project" onFileSelect={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('src'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Empty folder')).toBeInTheDocument();
+    });
+  });
+
+  // TC-FT-15: API error shows error message and retry button (UX)
+  it('shows error message and retry button on API error', async () => {
+    vi.mocked(fileSystemApi.listDirectory)
+      .mockResolvedValueOnce(mockRootResponse)
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockResolvedValueOnce(mockSrcResponse);
+
+    render(<FileTree projectSlug="test-project" onFileSelect={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    // Expand src — will fail
+    fireEvent.click(screen.getByText('src'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Retry')).toBeInTheDocument();
+
+    // Click retry
+    fireEvent.click(screen.getByText('Retry'));
+
+    await waitFor(() => {
+      expect(screen.getByText('App.tsx')).toBeInTheDocument();
+    });
+  });
+});
