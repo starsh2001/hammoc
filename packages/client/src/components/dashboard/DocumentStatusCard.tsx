@@ -21,11 +21,20 @@ function getAuxDocLabel(type: string): string {
   return AUX_DOC_LABELS[type] ?? type;
 }
 
-/** Agent command mapping for missing core documents */
+/** Agent command mapping for creating documents */
 const CREATE_AGENT: Record<string, string> = {
+  brainstorming: '/BMad:agents:analyst',
+  'market-research': '/BMad:agents:analyst',
+  'competitor-analysis': '/BMad:agents:analyst',
+  brief: '/BMad:agents:analyst',
   prd: '/BMad:agents:pm',
+  'front-end-spec': '/BMad:agents:ux-expert',
   architecture: '/BMad:agents:architect',
+  'ui-architecture': '/BMad:agents:architect',
 };
+
+/** Documents that show "작성 권장" instead of "작성 필요" */
+const RECOMMENDED_DOCS = new Set(['brainstorming', 'brief']);
 
 type DocEntry = {
   key: string;
@@ -37,6 +46,7 @@ type DocEntry = {
   shardedPath?: string;
   shardedFiles?: DirEntry[];
   optional?: boolean;
+  recommended?: boolean;
 };
 
 function buildOrderedDocs(documents: BmadDocuments): DocEntry[] {
@@ -53,7 +63,7 @@ function buildOrderedDocs(documents: BmadDocuments): DocEntry[] {
 
   for (const key of suppOrder) {
     const doc = suppMap.get(key);
-    if (doc) entries.push({ key: doc.key, label: doc.label, exists: doc.exists, path: doc.path, optional: true });
+    if (doc) entries.push({ key: doc.key, label: doc.label, exists: doc.exists, path: doc.path, optional: true, agentCommand: CREATE_AGENT[doc.key], recommended: !documents.prd.exists && RECOMMENDED_DOCS.has(doc.key) });
   }
 
   entries.push({
@@ -69,7 +79,7 @@ function buildOrderedDocs(documents: BmadDocuments): DocEntry[] {
 
   for (const key of suppOrderAfterPrd) {
     const doc = suppMap.get(key);
-    if (doc) entries.push({ key: doc.key, label: doc.label, exists: doc.exists, path: doc.path, optional: true });
+    if (doc) entries.push({ key: doc.key, label: doc.label, exists: doc.exists, path: doc.path, optional: true, agentCommand: CREATE_AGENT[doc.key] });
   }
 
   entries.push({
@@ -85,7 +95,7 @@ function buildOrderedDocs(documents: BmadDocuments): DocEntry[] {
 
   for (const key of suppOrderAfterArch) {
     const doc = suppMap.get(key);
-    if (doc) entries.push({ key: doc.key, label: doc.label, exists: doc.exists, path: doc.path, optional: true });
+    if (doc) entries.push({ key: doc.key, label: doc.label, exists: doc.exists, path: doc.path, optional: true, agentCommand: CREATE_AGENT[doc.key] });
   }
 
   return entries;
@@ -224,7 +234,7 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
                       : (doc.optional ? 'text-gray-400 dark:text-gray-500' : 'font-semibold text-gray-900 dark:text-gray-100')
                   }>{doc.label}</span>
                 )}
-                {doc.sharded && (
+                {hasShardedFiles && (
                   <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
                     Sharded
                   </span>
@@ -237,19 +247,24 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
                     {doc.path}
                   </button>
                 )}
+                {!doc.exists && !doc.optional && (
+                  <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
+                    작성 필요
+                  </span>
+                )}
+                {!doc.exists && doc.recommended && (
+                  <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">
+                    작성 권장
+                  </span>
+                )}
                 {!doc.exists && doc.agentCommand && (
-                  <>
-                    <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
-                      작성 필요
-                    </span>
-                    <button
-                      onClick={() => handleCreateDoc(doc.agentCommand!)}
-                      className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors inline-flex items-center gap-1"
-                    >
-                      작성하러 가기
-                      <ArrowUpRight className="w-3 h-3" />
-                    </button>
-                  </>
+                  <button
+                    onClick={() => handleCreateDoc(doc.agentCommand!)}
+                    className={`p-0.5 rounded transition-colors cursor-pointer ${!doc.optional || doc.recommended ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50' : 'bg-gray-50 dark:bg-gray-800 text-gray-300 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-500 dark:hover:text-gray-400'}`}
+                    title="작성하러 가기"
+                  >
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
 

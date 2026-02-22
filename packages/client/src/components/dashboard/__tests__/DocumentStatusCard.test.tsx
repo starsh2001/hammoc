@@ -128,7 +128,7 @@ describe('DocumentStatusCard', () => {
   it('navigates to PM agent session when PRD "작성하러 가기" is clicked', () => {
     renderCard(bothMissing);
 
-    const buttons = screen.getAllByText('작성하러 가기');
+    const buttons = screen.getAllByTitle('작성하러 가기');
     // First button is for PRD
     fireEvent.click(buttons[0]);
 
@@ -141,7 +141,7 @@ describe('DocumentStatusCard', () => {
   it('navigates to Architect agent session when Architecture "작성하러 가기" is clicked', () => {
     renderCard(bothMissing);
 
-    const buttons = screen.getAllByText('작성하러 가기');
+    const buttons = screen.getAllByTitle('작성하러 가기');
     // Second button is for Architecture
     fireEvent.click(buttons[1]);
 
