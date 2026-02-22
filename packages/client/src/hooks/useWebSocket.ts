@@ -91,7 +91,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
     const handleReconnectFailed = () => {
       setConnectionStatus('disconnected');
-      setLastError('최대 재연결 시도 횟수(5회)를 초과했습니다. 네트워크 연결을 확인해주세요.');
+      setLastError('서버 연결에 실패했습니다. 네트워크 연결을 확인해주세요.');
       console.error('WebSocket reconnection failed after maximum attempts');
     };
 

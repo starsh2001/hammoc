@@ -21,6 +21,8 @@ interface AuthActions {
   login: (password: string, rememberMe?: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  /** Force re-check auth (bypasses hasCheckedAuth guard). Used on app resume. */
+  recheckAuth: () => Promise<void>;
   setupPassword: (password: string, confirmPassword: string) => Promise<boolean>;
   clearError: () => void;
 }
@@ -120,6 +122,15 @@ export const useAuthStore = create<AuthStore>((set) => ({
       });
 
     return checkAuthPromise;
+  },
+
+  recheckAuth: async (): Promise<void> => {
+    try {
+      const { authenticated, passwordConfigured } = await authApi.status();
+      set({ isAuthenticated: authenticated, isPasswordConfigured: passwordConfigured });
+    } catch {
+      set({ isAuthenticated: false, isPasswordConfigured: null });
+    }
   },
 
   setupPassword: async (password: string, confirmPassword: string): Promise<boolean> => {

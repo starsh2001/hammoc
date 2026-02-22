@@ -31,12 +31,17 @@ import { useTheme } from './hooks/useTheme';
 import { usePreferencesStore } from './stores/preferencesStore';
 import { TextEditor } from './components/editor/TextEditor';
 import { FileExplorerTab } from './components/files/FileExplorerTab.js';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { useAppResumeRecovery } from './hooks/useAppResumeRecovery';
 
 function AppContent() {
   // Initialize server-side preferences (fetches from server, migrates localStorage if needed)
   useEffect(() => {
     usePreferencesStore.getState().init();
   }, []);
+
+  // Recover socket + auth state when browser resumes from background
+  useAppResumeRecovery();
 
   // Initialize theme on app mount
   const { theme } = useTheme();
@@ -112,11 +117,13 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Toaster position="top-right" richColors duration={3000} />
-      <TextEditor />
-      <AppContent />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Toaster position="top-right" richColors duration={3000} />
+        <TextEditor />
+        <AppContent />
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
