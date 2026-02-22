@@ -11,9 +11,8 @@ const { mockScanProject } = vi.hoisted(() => ({
   mockScanProject: vi.fn(),
 }));
 
-const { mockGetClaudeProjectsDir, mockParseSessionsIndex } = vi.hoisted(() => ({
-  mockGetClaudeProjectsDir: vi.fn().mockReturnValue('/test/projects'),
-  mockParseSessionsIndex: vi.fn(),
+const { mockResolveOriginalPath } = vi.hoisted(() => ({
+  mockResolveOriginalPath: vi.fn(),
 }));
 
 vi.mock('../../services/bmadStatusService', () => ({
@@ -24,8 +23,7 @@ vi.mock('../../services/bmadStatusService', () => ({
 
 vi.mock('../../services/projectService', () => ({
   projectService: {
-    getClaudeProjectsDir: mockGetClaudeProjectsDir,
-    parseSessionsIndex: mockParseSessionsIndex,
+    resolveOriginalPath: mockResolveOriginalPath,
   },
 }));
 
@@ -43,11 +41,9 @@ describe('bmadStatusController', () => {
       status: vi.fn().mockReturnThis(),
       json: vi.fn().mockReturnThis(),
     };
-    mockParseSessionsIndex.mockResolvedValue({ originalPath: '/real/path/to/project' });
     vi.clearAllMocks();
-    // Re-setup default mock after clearAllMocks
-    mockGetClaudeProjectsDir.mockReturnValue('/test/projects');
-    mockParseSessionsIndex.mockResolvedValue({ originalPath: '/real/path/to/project' });
+    // Default: resolveOriginalPath succeeds
+    mockResolveOriginalPath.mockResolvedValue('/real/path/to/project');
   });
 
   afterEach(() => {
@@ -61,6 +57,7 @@ describe('bmadStatusController', () => {
       documents: {
         prd: { exists: true, path: 'docs/prd.md' },
         architecture: { exists: true, path: 'docs/architecture.md' },
+        supplementary: [],
       },
       auxiliaryDocuments: [],
       epics: [],
@@ -87,7 +84,9 @@ describe('bmadStatusController', () => {
 
   // TC-BC-3: 프로젝트 미존재 시 404를 반환한다
   it('returns 404 when project is not found', async () => {
-    mockParseSessionsIndex.mockResolvedValue(null);
+    const err = new Error('프로젝트를 찾을 수 없습니다.');
+    (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
+    mockResolveOriginalPath.mockRejectedValue(err);
 
     await bmadStatusController.getBmadStatus(mockReq as Request, mockRes as Response);
 

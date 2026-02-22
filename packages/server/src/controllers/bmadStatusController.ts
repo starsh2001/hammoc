@@ -1,20 +1,7 @@
-import path from 'path';
 import { Request, Response } from 'express';
 import { BMAD_STATUS_ERRORS } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 import { bmadStatusService } from '../services/bmadStatusService.js';
-
-// Same pattern as fileSystemController.resolveProjectPath
-async function resolveProjectPath(projectSlug: string): Promise<string> {
-  const projectDir = path.join(projectService.getClaudeProjectsDir(), projectSlug);
-  const info = await projectService.parseSessionsIndex(projectDir, projectSlug);
-  if (!info) {
-    const err = new Error('프로젝트를 찾을 수 없습니다.');
-    (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
-    throw err;
-  }
-  return info.originalPath;
-}
 
 export const bmadStatusController = {
   async getBmadStatus(req: Request, res: Response): Promise<void> {
@@ -27,7 +14,7 @@ export const bmadStatusController = {
         return;
       }
 
-      const projectRoot = await resolveProjectPath(projectSlug);
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       const result = await bmadStatusService.scanProject(projectRoot);
       res.json(result);
     } catch (error) {

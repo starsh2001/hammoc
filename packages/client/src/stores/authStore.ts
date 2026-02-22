@@ -27,6 +27,13 @@ interface AuthActions {
 
 type AuthStore = AuthState & AuthActions;
 
+// Module-level dedup: stores the in-flight checkAuth promise so concurrent
+// callers share one request instead of causing a mount/unmount loop
+// (PublicRoute hides children while isLoading → LoginPage unmounts →
+//  remounts → calls checkAuth again → isLoading:true → cycle repeats).
+let checkAuthPromise: Promise<void> | null = null;
+let hasCheckedAuth = false;
+
 export const useAuthStore = create<AuthStore>((set) => ({
   // Initial state - isLoading starts true to prevent premature redirects on page refresh
   isAuthenticated: false,
@@ -80,6 +87,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     } catch {
       // Ignore logout errors
     } finally {
+      hasCheckedAuth = false;
       set({
         isAuthenticated: false,
         isLoading: false,
@@ -89,15 +97,29 @@ export const useAuthStore = create<AuthStore>((set) => ({
     }
   },
 
-  checkAuth: async (): Promise<void> => {
+  checkAuth: (): Promise<void> => {
+    // Already checked — skip (prevents mount/unmount loop between
+    // PublicRoute and LoginPage).
+    if (hasCheckedAuth) return Promise.resolve();
+    // Deduplicate concurrent calls
+    if (checkAuthPromise) return checkAuthPromise;
+
     set({ isLoading: true });
 
-    try {
-      const { authenticated, passwordConfigured } = await authApi.status();
-      set({ isAuthenticated: authenticated, isPasswordConfigured: passwordConfigured, isLoading: false });
-    } catch {
-      set({ isAuthenticated: false, isPasswordConfigured: null, isLoading: false });
-    }
+    checkAuthPromise = authApi
+      .status()
+      .then(({ authenticated, passwordConfigured }) => {
+        set({ isAuthenticated: authenticated, isPasswordConfigured: passwordConfigured, isLoading: false });
+      })
+      .catch(() => {
+        set({ isAuthenticated: false, isPasswordConfigured: null, isLoading: false });
+      })
+      .finally(() => {
+        hasCheckedAuth = true;
+        checkAuthPromise = null;
+      });
+
+    return checkAuthPromise;
   },
 
   setupPassword: async (password: string, confirmPassword: string): Promise<boolean> => {

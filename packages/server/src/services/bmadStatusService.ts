@@ -6,10 +6,23 @@ import type {
   BmadConfig,
   BmadStatusResponse,
   BmadDocuments,
+  BmadSupplementaryDoc,
   BmadAuxDocument,
   BmadEpicStatus,
   BmadStoryStatus,
 } from '@bmad-studio/shared';
+
+/**
+ * Matches epic headers in various Markdown formats:
+ *   # Epic 1: Name           (h1)
+ *   ## Epic 1: Name          (h2)
+ *   ### Epic 1: Name         (h3)
+ *   # 6. Epic 1: Name        (numbered prefix)
+ *   ## Epic 1 - Name         (dash separator)
+ *   ## Epic 1 Name            (no separator)
+ * Capture groups: (1) epic number, (2) epic name
+ */
+const EPIC_HEADER_RE = /^#{1,3}\s+(?:\d+\.\s+)?Epic\s+(\d+)[\s:–-]+(.+)/m;
 
 class BmadStatusService {
   /**
@@ -69,26 +82,50 @@ class BmadStatusService {
     };
   }
 
+  /** Well-known supplementary documents to check for in docs/ */
+  private static readonly SUPPLEMENTARY_DOCS: Array<{ key: string; label: string; file: string }> = [
+    { key: 'brainstorming', label: 'Brainstorming', file: 'docs/brainstorming-session-results.md' },
+    { key: 'brief', label: 'Project Brief', file: 'docs/brief.md' },
+    { key: 'front-end-spec', label: 'Frontend Spec', file: 'docs/front-end-spec.md' },
+  ];
+
   /**
-   * Check PRD and Architecture document existence
+   * Check PRD, Architecture, and well-known supplementary documents.
+   * For sharded documents, checks both the consolidated file and the sharded folder.
    */
   private async checkDocuments(projectRoot: string, config: BmadConfig): Promise<BmadDocuments> {
-    const prdPath = config.prdSharded
-      ? config.prdShardedLocation || 'docs/prd'
-      : config.prdFile || 'docs/prd.md';
+    const prdFile = config.prdFile || 'docs/prd.md';
+    const prdShardedDir = config.prdShardedLocation || 'docs/prd';
+    const archFile = config.architectureFile || 'docs/architecture.md';
+    const archShardedDir = config.architectureShardedLocation || 'docs/architecture';
 
-    const archPath = config.architectureSharded
-      ? config.architectureShardedLocation || 'docs/architecture'
-      : config.architectureFile || 'docs/architecture.md';
-
-    const [prdExists, archExists] = await Promise.all([
-      this.pathExists(path.join(projectRoot, prdPath)),
-      this.pathExists(path.join(projectRoot, archPath)),
+    const [prdFileExists, prdShardedExists, archFileExists, archShardedExists] = await Promise.all([
+      this.pathExists(path.join(projectRoot, prdFile)),
+      config.prdSharded ? this.pathExists(path.join(projectRoot, prdShardedDir)) : Promise.resolve(false),
+      this.pathExists(path.join(projectRoot, archFile)),
+      config.architectureSharded ? this.pathExists(path.join(projectRoot, archShardedDir)) : Promise.resolve(false),
     ]);
 
+    // Scan well-known supplementary documents (always return all, preserving definition order)
+    const supplementary: BmadSupplementaryDoc[] = await Promise.all(
+      BmadStatusService.SUPPLEMENTARY_DOCS.map(async (doc) => {
+        const exists = await this.pathExists(path.join(projectRoot, doc.file));
+        return { key: doc.key, label: doc.label, exists, path: doc.file };
+      }),
+    );
+
     return {
-      prd: { exists: prdExists, path: prdPath },
-      architecture: { exists: archExists, path: archPath },
+      prd: {
+        exists: prdFileExists || prdShardedExists,
+        path: prdFile,
+        ...(config.prdSharded && { sharded: true, shardedPath: prdShardedDir }),
+      },
+      architecture: {
+        exists: archFileExists || archShardedExists,
+        path: archFile,
+        ...(config.architectureSharded && { sharded: true, shardedPath: archShardedDir }),
+      },
+      supplementary,
     };
   }
 
@@ -102,9 +139,10 @@ class BmadStatusService {
     const auxDocs: BmadAuxDocument[] = [];
 
     if (config.devStoryLocation) {
+      // Count files matching N.N.*.md pattern (story files)
       const count = await this.countFiles(
         path.join(projectRoot, config.devStoryLocation),
-        /\.story\.md$/
+        /^\d+\.\d+\..+\.md$/
       );
       auxDocs.push({ type: 'stories', path: config.devStoryLocation, fileCount: count });
     }
@@ -125,10 +163,13 @@ class BmadStatusService {
     config: BmadConfig
   ): Promise<BmadEpicStatus[]> {
     const epicMap = new Map<number, string>();
+    // Planned story count from PRD epic headers (## Story N.N / ### Story N.N)
+    const plannedMap = new Map<number, number>();
 
     // 3-step fallback strategy for epic discovery
     if (config.prdSharded && config.prdShardedLocation) {
       // Step 1: Search for epic files using epicFilePattern
+      // Uses substring match to tolerate numeric prefixes (e.g. "6-epic-1-foo.md")
       if (config.epicFilePattern) {
         const pattern = this.epicFilePatternToRegex(config.epicFilePattern);
         const shardedDir = path.join(projectRoot, config.prdShardedLocation);
@@ -139,8 +180,9 @@ class BmadStatusService {
             if (match) {
               const epicNum = parseInt(match[1], 10);
               const content = await fs.readFile(path.join(shardedDir, file), 'utf-8');
-              const nameMatch = content.match(/^#{1,3}\s+Epic\s+\d+:\s*(.+)/m);
-              epicMap.set(epicNum, nameMatch ? nameMatch[1].trim() : `Epic ${epicNum}`);
+              const nameMatch = content.match(EPIC_HEADER_RE);
+              epicMap.set(epicNum, nameMatch ? nameMatch[2].trim() : `Epic ${epicNum}`);
+              this.countPlannedStories(content, plannedMap);
             }
           }
         } catch {
@@ -156,11 +198,12 @@ class BmadStatusService {
           for (const file of files) {
             if (!file.endsWith('.md')) continue;
             const content = await fs.readFile(path.join(shardedDir, file), 'utf-8');
-            const regex = /^#{2,3}\s+Epic\s+(\d+):\s*(.+)/gm;
+            const regex = new RegExp(EPIC_HEADER_RE.source, 'gm');
             let match;
             while ((match = regex.exec(content)) !== null) {
               epicMap.set(parseInt(match[1], 10), match[2].trim());
             }
+            this.countPlannedStories(content, plannedMap);
           }
         } catch {
           // Directory not found
@@ -170,11 +213,12 @@ class BmadStatusService {
       // Step 3: Monolithic PRD
       try {
         const content = await fs.readFile(path.join(projectRoot, config.prdFile), 'utf-8');
-        const regex = /^#{2,3}\s+Epic\s+(\d+):\s*(.+)/gm;
+        const regex = new RegExp(EPIC_HEADER_RE.source, 'gm');
         let match;
         while ((match = regex.exec(content)) !== null) {
           epicMap.set(parseInt(match[1], 10), match[2].trim());
         }
+        this.countPlannedStories(content, plannedMap);
       } catch {
         // File not found
       }
@@ -186,7 +230,9 @@ class BmadStatusService {
       const storiesDir = path.join(projectRoot, config.devStoryLocation);
       try {
         const files = await fs.readdir(storiesDir);
-        const storyFileRegex = /^(\d+)\.(\d+)\..*?story\.md$/;
+        // Match story files: "1.1.story.md", "1.1.some-name.story.md",
+        // or "2.1.kis-api-auth.md" (no ".story" suffix)
+        const storyFileRegex = /^(\d+)\.(\d+)\..+\.md$/;
 
         for (const file of files) {
           const match = file.match(storyFileRegex);
@@ -217,9 +263,24 @@ class BmadStatusService {
         number,
         name,
         stories: (storyMap.get(number) || []).sort((a, b) => a.file.localeCompare(b.file)),
+        ...(plannedMap.has(number) && { plannedStories: plannedMap.get(number) }),
       }));
 
     return epics;
+  }
+
+  /**
+   * Count planned stories from PRD content by matching story headers.
+   * Matches: "## Story 3.1: ...", "### Story 3.1: ...", "## Story 3.1 — ..."
+   * Accumulates counts into the provided map keyed by epic number.
+   */
+  private countPlannedStories(content: string, plannedMap: Map<number, number>): void {
+    const regex = /^#{2,3}\s+Story\s+(\d+)\.\d+/gm;
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      const epicNum = parseInt(match[1], 10);
+      plannedMap.set(epicNum, (plannedMap.get(epicNum) || 0) + 1);
+    }
   }
 
   /**
@@ -246,14 +307,16 @@ class BmadStatusService {
   }
 
   /**
-   * Convert epicFilePattern like "epic-{n}*.md" to a regex
+   * Convert epicFilePattern like "epic-{n}*.md" to a regex.
+   * Allows optional numeric prefix (e.g. "6-epic-1-foo.md" matches "epic-{n}*.md").
    */
   private epicFilePatternToRegex(pattern: string): RegExp {
     const escaped = pattern
       .replace(/[.+^${}()|[\]\\]/g, '\\$&')
       .replace(/\\\{n\\\}/g, '(\\d+)')
       .replace(/\*/g, '.*');
-    return new RegExp(`^${escaped}$`);
+    // Allow optional leading "digits-" prefix before the pattern
+    return new RegExp(`^(?:\\d+-)?${escaped}$`);
   }
 
   private async pathExists(p: string): Promise<boolean> {
