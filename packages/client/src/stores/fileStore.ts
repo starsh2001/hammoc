@@ -21,6 +21,8 @@ interface FileState {
   pendingNavigation: { projectSlug: string; path: string; targetLine?: number } | null;
   /** Line number to scroll to after file loads */
   targetLine: number | null;
+  /** Recent files per session — keyed by sessionId, value is array of file paths (max 5) */
+  recentFiles: Record<string, string[]>;
 }
 
 interface FileActions {
@@ -33,6 +35,8 @@ interface FileActions {
   setContent: (content: string) => void;
   resetError: () => void;
   toggleMarkdownPreview: () => void;
+  /** Track a file as recently opened for a specific session */
+  addRecentFile: (sessionId: string, path: string) => void;
 }
 
 type FileStore = FileState & FileActions;
@@ -49,6 +53,7 @@ const initialState: FileState = {
   error: null,
   pendingNavigation: null,
   targetLine: null,
+  recentFiles: {},
 };
 
 export const useFileStore = create<FileStore>((set, get) => ({
@@ -121,7 +126,8 @@ export const useFileStore = create<FileStore>((set, get) => ({
   },
 
   closeEditor: () => {
-    set({ ...initialState });
+    const { recentFiles } = get();
+    set({ ...initialState, recentFiles });
   },
 
   setContent: (content) => {
@@ -132,5 +138,13 @@ export const useFileStore = create<FileStore>((set, get) => ({
 
   toggleMarkdownPreview: () => {
     set({ isMarkdownPreview: !get().isMarkdownPreview });
+  },
+
+  addRecentFile: (sessionId, path) => {
+    const current = get().recentFiles[sessionId] ?? [];
+    // Remove if already exists (move to top), then prepend
+    const filtered = current.filter((f) => f !== path);
+    const updated = [path, ...filtered].slice(0, 5);
+    set({ recentFiles: { ...get().recentFiles, [sessionId]: updated } });
   },
 }));

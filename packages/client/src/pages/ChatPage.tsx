@@ -688,6 +688,7 @@ export function ChatPage() {
     <QuickFileExplorer
       isOpen={showFileExplorer}
       projectSlug={projectSlug}
+      sessionId={sessionId}
       onClose={handleCloseFileExplorer}
     />
   );
