@@ -11,6 +11,15 @@ export interface BmadConfig {
   qaLocation?: string;
 }
 
+/** Entry in a directory listing — either a file or a sub-directory with its own children */
+export interface DirEntry {
+  name: string;
+  /** true when this entry is a sub-directory */
+  isDir?: boolean;
+  /** Children (only present when isDir is true) */
+  children?: DirEntry[];
+}
+
 /** Document existence status */
 export interface BmadDocumentStatus {
   exists: boolean;
@@ -19,6 +28,8 @@ export interface BmadDocumentStatus {
   sharded?: boolean;
   /** Path to the sharded directory (present only when sharded is true) */
   shardedPath?: string;
+  /** Entries inside the sharded directory */
+  shardedFiles?: DirEntry[];
 }
 
 /** Well-known supplementary document (brief, front-end-spec, brainstorming, etc.) */
@@ -43,6 +54,7 @@ export interface BmadDocuments {
 export interface BmadStoryStatus {
   file: string;
   status: string; // 'Draft' | 'Approved' | 'In Progress' | 'Done' | 'Blocked' | etc.
+  title?: string; // Story title extracted from the file header
 }
 
 /** Epic with its stories */
@@ -59,6 +71,8 @@ export interface BmadAuxDocument {
   type: string; // 'stories' | 'qa' | etc.
   path: string;
   fileCount: number;
+  /** Entries in this directory (files and sub-directories) */
+  files?: DirEntry[];
 }
 
 /** Response for GET /api/projects/:projectSlug/bmad-status */

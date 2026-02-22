@@ -166,6 +166,48 @@ export function GlobalSettingsSection() {
         </div>
       </fieldset>
 
+      {/* Markdown Default Mode */}
+      <fieldset>
+        <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          마크다운 파일 열기 모드
+        </legend>
+        <div className="flex flex-wrap gap-3">
+          {([
+            { value: 'edit' as const, label: '편집' },
+            { value: 'preview' as const, label: '미리보기' },
+          ]).map((opt) => (
+            <label
+              key={opt.value}
+              htmlFor={`md-mode-${opt.value}`}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                ${(preferences.markdownDefaultMode ?? 'edit') === opt.value
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }
+              `}
+            >
+              <input
+                type="radio"
+                id={`md-mode-${opt.value}`}
+                name="markdownDefaultMode"
+                value={opt.value}
+                checked={(preferences.markdownDefaultMode ?? 'edit') === opt.value}
+                onChange={() => {
+                  updatePreference('markdownDefaultMode', opt.value);
+                  toast.success('마크다운 기본 모드가 변경되었습니다');
+                }}
+                className="sr-only"
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          마크다운 파일을 열 때 기본으로 사용할 모드입니다.
+        </p>
+      </fieldset>
+
       {/* Chat Timeout Setting */}
       <div>
         <label

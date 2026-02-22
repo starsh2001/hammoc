@@ -150,7 +150,11 @@ function BmadSection({
               auxiliaryDocuments={data.auxiliaryDocuments}
               projectSlug={projectSlug}
             />
-            <EpicProgressCard epics={data.epics} />
+            <EpicProgressCard
+              epics={data.epics}
+              projectSlug={projectSlug}
+              storyBasePath={data.config.devStoryLocation}
+            />
           </div>
         </>
       )}
