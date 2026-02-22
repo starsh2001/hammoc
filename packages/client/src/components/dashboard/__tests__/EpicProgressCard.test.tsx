@@ -97,13 +97,13 @@ describe('EpicProgressCard', () => {
   it('shows "스토리 미작성" for epic with no stories', () => {
     render(<EpicProgressCard epics={[...mockEpics, mockEpicNoStories]} />);
 
-    expect(screen.getByText('스토리 미작성')).toBeInTheDocument();
+    expect(screen.getByText('스토리 미정의')).toBeInTheDocument();
     expect(screen.getByText('3. Empty Epic')).toBeInTheDocument();
 
     // Click should not expand (no ChevronDown icon for this epic)
     fireEvent.click(screen.getByText('3. Empty Epic'));
     // Still no story details shown
-    expect(screen.queryByText('스토리 미작성')).toBeInTheDocument();
+    expect(screen.queryByText('스토리 미정의')).toBeInTheDocument();
   });
 
   // TC-EP-6: Empty epics array shows message

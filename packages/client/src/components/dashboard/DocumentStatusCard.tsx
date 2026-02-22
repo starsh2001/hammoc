@@ -53,18 +53,16 @@ function buildOrderedDocs(documents: BmadDocuments): DocEntry[] {
     suppMap.set(doc.key, doc);
   }
 
-  const brainstorming = suppMap.get('brainstorming');
-  const brief = suppMap.get('brief');
-  const frontEndSpec = suppMap.get('front-end-spec');
+  // Ordered: Brainstorming → Market Research → Competitor Analysis → Brief → PRD → Frontend Spec → Architecture → UI Architecture
+  const suppOrder = ['brainstorming', 'market-research', 'competitor-analysis', 'brief'];
+  const suppOrderAfterPrd = ['front-end-spec'];
+  const suppOrderAfterArch = ['ui-architecture'];
 
-  // Ordered: Brainstorming → Brief → PRD → Frontend Spec → Architecture
   const entries: DocEntry[] = [];
 
-  if (brainstorming) {
-    entries.push({ key: 'brainstorming', label: brainstorming.label, exists: brainstorming.exists, path: brainstorming.path, optional: true });
-  }
-  if (brief) {
-    entries.push({ key: 'brief', label: brief.label, exists: brief.exists, path: brief.path, optional: true });
+  for (const key of suppOrder) {
+    const doc = suppMap.get(key);
+    if (doc) entries.push({ key: doc.key, label: doc.label, exists: doc.exists, path: doc.path, optional: true });
   }
 
   entries.push({
@@ -77,8 +75,9 @@ function buildOrderedDocs(documents: BmadDocuments): DocEntry[] {
     shardedPath: documents.prd.shardedPath,
   });
 
-  if (frontEndSpec) {
-    entries.push({ key: 'front-end-spec', label: frontEndSpec.label, exists: frontEndSpec.exists, path: frontEndSpec.path, optional: true });
+  for (const key of suppOrderAfterPrd) {
+    const doc = suppMap.get(key);
+    if (doc) entries.push({ key: doc.key, label: doc.label, exists: doc.exists, path: doc.path, optional: true });
   }
 
   entries.push({
@@ -90,6 +89,11 @@ function buildOrderedDocs(documents: BmadDocuments): DocEntry[] {
     sharded: documents.architecture.sharded,
     shardedPath: documents.architecture.shardedPath,
   });
+
+  for (const key of suppOrderAfterArch) {
+    const doc = suppMap.get(key);
+    if (doc) entries.push({ key: doc.key, label: doc.label, exists: doc.exists, path: doc.path, optional: true });
+  }
 
   return entries;
 }
@@ -123,7 +127,7 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
             ) : (
               <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
             )}
-            <span className="text-gray-700 dark:text-gray-300">{doc.label}</span>
+            <span className={`text-gray-700 dark:text-gray-300${doc.optional ? '' : ' font-semibold'}`}>{doc.label}</span>
             {doc.sharded && (
               <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
                 Sharded

@@ -85,8 +85,11 @@ class BmadStatusService {
   /** Well-known supplementary documents to check for in docs/ */
   private static readonly SUPPLEMENTARY_DOCS: Array<{ key: string; label: string; file: string }> = [
     { key: 'brainstorming', label: 'Brainstorming', file: 'docs/brainstorming-session-results.md' },
+    { key: 'market-research', label: 'Market Research', file: 'docs/market-research.md' },
+    { key: 'competitor-analysis', label: 'Competitor Analysis', file: 'docs/competitor-analysis.md' },
     { key: 'brief', label: 'Project Brief', file: 'docs/brief.md' },
     { key: 'front-end-spec', label: 'Frontend Spec', file: 'docs/front-end-spec.md' },
+    { key: 'ui-architecture', label: 'UI Architecture', file: 'docs/ui-architecture.md' },
   ];
 
   /**
