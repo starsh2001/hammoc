@@ -4,11 +4,14 @@
  * [Extended: Story 13.3 - Task 5 — CRUD callbacks and toast integration]
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronRight, Search, X, Eye, EyeOff } from 'lucide-react';
+import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, Loader2 } from 'lucide-react';
 
+import type { FileSearchResult } from '@bmad-studio/shared';
 import { useFileStore } from '../../stores/fileStore.js';
+
+const HIDDEN_PATTERNS = ['.env', '.git', 'node_modules', '.next', '.cache', '__pycache__', '.DS_Store', 'dist', '.turbo'];
 import { useToast } from '../../hooks/useToast.js';
 import { ToastContainer } from '../common/Toast.js';
 import { fileSystemApi } from '../../services/api/fileSystem.js';
@@ -37,9 +40,52 @@ export function FileExplorerTab() {
   const [currentPath, setCurrentPath] = useState('.');
   const { toasts, showToast, removeToast } = useToast();
 
+  // Server search state
+  const [searchResults, setSearchResults] = useState<FileSearchResult[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Debounced server search
+  useEffect(() => {
+    if (!filterText.trim() || !projectSlug) {
+      setSearchResults(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    setSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fileSystemApi.searchFiles(projectSlug, filterText.trim(), showHidden);
+        const results = showHidden
+          ? response.results
+          : response.results.filter((r) => {
+              const parts = r.path.split('/');
+              return !parts.some((part) => HIDDEN_PATTERNS.includes(part));
+            });
+        setSearchResults(results);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [filterText, projectSlug, showHidden]);
+
   const handleFileSelect = useCallback(
     (path: string) => {
       useFileStore.getState().requestFileNavigation(projectSlug!, path);
+    },
+    [projectSlug],
+  );
+
+  const handleSearchResultClick = useCallback(
+    (result: FileSearchResult) => {
+      if (result.type === 'file') {
+        useFileStore.getState().requestFileNavigation(projectSlug!, result.path);
+      }
+      setFilterText('');
     },
     [projectSlug],
   );
@@ -78,7 +124,7 @@ export function FileExplorerTab() {
     }
   }, [projectSlug, showToast]);
 
-  const segments = useMemo(() => {
+  const segments = (() => {
     if (currentPath === '.') {
       return [{ name: 'Root', path: '.' }];
     }
@@ -91,7 +137,7 @@ export function FileExplorerTab() {
       });
     }
     return result;
-  }, [currentPath]);
+  })();
 
   if (!projectSlug) {
     return (
@@ -101,32 +147,36 @@ export function FileExplorerTab() {
     );
   }
 
+  const isSearching = searchResults !== null || searchLoading;
+
   return (
     <div className="flex flex-col h-full">
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex-shrink-0 px-4 py-2">
-        <ol className="flex items-center gap-1 text-sm">
-          {segments.map((seg, i) => (
-            <li key={seg.path} className="flex items-center gap-1">
-              {i > 0 && (
-                <ChevronRight className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
-              )}
-              {i === segments.length - 1 ? (
-                <span className="font-medium text-gray-900 dark:text-white" aria-current="page">
-                  {seg.name}
-                </span>
-              ) : (
-                <button
-                  onClick={() => setCurrentPath(seg.path)}
-                  className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-                >
-                  {seg.name}
-                </button>
-              )}
-            </li>
-          ))}
-        </ol>
-      </nav>
+      {!isSearching && (
+        <nav aria-label="Breadcrumb" className="flex-shrink-0 px-4 py-2">
+          <ol className="flex items-center gap-1 text-sm">
+            {segments.map((seg, i) => (
+              <li key={seg.path} className="flex items-center gap-1">
+                {i > 0 && (
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
+                )}
+                {i === segments.length - 1 ? (
+                  <span className="font-medium text-gray-900 dark:text-white" aria-current="page">
+                    {seg.name}
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setCurrentPath(seg.path)}
+                    className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                  >
+                    {seg.name}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
 
       {/* Toolbar */}
       <div className="flex-shrink-0 px-4 py-2 flex items-center gap-2">
@@ -138,7 +188,7 @@ export function FileExplorerTab() {
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
             placeholder="파일 검색..."
-            className="w-full pl-9 pr-8 py-1.5 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-8 py-1.5 text-sm bg-gray-100 dark:bg-gray-800 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:placeholder-white"
           />
           {filterText && (
             <button
@@ -165,20 +215,56 @@ export function FileExplorerTab() {
         </button>
       </div>
 
-      {/* FileTree */}
+      {/* Content: Search results or FileTree */}
       <div className="flex-1 overflow-auto min-h-0">
-        <FileTree
-          projectSlug={projectSlug}
-          basePath="."
-          onFileSelect={handleFileSelect}
-          showHidden={showHidden}
-          filterText={filterText}
-          onNavigate={setCurrentPath}
-          enableContextMenu={true}
-          onCreateEntry={handleCreateEntry}
-          onDeleteEntry={handleDeleteEntry}
-          onRenameEntry={handleRenameEntry}
-        />
+        {isSearching ? (
+          <div className="px-2">
+            {searchLoading ? (
+              <div className="flex items-center gap-2 px-2 py-4 text-sm text-gray-500 dark:text-gray-400 justify-center">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>검색 중...</span>
+              </div>
+            ) : searchResults && searchResults.length === 0 ? (
+              <div className="px-2 py-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                검색 결과가 없습니다.
+              </div>
+            ) : (
+              searchResults?.map((result) => (
+                <button
+                  key={result.path}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50 text-left"
+                  onClick={() => handleSearchResultClick(result)}
+                >
+                  {result.type === 'directory' ? (
+                    <Folder className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+                  ) : (
+                    <File className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm text-gray-900 dark:text-white">{result.name}</span>
+                    {result.path !== result.name && (
+                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 truncate">
+                        {result.path.substring(0, result.path.length - result.name.length - 1)}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        ) : (
+          <FileTree
+            projectSlug={projectSlug}
+            basePath="."
+            onFileSelect={handleFileSelect}
+            showHidden={showHidden}
+            onNavigate={setCurrentPath}
+            enableContextMenu={true}
+            onCreateEntry={handleCreateEntry}
+            onDeleteEntry={handleDeleteEntry}
+            onRenameEntry={handleRenameEntry}
+          />
+        )}
       </div>
 
       {/* Toast notifications */}

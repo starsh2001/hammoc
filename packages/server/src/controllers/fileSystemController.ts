@@ -103,6 +103,87 @@ export const fileSystemController = {
   },
 
   /**
+   * GET /api/projects/:projectSlug/fs/tree?path=
+   * Get full recursive directory tree within a project.
+   */
+  async listDirectoryTree(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      const dirPath = (req.query.path as string) || '.';
+
+      if (!projectSlug) {
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+        return;
+      }
+
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      const result = await fileSystemService.listDirectoryTree(projectRoot, dirPath);
+      res.json(result);
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        return;
+      }
+      if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
+        res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+        });
+        return;
+      }
+      if (nodeError.code === FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.code) {
+        res.status(FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.httpStatus).json({
+          error: { code: FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.code, message: FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.message },
+        });
+        return;
+      }
+      if (nodeError.code === FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.code) {
+        res.status(FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.httpStatus).json({
+          error: { code: FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.code, message: FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.message },
+        });
+        return;
+      }
+      res.status(FILE_SYSTEM_ERRORS.FS_READ_ERROR.httpStatus).json({
+        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: FILE_SYSTEM_ERRORS.FS_READ_ERROR.message },
+      });
+    }
+  },
+
+  /**
+   * GET /api/projects/:projectSlug/fs/search?query=
+   * Search files and directories by name within a project.
+   */
+  async searchFiles(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      const query = req.query.query as string;
+
+      if (!projectSlug) {
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+        return;
+      }
+      if (!query || !query.trim()) {
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'query parameter is required' } });
+        return;
+      }
+
+      const includeHidden = req.query.includeHidden === 'true';
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      const result = await fileSystemService.searchFiles(projectRoot, query.trim(), 100, includeHidden);
+      res.json(result);
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        return;
+      }
+      res.status(FILE_SYSTEM_ERRORS.FS_READ_ERROR.httpStatus).json({
+        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: FILE_SYSTEM_ERRORS.FS_READ_ERROR.message },
+      });
+    }
+  },
+
+  /**
    * PUT /api/projects/:projectSlug/fs/write?path=
    * Write content to a file within a project.
    */
