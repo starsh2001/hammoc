@@ -367,6 +367,67 @@ describe('FileTree', () => {
     });
   });
 
+  // TC-FT-16: filterText hides non-matching entries (Story 13.2)
+  it('hides entries that do not match filterText', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    render(
+      <FileTree projectSlug="test-project" onFileSelect={vi.fn()} filterText="package" />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('package.json')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('src')).not.toBeInTheDocument();
+    expect(screen.queryByText('README.md')).not.toBeInTheDocument();
+  });
+
+  // TC-FT-17: filterText is case-insensitive (Story 13.2)
+  it('filters entries case-insensitively', async () => {
+    vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+    render(
+      <FileTree projectSlug="test-project" onFileSelect={vi.fn()} filterText="README" />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('README.md')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('src')).not.toBeInTheDocument();
+    expect(screen.queryByText('package.json')).not.toBeInTheDocument();
+  });
+
+  // TC-FT-18: onNavigate is called when directory is expanded (Story 13.2)
+  it('calls onNavigate when directory is expanded', async () => {
+    vi.mocked(fileSystemApi.listDirectory)
+      .mockResolvedValueOnce(mockRootResponse)
+      .mockResolvedValueOnce(mockSrcResponse);
+
+    const onNavigate = vi.fn();
+    render(
+      <FileTree projectSlug="test-project" onFileSelect={vi.fn()} onNavigate={onNavigate} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('src')).toBeInTheDocument();
+    });
+
+    // Expand src directory
+    fireEvent.click(screen.getByText('src'));
+
+    expect(onNavigate).toHaveBeenCalledWith('src');
+
+    await waitFor(() => {
+      expect(screen.getByText('App.tsx')).toBeInTheDocument();
+    });
+
+    // Collapse — onNavigate should NOT be called again
+    fireEvent.click(screen.getByText('src'));
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+  });
+
   // TC-FT-15: API error shows error message and retry button (UX)
   it('shows error message and retry button on API error', async () => {
     vi.mocked(fileSystemApi.listDirectory)

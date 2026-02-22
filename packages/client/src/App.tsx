@@ -30,6 +30,7 @@ import { PublicRoute } from './components/PublicRoute';
 import { useTheme } from './hooks/useTheme';
 import { usePreferencesStore } from './stores/preferencesStore';
 import { TextEditor } from './components/editor/TextEditor';
+import { FileExplorerTab } from './components/files/FileExplorerTab.js';
 
 function AppContent() {
   // Initialize server-side preferences (fetches from server, migrates localStorage if needed)
@@ -77,6 +78,7 @@ function AppContent() {
         }
       >
         <Route index element={<BmadDashboard />} />
+        <Route path="files" element={<FileExplorerTab />} />
         <Route path="sessions" element={<ProjectSessionsPage />} />
         <Route path="queue" element={<ProjectQueuePage />} />
       </Route>
