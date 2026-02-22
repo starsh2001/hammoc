@@ -5,6 +5,8 @@
 
 import { create } from 'zustand';
 import { fileSystemApi } from '../services/api/fileSystem';
+import { isMarkdownPath } from '../utils/languageDetect';
+import { usePreferencesStore } from './preferencesStore';
 
 interface FileState {
   openFile: { projectSlug: string; path: string } | null;
@@ -53,12 +55,14 @@ export const useFileStore = create<FileStore>((set, get) => ({
   ...initialState,
 
   openFileInEditor: async (projectSlug, path, targetLine) => {
+    const defaultPreview = isMarkdownPath(path)
+      && usePreferencesStore.getState().preferences.markdownDefaultMode === 'preview';
     set({
       openFile: { projectSlug, path },
       isLoading: true,
       error: null,
       isTruncated: false,
-      isMarkdownPreview: false,
+      isMarkdownPreview: defaultPreview,
       content: '',
       originalContent: '',
       isDirty: false,

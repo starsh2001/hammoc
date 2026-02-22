@@ -204,8 +204,12 @@ describe('bmadStatusService', () => {
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
-    expect(result.documents.prd).toEqual({ exists: true, path: 'docs/prd' });
-    expect(result.documents.architecture).toEqual({ exists: true, path: 'docs/architecture' });
+    expect(result.documents.prd).toEqual({
+      exists: true, path: 'docs/prd.md', sharded: true, shardedPath: 'docs/prd',
+    });
+    expect(result.documents.architecture).toEqual({
+      exists: true, path: 'docs/architecture.md', sharded: true, shardedPath: 'docs/architecture',
+    });
   });
 
   // TC-BS-8: 보조 문서 (stories, qa) 파일 수를 반환한다
@@ -217,19 +221,27 @@ describe('bmadStatusService', () => {
       qa: { qaLocation: 'docs/qa' },
     });
     mockReadFile.mockResolvedValue(VALID_CONFIG_YAML);
-    mockStat.mockRejectedValue(new Error('ENOENT'));
+    // stat: core docs don't exist, but files inside aux dirs are regular files
+    const storyDir = path.join(PROJECT_ROOT, 'docs/stories');
+    const qaDir = path.join(PROJECT_ROOT, 'docs/qa');
+    mockStat.mockImplementation(async (p: string) => {
+      // Files inside stories/qa directories are regular files
+      if (p.startsWith(storyDir + path.sep) || p.startsWith(qaDir + path.sep)) {
+        return { isDirectory: () => false };
+      }
+      throw new Error('ENOENT');
+    });
     mockReaddir.mockImplementation(async (dir: string) => {
-      if (dir === path.join(PROJECT_ROOT, 'docs/stories'))
-        return ['1.1.story.md', '1.2.story.md', 'notes.txt'];
-      if (dir === path.join(PROJECT_ROOT, 'docs/qa')) return ['qa-report.md', 'qa-log.md'];
+      if (dir === storyDir) return ['1.1.story.md', '1.2.story.md', 'notes.txt'];
+      if (dir === qaDir) return ['qa-report.md', 'qa-log.md'];
       throw new Error('ENOENT');
     });
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
     expect(result.auxiliaryDocuments).toEqual([
-      { type: 'stories', path: 'docs/stories', fileCount: 2 },
-      { type: 'qa', path: 'docs/qa', fileCount: 2 },
+      { type: 'stories', path: 'docs/stories', fileCount: 2, files: [{ name: '1.1.story.md' }, { name: '1.2.story.md' }] },
+      { type: 'qa', path: 'docs/qa', fileCount: 2, files: [{ name: 'qa-log.md' }, { name: 'qa-report.md' }] },
     ]);
   });
 

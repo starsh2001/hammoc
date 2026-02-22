@@ -111,11 +111,9 @@ describe('DocumentStatusCard', () => {
 
     expect(screen.getByText('스토리')).toBeInTheDocument();
     expect(screen.getByText('5개')).toBeInTheDocument();
-    expect(screen.getByText('docs/stories')).toBeInTheDocument();
 
     expect(screen.getByText('QA')).toBeInTheDocument();
     expect(screen.getByText('2개')).toBeInTheDocument();
-    expect(screen.getByText('docs/qa')).toBeInTheDocument();
   });
 
   // TC-DS-6: No auxiliary documents hides the section
