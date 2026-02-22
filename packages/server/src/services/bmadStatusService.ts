@@ -10,6 +10,7 @@ import type {
   BmadAuxDocument,
   BmadEpicStatus,
   BmadStoryStatus,
+  DirEntry,
 } from '@bmad-studio/shared';
 
 /**
@@ -117,16 +118,24 @@ class BmadStatusService {
       }),
     );
 
+    // Collect file lists for sharded directories
+    const [prdShardedFiles, archShardedFiles] = await Promise.all([
+      prdShardedExists ? this.listEntries(path.join(projectRoot, prdShardedDir), /\.md$/) : Promise.resolve(undefined),
+      archShardedExists ? this.listEntries(path.join(projectRoot, archShardedDir), /\.md$/) : Promise.resolve(undefined),
+    ]);
+
     return {
       prd: {
         exists: prdFileExists || prdShardedExists,
         path: prdFile,
         ...(config.prdSharded && { sharded: true, shardedPath: prdShardedDir }),
+        ...(prdShardedFiles && { shardedFiles: prdShardedFiles }),
       },
       architecture: {
         exists: archFileExists || archShardedExists,
         path: archFile,
         ...(config.architectureSharded && { sharded: true, shardedPath: archShardedDir }),
+        ...(archShardedFiles && { shardedFiles: archShardedFiles }),
       },
       supplementary,
     };
@@ -142,17 +151,26 @@ class BmadStatusService {
     const auxDocs: BmadAuxDocument[] = [];
 
     if (config.devStoryLocation) {
-      // Count files matching N.N.*.md pattern (story files)
-      const count = await this.countFiles(
+      const storyFiles = await this.listEntries(
         path.join(projectRoot, config.devStoryLocation),
         /^\d+\.\d+\..+\.md$/
       );
-      auxDocs.push({ type: 'stories', path: config.devStoryLocation, fileCount: count });
+      auxDocs.push({
+        type: 'stories',
+        path: config.devStoryLocation,
+        fileCount: this.countEntryFiles(storyFiles),
+        ...(storyFiles && { files: storyFiles }),
+      });
     }
 
     if (config.qaLocation) {
-      const count = await this.countFiles(path.join(projectRoot, config.qaLocation));
-      auxDocs.push({ type: 'qa', path: config.qaLocation, fileCount: count });
+      const qaFiles = await this.listEntries(path.join(projectRoot, config.qaLocation));
+      auxDocs.push({
+        type: 'qa',
+        path: config.qaLocation,
+        fileCount: this.countEntryFiles(qaFiles),
+        ...(qaFiles && { files: qaFiles }),
+      });
     }
 
     return auxDocs;
@@ -241,9 +259,9 @@ class BmadStatusService {
           const match = file.match(storyFileRegex);
           if (match) {
             const epicNum = parseInt(match[1], 10);
-            const status = await this.extractStoryStatus(path.join(storiesDir, file));
+            const meta = await this.extractStoryMeta(path.join(storiesDir, file));
             const stories = storyMap.get(epicNum) || [];
-            stories.push({ file, status });
+            stories.push({ file, status: meta.status, ...(meta.title && { title: meta.title }) });
             storyMap.set(epicNum, stories);
           }
         }
@@ -265,7 +283,7 @@ class BmadStatusService {
       .map(([number, name]) => ({
         number,
         name,
-        stories: (storyMap.get(number) || []).sort((a, b) => a.file.localeCompare(b.file)),
+        stories: (storyMap.get(number) || []).sort((a, b) => a.file.localeCompare(b.file, undefined, { numeric: true })),
         ...(plannedMap.has(number) && { plannedStories: plannedMap.get(number) }),
       }));
 
@@ -290,7 +308,7 @@ class BmadStatusService {
    * Extract Status field from a story file header.
    * Reads only the first 500 bytes for performance.
    */
-  private async extractStoryStatus(filePath: string): Promise<string> {
+  private async extractStoryMeta(filePath: string): Promise<{ status: string; title?: string }> {
     let header: string;
     try {
       const fh = await open(filePath, 'r');
@@ -302,11 +320,17 @@ class BmadStatusService {
         await fh.close();
       }
     } catch {
-      return 'Unknown';
+      return { status: 'Unknown' };
     }
 
-    const match = header.match(/^## Status\s*\n\s*\n\s*(.+)/m);
-    return match ? match[1].trim() : 'Unknown';
+    const statusMatch = header.match(/^## Status\s*\n\s*\n\s*(.+)/m);
+    const status = statusMatch ? statusMatch[1].trim() : 'Unknown';
+
+    // Match: "# Story 1.1: Title" or "# Story 1.1 — Title"
+    const titleMatch = header.match(/^#\s+Story\s+\d+\.\d+[:\s–-]+(.+)/m);
+    const title = titleMatch ? titleMatch[1].trim() : undefined;
+
+    return { status, title };
   }
 
   /**
@@ -340,6 +364,46 @@ class BmadStatusService {
       return entries.length;
     } catch {
       return 0;
+    }
+  }
+
+  /** Count only files (non-directory entries) recursively */
+  private countEntryFiles(entries: DirEntry[] | undefined): number {
+    if (!entries) return 0;
+    let count = 0;
+    for (const e of entries) {
+      if (e.isDir) {
+        count += this.countEntryFiles(e.children);
+      } else {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /** List directory entries (files + sub-directories). Optionally filter files by regex. */
+  private async listEntries(dirPath: string, filter?: RegExp): Promise<DirEntry[] | undefined> {
+    try {
+      const names = await fs.readdir(dirPath);
+      const sorted = names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const results: DirEntry[] = [];
+      for (const name of sorted) {
+        const fullPath = path.join(dirPath, name);
+        try {
+          const stat = await fs.stat(fullPath);
+          if (stat.isDirectory()) {
+            const children = await this.listEntries(fullPath);
+            results.push({ name, isDir: true, children: children ?? [] });
+          } else if (!filter || filter.test(name)) {
+            results.push({ name });
+          }
+        } catch {
+          // skip entries we can't stat
+        }
+      }
+      return results;
+    } catch {
+      return undefined;
     }
   }
 }

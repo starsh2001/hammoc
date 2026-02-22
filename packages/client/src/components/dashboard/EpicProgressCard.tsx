@@ -1,9 +1,13 @@
 import { useState } from 'react';
-import { BarChart3, ChevronDown } from 'lucide-react';
+import { BarChart3, ChevronDown, FileText } from 'lucide-react';
 import type { BmadEpicStatus } from '@bmad-studio/shared';
+
+import { useFileStore } from '../../stores/fileStore.js';
 
 interface EpicProgressCardProps {
   epics: BmadEpicStatus[];
+  projectSlug?: string;
+  storyBasePath?: string;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -18,8 +22,14 @@ function getStatusStyle(status: string): string {
   return STATUS_STYLES[status] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
 }
 
-export function EpicProgressCard({ epics }: EpicProgressCardProps) {
+export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProgressCardProps) {
   const [expandedEpics, setExpandedEpics] = useState<Set<number>>(new Set());
+  const openFile = useFileStore((s) => s.requestFileNavigation);
+
+  const handleOpenStory = (fileName: string) => {
+    if (!projectSlug || !storyBasePath) return;
+    openFile(projectSlug, `${storyBasePath}/${fileName}`);
+  };
 
   const toggleEpic = (epicNumber: number) => {
     setExpandedEpics((prev) => {
@@ -95,14 +105,29 @@ export function EpicProgressCard({ epics }: EpicProgressCardProps) {
               {isExpanded && hasContent && (
                 <div className="mt-2 ml-4 space-y-1">
                   {writtenCount > 0 ? (
-                    epic.stories.map((story) => (
-                      <div key={story.file} className="flex items-center justify-between">
-                        <span className="text-xs text-gray-600 dark:text-gray-400">{story.file}</span>
+                    epic.stories.map((story) => {
+                      const storyNum = story.file.match(/^(\d+\.\d+)/)?.[1];
+                      const displayName = story.title ? `${storyNum}. ${story.title}` : story.file;
+                      return (
+                      <div key={story.file} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{displayName}</span>
+                          {projectSlug && storyBasePath && (
+                            <button
+                              onClick={() => handleOpenStory(story.file)}
+                              className="flex-shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                              title={story.file}
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusStyle(story.status)}`}>
                           {story.status}
                         </span>
                       </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className="text-xs text-gray-400 dark:text-gray-500">
                       PRD에 {planned}개 스토리 예정 — 아직 작성된 스토리 파일 없음

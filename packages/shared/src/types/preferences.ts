@@ -17,6 +17,7 @@ export interface UserPreferences {
   starFavorites?: Record<string, string[]>; // agentId → commands
   defaultModel?: string; // model ID (e.g. 'sonnet', 'claude-opus-4-6') or '' for CLI default
   chatTimeoutMs?: number; // chat response timeout, default 300000 (5 min)
+  markdownDefaultMode?: 'edit' | 'preview'; // default editor mode for markdown files
   telegram?: TelegramSettings;
 }
 
