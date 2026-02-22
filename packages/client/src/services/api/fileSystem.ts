@@ -5,7 +5,14 @@
  */
 
 import { api } from './client.js';
-import type { FileReadResponse, FileWriteResponse, DirectoryListResponse } from '@bmad-studio/shared';
+import type {
+  FileReadResponse,
+  FileWriteResponse,
+  DirectoryListResponse,
+  FileCreateResponse,
+  FileDeleteResponse,
+  FileRenameResponse,
+} from '@bmad-studio/shared';
 
 export const fileSystemApi = {
   readFile: (projectSlug: string, path: string) =>
@@ -16,4 +23,20 @@ export const fileSystemApi = {
 
   listDirectory: (projectSlug: string, path: string = '.') =>
     api.get<DirectoryListResponse>(`/projects/${projectSlug}/fs/list?path=${encodeURIComponent(path)}`),
+
+  createEntry: (projectSlug: string, path: string, type: 'file' | 'directory' = 'file') =>
+    api.post<FileCreateResponse>(
+      `/projects/${projectSlug}/fs/create?path=${encodeURIComponent(path)}`,
+      { type },
+    ),
+
+  deleteEntry: (projectSlug: string, path: string, force: boolean = false) =>
+    api.delete<FileDeleteResponse>(
+      `/projects/${projectSlug}/fs/delete?path=${encodeURIComponent(path)}${force ? '&force=true' : ''}`,
+    ),
+
+  renameEntry: (projectSlug: string, path: string, newPath: string) =>
+    api.patch<FileRenameResponse>(
+      `/projects/${projectSlug}/fs/rename?path=${encodeURIComponent(path)}&newPath=${encodeURIComponent(newPath)}`,
+    ),
 };

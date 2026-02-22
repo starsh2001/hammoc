@@ -1,6 +1,7 @@
 /**
  * fileSystemApi Tests
  * [Source: Story 13.1 - Task 4.2]
+ * [Extended: Story 13.3 - Task 6.1 — CRUD method tests]
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -10,6 +11,9 @@ vi.mock('../client.js', () => ({
   api: {
     get: vi.fn(),
     put: vi.fn(),
+    post: vi.fn(),
+    delete: vi.fn(),
+    patch: vi.fn(),
   },
 }));
 
@@ -79,6 +83,73 @@ describe('fileSystemApi', () => {
       expect(api.put).toHaveBeenCalledWith(
         '/projects/my-project/fs/write?path=src%2Findex.ts',
         { content: 'new content' },
+      );
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  // TC-FS-6: createEntry calls POST with correct URL and body
+  describe('createEntry', () => {
+    it('calls api.post with correct URL and body', async () => {
+      const mockResponse = { success: true, type: 'file', path: 'src/new-file.ts' };
+      vi.mocked(api.post).mockResolvedValue(mockResponse);
+
+      const result = await fileSystemApi.createEntry('my-project', 'src/new-file.ts', 'file');
+
+      expect(api.post).toHaveBeenCalledWith(
+        '/projects/my-project/fs/create?path=src%2Fnew-file.ts',
+        { type: 'file' },
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('defaults type to file', async () => {
+      vi.mocked(api.post).mockResolvedValue({ success: true, type: 'file', path: 'test.txt' });
+
+      await fileSystemApi.createEntry('my-project', 'test.txt');
+
+      expect(api.post).toHaveBeenCalledWith(
+        '/projects/my-project/fs/create?path=test.txt',
+        { type: 'file' },
+      );
+    });
+  });
+
+  // TC-FS-7: deleteEntry calls DELETE with correct URL (including force parameter)
+  describe('deleteEntry', () => {
+    it('calls api.delete with correct URL', async () => {
+      const mockResponse = { success: true, path: 'src/old-file.ts' };
+      vi.mocked(api.delete).mockResolvedValue(mockResponse);
+
+      const result = await fileSystemApi.deleteEntry('my-project', 'src/old-file.ts');
+
+      expect(api.delete).toHaveBeenCalledWith(
+        '/projects/my-project/fs/delete?path=src%2Fold-file.ts',
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('includes force=true parameter when force is true', async () => {
+      vi.mocked(api.delete).mockResolvedValue({ success: true, path: 'node_modules' });
+
+      await fileSystemApi.deleteEntry('my-project', 'node_modules', true);
+
+      expect(api.delete).toHaveBeenCalledWith(
+        '/projects/my-project/fs/delete?path=node_modules&force=true',
+      );
+    });
+  });
+
+  // TC-FS-8: renameEntry calls PATCH with correct URL
+  describe('renameEntry', () => {
+    it('calls api.patch with correct URL', async () => {
+      const mockResponse = { success: true, oldPath: 'src/old.ts', newPath: 'src/new.ts' };
+      vi.mocked(api.patch).mockResolvedValue(mockResponse);
+
+      const result = await fileSystemApi.renameEntry('my-project', 'src/old.ts', 'src/new.ts');
+
+      expect(api.patch).toHaveBeenCalledWith(
+        '/projects/my-project/fs/rename?path=src%2Fold.ts&newPath=src%2Fnew.ts',
       );
       expect(result).toEqual(mockResponse);
     });

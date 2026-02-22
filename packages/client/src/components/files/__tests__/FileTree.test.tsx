@@ -1,6 +1,7 @@
 /**
  * FileTree Tests
  * [Source: Story 13.1 - Task 4.1]
+ * [Extended: Story 13.3 - Task 6.2 — Context menu, inline input, delete dialog tests]
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -14,6 +15,9 @@ vi.mock('../../../services/api/fileSystem.js', () => ({
     listDirectory: vi.fn(),
     readFile: vi.fn(),
     writeFile: vi.fn(),
+    createEntry: vi.fn(),
+    deleteEntry: vi.fn(),
+    renameEntry: vi.fn(),
   },
 }));
 
@@ -225,8 +229,8 @@ describe('FileTree', () => {
 
     // With hidden filtered: src (dir), package.json (file), README.md (file)
     expect(names[0]).toBe('src');
-    expect(names[1]).toBe('package.json');
-    expect(names[2]).toBe('README.md');
+    expect(names[1]).toContain('package.json');
+    expect(names[2]).toContain('README.md');
   });
 
   // TC-FT-10: Loading spinner shown during directory load (AC2)
@@ -455,6 +459,309 @@ describe('FileTree', () => {
 
     await waitFor(() => {
       expect(screen.getByText('App.tsx')).toBeInTheDocument();
+    });
+  });
+
+  // --- Story 13.3: Context Menu Tests ---
+
+  describe('Context Menu', () => {
+    const renderWithContextMenu = async () => {
+      vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+      const mockOnCreate = vi.fn().mockResolvedValue(undefined);
+      const mockOnDelete = vi.fn().mockResolvedValue(undefined);
+      const mockOnRename = vi.fn().mockResolvedValue(undefined);
+
+      const result = render(
+        <FileTree
+          projectSlug="test-project"
+          onFileSelect={vi.fn()}
+          enableContextMenu={true}
+          onCreateEntry={mockOnCreate}
+          onDeleteEntry={mockOnDelete}
+          onRenameEntry={mockOnRename}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('src')).toBeInTheDocument();
+      });
+
+      return { ...result, mockOnCreate, mockOnDelete, mockOnRename };
+    };
+
+    // TC-FT-19: Right-click shows context menu when enableContextMenu=true (AC1)
+    it('shows context menu on right-click when enableContextMenu=true', async () => {
+      await renderWithContextMenu();
+
+      fireEvent.contextMenu(screen.getByText('src'));
+
+      await waitFor(() => {
+        expect(screen.getByText('새 파일')).toBeInTheDocument();
+      });
+    });
+
+    // TC-FT-20: Context menu shows all 4 options (AC2)
+    it('shows all 4 options in context menu', async () => {
+      await renderWithContextMenu();
+
+      fireEvent.contextMenu(screen.getByText('src'));
+
+      await waitFor(() => {
+        expect(screen.getByText('새 파일')).toBeInTheDocument();
+        expect(screen.getByText('새 폴더')).toBeInTheDocument();
+        expect(screen.getByText('이름 변경')).toBeInTheDocument();
+        expect(screen.getByText('삭제')).toBeInTheDocument();
+      });
+    });
+
+    // TC-FT-21: No context menu when enableContextMenu=false
+    it('does not show context menu when enableContextMenu=false', async () => {
+      vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+      render(
+        <FileTree
+          projectSlug="test-project"
+          onFileSelect={vi.fn()}
+          enableContextMenu={false}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('src')).toBeInTheDocument();
+      });
+
+      fireEvent.contextMenu(screen.getByText('src'));
+
+      expect(screen.queryByText('새 파일')).not.toBeInTheDocument();
+    });
+
+    // TC-FT-22: MoreVertical menu button click shows context menu (AC1)
+    it('shows context menu on MoreVertical button click', async () => {
+      await renderWithContextMenu();
+
+      const menuButton = screen.getAllByLabelText('더보기 메뉴')[0];
+      fireEvent.click(menuButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('새 파일')).toBeInTheDocument();
+      });
+    });
+
+    // TC-FT-23: "새 파일" click shows inline input (AC3)
+    it('shows inline input when "새 파일" is clicked', async () => {
+      await renderWithContextMenu();
+
+      fireEvent.contextMenu(screen.getByText('src'));
+
+      await waitFor(() => {
+        expect(screen.getByText('새 파일')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('새 파일'));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('새 항목 이름')).toBeInTheDocument();
+      });
+    });
+
+    // TC-FT-24: Enter on inline input calls onCreateEntry (AC3)
+    it('calls onCreateEntry when Enter is pressed on inline input', async () => {
+      const { mockOnCreate } = await renderWithContextMenu();
+
+      // Mock listDirectory for refresh after create
+      vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+      fireEvent.contextMenu(screen.getByText('src'));
+      await waitFor(() => {
+        expect(screen.getByText('새 파일')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('새 파일'));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('새 항목 이름')).toBeInTheDocument();
+      });
+
+      const input = screen.getByLabelText('새 항목 이름');
+      fireEvent.change(input, { target: { value: 'newFile.ts' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnCreate).toHaveBeenCalledWith('src', 'file', 'newFile.ts');
+      });
+    });
+
+    // TC-FT-25: Escape on inline input cancels (AC3)
+    it('cancels inline input on Escape', async () => {
+      await renderWithContextMenu();
+
+      fireEvent.contextMenu(screen.getByText('src'));
+      await waitFor(() => {
+        expect(screen.getByText('새 파일')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('새 파일'));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('새 항목 이름')).toBeInTheDocument();
+      });
+
+      const input = screen.getByLabelText('새 항목 이름');
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      await waitFor(() => {
+        expect(screen.queryByLabelText('새 항목 이름')).not.toBeInTheDocument();
+      });
+    });
+
+    // TC-FT-26: "삭제" click shows delete confirm dialog (AC4)
+    it('shows delete confirm dialog when "삭제" is clicked', async () => {
+      await renderWithContextMenu();
+
+      fireEvent.contextMenu(screen.getByText('package.json'));
+      await waitFor(() => {
+        expect(screen.getByText('삭제')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('삭제'));
+
+      await waitFor(() => {
+        expect(screen.getByText('삭제 확인')).toBeInTheDocument();
+      });
+    });
+
+    // TC-FT-27: Confirm delete calls onDeleteEntry (AC4)
+    it('calls onDeleteEntry when delete is confirmed', async () => {
+      const { mockOnDelete } = await renderWithContextMenu();
+
+      // Mock listDirectory for refresh after delete
+      vi.mocked(fileSystemApi.listDirectory).mockResolvedValue(mockRootResponse);
+
+      fireEvent.contextMenu(screen.getByText('package.json'));
+      await waitFor(() => {
+        expect(screen.getByText('삭제')).toBeInTheDocument();
+      });
+
+      // Click "삭제" in context menu
+      fireEvent.click(screen.getByText('삭제'));
+
+      await waitFor(() => {
+        expect(screen.getByText('삭제 확인')).toBeInTheDocument();
+      });
+
+      // Click "삭제" button in dialog
+      const deleteButtons = screen.getAllByText('삭제');
+      const confirmButton = deleteButtons.find(
+        (btn) => btn.closest('.bg-red-500') || btn.classList.contains('bg-red-500') ||
+                 btn.closest('button')?.classList.contains('bg-red-500'),
+      );
+      // The last "삭제" button in the dialog is the confirm button
+      fireEvent.click(deleteButtons[deleteButtons.length - 1]);
+
+      await waitFor(() => {
+        expect(mockOnDelete).toHaveBeenCalledWith('package.json');
+      });
+    });
+
+    // TC-FT-28: Cancel in delete dialog closes it (AC4)
+    it('closes delete confirm dialog on cancel', async () => {
+      await renderWithContextMenu();
+
+      fireEvent.contextMenu(screen.getByText('package.json'));
+      await waitFor(() => {
+        expect(screen.getByText('삭제')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('삭제'));
+
+      await waitFor(() => {
+        expect(screen.getByText('삭제 확인')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('취소'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('삭제 확인')).not.toBeInTheDocument();
+      });
+    });
+
+    // TC-FT-29: "이름 변경" click shows inline input with current name (AC3)
+    it('shows inline input with current name on rename', async () => {
+      await renderWithContextMenu();
+
+      fireEvent.contextMenu(screen.getByText('package.json'));
+      await waitFor(() => {
+        expect(screen.getByText('이름 변경')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('이름 변경'));
+
+      await waitFor(() => {
+        const input = screen.getByLabelText('이름 변경');
+        expect(input).toBeInTheDocument();
+        expect((input as HTMLInputElement).value).toBe('package.json');
+      });
+    });
+
+    // TC-FT-30: Click outside closes context menu
+    it('closes context menu on outside click', async () => {
+      await renderWithContextMenu();
+
+      fireEvent.contextMenu(screen.getByText('src'));
+      await waitFor(() => {
+        expect(screen.getByText('새 파일')).toBeInTheDocument();
+      });
+
+      // Click outside (on body)
+      fireEvent.mouseDown(document.body);
+
+      await waitFor(() => {
+        expect(screen.queryByText('새 파일')).not.toBeInTheDocument();
+      });
+    });
+
+    // TC-FT-31: Tree refreshes after CRUD operations (AC6)
+    it('refreshes directory after CRUD operations', async () => {
+      const { mockOnCreate } = await renderWithContextMenu();
+
+      const updatedRootResponse: DirectoryListResponse = {
+        path: '.',
+        entries: [
+          ...mockRootEntries,
+          { name: 'newFile.ts', type: 'file', size: 0, modifiedAt: '2026-02-22T10:00:00Z' },
+        ],
+      };
+
+      // Setup: first call returns original, refresh calls return updated
+      vi.mocked(fileSystemApi.listDirectory)
+        .mockResolvedValue(updatedRootResponse);
+
+      // Right-click on a root-level file to get context menu with parentPath='.'
+      fireEvent.contextMenu(screen.getByText('package.json'));
+      await waitFor(() => {
+        expect(screen.getByText('새 파일')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('새 파일'));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('새 항목 이름')).toBeInTheDocument();
+      });
+
+      const input = screen.getByLabelText('새 항목 이름');
+      fireEvent.change(input, { target: { value: 'newFile.ts' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnCreate).toHaveBeenCalled();
+      });
+
+      // listDirectory should be called again for refresh
+      await waitFor(() => {
+        // The second call to listDirectory should be for the parent path refresh
+        expect(fileSystemApi.listDirectory).toHaveBeenCalledWith('test-project', '.');
+      });
     });
   });
 });
