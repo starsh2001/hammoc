@@ -17,9 +17,9 @@ import { useTheme } from '../hooks/useTheme';
 
 const tabs = [
   { id: 'dashboard', label: '대시보드', icon: LayoutDashboard, path: '' },
-  { id: 'files', label: '파일', icon: FolderOpen, path: '/files' },
   { id: 'sessions', label: '세션', icon: MessageSquare, path: '/sessions' },
   { id: 'queue', label: '큐 러너', icon: ListOrdered, path: '/queue' },
+  { id: 'files', label: '파일', icon: FolderOpen, path: '/files' },
 ] as const;
 
 export function ProjectTabLayout() {

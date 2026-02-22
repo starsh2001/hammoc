@@ -42,6 +42,7 @@ import { MessageListSkeleton } from '../components/MessageListSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { SessionQuickAccessPanel } from '../components/SessionQuickAccessPanel';
+import { QuickFileExplorer } from '../components/files/QuickFileExplorer';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ThinkingBlock } from '../components/ThinkingBlock';
 
@@ -526,12 +527,25 @@ export function ChatPage() {
   // Ref to store pending agent command for auto-send after navigation (Story 8.3)
   const pendingAgentCommandRef = useRef<string | null>(null);
 
+  // Quick file explorer panel state
+  const [showFileExplorer, setShowFileExplorer] = useState(false);
+
   const handleShowSessions = useCallback(() => {
     setShowSessionPanel(true);
+    setShowFileExplorer(false);
   }, []);
 
   const handleCloseSessionPanel = useCallback(() => {
     setShowSessionPanel(false);
+  }, []);
+
+  const handleShowFileExplorer = useCallback(() => {
+    setShowFileExplorer(true);
+    setShowSessionPanel(false);
+  }, []);
+
+  const handleCloseFileExplorer = useCallback(() => {
+    setShowFileExplorer(false);
   }, []);
 
   // Execute confirmed action (after user confirms in modal)
@@ -670,6 +684,14 @@ export function ChatPage() {
     />
   );
 
+  const fileExplorerPanel = (
+    <QuickFileExplorer
+      isOpen={showFileExplorer}
+      projectSlug={projectSlug}
+      onClose={handleCloseFileExplorer}
+    />
+  );
+
   const confirmModalElement = (
     <ConfirmModal
       isOpen={confirmModal.isOpen}
@@ -696,7 +718,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -748,6 +770,7 @@ export function ChatPage() {
           />
         </InputArea>
         {sessionPanel}
+        {fileExplorerPanel}
         {confirmModalElement}
       </div>
     );
@@ -760,7 +783,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -809,6 +832,7 @@ export function ChatPage() {
           />
         </InputArea>
         {sessionPanel}
+        {fileExplorerPanel}
         {confirmModalElement}
       </div>
     );
@@ -821,7 +845,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -877,6 +901,7 @@ export function ChatPage() {
           />
         </InputArea>
         {sessionPanel}
+        {fileExplorerPanel}
         {confirmModalElement}
       </div>
     );
@@ -894,6 +919,7 @@ export function ChatPage() {
         onBack={handleBack}
         onNewSession={handleNewSession}
         onShowSessions={handleShowSessions}
+        onShowFileExplorer={handleShowFileExplorer}
         onRefresh={handleRetry}
         onLogout={handleLogout}
         onRenameSession={handleRenameSession}
@@ -963,6 +989,7 @@ export function ChatPage() {
         />
       </InputArea>
       {sessionPanel}
+      {fileExplorerPanel}
       {confirmModalElement}
     </div>
   );
