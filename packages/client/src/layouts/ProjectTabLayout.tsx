@@ -4,7 +4,7 @@
  * Tabs: Dashboard, Sessions, Queue Runner
  */
 
-import { useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, LayoutDashboard, MessageSquare, ListOrdered, Settings, MoreVertical, Moon, Sun, LogOut } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
@@ -25,8 +25,15 @@ export function ProjectTabLayout() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { projects } = useProjectStore();
+  const { projects, fetchProjects } = useProjectStore();
   const { logout } = useAuthStore();
+
+  // Ensure project list is loaded (e.g. after a page refresh on /project/:slug)
+  useEffect(() => {
+    if (projects.length === 0) {
+      fetchProjects();
+    }
+  }, [projects.length, fetchProjects]);
   const { theme, toggleTheme } = useTheme();
 
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);

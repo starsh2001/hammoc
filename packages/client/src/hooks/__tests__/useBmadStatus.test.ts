@@ -21,6 +21,7 @@ const mockData: BmadStatusResponse = {
   documents: {
     prd: { exists: true, path: 'docs/prd.md' },
     architecture: { exists: true, path: 'docs/architecture.md' },
+    supplementary: [],
   },
   auxiliaryDocuments: [{ type: 'stories', path: 'docs/stories', fileCount: 5 }],
   epics: [

@@ -46,14 +46,16 @@ export function EpicProgressCard({ epics }: EpicProgressCardProps) {
       <div className="space-y-2 text-sm">
         {epics.map((epic) => {
           const doneCount = epic.stories.filter((s) => s.status === 'Done').length;
-          const totalCount = epic.stories.length;
+          const writtenCount = epic.stories.length;
+          const planned = epic.plannedStories ?? writtenCount;
+          const barTotal = Math.max(planned, writtenCount);
           const isExpanded = expandedEpics.has(epic.number);
-          const hasStories = totalCount > 0;
+          const hasContent = writtenCount > 0 || planned > 0;
 
           return (
             <div key={epic.number}>
               {/* Epic row */}
-              {hasStories ? (
+              {hasContent ? (
                 <div
                   onClick={() => toggleEpic(epic.number)}
                   className="flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded transition-colors cursor-pointer px-1 py-0.5"
@@ -63,7 +65,7 @@ export function EpicProgressCard({ epics }: EpicProgressCardProps) {
                   </span>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {doneCount}/{totalCount}
+                      {doneCount}/{planned}
                     </span>
                     <ChevronDown
                       className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -75,31 +77,42 @@ export function EpicProgressCard({ epics }: EpicProgressCardProps) {
                   <span className="text-gray-700 dark:text-gray-300 truncate mr-2">
                     {epic.number}. {epic.name}
                   </span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">스토리 미작성</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">스토리 미정의</span>
                 </div>
               )}
 
               {/* Progress bar */}
-              {totalCount > 0 && (
+              {barTotal > 0 && (
                 <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-1 mx-1">
                   <div
                     className="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all"
-                    style={{ width: `${(doneCount / totalCount) * 100}%` }}
+                    style={{ width: `${(doneCount / barTotal) * 100}%` }}
                   />
                 </div>
               )}
 
               {/* Expanded story details */}
-              {isExpanded && hasStories && (
+              {isExpanded && hasContent && (
                 <div className="mt-2 ml-4 space-y-1">
-                  {epic.stories.map((story) => (
-                    <div key={story.file} className="flex items-center justify-between">
-                      <span className="text-xs text-gray-600 dark:text-gray-400">{story.file}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusStyle(story.status)}`}>
-                        {story.status}
-                      </span>
-                    </div>
-                  ))}
+                  {writtenCount > 0 ? (
+                    epic.stories.map((story) => (
+                      <div key={story.file} className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-400">{story.file}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusStyle(story.status)}`}>
+                          {story.status}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      PRD에 {planned}개 스토리 예정 — 아직 작성된 스토리 파일 없음
+                    </p>
+                  )}
+                  {writtenCount > 0 && planned > writtenCount && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      + {planned - writtenCount}개 스토리 미작성
+                    </p>
+                  )}
                 </div>
               )}
             </div>

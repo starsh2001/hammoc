@@ -27,21 +27,25 @@ vi.mock('../../../utils/uuid.js', () => ({
 const prdExists: BmadDocuments = {
   prd: { exists: true, path: 'docs/prd.md' },
   architecture: { exists: true, path: 'docs/architecture.md' },
+  supplementary: [],
 };
 
 const prdMissing: BmadDocuments = {
   prd: { exists: false, path: 'docs/prd.md' },
   architecture: { exists: true, path: 'docs/architecture.md' },
+  supplementary: [],
 };
 
 const archMissing: BmadDocuments = {
   prd: { exists: true, path: 'docs/prd.md' },
   architecture: { exists: false, path: 'docs/architecture.md' },
+  supplementary: [],
 };
 
 const bothMissing: BmadDocuments = {
   prd: { exists: false, path: 'docs/prd.md' },
   architecture: { exists: false, path: 'docs/architecture.md' },
+  supplementary: [],
 };
 
 const auxDocs: BmadAuxDocument[] = [

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { FileText, CheckCircle, XCircle, FolderOpen, ArrowUpRight } from 'lucide-react';
-import type { BmadDocuments, BmadAuxDocument } from '@bmad-studio/shared';
+import { FileText, CheckCircle, XCircle, Circle, FolderOpen, ArrowUpRight } from 'lucide-react';
+import type { BmadDocuments, BmadAuxDocument, BmadSupplementaryDoc } from '@bmad-studio/shared';
 
 import { generateUUID } from '../../utils/uuid.js';
 
@@ -19,12 +19,89 @@ function getAuxDocLabel(type: string): string {
   return AUX_DOC_LABELS[type] ?? type;
 }
 
+/** Agent command mapping for missing core documents */
+const CREATE_AGENT: Record<string, string> = {
+  prd: '/BMad:agents:pm',
+  architecture: '/BMad:agents:architect',
+};
+
+/**
+ * Unified ordered document list.
+ * Order: Brainstorming → Brief → PRD → Frontend Spec → Architecture
+ *
+ * Supplementary docs (brainstorming, brief, front-end-spec) come from documents.supplementary.
+ * PRD and Architecture are core docs from documents.prd / documents.architecture.
+ */
+type DocEntry = {
+  key: string;
+  label: string;
+  exists: boolean;
+  path: string;
+  /** If missing, which agent can create this document? */
+  agentCommand?: string;
+  /** Whether this document is sharded into multiple files */
+  sharded?: boolean;
+  /** Path to the sharded directory */
+  shardedPath?: string;
+  /** Optional docs show gray indicator instead of red X when missing */
+  optional?: boolean;
+};
+
+function buildOrderedDocs(documents: BmadDocuments): DocEntry[] {
+  const suppMap = new Map<string, BmadSupplementaryDoc>();
+  for (const doc of documents.supplementary ?? []) {
+    suppMap.set(doc.key, doc);
+  }
+
+  const brainstorming = suppMap.get('brainstorming');
+  const brief = suppMap.get('brief');
+  const frontEndSpec = suppMap.get('front-end-spec');
+
+  // Ordered: Brainstorming → Brief → PRD → Frontend Spec → Architecture
+  const entries: DocEntry[] = [];
+
+  if (brainstorming) {
+    entries.push({ key: 'brainstorming', label: brainstorming.label, exists: brainstorming.exists, path: brainstorming.path, optional: true });
+  }
+  if (brief) {
+    entries.push({ key: 'brief', label: brief.label, exists: brief.exists, path: brief.path, optional: true });
+  }
+
+  entries.push({
+    key: 'prd',
+    label: 'PRD',
+    exists: documents.prd.exists,
+    path: documents.prd.path,
+    agentCommand: CREATE_AGENT.prd,
+    sharded: documents.prd.sharded,
+    shardedPath: documents.prd.shardedPath,
+  });
+
+  if (frontEndSpec) {
+    entries.push({ key: 'front-end-spec', label: frontEndSpec.label, exists: frontEndSpec.exists, path: frontEndSpec.path, optional: true });
+  }
+
+  entries.push({
+    key: 'architecture',
+    label: 'Architecture',
+    exists: documents.architecture.exists,
+    path: documents.architecture.path,
+    agentCommand: CREATE_AGENT.architecture,
+    sharded: documents.architecture.sharded,
+    shardedPath: documents.architecture.shardedPath,
+  });
+
+  return entries;
+}
+
 export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug }: DocumentStatusCardProps) {
   const navigate = useNavigate();
 
   const handleCreateDoc = (agentCommand: string) => {
     navigate(`/project/${projectSlug}/session/${generateUUID()}?agent=${encodeURIComponent(agentCommand)}`);
   };
+
+  const orderedDocs = buildOrderedDocs(documents);
 
   return (
     <div
@@ -37,57 +114,41 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
         <h2 className="font-semibold text-gray-900 dark:text-white">문서 현황</h2>
       </div>
       <div className="space-y-2 text-sm">
-        {/* PRD */}
-        <div className="flex items-center gap-2">
-          {documents.prd.exists ? (
-            <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-          ) : (
-            <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
-          )}
-          <span className="text-gray-700 dark:text-gray-300">PRD</span>
-          {documents.prd.exists ? (
-            <span className="text-xs text-gray-400 dark:text-gray-500 truncate">{documents.prd.path}</span>
-          ) : (
-            <>
-              <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
-                작성 필요
+        {orderedDocs.map((doc) => (
+          <div key={doc.key} className="flex items-center gap-2">
+            {doc.exists ? (
+              <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+            ) : doc.optional ? (
+              <Circle className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+            ) : (
+              <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+            )}
+            <span className="text-gray-700 dark:text-gray-300">{doc.label}</span>
+            {doc.sharded && (
+              <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+                Sharded
               </span>
-              <button
-                onClick={() => handleCreateDoc('/BMad:agents:pm')}
-                className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors inline-flex items-center gap-1"
-              >
-                작성하러 가기
-                <ArrowUpRight className="w-3 h-3" />
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Architecture */}
-        <div className="flex items-center gap-2">
-          {documents.architecture.exists ? (
-            <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-          ) : (
-            <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
-          )}
-          <span className="text-gray-700 dark:text-gray-300">Architecture</span>
-          {documents.architecture.exists ? (
-            <span className="text-xs text-gray-400 dark:text-gray-500 truncate">{documents.architecture.path}</span>
-          ) : (
-            <>
-              <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
-                작성 필요
+            )}
+            {doc.exists ? (
+              <span className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                {doc.shardedPath ? `${doc.path} + ${doc.shardedPath}/` : doc.path}
               </span>
-              <button
-                onClick={() => handleCreateDoc('/BMad:agents:architect')}
-                className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors inline-flex items-center gap-1"
-              >
-                작성하러 가기
-                <ArrowUpRight className="w-3 h-3" />
-              </button>
-            </>
-          )}
-        </div>
+            ) : doc.agentCommand ? (
+              <>
+                <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
+                  작성 필요
+                </span>
+                <button
+                  onClick={() => handleCreateDoc(doc.agentCommand!)}
+                  className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors inline-flex items-center gap-1"
+                >
+                  작성하러 가기
+                  <ArrowUpRight className="w-3 h-3" />
+                </button>
+              </>
+            ) : null}
+          </div>
+        ))}
 
         {/* Auxiliary Documents */}
         {auxiliaryDocuments.length > 0 && (

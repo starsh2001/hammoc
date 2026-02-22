@@ -4,26 +4,10 @@
  * [Source: Story 11.1 - Task 5, Story 11.2 - Task 4]
  */
 
-import path from 'path';
 import { Request, Response } from 'express';
 import { FILE_SYSTEM_ERRORS } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 import { fileSystemService } from '../services/fileSystemService.js';
-
-/**
- * Resolve projectSlug to actual project disk path.
- * Uses projectService.parseSessionsIndex() to extract originalPath.
- */
-async function resolveProjectPath(projectSlug: string): Promise<string> {
-  const projectDir = path.join(projectService.getClaudeProjectsDir(), projectSlug);
-  const info = await projectService.parseSessionsIndex(projectDir, projectSlug);
-  if (!info) {
-    const err = new Error('프로젝트를 찾을 수 없습니다.');
-    (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
-    throw err;
-  }
-  return info.originalPath;
-}
 
 export const fileSystemController = {
   /**
@@ -44,7 +28,7 @@ export const fileSystemController = {
         return;
       }
 
-      const projectRoot = await resolveProjectPath(projectSlug);
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       const result = await fileSystemService.readFile(projectRoot, filePath);
       res.json(result);
     } catch (error) {
@@ -85,7 +69,7 @@ export const fileSystemController = {
         return;
       }
 
-      const projectRoot = await resolveProjectPath(projectSlug);
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       const result = await fileSystemService.listDirectory(projectRoot, dirPath);
       res.json(result);
     } catch (error) {
@@ -141,7 +125,7 @@ export const fileSystemController = {
         return;
       }
 
-      const projectRoot = await resolveProjectPath(projectSlug);
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       const result = await fileSystemService.writeFile(projectRoot, filePath, content);
       res.json(result);
     } catch (error) {
@@ -192,7 +176,7 @@ export const fileSystemController = {
         return;
       }
 
-      const projectRoot = await resolveProjectPath(projectSlug);
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       const result = await fileSystemService.createEntry(projectRoot, entryPath, entryType);
       res.status(201).json(result);
     } catch (error) {
@@ -244,7 +228,7 @@ export const fileSystemController = {
         return;
       }
 
-      const projectRoot = await resolveProjectPath(projectSlug);
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       const result = await fileSystemService.deleteEntry(projectRoot, entryPath, force);
       res.json(result);
     } catch (error) {
@@ -300,7 +284,7 @@ export const fileSystemController = {
         return;
       }
 
-      const projectRoot = await resolveProjectPath(projectSlug);
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       const result = await fileSystemService.renameEntry(projectRoot, entryPath, newPath);
       res.json(result);
     } catch (error) {
