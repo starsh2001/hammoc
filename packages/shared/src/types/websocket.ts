@@ -44,7 +44,7 @@ export interface ClientToServerEvents {
   'session:leave': (sessionId: string) => void;
   'session:list': (data: { projectPath: string }) => void;
   // Story 15.2: Queue runner events
-  'queue:start': (data: { items: QueueItem[]; sessionId?: string; projectSlug: string }) => void;
+  'queue:start': (data: { items: QueueItem[]; sessionId?: string; projectSlug: string; permissionMode?: PermissionMode }) => void;
   'queue:pause': (data: { projectSlug: string }) => void;
   'queue:resume': (data: { projectSlug: string }) => void;
   'queue:abort': (data: { projectSlug: string }) => void;

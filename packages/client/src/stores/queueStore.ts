@@ -26,6 +26,7 @@ interface QueueState {
   isRunning: boolean;
   isPaused: boolean;
   isStarting: boolean;
+  isAborted: boolean; // suppresses late server events after abort
   currentIndex: number;
   totalItems: number;
   pauseReason: string | undefined;
@@ -60,6 +61,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   isRunning: false,
   isPaused: false,
   isStarting: false,
+  isAborted: false,
   currentIndex: 0,
   totalItems: 0,
   pauseReason: undefined,
@@ -86,6 +88,9 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   },
 
   handleProgress: (data: QueueProgressEvent) => {
+    // Ignore late server events after local abort
+    if (get().isAborted) return;
+
     const update: Partial<QueueState> = {
       currentIndex: data.currentIndex,
       totalItems: data.totalItems,
@@ -117,19 +122,21 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   },
 
   handleItemComplete: (data: QueueItemCompleteEvent) => {
+    if (get().isAborted) return;
     set((state) => ({
       completedItems: new Set([...state.completedItems, data.itemIndex]),
     }));
   },
 
   handleError: (data: QueueErrorEvent) => {
+    if (get().isAborted) return;
     set({
       errorItem: { index: data.itemIndex, error: data.error },
     });
   },
 
   setStarting: (starting: boolean) => {
-    set({ isStarting: starting });
+    set({ isStarting: starting, isAborted: false });
   },
 
   syncFromStatus: (state: QueueExecutionState) => {
@@ -154,6 +161,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       isRunning: false,
       isPaused: false,
       isStarting: false,
+      isAborted: true,
       currentIndex: 0,
       totalItems: 0,
       pauseReason: undefined,

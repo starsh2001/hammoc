@@ -21,6 +21,26 @@ vi.mock('../../utils/errors.js', () => ({
   },
 }));
 
+// Mock websocket exports used by QueueService (ActiveStream pattern)
+const mockStreamPendingPermissions = new Map<string, any>();
+vi.mock('../../handlers/websocket.js', () => ({
+  createHeadlessStream: vi.fn().mockImplementation((sessionId: string) => {
+    const stream = {
+      sessionId,
+      socketRef: { current: null },
+      buffer: [],
+      pendingPermissions: mockStreamPendingPermissions,
+      status: 'running',
+      startedAt: Date.now(),
+      chatService: null,
+    };
+    return { stream, emit: vi.fn(), broadcastEmit: vi.fn() };
+  }),
+  rekeyStream: vi.fn(),
+  finalizeStream: vi.fn(),
+  broadcastStreamChange: vi.fn(),
+}));
+
 // Mock projectService
 const mockProjectService = {
   resolveOriginalPath: vi.fn().mockResolvedValue('/mock/project/path'),
@@ -34,6 +54,9 @@ const mockNotificationService = {
   notifyQueueComplete: vi.fn().mockResolvedValue(undefined),
   notifyQueueError: vi.fn().mockResolvedValue(undefined),
   notifyQueueInputRequired: vi.fn().mockResolvedValue(undefined),
+  notifyComplete: vi.fn(),
+  notifyError: vi.fn(),
+  notifyInputRequired: vi.fn(),
   reload: vi.fn().mockResolvedValue(undefined),
 };
 
@@ -89,6 +112,7 @@ describe('QueueService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockStreamPendingPermissions.clear();
     queueService = new QueueService(
       mockProjectService as any,
       mockNotificationService as any,
@@ -379,12 +403,12 @@ describe('QueueService', () => {
       // Wait for permission to be registered
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      // Verify paused state
-      expect(queueService.pendingPermissions.has('perm-1')).toBe(true);
+      // Verify paused state — permissions are now stored in stream.pendingPermissions
+      expect(mockStreamPendingPermissions.has('perm-1')).toBe(true);
       expect(mockNotificationService.notifyQueueInputRequired).toHaveBeenCalled();
 
-      // Resolve permission
-      queueService.pendingPermissions.get('perm-1')?.resolve({ approved: true });
+      // Resolve permission via stream's pendingPermissions
+      mockStreamPendingPermissions.get('perm-1')?.resolve({ approved: true });
 
       await startPromise;
     });
@@ -418,9 +442,9 @@ describe('QueueService', () => {
       const items = [createPromptItem('Test')];
       const startPromise = queueService.start(items, 'test-project');
 
-      // Wait for permission to be registered
+      // Wait for permission to be registered in stream.pendingPermissions
       await new Promise(resolve => setTimeout(resolve, 10));
-      queueService.pendingPermissions.get('perm-2')?.resolve({ approved: true });
+      mockStreamPendingPermissions.get('perm-2')?.resolve({ approved: true });
 
       await startPromise;
 
