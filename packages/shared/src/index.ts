@@ -113,3 +113,6 @@ export * from './types/queue.js';
 
 // Story 15.1: Queue script parser
 export { parseQueueScript } from './utils/queueParser.js';
+
+// Story 15.5: Queue template utilities
+export { extractStoryNumbers, generateQueueFromTemplate } from './utils/queueTemplateUtils.js';

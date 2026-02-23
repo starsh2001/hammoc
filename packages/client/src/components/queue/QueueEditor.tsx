@@ -3,62 +3,16 @@
  * [Source: Story 15.3 - Task 4]
  */
 
-import { useRef, useCallback, useEffect } from 'react';
-import { Play, Pause, Square, Upload, AlertTriangle, Loader2 } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Play, Pause, Square, Upload, FileText, AlertTriangle, Loader2 } from 'lucide-react';
 import { useQueueStore } from '../../stores/queueStore';
 import { useQueueRunner } from '../../hooks/useQueueRunner';
 import { QueueRunnerPanel } from './QueueRunnerPanel';
+import { QueueTemplateDialog } from './QueueTemplateDialog';
+import { highlightScript } from './queueHighlight';
 
 interface QueueEditorProps {
   projectSlug: string;
-}
-
-/** Escape HTML special characters to prevent XSS */
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/** Tokenize and highlight a queue script line */
-function highlightScript(script: string): string {
-  const lines = script.split('\n');
-  return lines.map((line) => {
-    const trimmed = line.trim();
-
-    // Comment line
-    if (trimmed.startsWith('#')) {
-      return `<span class="text-gray-500">${escapeHtml(line)}</span>`;
-    }
-
-    // Escaped directive
-    if (trimmed.startsWith('\\@')) {
-      return escapeHtml(line);
-    }
-
-    // Multiline markers
-    if (trimmed.toLowerCase() === '@(' || trimmed.toLowerCase() === '@)') {
-      return `<span class="text-blue-400">${escapeHtml(line)}</span>`;
-    }
-
-    // Directives
-    if (trimmed.startsWith('@')) {
-      const spaceIndex = trimmed.indexOf(' ');
-      if (spaceIndex === -1) {
-        return `<span class="text-purple-400">${escapeHtml(line)}</span>`;
-      }
-      // Find directive end in original line (preserving leading whitespace)
-      const leadingSpaces = line.length - line.trimStart().length;
-      const directivePart = line.slice(0, leadingSpaces + spaceIndex);
-      const argPart = line.slice(leadingSpaces + spaceIndex);
-      return `<span class="text-purple-400">${escapeHtml(directivePart)}</span><span class="text-emerald-400">${escapeHtml(argPart)}</span>`;
-    }
-
-    // Regular prompt text
-    return `<span class="text-gray-100 dark:text-gray-200">${escapeHtml(line)}</span>`;
-  }).join('\n');
 }
 
 export function QueueEditor({ projectSlug }: QueueEditorProps) {
@@ -71,6 +25,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
   } = useQueueStore();
 
   const runner = useQueueRunner(projectSlug);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
@@ -167,6 +122,20 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           onChange={handleFileChange}
           className="hidden"
         />
+
+        <button
+          onClick={() => setTemplateDialogOpen(true)}
+          disabled={isLocked}
+          aria-label="템플릿으로 생성"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg
+            bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
+            hover:bg-gray-200 dark:hover:bg-gray-600
+            disabled:opacity-50 disabled:cursor-not-allowed
+            min-w-[44px] min-h-[44px]"
+        >
+          <FileText className="w-4 h-4" />
+          <span className="hidden sm:inline">템플릿으로 생성</span>
+        </button>
 
         <div className="flex-1" />
 
@@ -310,6 +279,17 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           onAbort={runner.abort}
         />
       )}
+
+      {/* Template dialog */}
+      <QueueTemplateDialog
+        projectSlug={projectSlug}
+        open={templateDialogOpen}
+        onClose={() => setTemplateDialogOpen(false)}
+        onGenerate={(generatedScript) => {
+          setScript(generatedScript);
+          setTemplateDialogOpen(false);
+        }}
+      />
     </div>
   );
 }
