@@ -433,7 +433,7 @@ export function ChatPage() {
       });
       clearMessages();
       const socket = getSocket();
-      socket.emit('session:leave', '');
+      socket.emit('session:leave', sessionIdRef.current || '');
       if (useChatStore.getState().isStreaming) {
         useChatStore.getState().abortStreaming();
       }
@@ -536,6 +536,10 @@ export function ChatPage() {
 
   // Ref to store pending agent command for auto-send after navigation (Story 8.3)
   const pendingAgentCommandRef = useRef<string | null>(null);
+
+  // Keep latest sessionId in ref for cleanup (useEffect closures capture stale values)
+  const sessionIdRef = useRef(sessionId);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   // Quick file explorer panel state
   const [showFileExplorer, setShowFileExplorer] = useState(false);

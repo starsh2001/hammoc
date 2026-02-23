@@ -248,8 +248,13 @@ export async function initializeWebSocket(
       } finally {
         stream.status = 'completed';
         const endedSessionId = stream.sessionId;
-        cleanupStream(endedSessionId);
-        io.emit('session:stream-change', { sessionId: endedSessionId, active: false });
+        // Only cleanup if this stream is still the active one for this session.
+        // A replacement stream (from another chat:send) may have already taken over
+        // the same key — deleting it would be a race condition.
+        if (activeStreams.get(endedSessionId) === stream) {
+          cleanupStream(endedSessionId);
+          io.emit('session:stream-change', { sessionId: endedSessionId, active: false });
+        }
       }
     });
 
@@ -261,15 +266,35 @@ export async function initializeWebSocket(
       if (stream?.pendingPermissions.has(data.requestId)) {
         stream.pendingPermissions.get(data.requestId)!.resolve({ approved: data.approved, response: data.response });
         stream.pendingPermissions.delete(data.requestId);
+        // Broadcast the actual resolution to all OTHER viewers so their
+        // tool/interactive cards can show the correct approve/deny state
+        for (const sock of stream.sockets) {
+          if (sock.id !== socket.id) {
+            sock.emit('permission:resolved', {
+              requestId: data.requestId,
+              approved: data.approved,
+              interactionType: data.interactionType,
+            });
+          }
+        }
+      } else {
+        // Permission already resolved by another viewer — notify sender
+        socket.emit('permission:already-resolved', { requestId: data.requestId });
       }
     });
 
-    // Handle chat:abort event — find stream and abort
+    // Handle chat:abort event — find stream and abort, notify all viewers
     socket.on('chat:abort', () => {
       const sessionId = socketToSession.get(socket.id);
       if (!sessionId) return;
       const stream = activeStreams.get(sessionId);
       if (stream && stream.status === 'running') {
+        // Emit abort notification to all connected viewers BEFORE triggering abort.
+        // This ensures passive viewers (who didn't initiate the abort) also
+        // receive a completion signal, preventing them from being stuck in isStreaming=true.
+        for (const sock of stream.sockets) {
+          sock.emit('stream:detached', { sessionId, reason: 'user-abort' });
+        }
         stream.abortController.abort('user-abort');
       }
     });
@@ -336,7 +361,12 @@ export async function initializeWebSocket(
         }
         socketToSession.delete(socket.id);
       }
-      socket.leave(`session:${sessionId}`);
+      // Use prevSessionId as fallback — client may send empty string when
+      // the sessionId is not available at unmount time (e.g., ChatPage cleanup)
+      const roomSessionId = sessionId || prevSessionId;
+      if (roomSessionId) {
+        socket.leave(`session:${roomSessionId}`);
+      }
     });
 
     // Handle session:list event
@@ -750,8 +780,8 @@ async function handleChatSend(
     console.log(`[websocket] ❌ catch block: error=${sdkError.message}, aborted=${abortController.signal.aborted}, reason=${abortController.signal.reason}, isAbortedError=${sdkError instanceof AbortedError}`);
 
     if (sdkError instanceof AbortedError || abortController.signal.aborted) {
-      if (abortController.signal.reason === 'user-abort') {
-        console.log('[websocket] User abort — silently returning');
+      if (abortController.signal.reason === 'user-abort' || abortController.signal.reason === 'another-client') {
+        console.log(`[websocket] ${abortController.signal.reason} abort — silently returning`);
         return;
       }
       console.log('[websocket] Timeout abort — emitting TIMEOUT_ERROR');
