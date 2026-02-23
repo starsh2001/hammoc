@@ -30,3 +30,35 @@ export interface QueueParseResult {
   /** Parse warnings */
   warnings: QueueParseWarning[];
 }
+
+// Story 15.2: Queue execution types
+
+export interface QueueExecutionState {
+  isRunning: boolean;
+  isPaused: boolean;
+  currentIndex: number;
+  totalItems: number;
+  pauseReason?: string;
+  lockedSessionId: string | null;
+  currentModel?: string;
+}
+
+export interface QueueProgressEvent {
+  currentIndex: number;
+  totalItems: number;
+  status: 'running' | 'paused' | 'completed' | 'error';
+  pauseReason?: string;
+  sessionId: string;
+}
+
+export interface QueueItemCompleteEvent {
+  itemIndex: number;
+  sessionId: string;
+  markerDetected?: 'QUEUE_STOP' | 'QUEUE_PASS';
+}
+
+export interface QueueErrorEvent {
+  itemIndex: number;
+  error: string;
+  sessionId: string;
+}

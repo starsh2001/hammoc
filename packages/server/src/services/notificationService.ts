@@ -15,6 +15,10 @@ class NotificationService {
   private shouldNotifyPermission: boolean;
   private shouldNotifyComplete: boolean;
   private shouldNotifyError: boolean;
+  private shouldNotifyQueueStart: boolean;
+  private shouldNotifyQueueComplete: boolean;
+  private shouldNotifyQueueError: boolean;
+  private shouldNotifyQueueInputRequired: boolean;
 
   constructor() {
     // Initial config from env vars (preferences not yet loaded at startup)
@@ -24,6 +28,10 @@ class NotificationService {
     this.shouldNotifyPermission = true;
     this.shouldNotifyComplete = true;
     this.shouldNotifyError = true;
+    this.shouldNotifyQueueStart = true;
+    this.shouldNotifyQueueComplete = true;
+    this.shouldNotifyQueueError = true;
+    this.shouldNotifyQueueInputRequired = true;
   }
 
   /**
@@ -42,6 +50,10 @@ class NotificationService {
       this.shouldNotifyPermission = telegram.notifyPermission ?? true;
       this.shouldNotifyComplete = telegram.notifyComplete ?? true;
       this.shouldNotifyError = telegram.notifyError ?? true;
+      this.shouldNotifyQueueStart = telegram.notifyQueueStart ?? true;
+      this.shouldNotifyQueueComplete = telegram.notifyQueueComplete ?? true;
+      this.shouldNotifyQueueError = telegram.notifyQueueError ?? true;
+      this.shouldNotifyQueueInputRequired = telegram.notifyQueueInputRequired ?? true;
     } catch {
       // If preferences can't be read, keep current config
     }
@@ -85,6 +97,30 @@ class NotificationService {
   async notifyError(sessionId: string, error: string): Promise<void> {
     if (!this.shouldNotifyError) return;
     await this.send(`❌ <b>Error</b>\nSession: <code>${sessionId}</code>\n${error}`);
+  }
+
+  /** Notify that queue execution has started */
+  async notifyQueueStart(totalItems: number, sessionUrl: string): Promise<void> {
+    if (!this.shouldNotifyQueueStart) return;
+    await this.send(`🚀 <b>Queue Started</b>\n${totalItems} items to execute\n\n${sessionUrl}`);
+  }
+
+  /** Notify that queue execution completed all items */
+  async notifyQueueComplete(sessionUrl: string): Promise<void> {
+    if (!this.shouldNotifyQueueComplete) return;
+    await this.send(`✅ <b>Queue Complete</b>\nAll items processed\n\n${sessionUrl}`);
+  }
+
+  /** Notify that queue paused due to error (QUEUE_STOP, SDK error, etc.) */
+  async notifyQueueError(reason: string, sessionUrl: string): Promise<void> {
+    if (!this.shouldNotifyQueueError) return;
+    await this.send(`⚠️ <b>Queue Paused</b>\n${reason}\n\n${sessionUrl}`);
+  }
+
+  /** Notify that queue is waiting for user input (permission or AskUserQuestion) */
+  async notifyQueueInputRequired(sessionUrl: string): Promise<void> {
+    if (!this.shouldNotifyQueueInputRequired) return;
+    await this.send(`❓ <b>Input Required</b>\nWaiting for user response\n\n${sessionUrl}`);
   }
 
   /**
