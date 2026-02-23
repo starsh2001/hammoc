@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { toast } from 'sonner';
 import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
@@ -375,8 +376,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       segmentCleanupTimeoutId = null;
     }
 
+    // Dismiss session-locked toast if it was showing (from another-client takeover)
+    if (get().isSessionLocked) {
+      toast.dismiss('session-locked');
+    }
+
     set({
       isStreaming: true,
+      isSessionLocked: false,
       streamingSessionId: sessionId,
       streamingMessageId: messageId,
       streamingSegments: [],
@@ -950,8 +957,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       clearTimeout(segmentCleanupTimeoutId);
       segmentCleanupTimeoutId = null;
     }
+    // Dismiss session-locked toast if it was showing
+    if (get().isSessionLocked) {
+      toast.dismiss('session-locked');
+    }
     set({
       isStreaming: true,
+      isSessionLocked: false,
       streamingSessionId: sessionId,
       streamingMessageId: 'restoring',
       streamingSegments: [],
