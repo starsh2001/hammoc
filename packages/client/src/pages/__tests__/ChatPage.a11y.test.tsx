@@ -75,7 +75,16 @@ vi.mock('../../stores/sessionStore', () => ({
 vi.mock('../../services/socket', () => ({
   getSocket: () => ({
     emit: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
   }),
+}));
+
+// Mock queue API (Story 15.4 - useQueueSession calls queueApi.getStatus)
+vi.mock('../../services/api/queue', () => ({
+  queueApi: {
+    getStatus: vi.fn().mockRejectedValue(new Error('no active queue')),
+  },
 }));
 
 describe('ChatPage Accessibility', () => {

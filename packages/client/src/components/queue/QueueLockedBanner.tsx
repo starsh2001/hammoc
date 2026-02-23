@@ -1,0 +1,271 @@
+/**
+ * QueueLockedBanner - Banner shown on queue-locked sessions
+ * [Source: Story 15.4 - Task 2]
+ */
+
+import { Link } from 'react-router-dom';
+import { Pause, Play, Square, CheckCircle, AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
+
+export interface QueueLockedBannerProps {
+  isRunning: boolean;
+  isPaused: boolean;
+  isCompleted: boolean;
+  isErrored: boolean;
+  progress: { current: number; total: number };
+  currentPromptPreview: string | undefined;
+  pauseReason: string | undefined;
+  errorItem: { index: number; error: string } | null;
+  projectSlug: string;
+  onPause: () => void;
+  onResume: () => void;
+  onAbort: () => void;
+}
+
+export function QueueLockedBanner({
+  isRunning,
+  isPaused,
+  isCompleted,
+  isErrored,
+  progress,
+  currentPromptPreview,
+  pauseReason,
+  errorItem,
+  projectSlug,
+  onPause,
+  onResume,
+  onAbort,
+}: QueueLockedBannerProps) {
+  const progressPercent = progress.total > 0
+    ? Math.round(((progress.current) / progress.total) * 100)
+    : 0;
+
+  const handleAbort = () => {
+    if (window.confirm('큐 실행을 중단하시겠습니까? 남은 아이템은 큐에 보존됩니다.')) {
+      onAbort();
+    }
+  };
+
+  // Completed state
+  if (isCompleted) {
+    return (
+      <div
+        role="banner"
+        aria-live="polite"
+        data-testid="queue-locked-banner"
+        className="sticky top-0 z-10 shadow-md transition-all duration-300
+                   bg-green-100 dark:bg-green-900/40 border-b border-green-300 dark:border-green-700"
+      >
+        <div className="px-4 py-3 flex items-center gap-3">
+          <CheckCircle size={20} className="text-green-600 dark:text-green-400 flex-shrink-0" aria-hidden="true" />
+          <span className="text-green-800 dark:text-green-200 font-medium">
+            완료 ({progress.total}개 아이템 실행됨)
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error completed state (terminal error)
+  if (isErrored) {
+    return (
+      <div
+        role="banner"
+        aria-live="polite"
+        data-testid="queue-locked-banner"
+        className="sticky top-0 z-10 shadow-md transition-all duration-300
+                   bg-red-100 dark:bg-red-900/40 border-b border-red-300 dark:border-red-700"
+      >
+        <div className="px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={20} className="text-red-600 dark:text-red-400 flex-shrink-0" aria-hidden="true" />
+            <span className="text-red-800 dark:text-red-200 font-medium">
+              큐 실행 중 오류로 중단됨
+            </span>
+          </div>
+          <Link
+            to={`/project/${projectSlug}/queue`}
+            className="text-sm text-red-600 dark:text-red-400 hover:underline flex items-center gap-1 flex-shrink-0"
+          >
+            큐 에디터로 이동
+            <ExternalLink size={14} aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Paused with error (e.g., QUEUE_STOP)
+  const isPausedWithError = isPaused && !!errorItem;
+
+  // Determine background color
+  let bgClass: string;
+  if (isPausedWithError) {
+    bgClass = 'bg-red-100 dark:bg-red-900/40 border-b border-red-300 dark:border-red-700';
+  } else if (isPaused) {
+    bgClass = 'bg-amber-100 dark:bg-amber-900/40 border-b border-amber-300 dark:border-amber-700';
+  } else {
+    bgClass = 'bg-indigo-100 dark:bg-indigo-900/40 border-b border-indigo-300 dark:border-indigo-700';
+  }
+
+  return (
+    <div
+      role="banner"
+      aria-live="polite"
+      aria-label={`큐 진행률: ${progress.current + 1} / ${progress.total}`}
+      data-testid="queue-locked-banner"
+      className={`sticky top-0 z-10 shadow-md transition-all duration-300 ${bgClass}`}
+    >
+      {/* Main row */}
+      <div className="px-4 py-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          {/* Status icon + progress */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {isPausedWithError ? (
+              <AlertTriangle size={20} className="text-red-600 dark:text-red-400 flex-shrink-0" aria-hidden="true" />
+            ) : isPaused ? (
+              <Pause size={20} className="text-amber-600 dark:text-amber-400 flex-shrink-0" aria-hidden="true" />
+            ) : (
+              <Loader2 size={20} className="text-indigo-600 dark:text-indigo-400 flex-shrink-0 animate-spin" aria-hidden="true" />
+            )}
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`font-medium text-sm ${
+                  isPausedWithError ? 'text-red-800 dark:text-red-200' :
+                  isPaused ? 'text-amber-800 dark:text-amber-200' :
+                  'text-indigo-800 dark:text-indigo-200'
+                }`}>
+                  {isPausedWithError ? '오류로 일시정지' :
+                   isPaused ? '일시정지됨' :
+                   '큐 실행 중'}
+                </span>
+                <span className={`text-sm ${
+                  isPausedWithError ? 'text-red-600 dark:text-red-300' :
+                  isPaused ? 'text-amber-600 dark:text-amber-300' :
+                  'text-indigo-600 dark:text-indigo-300'
+                }`}>
+                  ({progress.current + 1}/{progress.total})
+                </span>
+              </div>
+
+              {/* Prompt preview */}
+              {currentPromptPreview && (
+                <p className={`text-xs truncate mt-0.5 ${
+                  isPausedWithError ? 'text-red-600 dark:text-red-300' :
+                  isPaused ? 'text-amber-600 dark:text-amber-300' :
+                  'text-indigo-600 dark:text-indigo-300'
+                }`}>
+                  {currentPromptPreview}{currentPromptPreview.length >= 100 ? '...' : ''}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Control buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {isRunning && !isPaused && (
+              <button
+                type="button"
+                onClick={onPause}
+                aria-label="큐 일시정지"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md
+                           bg-white/80 dark:bg-gray-800/80 text-indigo-700 dark:text-indigo-300
+                           hover:bg-white dark:hover:bg-gray-800
+                           min-h-11 sm:min-h-0
+                           transition-colors"
+              >
+                <Pause size={14} aria-hidden="true" />
+                일시정지
+              </button>
+            )}
+
+            {isPaused && (
+              <button
+                type="button"
+                onClick={onResume}
+                aria-label="큐 재개"
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md
+                           bg-white/80 dark:bg-gray-800/80
+                           min-h-11 sm:min-h-0
+                           transition-colors ${
+                             isPausedWithError
+                               ? 'text-red-700 dark:text-red-300 hover:bg-white dark:hover:bg-gray-800'
+                               : 'text-amber-700 dark:text-amber-300 hover:bg-white dark:hover:bg-gray-800'
+                           }`}
+              >
+                <Play size={14} aria-hidden="true" />
+                재개
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleAbort}
+              aria-label="큐 중단"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md
+                         bg-white/80 dark:bg-gray-800/80
+                         min-h-11 sm:min-h-0
+                         transition-colors ${
+                           isPausedWithError
+                             ? 'text-red-700 dark:text-red-300 hover:bg-white dark:hover:bg-gray-800'
+                             : isPaused
+                               ? 'text-amber-700 dark:text-amber-300 hover:bg-white dark:hover:bg-gray-800'
+                               : 'text-indigo-700 dark:text-indigo-300 hover:bg-white dark:hover:bg-gray-800'
+                         }`}
+            >
+              <Square size={14} aria-hidden="true" />
+              중단
+            </button>
+
+            {/* Queue editor link */}
+            <Link
+              to={`/project/${projectSlug}/queue`}
+              className={`text-sm hover:underline flex items-center gap-1 flex-shrink-0 ${
+                isPausedWithError ? 'text-red-600 dark:text-red-400' :
+                isPaused ? 'text-amber-600 dark:text-amber-400' :
+                'text-indigo-600 dark:text-indigo-400'
+              }`}
+            >
+              큐 에디터로 이동
+              <ExternalLink size={14} aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className={`h-1 ${
+        isPausedWithError ? 'bg-red-200 dark:bg-red-800' :
+        isPaused ? 'bg-amber-200 dark:bg-amber-800' :
+        'bg-indigo-200 dark:bg-indigo-800'
+      }`}>
+        <div
+          className={`h-full transition-all duration-500 ${
+            isPausedWithError ? 'bg-red-500' :
+            isPaused ? 'bg-amber-500' :
+            'bg-indigo-500'
+          }`}
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
+      {/* Pause reason */}
+      {isPaused && pauseReason && !errorItem && (
+        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800">
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            {pauseReason}
+          </p>
+        </div>
+      )}
+
+      {/* Error item info */}
+      {errorItem && (
+        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800">
+          <p className="text-sm text-red-700 dark:text-red-300">
+            아이템 {errorItem.index + 1} 오류: {errorItem.error}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

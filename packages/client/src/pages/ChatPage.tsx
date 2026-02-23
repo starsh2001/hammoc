@@ -35,6 +35,8 @@ import { ChatHeader } from '../components/ChatHeader';
 import { MessageArea } from '../components/MessageArea';
 import { InputArea } from '../components/InputArea';
 import { ChatInput } from '../components/ChatInput';
+import { QueueLockedBanner } from '../components/queue/QueueLockedBanner';
+import { useQueueSession } from '../hooks/useQueueSession';
 import { MessageBubble } from '../components/MessageBubble';
 import { ToolCallCard } from '../components/ToolCallCard';
 import { InteractiveResponseCard } from '../components/InteractiveResponseCard';
@@ -231,6 +233,14 @@ export function ChatPage() {
 
   // Active agent detection (Story 8.5)
   const { activeAgent } = useActiveAgent(messages, commands, lastAgentCommand);
+
+  // Queue session lock detection (Story 15.4)
+  const {
+    isQueueLocked, isQueueRunning, isQueuePaused, isQueueCompleted, isQueueErrored,
+    progress: queueProgress, currentPromptPreview: queuePromptPreview,
+    pauseReason: queuePauseReason, errorItem: queueErrorItem,
+    pause: queuePause, resume: queueResume, abort: queueAbort,
+  } = useQueueSession(projectSlug || '', sessionId || '');
 
   // Star favorites per agent (Story 9.11)
   const activeAgentId = useMemo(() => {
@@ -693,6 +703,24 @@ export function ChatPage() {
     />
   );
 
+  const showQueueBanner = isQueueLocked || isQueueCompleted || isQueueErrored;
+  const queueBannerElement = showQueueBanner ? (
+    <QueueLockedBanner
+      isRunning={isQueueRunning}
+      isPaused={isQueuePaused}
+      isCompleted={isQueueCompleted}
+      isErrored={isQueueErrored}
+      progress={queueProgress}
+      currentPromptPreview={queuePromptPreview}
+      pauseReason={queuePauseReason}
+      errorItem={queueErrorItem}
+      projectSlug={projectSlug!}
+      onPause={queuePause}
+      onResume={queueResume}
+      onAbort={queueAbort}
+    />
+  ) : null;
+
   const confirmModalElement = (
     <ConfirmModal
       isOpen={confirmModal.isOpen}
@@ -720,6 +748,7 @@ export function ChatPage() {
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        {queueBannerElement}
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -743,6 +772,7 @@ export function ChatPage() {
             disabled
             isStreaming={isStreaming}
             onAbort={handleAbort}
+            queueLocked={isQueueLocked}
             placeholder="로딩 중..."
             commands={commands}
             permissionMode={permissionMode}
@@ -785,6 +815,7 @@ export function ChatPage() {
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        {queueBannerElement}
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -805,6 +836,7 @@ export function ChatPage() {
             disabled
             isStreaming={isStreaming}
             onAbort={handleAbort}
+            queueLocked={isQueueLocked}
             placeholder="오류가 발생했습니다"
             commands={commands}
             permissionMode={permissionMode}
@@ -847,6 +879,7 @@ export function ChatPage() {
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        {queueBannerElement}
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -874,6 +907,7 @@ export function ChatPage() {
             onSend={handleSendMessage}
             isStreaming={isStreaming}
             onAbort={handleAbort}
+            queueLocked={isQueueLocked}
             placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
             commands={commands}
             permissionMode={permissionMode}
@@ -928,6 +962,7 @@ export function ChatPage() {
         onAgentIndicatorClick={handleAgentIndicatorClick}
         isBmadProject={isBmadProject}
       />
+      {queueBannerElement}
 
       <main
         role="main"
@@ -961,6 +996,7 @@ export function ChatPage() {
           onSend={handleSendMessage}
           isStreaming={isStreaming}
           onAbort={handleAbort}
+          queueLocked={isQueueLocked}
           placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
           commands={commands}
           permissionMode={permissionMode}
