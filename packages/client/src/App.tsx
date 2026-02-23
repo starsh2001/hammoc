@@ -22,6 +22,8 @@ import { SessionListPage } from './pages/SessionListPage';
 import { BmadDashboard } from './pages/BmadDashboard';
 import { ProjectSessionsPage } from './pages/ProjectSessionsPage';
 import { ProjectQueuePage } from './pages/ProjectBatchPage';
+import { ProjectGitPage } from './pages/ProjectGitPage';
+import { ProjectTerminalPage } from './pages/ProjectTerminalPage';
 import { ChatPage } from './pages/ChatPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ProjectTabLayout } from './layouts/ProjectTabLayout';
@@ -86,6 +88,8 @@ function AppContent() {
         <Route path="files" element={<FileExplorerTab />} />
         <Route path="sessions" element={<ProjectSessionsPage />} />
         <Route path="queue" element={<ProjectQueuePage />} />
+        <Route path="git" element={<ProjectGitPage />} />
+        <Route path="terminal" element={<ProjectTerminalPage />} />
       </Route>
       <Route
         path="/settings"
