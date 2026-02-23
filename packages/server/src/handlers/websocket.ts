@@ -217,9 +217,21 @@ export async function initializeWebSocket(
         existingStream.abortController.abort('another-client');
       }
 
+      // Collect all sockets viewing this session (from persistent session room)
+      const initialSockets = new Set<SocketType>([socket]);
+      const roomSockets = io.sockets.adapter.rooms.get(`session:${streamKey}`);
+      if (roomSockets) {
+        for (const socketId of roomSockets) {
+          const roomSocket = io.sockets.sockets.get(socketId) as SocketType | undefined;
+          if (roomSocket && roomSocket.id !== socket.id) {
+            initialSockets.add(roomSocket);
+          }
+        }
+      }
+
       const stream: ActiveStream = {
         sessionId: streamKey,
-        sockets: new Set([socket]),
+        sockets: initialSockets,
         abortController,
         buffer: [],
         pendingPermissions: new Map(),
@@ -227,7 +239,9 @@ export async function initializeWebSocket(
         startedAt: Date.now(),
       };
       activeStreams.set(streamKey, stream);
-      socketToSession.set(socket.id, streamKey);
+      for (const sock of initialSockets) {
+        socketToSession.set(sock.id, streamKey);
+      }
 
       try {
         await handleChatSend(stream, data, abortController);
@@ -275,6 +289,7 @@ export async function initializeWebSocket(
     });
 
     // Handle session:join event — attach socket to active running stream (broadcast)
+    // Also joins a persistent Socket.io room so future streams auto-include this socket.
     socket.on('session:join', (sessionId: string) => {
       // Detach this socket from any previously-attached stream to prevent
       // events from the old stream leaking to a different session's listeners
@@ -285,7 +300,11 @@ export async function initializeWebSocket(
           prevStream.sockets.delete(socket);
         }
         socketToSession.delete(socket.id);
+        socket.leave(`session:${prevSessionId}`);
       }
+
+      // Join persistent session room (survives beyond ActiveStream lifecycle)
+      socket.join(`session:${sessionId}`);
 
       const stream = activeStreams.get(sessionId);
 
@@ -306,9 +325,9 @@ export async function initializeWebSocket(
       }
     });
 
-    // Handle session:leave event — detach socket from current stream
+    // Handle session:leave event — detach socket from current stream and session room
     // (client navigating away from a session while streaming continues in background)
-    socket.on('session:leave', (_sessionId: string) => {
+    socket.on('session:leave', (sessionId: string) => {
       const prevSessionId = socketToSession.get(socket.id);
       if (prevSessionId) {
         const prevStream = activeStreams.get(prevSessionId);
@@ -317,6 +336,7 @@ export async function initializeWebSocket(
         }
         socketToSession.delete(socket.id);
       }
+      socket.leave(`session:${sessionId}`);
     });
 
     // Handle session:list event
