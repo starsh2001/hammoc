@@ -373,6 +373,42 @@ export function useStreaming() {
       setToolPermission(data.toolCall.id, data.id);
     };
 
+    // Handle permission:resolved — proactive broadcast from server when another
+    // viewer resolves a permission. Includes the actual approve/deny result so
+    // this client can update its tool/interactive card to the correct state.
+    const handlePermissionResolved = (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question' }) => {
+      const segments = useChatStore.getState().streamingSegments;
+      let changed = false;
+      const updated = segments.map((seg) => {
+        if (data.interactionType === 'question') {
+          // AskUserQuestion — mark as responded
+          if (seg.type === 'interactive' && seg.id === data.requestId) {
+            changed = true;
+            return { ...seg, status: 'responded' as InteractiveStatus, response: '(다른 브라우저에서 응답됨)' };
+          }
+        } else {
+          // Tool permission — update to actual approve/deny result
+          if (seg.type === 'tool' && seg.permissionId === data.requestId) {
+            changed = true;
+            return { ...seg, permissionStatus: data.approved ? 'approved' as const : 'denied' as const };
+          }
+        }
+        return seg;
+      });
+      if (changed) {
+        useChatStore.setState({ streamingSegments: updated });
+      }
+    };
+
+    // Handle permission:already-resolved — fallback for race condition where
+    // this client clicks approve/deny at nearly the same time as another viewer.
+    // By the time this arrives, the local segment is already in a terminal state
+    // (respondToInteractive / respondToolPermission set state immediately).
+    // The toast informs the user their response was ignored.
+    const handlePermissionAlreadyResolved = (data: { requestId: string }) => {
+      toast.info('이미 다른 브라우저에서 응답되었습니다.');
+    };
+
     // Handle tool input update (for real-time file path display)
     const handleToolInputUpdate = (data: { toolCallId: string; input: Record<string, unknown> }) => {
       updateStreamingToolCallInput(data.toolCallId, data.input);
@@ -602,24 +638,35 @@ export function useStreaming() {
       }
     };
 
-    // Handle stream:detached — another browser took over this stream
-    const handleStreamDetached = () => {
+    // Handle stream:detached — another browser took over or user aborted from another viewer
+    const handleStreamDetached = (data: { sessionId: string; reason: string }) => {
+      const wasStreaming = useChatStore.getState().isStreaming;
       debugLog.stream('stream:detached', {
-        isStreaming: useChatStore.getState().isStreaming,
+        reason: data.reason,
+        isStreaming: wasStreaming,
       });
-      if (useChatStore.getState().isStreaming) {
+      if (wasStreaming) {
         flushChunkQueue();
         completeStreaming();
       }
-      // Lock this session until page refresh — prevents sending messages
-      // from a stale browser while another browser is actively using this session
-      useChatStore.setState({ isSessionLocked: true });
-      toast.warning('다른 브라우저에서 이 세션을 사용 중입니다. 새로고침 후 다시 사용할 수 있습니다.', {
-        duration: Infinity,
-      });
+
+      if (data.reason === 'user-abort') {
+        // Abort initiated from another viewer — just complete streaming, no lock needed.
+        // If wasStreaming is false, this socket already called abortResponse() itself
+        // (i.e., the user who initiated the abort) — skip the redundant toast.
+        if (wasStreaming) {
+          toast.info('다른 브라우저에서 응답이 중단되었습니다.');
+        }
+      } else {
+        // Another client took over (another-client) — lock this session
+        useChatStore.setState({ isSessionLocked: true });
+        toast.warning('다른 브라우저에서 이 세션을 사용 중입니다. 새로고침 후 다시 사용할 수 있습니다.', {
+          id: 'session-locked',
+          duration: Infinity,
+        });
+      }
 
       // Fetch latest messages from server so this client has up-to-date history
-      // (the other browser may receive additional responses after taking over)
       const msgState = useMessageStore.getState();
       const { currentProjectSlug, currentSessionId } = msgState;
       if (currentProjectSlug && currentSessionId) {
@@ -704,6 +751,8 @@ export function useStreaming() {
     socket.on('tool:input-update', handleToolInputUpdate);
     socket.on('tool:result', handleToolResult);
     socket.on('permission:request', handlePermissionRequest);
+    socket.on('permission:resolved', handlePermissionResolved);
+    socket.on('permission:already-resolved', handlePermissionAlreadyResolved);
     socket.on('context:usage', handleContextUsage);
     socket.on('assistant:usage', handleAssistantUsage);
     socket.on('context:estimate', handleContextEstimate);
@@ -743,6 +792,8 @@ export function useStreaming() {
       socket.off('tool:input-update', handleToolInputUpdate);
       socket.off('tool:result', handleToolResult);
       socket.off('permission:request', handlePermissionRequest);
+      socket.off('permission:resolved', handlePermissionResolved);
+      socket.off('permission:already-resolved', handlePermissionAlreadyResolved);
       socket.off('context:usage', handleContextUsage);
       socket.off('assistant:usage', handleAssistantUsage);
       socket.off('context:estimate', handleContextEstimate);
