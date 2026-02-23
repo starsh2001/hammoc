@@ -1,0 +1,60 @@
+/**
+ * Queue Template Utilities — extract stories from PRD and generate queue scripts
+ * [Source: Story 15.5 - Task 2]
+ */
+
+import type { QueueStoryInfo } from '../types/queue.js';
+
+/**
+ * Extract story numbers from PRD content by matching "## Story N.N" / "### Story N.N" headers.
+ * Returns sorted array by epicNum then storyIndex.
+ */
+export function extractStoryNumbers(prdContent: string): QueueStoryInfo[] {
+  const regex = /^#{2,3}\s+Story\s+(\d+)\.(\d+)(?:[:  \t\u2013-]+(.+))?/gm;
+  const stories: QueueStoryInfo[] = [];
+  let match;
+
+  while ((match = regex.exec(prdContent)) !== null) {
+    const epicNum = parseInt(match[1], 10);
+    const storyIndex = parseInt(match[2], 10);
+    const title = match[3]?.trim() || undefined;
+
+    stories.push({
+      storyNum: `${epicNum}.${storyIndex}`,
+      epicNum,
+      storyIndex,
+      title,
+    });
+  }
+
+  stories.sort((a, b) => a.epicNum - b.epicNum || a.storyIndex - b.storyIndex);
+
+  return stories;
+}
+
+/**
+ * Generate a queue script by replacing {story_num} in template for each selected story.
+ * Optionally inserts @pause between different epic groups.
+ */
+export function generateQueueFromTemplate(
+  template: string,
+  stories: QueueStoryInfo[],
+  insertPauseBetweenEpics: boolean,
+): string {
+  if (stories.length === 0) return '';
+
+  const blocks: string[] = [];
+  let prevEpicNum = stories[0].epicNum;
+
+  for (const story of stories) {
+    if (insertPauseBetweenEpics && story.epicNum !== prevEpicNum) {
+      blocks.push(`@pause Epic ${prevEpicNum} 완료`);
+      prevEpicNum = story.epicNum;
+    }
+
+    const replaced = template.replace(/\{story_num\}/g, story.storyNum);
+    blocks.push(replaced);
+  }
+
+  return blocks.join('\n');
+}

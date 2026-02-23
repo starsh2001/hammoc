@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { QueueItem, QueueExecutionState } from '@bmad-studio/shared';
+import type { QueueItem, QueueExecutionState, QueueStoryInfo, QueueTemplate } from '@bmad-studio/shared';
 
 export const queueApi = {
   getStatus: (projectSlug: string) =>
@@ -24,4 +24,20 @@ export const queueApi = {
 
   abortQueue: (projectSlug: string) =>
     api.post<void>(`/projects/${projectSlug}/queue/abort`),
+
+  // Story 15.5: Template and story extraction
+  getStories: (projectSlug: string) =>
+    api.get<{ stories: QueueStoryInfo[] }>(`/projects/${projectSlug}/queue/stories`),
+
+  getTemplates: (projectSlug: string) =>
+    api.get<QueueTemplate[]>(`/projects/${projectSlug}/queue/templates`),
+
+  saveTemplate: (projectSlug: string, name: string, template: string) =>
+    api.post<QueueTemplate>(`/projects/${projectSlug}/queue/templates`, { name, template }),
+
+  updateTemplate: (projectSlug: string, id: string, name: string, template: string) =>
+    api.put<QueueTemplate>(`/projects/${projectSlug}/queue/templates/${id}`, { name, template }),
+
+  deleteTemplate: (projectSlug: string, id: string) =>
+    api.delete<void>(`/projects/${projectSlug}/queue/templates/${id}`),
 };
