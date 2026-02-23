@@ -433,6 +433,71 @@ export function TelegramSettingsSection() {
         </div>
       </fieldset>
 
+      {/* Queue Notification Toggles */}
+      <fieldset className={!settings.enabled ? 'opacity-50' : ''}>
+        <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          큐 알림 유형
+        </legend>
+        <div className="space-y-3 ml-1">
+          <label htmlFor="notify-queue-start" className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              id="notify-queue-start"
+              checked={settings.notifyQueueStart}
+              onChange={() => handleUpdate({ notifyQueueStart: !settings.notifyQueueStart })}
+              disabled={updating}
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600
+                         text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              큐 시작 알림 — 큐 실행이 시작될 때
+            </span>
+          </label>
+          <label htmlFor="notify-queue-complete" className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              id="notify-queue-complete"
+              checked={settings.notifyQueueComplete}
+              onChange={() => handleUpdate({ notifyQueueComplete: !settings.notifyQueueComplete })}
+              disabled={updating}
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600
+                         text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              큐 완료 알림 — 모든 항목이 처리된 후
+            </span>
+          </label>
+          <label htmlFor="notify-queue-error" className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              id="notify-queue-error"
+              checked={settings.notifyQueueError}
+              onChange={() => handleUpdate({ notifyQueueError: !settings.notifyQueueError })}
+              disabled={updating}
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600
+                         text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              큐 에러 알림 — QUEUE_STOP 또는 SDK 에러 시
+            </span>
+          </label>
+          <label htmlFor="notify-queue-input" className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              id="notify-queue-input"
+              checked={settings.notifyQueueInputRequired}
+              onChange={() => handleUpdate({ notifyQueueInputRequired: !settings.notifyQueueInputRequired })}
+              disabled={updating}
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600
+                         text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              큐 입력 요청 알림 — 사용자 응답이 필요할 때
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
       {/* Test Notification Button */}
       <div>
         <button

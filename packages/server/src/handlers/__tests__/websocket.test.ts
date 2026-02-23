@@ -77,7 +77,39 @@ vi.mock('../../config/index.js', () => ({
         credentials: true,
       },
     },
+    telegram: {
+      botToken: '',
+      chatId: '',
+      enabled: false,
+    },
   },
+}));
+
+// Mock notificationService (Story 10.4)
+vi.mock('../../services/notificationService.js', () => ({
+  notificationService: {
+    notifyInputRequired: vi.fn().mockResolvedValue(undefined),
+    notifyComplete: vi.fn().mockResolvedValue(undefined),
+    notifyError: vi.fn().mockResolvedValue(undefined),
+    notifyQueueStart: vi.fn().mockResolvedValue(undefined),
+    notifyQueueComplete: vi.fn().mockResolvedValue(undefined),
+    notifyQueueError: vi.fn().mockResolvedValue(undefined),
+    notifyQueueInputRequired: vi.fn().mockResolvedValue(undefined),
+    reload: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+// Mock queueController (Story 15.2)
+vi.mock('../../controllers/queueController.js', () => ({
+  getOrCreateQueueService: vi.fn().mockReturnValue({
+    isRunning: false,
+    start: vi.fn().mockResolvedValue(undefined),
+    pause: vi.fn().mockResolvedValue(undefined),
+    resume: vi.fn().mockResolvedValue(undefined),
+    abort: vi.fn().mockResolvedValue(undefined),
+    pendingPermissions: new Map(),
+  }),
+  getAllQueueInstances: vi.fn().mockReturnValue(new Map()),
 }));
 
 describe('WebSocket Handler', () => {
