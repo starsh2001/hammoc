@@ -24,6 +24,13 @@ html, body {
   animation: blink 1s step-end infinite;
 }
 
+/* Queue editor textarea selection (pseudo-elements cannot be set inline) */
+.queue-editor-textarea::selection {
+  -webkit-text-fill-color: transparent;
+  background-color: rgba(59, 130, 246, 0.4);
+  color: transparent;
+}
+
 /* Layout mode: narrow (1280px max-width) vs wide (full-width) */
 html.narrow-layout .content-container {
   max-width: 80rem; /* 1280px */

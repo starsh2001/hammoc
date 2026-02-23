@@ -25,10 +25,6 @@ export function getOrCreateQueueService(projectSlug: string): QueueService {
   return instance;
 }
 
-export function getAllQueueInstances(): Map<string, QueueService> {
-  return queueInstances;
-}
-
 // Zod validation schemas
 const startQueueSchema = z.object({
   items: z.array(z.object({

@@ -30,7 +30,7 @@ import { createSessionMiddleware } from '../middleware/session.js';
 import { config } from '../config/index.js';
 import { notificationService } from '../services/notificationService.js';
 import { preferencesService } from '../services/preferencesService.js';
-import { getOrCreateQueueService, getAllQueueInstances } from '../controllers/queueController.js';
+import { getOrCreateQueueService } from '../controllers/queueController.js';
 
 let io: SocketIOServer<
   ClientToServerEvents,
@@ -90,6 +90,82 @@ function cleanupStream(streamKey: string) {
   for (const [sockId, sessId] of socketToSession.entries()) {
     if (sessId === streamKey) socketToSession.delete(sockId);
   }
+}
+
+/**
+ * Create a headless ActiveStream (no attached socket) for queue execution.
+ * Returns a buffered emit function and a broadcast function for project room delivery.
+ * The stream is registered in activeStreams so session:join/reconnect works.
+ */
+export function createHeadlessStream(
+  sessionId: string,
+  abortController: AbortController
+): {
+  stream: ActiveStream;
+  emit: (event: string, data: unknown) => void;
+  broadcastEmit: (event: string, data: unknown) => void;
+} {
+  const stream: ActiveStream = {
+    sessionId,
+    socketRef: { current: null },
+    abortController,
+    buffer: [],
+    pendingPermissions: new Map(),
+    status: 'running',
+    startedAt: Date.now(),
+  };
+  activeStreams.set(sessionId, stream);
+
+  const emit = createStreamEmit(stream);
+
+  // broadcastEmit: buffer in ActiveStream AND broadcast to project room via io
+  // Callers provide the project-scoped broadcast themselves since io is module-private
+  const broadcastEmit = (event: string, data: unknown) => {
+    // Buffer in ActiveStream for reconnect support
+    stream.buffer.push({ event, data });
+    // Forward to attached socket if any (session:join reconnect)
+    if (stream.socketRef.current?.connected) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (stream.socketRef.current.emit as any)(event, data);
+    }
+  };
+
+  return { stream, emit, broadcastEmit };
+}
+
+/**
+ * Re-key a stream when SDK assigns a different sessionId than the initial key.
+ * Updates activeStreams map and socketToSession references.
+ */
+export function rekeyStream(stream: ActiveStream, newSessionId: string): void {
+  if (stream.sessionId === newSessionId) return;
+  activeStreams.delete(stream.sessionId);
+  stream.sessionId = newSessionId;
+  activeStreams.set(newSessionId, stream);
+  if (stream.socketRef.current) {
+    socketToSession.set(stream.socketRef.current.id, newSessionId);
+  }
+}
+
+/**
+ * Mark a stream as completed and broadcast stream-change.
+ * Cleans up from activeStreams map.
+ */
+export function finalizeStream(sessionId: string): void {
+  const stream = activeStreams.get(sessionId);
+  if (stream) {
+    stream.status = 'completed';
+    cleanupStream(sessionId);
+  }
+  io.emit('session:stream-change', { sessionId, active: false });
+}
+
+/**
+ * Broadcast session:stream-change to all connected clients.
+ * Used by queue service to signal stream start/end.
+ */
+export function broadcastStreamChange(sessionId: string, active: boolean): void {
+  io.emit('session:stream-change', { sessionId, active });
 }
 
 /**
@@ -169,25 +245,14 @@ export async function initializeWebSocket(
       }
     });
 
-    // Handle permission:respond event — route to ActiveStream or Queue fallback (Story 15.2)
+    // Handle permission:respond event — route to ActiveStream (covers both normal chat and queue)
     socket.on('permission:respond', (data) => {
-      // Path 1: Existing ActiveStream pattern (non-queue flow)
       const sessionId = socketToSession.get(socket.id);
-      if (sessionId) {
-        const stream = activeStreams.get(sessionId);
-        if (stream?.pendingPermissions.has(data.requestId)) {
-          stream.pendingPermissions.get(data.requestId)!.resolve({ approved: data.approved, response: data.response });
-          stream.pendingPermissions.delete(data.requestId);
-          return;
-        }
-      }
-      // Path 2: Queue fallback — iterate all queue instances by requestId
-      for (const [, queueService] of getAllQueueInstances()) {
-        if (queueService.pendingPermissions.has(data.requestId)) {
-          queueService.pendingPermissions.get(data.requestId)!.resolve({ approved: data.approved, response: data.response });
-          queueService.pendingPermissions.delete(data.requestId);
-          return;
-        }
+      if (!sessionId) return;
+      const stream = activeStreams.get(sessionId);
+      if (stream?.pendingPermissions.has(data.requestId)) {
+        stream.pendingPermissions.get(data.requestId)!.resolve({ approved: data.approved, response: data.response });
+        stream.pendingPermissions.delete(data.requestId);
       }
     });
 
@@ -281,14 +346,14 @@ export async function initializeWebSocket(
 
     // Handle queue events via WebSocket (Story 15.2)
     socket.on('queue:start', async (data) => {
-      const { items, sessionId, projectSlug } = data;
+      const { items, sessionId, projectSlug, permissionMode } = data;
       socket.join(`project:${projectSlug}`);
       const queueService = getOrCreateQueueService(projectSlug);
       if (queueService.isRunning) {
         socket.emit('error', { code: 'QUEUE_ALREADY_RUNNING', message: 'Queue is already running for this project' });
         return;
       }
-      queueService.start(items, projectSlug, sessionId).catch((err) => {
+      queueService.start(items, projectSlug, sessionId, permissionMode).catch((err) => {
         console.error('[websocket] Queue execution error:', err);
       });
     });

@@ -14,23 +14,31 @@ import type {
   QueueItem,
   StreamCallbacks,
   ChatOptions,
+  PermissionMode,
+  TrackedToolCall,
+  ToolResult,
+  CompactMetadata,
+  TaskNotificationData,
+  PermissionRequest,
 } from '@bmad-studio/shared';
+import { ERROR_CODES } from '@bmad-studio/shared';
 import { ChatService } from './chatService.js';
 import { parseSDKError } from '../utils/errors.js';
 import { projectService as _ps } from './projectService.js';
 import { notificationService as _ns } from './notificationService.js';
 import { preferencesService as _prs } from './preferencesService.js';
+import {
+  createHeadlessStream,
+  rekeyStream,
+  finalizeStream,
+  broadcastStreamChange,
+} from '../handlers/websocket.js';
 
 type ProjectService = typeof _ps;
 type NotificationService = typeof _ns;
 type PreferencesService = typeof _prs;
 
 type SocketIOServer4 = SocketIOServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
-
-interface PendingPermission {
-  resolve: (result: { approved: boolean; response?: string | string[] | Record<string, string | string[]> }) => void;
-  interactionType: 'permission' | 'question';
-}
 
 interface ExecuteItemResult {
   shouldAdvance: boolean;
@@ -50,8 +58,6 @@ export class QueueService {
   private abortController: AbortController | null = null;
   private pauseReason: string | undefined = undefined;
   private resumeSessionId: string | null = null;
-  public pendingPermissions = new Map<string, PendingPermission>();
-
   constructor(
     private projectService: ProjectService,
     private notificationService: NotificationService,
@@ -67,9 +73,9 @@ export class QueueService {
     return this._isRunning ? this.currentSessionId : null;
   }
 
-  async start(items: QueueItem[], projectSlug: string, sessionId?: string): Promise<void> {
+  async start(items: QueueItem[], projectSlug: string, sessionId?: string, permissionMode?: PermissionMode): Promise<void> {
     this.workingDirectory = await this.projectService.resolveOriginalPath(projectSlug);
-    this.chatService = new ChatService({ workingDirectory: this.workingDirectory });
+    this.chatService = new ChatService({ workingDirectory: this.workingDirectory, permissionMode });
     this.abortController = new AbortController();
     this.items = items;
     this.currentIndex = 0;
@@ -80,8 +86,6 @@ export class QueueService {
     this.currentModel = undefined;
     this.resumeSessionId = null;
     this.pauseReason = undefined;
-    this.pendingPermissions.clear();
-
     this.emitProgress('running');
     await this.notificationService.notifyQueueStart(items.length, this.buildSessionUrl());
     await this.executeLoop();
@@ -186,25 +190,198 @@ export class QueueService {
     return { shouldAdvance: true };
   }
 
+  /**
+   * Execute a single prompt using the exact same ActiveStream pattern as
+   * handleChatSend in websocket.ts.  createHeadlessStream registers the
+   * stream in activeStreams so session:join / reconnect / buffer replay all
+   * work identically to normal chat.
+   */
   private async executePrompt(item: QueueItem): Promise<ExecuteItemResult> {
-    const { callbacks, getAccumulatedText } = this.buildStreamCallbacks();
-    const canUseTool = this.buildCanUseTool();
-    const options = this.buildChatOptions();
+    const chatOptions = this.buildChatOptions();
+    const streamKey = this.currentSessionId || `queue-pending-${Date.now()}`;
+
+    // Identical to handleChatSend: headless stream → createStreamEmit
+    const { stream, emit } = createHeadlessStream(streamKey, this.abortController!);
+    stream.chatService = this.chatService!;
+
+    let actualSessionId = this.currentSessionId;
+    const chunks: string[] = [];
+
+    // canUseTool — permissions stored in stream.pendingPermissions
+    // (same map that permission:respond handler in websocket.ts checks)
+    const canUseTool: CanUseTool = async (toolName, input, options): Promise<PermissionResult> => {
+      const isAskUserQuestion = toolName === 'AskUserQuestion';
+      const requestId = options.toolUseID || `perm-queue-${Date.now()}`;
+
+      // Pause queue execution
+      this.isPaused = true;
+      this.pauseReason = `Waiting for ${isAskUserQuestion ? 'user answer' : 'permission'}: ${toolName}`;
+      this.emitProgress('paused');
+      await this.notificationService.notifyQueueInputRequired(this.buildSessionUrl());
+
+      // Emit via ActiveStream (buffered + forwarded to session:join'd socket)
+      emit('permission:request', {
+        id: requestId,
+        sessionId: this.currentSessionId || '',
+        toolCall: { id: requestId, name: toolName, input },
+        requiresApproval: true,
+      } as PermissionRequest);
+
+      // Notify via Telegram if no socket connected
+      if (!stream.socketRef.current) {
+        const prompt = isAskUserQuestion
+          ? ((input as Record<string, unknown>).questions as Array<{ question: string }>)?.[0]?.question
+          : `${toolName}`;
+        this.notificationService.notifyInputRequired(stream.sessionId, toolName, prompt);
+      }
+
+      // Wait for user response — uses stream.pendingPermissions (websocket.ts resolves this)
+      const userResponse = await new Promise<{
+        approved: boolean;
+        response?: string | string[] | Record<string, string | string[]>;
+      }>((resolve) => {
+        stream.pendingPermissions.set(requestId, {
+          resolve,
+          interactionType: isAskUserQuestion ? 'question' : 'permission',
+        });
+      });
+
+      // Auto-resume
+      this.isPaused = false;
+      this.pauseReason = undefined;
+      this.emitProgress('running');
+
+      if (isAskUserQuestion) {
+        const questions = (input as Record<string, unknown>).questions as Array<{ question: string }>;
+        let answers: Record<string, string | string[]>;
+        if (typeof userResponse.response === 'object' && !Array.isArray(userResponse.response) && userResponse.response !== null) {
+          answers = userResponse.response as Record<string, string | string[]>;
+        } else {
+          const answer = typeof userResponse.response === 'string'
+            ? userResponse.response
+            : Array.isArray(userResponse.response) ? userResponse.response.join(', ') : '';
+          answers = { [questions[0].question]: answer };
+        }
+        return { behavior: 'allow', updatedInput: { questions, answers } };
+      }
+
+      return userResponse.approved
+        ? { behavior: 'allow', updatedInput: input }
+        : { behavior: 'deny', message: 'User denied permission', interrupt: true };
+    };
 
     try {
-      await this.chatService!.sendMessageWithCallbacks(item.prompt, callbacks, options, canUseTool);
+      await this.chatService!.sendMessageWithCallbacks(item.prompt, {
+        // --- Callbacks identical to handleChatSend in websocket.ts ---
+
+        onSessionInit: (sid, metadata) => {
+          actualSessionId = sid;
+          this.currentSessionId = sid;
+
+          // Re-key stream (identical to handleChatSend inline logic)
+          rekeyStream(stream, sid);
+
+          emit('session:created', { sessionId: sid, model: metadata?.model });
+          broadcastStreamChange(sid, true);
+        },
+
+        onTextChunk: (chunk) => {
+          chunks.push(chunk.content);
+          emit('message:chunk', {
+            sessionId: actualSessionId || chunk.sessionId,
+            messageId: chunk.messageId,
+            content: chunk.content,
+            done: chunk.done,
+          });
+        },
+
+        onThinking: (content: string) => {
+          emit('thinking:chunk', { content });
+        },
+
+        onToolUse: (toolCall: TrackedToolCall) => {
+          emit('tool:call', { id: toolCall.id, name: toolCall.name, input: toolCall.input });
+        },
+
+        onToolInputUpdate: (toolCallId: string, input: Record<string, unknown>) => {
+          emit('tool:input-update', { toolCallId, input });
+        },
+
+        onToolResult: (toolCallId: string, result: ToolResult) => {
+          emit('tool:result', { toolCallId, result });
+        },
+
+        onComplete: (response) => {
+          emit('message:complete', {
+            id: response.id,
+            sessionId: actualSessionId || response.sessionId,
+            role: 'assistant',
+            content: response.content,
+            timestamp: new Date(),
+            usage: response.usage,
+          });
+          if (response.usage) {
+            emit('context:usage', response.usage);
+          }
+          // Notify via Telegram if no socket connected
+          if (!stream.socketRef.current) {
+            this.notificationService.notifyComplete(stream.sessionId);
+          }
+        },
+
+        onError: (error) => {
+          const sdkError = parseSDKError(error);
+          emit('error', { code: ERROR_CODES.CHAT_ERROR, message: sdkError.message });
+          if (!stream.socketRef.current) {
+            this.notificationService.notifyError(stream.sessionId, sdkError.message);
+          }
+        },
+
+        onCompact: (metadata: CompactMetadata) => {
+          emit('system:compact', metadata);
+        },
+
+        onToolProgress: (toolUseId: string, elapsedTimeSeconds: number, toolName: string) => {
+          emit('tool:progress', { toolUseId, elapsedTimeSeconds, toolName });
+        },
+
+        onToolUseSummary: (summary: string, precedingToolUseIds: string[]) => {
+          emit('tool:summary', { summary, precedingToolUseIds });
+        },
+
+        onTaskNotification: (data: TaskNotificationData) => {
+          emit('system:task-notification', data);
+        },
+
+        onResultError: (data) => {
+          emit('result:error', data);
+        },
+
+        onAssistantUsage: (usage) => {
+          emit('assistant:usage', usage);
+        },
+
+        onContextEstimate: (estimatedTokens, contextWindow) => {
+          emit('context:estimate', { estimatedTokens, contextWindow });
+        },
+      }, chatOptions, canUseTool);
     } catch (error) {
       const sdkError = parseSDKError(error);
+      console.error(`[queueService] executePrompt ERROR: ${sdkError.message}`);
       this.pauseWithError(`SDK Error: ${sdkError.message}`);
       await this.notificationService.notifyQueueError(sdkError.message, this.buildSessionUrl());
       return { shouldAdvance: false };
+    } finally {
+      // Clean up — identical to handleChatSend finally block
+      stream.status = 'completed';
+      finalizeStream(stream.sessionId);
     }
 
-    // Clear resume after use (one-time)
-    this.resumeSessionId = null;
+    // After first successful prompt, subsequent prompts resume the session
+    this.resumeSessionId = this.currentSessionId;
 
-    // Check markers after completion
-    const fullText = getAccumulatedText();
+    // Check markers
+    const fullText = chunks.join('');
     if (fullText.includes('QUEUE_STOP')) {
       this.pauseWithError('QUEUE_STOP detected in response');
       await this.notificationService.notifyQueueError('QUEUE_STOP detected in response', this.buildSessionUrl());
@@ -237,126 +414,6 @@ export class QueueService {
     }
     if (this.currentModel) opts.model = this.currentModel;
     return opts;
-  }
-
-  private buildStreamCallbacks(): { callbacks: StreamCallbacks; getAccumulatedText: () => string } {
-    const chunks: string[] = [];
-    const emitToProject = (event: string, data: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      this.io.to(`project:${this.projectSlug}`).emit(event as any, data);
-    };
-
-    const callbacks: StreamCallbacks = {
-      onSessionInit: (sessionId, metadata) => {
-        this.currentSessionId = sessionId;
-        emitToProject('session:created', { sessionId, model: metadata?.model });
-      },
-      onTextChunk: (chunk) => {
-        chunks.push(chunk.content);
-        // Intentional: sessionId placed last to ensure currentSessionId overrides any
-        // stale sessionId from the chunk (e.g., when @new allocates a new session mid-queue).
-        emitToProject('message:chunk', { ...chunk, sessionId: this.currentSessionId });
-      },
-      onThinking: (content) => {
-        emitToProject('thinking:chunk', { sessionId: this.currentSessionId, content });
-      },
-      onToolUse: (toolCall) => {
-        emitToProject('tool:call', { sessionId: this.currentSessionId, ...toolCall });
-      },
-      onToolInputUpdate: (toolCallId, input) => {
-        emitToProject('tool:input-update', { sessionId: this.currentSessionId, toolCallId, input });
-      },
-      onToolResult: (toolCallId, result) => {
-        emitToProject('tool:result', { sessionId: this.currentSessionId, toolCallId, ...result });
-      },
-      onComplete: (response) => {
-        // Intentional: sessionId placed last (same rationale as onTextChunk)
-        emitToProject('message:complete', { ...response, sessionId: this.currentSessionId });
-      },
-      onError: (error) => {
-        emitToProject('error', { sessionId: this.currentSessionId, code: 'QUEUE_SDK_ERROR', message: error.message });
-      },
-      onCompact: (metadata) => {
-        emitToProject('system:compact', { sessionId: this.currentSessionId, ...metadata });
-      },
-      onToolProgress: (toolUseId, elapsedTimeSeconds, toolName) => {
-        emitToProject('tool:progress', { sessionId: this.currentSessionId, toolUseId, elapsedTimeSeconds, toolName });
-      },
-      onToolUseSummary: (summary, precedingToolUseIds) => {
-        emitToProject('tool:summary', { sessionId: this.currentSessionId, summary, precedingToolUseIds });
-      },
-      onTaskNotification: (data) => {
-        emitToProject('system:task-notification', { sessionId: this.currentSessionId, ...data });
-      },
-      onResultError: (data) => {
-        emitToProject('result:error', { sessionId: this.currentSessionId, ...data });
-      },
-      onAssistantUsage: (usage) => {
-        emitToProject('assistant:usage', { sessionId: this.currentSessionId, ...usage });
-      },
-      onContextEstimate: (estimatedTokens, contextWindow) => {
-        emitToProject('context:estimate', { sessionId: this.currentSessionId, estimatedTokens, contextWindow });
-      },
-    };
-
-    return { callbacks, getAccumulatedText: () => chunks.join('') };
-  }
-
-  private buildCanUseTool(): CanUseTool {
-    return async (toolName, input, options): Promise<PermissionResult> => {
-      const isAskUserQuestion = toolName === 'AskUserQuestion';
-      const requestId = options.toolUseID || `perm-queue-${Date.now()}`;
-
-      // Step 1: Pause queue execution
-      this.isPaused = true;
-      this.pauseReason = `Waiting for ${isAskUserQuestion ? 'user answer' : 'permission'}: ${toolName}`;
-      this.emitProgress('paused');
-      await this.notificationService.notifyQueueInputRequired(this.buildSessionUrl());
-
-      // Step 2: Emit permission:request to project room
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      this.io.to(`project:${this.projectSlug}`).emit('permission:request' as any, {
-        id: requestId,
-        sessionId: this.currentSessionId || '',
-        toolCall: { id: requestId, name: toolName, input },
-        requiresApproval: true,
-      });
-
-      // Step 3: Wait for user response
-      const userResponse = await new Promise<{
-        approved: boolean;
-        response?: string | string[] | Record<string, string | string[]>;
-      }>((resolve) => {
-        this.pendingPermissions.set(requestId, {
-          resolve,
-          interactionType: isAskUserQuestion ? 'question' : 'permission',
-        });
-      });
-
-      // Step 4: Auto-resume after user responds
-      this.isPaused = false;
-      this.pauseReason = undefined;
-      this.emitProgress('running');
-
-      // Step 5: Build PermissionResult
-      if (isAskUserQuestion) {
-        const questions = (input as Record<string, unknown>).questions as Array<{ question: string }>;
-        let answers: Record<string, string | string[]>;
-        if (typeof userResponse.response === 'object' && !Array.isArray(userResponse.response) && userResponse.response !== null) {
-          answers = userResponse.response as Record<string, string | string[]>;
-        } else {
-          const answer = typeof userResponse.response === 'string'
-            ? userResponse.response
-            : Array.isArray(userResponse.response) ? userResponse.response.join(', ') : '';
-          answers = { [questions[0].question]: answer };
-        }
-        return { behavior: 'allow', updatedInput: { questions, answers } };
-      }
-
-      return userResponse.approved
-        ? { behavior: 'allow', updatedInput: input }
-        : { behavior: 'deny', message: 'User denied permission', interrupt: true };
-    };
   }
 
   private pauseWithError(reason: string): void {
