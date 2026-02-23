@@ -8,6 +8,7 @@ import { useShallow } from 'zustand/react/shallow';
 import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 import { useQueueStore } from '../stores/queueStore';
+import { useChatStore } from '../stores/chatStore';
 import { queueApi } from '../services/api/queue';
 
 export interface UseQueueRunnerReturn {
@@ -89,8 +90,9 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
 
   const start = useCallback((items: QueueItem[], sessionId?: string) => {
     const socket = getSocket();
+    const permissionMode = useChatStore.getState().permissionMode;
     useQueueStore.getState().setStarting(true);
-    socket.emit('queue:start', { items, sessionId, projectSlug });
+    socket.emit('queue:start', { items, sessionId, projectSlug, permissionMode });
   }, [projectSlug]);
 
   const pause = useCallback(() => {

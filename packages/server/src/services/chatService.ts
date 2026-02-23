@@ -181,6 +181,10 @@ export class ChatService {
         append: buildWorkspaceContext(this.workingDirectory),
       } : undefined,
       canUseTool,
+      // Capture CLI stderr for debugging process exit errors
+      stderr: (data: string) => {
+        console.error(`[chatService] CLI stderr: ${data.trimEnd()}`);
+      },
     };
 
     // Remove undefined values

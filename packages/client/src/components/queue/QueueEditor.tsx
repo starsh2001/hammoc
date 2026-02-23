@@ -4,12 +4,33 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Play, Pause, Square, Upload, FileText, AlertTriangle, Loader2 } from 'lucide-react';
+import { Play, Upload, FileText, AlertTriangle, Loader2 } from 'lucide-react';
 import { useQueueStore } from '../../stores/queueStore';
 import { useQueueRunner } from '../../hooks/useQueueRunner';
 import { QueueRunnerPanel } from './QueueRunnerPanel';
 import { QueueTemplateDialog } from './QueueTemplateDialog';
 import { highlightScript } from './queueHighlight';
+
+/** Shared text styles for pre + textarea overlay alignment */
+const sharedTextStyle: React.CSSProperties = {
+  margin: 0,
+  border: 0,
+  padding: '16px',
+  boxSizing: 'border-box',
+  fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
+  fontSize: '14px',
+  fontStyle: 'normal',
+  fontVariantLigatures: 'normal',
+  fontWeight: 'normal',
+  letterSpacing: 'normal',
+  lineHeight: '21px',
+  tabSize: 2,
+  textIndent: '0px',
+  textRendering: 'auto',
+  textTransform: 'none',
+  whiteSpace: 'pre',
+  overflow: 'hidden',
+};
 
 interface QueueEditorProps {
   projectSlug: string;
@@ -28,18 +49,9 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const preRef = useRef<HTMLPreElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLocked = runner.isRunning || runner.isStarting;
-
-  // Sync scroll between textarea and pre
-  const handleScroll = useCallback(() => {
-    if (textareaRef.current && preRef.current) {
-      preRef.current.scrollTop = textareaRef.current.scrollTop;
-      preRef.current.scrollLeft = textareaRef.current.scrollLeft;
-    }
-  }, []);
 
   // File load handler
   const handleFileLoad = useCallback(() => {
@@ -139,113 +151,74 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
 
         <div className="flex-1" />
 
-        {!runner.isRunning && !runner.isPaused && (
-          <button
-            onClick={handleRun}
-            disabled={!canRun}
-            aria-label="실행"
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg
-              bg-blue-600 text-white hover:bg-blue-700
-              disabled:opacity-50 disabled:cursor-not-allowed
-              min-w-[44px] min-h-[44px]"
-          >
-            {runner.isStarting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>시작 중...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                <span>실행</span>
-              </>
-            )}
-          </button>
-        )}
-
-        {runner.isRunning && !runner.isPaused && (
-          <button
-            onClick={runner.pause}
-            aria-label="일시정지"
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg
-              bg-amber-600 text-white hover:bg-amber-700
-              min-w-[44px] min-h-[44px]"
-          >
-            <Pause className="w-4 h-4" />
-            <span>일시정지</span>
-          </button>
-        )}
-
-        {runner.isPaused && (
-          <>
-            <button
-              onClick={runner.resume}
-              aria-label="재개"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg
-                bg-blue-600 text-white hover:bg-blue-700
-                min-w-[44px] min-h-[44px]"
-            >
+        {/* Run button — only shown when queue is idle */}
+        <button
+          onClick={handleRun}
+          disabled={!canRun}
+          aria-label="실행"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg
+            bg-blue-600 text-white hover:bg-blue-700
+            disabled:opacity-50 disabled:cursor-not-allowed
+            min-w-[44px] min-h-[44px]"
+        >
+          {runner.isStarting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>시작 중...</span>
+            </>
+          ) : (
+            <>
               <Play className="w-4 h-4" />
-              <span>재개</span>
-            </button>
-            <button
-              onClick={runner.abort}
-              aria-label="중단"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg
-                bg-red-600 text-white hover:bg-red-700
-                min-w-[44px] min-h-[44px]"
-            >
-              <Square className="w-4 h-4" />
-              <span>중단</span>
-            </button>
-          </>
-        )}
+              <span>실행</span>
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Editor area */}
-      <div className="relative border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-900 overflow-hidden min-h-[200px] md:min-h-[300px]"
+      {/* Editor area — two-wrapper overlay pattern.
+          Outer div: fixed height + overflow:auto (scrolls).
+          Inner div: position:relative, no overflow (sizes to pre content).
+          Pre: normal flow (determines inner div height).
+          Textarea: absolute inset:0 (matches inner div = pre size, scrolls with it). */}
+      <div
+        className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-900 h-[200px] md:h-[300px]"
+        style={{ overflow: 'auto' }}
       >
-        <pre
-          ref={preRef}
-          className="absolute inset-0 pointer-events-none z-0 overflow-auto m-0"
-          style={{
-            fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
-            fontSize: '14px',
-            lineHeight: '1.5',
-            padding: '16px',
-            whiteSpace: 'pre-wrap',
-            wordWrap: 'break-word',
-            overflowWrap: 'break-word',
-            tabSize: 2,
-          }}
-          aria-hidden="true"
-          dangerouslySetInnerHTML={{ __html: highlightedHtml + '\n' }}
-        />
-        <textarea
-          ref={textareaRef}
-          value={script}
-          onChange={(e) => setScript(e.target.value)}
-          onScroll={handleScroll}
-          onKeyDown={handleKeyDown}
-          readOnly={isLocked}
-          placeholder="큐 스크립트를 입력하세요... (예: @new, @save, @pause, #주석)"
-          aria-label="큐 스크립트 에디터"
-          aria-describedby={warnings.length > 0 ? 'queue-warnings' : undefined}
-          className="relative z-10 w-full h-full bg-transparent resize-none outline-none m-0 min-h-[200px] md:min-h-[300px]"
-          style={{
-            fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
-            fontSize: '14px',
-            lineHeight: '1.5',
-            padding: '16px',
-            whiteSpace: 'pre-wrap',
-            wordWrap: 'break-word',
-            overflowWrap: 'break-word',
-            tabSize: 2,
-            color: 'transparent',
-            caretColor: '#e5e7eb',
-          }}
-          spellCheck={false}
-        />
+        <div style={{ position: 'relative', minHeight: '100%' }}>
+          <pre
+            aria-hidden="true"
+            style={{
+              ...sharedTextStyle,
+              pointerEvents: 'none',
+            }}
+            dangerouslySetInnerHTML={{ __html: highlightedHtml + '\n' }}
+          />
+          <textarea
+            ref={textareaRef}
+            value={script}
+            onChange={(e) => setScript(e.target.value)}
+            onKeyDown={handleKeyDown}
+            readOnly={isLocked}
+            placeholder="큐 스크립트를 입력하세요... (예: @new, @save, @pause, #주석)"
+            aria-label="큐 스크립트 에디터"
+            aria-describedby={warnings.length > 0 ? 'queue-warnings' : undefined}
+            className="queue-editor-textarea"
+            spellCheck={false}
+            style={{
+              ...sharedTextStyle,
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              resize: 'none',
+              background: 'none',
+              WebkitTextFillColor: 'transparent',
+              caretColor: '#e5e7eb',
+              outline: 'none',
+            }}
+          />
+        </div>
       </div>
 
       {/* Validation warnings */}

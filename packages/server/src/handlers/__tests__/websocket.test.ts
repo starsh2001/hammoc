@@ -107,9 +107,7 @@ vi.mock('../../controllers/queueController.js', () => ({
     pause: vi.fn().mockResolvedValue(undefined),
     resume: vi.fn().mockResolvedValue(undefined),
     abort: vi.fn().mockResolvedValue(undefined),
-    pendingPermissions: new Map(),
   }),
-  getAllQueueInstances: vi.fn().mockReturnValue(new Map()),
 }));
 
 describe('WebSocket Handler', () => {
