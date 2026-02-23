@@ -20,6 +20,7 @@ import preferencesRoutes from './routes/preferences.js';
 import debugRoutes from './routes/debug.js';
 import fileSystemRoutes from './routes/fileSystem.js';
 import bmadStatusRoutes from './routes/bmadStatus.js';
+import queueRoutes from './routes/queue.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 
@@ -86,6 +87,9 @@ export async function createApp(): Promise<Express> {
 
   // BMad Dashboard Status routes (Story 12.1)
   app.use('/api/projects', bmadStatusRoutes);
+
+  // Queue Runner routes (Story 15.2)
+  app.use('/api/projects', queueRoutes);
 
   // Debug routes (server-side logging for client debugging)
   app.use('/api/debug', debugRoutes);

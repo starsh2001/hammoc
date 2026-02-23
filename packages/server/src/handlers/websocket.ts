@@ -30,6 +30,7 @@ import { createSessionMiddleware } from '../middleware/session.js';
 import { config } from '../config/index.js';
 import { notificationService } from '../services/notificationService.js';
 import { preferencesService } from '../services/preferencesService.js';
+import { getOrCreateQueueService, getAllQueueInstances } from '../controllers/queueController.js';
 
 let io: SocketIOServer<
   ClientToServerEvents,
@@ -132,6 +133,9 @@ export async function initializeWebSocket(
     console.log(`Client connected. Total: ${connectedClients}`);
 
     // Handle chat:send event — background streaming with reconnect support
+    // TODO(Story 15.4): Add session lock check here — reject if queue is running for this session.
+    // Use getOrCreateQueueService(projectSlug).lockedSessionId to check.
+    // Requires projectSlug in chat:send data or reverse-lookup from sessionId.
     socket.on('chat:send', async (data) => {
       const abortController = new AbortController();
       const streamKey = data.sessionId || `pending-${socket.id}`;
@@ -165,16 +169,25 @@ export async function initializeWebSocket(
       }
     });
 
-    // Handle permission:respond event — route to ActiveStream
+    // Handle permission:respond event — route to ActiveStream or Queue fallback (Story 15.2)
     socket.on('permission:respond', (data) => {
+      // Path 1: Existing ActiveStream pattern (non-queue flow)
       const sessionId = socketToSession.get(socket.id);
-      if (!sessionId) return;
-      const stream = activeStreams.get(sessionId);
-      if (!stream) return;
-      const pending = stream.pendingPermissions.get(data.requestId);
-      if (pending) {
-        pending.resolve({ approved: data.approved, response: data.response });
-        stream.pendingPermissions.delete(data.requestId);
+      if (sessionId) {
+        const stream = activeStreams.get(sessionId);
+        if (stream?.pendingPermissions.has(data.requestId)) {
+          stream.pendingPermissions.get(data.requestId)!.resolve({ approved: data.approved, response: data.response });
+          stream.pendingPermissions.delete(data.requestId);
+          return;
+        }
+      }
+      // Path 2: Queue fallback — iterate all queue instances by requestId
+      for (const [, queueService] of getAllQueueInstances()) {
+        if (queueService.pendingPermissions.has(data.requestId)) {
+          queueService.pendingPermissions.get(data.requestId)!.resolve({ approved: data.approved, response: data.response });
+          queueService.pendingPermissions.delete(data.requestId);
+          return;
+        }
       }
     });
 
@@ -256,6 +269,40 @@ export async function initializeWebSocket(
     // Handle session:list event
     socket.on('session:list', async (data) => {
       await handleSessionList(socket, data);
+    });
+
+    // Handle project:join/leave — room for queue event delivery (Story 15.2)
+    socket.on('project:join', (projectSlug: string) => {
+      socket.join(`project:${projectSlug}`);
+    });
+    socket.on('project:leave', (projectSlug: string) => {
+      socket.leave(`project:${projectSlug}`);
+    });
+
+    // Handle queue events via WebSocket (Story 15.2)
+    socket.on('queue:start', async (data) => {
+      const { items, sessionId, projectSlug } = data;
+      socket.join(`project:${projectSlug}`);
+      const queueService = getOrCreateQueueService(projectSlug);
+      if (queueService.isRunning) {
+        socket.emit('error', { code: 'QUEUE_ALREADY_RUNNING', message: 'Queue is already running for this project' });
+        return;
+      }
+      queueService.start(items, projectSlug, sessionId).catch((err) => {
+        console.error('[websocket] Queue execution error:', err);
+      });
+    });
+    socket.on('queue:pause', (data) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      if (qs.isRunning) qs.pause();
+    });
+    socket.on('queue:resume', (data) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      if (qs.isRunning) qs.resume().catch(() => {});
+    });
+    socket.on('queue:abort', (data) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      if (qs.isRunning) qs.abort();
     });
 
     // Disconnect: detach socket from stream, DON'T abort or deny permissions

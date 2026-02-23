@@ -44,6 +44,10 @@ export interface TelegramSettings {
   notifyPermission?: boolean;
   notifyComplete?: boolean;
   notifyError?: boolean;
+  notifyQueueStart?: boolean;
+  notifyQueueComplete?: boolean;
+  notifyQueueError?: boolean;
+  notifyQueueInputRequired?: boolean;
 }
 
 /** GET /api/preferences/telegram response type */
@@ -54,6 +58,10 @@ export interface TelegramSettingsApiResponse {
   notifyPermission: boolean;
   notifyComplete: boolean;
   notifyError: boolean;
+  notifyQueueStart: boolean;
+  notifyQueueComplete: boolean;
+  notifyQueueError: boolean;
+  notifyQueueInputRequired: boolean;
   envOverrides: string[];
   hasBotToken: boolean;
   hasChatId: boolean;
@@ -67,6 +75,10 @@ export interface UpdateTelegramSettingsRequest {
   notifyPermission?: boolean;
   notifyComplete?: boolean;
   notifyError?: boolean;
+  notifyQueueStart?: boolean;
+  notifyQueueComplete?: boolean;
+  notifyQueueError?: boolean;
+  notifyQueueInputRequired?: boolean;
 }
 
 /** POST /api/preferences/telegram/test request body */
