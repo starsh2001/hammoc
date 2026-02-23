@@ -80,7 +80,7 @@ export interface ServerToClientEvents {
   'stream:status': (data: { active: boolean; sessionId: string }) => void;
   'stream:detached': (data: { sessionId: string; reason: string }) => void;
   'permission:already-resolved': (data: { requestId: string }) => void;
-  'permission:resolved': (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question' }) => void;
+  'permission:resolved': (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question'; response?: string | string[] | Record<string, string | string[]> }) => void;
   'session:stream-change': (data: { sessionId: string; active: boolean }) => void;
   'user:message': (data: { content: string; sessionId: string }) => void;
   // Story 15.2: Queue runner events

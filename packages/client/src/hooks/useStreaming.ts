@@ -158,13 +158,22 @@ export function useStreaming() {
       if (incomingTrimmed.startsWith('/compact')) {
         useChatStore.setState({ isCompacting: true });
       }
+
+      // Passive viewer: start optimistic streaming delay (same as sendMessage).
+      // If this browser sent the message, isStreaming is already true from sendMessage.
+      const chatState = useChatStore.getState();
+      if (!chatState.isStreaming) {
+        useChatStore.getState().startStreamingDelay(data.sessionId);
+      }
     };
 
     // Handle incoming thinking chunks
     const handleThinkingChunk = (data: { content: string }) => {
       const state = useChatStore.getState();
-      // Only call startStreaming when null (first chunk) — 'pending' means already started
-      if (state.streamingSessionId === null) {
+      // Start streaming if not yet active — covers both first chunk (sessionId null)
+      // and passive viewer (another browser set streamingSessionId via session:resumed
+      // but isStreaming is still false because sendMessage was never called locally)
+      if (!state.isStreaming || state.streamingSessionId === null) {
         startStreaming('pending', 'pending');
       }
       // Flush pending text before thinking segment to maintain correct ordering
@@ -183,8 +192,10 @@ export function useStreaming() {
         streamingSessionId: state.streamingSessionId,
         segmentCount: state.streamingSegments.length,
       });
-      if (state.streamingSessionId === null) {
-        // First chunk — initialize streaming state
+      if (!state.isStreaming || state.streamingSessionId === null) {
+        // First chunk or passive viewer — initialize streaming state.
+        // Passive viewers (other browsers) receive session:resumed which sets
+        // streamingSessionId but not isStreaming, so we must also check isStreaming.
         startStreaming(data.sessionId, data.messageId);
       } else if (state.streamingSessionId === 'pending') {
         // Update sessionId without resetting segments (preserves thinking content)
@@ -376,15 +387,26 @@ export function useStreaming() {
     // Handle permission:resolved — proactive broadcast from server when another
     // viewer resolves a permission. Includes the actual approve/deny result so
     // this client can update its tool/interactive card to the correct state.
-    const handlePermissionResolved = (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question' }) => {
+    const handlePermissionResolved = (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question'; response?: string | string[] | Record<string, string | string[]> }) => {
       const segments = useChatStore.getState().streamingSegments;
       let changed = false;
       const updated = segments.map((seg) => {
         if (data.interactionType === 'question') {
-          // AskUserQuestion — mark as responded
+          // AskUserQuestion — mark as responded with actual answer
           if (seg.type === 'interactive' && seg.id === data.requestId) {
             changed = true;
-            return { ...seg, status: 'responded' as InteractiveStatus, response: '(다른 브라우저에서 응답됨)' };
+            // Format response for display
+            let displayResponse: string;
+            if (typeof data.response === 'string') {
+              displayResponse = data.response;
+            } else if (Array.isArray(data.response)) {
+              displayResponse = data.response.join(', ');
+            } else if (data.response && typeof data.response === 'object') {
+              displayResponse = Object.values(data.response).flat().join(', ');
+            } else {
+              displayResponse = '(다른 브라우저에서 응답됨)';
+            }
+            return { ...seg, status: 'responded' as InteractiveStatus, response: displayResponse };
           }
         } else {
           // Tool permission — update to actual approve/deny result
@@ -487,8 +509,11 @@ export function useStreaming() {
       addResultError(data);
     };
 
-    // Handle session:created / session:resumed — update streamingSessionId as early as possible
-    // (fires before message:chunk, so URL can navigate from /new to real sessionId immediately)
+    // Handle session:created / session:resumed — earliest streaming signal from server.
+    // For the active sender (browser A), sendMessage already set isStreaming=true, so we
+    // just update the sessionId. For passive viewers (browser B), this is the first
+    // reliable signal that a stream exists — start streaming here so all subsequent
+    // events (tool:call, permission:request, message:chunk) render correctly.
     const handleSessionInit = (data: { sessionId: string; model?: string }) => {
       const state = useChatStore.getState();
       debugLog.stream('session:init', {
@@ -497,7 +522,14 @@ export function useStreaming() {
         currentStreamingSessionId: state.streamingSessionId,
         isStreaming: state.isStreaming,
       });
-      if (!state.streamingSessionId || state.streamingSessionId === 'pending') {
+      if (!state.streamingSessionId) {
+        // First session signal — start visual streaming state with actual sessionId.
+        // For sender (A): isStreaming is already true (from sendMessage) but no visual
+        // indicator yet. For passive viewer (B): nothing set yet.
+        // Both enter visual streaming at the same time (server-confirmed).
+        startStreaming(data.sessionId, 'pending');
+      } else if (state.streamingSessionId === 'pending') {
+        // Already started with 'pending' (e.g., thinking chunk arrived first), update to real ID
         updateStreamingSessionId(data.sessionId);
       }
     };

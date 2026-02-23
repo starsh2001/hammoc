@@ -11,8 +11,8 @@ import { useMessageStore } from './messageStore';
 import { usePreferencesStore } from './preferencesStore';
 import { debugLog } from '../utils/debugLogger';
 
-/** Delay before showing "waiting" UI (ms) - gives a natural "reading" feel */
-const STREAMING_UI_DELAY_MS = 600;
+/** Delay before showing "waiting" UI (ms) — both sender and passive viewers */
+const STREAMING_UI_DELAY_MS = 1000;
 
 /** Track the delay timeout so we can cancel if response arrives early */
 let streamingDelayTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -238,6 +238,8 @@ interface ChatActions {
   addToolSummary: (summary: string, precedingToolUseIds: string[]) => void;
   /** Add a result error segment and persist it */
   addResultError: (data: ResultErrorData) => void;
+  /** Start optimistic streaming delay (for passive viewers receiving user:message) */
+  startStreamingDelay: (sessionId: string) => void;
   /** Restore streaming state for background stream reconnection */
   restoreStreaming: (sessionId: string) => void;
   /** Store segment cleanup timeout ID (for cancellation on rapid successive completions) */
@@ -309,15 +311,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       segmentCleanupTimeoutId = null;
     }
 
-    // Set isStreaming true immediately (disables input), but delay the visual "waiting" UI
+    // Set isStreaming true immediately (disables input), but delay the visual "waiting" UI.
+    // If server responds (session:created/resumed) before the delay, startStreaming cancels it.
     // Detect /compact command to show compaction-specific indicator early
     const isCompactCommand = content.trim() === '/compact';
     set({ isStreaming: true, ...(isCompactCommand && { isCompacting: true }) });
 
-    // Show "waiting" UI after a short delay (natural "reading" feel)
+    // Show "waiting" UI after delay (optimistic — before server confirms)
     streamingDelayTimeoutId = setTimeout(() => {
       const state = get();
-      // Only show if still streaming and no segments received yet
       if (state.isStreaming && state.streamingSegments.length === 0 && !state.streamingSessionId) {
         set({
           streamingSessionId: sessionId ?? 'pending',
@@ -534,6 +536,36 @@ export const useChatStore = create<ChatStore>((set, get) => ({
               success: seg.status === 'completed',
               output: seg.status === 'completed' ? seg.toolCall.output : undefined,
               error: seg.status === 'error' ? seg.toolCall.output : undefined,
+            },
+          }),
+        });
+        pendingThinking = undefined;
+      } else if (seg.type === 'interactive') {
+        // AskUserQuestion — convert to tool_use message with response as tool_result
+        const toolCallId = seg.toolCall?.id || seg.id;
+        // Format response to string for toolResult.output
+        let responseStr: string | undefined;
+        if (seg.status === 'responded' && seg.response) {
+          if (typeof seg.response === 'string') {
+            responseStr = seg.response;
+          } else if (Array.isArray(seg.response)) {
+            responseStr = seg.response.join(', ');
+          } else if (typeof seg.response === 'object') {
+            responseStr = Object.values(seg.response).flat().join(', ');
+          }
+        }
+        messages.push({
+          id: `${prev.streamingMessageId}-tool-${toolCallId}`,
+          type: 'tool_use' as const,
+          content: `Calling ${seg.toolCall?.name || 'AskUserQuestion'}`,
+          timestamp: new Date().toISOString(),
+          toolName: seg.toolCall?.name || 'AskUserQuestion',
+          toolInput: seg.toolCall?.input,
+          thinking: pendingThinking,
+          ...(responseStr && {
+            toolResult: {
+              success: true,
+              output: responseStr,
             },
           }),
         });
@@ -931,6 +963,28 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         { type: 'tool_summary' as const, summary, precedingToolUseIds },
       ],
     });
+  },
+
+  startStreamingDelay: (sessionId: string) => {
+    // Optimistic streaming delay for passive viewers — mirrors sendMessage's delay.
+    // Sets isStreaming immediately (disables input) and shows visual indicator after delay.
+    // If startStreaming is called before the delay fires (from session:resumed), it cancels it.
+    if (streamingDelayTimeoutId) {
+      clearTimeout(streamingDelayTimeoutId);
+    }
+    set({ isStreaming: true });
+    streamingDelayTimeoutId = setTimeout(() => {
+      const state = get();
+      if (state.isStreaming && state.streamingSegments.length === 0 && !state.streamingSessionId) {
+        set({
+          streamingSessionId: sessionId ?? 'pending',
+          streamingMessageId: 'pending',
+          streamingSegments: [],
+          streamingStartedAt: new Date(),
+        });
+      }
+      streamingDelayTimeoutId = null;
+    }, STREAMING_UI_DELAY_MS);
   },
 
   restoreStreaming: (sessionId: string) => {
