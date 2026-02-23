@@ -62,3 +62,26 @@ export interface QueueErrorEvent {
   error: string;
   sessionId: string;
 }
+
+// Story 15.5: Queue template types
+
+/** A story number extracted from PRD (e.g. "1.1", "2.3") */
+export interface QueueStoryInfo {
+  /** Full story number string, e.g. "1.1" */
+  storyNum: string;
+  /** Epic number, e.g. 1 */
+  epicNum: number;
+  /** Story number within epic, e.g. 1 */
+  storyIndex: number;
+  /** Optional story title if extracted */
+  title?: string;
+}
+
+/** Saved queue template */
+export interface QueueTemplate {
+  id: string;          // UUID
+  name: string;        // User-given name
+  template: string;    // Template text with {story_num} placeholders
+  createdAt: string;   // ISO 8601
+  updatedAt: string;   // ISO 8601
+}
