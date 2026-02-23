@@ -11,6 +11,10 @@ import type { QueueTemplate } from '@bmad-studio/shared';
 const TEMPLATES_DIR = '.bmad-studio';
 const TEMPLATES_FILE = 'queue-templates.json';
 
+function normalizeLineEndings(text: string): string {
+  return text.replace(/\r\n?/g, '\n');
+}
+
 function getTemplatesPath(projectRoot: string): string {
   return path.join(projectRoot, TEMPLATES_DIR, TEMPLATES_FILE);
 }
@@ -41,7 +45,7 @@ export const queueTemplateService = {
     const newTemplate: QueueTemplate = {
       id: crypto.randomUUID(),
       name,
-      template,
+      template: normalizeLineEndings(template),
       createdAt: now,
       updatedAt: now,
     };
@@ -59,7 +63,7 @@ export const queueTemplateService = {
     templates[index] = {
       ...templates[index],
       name,
-      template,
+      template: normalizeLineEndings(template),
       updatedAt: new Date().toISOString(),
     };
     await writeTemplatesFile(projectRoot, templates);

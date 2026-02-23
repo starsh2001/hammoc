@@ -43,6 +43,8 @@ export function generateQueueFromTemplate(
 ): string {
   if (stories.length === 0) return '';
 
+  // Normalize CRLF → LF and strip leading/trailing blank lines
+  const trimmed = template.replace(/\r\n/g, '\n').replace(/^\n+|\n+$/g, '');
   const blocks: string[] = [];
   let prevEpicNum = stories[0].epicNum;
 
@@ -52,7 +54,7 @@ export function generateQueueFromTemplate(
       prevEpicNum = story.epicNum;
     }
 
-    const replaced = template.replace(/\{story_num\}/g, story.storyNum);
+    const replaced = trimmed.replace(/\{story_num\}/g, story.storyNum);
     blocks.push(replaced);
   }
 

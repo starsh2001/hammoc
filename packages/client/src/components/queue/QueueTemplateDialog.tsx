@@ -9,6 +9,7 @@ import { generateQueueFromTemplate } from '@bmad-studio/shared';
 import type { QueueStoryInfo, QueueTemplate } from '@bmad-studio/shared';
 import { queueApi } from '../../services/api/queue';
 import { highlightScript } from './queueHighlight';
+import { normalizeLineEndings, readQueueWrapMode, writeQueueWrapMode } from './wrapMode';
 
 interface QueueTemplateDialogProps {
   projectSlug: string;
@@ -38,6 +39,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
   const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState('');
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [isAutoWrap, setIsAutoWrap] = useState(() => readQueueWrapMode(true));
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +101,11 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
     document.addEventListener('keydown', handleTab);
     return () => document.removeEventListener('keydown', handleTab);
   }, [open]);
+
+  // Keep wrap mode in sync with QueueEditor
+  useEffect(() => {
+    writeQueueWrapMode(isAutoWrap);
+  }, [isAutoWrap]);
 
   // Generate preview
   const selectedStoriesList = useMemo(() => {
@@ -162,7 +169,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
     reader.onload = (ev) => {
       const content = ev.target?.result;
       if (typeof content === 'string') {
-        setTemplateText(content);
+        setTemplateText(normalizeLineEndings(content));
         setSelectedTemplateId(null);
       }
     };
@@ -171,12 +178,13 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
   }, []);
 
   const handleSaveTemplate = useCallback(async () => {
-    if (!templateName.trim() || !templateText.trim()) return;
+    const normalizedTemplate = normalizeLineEndings(templateText);
+    if (!templateName.trim() || !normalizedTemplate.trim()) return;
     try {
       if (selectedTemplateId) {
-        await queueApi.updateTemplate(projectSlug, selectedTemplateId, templateName.trim(), templateText);
+        await queueApi.updateTemplate(projectSlug, selectedTemplateId, templateName.trim(), normalizedTemplate);
       } else {
-        await queueApi.saveTemplate(projectSlug, templateName.trim(), templateText);
+        await queueApi.saveTemplate(projectSlug, templateName.trim(), normalizedTemplate);
       }
       const updated = await queueApi.getTemplates(projectSlug);
       setSavedTemplates(updated);
@@ -204,14 +212,14 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
   }, [projectSlug, selectedTemplateId]);
 
   const handleEditTemplate = useCallback((tmpl: QueueTemplate) => {
-    setTemplateText(tmpl.template);
+    setTemplateText(normalizeLineEndings(tmpl.template));
     setSelectedTemplateId(tmpl.id);
     setTemplateName(tmpl.name);
     setTemplateSource('input');
   }, []);
 
   const handleSelectSavedTemplate = useCallback((tmpl: QueueTemplate) => {
-    setTemplateText(tmpl.template);
+    setTemplateText(normalizeLineEndings(tmpl.template));
     setSelectedTemplateId(tmpl.id);
     setTemplateName(tmpl.name);
   }, []);
@@ -286,6 +294,21 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
               ))}
             </div>
 
+            <div className="flex justify-end mb-3">
+              <button
+                onClick={() => setIsAutoWrap((prev) => !prev)}
+                aria-label="Toggle template wrap mode"
+                aria-pressed={isAutoWrap}
+                className={`px-3 py-1.5 text-sm rounded-md min-h-[44px] ${
+                  isAutoWrap
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                {isAutoWrap ? 'Auto wrap' : 'No wrap'}
+              </button>
+            </div>
+
             {/* Input tab */}
             {templateSource === 'input' && (
               <textarea
@@ -294,9 +317,11 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                   setTemplateText(e.target.value);
                   if (!selectedTemplateId) setTemplateName('');
                 }}
+                wrap={isAutoWrap ? 'soft' : 'off'}
                 placeholder={'예: /dev {story_num} 스토리를 구현해주세요\n@pause 리뷰 후 계속'}
                 className="w-full h-32 px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-lg
                   bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-y"
+                style={{ whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre' }}
               />
             )}
 
@@ -514,10 +539,10 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                 style={{
                   fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
                   lineHeight: '1.5',
-                  whiteSpace: 'pre-wrap',
-                  wordWrap: 'break-word',
+                  whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
+                  overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
                 }}
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
+                dangerouslySetInnerHTML={{ __html: previewHtml + '\n' }}
               />
             </section>
           )}

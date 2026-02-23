@@ -50,6 +50,7 @@ export class QueueService {
   private currentIndex: number = 0;
   private _isRunning: boolean = false;
   private isPaused: boolean = false;
+  private isExecuting: boolean = false; // guards against concurrent executeLoop
   private currentSessionId: string | null = null;
   private currentModel: string | undefined = undefined;
   private projectSlug: string = '';
@@ -81,6 +82,7 @@ export class QueueService {
     this.currentIndex = 0;
     this._isRunning = true;
     this.isPaused = false;
+    this.isExecuting = false;
     this.projectSlug = projectSlug;
     this.currentSessionId = sessionId ?? null;
     this.currentModel = undefined;
@@ -98,6 +100,7 @@ export class QueueService {
   }
 
   async resume(): Promise<void> {
+    if (!this.isPaused || this.isExecuting) return;
     this.abortController = new AbortController();
     this.isPaused = false;
     this.pauseReason = undefined;
@@ -107,6 +110,7 @@ export class QueueService {
 
   async abort(): Promise<void> {
     this._isRunning = false;
+    this.isExecuting = false;
     this.abortController?.abort();
     this.emitProgress('completed');
   }
@@ -124,25 +128,31 @@ export class QueueService {
   }
 
   private async executeLoop(): Promise<void> {
-    while (this.currentIndex < this.items.length && this._isRunning) {
-      if (this.isPaused) break;
-      const item = this.items[this.currentIndex];
-      const result = await this.executeItem(item);
+    if (this.isExecuting) return;
+    this.isExecuting = true;
+    try {
+      while (this.currentIndex < this.items.length && this._isRunning) {
+        if (this.isPaused) break;
+        const item = this.items[this.currentIndex];
+        const result = await this.executeItem(item);
 
-      // Process advancement FIRST, then check pause.
-      // @pause: shouldAdvance=true (advance past breakpoint), isPaused=true (break after)
-      // QUEUE_STOP/error/@load failure: shouldAdvance=false (stay for retry), isPaused=true (break)
-      if (result.shouldAdvance) {
-        this.emitItemComplete(this.currentIndex, result.markerDetected);
-        this.currentIndex++;
+        // Process advancement FIRST, then check pause.
+        // @pause: shouldAdvance=true (advance past breakpoint), isPaused=true (break after)
+        // QUEUE_STOP/error/@load failure: shouldAdvance=false (stay for retry), isPaused=true (break)
+        if (result.shouldAdvance) {
+          this.emitItemComplete(this.currentIndex, result.markerDetected);
+          this.currentIndex++;
+        }
+        if (this.isPaused) break;
       }
-      if (this.isPaused) break;
-    }
 
-    if (this.currentIndex >= this.items.length && this._isRunning) {
-      this._isRunning = false;
-      this.emitProgress('completed');
-      await this.notificationService.notifyQueueComplete(this.buildSessionUrl());
+      if (this.currentIndex >= this.items.length && this._isRunning) {
+        this._isRunning = false;
+        this.emitProgress('completed');
+        await this.notificationService.notifyQueueComplete(this.buildSessionUrl());
+      }
+    } finally {
+      this.isExecuting = false;
     }
   }
 

@@ -14,6 +14,11 @@ import { getIO } from '../handlers/websocket.js';
 // Per-project QueueService registry — only one queue per project
 const queueInstances = new Map<string, QueueService>();
 
+/** Expose read-only iterator for server-side lock checks (e.g., chat:send guard) */
+export function getQueueInstances(): ReadonlyMap<string, QueueService> {
+  return queueInstances;
+}
+
 export function getOrCreateQueueService(projectSlug: string): QueueService {
   let instance = queueInstances.get(projectSlug);
   if (!instance) {

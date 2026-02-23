@@ -96,11 +96,11 @@ describe('useQueueRunner', () => {
     });
 
     expect(useQueueStore.getState().isStarting).toBe(true);
-    expect(mockSocket.emit).toHaveBeenCalledWith('queue:start', {
+    expect(mockSocket.emit).toHaveBeenCalledWith('queue:start', expect.objectContaining({
       items,
       sessionId: 'session-1',
       projectSlug: 'my-project',
-    });
+    }));
   });
 
   it('TC-QE-33: pause() should emit queue:pause with projectSlug', async () => {

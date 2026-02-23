@@ -49,6 +49,7 @@ const defaultProps = {
 
 describe('QueueTemplateDialog', () => {
   beforeEach(() => {
+    window.localStorage.clear();
     vi.clearAllMocks();
     mockGetStories.mockResolvedValue({ stories: mockStories });
     mockGetTemplates.mockResolvedValue(mockTemplates);
@@ -61,6 +62,10 @@ describe('QueueTemplateDialog', () => {
   it('renders when open=true', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
     expect(screen.getByText('템플릿으로 큐 생성')).toBeInTheDocument();
+    // Wait for async data fetches to settle (getStories + getTemplates)
+    await waitFor(() => {
+      expect(screen.getByText(/1\.1/)).toBeInTheDocument();
+    });
   });
 
   // TC-QT-27
@@ -257,7 +262,8 @@ describe('QueueTemplateDialog', () => {
   // TC-QT-38
   it('close button and Escape key call onClose', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText('템플릿으로 큐 생성'));
+    // Wait for async data fetches to settle
+    await waitFor(() => screen.getByText(/1\.1/));
 
     // Close button
     const closeBtn = screen.getByLabelText('닫기');
@@ -267,6 +273,7 @@ describe('QueueTemplateDialog', () => {
     // Re-render and test Escape
     defaultProps.onClose.mockClear();
     render(<QueueTemplateDialog {...defaultProps} />);
+    await waitFor(() => screen.getAllByText(/1\.1/));
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
@@ -371,4 +378,65 @@ describe('QueueTemplateDialog', () => {
     expect(alertSpy).toHaveBeenCalledWith('파일이 너무 큽니다 (최대 100KB)');
     alertSpy.mockRestore();
   });
+  // TC-QT-42
+  it('wrap toggle syncs template input and preview modes', async () => {
+    render(<QueueTemplateDialog {...defaultProps} />);
+    await waitFor(() => screen.getByText(/1\.1/));
+
+    const textarea = screen.getByPlaceholderText(/story_num/);
+    fireEvent.change(textarea, { target: { value: '/dev {story_num} a-very-long-line' } });
+
+    await waitFor(() => {
+      expect(document.querySelector('pre')).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByLabelText('Toggle template wrap mode');
+    const previewEl = document.querySelector('pre');
+
+    expect(textarea).toHaveAttribute('wrap', 'soft');
+    expect(textarea).toHaveStyle({ whiteSpace: 'pre-wrap' });
+    expect(previewEl).toHaveStyle({ whiteSpace: 'pre-wrap' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(toggle);
+
+    expect(textarea).toHaveAttribute('wrap', 'off');
+    expect(textarea).toHaveStyle({ whiteSpace: 'pre' });
+    expect(previewEl).toHaveStyle({ whiteSpace: 'pre' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  // TC-QT-43
+  it('normalizes CRLF when loading a saved template into the editor', async () => {
+    mockGetTemplates.mockResolvedValueOnce([
+      {
+        id: 'tmpl-crlf',
+        name: 'CRLF Template',
+        template: '/dev {story_num}\r\n@pause review',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      },
+    ]);
+
+    render(<QueueTemplateDialog {...defaultProps} />);
+    await waitFor(() => screen.getByText(/1\.1/));
+
+    // Open the saved templates tab without relying on localized label text.
+    for (const button of screen.getAllByRole('button')) {
+      fireEvent.click(button);
+      if (screen.queryByText('CRLF Template')) break;
+    }
+    await waitFor(() => screen.getByText('CRLF Template'));
+    fireEvent.click(screen.getByText('CRLF Template'));
+
+    // "Load to editor" is the last footer action button when preview exists.
+    const buttons = screen.getAllByRole('button');
+    const loadBtn = buttons[buttons.length - 1];
+    fireEvent.click(loadBtn);
+
+    const generated = defaultProps.onGenerate.mock.calls[0]?.[0] as string;
+    expect(generated).toContain('/dev 1.1\n@pause review');
+    expect(generated).not.toContain('\r');
+  });
+
 });
