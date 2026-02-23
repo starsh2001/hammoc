@@ -228,7 +228,7 @@ export class QueueService {
       } as PermissionRequest);
 
       // Notify via Telegram if no socket connected
-      if (!stream.socketRef.current) {
+      if (stream.sockets.size === 0) {
         const prompt = isAskUserQuestion
           ? ((input as Record<string, unknown>).questions as Array<{ question: string }>)?.[0]?.question
           : `${toolName}`;
@@ -324,7 +324,7 @@ export class QueueService {
             emit('context:usage', response.usage);
           }
           // Notify via Telegram if no socket connected
-          if (!stream.socketRef.current) {
+          if (stream.sockets.size === 0) {
             this.notificationService.notifyComplete(stream.sessionId);
           }
         },
@@ -332,7 +332,7 @@ export class QueueService {
         onError: (error) => {
           const sdkError = parseSDKError(error);
           emit('error', { code: ERROR_CODES.CHAT_ERROR, message: sdkError.message });
-          if (!stream.socketRef.current) {
+          if (stream.sockets.size === 0) {
             this.notificationService.notifyError(stream.sessionId, sdkError.message);
           }
         },

@@ -51,7 +51,7 @@ interface PendingPermission {
 
 interface ActiveStream {
   sessionId: string;
-  socketRef: { current: SocketType | null };
+  sockets: Set<SocketType>;
   abortController: AbortController;
   buffer: Array<{ event: string; data: unknown }>;
   pendingPermissions: Map<string, PendingPermission>;
@@ -66,13 +66,15 @@ const socketToSession = new Map<string, string>();
 
 let permissionRequestCounter = 0;
 
-/** Create a buffered emit function that always buffers and forwards to connected socket */
+/** Create a buffered emit function that buffers and broadcasts to all connected sockets */
 function createStreamEmit(stream: ActiveStream) {
   return (event: string, data: unknown) => {
     stream.buffer.push({ event, data });
-    if (stream.socketRef.current?.connected) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (stream.socketRef.current.emit as any)(event, data);
+    for (const sock of stream.sockets) {
+      if (sock.connected) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (sock.emit as any)(event, data);
+      }
     }
   };
 }
@@ -103,11 +105,10 @@ export function createHeadlessStream(
 ): {
   stream: ActiveStream;
   emit: (event: string, data: unknown) => void;
-  broadcastEmit: (event: string, data: unknown) => void;
 } {
   const stream: ActiveStream = {
     sessionId,
-    socketRef: { current: null },
+    sockets: new Set(),
     abortController,
     buffer: [],
     pendingPermissions: new Map(),
@@ -118,19 +119,7 @@ export function createHeadlessStream(
 
   const emit = createStreamEmit(stream);
 
-  // broadcastEmit: buffer in ActiveStream AND broadcast to project room via io
-  // Callers provide the project-scoped broadcast themselves since io is module-private
-  const broadcastEmit = (event: string, data: unknown) => {
-    // Buffer in ActiveStream for reconnect support
-    stream.buffer.push({ event, data });
-    // Forward to attached socket if any (session:join reconnect)
-    if (stream.socketRef.current?.connected) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (stream.socketRef.current.emit as any)(event, data);
-    }
-  };
-
-  return { stream, emit, broadcastEmit };
+  return { stream, emit };
 }
 
 /**
@@ -142,8 +131,8 @@ export function rekeyStream(stream: ActiveStream, newSessionId: string): void {
   activeStreams.delete(stream.sessionId);
   stream.sessionId = newSessionId;
   activeStreams.set(newSessionId, stream);
-  if (stream.socketRef.current) {
-    socketToSession.set(stream.socketRef.current.id, newSessionId);
+  for (const sock of stream.sockets) {
+    socketToSession.set(sock.id, newSessionId);
   }
 }
 
@@ -216,16 +205,21 @@ export async function initializeWebSocket(
       const abortController = new AbortController();
       const streamKey = data.sessionId || `pending-${socket.id}`;
 
-      // Abort existing active stream for same session from a different socket
+      // Abort existing active stream for same session — notify all watchers
       const existingStream = activeStreams.get(streamKey);
-      if (existingStream && existingStream.status === 'running' && existingStream.socketRef.current && existingStream.socketRef.current.id !== socket.id) {
-        existingStream.socketRef.current.emit('stream:detached', { sessionId: streamKey, reason: 'another-client' });
+      if (existingStream && existingStream.status === 'running') {
+        for (const sock of existingStream.sockets) {
+          if (sock.id !== socket.id) {
+            sock.emit('stream:detached', { sessionId: streamKey, reason: 'another-client' });
+            socketToSession.delete(sock.id);
+          }
+        }
         existingStream.abortController.abort('another-client');
       }
 
       const stream: ActiveStream = {
         sessionId: streamKey,
-        socketRef: { current: socket },
+        sockets: new Set([socket]),
         abortController,
         buffer: [],
         pendingPermissions: new Map(),
@@ -280,15 +274,15 @@ export async function initializeWebSocket(
       }
     });
 
-    // Handle session:join event — attach socket to active running stream
+    // Handle session:join event — attach socket to active running stream (broadcast)
     socket.on('session:join', (sessionId: string) => {
       // Detach this socket from any previously-attached stream to prevent
       // events from the old stream leaking to a different session's listeners
       const prevSessionId = socketToSession.get(socket.id);
       if (prevSessionId && prevSessionId !== sessionId) {
         const prevStream = activeStreams.get(prevSessionId);
-        if (prevStream && prevStream.socketRef.current?.id === socket.id) {
-          prevStream.socketRef.current = null;
+        if (prevStream) {
+          prevStream.sockets.delete(socket);
         }
         socketToSession.delete(socket.id);
       }
@@ -300,17 +294,11 @@ export async function initializeWebSocket(
         return;
       }
 
-      // Detach previous socket if different — notify it before replacing
-      if (stream.socketRef.current && stream.socketRef.current.id !== socket.id) {
-        stream.socketRef.current.emit('stream:detached', { sessionId, reason: 'another-client' });
-        socketToSession.delete(stream.socketRef.current.id);
-      }
-
-      // Attach new socket
-      stream.socketRef.current = socket;
+      // Add socket to broadcast set (multiple browsers can watch simultaneously)
+      stream.sockets.add(socket);
       socketToSession.set(socket.id, sessionId);
 
-      // Notify client that stream is active, then replay entire buffer
+      // Notify this client that stream is active, then replay entire buffer
       socket.emit('stream:status', { active: true, sessionId });
       for (const entry of stream.buffer) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -324,8 +312,8 @@ export async function initializeWebSocket(
       const prevSessionId = socketToSession.get(socket.id);
       if (prevSessionId) {
         const prevStream = activeStreams.get(prevSessionId);
-        if (prevStream && prevStream.socketRef.current?.id === socket.id) {
-          prevStream.socketRef.current = null;
+        if (prevStream) {
+          prevStream.sockets.delete(socket);
         }
         socketToSession.delete(socket.id);
       }
@@ -376,7 +364,7 @@ export async function initializeWebSocket(
       if (sessionId) {
         const stream = activeStreams.get(sessionId);
         if (stream) {
-          stream.socketRef.current = null; // Detach only
+          stream.sockets.delete(socket);
         }
         socketToSession.delete(socket.id);
       }
@@ -525,7 +513,7 @@ async function handleChatSend(
       } as PermissionRequest);
 
       // Notify via Telegram if no socket connected (user not watching)
-      if (!stream.socketRef.current) {
+      if (stream.sockets.size === 0) {
         const prompt = isAskUserQuestion
           ? ((input as Record<string, unknown>).questions as Array<{ question: string }>)?.[0]?.question
           : `${toolName}`;
@@ -600,8 +588,8 @@ async function handleChatSend(
           activeStreams.delete(stream.sessionId);
           stream.sessionId = sid;
           activeStreams.set(sid, stream);
-          if (stream.socketRef.current) {
-            socketToSession.set(stream.socketRef.current.id, sid);
+          for (const sock of stream.sockets) {
+            socketToSession.set(sock.id, sid);
           }
         }
 
@@ -708,7 +696,7 @@ async function handleChatSend(
         }
 
         // Notify via Telegram if no socket connected
-        if (!stream.socketRef.current) {
+        if (stream.sockets.size === 0) {
           notificationService.notifyComplete(stream.sessionId);
         }
       },
@@ -730,7 +718,7 @@ async function handleChatSend(
         });
 
         // Notify via Telegram if no socket connected
-        if (!stream.socketRef.current) {
+        if (stream.sockets.size === 0) {
           notificationService.notifyError(stream.sessionId, sdkError.message);
         }
       },

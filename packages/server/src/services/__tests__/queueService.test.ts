@@ -27,14 +27,14 @@ vi.mock('../../handlers/websocket.js', () => ({
   createHeadlessStream: vi.fn().mockImplementation((sessionId: string) => {
     const stream = {
       sessionId,
-      socketRef: { current: null },
+      sockets: new Set(),
       buffer: [],
       pendingPermissions: mockStreamPendingPermissions,
       status: 'running',
       startedAt: Date.now(),
       chatService: null,
     };
-    return { stream, emit: vi.fn(), broadcastEmit: vi.fn() };
+    return { stream, emit: vi.fn() };
   }),
   rekeyStream: vi.fn(),
   finalizeStream: vi.fn(),
