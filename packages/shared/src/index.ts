@@ -107,3 +107,9 @@ export * from './types/fileSystem.js';
 
 // Story 12.1: BMad Status types for BMad Dashboard API
 export * from './types/bmadStatus.js';
+
+// Story 15.1: Queue Runner types
+export * from './types/queue.js';
+
+// Story 15.1: Queue script parser
+export { parseQueueScript } from './utils/queueParser.js';

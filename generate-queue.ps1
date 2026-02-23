@@ -52,7 +52,7 @@ for ($i = 0; $i -lt $epicNumbers.Count; $i++) {
 
     # Add epic separator (except first)
     if ($i -gt 0) {
-        $output += ">>#"
+        $output += "@pause"
     }
 
     # Add queue items for each story

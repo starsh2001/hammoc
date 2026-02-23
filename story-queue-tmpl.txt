@@ -1,41 +1,50 @@
- 
+
 # 스토리 초안 작성
->>> /BMad:agents:sm
+@new
+/BMad:agents:sm
 *draft {story_num}
 
 # 스토리 검증 및 개선
->>> /BMad:agents:po
+@new
+/BMad:agents:po
 *validate-story-draft {story_num} Check if a draft file exists: if YES output exactly QUEUE_PASS, if NO output exactly QUEUE_STOP. Never swap these two tokens. Ignore all other conditions including success/failure of prior operations.
 Fix ALL issues across every severity level: Critical, Should-Fix, and Nice-to-Have. Do not skip or omit any issue regardless of its priority. Every single item must be addressed.
->>> /BMad:agents:po
+@new
+/BMad:agents:po
 *validate-story-draft {story_num}
 Fix ALL issues across every severity level: Critical, Should-Fix, and Nice-to-Have. Do not skip or omit any issue regardless of its priority. Every single item must be addressed.
->>> /BMad:agents:po
+@new
+/BMad:agents:po
 *validate-story-draft {story_num}
 Fix ALL issues across every severity level: Critical, Should-Fix, and Nice-to-Have. Do not skip or omit any issue regardless of its priority. Every single item must be addressed.
->>> /BMad:agents:po
+@new
+/BMad:agents:po
 *validate-story-draft {story_num}
 Check if any Critical Issues remain: if YES output exactly QUEUE_STOP, if NO output exactly QUEUE_PASS. Never swap these two tokens. Only Critical Issues determine the output — ignore all other severity levels.
 Update the Status field to "Approved" in the Story {story_num} file. Use the Edit tool to make this change, then verify the result by reading the file back. Do not skip verification.
 
 #스토리 구현
->>> /BMad:agents:dev
+@new
+/BMad:agents:dev
 *develop-story {story_num} If the task fails, output exactly QUEUE_STOP. No other text or tokens on failure.
->>{Label:dev_{story_num}}
+@save dev_{story_num}
 
 #스토리 구현 검증 및 수정
->>> /BMad:agents:qa
+@new
+/BMad:agents:qa
 *review {story_num}
 Check the previous result for any recommended fixes (immediate or deferred). If 1 or more exist, apply them to the QA document. If none exist, skip this step entirely.
->>{Label:qa_{story_num}}
->>>{Load:dev_{story_num}} /BMad:agents:dev
+@save qa_{story_num}
+@load dev_{story_num}
+/BMad:agents:dev
 *review-qa {story_num}
->>>{Load:qa_{story_num}} /BMad:agents:qa
+@load qa_{story_num}
+/BMad:agents:qa
 *review {story_num}
->>>{Load:dev_{story_num}} /BMad:agents:dev
+@load dev_{story_num}
+/BMad:agents:dev
 *review-qa {story_num}
 Update the Status field to "Done" in the Story {story_num} file. Use the Edit tool to make this change, then verify the result by reading the file back. Do not skip verification.
 
 #커밋
 Commit all current changes with [Story {story_num}] prefixed to the commit message. Exclude non-deployment files such as personal settings or local configurations. All other modified files must be committed — do not leave any out.
- 
