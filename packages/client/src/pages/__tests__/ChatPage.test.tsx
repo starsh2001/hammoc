@@ -87,6 +87,13 @@ vi.mock('../../services/socket', () => ({
   }),
 }));
 
+// Mock queue API (Story 15.4 - useQueueSession calls queueApi.getStatus)
+vi.mock('../../services/api/queue', () => ({
+  queueApi: {
+    getStatus: vi.fn().mockRejectedValue(new Error('no active queue')),
+  },
+}));
+
 describe('ChatPage', () => {
   const mockMessages: HistoryMessage[] = [
     {

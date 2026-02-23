@@ -149,6 +149,8 @@ interface ChatInputProps {
   onReorderStarFavorites?: (commands: string[]) => void;
   /** Remove star favorite callback (Story 9.12) */
   onRemoveStarFavorite?: (command: string) => void;
+  /** Whether the session is queue-locked (Story 15.4) */
+  queueLocked?: boolean;
 }
 
 export function ChatInput({
@@ -182,6 +184,7 @@ export function ChatInput({
   starFavorites,
   onReorderStarFavorites,
   onRemoveStarFavorite,
+  queueLocked = false,
 }: ChatInputProps) {
   // Session lock state (another browser took over this session)
   const isSessionLocked = useChatStore((s) => s.isSessionLocked);
@@ -537,7 +540,7 @@ export function ChatInput({
 
   // Submit handler
   const handleSubmit = useCallback(() => {
-    if (isSessionLocked) return;
+    if (isSessionLocked || queueLocked) return;
     const trimmedContent = content.trim();
     if (!trimmedContent) return;
 
@@ -564,7 +567,7 @@ export function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-  }, [content, isConnected, isSessionLocked, onSend, attachments]);
+  }, [content, isConnected, isSessionLocked, queueLocked, onSend, attachments]);
 
   // Keyboard handler
   const handleKeyDown = useCallback(
@@ -877,7 +880,7 @@ export function ChatInput({
             ref={textareaRef}
             value={content}
             onChange={(e) => {
-              if (isSessionLocked) return;
+              if (isSessionLocked || queueLocked) return;
               setContent(e.target.value);
               resetNavigation();
             }}
@@ -889,8 +892,8 @@ export function ChatInput({
             onBlur={() => {
               userHasFocusedRef.current = false;
             }}
-            disabled={isSessionLocked || undefined}
-            placeholder={isSessionLocked ? '다른 브라우저에서 사용 중 — 새로고침 후 사용 가능' : placeholder}
+            disabled={isSessionLocked || queueLocked || undefined}
+            placeholder={isSessionLocked ? '다른 브라우저에서 사용 중 — 새로고침 후 사용 가능' : queueLocked ? '큐 러너가 제어 중' : placeholder}
             role={showCommands || showStarCommands ? 'combobox' : undefined}
             aria-label="메시지 입력"
             aria-describedby="input-hint"
