@@ -147,6 +147,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
     set({
       isRunning: state.isRunning,
       isPaused: state.isPaused,
+      isAborted: false, // clear abort flag on server state sync
       currentIndex: state.currentIndex,
       totalItems: state.totalItems,
       pauseReason: state.pauseReason,

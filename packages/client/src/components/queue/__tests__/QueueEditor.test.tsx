@@ -37,6 +37,7 @@ const mockedParse = vi.mocked(parseQueueScript);
 
 describe('QueueEditor', () => {
   beforeEach(() => {
+    window.localStorage.clear();
     useQueueStore.setState({
       script: '',
       parsedItems: [],
@@ -169,17 +170,38 @@ describe('QueueEditor', () => {
     expect(textarea).toHaveAttribute('readonly');
   });
 
-  it('TC-QE-20: control buttons toggle based on execution state', () => {
-    // When running, show pause button
+  it('TC-QE-20: shows pause button when running', () => {
     mockRunner.isRunning = true;
     mockRunner.isPaused = false;
-    const { rerender } = render(<QueueEditor projectSlug="test-project" />);
+    useQueueStore.setState({ parsedItems: [{ prompt: 'Hello', isNewSession: false }] });
+    render(<QueueEditor projectSlug="test-project" />);
     expect(screen.getByLabelText('일시정지')).toBeInTheDocument();
+  });
 
-    // When paused, show resume and abort buttons
+  it('TC-QE-20b: shows resume and abort buttons when paused', () => {
+    mockRunner.isRunning = true;
     mockRunner.isPaused = true;
-    rerender(<QueueEditor projectSlug="test-project" />);
+    useQueueStore.setState({ parsedItems: [{ prompt: 'Hello', isNewSession: false }] });
+    render(<QueueEditor projectSlug="test-project" />);
     expect(screen.getByLabelText('재개')).toBeInTheDocument();
     expect(screen.getByLabelText('중단')).toBeInTheDocument();
+  });
+  it('TC-QE-21: wrap toggle switches no-wrap and auto-wrap modes', () => {
+    useQueueStore.setState({ script: 'a very long line for wrapping behavior' });
+    render(<QueueEditor projectSlug="test-project" />);
+
+    const textarea = screen.getByRole('textbox');
+    const pre = document.querySelector('pre');
+    const toggle = screen.getByLabelText('Toggle wrap mode');
+
+    expect(textarea).toHaveAttribute('wrap', 'soft');
+    expect(pre).toHaveStyle({ whiteSpace: 'pre-wrap' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(toggle);
+
+    expect(textarea).toHaveAttribute('wrap', 'off');
+    expect(pre).toHaveStyle({ whiteSpace: 'pre' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
   });
 });

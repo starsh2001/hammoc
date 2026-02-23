@@ -30,7 +30,10 @@ import { createSessionMiddleware } from '../middleware/session.js';
 import { config } from '../config/index.js';
 import { notificationService } from '../services/notificationService.js';
 import { preferencesService } from '../services/preferencesService.js';
-import { getOrCreateQueueService } from '../controllers/queueController.js';
+import { getOrCreateQueueService, getQueueInstances } from '../controllers/queueController.js';
+
+// Alias for concise usage in guards
+const queueInstances = getQueueInstances;
 
 let io: SocketIOServer<
   ClientToServerEvents,
@@ -68,15 +71,8 @@ let permissionRequestCounter = 0;
 
 /** Create a buffered emit function that buffers and broadcasts to all connected sockets */
 function createStreamEmit(stream: ActiveStream) {
-  let emitCount = 0;
   return (event: string, data: unknown) => {
     stream.buffer.push({ event, data });
-    // Log first few events + periodic summary to trace broadcast reach
-    emitCount++;
-    if (emitCount <= 3 || emitCount % 50 === 0) {
-      const connectedCount = [...stream.sockets].filter(s => s.connected).length;
-      console.log(`[streamEmit] #${emitCount} event="${event}" → ${connectedCount}/${stream.sockets.size} connected sockets (session=${stream.sessionId})`);
-    }
     for (const sock of stream.sockets) {
       if (sock.connected) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -205,10 +201,19 @@ export async function initializeWebSocket(
     console.log(`Client connected. Total: ${connectedClients}`);
 
     // Handle chat:send event — background streaming with reconnect support
-    // TODO(Story 15.4): Add session lock check here — reject if queue is running for this session.
-    // Use getOrCreateQueueService(projectSlug).lockedSessionId to check.
-    // Requires projectSlug in chat:send data or reverse-lookup from sessionId.
     socket.on('chat:send', async (data) => {
+      // Reject if queue has locked this session (server-side enforcement)
+      if (data.sessionId) {
+        for (const [, qs] of queueInstances()) {
+          if (qs.lockedSessionId === data.sessionId) {
+            socket.emit('error', {
+              code: ERROR_CODES.CHAT_ERROR,
+              message: '큐가 실행 중인 세션에는 메시지를 보낼 수 없습니다.',
+            });
+            return;
+          }
+        }
+      }
       const abortController = new AbortController();
       const streamKey = data.sessionId || `pending-${socket.id}`;
 
@@ -227,17 +232,14 @@ export async function initializeWebSocket(
       // Collect all sockets viewing this session (from persistent session room)
       const initialSockets = new Set<SocketType>([socket]);
       const roomSockets = io.sockets.adapter.rooms.get(`session:${streamKey}`);
-      console.log(`[websocket] chat:send streamKey="${streamKey}", room "session:${streamKey}" has ${roomSockets?.size ?? 0} sockets`);
       if (roomSockets) {
         for (const socketId of roomSockets) {
           const roomSocket = io.sockets.sockets.get(socketId) as SocketType | undefined;
           if (roomSocket && roomSocket.id !== socket.id) {
             initialSockets.add(roomSocket);
-            console.log(`[websocket] → added room socket ${socketId} to broadcast set`);
           }
         }
       }
-      console.log(`[websocket] → total broadcast sockets: ${initialSockets.size}`);
 
       const stream: ActiveStream = {
         sessionId: streamKey,
@@ -327,7 +329,6 @@ export async function initializeWebSocket(
     // Handle session:join event — attach socket to active running stream (broadcast)
     // Also joins a persistent Socket.io room so future streams auto-include this socket.
     socket.on('session:join', (sessionId: string) => {
-      console.log(`[websocket] session:join socket=${socket.id}, sessionId="${sessionId}"`);
       // Detach this socket from any previously-attached stream to prevent
       // events from the old stream leaking to a different session's listeners
       const prevSessionId = socketToSession.get(socket.id);
@@ -342,8 +343,6 @@ export async function initializeWebSocket(
 
       // Join persistent session room (survives beyond ActiveStream lifecycle)
       socket.join(`session:${sessionId}`);
-      const roomSize = io.sockets.adapter.rooms.get(`session:${sessionId}`)?.size ?? 0;
-      console.log(`[websocket] → joined room "session:${sessionId}", room size: ${roomSize}`);
 
       const stream = activeStreams.get(sessionId);
 
@@ -527,9 +526,7 @@ async function handleChatSend(
   }
 
   // Validate workingDirectory exists
-  console.log(`[websocket] chat:send workingDirectory="${workingDirectory}", sessionId="${sessionId}", resume=${resume}`);
   if (!workingDirectory || !existsSync(workingDirectory)) {
-    console.error(`[websocket] Invalid workingDirectory: "${workingDirectory}" (exists: ${workingDirectory ? existsSync(workingDirectory) : 'N/A'})`);
     emit('error', {
       code: ERROR_CODES.INVALID_WORKING_DIR,
       message: '지정된 프로젝트 경로가 존재하지 않습니다.',
@@ -548,7 +545,6 @@ async function handleChatSend(
   let actualSessionId: string | undefined = sessionId;
 
   try {
-    console.log(`[websocket] Creating ChatService: permissionMode="${permissionMode}", workingDirectory="${workingDirectory}"`);
     const chatService = new ChatService({ workingDirectory, permissionMode });
     stream.chatService = chatService;
 
@@ -791,14 +787,11 @@ async function handleChatSend(
     });
   } catch (error) {
     const sdkError = parseSDKError(error);
-    console.log(`[websocket] ❌ catch block: error=${sdkError.message}, aborted=${abortController.signal.aborted}, reason=${abortController.signal.reason}, isAbortedError=${sdkError instanceof AbortedError}`);
 
     if (sdkError instanceof AbortedError || abortController.signal.aborted) {
       if (abortController.signal.reason === 'user-abort' || abortController.signal.reason === 'another-client') {
-        console.log(`[websocket] ${abortController.signal.reason} abort — silently returning`);
         return;
       }
-      console.log('[websocket] Timeout abort — emitting TIMEOUT_ERROR');
       emit('error', {
         code: ERROR_CODES.TIMEOUT_ERROR,
         message: '응답 시간이 초과되었습니다. 다시 시도해 주세요.',
@@ -814,7 +807,6 @@ async function handleChatSend(
       return;
     }
 
-    console.log(`[websocket] Non-abort error — emitting CHAT_ERROR: ${sdkError.message}`);
     emit('error', {
       code: ERROR_CODES.CHAT_ERROR,
       message: sdkError.message,

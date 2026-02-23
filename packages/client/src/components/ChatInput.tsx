@@ -800,6 +800,7 @@ export function ChatInput({
               setShowFavorites(false);
               selectPlaceholders(text);
             }}
+            disabled={queueLocked}
           />
           {showFavorites && (
             <FavoritesPopup
@@ -928,6 +929,7 @@ export function ChatInput({
           <PermissionModeSelector
             mode={permissionMode}
             onModeChange={onPermissionModeChange}
+            disabled={queueLocked}
           />
         )}
 
@@ -937,6 +939,7 @@ export function ChatInput({
             model={selectedModel}
             onModelChange={onModelChange}
             activeModel={activeModel}
+            disabled={queueLocked}
           />
         )}
 
@@ -950,6 +953,7 @@ export function ChatInput({
             }}
             openTrigger={agentListOpenTrigger}
             activeAgentCommand={activeAgentCommand}
+            disabled={queueLocked}
           />
         )}
 
@@ -969,7 +973,7 @@ export function ChatInput({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           onPointerDown={preventFocusLoss}
-          disabled={isAttachDisabled}
+          disabled={isAttachDisabled || queueLocked}
           aria-label="이미지 첨부"
           className="p-1 rounded-md flex-shrink-0
                      text-gray-500 dark:text-gray-400
