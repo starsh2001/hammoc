@@ -10,6 +10,7 @@ import { useQueueRunner } from '../../hooks/useQueueRunner';
 import { QueueRunnerPanel } from './QueueRunnerPanel';
 import { QueueTemplateDialog } from './QueueTemplateDialog';
 import { highlightScript } from './queueHighlight';
+import { readQueueWrapMode, writeQueueWrapMode } from './wrapMode';
 
 /** Shared text styles for pre + textarea overlay alignment */
 const sharedTextStyle: React.CSSProperties = {
@@ -28,7 +29,6 @@ const sharedTextStyle: React.CSSProperties = {
   textIndent: '0px',
   textRendering: 'auto',
   textTransform: 'none',
-  whiteSpace: 'pre',
   overflow: 'hidden',
 };
 
@@ -47,6 +47,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
 
   const runner = useQueueRunner(projectSlug);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [isAutoWrap, setIsAutoWrap] = useState(() => readQueueWrapMode(true));
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +107,11 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Persist wrap mode preference so QueueEditor and QueueTemplateDialog stay in sync
+  useEffect(() => {
+    writeQueueWrapMode(isAutoWrap);
+  }, [isAutoWrap]);
+
   const highlightedHtml = highlightScript(script);
   const canRun = !isLocked && parsedItems.length > 0;
 
@@ -149,6 +155,19 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           <span className="hidden sm:inline">템플릿으로 생성</span>
         </button>
 
+        <button
+          onClick={() => setIsAutoWrap((prev) => !prev)}
+          aria-label="Toggle wrap mode"
+          aria-pressed={isAutoWrap}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg
+            min-w-[44px] min-h-[44px]
+            ${isAutoWrap
+              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+        >
+          <span>{isAutoWrap ? 'Auto wrap' : 'No wrap'}</span>
+        </button>
+
         <div className="flex-1" />
 
         {/* Run button — only shown when queue is idle */}
@@ -189,6 +208,8 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
             aria-hidden="true"
             style={{
               ...sharedTextStyle,
+              whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
+              overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
               pointerEvents: 'none',
             }}
             dangerouslySetInnerHTML={{ __html: highlightedHtml + '\n' }}
@@ -198,6 +219,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
             value={script}
             onChange={(e) => setScript(e.target.value)}
             onKeyDown={handleKeyDown}
+            wrap={isAutoWrap ? 'soft' : 'off'}
             readOnly={isLocked}
             placeholder="큐 스크립트를 입력하세요... (예: @new, @save, @pause, #주석)"
             aria-label="큐 스크립트 에디터"
@@ -206,6 +228,8 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
             spellCheck={false}
             style={{
               ...sharedTextStyle,
+              whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
+              overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
               position: 'absolute',
               top: 0,
               left: 0,

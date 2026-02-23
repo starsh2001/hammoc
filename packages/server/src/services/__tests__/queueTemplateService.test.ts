@@ -84,6 +84,15 @@ describe('queueTemplateService', () => {
         { recursive: true },
       );
     });
+
+    it('normalizes CRLF line endings to LF when saving', async () => {
+      mockReadFile.mockResolvedValue('[]');
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
+
+      const result = await queueTemplateService.saveTemplate('/project', 'Test', '/dev {story_num}\r\n@pause review');
+      expect(result.template).toBe('/dev {story_num}\n@pause review');
+    });
   });
 
   describe('updateTemplate', () => {
@@ -109,6 +118,18 @@ describe('queueTemplateService', () => {
       await expect(
         queueTemplateService.updateTemplate('/project', 'nonexistent', 'Name', 'template'),
       ).rejects.toThrow('Template not found: nonexistent');
+    });
+
+    it('normalizes CRLF line endings to LF when updating', async () => {
+      const templates = [
+        { id: 'abc', name: 'Old', template: 'old', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+      ];
+      mockReadFile.mockResolvedValue(JSON.stringify(templates));
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
+
+      const result = await queueTemplateService.updateTemplate('/project', 'abc', 'New', 'line1\r\nline2');
+      expect(result.template).toBe('line1\nline2');
     });
   });
 

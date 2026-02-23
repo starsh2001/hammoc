@@ -11,7 +11,7 @@ export const queueApi = {
     api.get<QueueExecutionState>(`/projects/${projectSlug}/queue/status`),
 
   startQueue: (projectSlug: string, items: QueueItem[], sessionId?: string) =>
-    api.post<{ queueId: string; totalItems: number }>(
+    api.post<{ status: string; totalItems: number }>(
       `/projects/${projectSlug}/queue/start`,
       { items, sessionId }
     ),
