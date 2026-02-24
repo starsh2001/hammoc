@@ -31,6 +31,8 @@ import { config } from '../config/index.js';
 import { notificationService } from '../services/notificationService.js';
 import { preferencesService } from '../services/preferencesService.js';
 import { getOrCreateQueueService, getQueueInstances } from '../controllers/queueController.js';
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('websocket');
 
 // Alias for concise usage in guards
 const queueInstances = getQueueInstances;
@@ -109,9 +111,21 @@ export function createHeadlessStream(
   stream: ActiveStream;
   emit: (event: string, data: unknown) => void;
 } {
+  // Collect sockets from session room (same as chat:send handler)
+  const sockets = new Set<SocketType>();
+  if (io) {
+    const roomSockets = io.sockets.adapter.rooms.get(`session:${sessionId}`);
+    if (roomSockets) {
+      for (const socketId of roomSockets) {
+        const sock = io.sockets.sockets.get(socketId) as SocketType | undefined;
+        if (sock) sockets.add(sock);
+      }
+    }
+  }
+
   const stream: ActiveStream = {
     sessionId,
-    sockets: new Set(),
+    sockets,
     abortController,
     buffer: [],
     pendingPermissions: new Map(),
@@ -119,6 +133,9 @@ export function createHeadlessStream(
     startedAt: Date.now(),
   };
   activeStreams.set(sessionId, stream);
+  for (const sock of sockets) {
+    socketToSession.set(sock.id, sessionId);
+  }
 
   const emit = createStreamEmit(stream);
 
@@ -131,11 +148,14 @@ export function createHeadlessStream(
  */
 export function rekeyStream(stream: ActiveStream, newSessionId: string): void {
   if (stream.sessionId === newSessionId) return;
-  activeStreams.delete(stream.sessionId);
+  const oldSessionId = stream.sessionId;
+  activeStreams.delete(oldSessionId);
   stream.sessionId = newSessionId;
   activeStreams.set(newSessionId, stream);
   for (const sock of stream.sockets) {
     socketToSession.set(sock.id, newSessionId);
+    sock.leave(`session:${oldSessionId}`);
+    sock.join(`session:${newSessionId}`);
   }
 }
 
@@ -198,7 +218,7 @@ export async function initializeWebSocket(
 
   io.on('connection', (socket) => {
     connectedClients++;
-    console.log(`Client connected. Total: ${connectedClients}`);
+    log.info(`Client connected. Total: ${connectedClients}`);
 
     // Handle chat:send event — background streaming with reconnect support
     socket.on('chat:send', async (data) => {
@@ -320,9 +340,9 @@ export async function initializeWebSocket(
       if (!stream?.chatService || stream.status !== 'running') return;
       try {
         await stream.chatService.setPermissionMode(data.mode);
-        console.log(`[websocket] Permission mode changed to "${data.mode}" for session ${sessionId}`);
+        log.debug(`Permission mode changed to "${data.mode}" for session ${sessionId}`);
       } catch (err) {
-        console.error('[websocket] Failed to change permission mode:', err);
+        log.error('Failed to change permission mode:', err);
       }
     });
 
@@ -405,7 +425,7 @@ export async function initializeWebSocket(
         return;
       }
       queueService.start(items, projectSlug, sessionId, permissionMode).catch((err) => {
-        console.error('[websocket] Queue execution error:', err);
+        log.error('Queue execution error:', err);
       });
     });
     socket.on('queue:pause', (data) => {
@@ -420,6 +440,11 @@ export async function initializeWebSocket(
       const qs = getOrCreateQueueService(data.projectSlug);
       if (qs.isRunning) qs.abort();
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.on('queue:dismiss' as any, (data: { projectSlug: string }) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      qs.dismiss();
+    });
 
     // Disconnect: detach socket from stream, DON'T abort or deny permissions
     socket.on('disconnect', () => {
@@ -432,7 +457,7 @@ export async function initializeWebSocket(
         socketToSession.delete(socket.id);
       }
       connectedClients--;
-      console.log(`Client disconnected. Total: ${connectedClients}`);
+      log.info(`Client disconnected. Total: ${connectedClients}`);
     });
   });
 
@@ -562,7 +587,7 @@ async function handleChatSend(
 
       const requestId = options.toolUseID || `perm-${++permissionRequestCounter}`;
 
-      console.log(`[websocket] canUseTool called: tool=${toolName}, toolUseID=${options.toolUseID}, requestId=${requestId}`);
+      log.debug(`canUseTool called: tool=${toolName}, toolUseID=${options.toolUseID}, requestId=${requestId}`);
 
       // Emit permission:request (buffered + forwarded to connected socket)
       emit('permission:request', {
@@ -628,7 +653,7 @@ async function handleChatSend(
       if (source) lastResetSource = source;
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        console.log(`[websocket] ⏰ TIMEOUT FIRED after ${timeoutMs}ms inactivity (last reset by: ${lastResetSource})`);
+        log.warn(`TIMEOUT FIRED after ${timeoutMs}ms inactivity (last reset by: ${lastResetSource})`);
         abortController.abort('timeout');
       }, timeoutMs);
     };
@@ -640,18 +665,11 @@ async function handleChatSend(
       },
 
       onSessionInit: async (sid, metadata) => {
-        console.log(`Session initialized: ${sid} (model: ${metadata?.model ?? 'unknown'})`);
+        log.debug(`Session initialized: ${sid} (model: ${metadata?.model ?? 'unknown'})`);
         actualSessionId = sid;
 
-        // Re-key stream from pending key to actual sessionId
-        if (stream.sessionId !== sid) {
-          activeStreams.delete(stream.sessionId);
-          stream.sessionId = sid;
-          activeStreams.set(sid, stream);
-          for (const sock of stream.sockets) {
-            socketToSession.set(sock.id, sid);
-          }
-        }
+        // Re-key stream from pending key to actual sessionId (also moves Socket.io rooms)
+        rekeyStream(stream, sid);
 
         // Emit session event BEFORE disk write for faster client navigation
         if (isResuming) {
@@ -684,7 +702,7 @@ async function handleChatSend(
 
       onToolUse: (toolCall: TrackedToolCall) => {
         resetTimeout('onToolUse');
-        console.log(`[websocket] onToolUse: tool=${toolCall.name}, id=${toolCall.id}`);
+        log.debug(`onToolUse: tool=${toolCall.name}, id=${toolCall.id}`);
         emit('tool:call', {
           id: toolCall.id,
           name: toolCall.name,
@@ -702,7 +720,7 @@ async function handleChatSend(
 
       onToolResult: (toolCallId: string, result: ToolResult) => {
         resetTimeout('onToolResult');
-        console.log(`[websocket] onToolResult: id=${toolCallId}, success=${result.success}`);
+        log.debug(`onToolResult: id=${toolCallId}, success=${result.success}`);
         emit('tool:result', {
           toolCallId,
           result,
