@@ -18,6 +18,14 @@ const STATUS_STYLES: Record<string, string> = {
   Blocked: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
 };
 
+/** Color for progress bar fill based on completion percentage */
+function getBarColor(pct: number): string {
+  if (pct >= 100) return 'bg-green-500 dark:bg-green-400';
+  if (pct >= 50) return 'bg-blue-500 dark:bg-blue-400';
+  if (pct > 0) return 'bg-amber-500 dark:bg-amber-400';
+  return 'bg-gray-300 dark:bg-gray-600';
+}
+
 function getStatusStyle(status: string): string {
   return STATUS_STYLES[status] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
 }
@@ -47,34 +55,39 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
     <div
       role="region"
       aria-label="에픽 진행률"
-      className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5"
+      className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5"
     >
       <div className="flex items-center gap-2 mb-4">
         <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         <h2 className="font-semibold text-gray-900 dark:text-white">에픽 진행률</h2>
       </div>
-      <div className="space-y-2 text-sm">
+      <div className="space-y-3 text-sm">
         {epics.map((epic) => {
           const doneCount = epic.stories.filter((s) => s.status === 'Done').length;
           const writtenCount = epic.stories.length;
           const planned = epic.plannedStories ?? writtenCount;
           const barTotal = Math.max(planned, writtenCount);
+          const pct = barTotal > 0 ? (doneCount / barTotal) * 100 : 0;
           const isExpanded = expandedEpics.has(epic.number);
           const hasContent = writtenCount > 0 || planned > 0;
 
           return (
-            <div key={epic.number}>
+            <div key={epic.number} className="group">
               {/* Epic row */}
               {hasContent ? (
                 <div
                   onClick={() => toggleEpic(epic.number)}
-                  className="flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded transition-colors cursor-pointer px-1 py-0.5"
+                  className="flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-md transition-colors cursor-pointer px-2 py-1.5 -mx-2"
                 >
                   <span className="text-gray-700 dark:text-gray-300 truncate mr-2">
                     {epic.number}. {epic.name}
                   </span>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className={`text-xs font-medium ${
+                      pct >= 100
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}>
                       {doneCount}/{planned}
                     </span>
                     <ChevronDown
@@ -83,7 +96,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between px-1 py-0.5">
+                <div className="flex items-center justify-between px-2 py-1.5 -mx-2">
                   <span className="text-gray-700 dark:text-gray-300 truncate mr-2">
                     {epic.number}. {epic.name}
                   </span>
@@ -91,12 +104,12 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                 </div>
               )}
 
-              {/* Progress bar */}
+              {/* Progress bar - thicker with color coding */}
               {barTotal > 0 && (
-                <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-1 mx-1">
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-1 mx-0">
                   <div
-                    className="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all"
-                    style={{ width: `${(doneCount / barTotal) * 100}%` }}
+                    className={`h-full rounded-full transition-all ${getBarColor(pct)}`}
+                    style={{ width: `${pct}%` }}
                   />
                 </div>
               )}
