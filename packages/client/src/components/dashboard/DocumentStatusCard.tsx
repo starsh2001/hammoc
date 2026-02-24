@@ -36,6 +36,9 @@ const CREATE_AGENT: Record<string, string> = {
 /** Documents that show "작성 권장" instead of "작성 필요" */
 const RECOMMENDED_DOCS = new Set(['brainstorming', 'brief']);
 
+/** Group labels for visual separation */
+const GROUP_CORE = new Set(['prd', 'architecture']);
+
 type DocEntry = {
   key: string;
   label: string;
@@ -158,6 +161,120 @@ function EntryTree({
   );
 }
 
+function DocRow({
+  doc,
+  isDocExpanded,
+  toggleDoc,
+  handleOpenDoc,
+  handleCreateDoc,
+  expandedDocs,
+}: {
+  doc: DocEntry;
+  isDocExpanded: boolean;
+  toggleDoc: (key: string) => void;
+  handleOpenDoc: (path: string) => void;
+  handleCreateDoc: (cmd: string) => void;
+  expandedDocs: Set<string>;
+}) {
+  const hasShardedFiles = doc.sharded && doc.shardedFiles && doc.shardedFiles.length > 0;
+  const isCore = GROUP_CORE.has(doc.key);
+
+  return (
+    <div>
+      {/* Document row */}
+      <div className={`flex items-center gap-2 py-1 px-2 -mx-2 rounded-md transition-colors ${
+        isCore ? 'bg-gray-100/50 dark:bg-gray-700/30' : ''
+      }`}>
+        {doc.exists ? (
+          <CheckCircle className={`w-4 h-4 flex-shrink-0 ${doc.optional ? 'text-green-400 dark:text-green-600' : 'text-green-600 dark:text-green-400'}`} />
+        ) : doc.optional ? (
+          <Circle className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+        ) : (
+          <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+        )}
+
+        {/* Name */}
+        {doc.exists && hasShardedFiles ? (
+          <button
+            onClick={() => toggleDoc(doc.key)}
+            className="font-semibold text-gray-900 dark:text-white hover:underline cursor-pointer inline-flex items-center gap-1"
+          >
+            {doc.label}
+            <ChevronDown
+              className={`w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform ${isDocExpanded ? 'rotate-180' : ''}`}
+            />
+          </button>
+        ) : (
+          <span className={
+            doc.exists
+              ? (doc.optional ? 'text-gray-700 dark:text-gray-300' : 'font-semibold text-gray-900 dark:text-white')
+              : (doc.optional ? 'text-gray-400 dark:text-gray-500' : 'font-semibold text-gray-900 dark:text-gray-100')
+          }>{doc.label}</span>
+        )}
+
+        {/* Sharded badge */}
+        {hasShardedFiles && (
+          <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+            Sharded
+          </span>
+        )}
+
+        {/* Spacer to push right items */}
+        <span className="flex-1" />
+
+        {/* Path link or status badges — right-aligned */}
+        {!hasShardedFiles && doc.exists && (
+          <button
+            onClick={() => handleOpenDoc(doc.path)}
+            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:underline cursor-pointer truncate max-w-[50%]"
+          >
+            {doc.path}
+          </button>
+        )}
+        {!doc.exists && !doc.optional && (
+          <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
+            작성 필요
+          </span>
+        )}
+        {!doc.exists && doc.recommended && (
+          <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">
+            작성 권장
+          </span>
+        )}
+        {!doc.exists && doc.agentCommand && (
+          <button
+            onClick={() => handleCreateDoc(doc.agentCommand!)}
+            className={`p-0.5 rounded transition-colors cursor-pointer ${!doc.optional || doc.recommended ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50' : 'bg-gray-100 dark:bg-gray-700/50 text-gray-300 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-500 dark:hover:text-gray-400'}`}
+            title="작성하러 가기"
+          >
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Level 1: consolidated file + sharded directory tree */}
+      {isDocExpanded && hasShardedFiles && (
+        <div className="mt-1 ml-6 space-y-1">
+          <button
+            onClick={() => handleOpenDoc(doc.path)}
+            className="block text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer"
+          >
+            {doc.path}
+          </button>
+          <EntryTree
+            entries={[{ name: `${doc.shardedPath}`, isDir: true, children: doc.shardedFiles! }]}
+            basePath=""
+            onOpenFile={handleOpenDoc}
+            expandedDocs={expandedDocs}
+            toggleDoc={toggleDoc}
+            keyPrefix={doc.key}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug }: DocumentStatusCardProps) {
   const navigate = useNavigate();
   const openFile = useFileStore((s) => s.requestFileNavigation);
@@ -185,116 +302,75 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
 
   const orderedDocs = buildOrderedDocs(documents);
 
+  // Split into groups: supplementary (before PRD), core (PRD + after), architecture
+  const prePrdDocs = orderedDocs.filter((d) => d.optional && orderedDocs.indexOf(d) < orderedDocs.findIndex((dd) => dd.key === 'prd'));
+  const coreDocs = orderedDocs.filter((d) => !d.optional || orderedDocs.indexOf(d) >= orderedDocs.findIndex((dd) => dd.key === 'prd'));
+
+  // Count completed
+  const totalRequired = orderedDocs.filter((d) => !d.optional).length;
+  const doneRequired = orderedDocs.filter((d) => !d.optional && d.exists).length;
+
   return (
     <div
       role="region"
       aria-label="문서 현황"
-      className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5"
+      className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5"
     >
-      <div className="flex items-center gap-2 mb-4">
-        <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-        <h2 className="font-semibold text-gray-900 dark:text-white">문서 현황</h2>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <h2 className="font-semibold text-gray-900 dark:text-white">문서 현황</h2>
+        </div>
+        {totalRequired > 0 && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+            {doneRequired}/{totalRequired} 필수
+          </span>
+        )}
       </div>
-      <div className="space-y-2 text-sm">
-        {orderedDocs.map((doc) => {
-          const hasShardedFiles = doc.sharded && doc.shardedFiles && doc.shardedFiles.length > 0;
-          const isDocExpanded = expandedDocs.has(doc.key);
 
-          return (
-            <div key={doc.key}>
-              {/* Document header row */}
-              <div className="flex items-center gap-2">
-                {doc.exists ? (
-                  <CheckCircle className={`w-4 h-4 flex-shrink-0 ${doc.optional ? 'text-green-400 dark:text-green-600' : 'text-green-600 dark:text-green-400'}`} />
-                ) : doc.optional ? (
-                  <Circle className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
-                )}
-                {doc.exists && hasShardedFiles ? (
-                  <button
-                    onClick={() => toggleDoc(doc.key)}
-                    className="font-semibold text-gray-900 dark:text-white hover:underline cursor-pointer inline-flex items-center gap-1"
-                  >
-                    {doc.label}
-                    <ChevronDown
-                      className={`w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform ${isDocExpanded ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-                ) : (
-                  <span className={
-                    doc.exists
-                      ? (doc.optional ? 'text-gray-700 dark:text-gray-300' : 'font-semibold text-gray-900 dark:text-white')
-                      : (doc.optional ? 'text-gray-400 dark:text-gray-500' : 'font-semibold text-gray-900 dark:text-gray-100')
-                  }>{doc.label}</span>
-                )}
-                {hasShardedFiles && (
-                  <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
-                    Sharded
-                  </span>
-                )}
-                {!hasShardedFiles && doc.exists && (
-                  <button
-                    onClick={() => handleOpenDoc(doc.path)}
-                    className="text-xs text-gray-400 dark:text-gray-500 hover:underline cursor-pointer truncate"
-                  >
-                    {doc.path}
-                  </button>
-                )}
-                {!doc.exists && !doc.optional && (
-                  <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
-                    작성 필요
-                  </span>
-                )}
-                {!doc.exists && doc.recommended && (
-                  <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">
-                    작성 권장
-                  </span>
-                )}
-                {!doc.exists && doc.agentCommand && (
-                  <button
-                    onClick={() => handleCreateDoc(doc.agentCommand!)}
-                    className={`p-0.5 rounded transition-colors cursor-pointer ${!doc.optional || doc.recommended ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50' : 'bg-gray-50 dark:bg-gray-800 text-gray-300 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-500 dark:hover:text-gray-400'}`}
-                    title="작성하러 가기"
-                  >
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
+      <div className="space-y-1 text-sm">
+        {/* Core documents (PRD, Architecture, and post-PRD specs) */}
+        {coreDocs.map((doc) => (
+          <DocRow
+            key={doc.key}
+            doc={doc}
+            isDocExpanded={expandedDocs.has(doc.key)}
+            toggleDoc={toggleDoc}
+            handleOpenDoc={handleOpenDoc}
+            handleCreateDoc={handleCreateDoc}
+            expandedDocs={expandedDocs}
+          />
+        ))}
 
-              {/* Level 1: consolidated file + sharded directory tree */}
-              {isDocExpanded && hasShardedFiles && (
-                <div className="mt-1 ml-6 space-y-1">
-                  <button
-                    onClick={() => handleOpenDoc(doc.path)}
-                    className="block text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer"
-                  >
-                    {doc.path}
-                  </button>
-                  <EntryTree
-                    entries={[{ name: `${doc.shardedPath}`, isDir: true, children: doc.shardedFiles! }]}
-                    basePath=""
-                    onOpenFile={handleOpenDoc}
-                    expandedDocs={expandedDocs}
-                    toggleDoc={toggleDoc}
-                    keyPrefix={doc.key}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {/* Pre-PRD supplementary documents */}
+        {prePrdDocs.length > 0 && (
+          <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2 space-y-1">
+            <p className="text-[11px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 mb-1">보조 문서</p>
+            {prePrdDocs.map((doc) => (
+              <DocRow
+                key={doc.key}
+                doc={doc}
+                isDocExpanded={expandedDocs.has(doc.key)}
+                toggleDoc={toggleDoc}
+                handleOpenDoc={handleOpenDoc}
+                handleCreateDoc={handleCreateDoc}
+                expandedDocs={expandedDocs}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Auxiliary Documents */}
         {auxiliaryDocuments.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3 space-y-2">
+          <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2 space-y-1">
+            <p className="text-[11px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 mb-1">산출물</p>
             {auxiliaryDocuments.map((doc) => {
               const hasFiles = doc.files && doc.files.length > 0;
               const isExpanded = expandedDocs.has(`aux-${doc.type}`);
 
               return (
                 <div key={doc.type}>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 py-1 px-2 -mx-2 rounded-md">
                     <FolderOpen className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                     {hasFiles ? (
                       <button
