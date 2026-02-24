@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { X, Save, Upload, Trash2, Pencil, RefreshCw } from 'lucide-react';
+import { X, Save, Upload, Trash2, Pencil, RefreshCw, WrapText, ChevronRight, FileText } from 'lucide-react';
 import { generateQueueFromTemplate } from '@bmad-studio/shared';
 import type { QueueStoryInfo, QueueTemplate } from '@bmad-studio/shared';
 import { queueApi } from '../../services/api/queue';
@@ -19,6 +19,12 @@ interface QueueTemplateDialogProps {
 }
 
 type TemplateSource = 'input' | 'file' | 'saved';
+
+const sourceLabels: Record<TemplateSource, string> = {
+  input: '직접 입력',
+  file: '파일',
+  saved: '저장됨',
+};
 
 export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: QueueTemplateDialogProps) {
   // Template input state
@@ -150,6 +156,18 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
     });
   }, []);
 
+  const toggleEpic = useCallback((epicStories: QueueStoryInfo[]) => {
+    setSelectedStories((prev) => {
+      const next = new Set(prev);
+      const allSelected = epicStories.every((s) => prev.has(s.storyNum));
+      for (const s of epicStories) {
+        if (allSelected) next.delete(s.storyNum);
+        else next.add(s.storyNum);
+      }
+      return next;
+    });
+  }, []);
+
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -244,324 +262,387 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="template-dialog-title"
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto mx-4"
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col mx-4
+          ring-1 ring-gray-200 dark:ring-gray-700"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 id="template-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/50 flex-shrink-0">
+          <h2 id="template-dialog-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
             템플릿으로 큐 생성
           </h2>
           <button
             onClick={onClose}
             aria-label="닫기"
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="p-1.5 -mr-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+              hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4.5 h-4.5" />
           </button>
         </div>
 
-        <div className="px-6 py-4 space-y-5">
-          {/* Section 1: Template */}
-          <section>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">1. 템플릿</h3>
+        {/* Body — scrollable */}
+        <div className="overflow-y-auto flex-1 min-h-0">
+          <div className="px-5 py-4 space-y-4">
 
-            {/* Source tabs */}
-            <div className="flex gap-1 mb-3">
-              {(['input', 'file', 'saved'] as TemplateSource[]).map((source) => (
-                <button
-                  key={source}
-                  onClick={() => {
-                    setTemplateSource(source);
-                    if (source !== 'saved' && source !== 'input') {
-                      setSelectedTemplateId(null);
-                    }
-                  }}
-                  className={`px-3 py-1.5 text-sm rounded-md min-h-[44px] ${
-                    templateSource === source
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {source === 'input' ? '직접 입력' : source === 'file' ? '파일 로드' : '저장된 템플릿'}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex justify-end mb-3">
-              <button
-                onClick={() => setIsAutoWrap((prev) => !prev)}
-                aria-label="Toggle template wrap mode"
-                aria-pressed={isAutoWrap}
-                className={`px-3 py-1.5 text-sm rounded-md min-h-[44px] ${
-                  isAutoWrap
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                {isAutoWrap ? 'Auto wrap' : 'No wrap'}
-              </button>
-            </div>
-
-            {/* Input tab */}
-            {templateSource === 'input' && (
-              <textarea
-                value={templateText}
-                onChange={(e) => {
-                  setTemplateText(e.target.value);
-                  if (!selectedTemplateId) setTemplateName('');
-                }}
-                wrap={isAutoWrap ? 'soft' : 'off'}
-                placeholder={'예: /dev {story_num} 스토리를 구현해주세요\n@pause 리뷰 후 계속'}
-                className="w-full h-32 px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-lg
-                  bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-y"
-                style={{ whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre' }}
-              />
-            )}
-
-            {/* File tab */}
-            {templateSource === 'file' && (
-              <div className="flex flex-col items-center gap-2 py-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-                <Upload className="w-8 h-8 text-gray-400" />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-700
-                    text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 min-h-[44px]"
-                >
-                  파일 선택 (.txt, .qlaude-queue)
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".txt,.qlaude-queue"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                {templateText && (
-                  <p className="text-xs text-gray-500">템플릿이 로드되었습니다</p>
-                )}
-              </div>
-            )}
-
-            {/* Saved templates tab */}
-            {templateSource === 'saved' && (
-              <div className="space-y-2">
-                {isLoadingTemplates && (
-                  <p className="text-sm text-gray-500 py-2">로딩 중...</p>
-                )}
-                {templatesError && (
-                  <p className="text-sm text-red-500 py-2">{templatesError}</p>
-                )}
-                {!isLoadingTemplates && !templatesError && savedTemplates.length === 0 && (
-                  <p className="text-sm text-gray-500 py-2">저장된 템플릿이 없습니다</p>
-                )}
-                {savedTemplates.map((tmpl) => (
-                  <div
-                    key={tmpl.id}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg border cursor-pointer min-h-[44px] ${
-                      selectedTemplateId === tmpl.id
-                        ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
-                    }`}
-                    onClick={() => handleSelectSavedTemplate(tmpl)}
-                  >
-                    <span className="text-sm text-gray-900 dark:text-gray-100 truncate">{tmpl.name}</span>
-                    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleEditTemplate(tmpl); }}
-                        aria-label={`${tmpl.name} 편집`}
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(tmpl.id); }}
-                        aria-label={`${tmpl.name} 삭제`}
-                        className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-red-500 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Save template button */}
-            {templateText && (
-              <div className="mt-2">
-                {!saveDialogOpen ? (
+            {/* ── Template section ── */}
+            <section>
+              <div className="flex items-center justify-between mb-2.5">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                  템플릿
+                </h3>
+                {templateText && !saveDialogOpen && (
                   <button
                     onClick={() => {
                       setSaveDialogOpen(true);
                       if (!templateName) setTemplateName('');
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg
-                      bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
-                      hover:bg-gray-200 dark:hover:bg-gray-600 min-h-[44px]"
+                    className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400
+                      hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                   >
-                    <Save className="w-3.5 h-3.5" />
-                    {selectedTemplateId ? '템플릿 업데이트' : '현재 템플릿 저장'}
+                    <Save className="w-3 h-3" />
+                    {selectedTemplateId ? '업데이트' : '저장'}
                   </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={templateName}
-                      onChange={(e) => setTemplateName(e.target.value)}
-                      placeholder="템플릿 이름"
-                      className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-                        bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-[44px]"
-                      autoFocus
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTemplate(); }}
-                    />
+                )}
+              </div>
+
+              {/* Source tabs — pill style */}
+              <div className="inline-flex p-0.5 bg-gray-100 dark:bg-gray-700/50 rounded-lg mb-3">
+                {(['input', 'file', 'saved'] as TemplateSource[]).map((source) => (
+                  <button
+                    key={source}
+                    onClick={() => {
+                      setTemplateSource(source);
+                      if (source !== 'saved' && source !== 'input') {
+                        setSelectedTemplateId(null);
+                      }
+                    }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                      templateSource === source
+                        ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    {sourceLabels[source]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input tab */}
+              {templateSource === 'input' && (
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  {/* Textarea mini-toolbar */}
+                  <div className="flex items-center justify-between px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                      {'{story_num}'}, {'{epic_num}'}, {'{story_title}'} 사용 가능
+                    </span>
                     <button
-                      onClick={handleSaveTemplate}
-                      disabled={!templateName.trim()}
-                      className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white
-                        hover:bg-blue-700 disabled:opacity-50 min-h-[44px]"
+                      onClick={() => setIsAutoWrap((prev) => !prev)}
+                      aria-label="Toggle template wrap mode"
+                      aria-pressed={isAutoWrap}
+                      title={isAutoWrap ? 'Wrap' : 'No wrap'}
+                      className={`inline-flex items-center justify-center w-6 h-6 rounded transition-colors ${
+                        isAutoWrap
+                          ? 'bg-blue-100 dark:bg-blue-600/30 text-blue-600 dark:text-blue-400'
+                          : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                      }`}
                     >
-                      저장
+                      <WrapText className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => setSaveDialogOpen(false)}
-                      className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700
-                        text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 min-h-[44px]"
+                  </div>
+                  <textarea
+                    value={templateText}
+                    onChange={(e) => {
+                      setTemplateText(e.target.value);
+                      if (!selectedTemplateId) setTemplateName('');
+                    }}
+                    wrap={isAutoWrap ? 'soft' : 'off'}
+                    placeholder={'예: /dev {story_num} 스토리를 구현해주세요\n@pause 리뷰 후 계속'}
+                    className="w-full h-28 px-3 py-2.5 text-sm font-mono bg-white dark:bg-gray-900
+                      text-gray-900 dark:text-gray-100 resize-y border-0 focus:ring-0 focus:outline-none
+                      placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                    style={{ whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre' }}
+                  />
+                </div>
+              )}
+
+              {/* File tab */}
+              {templateSource === 'file' && (
+                <div
+                  className="flex flex-col items-center gap-2.5 py-6 border-2 border-dashed border-gray-200
+                    dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 cursor-pointer
+                    hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                    <Upload className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">클릭하여 파일 선택</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">.txt, .qlaude-queue</p>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".txt,.qlaude-queue"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  {templateText && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full
+                      bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                      ✓ 로드됨
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Saved templates tab */}
+              {templateSource === 'saved' && (
+                <div className="space-y-1.5">
+                  {isLoadingTemplates && (
+                    <p className="text-sm text-gray-400 py-3 text-center">로딩 중...</p>
+                  )}
+                  {templatesError && (
+                    <p className="text-sm text-red-500 py-3 text-center">{templatesError}</p>
+                  )}
+                  {!isLoadingTemplates && !templatesError && savedTemplates.length === 0 && (
+                    <div className="flex flex-col items-center gap-1.5 py-6 text-gray-400">
+                      <FileText className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                      <p className="text-sm">저장된 템플릿이 없습니다</p>
+                    </div>
+                  )}
+                  {savedTemplates.map((tmpl) => (
+                    <div
+                      key={tmpl.id}
+                      className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                        selectedTemplateId === tmpl.id
+                          ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-200 dark:ring-blue-700'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }`}
+                      onClick={() => handleSelectSavedTemplate(tmpl)}
                     >
-                      취소
+                      <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${
+                        selectedTemplateId === tmpl.id
+                          ? 'text-blue-500'
+                          : 'text-gray-300 dark:text-gray-600'
+                      }`} />
+                      <span className="text-sm text-gray-800 dark:text-gray-200 truncate flex-1">{tmpl.name}</span>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEditTemplate(tmpl); }}
+                          aria-label={`${tmpl.name} 편집`}
+                          className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+                            hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(tmpl.id); }}
+                          aria-label={`${tmpl.name} 삭제`}
+                          className="p-1.5 rounded-md text-gray-400 hover:text-red-500
+                            hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Save template inline form */}
+              {saveDialogOpen && (
+                <div className="flex items-center gap-2 mt-2.5 p-2 bg-gray-50 dark:bg-gray-800/80 rounded-lg">
+                  <input
+                    type="text"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    placeholder="템플릿 이름"
+                    className="flex-1 px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md
+                      bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-400
+                      focus:border-blue-400 outline-none"
+                    autoFocus
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTemplate(); if (e.key === 'Escape') setSaveDialogOpen(false); }}
+                  />
+                  <button
+                    onClick={handleSaveTemplate}
+                    disabled={!templateName.trim()}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white
+                      hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={() => setSaveDialogOpen(false)}
+                    className="px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                  >
+                    취소
+                  </button>
+                </div>
+              )}
+            </section>
+
+            {/* ── Story selection section ── */}
+            <section>
+              <div className="flex items-center justify-between mb-2.5">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                  스토리
+                  {!isLoadingStories && !storiesError && stories.length > 0 && (
+                    <span className="ml-1.5 font-normal normal-case tracking-normal text-gray-300 dark:text-gray-600">
+                      {selectedStories.size}/{stories.length}
+                    </span>
+                  )}
+                </h3>
+                {!isLoadingStories && !storiesError && stories.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={insertPause}
+                        onChange={(e) => setInsertPause(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                      />
+                      <span className="text-[11px] text-gray-500 dark:text-gray-400">에픽 간 @pause</span>
+                    </label>
+                    <div className="w-px h-3.5 bg-gray-200 dark:bg-gray-700" />
+                    <button
+                      onClick={selectedStories.size === stories.length ? handleDeselectAll : handleSelectAll}
+                      className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                    >
+                      {selectedStories.size === stories.length ? '전체 해제' : '전체 선택'}
                     </button>
                   </div>
                 )}
               </div>
-            )}
-          </section>
 
-          {/* Section 2: Story selection */}
-          <section>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">2. 스토리 선택</h3>
+              {isLoadingStories && (
+                <div className="flex items-center justify-center py-6">
+                  <div className="w-5 h-5 border-2 border-gray-200 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin" />
+                </div>
+              )}
 
-            {isLoadingStories && (
-              <p className="text-sm text-gray-500 py-2">스토리 로딩 중...</p>
-            )}
-
-            {storiesError && (
-              <div className="flex items-center gap-2 py-2">
-                <p className="text-sm text-red-500">{storiesError}</p>
-                <button
-                  onClick={retryLoadStories}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700
-                    text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 min-h-[44px]"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  재시도
-                </button>
-              </div>
-            )}
-
-            {!isLoadingStories && !storiesError && stories.length === 0 && (
-              <p className="text-sm text-gray-500 py-2">PRD에서 스토리를 찾을 수 없습니다</p>
-            )}
-
-            {!isLoadingStories && !storiesError && stories.length > 0 && (
-              <>
-                <div className="flex gap-2 mb-2">
+              {storiesError && (
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <p className="text-sm text-red-500">{storiesError}</p>
                   <button
-                    onClick={handleSelectAll}
-                    className="px-3 py-1 text-xs rounded-md bg-gray-100 dark:bg-gray-700
-                      text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 min-h-[44px]"
+                    onClick={retryLoadStories}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                      text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
-                    전체 선택
-                  </button>
-                  <button
-                    onClick={handleDeselectAll}
-                    className="px-3 py-1 text-xs rounded-md bg-gray-100 dark:bg-gray-700
-                      text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 min-h-[44px]"
-                  >
-                    전체 해제
+                    <RefreshCw className="w-3 h-3" />
+                    재시도
                   </button>
                 </div>
+              )}
 
-                <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-2 space-y-1">
-                  {epicGroups.map(([epicNum, epicStories]) => (
-                    <div key={epicNum}>
-                      <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-1 py-0.5 mt-1 first:mt-0">
-                        Epic {epicNum}
-                      </div>
-                      {epicStories.map((story) => (
-                        <label
-                          key={story.storyNum}
-                          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer min-h-[44px]"
+              {!isLoadingStories && !storiesError && stories.length === 0 && (
+                <p className="text-sm text-gray-400 py-4 text-center">PRD에서 스토리를 찾을 수 없습니다</p>
+              )}
+
+              {!isLoadingStories && !storiesError && stories.length > 0 && (
+                <div className="max-h-44 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700
+                  bg-gray-50/50 dark:bg-gray-900/30 divide-y divide-gray-100 dark:divide-gray-700/50">
+                  {epicGroups.map(([epicNum, epicStories]) => {
+                    const allSelected = epicStories.every((s) => selectedStories.has(s.storyNum));
+                    const someSelected = epicStories.some((s) => selectedStories.has(s.storyNum));
+                    return (
+                      <div key={epicNum}>
+                        {/* Epic group header */}
+                        <button
+                          onClick={() => toggleEpic(epicStories)}
+                          className="flex items-center gap-2 w-full px-3 py-1.5 text-left
+                            hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors sticky top-0
+                            bg-gray-50 dark:bg-gray-800 z-[1]"
                         >
                           <input
                             type="checkbox"
-                            checked={selectedStories.has(story.storyNum)}
-                            onChange={() => toggleStory(story.storyNum)}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            checked={allSelected}
+                            ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                            onChange={() => toggleEpic(epicStories)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                           />
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
-                            {story.storyNum}
-                            {story.title && <span className="text-gray-500 dark:text-gray-400"> - {story.title}</span>}
+                          <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Epic {epicNum}
                           </span>
-                        </label>
-                      ))}
-                    </div>
-                  ))}
+                          <span className="text-[10px] text-gray-300 dark:text-gray-600">
+                            ({epicStories.filter((s) => selectedStories.has(s.storyNum)).length}/{epicStories.length})
+                          </span>
+                        </button>
+
+                        {/* Story items */}
+                        {epicStories.map((story) => (
+                          <label
+                            key={story.storyNum}
+                            className="flex items-center gap-2.5 px-3 py-1.5 pl-7 cursor-pointer
+                              hover:bg-gray-100/70 dark:hover:bg-gray-800/50 transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedStories.has(story.storyNum)}
+                              onChange={() => toggleStory(story.storyNum)}
+                              className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                            />
+                            <span className="text-xs text-gray-700 dark:text-gray-300 truncate">
+                              <span className="font-mono text-gray-500 dark:text-gray-400">{story.storyNum}</span>
+                              {story.title && (
+                                <span className="text-gray-400 dark:text-gray-500 ml-1.5">
+                                  {story.title}
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
-              </>
-            )}
-          </section>
-
-          {/* Options */}
-          <section>
-            <label className="flex items-center gap-2 cursor-pointer min-h-[44px]">
-              <input
-                type="checkbox"
-                checked={insertPause}
-                onChange={(e) => setInsertPause(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">에픽 간 @pause 자동 삽입</span>
-            </label>
-          </section>
-
-          {/* Section 3: Preview */}
-          {preview && (
-            <section>
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">3. 미리보기</h3>
-              <pre
-                className="max-h-48 overflow-auto rounded-lg bg-gray-900 p-3 text-sm"
-                style={{
-                  fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
-                  lineHeight: '1.5',
-                  whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
-                  overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
-                }}
-                dangerouslySetInnerHTML={{ __html: previewHtml + '\n' }}
-              />
+              )}
             </section>
-          )}
+
+            {/* ── Preview section ── */}
+            {preview && (
+              <section>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2.5">
+                  미리보기
+                </h3>
+                <pre
+                  className="max-h-44 overflow-auto rounded-lg bg-gray-900 p-3 text-xs ring-1 ring-gray-800"
+                  style={{
+                    fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
+                    lineHeight: '1.6',
+                    whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
+                    overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
+                  }}
+                  dangerouslySetInnerHTML={{ __html: previewHtml + '\n' }}
+                />
+              </section>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100 dark:border-gray-700/50 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-700
-              text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 min-h-[44px]"
+            className="px-3.5 py-1.5 text-sm rounded-lg text-gray-600 dark:text-gray-400
+              hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             취소
           </button>
           <button
             onClick={handleGenerate}
             disabled={!preview}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white
-              hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+            className="px-4 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white
+              hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
+              shadow-sm shadow-blue-600/20"
           >
             에디터에 로드
           </button>

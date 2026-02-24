@@ -103,7 +103,7 @@ describe('QueueEditor', () => {
     const pre = document.querySelector('pre');
     expect(pre).toBeInTheDocument();
     // Should contain highlighted spans
-    expect(pre?.innerHTML).toContain('text-purple-400');
+    expect(pre?.innerHTML).toContain('text-purple-700');
     expect(pre?.innerHTML).toContain('text-gray-500');
   });
 

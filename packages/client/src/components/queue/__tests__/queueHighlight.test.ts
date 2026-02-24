@@ -22,19 +22,19 @@ describe('highlightScript', () => {
   // TC-QT-43
   it('applies correct CSS classes to directives (@new, @pause, etc.)', () => {
     const result = highlightScript('@new\n@pause reason here\n@save mySession');
-    expect(result).toContain('text-purple-400');
-    expect(result).toContain('text-emerald-400');
+    expect(result).toContain('text-purple-700');
+    expect(result).toContain('text-teal-600');
   });
 
   it('highlights directive-only lines without args', () => {
     const result = highlightScript('@new');
-    expect(result).toContain('text-purple-400');
+    expect(result).toContain('text-purple-700');
     expect(result).toContain('@new');
   });
 
   it('highlights multiline markers', () => {
     const result = highlightScript('@(\n@)');
-    expect(result).toContain('text-blue-400');
+    expect(result).toContain('text-blue-700');
   });
 
   // TC-QT-44
@@ -45,11 +45,11 @@ describe('highlightScript', () => {
 
   it('handles escaped directives', () => {
     const result = highlightScript('\\@not-a-directive');
-    expect(result).not.toContain('text-purple-400');
+    expect(result).not.toContain('text-purple-700');
   });
 
   it('highlights regular prompt text', () => {
     const result = highlightScript('just a regular prompt');
-    expect(result).toContain('text-gray-100');
+    expect(result).toContain('text-gray-900');
   });
 });
