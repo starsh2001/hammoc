@@ -47,6 +47,7 @@ import { SessionQuickAccessPanel } from '../components/SessionQuickAccessPanel';
 import { QuickFileExplorer } from '../components/files/QuickFileExplorer';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ThinkingBlock } from '../components/ThinkingBlock';
+import { PromptChainBanner } from '../components/PromptChainBanner';
 
 /**
  * Render a single history message as the appropriate component.
@@ -147,7 +148,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, activeModel, contextUsage, resetContextUsage, clearStreamingSegments } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, streamCompleteCount } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   const { logout } = useAuthStore();
@@ -280,30 +281,25 @@ export function ChatPage() {
     setAgentListOpenTrigger((prev) => prev + 1);
   }, []);
 
-  // Handle message send
-  const handleSendMessage = useCallback(
+  // Chain mode toggle — when ON, sending during streaming queues to promptChain
+  const [chainMode, setChainMode] = useState(false);
+
+  // Timer ref for chain auto-send (allows cancellation on abort)
+  const chainSendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Internal send — bypasses chain buffer, sends directly to server.
+  // Used by drainChain and non-chain-mode sends.
+  const internalSend = useCallback(
     (content: string, attachments?: Attachment[]) => {
-      if (!workingDirectory) {
-        console.error('[ChatPage] Cannot send message: workingDirectory not found');
-        return;
-      }
-      // Read latest messages from store BEFORE adding optimistic message
-      // to correctly detect whether this is a new or existing session.
-      // Uses getState() to avoid stale closure (messages may have loaded
-      // after this callback was created).
       const currentMessages = useMessageStore.getState().messages;
-      // Convert Attachment[] to ImageAttachment[] for optimistic message display
       const images = attachments?.map((a) => ({
         mimeType: a.mimeType,
         data: a.data,
         name: a.name,
       }));
-      // Add user message immediately (optimistic UI)
       addOptimisticMessage(content, images);
-      // Send to server — sessionId is always a UUID (pre-allocated),
-      // resume when messages already exist in this session.
       sendMessage(content, {
-        workingDirectory,
+        workingDirectory: workingDirectory!,
         sessionId,
         resume: currentMessages.length > 0,
         attachments,
@@ -312,9 +308,76 @@ export function ChatPage() {
     [sendMessage, addOptimisticMessage, workingDirectory, sessionId]
   );
 
-  // Handle abort
+  // Drain chain: pop first item and send after 1s delay.
+  // This is the ONLY path that sends messages in chain mode.
+  const drainChain = useCallback(() => {
+    if (promptChainRef.current.length === 0) return;
+    if (useChatStore.getState().isStreaming) return;
+    if (chainSendTimerRef.current) return;
+
+    const next = promptChainRef.current[0];
+    const updated = promptChainRef.current.slice(1);
+    promptChainRef.current = updated;
+    setPromptChain([...updated]);
+
+    console.log('[CHAIN-DEBUG] drainChain: scheduling send', {
+      next: next.slice(0, 30),
+      remainingLen: updated.length,
+    });
+
+    chainSendTimerRef.current = setTimeout(() => {
+      chainSendTimerRef.current = null;
+      console.log('[CHAIN-DEBUG] drainChain: firing send', { next: next.slice(0, 30) });
+      internalSend(next);
+    }, 1000);
+  }, [internalSend]);
+
+  // Handle message send
+  const handleSendMessage = useCallback(
+    (content: string, attachments?: Attachment[]) => {
+      if (!workingDirectory) {
+        console.error('[ChatPage] Cannot send message: workingDirectory not found');
+        return;
+      }
+
+      // Chain mode: ALL user input goes to buffer. drainChain handles sending.
+      if (chainMode) {
+        if (promptChainRef.current.length >= 5) {
+          console.log('[CHAIN-DEBUG] handleSendMessage BLOCKED: chain full (5)', { content: content.slice(0, 30) });
+          return;
+        }
+        const updatedChain = [...promptChainRef.current, content];
+        promptChainRef.current = updatedChain;
+        setPromptChain(updatedChain);
+        console.log('[CHAIN-DEBUG] handleSendMessage: queued', {
+          content: content.slice(0, 30),
+          newLen: updatedChain.length,
+        });
+        // Try to drain immediately (will no-op if streaming or timer pending)
+        drainChain();
+        return;
+      }
+
+      // Non-chain mode: send directly
+      internalSend(content, attachments);
+    },
+    [chainMode, internalSend, drainChain, workingDirectory]
+  );
+
+  // Handle abort — also discard any prompt chain (Story 12.3)
   const handleAbort = useCallback(() => {
     if (useChatStore.getState().isStreaming) {
+      console.log('[CHAIN-DEBUG] handleAbort: clearing chain & timer', {
+        chainLen: promptChainRef.current.length,
+        timerActive: chainSendTimerRef.current !== null,
+      });
+      setPromptChain([]);
+      promptChainRef.current = [];
+      // Cancel any pending chain auto-send timer
+      if (chainSendTimerRef.current) {
+        clearTimeout(chainSendTimerRef.current);
+        chainSendTimerRef.current = null;
+      }
       abortResponse();
     }
   }, [abortResponse]);
@@ -326,9 +389,13 @@ export function ChatPage() {
 
     if (currentMessages.length === 0 && !currentIsStreaming) {
       // Empty session: send agent command directly
+      setPromptChain([]); promptChainRef.current = [];
+      if (chainSendTimerRef.current) { clearTimeout(chainSendTimerRef.current); chainSendTimerRef.current = null; }
       handleSendMessage(agentCommand);
     } else {
       // Active session: start new session immediately (no confirmation)
+      setPromptChain([]); promptChainRef.current = [];
+      if (chainSendTimerRef.current) { clearTimeout(chainSendTimerRef.current); chainSendTimerRef.current = null; }
       abortResponse();
       clearMessages();
       clearStreamingSegments();
@@ -409,15 +476,52 @@ export function ChatPage() {
           handleSendMessageRef.current(command);
         } else {
           // Auto-send agent command from URL search params (Story 12.3)
-          const agentParam = new URLSearchParams(window.location.search).get('agent');
+          const searchParams = new URLSearchParams(window.location.search);
+          const agentParam = searchParams.get('agent');
+          const taskParam = searchParams.get('task');
           if (agentParam && useMessageStore.getState().messages.length === 0) {
             window.history.replaceState(null, '', window.location.pathname);
+            // Queue task command for prompt chain (sent after agent response completes)
+            if (taskParam) {
+              promptChainRef.current = [taskParam];
+              setPromptChain([taskParam]);
+            }
             handleSendMessageRef.current(agentParam);
           }
         }
       });
     }
   }, [projectSlug, sessionId, fetchMessages, clearStreamingSegments]);
+
+  // Prompt chain: drain after streaming completes (normal completion).
+  // streamCompleteCount is incremented only by completeStreaming, NOT by
+  // abortStreaming or error handlers.
+  const prevCompleteCountRef = useRef(streamCompleteCount);
+  useEffect(() => {
+    const prevCount = prevCompleteCountRef.current;
+    prevCompleteCountRef.current = streamCompleteCount;
+    if (streamCompleteCount > prevCount && chainMode) {
+      console.log('[CHAIN-DEBUG] streamComplete → drainChain', {
+        chainLen: promptChainRef.current.length,
+      });
+      drainChain();
+    }
+  }, [streamCompleteCount, chainMode, drainChain]);
+
+  // Safety net: drain chain after unexpected streaming stop (abort/error).
+  // Only fires on genuine true→false transition (not initial mount).
+  const prevIsStreamingForChainRef = useRef(isStreaming);
+  useEffect(() => {
+    const wasStreaming = prevIsStreamingForChainRef.current;
+    prevIsStreamingForChainRef.current = isStreaming;
+    if (wasStreaming && !isStreaming && chainMode) {
+      console.log('[CHAIN-DEBUG] isStreaming false → drainChain', {
+        chainLen: promptChainRef.current.length,
+        timerActive: chainSendTimerRef.current !== null,
+      });
+      drainChain();
+    }
+  }, [isStreaming, chainMode, drainChain]);
 
   // Clean up on component unmount (not on sessionId change):
   // - Clear messages
@@ -432,6 +536,8 @@ export function ChatPage() {
         msgCount: useMessageStore.getState().messages.length,
       });
       clearMessages();
+      // Cancel any pending chain auto-send timer before unmount
+      if (chainSendTimerRef.current) { clearTimeout(chainSendTimerRef.current); chainSendTimerRef.current = null; }
       const socket = getSocket();
       socket.emit('session:leave', sessionIdRef.current || '');
       if (useChatStore.getState().isStreaming) {
@@ -537,6 +643,15 @@ export function ChatPage() {
   // Ref to store pending agent command for auto-send after navigation (Story 8.3)
   const pendingAgentCommandRef = useRef<string | null>(null);
 
+  // Prompt chain — client-side sequential execution (Story 12.3)
+  // State for UI rendering + ref for non-stale access in effect callbacks
+  const [promptChain, setPromptChain] = useState<string[]>([]);
+  const promptChainRef = useRef<string[]>([]);
+  useEffect(() => { promptChainRef.current = promptChain; }, [promptChain]);
+  // Stable callback for ChatInput to read fresh chain length from ref
+  // (bypasses React async render cycle — chainCount prop can be stale)
+  const getChainLength = useCallback(() => promptChainRef.current.length, []);
+
   // Keep latest sessionId in ref for cleanup (useEffect closures capture stale values)
   const sessionIdRef = useRef(sessionId);
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
@@ -565,6 +680,9 @@ export function ChatPage() {
   // Execute confirmed action (after user confirms in modal)
   const executeConfirmedAction = useCallback(() => {
     setConfirmModal({ isOpen: false, action: 'newSession' });
+    // Clear chain state before navigating away
+    setPromptChain([]); promptChainRef.current = [];
+    if (chainSendTimerRef.current) { clearTimeout(chainSendTimerRef.current); chainSendTimerRef.current = null; }
     abortResponse();
 
     if (confirmModal.action === 'newSession') {
@@ -603,6 +721,8 @@ export function ChatPage() {
       });
       return;
     }
+    setPromptChain([]); promptChainRef.current = [];
+    if (chainSendTimerRef.current) { clearTimeout(chainSendTimerRef.current); chainSendTimerRef.current = null; }
     clearMessages();
     clearStreamingSegments();
     resetSelectedModel();
@@ -621,6 +741,8 @@ export function ChatPage() {
       return;
     }
 
+    setPromptChain([]); promptChainRef.current = [];
+    if (chainSendTimerRef.current) { clearTimeout(chainSendTimerRef.current); chainSendTimerRef.current = null; }
     clearMessages();
     clearStreamingSegments();
     resetSelectedModel();
@@ -725,6 +847,20 @@ export function ChatPage() {
     />
   ) : null;
 
+  const promptChainBannerElement = promptChain.length > 0 ? (
+    <PromptChainBanner
+      pendingPrompts={promptChain}
+      onCancel={() => {
+        setPromptChain([]); promptChainRef.current = [];
+        if (chainSendTimerRef.current) { clearTimeout(chainSendTimerRef.current); chainSendTimerRef.current = null; }
+      }}
+      onRemove={(index) => {
+        setPromptChain((prev) => prev.filter((_, i) => i !== index));
+        promptChainRef.current = promptChainRef.current.filter((_, i) => i !== index);
+      }}
+    />
+  ) : null;
+
   const confirmModalElement = (
     <ConfirmModal
       isOpen={confirmModal.isOpen}
@@ -753,6 +889,7 @@ export function ChatPage() {
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
+        {promptChainBannerElement}
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -820,6 +957,7 @@ export function ChatPage() {
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
+        {promptChainBannerElement}
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -884,6 +1022,7 @@ export function ChatPage() {
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
+        {promptChainBannerElement}
         <main
           role="main"
           aria-label="채팅 페이지"
@@ -937,6 +1076,11 @@ export function ChatPage() {
             onReorderStarFavorites={reorderStarFavorites}
             onRemoveStarFavorite={handleRemoveStarFavorite}
 
+            chainMode={chainMode}
+            onChainModeToggle={() => setChainMode((prev) => !prev)}
+            chainCount={promptChain.length}
+            chainMax={5}
+            getChainLength={getChainLength}
           />
         </InputArea>
         {sessionPanel}
@@ -967,6 +1111,7 @@ export function ChatPage() {
         isBmadProject={isBmadProject}
       />
       {queueBannerElement}
+      {promptChainBannerElement}
 
       <main
         role="main"
@@ -1027,6 +1172,12 @@ export function ChatPage() {
           starFavorites={starFavorites}
           onReorderStarFavorites={reorderStarFavorites}
           onRemoveStarFavorite={handleRemoveStarFavorite}
+
+          chainMode={chainMode}
+          onChainModeToggle={() => setChainMode((prev) => !prev)}
+          chainCount={promptChain.length}
+          chainMax={5}
+          getChainLength={getChainLength}
         />
       </InputArea>
       {sessionPanel}

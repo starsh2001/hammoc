@@ -766,8 +766,10 @@ export function useStreaming() {
     };
 
     // Handle server errors
-    const handleError = () => {
-      debugLog.socket('error', { isStreaming: useChatStore.getState().isStreaming });
+    const handleError = (data?: unknown) => {
+      const currentIsStreaming = useChatStore.getState().isStreaming;
+      debugLog.socket('error', { isStreaming: currentIsStreaming, data });
+      console.log('[CHAIN-DEBUG] handleError received', JSON.stringify({ isStreaming: currentIsStreaming, data }));
       clearChunkQueue();
       abortStreaming();
     };
