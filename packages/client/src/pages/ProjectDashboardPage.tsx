@@ -1,9 +1,18 @@
 /**
- * ProjectDashboardPage - Project dashboard view (placeholder)
+ * ProjectDashboardPage - Project dashboard view
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { MessageSquare, Clock, ListOrdered, Plus, ArrowRight } from 'lucide-react';
+import {
+  MessageSquare,
+  Clock,
+  Zap,
+  Plus,
+  ArrowRight,
+  ListOrdered,
+  FolderOpen,
+  MessageCircle,
+} from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import { useEffect } from 'react';
 import { formatRelativeTime } from '../utils/formatters';
@@ -32,37 +41,40 @@ export function ProjectDashboardPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/20 rounded-xl border border-blue-200/60 dark:border-blue-800/40 p-5">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-blue-200/30 dark:bg-blue-700/10 rounded-full -translate-y-6 translate-x-6" />
+          <div className="relative flex items-center gap-3">
+            <div className="p-2.5 bg-blue-500 dark:bg-blue-500 rounded-xl shadow-sm">
+              <MessageSquare className="w-5 h-5 text-white" />
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{sessions.length}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">총 세션</p>
+              <p className="text-sm text-blue-700/70 dark:text-blue-300/70">총 세션</p>
             </div>
           </div>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
-              <Clock className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-violet-50 to-purple-100/50 dark:from-violet-950/40 dark:to-purple-900/20 rounded-xl border border-violet-200/60 dark:border-violet-800/40 p-5">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-violet-200/30 dark:bg-violet-700/10 rounded-full -translate-y-6 translate-x-6" />
+          <div className="relative flex items-center gap-3">
+            <div className="p-2.5 bg-violet-500 dark:bg-violet-500 rounded-xl shadow-sm">
+              <Clock className="w-5 h-5 text-white" />
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalMessages}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">총 메시지</p>
+              <p className="text-sm text-violet-700/70 dark:text-violet-300/70">총 메시지</p>
             </div>
           </div>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <ListOrdered className="w-5 h-5 text-green-600 dark:text-green-400" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-green-100/50 dark:from-emerald-950/40 dark:to-green-900/20 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 p-5">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-200/30 dark:bg-emerald-700/10 rounded-full -translate-y-6 translate-x-6" />
+          <div className="relative flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-500 dark:bg-emerald-500 rounded-xl shadow-sm">
+              <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{activeSessions}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">활성 세션</p>
+              <p className="text-sm text-emerald-700/70 dark:text-emerald-300/70">활성 세션</p>
             </div>
           </div>
         </div>
@@ -71,7 +83,7 @@ export function ProjectDashboardPage() {
       {/* Quick actions + Recent sessions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent sessions */}
-        <div className="lg:col-span-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="lg:col-span-2 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
             <h2 className="font-semibold text-gray-900 dark:text-white">최근 세션</h2>
             <button
@@ -92,8 +104,19 @@ export function ProjectDashboardPage() {
               ))}
             </div>
           ) : recentSessions.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-              <p>아직 세션이 없습니다.</p>
+            <div className="py-12 px-8 text-center">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700/50 mb-4">
+                <MessageCircle className="w-7 h-7 text-gray-400 dark:text-gray-500" />
+              </div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">아직 세션이 없습니다</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">새 세션을 시작하여 AI와 대화를 나눠보세요</p>
+              <button
+                onClick={handleNewSession}
+                className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                첫 세션 시작하기
+              </button>
             </div>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -101,7 +124,7 @@ export function ProjectDashboardPage() {
                 <button
                   key={session.sessionId}
                   onClick={() => navigate(`/project/${projectSlug}/session/${session.sessionId}`)}
-                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-colors text-left"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
@@ -133,7 +156,7 @@ export function ProjectDashboardPage() {
 
         {/* Quick actions */}
         <div className="space-y-4">
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
             <h2 className="font-semibold text-gray-900 dark:text-white mb-4">빠른 시작</h2>
             <div className="space-y-2">
               <button
@@ -145,13 +168,38 @@ export function ProjectDashboardPage() {
               </button>
               <button
                 onClick={() => navigate(`/project/${projectSlug}/queue`)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
               >
                 <ListOrdered className="w-4 h-4" />
                 큐 작업 실행
               </button>
+              <button
+                onClick={() => navigate(`/project/${projectSlug}/files`)}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+              >
+                <FolderOpen className="w-4 h-4" />
+                파일 탐색
+              </button>
             </div>
           </div>
+
+          {/* Active streaming banner */}
+          {activeSessions > 0 && (
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/20 rounded-xl border border-green-200/60 dark:border-green-800/40 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                </span>
+                <span className="text-sm font-semibold text-green-800 dark:text-green-200">
+                  {activeSessions}개 세션 활성
+                </span>
+              </div>
+              <p className="text-xs text-green-700/70 dark:text-green-300/60">
+                현재 AI가 응답을 생성하고 있습니다
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

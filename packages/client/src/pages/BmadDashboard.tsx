@@ -22,7 +22,7 @@ function BmadSkeleton() {
       {Array.from({ length: 2 }).map((_, i) => (
         <div
           key={i}
-          className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-4"
+          className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4"
         >
           <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
           <div className="space-y-2">
@@ -52,7 +52,7 @@ function BmadSummaryCard({ epics }: { epics: BmadEpicStatus[] }) {
   const { totalEpics, doneEpics, totalStories, doneStories, pct } = computeStats(epics);
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50 p-5">
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200 dark:border-blue-800/50 p-5">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         {/* Left: BMad badge + progress */}
         <div className="flex items-center gap-4 min-w-0">
@@ -83,7 +83,7 @@ function BmadSummaryCard({ epics }: { epics: BmadEpicStatus[] }) {
       </div>
 
       {/* Progress bar */}
-      <div className="mt-3 h-2 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
+      <div className="mt-3 h-2.5 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
         <div
           className="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all"
           style={{ width: `${pct}%` }}
@@ -111,7 +111,7 @@ function BmadSection({
       {/* Loading: show badge + skeleton */}
       {isLoading && (
         <>
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50 p-5">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200 dark:border-blue-800/50 p-5">
             <span className="text-sm font-semibold px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded-md">
               BMad
             </span>
@@ -124,7 +124,7 @@ function BmadSection({
       {error && (
         <div
           role="alert"
-          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4"
         >
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
@@ -175,13 +175,17 @@ export function BmadDashboard() {
   return (
     <>
       {isBmadProject && projectSlug && (
-        <BmadSection
-          data={data}
-          isLoading={isLoading}
-          error={error}
-          retry={retry}
-          projectSlug={projectSlug}
-        />
+        <>
+          <BmadSection
+            data={data}
+            isLoading={isLoading}
+            error={error}
+            retry={retry}
+            projectSlug={projectSlug}
+          />
+          {/* Visual separator between BMad and general sections */}
+          <div className="mx-6 border-t border-gray-200 dark:border-gray-700" />
+        </>
       )}
       <ProjectDashboardPage />
     </>

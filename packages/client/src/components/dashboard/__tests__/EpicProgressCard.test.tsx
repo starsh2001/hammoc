@@ -53,13 +53,15 @@ describe('EpicProgressCard', () => {
   it('renders progress bars with correct width', () => {
     const { container } = render(<EpicProgressCard epics={mockEpics} />);
 
-    const progressBars = container.querySelectorAll('.bg-blue-500');
-    expect(progressBars).toHaveLength(2);
+    // Progress bars use dynamic colors based on completion:
+    // Foundation (66%) = bg-blue-500, Chat (25%) = bg-amber-500
+    const allBars = container.querySelectorAll('[style*="width"]');
+    expect(allBars).toHaveLength(2);
 
     // Foundation: 2/3 = 66.66...%
-    expect((progressBars[0] as HTMLElement).style.width).toBe(`${(2 / 3) * 100}%`);
+    expect((allBars[0] as HTMLElement).style.width).toBe(`${(2 / 3) * 100}%`);
     // Chat: 1/4 = 25%
-    expect((progressBars[1] as HTMLElement).style.width).toBe('25%');
+    expect((allBars[1] as HTMLElement).style.width).toBe('25%');
   });
 
   // TC-EP-3: Click epic to expand story list (AC5)
