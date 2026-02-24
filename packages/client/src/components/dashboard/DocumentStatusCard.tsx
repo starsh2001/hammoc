@@ -302,11 +302,7 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
 
   const orderedDocs = buildOrderedDocs(documents);
 
-  // Split into groups: supplementary (before PRD), core (PRD + after), architecture
-  const prePrdDocs = orderedDocs.filter((d) => d.optional && orderedDocs.indexOf(d) < orderedDocs.findIndex((dd) => dd.key === 'prd'));
-  const coreDocs = orderedDocs.filter((d) => !d.optional || orderedDocs.indexOf(d) >= orderedDocs.findIndex((dd) => dd.key === 'prd'));
-
-  // Count completed
+  // Count completed required docs
   const totalRequired = orderedDocs.filter((d) => !d.optional).length;
   const doneRequired = orderedDocs.filter((d) => !d.optional && d.exists).length;
 
@@ -329,8 +325,8 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
       </div>
 
       <div className="space-y-1 text-sm">
-        {/* Core documents (PRD, Architecture, and post-PRD specs) */}
-        {coreDocs.map((doc) => (
+        {/* All documents in workflow order: Brainstorming → Brief → PRD → Spec → Architecture */}
+        {orderedDocs.map((doc) => (
           <DocRow
             key={doc.key}
             doc={doc}
@@ -342,25 +338,7 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
           />
         ))}
 
-        {/* Pre-PRD supplementary documents */}
-        {prePrdDocs.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2 space-y-1">
-            <p className="text-[11px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 mb-1">보조 문서</p>
-            {prePrdDocs.map((doc) => (
-              <DocRow
-                key={doc.key}
-                doc={doc}
-                isDocExpanded={expandedDocs.has(doc.key)}
-                toggleDoc={toggleDoc}
-                handleOpenDoc={handleOpenDoc}
-                handleCreateDoc={handleCreateDoc}
-                expandedDocs={expandedDocs}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Auxiliary Documents */}
+        {/* Auxiliary Documents (stories, QA, etc.) */}
         {auxiliaryDocuments.length > 0 && (
           <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2 space-y-1">
             <p className="text-[11px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 mb-1">산출물</p>
