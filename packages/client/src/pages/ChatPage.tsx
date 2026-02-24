@@ -30,7 +30,7 @@ import { useActiveAgent } from '../hooks/useActiveAgent';
 import { getSocket } from '../services/socket';
 import { generateUUID } from '../utils/uuid';
 import { getAgentId } from '../utils/agentUtils';
-import { debugLog } from '../utils/debugLogger';
+import { debugLog, debugLogger } from '../utils/debugLogger';
 import { ChatHeader } from '../components/ChatHeader';
 import { MessageArea } from '../components/MessageArea';
 import { InputArea } from '../components/InputArea';
@@ -238,9 +238,11 @@ export function ChatPage() {
   // Queue session lock detection (Story 15.4)
   const {
     isQueueLocked, isQueueRunning, isQueuePaused, isQueueCompleted, isQueueErrored,
+    isQueueOnOtherSession, queueActiveSessionId,
     progress: queueProgress, currentPromptPreview: queuePromptPreview,
     pauseReason: queuePauseReason, errorItem: queueErrorItem,
     pause: queuePause, resume: queueResume, abort: queueAbort,
+    dismissBanner: queueDismissBanner,
   } = useQueueSession(projectSlug || '', sessionId || '');
 
   // Star favorites per agent (Story 9.11)
@@ -320,14 +322,8 @@ export function ChatPage() {
     promptChainRef.current = updated;
     setPromptChain([...updated]);
 
-    console.log('[CHAIN-DEBUG] drainChain: scheduling send', {
-      next: next.slice(0, 30),
-      remainingLen: updated.length,
-    });
-
     chainSendTimerRef.current = setTimeout(() => {
       chainSendTimerRef.current = null;
-      console.log('[CHAIN-DEBUG] drainChain: firing send', { next: next.slice(0, 30) });
       internalSend(next);
     }, 1000);
   }, [internalSend]);
@@ -336,23 +332,18 @@ export function ChatPage() {
   const handleSendMessage = useCallback(
     (content: string, attachments?: Attachment[]) => {
       if (!workingDirectory) {
-        console.error('[ChatPage] Cannot send message: workingDirectory not found');
+        debugLogger.error('Cannot send message: workingDirectory not found');
         return;
       }
 
       // Chain mode: ALL user input goes to buffer. drainChain handles sending.
       if (chainMode) {
         if (promptChainRef.current.length >= 5) {
-          console.log('[CHAIN-DEBUG] handleSendMessage BLOCKED: chain full (5)', { content: content.slice(0, 30) });
           return;
         }
         const updatedChain = [...promptChainRef.current, content];
         promptChainRef.current = updatedChain;
         setPromptChain(updatedChain);
-        console.log('[CHAIN-DEBUG] handleSendMessage: queued', {
-          content: content.slice(0, 30),
-          newLen: updatedChain.length,
-        });
         // Try to drain immediately (will no-op if streaming or timer pending)
         drainChain();
         return;
@@ -367,10 +358,6 @@ export function ChatPage() {
   // Handle abort — also discard any prompt chain (Story 12.3)
   const handleAbort = useCallback(() => {
     if (useChatStore.getState().isStreaming) {
-      console.log('[CHAIN-DEBUG] handleAbort: clearing chain & timer', {
-        chainLen: promptChainRef.current.length,
-        timerActive: chainSendTimerRef.current !== null,
-      });
       setPromptChain([]);
       promptChainRef.current = [];
       // Cancel any pending chain auto-send timer
@@ -431,7 +418,7 @@ export function ChatPage() {
       fetchMessages(projectSlug, sessionId).then(() => {
         const chat = useChatStore.getState();
         const msgState = useMessageStore.getState();
-        console.log('[DEDUP] fetchMessages.then() callback', {
+        debugLog.chatpage('DEDUP fetchMessages.then() callback', {
           isStreaming: chat.isStreaming,
           isCompacting: chat.isCompacting,
           segCount: chat.streamingSegments.length,
@@ -496,29 +483,24 @@ export function ChatPage() {
   // Prompt chain: drain after streaming completes (normal completion).
   // streamCompleteCount is incremented only by completeStreaming, NOT by
   // abortStreaming or error handlers.
+  // Fires when chainMode is ON, OR when promptChain has items (dashboard 2-step send).
   const prevCompleteCountRef = useRef(streamCompleteCount);
   useEffect(() => {
     const prevCount = prevCompleteCountRef.current;
     prevCompleteCountRef.current = streamCompleteCount;
-    if (streamCompleteCount > prevCount && chainMode) {
-      console.log('[CHAIN-DEBUG] streamComplete → drainChain', {
-        chainLen: promptChainRef.current.length,
-      });
+    if (streamCompleteCount > prevCount && (chainMode || promptChainRef.current.length > 0)) {
       drainChain();
     }
   }, [streamCompleteCount, chainMode, drainChain]);
 
   // Safety net: drain chain after unexpected streaming stop (abort/error).
   // Only fires on genuine true→false transition (not initial mount).
+  // Fires when chainMode is ON, OR when promptChain has items (dashboard 2-step send).
   const prevIsStreamingForChainRef = useRef(isStreaming);
   useEffect(() => {
     const wasStreaming = prevIsStreamingForChainRef.current;
     prevIsStreamingForChainRef.current = isStreaming;
-    if (wasStreaming && !isStreaming && chainMode) {
-      console.log('[CHAIN-DEBUG] isStreaming false → drainChain', {
-        chainLen: promptChainRef.current.length,
-        timerActive: chainSendTimerRef.current !== null,
-      });
+    if (wasStreaming && !isStreaming && (chainMode || promptChainRef.current.length > 0)) {
       drainChain();
     }
   }, [isStreaming, chainMode, drainChain]);
@@ -530,7 +512,7 @@ export function ChatPage() {
   //   which continues in background for reconnection support)
   useEffect(() => {
     return () => {
-      console.log('[DEDUP] ChatPage UNMOUNT cleanup', {
+      debugLog.chatpage('DEDUP ChatPage UNMOUNT cleanup', {
         isStreaming: useChatStore.getState().isStreaming,
         segCount: useChatStore.getState().streamingSegments.length,
         msgCount: useMessageStore.getState().messages.length,
@@ -558,7 +540,7 @@ export function ChatPage() {
 
     const emitJoin = () => {
       const isStreaming = useChatStore.getState().isStreaming;
-      console.log('[DEDUP] emitJoin', {
+      debugLog.chatpage('DEDUP emitJoin', {
         sessionId,
         isStreaming,
         hasJoined,
@@ -767,7 +749,7 @@ export function ChatPage() {
   const displayMessages = useMemo(() => {
     const segCount = useChatStore.getState().streamingSegments.length;
     if (!isStreaming || isCompacting) {
-      console.log('[DEDUP] displayMessages: NO FILTER', {
+      debugLog.chatpage('DEDUP displayMessages: NO FILTER', {
         isStreaming, isCompacting, msgCount: messages.length,
         msgTypes: messages.map(m => m.type),
         segCount,
@@ -783,7 +765,7 @@ export function ChatPage() {
     }
     if (lastUserIdx >= 0 && lastUserIdx < messages.length - 1) {
       const filtered = messages.slice(0, lastUserIdx + 1);
-      console.log('[DEDUP] displayMessages: FILTERED', {
+      debugLog.chatpage('DEDUP displayMessages: FILTERED', {
         isStreaming, isCompacting,
         totalMsgCount: messages.length,
         filteredMsgCount: filtered.length,
@@ -793,7 +775,7 @@ export function ChatPage() {
       });
       return filtered;
     }
-    console.log('[DEDUP] displayMessages: NO TRIM NEEDED (user is last)', {
+    debugLog.chatpage('DEDUP displayMessages: NO TRIM NEEDED (user is last)', {
       isStreaming, msgCount: messages.length,
       msgTypes: messages.map(m => m.type),
       segCount,
@@ -829,13 +811,15 @@ export function ChatPage() {
     />
   );
 
-  const showQueueBanner = isQueueLocked || isQueueCompleted || isQueueErrored;
+  const showQueueBanner = isQueueLocked || isQueueCompleted || isQueueErrored || isQueueOnOtherSession;
   const queueBannerElement = showQueueBanner ? (
     <QueueLockedBanner
       isRunning={isQueueRunning}
       isPaused={isQueuePaused}
       isCompleted={isQueueCompleted}
       isErrored={isQueueErrored}
+      isOnOtherSession={isQueueOnOtherSession}
+      activeSessionId={queueActiveSessionId}
       progress={queueProgress}
       currentPromptPreview={queuePromptPreview}
       pauseReason={queuePauseReason}
@@ -844,6 +828,7 @@ export function ChatPage() {
       onPause={queuePause}
       onResume={queueResume}
       onAbort={queueAbort}
+      onDismiss={queueDismissBanner}
     />
   ) : null;
 
