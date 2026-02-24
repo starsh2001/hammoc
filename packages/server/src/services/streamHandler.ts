@@ -524,7 +524,11 @@ export class StreamHandler {
         return {
           type: ContentBlockType.TOOL_RESULT,
           toolUseId: (block.tool_use_id as string) ?? '',
-          content: (block.content as string) ?? '',
+          content: typeof block.content === 'string'
+            ? block.content
+            : Array.isArray(block.content)
+              ? block.content.map((c: Record<string, unknown>) => (c.text as string) || '').join('')
+              : '',
           isError: (block.is_error as boolean) ?? false,
         } as ParsedToolResultBlock;
 
@@ -782,7 +786,8 @@ export class StreamHandler {
     callbacks: StreamCallbacks
   ): void {
     // Strip SDK XML wrapper tags (e.g. <tool_use_error>...</tool_use_error>)
-    const cleanContent = block.content.replace(/<\/?(?:tool_use_error|error|result)>/g, '').trim();
+    const rawContent = typeof block.content === 'string' ? block.content : '';
+    const cleanContent = rawContent.replace(/<\/?(?:tool_use_error|error|result)>/g, '').trim();
     const result: ToolResult = {
       success: !block.isError,
       output: block.isError ? undefined : cleanContent,

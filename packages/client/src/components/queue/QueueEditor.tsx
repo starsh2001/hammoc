@@ -116,18 +116,16 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
   const canRun = !isLocked && parsedItems.length > 0;
 
   return (
-    <div className="flex flex-col h-full p-4 gap-3 overflow-auto">
+    <div className="flex flex-col h-full overflow-auto">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1 px-4 py-3 min-h-[52px] bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <button
           onClick={handleFileLoad}
           disabled={isLocked}
           aria-label="파일 로드"
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg
-            bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
-            hover:bg-gray-200 dark:hover:bg-gray-600
-            disabled:opacity-50 disabled:cursor-not-allowed
-            min-w-[44px] min-h-[44px]"
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg
+            hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300
+            disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Upload className="w-4 h-4" />
           <span className="hidden sm:inline">파일 로드</span>
@@ -145,40 +143,35 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           onClick={() => setTemplateDialogOpen(true)}
           disabled={isLocked}
           aria-label="템플릿으로 생성"
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg
-            bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
-            hover:bg-gray-200 dark:hover:bg-gray-600
-            disabled:opacity-50 disabled:cursor-not-allowed
-            min-w-[44px] min-h-[44px]"
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg
+            hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300
+            disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <FileText className="w-4 h-4" />
-          <span className="hidden sm:inline">템플릿으로 생성</span>
+          <span className="hidden sm:inline">템플릿</span>
         </button>
 
-        <button
-          onClick={() => setIsAutoWrap((prev) => !prev)}
-          aria-label="Toggle wrap mode"
-          aria-pressed={isAutoWrap}
-          className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg
-            min-w-[44px] min-h-[44px]
-            ${isAutoWrap
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
-        >
-          <span>{isAutoWrap ? 'Auto wrap' : 'No wrap'}</span>
-        </button>
+        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+          <input
+            type="checkbox"
+            checked={isAutoWrap}
+            onChange={() => setIsAutoWrap((prev) => !prev)}
+            className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+          />
+          Wrap
+        </label>
 
         <div className="flex-1" />
 
-        {/* Run button — only shown when queue is idle */}
+        {/* Run button */}
         <button
           onClick={handleRun}
           disabled={!canRun}
           aria-label="실행"
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg
-            bg-blue-600 text-white hover:bg-blue-700
-            disabled:opacity-50 disabled:cursor-not-allowed
-            min-w-[44px] min-h-[44px]"
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg
+            bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white
+            hover:bg-blue-200 dark:hover:bg-blue-500
+            disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
         >
           {runner.isStarting ? (
             <>
@@ -194,15 +187,39 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
         </button>
       </div>
 
+      {/* Content area */}
+      <div className="flex flex-col flex-1 p-4 gap-3 overflow-auto">
       {/* Editor area — two-wrapper overlay pattern.
           Outer div: fixed height + overflow:auto (scrolls).
           Inner div: position:relative, no overflow (sizes to pre content).
           Pre: normal flow (determines inner div height).
           Textarea: absolute inset:0 (matches inner div = pre size, scrolls with it). */}
       <div
-        className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-900 h-[200px] md:h-[300px]"
-        style={{ overflow: 'auto' }}
+        className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-900 flex-1 min-h-[200px]"
+        style={{ overflow: 'auto', position: 'relative' }}
       >
+        {/* Empty state overlay */}
+        {!script && !isLocked && (
+          <div
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 pointer-events-none"
+          >
+            <FileText className="w-10 h-10 text-gray-600" />
+            <div className="text-center px-4">
+              <p className="text-sm text-gray-400 mb-2">큐 스크립트를 작성하세요</p>
+              <div className="text-xs text-gray-500 space-y-0.5">
+                <p>메시지를 한 줄씩 입력하면 순서대로 전송됩니다</p>
+                <p className="font-mono text-gray-600">
+                  <span className="text-blue-400">@new</span> 새 세션 &nbsp;
+                  <span className="text-blue-400">@save</span> 저장 &nbsp;
+                  <span className="text-blue-400">@pause</span> 일시정지 &nbsp;
+                  <span className="text-green-400">#주석</span>
+                </p>
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-600">클릭하여 편집 시작 · 파일 로드 또는 템플릿 사용 가능</p>
+          </div>
+        )}
+
         <div style={{ position: 'relative', minHeight: '100%' }}>
           <pre
             aria-hidden="true"
@@ -221,7 +238,6 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
             onKeyDown={handleKeyDown}
             wrap={isAutoWrap ? 'soft' : 'off'}
             readOnly={isLocked}
-            placeholder="큐 스크립트를 입력하세요... (예: @new, @save, @pause, #주석)"
             aria-label="큐 스크립트 에디터"
             aria-describedby={warnings.length > 0 ? 'queue-warnings' : undefined}
             className="queue-editor-textarea"
@@ -261,7 +277,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
         </div>
       )}
 
-      {/* Runner panel */}
+      {/* Runner panel — show when we have parsed items AND active execution state */}
       {parsedItems.length > 0 && (runner.isRunning || runner.isPaused || runner.completedItems.size > 0 || runner.errorItem) && (
         <QueueRunnerPanel
           items={parsedItems}
@@ -277,6 +293,19 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
         />
       )}
 
+      {/* Standalone error banner — shown when error persists but parsedItems are empty (e.g. script cleared/page reopened) */}
+      {parsedItems.length === 0 && runner.errorItem && !runner.isRunning && (
+        <div className="flex items-center gap-2 px-3 py-2 text-sm rounded-md
+          bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
+          role="alert"
+        >
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span className="flex-1">
+            이전 큐 실행 오류 (아이템 {runner.errorItem.index + 1}): {runner.errorItem.error}
+          </span>
+        </div>
+      )}
+
       {/* Template dialog */}
       <QueueTemplateDialog
         projectSlug={projectSlug}
@@ -287,6 +316,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           setTemplateDialogOpen(false);
         }}
       />
+      </div>
     </div>
   );
 }

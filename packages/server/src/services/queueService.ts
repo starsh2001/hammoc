@@ -59,6 +59,7 @@ export class QueueService {
   private abortController: AbortController | null = null;
   private pauseReason: string | undefined = undefined;
   private resumeSessionId: string | null = null;
+  private lastError: { itemIndex: number; error: string } | null = null;
   constructor(
     private projectService: ProjectService,
     private notificationService: NotificationService,
@@ -88,6 +89,7 @@ export class QueueService {
     this.currentModel = undefined;
     this.resumeSessionId = null;
     this.pauseReason = undefined;
+    this.lastError = null;
     this.emitProgress('running');
     await this.notificationService.notifyQueueStart(items.length, this.buildSessionUrl());
     await this.executeLoop();
@@ -111,6 +113,7 @@ export class QueueService {
   async abort(): Promise<void> {
     this._isRunning = false;
     this.isExecuting = false;
+    this.lastError = null;
     this.abortController?.abort();
     this.emitProgress('completed');
   }
@@ -124,6 +127,7 @@ export class QueueService {
       pauseReason: this.pauseReason,
       lockedSessionId: this.lockedSessionId,
       currentModel: this.currentModel,
+      lastError: this.lastError,
     };
   }
 
@@ -148,6 +152,7 @@ export class QueueService {
 
       if (this.currentIndex >= this.items.length && this._isRunning) {
         this._isRunning = false;
+        this.lastError = null; // clear error on successful completion
         this.emitProgress('completed');
         await this.notificationService.notifyQueueComplete(this.buildSessionUrl());
       }
@@ -429,6 +434,7 @@ export class QueueService {
   private pauseWithError(reason: string): void {
     this.isPaused = true;
     this.pauseReason = reason;
+    this.lastError = { itemIndex: this.currentIndex, error: reason };
     this.emitProgress('paused');
     this.emitQueueError(reason);
   }

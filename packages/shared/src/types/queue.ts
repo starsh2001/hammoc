@@ -41,6 +41,8 @@ export interface QueueExecutionState {
   pauseReason?: string;
   lockedSessionId: string | null;
   currentModel?: string;
+  /** Last error from the most recent queue run (persists after run ends) */
+  lastError?: { itemIndex: number; error: string } | null;
 }
 
 export interface QueueProgressEvent {

@@ -136,7 +136,12 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   },
 
   setStarting: (starting: boolean) => {
-    set({ isStarting: starting, isAborted: false });
+    set({
+      isStarting: starting,
+      isAborted: false,
+      // Clear previous run's error when starting a new run
+      ...(starting ? { errorItem: null } : {}),
+    });
   },
 
   syncFromStatus: (state: QueueExecutionState) => {
@@ -154,6 +159,10 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       lockedSessionId: state.lockedSessionId,
       currentModel: state.currentModel,
       completedItems,
+      // Restore error from server state, or clear if server has none
+      errorItem: state.lastError
+        ? { index: state.lastError.itemIndex, error: state.lastError.error }
+        : null,
     });
   },
 
