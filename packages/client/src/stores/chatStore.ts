@@ -162,6 +162,9 @@ interface ChatState {
   segmentsPendingClear: boolean;
   /** Timestamp when streaming completed (cooldown guard for fetchMessages) */
   streamCompletedAt: number | null;
+  /** Counter incremented only on normal streaming completion (not abort/error).
+   *  Used by prompt chain to distinguish normal completion from error/abort. */
+  streamCompleteCount: number;
   /** Project-level settings for override application */
   projectSettings: ProjectSettings | null;
 }
@@ -273,6 +276,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   isSessionLocked: false,
   segmentsPendingClear: false,
   streamCompletedAt: null,
+  streamCompleteCount: 0,
   projectSettings: null,
   permissionMode: usePreferencesStore.getState().preferences.permissionMode ?? 'default',
   contextUsage: null,
@@ -633,6 +637,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       segmentsPendingClear: false,
       streamCompletedAt: Date.now(),
+      streamCompleteCount: get().streamCompleteCount + 1,
     });
   },
 

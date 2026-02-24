@@ -13,7 +13,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Square, Paperclip, X, Lock } from 'lucide-react';
+import { Send, Square, Paperclip, X, Lock, Link2, Plus } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useChatStore } from '../stores/chatStore';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -151,6 +151,16 @@ interface ChatInputProps {
   onRemoveStarFavorite?: (command: string) => void;
   /** Whether the session is queue-locked (Story 15.4) */
   queueLocked?: boolean;
+  /** Prompt chain mode — queue messages during streaming (Story 12.3) */
+  chainMode?: boolean;
+  /** Toggle chain mode callback */
+  onChainModeToggle?: () => void;
+  /** Number of prompts currently in the chain (for UI display, may be stale) */
+  chainCount?: number;
+  /** Maximum chain size (default 5) */
+  chainMax?: number;
+  /** Returns fresh chain length from ref (bypasses React render cycle staleness) */
+  getChainLength?: () => number;
 }
 
 export function ChatInput({
@@ -185,6 +195,11 @@ export function ChatInput({
   onReorderStarFavorites,
   onRemoveStarFavorite,
   queueLocked = false,
+  chainMode = false,
+  onChainModeToggle,
+  chainCount = 0,
+  chainMax = 5,
+  getChainLength,
 }: ChatInputProps) {
   // Session lock state (another browser took over this session)
   const isSessionLocked = useChatStore((s) => s.isSessionLocked);
@@ -543,6 +558,11 @@ export function ChatInput({
     if (isSessionLocked || queueLocked) return;
     const trimmedContent = content.trim();
     if (!trimmedContent) return;
+    // Block submit during streaming when chain mode is OFF (no queuing available)
+    if (isStreaming && !chainMode) return;
+    // Block submit when chain is full — uses getChainLength() for fresh ref-based
+    // value that bypasses React's async rendering (chainCount prop can be stale).
+    if (chainMode && (getChainLength?.() ?? chainCount) >= chainMax) return;
 
     // Show warning if not connected
     if (!isConnected) {
@@ -567,7 +587,7 @@ export function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-  }, [content, isConnected, isSessionLocked, queueLocked, onSend, attachments]);
+  }, [content, isConnected, isSessionLocked, isStreaming, queueLocked, onSend, attachments, chainMode, chainMax, getChainLength, chainCount]);
 
   // Keyboard handler
   const handleKeyDown = useCallback(
@@ -698,7 +718,8 @@ export function ChatInput({
     }
   }, [isTouchDevice]);
 
-  const isButtonDisabled = !content.trim();
+  const isChainFull = chainMode && chainCount >= chainMax;
+  const isButtonDisabled = !content.trim() || isChainFull;
 
   const isAttachDisabled = attachments.length >= IMAGE_CONSTRAINTS.MAX_COUNT;
 
@@ -870,11 +891,10 @@ export function ChatInput({
         )}
 
         <div
-          className={`flex items-center
-                     bg-white dark:bg-gray-800
-                     border border-gray-300 dark:border-gray-600
-                     rounded-lg
-                     focus-within:ring-2 ${modeColors.ring}`}
+          className={`flex items-center rounded-lg transition-colors duration-150
+                     ${chainMode
+                       ? 'bg-violet-50 dark:bg-violet-950/30 border border-violet-300 dark:border-violet-700 focus-within:ring-2 focus-within:ring-violet-500 dark:focus-within:ring-violet-400'
+                       : `bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 focus-within:ring-2 ${modeColors.ring}`}`}
           onClick={() => textareaRef.current?.focus()}
         >
           <textarea
@@ -894,7 +914,7 @@ export function ChatInput({
               userHasFocusedRef.current = false;
             }}
             disabled={isSessionLocked || queueLocked || undefined}
-            placeholder={isSessionLocked ? '다른 브라우저에서 사용 중 — 새로고침 후 사용 가능' : queueLocked ? '큐 러너가 제어 중' : placeholder}
+            placeholder={isSessionLocked ? '다른 브라우저에서 사용 중 — 새로고침 후 사용 가능' : queueLocked ? '큐 러너가 제어 중' : isStreaming && chainMode ? (isChainFull ? '체인 최대 5개' : '체인에 추가...') : placeholder}
             role={showCommands || showStarCommands ? 'combobox' : undefined}
             aria-label="메시지 입력"
             aria-describedby="input-hint"
@@ -957,6 +977,36 @@ export function ChatInput({
           />
         )}
 
+        {/* Prompt chain mode toggle (Story 12.3) */}
+        {onChainModeToggle && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={onChainModeToggle}
+            onPointerDown={preventFocusLoss}
+            disabled={queueLocked}
+            aria-label={chainMode ? '체인 모드 끄기' : '체인 모드 켜기'}
+            aria-pressed={chainMode}
+            title="프롬프트 체인"
+            className={`relative p-1 rounded-md flex-shrink-0 flex items-center justify-center transition-all duration-150 cursor-pointer
+                       ${chainMode
+                         ? 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 text-white'
+                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2`}
+            style={{ height: '28px', width: '28px' }}
+          >
+            <Link2 size={14} aria-hidden="true" />
+            {chainMode && chainCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] flex items-center justify-center
+                             text-[10px] font-bold leading-none bg-violet-400 dark:bg-violet-300 text-white dark:text-violet-900
+                             rounded-full px-[3px]">
+                {chainCount}
+              </span>
+            )}
+          </button>
+        )}
+
         <div className="flex-1" />
 
         {/* Right-side buttons with slight right offset */}
@@ -975,7 +1025,7 @@ export function ChatInput({
           onPointerDown={preventFocusLoss}
           disabled={isAttachDisabled || queueLocked}
           aria-label="이미지 첨부"
-          className="p-1 rounded-md flex-shrink-0
+          className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
                      text-gray-500 dark:text-gray-400
                      hover:text-gray-700 dark:hover:text-gray-200
                      hover:bg-gray-100 dark:hover:bg-gray-700
@@ -993,7 +1043,7 @@ export function ChatInput({
             disabled
             onPointerDown={preventFocusLoss}
             aria-label="세션 잠김"
-            className="p-1 rounded-md flex-shrink-0
+            className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
                        bg-gray-400 dark:bg-gray-600
                        text-white
                        opacity-50 cursor-not-allowed"
@@ -1001,13 +1051,13 @@ export function ChatInput({
           >
             <Lock size={16} aria-hidden="true" />
           </button>
-        ) : isStreaming && onAbort ? (
+        ) : isStreaming && onAbort && !chainMode ? (
           <button
             type="button"
             onClick={onAbort}
             onPointerDown={preventFocusLoss}
             aria-label="중단"
-            className="p-1 rounded-md flex-shrink-0
+            className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
                        bg-red-600 hover:bg-red-700
                        dark:bg-red-500 dark:hover:bg-red-600
                        text-white
@@ -1023,16 +1073,20 @@ export function ChatInput({
             onClick={handleButtonClick}
             onPointerDown={preventFocusLoss}
             disabled={isButtonDisabled}
-            aria-label="전송"
-            className={`p-1 rounded-md flex-shrink-0
-                       ${modeColors.button}
+            aria-label={chainMode ? '체인에 추가' : '전송'}
+            className={`p-1 rounded-md flex-shrink-0 flex items-center justify-center
+                       ${chainMode
+                         ? 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600'
+                         : modeColors.button}
                        text-white
                        disabled:opacity-50 disabled:cursor-not-allowed
-                       focus:outline-none focus:ring-2 ${modeColors.ring} focus:ring-offset-2
+                       focus:outline-none focus:ring-2 ${chainMode ? 'focus:ring-violet-500' : modeColors.ring} focus:ring-offset-2
                        transition-all duration-150`}
             style={{ height: '28px', width: '28px' }}
           >
-            <Send size={16} aria-hidden="true" />
+            {chainMode
+              ? <Plus size={16} aria-hidden="true" />
+              : <Send size={16} aria-hidden="true" />}
           </button>
         )}
         </div>
