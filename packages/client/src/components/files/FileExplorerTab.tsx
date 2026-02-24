@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, Loader2, List, LayoutGrid } from 'lucide-react';
+import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, FolderRoot, Loader2, List, LayoutGrid } from 'lucide-react';
 
 import type { FileSearchResult } from '@bmad-studio/shared';
 import { useFileStore } from '../../stores/fileStore.js';
@@ -155,77 +155,95 @@ export function FileExplorerTab() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Breadcrumb */}
-      {!isSearching && (
-        <nav aria-label="Breadcrumb" className="flex-shrink-0 px-4 py-2">
-          <ol className="flex items-center gap-1 text-sm">
-            {segments.map((seg, i) => (
-              <li key={seg.path} className="flex items-center gap-1">
-                {i > 0 && (
-                  <ChevronRight className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
-                )}
-                {i === segments.length - 1 ? (
-                  <span className="font-medium text-gray-900 dark:text-white" aria-current="page">
-                    {seg.name}
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => setCurrentPath(seg.path)}
-                    className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-                  >
-                    {seg.name}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ol>
-        </nav>
-      )}
-
-      {/* Toolbar */}
-      <div className="flex-shrink-0 px-4 py-2 flex items-center gap-2">
-        {/* Search input */}
-        <div className="relative flex items-center flex-1">
-          <Search className="absolute left-3 w-4 h-4 text-gray-400" aria-hidden="true" />
-          <input
-            type="text"
-            value={filterText}
-            onChange={(e) => setFilterText(e.target.value)}
-            placeholder="파일 검색..."
-            className="w-full pl-9 pr-8 py-1.5 text-sm bg-gray-100 dark:bg-gray-800 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:placeholder-white"
-          />
-          {filterText && (
-            <button
-              onClick={() => setFilterText('')}
-              className="absolute right-2 w-4 h-4 text-gray-400 hover:text-gray-600 cursor-pointer"
-              aria-label="검색어 지우기"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      {/* Toolbar — matches sessions / queue runner style */}
+      <div className="sticky top-0 z-[5] bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-4 py-2 gap-3">
+          {/* Breadcrumb — left side */}
+          {!isSearching ? (
+            <nav aria-label="Breadcrumb" className="flex-shrink min-w-0">
+              <ol className="flex items-center gap-0.5 text-xs">
+                {segments.map((seg, i) => (
+                  <li key={seg.path} className="flex items-center gap-0.5 min-w-0">
+                    {i > 0 && (
+                      <ChevronRight className="w-3 h-3 text-gray-300 dark:text-gray-600 flex-shrink-0" aria-hidden="true" />
+                    )}
+                    {i === segments.length - 1 ? (
+                      <span className="inline-flex items-center gap-1 font-medium text-gray-800 dark:text-gray-200 truncate" aria-current="page">
+                        {i === 0 && <FolderRoot className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />}
+                        {seg.name}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setCurrentPath(seg.path)}
+                        className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400
+                          hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
+                      >
+                        {i === 0 && <FolderRoot className="w-3.5 h-3.5 flex-shrink-0" />}
+                        {seg.name}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          ) : (
+            <div />
           )}
+
+          {/* Actions — right side */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Search input */}
+            <div className="relative flex items-center">
+              <Search className="absolute left-2.5 w-3.5 h-3.5 text-gray-400 pointer-events-none" aria-hidden="true" />
+              <input
+                type="text"
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                placeholder="검색..."
+                className="w-36 sm:w-44 pl-8 pr-7 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 dark:text-white
+                  border border-gray-200 dark:border-gray-700 rounded-lg
+                  focus:outline-none focus:ring-1 focus:ring-blue-500 focus:w-56
+                  dark:placeholder-gray-400 transition-all"
+              />
+              {filterText && (
+                <button
+                  onClick={() => setFilterText('')}
+                  className="absolute right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  aria-label="검색어 지우기"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+
+            {/* Hidden files toggle */}
+            <button
+              onClick={() => setShowHidden((prev) => !prev)}
+              title={showHidden ? '숨김 파일 숨기기' : '숨김 파일 표시'}
+              className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${
+                showHidden
+                  ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+              aria-label={showHidden ? '숨김 파일 숨기기' : '숨김 파일 표시'}
+            >
+              {showHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            </button>
+
+            {/* View mode toggle */}
+            <button
+              onClick={() => setViewMode((prev) => (prev === 'list' ? 'grid' : 'list'))}
+              title={viewMode === 'list' ? '그리드 뷰' : '리스트 뷰'}
+              className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors
+                text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+              aria-label={viewMode === 'list' ? '그리드 뷰' : '리스트 뷰'}
+            >
+              {viewMode === 'list' ? <LayoutGrid className="w-3.5 h-3.5" /> : <List className="w-3.5 h-3.5" />}
+            </button>
+          </div>
         </div>
-
-        {/* Hidden files toggle */}
-        <button
-          onClick={() => setShowHidden((prev) => !prev)}
-          className={`p-1.5 rounded-lg transition-colors ${
-            showHidden
-              ? 'text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
-              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-          }`}
-          aria-label={showHidden ? '숨김 파일 숨기기' : '숨김 파일 표시'}
-        >
-          {showHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-        </button>
-
-        {/* View mode toggle */}
-        <button
-          onClick={() => setViewMode((prev) => (prev === 'list' ? 'grid' : 'list'))}
-          className="p-1.5 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-          aria-label={viewMode === 'list' ? '그리드 뷰' : '리스트 뷰'}
-        >
-          {viewMode === 'list' ? <LayoutGrid className="w-4 h-4" /> : <List className="w-4 h-4" />}
-        </button>
       </div>
 
       {/* Content: Search results or FileTree */}

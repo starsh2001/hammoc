@@ -24,7 +24,15 @@ html, body {
   animation: blink 1s step-end infinite;
 }
 
-/* Queue editor textarea selection (pseudo-elements cannot be set inline) */
+/* Queue editor textarea — theme-aware caret + selection */
+.queue-editor-textarea {
+  caret-color: #1f2937; /* gray-800 for light mode */
+}
+
+.dark .queue-editor-textarea {
+  caret-color: #e5e7eb; /* gray-200 for dark mode */
+}
+
 .queue-editor-textarea::selection {
   -webkit-text-fill-color: transparent;
   background-color: rgba(59, 130, 246, 0.4);

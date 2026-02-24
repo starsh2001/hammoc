@@ -22,7 +22,7 @@ export function highlightScript(script: string): string {
 
     // Comment line
     if (trimmed.startsWith('#')) {
-      return `<span class="text-gray-500">${escapeHtml(line)}</span>`;
+      return `<span class="text-gray-500 dark:text-gray-500">${escapeHtml(line)}</span>`;
     }
 
     // Escaped directive
@@ -32,23 +32,23 @@ export function highlightScript(script: string): string {
 
     // Multiline markers
     if (trimmed.toLowerCase() === '@(' || trimmed.toLowerCase() === '@)') {
-      return `<span class="text-blue-400">${escapeHtml(line)}</span>`;
+      return `<span class="text-blue-700 dark:text-blue-400">${escapeHtml(line)}</span>`;
     }
 
     // Directives
     if (trimmed.startsWith('@')) {
       const spaceIndex = trimmed.indexOf(' ');
       if (spaceIndex === -1) {
-        return `<span class="text-purple-400">${escapeHtml(line)}</span>`;
+        return `<span class="text-purple-700 dark:text-purple-400">${escapeHtml(line)}</span>`;
       }
       // Find directive end in original line (preserving leading whitespace)
       const leadingSpaces = line.length - line.trimStart().length;
       const directivePart = line.slice(0, leadingSpaces + spaceIndex);
       const argPart = line.slice(leadingSpaces + spaceIndex);
-      return `<span class="text-purple-400">${escapeHtml(directivePart)}</span><span class="text-emerald-400">${escapeHtml(argPart)}</span>`;
+      return `<span class="text-purple-700 dark:text-purple-400">${escapeHtml(directivePart)}</span><span class="text-teal-600 dark:text-emerald-400">${escapeHtml(argPart)}</span>`;
     }
 
     // Regular prompt text
-    return `<span class="text-gray-100 dark:text-gray-200">${escapeHtml(line)}</span>`;
+    return `<span class="text-gray-900 dark:text-gray-200">${escapeHtml(line)}</span>`;
   }).join('\n');
 }
