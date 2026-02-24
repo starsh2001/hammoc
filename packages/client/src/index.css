@@ -37,3 +37,16 @@ html.narrow-layout .content-container {
   margin-left: auto;
   margin-right: auto;
 }
+
+/* Banner: always full-width on mobile, respect layout mode on desktop */
+html.narrow-layout .content-container.banner-full-mobile {
+  max-width: none;
+}
+
+@media (min-width: 640px) {
+  html.narrow-layout .content-container.banner-full-mobile {
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
