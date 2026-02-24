@@ -5,6 +5,24 @@ import { initializeWebSocket } from './handlers/websocket.js';
 import { AuthConfigService } from './services/authConfigService.js';
 import { notificationService } from './services/notificationService.js';
 import { resetPassword } from './cli/passwordSetup.js';
+import { createLogger, getEffectiveLogLevel } from './utils/logger.js';
+import { LogLevel } from '@bmad-studio/shared';
+import path from 'path';
+
+const log = createLogger('server');
+
+// Capture uncaught crashes to log file before process dies
+process.on('uncaughtException', (error) => {
+  log.error('UNCAUGHT EXCEPTION — process will exit:', error.message);
+  log.error('Stack:', error.stack ?? '(no stack)');
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  log.error('UNHANDLED REJECTION:', msg);
+  if (stack) log.error('Stack:', stack);
+});
 
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
@@ -38,7 +56,7 @@ async function main() {
 
   // Password not configured: skip CLI prompt, let web UI handle setup
   if (!authConfig.isPasswordConfigured()) {
-    console.log('No password configured. Please set up via web browser.');
+    log.info('No password configured. Please set up via web browser.');
   }
 
   // Create Express app (async for session secret loading)
@@ -62,10 +80,10 @@ async function main() {
   function startListening(attempt: number) {
     httpServer.once('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE' && attempt < MAX_RETRIES) {
-        console.log(`Port ${PORT} in use, retrying in ${RETRY_DELAY_MS}ms... (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        log.info(`Port ${PORT} in use, retrying in ${RETRY_DELAY_MS}ms... (attempt ${attempt + 1}/${MAX_RETRIES})`);
         setTimeout(() => startListening(attempt + 1), RETRY_DELAY_MS);
       } else {
-        console.error('Failed to start server:', err);
+        log.error('Failed to start server:', err);
         process.exit(1);
       }
     });
@@ -73,17 +91,27 @@ async function main() {
     httpServer.listen(Number(PORT), HOST, () => {
       const isProduction = process.env.NODE_ENV === 'production';
       const localIP = getLocalIP();
-      console.log(`BMad Studio Server running on:`);
-      console.log(`  Local:   http://localhost:${PORT}`);
-      if (localIP) console.log(`  Network: http://${localIP}:${PORT}`);
-      console.log(`  Mode:    ${isProduction ? 'production (serving static client files)' : 'development'}`);
+      log.info(`BMad Studio Server running on:`);
+      log.info(`  Local:   http://localhost:${PORT}`);
+      if (localIP) log.info(`  Network: http://${localIP}:${PORT}`);
+      log.info(`  Mode:    ${isProduction ? 'production (serving static client files)' : 'development'}`);
+      log.info(`  Log:     ${LogLevel[getEffectiveLogLevel()]} → ${path.resolve(process.cwd(), 'logs')}`);
     });
   }
 
   startListening(0);
+
+  // Graceful shutdown: release port before process exits (critical for --watch restart on Windows)
+  const shutdown = () => {
+    httpServer.close(() => process.exit(0));
+    // Force exit if close hangs longer than 2s
+    setTimeout(() => process.exit(0), 2000).unref();
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 main().catch((error) => {
-  console.error('Failed to start server:', error);
+  log.error('Failed to start server:', error);
   process.exit(1);
 });

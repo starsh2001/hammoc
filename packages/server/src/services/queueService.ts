@@ -24,6 +24,9 @@ import type {
 import { ERROR_CODES } from '@bmad-studio/shared';
 import { ChatService } from './chatService.js';
 import { parseSDKError } from '../utils/errors.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('queueService');
 import { projectService as _ps } from './projectService.js';
 import { notificationService as _ns } from './notificationService.js';
 import { preferencesService as _prs } from './preferencesService.js';
@@ -60,6 +63,11 @@ export class QueueService {
   private pauseReason: string | undefined = undefined;
   private resumeSessionId: string | null = null;
   private lastError: { itemIndex: number; error: string } | null = null;
+  /** Terminal states that persist until manually dismissed */
+  private _isCompleted: boolean = false;
+  private _isErrored: boolean = false;
+  /** Snapshot of totalItems for completed/errored display */
+  private _finalTotalItems: number = 0;
   constructor(
     private projectService: ProjectService,
     private notificationService: NotificationService,
@@ -90,19 +98,32 @@ export class QueueService {
     this.resumeSessionId = null;
     this.pauseReason = undefined;
     this.lastError = null;
+    this._isCompleted = false;
+    this._isErrored = false;
+    this._finalTotalItems = 0;
+    log.info(`START: project="${projectSlug}", items=${items.length}, sessionId=${sessionId ?? '(new)'}, cwd="${this.workingDirectory}"`);
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      log.verbose(`item[${i}]: prompt=${JSON.stringify((it.prompt || '').slice(0, 80))}${it.isNewSession ? ' [NEW_SESSION]' : ''}${it.isBreakpoint ? ' [BREAKPOINT]' : ''}${it.modelName ? ` model=${it.modelName}` : ''}${it.saveSessionName ? ` save="${it.saveSessionName}"` : ''}${it.loadSessionName ? ` load="${it.loadSessionName}"` : ''}${it.delayMs ? ` delay=${it.delayMs}ms` : ''}`);
+    }
     this.emitProgress('running');
     await this.notificationService.notifyQueueStart(items.length, this.buildSessionUrl());
     await this.executeLoop();
   }
 
   async pause(): Promise<void> {
+    log.info(`PAUSE: index=${this.currentIndex}/${this.items.length}, sessionId=${this.currentSessionId}`);
     this.isPaused = true;
     this.pauseReason = 'User paused';
     this.emitProgress('paused');
   }
 
   async resume(): Promise<void> {
-    if (!this.isPaused || this.isExecuting) return;
+    if (!this.isPaused || this.isExecuting) {
+      log.debug(`RESUME skipped: isPaused=${this.isPaused}, isExecuting=${this.isExecuting}`);
+      return;
+    }
+    log.info(`RESUME: index=${this.currentIndex}/${this.items.length}, sessionId=${this.currentSessionId}`);
     this.abortController = new AbortController();
     this.isPaused = false;
     this.pauseReason = undefined;
@@ -111,34 +132,60 @@ export class QueueService {
   }
 
   async abort(): Promise<void> {
+    log.info(`ABORT: index=${this.currentIndex}/${this.items.length}, sessionId=${this.currentSessionId}`);
     this._isRunning = false;
     this.isExecuting = false;
     this.lastError = null;
+    this._isCompleted = false;
+    this._isErrored = false;
     this.abortController?.abort();
     this.emitProgress('completed');
+  }
+
+  /** Dismiss the completed/errored terminal state banner */
+  dismiss(): void {
+    log.info(`DISMISS: wasCompleted=${this._isCompleted}, wasErrored=${this._isErrored}`);
+    this._isCompleted = false;
+    this._isErrored = false;
+    this.lastError = null;
+    this._finalTotalItems = 0;
   }
 
   getState() {
     return {
       isRunning: this._isRunning,
       isPaused: this.isPaused,
+      isCompleted: this._isCompleted,
+      isErrored: this._isErrored,
       currentIndex: this.currentIndex,
-      totalItems: this.items.length,
+      totalItems: this._isRunning || this.isPaused ? this.items.length : this._finalTotalItems,
       pauseReason: this.pauseReason,
       lockedSessionId: this.lockedSessionId,
       currentModel: this.currentModel,
       lastError: this.lastError,
+      items: this._isRunning || this.isPaused ? this.items : undefined,
     };
   }
 
   private async executeLoop(): Promise<void> {
-    if (this.isExecuting) return;
+    if (this.isExecuting) {
+      log.debug(`executeLoop: already executing, skipping`);
+      return;
+    }
     this.isExecuting = true;
+    log.debug(`executeLoop: ENTER, startIndex=${this.currentIndex}/${this.items.length}`);
     try {
       while (this.currentIndex < this.items.length && this._isRunning) {
-        if (this.isPaused) break;
+        if (this.isPaused) {
+          log.debug(`executeLoop: paused at index=${this.currentIndex}, reason="${this.pauseReason}"`);
+          break;
+        }
         const item = this.items[this.currentIndex];
+        log.debug(`executeLoop: executing item[${this.currentIndex}], prompt=${JSON.stringify((item.prompt || '').slice(0, 80))}, sessionId=${this.currentSessionId}`);
+        const startTime = Date.now();
         const result = await this.executeItem(item);
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        log.debug(`executeLoop: item[${this.currentIndex}] done in ${elapsed}s, shouldAdvance=${result.shouldAdvance}, marker=${result.markerDetected || 'none'}, isPaused=${this.isPaused}`);
 
         // Process advancement FIRST, then check pause.
         // @pause: shouldAdvance=true (advance past breakpoint), isPaused=true (break after)
@@ -147,16 +194,36 @@ export class QueueService {
           this.emitItemComplete(this.currentIndex, result.markerDetected);
           this.currentIndex++;
         }
-        if (this.isPaused) break;
+        if (this.isPaused) {
+          log.debug(`executeLoop: paused after item, index=${this.currentIndex}, reason="${this.pauseReason}"`);
+          break;
+        }
       }
 
       if (this.currentIndex >= this.items.length && this._isRunning) {
+        log.info(`ALL ITEMS COMPLETED (${this.items.length} items)`);
+        this._finalTotalItems = this.items.length;
         this._isRunning = false;
+        this._isCompleted = true;
         this.lastError = null; // clear error on successful completion
         this.emitProgress('completed');
         await this.notificationService.notifyQueueComplete(this.buildSessionUrl());
+      } else {
+        log.debug(`executeLoop: EXIT loop — index=${this.currentIndex}/${this.items.length}, isRunning=${this._isRunning}, isPaused=${this.isPaused}`);
       }
+    } catch (error) {
+      // Catch any unexpected errors that bubble up from executeItem
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const errStack = error instanceof Error ? error.stack : undefined;
+      log.error(`executeLoop: UNEXPECTED ERROR at index=${this.currentIndex}:`, errMsg);
+      if (errStack) log.error(`executeLoop: stack:`, errStack);
+      this._finalTotalItems = this.items.length;
+      this._isRunning = false;
+      this._isErrored = true;
+      this.pauseWithError(`Unexpected error: ${errMsg}`);
+      await this.notificationService.notifyQueueError(errMsg, this.buildSessionUrl());
     } finally {
+      log.debug(`executeLoop: FINALLY — isExecuting=false, isRunning=${this._isRunning}, index=${this.currentIndex}/${this.items.length}`);
       this.isExecuting = false;
     }
   }
@@ -165,32 +232,45 @@ export class QueueService {
     // Step 1: Session management flags (processed sequentially, not exclusively)
     if (item.isNewSession) {
       const newSessionId = crypto.randomUUID();
+      log.debug(`executeItem: NEW_SESSION ${newSessionId} (prev=${this.currentSessionId})`);
       this.currentSessionId = newSessionId;
       this.resumeSessionId = null;
     }
     if (item.modelName) {
+      log.debug(`executeItem: MODEL change → ${item.modelName}`);
       this.currentModel = item.modelName;
     }
     if (item.saveSessionName) {
+      log.debug(`executeItem: SAVE session name="${item.saveSessionName}", sessionId=${this.currentSessionId}`);
       await this.projectService.updateSessionName(
         this.projectSlug, this.currentSessionId!, item.saveSessionName
       );
     }
     if (item.loadSessionName) {
+      log.debug(`executeItem: LOAD session name="${item.loadSessionName}"`);
       const loaded = await this.handleLoadSession(item.loadSessionName);
-      if (!loaded) return { shouldAdvance: false };
+      if (!loaded) {
+        log.warn(`executeItem: LOAD FAILED — session "${item.loadSessionName}" not found`);
+        return { shouldAdvance: false };
+      }
+      log.debug(`executeItem: LOAD OK → sessionId=${this.currentSessionId}`);
     }
     if (item.delayMs) {
+      log.debug(`executeItem: DELAY ${item.delayMs}ms`);
       await new Promise<void>((resolve) => {
         const timer = setTimeout(resolve, item.delayMs);
         const onAbort = () => { clearTimeout(timer); resolve(); };
         this.abortController?.signal.addEventListener('abort', onAbort, { once: true });
       });
-      if (!this._isRunning) return { shouldAdvance: true };
+      if (!this._isRunning) {
+        log.debug(`executeItem: aborted during delay`);
+        return { shouldAdvance: true };
+      }
     }
 
     // Step 2: Breakpoint check
     if (item.isBreakpoint) {
+      log.debug(`executeItem: BREAKPOINT — pausing`);
       this.isPaused = true;
       this.pauseReason = item.prompt || 'Breakpoint';
       this.emitProgress('paused');
@@ -202,6 +282,7 @@ export class QueueService {
       return await this.executePrompt(item);
     }
 
+    log.debug(`executeItem: no prompt, skipping`);
     return { shouldAdvance: true };
   }
 
@@ -214,6 +295,7 @@ export class QueueService {
   private async executePrompt(item: QueueItem): Promise<ExecuteItemResult> {
     const chatOptions = this.buildChatOptions();
     const streamKey = this.currentSessionId || `queue-pending-${Date.now()}`;
+    log.debug(`executePrompt: START prompt=${JSON.stringify((item.prompt || '').slice(0, 120))}, streamKey=${streamKey}, model=${chatOptions.model || '(default)'}, resume=${chatOptions.resume || 'none'}, sessionId=${chatOptions.sessionId || 'none'}`);
 
     // Identical to handleChatSend: headless stream → createStreamEmit
     const { stream, emit } = createHeadlessStream(streamKey, this.abortController!);
@@ -227,6 +309,7 @@ export class QueueService {
     const canUseTool: CanUseTool = async (toolName, input, options): Promise<PermissionResult> => {
       const isAskUserQuestion = toolName === 'AskUserQuestion';
       const requestId = options.toolUseID || `perm-queue-${Date.now()}`;
+      log.debug(`canUseTool: tool=${toolName}, isAskUserQuestion=${isAskUserQuestion}, requestId=${requestId}`);
 
       // Pause queue execution
       this.isPaused = true;
@@ -290,13 +373,15 @@ export class QueueService {
         // --- Callbacks identical to handleChatSend in websocket.ts ---
 
         onSessionInit: (sid, metadata) => {
+          log.debug(`executePrompt: onSessionInit sid=${sid}, model=${metadata?.model || '?'}`);
           actualSessionId = sid;
           this.currentSessionId = sid;
 
-          // Re-key stream (identical to handleChatSend inline logic)
+          // Re-key stream (identical to handleChatSend — also moves Socket.io rooms)
           rekeyStream(stream, sid);
 
-          emit('session:created', { sessionId: sid, model: metadata?.model });
+          const isResuming = !!chatOptions.resume;
+          emit(isResuming ? 'session:resumed' : 'session:created', { sessionId: sid, model: metadata?.model });
           broadcastStreamChange(sid, true);
         },
 
@@ -315,6 +400,7 @@ export class QueueService {
         },
 
         onToolUse: (toolCall: TrackedToolCall) => {
+          log.debug(`executePrompt: onToolUse name=${toolCall.name}, id=${toolCall.id}`);
           emit('tool:call', { id: toolCall.id, name: toolCall.name, input: toolCall.input });
         },
 
@@ -323,10 +409,13 @@ export class QueueService {
         },
 
         onToolResult: (toolCallId: string, result: ToolResult) => {
+          log.debug(`executePrompt: onToolResult id=${toolCallId}, success=${result.success}${result.error ? `, error=${result.error.slice(0, 200)}` : ''}`);
           emit('tool:result', { toolCallId, result });
         },
 
         onComplete: (response) => {
+          const contentPreview = (response.content || '').slice(0, 120);
+          log.debug(`executePrompt: onComplete sid=${actualSessionId || response.sessionId}, isError=${response.isError}, usage=${response.usage ? `in=${response.usage.inputTokens} out=${response.usage.outputTokens} cost=$${response.usage.totalCostUSD?.toFixed(4)}` : 'none'}, content=${JSON.stringify(contentPreview)}`);
           emit('message:complete', {
             id: response.id,
             sessionId: actualSessionId || response.sessionId,
@@ -346,6 +435,7 @@ export class QueueService {
 
         onError: (error) => {
           const sdkError = parseSDKError(error);
+          log.error(`executePrompt: onError callback: ${sdkError.message} (code=${sdkError.code})`);
           emit('error', { code: ERROR_CODES.CHAT_ERROR, message: sdkError.message });
           if (stream.sockets.size === 0) {
             this.notificationService.notifyError(stream.sessionId, sdkError.message);
@@ -353,6 +443,7 @@ export class QueueService {
         },
 
         onCompact: (metadata: CompactMetadata) => {
+          log.debug(`executePrompt: onCompact trigger=${metadata.trigger}, preTokens=${metadata.preTokens}`);
           emit('system:compact', metadata);
         },
 
@@ -369,6 +460,7 @@ export class QueueService {
         },
 
         onResultError: (data) => {
+          log.error(`executePrompt: onResultError subtype=${data.subtype}, errors=${JSON.stringify(data.errors)}, result=${data.result?.slice(0, 200)}`);
           emit('result:error', data);
         },
 
@@ -382,11 +474,24 @@ export class QueueService {
       }, chatOptions, canUseTool);
     } catch (error) {
       const sdkError = parseSDKError(error);
-      console.error(`[queueService] executePrompt ERROR: ${sdkError.message}`);
+
+      // Abort is intentional (user clicked abort) — not an error
+      if (sdkError.code === 'ABORTED' || !this._isRunning) {
+        log.debug(`executePrompt: aborted — not an error (code=${sdkError.code}, isRunning=${this._isRunning})`);
+        return { shouldAdvance: false };
+      }
+
+      const originalStack = (error instanceof Error && error.stack) ? error.stack : undefined;
+      log.error(`executePrompt CATCH: code=${sdkError.code}, message=${sdkError.message}`);
+      if (originalStack) log.error(`executePrompt CATCH stack:`, originalStack);
+      if (sdkError.originalError && sdkError.originalError !== error) {
+        log.error(`executePrompt CATCH originalError:`, sdkError.originalError.message);
+      }
       this.pauseWithError(`SDK Error: ${sdkError.message}`);
       await this.notificationService.notifyQueueError(sdkError.message, this.buildSessionUrl());
       return { shouldAdvance: false };
     } finally {
+      log.debug(`executePrompt: FINALLY — cleaning up stream for ${stream.sessionId}`);
       // Clean up — identical to handleChatSend finally block
       stream.status = 'completed';
       finalizeStream(stream.sessionId);
@@ -394,15 +499,18 @@ export class QueueService {
 
     // After first successful prompt, subsequent prompts resume the session
     this.resumeSessionId = this.currentSessionId;
+    log.debug(`executePrompt: SUCCESS — resumeSessionId=${this.resumeSessionId}, chunks=${chunks.length}, totalChars=${chunks.reduce((a, c) => a + c.length, 0)}`);
 
     // Check markers
     const fullText = chunks.join('');
     if (fullText.includes('QUEUE_STOP')) {
+      log.warn(`executePrompt: QUEUE_STOP marker detected in response`);
       this.pauseWithError('QUEUE_STOP detected in response');
       await this.notificationService.notifyQueueError('QUEUE_STOP detected in response', this.buildSessionUrl());
       return { shouldAdvance: false, markerDetected: 'QUEUE_STOP' };
     }
     if (fullText.includes('QUEUE_PASS')) {
+      log.debug(`executePrompt: QUEUE_PASS marker detected`);
       return { shouldAdvance: true, markerDetected: 'QUEUE_PASS' };
     }
     return { shouldAdvance: true };
@@ -432,6 +540,7 @@ export class QueueService {
   }
 
   private pauseWithError(reason: string): void {
+    log.error(`pauseWithError: index=${this.currentIndex}, reason="${reason}"`);
     this.isPaused = true;
     this.pauseReason = reason;
     this.lastError = { itemIndex: this.currentIndex, error: reason };
