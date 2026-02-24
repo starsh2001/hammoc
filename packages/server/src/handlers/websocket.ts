@@ -762,6 +762,14 @@ async function handleChatSend(
       },
 
       onError: (error) => {
+        // Ignore abort errors from replaced streams (another-client or user-abort)
+        if (abortController.signal.aborted) {
+          const reason = abortController.signal.reason;
+          if (reason === 'another-client' || reason === 'user-abort') {
+            return;
+          }
+        }
+
         const sdkError = parseSDKError(error);
 
         if (isResuming && isSessionNotFoundError(error)) {
