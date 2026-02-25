@@ -7,6 +7,7 @@ import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Plus, CheckSquare, Trash2, X, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
+import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
 import { useQueueStore } from '../stores/queueStore';
 import { SessionListItem } from '../components/SessionListItem';
 import { SessionListItemSkeleton } from '../components/SessionListItemSkeleton';
@@ -78,10 +79,9 @@ export function ProjectSessionsPage() {
 
   const handleRefresh = useCallback(async () => {
     if (projectSlug) {
-      setRefreshing(true);
       await fetchSessions(projectSlug);
     }
-  }, [projectSlug, fetchSessions, setRefreshing]);
+  }, [projectSlug, fetchSessions]);
 
   const { containerRef, pullDistance, isRefreshing: isPullRefreshing } = usePullToRefresh({
     onRefresh: handleRefresh,
@@ -175,6 +175,8 @@ export function ProjectSessionsPage() {
               </div>
             </>
           ) : (
+            <>
+            <BackgroundRefreshIndicator isRefreshing={isRefreshing} className="ml-1" />
             <div className="flex items-center gap-1 ml-auto">
               <button
                 onClick={handleNewSession}
@@ -223,6 +225,7 @@ export function ProjectSessionsPage() {
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
+            </>
           )}
         </div>
       </div>

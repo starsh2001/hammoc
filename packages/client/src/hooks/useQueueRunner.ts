@@ -31,6 +31,7 @@ export interface UseQueueRunnerReturn {
   removeItem: (itemIndex: number) => void;
   addItem: (rawLine: string) => void;
   reorderItems: (newOrder: number[]) => void;
+  dismiss: () => void;
 }
 
 export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
@@ -122,6 +123,10 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     useQueueStore.getState().reset();
   }, [projectSlug]);
 
+  const dismiss = useCallback(() => {
+    useQueueStore.getState().reset();
+  }, []);
+
   const removeItem = useCallback((itemIndex: number) => {
     const socket = getSocket();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -157,5 +162,6 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     removeItem,
     addItem,
     reorderItems,
+    dismiss,
   };
 }

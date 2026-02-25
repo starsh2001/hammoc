@@ -13,6 +13,7 @@ import { ApiError } from '../services/api/client.js';
 export interface UseBmadStatusReturn {
   data: BmadStatusResponse | null;
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   retry: () => void;
 }
@@ -24,6 +25,7 @@ export function useBmadStatus(projectSlug: string | undefined): UseBmadStatusRet
   const cached = projectSlug ? cache.get(projectSlug) ?? null : null;
   const [data, setData] = useState<BmadStatusResponse | null>(cached);
   const [isLoading, setIsLoading] = useState<boolean>(() => !!projectSlug && !cached);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -38,8 +40,11 @@ export function useBmadStatus(projectSlug: string | undefined): UseBmadStatusRet
     let cancelled = false;
     // Only show loading skeleton on first load (no cached data).
     // On HMR / retry, stale data stays visible while revalidating.
-    if (!cache.has(projectSlug)) {
+    const hasCachedData = cache.has(projectSlug);
+    if (!hasCachedData) {
       setIsLoading(true);
+    } else {
+      setIsRefreshing(true);
     }
     setError(null);
 
@@ -50,6 +55,7 @@ export function useBmadStatus(projectSlug: string | undefined): UseBmadStatusRet
           cache.set(projectSlug, res);
           setData(res);
           setIsLoading(false);
+          setIsRefreshing(false);
         }
       })
       .catch((err) => {
@@ -60,6 +66,7 @@ export function useBmadStatus(projectSlug: string | undefined): UseBmadStatusRet
             setError('BMad 프로젝트 현황을 불러오는 중 오류가 발생했습니다.');
           }
           setIsLoading(false);
+          setIsRefreshing(false);
         }
       });
 
@@ -68,5 +75,5 @@ export function useBmadStatus(projectSlug: string | undefined): UseBmadStatusRet
     };
   }, [projectSlug, retryCount]);
 
-  return { data, isLoading, error, retry };
+  return { data, isLoading, isRefreshing, error, retry };
 }

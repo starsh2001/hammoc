@@ -109,7 +109,7 @@ export const DEFAULT_ALLOWED_TOOLS: string[] = [
 /**
  * Permission modes for tool usage
  */
-export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan' | 'delegate' | 'dontAsk';
+export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan' | 'dontAsk';
 
 /**
  * Stream chunk for real-time message streaming

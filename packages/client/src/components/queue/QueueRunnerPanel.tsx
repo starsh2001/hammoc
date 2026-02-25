@@ -19,6 +19,7 @@ import {
   Trash2,
   Plus,
   GripVertical,
+  RotateCcw,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -50,6 +51,8 @@ interface QueueRunnerPanelProps {
   onAddItem?: (rawLine: string) => void;
   /** Reorder pending items (provide new index order) */
   onReorderItems?: (newOrder: number[]) => void;
+  /** Dismiss completed/errored state and return to editor */
+  onDismiss?: () => void;
 }
 
 function getItemSummary(item: QueueItem): string {
@@ -114,6 +117,7 @@ export function QueueRunnerPanel({
   onRemoveItem,
   onAddItem,
   onReorderItems,
+  onDismiss,
 }: QueueRunnerPanelProps) {
   const currentItemRef = useRef<HTMLDivElement>(null);
   const [newItemText, setNewItemText] = useState('');
@@ -261,6 +265,20 @@ export function QueueRunnerPanel({
                 <span>중단</span>
               </button>
             </>
+          )}
+          {/* Dismiss button — return to editor after completion/error */}
+          {onDismiss && !isRunning && !isPaused && (isCompleted || hasError) && (
+            <button
+              onClick={onDismiss}
+              aria-label="에디터로 돌아가기"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
+                bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
+                hover:bg-gray-200 dark:hover:bg-gray-600
+                min-w-[44px] min-h-[44px]"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>에디터로 돌아가기</span>
+            </button>
           )}
         </div>
       </div>

@@ -11,6 +11,7 @@ import type { BmadStatusResponse, BmadEpicStatus } from '@bmad-studio/shared';
 
 import { useProjectStore } from '../stores/projectStore.js';
 import { useBmadStatus } from '../hooks/useBmadStatus.js';
+import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator.js';
 
 import { ProjectDashboardPage } from './ProjectDashboardPage.js';
 import { DocumentStatusCard } from '../components/dashboard/DocumentStatusCard.js';
@@ -49,7 +50,7 @@ function computeStats(epics: BmadEpicStatus[]) {
   return { totalEpics, doneEpics, totalStories, doneStories, pct };
 }
 
-function BmadSummaryCard({ epics }: { epics: BmadEpicStatus[] }) {
+function BmadSummaryCard({ epics, isRefreshing }: { epics: BmadEpicStatus[]; isRefreshing: boolean }) {
   const { totalEpics, doneEpics, totalStories, doneStories, pct } = computeStats(epics);
 
   return (
@@ -60,6 +61,7 @@ function BmadSummaryCard({ epics }: { epics: BmadEpicStatus[] }) {
           <span className="text-sm font-semibold px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded-md">
             BMad
           </span>
+          <BackgroundRefreshIndicator isRefreshing={isRefreshing} />
           <div className="flex items-center gap-1 min-w-0">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">{pct}%</span>
             <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">완료</span>
@@ -97,12 +99,14 @@ function BmadSummaryCard({ epics }: { epics: BmadEpicStatus[] }) {
 function BmadSection({
   data,
   isLoading,
+  isRefreshing,
   error,
   retry,
   projectSlug,
 }: {
   data: BmadStatusResponse | null;
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   retry: () => void;
   projectSlug: string;
@@ -144,7 +148,7 @@ function BmadSection({
       {/* BMad summary + detail cards */}
       {data && (
         <>
-          <BmadSummaryCard epics={data.epics} />
+          <BmadSummaryCard epics={data.epics} isRefreshing={isRefreshing} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <DocumentStatusCard
               documents={data.documents}
@@ -169,7 +173,7 @@ export function BmadDashboard() {
   const project = projects.find((p) => p.projectSlug === projectSlug);
   const isBmadProject = project?.isBmadProject ?? false;
 
-  const { data, isLoading, error, retry } = useBmadStatus(
+  const { data, isLoading, isRefreshing, error, retry } = useBmadStatus(
     isBmadProject ? projectSlug : undefined,
   );
 
@@ -186,6 +190,7 @@ export function BmadDashboard() {
           <BmadSection
             data={data}
             isLoading={isLoading}
+            isRefreshing={isRefreshing}
             error={error}
             retry={retry}
             projectSlug={projectSlug}

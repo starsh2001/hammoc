@@ -317,6 +317,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           onRemoveItem={runner.removeItem}
           onAddItem={runner.addItem}
           onReorderItems={runner.reorderItems}
+          onDismiss={runner.dismiss}
         />
       )}
 
