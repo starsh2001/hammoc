@@ -7,12 +7,13 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MoreVertical, Moon, Sun, History, Plus, FolderOpen, RefreshCw, Settings, LogOut } from 'lucide-react';
+import { MoreVertical, Moon, Sun, History, Plus, FolderOpen, GitBranch, RefreshCw, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 interface HeaderOverflowMenuProps {
   onShowSessions?: () => void;
   onShowFileExplorer?: () => void;
+  onShowGit?: () => void;
   onNewSession?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
@@ -23,6 +24,7 @@ interface HeaderOverflowMenuProps {
 export function HeaderOverflowMenu({
   onShowSessions,
   onShowFileExplorer,
+  onShowGit,
   onNewSession,
   onRefresh,
   isRefreshing = false,
@@ -80,6 +82,11 @@ export function HeaderOverflowMenu({
     onShowFileExplorer?.();
     setIsOpen(false);
   }, [onShowFileExplorer]);
+
+  const handleShowGit = useCallback(() => {
+    onShowGit?.();
+    setIsOpen(false);
+  }, [onShowGit]);
 
   const handleNewSession = useCallback(() => {
     onNewSession?.();
@@ -180,6 +187,19 @@ export function HeaderOverflowMenu({
             >
               <FolderOpen className="w-4 h-4" aria-hidden="true" />
               파일 리스트
+            </button>
+          )}
+
+          {/* Git */}
+          {onShowGit && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleShowGit}
+              className={itemClass}
+            >
+              <GitBranch className="w-4 h-4" aria-hidden="true" />
+              Git
             </button>
           )}
 

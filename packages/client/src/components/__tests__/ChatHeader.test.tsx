@@ -322,6 +322,52 @@ describe('ChatHeader', () => {
     });
   });
 
+  // Story 16.4 - Task 5: Git button tests
+  describe('git button', () => {
+    const mockOnShowGit = vi.fn();
+
+    // TC-QGP-H1: Renders Git icon button when onShowGit prop is provided
+    it('should render Git button when onShowGit is provided (TC-QGP-H1)', () => {
+      renderComponent({ onShowGit: mockOnShowGit });
+
+      expect(screen.getByRole('button', { name: 'Git 패널' })).toBeInTheDocument();
+    });
+
+    // TC-QGP-H2: Shows badge with changed file count when gitChangedCount > 0
+    it('should show badge with changed file count when gitChangedCount > 0 (TC-QGP-H2)', () => {
+      renderComponent({ onShowGit: mockOnShowGit, gitChangedCount: 5 });
+
+      const button = screen.getByRole('button', { name: 'Git 패널' });
+      const badge = button.querySelector('span');
+      expect(badge).toBeInTheDocument();
+      expect(badge).toHaveTextContent('5');
+    });
+
+    // TC-QGP-H3: Does not show badge when gitChangedCount is 0
+    it('should not show badge when gitChangedCount is 0 (TC-QGP-H3)', () => {
+      renderComponent({ onShowGit: mockOnShowGit, gitChangedCount: 0 });
+
+      const button = screen.getByRole('button', { name: 'Git 패널' });
+      const badge = button.querySelector('span');
+      expect(badge).not.toBeInTheDocument();
+    });
+
+    // TC-QGP-H4: Calls onShowGit when Git button clicked
+    it('should call onShowGit when Git button is clicked (TC-QGP-H4)', () => {
+      renderComponent({ onShowGit: mockOnShowGit });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Git 패널' }));
+
+      expect(mockOnShowGit).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not render Git button when onShowGit is not provided', () => {
+      renderComponent();
+
+      expect(screen.queryByRole('button', { name: 'Git 패널' })).not.toBeInTheDocument();
+    });
+  });
+
   // Story 4.7 - Task 7: Connection status display tests
   describe('connection status', () => {
     beforeEach(() => {
