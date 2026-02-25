@@ -8,6 +8,7 @@ import type { HistoryMessage } from '@bmad-studio/shared';
 import { formatRelativeTime } from '../utils/formatters';
 import { Bot, Copy, Check } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { debugLogger } from '../utils/debugLogger';
 
 interface MessageBubbleProps {
   /** Message data */
@@ -51,7 +52,7 @@ export function MessageBubble({
       setTimeout(() => setIsCopied(false), 2000);
       onCopy?.(message.content);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      debugLogger.error('Failed to copy', { error: err instanceof Error ? err.message : String(err) });
       // Brief visual feedback on failure
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 1000);

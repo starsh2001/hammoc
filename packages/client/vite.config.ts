@@ -11,6 +11,9 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     appType: 'spa',
     server: {
+      watch: {
+        ignored: ['**/.qlaude/**', '**/.gemini/**', '**/.plan/**', '**/cookies.txt'],
+      },
       host: true,
       port: parseInt(env.VITE_CLIENT_PORT || '5173'),
       proxy: {

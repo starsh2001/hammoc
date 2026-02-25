@@ -19,6 +19,10 @@ import {
 } from '@bmad-studio/shared';
 import type { PermissionMode } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
+import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES, resolveTemplateVariables } from '../services/chatService.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('projectController');
 
 export const projectController = {
   /**
@@ -166,7 +170,7 @@ export const projectController = {
       const response: DeleteProjectResponse = { success: true };
       res.json(response);
     } catch (error) {
-      console.error('[projectController] Error deleting project:', error);
+      log.error('Error deleting project:', error);
       res.status(500).json({
         error: {
           code: 'PROJECT_DELETE_ERROR',
@@ -339,6 +343,42 @@ export const projectController = {
 
       res.status(500).json({
         error: { code: 'SETTINGS_UPDATE_ERROR', message: '설정 저장 중 오류가 발생했습니다.' },
+      });
+    }
+  },
+
+  /**
+   * GET /api/projects/:projectSlug/system-prompt
+   * Return the default template and resolved preview for the project
+   */
+  async getSystemPrompt(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      if (!projectSlug) {
+        res.status(400).json({
+          error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' },
+        });
+        return;
+      }
+
+      const projectPath = await projectService.resolveProjectPath(projectSlug);
+      if (!projectPath) {
+        res.status(404).json({
+          error: { code: 'PROJECT_NOT_FOUND', message: '프로젝트를 찾을 수 없습니다.' },
+        });
+        return;
+      }
+
+      const resolved = resolveTemplateVariables(DEFAULT_WORKSPACE_TEMPLATE, projectPath);
+      res.json({
+        template: DEFAULT_WORKSPACE_TEMPLATE,
+        resolved,
+        variables: TEMPLATE_VARIABLES,
+      });
+    } catch (error) {
+      log.error('Error getting system prompt:', error);
+      res.status(500).json({
+        error: { code: 'SYSTEM_PROMPT_ERROR', message: '시스템 프롬프트를 가져오는 중 오류가 발생했습니다.' },
       });
     }
   },

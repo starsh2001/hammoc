@@ -4,6 +4,7 @@
  */
 
 import { Component, type ReactNode, type ErrorInfo } from 'react';
+import { debugLogger } from '../utils/debugLogger';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -25,7 +26,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[ErrorBoundary] Uncaught error:', error, info.componentStack);
+    debugLogger.error('Uncaught error in ErrorBoundary', { error: error.message, stack: error.stack });
   }
 
   handleReload = () => {

@@ -5,6 +5,9 @@
 import { Router, Request, Response } from 'express';
 import { appendFileSync, mkdirSync, existsSync } from 'fs';
 import path from 'path';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('debugRoute');
 
 const router = Router();
 
@@ -57,7 +60,7 @@ router.post('/log', (req: Request, res: Response) => {
     appendFileSync(logFile, formatEntry(req.body), 'utf-8');
     res.status(200).json({ success: true });
   } catch (err) {
-    console.error('[Debug API] Failed to write log:', err);
+    log.error('Failed to write log:', err);
     res.status(500).json({ error: 'Failed to write log' });
   }
 });

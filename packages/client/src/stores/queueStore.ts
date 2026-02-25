@@ -12,6 +12,7 @@ import type {
   QueueProgressEvent,
   QueueItemCompleteEvent,
   QueueErrorEvent,
+  QueueItemsUpdatedEvent,
 } from '@bmad-studio/shared';
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -25,6 +26,10 @@ interface QueueState {
   // Execution state (from server via WebSocket)
   isRunning: boolean;
   isPaused: boolean;
+  /** Server-persisted: queue finished successfully (persists until dismissed) */
+  isCompleted: boolean;
+  /** Server-persisted: queue finished with error (persists until dismissed) */
+  isErrored: boolean;
   isStarting: boolean;
   isAborted: boolean; // suppresses late server events after abort
   currentIndex: number;
@@ -34,6 +39,8 @@ interface QueueState {
   currentModel: string | undefined;
   completedItems: Set<number>;
   errorItem: { index: number; error: string } | null;
+  /** Map of itemIndex -> sessionId for session links */
+  itemSessionIds: Map<number, string>;
 }
 
 interface QueueActions {
@@ -46,6 +53,7 @@ interface QueueActions {
   handleError: (data: QueueErrorEvent) => void;
   setStarting: (starting: boolean) => void;
   syncFromStatus: (state: QueueExecutionState) => void;
+  handleItemsUpdated: (data: QueueItemsUpdatedEvent) => void;
   reset: () => void;
 }
 
@@ -60,6 +68,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   // Execution state
   isRunning: false,
   isPaused: false,
+  isCompleted: false,
+  isErrored: false,
   isStarting: false,
   isAborted: false,
   currentIndex: 0,
@@ -69,6 +79,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   currentModel: undefined,
   completedItems: new Set<number>(),
   errorItem: null,
+  itemSessionIds: new Map<number, string>(),
 
   setScript: (script: string) => {
     set({ script });
@@ -103,6 +114,9 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       case 'running':
         update.isRunning = true;
         update.isPaused = false;
+        update.isCompleted = false;
+        update.isErrored = false;
+        update.errorItem = null;
         break;
       case 'paused':
         update.isRunning = true;
@@ -111,11 +125,20 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       case 'completed':
         update.isRunning = false;
         update.isPaused = false;
+        update.isCompleted = true;
         break;
       case 'error':
         update.isRunning = false;
         update.isPaused = false;
+        update.isErrored = true;
         break;
+    }
+
+    // Track current item's sessionId
+    if (data.status === 'running' && data.sessionId) {
+      const newSessionIds = new Map(get().itemSessionIds);
+      newSessionIds.set(data.currentIndex, data.sessionId);
+      update.itemSessionIds = newSessionIds;
     }
 
     set(update);
@@ -123,9 +146,16 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
 
   handleItemComplete: (data: QueueItemCompleteEvent) => {
     if (get().isAborted) return;
-    set((state) => ({
-      completedItems: new Set([...state.completedItems, data.itemIndex]),
-    }));
+    set((state) => {
+      const newSessionIds = new Map(state.itemSessionIds);
+      if (data.sessionId) {
+        newSessionIds.set(data.itemIndex, data.sessionId);
+      }
+      return {
+        completedItems: new Set([...state.completedItems, data.itemIndex]),
+        itemSessionIds: newSessionIds,
+      };
+    });
   },
 
   handleError: (data: QueueErrorEvent) => {
@@ -152,6 +182,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
     set({
       isRunning: state.isRunning,
       isPaused: state.isPaused,
+      isCompleted: state.isCompleted ?? false,
+      isErrored: state.isErrored ?? false,
       isAborted: false, // clear abort flag on server state sync
       currentIndex: state.currentIndex,
       totalItems: state.totalItems,
@@ -163,6 +195,21 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       errorItem: state.lastError
         ? { index: state.lastError.itemIndex, error: state.lastError.error }
         : null,
+      // Restore queue items from server so QueueRunnerPanel displays on page re-entry
+      ...(state.items && state.items.length > 0 ? { parsedItems: state.items } : {}),
+      // Restore completed item session IDs from server
+      itemSessionIds: state.completedSessionIds
+        ? new Map(Object.entries(state.completedSessionIds).map(([k, v]) => [Number(k), v]))
+        : new Map<number, string>(),
+    });
+  },
+
+  handleItemsUpdated: (data: QueueItemsUpdatedEvent) => {
+    if (get().isAborted) return;
+    set({
+      parsedItems: data.items,
+      totalItems: data.totalItems,
+      currentIndex: data.currentIndex,
     });
   },
 
@@ -170,6 +217,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
     set({
       isRunning: false,
       isPaused: false,
+      isCompleted: false,
+      isErrored: false,
       isStarting: false,
       isAborted: true,
       currentIndex: 0,
@@ -179,6 +228,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       currentModel: undefined,
       completedItems: new Set<number>(),
       errorItem: null,
+      itemSessionIds: new Map<number, string>(),
     });
   },
 }));

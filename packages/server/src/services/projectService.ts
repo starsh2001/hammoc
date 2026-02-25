@@ -21,6 +21,9 @@ import type {
   ValidatePathResponse,
 } from '@bmad-studio/shared';
 import { preferencesService } from './preferencesService.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('projectService');
 
 // Resolve the server package root for locating bundled resources
 const __filename = fileURLToPath(import.meta.url);
@@ -415,6 +418,16 @@ class ProjectService {
   }
 
   /**
+   * Resolve a project slug to its original filesystem path.
+   * Returns null if the project does not exist.
+   */
+  async resolveProjectPath(projectSlug: string): Promise<string | null> {
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+    const info = await this.parseSessionsIndex(projectDir, projectSlug);
+    return info?.originalPath ?? null;
+  }
+
+  /**
    * Read session names for a project identified by slug
    */
   async readSessionNamesBySlug(projectSlug: string): Promise<Record<string, string>> {
@@ -788,7 +801,7 @@ class ProjectService {
       }
     } catch {
       // CLI not available or failed - fall back to self-generation
-      console.warn('Claude CLI not available, using fallback path-encoding');
+      log.warn('Claude CLI not available, using fallback path-encoding');
     }
 
     // Strategy 3: Fallback - use same path-encoding as Claude Code
@@ -960,7 +973,7 @@ class ProjectService {
         await fs.rm(originalPath, { recursive: true, force: true });
       } catch {
         // Session data already deleted, log but don't fail
-        console.warn(`[projectService] Failed to delete project files at: ${originalPath}`);
+        log.warn(`Failed to delete project files at: ${originalPath}`);
       }
     }
 

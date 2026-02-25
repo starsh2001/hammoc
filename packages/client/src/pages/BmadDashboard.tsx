@@ -15,6 +15,7 @@ import { useBmadStatus } from '../hooks/useBmadStatus.js';
 import { ProjectDashboardPage } from './ProjectDashboardPage.js';
 import { DocumentStatusCard } from '../components/dashboard/DocumentStatusCard.js';
 import { EpicProgressCard } from '../components/dashboard/EpicProgressCard.js';
+import { NextStepRecommender } from '../components/dashboard/NextStepRecommender.js';
 
 function BmadSkeleton() {
   return (
@@ -172,6 +173,12 @@ export function BmadDashboard() {
     isBmadProject ? projectSlug : undefined,
   );
 
+  // Build the quick-actions slot when BMad data is available
+  const quickActionsSlot =
+    data && projectSlug ? (
+      <NextStepRecommender data={data} projectSlug={projectSlug} />
+    ) : undefined;
+
   return (
     <>
       {isBmadProject && projectSlug && (
@@ -187,7 +194,7 @@ export function BmadDashboard() {
           <div className="mx-6 border-t border-gray-200 dark:border-gray-700" />
         </>
       )}
-      <ProjectDashboardPage />
+      <ProjectDashboardPage quickActionsSlot={quickActionsSlot} />
     </>
   );
 }

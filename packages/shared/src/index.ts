@@ -116,3 +116,9 @@ export { parseQueueScript } from './utils/queueParser.js';
 
 // Story 15.5: Queue template utilities
 export { extractStoryNumbers, generateQueueFromTemplate } from './utils/queueTemplateUtils.js';
+
+// Story 16.1: Git types (Epic 16)
+export * from './types/git.js';
+
+// Logger types (shared between server and client)
+export { LogLevel, type LogLevelName, parseLogLevel } from './types/logger.js';

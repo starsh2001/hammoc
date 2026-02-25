@@ -14,11 +14,16 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { formatRelativeTime } from '../utils/formatters';
 import { generateUUID } from '../utils/uuid';
 
-export function ProjectDashboardPage() {
+interface ProjectDashboardPageProps {
+  /** Optional slot to replace the default "Quick Start" card with custom content (e.g. BMad recommendations) */
+  quickActionsSlot?: ReactNode;
+}
+
+export function ProjectDashboardPage({ quickActionsSlot }: ProjectDashboardPageProps = {}) {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const navigate = useNavigate();
   const { sessions, fetchSessions, isLoading } = useSessionStore();
@@ -154,34 +159,36 @@ export function ProjectDashboardPage() {
           )}
         </div>
 
-        {/* Quick actions */}
+        {/* Quick actions — replaced by slot when provided (e.g. BMad recommendations) */}
         <div className="space-y-4">
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">빠른 시작</h2>
-            <div className="space-y-2">
-              <button
-                onClick={handleNewSession}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-sm font-medium"
-              >
-                <Plus className="w-4 h-4" />
-                새 세션 시작
-              </button>
-              <button
-                onClick={() => navigate(`/project/${projectSlug}/queue`)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
-              >
-                <ListOrdered className="w-4 h-4" />
-                큐 작업 실행
-              </button>
-              <button
-                onClick={() => navigate(`/project/${projectSlug}/files`)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
-              >
-                <FolderOpen className="w-4 h-4" />
-                파일 탐색
-              </button>
+          {quickActionsSlot ?? (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+              <h2 className="font-semibold text-gray-900 dark:text-white mb-4">빠른 시작</h2>
+              <div className="space-y-2">
+                <button
+                  onClick={handleNewSession}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  새 세션 시작
+                </button>
+                <button
+                  onClick={() => navigate(`/project/${projectSlug}/queue`)}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+                >
+                  <ListOrdered className="w-4 h-4" />
+                  큐 작업 실행
+                </button>
+                <button
+                  onClick={() => navigate(`/project/${projectSlug}/files`)}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  파일 탐색
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Active streaming banner */}
           {activeSessions > 0 && (

@@ -5,6 +5,7 @@
 
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { ChatResponse } from '@bmad-studio/shared';
+import { createLogger } from '../utils/logger.js';
 import {
   SDKMessageType,
   ContentBlockType,
@@ -28,6 +29,8 @@ import {
   type ToolResult,
   createInitialStreamingState,
 } from '@bmad-studio/shared';
+
+const log = createLogger('streamHandler');
 
 // Intentionally duplicated in chatService.ts for file independence
 function extractContextWindow(modelUsage?: { [model: string]: { contextWindow: number } }): number {
@@ -883,7 +886,7 @@ export class StreamHandler {
             pendingCall.input = parsedInput;
           }
 
-          console.log(`[StreamHandler] input_json_delta COMPLETE: toolId=${toolId}, keys=${Object.keys(parsedInput).join(',')}`);
+          log.debug(`input_json_delta COMPLETE: toolId=${toolId}, keys=${Object.keys(parsedInput).join(',')}`);
           // Invoke callback with parsed input
           callbacks.onToolInputUpdate?.(toolId, parsedInput);
         }
@@ -896,7 +899,7 @@ export class StreamHandler {
             const partial = StreamHandler.extractPartialInput(updatedJson);
             if (partial) {
               this.lastPartialEmitByTool.set(toolId, now);
-              console.log(`[StreamHandler] input_json_delta PARTIAL: toolId=${toolId}, keys=${Object.keys(partial).join(',')}, jsonLen=${updatedJson.length}`);
+              log.verbose(`input_json_delta PARTIAL: toolId=${toolId}, keys=${Object.keys(partial).join(',')}, jsonLen=${updatedJson.length}`);
               callbacks.onToolInputUpdate?.(toolId, partial);
             }
           }
@@ -916,9 +919,9 @@ export class StreamHandler {
     const raw = message.rawMessage as unknown as { subtype?: string; tools?: string[]; session_id?: string; model?: string };
     if (raw.subtype === 'init') {
       if (raw.tools) {
-        console.log(`[StreamHandler] Available tools: ${raw.tools.join(', ')}`);
+        log.debug(`Available tools: ${raw.tools.join(', ')}`);
         const hasMcpAsk = raw.tools.some(t => t.includes('AskUserQuestion'));
-        console.log(`[StreamHandler] AskUserQuestion available: ${hasMcpAsk}`);
+        log.debug(`AskUserQuestion available: ${hasMcpAsk}`);
       }
       // system/init is the first SDK message — extract session_id for early URL navigation
       if (raw.session_id && !this.state.sessionId) {

@@ -13,6 +13,8 @@ interface ContextUsageDisplayProps {
   onNewSession?: () => void;
   /** Trigger manual context compaction */
   onCompact?: () => void;
+  /** Disable click actions (e.g. during queue execution) */
+  disabled?: boolean;
 }
 
 function getStrokeColor(percent: number): string {
@@ -27,7 +29,7 @@ const STROKE_WIDTH = 3;
 const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: ContextUsageDisplayProps) {
+export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact, disabled }: ContextUsageDisplayProps) {
   const hasData = contextUsage && contextUsage.contextWindow > 0;
 
   // Don't render until we have actual usage data (prevents misleading 0% display)
@@ -77,8 +79,9 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact }: C
       role="status"
       aria-label={`컨텍스트 사용량 ${usagePercent}%`}
       title={tooltipText}
-      className="flex items-center gap-2 ml-3 mr-0.5 transition-opacity cursor-pointer hover:opacity-80"
-      onClick={handleClick}
+      disabled={disabled}
+      className={`flex items-center gap-2 ml-3 mr-0.5 transition-opacity ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:opacity-80'}`}
+      onClick={disabled ? undefined : handleClick}
       data-testid="context-usage-display"
     >
       <svg

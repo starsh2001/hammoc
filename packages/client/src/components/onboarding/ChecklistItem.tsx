@@ -1,6 +1,7 @@
 import { Check, X, Circle, Copy, CheckCheck } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { OnboardingChecklistItem } from '../../types/onboarding';
+import { debugLogger } from '../../utils/debugLogger';
 
 interface ChecklistItemProps {
   item: OnboardingChecklistItem;
@@ -20,7 +21,7 @@ export function ChecklistItem({
       try {
         // Secure Context 확인 (선택적)
         if (!window.isSecureContext) {
-          console.warn('Clipboard API requires secure context (HTTPS)');
+          debugLogger.warn('Clipboard API requires secure context (HTTPS)');
           onCopyError?.();
           return;
         }
@@ -30,7 +31,7 @@ export function ChecklistItem({
         setTimeout(() => setCopied(false), 2000);
       } catch (err) {
         // NotAllowedError (HTTP) 또는 기타 에러
-        console.error('Clipboard write failed:', err);
+        debugLogger.error('Clipboard write failed', { error: err instanceof Error ? err.message : String(err) });
         onCopyError?.();
       }
     }

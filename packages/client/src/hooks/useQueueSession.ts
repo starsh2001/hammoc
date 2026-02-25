@@ -3,7 +3,7 @@
  * [Source: Story 15.4 - Task 1]
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import type { QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
@@ -16,6 +16,10 @@ export interface UseQueueSessionReturn {
   isQueuePaused: boolean;
   isQueueCompleted: boolean;
   isQueueErrored: boolean;
+  /** Queue is running but on a different session */
+  isQueueOnOtherSession: boolean;
+  /** Session ID where queue is currently running */
+  queueActiveSessionId: string | null;
   progress: { current: number; total: number };
   currentPromptPreview: string | undefined;
   pauseReason: string | undefined;
@@ -24,12 +28,16 @@ export interface UseQueueSessionReturn {
   pause: () => void;
   resume: () => void;
   abort: () => void;
+  /** Manually dismiss the completed/errored banner (clears server state) */
+  dismissBanner: () => void;
 }
 
 export function useQueueSession(projectSlug: string, sessionId: string): UseQueueSessionReturn {
   const {
     isRunning,
     isPaused,
+    isCompleted,
+    isErrored,
     currentIndex,
     totalItems,
     lockedSessionId,
@@ -39,6 +47,8 @@ export function useQueueSession(projectSlug: string, sessionId: string): UseQueu
   } = useQueueStore(useShallow((s) => ({
     isRunning: s.isRunning,
     isPaused: s.isPaused,
+    isCompleted: s.isCompleted,
+    isErrored: s.isErrored,
     currentIndex: s.currentIndex,
     totalItems: s.totalItems,
     lockedSessionId: s.lockedSessionId,
@@ -50,40 +60,8 @@ export function useQueueSession(projectSlug: string, sessionId: string): UseQueu
   // Queue lock: this session is controlled by queue runner
   const isQueueLocked = lockedSessionId === sessionId && (isRunning || isPaused);
 
-  // Track previous lock state to detect completion transitions
-  const wasLockedRef = useRef(false);
-  const [isQueueCompleted, setIsQueueCompleted] = useState(false);
-  const [isQueueErrored, setIsQueueErrored] = useState(false);
-
-  // Detect lock → unlock transitions for completion/error states
-  useEffect(() => {
-    if (isQueueLocked) {
-      wasLockedRef.current = true;
-    } else if (wasLockedRef.current) {
-      // Transitioned from locked to unlocked
-      wasLockedRef.current = false;
-      const storeState = useQueueStore.getState();
-      if (storeState.errorItem) {
-        setIsQueueErrored(true);
-      } else {
-        setIsQueueCompleted(true);
-      }
-    }
-  }, [isQueueLocked]);
-
-  // Auto-clear completed state after 5 seconds
-  useEffect(() => {
-    if (!isQueueCompleted) return;
-    const timer = setTimeout(() => setIsQueueCompleted(false), 5000);
-    return () => clearTimeout(timer);
-  }, [isQueueCompleted]);
-
-  // Auto-clear errored state after 5 seconds
-  useEffect(() => {
-    if (!isQueueErrored) return;
-    const timer = setTimeout(() => setIsQueueErrored(false), 5000);
-    return () => clearTimeout(timer);
-  }, [isQueueErrored]);
+  // Queue running on a different session
+  const isQueueOnOtherSession = (isRunning || isPaused) && !!lockedSessionId && lockedSessionId !== sessionId;
 
   // Current prompt preview (truncated to 100 chars)
   const currentPromptPreview = parsedItems[currentIndex]?.prompt?.slice(0, 100);
@@ -114,7 +92,7 @@ export function useQueueSession(projectSlug: string, sessionId: string): UseQueu
       listenersRef.current = { onProgress, onItemComplete, onError };
     }
 
-    // Initial status fetch
+    // Initial status fetch — restores server-persisted completed/errored state
     queueApi.getStatus(projectSlug)
       .then((state) => syncFromStatus(state))
       .catch(() => {
@@ -149,12 +127,22 @@ export function useQueueSession(projectSlug: string, sessionId: string): UseQueu
     useQueueStore.getState().reset();
   }, [projectSlug]);
 
+  // Dismiss completed/errored banner — notifies server to clear persisted state
+  const dismissBanner = useCallback(() => {
+    const socket = getSocket();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (socket as any).emit('queue:dismiss', { projectSlug });
+    useQueueStore.setState({ isCompleted: false, isErrored: false, errorItem: null });
+  }, [projectSlug]);
+
   return {
     isQueueLocked,
     isQueueRunning: isQueueLocked && isRunning && !isPaused,
     isQueuePaused: isQueueLocked && isPaused,
-    isQueueCompleted,
-    isQueueErrored,
+    isQueueCompleted: isCompleted,
+    isQueueErrored: isErrored,
+    isQueueOnOtherSession,
+    queueActiveSessionId: (isRunning || isPaused) ? lockedSessionId : null,
     progress: { current: currentIndex, total: totalItems },
     currentPromptPreview,
     pauseReason,
@@ -163,5 +151,6 @@ export function useQueueSession(projectSlug: string, sessionId: string): UseQueu
     pause,
     resume,
     abort,
+    dismissBanner,
   };
 }

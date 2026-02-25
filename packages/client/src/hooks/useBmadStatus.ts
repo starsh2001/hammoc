@@ -1,6 +1,8 @@
 /**
  * useBmadStatus - BMad project status data fetching hook
  * [Source: Story 12.2 - Task 2]
+ *
+ * Uses a module-level cache so HMR remounts don't flash a loading skeleton.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -15,9 +17,13 @@ export interface UseBmadStatusReturn {
   retry: () => void;
 }
 
+// Module-level cache survives HMR remounts (Vite preserves module state).
+const cache = new Map<string, BmadStatusResponse>();
+
 export function useBmadStatus(projectSlug: string | undefined): UseBmadStatusReturn {
-  const [data, setData] = useState<BmadStatusResponse | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(() => !!projectSlug);
+  const cached = projectSlug ? cache.get(projectSlug) ?? null : null;
+  const [data, setData] = useState<BmadStatusResponse | null>(cached);
+  const [isLoading, setIsLoading] = useState<boolean>(() => !!projectSlug && !cached);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -30,13 +36,18 @@ export function useBmadStatus(projectSlug: string | undefined): UseBmadStatusRet
     if (!projectSlug) return;
 
     let cancelled = false;
-    setIsLoading(true);
+    // Only show loading skeleton on first load (no cached data).
+    // On HMR / retry, stale data stays visible while revalidating.
+    if (!cache.has(projectSlug)) {
+      setIsLoading(true);
+    }
     setError(null);
 
     bmadStatusApi
       .getStatus(projectSlug)
       .then((res) => {
         if (!cancelled) {
+          cache.set(projectSlug, res);
           setData(res);
           setIsLoading(false);
         }

@@ -10,6 +10,7 @@
  */
 
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { debugLogger } from '../utils/debugLogger';
 
 interface StreamingErrorBoundaryProps {
   /** Child components to wrap */
@@ -39,7 +40,7 @@ export class StreamingErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('[StreamingErrorBoundary] Error caught:', error, errorInfo);
+    debugLogger.error('Error caught in StreamingErrorBoundary', { error: error.message, stack: error.stack });
   }
 
   handleRetry = (): void => {

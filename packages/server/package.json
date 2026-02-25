@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "tsx watch src/dev.ts",
+    "dev": "node --import tsx/esm --watch src/dev.ts",
     "build": "tsc",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "typecheck": "tsc --noEmit",
@@ -23,6 +23,7 @@
     "express": "^4.21.0",
     "js-yaml": "^4.1.1",
     "socket.io": "^4.8.0",
+    "simple-git": "^3.27.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

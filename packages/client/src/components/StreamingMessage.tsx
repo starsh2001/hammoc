@@ -12,6 +12,7 @@
 import { useState, useCallback } from 'react';
 import { Bot, Copy, Check } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { debugLogger } from '../utils/debugLogger';
 
 interface StreamingMessageProps {
   /** Current streaming content */
@@ -50,7 +51,7 @@ export function StreamingMessage({
       setTimeout(() => setIsCopied(false), 2000);
       onCopy?.(content);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      debugLogger.error('Failed to copy', { error: err instanceof Error ? err.message : String(err) });
       // Brief visual feedback on failure
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 1000);

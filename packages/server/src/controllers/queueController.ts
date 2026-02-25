@@ -10,6 +10,9 @@ import { projectService } from '../services/projectService.js';
 import { notificationService } from '../services/notificationService.js';
 import { preferencesService } from '../services/preferencesService.js';
 import { getIO } from '../handlers/websocket.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('queueController');
 
 // Per-project QueueService registry — only one queue per project
 const queueInstances = new Map<string, QueueService>();
@@ -67,7 +70,7 @@ export async function startQueue(req: Request, res: Response): Promise<void> {
   const { items, sessionId } = parseResult.data;
   // Start async, don't await — execution is long-running
   queueService.start(items, projectSlug, sessionId).catch((err) => {
-    console.error('[queueController] Queue execution error:', err);
+    log.error('Queue execution error:', err);
   });
 
   res.status(200).json({ status: 'started', totalItems: items.length });
@@ -105,7 +108,7 @@ export async function resumeQueue(req: Request, res: Response): Promise<void> {
 
   // Resume async — execution continues in background
   queueService.resume().catch((err) => {
-    console.error('[queueController] Queue resume error:', err);
+    log.error('Queue resume error:', err);
   });
 
   res.status(200).json({ status: 'resumed' });
