@@ -61,7 +61,7 @@ export function QueueLockedBanner({
         role="banner"
         aria-live="polite"
         data-testid="queue-locked-banner"
-        className="content-container banner-full-mobile sticky top-0 z-10 shadow-md transition-all duration-300
+        className="w-full content-container banner-full-mobile sticky top-0 z-10 shadow-md transition-all duration-300
                    bg-slate-100 dark:bg-slate-800/60 border-b border-slate-300 dark:border-slate-600"
       >
         <div className="px-4 py-2.5 flex items-center justify-between gap-3">
@@ -90,7 +90,7 @@ export function QueueLockedBanner({
         role="banner"
         aria-live="polite"
         data-testid="queue-locked-banner"
-        className="content-container banner-full-mobile sticky top-0 z-10 shadow-md transition-all duration-300
+        className="w-full content-container banner-full-mobile sticky top-0 z-10 shadow-md transition-all duration-300
                    bg-green-100 dark:bg-green-900/40 border-b border-green-300 dark:border-green-700"
       >
         <div className="px-4 py-3 flex items-center justify-between gap-3">
@@ -122,7 +122,7 @@ export function QueueLockedBanner({
         role="banner"
         aria-live="polite"
         data-testid="queue-locked-banner"
-        className="content-container banner-full-mobile sticky top-0 z-10 shadow-md transition-all duration-300
+        className="w-full content-container banner-full-mobile sticky top-0 z-10 shadow-md transition-all duration-300
                    bg-red-100 dark:bg-red-900/40 border-b border-red-300 dark:border-red-700"
       >
         <div className="px-4 py-3 flex items-center justify-between gap-3">
@@ -175,7 +175,7 @@ export function QueueLockedBanner({
       aria-live="polite"
       aria-label={`큐 진행률: ${progress.current + 1} / ${progress.total}`}
       data-testid="queue-locked-banner"
-      className={`content-container banner-full-mobile sticky top-0 z-10 shadow-md transition-all duration-300 ${bgClass}`}
+      className={`w-full content-container banner-full-mobile sticky top-0 z-10 shadow-md transition-all duration-300 ${bgClass}`}
     >
       {/* Main row */}
       <div className="px-4 py-3">

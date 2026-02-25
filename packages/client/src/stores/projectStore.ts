@@ -16,6 +16,7 @@ import { ApiError } from '../services/api/client';
 interface ProjectState {
   projects: ProjectInfo[];
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   // Story 3.6 - Project creation state
   isCreating: boolean;
@@ -56,6 +57,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   // State
   projects: [],
   isLoading: false,
+  isRefreshing: false,
   error: null,
   // Story 3.6 - Project creation state
   isCreating: false,
@@ -72,15 +74,16 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   fetchProjects: async () => {
     // Only show loading skeleton when there are no cached projects.
     // Otherwise keep stale data visible while revalidating.
-    set({ isLoading: get().projects.length === 0, error: null });
+    const hasCachedData = get().projects.length > 0;
+    set({ isLoading: !hasCachedData, isRefreshing: hasCachedData, error: null });
     try {
       const { projects } = await projectsApi.list();
-      set({ projects, isLoading: false });
+      set({ projects, isLoading: false, isRefreshing: false });
     } catch (err) {
       if (err instanceof ApiError) {
-        set({ error: err.message, isLoading: false });
+        set({ error: err.message, isLoading: false, isRefreshing: false });
       } else {
-        set({ error: '프로젝트 목록을 불러오는 중 오류가 발생했습니다.', isLoading: false });
+        set({ error: '프로젝트 목록을 불러오는 중 오류가 발생했습니다.', isLoading: false, isRefreshing: false });
       }
     }
   },

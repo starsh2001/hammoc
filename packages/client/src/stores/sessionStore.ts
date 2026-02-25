@@ -61,8 +61,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     // Only show loading skeleton when there are no cached sessions.
     // Otherwise keep stale data visible while revalidating.
+    const hasCachedData = get().sessions.length > 0;
     set({
-      isLoading: state.sessions.length === 0,
+      isLoading: !hasCachedData,
+      isRefreshing: hasCachedData,
       error: null,
       errorType: 'none',
     });

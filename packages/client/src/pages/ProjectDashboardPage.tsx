@@ -14,6 +14,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
+import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
 import { useEffect, type ReactNode } from 'react';
 import { formatRelativeTime } from '../utils/formatters';
 import { generateUUID } from '../utils/uuid';
@@ -26,7 +27,7 @@ interface ProjectDashboardPageProps {
 export function ProjectDashboardPage({ quickActionsSlot }: ProjectDashboardPageProps = {}) {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const navigate = useNavigate();
-  const { sessions, fetchSessions, isLoading } = useSessionStore();
+  const { sessions, fetchSessions, isLoading, isRefreshing } = useSessionStore();
 
   useEffect(() => {
     if (projectSlug) {
@@ -90,7 +91,10 @@ export function ProjectDashboardPage({ quickActionsSlot }: ProjectDashboardPageP
         {/* Recent sessions */}
         <div className="lg:col-span-2 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="font-semibold text-gray-900 dark:text-white">최근 세션</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold text-gray-900 dark:text-white">최근 세션</h2>
+              <BackgroundRefreshIndicator isRefreshing={isRefreshing} />
+            </div>
             <button
               onClick={() => navigate(`/project/${projectSlug}/sessions`)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
