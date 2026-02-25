@@ -46,21 +46,42 @@ export interface GitDiffResponse {
   staged?: boolean;
 }
 
+/** Generic response for Git write operations (Story 16.2, AC: 9) */
+export interface GitOperationResponse {
+  success: boolean;
+  message: string;
+}
+
 /**
  * Git API error constants (follows FILE_SYSTEM_ERRORS pattern)
- * Note: GIT_NOT_INITIALIZED is defined for future use (Story 16.2+).
- * In Story 16.1, non-git repos return { initialized: false } as a 200 response,
- * not via this error constant. Only GIT_ERROR is used in controller catch blocks.
+ * Note: GIT_NOT_INITIALIZED httpStatus is 400 for write operations (Story 16.2).
+ * Story 16.1 read endpoints return { initialized: false } as a 200 response
+ * without using this constant, so the change has zero impact on read endpoints.
  */
 export const GIT_ERRORS = {
   GIT_NOT_INITIALIZED: {
     code: 'GIT_NOT_INITIALIZED',
-    httpStatus: 200,
+    httpStatus: 400,
     message: 'Project is not a Git repository',
   },
   GIT_ERROR: {
     code: 'GIT_ERROR',
     httpStatus: 500,
     message: 'Git operation failed',
+  },
+  GIT_CONFLICT: {
+    code: 'GIT_CONFLICT',
+    httpStatus: 409,
+    message: 'Git conflict detected. Use terminal (Epic 17) for advanced resolution.',
+  },
+  GIT_NOTHING_TO_COMMIT: {
+    code: 'GIT_NOTHING_TO_COMMIT',
+    httpStatus: 400,
+    message: 'Nothing to commit',
+  },
+  GIT_BRANCH_EXISTS: {
+    code: 'GIT_BRANCH_EXISTS',
+    httpStatus: 409,
+    message: 'Branch already exists',
   },
 } as const;

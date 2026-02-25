@@ -1,7 +1,7 @@
 /**
  * Git Service
- * Wraps simple-git to provide Git read operations for projects.
- * [Source: Story 16.1 - Task 3]
+ * Wraps simple-git to provide Git read and write operations for projects.
+ * [Source: Story 16.1 - Task 3, Story 16.2 - Task 2]
  */
 
 import simpleGit from 'simple-git';
@@ -129,6 +129,127 @@ class GitService {
       };
     } catch (error) {
       throw this.wrapError('diff', error);
+    }
+  }
+
+  // ── Write operations (Story 16.2) ──
+
+  private throwNotInitialized(): never {
+    const error = new Error('Project is not a Git repository') as NodeJS.ErrnoException;
+    error.code = 'GIT_NOT_INITIALIZED';
+    throw error;
+  }
+
+  async init(projectPath: string): Promise<void> {
+    const git = simpleGit(projectPath);
+    try {
+      await git.init();
+    } catch (error) {
+      throw this.wrapError('init', error);
+    }
+  }
+
+  async stage(projectPath: string, files: string[]): Promise<void> {
+    const git = simpleGit(projectPath);
+    const isRepo = await git.checkIsRepo();
+    if (!isRepo) {
+      this.throwNotInitialized();
+    }
+    try {
+      await git.add(files);
+    } catch (error) {
+      throw this.wrapError('stage', error);
+    }
+  }
+
+  async unstage(projectPath: string, files: string[]): Promise<void> {
+    const git = simpleGit(projectPath);
+    const isRepo = await git.checkIsRepo();
+    if (!isRepo) {
+      this.throwNotInitialized();
+    }
+    try {
+      await git.reset(['--', ...files]);
+    } catch (error) {
+      throw this.wrapError('unstage', error);
+    }
+  }
+
+  async commit(projectPath: string, message: string): Promise<void> {
+    const git = simpleGit(projectPath);
+    const isRepo = await git.checkIsRepo();
+    if (!isRepo) {
+      this.throwNotInitialized();
+    }
+    try {
+      await git.commit(message);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.toLowerCase().includes('nothing to commit')) {
+        const nothingError = new Error('Nothing to commit') as NodeJS.ErrnoException;
+        nothingError.code = 'GIT_NOTHING_TO_COMMIT';
+        throw nothingError;
+      }
+      throw this.wrapError('commit', error);
+    }
+  }
+
+  async push(projectPath: string): Promise<void> {
+    const git = simpleGit(projectPath);
+    const isRepo = await git.checkIsRepo();
+    if (!isRepo) {
+      this.throwNotInitialized();
+    }
+    try {
+      await git.push();
+    } catch (error) {
+      throw this.wrapError('push', error);
+    }
+  }
+
+  async pull(projectPath: string): Promise<void> {
+    const git = simpleGit(projectPath);
+    const isRepo = await git.checkIsRepo();
+    if (!isRepo) {
+      this.throwNotInitialized();
+    }
+    try {
+      await git.pull();
+    } catch (error) {
+      throw this.wrapError('pull', error);
+    }
+  }
+
+  async checkout(projectPath: string, branch: string): Promise<void> {
+    const git = simpleGit(projectPath);
+    const isRepo = await git.checkIsRepo();
+    if (!isRepo) {
+      this.throwNotInitialized();
+    }
+    try {
+      await git.checkout(branch);
+    } catch (error) {
+      throw this.wrapError('checkout', error);
+    }
+  }
+
+  async createBranch(projectPath: string, name: string, startPoint?: string): Promise<void> {
+    const git = simpleGit(projectPath);
+    const isRepo = await git.checkIsRepo();
+    if (!isRepo) {
+      this.throwNotInitialized();
+    }
+    try {
+      const args = startPoint ? [name, startPoint] : [name];
+      await git.branch(args);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.toLowerCase().includes('already exists')) {
+        const branchError = new Error('Branch already exists') as NodeJS.ErrnoException;
+        branchError.code = 'GIT_BRANCH_EXISTS';
+        throw branchError;
+      }
+      throw this.wrapError('createBranch', error);
     }
   }
 }
