@@ -6,18 +6,20 @@
 
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Settings, FolderCog, Bell, HelpCircle, Info } from 'lucide-react';
+import { ArrowLeft, Settings, FolderCog, Bell, Wrench, HelpCircle, Info } from 'lucide-react';
 import { SettingsSection } from '../components/SettingsSection';
 import { GlobalSettingsSection } from '../components/settings/GlobalSettingsSection';
 import { ProjectSettingsSection } from '../components/settings/ProjectSettingsSection';
 import { TelegramSettingsSection } from '../components/settings/TelegramSettingsSection';
 import { HelpSection } from '../components/settings/HelpSection';
 import { AboutSection } from '../components/settings/AboutSection';
+import { AdvancedSettingsSection } from '../components/settings/AdvancedSettingsSection';
 
 const settingsSections = [
   { id: 'global', title: '전역 설정', icon: Settings },
   { id: 'project', title: '프로젝트 설정', icon: FolderCog },
   { id: 'telegram', title: 'Telegram 알림', icon: Bell },
+  { id: 'advanced', title: '고급 설정', icon: Wrench },
   { id: 'help', title: '도움말', icon: HelpCircle },
   { id: 'about', title: '만든이', icon: Info },
 ] as const;
@@ -51,6 +53,8 @@ export function SettingsPage() {
         return <ProjectSettingsSection />;
       case 'telegram':
         return <TelegramSettingsSection />;
+      case 'advanced':
+        return <AdvancedSettingsSection />;
       case 'help':
         return <HelpSection />;
       case 'about':

@@ -569,11 +569,19 @@ async function handleChatSend(
     const chatService = new ChatService({ workingDirectory, permissionMode });
     stream.chatService = chatService;
 
+    // Load preferences early for advanced settings + timeout
+    const effectivePrefs = await preferencesService.getEffectivePreferences();
+
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : { sessionId }),
       abortController,
       model,
       images,
+      // Advanced settings from preferences
+      customSystemPrompt: effectivePrefs.customSystemPrompt,
+      maxThinkingTokens: effectivePrefs.maxThinkingTokens,
+      maxTurns: effectivePrefs.maxTurns,
+      maxBudgetUsd: effectivePrefs.maxBudgetUsd,
     };
 
     // Create canUseTool callback for permission & AskUserQuestion handling
@@ -641,7 +649,6 @@ async function handleChatSend(
     // Activity-based timeout: resets on every SDK callback event
     // Prevents cancellation while SDK is actively working (e.g., large Write input streaming)
     // Timeout value from preferences (with env var override), clamped to 30s–30min range
-    const effectivePrefs = await preferencesService.getEffectivePreferences();
     const rawTimeoutMs = effectivePrefs.chatTimeoutMs ?? config.chat.timeoutMs;
     const timeoutMs = (rawTimeoutMs >= 30000 && rawTimeoutMs <= 1800000) ? rawTimeoutMs : 300000;
     let lastResetSource = 'initial';
