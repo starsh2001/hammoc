@@ -12,6 +12,13 @@ const mockLog = vi.fn();
 const mockBranchLocal = vi.fn();
 const mockBranch = vi.fn();
 const mockDiff = vi.fn();
+const mockInit = vi.fn();
+const mockAdd = vi.fn();
+const mockReset = vi.fn();
+const mockCommit = vi.fn();
+const mockPush = vi.fn();
+const mockPull = vi.fn();
+const mockCheckout = vi.fn();
 
 vi.mock('simple-git', () => ({
   default: vi.fn(() => ({
@@ -21,6 +28,13 @@ vi.mock('simple-git', () => ({
     branchLocal: mockBranchLocal,
     branch: mockBranch,
     diff: mockDiff,
+    init: mockInit,
+    add: mockAdd,
+    reset: mockReset,
+    commit: mockCommit,
+    push: mockPush,
+    pull: mockPull,
+    checkout: mockCheckout,
   })),
 }));
 
@@ -209,5 +223,211 @@ describe('gitService.getDiff', () => {
 
     expect(result).toEqual({ initialized: false });
     expect(mockDiff).not.toHaveBeenCalled();
+  });
+});
+
+// ── Write operation tests (Story 16.2) ──
+
+describe('gitService.init', () => {
+  // TC-GIT-W1: init calls git.init() successfully
+  it('calls git.init() successfully', async () => {
+    mockInit.mockResolvedValue(undefined);
+
+    await gitService.init('/fake/path');
+
+    expect(mockInit).toHaveBeenCalled();
+  });
+
+  // TC-GIT-W2: init does NOT call checkIsRepo()
+  it('does not call checkIsRepo()', async () => {
+    mockInit.mockResolvedValue(undefined);
+
+    await gitService.init('/fake/path');
+
+    expect(mockCheckIsRepo).not.toHaveBeenCalled();
+  });
+});
+
+describe('gitService.stage', () => {
+  // TC-GIT-W3: stage calls git.add(files) with file array
+  it('calls git.add(files) with file array', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockAdd.mockResolvedValue(undefined);
+
+    await gitService.stage('/fake/path', ['file1.ts', 'file2.ts']);
+
+    expect(mockAdd).toHaveBeenCalledWith(['file1.ts', 'file2.ts']);
+  });
+
+  // TC-GIT-W4: stage throws GIT_NOT_INITIALIZED for non-git repo
+  it('throws GIT_NOT_INITIALIZED for non-git repo', async () => {
+    mockCheckIsRepo.mockResolvedValue(false);
+
+    await expect(gitService.stage('/fake/path', ['file.ts'])).rejects.toThrow('Project is not a Git repository');
+    const error = await gitService.stage('/fake/path', ['file.ts']).catch((e) => e);
+    expect(error.code).toBe('GIT_NOT_INITIALIZED');
+  });
+});
+
+describe('gitService.unstage', () => {
+  // TC-GIT-W5: unstage calls git.reset(['--', ...files])
+  it('calls git.reset with correct arguments', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockReset.mockResolvedValue(undefined);
+
+    await gitService.unstage('/fake/path', ['file1.ts', 'file2.ts']);
+
+    expect(mockReset).toHaveBeenCalledWith(['--', 'file1.ts', 'file2.ts']);
+  });
+
+  // TC-GIT-W6: unstage throws GIT_NOT_INITIALIZED for non-git repo
+  it('throws GIT_NOT_INITIALIZED for non-git repo', async () => {
+    mockCheckIsRepo.mockResolvedValue(false);
+
+    const error = await gitService.unstage('/fake/path', ['file.ts']).catch((e) => e);
+    expect(error.code).toBe('GIT_NOT_INITIALIZED');
+  });
+});
+
+describe('gitService.commit', () => {
+  // TC-GIT-W7: commit calls git.commit(message) successfully
+  it('calls git.commit(message) successfully', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockCommit.mockResolvedValue(undefined);
+
+    await gitService.commit('/fake/path', 'test commit message');
+
+    expect(mockCommit).toHaveBeenCalledWith('test commit message');
+  });
+
+  // TC-GIT-W8: commit throws GIT_NOT_INITIALIZED for non-git repo
+  it('throws GIT_NOT_INITIALIZED for non-git repo', async () => {
+    mockCheckIsRepo.mockResolvedValue(false);
+
+    const error = await gitService.commit('/fake/path', 'msg').catch((e) => e);
+    expect(error.code).toBe('GIT_NOT_INITIALIZED');
+  });
+
+  // TC-GIT-W20: commit wraps "nothing to commit" error appropriately
+  it('wraps "nothing to commit" error with GIT_NOTHING_TO_COMMIT code', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockCommit.mockRejectedValue(new Error('nothing to commit, working tree clean'));
+
+    const error = await gitService.commit('/fake/path', 'msg').catch((e) => e);
+    expect(error.code).toBe('GIT_NOTHING_TO_COMMIT');
+  });
+});
+
+describe('gitService.push', () => {
+  // TC-GIT-W9: push calls git.push() successfully
+  it('calls git.push() successfully', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockPush.mockResolvedValue(undefined);
+
+    await gitService.push('/fake/path');
+
+    expect(mockPush).toHaveBeenCalled();
+  });
+
+  // TC-GIT-W10: push throws GIT_NOT_INITIALIZED for non-git repo
+  it('throws GIT_NOT_INITIALIZED for non-git repo', async () => {
+    mockCheckIsRepo.mockResolvedValue(false);
+
+    const error = await gitService.push('/fake/path').catch((e) => e);
+    expect(error.code).toBe('GIT_NOT_INITIALIZED');
+  });
+
+  // TC-GIT-W18: push wraps error with descriptive message on failure
+  it('wraps error with descriptive message on failure', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockPush.mockRejectedValue(new Error('push rejected'));
+
+    await expect(gitService.push('/fake/path')).rejects.toThrow('Git push failed');
+  });
+});
+
+describe('gitService.pull', () => {
+  // TC-GIT-W11: pull calls git.pull() successfully
+  it('calls git.pull() successfully', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockPull.mockResolvedValue(undefined);
+
+    await gitService.pull('/fake/path');
+
+    expect(mockPull).toHaveBeenCalled();
+  });
+
+  // TC-GIT-W12: pull throws GIT_NOT_INITIALIZED for non-git repo
+  it('throws GIT_NOT_INITIALIZED for non-git repo', async () => {
+    mockCheckIsRepo.mockResolvedValue(false);
+
+    const error = await gitService.pull('/fake/path').catch((e) => e);
+    expect(error.code).toBe('GIT_NOT_INITIALIZED');
+  });
+
+  // TC-GIT-W19: pull wraps error with descriptive message on failure
+  it('wraps error with descriptive message on failure', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockPull.mockRejectedValue(new Error('CONFLICT in file.ts'));
+
+    await expect(gitService.pull('/fake/path')).rejects.toThrow('Git pull failed');
+  });
+});
+
+describe('gitService.checkout', () => {
+  // TC-GIT-W13: checkout calls git.checkout(branch) successfully
+  it('calls git.checkout(branch) successfully', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockCheckout.mockResolvedValue(undefined);
+
+    await gitService.checkout('/fake/path', 'feature-branch');
+
+    expect(mockCheckout).toHaveBeenCalledWith('feature-branch');
+  });
+
+  // TC-GIT-W14: checkout throws GIT_NOT_INITIALIZED for non-git repo
+  it('throws GIT_NOT_INITIALIZED for non-git repo', async () => {
+    mockCheckIsRepo.mockResolvedValue(false);
+
+    const error = await gitService.checkout('/fake/path', 'main').catch((e) => e);
+    expect(error.code).toBe('GIT_NOT_INITIALIZED');
+  });
+});
+
+describe('gitService.createBranch', () => {
+  // TC-GIT-W15: createBranch calls git.branch([name]) for new branch
+  it('calls git.branch([name]) for new branch', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockBranch.mockResolvedValue(undefined);
+
+    await gitService.createBranch('/fake/path', 'new-branch');
+
+    expect(mockBranch).toHaveBeenCalledWith(['new-branch']);
+  });
+
+  // TC-GIT-W16: createBranch with startPoint calls git.branch([name, startPoint])
+  it('calls git.branch([name, startPoint]) with startPoint', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockBranch.mockResolvedValue(undefined);
+
+    await gitService.createBranch('/fake/path', 'new-branch', 'main');
+
+    expect(mockBranch).toHaveBeenCalledWith(['new-branch', 'main']);
+  });
+
+  // TC-GIT-W17: createBranch throws GIT_NOT_INITIALIZED for non-git repo
+  it('throws GIT_NOT_INITIALIZED for non-git repo', async () => {
+    mockCheckIsRepo.mockResolvedValue(false);
+
+    const error = await gitService.createBranch('/fake/path', 'new-branch').catch((e) => e);
+    expect(error.code).toBe('GIT_NOT_INITIALIZED');
+  });
+
+  it('throws GIT_BRANCH_EXISTS when branch already exists', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockBranch.mockRejectedValue(new Error("fatal: a branch named 'main' already exists"));
+
+    const error = await gitService.createBranch('/fake/path', 'main').catch((e) => e);
+    expect(error.code).toBe('GIT_BRANCH_EXISTS');
   });
 });
