@@ -132,7 +132,7 @@ export function useStreaming() {
       // (addOptimisticMessage stores content.trim(), so comparison must also trim)
       const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
       const isDuplicate = lastUserMsg && lastUserMsg.content.trim() === incomingTrimmed;
-      console.log('[DEDUP] user:message received', {
+      debugLog.stream('DEDUP user:message received', {
         sessionId: data.sessionId,
         contentPreview: data.content.slice(0, 50),
         msgCount: msgs.length,
@@ -150,7 +150,7 @@ export function useStreaming() {
       });
       if (!isDuplicate) {
         useMessageStore.getState().addOptimisticMessage(data.content);
-        console.log('[DEDUP] user:message → added optimistic', {
+        debugLog.stream('DEDUP user:message → added optimistic', {
           newMsgCount: useMessageStore.getState().messages.length,
         });
       }
@@ -292,14 +292,14 @@ export function useStreaming() {
 
       // Complete streaming: converts segments to messages and clears them
       // No need to fetch from JSONL - data is already in memory
-      console.log('[DEDUP] message:complete → before completeStreaming', {
+      debugLog.stream('DEDUP message:complete → before completeStreaming', {
         segCount: useChatStore.getState().streamingSegments.length,
         segTypes: useChatStore.getState().streamingSegments.map(s => s.type),
         msgCount: useMessageStore.getState().messages.length,
         msgTypes: useMessageStore.getState().messages.map(m => m.type),
       });
       completeStreaming();
-      console.log('[DEDUP] message:complete → after completeStreaming', {
+      debugLog.stream('DEDUP message:complete → after completeStreaming', {
         msgCount: useMessageStore.getState().messages.length,
         msgTypes: useMessageStore.getState().messages.map(m => m.type),
         isStreaming: useChatStore.getState().isStreaming,
@@ -619,7 +619,7 @@ export function useStreaming() {
         // doubled text when multiple session:join → stream:status cycles occur
         // (e.g., React Strict Mode double-mount or rapid navigation)
         clearChunkQueue();
-        console.log('[DEDUP] stream:status ACTIVE → before restoreStreaming', {
+        debugLog.stream('DEDUP stream:status ACTIVE → before restoreStreaming', {
           sessionId: data.sessionId,
           msgCount: useMessageStore.getState().messages.length,
           msgTypes: useMessageStore.getState().messages.map(m => m.type),
@@ -630,7 +630,7 @@ export function useStreaming() {
         // Trim all messages after the last user message to avoid duplication
         // with buffer replay (which replays the entire assistant turn)
         trimMessagesAfterLastUser();
-        console.log('[DEDUP] stream:status ACTIVE → after trim', {
+        debugLog.stream('DEDUP stream:status ACTIVE → after trim', {
           msgCount: useMessageStore.getState().messages.length,
           msgTypes: useMessageStore.getState().messages.map(m => m.type),
         });
@@ -639,12 +639,28 @@ export function useStreaming() {
         // Stream not active — if we were streaming, the stream completed during disconnect.
         // Clean up stale streaming state and fetch authoritative history.
         if (chatState.isStreaming) {
+          const hadSegments = chatState.streamingSegments.length > 0;
           flushChunkQueue();
           debugLog.stream('stream:status → completing stale stream', {
             sessionId: data.sessionId,
+            hadSegments,
           });
           // Complete streaming: converts segments to messages and clears them
           completeStreaming();
+
+          // If no segments were received (stream completed entirely during disconnect),
+          // fetch authoritative history from JSONL so the completed response is displayed.
+          if (!hadSegments) {
+            const msgState = useMessageStore.getState();
+            const { currentProjectSlug, currentSessionId } = msgState;
+            if (currentProjectSlug && currentSessionId) {
+              debugLog.stream('stream:status → fetching messages after empty completion', {
+                projectSlug: currentProjectSlug,
+                sessionId: currentSessionId,
+              });
+              msgState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true });
+            }
+          }
         } else {
           debugLog.stream('stream:status → inactive, no-op (not streaming)');
         }
@@ -769,7 +785,6 @@ export function useStreaming() {
     const handleError = (data?: unknown) => {
       const currentIsStreaming = useChatStore.getState().isStreaming;
       debugLog.socket('error', { isStreaming: currentIsStreaming, data });
-      console.log('[CHAIN-DEBUG] handleError received', JSON.stringify({ isStreaming: currentIsStreaming, data }));
       clearChunkQueue();
       abortStreaming();
     };
