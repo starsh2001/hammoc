@@ -13,10 +13,6 @@ import type {
   ServerToClientEvents,
   InterServerEvents,
   SocketData,
-  TrackedToolCall,
-  ToolResult,
-  CompactMetadata,
-  TaskNotificationData,
   PermissionMode,
   ImageAttachment,
   PermissionRequest,
@@ -32,6 +28,7 @@ import { notificationService } from '../services/notificationService.js';
 import { preferencesService } from '../services/preferencesService.js';
 import { getOrCreateQueueService, getQueueInstances } from '../controllers/queueController.js';
 import { createLogger } from '../utils/logger.js';
+import { buildStreamCallbacks } from './streamCallbacks.js';
 const log = createLogger('websocket');
 
 // Alias for concise usage in guards
@@ -567,7 +564,6 @@ async function handleChatSend(
   const sessionService = new SessionService();
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  let actualSessionId: string | undefined = sessionId;
 
   try {
     const chatService = new ChatService({ workingDirectory, permissionMode });
@@ -592,7 +588,7 @@ async function handleChatSend(
       // Emit permission:request (buffered + forwarded to connected socket)
       emit('permission:request', {
         id: requestId,
-        sessionId: actualSessionId || '',
+        sessionId: sessionIdRef.current || '',
         toolCall: { id: requestId, name: toolName, input },
         requiresApproval: true,
       } as PermissionRequest);
@@ -659,156 +655,61 @@ async function handleChatSend(
     };
     resetTimeout('initial');
 
-    await chatService.sendMessageWithCallbacks(content, {
-      onActivity: (messageType: string) => {
-        resetTimeout(`onActivity:${messageType}`);
+    // Build shared callbacks (common logic for browser & queue paths)
+    const { callbacks, sessionIdRef } = buildStreamCallbacks(
+      {
+        emit,
+        stream,
+        isResuming: !!isResuming,
+        initialSessionId: sessionId,
+        rekeyStream: (sid) => rekeyStream(stream, sid),
+        broadcastStreamChange: (sid, active) => io.emit('session:stream-change', { sessionId: sid, active }),
+        notificationService,
       },
-
-      onSessionInit: async (sid, metadata) => {
-        log.debug(`Session initialized: ${sid} (model: ${metadata?.model ?? 'unknown'})`);
-        actualSessionId = sid;
-
-        // Re-key stream from pending key to actual sessionId (also moves Socket.io rooms)
-        rekeyStream(stream, sid);
-
-        // Emit session event BEFORE disk write for faster client navigation
-        if (isResuming) {
-          emit('session:resumed', { sessionId: sid, model: metadata?.model });
-        } else {
-          emit('session:created', { sessionId: sid, model: metadata?.model });
-        }
-
-        // Broadcast stream-active so session lists can update in real-time
-        io.emit('session:stream-change', { sessionId: sid, active: true });
-
-        // Disk write is best-effort (don't block streaming)
-        sessionService.saveSessionId(workingDirectory, sid).catch(() => {});
+      {
+        onCallbackActivity: (source) => resetTimeout(source),
+        onSessionIdResolved: (sid) => {
+          sessionService.saveSessionId(workingDirectory, sid).catch(() => {});
+        },
       },
+    );
 
-      onTextChunk: (chunk) => {
-        resetTimeout('onTextChunk');
-        emit('message:chunk', {
-          sessionId: actualSessionId || chunk.sessionId,
-          messageId: chunk.messageId,
-          content: chunk.content,
-          done: chunk.done,
-        });
-      },
+    // Browser-only callbacks
+    callbacks.onActivity = (messageType: string) => {
+      resetTimeout(`onActivity:${messageType}`);
+    };
 
-      onThinking: (content: string) => {
-        resetTimeout('onThinking');
-        emit('thinking:chunk', { content });
-      },
-
-      onToolUse: (toolCall: TrackedToolCall) => {
-        resetTimeout('onToolUse');
-        log.debug(`onToolUse: tool=${toolCall.name}, id=${toolCall.id}`);
-        emit('tool:call', {
-          id: toolCall.id,
-          name: toolCall.name,
-          input: toolCall.input,
-        });
-      },
-
-      onToolInputUpdate: (toolCallId: string, input: Record<string, unknown>) => {
-        resetTimeout('onToolInputUpdate');
-        emit('tool:input-update', {
-          toolCallId,
-          input,
-        });
-      },
-
-      onToolResult: (toolCallId: string, result: ToolResult) => {
-        resetTimeout('onToolResult');
-        log.debug(`onToolResult: id=${toolCallId}, success=${result.success}`);
-        emit('tool:result', {
-          toolCallId,
-          result,
-        });
-      },
-
-      onCompact: (metadata: CompactMetadata) => {
-        resetTimeout('onCompact');
-        emit('system:compact', metadata);
-      },
-
-      onToolProgress: (toolUseId: string, elapsedTimeSeconds: number, toolName: string) => {
-        resetTimeout('onToolProgress');
-        emit('tool:progress', { toolUseId, elapsedTimeSeconds, toolName });
-      },
-
-      onTaskNotification: (data: TaskNotificationData) => {
-        resetTimeout('onTaskNotification');
-        emit('system:task-notification', data);
-      },
-
-      onToolUseSummary: (summary: string, precedingToolUseIds: string[]) => {
-        resetTimeout('onToolUseSummary');
-        emit('tool:summary', { summary, precedingToolUseIds });
-      },
-
-      onAssistantUsage: (usage) => {
-        emit('assistant:usage', usage);
-      },
-
-      onContextEstimate: (estimatedTokens, contextWindow) => {
-        emit('context:estimate', { estimatedTokens, contextWindow });
-      },
-
-      onResultError: (data) => {
-        emit('result:error', data);
-      },
-
-      onComplete: (response) => {
-        emit('message:complete', {
-          id: response.id,
-          sessionId: actualSessionId || response.sessionId,
-          role: 'assistant',
-          content: response.content,
-          timestamp: new Date(),
-          usage: response.usage,
-        });
-
-        if (response.usage) {
-          emit('context:usage', response.usage);
-        }
-
-        // Notify via Telegram if no socket connected
-        if (stream.sockets.size === 0) {
-          notificationService.notifyComplete(stream.sessionId);
-        }
-      },
-
-      onError: (error) => {
-        // Ignore abort errors from replaced streams (another-client or user-abort)
-        if (abortController.signal.aborted) {
-          const reason = abortController.signal.reason;
-          if (reason === 'another-client' || reason === 'user-abort') {
-            return;
-          }
-        }
-
-        const sdkError = parseSDKError(error);
-
-        if (isResuming && isSessionNotFoundError(error)) {
-          emit('error', {
-            code: ERROR_CODES.SESSION_NOT_FOUND,
-            message: '세션을 찾을 수 없습니다. 새 세션을 시작해주세요.',
-          });
+    callbacks.onError = (error) => {
+      // Ignore abort errors from replaced streams (another-client or user-abort)
+      if (abortController.signal.aborted) {
+        const reason = abortController.signal.reason;
+        if (reason === 'another-client' || reason === 'user-abort') {
           return;
         }
+      }
 
+      const sdkError = parseSDKError(error);
+
+      if (isResuming && isSessionNotFoundError(error)) {
         emit('error', {
-          code: ERROR_CODES.CHAT_ERROR,
-          message: sdkError.message,
+          code: ERROR_CODES.SESSION_NOT_FOUND,
+          message: '세션을 찾을 수 없습니다. 새 세션을 시작해주세요.',
         });
+        return;
+      }
 
-        // Notify via Telegram if no socket connected
-        if (stream.sockets.size === 0) {
-          notificationService.notifyError(stream.sessionId, sdkError.message);
-        }
-      },
-    }, chatOptions, canUseTool, (messageType: string) => {
+      emit('error', {
+        code: ERROR_CODES.CHAT_ERROR,
+        message: sdkError.message,
+      });
+
+      // Notify via Telegram if no socket connected
+      if (stream.sockets.size === 0) {
+        notificationService.notifyError(stream.sessionId, sdkError.message);
+      }
+    };
+
+    await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
       resetTimeout(`raw:${messageType}`);
     });
   } catch (error) {
