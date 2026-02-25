@@ -8,6 +8,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Plus, CheckSquare, Trash2, X, Eye, EyeOff, MoreVertical, Moon, Sun, Settings, LogOut } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import { useProjectStore } from '../stores/projectStore';
+import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
 import { useAuthStore } from '../stores/authStore';
 import { SessionListItem } from '../components/SessionListItem';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
@@ -112,10 +113,9 @@ export function SessionListPage() {
 
   const handleRefresh = useCallback(async () => {
     if (projectSlug) {
-      setRefreshing(true);
       await fetchSessions(projectSlug);
     }
-  }, [projectSlug, fetchSessions, setRefreshing]);
+  }, [projectSlug, fetchSessions]);
 
   // Pull-to-refresh hook
   const { containerRef, pullDistance, isRefreshing: isPullRefreshing } = usePullToRefresh({
@@ -299,7 +299,10 @@ export function SessionListPage() {
               <BrandLogo />
               <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
               <div className="min-w-0 flex-1">
-                <h1 className="text-base font-semibold truncate text-gray-900 dark:text-white">{projectDirName}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-semibold truncate text-gray-900 dark:text-white">{projectDirName}</h1>
+                  <BackgroundRefreshIndicator isRefreshing={isRefreshing} />
+                </div>
                 <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{projectFullPath}</p>
               </div>
             </>

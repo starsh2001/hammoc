@@ -187,13 +187,17 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       const STREAM_COMPLETE_COOLDOWN_MS = 10000; // 10s cooldown after streaming ends
       const isInCooldown = chatState.streamCompletedAt !== null &&
                            (Date.now() - chatState.streamCompletedAt) < STREAM_COMPLETE_COOLDOWN_MS;
-      // Block unconditionally during buffer replay restoration to prevent
-      // fetchMessages from inserting JSONL data between stream:status and
-      // user:message, which can cause user message to appear below assistant response.
+      // Block during buffer replay restoration to prevent fetchMessages from
+      // inserting JSONL data between stream:status and user:message, which can
+      // cause user message to appear below assistant response.
+      // Exception: when server returns MORE messages (multi-turn history, e.g.
+      // queue runner sessions where previous turns have completed), allow the
+      // update through. ChatPage's fetchMessages().then() callback handles
+      // trimming the current streaming turn to prevent duplication with buffer replay.
       const isRestoring = chatState.streamingMessageId === 'restoring';
       const shouldGuard = !isPaginationFetch &&
-                          (isRestoring ||
-                           (response.messages.length < currentMessages.length &&
+                          ((isRestoring && response.messages.length <= currentMessages.length) ||
+                           (!isRestoring && response.messages.length < currentMessages.length &&
                             (chatState.isStreaming || chatState.segmentsPendingClear || isInCooldown)));
 
       // DETAILED GUARD DEBUG: Track why messages might disappear
@@ -225,6 +229,11 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         set({ isLoading: false });
         return;
       }
+
+      // During stream restoration, server data may include partial messages from
+      // the current streaming turn. Duplication with buffer replay is handled by
+      // ChatPage's fetchMessages().then() callback, which trims messages after
+      // the last user message when streaming is active (ChatPage.tsx ~line 429).
 
       // Reconcile optimistic messages with server-authoritative messages
       // (includes image preservation from optimistic originals)

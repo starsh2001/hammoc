@@ -110,6 +110,7 @@ function setupMocks(opts: {
   vi.mocked(useBmadStatus).mockReturnValue({
     data: opts.data ?? null,
     isLoading: opts.isLoading ?? false,
+    isRefreshing: false,
     error: opts.error ?? null,
     retry: mockRetry,
   });
