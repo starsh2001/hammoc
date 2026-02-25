@@ -187,13 +187,19 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       const STREAM_COMPLETE_COOLDOWN_MS = 10000; // 10s cooldown after streaming ends
       const isInCooldown = chatState.streamCompletedAt !== null &&
                            (Date.now() - chatState.streamCompletedAt) < STREAM_COMPLETE_COOLDOWN_MS;
+      // Block unconditionally during buffer replay restoration to prevent
+      // fetchMessages from inserting JSONL data between stream:status and
+      // user:message, which can cause user message to appear below assistant response.
+      const isRestoring = chatState.streamingMessageId === 'restoring';
       const shouldGuard = !isPaginationFetch &&
-                          response.messages.length < currentMessages.length &&
-                          (chatState.isStreaming || chatState.segmentsPendingClear || isInCooldown);
+                          (isRestoring ||
+                           (response.messages.length < currentMessages.length &&
+                            (chatState.isStreaming || chatState.segmentsPendingClear || isInCooldown)));
 
       // DETAILED GUARD DEBUG: Track why messages might disappear
       debugLog.message('fetchMessages → guard check', {
         shouldGuard,
+        isRestoring,
         isPaginationFetch,
         serverCount: response.messages.length,
         currentCount: currentMessages.length,
@@ -243,7 +249,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         paginationHasMore: response.pagination?.hasMore,
       });
 
-      console.log('[DEDUP] fetchMessages → setting messages', {
+      debugLog.message('DEDUP fetchMessages → setting messages', {
         serverCount: response.messages.length,
         reconciledCount: reconciledMessages.length,
         reconciledTypes: reconciledMessages.map(m => m.type),
@@ -339,7 +345,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     set((state) => {
       const existingIds = new Set(state.messages.map((m) => m.id));
       const uniqueNewMessages = newMessages.filter((m) => !existingIds.has(m.id));
-      console.log('[DEDUP] addMessages', {
+      debugLog.message('DEDUP addMessages', {
         incomingCount: newMessages.length,
         incomingTypes: newMessages.map(m => m.type),
         existingCount: state.messages.length,
