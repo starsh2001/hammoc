@@ -38,12 +38,17 @@ export function useCliStatus(options?: UseCliStatusOptions): UseCliStatusResult 
   const [isLoading, setIsLoading] = useState(!options?.skip);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasDataRef = useRef(false);
 
   const fetchStatus = useCallback(async () => {
-    setIsLoading(true);
+    // Only show loading when there's no cached status.
+    if (!hasDataRef.current) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const status = await api.get<CLIStatusResponse>('/cli-status');
+      hasDataRef.current = true;
       setCliStatus(status);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'CLI 상태 확인 실패');

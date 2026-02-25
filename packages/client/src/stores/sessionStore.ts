@@ -59,7 +59,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       set({ sessions: [], currentProjectSlug: projectSlug });
     }
 
-    set({ isLoading: true, error: null, errorType: 'none' });
+    // Only show loading skeleton when there are no cached sessions.
+    // Otherwise keep stale data visible while revalidating.
+    set({
+      isLoading: state.sessions.length === 0,
+      error: null,
+      errorType: 'none',
+    });
     try {
       const { includeEmpty } = get();
       const { sessions } = await sessionsApi.list(projectSlug, { includeEmpty, limit: options?.limit });

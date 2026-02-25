@@ -7,6 +7,7 @@ import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Plus, CheckSquare, Trash2, X, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
+import { useQueueStore } from '../stores/queueStore';
 import { SessionListItem } from '../components/SessionListItem';
 import { SessionListItemSkeleton } from '../components/SessionListItemSkeleton';
 import { EmptyState } from '../components/EmptyState';
@@ -35,6 +36,7 @@ export function ProjectSessionsPage() {
     includeEmpty,
     setIncludeEmpty,
   } = useSessionStore();
+  const queueLockedSessionId = useQueueStore((s) => (s.isRunning || s.isPaused) ? s.lockedSessionId : null);
   const skeletonCount = useSkeletonCount(5);
 
   // Selection mode state
@@ -267,6 +269,7 @@ export function ProjectSessionsPage() {
                 isEditing={editingSessionId === session.sessionId}
                 onEditStart={(id) => setEditingSessionId(id)}
                 onEditEnd={() => setEditingSessionId(null)}
+                isQueueActive={queueLockedSessionId === session.sessionId}
               />
             ))}
           </div>

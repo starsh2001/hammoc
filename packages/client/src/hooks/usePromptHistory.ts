@@ -9,6 +9,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { sessionsApi } from '../services/api/sessions';
+import { debugLogger } from '../utils/debugLogger';
 
 const MAX_HISTORY = 50;
 const SAVE_DEBOUNCE_MS = 500;
@@ -27,7 +28,7 @@ export function usePromptHistory() {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       sessionsApi.savePromptHistory(slug, sid, { history: history.slice(-MAX_HISTORY) }).catch((err) => {
-        console.error('[usePromptHistory] Failed to save:', err);
+        debugLogger.error('Failed to save prompt history', { error: err instanceof Error ? err.message : String(err) });
       });
     }, SAVE_DEBOUNCE_MS);
   }, []);

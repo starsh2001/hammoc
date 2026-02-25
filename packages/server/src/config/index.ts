@@ -3,6 +3,8 @@
  * Story 4.6: Environment-based configuration for chat settings
  */
 
+import { LogLevel, parseLogLevel } from '@bmad-studio/shared';
+
 /**
  * Server configuration object
  * Centralized configuration management with environment variable support
@@ -40,6 +42,15 @@ export const config = {
       methods: ['GET', 'POST'] as string[],
       credentials: true as const,
     },
+  },
+
+  /**
+   * Logging settings
+   * LOG_LEVEL env var: ERROR | WARN | INFO | DEBUG | VERBOSE
+   */
+  logging: {
+    level: parseLogLevel(process.env.LOG_LEVEL) ??
+      (process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG),
   },
 
   /**

@@ -70,7 +70,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   // Actions
   fetchProjects: async () => {
-    set({ isLoading: true, error: null });
+    // Only show loading skeleton when there are no cached projects.
+    // Otherwise keep stale data visible while revalidating.
+    set({ isLoading: get().projects.length === 0, error: null });
     try {
       const { projects } = await projectsApi.list();
       set({ projects, isLoading: false });

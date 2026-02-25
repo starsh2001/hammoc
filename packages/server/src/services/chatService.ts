@@ -17,36 +17,52 @@ import { createLogger } from '../utils/logger.js';
 const log = createLogger('chatService');
 
 /**
- * Build workspace context to append to the system prompt.
- * Replicates the VS Code extension's appended context (~3,500 tokens) almost
- * verbatim — only the environment name differs ("BMad Studio" vs "VSCode").
- * Without this grounding (code-reference rules, git status with real file paths),
- * the model hallucinates paths like /Users/jake/test.txt.
+ * Default workspace context template with system variables.
+ * Variables like {gitBranch} are resolved at runtime via resolveTemplateVariables().
  */
-function buildWorkspaceContext(cwd: string): string {
-  // --- Header & Code References (mirrors VS Code extension context) ---
-  const header = [
-    '',
-    '# BMad Studio Context',
-    '',
-    'You are running inside BMad Studio, a web-based IDE.',
-    '',
-    '## Code References in Text',
-    'IMPORTANT: When referencing files or code locations, use markdown link syntax to make them clickable:',
-    '- For files: [filename.ts](src/filename.ts)',
-    '- For specific lines: [filename.ts:42](src/filename.ts#L42)',
-    '- For a range of lines: [filename.ts:42-51](src/filename.ts#L42-L51)',
-    '- For folders: [src/utils/](src/utils/)',
-    'Unless explicitly asked for by the user, DO NOT USE backticks ` or HTML tags like code for file references - always use markdown [text](link) format.',
-    "The URL links should be relative paths from the root of the user's workspace.",
-  ].join('\n');
+export const DEFAULT_WORKSPACE_TEMPLATE = [
+  '',
+  '# BMad Studio Context',
+  '',
+  'You are running inside BMad Studio, a web-based IDE.',
+  '',
+  '## Code References in Text',
+  'IMPORTANT: When referencing files or code locations, use markdown link syntax to make them clickable:',
+  '- For files: [filename.ts](src/filename.ts)',
+  '- For specific lines: [filename.ts:42](src/filename.ts#L42)',
+  '- For a range of lines: [filename.ts:42-51](src/filename.ts#L42-L51)',
+  '- For folders: [src/utils/](src/utils/)',
+  'Unless explicitly asked for by the user, DO NOT USE backticks ` or HTML tags like code for file references - always use markdown [text](link) format.',
+  "The URL links should be relative paths from the root of the user's workspace.",
+  '',
+  'gitStatus: This is the git status at the start of the conversation. Note that this status is a snapshot in time, and will not update during the conversation.',
+  'Current branch: {gitBranch}',
+  '',
+  'Main branch (you will usually use this for PRs): {gitMainBranch}',
+  '',
+  'Status:',
+  '{gitStatus}',
+].join('\n');
 
-  // --- Git status (same format as VS Code) ---
-  let gitSection = '';
+/** Available template variables and their descriptions */
+export const TEMPLATE_VARIABLES = [
+  { name: 'gitBranch', description: 'Current git branch name' },
+  { name: 'gitMainBranch', description: 'Main branch name (main or master)' },
+  { name: 'gitStatus', description: 'git status --short output (truncated to 30 lines)' },
+] as const;
+
+/**
+ * Resolve template variables like {gitBranch} using the project CWD.
+ */
+export function resolveTemplateVariables(template: string, cwd: string): string {
+  const vars: Record<string, string> = {};
+
   try {
     const stdio: ['pipe', 'pipe', 'pipe'] = ['pipe', 'pipe', 'pipe'];
     const execOpts = { cwd, encoding: 'utf-8' as const, timeout: 3000, stdio };
-    const branch = execSync('git rev-parse --abbrev-ref HEAD', execOpts).toString().trim();
+
+    vars.gitBranch = execSync('git rev-parse --abbrev-ref HEAD', execOpts).toString().trim();
+
     let mainBranch = 'main';
     try {
       execSync('git rev-parse --verify refs/heads/main', execOpts);
@@ -59,27 +75,31 @@ function buildWorkspaceContext(cwd: string): string {
         // fallback
       }
     }
+    vars.gitMainBranch = mainBranch;
+
     const gitStatus = execSync('git status --short', { ...execOpts, timeout: 5000 }).toString().trim();
     const statusLines = gitStatus ? gitStatus.split('\n') : [];
-    const truncatedStatus = statusLines.length > 30
+    vars.gitStatus = statusLines.length > 30
       ? [...statusLines.slice(0, 30), `... and ${statusLines.length - 30} more files`].join('\n')
-      : gitStatus;
-
-    gitSection = [
-      '',
-      'gitStatus: This is the git status at the start of the conversation. Note that this status is a snapshot in time, and will not update during the conversation.',
-      `Current branch: ${branch}`,
-      '',
-      `Main branch (you will usually use this for PRs): ${mainBranch}`,
-      '',
-      'Status:',
-      truncatedStatus || '(clean)',
-    ].join('\n');
+      : (gitStatus || '(clean)');
   } catch {
     // Not a git repo or git not available
+    vars.gitBranch = '(unknown)';
+    vars.gitMainBranch = 'main';
+    vars.gitStatus = '(not a git repo)';
   }
 
-  return [header, gitSection].join('\n');
+  return template.replace(/\{(\w+)\}/g, (match, varName) => {
+    return vars[varName] ?? match;
+  });
+}
+
+/**
+ * Build workspace context by resolving the default template.
+ * Kept for backward compatibility.
+ */
+export function buildWorkspaceContext(cwd: string): string {
+  return resolveTemplateVariables(DEFAULT_WORKSPACE_TEMPLATE, cwd);
 }
 
 // Intentionally duplicated in streamHandler.ts for file independence
@@ -165,23 +185,20 @@ export class ChatService {
     const resolvedAllowed = options.allowedTools ?? this.allowedTools;
     const resolvedDisallowed = options.disallowedTools ?? this.disallowedTools;
 
-    // Build systemPrompt based on customSystemPrompt option
+    // Build systemPrompt: Claude Code preset + workspace context template.
+    // customSystemPrompt is a full template with {variable} placeholders
+    // (e.g. {gitBranch}, {gitStatus}) that are resolved at runtime.
+    // If not set, DEFAULT_WORKSPACE_TEMPLATE is used.
     const systemPrompt = (() => {
-      if (options.customSystemPrompt) {
-        // Replace mode: use custom prompt + workspace context
-        return this.workingDirectory
-          ? options.customSystemPrompt + '\n\n' + buildWorkspaceContext(this.workingDirectory)
-          : options.customSystemPrompt;
-      }
-      // Default: Claude Code preset with workspace context
-      if (this.workingDirectory) {
-        return {
-          type: 'preset' as const,
-          preset: 'claude_code' as const,
-          append: buildWorkspaceContext(this.workingDirectory),
-        };
-      }
-      return undefined;
+      const template = options.customSystemPrompt || DEFAULT_WORKSPACE_TEMPLATE;
+      const append = this.workingDirectory
+        ? resolveTemplateVariables(template, this.workingDirectory)
+        : template;
+      return {
+        type: 'preset' as const,
+        preset: 'claude_code' as const,
+        append,
+      };
     })();
 
     const queryOptions: Options = {

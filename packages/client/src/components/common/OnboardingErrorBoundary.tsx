@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { debugLogger } from '../../utils/debugLogger';
 
 interface Props {
   children: ReactNode;
@@ -26,7 +27,7 @@ export class OnboardingErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('OnboardingErrorBoundary caught an error:', error, errorInfo);
+    debugLogger.error('Error caught in OnboardingErrorBoundary', { error: error.message, stack: error.stack });
   }
 
   handleRetry = () => {

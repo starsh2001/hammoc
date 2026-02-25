@@ -238,6 +238,8 @@ describe('useQueueStore', () => {
         pauseReason: undefined,
         lockedSessionId: 'session-1',
         currentModel: 'claude-3',
+        isCompleted: false,
+        isErrored: false,
       });
 
       const state = useQueueStore.getState();
@@ -258,6 +260,8 @@ describe('useQueueStore', () => {
         currentIndex: 0,
         totalItems: 0,
         lockedSessionId: null,
+        isCompleted: false,
+        isErrored: false,
       });
 
       expect(useQueueStore.getState().completedItems.size).toBe(0);

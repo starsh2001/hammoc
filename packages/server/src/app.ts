@@ -21,8 +21,12 @@ import debugRoutes from './routes/debug.js';
 import fileSystemRoutes from './routes/fileSystem.js';
 import bmadStatusRoutes from './routes/bmadStatus.js';
 import queueRoutes from './routes/queue.js';
+import gitRoutes from './routes/git.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
+import { createLogger } from './utils/logger.js';
+
+const log = createLogger('app');
 
 /**
  * Create and configure Express app
@@ -91,6 +95,9 @@ export async function createApp(): Promise<Express> {
   // Queue Runner routes (Story 15.2)
   app.use('/api/projects', queueRoutes);
 
+  // Git Integration routes (Story 16.1)
+  app.use('/api/projects', gitRoutes);
+
   // Debug routes (server-side logging for client debugging)
   app.use('/api/debug', debugRoutes);
 
@@ -105,9 +112,9 @@ export async function createApp(): Promise<Express> {
       app.get('*', (_req: Request, res: Response) => {
         res.sendFile(path.join(clientDistPath, 'index.html'));
       });
-      console.log(`Serving client from ${clientDistPath}`);
+      log.info(`Serving client from ${clientDistPath}`);
     } else {
-      console.warn(`Client build not found at ${clientDistPath} — run "npm run build" first`);
+      log.warn(`Client build not found at ${clientDistPath} — run "npm run build" first`);
     }
   }
 

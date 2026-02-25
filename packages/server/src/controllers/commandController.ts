@@ -7,6 +7,9 @@
 import { Request, Response } from 'express';
 import type { CommandsResponse } from '@bmad-studio/shared';
 import { commandService } from '../services/commandService.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('commandController');
 
 export const commandController = {
   /**
@@ -19,7 +22,7 @@ export const commandController = {
       const response: CommandsResponse = await commandService.getCommandsWithStarCommands(projectSlug);
       res.json(response);
     } catch (error) {
-      console.error('[commandController] Error listing commands:', error);
+      log.error('Error listing commands:', error);
       res.status(500).json({
         error: {
           code: 'COMMAND_LIST_ERROR',

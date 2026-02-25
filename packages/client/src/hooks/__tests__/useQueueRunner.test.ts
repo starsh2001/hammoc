@@ -36,6 +36,8 @@ const defaultStatus = {
   currentIndex: 0,
   totalItems: 0,
   lockedSessionId: null,
+  isCompleted: false,
+  isErrored: false,
 };
 
 describe('useQueueRunner', () => {
@@ -144,6 +146,8 @@ describe('useQueueRunner', () => {
       currentIndex: 3,
       totalItems: 5,
       lockedSessionId: 'session-1',
+      isCompleted: false,
+      isErrored: false,
     });
 
     renderHook(() => useQueueRunner('my-project'));

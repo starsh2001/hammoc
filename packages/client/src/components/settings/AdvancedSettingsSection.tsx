@@ -1,32 +1,87 @@
 /**
  * AdvancedSettingsSection - Advanced settings for system prompt and SDK options
- * Custom system prompt (replace mode), Max Thinking Tokens, Max Turns, Max Budget
+ * Shows the system prompt template with {variable} placeholders.
+ * Variables like {gitBranch} are resolved at runtime by the server.
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { RotateCcw } from 'lucide-react';
 import { usePreferencesStore } from '../../stores/preferencesStore';
+import { useSessionStore } from '../../stores/sessionStore';
+import { projectsApi } from '../../services/api/projects';
+
+interface TemplateVariable {
+  name: string;
+  description: string;
+}
 
 export function AdvancedSettingsSection() {
   const { preferences, updatePreference } = usePreferencesStore();
+  const currentProjectSlug = useSessionStore((s) => s.currentProjectSlug);
+
+  // Default template and variables fetched from server
+  const [defaultTemplate, setDefaultTemplate] = useState<string | null>(null);
+  const [resolvedPreview, setResolvedPreview] = useState<string | null>(null);
+  const [variables, setVariables] = useState<TemplateVariable[]>([]);
+  const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Local state for system prompt with debounced save
-  const [promptText, setPromptText] = useState(preferences.customSystemPrompt ?? '');
+  const [promptText, setPromptText] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isCustomized = preferences.customSystemPrompt != null;
+
+  // Fetch default template from server when project is available
+  useEffect(() => {
+    if (!currentProjectSlug) return;
+    setIsLoadingPrompt(true);
+    projectsApi.getSystemPrompt(currentProjectSlug)
+      .then((data) => {
+        setDefaultTemplate(data.template);
+        setResolvedPreview(data.resolved);
+        setVariables(data.variables as TemplateVariable[]);
+        if (!preferences.customSystemPrompt) {
+          setPromptText(data.template);
+        }
+      })
+      .catch(() => {
+        // Silently fail
+      })
+      .finally(() => setIsLoadingPrompt(false));
+  }, [currentProjectSlug]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync local state when preferences load from server
   useEffect(() => {
-    setPromptText(preferences.customSystemPrompt ?? '');
-  }, [preferences.customSystemPrompt]);
+    if (preferences.customSystemPrompt != null) {
+      setPromptText(preferences.customSystemPrompt);
+    } else if (defaultTemplate) {
+      setPromptText(defaultTemplate);
+    }
+  }, [preferences.customSystemPrompt, defaultTemplate]);
 
   const handlePromptChange = useCallback((value: string) => {
     setPromptText(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      updatePreference('customSystemPrompt', value || undefined);
+      // Save only if different from default template
+      if (value === defaultTemplate) {
+        updatePreference('customSystemPrompt', undefined);
+      } else {
+        updatePreference('customSystemPrompt', value || undefined);
+      }
       toast.success('시스템 프롬프트가 저장되었습니다');
     }, 1000);
-  }, [updatePreference]);
+  }, [updatePreference, defaultTemplate]);
+
+  const handleRestoreDefault = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    updatePreference('customSystemPrompt', undefined);
+    if (defaultTemplate) {
+      setPromptText(defaultTemplate);
+    }
+    toast.success('기본 시스템 프롬프트로 복원되었습니다');
+  }, [updatePreference, defaultTemplate]);
 
   // Cleanup debounce on unmount
   useEffect(() => {
@@ -47,33 +102,109 @@ export function AdvancedSettingsSection() {
 
   return (
     <div className="space-y-8">
-      {/* Custom System Prompt */}
+      {/* System Prompt Template */}
       <div>
-        <label
-          htmlFor="custom-system-prompt"
-          className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
-        >
-          커스텀 시스템 프롬프트
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label
+            htmlFor="custom-system-prompt"
+            className="block text-sm font-medium text-gray-900 dark:text-white"
+          >
+            시스템 프롬프트
+          </label>
+          {isCustomized && (
+            <button
+              type="button"
+              onClick={handleRestoreDefault}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium
+                         text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300
+                         bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50
+                         border border-blue-200 dark:border-blue-700 rounded-md transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              기본값으로 복원
+            </button>
+          )}
+        </div>
+
+        {/* Warning banner */}
         <div className="mb-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
           <p className="text-xs text-amber-700 dark:text-amber-300">
-            기본 Claude Code 시스템 프롬프트를 완전히 교체합니다. 빈 값이면 기본 프롬프트가 사용됩니다.
-            워크스페이스 컨텍스트(Git 상태, 파일 참조 포맷)는 항상 자동으로 추가됩니다.
+            <strong>주의:</strong> 시스템 프롬프트를 잘못 수정하면 응답 퀄리티가 크게 저하될 수 있습니다.
+            수정 내용에 확신이 없다면 기본값을 유지하세요.
           </p>
         </div>
-        <textarea
-          id="custom-system-prompt"
-          value={promptText}
-          onChange={(e) => handlePromptChange(e.target.value)}
-          rows={10}
-          placeholder="예: You are a senior TypeScript developer. Always respond in Korean..."
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-        />
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
-          {promptText.length}자
-        </p>
+
+        {/* Customized indicator */}
+        {isCustomized && (
+          <div className="mb-2 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-600 dark:text-blue-400">
+            사용자 정의 프롬프트 사용 중
+          </div>
+        )}
+
+        {isLoadingPrompt ? (
+          <div className="w-full h-[260px] rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+            <span className="text-sm text-gray-400">프롬프트 로딩 중...</span>
+          </div>
+        ) : (
+          <textarea
+            id="custom-system-prompt"
+            value={promptText}
+            onChange={(e) => handlePromptChange(e.target.value)}
+            rows={16}
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+          />
+        )}
+        <div className="mt-1 flex items-center justify-between">
+          {!currentProjectSlug ? (
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              프로젝트를 선택하면 현재 시스템 프롬프트를 확인할 수 있습니다.
+            </p>
+          ) : (
+            <span />
+          )}
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {promptText.length}자
+          </p>
+        </div>
+
+        {/* Available template variables */}
+        {variables.length > 0 && (
+          <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+              사용 가능한 시스템 변수 (런타임에 자동 치환)
+            </p>
+            <div className="space-y-1">
+              {variables.map((v) => (
+                <div key={v.name} className="flex items-start gap-2 text-xs">
+                  <code className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-blue-600 dark:text-blue-400 font-mono shrink-0">
+                    {`{${v.name}}`}
+                  </code>
+                  <span className="text-gray-500 dark:text-gray-400">{v.description}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Resolved preview toggle */}
+        {resolvedPreview && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setShowPreview(!showPreview)}
+              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 underline"
+            >
+              {showPreview ? '미리보기 닫기' : '현재 프로젝트 기준 미리보기'}
+            </button>
+            {showPreview && (
+              <pre className="mt-2 p-3 text-xs font-mono bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto whitespace-pre-wrap text-gray-600 dark:text-gray-400 max-h-60 overflow-y-auto">
+                {resolvedPreview}
+              </pre>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Max Thinking Tokens */}

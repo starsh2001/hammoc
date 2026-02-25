@@ -4,13 +4,17 @@
  */
 
 import { Link } from 'react-router-dom';
-import { Pause, Play, Square, CheckCircle, AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
+import { Pause, Play, Square, CheckCircle, AlertTriangle, Loader2, ExternalLink, X } from 'lucide-react';
 
 export interface QueueLockedBannerProps {
   isRunning: boolean;
   isPaused: boolean;
   isCompleted: boolean;
   isErrored: boolean;
+  /** Queue is running on a different session */
+  isOnOtherSession?: boolean;
+  /** Session ID where queue is currently active */
+  activeSessionId?: string | null;
   progress: { current: number; total: number };
   currentPromptPreview: string | undefined;
   pauseReason: string | undefined;
@@ -19,6 +23,8 @@ export interface QueueLockedBannerProps {
   onPause: () => void;
   onResume: () => void;
   onAbort: () => void;
+  /** Dismiss the completed/errored banner */
+  onDismiss?: () => void;
 }
 
 export function QueueLockedBanner({
@@ -26,6 +32,8 @@ export function QueueLockedBanner({
   isPaused,
   isCompleted,
   isErrored,
+  isOnOtherSession,
+  activeSessionId,
   progress,
   currentPromptPreview,
   pauseReason,
@@ -34,6 +42,7 @@ export function QueueLockedBanner({
   onPause,
   onResume,
   onAbort,
+  onDismiss,
 }: QueueLockedBannerProps) {
   const progressPercent = progress.total > 0
     ? Math.round(((progress.current) / progress.total) * 100)
@@ -45,6 +54,35 @@ export function QueueLockedBanner({
     }
   };
 
+  // Queue running on a different session
+  if (isOnOtherSession && activeSessionId) {
+    return (
+      <div
+        role="banner"
+        aria-live="polite"
+        data-testid="queue-locked-banner"
+        className="content-container banner-full-mobile sticky top-0 z-10 shadow-md transition-all duration-300
+                   bg-slate-100 dark:bg-slate-800/60 border-b border-slate-300 dark:border-slate-600"
+      >
+        <div className="px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Loader2 size={16} className="text-slate-500 dark:text-slate-400 flex-shrink-0 animate-spin" aria-hidden="true" />
+            <span className="text-sm text-slate-600 dark:text-slate-300">
+              큐 러너가 다른 세션에서 작업 중 ({progress.current + 1}/{progress.total})
+            </span>
+          </div>
+          <Link
+            to={`/project/${projectSlug}/session/${activeSessionId}`}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 flex-shrink-0"
+          >
+            해당 세션으로 이동
+            <ExternalLink size={14} aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // Completed state
   if (isCompleted) {
     return (
@@ -55,11 +93,23 @@ export function QueueLockedBanner({
         className="content-container banner-full-mobile sticky top-0 z-10 shadow-md transition-all duration-300
                    bg-green-100 dark:bg-green-900/40 border-b border-green-300 dark:border-green-700"
       >
-        <div className="px-4 py-3 flex items-center gap-3">
-          <CheckCircle size={20} className="text-green-600 dark:text-green-400 flex-shrink-0" aria-hidden="true" />
-          <span className="text-green-800 dark:text-green-200 font-medium">
-            완료 ({progress.total}개 아이템 실행됨)
-          </span>
+        <div className="px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <CheckCircle size={20} className="text-green-600 dark:text-green-400 flex-shrink-0" aria-hidden="true" />
+            <span className="text-green-800 dark:text-green-200 font-medium">
+              완료 ({progress.total}개 아이템 실행됨)
+            </span>
+          </div>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label="배너 닫기"
+              className="p-1 rounded-md text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
     );
@@ -82,13 +132,25 @@ export function QueueLockedBanner({
               큐 실행 중 오류로 중단됨
             </span>
           </div>
-          <Link
-            to={`/project/${projectSlug}/queue`}
-            className="text-sm text-red-600 dark:text-red-400 hover:underline flex items-center gap-1 flex-shrink-0"
-          >
-            큐 에디터로 이동
-            <ExternalLink size={14} aria-hidden="true" />
-          </Link>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Link
+              to={`/project/${projectSlug}/queue`}
+              className="text-sm text-red-600 dark:text-red-400 hover:underline flex items-center gap-1"
+            >
+              큐 에디터로 이동
+              <ExternalLink size={14} aria-hidden="true" />
+            </Link>
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                aria-label="배너 닫기"
+                className="p-1 rounded-md text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, MoreVertical, Trash2, Pencil, X } from 'lucide-react';
+import { MessageSquare, MoreVertical, Trash2, Pencil, X, ListOrdered } from 'lucide-react';
 import type { SessionListItem as SessionListItemType } from '@bmad-studio/shared';
 import { formatRelativeTime } from '../utils/formatters';
 
@@ -22,9 +22,11 @@ interface SessionListItemProps {
   isEditing?: boolean;
   onEditStart?: (sessionId: string) => void;
   onEditEnd?: () => void;
+  /** Whether this session is controlled by queue runner */
+  isQueueActive?: boolean;
 }
 
-export function SessionListItem({ session, onClick, onDelete, onRename, selectionMode, selected, onToggleSelect, agentInfo, isEditing, onEditStart, onEditEnd }: SessionListItemProps) {
+export function SessionListItem({ session, onClick, onDelete, onRename, selectionMode, selected, onToggleSelect, agentInfo, isEditing, onEditStart, onEditEnd, isQueueActive }: SessionListItemProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [editValue, setEditValue] = useState(session.name || '');
@@ -188,6 +190,15 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
                 )}
                 <span className={`relative inline-flex rounded-full h-2 w-2 ${session.isStreaming ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
               </span>
+              {isQueueActive && (
+                <span
+                  className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-px rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300"
+                  title="큐 러너 작업 중"
+                >
+                  <ListOrdered className="w-3 h-3" />
+                  큐
+                </span>
+              )}
               <MessageSquare className="w-4 h-4" aria-hidden="true" />
               <span>{session.messageCount}개 메시지</span>
             </div>

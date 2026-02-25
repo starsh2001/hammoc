@@ -106,6 +106,9 @@ router.get('/:projectSlug/settings', projectController.getSettings);
 // PATCH /api/projects/:projectSlug/settings - Update project settings
 router.patch('/:projectSlug/settings', projectController.updateSettings);
 
+// GET /api/projects/:projectSlug/system-prompt - Get default system prompt
+router.get('/:projectSlug/system-prompt', projectController.getSystemPrompt);
+
 // POST /api/projects/validate-path - Validate directory path (rate limited)
 router.post('/validate-path', validatePathLimiter, projectController.validatePath);
 

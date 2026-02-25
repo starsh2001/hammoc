@@ -288,6 +288,8 @@ describe('useQueueSession', () => {
       currentIndex: 3,
       totalItems: 5,
       lockedSessionId: 'session-1',
+      isCompleted: false,
+      isErrored: false,
     });
 
     renderHook(() => useQueueSession('my-project', 'session-1'));

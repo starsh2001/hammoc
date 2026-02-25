@@ -11,6 +11,7 @@
 import { create } from 'zustand';
 import type { UserPreferences } from '@bmad-studio/shared';
 import { preferencesApi } from '../services/api/preferences';
+import { debugLogger } from '../utils/debugLogger';
 
 const CACHE_KEY = 'bmad-studio-preferences';
 const DEBOUNCE_MS = 300;
@@ -113,7 +114,7 @@ function flushToServer() {
   const patch = { ...pendingPatch };
   pendingPatch = {};
   preferencesApi.update(patch).catch((err) => {
-    console.error('[preferencesStore] Failed to save preferences:', err);
+    debugLogger.error('Failed to save preferences', { error: err instanceof Error ? err.message : String(err) });
   });
 }
 
@@ -153,7 +154,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
         }
       }
     } catch (err) {
-      console.error('[preferencesStore] Failed to init preferences:', err);
+      debugLogger.error('Failed to init preferences', { error: err instanceof Error ? err.message : String(err) });
       // Fall back to cache — already in state from readCache()
       set({ loaded: true });
     }

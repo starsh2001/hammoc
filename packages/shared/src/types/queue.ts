@@ -36,6 +36,10 @@ export interface QueueParseResult {
 export interface QueueExecutionState {
   isRunning: boolean;
   isPaused: boolean;
+  /** Queue finished successfully (persists until dismissed) */
+  isCompleted: boolean;
+  /** Queue finished with error (persists until dismissed) */
+  isErrored: boolean;
   currentIndex: number;
   totalItems: number;
   pauseReason?: string;
@@ -43,6 +47,16 @@ export interface QueueExecutionState {
   currentModel?: string;
   /** Last error from the most recent queue run (persists after run ends) */
   lastError?: { itemIndex: number; error: string } | null;
+  /** Queue items (included during active execution for page re-entry) */
+  items?: QueueItem[];
+  /** Map of itemIndex -> sessionId for completed items (for session links) */
+  completedSessionIds?: Record<number, string>;
+}
+
+export interface QueueItemsUpdatedEvent {
+  items: QueueItem[];
+  totalItems: number;
+  currentIndex: number;
 }
 
 export interface QueueProgressEvent {

@@ -601,7 +601,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           break;
         }
       }
-      console.log('[DEDUP] completeStreaming → safety net trim', {
+      debugLog.state('DEDUP completeStreaming → safety net trim', {
         existingCount: existing.length,
         existingTypes: existing.map(m => m.type),
         lastUserIdx,
@@ -614,7 +614,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
 
       useMessageStore.getState().addMessages(messages);
-      console.log('[DEDUP] completeStreaming → after addMessages', {
+      debugLog.state('DEDUP completeStreaming → after addMessages', {
         totalMsgCount: useMessageStore.getState().messages.length,
         totalMsgTypes: useMessageStore.getState().messages.map(m => m.type),
       });
@@ -993,7 +993,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   restoreStreaming: (sessionId: string) => {
-    console.log('[DEDUP] restoreStreaming called', {
+    debugLog.state('DEDUP restoreStreaming called', {
       sessionId,
       prevSessionId: get().streamingSessionId,
       prevIsStreaming: get().isStreaming,
