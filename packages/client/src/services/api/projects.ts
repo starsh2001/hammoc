@@ -47,4 +47,12 @@ export const projectsApi = {
   /** Update project settings (.bmad-studio/settings.json) */
   updateSettings: (projectSlug: string, settings: UpdateProjectSettingsRequest) =>
     api.patch<ProjectSettingsApiResponse>(`/projects/${projectSlug}/settings`, settings),
+
+  /** Get default system prompt template and resolved preview */
+  getSystemPrompt: (projectSlug: string) =>
+    api.get<{
+      template: string;
+      resolved: string;
+      variables: readonly { name: string; description: string }[];
+    }>(`/projects/${projectSlug}/system-prompt`),
 };

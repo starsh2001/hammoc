@@ -16,6 +16,9 @@ import {
 } from '@bmad-studio/shared';
 import { AuthConfigService } from '../services/authConfigService.js';
 import { rateLimiter } from '../services/rateLimiter.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('auth');
 
 const loginSchema = z.object({
   password: z.string().min(1, '패스워드를 입력해주세요.'),
@@ -109,7 +112,7 @@ export const authController = {
       message: '로그인 성공',
     });
     } catch (err) {
-      console.error('[auth] Login handler error:', err);
+      log.error('Login handler error:', err);
       res.status(500).json({
         error: {
           code: 'LOGIN_ERROR',
@@ -184,7 +187,7 @@ export const authController = {
         });
         return;
       }
-      console.error('[auth] Setup handler error:', err);
+      log.error('Setup handler error:', err);
       res.status(500).json({
         error: {
           code: 'SETUP_ERROR',

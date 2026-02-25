@@ -30,6 +30,7 @@ import { ContextUsageDisplay } from './ContextUsageDisplay';
 import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage } from '@bmad-studio/shared';
 import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
 import { generateUUID } from '../utils/uuid';
+import { debugLogger } from '../utils/debugLogger';
 
 // Permission mode color mapping for focus ring and send button
 const MODE_COLORS: Record<PermissionMode, { ring: string; button: string }> = {
@@ -418,7 +419,7 @@ export function ChatInput({
           file,
         });
       } catch (err) {
-        console.error(`[ChatInput] Failed to read image file: ${file.name}`, err);
+        debugLogger.error('Failed to read image file', { error: err instanceof Error ? err.message : String(err), fileName: file.name });
         showValidationError(`이미지를 읽을 수 없습니다: ${file.name}`);
       }
     }
@@ -1016,6 +1017,7 @@ export function ChatInput({
           contextUsage={contextUsage ?? null}
           onNewSession={onNewSession}
           onCompact={onCompact}
+          disabled={queueLocked}
         />
 
         {/* Attach button (Story 5.5) */}
@@ -1056,11 +1058,13 @@ export function ChatInput({
             type="button"
             onClick={onAbort}
             onPointerDown={preventFocusLoss}
+            disabled={queueLocked}
             aria-label="중단"
             className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
                        bg-red-600 hover:bg-red-700
                        dark:bg-red-500 dark:hover:bg-red-600
                        text-white
+                       disabled:opacity-50 disabled:cursor-not-allowed
                        focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
                        transition-all duration-150"
             style={{ height: '28px', width: '28px' }}

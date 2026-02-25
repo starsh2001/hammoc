@@ -13,6 +13,7 @@ import { memo, useState, useEffect, useCallback, useRef } from 'react';
 import { Copy, Check, X } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { getHighlighter, isSupportedLanguage } from '../utils/shiki';
+import { debugLogger } from '../utils/debugLogger';
 
 interface CodeBlockProps {
   /** Code content to display */
@@ -77,7 +78,7 @@ export const CodeBlock = memo(function CodeBlock({
           setIsLoading(false);
         }
       } catch (err) {
-        console.error('Shiki highlighting failed:', err);
+        debugLogger.error('Shiki highlighting failed', { error: err instanceof Error ? err.message : String(err) });
         if (mountedRef.current) {
           setHighlightedHtml(null);
           setIsLoading(false);
@@ -122,7 +123,7 @@ export const CodeBlock = memo(function CodeBlock({
       onCopy?.(code);
       setTimeout(() => setCopyState('idle'), 2000);
     } catch (err) {
-      console.error('Failed to copy code:', err);
+      debugLogger.error('Failed to copy code', { error: err instanceof Error ? err.message : String(err) });
       setCopyState('error');
       setTimeout(() => setCopyState('idle'), 2000);
     }

@@ -1,17 +1,26 @@
 /**
- * Debug Logger — writes detailed streaming/socket event logs to an in-memory ring buffer.
- * Downloadable as a file from browser console: debugLogger.download()
+ * Debug Logger — level-filtered logging with in-memory ring buffer and server persistence.
  *
  * Usage:
  *   import { debugLog, debugLogger } from '../utils/debugLogger';
  *   debugLog.stream('handleChunk', { sessionId, messageId, contentLen: data.content.length });
+ *   debugLogger.error('Critical failure', { code: 500 });
+ *   debugLogger.warn('Unexpected state', { state });
+ *   debugLogger.info('Session created', { id });
  *
  * Console commands:
  *   window.__debugLogger.dump()      — print all logs to console
  *   window.__debugLogger.download()  — download logs as .txt file
  *   window.__debugLogger.clear()     — clear buffer
  *   window.__debugLogger.setEnabled(false) — disable logging
+ *   window.__debugLogger.setLevel(0) — set to ERROR only
+ *   window.__debugLogger.setLevel(4) — set to VERBOSE (all)
+ *
+ * Configuration:
+ *   VITE_LOG_LEVEL env var: ERROR | WARN | INFO | DEBUG | VERBOSE
  */
+
+import { LogLevel, parseLogLevel } from '@bmad-studio/shared';
 
 const MAX_ENTRIES = 2000;
 const SERVER_FLUSH_INTERVAL = 500; // ms between server flushes
@@ -23,15 +32,30 @@ interface LogEntry {
   data?: Record<string, unknown>;
 }
 
+const categoryColors: Record<string, string> = {
+  error: '#F44336',
+  warn: '#FF9800',
+  info: '#2196F3',
+  socket: '#2196F3',
+  stream: '#4CAF50',
+  state: '#FF9800',
+  message: '#9C27B0',
+  reconnect: '#F44336',
+  chatpage: '#00BCD4',
+};
+
 class DebugLogger {
   private buffer: LogEntry[] = [];
   private enabled = true;
   private serverLoggingEnabled = true;
   private serverQueue: LogEntry[] = [];
   private serverFlushTimer: ReturnType<typeof setInterval> | null = null;
+  private currentLevel: LogLevel;
 
   constructor() {
-    // Start server flush timer
+    const envLevel = parseLogLevel(import.meta.env.VITE_LOG_LEVEL);
+    const isDev = import.meta.env.DEV;
+    this.currentLevel = envLevel ?? (isDev ? LogLevel.DEBUG : LogLevel.INFO);
     this.startServerFlush();
   }
 
@@ -56,9 +80,7 @@ class DebugLogger {
     }
   }
 
-  log(category: string, event: string, data?: Record<string, unknown>) {
-    if (!this.enabled) return;
-
+  private writeEntry(category: string, event: string, data?: Record<string, unknown>) {
     const entry: LogEntry = {
       ts: new Date().toISOString(),
       category,
@@ -76,16 +98,8 @@ class DebugLogger {
       this.serverQueue.push(entry);
     }
 
-    // Also log to console in dev mode with color coding
-    const colors: Record<string, string> = {
-      socket: '#2196F3',
-      stream: '#4CAF50',
-      state: '#FF9800',
-      message: '#9C27B0',
-      reconnect: '#F44336',
-      chatpage: '#00BCD4',
-    };
-    const color = colors[category] || '#757575';
+    // Console output with color coding
+    const color = categoryColors[category] || '#757575';
     console.debug(
       `%c[${category}]%c ${event}`,
       `color: ${color}; font-weight: bold`,
@@ -94,10 +108,58 @@ class DebugLogger {
     );
   }
 
+  /**
+   * Categorized log at DEBUG level (existing API — backward compatible)
+   */
+  log(category: string, event: string, data?: Record<string, unknown>) {
+    if (!this.enabled || LogLevel.DEBUG > this.currentLevel) return;
+    this.writeEntry(category, event, data);
+  }
+
+  // --- Level-based methods ---
+
+  error(event: string, data?: Record<string, unknown>) {
+    if (!this.enabled || LogLevel.ERROR > this.currentLevel) return;
+    this.writeEntry('error', event, data);
+  }
+
+  warn(event: string, data?: Record<string, unknown>) {
+    if (!this.enabled || LogLevel.WARN > this.currentLevel) return;
+    this.writeEntry('warn', event, data);
+  }
+
+  info(event: string, data?: Record<string, unknown>) {
+    if (!this.enabled || LogLevel.INFO > this.currentLevel) return;
+    this.writeEntry('info', event, data);
+  }
+
+  verbose(category: string, event: string, data?: Record<string, unknown>) {
+    if (!this.enabled || LogLevel.VERBOSE > this.currentLevel) return;
+    this.writeEntry(category, event, data);
+  }
+
+  // --- Configuration methods ---
+
+  setLevel(level: LogLevel) {
+    this.currentLevel = level;
+    console.log(`[DebugLogger] Level set to ${LogLevel[level]} (${level})`);
+  }
+
+  getLevel(): LogLevel {
+    return this.currentLevel;
+  }
+
   setServerLogging(enabled: boolean) {
     this.serverLoggingEnabled = enabled;
     console.log(`[DebugLogger] Server logging ${enabled ? 'enabled' : 'disabled'}`);
   }
+
+  setEnabled(enabled: boolean) {
+    this.enabled = enabled;
+    console.log(`[DebugLogger] ${enabled ? 'Enabled' : 'Disabled'}`);
+  }
+
+  // --- Buffer management ---
 
   dump(): string {
     const lines = this.buffer.map((e) => {
@@ -125,11 +187,6 @@ class DebugLogger {
     console.log('[DebugLogger] Buffer cleared');
   }
 
-  setEnabled(enabled: boolean) {
-    this.enabled = enabled;
-    console.log(`[DebugLogger] ${enabled ? 'Enabled' : 'Disabled'}`);
-  }
-
   getEntries(): readonly LogEntry[] {
     return this.buffer;
   }
@@ -137,7 +194,7 @@ class DebugLogger {
 
 export const debugLogger = new DebugLogger();
 
-// Convenience namespace for categorized logging
+// Convenience namespace for categorized logging (DEBUG level)
 export const debugLog = {
   socket: (event: string, data?: Record<string, unknown>) =>
     debugLogger.log('socket', event, data),

@@ -1,9 +1,10 @@
 /**
- * QueueRunnerPanel - Queue execution progress panel with item status
+ * QueueRunnerPanel - Queue execution progress panel with item status,
+ * session links, item deletion, inline add form, and drag-and-drop reorder.
  * [Source: Story 15.3 - Task 5]
  */
 
-import { useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   CheckCircle,
   PlayCircle,
@@ -14,7 +15,14 @@ import {
   Play,
   Pause,
   Square,
+  ExternalLink,
+  Trash2,
+  Plus,
+  GripVertical,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import type { DropResult } from '@hello-pangea/dnd';
 import type { QueueItem } from '@bmad-studio/shared';
 
 interface QueueRunnerPanelProps {
@@ -28,16 +36,30 @@ interface QueueRunnerPanelProps {
   onPause: () => void;
   onResume: () => void;
   onAbort: () => void;
+  /** Project slug for session link */
+  projectSlug?: string;
+  /** Active session ID for navigation link */
+  activeSessionId?: string | null;
+  /** When true, panel takes full available height with fixed header */
+  fullHeight?: boolean;
+  /** Session ID per completed item for navigation links */
+  itemSessionIds?: Map<number, string>;
+  /** Remove a pending item at given index */
+  onRemoveItem?: (itemIndex: number) => void;
+  /** Add a new item (raw script line) */
+  onAddItem?: (rawLine: string) => void;
+  /** Reorder pending items (provide new index order) */
+  onReorderItems?: (newOrder: number[]) => void;
 }
 
 function getItemSummary(item: QueueItem): string {
   if (item.isBreakpoint) return `일시정지${item.prompt ? `: ${item.prompt}` : ''}`;
   if (item.isNewSession && item.prompt) return `[새 세션] ${item.prompt.slice(0, 80)}`;
-  if (item.isNewSession) return '새 세션 시작'; // defensive fallback
+  if (item.isNewSession) return '새 세션 시작';
   if (item.saveSessionName) return `세션 저장: ${item.saveSessionName}`;
   if (item.loadSessionName) return `세션 로드: ${item.loadSessionName}`;
   if (item.modelName && item.prompt) return `[모델: ${item.modelName}] ${item.prompt.slice(0, 60)}`;
-  if (item.modelName) return `모델 변경: ${item.modelName}`; // defensive fallback
+  if (item.modelName) return `모델 변경: ${item.modelName}`;
   if (item.delayMs) return `대기: ${item.delayMs}ms`;
   return item.prompt.slice(0, 80) + (item.prompt.length > 80 ? '...' : '');
 }
@@ -85,8 +107,16 @@ export function QueueRunnerPanel({
   onPause,
   onResume,
   onAbort,
+  projectSlug,
+  activeSessionId,
+  fullHeight = false,
+  itemSessionIds,
+  onRemoveItem,
+  onAddItem,
+  onReorderItems,
 }: QueueRunnerPanelProps) {
   const currentItemRef = useRef<HTMLDivElement>(null);
+  const [newItemText, setNewItemText] = useState('');
 
   // Auto-scroll to current item
   useEffect(() => {
@@ -113,10 +143,45 @@ export function QueueRunnerPanel({
     }
   };
 
+  const handleAddItem = useCallback(() => {
+    if (newItemText.trim() && onAddItem) {
+      onAddItem(newItemText.trim());
+      setNewItemText('');
+    }
+  }, [newItemText, onAddItem]);
+
+  // Determine the start index of pending items (for DnD boundary)
+  const pendingStart = isPaused ? currentIndex : currentIndex + 1;
+
+  const handleDragEnd = useCallback((result: DropResult) => {
+    if (!result.destination || !onReorderItems) return;
+    const srcIdx = result.source.index;
+    const dstIdx = result.destination.index;
+    if (srcIdx === dstIdx) return;
+
+    // Build the current pending indices
+    const pendingIndices = Array.from(
+      { length: items.length - pendingStart },
+      (_, i) => pendingStart + i,
+    );
+
+    // Reorder within pending indices
+    const [moved] = pendingIndices.splice(srcIdx, 1);
+    pendingIndices.splice(dstIdx, 0, moved);
+
+    onReorderItems(pendingIndices);
+  }, [items.length, pendingStart, onReorderItems]);
+
+  // Split items into non-draggable (completed/running) and draggable (pending)
+  const fixedItems = items.slice(0, pendingStart);
+  const pendingItems = items.slice(pendingStart);
+  const canDrag = !!onReorderItems && (isRunning || isPaused);
+
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden">
+    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden
+      ${fullHeight ? 'flex flex-col flex-1 min-h-0' : ''}`}>
       {/* Header with status and controls */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center gap-2 text-sm font-medium">
           {isRunning && !isPaused && (
             <>
@@ -136,7 +201,7 @@ export function QueueRunnerPanel({
               <span className="text-green-600 dark:text-green-400">완료 ({completedCount}개 아이템 실행됨)</span>
             </>
           )}
-          {hasError && (
+          {hasError && !isRunning && !isPaused && (
             <>
               <XCircle className="w-4 h-4 text-red-500" />
               <span className="text-red-600 dark:text-red-400">오류 발생</span>
@@ -148,6 +213,16 @@ export function QueueRunnerPanel({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Session link */}
+          {projectSlug && activeSessionId && (isRunning || isPaused) && (
+            <Link
+              to={`/project/${projectSlug}/session/${activeSessionId}`}
+              className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              세션 이동
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          )}
           {isRunning && !isPaused && (
             <button
               onClick={onPause}
@@ -191,7 +266,7 @@ export function QueueRunnerPanel({
       </div>
 
       {/* Progress bar */}
-      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
           <span>진행: {completedCount} / {total}</span>
           <span>{percentage}%</span>
@@ -206,29 +281,31 @@ export function QueueRunnerPanel({
 
       {/* Pause reason banner */}
       {isPaused && pauseReason && (
-        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-sm border-b border-amber-200 dark:border-amber-800">
+        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-sm border-b border-amber-200 dark:border-amber-800 flex-shrink-0">
           사유: {pauseReason}
         </div>
       )}
 
       {/* Error banner */}
       {errorItem && (
-        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm border-b border-red-200 dark:border-red-800">
+        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm border-b border-red-200 dark:border-red-800 flex-shrink-0">
           오류: {errorItem.error}
         </div>
       )}
 
       {/* Item list */}
-      <div className="max-h-[300px] overflow-y-auto">
-        {items.map((item, index) => {
+      <div className={fullHeight ? 'flex-1 overflow-y-auto min-h-0' : 'max-h-[300px] overflow-y-auto'}>
+        {/* Fixed items (completed/running/paused — not draggable) */}
+        {fixedItems.map((item, index) => {
           const status = getItemStatus(index, currentIndex, isRunning, isPaused, completedItems, errorItem);
           const isCurrent = index === currentIndex && (isRunning || isPaused);
+          const itemSessionId = itemSessionIds?.get(index);
 
           return (
             <div
               key={index}
               ref={isCurrent ? currentItemRef : undefined}
-              className={`flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-gray-700/50 last:border-b-0
+              className={`flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-gray-700/50
                 ${isCurrent ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
                 ${status === 'error' ? 'bg-red-50 dark:bg-red-900/10' : ''}
               `}
@@ -236,13 +313,127 @@ export function QueueRunnerPanel({
               <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{index + 1}</span>
               <ItemStatusIcon status={status} />
               <span
-                className={`truncate ${status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}
+                className={`truncate flex-1 ${status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}
               >
                 {getItemSummary(item)}
               </span>
+              {/* Session link for completed items */}
+              {status === 'completed' && itemSessionId && projectSlug && (
+                <Link
+                  to={`/project/${projectSlug}/session/${itemSessionId}`}
+                  className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 flex-shrink-0 p-0.5"
+                  title="세션 이동"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              )}
             </div>
           );
         })}
+
+        {/* Pending items (draggable) */}
+        {canDrag ? (
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="queue-pending">
+              {(provided) => (
+                <div ref={provided.innerRef} {...provided.droppableProps}>
+                  {pendingItems.map((item, dragIndex) => {
+                    const globalIndex = pendingStart + dragIndex;
+                    const status = getItemStatus(globalIndex, currentIndex, isRunning, isPaused, completedItems, errorItem);
+
+                    return (
+                      <Draggable key={`item-${globalIndex}`} draggableId={`item-${globalIndex}`} index={dragIndex}>
+                        {(dragProvided, snapshot) => (
+                          <div
+                            ref={dragProvided.innerRef}
+                            {...dragProvided.draggableProps}
+                            className={`flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-gray-700/50
+                              ${snapshot.isDragging ? 'bg-blue-50 dark:bg-blue-900/20 shadow-md rounded' : ''}
+                            `}
+                          >
+                            {/* Drag handle */}
+                            <span {...dragProvided.dragHandleProps} className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none">
+                              <GripVertical className="w-3.5 h-3.5 text-gray-400" />
+                            </span>
+                            <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{globalIndex + 1}</span>
+                            <ItemStatusIcon status={status} />
+                            <span className="truncate flex-1 text-gray-700 dark:text-gray-300">
+                              {getItemSummary(item)}
+                            </span>
+                            {/* Delete button for pending items */}
+                            {onRemoveItem && (
+                              <button
+                                onClick={() => onRemoveItem(globalIndex)}
+                                className="text-gray-400 hover:text-red-500 flex-shrink-0 p-0.5"
+                                title="아이템 삭제"
+                                aria-label={`아이템 ${globalIndex + 1} 삭제`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </Draggable>
+                    );
+                  })}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        ) : (
+          // Non-draggable fallback (when queue is not active)
+          pendingItems.map((item, idx) => {
+            const globalIndex = pendingStart + idx;
+            const status = getItemStatus(globalIndex, currentIndex, isRunning, isPaused, completedItems, errorItem);
+
+            return (
+              <div
+                key={globalIndex}
+                className="flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-gray-700/50 last:border-b-0"
+              >
+                <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{globalIndex + 1}</span>
+                <ItemStatusIcon status={status} />
+                <span className="truncate flex-1 text-gray-700 dark:text-gray-300">
+                  {getItemSummary(item)}
+                </span>
+              </div>
+            );
+          })
+        )}
+
+        {/* Add new item form */}
+        {onAddItem && (isRunning || isPaused) && (
+          <div className="flex items-center gap-2 px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+            <input
+              type="text"
+              value={newItemText}
+              onChange={(e) => setNewItemText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddItem();
+                }
+              }}
+              placeholder="새 아이템 추가... (프롬프트 또는 @지시어)"
+              className="flex-1 text-sm px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600
+                bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300
+                placeholder:text-gray-400 dark:placeholder:text-gray-500
+                focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleAddItem}
+              disabled={!newItemText.trim()}
+              aria-label="아이템 추가"
+              className="inline-flex items-center justify-center w-8 h-8 rounded
+                bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400
+                hover:bg-blue-200 dark:hover:bg-blue-900/50
+                disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

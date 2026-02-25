@@ -14,6 +14,7 @@ import { InteractiveResponseCard } from './InteractiveResponseCard';
 import { ThinkingBlock } from './ThinkingBlock';
 import type { StreamingSegment } from '../stores/chatStore';
 import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, isSystemSegment, isTaskNotificationSegment, isToolSummarySegment, isResultErrorSegment, useChatStore } from '../stores/chatStore';
+import { debugLogger } from '../utils/debugLogger';
 
 
 interface UseAutoScrollOptions {
@@ -153,7 +154,7 @@ function useAutoScroll(
   // When keyboard opens/closes and user is near bottom, scroll to bottom
   useEffect(() => {
     if (!window.visualViewport) {
-      console.log('[MessageArea] visualViewport not supported');
+      debugLogger.info('visualViewport not supported');
       return;
     }
 

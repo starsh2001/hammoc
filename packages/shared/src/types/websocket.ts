@@ -8,7 +8,7 @@ import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode,
 import type { ToolResult, CompactMetadata, TaskNotificationData } from './streaming.js';
 import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
-import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent } from './queue.js';
+import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from './queue.js';
 
 // ===== Connection Status =====
 
@@ -48,6 +48,9 @@ export interface ClientToServerEvents {
   'queue:pause': (data: { projectSlug: string }) => void;
   'queue:resume': (data: { projectSlug: string }) => void;
   'queue:abort': (data: { projectSlug: string }) => void;
+  'queue:removeItem': (data: { projectSlug: string; itemIndex: number }) => void;
+  'queue:addItem': (data: { projectSlug: string; rawLine: string }) => void;
+  'queue:reorderItems': (data: { projectSlug: string; newOrder: number[] }) => void;
   'project:join': (projectSlug: string) => void;
   'project:leave': (projectSlug: string) => void;
 }
@@ -87,6 +90,7 @@ export interface ServerToClientEvents {
   'queue:progress': (data: QueueProgressEvent) => void;
   'queue:itemComplete': (data: QueueItemCompleteEvent) => void;
   'queue:error': (data: QueueErrorEvent) => void;
+  'queue:itemsUpdated': (data: QueueItemsUpdatedEvent) => void;
 }
 
 // ===== Inter-server Events =====

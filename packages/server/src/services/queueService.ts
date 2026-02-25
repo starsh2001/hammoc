@@ -59,6 +59,7 @@ export class QueueService {
   private pauseReason: string | undefined = undefined;
   private resumeSessionId: string | null = null;
   private lastError: { itemIndex: number; error: string } | null = null;
+  private completedSessionIds: Map<number, string> = new Map();
   /** Terminal states that persist until manually dismissed */
   private _isCompleted: boolean = false;
   private _isErrored: boolean = false;
@@ -97,6 +98,7 @@ export class QueueService {
     this._isCompleted = false;
     this._isErrored = false;
     this._finalTotalItems = 0;
+    this.completedSessionIds = new Map();
     log.info(`START: project="${projectSlug}", items=${items.length}, sessionId=${sessionId ?? '(new)'}, cwd="${this.workingDirectory}"`);
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
@@ -123,6 +125,7 @@ export class QueueService {
     this.abortController = new AbortController();
     this.isPaused = false;
     this.pauseReason = undefined;
+    this.lastError = null;
     this.emitProgress('running');
     await this.executeLoop();
   }
@@ -160,7 +163,71 @@ export class QueueService {
       currentModel: this.currentModel,
       lastError: this.lastError,
       items: this._isRunning || this.isPaused ? this.items : undefined,
+      completedSessionIds: this.completedSessionIds.size > 0
+        ? Object.fromEntries(this.completedSessionIds)
+        : undefined,
     };
+  }
+
+  /** Remove a pending item (index must be > currentIndex) */
+  removeItem(itemIndex: number): boolean {
+    if (!this._isRunning && !this.isPaused) return false;
+    if (itemIndex <= this.currentIndex || itemIndex >= this.items.length) return false;
+
+    this.items.splice(itemIndex, 1);
+    // Remap completedSessionIds for indices shifted down
+    const newMap = new Map<number, string>();
+    for (const [idx, sid] of this.completedSessionIds) {
+      if (idx < itemIndex) newMap.set(idx, sid);
+      // indices > itemIndex shift down by 1 (but completed items are always < currentIndex < itemIndex, so no shift needed)
+    }
+    this.completedSessionIds = newMap;
+
+    this.emitItemsUpdated();
+    this.emitProgress(this.isPaused ? 'paused' : 'running');
+    log.info(`REMOVE_ITEM: index=${itemIndex}, newTotal=${this.items.length}`);
+    return true;
+  }
+
+  /** Add a new item at the end of the queue */
+  addItem(item: QueueItem): boolean {
+    if (!this._isRunning && !this.isPaused) return false;
+
+    this.items.push(item);
+    this.emitItemsUpdated();
+    this.emitProgress(this.isPaused ? 'paused' : 'running');
+    log.info(`ADD_ITEM: prompt=${JSON.stringify((item.prompt || '').slice(0, 80))}, newTotal=${this.items.length}`);
+    return true;
+  }
+
+  /** Reorder pending items. newOrder is array of current indices for items after currentIndex */
+  reorderItems(newOrder: number[]): boolean {
+    if (!this._isRunning && !this.isPaused) return false;
+
+    const pendingStart = this.currentIndex + (this.isPaused ? 0 : 1);
+    const pendingCount = this.items.length - pendingStart;
+
+    // Validate: newOrder must be permutation of [pendingStart..items.length-1]
+    if (newOrder.length !== pendingCount) return false;
+    const expected = new Set(Array.from({ length: pendingCount }, (_, i) => pendingStart + i));
+    if (!newOrder.every(i => expected.has(i))) return false;
+
+    // Apply reorder
+    const reordered = newOrder.map(i => this.items[i]);
+    this.items = [...this.items.slice(0, pendingStart), ...reordered];
+
+    this.emitItemsUpdated();
+    log.info(`REORDER_ITEMS: pendingStart=${pendingStart}, newOrder=${JSON.stringify(newOrder)}`);
+    return true;
+  }
+
+  private emitItemsUpdated(): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.io.to(`project:${this.projectSlug}`).emit('queue:itemsUpdated' as any, {
+      items: this.items,
+      totalItems: this.items.length,
+      currentIndex: this.currentIndex,
+    });
   }
 
   private async executeLoop(): Promise<void> {
@@ -526,10 +593,12 @@ export class QueueService {
   }
 
   private emitItemComplete(itemIndex: number, markerDetected?: 'QUEUE_STOP' | 'QUEUE_PASS'): void {
+    const sessionId = this.currentSessionId || '';
+    this.completedSessionIds.set(itemIndex, sessionId);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.io.to(`project:${this.projectSlug}`).emit('queue:itemComplete' as any, {
       itemIndex,
-      sessionId: this.currentSessionId || '',
+      sessionId,
       markerDetected,
     });
   }

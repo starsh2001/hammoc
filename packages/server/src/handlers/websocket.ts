@@ -17,7 +17,7 @@ import type {
   ImageAttachment,
   PermissionRequest,
 } from '@bmad-studio/shared';
-import { ERROR_CODES, IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
+import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript } from '@bmad-studio/shared';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import { ChatService } from '../services/chatService.js';
 import { SessionService } from '../services/sessionService.js';
@@ -441,6 +441,21 @@ export async function initializeWebSocket(
     socket.on('queue:dismiss' as any, (data: { projectSlug: string }) => {
       const qs = getOrCreateQueueService(data.projectSlug);
       qs.dismiss();
+    });
+    socket.on('queue:removeItem', (data) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      qs.removeItem(data.itemIndex);
+    });
+    socket.on('queue:addItem', (data) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      const result = parseQueueScript(data.rawLine);
+      if (result.items.length > 0) {
+        qs.addItem(result.items[0]);
+      }
+    });
+    socket.on('queue:reorderItems', (data) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      qs.reorderItems(data.newOrder);
     });
 
     // Disconnect: detach socket from stream, DON'T abort or deny permissions

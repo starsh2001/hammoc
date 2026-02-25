@@ -53,6 +53,8 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLocked = runner.isRunning || runner.isStarting;
+  const isExecutionActive = runner.isRunning || runner.isPaused
+    || runner.completedItems.size > 0 || !!runner.errorItem;
 
   // File load handler
   const handleFileLoad = useCallback(() => {
@@ -199,12 +201,9 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
       </div>
 
       {/* Content area */}
-      <div className="flex flex-col flex-1 p-4 gap-3 overflow-auto">
-      {/* Editor area — two-wrapper overlay pattern.
-          Outer div: fixed height + overflow:auto (scrolls).
-          Inner div: position:relative, no overflow (sizes to pre content).
-          Pre: normal flow (determines inner div height).
-          Textarea: absolute inset:0 (matches inner div = pre size, scrolls with it). */}
+      <div className={`flex flex-col flex-1 p-4 gap-3 ${isExecutionActive ? '' : 'overflow-auto'}`}>
+      {/* Editor area — hidden during execution */}
+      {!isExecutionActive && (
       <div
         className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-1 min-h-[200px]"
         style={{ overflow: 'auto', position: 'relative' }}
@@ -280,9 +279,10 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           />
         </div>
       </div>
+      )}
 
-      {/* Validation warnings */}
-      {warnings.length > 0 && (
+      {/* Validation warnings — hidden during execution */}
+      {!isExecutionActive && warnings.length > 0 && (
         <div id="queue-warnings" className="flex flex-col gap-1" role="alert">
           {warnings.map((w, i) => (
             <div
@@ -297,8 +297,8 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
         </div>
       )}
 
-      {/* Runner panel — show when we have parsed items AND active execution state */}
-      {parsedItems.length > 0 && (runner.isRunning || runner.isPaused || runner.completedItems.size > 0 || runner.errorItem) && (
+      {/* Runner panel — full height when execution active */}
+      {parsedItems.length > 0 && isExecutionActive && (
         <QueueRunnerPanel
           items={parsedItems}
           currentIndex={runner.progress.current}
@@ -310,6 +310,13 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           onPause={runner.pause}
           onResume={runner.resume}
           onAbort={runner.abort}
+          projectSlug={projectSlug}
+          activeSessionId={runner.lockedSessionId}
+          fullHeight
+          itemSessionIds={runner.itemSessionIds}
+          onRemoveItem={runner.removeItem}
+          onAddItem={runner.addItem}
+          onReorderItems={runner.reorderItems}
         />
       )}
 

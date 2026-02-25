@@ -8,6 +8,7 @@
 
 import { createHighlighter, type Highlighter } from 'shiki';
 import { SHIKI_CONFIG } from './config';
+import { debugLogger } from '../debugLogger';
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
@@ -31,6 +32,6 @@ export async function getHighlighter(): Promise<Highlighter> {
  */
 export function preloadShiki(): void {
   getHighlighter().catch((err) => {
-    console.warn('Shiki preload failed:', err);
+    debugLogger.warn('Shiki preload failed', { error: err instanceof Error ? err.message : String(err) });
   });
 }

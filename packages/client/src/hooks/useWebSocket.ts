@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { getSocket } from '../services/socket';
 import type { ConnectionStatus } from '@bmad-studio/shared';
+import { debugLogger } from '../utils/debugLogger';
 
 export interface UseWebSocketReturn {
   connectionStatus: ConnectionStatus;
@@ -92,7 +93,7 @@ export function useWebSocket(): UseWebSocketReturn {
     const handleReconnectFailed = () => {
       setConnectionStatus('disconnected');
       setLastError('서버 연결에 실패했습니다. 네트워크 연결을 확인해주세요.');
-      console.error('WebSocket reconnection failed after maximum attempts');
+      debugLogger.error('WebSocket reconnection failed', { error: 'Maximum reconnection attempts exceeded' });
     };
 
     const handleConnectError = (error: Error) => {
