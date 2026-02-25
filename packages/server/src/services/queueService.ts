@@ -12,13 +12,8 @@ import type {
   InterServerEvents,
   SocketData,
   QueueItem,
-  StreamCallbacks,
   ChatOptions,
   PermissionMode,
-  TrackedToolCall,
-  ToolResult,
-  CompactMetadata,
-  TaskNotificationData,
   PermissionRequest,
 } from '@bmad-studio/shared';
 import { ERROR_CODES } from '@bmad-studio/shared';
@@ -36,6 +31,7 @@ import {
   finalizeStream,
   broadcastStreamChange,
 } from '../handlers/websocket.js';
+import { buildStreamCallbacks } from '../handlers/streamCallbacks.js';
 
 type ProjectService = typeof _ps;
 type NotificationService = typeof _ns;
@@ -301,7 +297,6 @@ export class QueueService {
     const { stream, emit } = createHeadlessStream(streamKey, this.abortController!);
     stream.chatService = this.chatService!;
 
-    let actualSessionId = this.currentSessionId;
     const chunks: string[] = [];
 
     // canUseTool — permissions stored in stream.pendingPermissions
@@ -372,109 +367,63 @@ export class QueueService {
       // Emit user message to streaming buffer (identical to handleChatSend in websocket.ts)
       emit('user:message', { content: item.prompt, sessionId: streamKey });
 
-      await this.chatService!.sendMessageWithCallbacks(item.prompt, {
-        // --- Callbacks identical to handleChatSend in websocket.ts ---
-
-        onSessionInit: (sid, metadata) => {
-          log.debug(`executePrompt: onSessionInit sid=${sid}, model=${metadata?.model || '?'}`);
-          actualSessionId = sid;
-          this.currentSessionId = sid;
-
-          // Re-key stream (identical to handleChatSend — also moves Socket.io rooms)
-          rekeyStream(stream, sid);
-
-          const isResuming = !!chatOptions.resume;
-          emit(isResuming ? 'session:resumed' : 'session:created', { sessionId: sid, model: metadata?.model });
-          broadcastStreamChange(sid, true);
+      // Build shared callbacks (common logic for browser & queue paths)
+      const { callbacks, sessionIdRef } = buildStreamCallbacks(
+        {
+          emit,
+          stream,
+          isResuming: !!chatOptions.resume,
+          initialSessionId: this.currentSessionId ?? undefined,
+          rekeyStream: (sid) => rekeyStream(stream, sid),
+          broadcastStreamChange,
+          notificationService: this.notificationService,
         },
-
-        onTextChunk: (chunk) => {
-          chunks.push(chunk.content);
-          emit('message:chunk', {
-            sessionId: actualSessionId || chunk.sessionId,
-            messageId: chunk.messageId,
-            content: chunk.content,
-            done: chunk.done,
-          });
+        {
+          onSessionIdResolved: (sid) => { this.currentSessionId = sid; },
+          onTextChunkReceived: (chunk) => { chunks.push(chunk.content); },
         },
+      );
 
-        onThinking: (content: string) => {
-          emit('thinking:chunk', { content });
-        },
+      // Queue-specific: onError with logging
+      callbacks.onError = (error) => {
+        const sdkError = parseSDKError(error);
+        log.error(`executePrompt: onError callback: ${sdkError.message} (code=${sdkError.code})`);
+        emit('error', { code: ERROR_CODES.CHAT_ERROR, message: sdkError.message });
+        if (stream.sockets.size === 0) {
+          this.notificationService.notifyError(stream.sessionId, sdkError.message);
+        }
+      };
 
-        onToolUse: (toolCall: TrackedToolCall) => {
-          log.debug(`executePrompt: onToolUse name=${toolCall.name}, id=${toolCall.id}`);
-          emit('tool:call', { id: toolCall.id, name: toolCall.name, input: toolCall.input });
-        },
+      // Queue-specific: wrap callbacks with extra debug logging
+      const baseOnComplete = callbacks.onComplete!;
+      callbacks.onComplete = (response) => {
+        const contentPreview = (response.content || '').slice(0, 120);
+        log.debug(`executePrompt: onComplete sid=${sessionIdRef.current || response.sessionId}, isError=${response.isError}, usage=${response.usage ? `in=${response.usage.inputTokens} out=${response.usage.outputTokens} cost=$${response.usage.totalCostUSD?.toFixed(4)}` : 'none'}, content=${JSON.stringify(contentPreview)}`);
+        baseOnComplete(response);
+      };
 
-        onToolInputUpdate: (toolCallId: string, input: Record<string, unknown>) => {
-          emit('tool:input-update', { toolCallId, input });
-        },
+      const baseOnResultError = callbacks.onResultError!;
+      callbacks.onResultError = (data) => {
+        log.error(`executePrompt: onResultError subtype=${data.subtype}, errors=${JSON.stringify(data.errors)}, result=${data.result?.slice(0, 200)}`);
+        baseOnResultError(data);
+      };
 
-        onToolResult: (toolCallId: string, result: ToolResult) => {
-          log.debug(`executePrompt: onToolResult id=${toolCallId}, success=${result.success}${result.error ? `, error=${result.error.slice(0, 200)}` : ''}`);
-          emit('tool:result', { toolCallId, result });
-        },
+      const baseOnCompact = callbacks.onCompact!;
+      callbacks.onCompact = (metadata) => {
+        log.debug(`executePrompt: onCompact trigger=${metadata.trigger}, preTokens=${metadata.preTokens}`);
+        baseOnCompact(metadata);
+      };
 
-        onComplete: (response) => {
-          const contentPreview = (response.content || '').slice(0, 120);
-          log.debug(`executePrompt: onComplete sid=${actualSessionId || response.sessionId}, isError=${response.isError}, usage=${response.usage ? `in=${response.usage.inputTokens} out=${response.usage.outputTokens} cost=$${response.usage.totalCostUSD?.toFixed(4)}` : 'none'}, content=${JSON.stringify(contentPreview)}`);
-          emit('message:complete', {
-            id: response.id,
-            sessionId: actualSessionId || response.sessionId,
-            role: 'assistant',
-            content: response.content,
-            timestamp: new Date(),
-            usage: response.usage,
-          });
-          if (response.usage) {
-            emit('context:usage', response.usage);
-          }
-          // Notify via Telegram if no socket connected
-          if (stream.sockets.size === 0) {
-            this.notificationService.notifyComplete(stream.sessionId);
-          }
-        },
+      const baseOnToolResult = callbacks.onToolResult!;
+      callbacks.onToolResult = (toolCallId, result) => {
+        // Only log extra detail when there's an error (base already logs id + success)
+        if (result.error) {
+          log.debug(`executePrompt: onToolResult id=${toolCallId}, error=${result.error.slice(0, 200)}`);
+        }
+        baseOnToolResult(toolCallId, result);
+      };
 
-        onError: (error) => {
-          const sdkError = parseSDKError(error);
-          log.error(`executePrompt: onError callback: ${sdkError.message} (code=${sdkError.code})`);
-          emit('error', { code: ERROR_CODES.CHAT_ERROR, message: sdkError.message });
-          if (stream.sockets.size === 0) {
-            this.notificationService.notifyError(stream.sessionId, sdkError.message);
-          }
-        },
-
-        onCompact: (metadata: CompactMetadata) => {
-          log.debug(`executePrompt: onCompact trigger=${metadata.trigger}, preTokens=${metadata.preTokens}`);
-          emit('system:compact', metadata);
-        },
-
-        onToolProgress: (toolUseId: string, elapsedTimeSeconds: number, toolName: string) => {
-          emit('tool:progress', { toolUseId, elapsedTimeSeconds, toolName });
-        },
-
-        onToolUseSummary: (summary: string, precedingToolUseIds: string[]) => {
-          emit('tool:summary', { summary, precedingToolUseIds });
-        },
-
-        onTaskNotification: (data: TaskNotificationData) => {
-          emit('system:task-notification', data);
-        },
-
-        onResultError: (data) => {
-          log.error(`executePrompt: onResultError subtype=${data.subtype}, errors=${JSON.stringify(data.errors)}, result=${data.result?.slice(0, 200)}`);
-          emit('result:error', data);
-        },
-
-        onAssistantUsage: (usage) => {
-          emit('assistant:usage', usage);
-        },
-
-        onContextEstimate: (estimatedTokens, contextWindow) => {
-          emit('context:estimate', { estimatedTokens, contextWindow });
-        },
-      }, chatOptions, canUseTool);
+      await this.chatService!.sendMessageWithCallbacks(item.prompt, callbacks, chatOptions, canUseTool);
     } catch (error) {
       const sdkError = parseSDKError(error);
 
