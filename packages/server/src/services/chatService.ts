@@ -12,6 +12,9 @@ import fs from 'fs/promises';
 import { execSync } from 'child_process';
 import { InvalidPathError, parseSDKError } from '../utils/errors.js';
 import { StreamHandler } from './streamHandler.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('chatService');
 
 /**
  * Build workspace context to append to the system prompt.
@@ -162,6 +165,25 @@ export class ChatService {
     const resolvedAllowed = options.allowedTools ?? this.allowedTools;
     const resolvedDisallowed = options.disallowedTools ?? this.disallowedTools;
 
+    // Build systemPrompt based on customSystemPrompt option
+    const systemPrompt = (() => {
+      if (options.customSystemPrompt) {
+        // Replace mode: use custom prompt + workspace context
+        return this.workingDirectory
+          ? options.customSystemPrompt + '\n\n' + buildWorkspaceContext(this.workingDirectory)
+          : options.customSystemPrompt;
+      }
+      // Default: Claude Code preset with workspace context
+      if (this.workingDirectory) {
+        return {
+          type: 'preset' as const,
+          preset: 'claude_code' as const,
+          append: buildWorkspaceContext(this.workingDirectory),
+        };
+      }
+      return undefined;
+    })();
+
     const queryOptions: Options = {
       cwd: this.workingDirectory,
       permissionMode: this.permissionMode,
@@ -174,16 +196,13 @@ export class ChatService {
       sessionId: options.sessionId,
       includePartialMessages: true, // Enable real-time streaming
       settingSources: ['user', 'project', 'local'], // Load settings & .claude/commands/ for skill discovery
-      // Append workspace context to system prompt to prevent path hallucination
-      systemPrompt: this.workingDirectory ? {
-        type: 'preset' as const,
-        preset: 'claude_code' as const,
-        append: buildWorkspaceContext(this.workingDirectory),
-      } : undefined,
+      systemPrompt,
+      maxThinkingTokens: options.maxThinkingTokens,
+      maxBudgetUsd: options.maxBudgetUsd,
       canUseTool,
       // Capture CLI stderr for debugging process exit errors
       stderr: (data: string) => {
-        console.error(`[chatService] CLI stderr: ${data.trimEnd()}`);
+        log.error(`CLI stderr: ${data.trimEnd()}`);
       },
     };
 
@@ -194,7 +213,7 @@ export class ChatService {
       }
     });
 
-    console.log(`[chatService] SDK query cwd="${queryOptions.cwd}"${queryOptions.resume ? `, resume="${queryOptions.resume}"` : ''}${queryOptions.model ? `, model="${queryOptions.model}"` : ''}${queryOptions.sessionId ? `, sessionId="${queryOptions.sessionId}"` : ''}`);
+    log.debug(`SDK query cwd="${queryOptions.cwd}"${queryOptions.resume ? `, resume="${queryOptions.resume}"` : ''}${queryOptions.model ? `, model="${queryOptions.model}"` : ''}${queryOptions.sessionId ? `, sessionId="${queryOptions.sessionId}"` : ''}`);
 
     // Use AsyncIterable prompt when images are present (Story 5.5)
     const { images } = options;
@@ -335,7 +354,7 @@ export class ChatService {
         // Wait for next message with 30s heartbeat to confirm SDK is alive
         const nextPromise = generator.next();
         let heartbeatId: ReturnType<typeof setInterval> | null = setInterval(() => {
-          console.log('[SDK heartbeat] generator.next() still pending — SDK is alive');
+          log.verbose('heartbeat: generator.next() still pending — SDK is alive');
           onRawMessage?.('heartbeat');
         }, 30000);
 

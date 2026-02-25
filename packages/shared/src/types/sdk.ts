@@ -35,6 +35,12 @@ export interface ChatOptions {
   sessionId?: string;
   /** Image attachments to include in the message (Story 5.5) */
   images?: ImageAttachment[];
+  /** Custom system prompt (replaces Claude Code default when set) */
+  customSystemPrompt?: string;
+  /** Max thinking tokens for reasoning */
+  maxThinkingTokens?: number;
+  /** Max budget in USD per query */
+  maxBudgetUsd?: number;
 }
 
 /**

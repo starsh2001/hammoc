@@ -20,6 +20,11 @@ export interface UserPreferences {
   markdownDefaultMode?: 'edit' | 'preview'; // default editor mode for markdown files
   fileExplorerViewMode?: 'list' | 'grid'; // default file explorer view mode
   telegram?: TelegramSettings;
+  // Advanced settings
+  customSystemPrompt?: string;      // replaces default Claude Code system prompt
+  maxThinkingTokens?: number;       // SDK maxThinkingTokens
+  maxTurns?: number;                // SDK maxTurns (conversation turn limit)
+  maxBudgetUsd?: number;            // SDK maxBudgetUsd (cost limit per query)
 }
 
 /** Default values for global settings */
