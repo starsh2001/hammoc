@@ -31,6 +31,7 @@ describe('terminalStore', () => {
     useTerminalStore.setState({
       terminals: new Map(),
       activeTerminalId: null,
+      currentProjectSlug: null,
     });
   });
 
@@ -188,6 +189,106 @@ describe('terminalStore', () => {
     unregister();
     onData({ terminalId: 'term-1', data: 'bye' });
     expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  // TC-TERM-S12: setActiveTerminalId sets valid terminal ID
+  it('setActiveTerminalId sets activeTerminalId when terminal exists', () => {
+    useTerminalStore.setState({
+      terminals: new Map([
+        ['term-1', { terminalId: 'term-1', shell: '/bin/bash', status: 'connected' }],
+        ['term-2', { terminalId: 'term-2', shell: '/bin/zsh', status: 'connected' }],
+      ]),
+      activeTerminalId: 'term-1',
+    });
+
+    useTerminalStore.getState().setActiveTerminalId('term-2');
+    expect(useTerminalStore.getState().activeTerminalId).toBe('term-2');
+  });
+
+  // TC-TERM-S13: setActiveTerminalId ignores non-existent ID
+  it('setActiveTerminalId ignores non-existent terminal ID', () => {
+    useTerminalStore.setState({
+      terminals: new Map([
+        ['term-1', { terminalId: 'term-1', shell: '/bin/bash', status: 'connected' }],
+      ]),
+      activeTerminalId: 'term-1',
+    });
+
+    useTerminalStore.getState().setActiveTerminalId('term-999');
+    expect(useTerminalStore.getState().activeTerminalId).toBe('term-1');
+  });
+
+  // TC-TERM-S14: closeTerminal auto-selects next terminal
+  it('closeTerminal auto-selects first remaining terminal when active is closed', () => {
+    useTerminalStore.setState({
+      terminals: new Map([
+        ['term-1', { terminalId: 'term-1', shell: '/bin/bash', status: 'connected' }],
+        ['term-2', { terminalId: 'term-2', shell: '/bin/zsh', status: 'connected' }],
+        ['term-3', { terminalId: 'term-3', shell: '/bin/bash', status: 'connected' }],
+      ]),
+      activeTerminalId: 'term-1',
+    });
+
+    useTerminalStore.getState().closeTerminal('term-1');
+    expect(useTerminalStore.getState().activeTerminalId).toBe('term-2');
+    expect(useTerminalStore.getState().terminals.has('term-1')).toBe(false);
+  });
+
+  // TC-TERM-S15: closeTerminal keeps activeTerminalId if non-active is closed
+  it('closeTerminal keeps activeTerminalId when non-active terminal is closed', () => {
+    useTerminalStore.setState({
+      terminals: new Map([
+        ['term-1', { terminalId: 'term-1', shell: '/bin/bash', status: 'connected' }],
+        ['term-2', { terminalId: 'term-2', shell: '/bin/zsh', status: 'connected' }],
+      ]),
+      activeTerminalId: 'term-1',
+    });
+
+    useTerminalStore.getState().closeTerminal('term-2');
+    expect(useTerminalStore.getState().activeTerminalId).toBe('term-1');
+  });
+
+  // TC-TERM-S16: clearTerminalsForProjectChange closes all on project switch
+  it('clearTerminalsForProjectChange closes all terminals when project changes', () => {
+    useTerminalStore.setState({
+      terminals: new Map([
+        ['term-1', { terminalId: 'term-1', shell: '/bin/bash', status: 'connected' }],
+        ['term-2', { terminalId: 'term-2', shell: '/bin/zsh', status: 'connected' }],
+      ]),
+      activeTerminalId: 'term-1',
+      currentProjectSlug: 'old-project',
+    });
+
+    useTerminalStore.getState().clearTerminalsForProjectChange('new-project');
+
+    expect(mockSocket.emit).toHaveBeenCalledWith('terminal:close', { terminalId: 'term-1' });
+    expect(mockSocket.emit).toHaveBeenCalledWith('terminal:close', { terminalId: 'term-2' });
+    expect(useTerminalStore.getState().terminals.size).toBe(0);
+    expect(useTerminalStore.getState().activeTerminalId).toBeNull();
+    expect(useTerminalStore.getState().currentProjectSlug).toBe('new-project');
+  });
+
+  // TC-TERM-S17: clearTerminalsForProjectChange keeps terminals for same project
+  it('clearTerminalsForProjectChange keeps terminals when same project', () => {
+    useTerminalStore.setState({
+      terminals: new Map([
+        ['term-1', { terminalId: 'term-1', shell: '/bin/bash', status: 'connected' }],
+      ]),
+      activeTerminalId: 'term-1',
+      currentProjectSlug: 'my-project',
+    });
+
+    useTerminalStore.getState().clearTerminalsForProjectChange('my-project');
+
+    expect(mockSocket.emit).not.toHaveBeenCalled();
+    expect(useTerminalStore.getState().terminals.size).toBe(1);
+    expect(useTerminalStore.getState().currentProjectSlug).toBe('my-project');
+  });
+
+  // TC-TERM-S18: clearTerminalsForProjectChange sets slug on first call
+  it('clearTerminalsForProjectChange sets slug when no previous project', () => {
+    useTerminalStore.getState().clearTerminalsForProjectChange('first-project');
+    expect(useTerminalStore.getState().currentProjectSlug).toBe('first-project');
   });
 
   // TC-TERM-S11: cleanupTerminalListeners removes socket handlers
