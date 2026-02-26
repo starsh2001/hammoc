@@ -614,7 +614,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                   미리보기
                 </h3>
                 <pre
-                  className="max-h-44 overflow-auto rounded-lg bg-gray-900 p-3 text-xs ring-1 ring-gray-800"
+                  className="max-h-44 overflow-auto rounded-lg bg-gray-50 dark:bg-gray-900 p-3 text-xs ring-1 ring-gray-200 dark:ring-gray-800"
                   style={{
                     fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
                     lineHeight: '1.6',
