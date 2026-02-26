@@ -9,6 +9,7 @@ import { CheckCircle, XCircle, AlertCircle, ChevronRight, ChevronDown, Loader2, 
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { DiffViewer } from './DiffViewer';
 import { ToolResultRenderer } from './ToolResultRenderer';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } from '../utils/toolUtils';
 
 export interface ToolCardProps {
@@ -101,6 +102,65 @@ function stripXmlWrapperTags(text: string | undefined): string | undefined {
   return text.replace(/<\/?(?:tool_use_error|error|result)>/g, '').trim();
 }
 
+/** ExitPlanMode: collapsible plan content and allowed prompts */
+function ExitPlanModeContent({
+  planContent,
+  allowedPrompts,
+  defaultExpanded = true,
+}: {
+  planContent: string | null;
+  allowedPrompts: Array<{ tool: string; prompt: string }> | null;
+  defaultExpanded?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  return (
+    <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+        aria-expanded={expanded}
+      >
+        {expanded ? <ChevronDown className="w-3 h-3" aria-hidden="true" /> : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
+        <span>Plan</span>
+      </button>
+      {expanded && (
+        <div className="mt-1 max-h-64 overflow-y-auto rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 p-2">
+          {planContent ? (
+            <div className="text-xs">
+              <MarkdownRenderer content={planContent} />
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+              Plan 내용이 없습니다
+            </p>
+          )}
+        </div>
+      )}
+
+      {allowedPrompts && allowedPrompts.length > 0 && (
+        <div className="mt-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+            요청된 권한:
+          </p>
+          <ul className="space-y-0.5 text-xs text-gray-600 dark:text-gray-400">
+            {allowedPrompts.map((ap, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <span className="flex-shrink-0 mt-0.5">·</span>
+                <span>
+                  <span className="font-mono text-blue-600 dark:text-blue-400">{ap.tool}</span>
+                  {ap.prompt && <span className="ml-1 text-gray-500">— {ap.prompt}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ToolCard({
   toolName,
   toolInput,
@@ -130,6 +190,13 @@ export function ToolCard({
   const isError = status === 'error';
   const isPending = status === 'pending';
   const isCompleted = status === 'completed';
+
+  // ExitPlanMode: plan content and allowed prompts
+  const isExitPlanMode = toolName === 'ExitPlanMode';
+  const planContent = isExitPlanMode && typeof toolInput?.plan === 'string' ? toolInput.plan : null;
+  const allowedPrompts = isExitPlanMode && Array.isArray(toolInput?.allowedPrompts)
+    ? (toolInput!.allowedPrompts as Array<{ tool: string; prompt: string }>)
+    : null;
 
   // TodoWrite checklist
   const todos = toolName === 'TodoWrite' && Array.isArray(toolInput?.todos)
@@ -270,6 +337,15 @@ export function ToolCard({
             <div className="mt-2 text-xs text-red-500 border-t border-gray-200 dark:border-gray-600 pt-2 whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
               {output ? output.slice(0, 500) : '알 수 없는 오류'}
             </div>
+          )}
+
+          {/* ExitPlanMode: plan content display */}
+          {isExitPlanMode && (
+            <ExitPlanModeContent
+              planContent={planContent}
+              allowedPrompts={allowedPrompts}
+              defaultExpanded
+            />
           )}
 
           {/* Permission approve/deny buttons */}

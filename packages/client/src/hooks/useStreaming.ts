@@ -422,6 +422,11 @@ export function useStreaming() {
         }
       }
 
+      // Update tool input with enriched data from permission request
+      // (e.g. ExitPlanMode's normalizeToolInput injects 'plan' field)
+      if (data.toolCall.input) {
+        updateStreamingToolCallInput(data.toolCall.id, data.toolCall.input);
+      }
       // Default: attach permission to existing tool segment
       setToolPermission(data.toolCall.id, data.id);
     };

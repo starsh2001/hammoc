@@ -658,6 +658,15 @@ export function ChatInput({
         }
       }
 
+      // Shift+Tab: cycle permission mode
+      if (e.key === 'Tab' && e.shiftKey && permissionMode && onPermissionModeChange) {
+        e.preventDefault();
+        const modes: PermissionMode[] = ['plan', 'default', 'acceptEdits', 'bypassPermissions'];
+        const idx = modes.indexOf(permissionMode);
+        onPermissionModeChange(modes[(idx + 1) % modes.length]);
+        return;
+      }
+
       // Close favorites popup on Escape (Story 9.6)
       if (e.key === 'Escape' && showFavorites) {
         e.preventDefault();
@@ -704,7 +713,7 @@ export function ChatInput({
       }
       // Shift+Enter (desktop) / Enter (mobile): default behavior (newline)
     },
-    [handleSubmit, showCommands, showFavorites, showStarCommands, filteredCommandsCount, filteredStarCommandsCount, commands, commandFilter, selectedIndex, handleCommandSelect, starCommands, starCommandFilter, starSelectedIndex, handleStarCommandSelect, content, navigateUp, navigateDown, isNavigating, isTouchDevice]
+    [handleSubmit, showCommands, showFavorites, showStarCommands, filteredCommandsCount, filteredStarCommandsCount, commands, commandFilter, selectedIndex, handleCommandSelect, starCommands, starCommandFilter, starSelectedIndex, handleStarCommandSelect, content, navigateUp, navigateDown, isNavigating, isTouchDevice, permissionMode, onPermissionModeChange]
   );
 
   // Button click handler
