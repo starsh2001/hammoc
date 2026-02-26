@@ -176,6 +176,10 @@ export function useStreaming() {
       if (!state.isStreaming || state.streamingSessionId === null) {
         startStreaming('pending', 'pending');
       }
+      // Compaction phase is over once real content arrives
+      if (state.isCompacting) {
+        useChatStore.setState({ isCompacting: false });
+      }
       // Flush pending text before thinking segment to maintain correct ordering
       flushChunkQueue();
       addStreamingThinking(data.content);
@@ -222,6 +226,10 @@ export function useStreaming() {
       } else if (state.streamingSessionId === 'pending') {
         // Update sessionId without resetting segments (preserves thinking content)
         updateStreamingSessionId(data.sessionId);
+      }
+      // Compaction phase is over once real content arrives
+      if (useChatStore.getState().isCompacting) {
+        useChatStore.setState({ isCompacting: false });
       }
       // Auto-resolve any stale 'waiting' interactive segments — if the SDK is
       // still generating text, all prior questions/permissions were already handled.
