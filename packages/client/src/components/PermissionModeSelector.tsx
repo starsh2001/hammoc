@@ -81,8 +81,8 @@ export function PermissionModeSelector({ mode, onModeChange, disabled }: Permiss
     [disabled, currentIndex, onModeChange, handleClick]
   );
 
-  // Prevent focus on mouse click to avoid scroll jump
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // Prevent focus from moving to button on both desktop and mobile.
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
   }, []);
 
@@ -91,7 +91,7 @@ export function PermissionModeSelector({ mode, onModeChange, disabled }: Permiss
       type="button"
       tabIndex={-1}
       onClick={handleClick}
-      onMouseDown={handleMouseDown}
+      onPointerDown={handlePointerDown}
       onKeyDown={handleKeyDown}
       disabled={disabled}
       title={currentOption.description}

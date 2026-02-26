@@ -141,8 +141,8 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
     [onModelChange]
   );
 
-  // Prevent focus on mouse click to avoid scroll jump
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // Prevent focus from moving to button on both desktop and mobile.
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
   }, []);
 
@@ -155,7 +155,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
         type="button"
         tabIndex={-1}
         onClick={handleToggle}
-        onMouseDown={handleMouseDown}
+        onPointerDown={handlePointerDown}
         disabled={disabled}
         title={`Model: ${displayLabel}`}
         aria-label={`모델: ${displayLabel}. 클릭하여 모델 변경`}
