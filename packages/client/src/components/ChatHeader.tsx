@@ -10,7 +10,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Plus, History, FolderOpen, GitBranch, Settings, LogOut } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Plus, History, FolderOpen, GitBranch, Terminal, Settings, LogOut } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { useChatStore } from '../stores/chatStore';
@@ -43,6 +43,8 @@ interface ChatHeaderProps {
   onShowGit?: () => void;
   /** Changed file count for Git badge */
   gitChangedCount?: number;
+  /** Callback when terminal panel button is clicked */
+  onShowTerminal?: () => void;
   /** Callback when logout is clicked */
   onLogout?: () => void;
   /** Callback when session is renamed (null to remove name) */
@@ -67,6 +69,7 @@ export function ChatHeader({
   onShowFileExplorer,
   onShowGit,
   gitChangedCount,
+  onShowTerminal,
   onLogout,
   onRenameSession,
   activeAgent,
@@ -266,6 +269,18 @@ export function ChatHeader({
             </button>
           )}
 
+          {onShowTerminal && (
+            <button
+              onClick={onShowTerminal}
+              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
+                         text-gray-700 dark:text-gray-300
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="터미널"
+            >
+              <Terminal className="w-5 h-5" aria-hidden="true" />
+            </button>
+          )}
+
           {onRefresh && (
             <button
               onClick={onRefresh}
@@ -315,6 +330,7 @@ export function ChatHeader({
               onShowSessions={onShowSessions}
               onShowFileExplorer={onShowFileExplorer}
               onShowGit={onShowGit}
+              onShowTerminal={onShowTerminal}
               onNewSession={onNewSession}
               onRefresh={onRefresh}
               isRefreshing={isRefreshing}

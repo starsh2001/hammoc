@@ -7,13 +7,14 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MoreVertical, Moon, Sun, History, Plus, FolderOpen, GitBranch, RefreshCw, Settings, LogOut } from 'lucide-react';
+import { MoreVertical, Moon, Sun, History, Plus, FolderOpen, GitBranch, Terminal, RefreshCw, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 interface HeaderOverflowMenuProps {
   onShowSessions?: () => void;
   onShowFileExplorer?: () => void;
   onShowGit?: () => void;
+  onShowTerminal?: () => void;
   onNewSession?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
@@ -25,6 +26,7 @@ export function HeaderOverflowMenu({
   onShowSessions,
   onShowFileExplorer,
   onShowGit,
+  onShowTerminal,
   onNewSession,
   onRefresh,
   isRefreshing = false,
@@ -87,6 +89,11 @@ export function HeaderOverflowMenu({
     onShowGit?.();
     setIsOpen(false);
   }, [onShowGit]);
+
+  const handleShowTerminal = useCallback(() => {
+    onShowTerminal?.();
+    setIsOpen(false);
+  }, [onShowTerminal]);
 
   const handleNewSession = useCallback(() => {
     onNewSession?.();
@@ -200,6 +207,19 @@ export function HeaderOverflowMenu({
             >
               <GitBranch className="w-4 h-4" aria-hidden="true" />
               Git
+            </button>
+          )}
+
+          {/* Terminal */}
+          {onShowTerminal && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleShowTerminal}
+              className={itemClass}
+            >
+              <Terminal className="w-4 h-4" aria-hidden="true" />
+              터미널
             </button>
           )}
 

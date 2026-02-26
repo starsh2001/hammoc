@@ -47,6 +47,7 @@ import { EmptyState } from '../components/EmptyState';
 import { SessionQuickAccessPanel } from '../components/SessionQuickAccessPanel';
 import { QuickFileExplorer } from '../components/files/QuickFileExplorer';
 import { QuickGitPanel } from '../components/git/QuickGitPanel';
+import { QuickTerminal } from '../components/terminal/QuickTerminal';
 import { useGitStatus } from '../hooks/useGitStatus';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ThinkingBlock } from '../components/ThinkingBlock';
@@ -697,10 +698,14 @@ export function ChatPage() {
   const [showGitPanel, setShowGitPanel] = useState(false);
   const { changedFileCount } = useGitStatus(projectSlug);
 
+  // Quick terminal panel state
+  const [showTerminalPanel, setShowTerminalPanel] = useState(false);
+
   const handleShowSessions = useCallback(() => {
     setShowSessionPanel(true);
     setShowFileExplorer(false);
     setShowGitPanel(false);
+    setShowTerminalPanel(false);
   }, []);
 
   const handleCloseSessionPanel = useCallback(() => {
@@ -711,6 +716,7 @@ export function ChatPage() {
     setShowFileExplorer(true);
     setShowSessionPanel(false);
     setShowGitPanel(false);
+    setShowTerminalPanel(false);
   }, []);
 
   const handleCloseFileExplorer = useCallback(() => {
@@ -721,6 +727,7 @@ export function ChatPage() {
     setShowGitPanel(true);
     setShowFileExplorer(false);
     setShowSessionPanel(false);
+    setShowTerminalPanel(false);
   }, []);
 
   const handleCloseGitPanel = useCallback(() => {
@@ -729,6 +736,22 @@ export function ChatPage() {
 
   const handleNavigateToGitTab = useCallback(() => {
     navigate(`/project/${projectSlug}/git`);
+  }, [navigate, projectSlug]);
+
+  const handleShowTerminal = useCallback(() => {
+    setShowTerminalPanel(true);
+    setShowSessionPanel(false);
+    setShowFileExplorer(false);
+    setShowGitPanel(false);
+  }, []);
+
+  const handleCloseTerminalPanel = useCallback(() => {
+    setShowTerminalPanel(false);
+  }, []);
+
+  const handleNavigateToTerminalTab = useCallback(() => {
+    setShowTerminalPanel(false);
+    navigate(`/project/${projectSlug}/terminal`);
   }, [navigate, projectSlug]);
 
   // Execute confirmed action (after user confirms in modal)
@@ -892,6 +915,15 @@ export function ChatPage() {
     />
   );
 
+  const terminalPanel = (
+    <QuickTerminal
+      isOpen={showTerminalPanel}
+      projectSlug={projectSlug}
+      onClose={handleCloseTerminalPanel}
+      onNavigateToTerminalTab={handleNavigateToTerminalTab}
+    />
+  );
+
   const showQueueBanner = isQueueLocked || isQueueCompleted || isQueueErrored || isQueueOnOtherSession;
   const queueBannerElement = showQueueBanner ? (
     <QueueLockedBanner
@@ -954,7 +986,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onShowGit={handleShowGit} gitChangedCount={changedFileCount} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onShowGit={handleShowGit} gitChangedCount={changedFileCount} onShowTerminal={handleShowTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -1023,7 +1055,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onShowGit={handleShowGit} gitChangedCount={changedFileCount} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onShowGit={handleShowGit} gitChangedCount={changedFileCount} onShowTerminal={handleShowTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -1089,7 +1121,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onShowGit={handleShowGit} gitChangedCount={changedFileCount} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onShowGit={handleShowGit} gitChangedCount={changedFileCount} onShowTerminal={handleShowTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -1176,6 +1208,7 @@ export function ChatPage() {
         onShowFileExplorer={handleShowFileExplorer}
         onShowGit={handleShowGit}
         gitChangedCount={changedFileCount}
+        onShowTerminal={handleShowTerminal}
         onRefresh={handleRetry}
         onLogout={handleLogout}
         onRenameSession={handleRenameSession}
@@ -1258,6 +1291,7 @@ export function ChatPage() {
       {sessionPanel}
       {fileExplorerPanel}
       {gitPanel}
+      {terminalPanel}
       {confirmModalElement}
     </div>
   );
