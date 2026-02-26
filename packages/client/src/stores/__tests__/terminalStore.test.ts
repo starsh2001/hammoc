@@ -1,0 +1,208 @@
+/**
+ * Terminal Store Tests
+ * Story 17.2: Terminal Emulator Component - Task 7.2
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useTerminalStore } from '../terminalStore';
+
+const mockSocket = {
+  emit: vi.fn(),
+  on: vi.fn(),
+  off: vi.fn(),
+};
+
+vi.mock('../../services/socket', () => ({
+  getSocket: () => mockSocket,
+}));
+
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+  },
+}));
+
+import { toast } from 'sonner';
+
+describe('terminalStore', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset store state
+    useTerminalStore.setState({
+      terminals: new Map(),
+      activeTerminalId: null,
+    });
+  });
+
+  // TC-TERM-S1: createTerminal emits socket event
+  it('createTerminal emits terminal:create socket event', () => {
+    useTerminalStore.getState().createTerminal('my-project');
+    expect(mockSocket.emit).toHaveBeenCalledWith('terminal:create', {
+      projectSlug: 'my-project',
+    });
+  });
+
+  // TC-TERM-S2: reattachTerminal emits socket event with terminalId
+  it('reattachTerminal emits terminal:create with terminalId', () => {
+    useTerminalStore.getState().reattachTerminal('my-project', 'term-123');
+    expect(mockSocket.emit).toHaveBeenCalledWith('terminal:create', {
+      projectSlug: 'my-project',
+      terminalId: 'term-123',
+    });
+  });
+
+  // TC-TERM-S3: terminal:created updates state
+  it('terminal:created handler adds session to terminals map', () => {
+    useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
+
+    // Find the terminal:created handler
+    const onCreatedCall = mockSocket.on.mock.calls.find(
+      (call) => call[0] === 'terminal:created'
+    );
+    expect(onCreatedCall).toBeDefined();
+    const onCreated = onCreatedCall![1];
+
+    // Simulate terminal:created event
+    onCreated({ terminalId: 'term-1', shell: '/bin/bash' });
+
+    const state = useTerminalStore.getState();
+    expect(state.terminals.get('term-1')).toEqual({
+      terminalId: 'term-1',
+      shell: '/bin/bash',
+      status: 'connected',
+    });
+    expect(state.activeTerminalId).toBe('term-1');
+  });
+
+  // TC-TERM-S4: terminal:exit updates session status
+  it('terminal:exit handler updates session status to exited', () => {
+    // Pre-populate a session
+    useTerminalStore.setState({
+      terminals: new Map([
+        ['term-1', { terminalId: 'term-1', shell: '/bin/bash', status: 'connected' }],
+      ]),
+      activeTerminalId: 'term-1',
+    });
+
+    useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
+
+    const onExitCall = mockSocket.on.mock.calls.find(
+      (call) => call[0] === 'terminal:exit'
+    );
+    const onExit = onExitCall![1];
+
+    onExit({ terminalId: 'term-1', exitCode: 0 });
+
+    const session = useTerminalStore.getState().terminals.get('term-1');
+    expect(session?.status).toBe('exited');
+    expect(session?.exitCode).toBe(0);
+  });
+
+  // TC-TERM-S5: terminal:error shows toast and updates status
+  it('terminal:error handler calls toast.error and sets status to disconnected', () => {
+    useTerminalStore.setState({
+      terminals: new Map([
+        ['term-1', { terminalId: 'term-1', shell: '/bin/bash', status: 'connected' }],
+      ]),
+    });
+
+    useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
+
+    const onErrorCall = mockSocket.on.mock.calls.find(
+      (call) => call[0] === 'terminal:error'
+    );
+    const onError = onErrorCall![1];
+
+    onError({ terminalId: 'term-1', code: 'PTY_SPAWN_ERROR', message: 'Failed to spawn' });
+
+    expect(toast.error).toHaveBeenCalledWith('Failed to spawn');
+    const session = useTerminalStore.getState().terminals.get('term-1');
+    expect(session?.status).toBe('disconnected');
+  });
+
+  // TC-TERM-S6: terminal:error without terminalId only shows toast
+  it('terminal:error without terminalId only shows toast', () => {
+    useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
+
+    const onErrorCall = mockSocket.on.mock.calls.find(
+      (call) => call[0] === 'terminal:error'
+    );
+    const onError = onErrorCall![1];
+
+    onError({ code: 'MAX_SESSIONS_REACHED', message: 'Too many sessions' });
+
+    expect(toast.error).toHaveBeenCalledWith('Too many sessions');
+  });
+
+  // TC-TERM-S7: closeTerminal removes from map and emits event
+  it('closeTerminal removes session from map and emits terminal:close', () => {
+    useTerminalStore.setState({
+      terminals: new Map([
+        ['term-1', { terminalId: 'term-1', shell: '/bin/bash', status: 'connected' }],
+      ]),
+      activeTerminalId: 'term-1',
+    });
+
+    useTerminalStore.getState().closeTerminal('term-1');
+
+    expect(mockSocket.emit).toHaveBeenCalledWith('terminal:close', { terminalId: 'term-1' });
+    expect(useTerminalStore.getState().terminals.has('term-1')).toBe(false);
+    expect(useTerminalStore.getState().activeTerminalId).toBeNull();
+  });
+
+  // TC-TERM-S8: sendInput emits terminal:input
+  it('sendInput emits terminal:input socket event', () => {
+    useTerminalStore.getState().sendInput('term-1', 'ls\n');
+    expect(mockSocket.emit).toHaveBeenCalledWith('terminal:input', {
+      terminalId: 'term-1',
+      data: 'ls\n',
+    });
+  });
+
+  // TC-TERM-S9: resize emits terminal:resize
+  it('resize emits terminal:resize socket event', () => {
+    useTerminalStore.getState().resize('term-1', 120, 40);
+    expect(mockSocket.emit).toHaveBeenCalledWith('terminal:resize', {
+      terminalId: 'term-1',
+      cols: 120,
+      rows: 40,
+    });
+  });
+
+  // TC-TERM-S10: registerDataCallback and terminal:data routing
+  it('registerDataCallback routes terminal:data to registered callbacks', () => {
+    const cb = vi.fn();
+    const unregister = useTerminalStore.getState().registerDataCallback('term-1', cb);
+
+    useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
+
+    const onDataCall = mockSocket.on.mock.calls.find(
+      (call) => call[0] === 'terminal:data'
+    );
+    const onData = onDataCall![1];
+
+    onData({ terminalId: 'term-1', data: 'hello world' });
+    expect(cb).toHaveBeenCalledWith('hello world');
+
+    // Unregister and verify no more calls
+    unregister();
+    onData({ terminalId: 'term-1', data: 'bye' });
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  // TC-TERM-S11: cleanupTerminalListeners removes socket handlers
+  it('cleanupTerminalListeners removes all socket event handlers', () => {
+    useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
+    expect(mockSocket.on).toHaveBeenCalledTimes(4);
+
+    // Clear mock counts from setup (which internally calls cleanup first)
+    mockSocket.off.mockClear();
+
+    useTerminalStore.getState().cleanupTerminalListeners(mockSocket as any);
+    expect(mockSocket.off).toHaveBeenCalledTimes(4);
+    expect(mockSocket.off).toHaveBeenCalledWith('terminal:created', expect.any(Function));
+    expect(mockSocket.off).toHaveBeenCalledWith('terminal:data', expect.any(Function));
+    expect(mockSocket.off).toHaveBeenCalledWith('terminal:exit', expect.any(Function));
+    expect(mockSocket.off).toHaveBeenCalledWith('terminal:error', expect.any(Function));
+  });
+});
