@@ -140,6 +140,8 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
   }, [projectSlug]);
 
   const reorderItems = useCallback((newOrder: number[]) => {
+    // Optimistic update — immediately reorder items in the store
+    useQueueStore.getState().optimisticReorder(newOrder, projectSlug);
     const socket = getSocket();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     socket.emit('queue:reorderItems' as any, { projectSlug, newOrder });

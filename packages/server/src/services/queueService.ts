@@ -256,6 +256,10 @@ export class QueueService {
         if (result.shouldAdvance) {
           this.emitItemComplete(this.currentIndex, result.markerDetected);
           this.currentIndex++;
+          // Emit progress after advancing so clients update currentIndex and sessionId in real-time
+          if (!this.isPaused && this._isRunning && this.currentIndex < this.items.length) {
+            this.emitProgress('running');
+          }
         }
         if (this.isPaused) {
           log.debug(`executeLoop: paused after item, index=${this.currentIndex}, reason="${this.pauseReason}"`);
