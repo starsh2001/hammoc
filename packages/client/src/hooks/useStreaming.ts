@@ -192,6 +192,28 @@ export function useStreaming() {
         streamingSessionId: state.streamingSessionId,
         segmentCount: state.streamingSegments.length,
       });
+
+      // Safety net: drop chunks from a session we're not viewing or streaming.
+      // Covers the race window between client-side cleanup and server-side detach.
+      if (data.sessionId) {
+        if (state.streamingSessionId && state.streamingSessionId !== 'pending'
+            && state.streamingSessionId !== data.sessionId) {
+          debugLog.stream('chunk dropped: streamingSessionId mismatch', {
+            streaming: state.streamingSessionId, chunk: data.sessionId,
+          });
+          return;
+        }
+        if (!state.isStreaming) {
+          const viewingSessionId = useMessageStore.getState().currentSessionId;
+          if (viewingSessionId && viewingSessionId !== data.sessionId) {
+            debugLog.stream('chunk dropped: viewingSessionId mismatch', {
+              viewing: viewingSessionId, chunk: data.sessionId,
+            });
+            return;
+          }
+        }
+      }
+
       if (!state.isStreaming || state.streamingSessionId === null) {
         // First chunk or passive viewer — initialize streaming state.
         // Passive viewers (other browsers) receive session:resumed which sets
@@ -251,6 +273,26 @@ export function useStreaming() {
         msgCount: useMessageStore.getState().messages.length,
         hasUsage: !!data.usage,
       });
+
+      // Safety net: drop completion from a different session (same logic as handleChunk)
+      if (data.sessionId) {
+        if (chatState.streamingSessionId && chatState.streamingSessionId !== 'pending'
+            && chatState.streamingSessionId !== data.sessionId) {
+          debugLog.stream('complete dropped: streamingSessionId mismatch', {
+            streaming: chatState.streamingSessionId, complete: data.sessionId,
+          });
+          return;
+        }
+        if (!chatState.isStreaming) {
+          const viewingSessionId = useMessageStore.getState().currentSessionId;
+          if (viewingSessionId && viewingSessionId !== data.sessionId) {
+            debugLog.stream('complete dropped: viewingSessionId mismatch', {
+              viewing: viewingSessionId, complete: data.sessionId,
+            });
+            return;
+          }
+        }
+      }
       // Update sessionId if not yet set, pending, or empty string (from no-init resume mode)
       // Use updateStreamingSessionId to avoid resetting segments
       if (data.sessionId && (!chatState.streamingSessionId || chatState.streamingSessionId === 'pending')) {

@@ -25,6 +25,8 @@ export interface QueueLockedBannerProps {
   onAbort: () => void;
   /** Dismiss the completed/errored banner */
   onDismiss?: () => void;
+  /** Navigate to a session (routes through handleSessionSelect for proper cleanup) */
+  onNavigateToSession?: (sessionId: string) => void;
 }
 
 export function QueueLockedBanner({
@@ -43,6 +45,7 @@ export function QueueLockedBanner({
   onResume,
   onAbort,
   onDismiss,
+  onNavigateToSession,
 }: QueueLockedBannerProps) {
   const progressPercent = progress.total > 0
     ? Math.round(((progress.current) / progress.total) * 100)
@@ -71,13 +74,24 @@ export function QueueLockedBanner({
               큐 러너가 다른 세션에서 작업 중 ({progress.current + 1}/{progress.total})
             </span>
           </div>
-          <Link
-            to={`/project/${projectSlug}/session/${activeSessionId}`}
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 flex-shrink-0"
-          >
-            해당 세션으로 이동
-            <ExternalLink size={14} aria-hidden="true" />
-          </Link>
+          {onNavigateToSession ? (
+            <button
+              type="button"
+              onClick={() => onNavigateToSession(activeSessionId!)}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 flex-shrink-0"
+            >
+              해당 세션으로 이동
+              <ExternalLink size={14} aria-hidden="true" />
+            </button>
+          ) : (
+            <Link
+              to={`/project/${projectSlug}/session/${activeSessionId}`}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 flex-shrink-0"
+            >
+              해당 세션으로 이동
+              <ExternalLink size={14} aria-hidden="true" />
+            </Link>
+          )}
         </div>
       </div>
     );

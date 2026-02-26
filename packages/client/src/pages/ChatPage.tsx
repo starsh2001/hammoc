@@ -530,6 +530,23 @@ export function ChatPage() {
     };
   }, [clearMessages]);
 
+  // Clean up previous session's streaming state when sessionId changes
+  // (e.g., navigating via QueueLockedBanner Link or direct URL change).
+  // Uses cleanup function so it runs with the OLD sessionId on re-run.
+  // Unmount cleanup is handled by the separate effect above.
+  useEffect(() => {
+    return () => {
+      // Leave the session room on the server so stale stream events stop arriving
+      const socket = getSocket();
+      socket.emit('session:leave', sessionId || '');
+      // Clear client-side streaming state (don't abort server stream — it continues in background)
+      if (useChatStore.getState().isStreaming) {
+        debugLog.chatpage('sessionId change cleanup → abortStreaming', { oldSessionId: sessionId });
+        useChatStore.getState().abortStreaming();
+      }
+    };
+  }, [sessionId]);
+
   // Probe for active background stream on session mount
   // Must also handle case where socket connects AFTER this effect runs (fresh page load)
   // Skip if already streaming (e.g., navigated from /new to real sessionId mid-stream)
@@ -860,6 +877,7 @@ export function ChatPage() {
       onResume={queueResume}
       onAbort={queueAbort}
       onDismiss={queueDismissBanner}
+      onNavigateToSession={handleSessionSelect}
     />
   ) : null;
 
