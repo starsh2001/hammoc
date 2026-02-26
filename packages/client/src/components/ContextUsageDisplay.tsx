@@ -4,7 +4,6 @@
  * [Source: Story 5.6 - Task 7]
  */
 
-import { AlertTriangle } from 'lucide-react';
 import { CONTEXT_USAGE_THRESHOLDS } from '@bmad-studio/shared';
 import type { ChatUsage } from '@bmad-studio/shared';
 
@@ -129,9 +128,6 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact, dis
           {usagePercent}
         </text>
       </svg>
-      {isCritical && (
-        <AlertTriangle className="w-4 h-4 text-red-500" data-testid="context-usage-warning" />
-      )}
     </button>
   );
 }
