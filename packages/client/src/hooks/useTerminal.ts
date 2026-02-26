@@ -9,6 +9,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useTerminalStore } from '../stores/terminalStore';
+import type { TerminalSession } from '../stores/terminalStore';
 import { getSocket } from '../services/socket';
 
 export interface UseTerminalReturn {
@@ -16,8 +17,11 @@ export interface UseTerminalReturn {
   isConnected: boolean;
   shell: string | null;
   status: 'connecting' | 'connected' | 'disconnected' | 'exited' | null;
+  terminals: Map<string, TerminalSession>;
   create: () => void;
   close: () => void;
+  closeById: (terminalId: string) => void;
+  switchTerminal: (terminalId: string) => void;
 }
 
 export function useTerminal(projectSlug: string): UseTerminalReturn {
@@ -27,6 +31,7 @@ export function useTerminal(projectSlug: string): UseTerminalReturn {
   const cleanupTerminalListeners = useTerminalStore((s) => s.cleanupTerminalListeners);
   const createTerminal = useTerminalStore((s) => s.createTerminal);
   const closeTerminal = useTerminalStore((s) => s.closeTerminal);
+  const setActiveTerminalId = useTerminalStore((s) => s.setActiveTerminalId);
 
   const session = activeTerminalId ? terminals.get(activeTerminalId) ?? null : null;
 
@@ -49,12 +54,29 @@ export function useTerminal(projectSlug: string): UseTerminalReturn {
     }
   }, [closeTerminal, activeTerminalId]);
 
+  const closeById = useCallback(
+    (terminalId: string) => {
+      closeTerminal(terminalId);
+    },
+    [closeTerminal]
+  );
+
+  const switchTerminal = useCallback(
+    (terminalId: string) => {
+      setActiveTerminalId(terminalId);
+    },
+    [setActiveTerminalId]
+  );
+
   return {
     terminalId: activeTerminalId,
     isConnected: session?.status === 'connected',
     shell: session?.shell ?? null,
     status: session?.status ?? null,
+    terminals,
     create,
     close,
+    closeById,
+    switchTerminal,
   };
 }
