@@ -714,23 +714,25 @@ export function ChatInput({
     textareaRef.current?.focus();
   }, [handleSubmit]);
 
-  // Prevent textarea blur when tapping send/abort buttons on mobile.
-  // Only preventDefault when keyboard is visible (keeps keyboard open);
-  // when keyboard is hidden, allow default so it stays hidden.
-  // Mobile: blur textarea when keyboard is dismissed (back button / resize).
-  // This prevents the keyboard from reappearing on subsequent button taps.
+  // Mobile: blur textarea when keyboard is dismissed via back button/gesture.
+  // On Android, dismissing the keyboard does NOT blur the textarea, so we detect
+  // it via viewport height increase. Uses visualViewport API (keyboard/zoom only)
+  // with a 100px threshold to ignore small layout shifts (toasts, status bars).
   useEffect(() => {
     if (!isTouchDevice) return;
-    let lastHeight = window.innerHeight;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let lastHeight = vv.height;
     const handleResize = () => {
-      const newHeight = window.innerHeight;
-      if (newHeight > lastHeight && document.activeElement === textareaRef.current) {
+      const newHeight = vv.height;
+      const delta = newHeight - lastHeight;
+      if (delta > 100 && document.activeElement === textareaRef.current) {
         textareaRef.current?.blur();
       }
       lastHeight = newHeight;
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    vv.addEventListener('resize', handleResize);
+    return () => vv.removeEventListener('resize', handleResize);
   }, [isTouchDevice]);
 
   // Prevent focus from moving to button on both desktop and mobile.
