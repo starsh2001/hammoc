@@ -53,6 +53,8 @@ interface QueueRunnerPanelProps {
   onReorderItems?: (newOrder: number[]) => void;
   /** Dismiss completed/errored state and return to editor */
   onDismiss?: () => void;
+  /** True while waiting for server to confirm a reorder (disables drag) */
+  isReordering?: boolean;
 }
 
 function getItemSummary(item: QueueItem): string {
@@ -118,6 +120,7 @@ export function QueueRunnerPanel({
   onAddItem,
   onReorderItems,
   onDismiss,
+  isReordering = false,
 }: QueueRunnerPanelProps) {
   const currentItemRef = useRef<HTMLDivElement>(null);
   const [newItemText, setNewItemText] = useState('');
@@ -179,7 +182,7 @@ export function QueueRunnerPanel({
   // Split items into non-draggable (completed/running) and draggable (pending)
   const fixedItems = items.slice(0, pendingStart);
   const pendingItems = items.slice(pendingStart);
-  const canDrag = !!onReorderItems && (isRunning || isPaused);
+  const canDrag = !!onReorderItems && (isRunning || isPaused) && !isReordering;
 
   return (
     <div className={`border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden
@@ -335,8 +338,8 @@ export function QueueRunnerPanel({
               >
                 {getItemSummary(item)}
               </span>
-              {/* Session link for completed items */}
-              {status === 'completed' && itemSessionId && projectSlug && (
+              {/* Session link for completed and current items */}
+              {(status === 'completed' || status === 'running' || status === 'paused') && itemSessionId && projectSlug && (
                 <Link
                   to={`/project/${projectSlug}/session/${itemSessionId}`}
                   className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 flex-shrink-0 p-0.5"

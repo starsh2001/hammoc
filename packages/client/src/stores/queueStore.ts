@@ -14,8 +14,10 @@ import type {
   QueueErrorEvent,
   QueueItemsUpdatedEvent,
 } from '@bmad-studio/shared';
+import { queueApi } from '../services/api/queue';
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let reorderSafetyTimer: ReturnType<typeof setTimeout> | null = null;
 
 interface QueueState {
   // Editor state
@@ -41,6 +43,8 @@ interface QueueState {
   errorItem: { index: number; error: string } | null;
   /** Map of itemIndex -> sessionId for session links */
   itemSessionIds: Map<number, string>;
+  /** True while waiting for server to confirm a reorder */
+  isReordering: boolean;
 }
 
 interface QueueActions {
@@ -54,6 +58,7 @@ interface QueueActions {
   setStarting: (starting: boolean) => void;
   syncFromStatus: (state: QueueExecutionState) => void;
   handleItemsUpdated: (data: QueueItemsUpdatedEvent) => void;
+  optimisticReorder: (newOrder: number[], projectSlug: string) => void;
   reset: () => void;
 }
 
@@ -80,6 +85,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   completedItems: new Set<number>(),
   errorItem: null,
   itemSessionIds: new Map<number, string>(),
+  isReordering: false,
 
   setScript: (script: string) => {
     set({ script });
@@ -185,6 +191,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       isCompleted: state.isCompleted ?? false,
       isErrored: state.isErrored ?? false,
       isAborted: false, // clear abort flag on server state sync
+      isReordering: false,
       currentIndex: state.currentIndex,
       totalItems: state.totalItems,
       pauseReason: state.pauseReason,
@@ -206,10 +213,31 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
 
   handleItemsUpdated: (data: QueueItemsUpdatedEvent) => {
     if (get().isAborted) return;
+    if (reorderSafetyTimer) { clearTimeout(reorderSafetyTimer); reorderSafetyTimer = null; }
     set({
       parsedItems: data.items,
       totalItems: data.totalItems,
       currentIndex: data.currentIndex,
+      isReordering: false,
+    });
+  },
+
+  optimisticReorder: (newOrder: number[], projectSlug: string) => {
+    const { parsedItems, currentIndex, isPaused } = get();
+    const pendingStart = isPaused ? currentIndex : currentIndex + 1;
+    const reordered = newOrder.map(i => parsedItems[i]);
+    if (reorderSafetyTimer) clearTimeout(reorderSafetyTimer);
+    reorderSafetyTimer = setTimeout(() => {
+      if (!get().isReordering) return;
+      // Re-fetch server state to recover from lost response
+      queueApi.getStatus(projectSlug)
+        .then((state) => get().syncFromStatus(state))
+        .catch(() => set({ isReordering: false }));
+      reorderSafetyTimer = null;
+    }, 3000);
+    set({
+      parsedItems: [...parsedItems.slice(0, pendingStart), ...reordered],
+      isReordering: true,
     });
   },
 
@@ -229,6 +257,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       completedItems: new Set<number>(),
       errorItem: null,
       itemSessionIds: new Map<number, string>(),
+      isReordering: false,
     });
   },
 }));
