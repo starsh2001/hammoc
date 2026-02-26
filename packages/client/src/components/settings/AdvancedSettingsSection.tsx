@@ -6,7 +6,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Terminal } from 'lucide-react';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { projectsApi } from '../../services/api/projects';
@@ -17,7 +17,7 @@ interface TemplateVariable {
 }
 
 export function AdvancedSettingsSection() {
-  const { preferences, updatePreference } = usePreferencesStore();
+  const { preferences, overrides, updatePreference } = usePreferencesStore();
   const currentProjectSlug = useSessionStore((s) => s.currentProjectSlug);
 
   // Default template and variables fetched from server
@@ -100,8 +100,59 @@ export function AdvancedSettingsSection() {
     toast.success(`${label}이(가) 변경되었습니다`);
   }, [updatePreference]);
 
+  const isTerminalOverridden = overrides.includes('terminalEnabled');
+  const terminalEnabled = preferences.terminalEnabled !== false;
+
+  const handleTerminalToggle = useCallback(() => {
+    if (isTerminalOverridden) return;
+    const newValue = !terminalEnabled;
+    updatePreference('terminalEnabled', newValue);
+    toast.success(newValue ? '터미널이 활성화되었습니다' : '터미널이 비활성화되었습니다');
+  }, [terminalEnabled, isTerminalOverridden, updatePreference]);
+
   return (
     <div className="space-y-8">
+      {/* Terminal Enable/Disable Toggle (Story 17.5) */}
+      <div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Terminal className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <div>
+              <label
+                htmlFor="terminal-enabled"
+                className="block text-sm font-medium text-gray-900 dark:text-white"
+              >
+                터미널 기능
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                웹 기반 터미널 셸 기능을 활성화합니다
+              </p>
+            </div>
+          </div>
+          <button
+            id="terminal-enabled"
+            type="button"
+            role="switch"
+            aria-checked={terminalEnabled}
+            disabled={isTerminalOverridden}
+            onClick={handleTerminalToggle}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+              ${terminalEnabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}
+              ${isTerminalOverridden ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                ${terminalEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+            />
+          </button>
+        </div>
+        {isTerminalOverridden && (
+          <p className="mt-1.5 ml-8 text-xs text-amber-600 dark:text-amber-400">
+            환경 변수 TERMINAL_ENABLED에 의해 비활성화되어 있습니다
+          </p>
+        )}
+      </div>
+
       {/* System Prompt Template */}
       <div>
         <div className="flex items-center justify-between mb-2">

@@ -15,6 +15,7 @@ interface HeaderOverflowMenuProps {
   onShowFileExplorer?: () => void;
   onShowGit?: () => void;
   onShowTerminal?: () => void;
+  terminalAccessible?: boolean;
   onNewSession?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
@@ -27,6 +28,7 @@ export function HeaderOverflowMenu({
   onShowFileExplorer,
   onShowGit,
   onShowTerminal,
+  terminalAccessible = true,
   onNewSession,
   onRefresh,
   isRefreshing = false,
@@ -215,8 +217,10 @@ export function HeaderOverflowMenu({
             <button
               type="button"
               role="menuitem"
-              onClick={handleShowTerminal}
-              className={itemClass}
+              onClick={terminalAccessible ? handleShowTerminal : undefined}
+              disabled={!terminalAccessible}
+              aria-disabled={!terminalAccessible}
+              className={`${itemClass} ${!terminalAccessible ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Terminal className="w-4 h-4" aria-hidden="true" />
               터미널

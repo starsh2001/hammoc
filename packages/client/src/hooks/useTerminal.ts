@@ -10,6 +10,7 @@
 import { useEffect, useCallback } from 'react';
 import { useTerminalStore } from '../stores/terminalStore';
 import type { TerminalSession } from '../stores/terminalStore';
+import type { TerminalAccessInfo } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 
 export interface UseTerminalReturn {
@@ -18,6 +19,7 @@ export interface UseTerminalReturn {
   shell: string | null;
   status: 'connecting' | 'connected' | 'disconnected' | 'exited' | null;
   terminals: Map<string, TerminalSession>;
+  terminalAccess: TerminalAccessInfo | null;
   create: () => void;
   close: () => void;
   closeById: (terminalId: string) => void;
@@ -27,6 +29,7 @@ export interface UseTerminalReturn {
 export function useTerminal(projectSlug: string): UseTerminalReturn {
   const activeTerminalId = useTerminalStore((s) => s.activeTerminalId);
   const terminals = useTerminalStore((s) => s.terminals);
+  const terminalAccess = useTerminalStore((s) => s.terminalAccess);
   const setupTerminalListeners = useTerminalStore((s) => s.setupTerminalListeners);
   const cleanupTerminalListeners = useTerminalStore((s) => s.cleanupTerminalListeners);
   const createTerminal = useTerminalStore((s) => s.createTerminal);
@@ -74,6 +77,7 @@ export function useTerminal(projectSlug: string): UseTerminalReturn {
     shell: session?.shell ?? null,
     status: session?.status ?? null,
     terminals,
+    terminalAccess,
     create,
     close,
     closeById,

@@ -29,7 +29,7 @@ export const config = {
    */
   server: {
     port: parseInt(process.env.PORT || '3000', 10),
-    host: process.env.HOST || 'localhost',
+    host: process.env.HOST || '0.0.0.0',
   },
 
   /**
@@ -65,7 +65,8 @@ export const config = {
 
   /**
    * Terminal PTY settings (Story 17.1)
-   * Guard logic (enabled check) is deferred to Story 17.5
+   * Guard logic implemented in Story 17.5 via checkTerminalAccess()
+   * Runtime: preferencesService.getTerminalEnabled() for dynamic preference support
    */
   terminal: {
     enabled: process.env.TERMINAL_ENABLED !== 'false',

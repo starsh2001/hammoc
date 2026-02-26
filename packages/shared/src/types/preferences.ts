@@ -25,6 +25,8 @@ export interface UserPreferences {
   maxThinkingTokens?: number;       // SDK maxThinkingTokens
   maxTurns?: number;                // SDK maxTurns (conversation turn limit)
   maxBudgetUsd?: number;            // SDK maxBudgetUsd (cost limit per query)
+  // Terminal settings (Story 17.5)
+  terminalEnabled?: boolean;        // Enable/disable terminal feature (default: true)
 }
 
 /** Default values for global settings */

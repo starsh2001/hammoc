@@ -56,6 +56,7 @@ describe('QuickTerminal', () => {
       shell: '/bin/bash',
       status: 'connected',
       terminals: makeTerminals(makeSession('term-1')),
+      terminalAccess: { allowed: true, enabled: true },
       create: mockCreate,
       close: mockClose,
       closeById: mockCloseById,
@@ -211,5 +212,35 @@ describe('QuickTerminal', () => {
     expect(panel.getAttribute('role')).toBe('dialog');
     expect(panel.getAttribute('aria-label')).toBe('퀵 터미널 패널');
     expect(panel.getAttribute('aria-modal')).toBe('true');
+  });
+
+  // Story 17.5: Terminal security tests
+
+  // TC-QT-15: Shows warning when terminal is disabled (AC1)
+  it('shows disabled warning when terminalAccess.enabled is false', () => {
+    mockUseTerminalReturn = {
+      ...mockUseTerminalReturn,
+      terminalAccess: { allowed: false, enabled: false },
+    };
+    const { container } = render(<QuickTerminal {...defaultProps} />);
+    expect(container.textContent).toContain('터미널 기능이 비활성화되어 있습니다');
+    expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  });
+
+  // TC-QT-16: Shows warning when terminal access denied (AC4)
+  it('shows access denied warning when terminalAccess.allowed is false', () => {
+    mockUseTerminalReturn = {
+      ...mockUseTerminalReturn,
+      terminalAccess: { allowed: false, enabled: true },
+    };
+    const { container } = render(<QuickTerminal {...defaultProps} />);
+    expect(container.textContent).toContain('보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다');
+    expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  });
+
+  // TC-QT-17: Does NOT show warning when access is allowed
+  it('does not show warning when terminalAccess.allowed is true', () => {
+    const { container } = render(<QuickTerminal {...defaultProps} />);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 });

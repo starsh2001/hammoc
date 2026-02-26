@@ -9,20 +9,21 @@ import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, GitBranch, Terminal, Settings, MoreVertical, Moon, Sun, LogOut } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAuthStore } from '../stores/authStore';
+import { useTerminalStore } from '../stores/terminalStore';
 import { BrandLogo } from '../components/BrandLogo';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useTheme } from '../hooks/useTheme';
 
-const tabs = [
+const tabs: Array<{ id: string; label: string; icon: typeof LayoutDashboard; path: string }> = [
   { id: 'dashboard', label: '대시보드', icon: LayoutDashboard, path: '' },
   { id: 'sessions', label: '세션', icon: MessageSquare, path: '/sessions' },
   { id: 'queue', label: '큐 러너', icon: ListOrdered, path: '/queue' },
   { id: 'files', label: '파일', icon: FolderOpen, path: '/files' },
   { id: 'git', label: 'Git', icon: GitBranch, path: '/git' },
   { id: 'terminal', label: '터미널', icon: Terminal, path: '/terminal' },
-] as const;
+];
 
 export function ProjectTabLayout() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
@@ -30,6 +31,11 @@ export function ProjectTabLayout() {
   const location = useLocation();
   const { projects, fetchProjects } = useProjectStore();
   const { logout } = useAuthStore();
+
+  // Story 17.5: Terminal access control
+  const terminalAccess = useTerminalStore((state) => state.terminalAccess);
+  const isTerminalEnabled = terminalAccess?.enabled !== false;
+  const isTerminalAccessible = terminalAccess?.allowed ?? true;
 
   // Ensure project list is loaded (e.g. after a page refresh on /project/:slug)
   useEffect(() => {
@@ -167,18 +173,30 @@ export function ProjectTabLayout() {
         {/* Tab bar */}
         <nav className="content-container flex px-4" aria-label="프로젝트 탭">
           {tabs.map((tab) => {
+            // Story 17.5: AC1 — hide terminal tab when disabled
+            if (tab.id === 'terminal' && !isTerminalEnabled) return null;
+
             const isActive = activeTabId === tab.id;
             const Icon = tab.icon;
+
+            // Story 17.5: AC4 — disable terminal tab for non-local clients
+            const isDisabled = tab.id === 'terminal' && !isTerminalAccessible;
+
             return (
               <button
                 key={tab.id}
-                onClick={() => handleTabClick(tab.path)}
+                onClick={isDisabled ? undefined : () => handleTabClick(tab.path)}
+                disabled={isDisabled}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  isActive
+                  isDisabled
+                    ? 'border-transparent opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-500'
+                    : isActive
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
                 aria-current={isActive ? 'page' : undefined}
+                aria-disabled={isDisabled || undefined}
+                aria-label={isDisabled ? '터미널 비활성화됨: 로컬 네트워크 외부 접근' : undefined}
               >
                 <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
