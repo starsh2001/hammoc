@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type { SubscriptionRateLimit } from '@bmad-studio/shared';
+import type { SubscriptionRateLimit, ApiHealthStatus } from '@bmad-studio/shared';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('rateLimitProbe');
@@ -24,6 +24,10 @@ class RateLimitProbeService {
   private lastProbeResult: SubscriptionRateLimit | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private broadcastFn: ((data: SubscriptionRateLimit) => void) | null = null;
+  private healthBroadcastFn: ((data: ApiHealthStatus) => void) | null = null;
+  private apiHealthy = true;
+  private healthLastCheckedAt = 0;
+  private healthLastError: string | null = null;
 
   /**
    * Read OAuth access token from ~/.claude/.credentials.json
@@ -80,8 +84,11 @@ class RateLimitProbeService {
           this.cachedToken = null;
           this.tokenCachedAt = 0;
           log.debug('Usage API auth failed (status: %d), token cache invalidated', response.status);
+          // Auth errors mean the API is reachable, just credentials are invalid
+          this.updateApiHealth(true);
         } else {
           log.debug('Usage API error (status: %d)', response.status);
+          this.updateApiHealth(false, `API returned ${response.status}`);
         }
         return null;
       }
@@ -89,13 +96,16 @@ class RateLimitProbeService {
       const body = await response.json();
       const result = this.parseUsageResponse(body);
       this.lastProbeResult = result;
+      this.updateApiHealth(true);
       log.debug('Rate limit probe success: 5h=%s, 7d=%s',
         result?.fiveHour?.utilization?.toFixed(2) ?? 'n/a',
         result?.sevenDay?.utilization?.toFixed(2) ?? 'n/a',
       );
       return result;
     } catch (err) {
-      log.debug('Usage API fetch failed: %s', err instanceof Error ? err.message : String(err));
+      const errMsg = err instanceof Error ? err.message : String(err);
+      log.debug('Usage API fetch failed: %s', errMsg);
+      this.updateApiHealth(false, errMsg);
       return null;
     }
   }
@@ -104,8 +114,12 @@ class RateLimitProbeService {
    * Start periodic polling. Calls broadcast function on each successful probe.
    * Safe to call multiple times — only one timer runs at a time.
    */
-  startPolling(broadcast: (data: SubscriptionRateLimit) => void): void {
+  startPolling(
+    broadcast: (data: SubscriptionRateLimit) => void,
+    healthBroadcast?: (data: ApiHealthStatus) => void,
+  ): void {
     this.broadcastFn = broadcast;
+    if (healthBroadcast) this.healthBroadcastFn = healthBroadcast;
     if (this.pollTimer) return; // already polling
 
     log.debug('Starting rate limit polling (interval: %dms)', POLL_INTERVAL_MS);
@@ -126,6 +140,7 @@ class RateLimitProbeService {
       log.debug('Rate limit polling stopped');
     }
     this.broadcastFn = null;
+    this.healthBroadcastFn = null;
   }
 
   /**
@@ -133,6 +148,36 @@ class RateLimitProbeService {
    */
   getCachedResult(): SubscriptionRateLimit | null {
     return this.lastProbeResult;
+  }
+
+  /**
+   * Return cached API health status (no API call).
+   * Returns null if no probe has been performed yet.
+   */
+  getApiHealth(): ApiHealthStatus | null {
+    if (this.healthLastCheckedAt === 0) return null;
+    return {
+      healthy: this.apiHealthy,
+      lastCheckedAt: new Date(this.healthLastCheckedAt).toISOString(),
+      ...(this.healthLastError && { error: this.healthLastError }),
+    };
+  }
+
+  private updateApiHealth(healthy: boolean, error?: string): void {
+    const changed = this.apiHealthy !== healthy;
+    this.apiHealthy = healthy;
+    this.healthLastCheckedAt = Date.now();
+    this.healthLastError = error ?? null;
+
+    if (changed) {
+      log.info('API health changed: %s%s',
+        healthy ? 'healthy' : 'unhealthy',
+        error ? ` (${error})` : '');
+    }
+
+    if (this.healthBroadcastFn) {
+      this.healthBroadcastFn(this.getApiHealth()!);
+    }
   }
 
   private pollOnce(): void {
