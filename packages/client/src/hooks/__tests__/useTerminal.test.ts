@@ -29,16 +29,19 @@ describe('useTerminal', () => {
   const mockCleanup = vi.fn();
   const mockCreate = vi.fn();
   const mockClose = vi.fn();
+  const mockSetActiveTerminalId = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
     useTerminalStore.setState({
       terminals: new Map(),
       activeTerminalId: null,
+      currentProjectSlug: null,
       setupTerminalListeners: mockSetup,
       cleanupTerminalListeners: mockCleanup,
       createTerminal: mockCreate,
       closeTerminal: mockClose,
+      setActiveTerminalId: mockSetActiveTerminalId,
     } as any);
   });
 
@@ -105,7 +108,46 @@ describe('useTerminal', () => {
     expect(mockCleanup).toHaveBeenCalledWith(mockSocket);
   });
 
-  // TC-TERM-H6: isConnected is false for non-connected statuses
+  // TC-TERM-H6: Returns terminals Map
+  it('returns terminals Map from store', () => {
+    const terminalsMap = new Map([
+      ['term-1', { terminalId: 'term-1', shell: '/bin/bash', status: 'connected' as const }],
+      ['term-2', { terminalId: 'term-2', shell: '/bin/zsh', status: 'connected' as const }],
+    ]);
+    useTerminalStore.setState({ terminals: terminalsMap });
+
+    const { result } = renderHook(() => useTerminal('test-project'));
+    expect(result.current.terminals.size).toBe(2);
+    expect(result.current.terminals.has('term-1')).toBe(true);
+    expect(result.current.terminals.has('term-2')).toBe(true);
+  });
+
+  // TC-TERM-H7: closeById delegates to closeTerminal
+  it('closeById delegates to terminalStore.closeTerminal with given ID', () => {
+    const { result } = renderHook(() => useTerminal('test-project'));
+    act(() => {
+      result.current.closeById('term-42');
+    });
+    expect(mockClose).toHaveBeenCalledWith('term-42');
+  });
+
+  // TC-TERM-H8: switchTerminal delegates to setActiveTerminalId
+  it('switchTerminal delegates to terminalStore.setActiveTerminalId', () => {
+    const { result } = renderHook(() => useTerminal('test-project'));
+    act(() => {
+      result.current.switchTerminal('term-99');
+    });
+    expect(mockSetActiveTerminalId).toHaveBeenCalledWith('term-99');
+  });
+
+  // TC-TERM-H9: Unmount does NOT call closeTerminal
+  it('does not call closeTerminal on unmount (session persistence)', () => {
+    const { unmount } = renderHook(() => useTerminal('test-project'));
+    unmount();
+    expect(mockClose).not.toHaveBeenCalled();
+  });
+
+  // TC-TERM-H10: isConnected is false for non-connected statuses
   it('isConnected is false when status is exited', () => {
     useTerminalStore.setState({
       activeTerminalId: 'term-1',

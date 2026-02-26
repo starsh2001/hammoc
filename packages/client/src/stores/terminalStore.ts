@@ -31,6 +31,7 @@ interface TerminalStore {
   // State
   terminals: Map<string, TerminalSession>;
   activeTerminalId: string | null;
+  currentProjectSlug: string | null;
 
   // Actions
   createTerminal: (projectSlug: string) => void;
@@ -38,6 +39,8 @@ interface TerminalStore {
   closeTerminal: (terminalId: string) => void;
   sendInput: (terminalId: string, data: string) => void;
   resize: (terminalId: string, cols: number, rows: number) => void;
+  setActiveTerminalId: (terminalId: string) => void;
+  clearTerminalsForProjectChange: (newProjectSlug: string) => void;
 
   // Socket listener lifecycle
   setupTerminalListeners: (socket: TypedSocket) => void;
@@ -60,6 +63,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   // State
   terminals: new Map(),
   activeTerminalId: null,
+  currentProjectSlug: null,
 
   // Actions
   createTerminal: (projectSlug: string) => {
@@ -79,8 +83,12 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     terminals.delete(terminalId);
     // Clean up data callbacks
     dataCallbacks.delete(terminalId);
-    const activeTerminalId =
-      get().activeTerminalId === terminalId ? null : get().activeTerminalId;
+    let activeTerminalId = get().activeTerminalId;
+    if (activeTerminalId === terminalId) {
+      // Auto-select first remaining terminal (Map insertion order)
+      const firstRemaining = terminals.keys().next().value;
+      activeTerminalId = firstRemaining ?? null;
+    }
     set({ terminals, activeTerminalId });
   },
 
@@ -92,6 +100,28 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   resize: (terminalId: string, cols: number, rows: number) => {
     const socket = getSocket();
     socket.emit('terminal:resize', { terminalId, cols, rows });
+  },
+
+  setActiveTerminalId: (terminalId: string) => {
+    const { terminals } = get();
+    if (terminals.has(terminalId)) {
+      set({ activeTerminalId: terminalId });
+    }
+  },
+
+  clearTerminalsForProjectChange: (newProjectSlug: string) => {
+    const { currentProjectSlug, terminals } = get();
+    if (currentProjectSlug && currentProjectSlug !== newProjectSlug && terminals.size > 0) {
+      // Close all existing terminals from previous project
+      const socket = getSocket();
+      for (const terminalId of terminals.keys()) {
+        socket.emit('terminal:close', { terminalId });
+        dataCallbacks.delete(terminalId);
+      }
+      set({ terminals: new Map(), activeTerminalId: null, currentProjectSlug: newProjectSlug });
+    } else {
+      set({ currentProjectSlug: newProjectSlug });
+    }
   },
 
   // Socket listener lifecycle
