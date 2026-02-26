@@ -17,7 +17,7 @@ import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
 import { debugLog } from '../utils/debugLogger';
-import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData } from '@bmad-studio/shared';
+import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit } from '@bmad-studio/shared';
 import type { InteractiveStatus } from '../stores/chatStore';
 
 export function useStreaming() {
@@ -542,11 +542,24 @@ export function useStreaming() {
         cacheCreationInputTokens: data.cacheCreationInputTokens,
         cacheReadInputTokens: data.cacheReadInputTokens,
         model: data.model,
+        totalCostUSD: data.totalCostUSD,
       });
       // Only use result usage for model extraction and cost tracking;
       // context window percentage comes from assistant:usage instead
       if (data.model) {
         useChatStore.getState().setActiveModel(data.model);
+      }
+      // Merge cost/model from result into existing contextUsage (token counts come from assistant:usage)
+      const existing = useChatStore.getState().contextUsage;
+      if (existing) {
+        setContextUsage({
+          ...existing,
+          totalCostUSD: data.totalCostUSD,
+          model: data.model ?? existing.model,
+          rateLimit: data.rateLimit ?? existing.rateLimit,
+        });
+      } else {
+        setContextUsage(data);
       }
     };
 
@@ -810,6 +823,12 @@ export function useStreaming() {
     socket.on('system:task-notification', handleTaskNotification);
     socket.on('tool:summary', handleToolSummary);
     socket.on('result:error', handleResultError);
+    // Handle rateLimit:update — subscription rate limit polling from server
+    const handleRateLimitUpdate = (data: SubscriptionRateLimit) => {
+      useChatStore.getState().setSubscriptionRateLimit(data);
+    };
+
+    socket.on('rateLimit:update', handleRateLimitUpdate);
     socket.on('stream:status', handleStreamStatus);
     socket.on('stream:detached', handleStreamDetached);
     socket.on('disconnect', handleDisconnect);
@@ -851,6 +870,7 @@ export function useStreaming() {
       socket.off('system:task-notification', handleTaskNotification);
       socket.off('tool:summary', handleToolSummary);
       socket.off('result:error', handleResultError);
+      socket.off('rateLimit:update', handleRateLimitUpdate);
       socket.off('stream:status', handleStreamStatus);
       socket.off('stream:detached', handleStreamDetached);
       socket.off('disconnect', handleDisconnect);

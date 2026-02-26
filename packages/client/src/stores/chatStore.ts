@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { toast } from 'sonner';
-import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings } from '@bmad-studio/shared';
+import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { usePreferencesStore } from './preferencesStore';
@@ -146,6 +146,8 @@ interface ChatState {
   permissionMode: PermissionMode;
   /** Current context usage data from last SDK response */
   contextUsage: ChatUsage | null;
+  /** Subscription rate limit from OAuth polling (null for non-subscription users) */
+  subscriptionRateLimit: SubscriptionRateLimit | null;
   /** Last result error (persisted after completeStreaming clears segments) */
   lastResultError: ResultErrorData | null;
   /** Selected model for next message */
@@ -209,6 +211,8 @@ interface ChatActions {
   setContextUsage: (usage: ChatUsage) => void;
   /** Reset context usage (on session change) */
   resetContextUsage: () => void;
+  /** Update subscription rate limit from polling */
+  setSubscriptionRateLimit: (rateLimit: SubscriptionRateLimit) => void;
   /** Clear leftover streaming segments (on session switch) */
   clearStreamingSegments: () => void;
   /** Update streaming sessionId without resetting segments (for late sessionId arrival) */
@@ -280,6 +284,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   projectSettings: null,
   permissionMode: usePreferencesStore.getState().preferences.permissionMode ?? 'default',
   contextUsage: null,
+  subscriptionRateLimit: null,
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
@@ -787,6 +792,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setContextUsage: (usage: ChatUsage) => set({ contextUsage: usage }),
 
   resetContextUsage: () => set({ contextUsage: null }),
+
+  setSubscriptionRateLimit: (rateLimit: SubscriptionRateLimit) => set({ subscriptionRateLimit: rateLimit }),
 
   clearStreamingSegments: () => {
     const prev = get();

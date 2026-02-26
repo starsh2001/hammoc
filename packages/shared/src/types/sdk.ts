@@ -62,6 +62,24 @@ export interface ChatResponse {
 }
 
 /**
+ * Rate limit window info (for subscription users via OAuth beta header)
+ */
+export interface RateLimitWindow {
+  utilization: number;
+  reset: string | null;
+  status: string;
+}
+
+/**
+ * Subscription rate limit info from anthropic-ratelimit-unified-* headers
+ */
+export interface SubscriptionRateLimit {
+  fiveHour?: RateLimitWindow;
+  sevenDay?: RateLimitWindow;
+  overallStatus?: string;
+}
+
+/**
  * Usage statistics for a chat response
  */
 export interface ChatUsage {
@@ -73,6 +91,8 @@ export interface ChatUsage {
   contextWindow: number;
   /** Primary model used (extracted from result modelUsage) */
   model?: string;
+  /** Subscription rate limit info (optional, only available with OAuth) */
+  rateLimit?: SubscriptionRateLimit;
 }
 
 /**

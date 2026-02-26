@@ -4,7 +4,7 @@
  * Story 1.6: Session Management - Added session events
  */
 
-import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage } from './sdk.js';
+import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage, SubscriptionRateLimit } from './sdk.js';
 import type { ToolResult, CompactMetadata, TaskNotificationData } from './streaming.js';
 import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
@@ -91,6 +91,7 @@ export interface ServerToClientEvents {
   'queue:itemComplete': (data: QueueItemCompleteEvent) => void;
   'queue:error': (data: QueueErrorEvent) => void;
   'queue:itemsUpdated': (data: QueueItemsUpdatedEvent) => void;
+  'rateLimit:update': (data: SubscriptionRateLimit) => void;
 }
 
 // ===== Inter-server Events =====
