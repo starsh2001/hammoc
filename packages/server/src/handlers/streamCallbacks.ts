@@ -111,6 +111,7 @@ export function buildStreamCallbacks(
         id: toolCall.id,
         name: toolCall.name,
         input: toolCall.input,
+        startedAt: Date.now(),
       });
     },
 
