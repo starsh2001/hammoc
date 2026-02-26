@@ -27,6 +27,7 @@ import { BmadAgentButton } from './BmadAgentButton';
 import { FavoritesPopup } from './FavoritesPopup';
 import { FavoritesChipBar } from './FavoritesChipBar';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
+import { UsageStatusBar } from './UsageStatusBar';
 import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage } from '@bmad-studio/shared';
 import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
 import { generateUUID } from '../utils/uuid';
@@ -200,6 +201,7 @@ export function ChatInput({
 }: ChatInputProps) {
   // Session lock state (another browser took over this session)
   const isSessionLocked = useChatStore((s) => s.isSessionLocked);
+  const subscriptionRateLimit = useChatStore((s) => s.subscriptionRateLimit);
 
   // Local state
   const [content, setContent] = useState('');
@@ -663,6 +665,12 @@ export function ChatInput({
         return;
       }
 
+      // Mobile: back button sends Escape — blur textarea to dismiss keyboard cleanly
+      if (e.key === 'Escape' && isTouchDevice) {
+        textareaRef.current?.blur();
+        return;
+      }
+
       // Prompt history navigation (ArrowUp/Down when no palette is open)
       if (e.key === 'ArrowUp' && !e.shiftKey) {
         const textarea = e.currentTarget;
@@ -707,13 +715,28 @@ export function ChatInput({
   }, [handleSubmit]);
 
   // Prevent textarea blur when tapping send/abort buttons on mobile.
-  // Without this, the button tap blurs the textarea → keyboard closes → layout shifts
-  // → then focus() reopens keyboard, causing a visual "bounce".
-  const preventFocusLoss = useCallback((e: React.PointerEvent) => {
-    if (isTouchDevice) {
-      e.preventDefault();
-    }
+  // Only preventDefault when keyboard is visible (keeps keyboard open);
+  // when keyboard is hidden, allow default so it stays hidden.
+  // Mobile: blur textarea when keyboard is dismissed (back button / resize).
+  // This prevents the keyboard from reappearing on subsequent button taps.
+  useEffect(() => {
+    if (!isTouchDevice) return;
+    let lastHeight = window.innerHeight;
+    const handleResize = () => {
+      const newHeight = window.innerHeight;
+      if (newHeight > lastHeight && document.activeElement === textareaRef.current) {
+        textareaRef.current?.blur();
+      }
+      lastHeight = newHeight;
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [isTouchDevice]);
+
+  // Prevent focus from moving to button on both desktop and mobile.
+  const preventFocusLoss = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+  }, []);
 
   const isChainFull = chainMode && chainCount >= chainMax;
   const isButtonDisabled = !content.trim() || isChainFull;
@@ -892,7 +915,7 @@ export function ChatInput({
                      ${chainMode
                        ? 'bg-violet-50 dark:bg-violet-950/30 border border-violet-300 dark:border-violet-700 focus-within:ring-2 focus-within:ring-violet-500 dark:focus-within:ring-violet-400'
                        : `bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 focus-within:ring-2 ${modeColors.ring}`}`}
-          onClick={() => textareaRef.current?.focus()}
+          onClick={() => { if (!isTouchDevice) textareaRef.current?.focus(); }}
         >
           <textarea
             ref={textareaRef}
@@ -940,7 +963,7 @@ export function ChatInput({
       </div>
 
       {/* Button row */}
-      <div className="flex items-center gap-2 mt-[1px] ml-[-2px]">
+      <div className="flex items-center gap-2 mt-[1px] ml-[-2px] min-w-0">
         {/* Permission mode selector (Story 5.2) */}
         {permissionMode && onPermissionModeChange && (
           <PermissionModeSelector
@@ -1006,8 +1029,10 @@ export function ChatInput({
 
         <div className="flex-1" />
 
-        {/* Right-side buttons with slight right offset */}
-        <div className="flex items-center gap-2 mr-[-2px]">
+        {/* Right-side buttons */}
+        <div className="flex items-center gap-1 sm:gap-2 mr-[-2px]">
+        {/* Subscription rate limit glow dots */}
+        <UsageStatusBar rateLimit={subscriptionRateLimit} />
         {/* Context usage donut indicator (always visible) */}
         <ContextUsageDisplay
           contextUsage={contextUsage ?? null}
