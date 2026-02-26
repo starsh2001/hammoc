@@ -30,6 +30,8 @@ export interface ToolCardProps {
   permissionStatus?: 'waiting' | 'approved' | 'denied';
   /** Callback when user responds to permission request */
   onPermissionRespond?: (approved: boolean) => void;
+  /** Callback for ExitPlanMode: approve with specific permission mode */
+  onPlanModeExit?: (mode: 'bypassPermissions' | 'acceptEdits' | 'default') => void;
 }
 
 /** Real-time elapsed timer for pending tool calls */
@@ -172,6 +174,7 @@ export function ToolCard({
   isUserDenied,
   permissionStatus,
   onPermissionRespond,
+  onPlanModeExit,
 }: ToolCardProps) {
   const output = stripXmlWrapperTags(rawOutput);
   const resultOutput = stripXmlWrapperTags(rawResultOutput);
@@ -348,8 +351,50 @@ export function ToolCard({
             />
           )}
 
-          {/* Permission approve/deny buttons */}
-          {permissionStatus === 'waiting' && onPermissionRespond && (
+          {/* ExitPlanMode: mode selection buttons */}
+          {permissionStatus === 'waiting' && isExitPlanMode && onPlanModeExit && onPermissionRespond && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+              <button
+                type="button"
+                onClick={() => onPlanModeExit('bypassPermissions')}
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 rounded border border-green-200 dark:border-green-800 transition-colors"
+                aria-label="Bypass 모드로 승인"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                Yes (Bypass)
+              </button>
+              <button
+                type="button"
+                onClick={() => onPlanModeExit('acceptEdits')}
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded border border-blue-200 dark:border-blue-800 transition-colors"
+                aria-label="Auto 모드로 승인"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                Yes (Auto)
+              </button>
+              <button
+                type="button"
+                onClick={() => onPlanModeExit('default')}
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 transition-colors"
+                aria-label="Ask 모드로 승인"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                Yes (Ask)
+              </button>
+              <button
+                type="button"
+                onClick={() => onPermissionRespond(false)}
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded border border-red-200 dark:border-red-800 transition-colors"
+                aria-label="거절 (계속 플래닝)"
+              >
+                <ShieldX className="w-3.5 h-3.5" aria-hidden="true" />
+                No
+              </button>
+            </div>
+          )}
+
+          {/* Permission approve/deny buttons (non-ExitPlanMode tools) */}
+          {permissionStatus === 'waiting' && !isExitPlanMode && onPermissionRespond && (
             <div className="mt-2 flex items-center gap-2 border-t border-gray-200 dark:border-gray-600 pt-2">
               <button
                 type="button"
