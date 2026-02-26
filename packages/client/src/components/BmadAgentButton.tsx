@@ -205,7 +205,7 @@ export function BmadAgentButton({
         type="button"
         tabIndex={-1}
         onClick={handleToggle}
-        onMouseDown={(e) => e.preventDefault()}
+        onPointerDown={(e) => e.preventDefault()}
         disabled={disabled}
         aria-label="BMad 에이전트 목록"
         aria-expanded={isOpen}
