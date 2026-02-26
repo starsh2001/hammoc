@@ -1082,6 +1082,7 @@ export function ChatPage() {
             activeAgentCommand={activeAgent?.command}
             starCommands={activeAgentStarCommands}
             activeAgent={activeAgent}
+
             isFavorite={isFavorite}
             onToggleFavorite={handleToggleFavorite}
             favoriteCommands={favoriteCommands}

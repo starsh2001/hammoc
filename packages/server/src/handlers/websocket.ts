@@ -29,6 +29,7 @@ import { preferencesService } from '../services/preferencesService.js';
 import { getOrCreateQueueService, getQueueInstances } from '../controllers/queueController.js';
 import { createLogger } from '../utils/logger.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
+import { rateLimitProbeService } from '../services/rateLimitProbeService.js';
 const log = createLogger('websocket');
 
 // Alias for concise usage in guards
@@ -216,6 +217,19 @@ export async function initializeWebSocket(
   io.on('connection', (socket) => {
     connectedClients++;
     log.info(`Client connected. Total: ${connectedClients}`);
+
+    // Start rate limit polling on first client connection
+    if (connectedClients === 1) {
+      rateLimitProbeService.startPolling((data) => {
+        io.emit('rateLimit:update', data);
+      });
+    }
+
+    // Send cached rate limit data immediately to newly connected client
+    const cachedRateLimit = rateLimitProbeService.getCachedResult();
+    if (cachedRateLimit) {
+      socket.emit('rateLimit:update', cachedRateLimit);
+    }
 
     // Handle chat:send event — background streaming with reconnect support
     socket.on('chat:send', async (data) => {
@@ -470,6 +484,11 @@ export async function initializeWebSocket(
       }
       connectedClients--;
       log.info(`Client disconnected. Total: ${connectedClients}`);
+
+      // Stop polling when no clients connected
+      if (connectedClients === 0) {
+        rateLimitProbeService.stopPolling();
+      }
     });
   });
 
