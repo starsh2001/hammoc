@@ -1,0 +1,60 @@
+/**
+ * useTerminal Hook - Page-level PTY session lifecycle management
+ * Story 17.2: Terminal Emulator Component
+ *
+ * Manages create/close lifecycle for PTY sessions.
+ * Data binding (sendInput, resize, registerDataCallback) is handled
+ * directly by TerminalEmulator via terminalStore.
+ */
+
+import { useEffect, useCallback } from 'react';
+import { useTerminalStore } from '../stores/terminalStore';
+import { getSocket } from '../services/socket';
+
+export interface UseTerminalReturn {
+  terminalId: string | null;
+  isConnected: boolean;
+  shell: string | null;
+  status: 'connecting' | 'connected' | 'disconnected' | 'exited' | null;
+  create: () => void;
+  close: () => void;
+}
+
+export function useTerminal(projectSlug: string): UseTerminalReturn {
+  const activeTerminalId = useTerminalStore((s) => s.activeTerminalId);
+  const terminals = useTerminalStore((s) => s.terminals);
+  const setupTerminalListeners = useTerminalStore((s) => s.setupTerminalListeners);
+  const cleanupTerminalListeners = useTerminalStore((s) => s.cleanupTerminalListeners);
+  const createTerminal = useTerminalStore((s) => s.createTerminal);
+  const closeTerminal = useTerminalStore((s) => s.closeTerminal);
+
+  const session = activeTerminalId ? terminals.get(activeTerminalId) ?? null : null;
+
+  // Setup/cleanup socket listeners
+  useEffect(() => {
+    const socket = getSocket();
+    setupTerminalListeners(socket);
+    return () => {
+      cleanupTerminalListeners(socket);
+    };
+  }, [setupTerminalListeners, cleanupTerminalListeners]);
+
+  const create = useCallback(() => {
+    createTerminal(projectSlug);
+  }, [createTerminal, projectSlug]);
+
+  const close = useCallback(() => {
+    if (activeTerminalId) {
+      closeTerminal(activeTerminalId);
+    }
+  }, [closeTerminal, activeTerminalId]);
+
+  return {
+    terminalId: activeTerminalId,
+    isConnected: session?.status === 'connected',
+    shell: session?.shell ?? null,
+    status: session?.status ?? null,
+    create,
+    close,
+  };
+}
