@@ -34,6 +34,7 @@ import { debugLog, debugLogger } from '../utils/debugLogger';
 import { ChatHeader } from '../components/ChatHeader';
 import { MessageArea } from '../components/MessageArea';
 import { InputArea } from '../components/InputArea';
+import { PendingToolsIndicator } from '../components/PendingToolsIndicator';
 import { ChatInput } from '../components/ChatInput';
 import { QueueLockedBanner } from '../components/queue/QueueLockedBanner';
 import { useQueueSession } from '../hooks/useQueueSession';
@@ -1211,6 +1212,8 @@ export function ChatPage() {
           {displayMessages.map((msg, idx) => renderHistoryMessage(msg, idx, displayMessages))}
         </MessageArea>
       </main>
+
+      {isStreaming && <PendingToolsIndicator segments={streamingSegments} />}
 
       <InputArea>
         <ChatInput
