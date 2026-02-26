@@ -13,6 +13,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { toast } from 'sonner';
 import { Send, Square, Paperclip, X, Lock, Link2, Plus } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useChatStore } from '../stores/chatStore';
@@ -575,6 +576,15 @@ export function ChatInput({
         warningTimeoutRef.current = null;
       }, 3000);
       return;
+    }
+
+    // Warn (but don't block) if API is unhealthy
+    const apiHealth = useChatStore.getState().apiHealth;
+    if (apiHealth && !apiHealth.healthy) {
+      toast.warning('Claude API가 현재 응답하지 않습니다. 메시지가 전달되지 않을 수 있습니다.', {
+        id: 'api-health-warning',
+        duration: 5000,
+      });
     }
 
     addToHistory(trimmedContent);

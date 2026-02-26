@@ -4,7 +4,7 @@
  * Story 4.7: Connection Status Display - Extended with compact mode and Lucide icons
  */
 
-import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
 import type { ConnectionStatus } from '@bmad-studio/shared';
 
 export interface ConnectionStatusIndicatorProps {
@@ -14,6 +14,8 @@ export interface ConnectionStatusIndicatorProps {
   onReconnect: () => void;
   /** Compact mode for header display - shows only icon with tooltip */
   compact?: boolean;
+  /** API backend health (null = unknown/not yet checked) */
+  apiHealthy?: boolean | null;
 }
 
 /**
@@ -26,14 +28,22 @@ export function ConnectionStatusIndicator({
   lastError,
   onReconnect,
   compact = false,
+  apiHealthy,
 }: ConnectionStatusIndicatorProps) {
   const statusConfig = {
-    connected: {
-      icon: <Wifi className="w-4 h-4 text-green-500" aria-hidden="true" />,
-      text: 'Connected',
-      ariaLabel: 'WebSocket 연결 상태: 연결됨',
-      bgColor: 'bg-green-100 dark:bg-green-900/30',
-    },
+    connected: apiHealthy === false
+      ? {
+          icon: <AlertTriangle className="w-4 h-4 text-yellow-500" aria-hidden="true" />,
+          text: 'API Unavailable',
+          ariaLabel: '연결 상태: 서버 연결됨, API 사용 불가',
+          bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
+        }
+      : {
+          icon: <Wifi className="w-4 h-4 text-green-500" aria-hidden="true" />,
+          text: 'Connected',
+          ariaLabel: 'WebSocket 연결 상태: 연결됨',
+          bgColor: 'bg-green-100 dark:bg-green-900/30',
+        },
     disconnected: {
       icon: <WifiOff className="w-4 h-4 text-red-500" aria-hidden="true" />,
       text: 'Disconnected',
@@ -60,7 +70,8 @@ export function ConnectionStatusIndicator({
       : config.ariaLabel;
 
   // Tooltip content shows error message if available, otherwise status text
-  const tooltipContent = lastError || displayText;
+  const tooltipContent = lastError
+    || (status === 'connected' && apiHealthy === false ? 'Claude API에 연결할 수 없습니다' : displayText);
 
   // Compact mode: icon only with tooltip
   if (compact) {

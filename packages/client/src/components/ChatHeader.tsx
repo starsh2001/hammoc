@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Plus, History, FolderOpen, GitBranch, Settings, LogOut } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
+import { useChatStore } from '../stores/chatStore';
 import { formatAgentRoleLabel } from '../utils/agentUtils';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { LayoutToggleButton } from './LayoutToggleButton';
@@ -74,6 +75,7 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const navigate = useNavigate();
   const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
+  const apiHealth = useChatStore((state) => state.apiHealth);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -207,6 +209,7 @@ export function ChatHeader({
             lastError={lastError}
             onReconnect={connect}
             compact
+            apiHealthy={apiHealth?.healthy ?? null}
           />
 
           {/* Desktop-only: inline action buttons */}

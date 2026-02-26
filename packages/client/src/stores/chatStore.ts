@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { toast } from 'sonner';
-import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit } from '@bmad-studio/shared';
+import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { usePreferencesStore } from './preferencesStore';
@@ -169,6 +169,8 @@ interface ChatState {
   streamCompleteCount: number;
   /** Project-level settings for override application */
   projectSettings: ProjectSettings | null;
+  /** API health status from server polling */
+  apiHealth: ApiHealthStatus | null;
 }
 
 interface SendMessageOptions {
@@ -213,6 +215,8 @@ interface ChatActions {
   resetContextUsage: () => void;
   /** Update subscription rate limit from polling */
   setSubscriptionRateLimit: (rateLimit: SubscriptionRateLimit) => void;
+  /** Update API health status from server */
+  setApiHealth: (health: ApiHealthStatus) => void;
   /** Clear leftover streaming segments (on session switch) */
   clearStreamingSegments: () => void;
   /** Update streaming sessionId without resetting segments (for late sessionId arrival) */
@@ -285,6 +289,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   permissionMode: usePreferencesStore.getState().preferences.permissionMode ?? 'default',
   contextUsage: null,
   subscriptionRateLimit: null,
+  apiHealth: null,
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
@@ -454,7 +459,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({
       streamingSegments: [
         ...segments,
-        { type: 'tool', toolCall: { ...toolCall, startedAt: Date.now() }, status: 'pending' },
+        { type: 'tool', toolCall: { ...toolCall, startedAt: toolCall.startedAt ?? Date.now() }, status: 'pending' },
       ],
     });
   },
@@ -794,6 +799,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   resetContextUsage: () => set({ contextUsage: null }),
 
   setSubscriptionRateLimit: (rateLimit: SubscriptionRateLimit) => set({ subscriptionRateLimit: rateLimit }),
+
+  setApiHealth: (health: ApiHealthStatus) => set({ apiHealth: health }),
 
   clearStreamingSegments: () => {
     const prev = get();
