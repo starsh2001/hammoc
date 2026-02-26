@@ -220,15 +220,22 @@ export async function initializeWebSocket(
 
     // Start rate limit polling on first client connection
     if (connectedClients === 1) {
-      rateLimitProbeService.startPolling((data) => {
-        io.emit('rateLimit:update', data);
-      });
+      rateLimitProbeService.startPolling(
+        (data) => { io.emit('rateLimit:update', data); },
+        (data) => { io.emit('apiHealth:update', data); },
+      );
     }
 
     // Send cached rate limit data immediately to newly connected client
     const cachedRateLimit = rateLimitProbeService.getCachedResult();
     if (cachedRateLimit) {
       socket.emit('rateLimit:update', cachedRateLimit);
+    }
+
+    // Send cached API health status to newly connected client
+    const cachedHealth = rateLimitProbeService.getApiHealth();
+    if (cachedHealth) {
+      socket.emit('apiHealth:update', cachedHealth);
     }
 
     // Handle chat:send event — background streaming with reconnect support
@@ -352,6 +359,12 @@ export async function initializeWebSocket(
       try {
         await stream.chatService.setPermissionMode(data.mode);
         log.debug(`Permission mode changed to "${data.mode}" for session ${sessionId}`);
+        // Broadcast to other viewers so their UI stays in sync
+        for (const sock of stream.sockets) {
+          if (sock.id !== socket.id) {
+            sock.emit('permission:mode-change', { mode: data.mode });
+          }
+        }
       } catch (err) {
         log.error('Failed to change permission mode:', err);
       }

@@ -17,7 +17,7 @@ import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
 import { debugLog } from '../utils/debugLogger';
-import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit } from '@bmad-studio/shared';
+import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus } from '@bmad-studio/shared';
 import type { InteractiveStatus } from '../stores/chatStore';
 
 export function useStreaming() {
@@ -350,7 +350,7 @@ export function useStreaming() {
     };
 
     // Handle tool call start - add tool segment (skip AskUserQuestion — handled via permission:request)
-    const handleToolCall = (data: { id: string; name: string; input?: Record<string, unknown> }) => {
+    const handleToolCall = (data: { id: string; name: string; input?: Record<string, unknown>; startedAt?: number }) => {
       // Skip AskUserQuestion from stream events — stream-based tool:call has empty input
       // because input_json_delta hasn't been fully received yet. The interactive card is
       // created later via permission:request (from canUseTool) which has the full input.
@@ -367,6 +367,7 @@ export function useStreaming() {
         id: data.id,
         name: data.name,
         input: data.input,
+        startedAt: data.startedAt,
       });
     };
 
@@ -870,12 +871,28 @@ export function useStreaming() {
     socket.on('system:task-notification', handleTaskNotification);
     socket.on('tool:summary', handleToolSummary);
     socket.on('result:error', handleResultError);
+    // Handle permission:mode-change broadcast from server (another viewer changed mode)
+    // Set state directly without re-emitting to avoid infinite loop
+    const handlePermissionModeChange = (data: { mode: string }) => {
+      const store = useChatStore.getState();
+      if (store.permissionMode !== data.mode) {
+        useChatStore.setState({ permissionMode: data.mode as typeof store.permissionMode });
+      }
+    };
+
     // Handle rateLimit:update — subscription rate limit polling from server
     const handleRateLimitUpdate = (data: SubscriptionRateLimit) => {
       useChatStore.getState().setSubscriptionRateLimit(data);
     };
 
+    // Handle apiHealth:update — API reachability status from server polling
+    const handleApiHealthUpdate = (data: ApiHealthStatus) => {
+      useChatStore.getState().setApiHealth(data);
+    };
+
+    socket.on('permission:mode-change', handlePermissionModeChange);
     socket.on('rateLimit:update', handleRateLimitUpdate);
+    socket.on('apiHealth:update', handleApiHealthUpdate);
     socket.on('stream:status', handleStreamStatus);
     socket.on('stream:detached', handleStreamDetached);
     socket.on('disconnect', handleDisconnect);
@@ -917,7 +934,9 @@ export function useStreaming() {
       socket.off('system:task-notification', handleTaskNotification);
       socket.off('tool:summary', handleToolSummary);
       socket.off('result:error', handleResultError);
+      socket.off('permission:mode-change', handlePermissionModeChange);
       socket.off('rateLimit:update', handleRateLimitUpdate);
+      socket.off('apiHealth:update', handleApiHealthUpdate);
       socket.off('stream:status', handleStreamStatus);
       socket.off('stream:detached', handleStreamDetached);
       socket.off('disconnect', handleDisconnect);

@@ -80,6 +80,18 @@ export interface SubscriptionRateLimit {
 }
 
 /**
+ * API health status from periodic probe
+ */
+export interface ApiHealthStatus {
+  /** Whether the Anthropic API is reachable */
+  healthy: boolean;
+  /** ISO timestamp of last health check */
+  lastCheckedAt: string;
+  /** Human-readable error message if unhealthy */
+  error?: string;
+}
+
+/**
  * Usage statistics for a chat response
  */
 export interface ChatUsage {
@@ -148,6 +160,8 @@ export interface ToolCall {
   id: string;
   name: string;
   input: Record<string, unknown>;
+  /** Server timestamp (ms) for timer preservation on reconnect */
+  startedAt?: number;
 }
 
 /**
