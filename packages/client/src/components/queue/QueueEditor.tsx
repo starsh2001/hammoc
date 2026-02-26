@@ -41,6 +41,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
     script,
     parsedItems,
     warnings,
+    isReordering,
     setScript,
     parseScript,
   } = useQueueStore();
@@ -318,6 +319,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           onAddItem={runner.addItem}
           onReorderItems={runner.reorderItems}
           onDismiss={runner.dismiss}
+          isReordering={isReordering}
         />
       )}
 
