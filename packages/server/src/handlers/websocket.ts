@@ -18,7 +18,8 @@ import type {
   PermissionRequest,
 } from '@bmad-studio/shared';
 import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS } from '@bmad-studio/shared';
-import type { TerminalCreateRequest, TerminalInputEvent, TerminalResizeEvent } from '@bmad-studio/shared';
+import type { TerminalCreateRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@bmad-studio/shared';
+import { isLocalIP, extractClientIP } from '../utils/networkUtils.js';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import { ChatService } from '../services/chatService.js';
 import { SessionService } from '../services/sessionService.js';
@@ -40,6 +41,51 @@ const queueInstances = getQueueInstances;
 
 // Socket-to-terminal mapping: socket.id → Set of terminalIds (Story 17.1)
 const socketTerminals = new Map<string, Set<string>>();
+
+/**
+ * Check terminal access for a socket connection.
+ * Fail-closed: denies access on any error (e.g., preferences file read failure).
+ * Story 17.5: Terminal Security
+ */
+async function checkTerminalAccess(
+  socket: Socket
+): Promise<{ allowed: boolean; error?: TerminalErrorEvent }> {
+  try {
+    const terminalEnabled = await preferencesService.getTerminalEnabled();
+    if (!terminalEnabled) {
+      return {
+        allowed: false,
+        error: {
+          code: TERMINAL_ERRORS.TERMINAL_DISABLED.code,
+          message: TERMINAL_ERRORS.TERMINAL_DISABLED.message,
+        },
+      };
+    }
+  } catch (err) {
+    // Fail-closed: deny access if preferences read fails
+    log.error('Failed to check terminal enabled state, denying access:', err);
+    return {
+      allowed: false,
+      error: {
+        code: TERMINAL_ERRORS.TERMINAL_DISABLED.code,
+        message: TERMINAL_ERRORS.TERMINAL_DISABLED.message,
+      },
+    };
+  }
+
+  const clientIP = extractClientIP(socket);
+  if (!isLocalIP(clientIP)) {
+    return {
+      allowed: false,
+      error: {
+        code: TERMINAL_ERRORS.TERMINAL_ACCESS_DENIED.code,
+        message: TERMINAL_ERRORS.TERMINAL_ACCESS_DENIED.message,
+      },
+    };
+  }
+
+  return { allowed: true };
+}
 
 let io: SocketIOServer<
   ClientToServerEvents,
@@ -243,6 +289,32 @@ export async function initializeWebSocket(
     if (cachedHealth) {
       socket.emit('apiHealth:update', cachedHealth);
     }
+
+    // Story 17.5: Send terminal access info on connection
+    (async () => {
+      try {
+        const clientIP = extractClientIP(socket);
+        const isLocal = isLocalIP(clientIP);
+        const terminalEnabled = await preferencesService.getTerminalEnabled();
+        socket.emit('terminal:access', {
+          allowed: terminalEnabled && isLocal,
+          enabled: terminalEnabled,
+          reason: !terminalEnabled
+            ? 'Terminal feature is disabled'
+            : !isLocal
+            ? TERMINAL_ERRORS.TERMINAL_ACCESS_DENIED.message
+            : undefined,
+        });
+      } catch (err) {
+        log.error('Failed to send terminal:access event:', err);
+        // Fail-closed: report as disabled
+        socket.emit('terminal:access', {
+          allowed: false,
+          enabled: false,
+          reason: 'Terminal feature is disabled',
+        });
+      }
+    })();
 
     // Handle chat:send event — background streaming with reconnect support
     socket.on('chat:send', async (data) => {
@@ -495,6 +567,14 @@ export async function initializeWebSocket(
     socketTerminals.set(socket.id, new Set());
 
     socket.on('terminal:create', async (data: TerminalCreateRequest) => {
+      // Story 17.5: Security guard
+      const access = await checkTerminalAccess(socket);
+      if (!access.allowed) {
+        log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:create`);
+        socket.emit('terminal:error', access.error!);
+        return;
+      }
+
       try {
         // Reattach to existing session
         if (data.terminalId) {
@@ -550,7 +630,15 @@ export async function initializeWebSocket(
       }
     });
 
-    socket.on('terminal:input', (data: TerminalInputEvent) => {
+    socket.on('terminal:input', async (data: TerminalInputEvent) => {
+      // Story 17.5: Security guard
+      const inputAccess = await checkTerminalAccess(socket);
+      if (!inputAccess.allowed) {
+        log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:input`);
+        socket.emit('terminal:error', { ...inputAccess.error!, terminalId: data.terminalId });
+        return;
+      }
+
       try {
         ptyService.writeInput(data.terminalId, data.data);
       } catch (err) {
@@ -559,7 +647,15 @@ export async function initializeWebSocket(
       }
     });
 
-    socket.on('terminal:resize', (data: TerminalResizeEvent) => {
+    socket.on('terminal:resize', async (data: TerminalResizeEvent) => {
+      // Story 17.5: Security guard
+      const resizeAccess = await checkTerminalAccess(socket);
+      if (!resizeAccess.allowed) {
+        log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:resize`);
+        socket.emit('terminal:error', { ...resizeAccess.error!, terminalId: data.terminalId });
+        return;
+      }
+
       try {
         ptyService.resize(data.terminalId, data.cols, data.rows);
       } catch (err) {
@@ -568,7 +664,15 @@ export async function initializeWebSocket(
       }
     });
 
-    socket.on('terminal:close', (data: { terminalId: string }) => {
+    socket.on('terminal:close', async (data: { terminalId: string }) => {
+      // Story 17.5: Security guard
+      const closeAccess = await checkTerminalAccess(socket);
+      if (!closeAccess.allowed) {
+        log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:close`);
+        socket.emit('terminal:error', { ...closeAccess.error!, terminalId: data.terminalId });
+        return;
+      }
+
       try {
         ptyService.closeSession(data.terminalId);
         socketTerminals.get(socket.id)?.delete(data.terminalId);

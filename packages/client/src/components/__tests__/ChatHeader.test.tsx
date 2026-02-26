@@ -391,6 +391,31 @@ describe('ChatHeader', () => {
 
       expect(screen.queryByRole('button', { name: '터미널' })).not.toBeInTheDocument();
     });
+
+    // Story 17.5: Terminal security - AC4 disabled button
+    it('should disable terminal button when terminalAccessible is false', () => {
+      renderComponent({ onShowTerminal: mockOnShowTerminal, terminalAccessible: false });
+
+      const button = screen.getByRole('button', { name: '터미널' });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('should not call onShowTerminal when disabled button is clicked', () => {
+      renderComponent({ onShowTerminal: mockOnShowTerminal, terminalAccessible: false });
+
+      const button = screen.getByRole('button', { name: '터미널' });
+      fireEvent.click(button);
+
+      expect(mockOnShowTerminal).not.toHaveBeenCalled();
+    });
+
+    it('should enable terminal button by default (terminalAccessible=true)', () => {
+      renderComponent({ onShowTerminal: mockOnShowTerminal });
+
+      const button = screen.getByRole('button', { name: '터미널' });
+      expect(button).not.toBeDisabled();
+    });
   });
 
   // Story 4.7 - Task 7: Connection status display tests

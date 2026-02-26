@@ -62,6 +62,7 @@ describe('TerminalTab', () => {
       shell: '/bin/bash',
       status: 'connected',
       terminals: makeTerminals(makeSession('term-1')),
+      terminalAccess: { allowed: true, enabled: true },
       create: mockCreate,
       close: mockClose,
       closeById: mockCloseById,
@@ -319,5 +320,36 @@ describe('TerminalTab', () => {
     mockClearTerminalsForProjectChange.mockClear();
     rerender(<TerminalTab projectSlug="project-b" />);
     expect(mockClearTerminalsForProjectChange).toHaveBeenCalledWith('project-b');
+  });
+
+  // Story 17.5: Terminal security tests
+
+  // TC-TAB-22: Shows warning when terminal is disabled (AC1)
+  it('shows disabled warning when terminalAccess.enabled is false', () => {
+    mockUseTerminalReturn = {
+      ...mockUseTerminalReturn,
+      terminalAccess: { allowed: false, enabled: false },
+    };
+    const { container } = render(<TerminalTab projectSlug="test-project" />);
+    expect(container.textContent).toContain('터미널 기능이 비활성화되어 있습니다');
+    expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  });
+
+  // TC-TAB-23: Shows warning when terminal access denied (AC4)
+  it('shows access denied warning when terminalAccess.allowed is false', () => {
+    mockUseTerminalReturn = {
+      ...mockUseTerminalReturn,
+      terminalAccess: { allowed: false, enabled: true },
+    };
+    const { container } = render(<TerminalTab projectSlug="test-project" />);
+    expect(container.textContent).toContain('보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다');
+    expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  });
+
+  // TC-TAB-24: Does NOT show warning when access is allowed
+  it('does not show warning when terminalAccess.allowed is true', () => {
+    const { container } = render(<TerminalTab projectSlug="test-project" />);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.textContent).not.toContain('터미널 기능이 비활성화되어 있습니다');
   });
 });

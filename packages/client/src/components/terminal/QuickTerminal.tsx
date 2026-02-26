@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Terminal, ExternalLink, Loader2 } from 'lucide-react';
+import { X, Terminal, ExternalLink, Loader2, ShieldAlert } from 'lucide-react';
 import { useTerminal } from '../../hooks/useTerminal';
 import { TerminalEmulator } from './TerminalEmulator';
 
@@ -22,7 +22,7 @@ export function QuickTerminal({
   onClose,
   onNavigateToTerminalTab,
 }: QuickTerminalProps) {
-  const { terminalId, terminals, create } = useTerminal(projectSlug);
+  const { terminalId, terminals, terminalAccess, create } = useTerminal(projectSlug);
 
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -164,7 +164,21 @@ export function QuickTerminal({
 
         {/* Terminal area */}
         <div className="flex-1 min-h-0">
-          {terminalId ? (
+          {terminalAccess && !terminalAccess.allowed ? (
+            <div className="flex flex-col items-center justify-center h-full p-6 text-center" role="alert">
+              <ShieldAlert className="w-8 h-8 text-amber-500 dark:text-amber-400 mb-3" aria-hidden="true" />
+              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                {!terminalAccess.enabled
+                  ? '터미널 기능이 비활성화되어 있습니다'
+                  : '보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다'}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {!terminalAccess.enabled
+                  ? '설정에서 터미널을 활성화하세요.'
+                  : '로컬 네트워크에서 접속해 주세요.'}
+              </p>
+            </div>
+          ) : terminalId ? (
             <TerminalEmulator terminalId={terminalId} autoFocus />
           ) : (
             <div className="flex items-center justify-center h-full">

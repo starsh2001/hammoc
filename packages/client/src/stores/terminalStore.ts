@@ -13,6 +13,7 @@ import type {
   TerminalOutputEvent,
   TerminalExitEvent,
   TerminalErrorEvent,
+  TerminalAccessInfo,
 } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
 
@@ -32,8 +33,10 @@ interface TerminalStore {
   terminals: Map<string, TerminalSession>;
   activeTerminalId: string | null;
   currentProjectSlug: string | null;
+  terminalAccess: TerminalAccessInfo | null;
 
   // Actions
+  setTerminalAccess: (access: TerminalAccessInfo) => void;
   createTerminal: (projectSlug: string) => void;
   reattachTerminal: (projectSlug: string, terminalId: string) => void;
   closeTerminal: (terminalId: string) => void;
@@ -58,14 +61,20 @@ let _onCreated: ((data: TerminalCreatedResponse) => void) | null = null;
 let _onData: ((data: TerminalOutputEvent) => void) | null = null;
 let _onExit: ((data: TerminalExitEvent) => void) | null = null;
 let _onError: ((data: TerminalErrorEvent) => void) | null = null;
+let _onAccess: ((data: TerminalAccessInfo) => void) | null = null;
 
 export const useTerminalStore = create<TerminalStore>((set, get) => ({
   // State
   terminals: new Map(),
   activeTerminalId: null,
   currentProjectSlug: null,
+  terminalAccess: null,
 
   // Actions
+  setTerminalAccess: (access: TerminalAccessInfo) => {
+    set({ terminalAccess: access });
+  },
+
   createTerminal: (projectSlug: string) => {
     const socket = getSocket();
     socket.emit('terminal:create', { projectSlug });
@@ -174,6 +183,11 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       }
     };
 
+    _onAccess = (data: TerminalAccessInfo) => {
+      get().setTerminalAccess(data);
+    };
+
+    socket.on('terminal:access', _onAccess);
     socket.on('terminal:created', _onCreated);
     socket.on('terminal:data', _onData);
     socket.on('terminal:exit', _onExit);
@@ -181,6 +195,10 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   },
 
   cleanupTerminalListeners: (socket: TypedSocket) => {
+    if (_onAccess) {
+      socket.off('terminal:access', _onAccess);
+      _onAccess = null;
+    }
     if (_onCreated) {
       socket.off('terminal:created', _onCreated);
       _onCreated = null;

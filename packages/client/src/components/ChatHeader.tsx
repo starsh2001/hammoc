@@ -45,6 +45,8 @@ interface ChatHeaderProps {
   gitChangedCount?: number;
   /** Callback when terminal panel button is clicked */
   onShowTerminal?: () => void;
+  /** Whether terminal is accessible (false = disabled button due to non-local IP) */
+  terminalAccessible?: boolean;
   /** Callback when logout is clicked */
   onLogout?: () => void;
   /** Callback when session is renamed (null to remove name) */
@@ -70,6 +72,7 @@ export function ChatHeader({
   onShowGit,
   gitChangedCount,
   onShowTerminal,
+  terminalAccessible = true,
   onLogout,
   onRenameSession,
   activeAgent,
@@ -271,11 +274,16 @@ export function ChatHeader({
 
           {onShowTerminal && (
             <button
-              onClick={onShowTerminal}
-              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                         text-gray-700 dark:text-gray-300
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onClick={terminalAccessible ? onShowTerminal : undefined}
+              disabled={!terminalAccessible}
+              className={`hidden md:block p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                terminalAccessible
+                  ? 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  : 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-500'
+              }`}
               aria-label="터미널"
+              aria-disabled={!terminalAccessible}
+              title={!terminalAccessible ? '보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다' : undefined}
             >
               <Terminal className="w-5 h-5" aria-hidden="true" />
             </button>
@@ -331,6 +339,7 @@ export function ChatHeader({
               onShowFileExplorer={onShowFileExplorer}
               onShowGit={onShowGit}
               onShowTerminal={onShowTerminal}
+              terminalAccessible={terminalAccessible}
               onNewSession={onNewSession}
               onRefresh={onRefresh}
               isRefreshing={isRefreshing}

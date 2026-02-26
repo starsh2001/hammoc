@@ -80,4 +80,18 @@ export const TERMINAL_ERRORS = {
     httpStatus: 403,
     message: 'Terminal feature is disabled',
   },
+  TERMINAL_ACCESS_DENIED: {
+    code: 'TERMINAL_ACCESS_DENIED',
+    httpStatus: 403,
+    message: '보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다',
+  },
 } as const;
+
+// ===== Access Control Types =====
+
+/** Terminal access information sent to client on connection */
+export interface TerminalAccessInfo {
+  allowed: boolean;
+  enabled: boolean;  // Whether terminal feature is enabled in server settings
+  reason?: string;   // Reason for denial (non-local IP, terminal disabled, etc.)
+}

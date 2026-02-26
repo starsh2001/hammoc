@@ -41,7 +41,21 @@ class PreferencesService {
     if (process.env.CHAT_TIMEOUT_MS) {
       prefs.chatTimeoutMs = parseInt(process.env.CHAT_TIMEOUT_MS, 10);
     }
+    if (process.env.TERMINAL_ENABLED === 'false') {
+      prefs.terminalEnabled = false;
+    }
     return prefs;
+  }
+
+  /**
+   * Check if terminal feature is enabled.
+   * Priority: TERMINAL_ENABLED env var (if 'false') > preferences.json > default (true)
+   * Story 17.5: Terminal Security
+   */
+  async getTerminalEnabled(): Promise<boolean> {
+    if (process.env.TERMINAL_ENABLED === 'false') return false;
+    const prefs = await this.readPreferences();
+    return prefs.terminalEnabled !== false;
   }
 
   async writePreferences(partial: Partial<UserPreferences>): Promise<UserPreferences> {
