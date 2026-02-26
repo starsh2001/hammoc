@@ -288,6 +288,38 @@ export function ChatPage() {
   // Chain mode toggle — when ON, sending during streaming queues to promptChain
   const [chainMode, setChainMode] = useState(false);
 
+  // Ctrl-hold temporary chain mode — activate while Ctrl is held, revert on release
+  const ctrlChainRef = useRef(false);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control' && !ctrlChainRef.current && !chainMode) {
+        ctrlChainRef.current = true;
+        setChainMode(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control' && ctrlChainRef.current) {
+        ctrlChainRef.current = false;
+        setChainMode(false);
+      }
+    };
+    // Also deactivate when window loses focus (e.g., Ctrl+Tab)
+    const handleBlur = () => {
+      if (ctrlChainRef.current) {
+        ctrlChainRef.current = false;
+        setChainMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [chainMode]);
+
   // Timer ref for chain auto-send (allows cancellation on abort)
   const chainSendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1114,7 +1146,7 @@ export function ChatPage() {
             onRemoveStarFavorite={handleRemoveStarFavorite}
 
             chainMode={chainMode}
-            onChainModeToggle={() => setChainMode((prev) => !prev)}
+            onChainModeToggle={() => { if (!ctrlChainRef.current) setChainMode((prev) => !prev); }}
             chainCount={promptChain.length}
             chainMax={5}
             getChainLength={getChainLength}
@@ -1214,7 +1246,7 @@ export function ChatPage() {
           onRemoveStarFavorite={handleRemoveStarFavorite}
 
           chainMode={chainMode}
-          onChainModeToggle={() => setChainMode((prev) => !prev)}
+          onChainModeToggle={() => { if (!ctrlChainRef.current) setChainMode((prev) => !prev); }}
           chainCount={promptChain.length}
           chainMax={5}
           getChainLength={getChainLength}
