@@ -368,6 +368,31 @@ describe('ChatHeader', () => {
     });
   });
 
+  // Story 17.4 - Task 4.3: Terminal button tests
+  describe('terminal button', () => {
+    const mockOnShowTerminal = vi.fn();
+
+    it('should render terminal button when onShowTerminal is provided', () => {
+      renderComponent({ onShowTerminal: mockOnShowTerminal });
+
+      expect(screen.getByRole('button', { name: '터미널' })).toBeInTheDocument();
+    });
+
+    it('should call onShowTerminal when terminal button is clicked', () => {
+      renderComponent({ onShowTerminal: mockOnShowTerminal });
+
+      fireEvent.click(screen.getByRole('button', { name: '터미널' }));
+
+      expect(mockOnShowTerminal).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not render terminal button when onShowTerminal is not provided', () => {
+      renderComponent();
+
+      expect(screen.queryByRole('button', { name: '터미널' })).not.toBeInTheDocument();
+    });
+  });
+
   // Story 4.7 - Task 7: Connection status display tests
   describe('connection status', () => {
     beforeEach(() => {
