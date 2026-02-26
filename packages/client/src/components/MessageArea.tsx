@@ -337,7 +337,7 @@ export function MessageArea({
 
           if (isToolSegment(seg)) {
             return (
-              <div key={seg.toolCall.id}>
+              <div key={seg.toolCall.id} id={`tool-${seg.toolCall.id}`}>
                 <ToolCard
                   toolName={seg.toolCall.name}
                   toolInput={seg.toolCall.input}
@@ -348,6 +348,10 @@ export function MessageArea({
                   permissionStatus={seg.permissionStatus}
                   onPermissionRespond={seg.permissionStatus === 'waiting' ? (approved) => {
                     useChatStore.getState().respondToolPermission(seg.toolCall.id, approved);
+                  } : undefined}
+                  onPlanModeExit={seg.toolCall.name === 'ExitPlanMode' && seg.permissionStatus === 'waiting' ? (mode) => {
+                    useChatStore.getState().setPermissionMode(mode);
+                    useChatStore.getState().respondToolPermission(seg.toolCall.id, true);
                   } : undefined}
                 />
               </div>
