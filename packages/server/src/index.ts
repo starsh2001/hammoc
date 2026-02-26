@@ -6,6 +6,7 @@ import { AuthConfigService } from './services/authConfigService.js';
 import { notificationService } from './services/notificationService.js';
 import { resetPassword } from './cli/passwordSetup.js';
 import { createLogger, getEffectiveLogLevel } from './utils/logger.js';
+import { ptyService } from './services/ptyService.js';
 import { LogLevel } from '@bmad-studio/shared';
 import path from 'path';
 
@@ -103,6 +104,7 @@ async function main() {
 
   // Graceful shutdown: release port before process exits (critical for --watch restart on Windows)
   const shutdown = () => {
+    ptyService.destroyAll();
     httpServer.close(() => process.exit(0));
     // Force exit if close hangs longer than 2s
     setTimeout(() => process.exit(0), 2000).unref();

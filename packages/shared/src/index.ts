@@ -120,5 +120,8 @@ export { extractStoryNumbers, generateQueueFromTemplate } from './utils/queueTem
 // Story 16.1: Git types (Epic 16)
 export * from './types/git.js';
 
+// Story 17.1: Terminal PTY types (Epic 17)
+export * from './types/terminal.js';
+
 // Logger types (shared between server and client)
 export { LogLevel, type LogLevelName, parseLogLevel } from './types/logger.js';
