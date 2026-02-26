@@ -9,6 +9,7 @@ import type { ToolResult, CompactMetadata, TaskNotificationData } from './stream
 import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
 import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from './queue.js';
+import type { TerminalCreateRequest, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent } from './terminal.js';
 
 // ===== Connection Status =====
 
@@ -53,6 +54,11 @@ export interface ClientToServerEvents {
   'queue:reorderItems': (data: { projectSlug: string; newOrder: number[] }) => void;
   'project:join': (projectSlug: string) => void;
   'project:leave': (projectSlug: string) => void;
+  // Story 17.1: Terminal PTY events
+  'terminal:create': (data: TerminalCreateRequest) => void;
+  'terminal:input': (data: TerminalInputEvent) => void;
+  'terminal:resize': (data: TerminalResizeEvent) => void;
+  'terminal:close': (data: { terminalId: string }) => void;
 }
 
 // ===== Server to Client Events =====
@@ -94,6 +100,11 @@ export interface ServerToClientEvents {
   'rateLimit:update': (data: SubscriptionRateLimit) => void;
   'permission:mode-change': (data: { mode: PermissionMode }) => void;
   'apiHealth:update': (data: ApiHealthStatus) => void;
+  // Story 17.1: Terminal PTY events
+  'terminal:created': (data: TerminalCreatedResponse) => void;
+  'terminal:data': (data: TerminalOutputEvent) => void;
+  'terminal:exit': (data: TerminalExitEvent) => void;
+  'terminal:error': (data: TerminalErrorEvent) => void;
 }
 
 // ===== Inter-server Events =====

@@ -62,6 +62,16 @@ export const config = {
     chatId: process.env.TELEGRAM_CHAT_ID || '',
     enabled: !!process.env.TELEGRAM_BOT_TOKEN && !!process.env.TELEGRAM_CHAT_ID,
   },
+
+  /**
+   * Terminal PTY settings (Story 17.1)
+   * Guard logic (enabled check) is deferred to Story 17.5
+   */
+  terminal: {
+    enabled: process.env.TERMINAL_ENABLED !== 'false',
+    shellTimeout: parseInt(process.env.SHELL_TIMEOUT || '30000', 10),
+    maxSessions: parseInt(process.env.MAX_TERMINAL_SESSIONS || '10', 10),
+  },
 } as const;
 
 export type Config = typeof config;

@@ -17,7 +17,8 @@ import type {
   ImageAttachment,
   PermissionRequest,
 } from '@bmad-studio/shared';
-import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript } from '@bmad-studio/shared';
+import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS } from '@bmad-studio/shared';
+import type { TerminalCreateRequest, TerminalInputEvent, TerminalResizeEvent } from '@bmad-studio/shared';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import { ChatService } from '../services/chatService.js';
 import { SessionService } from '../services/sessionService.js';
@@ -30,10 +31,15 @@ import { getOrCreateQueueService, getQueueInstances } from '../controllers/queue
 import { createLogger } from '../utils/logger.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
 import { rateLimitProbeService } from '../services/rateLimitProbeService.js';
+import { ptyService } from '../services/ptyService.js';
+import { projectService } from '../services/projectService.js';
 const log = createLogger('websocket');
 
 // Alias for concise usage in guards
 const queueInstances = getQueueInstances;
+
+// Socket-to-terminal mapping: socket.id → Set of terminalIds (Story 17.1)
+const socketTerminals = new Map<string, Set<string>>();
 
 let io: SocketIOServer<
   ClientToServerEvents,
@@ -485,6 +491,92 @@ export async function initializeWebSocket(
       qs.reorderItems(data.newOrder);
     });
 
+    // --- Story 17.1: Terminal PTY events ---
+    socketTerminals.set(socket.id, new Set());
+
+    socket.on('terminal:create', async (data: TerminalCreateRequest) => {
+      try {
+        // Reattach to existing session
+        if (data.terminalId) {
+          const tid = data.terminalId;
+          const existing = ptyService.getSession(tid);
+          if (!existing) {
+            socket.emit('terminal:error', {
+              terminalId: tid,
+              code: TERMINAL_ERRORS.TERMINAL_NOT_FOUND.code,
+              message: TERMINAL_ERRORS.TERMINAL_NOT_FOUND.message,
+            });
+            return;
+          }
+          ptyService.cancelCleanup(tid);
+          ptyService.onData(tid, (output: string) => {
+            socket.emit('terminal:data', { terminalId: tid, data: output });
+          });
+          ptyService.onExit(tid, (exitCode: number) => {
+            socket.emit('terminal:exit', { terminalId: tid, exitCode });
+            socketTerminals.get(socket.id)?.delete(tid);
+          });
+          socketTerminals.get(socket.id)?.add(tid);
+          socket.emit('terminal:created', { terminalId: tid, shell: existing.shell });
+          return;
+        }
+
+        // Create new session
+        const projectPath = await projectService.resolveProjectPath(data.projectSlug);
+        if (!projectPath) {
+          socket.emit('terminal:error', {
+            code: TERMINAL_ERRORS.PTY_SPAWN_ERROR.code,
+            message: `Project not found: ${data.projectSlug}`,
+          });
+          return;
+        }
+
+        const { terminalId, shell } = ptyService.createSession(projectPath, data.projectSlug);
+
+        ptyService.onData(terminalId, (output: string) => {
+          socket.emit('terminal:data', { terminalId, data: output });
+        });
+        ptyService.onExit(terminalId, (exitCode: number) => {
+          socket.emit('terminal:exit', { terminalId, exitCode });
+          socketTerminals.get(socket.id)?.delete(terminalId);
+        });
+
+        socketTerminals.get(socket.id)?.add(terminalId);
+        socket.emit('terminal:created', { terminalId, shell });
+      } catch (err) {
+        const code = (err as Error & { code?: string }).code || TERMINAL_ERRORS.PTY_SPAWN_ERROR.code;
+        const message = (err as Error).message || TERMINAL_ERRORS.PTY_SPAWN_ERROR.message;
+        socket.emit('terminal:error', { terminalId: data.terminalId, code, message });
+      }
+    });
+
+    socket.on('terminal:input', (data: TerminalInputEvent) => {
+      try {
+        ptyService.writeInput(data.terminalId, data.data);
+      } catch (err) {
+        const code = (err as Error & { code?: string }).code || TERMINAL_ERRORS.TERMINAL_NOT_FOUND.code;
+        socket.emit('terminal:error', { terminalId: data.terminalId, code, message: (err as Error).message });
+      }
+    });
+
+    socket.on('terminal:resize', (data: TerminalResizeEvent) => {
+      try {
+        ptyService.resize(data.terminalId, data.cols, data.rows);
+      } catch (err) {
+        const code = (err as Error & { code?: string }).code || TERMINAL_ERRORS.INVALID_DIMENSIONS.code;
+        socket.emit('terminal:error', { terminalId: data.terminalId, code, message: (err as Error).message });
+      }
+    });
+
+    socket.on('terminal:close', (data: { terminalId: string }) => {
+      try {
+        ptyService.closeSession(data.terminalId);
+        socketTerminals.get(socket.id)?.delete(data.terminalId);
+      } catch {
+        // Ignore close errors — session may already be gone
+      }
+    });
+
     // Disconnect: detach socket from stream, DON'T abort or deny permissions
     socket.on('disconnect', () => {
       const sessionId = socketToSession.get(socket.id);
@@ -495,6 +587,16 @@ export async function initializeWebSocket(
         }
         socketToSession.delete(socket.id);
       }
+
+      // Story 17.1: Schedule cleanup for all terminal sessions owned by this socket
+      const terminalIds = socketTerminals.get(socket.id);
+      if (terminalIds) {
+        for (const terminalId of terminalIds) {
+          ptyService.scheduleCleanup(terminalId);
+        }
+        socketTerminals.delete(socket.id);
+      }
+
       connectedClients--;
       log.info(`Client disconnected. Total: ${connectedClients}`);
 
