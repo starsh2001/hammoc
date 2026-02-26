@@ -19,7 +19,9 @@ function getGlowDotClasses(utilization: number): string {
 function GlowDot({ utilization, label, reset }: { utilization: number; label: string; reset?: string | null }) {
   const dotClasses = getGlowDotClasses(utilization);
   const pct = (utilization * 100).toFixed(0);
-  const tooltip = reset ? `${label}: ${pct}% (리셋: ${new Date(reset).toLocaleTimeString()})` : `${label}: ${pct}%`;
+  const tooltip = reset
+    ? `${label}: ${pct}% (리셋: ${new Date(reset).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })} ${new Date(reset).toLocaleTimeString()})`
+    : `${label}: ${pct}%`;
 
   return (
     <span className="inline-flex items-center gap-1" title={tooltip}>
