@@ -48,6 +48,7 @@ import { SessionQuickAccessPanel } from '../components/SessionQuickAccessPanel';
 import { QuickFileExplorer } from '../components/files/QuickFileExplorer';
 import { QuickGitPanel } from '../components/git/QuickGitPanel';
 import { QuickTerminal } from '../components/terminal/QuickTerminal';
+import { useTerminalStore } from '../stores/terminalStore';
 import { useGitStatus } from '../hooks/useGitStatus';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ThinkingBlock } from '../components/ThinkingBlock';
@@ -701,6 +702,11 @@ export function ChatPage() {
   // Quick terminal panel state
   const [showTerminalPanel, setShowTerminalPanel] = useState(false);
 
+  // Story 17.5: Terminal access state (read from store directly to avoid useTerminal side-effects)
+  const terminalAccess = useTerminalStore((state) => state.terminalAccess);
+  const isTerminalEnabled = terminalAccess?.enabled !== false;
+  const isTerminalAccessible = terminalAccess?.allowed ?? true;
+
   const handleShowSessions = useCallback(() => {
     setShowSessionPanel(true);
     setShowFileExplorer(false);
@@ -1208,7 +1214,8 @@ export function ChatPage() {
         onShowFileExplorer={handleShowFileExplorer}
         onShowGit={handleShowGit}
         gitChangedCount={changedFileCount}
-        onShowTerminal={handleShowTerminal}
+        onShowTerminal={isTerminalEnabled ? handleShowTerminal : undefined}
+        terminalAccessible={isTerminalAccessible}
         onRefresh={handleRetry}
         onLogout={handleLogout}
         onRenameSession={handleRenameSession}

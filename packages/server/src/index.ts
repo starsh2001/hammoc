@@ -8,6 +8,8 @@ import { resetPassword } from './cli/passwordSetup.js';
 import { createLogger, getEffectiveLogLevel } from './utils/logger.js';
 import { ptyService } from './services/ptyService.js';
 import { LogLevel } from '@bmad-studio/shared';
+import { isExternalBinding } from './utils/networkUtils.js';
+import { config } from './config/index.js';
 import path from 'path';
 
 const log = createLogger('server');
@@ -25,8 +27,8 @@ process.on('unhandledRejection', (reason) => {
   if (stack) log.error('Stack:', stack);
 });
 
-const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0';
+const PORT = config.server.port;
+const HOST = config.server.host;
 
 function getLocalIP(): string | null {
   const interfaces = os.networkInterfaces();
@@ -97,6 +99,16 @@ async function main() {
       if (localIP) log.info(`  Network: http://${localIP}:${PORT}`);
       log.info(`  Mode:    ${isProduction ? 'production (serving static client files)' : 'development'}`);
       log.info(`  Log:     ${LogLevel[getEffectiveLogLevel()]} → ${path.resolve(process.cwd(), 'logs')}`);
+
+      // Story 17.5: Security warning for terminal access on external interfaces
+      if (isExternalBinding(HOST) && config.terminal.enabled) {
+        log.warn(
+          '⚠️  SECURITY WARNING: Server is bound to an external interface (%s) with terminal enabled. ' +
+          'Remote clients may attempt to access the terminal. ' +
+          'Consider setting TERMINAL_ENABLED=false or binding to localhost.',
+          HOST
+        );
+      }
     });
   }
 

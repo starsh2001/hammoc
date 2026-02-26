@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
-import { Plus, Terminal, X } from 'lucide-react';
+import { Plus, Terminal, X, ShieldAlert } from 'lucide-react';
 import { useTerminal } from '../../hooks/useTerminal';
 import { useTerminalStore } from '../../stores/terminalStore';
 import { TerminalEmulator } from './TerminalEmulator';
@@ -26,10 +26,31 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
     terminals,
     status,
     shell,
+    terminalAccess,
     create,
     closeById,
     switchTerminal,
   } = useTerminal(projectSlug);
+
+  // Story 17.5: Show warning when terminal access is denied
+  if (terminalAccess && !terminalAccess.allowed) {
+    const message = !terminalAccess.enabled
+      ? '터미널 기능이 비활성화되어 있습니다'
+      : '보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다';
+    const description = !terminalAccess.enabled
+      ? '설정 페이지의 고급 설정에서 터미널 기능을 활성화할 수 있습니다.'
+      : '터미널은 로컬 네트워크 환경(localhost, 사설 IP)에서만 사용할 수 있습니다.';
+
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center" role="alert">
+        <div className="p-4 bg-amber-100 dark:bg-amber-900/30 rounded-2xl mb-4">
+          <ShieldAlert className="w-10 h-10 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        </div>
+        <p className="text-base font-medium text-gray-900 dark:text-white mb-2">{message}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">{description}</p>
+      </div>
+    );
+  }
 
   const clearTerminalsForProjectChange = useTerminalStore(
     (s) => s.clearTerminalsForProjectChange

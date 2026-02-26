@@ -9,7 +9,7 @@ import type { ToolResult, CompactMetadata, TaskNotificationData } from './stream
 import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
 import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from './queue.js';
-import type { TerminalCreateRequest, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent } from './terminal.js';
+import type { TerminalCreateRequest, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent, TerminalAccessInfo } from './terminal.js';
 
 // ===== Connection Status =====
 
@@ -105,6 +105,8 @@ export interface ServerToClientEvents {
   'terminal:data': (data: TerminalOutputEvent) => void;
   'terminal:exit': (data: TerminalExitEvent) => void;
   'terminal:error': (data: TerminalErrorEvent) => void;
+  // Story 17.5: Terminal security — access info sent on connection
+  'terminal:access': (data: TerminalAccessInfo) => void;
 }
 
 // ===== Inter-server Events =====
