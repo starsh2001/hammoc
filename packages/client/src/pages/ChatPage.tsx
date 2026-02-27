@@ -664,7 +664,7 @@ export function ChatPage() {
   }, [navigate, projectSlug]);
 
   // Unified panel state (Story 19.1)
-  const { activePanel, togglePanel, closePanel } = usePanelStore();
+  const { activePanel, openPanel, togglePanel, closePanel } = usePanelStore();
 
   const handleToggleSessions = useCallback(() => togglePanel('sessions'), [togglePanel]);
   const handleToggleFileExplorer = useCallback(() => togglePanel('files'), [togglePanel]);
@@ -849,6 +849,8 @@ export function ChatPage() {
     <QuickPanel
       activePanel={activePanel}
       onClose={closePanel}
+      onSwitchPanel={openPanel}
+      terminalAccessible={isTerminalAccessible}
       projectSlug={projectSlug}
       currentSessionId={sessionId}
       onSelectSession={handleSessionSelect}

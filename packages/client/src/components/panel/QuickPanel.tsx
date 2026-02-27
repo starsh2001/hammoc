@@ -1,19 +1,22 @@
 /**
  * QuickPanel - Unified container for all quick panel overlays
  * Provides common header, backdrop, animation, focus management, and content routing.
- * [Source: Story 19.1 - Task 3]
+ * [Source: Story 19.1 - Task 3, Story 19.2 - Tasks 3, 4]
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, History, FolderOpen, GitBranch, Terminal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { QuickPanelType } from '../../stores/panelStore';
+import { PanelTabSwitcher } from './PanelTabSwitcher';
 import { SessionQuickAccessPanel } from '../SessionQuickAccessPanel';
 import { QuickFileExplorer } from '../files/QuickFileExplorer';
 import { QuickGitPanel } from '../git/QuickGitPanel';
 import { QuickTerminal } from '../terminal/QuickTerminal';
 
-const PANEL_CONFIG: Record<QuickPanelType, {
+export const PANEL_TYPES: QuickPanelType[] = ['sessions', 'files', 'git', 'terminal'];
+
+export const PANEL_CONFIG: Record<QuickPanelType, {
   icon: LucideIcon;
   title: string;
   widthClass: string;
@@ -27,6 +30,8 @@ const PANEL_CONFIG: Record<QuickPanelType, {
 interface QuickPanelProps {
   activePanel: QuickPanelType | null;
   onClose: () => void;
+  onSwitchPanel: (type: QuickPanelType) => void;
+  terminalAccessible?: boolean;
   projectSlug: string;
   currentSessionId?: string;
   onSelectSession?: (sessionId: string) => void;
@@ -37,6 +42,8 @@ interface QuickPanelProps {
 export function QuickPanel({
   activePanel,
   onClose,
+  onSwitchPanel,
+  terminalAccessible,
   projectSlug,
   currentSessionId,
   onSelectSession,
@@ -45,12 +52,32 @@ export function QuickPanel({
 }: QuickPanelProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [visitedPanels, setVisitedPanels] = useState<Set<QuickPanelType>>(
+    () => activePanel ? new Set([activePanel]) : new Set()
+  );
 
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<Element | null>(null);
 
   const isOpen = activePanel !== null;
+
+  // Track visited panels
+  useEffect(() => {
+    if (activePanel) {
+      setVisitedPanels(prev => {
+        if (prev.has(activePanel)) return prev;
+        return new Set(prev).add(activePanel);
+      });
+    }
+  }, [activePanel]);
+
+  // Reset visited panels when panel closes
+  useEffect(() => {
+    if (!isOpen) {
+      setVisitedPanels(new Set());
+    }
+  }, [isOpen]);
 
   // Slide animation: mount/unmount control
   useEffect(() => {
@@ -111,9 +138,9 @@ export function QuickPanel({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Content routing
-  const renderContent = () => {
-    switch (activePanel) {
+  // Content rendering per panel type
+  const renderPanelContent = (type: QuickPanelType) => {
+    switch (type) {
       case 'sessions':
         return (
           <SessionQuickAccessPanel
@@ -143,12 +170,9 @@ export function QuickPanel({
     }
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || !activePanel) return null;
 
-  const config = activePanel ? PANEL_CONFIG[activePanel] : null;
-  if (!config) return null;
-
-  const IconComponent = config.icon;
+  const config = PANEL_CONFIG[activePanel];
 
   return (
     <>
@@ -180,12 +204,11 @@ export function QuickPanel({
         {/* Common header */}
         <div className="flex items-center justify-between px-4 py-3
                         border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center">
-            <IconComponent className="w-5 h-5 mr-2 text-gray-700 dark:text-gray-300" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {config.title}
-            </h2>
-          </div>
+          <PanelTabSwitcher
+            activePanel={activePanel}
+            onSwitchPanel={onSwitchPanel}
+            terminalAccessible={terminalAccessible}
+          />
           <button
             ref={closeButtonRef}
             onClick={onClose}
@@ -199,8 +222,23 @@ export function QuickPanel({
         </div>
 
         {/* Content area */}
-        <div data-testid="quick-panel-content" className="flex-1 overflow-y-auto min-h-0">
-          {renderContent()}
+        <div data-testid="quick-panel-content" className="flex-1 min-h-0 relative">
+          {PANEL_TYPES.map(type => (
+            visitedPanels.has(type) && (
+              <div
+                key={type}
+                className={`absolute inset-0 overflow-y-auto ${
+                  activePanel === type ? '' : 'invisible'
+                }`}
+                role="tabpanel"
+                aria-label={PANEL_CONFIG[type].title}
+                data-testid={`quick-panel-content-${type}`}
+                {...(activePanel !== type ? { inert: '' as unknown as boolean } : {})}
+              >
+                {renderPanelContent(type)}
+              </div>
+            )
+          ))}
         </div>
       </div>
     </>
