@@ -10,9 +10,10 @@ import {
 } from '../websocket.js';
 import { ERROR_CODES } from '@bmad-studio/shared';
 
-// Mock fs.existsSync
+// Mock fs module used by logger and other imports
 vi.mock('fs', () => ({
   existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
 }));
 
 // Mock session middleware (Story 2.5 - WebSocket auth)
@@ -34,9 +35,9 @@ vi.mock('../../services/chatService.js', () => ({
   })),
 }));
 
-// Mock SessionService
-vi.mock('../../services/sessionService.js', () => ({
-  SessionService: vi.fn().mockImplementation(() => ({
+// Mock SessionService - must be a class constructor (used with `new`)
+vi.mock('../../services/sessionService.js', () => {
+  const MockSessionService = vi.fn().mockImplementation(() => ({
     saveSessionId: vi.fn().mockResolvedValue(undefined),
     getSessionId: vi.fn().mockResolvedValue(null),
     listSessions: vi.fn().mockResolvedValue([
@@ -49,8 +50,9 @@ vi.mock('../../services/sessionService.js', () => ({
         modified: new Date('2026-01-30T11:00:00Z'),
       },
     ]),
-  })),
-}));
+  }));
+  return { SessionService: MockSessionService };
+});
 
 // Mock preferencesService (Story 10.2)
 vi.mock('../../services/preferencesService.js', () => ({
@@ -82,6 +84,11 @@ vi.mock('../../config/index.js', () => ({
       chatId: '',
       enabled: false,
     },
+    terminal: {
+      enabled: true,
+      shellTimeout: 30000,
+      maxSessions: 10,
+    },
   },
 }));
 
@@ -107,6 +114,74 @@ vi.mock('../../controllers/queueController.js', () => ({
     pause: vi.fn().mockResolvedValue(undefined),
     resume: vi.fn().mockResolvedValue(undefined),
     abort: vi.fn().mockResolvedValue(undefined),
+  }),
+  getQueueInstances: vi.fn().mockReturnValue(new Map()),
+}));
+
+// Mock utils/networkUtils
+vi.mock('../../utils/networkUtils.js', () => ({
+  isLocalIP: vi.fn().mockReturnValue(true),
+  extractClientIP: vi.fn().mockReturnValue('127.0.0.1'),
+}));
+
+// Mock utils/errors
+vi.mock('../../utils/errors.js', () => ({
+  parseSDKError: vi.fn().mockReturnValue({ message: 'error', type: 'unknown' }),
+  AbortedError: class AbortedError extends Error {
+    constructor(message?: string) { super(message ?? 'Aborted'); this.name = 'AbortedError'; }
+  },
+}));
+
+// Mock streamCallbacks
+vi.mock('./streamCallbacks.js', () => ({
+  buildStreamCallbacks: vi.fn().mockReturnValue({
+    onMessage: vi.fn(),
+    onToolUse: vi.fn(),
+    onToolResult: vi.fn(),
+    onError: vi.fn(),
+  }),
+}));
+
+// Mock rateLimitProbeService
+vi.mock('../../services/rateLimitProbeService.js', () => ({
+  rateLimitProbeService: {
+    startPolling: vi.fn(),
+    stopPolling: vi.fn(),
+    getCachedResult: vi.fn().mockReturnValue(null),
+    getApiHealth: vi.fn().mockReturnValue(null),
+  },
+}));
+
+// Mock ptyService
+vi.mock('../../services/ptyService.js', () => ({
+  ptyService: {
+    createSession: vi.fn().mockReturnValue({ terminalId: 'term-1', shell: 'bash' }),
+    getSession: vi.fn(),
+    closeSession: vi.fn(),
+    scheduleCleanup: vi.fn(),
+    cancelCleanup: vi.fn(),
+    onData: vi.fn(),
+    onExit: vi.fn(),
+    writeInput: vi.fn(),
+    resize: vi.fn(),
+  },
+}));
+
+// Mock projectService
+vi.mock('../../services/projectService.js', () => ({
+  projectService: {
+    resolveProjectPath: vi.fn().mockResolvedValue('/mock/project/path'),
+  },
+}));
+
+// Mock logger
+vi.mock('../../utils/logger.js', () => ({
+  createLogger: vi.fn().mockReturnValue({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    verbose: vi.fn(),
   }),
 }));
 
