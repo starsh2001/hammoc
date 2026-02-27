@@ -10,7 +10,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Plus, History, FolderOpen, GitBranch, Terminal, Settings, LogOut } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Plus, Settings, LogOut } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { useChatStore } from '../stores/chatStore';
@@ -18,6 +18,8 @@ import { formatAgentRoleLabel } from '../utils/agentUtils';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { LayoutToggleButton } from './LayoutToggleButton';
 import { HeaderOverflowMenu } from './HeaderOverflowMenu';
+import { QuickPanelTriggers } from './panel/QuickPanelTriggers';
+import type { QuickPanelType } from '../stores/panelStore';
 import { BrandLogo } from './BrandLogo';
 
 interface ChatHeaderProps {
@@ -35,16 +37,12 @@ interface ChatHeaderProps {
   isRefreshing?: boolean;
   /** Callback when new session button is clicked */
   onNewSession?: () => void;
-  /** Callback when session history button is clicked */
-  onShowSessions?: () => void;
-  /** Callback when file explorer button is clicked */
-  onShowFileExplorer?: () => void;
-  /** Callback when Git panel button is clicked */
-  onShowGit?: () => void;
+  /** Currently active quick panel type */
+  activePanel?: QuickPanelType | null;
+  /** Toggle quick panel by type */
+  onTogglePanel?: (type: QuickPanelType) => void;
   /** Changed file count for Git badge */
   gitChangedCount?: number;
-  /** Callback when terminal panel button is clicked */
-  onShowTerminal?: () => void;
   /** Whether terminal is accessible (false = disabled button due to non-local IP) */
   terminalAccessible?: boolean;
   /** Callback when logout is clicked */
@@ -67,11 +65,9 @@ export function ChatHeader({
   onRefresh,
   isRefreshing = false,
   onNewSession,
-  onShowSessions,
-  onShowFileExplorer,
-  onShowGit,
+  activePanel,
+  onTogglePanel,
   gitChangedCount,
-  onShowTerminal,
   terminalAccessible = true,
   onLogout,
   onRenameSession,
@@ -231,62 +227,15 @@ export function ChatHeader({
             </button>
           )}
 
-          {onShowSessions && (
-            <button
-              onClick={onShowSessions}
-              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                         text-gray-700 dark:text-gray-300
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="세션 목록"
-            >
-              <History className="w-5 h-5" aria-hidden="true" />
-            </button>
-          )}
-
-          {onShowFileExplorer && (
-            <button
-              onClick={onShowFileExplorer}
-              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                         text-gray-700 dark:text-gray-300
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="파일 리스트"
-            >
-              <FolderOpen className="w-5 h-5" aria-hidden="true" />
-            </button>
-          )}
-
-          {onShowGit && (
-            <button
-              onClick={onShowGit}
-              className="hidden md:block relative p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                         text-gray-700 dark:text-gray-300
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Git 패널"
-            >
-              <GitBranch className="w-5 h-5" aria-hidden="true" />
-              {!!gitChangedCount && gitChangedCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center leading-none px-1">
-                  {gitChangedCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          {onShowTerminal && (
-            <button
-              onClick={terminalAccessible ? onShowTerminal : undefined}
-              disabled={!terminalAccessible}
-              className={`hidden md:block p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                terminalAccessible
-                  ? 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  : 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-500'
-              }`}
-              aria-label="터미널"
-              aria-disabled={!terminalAccessible}
-              title={!terminalAccessible ? '보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다' : undefined}
-            >
-              <Terminal className="w-5 h-5" aria-hidden="true" />
-            </button>
+          {onTogglePanel && (
+            <div className="hidden md:block">
+              <QuickPanelTriggers
+                activePanel={activePanel ?? null}
+                onTogglePanel={onTogglePanel}
+                gitChangedCount={gitChangedCount}
+                terminalAccessible={terminalAccessible}
+              />
+            </div>
           )}
 
           {onRefresh && (
@@ -335,10 +284,10 @@ export function ChatHeader({
           {/* Mobile-only: overflow menu */}
           <div className="md:hidden">
             <HeaderOverflowMenu
-              onShowSessions={onShowSessions}
-              onShowFileExplorer={onShowFileExplorer}
-              onShowGit={onShowGit}
-              onShowTerminal={onShowTerminal}
+              onShowSessions={onTogglePanel ? () => onTogglePanel('sessions') : undefined}
+              onShowFileExplorer={onTogglePanel ? () => onTogglePanel('files') : undefined}
+              onShowGit={onTogglePanel ? () => onTogglePanel('git') : undefined}
+              onShowTerminal={onTogglePanel ? () => onTogglePanel('terminal') : undefined}
               terminalAccessible={terminalAccessible}
               onNewSession={onNewSession}
               onRefresh={onRefresh}

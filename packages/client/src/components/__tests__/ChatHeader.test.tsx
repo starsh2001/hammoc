@@ -1,6 +1,6 @@
 /**
  * ChatHeader Component Tests
- * [Source: Story 4.1 - Task 8, Story 4.7 - Task 7]
+ * [Source: Story 4.1 - Task 8, Story 4.7 - Task 7, Story 19.4 - Task 7]
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -20,6 +20,18 @@ vi.mock('../../hooks/useWebSocket', () => ({
     connect: mockConnect,
     disconnect: vi.fn(),
   })),
+}));
+
+// Mock QuickPanelTriggers to isolate ChatHeader tests (Story 19.4)
+vi.mock('../panel/QuickPanelTriggers', () => ({
+  QuickPanelTriggers: (props: { activePanel: string | null; onTogglePanel: unknown; gitChangedCount?: number; terminalAccessible?: boolean }) => (
+    <div
+      data-testid="quick-panel-triggers"
+      data-active={props.activePanel}
+      data-git-count={props.gitChangedCount}
+      data-terminal-accessible={props.terminalAccessible}
+    />
+  ),
 }));
 
 // Import after mock
@@ -139,53 +151,38 @@ describe('ChatHeader', () => {
     });
   });
 
-  // Story 5.7 - Task 1: Session history button tests
-  describe('session history button', () => {
-    const mockOnShowSessions = vi.fn();
+  // Story 19.4 - Task 7: QuickPanelTriggers integration
+  describe('quick panel triggers', () => {
+    const mockOnTogglePanel = vi.fn();
 
-    it('should render History button when onShowSessions is provided', () => {
-      renderComponent({ onShowSessions: mockOnShowSessions });
+    it('should render QuickPanelTriggers when onTogglePanel is provided', () => {
+      renderComponent({ onTogglePanel: mockOnTogglePanel });
 
-      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+      expect(screen.getByTestId('quick-panel-triggers')).toBeInTheDocument();
     });
 
-    it('should not render History button when onShowSessions is not provided', () => {
+    it('should not render QuickPanelTriggers when onTogglePanel is not provided', () => {
       renderComponent();
 
-      expect(screen.queryByRole('button', { name: '세션 목록' })).not.toBeInTheDocument();
+      expect(screen.queryByTestId('quick-panel-triggers')).not.toBeInTheDocument();
     });
 
-    it('should call onShowSessions when History button clicked', () => {
-      renderComponent({ onShowSessions: mockOnShowSessions });
+    it('should pass activePanel prop to QuickPanelTriggers', () => {
+      renderComponent({ onTogglePanel: mockOnTogglePanel, activePanel: 'sessions' });
 
-      fireEvent.click(screen.getByRole('button', { name: '세션 목록' }));
-
-      expect(mockOnShowSessions).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  // Story 14.1 - Task 5.2: File explorer button tests
-  describe('file explorer button', () => {
-    const mockOnShowFileExplorer = vi.fn();
-
-    it('should render file explorer button when onShowFileExplorer is provided (TC-CH-NEW-1)', () => {
-      renderComponent({ onShowFileExplorer: mockOnShowFileExplorer });
-
-      expect(screen.getByRole('button', { name: '파일 리스트' })).toBeInTheDocument();
+      expect(screen.getByTestId('quick-panel-triggers')).toHaveAttribute('data-active', 'sessions');
     });
 
-    it('should call onShowFileExplorer when button is clicked (TC-CH-NEW-2)', () => {
-      renderComponent({ onShowFileExplorer: mockOnShowFileExplorer });
+    it('should pass gitChangedCount prop to QuickPanelTriggers', () => {
+      renderComponent({ onTogglePanel: mockOnTogglePanel, gitChangedCount: 3 });
 
-      fireEvent.click(screen.getByRole('button', { name: '파일 리스트' }));
-
-      expect(mockOnShowFileExplorer).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('quick-panel-triggers')).toHaveAttribute('data-git-count', '3');
     });
 
-    it('should not render file explorer button when onShowFileExplorer is not provided (TC-CH-NEW-3)', () => {
-      renderComponent();
+    it('should pass terminalAccessible prop to QuickPanelTriggers', () => {
+      renderComponent({ onTogglePanel: mockOnTogglePanel, terminalAccessible: false });
 
-      expect(screen.queryByRole('button', { name: '파일 리스트' })).not.toBeInTheDocument();
+      expect(screen.getByTestId('quick-panel-triggers')).toHaveAttribute('data-terminal-accessible', 'false');
     });
   });
 
@@ -322,101 +319,6 @@ describe('ChatHeader', () => {
     });
   });
 
-  // Story 16.4 - Task 5: Git button tests
-  describe('git button', () => {
-    const mockOnShowGit = vi.fn();
-
-    // TC-QGP-H1: Renders Git icon button when onShowGit prop is provided
-    it('should render Git button when onShowGit is provided (TC-QGP-H1)', () => {
-      renderComponent({ onShowGit: mockOnShowGit });
-
-      expect(screen.getByRole('button', { name: 'Git 패널' })).toBeInTheDocument();
-    });
-
-    // TC-QGP-H2: Shows badge with changed file count when gitChangedCount > 0
-    it('should show badge with changed file count when gitChangedCount > 0 (TC-QGP-H2)', () => {
-      renderComponent({ onShowGit: mockOnShowGit, gitChangedCount: 5 });
-
-      const button = screen.getByRole('button', { name: 'Git 패널' });
-      const badge = button.querySelector('span');
-      expect(badge).toBeInTheDocument();
-      expect(badge).toHaveTextContent('5');
-    });
-
-    // TC-QGP-H3: Does not show badge when gitChangedCount is 0
-    it('should not show badge when gitChangedCount is 0 (TC-QGP-H3)', () => {
-      renderComponent({ onShowGit: mockOnShowGit, gitChangedCount: 0 });
-
-      const button = screen.getByRole('button', { name: 'Git 패널' });
-      const badge = button.querySelector('span');
-      expect(badge).not.toBeInTheDocument();
-    });
-
-    // TC-QGP-H4: Calls onShowGit when Git button clicked
-    it('should call onShowGit when Git button is clicked (TC-QGP-H4)', () => {
-      renderComponent({ onShowGit: mockOnShowGit });
-
-      fireEvent.click(screen.getByRole('button', { name: 'Git 패널' }));
-
-      expect(mockOnShowGit).toHaveBeenCalledTimes(1);
-    });
-
-    it('should not render Git button when onShowGit is not provided', () => {
-      renderComponent();
-
-      expect(screen.queryByRole('button', { name: 'Git 패널' })).not.toBeInTheDocument();
-    });
-  });
-
-  // Story 17.4 - Task 4.3: Terminal button tests
-  describe('terminal button', () => {
-    const mockOnShowTerminal = vi.fn();
-
-    it('should render terminal button when onShowTerminal is provided', () => {
-      renderComponent({ onShowTerminal: mockOnShowTerminal });
-
-      expect(screen.getByRole('button', { name: '터미널' })).toBeInTheDocument();
-    });
-
-    it('should call onShowTerminal when terminal button is clicked', () => {
-      renderComponent({ onShowTerminal: mockOnShowTerminal });
-
-      fireEvent.click(screen.getByRole('button', { name: '터미널' }));
-
-      expect(mockOnShowTerminal).toHaveBeenCalledTimes(1);
-    });
-
-    it('should not render terminal button when onShowTerminal is not provided', () => {
-      renderComponent();
-
-      expect(screen.queryByRole('button', { name: '터미널' })).not.toBeInTheDocument();
-    });
-
-    // Story 17.5: Terminal security - AC4 disabled button
-    it('should disable terminal button when terminalAccessible is false', () => {
-      renderComponent({ onShowTerminal: mockOnShowTerminal, terminalAccessible: false });
-
-      const button = screen.getByRole('button', { name: '터미널' });
-      expect(button).toBeDisabled();
-      expect(button).toHaveAttribute('aria-disabled', 'true');
-    });
-
-    it('should not call onShowTerminal when disabled button is clicked', () => {
-      renderComponent({ onShowTerminal: mockOnShowTerminal, terminalAccessible: false });
-
-      const button = screen.getByRole('button', { name: '터미널' });
-      fireEvent.click(button);
-
-      expect(mockOnShowTerminal).not.toHaveBeenCalled();
-    });
-
-    it('should enable terminal button by default (terminalAccessible=true)', () => {
-      renderComponent({ onShowTerminal: mockOnShowTerminal });
-
-      const button = screen.getByRole('button', { name: '터미널' });
-      expect(button).not.toBeDisabled();
-    });
-  });
 
   // Story 4.7 - Task 7: Connection status display tests
   describe('connection status', () => {
