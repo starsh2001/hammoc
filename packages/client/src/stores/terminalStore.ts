@@ -34,6 +34,7 @@ interface TerminalStore {
   activeTerminalId: string | null;
   currentProjectSlug: string | null;
   terminalAccess: TerminalAccessInfo | null;
+  pendingCreate: boolean;
 
   // Actions
   setTerminalAccess: (access: TerminalAccessInfo) => void;
@@ -69,6 +70,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   activeTerminalId: null,
   currentProjectSlug: null,
   terminalAccess: null,
+  pendingCreate: false,
 
   // Actions
   setTerminalAccess: (access: TerminalAccessInfo) => {
@@ -76,6 +78,8 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   },
 
   createTerminal: (projectSlug: string) => {
+    if (get().pendingCreate) return;
+    set({ pendingCreate: true });
     const socket = getSocket();
     socket.emit('terminal:create', { projectSlug });
   },
@@ -127,7 +131,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
         socket.emit('terminal:close', { terminalId });
         dataCallbacks.delete(terminalId);
       }
-      set({ terminals: new Map(), activeTerminalId: null, currentProjectSlug: newProjectSlug });
+      set({ terminals: new Map(), activeTerminalId: null, currentProjectSlug: newProjectSlug, pendingCreate: false });
     } else {
       set({ currentProjectSlug: newProjectSlug });
     }
@@ -145,7 +149,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
         shell: data.shell,
         status: 'connected',
       });
-      set({ terminals, activeTerminalId: data.terminalId });
+      set({ terminals, activeTerminalId: data.terminalId, pendingCreate: false });
     };
 
     _onData = (data: TerminalOutputEvent) => {
@@ -170,6 +174,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
     _onError = (data: TerminalErrorEvent) => {
       toast.error(data.message);
+      set({ pendingCreate: false });
       if (data.terminalId) {
         const terminals = new Map(get().terminals);
         const session = terminals.get(data.terminalId);
