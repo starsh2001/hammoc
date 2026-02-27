@@ -48,6 +48,7 @@ import { QuickPanel } from '../components/panel/QuickPanel';
 import { usePanelStore } from '../stores/panelStore';
 import { useTerminalStore } from '../stores/terminalStore';
 import { useGitStatus } from '../hooks/useGitStatus';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ThinkingBlock } from '../components/ThinkingBlock';
 import { PromptChainBanner } from '../components/PromptChainBanner';
@@ -663,8 +664,22 @@ export function ChatPage() {
     }
   }, [navigate, projectSlug]);
 
-  // Unified panel state (Story 19.1)
-  const { activePanel, openPanel, togglePanel, closePanel } = usePanelStore();
+  // Unified panel state (Story 19.1, 19.3)
+  const { activePanel, openPanel, togglePanel, closePanel,
+          panelWidths, setPanelWidth, isDragging } = usePanelStore();
+  const isMobile = useIsMobile();
+
+  const currentPanelWidth = activePanel ? panelWidths[activePanel] : 320;
+  const handlePanelWidthChange = useCallback((width: number) => {
+    if (activePanel) setPanelWidth(activePanel, width);
+  }, [activePanel, setPanelWidth]);
+
+  const chatAreaStyle = !isMobile && activePanel
+    ? { paddingRight: `${currentPanelWidth}px` }
+    : undefined;
+  const chatAreaTransition = !isMobile && !isDragging
+    ? 'transition-[padding-right] duration-300 ease-in-out'
+    : '';
 
   const handleToggleSessions = useCallback(() => togglePanel('sessions'), [togglePanel]);
   const handleToggleFileExplorer = useCallback(() => togglePanel('files'), [togglePanel]);
@@ -856,6 +871,9 @@ export function ChatPage() {
       onSelectSession={handleSessionSelect}
       onNavigateToGitTab={handleNavigateToGitTab}
       onNavigateToTerminalTab={handleNavigateToTerminalTab}
+      panelWidth={currentPanelWidth}
+      onWidthChange={handlePanelWidthChange}
+      isMobile={isMobile}
     />
   );
 
@@ -919,7 +937,8 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className="h-dvh flex flex-col bg-white dark:bg-gray-900"
+        className={`h-dvh flex flex-col bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+        style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleToggleSessions} onShowFileExplorer={handleToggleFileExplorer} onShowGit={handleToggleGit} gitChangedCount={changedFileCount} onShowTerminal={handleToggleTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
@@ -986,7 +1005,8 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className="h-dvh flex flex-col bg-white dark:bg-gray-900"
+        className={`h-dvh flex flex-col bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+        style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleToggleSessions} onShowFileExplorer={handleToggleFileExplorer} onShowGit={handleToggleGit} gitChangedCount={changedFileCount} onShowTerminal={handleToggleTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
@@ -1050,7 +1070,8 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className="h-dvh flex flex-col bg-white dark:bg-gray-900"
+        className={`h-dvh flex flex-col bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+        style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleToggleSessions} onShowFileExplorer={handleToggleFileExplorer} onShowGit={handleToggleGit} gitChangedCount={changedFileCount} onShowTerminal={handleToggleTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
@@ -1126,7 +1147,8 @@ export function ChatPage() {
   return (
     <div
       data-testid="chat-page"
-      className="h-dvh flex flex-col bg-white dark:bg-gray-900"
+      className={`h-dvh flex flex-col bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+      style={chatAreaStyle}
     >
       <ChatHeader
         projectSlug={workingDirectory || projectSlug}

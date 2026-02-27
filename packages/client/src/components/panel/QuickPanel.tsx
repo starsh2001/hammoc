@@ -1,7 +1,7 @@
 /**
  * QuickPanel - Unified container for all quick panel overlays
  * Provides common header, backdrop, animation, focus management, and content routing.
- * [Source: Story 19.1 - Task 3, Story 19.2 - Tasks 3, 4]
+ * [Source: Story 19.1 - Task 3, Story 19.2 - Tasks 3, 4, Story 19.3 - Task 4]
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -9,6 +9,7 @@ import { X, History, FolderOpen, GitBranch, Terminal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { QuickPanelType } from '../../stores/panelStore';
 import { PanelTabSwitcher } from './PanelTabSwitcher';
+import { ResizableHandle } from './ResizablePanel';
 import { SessionQuickAccessPanel } from '../SessionQuickAccessPanel';
 import { QuickFileExplorer } from '../files/QuickFileExplorer';
 import { QuickGitPanel } from '../git/QuickGitPanel';
@@ -19,12 +20,11 @@ export const PANEL_TYPES: QuickPanelType[] = ['sessions', 'files', 'git', 'termi
 export const PANEL_CONFIG: Record<QuickPanelType, {
   icon: LucideIcon;
   title: string;
-  widthClass: string;
 }> = {
-  sessions: { icon: History, title: '세션 목록', widthClass: 'md:w-80' },
-  files: { icon: FolderOpen, title: '파일 탐색기', widthClass: 'md:w-80' },
-  git: { icon: GitBranch, title: 'Git', widthClass: 'md:w-80' },
-  terminal: { icon: Terminal, title: '터미널', widthClass: 'md:w-96' },
+  sessions: { icon: History, title: '세션 목록' },
+  files: { icon: FolderOpen, title: '파일 탐색기' },
+  git: { icon: GitBranch, title: 'Git' },
+  terminal: { icon: Terminal, title: '터미널' },
 };
 
 interface QuickPanelProps {
@@ -37,6 +37,9 @@ interface QuickPanelProps {
   onSelectSession?: (sessionId: string) => void;
   onNavigateToGitTab?: () => void;
   onNavigateToTerminalTab?: () => void;
+  panelWidth: number;
+  onWidthChange: (width: number) => void;
+  isMobile: boolean;
 }
 
 export function QuickPanel({
@@ -49,6 +52,9 @@ export function QuickPanel({
   onSelectSession,
   onNavigateToGitTab,
   onNavigateToTerminalTab,
+  panelWidth,
+  onWidthChange,
+  isMobile,
 }: QuickPanelProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -194,13 +200,23 @@ export function QuickPanel({
         aria-modal="true"
         aria-label={config.title}
         className={`fixed inset-0 z-50 bg-white dark:bg-gray-900 flex flex-col
-                    md:inset-auto md:top-0 md:right-0 md:bottom-0 ${config.widthClass}
+                    md:inset-auto md:top-0 md:right-0 md:bottom-0
                     md:bg-white md:dark:bg-gray-800
                     md:border-l md:border-gray-200 md:dark:border-gray-700 md:shadow-xl
                     md:transition-transform md:duration-300 md:ease-in-out
                     ${isAnimating ? 'md:translate-x-0' : 'md:translate-x-full'}`}
+        style={!isMobile ? { width: `${panelWidth}px` } : undefined}
         onTransitionEnd={handleTransitionEnd}
       >
+        {/* Resize handle - desktop only */}
+        {!isMobile && (
+          <ResizableHandle
+            width={panelWidth}
+            onWidthChange={onWidthChange}
+            minWidth={280}
+            maxWidthRatio={0.6}
+          />
+        )}
         {/* Common header */}
         <div className="flex items-center justify-between px-4 py-3
                         border-b border-gray-200 dark:border-gray-700">
