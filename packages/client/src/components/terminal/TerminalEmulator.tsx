@@ -101,6 +101,10 @@ export function TerminalEmulator({
   const registerDataCallback = useTerminalStore((s) => s.registerDataCallback);
   const session = useTerminalStore((s) => s.terminals.get(terminalId));
   const status = session?.status ?? null;
+  const fontSize = useTerminalStore((s) => s.fontSize);
+  const increaseFontSize = useTerminalStore((s) => s.increaseFontSize);
+  const decreaseFontSize = useTerminalStore((s) => s.decreaseFontSize);
+  const resetFontSize = useTerminalStore((s) => s.resetFontSize);
 
   // Initialize xterm.js
   useEffect(() => {
@@ -108,7 +112,7 @@ export function TerminalEmulator({
 
     const terminal = new Terminal({
       cursorBlink: true,
-      fontSize: 14,
+      fontSize: useTerminalStore.getState().fontSize,
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
       scrollback: 1000,
       allowProposedApi: false,
@@ -121,6 +125,26 @@ export function TerminalEmulator({
 
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
+
+    // Font size shortcuts: Ctrl+= / Ctrl+- / Ctrl+0
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type !== 'keydown') return true;
+      if (event.ctrlKey || event.metaKey) {
+        if (event.key === '=' || event.key === '+') {
+          useTerminalStore.getState().increaseFontSize();
+          return false;
+        }
+        if (event.key === '-') {
+          useTerminalStore.getState().decreaseFontSize();
+          return false;
+        }
+        if (event.key === '0') {
+          useTerminalStore.getState().resetFontSize();
+          return false;
+        }
+      }
+      return true;
+    });
 
     // Input handler: user keystrokes → server PTY
     const inputDisposable = terminal.onData((data) => {
@@ -175,6 +199,17 @@ export function TerminalEmulator({
       terminalRef.current.options.theme = getXtermTheme(theme);
     }
   }, [theme]);
+
+  // Dynamic font size update
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    const fitAddon = fitAddonRef.current;
+    if (terminal && fitAddon) {
+      terminal.options.fontSize = fontSize;
+      fitAddon.fit();
+      resize(terminalId, terminal.cols, terminal.rows);
+    }
+  }, [fontSize, terminalId, resize]);
 
   // Status overlays
   if (status === 'connecting' || !status) {

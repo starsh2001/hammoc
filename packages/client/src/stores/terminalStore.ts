@@ -28,6 +28,10 @@ export interface TerminalSession {
 
 type DataCallback = (data: string) => void;
 
+const DEFAULT_FONT_SIZE = 14;
+const MIN_FONT_SIZE = 8;
+const MAX_FONT_SIZE = 24;
+
 interface TerminalStore {
   // State
   terminals: Map<string, TerminalSession>;
@@ -35,6 +39,7 @@ interface TerminalStore {
   currentProjectSlug: string | null;
   terminalAccess: TerminalAccessInfo | null;
   pendingCreate: boolean;
+  fontSize: number;
 
   // Actions
   setTerminalAccess: (access: TerminalAccessInfo) => void;
@@ -45,6 +50,10 @@ interface TerminalStore {
   resize: (terminalId: string, cols: number, rows: number) => void;
   setActiveTerminalId: (terminalId: string) => void;
   clearTerminalsForProjectChange: (newProjectSlug: string) => void;
+  setFontSize: (size: number) => void;
+  increaseFontSize: () => void;
+  decreaseFontSize: () => void;
+  resetFontSize: () => void;
 
   // Socket listener lifecycle
   setupTerminalListeners: (socket: TypedSocket) => void;
@@ -71,10 +80,29 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   currentProjectSlug: null,
   terminalAccess: null,
   pendingCreate: false,
+  fontSize: DEFAULT_FONT_SIZE,
 
   // Actions
   setTerminalAccess: (access: TerminalAccessInfo) => {
     set({ terminalAccess: access });
+  },
+
+  setFontSize: (size: number) => {
+    set({ fontSize: Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, size)) });
+  },
+
+  increaseFontSize: () => {
+    const { fontSize } = get();
+    if (fontSize < MAX_FONT_SIZE) set({ fontSize: fontSize + 1 });
+  },
+
+  decreaseFontSize: () => {
+    const { fontSize } = get();
+    if (fontSize > MIN_FONT_SIZE) set({ fontSize: fontSize - 1 });
+  },
+
+  resetFontSize: () => {
+    set({ fontSize: DEFAULT_FONT_SIZE });
   },
 
   createTerminal: (projectSlug: string) => {

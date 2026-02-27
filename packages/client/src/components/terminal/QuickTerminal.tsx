@@ -5,8 +5,9 @@
  */
 
 import { useEffect } from 'react';
-import { ExternalLink, Loader2, ShieldAlert } from 'lucide-react';
+import { ExternalLink, Loader2, Minus, Plus, ShieldAlert } from 'lucide-react';
 import { useTerminal } from '../../hooks/useTerminal';
+import { useTerminalStore } from '../../stores/terminalStore';
 import { TerminalEmulator } from './TerminalEmulator';
 
 interface QuickTerminalProps {
@@ -19,6 +20,10 @@ export function QuickTerminal({
   onNavigateToTerminalTab,
 }: QuickTerminalProps) {
   const { terminalId, terminals, terminalAccess, create } = useTerminal(projectSlug);
+  const fontSize = useTerminalStore((s) => s.fontSize);
+  const increaseFontSize = useTerminalStore((s) => s.increaseFontSize);
+  const decreaseFontSize = useTerminalStore((s) => s.decreaseFontSize);
+  const resetFontSize = useTerminalStore((s) => s.resetFontSize);
 
   // Create terminal if none exists on mount (mount = panel open)
   useEffect(() => {
@@ -29,9 +34,32 @@ export function QuickTerminal({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Navigate to terminal tab link */}
-      {onNavigateToTerminalTab && (
-        <div className="flex justify-end px-4 py-1.5 border-b border-gray-200 dark:border-gray-700">
+      {/* Header: font controls + navigate link */}
+      <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={decreaseFontSize}
+            className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            aria-label="폰트 축소"
+          >
+            <Minus className="w-3 h-3" />
+          </button>
+          <button
+            onClick={resetFontSize}
+            className="px-1 py-0.5 text-xs tabular-nums text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors min-w-[1.75rem] text-center"
+            aria-label="폰트 초기화"
+          >
+            {fontSize}
+          </button>
+          <button
+            onClick={increaseFontSize}
+            className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            aria-label="폰트 확대"
+          >
+            <Plus className="w-3 h-3" />
+          </button>
+        </div>
+        {onNavigateToTerminalTab && (
           <button
             onClick={onNavigateToTerminalTab}
             className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600
@@ -41,8 +69,8 @@ export function QuickTerminal({
             터미널 탭에서 열기
             <ExternalLink className="w-3 h-3" aria-hidden="true" />
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Terminal area */}
       <div className="flex-1 min-h-0">
