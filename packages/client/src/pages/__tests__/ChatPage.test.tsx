@@ -785,8 +785,9 @@ describe('ChatPage', () => {
       // Open the panel
       fireEvent.click(screen.getByRole('button', { name: '세션 목록' }));
 
-      // Panel should be visible
-      expect(screen.getByTestId('session-quick-access-panel')).toBeInTheDocument();
+      // QuickPanel should be visible with sessions content
+      expect(screen.getByTestId('quick-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('quick-panel')).toHaveAttribute('aria-label', '세션 목록');
     });
   });
 
