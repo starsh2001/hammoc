@@ -294,13 +294,14 @@ describe('terminalStore', () => {
   // TC-TERM-S11: cleanupTerminalListeners removes socket handlers
   it('cleanupTerminalListeners removes all socket event handlers', () => {
     useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
-    expect(mockSocket.on).toHaveBeenCalledTimes(4);
+    expect(mockSocket.on).toHaveBeenCalledTimes(5);
 
     // Clear mock counts from setup (which internally calls cleanup first)
     mockSocket.off.mockClear();
 
     useTerminalStore.getState().cleanupTerminalListeners(mockSocket as any);
-    expect(mockSocket.off).toHaveBeenCalledTimes(4);
+    expect(mockSocket.off).toHaveBeenCalledTimes(5);
+    expect(mockSocket.off).toHaveBeenCalledWith('terminal:access', expect.any(Function));
     expect(mockSocket.off).toHaveBeenCalledWith('terminal:created', expect.any(Function));
     expect(mockSocket.off).toHaveBeenCalledWith('terminal:data', expect.any(Function));
     expect(mockSocket.off).toHaveBeenCalledWith('terminal:exit', expect.any(Function));
