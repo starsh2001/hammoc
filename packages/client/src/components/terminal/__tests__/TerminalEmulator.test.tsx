@@ -17,6 +17,7 @@ const mockTerminal = {
   dispose: vi.fn(),
   loadAddon: vi.fn(),
   focus: vi.fn(),
+  attachCustomKeyEventHandler: vi.fn(),
   options: {} as Record<string, unknown>,
   cols: 80,
   rows: 24,
