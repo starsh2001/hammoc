@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
-import { Plus, Terminal, X, ShieldAlert } from 'lucide-react';
+import { Plus, Minus, Terminal, X, ShieldAlert } from 'lucide-react';
 import { useTerminal } from '../../hooks/useTerminal';
 import { useTerminalStore } from '../../stores/terminalStore';
 import { TerminalEmulator } from './TerminalEmulator';
@@ -31,6 +31,11 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
     closeById,
     switchTerminal,
   } = useTerminal(projectSlug);
+
+  const fontSize = useTerminalStore((s) => s.fontSize);
+  const increaseFontSize = useTerminalStore((s) => s.increaseFontSize);
+  const decreaseFontSize = useTerminalStore((s) => s.decreaseFontSize);
+  const resetFontSize = useTerminalStore((s) => s.resetFontSize);
 
   // Story 17.5: Show warning when terminal access is denied
   if (terminalAccess && !terminalAccess.allowed) {
@@ -172,19 +177,49 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
           {renderStatusBadge()}
         </div>
 
-        {/* New terminal button */}
-        <button
-          onClick={create}
-          disabled={terminals.size >= MAX_TERMINALS}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-            terminals.size >= MAX_TERMINALS
-              ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-500'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-          }`}
-        >
-          <Plus className="w-3.5 h-3.5" />
-          새 터미널
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Font size controls */}
+          <div className="flex items-center gap-0.5 mr-2">
+            <button
+              onClick={decreaseFontSize}
+              className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              aria-label="폰트 축소"
+              title="폰트 축소 (Ctrl+-)"
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={resetFontSize}
+              className="px-1 py-0.5 text-xs tabular-nums text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors min-w-[2rem] text-center"
+              aria-label="폰트 초기화"
+              title="폰트 초기화 (Ctrl+0)"
+            >
+              {fontSize}
+            </button>
+            <button
+              onClick={increaseFontSize}
+              className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              aria-label="폰트 확대"
+              title="폰트 확대 (Ctrl+=)"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* New terminal button */}
+          <button
+            onClick={create}
+            disabled={terminals.size >= MAX_TERMINALS}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              terminals.size >= MAX_TERMINALS
+                ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-500'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            새 터미널
+          </button>
+        </div>
       </div>
 
       {/* Terminal session tabs (only when multiple terminals) */}
