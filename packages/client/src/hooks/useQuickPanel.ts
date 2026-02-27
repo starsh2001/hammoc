@@ -1,8 +1,9 @@
 /**
  * useQuickPanel - Convenience hook for quick panel state
- * [Source: Story 19.1 - Task 2]
+ * [Source: Story 19.1 - Task 2, Story 19.3 - Task 2]
  */
 
+import { useCallback } from 'react';
 import { usePanelStore, type QuickPanelType } from '../stores/panelStore';
 
 interface UseQuickPanelReturn {
@@ -11,6 +12,8 @@ interface UseQuickPanelReturn {
   open: (type: QuickPanelType) => void;
   close: () => void;
   toggle: (type: QuickPanelType) => void;
+  panelWidth: number;
+  setWidth: (width: number) => void;
 }
 
 export function useQuickPanel(): UseQuickPanelReturn {
@@ -18,6 +21,16 @@ export function useQuickPanel(): UseQuickPanelReturn {
   const open = usePanelStore((s) => s.openPanel);
   const close = usePanelStore((s) => s.closePanel);
   const toggle = usePanelStore((s) => s.togglePanel);
+  const panelWidths = usePanelStore((s) => s.panelWidths);
+  const setPanelWidth = usePanelStore((s) => s.setPanelWidth);
+
+  const panelWidth = activePanel ? panelWidths[activePanel] : 320;
+  const setWidth = useCallback(
+    (width: number) => {
+      if (activePanel) setPanelWidth(activePanel, width);
+    },
+    [activePanel, setPanelWidth]
+  );
 
   return {
     activePanel,
@@ -25,5 +38,7 @@ export function useQuickPanel(): UseQuickPanelReturn {
     open,
     close,
     toggle,
+    panelWidth,
+    setWidth,
   };
 }

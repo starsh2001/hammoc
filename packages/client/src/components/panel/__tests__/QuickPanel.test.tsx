@@ -1,6 +1,6 @@
 /**
  * QuickPanel Component Tests
- * [Source: Story 19.1 - Task 9.2, Story 19.2 - Task 7]
+ * [Source: Story 19.1 - Task 9.2, Story 19.2 - Task 7, Story 19.3 - Task 8]
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -16,6 +16,13 @@ vi.mock('../PanelTabSwitcher', () => ({
       <button data-testid="panel-tab-git" onClick={() => onSwitchPanel('git')}>Git</button>
       <button data-testid="panel-tab-terminal" onClick={() => onSwitchPanel('terminal')}>Terminal</button>
     </div>
+  ),
+}));
+
+// Mock ResizablePanel (ResizableHandle)
+vi.mock('../ResizablePanel', () => ({
+  ResizableHandle: ({ onWidthChange }: any) => (
+    <div data-testid="panel-resize-handle" onClick={() => onWidthChange(400)} />
   ),
 }));
 
@@ -43,6 +50,9 @@ describe('QuickPanel', () => {
     onSelectSession: vi.fn(),
     onNavigateToGitTab: vi.fn(),
     onNavigateToTerminalTab: vi.fn(),
+    panelWidth: 320,
+    onWidthChange: vi.fn(),
+    isMobile: false,
   };
 
   beforeEach(() => {
@@ -213,5 +223,47 @@ describe('QuickPanel', () => {
     expect(screen.queryByTestId('quick-panel-content-files')).not.toBeInTheDocument();
     expect(screen.queryByTestId('quick-panel-content-git')).not.toBeInTheDocument();
     expect(screen.queryByTestId('quick-panel-content-terminal')).not.toBeInTheDocument();
+  });
+
+  // Story 19.3 — Resize handle integration tests
+
+  // TC-QP-20: Resize handle shown on desktop (isMobile=false)
+  it('should show resize handle when isMobile is false', () => {
+    render(<QuickPanel {...defaultProps} activePanel="sessions" isMobile={false} />);
+    expect(screen.getByTestId('panel-resize-handle')).toBeInTheDocument();
+  });
+
+  // TC-QP-21: Resize handle hidden on mobile (isMobile=true)
+  it('should hide resize handle when isMobile is true', () => {
+    render(<QuickPanel {...defaultProps} activePanel="sessions" isMobile={true} />);
+    expect(screen.queryByTestId('panel-resize-handle')).not.toBeInTheDocument();
+  });
+
+  // TC-QP-22: Inline width applied on desktop
+  it('should apply inline width style when isMobile is false', () => {
+    render(<QuickPanel {...defaultProps} activePanel="sessions" panelWidth={400} isMobile={false} />);
+    const panel = screen.getByTestId('quick-panel');
+    expect(panel.style.width).toBe('400px');
+  });
+
+  // TC-QP-23: No inline width on mobile
+  it('should not apply inline width style when isMobile is true', () => {
+    render(<QuickPanel {...defaultProps} activePanel="sessions" panelWidth={400} isMobile={true} />);
+    const panel = screen.getByTestId('quick-panel');
+    expect(panel.style.width).toBe('');
+  });
+
+  // TC-QP-24: widthClass removed — no md:w-80 or md:w-96 classes
+  it('should not have md:w-80 or md:w-96 classes', () => {
+    render(<QuickPanel {...defaultProps} activePanel="sessions" />);
+    const panel = screen.getByTestId('quick-panel');
+    expect(panel.className).not.toContain('md:w-80');
+    expect(panel.className).not.toContain('md:w-96');
+  });
+
+  it('should not have md:w-96 class for terminal panel', () => {
+    render(<QuickPanel {...defaultProps} activePanel="terminal" />);
+    const panel = screen.getByTestId('quick-panel');
+    expect(panel.className).not.toContain('md:w-96');
   });
 });
