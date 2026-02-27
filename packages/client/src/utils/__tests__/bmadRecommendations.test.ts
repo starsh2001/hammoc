@@ -225,7 +225,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     expect(fixRec!.taskCommand).toBe('*review-qa 1.1');
   });
 
-  it('recommends creating next story when all stories are Done', () => {
+  it('recommends creating next story when stories are Done but more are planned', () => {
     const { recommendations } = computeNextSteps(
       makeData({
         ...baseOpts,
@@ -302,6 +302,31 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     expect(createRec!.variant).toBe('secondary');
   });
 
+  it('recommends creating next story when all done but more are planned', () => {
+    const { phase, recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [
+          {
+            number: 1,
+            name: 'E1',
+            stories: [
+              { file: '1.1.story.md', status: 'Done' },
+              { file: '1.2.story.md', status: 'Done' },
+            ],
+            plannedStories: 4,
+          },
+        ],
+      }),
+    );
+    // Still in implementation phase because more stories are planned
+    expect(phase.phase).toBe('implementation');
+    const createRec = recommendations.find((r) => r.id === 'create-story');
+    expect(createRec).toBeDefined();
+    expect(createRec!.title).toBe('다음 스토리 생성');
+    expect(createRec!.description).toContain('2');
+  });
+
   it('includes story file reference in recommendations', () => {
     const { recommendations } = computeNextSteps(
       makeData({
@@ -318,5 +343,101 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const continueRec = recommendations.find((r) => r.id === 'continue-dev');
     expect(continueRec!.storyFile).toBe('1.1.story.md');
     expect(continueRec!.description).toContain('Setup Foundation');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 4: completed recommendations
+// ---------------------------------------------------------------------------
+
+describe('computeNextSteps — Phase 4 (completed)', () => {
+  const baseOpts = { prdExists: true, archExists: true };
+
+  it('detects completed phase when all stories are Done and no more planned', () => {
+    const data = makeData({
+      ...baseOpts,
+      epics: [
+        {
+          number: 1,
+          name: 'E1',
+          stories: [
+            { file: '1.1.story.md', status: 'Done' },
+            { file: '1.2.story.md', status: 'Done' },
+          ],
+        },
+      ],
+    });
+    const { phase } = computeNextSteps(data);
+    expect(phase.phase).toBe('completed');
+    expect(phase.label).toBe('구현 완료');
+  });
+
+  it('stays in implementation when stories are Done but more are planned', () => {
+    const data = makeData({
+      ...baseOpts,
+      epics: [
+        {
+          number: 1,
+          name: 'E1',
+          stories: [
+            { file: '1.1.story.md', status: 'Done' },
+            { file: '1.2.story.md', status: 'Done' },
+          ],
+          plannedStories: 5,
+        },
+      ],
+    });
+    const { phase } = computeNextSteps(data);
+    expect(phase.phase).toBe('implementation');
+  });
+
+  it('recommends new epic and brainstorming when project is complete', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [
+          {
+            number: 1,
+            name: 'E1',
+            stories: [
+              { file: '1.1.story.md', status: 'Done' },
+              { file: '1.2.story.md', status: 'Done' },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const newEpic = recommendations.find((r) => r.id === 'new-epic');
+    expect(newEpic).toBeDefined();
+    expect(newEpic!.variant).toBe('primary');
+    expect(newEpic!.agentCommand).toBe('/BMad:agents:pm');
+    expect(newEpic!.taskCommand).toBe('*brownfield-create-epic');
+
+    const brainstorm = recommendations.find((r) => r.id === 'brainstorm-features');
+    expect(brainstorm).toBeDefined();
+    expect(brainstorm!.variant).toBe('primary');
+    expect(brainstorm!.agentCommand).toBe('/BMad:agents:analyst');
+
+    const addStory = recommendations.find((r) => r.id === 'add-brownfield-story');
+    expect(addStory).toBeDefined();
+    expect(addStory!.variant).toBe('secondary');
+  });
+
+  it('does NOT recommend creating a story with *draft command', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [
+          {
+            number: 1,
+            name: 'E1',
+            stories: [{ file: '1.1.story.md', status: 'Done' }],
+          },
+        ],
+      }),
+    );
+    const createStory = recommendations.find((r) => r.id === 'create-story');
+    expect(createStory).toBeUndefined();
   });
 });
