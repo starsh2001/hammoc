@@ -24,6 +24,7 @@ import {
   ListOrdered,
   FolderOpen,
   Plus,
+  PartyPopper,
 } from 'lucide-react';
 import type { BmadStatusResponse } from '@bmad-studio/shared';
 
@@ -113,11 +114,20 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
     navigate(`/project/${projectSlug}/session/${sessionId}`);
   };
 
+  const isCompleted = phase.phase === 'completed';
+
   return (
     <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-gray-900 dark:text-white">다음 작업</h2>
-        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+        <h2 className="font-semibold text-gray-900 dark:text-white">
+          {isCompleted ? '다음 단계' : '다음 작업'}
+        </h2>
+        <span className={`text-xs px-2 py-0.5 rounded-full ${
+          isCompleted
+            ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+        }`}>
+          {isCompleted && <PartyPopper className="w-3 h-3 inline-block mr-1 -mt-0.5" />}
           {phase.label}
         </span>
       </div>

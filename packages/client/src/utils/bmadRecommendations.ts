@@ -17,7 +17,7 @@ import type { BmadStatusResponse, BmadSupplementaryDoc, BmadStoryStatus } from '
 // Types
 // ---------------------------------------------------------------------------
 
-export type Phase = 'pre-prd' | 'pre-architecture' | 'implementation';
+export type Phase = 'pre-prd' | 'pre-architecture' | 'implementation' | 'completed';
 export type ActionVariant = 'primary' | 'secondary';
 
 export interface NextStepRecommendation {
@@ -116,12 +116,21 @@ function nextStoryNum(data: BmadStatusResponse): string {
 
 export function detectPhase(data: BmadStatusResponse): PhaseInfo {
   if (!data.documents.prd.exists) {
-    return { phase: 'pre-prd', label: 'PRD \uc791\uc131 \uc804' };
+    return { phase: 'pre-prd', label: 'PRD 작성 전' };
   }
   if (!data.documents.architecture.exists) {
-    return { phase: 'pre-architecture', label: '\uc544\ud0a4\ud14d\ucc98 \uc791\uc131 \uc804' };
+    return { phase: 'pre-architecture', label: '아키텍처 작성 전' };
   }
-  return { phase: 'implementation', label: '\uad6c\ud604 \ub2e8\uacc4' };
+
+  // Check if all planned work is complete
+  const stories = allStories(data);
+  const totalPlanned = data.epics.reduce((s, e) => s + (e.plannedStories ?? e.stories.length), 0);
+  const nonDoneStories = stories.filter((s) => s.status !== 'Done');
+  if (stories.length > 0 && nonDoneStories.length === 0 && totalPlanned <= stories.length) {
+    return { phase: 'completed', label: '구현 완료' };
+  }
+
+  return { phase: 'implementation', label: '구현 단계' };
 }
 
 // ---------------------------------------------------------------------------
@@ -367,6 +376,44 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
   return recs;
 }
 
+function buildCompletedRecommendations(data: BmadStatusResponse): NextStepRecommendation[] {
+  const recs: NextStepRecommendation[] = [];
+  const stories = allStories(data);
+  const doneCount = countByStatus(data, 'Done');
+
+  recs.push({
+    id: 'brainstorm-features',
+    title: '새 기능 브레인스토밍',
+    description: '다음 단계를 위한 아이디어를 탐색합니다',
+    agentCommand: '/BMad:agents:analyst',
+    taskCommand: '*brainstorm',
+    variant: 'primary',
+    iconKey: 'lightbulb',
+  });
+
+  recs.push({
+    id: 'new-epic',
+    title: '새 에픽 추가',
+    description: 'PRD에 새로운 에픽과 스토리를 추가합니다',
+    agentCommand: '/BMad:agents:pm',
+    taskCommand: '*brownfield-create-epic',
+    variant: 'primary',
+    iconKey: 'plus-circle',
+  });
+
+  recs.push({
+    id: 'add-brownfield-story',
+    title: '기존 에픽에 스토리 추가',
+    description: '기존 에픽에 새로운 스토리를 추가합니다',
+    agentCommand: '/BMad:agents:sm',
+    taskCommand: '*brownfield-create-story',
+    variant: 'secondary',
+    iconKey: 'file-text',
+  });
+
+  return recs;
+}
+
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
@@ -384,6 +431,9 @@ export function computeNextSteps(data: BmadStatusResponse): NextStepResult {
       break;
     case 'implementation':
       recommendations = buildImplementationRecommendations(data);
+      break;
+    case 'completed':
+      recommendations = buildCompletedRecommendations(data);
       break;
   }
 
