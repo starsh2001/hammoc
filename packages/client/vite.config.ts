@@ -32,6 +32,9 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: ['./src/test-utils/setup.ts'],
       include: ['src/**/*.test.{ts,tsx}'],
+      env: {
+        NODE_ENV: 'test',
+      },
     },
   };
 });

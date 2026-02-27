@@ -1,6 +1,6 @@
 /**
- * QuickGitPanel Component Tests
- * [Source: Story 16.4 - Task 4]
+ * QuickGitPanel Component Tests (Content-only, post-refactor)
+ * [Source: Story 16.4 - Task 4, Story 19.1 - Task 9.3]
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -64,7 +64,7 @@ vi.mock('../../../hooks/useGitStatus', () => ({
   }),
 }));
 
-// Mock useGitStore — also mock getState for post-commit error check
+// Mock useGitStore
 const mockGetState = vi.fn(() => ({ error: null }));
 
 vi.mock('../../../stores/gitStore', () => ({
@@ -82,9 +82,7 @@ vi.mock('../../../stores/gitStore', () => ({
 }));
 
 const defaultProps = {
-  isOpen: true,
   projectSlug: 'test-project',
-  onClose: vi.fn(),
   onNavigateToGitTab: vi.fn(),
 };
 
@@ -104,26 +102,21 @@ describe('QuickGitPanel', () => {
     mockGetState.mockReturnValue({ error: null });
   });
 
-  // TC-QGP-1: Renders panel with status summary when open
-  it('renders panel with status summary when open', () => {
+  it('renders panel with status summary', () => {
     renderPanel();
-    expect(screen.getByTestId('quick-git-panel')).toBeInTheDocument();
-    expect(screen.getByText('Git')).toBeInTheDocument();
+    expect(screen.getByTestId('current-branch')).toHaveTextContent('main');
   });
 
-  // TC-QGP-2: Shows current branch name
   it('shows current branch name', () => {
     renderPanel();
     expect(screen.getByTestId('current-branch')).toHaveTextContent('main');
   });
 
-  // TC-QGP-3: Shows changed file count
   it('shows changed file count badge', () => {
     renderPanel();
     expect(screen.getByTestId('changed-file-badge')).toHaveTextContent('3 변경');
   });
 
-  // TC-QGP-4: Shows recent 3 commits
   it('shows recent 3 commits', () => {
     renderPanel();
     expect(screen.getByText('abc1234')).toBeInTheDocument();
@@ -132,7 +125,6 @@ describe('QuickGitPanel', () => {
     expect(screen.getByText('feat: add git tab')).toBeInTheDocument();
   });
 
-  // TC-QGP-5: Commit message textarea and button present
   it('shows commit message textarea and "Stage All & Commit" button', () => {
     renderPanel();
     expect(screen.getByTestId('commit-message-input')).toBeInTheDocument();
@@ -140,13 +132,11 @@ describe('QuickGitPanel', () => {
     expect(screen.getByText('Stage All & Commit')).toBeInTheDocument();
   });
 
-  // TC-QGP-6: Button disabled when message empty
   it('disables commit button when message is empty', () => {
     renderPanel();
     expect(screen.getByTestId('stage-commit-button')).toBeDisabled();
   });
 
-  // TC-QGP-7: Button disabled when no changed files
   it('disables commit button when no changed files', () => {
     storeState.status = {
       initialized: true,
@@ -161,7 +151,6 @@ describe('QuickGitPanel', () => {
     expect(screen.getByTestId('stage-commit-button')).toBeDisabled();
   });
 
-  // TC-QGP-8: Calls stageFiles then commit on button click
   it('calls stageFiles then commit on button click', async () => {
     renderPanel();
     const textarea = screen.getByTestId('commit-message-input');
@@ -177,29 +166,11 @@ describe('QuickGitPanel', () => {
     });
   });
 
-  // TC-QGP-9: Shows "Git 탭에서 상세 보기" link
   it('shows footer link to Git tab', () => {
     renderPanel();
     expect(screen.getByText('Git 탭에서 상세 보기')).toBeInTheDocument();
   });
 
-  // TC-QGP-10: Calls onClose when Escape pressed
-  it('calls onClose when Escape is pressed', () => {
-    const onClose = vi.fn();
-    renderPanel({ onClose });
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  // TC-QGP-11: Calls onClose when backdrop clicked
-  it('calls onClose when backdrop is clicked', () => {
-    const onClose = vi.fn();
-    renderPanel({ onClose });
-    fireEvent.click(screen.getByTestId('git-panel-backdrop'));
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  // TC-QGP-12: Shows "Git Init" button when not initialized
   it('shows Git Init button when not initialized', () => {
     storeState.status = mockUninitializedStatus;
     renderPanel();
@@ -207,14 +178,12 @@ describe('QuickGitPanel', () => {
     expect(screen.getByText('Git Init')).toBeInTheDocument();
   });
 
-  // TC-QGP-13: Shows error banner when gitStore.error is set
   it('shows error banner when error is set', () => {
     storeState.error = 'Git 작업 중 오류가 발생했습니다.';
     renderPanel();
     expect(screen.getByTestId('git-error-banner')).toHaveTextContent('Git 작업 중 오류가 발생했습니다.');
   });
 
-  // TC-QGP-14: Clears commit message on successful commit
   it('clears commit message and shows success on successful commit', async () => {
     renderPanel();
     const textarea = screen.getByTestId('commit-message-input');
@@ -230,21 +199,14 @@ describe('QuickGitPanel', () => {
     });
   });
 
-  it('does not render when isOpen is false', () => {
-    renderPanel({ isOpen: false });
-    expect(screen.queryByTestId('quick-git-panel')).not.toBeInTheDocument();
-  });
-
-  it('calls onNavigateToGitTab and onClose when footer link clicked', () => {
+  it('calls onNavigateToGitTab when footer link clicked', () => {
     const onNavigateToGitTab = vi.fn();
-    const onClose = vi.fn();
-    renderPanel({ onNavigateToGitTab, onClose });
+    renderPanel({ onNavigateToGitTab });
     fireEvent.click(screen.getByText('Git 탭에서 상세 보기'));
     expect(onNavigateToGitTab).toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalled();
   });
 
-  it('fetches log with limit 3 when panel opens', () => {
+  it('fetches log with limit 3 on mount', () => {
     renderPanel();
     expect(mockFetchLog).toHaveBeenCalledWith('test-project', 3);
   });

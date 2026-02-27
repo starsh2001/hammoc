@@ -44,10 +44,8 @@ import { InteractiveResponseCard } from '../components/InteractiveResponseCard';
 import { MessageListSkeleton } from '../components/MessageListSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
-import { SessionQuickAccessPanel } from '../components/SessionQuickAccessPanel';
-import { QuickFileExplorer } from '../components/files/QuickFileExplorer';
-import { QuickGitPanel } from '../components/git/QuickGitPanel';
-import { QuickTerminal } from '../components/terminal/QuickTerminal';
+import { QuickPanel } from '../components/panel/QuickPanel';
+import { usePanelStore } from '../stores/panelStore';
 import { useTerminalStore } from '../stores/terminalStore';
 import { useGitStatus } from '../hooks/useGitStatus';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -665,8 +663,13 @@ export function ChatPage() {
     }
   }, [navigate, projectSlug]);
 
-  // Session quick access panel state
-  const [showSessionPanel, setShowSessionPanel] = useState(false);
+  // Unified panel state (Story 19.1)
+  const { activePanel, togglePanel, closePanel } = usePanelStore();
+
+  const handleToggleSessions = useCallback(() => togglePanel('sessions'), [togglePanel]);
+  const handleToggleFileExplorer = useCallback(() => togglePanel('files'), [togglePanel]);
+  const handleToggleGit = useCallback(() => togglePanel('git'), [togglePanel]);
+  const handleToggleTerminal = useCallback(() => togglePanel('terminal'), [togglePanel]);
 
   // Confirm modal state (non-blocking replacement for window.confirm)
   const [confirmModal, setConfirmModal] = useState<{
@@ -692,73 +695,22 @@ export function ChatPage() {
   const sessionIdRef = useRef(sessionId);
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
-  // Quick file explorer panel state
-  const [showFileExplorer, setShowFileExplorer] = useState(false);
-
-  // Quick git panel state
-  const [showGitPanel, setShowGitPanel] = useState(false);
   const { changedFileCount } = useGitStatus(projectSlug);
-
-  // Quick terminal panel state
-  const [showTerminalPanel, setShowTerminalPanel] = useState(false);
 
   // Story 17.5: Terminal access state (read from store directly to avoid useTerminal side-effects)
   const terminalAccess = useTerminalStore((state) => state.terminalAccess);
   const isTerminalEnabled = terminalAccess?.enabled !== false;
   const isTerminalAccessible = terminalAccess?.allowed ?? true;
 
-  const handleShowSessions = useCallback(() => {
-    setShowSessionPanel(true);
-    setShowFileExplorer(false);
-    setShowGitPanel(false);
-    setShowTerminalPanel(false);
-  }, []);
-
-  const handleCloseSessionPanel = useCallback(() => {
-    setShowSessionPanel(false);
-  }, []);
-
-  const handleShowFileExplorer = useCallback(() => {
-    setShowFileExplorer(true);
-    setShowSessionPanel(false);
-    setShowGitPanel(false);
-    setShowTerminalPanel(false);
-  }, []);
-
-  const handleCloseFileExplorer = useCallback(() => {
-    setShowFileExplorer(false);
-  }, []);
-
-  const handleShowGit = useCallback(() => {
-    setShowGitPanel(true);
-    setShowFileExplorer(false);
-    setShowSessionPanel(false);
-    setShowTerminalPanel(false);
-  }, []);
-
-  const handleCloseGitPanel = useCallback(() => {
-    setShowGitPanel(false);
-  }, []);
-
   const handleNavigateToGitTab = useCallback(() => {
+    closePanel();
     navigate(`/project/${projectSlug}/git`);
-  }, [navigate, projectSlug]);
-
-  const handleShowTerminal = useCallback(() => {
-    setShowTerminalPanel(true);
-    setShowSessionPanel(false);
-    setShowFileExplorer(false);
-    setShowGitPanel(false);
-  }, []);
-
-  const handleCloseTerminalPanel = useCallback(() => {
-    setShowTerminalPanel(false);
-  }, []);
+  }, [closePanel, navigate, projectSlug]);
 
   const handleNavigateToTerminalTab = useCallback(() => {
-    setShowTerminalPanel(false);
+    closePanel();
     navigate(`/project/${projectSlug}/terminal`);
-  }, [navigate, projectSlug]);
+  }, [closePanel, navigate, projectSlug]);
 
   // Execute confirmed action (after user confirms in modal)
   const executeConfirmedAction = useCallback(() => {
@@ -790,7 +742,7 @@ export function ChatPage() {
   }, [confirmModal.action, confirmModal.targetSessionId, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
 
   const handleSessionSelect = useCallback((selectedSessionId: string) => {
-    setShowSessionPanel(false);
+    closePanel();
     if (!projectSlug) return;
     // Don't navigate if selecting the current session
     if (selectedSessionId === sessionId) return;
@@ -810,7 +762,7 @@ export function ChatPage() {
     clearStreamingSegments();
     resetSelectedModel();
     navigate(`/project/${projectSlug}/session/${selectedSessionId}`);
-  }, [sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
+  }, [closePanel, sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
 
   const handleNewSession = useCallback(() => {
     if (!projectSlug) return;
@@ -893,39 +845,14 @@ export function ChatPage() {
     return <Navigate to="/" replace />;
   }
 
-  const sessionPanel = (
-    <SessionQuickAccessPanel
-      isOpen={showSessionPanel}
+  const quickPanelElement = (
+    <QuickPanel
+      activePanel={activePanel}
+      onClose={closePanel}
       projectSlug={projectSlug}
       currentSessionId={sessionId}
       onSelectSession={handleSessionSelect}
-      onClose={handleCloseSessionPanel}
-    />
-  );
-
-  const fileExplorerPanel = (
-    <QuickFileExplorer
-      isOpen={showFileExplorer}
-      projectSlug={projectSlug}
-      sessionId={sessionId}
-      onClose={handleCloseFileExplorer}
-    />
-  );
-
-  const gitPanel = (
-    <QuickGitPanel
-      isOpen={showGitPanel}
-      projectSlug={projectSlug}
-      onClose={handleCloseGitPanel}
       onNavigateToGitTab={handleNavigateToGitTab}
-    />
-  );
-
-  const terminalPanel = (
-    <QuickTerminal
-      isOpen={showTerminalPanel}
-      projectSlug={projectSlug}
-      onClose={handleCloseTerminalPanel}
       onNavigateToTerminalTab={handleNavigateToTerminalTab}
     />
   );
@@ -992,7 +919,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onShowGit={handleShowGit} gitChangedCount={changedFileCount} onShowTerminal={handleShowTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleToggleSessions} onShowFileExplorer={handleToggleFileExplorer} onShowGit={handleToggleGit} gitChangedCount={changedFileCount} onShowTerminal={handleToggleTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -1046,9 +973,7 @@ export function ChatPage() {
 
           />
         </InputArea>
-        {sessionPanel}
-        {fileExplorerPanel}
-        {gitPanel}
+        {quickPanelElement}
         {confirmModalElement}
       </div>
     );
@@ -1061,7 +986,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onShowGit={handleShowGit} gitChangedCount={changedFileCount} onShowTerminal={handleShowTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleToggleSessions} onShowFileExplorer={handleToggleFileExplorer} onShowGit={handleToggleGit} gitChangedCount={changedFileCount} onShowTerminal={handleToggleTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -1112,9 +1037,7 @@ export function ChatPage() {
 
           />
         </InputArea>
-        {sessionPanel}
-        {fileExplorerPanel}
-        {gitPanel}
+        {quickPanelElement}
         {confirmModalElement}
       </div>
     );
@@ -1127,7 +1050,7 @@ export function ChatPage() {
         data-testid="chat-page"
         className="h-dvh flex flex-col bg-white dark:bg-gray-900"
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleShowSessions} onShowFileExplorer={handleShowFileExplorer} onShowGit={handleShowGit} gitChangedCount={changedFileCount} onShowTerminal={handleShowTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} onShowSessions={handleToggleSessions} onShowFileExplorer={handleToggleFileExplorer} onShowGit={handleToggleGit} gitChangedCount={changedFileCount} onShowTerminal={handleToggleTerminal} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -1191,9 +1114,7 @@ export function ChatPage() {
             getChainLength={getChainLength}
           />
         </InputArea>
-        {sessionPanel}
-        {fileExplorerPanel}
-        {gitPanel}
+        {quickPanelElement}
         {confirmModalElement}
       </div>
     );
@@ -1210,11 +1131,11 @@ export function ChatPage() {
         sessionTitle={sessionId} sessionName={sessionName}
         onBack={handleBack}
         onNewSession={handleNewSession}
-        onShowSessions={handleShowSessions}
-        onShowFileExplorer={handleShowFileExplorer}
-        onShowGit={handleShowGit}
+        onShowSessions={handleToggleSessions}
+        onShowFileExplorer={handleToggleFileExplorer}
+        onShowGit={handleToggleGit}
         gitChangedCount={changedFileCount}
-        onShowTerminal={isTerminalEnabled ? handleShowTerminal : undefined}
+        onShowTerminal={isTerminalEnabled ? handleToggleTerminal : undefined}
         terminalAccessible={isTerminalAccessible}
         onRefresh={handleRetry}
         onLogout={handleLogout}
@@ -1295,10 +1216,7 @@ export function ChatPage() {
           getChainLength={getChainLength}
         />
       </InputArea>
-      {sessionPanel}
-      {fileExplorerPanel}
-      {gitPanel}
-      {terminalPanel}
+      {quickPanelElement}
       {confirmModalElement}
     </div>
   );
