@@ -692,12 +692,12 @@ export async function initializeWebSocket(
         socketToSession.delete(socket.id);
       }
 
-      // Story 17.1: Schedule cleanup for all terminal sessions owned by this socket
+      // PTY sessions are NOT cleaned up on socket disconnect.
+      // They persist until explicitly closed by the user, the PTY process exits,
+      // or the server shuts down. This prevents losing long-running terminal
+      // work during browser refreshes or temporary network interruptions.
       const terminalIds = socketTerminals.get(socket.id);
       if (terminalIds) {
-        for (const terminalId of terminalIds) {
-          ptyService.scheduleCleanup(terminalId);
-        }
         socketTerminals.delete(socket.id);
       }
 
