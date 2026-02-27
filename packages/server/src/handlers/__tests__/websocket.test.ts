@@ -10,6 +10,15 @@ import {
 } from '../websocket.js';
 import { ERROR_CODES } from '@bmad-studio/shared';
 
+// Shared mock state — accessible via vi.hoisted() for vi.mock factories
+const { mockState } = vi.hoisted(() => {
+  const mockState = {
+    sendImpl: vi.fn().mockResolvedValue({}),
+    lastCtorArgs: undefined as unknown,
+  };
+  return { mockState };
+});
+
 // Mock fs module used by logger and other imports
 vi.mock('fs', () => ({
   existsSync: vi.fn(),
@@ -28,19 +37,21 @@ vi.mock('../../middleware/session.js', () => ({
   ),
 }));
 
-// Mock ChatService
+// Mock ChatService - real class that captures constructor args and delegates to mockState
 vi.mock('../../services/chatService.js', () => ({
-  ChatService: vi.fn().mockImplementation(() => ({
-    sendMessageWithCallbacks: vi.fn(),
-  })),
+  ChatService: class MockChatService {
+    constructor(...args: unknown[]) { mockState.lastCtorArgs = args[0]; }
+    sendMessageWithCallbacks(...args: unknown[]) { return mockState.sendImpl(...args); }
+    setPermissionMode() {}
+  },
 }));
 
-// Mock SessionService - must be a class constructor (used with `new`)
-vi.mock('../../services/sessionService.js', () => {
-  const MockSessionService = vi.fn().mockImplementation(() => ({
-    saveSessionId: vi.fn().mockResolvedValue(undefined),
-    getSessionId: vi.fn().mockResolvedValue(null),
-    listSessions: vi.fn().mockResolvedValue([
+// Mock SessionService - must be a real class (used with `new`)
+vi.mock('../../services/sessionService.js', () => ({
+  SessionService: class MockSessionService {
+    saveSessionId = vi.fn().mockResolvedValue(undefined);
+    getSessionId = vi.fn().mockResolvedValue(null);
+    listSessions = vi.fn().mockResolvedValue([
       {
         sessionId: 'session-123',
         projectSlug: 'test-project',
@@ -49,10 +60,9 @@ vi.mock('../../services/sessionService.js', () => {
         created: new Date('2026-01-30T10:00:00Z'),
         modified: new Date('2026-01-30T11:00:00Z'),
       },
-    ]),
-  }));
-  return { SessionService: MockSessionService };
-});
+    ]);
+  },
+}));
 
 // Mock preferencesService (Story 10.2)
 vi.mock('../../services/preferencesService.js', () => ({
@@ -63,6 +73,7 @@ vi.mock('../../services/preferencesService.js', () => ({
       permissionMode: 'default',
       chatTimeoutMs: 300000,
     }),
+    getTerminalEnabled: vi.fn().mockResolvedValue(true),
   },
 }));
 
@@ -124,23 +135,16 @@ vi.mock('../../utils/networkUtils.js', () => ({
   extractClientIP: vi.fn().mockReturnValue('127.0.0.1'),
 }));
 
-// Mock utils/errors
+// Mock utils/errors — parseSDKError passes through the original error
+// so that `instanceof` checks (e.g. AbortedError) still work in the handler
 vi.mock('../../utils/errors.js', () => ({
-  parseSDKError: vi.fn().mockReturnValue({ message: 'error', type: 'unknown' }),
+  parseSDKError: vi.fn().mockImplementation((err: unknown) => err),
   AbortedError: class AbortedError extends Error {
     constructor(message?: string) { super(message ?? 'Aborted'); this.name = 'AbortedError'; }
   },
 }));
 
-// Mock streamCallbacks
-vi.mock('./streamCallbacks.js', () => ({
-  buildStreamCallbacks: vi.fn().mockReturnValue({
-    onMessage: vi.fn(),
-    onToolUse: vi.fn(),
-    onToolResult: vi.fn(),
-    onError: vi.fn(),
-  }),
-}));
+// streamCallbacks: use real implementation (callbacks drive the socket events tests verify)
 
 // Mock rateLimitProbeService
 vi.mock('../../services/rateLimitProbeService.js', () => ({
@@ -192,6 +196,10 @@ describe('WebSocket Handler', () => {
   const TEST_PORT = 3001;
 
   beforeEach(async () => {
+    // Reset shared ChatService mock state
+    mockState.sendImpl = vi.fn().mockResolvedValue({});
+    mockState.lastCtorArgs = undefined;
+
     // Create HTTP server
     httpServer = createServer();
 
@@ -295,7 +303,8 @@ describe('WebSocket Handler', () => {
     });
 
     it('should log connection and disconnection', async () => {
-      const consoleSpy = vi.spyOn(console, 'log');
+      const { createLogger } = await import('../../utils/logger.js');
+      const mockLogger = vi.mocked(createLogger).mock.results[0]?.value;
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -305,7 +314,7 @@ describe('WebSocket Handler', () => {
         clientSocket.on('connect', () => resolve());
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
         expect.stringContaining('Client connected')
       );
 
@@ -314,11 +323,9 @@ describe('WebSocket Handler', () => {
       // Wait for disconnect to be processed
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
         expect.stringContaining('Client disconnected')
       );
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -416,11 +423,7 @@ describe('WebSocket Handler', () => {
     it('should call ChatService when workingDirectory is valid', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
+      mockState.sendImpl = vi.fn().mockResolvedValue({});
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -438,11 +441,12 @@ describe('WebSocket Handler', () => {
       // Wait for the handler to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      expect(ChatService).toHaveBeenCalledWith({ workingDirectory: '/valid/path' });
-      expect(mockSendMessageWithCallbacks).toHaveBeenCalledWith(
+      expect(mockState.lastCtorArgs).toEqual(expect.objectContaining({ workingDirectory: '/valid/path' }));
+      expect(mockState.sendImpl).toHaveBeenCalledWith(
         'Hello Claude',
         expect.any(Object),
         expect.any(Object),
+        expect.any(Function),
         expect.any(Function)
       );
     });
@@ -450,11 +454,7 @@ describe('WebSocket Handler', () => {
     it('should pass resume option when sessionId and resume are provided', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
+      mockState.sendImpl = vi.fn().mockResolvedValue({});
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -474,11 +474,12 @@ describe('WebSocket Handler', () => {
       // Wait for the handler to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Story 4.6: chatOptions now includes abortController
-      expect(mockSendMessageWithCallbacks).toHaveBeenCalledWith(
+      // chatOptions includes resume and abortController
+      expect(mockState.sendImpl).toHaveBeenCalledWith(
         'Continue our work',
         expect.any(Object),
         expect.objectContaining({ resume: 'resume-session-id', abortController: expect.any(AbortController) }),
+        expect.any(Function),
         expect.any(Function)
       );
     });
@@ -567,11 +568,7 @@ describe('WebSocket Handler', () => {
     it('should pass permissionMode to ChatService constructor when provided', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
+      mockState.sendImpl = vi.fn().mockResolvedValue({});
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -590,17 +587,13 @@ describe('WebSocket Handler', () => {
       // Wait for the handler to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      expect(ChatService).toHaveBeenCalledWith({ workingDirectory: '/valid/path', permissionMode: 'plan' });
+      expect(mockState.lastCtorArgs).toEqual(expect.objectContaining({ workingDirectory: '/valid/path', permissionMode: 'plan' }));
     });
 
     it('should pass undefined permissionMode when not provided (defaults to default)', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
+      mockState.sendImpl = vi.fn().mockResolvedValue({});
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -618,17 +611,13 @@ describe('WebSocket Handler', () => {
       // Wait for the handler to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      expect(ChatService).toHaveBeenCalledWith({ workingDirectory: '/valid/path', permissionMode: undefined });
+      expect(mockState.lastCtorArgs).toEqual(expect.objectContaining({ workingDirectory: '/valid/path' }));
     });
 
     it('should pass acceptEdits permissionMode to ChatService', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
+      mockState.sendImpl = vi.fn().mockResolvedValue({});
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -647,7 +636,7 @@ describe('WebSocket Handler', () => {
       // Wait for the handler to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      expect(ChatService).toHaveBeenCalledWith({ workingDirectory: '/valid/path', permissionMode: 'acceptEdits' });
+      expect(mockState.lastCtorArgs).toEqual(expect.objectContaining({ workingDirectory: '/valid/path', permissionMode: 'acceptEdits' }));
     });
   });
 
@@ -760,11 +749,7 @@ describe('WebSocket Handler', () => {
     it('should pass abortController in chatOptions', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
+      mockState.sendImpl = vi.fn().mockResolvedValue({});
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -782,12 +767,13 @@ describe('WebSocket Handler', () => {
       // Wait for the handler to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      expect(mockSendMessageWithCallbacks).toHaveBeenCalledWith(
+      expect(mockState.sendImpl).toHaveBeenCalledWith(
         'Hello Claude',
         expect.any(Object),
         expect.objectContaining({
           abortController: expect.any(AbortController),
         }),
+        expect.any(Function),
         expect.any(Function)
       );
     });
@@ -795,13 +781,10 @@ describe('WebSocket Handler', () => {
     it('should emit SESSION_NOT_FOUND error when session resume fails with session not found message', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockRejectedValue(
+
+      mockState.sendImpl =vi.fn().mockRejectedValue(
         new Error('Session not found: invalid-session-id')
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -831,13 +814,10 @@ describe('WebSocket Handler', () => {
     it('should emit CHAT_ERROR for non-session errors during resume', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockRejectedValue(
+
+      mockState.sendImpl =vi.fn().mockRejectedValue(
         new Error('Network connection failed')
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -866,13 +846,10 @@ describe('WebSocket Handler', () => {
     it('should emit CHAT_ERROR when SDK throws error', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockRejectedValue(
+
+      mockState.sendImpl =vi.fn().mockRejectedValue(
         new Error('SDK internal error')
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -901,15 +878,12 @@ describe('WebSocket Handler', () => {
 
       // Import AbortedError for simulation
       const { AbortedError } = await import('../../utils/errors.js');
-      const { ChatService } = await import('../../services/chatService.js');
+
 
       // Simulate timeout by throwing AbortedError
-      const mockSendMessageWithCallbacks = vi.fn().mockRejectedValue(
+      mockState.sendImpl =vi.fn().mockRejectedValue(
         new AbortedError()
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -937,12 +911,12 @@ describe('WebSocket Handler', () => {
     it('should call abortController.abort() when timeout occurs', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
+
 
       // Track if abortController was passed and its state
       let capturedAbortController: AbortController | null = null;
 
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, _callbacks: unknown, options: { abortController?: AbortController }) => {
           capturedAbortController = options.abortController || null;
           // Simulate long-running operation that checks abort signal
@@ -957,9 +931,6 @@ describe('WebSocket Handler', () => {
         }
       );
 
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -986,12 +957,9 @@ describe('WebSocket Handler', () => {
       // The mock config sets it to 300000 (5 minutes)
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockResolvedValue({});
 
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
+      mockState.sendImpl =vi.fn().mockResolvedValue({});
+
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1012,7 +980,7 @@ describe('WebSocket Handler', () => {
       // Verify ChatService was called (timeout didn't trigger immediately)
       // This implicitly tests that config.chat.timeoutMs (300000ms) is being used
       // If timeout was 0 or very small, the call would abort immediately
-      expect(mockSendMessageWithCallbacks).toHaveBeenCalled();
+      expect(mockState.sendImpl).toHaveBeenCalled();
     });
   });
 
@@ -1024,17 +992,14 @@ describe('WebSocket Handler', () => {
     it('should emit session:created for new session', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, callbacks: { onSessionInit?: (sessionId: string) => void }) => {
           // Simulate session init callback
           callbacks.onSessionInit?.('new-session-123');
           return {};
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1061,17 +1026,14 @@ describe('WebSocket Handler', () => {
     it('should emit session:resumed for resumed session', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, callbacks: { onSessionInit?: (sessionId: string) => void }) => {
           // Simulate session init callback for resumed session
           callbacks.onSessionInit?.('resumed-session-456');
           return {};
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1106,8 +1068,8 @@ describe('WebSocket Handler', () => {
     it('should emit message:chunk for text chunks', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, callbacks: {
           onSessionInit?: (sessionId: string) => void;
           onTextChunk?: (chunk: { sessionId: string; messageId: string; content: string; done: boolean }) => void;
@@ -1122,9 +1084,6 @@ describe('WebSocket Handler', () => {
           return {};
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1151,8 +1110,8 @@ describe('WebSocket Handler', () => {
     it('should emit tool:call for tool use', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, callbacks: {
           onSessionInit?: (sessionId: string) => void;
           onToolUse?: (toolCall: { id: string; name: string; input: Record<string, unknown> }) => void;
@@ -1166,9 +1125,6 @@ describe('WebSocket Handler', () => {
           return {};
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1196,8 +1152,8 @@ describe('WebSocket Handler', () => {
     it('should emit tool:result for tool results', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, callbacks: {
           onSessionInit?: (sessionId: string) => void;
           onToolResult?: (toolCallId: string, result: { success: boolean; output?: string }) => void;
@@ -1207,9 +1163,6 @@ describe('WebSocket Handler', () => {
           return {};
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1237,8 +1190,8 @@ describe('WebSocket Handler', () => {
     it('should emit message:complete for completed messages', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, callbacks: {
           onSessionInit?: (sessionId: string) => void;
           onComplete?: (response: { id: string; sessionId: string; content: string }) => void;
@@ -1252,9 +1205,6 @@ describe('WebSocket Handler', () => {
           return {};
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1289,7 +1239,7 @@ describe('WebSocket Handler', () => {
     it('should emit context:usage when response has usage data', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
+
       const mockUsage = {
         inputTokens: 150000,
         outputTokens: 500,
@@ -1298,7 +1248,7 @@ describe('WebSocket Handler', () => {
         totalCostUSD: 0.05,
         contextWindow: 200000,
       };
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, callbacks: {
           onSessionInit?: (sessionId: string) => void;
           onComplete?: (response: { id: string; sessionId: string; content: string; usage?: unknown }) => void;
@@ -1313,9 +1263,6 @@ describe('WebSocket Handler', () => {
           return {};
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1342,8 +1289,8 @@ describe('WebSocket Handler', () => {
     it('should not emit context:usage when response has no usage data', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, callbacks: {
           onSessionInit?: (sessionId: string) => void;
           onComplete?: (response: { id: string; sessionId: string; content: string }) => void;
@@ -1357,9 +1304,6 @@ describe('WebSocket Handler', () => {
           return {};
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1394,11 +1338,11 @@ describe('WebSocket Handler', () => {
     it('should abort active request when chat:abort is received', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
+
 
       let capturedAbortController: AbortController | null = null;
 
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, _callbacks: unknown, options: { abortController?: AbortController }) => {
           capturedAbortController = options.abortController || null;
           // Simulate long-running operation
@@ -1411,9 +1355,6 @@ describe('WebSocket Handler', () => {
           });
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1466,10 +1407,10 @@ describe('WebSocket Handler', () => {
     it('should not emit error event on user-initiated abort', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-      const { ChatService } = await import('../../services/chatService.js');
+
       const { AbortedError } = await import('../../utils/errors.js');
 
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, _callbacks: unknown, options: { abortController?: AbortController }) => {
           return new Promise((_resolve, reject) => {
             if (options.abortController) {
@@ -1480,9 +1421,6 @@ describe('WebSocket Handler', () => {
           });
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1514,14 +1452,12 @@ describe('WebSocket Handler', () => {
       expect(errors).toHaveLength(0);
     });
 
-    it('should cleanup AbortController on disconnect', async () => {
+    it('should NOT abort active stream on disconnect (stream survives for reconnection)', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
-
-      const { ChatService } = await import('../../services/chatService.js');
 
       let capturedAbortController: AbortController | null = null;
 
-      const mockSendMessageWithCallbacks = vi.fn().mockImplementation(
+      mockState.sendImpl =vi.fn().mockImplementation(
         async (_content: string, _callbacks: unknown, options: { abortController?: AbortController }) => {
           capturedAbortController = options.abortController || null;
           return new Promise((_resolve, reject) => {
@@ -1533,9 +1469,6 @@ describe('WebSocket Handler', () => {
           });
         }
       );
-      vi.mocked(ChatService).mockImplementation(() => ({
-        sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-      }) as unknown as InstanceType<typeof ChatService>);
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -1560,10 +1493,10 @@ describe('WebSocket Handler', () => {
       // Wait for disconnect to be processed
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Verify AbortController was aborted with 'disconnect' reason
+      // Stream should NOT be aborted — it survives disconnects for reconnection support.
+      // The activity timeout will eventually abort it if no client reconnects.
       expect(capturedAbortController).toBeInstanceOf(AbortController);
-      expect(capturedAbortController!.signal.aborted).toBe(true);
-      expect(capturedAbortController!.signal.reason).toBe('disconnect');
+      expect(capturedAbortController!.signal.aborted).toBe(false);
     });
   });
 });
