@@ -22,6 +22,7 @@ import fileSystemRoutes from './routes/fileSystem.js';
 import bmadStatusRoutes from './routes/bmadStatus.js';
 import queueRoutes from './routes/queue.js';
 import gitRoutes from './routes/git.js';
+import dashboardRoutes from './routes/dashboard.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 import { createLogger } from './utils/logger.js';
@@ -97,6 +98,9 @@ export async function createApp(): Promise<Express> {
 
   // Git Integration routes (Story 16.1)
   app.use('/api/projects', gitRoutes);
+
+  // Dashboard status aggregation routes (Story 20.1)
+  app.use('/api/dashboard', dashboardRoutes);
 
   // Debug routes (server-side logging for client debugging)
   app.use('/api/debug', debugRoutes);

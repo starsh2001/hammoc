@@ -30,6 +30,10 @@ vi.mock('../../../stores/terminalStore', () => ({
     selector({
       clearTerminalsForProjectChange: mockClearTerminalsForProjectChange,
       setActiveTerminalId: mockSetActiveTerminalId,
+      fontSize: 14,
+      increaseFontSize: vi.fn(),
+      decreaseFontSize: vi.fn(),
+      resetFontSize: vi.fn(),
     }),
 }));
 
@@ -80,8 +84,8 @@ describe('TerminalTab', () => {
     expect(mockClearTerminalsForProjectChange).toHaveBeenCalledWith('test-project');
   });
 
-  // TC-TAB-2: Auto-creates terminal when none exist
-  it('calls create when no terminals exist', () => {
+  // TC-TAB-2: Shows empty state when no terminals exist (no auto-create)
+  it('shows empty state UI when no terminals exist', () => {
     mockUseTerminalReturn = {
       ...mockUseTerminalReturn,
       terminalId: null,
@@ -90,8 +94,9 @@ describe('TerminalTab', () => {
       status: null,
       terminals: new Map(),
     };
-    render(<TerminalTab projectSlug="test-project" />);
-    expect(mockCreate).toHaveBeenCalled();
+    const { container } = render(<TerminalTab projectSlug="test-project" />);
+    expect(container.textContent).toContain('활성 터미널이 없습니다');
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   // TC-TAB-3: Does NOT call create when terminals exist (session persistence)
@@ -180,11 +185,11 @@ describe('TerminalTab', () => {
     expect(btn.disabled).toBe(true);
   });
 
-  // TC-TAB-11: Tab bar shown only when multiple terminals
-  it('shows terminal tab bar only when more than 1 terminal', () => {
-    // Single terminal - no tablist
+  // TC-TAB-11: Tab bar shown when terminals exist, hidden when empty
+  it('shows terminal tab bar when terminals exist, hides when empty', () => {
+    // Single terminal - tablist shown
     const { container, rerender } = render(<TerminalTab projectSlug="test-project" />);
-    expect(container.querySelector('[role="tablist"]')).toBeNull();
+    expect(container.querySelector('[role="tablist"]')).not.toBeNull();
 
     // Multiple terminals
     mockUseTerminalReturn = {
@@ -241,15 +246,16 @@ describe('TerminalTab', () => {
     expect(getByTestId('terminal-emulator-term-1')).toBeDefined();
   });
 
-  // TC-TAB-16: Shows loading state when no activeTerminalId
-  it('shows loading spinner when no activeTerminalId', () => {
+  // TC-TAB-16: Shows empty state when no activeTerminalId
+  it('shows empty state when no activeTerminalId', () => {
     mockUseTerminalReturn = {
       ...mockUseTerminalReturn,
       terminalId: null,
       terminals: makeTerminals(makeSession('term-1')),
     };
     const { container } = render(<TerminalTab projectSlug="test-project" />);
-    expect(container.textContent).toContain('터미널 세션 생성 중...');
+    expect(container.textContent).toContain('활성 터미널이 없습니다');
+    expect(container.textContent).toContain('새 터미널');
   });
 
   // TC-TAB-17: Keyboard navigation - ArrowRight moves to next tab

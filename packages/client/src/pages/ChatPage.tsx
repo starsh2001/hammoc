@@ -32,7 +32,8 @@ import { generateUUID } from '../utils/uuid';
 import { getAgentId } from '../utils/agentUtils';
 import { debugLog, debugLogger } from '../utils/debugLogger';
 import { ChatHeader } from '../components/ChatHeader';
-import { MessageArea } from '../components/MessageArea';
+import { MessageArea, type MessageAreaHandle } from '../components/MessageArea';
+import { ScrollProvider, type ScrollContextValue } from '../contexts/ScrollContext';
 import { InputArea } from '../components/InputArea';
 import { PendingToolsIndicator } from '../components/PendingToolsIndicator';
 import { ChatInput } from '../components/ChatInput';
@@ -287,6 +288,14 @@ export function ChatPage() {
   const handleAgentIndicatorClick = useCallback(() => {
     setAgentListOpenTrigger((prev) => prev + 1);
   }, []);
+
+  // Imperative ref for MessageArea scroll functions (used by ScrollProvider)
+  const messageAreaRef = useRef<MessageAreaHandle>(null);
+  const scrollContextValue = useMemo<ScrollContextValue>(() => ({
+    scrollToElement: (...args) => messageAreaRef.current?.scrollToElement(...args),
+    scrollToBottom: (...args) => messageAreaRef.current?.scrollToBottom(...args),
+    adjustScrollBy: (dy) => messageAreaRef.current?.adjustScrollBy(dy),
+  }), []);
 
   // Chain mode toggle — when ON, sending during streaming queues to promptChain
   const [chainMode, setChainMode] = useState(false);
@@ -1142,6 +1151,7 @@ export function ChatPage() {
 
   // Messages view
   return (
+    <ScrollProvider value={scrollContextValue}>
     <div
       data-testid="chat-page"
       className={`h-dvh flex flex-col bg-white dark:bg-gray-900 ${chatAreaTransition}`}
@@ -1171,7 +1181,7 @@ export function ChatPage() {
         aria-label="채팅 페이지"
         className="flex-1 flex flex-col min-h-0"
       >
-        <MessageArea scrollDependencies={[messages]} streamingSegments={streamingSegments} isStreaming={isStreaming && !!streamingSessionId} isCompacting={isCompacting} isLoadingMore={isLoadingMore} segmentsPendingClear={segmentsPendingClear}>
+        <MessageArea ref={messageAreaRef} scrollDependencies={[messages]} streamingSegments={streamingSegments} isStreaming={isStreaming && !!streamingSessionId} isCompacting={isCompacting} isLoadingMore={isLoadingMore} segmentsPendingClear={segmentsPendingClear}>
           {/* Load older messages button */}
           {pagination?.hasMore && (
             <div className="flex justify-center py-4">
@@ -1238,5 +1248,6 @@ export function ChatPage() {
       {quickPanelElement}
       {confirmModalElement}
     </div>
+    </ScrollProvider>
   );
 }

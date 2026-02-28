@@ -34,15 +34,24 @@ const BUILTIN_COMMANDS: SlashCommand[] = [
 
 class CommandService {
   /**
+   * Resolve projectSlug to the project's original path.
+   * Returns null if project not found.
+   */
+  private async resolveProjectPath(projectSlug: string): Promise<string | null> {
+    const projects = await projectService.scanProjects();
+    const project = projects.find((p) => p.projectSlug === projectSlug);
+    return project?.originalPath ?? null;
+  }
+
+  /**
    * Resolve projectSlug to bmadCorePath.
    * Returns null if project not found or .bmad-core is not a directory.
    */
   private async resolveBmadCorePath(projectSlug: string): Promise<string | null> {
-    const projects = await projectService.scanProjects();
-    const project = projects.find((p) => p.projectSlug === projectSlug);
-    if (!project) return null;
+    const projectPath = await this.resolveProjectPath(projectSlug);
+    if (!projectPath) return null;
 
-    const bmadCorePath = path.join(project.originalPath, '.bmad-core');
+    const bmadCorePath = path.join(projectPath, '.bmad-core');
     try {
       const stat = await fs.stat(bmadCorePath);
       if (!stat.isDirectory()) return null;
@@ -58,8 +67,13 @@ class CommandService {
    * @returns Array of SlashCommand
    */
   async getCommands(projectSlug: string): Promise<SlashCommand[]> {
+    const projectPath = await this.resolveProjectPath(projectSlug);
+    if (!projectPath) return [...BUILTIN_COMMANDS];
+
     const bmadCorePath = await this.resolveBmadCorePath(projectSlug);
-    if (!bmadCorePath) return [...BUILTIN_COMMANDS];
+    const skills = await this.scanClaudeSkills(projectPath);
+
+    if (!bmadCorePath) return [...BUILTIN_COMMANDS, ...skills];
 
     const slashPrefix = await this.getSlashPrefix(bmadCorePath);
     const [agents, tasks] = await Promise.all([
@@ -67,7 +81,7 @@ class CommandService {
       this.scanTasks(bmadCorePath, slashPrefix),
     ]);
 
-    return [...BUILTIN_COMMANDS, ...agents, ...tasks];
+    return [...BUILTIN_COMMANDS, ...agents, ...tasks, ...skills];
   }
 
   /**
@@ -75,9 +89,16 @@ class CommandService {
    * [Source: Story 9.8 - Task 2]
    */
   async getCommandsWithStarCommands(projectSlug: string): Promise<CommandsResponse> {
-    const bmadCorePath = await this.resolveBmadCorePath(projectSlug);
-    if (!bmadCorePath) {
+    const projectPath = await this.resolveProjectPath(projectSlug);
+    if (!projectPath) {
       return { commands: [...BUILTIN_COMMANDS], starCommands: {} };
+    }
+
+    const bmadCorePath = await this.resolveBmadCorePath(projectSlug);
+    const skills = await this.scanClaudeSkills(projectPath);
+
+    if (!bmadCorePath) {
+      return { commands: [...BUILTIN_COMMANDS, ...skills], starCommands: {} };
     }
 
     const slashPrefix = await this.getSlashPrefix(bmadCorePath);
@@ -89,7 +110,7 @@ class CommandService {
     ]);
 
     return {
-      commands: [...BUILTIN_COMMANDS, ...agents, ...tasks],
+      commands: [...BUILTIN_COMMANDS, ...agents, ...tasks, ...skills],
       starCommands,
     };
   }
@@ -237,6 +258,67 @@ class CommandService {
     }
 
     return result;
+  }
+
+  /**
+   * Scan .claude/skills/ directory for Claude Code skills.
+   * Each skill is a subdirectory containing a SKILL.md with YAML frontmatter.
+   */
+  async scanClaudeSkills(projectPath: string): Promise<SlashCommand[]> {
+    const skillsDir = path.join(projectPath, '.claude', 'skills');
+    const commands: SlashCommand[] = [];
+
+    let entries: string[];
+    try {
+      entries = await fs.readdir(skillsDir);
+    } catch {
+      return [];
+    }
+
+    for (const entry of entries) {
+      const skillMdPath = path.join(skillsDir, entry, 'SKILL.md');
+      try {
+        const stat = await fs.stat(path.join(skillsDir, entry));
+        if (!stat.isDirectory()) continue;
+
+        const content = await fs.readFile(skillMdPath, 'utf-8');
+        const frontmatter = this.parseSkillFrontmatter(content);
+
+        const skillName = typeof frontmatter?.name === 'string' ? frontmatter.name : entry;
+        // Skip skills hidden from user invocation
+        if (frontmatter?.['user-invocable'] === false) continue;
+
+        const description = typeof frontmatter?.description === 'string'
+          ? frontmatter.description
+          : `${skillName} skill`;
+
+        commands.push({
+          command: `/${skillName}`,
+          name: skillName,
+          description,
+          category: 'skill',
+        });
+      } catch {
+        continue;
+      }
+    }
+
+    return commands;
+  }
+
+  /**
+   * Parse YAML frontmatter from SKILL.md content.
+   * Frontmatter is delimited by --- markers at the start of the file.
+   */
+  parseSkillFrontmatter(content: string): Record<string, unknown> | null {
+    const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+    if (!match) return null;
+
+    try {
+      return yaml.load(match[1]) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   }
 
   /**

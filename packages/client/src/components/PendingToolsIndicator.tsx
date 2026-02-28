@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } from '../utils/toolUtils';
+import { useScrollContext } from '../contexts/ScrollContext';
 import type { StreamingSegment } from '../stores/chatStore';
 
 interface PendingTool {
@@ -48,16 +49,18 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
       startedAt: seg.toolCall.startedAt ?? Date.now(),
     }));
 
+  const scrollCtx = useScrollContext();
+
   if (pendingTools.length === 0) return null;
 
   const visible = pendingTools.slice(0, MAX_VISIBLE);
   const remaining = pendingTools.length - MAX_VISIBLE;
 
   const handleClick = (toolId: string) => {
-    const el = document.getElementById(`tool-${toolId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    // Use ScrollContext for container-scoped scroll with isProgrammaticScrollRef guard.
+    // This prevents: (1) mobile page-level scroll from scrollIntoView, and
+    // (2) auto-scroll state corruption (isUserScrolledUp false positive).
+    scrollCtx?.scrollToElement(`tool-${toolId}`, { block: 'center', smooth: true });
   };
 
   return (

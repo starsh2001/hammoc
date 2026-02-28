@@ -15,6 +15,7 @@ import { useId, useRef, useCallback, useEffect } from 'react';
 import { Brain, ChevronRight, ChevronDown } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatStore } from '../stores/chatStore';
+import { useScrollContext } from '../contexts/ScrollContext';
 
 interface ThinkingBlockProps {
   /** Thinking content (markdown string) */
@@ -26,6 +27,7 @@ interface ThinkingBlockProps {
 export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockProps) {
   const isExpanded = useChatStore((s) => s.thinkingExpanded);
   const toggleThinkingExpanded = useChatStore((s) => s.toggleThinkingExpanded);
+  const scrollCtx = useScrollContext();
   const contentId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -47,16 +49,20 @@ export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockPro
       const topAfter = buttonRef.current.getBoundingClientRect().top;
       const delta = topAfter - topBefore;
       if (delta !== 0) {
-        // Find the nearest scrollable ancestor
-        const scrollParent = buttonRef.current.closest('[class*="overflow-y"]') ?? window;
-        if (scrollParent instanceof Window) {
-          scrollParent.scrollBy(0, delta);
+        // Use ScrollContext to adjust scroll with isProgrammaticScrollRef guard,
+        // preventing auto-scroll state corruption during position-preserving adjustments.
+        if (scrollCtx) {
+          scrollCtx.adjustScrollBy(delta);
         } else {
-          scrollParent.scrollTop += delta;
+          // Fallback: find scroll parent directly (no guard)
+          const scrollParent = buttonRef.current.closest('.overflow-y-auto');
+          if (scrollParent instanceof HTMLElement) {
+            scrollParent.scrollTop += delta;
+          }
         }
       }
     });
-  }, [toggleThinkingExpanded]);
+  }, [toggleThinkingExpanded, scrollCtx]);
 
   return (
     <div

@@ -189,15 +189,14 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
     _onExit = (data: TerminalExitEvent) => {
       const terminals = new Map(get().terminals);
-      const session = terminals.get(data.terminalId);
-      if (session) {
-        terminals.set(data.terminalId, {
-          ...session,
-          status: 'exited',
-          exitCode: data.exitCode,
-        });
-        set({ terminals });
+      terminals.delete(data.terminalId);
+      dataCallbacks.delete(data.terminalId);
+      let activeTerminalId = get().activeTerminalId;
+      if (activeTerminalId === data.terminalId) {
+        const firstRemaining = terminals.keys().next().value;
+        activeTerminalId = firstRemaining ?? null;
       }
+      set({ terminals, activeTerminalId });
     };
 
     _onError = (data: TerminalErrorEvent) => {

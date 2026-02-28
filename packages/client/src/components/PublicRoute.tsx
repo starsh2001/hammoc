@@ -19,8 +19,14 @@ interface PublicRouteProps {
  * - Opposite role of AuthGuard
  */
 export function PublicRoute({ children }: PublicRouteProps) {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
   const navigate = useNavigate();
+
+  // Trigger auth check so isLoading resolves even when children (LoginPage)
+  // are not yet mounted (PublicRoute shows spinner while isLoading is true).
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {

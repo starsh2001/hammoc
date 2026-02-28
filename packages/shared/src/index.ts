@@ -123,5 +123,8 @@ export * from './types/git.js';
 // Story 17.1: Terminal PTY types (Epic 17)
 export * from './types/terminal.js';
 
+// Story 20.1: Dashboard types
+export * from './types/dashboard.js';
+
 // Logger types (shared between server and client)
 export { LogLevel, type LogLevelName, parseLogLevel } from './types/logger.js';
