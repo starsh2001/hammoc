@@ -182,6 +182,7 @@ describe('useDashboardStore', () => {
 
       const totals = useDashboardStore.getState().getTotals();
 
+      expect(totals.totalSessions).toBe(8);  // 5 + 3
       expect(totals.activeSessions).toBe(2); // 2 + 0
       expect(totals.queueRunning).toBe(1);   // only project-a is running
       expect(totals.terminals).toBe(3);       // 1 + 2
@@ -190,6 +191,7 @@ describe('useDashboardStore', () => {
     it('should return all zeros when Map is empty', () => {
       const totals = useDashboardStore.getState().getTotals();
 
+      expect(totals.totalSessions).toBe(0);
       expect(totals.activeSessions).toBe(0);
       expect(totals.queueRunning).toBe(0);
       expect(totals.terminals).toBe(0);

@@ -11,7 +11,7 @@ import { useDashboardStore } from '../stores/dashboardStore';
 
 export interface UseDashboardReturn {
   projectStatuses: Map<string, DashboardProjectStatus>;
-  totals: { activeSessions: number; queueRunning: number; terminals: number };
+  totals: { totalSessions: number; activeSessions: number; queueRunning: number; terminals: number };
   isLoading: boolean;
   getProjectStatus: (projectSlug: string) => DashboardProjectStatus | undefined;
 }
