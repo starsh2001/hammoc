@@ -383,11 +383,14 @@ describe('ProjectListPage', () => {
 
       renderPage();
 
-      // DashboardSummaryBar renders text with totals
-      expect(screen.getByText('Sessions: 10')).toBeInTheDocument();
-      expect(screen.getByText('Active: 3')).toBeInTheDocument();
-      expect(screen.getByText('Queue: 1')).toBeInTheDocument();
-      expect(screen.getByText('Terminals: 1')).toBeInTheDocument();
+      // DashboardSummaryBar renders card layout with labels and values
+      const summary = screen.getByRole('status', { name: 'Dashboard summary' });
+      expect(summary).toBeInTheDocument();
+      expect(screen.getByText('Sessions')).toBeInTheDocument();
+      expect(screen.getByText('Active')).toBeInTheDocument();
+      expect(screen.getByText('Queue')).toBeInTheDocument();
+      expect(screen.getByText('Terminals')).toBeInTheDocument();
+      expect(screen.getByText('Projects')).toBeInTheDocument();
 
       // Reset
       mockUseDashboard.totals = { totalSessions: 0, activeSessions: 0, queueRunning: 0, terminals: 0 };
