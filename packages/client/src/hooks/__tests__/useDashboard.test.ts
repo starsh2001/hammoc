@@ -186,6 +186,7 @@ describe('useDashboard', () => {
     expect(result.current.projectStatuses.size).toBe(2);
     expect(result.current.isLoading).toBe(false);
     expect(result.current.totals).toEqual({
+      totalSessions: 8,
       activeSessions: 2,
       queueRunning: 1,
       terminals: 3,
