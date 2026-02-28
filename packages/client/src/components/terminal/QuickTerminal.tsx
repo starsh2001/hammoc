@@ -4,8 +4,7 @@
  * [Source: Story 17.4 - Task 3, Story 19.1 - Task 7]
  */
 
-import { useEffect } from 'react';
-import { ExternalLink, Loader2, Minus, Plus, ShieldAlert } from 'lucide-react';
+import { ExternalLink, Minus, Plus, ShieldAlert, Terminal } from 'lucide-react';
 import { useTerminal } from '../../hooks/useTerminal';
 import { useTerminalStore } from '../../stores/terminalStore';
 import { TerminalEmulator } from './TerminalEmulator';
@@ -24,13 +23,6 @@ export function QuickTerminal({
   const increaseFontSize = useTerminalStore((s) => s.increaseFontSize);
   const decreaseFontSize = useTerminalStore((s) => s.decreaseFontSize);
   const resetFontSize = useTerminalStore((s) => s.resetFontSize);
-
-  // Create terminal if none exists on mount (mount = panel open)
-  useEffect(() => {
-    if (terminals.size === 0) {
-      create();
-    }
-  }, [terminals.size, create]);
 
   return (
     <div className="flex flex-col h-full">
@@ -91,8 +83,20 @@ export function QuickTerminal({
         ) : terminalId ? (
           <TerminalEmulator terminalId={terminalId} autoFocus />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" aria-hidden="true" />
+          <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+            <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-3">
+              <Terminal className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              활성 터미널이 없습니다
+            </p>
+            <button
+              onClick={create}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              새 터미널
+            </button>
           </div>
         )}
       </div>

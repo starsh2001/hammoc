@@ -11,7 +11,7 @@ export interface SlashCommand {
   /** Brief description of what this command does */
   description?: string;
   /** Command category for grouping */
-  category: 'agent' | 'task' | 'builtin';
+  category: 'agent' | 'task' | 'builtin' | 'skill';
   /** Agent icon emoji if available (from agent YAML) */
   icon?: string;
 }

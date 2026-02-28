@@ -59,7 +59,7 @@ function filterCommands(commands: SlashCommand[], query: string): SlashCommand[]
 function groupCommands(commands: SlashCommand[]): Map<string, SlashCommand[]> {
   const groups = new Map<string, SlashCommand[]>();
   for (const cmd of commands) {
-    const key = cmd.category === 'agent' ? 'Agents' : cmd.category === 'task' ? 'Tasks' : 'Commands';
+    const key = cmd.category === 'agent' ? 'Agents' : cmd.category === 'task' ? 'Tasks' : cmd.category === 'skill' ? 'Skills' : 'Commands';
     const group = groups.get(key) ?? [];
     group.push(cmd);
     groups.set(key, group);

@@ -175,6 +175,21 @@ vi.mock('../../services/ptyService.js', () => ({
 vi.mock('../../services/projectService.js', () => ({
   projectService: {
     resolveProjectPath: vi.fn().mockResolvedValue('/mock/project/path'),
+    findProjectByPath: vi.fn().mockResolvedValue({ projectSlug: 'test-project' }),
+  },
+}));
+
+// Mock dashboardService (Story 20.1)
+const mockGetProjectStatus = vi.fn().mockResolvedValue({
+  projectSlug: 'test-project',
+  activeSessionCount: 0,
+  totalSessionCount: 0,
+  queueStatus: 'idle',
+  terminalCount: 0,
+});
+vi.mock('../../services/dashboardService.js', () => ({
+  dashboardService: {
+    getProjectStatus: (...args: unknown[]) => mockGetProjectStatus(...args),
   },
 }));
 
@@ -1497,6 +1512,268 @@ describe('WebSocket Handler', () => {
       // The activity timeout will eventually abort it if no client reconnects.
       expect(capturedAbortController).toBeInstanceOf(AbortController);
       expect(capturedAbortController!.signal.aborted).toBe(false);
+    });
+  });
+
+  // Story 20.1: Dashboard WebSocket events
+  describe('Dashboard subscribe/unsubscribe', () => {
+    it('should join dashboard room on dashboard:subscribe', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('dashboard:subscribe');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Verify by checking server-side room membership
+      const rooms = ioServer.sockets.adapter.rooms.get('dashboard');
+      expect(rooms).toBeDefined();
+      expect(rooms!.size).toBe(1);
+    });
+
+    it('should leave dashboard room on dashboard:unsubscribe', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('dashboard:subscribe');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      clientSocket.emit('dashboard:unsubscribe');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const rooms = ioServer.sockets.adapter.rooms.get('dashboard');
+      // Room should be empty or deleted
+      expect(rooms?.size ?? 0).toBe(0);
+    });
+
+    it('should clean up dashboard room on disconnect', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('dashboard:subscribe');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      clientSocket.disconnect();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const rooms = ioServer.sockets.adapter.rooms.get('dashboard');
+      expect(rooms?.size ?? 0).toBe(0);
+    });
+
+    it('should emit dashboard:status-change only to dashboard room', async () => {
+      // Client 1: subscribed to dashboard
+      const client1 = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+      // Client 2: NOT subscribed to dashboard
+      const client2 = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await Promise.all([
+        new Promise<void>((resolve) => client1.on('connect', () => resolve())),
+        new Promise<void>((resolve) => client2.on('connect', () => resolve())),
+      ]);
+
+      client1.emit('dashboard:subscribe');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      let client1Received = false;
+      let client2Received = false;
+
+      client1.on('dashboard:status-change', () => { client1Received = true; });
+      client2.on('dashboard:status-change', () => { client2Received = true; });
+
+      // Emit directly to dashboard room to test room isolation
+      ioServer.to('dashboard').emit('dashboard:status-change', {
+        projectSlug: 'test',
+        status: {
+          projectSlug: 'test',
+          activeSessionCount: 0,
+          totalSessionCount: 0,
+          queueStatus: 'idle',
+          terminalCount: 0,
+        },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(client1Received).toBe(true);
+      expect(client2Received).toBe(false);
+
+      client1.disconnect();
+      client2.disconnect();
+    });
+
+    it('should debounce rapid status changes (300ms)', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('dashboard:subscribe');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      let receivedCount = 0;
+      clientSocket.on('dashboard:status-change', () => { receivedCount++; });
+
+      // Import the trigger function indirectly by triggering terminal events
+      // which internally call triggerDashboardStatusChange
+      const { ptyService } = await import('../../services/ptyService.js');
+      vi.mocked(ptyService.createSession).mockReturnValue({ terminalId: 'term-debounce-1', shell: 'bash' } as any);
+      vi.mocked(ptyService.onData).mockImplementation(() => {});
+      vi.mocked(ptyService.onExit).mockImplementation(() => {});
+
+      // Trigger 3 rapid terminal creates (each triggers dashboard status change)
+      clientSocket.emit('terminal:create', { projectSlug: 'test-project' });
+      clientSocket.emit('terminal:create', { projectSlug: 'test-project' });
+      clientSocket.emit('terminal:create', { projectSlug: 'test-project' });
+
+      // Wait less than debounce interval — should not have received yet
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(receivedCount).toBe(0);
+
+      // Wait for debounce to fire (300ms + buffer)
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      expect(receivedCount).toBe(1);
+    });
+
+    it('should debounce per-project independently', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('dashboard:subscribe');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const receivedSlugs: string[] = [];
+      clientSocket.on('dashboard:status-change', (data: any) => {
+        receivedSlugs.push(data.projectSlug);
+      });
+
+      mockGetProjectStatus.mockImplementation(async (slug: string) => ({
+        projectSlug: slug,
+        activeSessionCount: 0,
+        totalSessionCount: 0,
+        queueStatus: 'idle' as const,
+        terminalCount: 0,
+      }));
+
+      const { ptyService } = await import('../../services/ptyService.js');
+      vi.mocked(ptyService.createSession).mockReturnValue({ terminalId: 'term-iso-1', shell: 'bash' } as any);
+      vi.mocked(ptyService.onData).mockImplementation(() => {});
+      vi.mocked(ptyService.onExit).mockImplementation(() => {});
+
+      const { projectService } = await import('../../services/projectService.js');
+      vi.mocked(projectService.resolveProjectPath).mockResolvedValue('/mock/path');
+
+      // Trigger for project-A
+      clientSocket.emit('terminal:create', { projectSlug: 'project-a' });
+      // Trigger for project-B
+      clientSocket.emit('terminal:create', { projectSlug: 'project-b' });
+
+      // Wait for debounce to fire
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Both projects should get separate broadcasts
+      expect(receivedSlugs).toContain('project-a');
+      expect(receivedSlugs).toContain('project-b');
+    });
+
+    it('should trigger dashboard status change on terminal:close', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('dashboard:subscribe');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      let received = false;
+      clientSocket.on('dashboard:status-change', () => { received = true; });
+
+      // Mock ptyService.getSession to return session data with projectSlug
+      const { ptyService } = await import('../../services/ptyService.js');
+      vi.mocked(ptyService.getSession).mockReturnValue({
+        terminalId: 'term-close-1',
+        projectSlug: 'test-project',
+        shell: 'bash',
+        createdAt: Date.now(),
+        lastActivityAt: Date.now(),
+      } as any);
+
+      clientSocket.emit('terminal:close', { terminalId: 'term-close-1' });
+
+      // Wait for debounce
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      expect(received).toBe(true);
+      expect(ptyService.getSession).toHaveBeenCalledWith('term-close-1');
+    });
+
+    it('should trigger dashboard status change on terminal:exit (natural PTY exit)', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('dashboard:subscribe');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      let received = false;
+      clientSocket.on('dashboard:status-change', () => { received = true; });
+
+      // Capture the onExit callback
+      let capturedOnExit: ((exitCode: number) => void) | null = null;
+      const { ptyService } = await import('../../services/ptyService.js');
+      vi.mocked(ptyService.createSession).mockReturnValue({ terminalId: 'term-exit-1', shell: 'bash' } as any);
+      vi.mocked(ptyService.onData).mockImplementation(() => {});
+      vi.mocked(ptyService.onExit).mockImplementation((_id, cb) => {
+        capturedOnExit = cb;
+      });
+
+      clientSocket.emit('terminal:create', { projectSlug: 'test-project' });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Reset received flag (terminal:create also triggers dashboard)
+      received = false;
+      mockGetProjectStatus.mockClear();
+
+      // Simulate natural PTY exit
+      expect(capturedOnExit).not.toBeNull();
+      capturedOnExit!(0);
+
+      // Wait for debounce
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      expect(received).toBe(true);
     });
   });
 });

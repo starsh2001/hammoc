@@ -75,8 +75,8 @@ describe('terminalStore', () => {
     expect(state.activeTerminalId).toBe('term-1');
   });
 
-  // TC-TERM-S4: terminal:exit updates session status
-  it('terminal:exit handler updates session status to exited', () => {
+  // TC-TERM-S4: terminal:exit removes session from map
+  it('terminal:exit handler removes session and clears activeTerminalId', () => {
     // Pre-populate a session
     useTerminalStore.setState({
       terminals: new Map([
@@ -94,9 +94,8 @@ describe('terminalStore', () => {
 
     onExit({ terminalId: 'term-1', exitCode: 0 });
 
-    const session = useTerminalStore.getState().terminals.get('term-1');
-    expect(session?.status).toBe('exited');
-    expect(session?.exitCode).toBe(0);
+    expect(useTerminalStore.getState().terminals.size).toBe(0);
+    expect(useTerminalStore.getState().activeTerminalId).toBeNull();
   });
 
   // TC-TERM-S5: terminal:error shows toast and updates status

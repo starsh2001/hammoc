@@ -69,17 +69,15 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
     clearTerminalsForProjectChange(projectSlug);
   }, [projectSlug, clearTerminalsForProjectChange]);
 
-  // Auto-create terminal if none exist after project change
+  // Auto-select first terminal when active one is removed
   useEffect(() => {
-    if (terminals.size === 0 && !status) {
-      create();
-    } else if (terminals.size > 0 && !activeTerminalId) {
+    if (terminals.size > 0 && !activeTerminalId) {
       const firstId = terminals.keys().next().value;
       if (firstId) {
         setActiveTerminalId(firstId);
       }
     }
-  }, [terminals.size, activeTerminalId, status, create, setActiveTerminalId]);
+  }, [terminals.size, activeTerminalId, setActiveTerminalId]);
 
   const activeSession = activeTerminalId ? terminals.get(activeTerminalId) ?? null : null;
 
@@ -223,7 +221,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
       </div>
 
       {/* Terminal session tabs (only when multiple terminals) */}
-      {terminals.size > 1 && (
+      {terminals.size > 0 && (
         <div
           ref={tabsRef}
           role="tablist"
@@ -275,13 +273,22 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
           <TerminalEmulator terminalId={activeTerminalId} autoFocus />
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-            <div className="p-4 bg-green-100 dark:bg-green-900/30 rounded-2xl mb-4">
-              <Terminal className="w-10 h-10 text-green-600 dark:text-green-400" />
+            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4">
+              <Terminal className="w-10 h-10 text-gray-400 dark:text-gray-500" />
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              <span>터미널 세션 생성 중...</span>
-            </div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              활성 터미널이 없습니다
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              새 터미널 버튼을 눌러 터미널을 시작하세요
+            </p>
+            <button
+              onClick={create}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              새 터미널
+            </button>
           </div>
         )}
       </div>

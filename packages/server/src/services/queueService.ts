@@ -162,7 +162,8 @@ export class QueueService {
       lockedSessionId: this.lockedSessionId,
       currentModel: this.currentModel,
       lastError: this.lastError,
-      items: this._isRunning || this.isPaused ? this.items : undefined,
+      items: this._isRunning || this.isPaused || this._isCompleted || this._isErrored
+        ? this.items : undefined,
       completedSessionIds: this.completedSessionIds.size > 0
         ? Object.fromEntries(this.completedSessionIds)
         : undefined,
