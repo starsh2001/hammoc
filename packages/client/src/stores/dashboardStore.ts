@@ -19,7 +19,7 @@ interface DashboardActions {
   subscribe: () => void;
   unsubscribe: () => void;
   getProjectStatus: (projectSlug: string) => DashboardProjectStatus | undefined;
-  getTotals: () => { activeSessions: number; queueRunning: number; terminals: number };
+  getTotals: () => { totalSessions: number; activeSessions: number; queueRunning: number; terminals: number };
 }
 
 type DashboardStore = DashboardState & DashboardActions;
@@ -69,11 +69,13 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
 
   getTotals: () => {
     const { projectStatuses } = get();
+    let totalSessions = 0;
     let activeSessions = 0;
     let queueRunning = 0;
     let terminals = 0;
 
     for (const status of projectStatuses.values()) {
+      totalSessions += status.totalSessionCount;
       activeSessions += status.activeSessionCount;
       if (status.queueStatus === 'running') {
         queueRunning++;
@@ -81,6 +83,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       terminals += status.terminalCount;
     }
 
-    return { activeSessions, queueRunning, terminals };
+    return { totalSessions, activeSessions, queueRunning, terminals };
   },
 }));

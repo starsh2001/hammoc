@@ -15,7 +15,7 @@ import type { ProjectInfo, DashboardProjectStatus } from '@bmad-studio/shared';
 const mockGetProjectStatus = vi.fn();
 const mockUseDashboard = {
   projectStatuses: new Map(),
-  totals: { activeSessions: 0, queueRunning: 0, terminals: 0 },
+  totals: { totalSessions: 0, activeSessions: 0, queueRunning: 0, terminals: 0 },
   isLoading: false,
   getProjectStatus: mockGetProjectStatus,
 };
@@ -379,17 +379,18 @@ describe('ProjectListPage', () => {
 
     it('renders DashboardSummaryBar with totals from useDashboard hook', () => {
       vi.mocked(useProjectStore).mockReturnValue(createMockState({ projects: mockProjects }));
-      mockUseDashboard.totals = { activeSessions: 3, queueRunning: 1, terminals: 1 };
+      mockUseDashboard.totals = { totalSessions: 10, activeSessions: 3, queueRunning: 1, terminals: 1 };
 
       renderPage();
 
       // DashboardSummaryBar renders text with totals
-      expect(screen.getByText('Active Sessions: 3')).toBeInTheDocument();
-      expect(screen.getByText('Queue Running: 1')).toBeInTheDocument();
+      expect(screen.getByText('Sessions: 10')).toBeInTheDocument();
+      expect(screen.getByText('Active: 3')).toBeInTheDocument();
+      expect(screen.getByText('Queue: 1')).toBeInTheDocument();
       expect(screen.getByText('Terminals: 1')).toBeInTheDocument();
 
       // Reset
-      mockUseDashboard.totals = { activeSessions: 0, queueRunning: 0, terminals: 0 };
+      mockUseDashboard.totals = { totalSessions: 0, activeSessions: 0, queueRunning: 0, terminals: 0 };
     });
 
     it('passes correct dashboardStatus to each ProjectCard via getProjectStatus', () => {
@@ -409,7 +410,7 @@ describe('ProjectListPage', () => {
 
     it('preserves existing project list functionality with dashboard wired', () => {
       vi.mocked(useProjectStore).mockReturnValue(createMockState({ projects: mockProjects }));
-      mockUseDashboard.totals = { activeSessions: 1, queueRunning: 0, terminals: 0 };
+      mockUseDashboard.totals = { totalSessions: 5, activeSessions: 1, queueRunning: 0, terminals: 0 };
 
       renderPage();
 
@@ -428,17 +429,17 @@ describe('ProjectListPage', () => {
       }
 
       // Reset
-      mockUseDashboard.totals = { activeSessions: 0, queueRunning: 0, terminals: 0 };
+      mockUseDashboard.totals = { totalSessions: 0, activeSessions: 0, queueRunning: 0, terminals: 0 };
     });
 
-    it('DashboardSummaryBar returns null when all totals are zero', () => {
+    it('DashboardSummaryBar always renders even when all totals are zero', () => {
       vi.mocked(useProjectStore).mockReturnValue(createMockState({ projects: mockProjects }));
-      mockUseDashboard.totals = { activeSessions: 0, queueRunning: 0, terminals: 0 };
+      mockUseDashboard.totals = { totalSessions: 0, activeSessions: 0, queueRunning: 0, terminals: 0 };
 
       renderPage();
 
-      // DashboardSummaryBar should not render (returns null for zero totals)
-      expect(screen.queryByRole('status', { name: 'Dashboard summary' })).not.toBeInTheDocument();
+      // DashboardSummaryBar should always render
+      expect(screen.getByRole('status', { name: 'Dashboard summary' })).toBeInTheDocument();
     });
   });
 });

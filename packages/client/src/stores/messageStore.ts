@@ -363,7 +363,9 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         duplicateCount: newMessages.length - uniqueNewMessages.length,
       });
       if (uniqueNewMessages.length === 0) return state;
-      return { messages: [...state.messages, ...uniqueNewMessages] };
+      const merged = [...state.messages, ...uniqueNewMessages];
+      merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+      return { messages: merged };
     });
   },
 }));
