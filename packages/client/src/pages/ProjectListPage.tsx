@@ -361,7 +361,7 @@ export function ProjectListPage() {
 
         {/* Dashboard Summary Bar */}
         {!isLoading && visibleProjects.length > 0 && (
-          <DashboardSummaryBar totals={totals} />
+          <DashboardSummaryBar totals={totals} projectCount={visibleProjects.length} />
         )}
 
         {/* Project Grid */}
