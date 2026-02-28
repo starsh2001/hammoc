@@ -14,6 +14,7 @@ import { generateUUID } from '../utils/uuid';
 import { useAuthStore } from '../stores/authStore';
 import { ProjectCard } from '../components/ProjectCard';
 import { ProjectCardSkeleton } from '../components/ProjectCardSkeleton';
+import { DashboardSummaryBar } from '../components/dashboard/DashboardSummaryBar';
 import { NewProjectDialog } from '../components/NewProjectDialog';
 import { BrandLogo } from '../components/BrandLogo';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
@@ -356,6 +357,11 @@ export function ProjectListPage() {
           </div>
         )}
 
+        {/* Dashboard Summary Bar */}
+        {!isLoading && visibleProjects.length > 0 && (
+          <DashboardSummaryBar totals={{ activeSessions: 0, queueRunning: 0, terminals: 0 }} />
+        )}
+
         {/* Project Grid */}
         {!isLoading && visibleProjects.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -370,6 +376,7 @@ export function ProjectListPage() {
                 onUnhide={showHidden ? unhideProject : undefined}
                 isHidden={!!project.hidden}
                 bmadVersions={bmadVersions}
+                dashboardStatus={undefined}
               />
             ))}
           </div>

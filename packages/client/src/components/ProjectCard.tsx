@@ -5,9 +5,10 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageSquare, Clock, MoreVertical, Trash2, Wand2, EyeOff, Eye } from 'lucide-react';
-import type { ProjectInfo } from '@bmad-studio/shared';
+import type { ProjectInfo, DashboardProjectStatus } from '@bmad-studio/shared';
 import { formatRelativeTime, formatProjectPath } from '../utils/formatters';
 import { ConfirmModal } from './ConfirmModal';
+import { ProjectStatusIndicators } from './dashboard/ProjectStatusIndicators';
 
 interface ProjectCardProps {
   project: ProjectInfo;
@@ -18,9 +19,10 @@ interface ProjectCardProps {
   onUnhide?: (projectSlug: string) => void;
   isHidden?: boolean;
   bmadVersions?: string[];
+  dashboardStatus?: DashboardProjectStatus;
 }
 
-export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, onUnhide, isHidden, bmadVersions = [] }: ProjectCardProps) {
+export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, onUnhide, isHidden, bmadVersions = [], dashboardStatus }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
@@ -188,6 +190,9 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
         <h3 className="font-medium text-gray-900 dark:text-white truncate pr-6">
           {project.originalPath.split(/[/\\]/).filter(Boolean).pop() || project.originalPath}
         </h3>
+
+        {/* Dashboard Status Indicators */}
+        <ProjectStatusIndicators status={dashboardStatus} />
 
         {/* Meta Information */}
         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
