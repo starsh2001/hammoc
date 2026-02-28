@@ -9,7 +9,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { ProjectListPage } from '../ProjectListPage';
 import { useProjectStore } from '../../stores/projectStore';
-import type { ProjectInfo } from '@bmad-studio/shared';
+import type { ProjectInfo, DashboardProjectStatus } from '@bmad-studio/shared';
+
+// Mock useDashboard hook
+const mockGetProjectStatus = vi.fn();
+const mockUseDashboard = {
+  projectStatuses: new Map(),
+  totals: { activeSessions: 0, queueRunning: 0, terminals: 0 },
+  isLoading: false,
+  getProjectStatus: mockGetProjectStatus,
+};
+
+vi.mock('../../hooks/useDashboard', () => ({
+  useDashboard: () => mockUseDashboard,
+}));
 
 // Mock react-router-dom's useNavigate
 const mockNavigate = vi.fn();
@@ -344,6 +357,88 @@ describe('ProjectListPage', () => {
       fireEvent.click(screen.getByRole('button', { name: '기존 프로젝트' }));
 
       expect(mockNavigate).toHaveBeenCalledWith('/project/existing-slug');
+    });
+  });
+
+  describe('dashboard integration (Story 20.3)', () => {
+    const dashboardStatusA: DashboardProjectStatus = {
+      projectSlug: 'abc123',
+      activeSessionCount: 2,
+      totalSessionCount: 5,
+      queueStatus: 'running',
+      terminalCount: 1,
+    };
+
+    const dashboardStatusB: DashboardProjectStatus = {
+      projectSlug: 'def456',
+      activeSessionCount: 1,
+      totalSessionCount: 3,
+      queueStatus: 'idle',
+      terminalCount: 0,
+    };
+
+    it('renders DashboardSummaryBar with totals from useDashboard hook', () => {
+      vi.mocked(useProjectStore).mockReturnValue(createMockState({ projects: mockProjects }));
+      mockUseDashboard.totals = { activeSessions: 3, queueRunning: 1, terminals: 1 };
+
+      renderPage();
+
+      // DashboardSummaryBar renders text with totals
+      expect(screen.getByText('Active Sessions: 3')).toBeInTheDocument();
+      expect(screen.getByText('Queue Running: 1')).toBeInTheDocument();
+      expect(screen.getByText('Terminals: 1')).toBeInTheDocument();
+
+      // Reset
+      mockUseDashboard.totals = { activeSessions: 0, queueRunning: 0, terminals: 0 };
+    });
+
+    it('passes correct dashboardStatus to each ProjectCard via getProjectStatus', () => {
+      vi.mocked(useProjectStore).mockReturnValue(createMockState({ projects: mockProjects }));
+      mockGetProjectStatus.mockImplementation((slug: string) => {
+        if (slug === 'abc123') return dashboardStatusA;
+        if (slug === 'def456') return dashboardStatusB;
+        return undefined;
+      });
+
+      renderPage();
+
+      // getProjectStatus should be called for each project
+      expect(mockGetProjectStatus).toHaveBeenCalledWith('abc123');
+      expect(mockGetProjectStatus).toHaveBeenCalledWith('def456');
+    });
+
+    it('preserves existing project list functionality with dashboard wired', () => {
+      vi.mocked(useProjectStore).mockReturnValue(createMockState({ projects: mockProjects }));
+      mockUseDashboard.totals = { activeSessions: 1, queueRunning: 0, terminals: 0 };
+
+      renderPage();
+
+      // Project cards still render
+      expect(screen.getByText('~/my-project')).toBeInTheDocument();
+      expect(screen.getByText('~/another-project')).toBeInTheDocument();
+
+      // Navigation still works
+      const projectCards = screen.getAllByRole('button');
+      const projectCard = projectCards.find(btn =>
+        btn.getAttribute('aria-label')?.includes('프로젝트:')
+      );
+      if (projectCard) {
+        fireEvent.click(projectCard);
+        expect(mockNavigate).toHaveBeenCalledWith('/project/abc123');
+      }
+
+      // Reset
+      mockUseDashboard.totals = { activeSessions: 0, queueRunning: 0, terminals: 0 };
+    });
+
+    it('DashboardSummaryBar returns null when all totals are zero', () => {
+      vi.mocked(useProjectStore).mockReturnValue(createMockState({ projects: mockProjects }));
+      mockUseDashboard.totals = { activeSessions: 0, queueRunning: 0, terminals: 0 };
+
+      renderPage();
+
+      // DashboardSummaryBar should not render (returns null for zero totals)
+      expect(screen.queryByRole('status', { name: 'Dashboard summary' })).not.toBeInTheDocument();
     });
   });
 });
