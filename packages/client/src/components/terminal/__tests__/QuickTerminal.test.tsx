@@ -71,7 +71,7 @@ describe('QuickTerminal', () => {
     expect(getByTestId('terminal-emulator-term-1')).toBeDefined();
   });
 
-  it('calls create when no terminals exist', () => {
+  it('shows empty state when no terminals exist (no auto-create)', () => {
     mockUseTerminalReturn = {
       ...mockUseTerminalReturn,
       terminalId: null,
@@ -80,8 +80,9 @@ describe('QuickTerminal', () => {
       status: null,
       terminals: new Map(),
     };
-    render(<QuickTerminal {...defaultProps} />);
-    expect(mockCreate).toHaveBeenCalled();
+    const { container } = render(<QuickTerminal {...defaultProps} />);
+    expect(container.textContent).toContain('활성 터미널이 없습니다');
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('does not call create when terminals already exist', () => {
@@ -109,15 +110,15 @@ describe('QuickTerminal', () => {
     expect(mockCloseById).not.toHaveBeenCalled();
   });
 
-  it('shows loading spinner when no terminalId', () => {
+  it('shows empty state with create button when no terminalId', () => {
     mockUseTerminalReturn = {
       ...mockUseTerminalReturn,
       terminalId: null,
       terminals: new Map(),
     };
     const { container } = render(<QuickTerminal {...defaultProps} />);
-    const spinner = container.querySelector('.animate-spin');
-    expect(spinner).not.toBeNull();
+    expect(container.textContent).toContain('활성 터미널이 없습니다');
+    expect(container.textContent).toContain('새 터미널');
   });
 
   // Story 17.5: Terminal security tests

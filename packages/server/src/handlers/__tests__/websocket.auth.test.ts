@@ -14,6 +14,19 @@ const mockSessionState = vi.hoisted(() => ({
   authenticated: true,
 }));
 
+// Mock dashboardService (Story 20.1 — required by websocket.ts import)
+vi.mock('../../services/dashboardService.js', () => ({
+  dashboardService: {
+    getProjectStatus: vi.fn().mockResolvedValue({
+      projectSlug: 'test',
+      activeSessionCount: 0,
+      totalSessionCount: 0,
+      queueStatus: 'idle',
+      terminalCount: 0,
+    }),
+  },
+}));
+
 // Mock session middleware with controllable auth state
 vi.mock('../../middleware/session.js', () => ({
   createSessionMiddleware: vi.fn().mockResolvedValue(

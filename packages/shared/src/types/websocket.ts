@@ -10,6 +10,7 @@ import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
 import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from './queue.js';
 import type { TerminalCreateRequest, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent, TerminalAccessInfo } from './terminal.js';
+import type { DashboardStatusChangeEvent } from './dashboard.js';
 
 // ===== Connection Status =====
 
@@ -59,6 +60,9 @@ export interface ClientToServerEvents {
   'terminal:input': (data: TerminalInputEvent) => void;
   'terminal:resize': (data: TerminalResizeEvent) => void;
   'terminal:close': (data: { terminalId: string }) => void;
+  // Story 20.1: Dashboard subscription events
+  'dashboard:subscribe': () => void;
+  'dashboard:unsubscribe': () => void;
 }
 
 // ===== Server to Client Events =====
@@ -107,6 +111,8 @@ export interface ServerToClientEvents {
   'terminal:error': (data: TerminalErrorEvent) => void;
   // Story 17.5: Terminal security — access info sent on connection
   'terminal:access': (data: TerminalAccessInfo) => void;
+  // Story 20.1: Dashboard status change event
+  'dashboard:status-change': (data: DashboardStatusChangeEvent) => void;
 }
 
 // ===== Inter-server Events =====

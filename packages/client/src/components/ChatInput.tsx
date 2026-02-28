@@ -297,12 +297,15 @@ export function ChatInput({
     setStarSelectedIndex(0);
   }, [starCommandFilter]);
 
-  // Height adjustment - textarea grows up to max-height, then scrolls internally
+  // Height adjustment - textarea grows up to max-height, then scrolls internally.
+  // Uses '0px' instead of 'auto' to minimize layout thrash that can trigger
+  // visualViewport resize events on mobile (the debounced handler in MessageArea
+  // provides the primary protection).
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    textarea.style.height = 'auto';
+    textarea.style.height = '0px';
     const scrollH = Math.max(textarea.scrollHeight, 28);
     textarea.style.height = `${scrollH}px`;
   }, []);
@@ -594,7 +597,7 @@ export function ChatInput({
 
     // Reset height after clearing
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = '0px';
     }
   }, [content, isConnected, isSessionLocked, isStreaming, queueLocked, onSend, attachments, chainMode, chainMax, getChainLength, chainCount]);
 

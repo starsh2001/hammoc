@@ -34,6 +34,7 @@ import { buildStreamCallbacks } from './streamCallbacks.js';
 import { rateLimitProbeService } from '../services/rateLimitProbeService.js';
 import { ptyService } from '../services/ptyService.js';
 import { projectService } from '../services/projectService.js';
+import { dashboardService } from '../services/dashboardService.js';
 const log = createLogger('websocket');
 
 // Alias for concise usage in guards
@@ -41,6 +42,30 @@ const queueInstances = getQueueInstances;
 
 // Socket-to-terminal mapping: socket.id → Set of terminalIds (Story 17.1)
 const socketTerminals = new Map<string, Set<string>>();
+
+// Story 20.1: Session-to-project mapping for dashboard triggers
+const sessionProjectMap = new Map<string, string>();
+
+// Story 20.1: Per-project debounced dashboard status change broadcaster
+const dashboardDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function triggerDashboardStatusChange(projectSlug: string): void {
+  const existing = dashboardDebounceTimers.get(projectSlug);
+  if (existing) clearTimeout(existing);
+
+  dashboardDebounceTimers.set(
+    projectSlug,
+    setTimeout(async () => {
+      dashboardDebounceTimers.delete(projectSlug);
+      try {
+        const status = await dashboardService.getProjectStatus(projectSlug);
+        io.to('dashboard').emit('dashboard:status-change', { projectSlug, status });
+      } catch (err) {
+        log.error(`Failed to broadcast dashboard status for ${projectSlug}:`, err);
+      }
+    }, 300)
+  );
+}
 
 /**
  * Check terminal access for a socket connection.
@@ -225,9 +250,15 @@ export function finalizeStream(sessionId: string): void {
 /**
  * Broadcast session:stream-change to all connected clients.
  * Used by queue service to signal stream start/end.
+ * Story 20.1: Also triggers dashboard status change when projectSlug is known.
  */
 export function broadcastStreamChange(sessionId: string, active: boolean): void {
   io.emit('session:stream-change', { sessionId, active });
+  const slug = sessionProjectMap.get(sessionId);
+  if (slug) {
+    triggerDashboardStatusChange(slug);
+    if (!active) sessionProjectMap.delete(sessionId);
+  }
 }
 
 /**
@@ -333,6 +364,11 @@ export async function initializeWebSocket(
       const abortController = new AbortController();
       const streamKey = data.sessionId || `pending-${socket.id}`;
 
+      // Story 20.1: Populate session→project mapping for dashboard triggers
+      projectService.findProjectByPath(data.workingDirectory).then((project) => {
+        if (project) sessionProjectMap.set(streamKey, project.projectSlug);
+      }).catch(() => {});
+
       // Abort existing active stream for same session — notify all watchers
       const existingStream = activeStreams.get(streamKey);
       if (existingStream && existingStream.status === 'running') {
@@ -382,6 +418,12 @@ export async function initializeWebSocket(
         if (activeStreams.get(endedSessionId) === stream) {
           cleanupStream(endedSessionId);
           io.emit('session:stream-change', { sessionId: endedSessionId, active: false });
+          // Story 20.1: Trigger dashboard status change on stream end
+          const endProjectSlug = sessionProjectMap.get(endedSessionId);
+          if (endProjectSlug) {
+            triggerDashboardStatusChange(endProjectSlug);
+            sessionProjectMap.delete(endedSessionId);
+          }
         }
       }
     });
@@ -509,6 +551,14 @@ export async function initializeWebSocket(
       await handleSessionList(socket, data);
     });
 
+    // Story 20.1: Dashboard subscribe/unsubscribe
+    socket.on('dashboard:subscribe', () => {
+      socket.join('dashboard');
+    });
+    socket.on('dashboard:unsubscribe', () => {
+      socket.leave('dashboard');
+    });
+
     // Handle project:join/leave — room for queue event delivery (Story 15.2)
     socket.on('project:join', (projectSlug: string) => {
       socket.join(`project:${projectSlug}`);
@@ -529,18 +579,22 @@ export async function initializeWebSocket(
       queueService.start(items, projectSlug, sessionId, permissionMode).catch((err) => {
         log.error('Queue execution error:', err);
       });
+      triggerDashboardStatusChange(projectSlug);
     });
     socket.on('queue:pause', (data) => {
       const qs = getOrCreateQueueService(data.projectSlug);
       if (qs.isRunning) qs.pause();
+      triggerDashboardStatusChange(data.projectSlug);
     });
     socket.on('queue:resume', (data) => {
       const qs = getOrCreateQueueService(data.projectSlug);
       if (qs.isRunning) qs.resume().catch(() => {});
+      triggerDashboardStatusChange(data.projectSlug);
     });
     socket.on('queue:abort', (data) => {
       const qs = getOrCreateQueueService(data.projectSlug);
       if (qs.isRunning) qs.abort();
+      triggerDashboardStatusChange(data.projectSlug);
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     socket.on('queue:dismiss' as any, (data: { projectSlug: string }) => {
@@ -619,10 +673,14 @@ export async function initializeWebSocket(
         ptyService.onExit(terminalId, (exitCode: number) => {
           socket.emit('terminal:exit', { terminalId, exitCode });
           socketTerminals.get(socket.id)?.delete(terminalId);
+          // Story 20.1: Trigger dashboard on natural PTY exit
+          triggerDashboardStatusChange(data.projectSlug);
         });
 
         socketTerminals.get(socket.id)?.add(terminalId);
         socket.emit('terminal:created', { terminalId, shell });
+        // Story 20.1: Trigger dashboard on terminal create
+        triggerDashboardStatusChange(data.projectSlug);
       } catch (err) {
         const code = (err as Error & { code?: string }).code || TERMINAL_ERRORS.PTY_SPAWN_ERROR.code;
         const message = (err as Error).message || TERMINAL_ERRORS.PTY_SPAWN_ERROR.message;
@@ -674,8 +732,14 @@ export async function initializeWebSocket(
       }
 
       try {
+        // Story 20.1: Extract projectSlug BEFORE closeSession removes the session
+        const closingSession = ptyService.getSession(data.terminalId);
+        const closeProjectSlug = closingSession?.projectSlug;
         ptyService.closeSession(data.terminalId);
         socketTerminals.get(socket.id)?.delete(data.terminalId);
+        if (closeProjectSlug) {
+          triggerDashboardStatusChange(closeProjectSlug);
+        }
       } catch {
         // Ignore close errors — session may already be gone
       }
@@ -930,8 +994,16 @@ async function handleChatSend(
         stream,
         isResuming: !!isResuming,
         initialSessionId: sessionId,
-        rekeyStream: (sid) => rekeyStream(stream, sid),
-        broadcastStreamChange: (sid, active) => io.emit('session:stream-change', { sessionId: sid, active }),
+        rekeyStream: (sid) => {
+          // Story 20.1: Update session→project mapping on rekey
+          const projectSlug = sessionProjectMap.get(stream.sessionId);
+          rekeyStream(stream, sid);
+          if (projectSlug) {
+            sessionProjectMap.delete(stream.sessionId);
+            sessionProjectMap.set(sid, projectSlug);
+          }
+        },
+        broadcastStreamChange,
         notificationService,
       },
       {
