@@ -21,6 +21,7 @@ import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useTheme } from '../hooks/useTheme';
+import { useDashboard } from '../hooks/useDashboard';
 
 function ProjectListPageSkeleton() {
   return (
@@ -40,6 +41,7 @@ export function ProjectListPage() {
   const navigate = useNavigate();
   const { projects, isLoading, isRefreshing, error, fetchProjects, clearError, deleteProject, setupBmad, bmadVersions, fetchBmadVersions, showHidden, hideProject, unhideProject, setShowHidden } = useProjectStore();
   const { logout } = useAuthStore();
+  const { totals, getProjectStatus } = useDashboard();
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
 
   // Overflow menu state (narrow screens)
@@ -359,7 +361,7 @@ export function ProjectListPage() {
 
         {/* Dashboard Summary Bar */}
         {!isLoading && visibleProjects.length > 0 && (
-          <DashboardSummaryBar totals={{ activeSessions: 0, queueRunning: 0, terminals: 0 }} />
+          <DashboardSummaryBar totals={totals} />
         )}
 
         {/* Project Grid */}
@@ -376,7 +378,7 @@ export function ProjectListPage() {
                 onUnhide={showHidden ? unhideProject : undefined}
                 isHidden={!!project.hidden}
                 bmadVersions={bmadVersions}
-                dashboardStatus={undefined}
+                dashboardStatus={getProjectStatus(project.projectSlug)}
               />
             ))}
           </div>
