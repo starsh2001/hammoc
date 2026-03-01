@@ -75,7 +75,7 @@ describe('IssueService', () => {
       expect(item.description).toBe('Cannot log in');
       expect(item.severity).toBe('high');
       expect(item.issueType).toBe('bug');
-      expect(item.id).toMatch(/^\d+-login-bug-fix$/);
+      expect(item.id).toMatch(/^\d+-[a-f0-9]{6}-login-bug-fix$/);
     });
 
     it('should use "issue" slug for non-ASCII titles', async () => {
@@ -83,7 +83,7 @@ describe('IssueService', () => {
         title: '로그인 버그',
       });
 
-      expect(item.id).toMatch(/^\d+-issue$/);
+      expect(item.id).toMatch(/^\d+-[a-f0-9]{6}-issue$/);
       expect(item.title).toBe('로그인 버그');
     });
 
