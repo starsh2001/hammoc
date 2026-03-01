@@ -2,6 +2,10 @@ import { Request, Response } from 'express';
 import { projectService } from '../services/projectService.js';
 import { issueService } from '../services/issueService.js';
 
+const VALID_SEVERITIES = ['low', 'medium', 'high', 'critical'];
+const VALID_ISSUE_TYPES = ['bug', 'improvement'];
+const VALID_STATUSES = ['Open', 'InProgress', 'Done', 'Closed'];
+
 export const boardController = {
   async getBoard(req: Request, res: Response): Promise<void> {
     try {
@@ -45,6 +49,16 @@ export const boardController = {
         return;
       }
 
+      if (severity && !VALID_SEVERITIES.includes(severity)) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `Invalid severity: ${severity}` } });
+        return;
+      }
+
+      if (issueType && !VALID_ISSUE_TYPES.includes(issueType)) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `Invalid issueType: ${issueType}` } });
+        return;
+      }
+
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       const item = await issueService.createIssue(projectRoot, { title: title.trim(), description, severity, issueType });
       res.status(201).json(item);
@@ -61,6 +75,23 @@ export const boardController = {
   async updateIssue(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug, issueId } = req.params;
+      const { severity, issueType, status } = req.body;
+
+      if (severity && !VALID_SEVERITIES.includes(severity)) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `Invalid severity: ${severity}` } });
+        return;
+      }
+
+      if (issueType && !VALID_ISSUE_TYPES.includes(issueType)) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `Invalid issueType: ${issueType}` } });
+        return;
+      }
+
+      if (status && !VALID_STATUSES.includes(status)) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `Invalid status: ${status}` } });
+        return;
+      }
+
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       const item = await issueService.updateIssue(projectRoot, issueId, req.body);
       res.json(item);

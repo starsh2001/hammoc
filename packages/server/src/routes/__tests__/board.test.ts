@@ -78,7 +78,7 @@ describe('Board Routes', () => {
       expect(response.body.description).toBe('Something broken');
       expect(response.body.severity).toBe('high');
       expect(response.body.issueType).toBe('bug');
-      expect(response.body.id).toMatch(/^\d+-new-bug$/);
+      expect(response.body.id).toMatch(/^\d+-[a-f0-9]{6}-new-bug$/);
     });
 
     it('should return 400 when title is missing', async () => {
