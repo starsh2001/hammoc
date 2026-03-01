@@ -14,7 +14,7 @@ import { generateUUID } from '../utils/uuid';
 import { useAuthStore } from '../stores/authStore';
 import { ProjectCard } from '../components/ProjectCard';
 import { ProjectCardSkeleton } from '../components/ProjectCardSkeleton';
-import { DashboardSummaryBar } from '../components/dashboard/DashboardSummaryBar';
+import { DashboardSummaryBar } from '../components/projectStatus/DashboardSummaryBar';
 import { NewProjectDialog } from '../components/NewProjectDialog';
 import { BrandLogo } from '../components/BrandLogo';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';

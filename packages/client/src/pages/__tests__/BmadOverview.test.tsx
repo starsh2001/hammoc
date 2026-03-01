@@ -1,11 +1,11 @@
 /**
- * BmadDashboard Tests
+ * BmadOverview Tests
  * [Source: Story 12.2 - Task 5.2]
  */
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BmadDashboard } from '../BmadDashboard';
+import { BmadOverview } from '../BmadOverview';
 import { useBmadStatus } from '../../hooks/useBmadStatus';
 import { useProjectStore } from '../../stores/projectStore';
 import type { BmadStatusResponse } from '@bmad-studio/shared';
@@ -26,9 +26,9 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../../hooks/useBmadStatus.js');
 vi.mock('../../stores/projectStore.js');
 
-// Mock ProjectDashboardPage
-vi.mock('../ProjectDashboardPage.js', () => ({
-  ProjectDashboardPage: () => <div data-testid="project-dashboard-page">Base Dashboard</div>,
+// Mock ProjectOverviewPage
+vi.mock('../ProjectOverviewPage.js', () => ({
+  ProjectOverviewPage: () => <div data-testid="project-dashboard-page">Base Dashboard</div>,
 }));
 
 // Mock uuid
@@ -37,14 +37,14 @@ vi.mock('../../utils/uuid.js', () => ({
 }));
 
 // Mock DocumentStatusCard (Story 12.3)
-vi.mock('../../components/dashboard/DocumentStatusCard.js', () => ({
+vi.mock('../../components/overview/DocumentStatusCard.js', () => ({
   DocumentStatusCard: () => (
     <div role="region" aria-label="문서 현황">문서 현황</div>
   ),
 }));
 
 // Mock EpicProgressCard (Story 12.4)
-vi.mock('../../components/dashboard/EpicProgressCard.js', () => ({
+vi.mock('../../components/overview/EpicProgressCard.js', () => ({
   EpicProgressCard: () => (
     <div role="region" aria-label="에픽 진행률">에픽 진행률</div>
   ),
@@ -116,7 +116,7 @@ function setupMocks(opts: {
   });
 }
 
-describe('BmadDashboard', () => {
+describe('BmadOverview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -125,7 +125,7 @@ describe('BmadDashboard', () => {
   it('renders BMad section with badge alongside base dashboard for BMad projects', () => {
     setupMocks({ project: bmadProject, data: mockBmadData });
 
-    render(<BmadDashboard />);
+    render(<BmadOverview />);
 
     expect(screen.getByText('BMad')).toBeInTheDocument();
     expect(screen.getByTestId('project-dashboard-page')).toBeInTheDocument();
@@ -135,7 +135,7 @@ describe('BmadDashboard', () => {
   it('renders only base dashboard for non-BMad projects', () => {
     setupMocks({ project: nonBmadProject });
 
-    render(<BmadDashboard />);
+    render(<BmadOverview />);
 
     expect(screen.getByTestId('project-dashboard-page')).toBeInTheDocument();
     expect(screen.queryByText('BMad')).not.toBeInTheDocument();
@@ -145,7 +145,7 @@ describe('BmadDashboard', () => {
   it('shows BMad skeleton during loading alongside base dashboard', () => {
     setupMocks({ project: bmadProject, isLoading: true });
 
-    const { container } = render(<BmadDashboard />);
+    const { container } = render(<BmadOverview />);
 
     const pulseElements = container.querySelectorAll('.animate-pulse');
     expect(pulseElements.length).toBeGreaterThan(0);
@@ -156,7 +156,7 @@ describe('BmadDashboard', () => {
   it('shows inline BMad error alongside base dashboard on error', () => {
     setupMocks({ project: bmadProject, error: '스캔 실패' });
 
-    render(<BmadDashboard />);
+    render(<BmadOverview />);
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByText('스캔 실패')).toBeInTheDocument();
@@ -167,7 +167,7 @@ describe('BmadDashboard', () => {
   it('calls retry when retry button is clicked', () => {
     setupMocks({ project: bmadProject, error: '에러 발생' });
 
-    render(<BmadDashboard />);
+    render(<BmadOverview />);
 
     fireEvent.click(screen.getByText('다시 시도'));
     expect(mockRetry).toHaveBeenCalledTimes(1);
@@ -177,7 +177,7 @@ describe('BmadDashboard', () => {
   it('shows document status, epic progress, and summary on success', () => {
     setupMocks({ project: bmadProject, data: mockBmadData });
 
-    render(<BmadDashboard />);
+    render(<BmadOverview />);
 
     // BMad badge
     expect(screen.getByText('BMad')).toBeInTheDocument();
@@ -199,7 +199,7 @@ describe('BmadDashboard', () => {
   it('does not render BMad cards for non-BMad projects', () => {
     setupMocks({ project: nonBmadProject });
 
-    render(<BmadDashboard />);
+    render(<BmadOverview />);
 
     expect(screen.queryByText('문서 현황')).not.toBeInTheDocument();
     expect(screen.queryByText('에픽 진행률')).not.toBeInTheDocument();
@@ -209,7 +209,7 @@ describe('BmadDashboard', () => {
   it('shows BMad badge during loading state', () => {
     setupMocks({ project: bmadProject, isLoading: true });
 
-    render(<BmadDashboard />);
+    render(<BmadOverview />);
 
     expect(screen.getByText('BMad')).toBeInTheDocument();
   });

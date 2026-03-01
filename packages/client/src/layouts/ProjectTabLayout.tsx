@@ -1,7 +1,7 @@
 /**
  * ProjectTabLayout - Shared layout for project-level views
  * Provides header with project info + tab navigation
- * Tabs: Dashboard, Sessions, Queue Runner
+ * Tabs: Overview, Sessions, Queue Runner
  */
 
 import { useEffect, useMemo, useState, useRef } from 'react';
@@ -17,7 +17,7 @@ import { useClickOutside } from '../hooks/useClickOutside';
 import { useTheme } from '../hooks/useTheme';
 
 const tabs: Array<{ id: string; label: string; icon: typeof LayoutDashboard; path: string }> = [
-  { id: 'dashboard', label: '대시보드', icon: LayoutDashboard, path: '' },
+  { id: 'overview', label: '개요', icon: LayoutDashboard, path: '' },
   { id: 'sessions', label: '세션', icon: MessageSquare, path: '/sessions' },
   { id: 'queue', label: '큐 러너', icon: ListOrdered, path: '/queue' },
   { id: 'files', label: '파일', icon: FolderOpen, path: '/files' },
@@ -67,7 +67,7 @@ export function ProjectTabLayout() {
         return tab.id;
       }
     }
-    return 'dashboard';
+    return 'overview';
   }, [location.pathname, projectSlug]);
 
   const handleBack = () => navigate('/');

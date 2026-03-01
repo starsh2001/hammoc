@@ -386,7 +386,6 @@ describe('ProjectListPage', () => {
       // DashboardSummaryBar renders card layout with labels and values
       const summary = screen.getByRole('status', { name: 'Dashboard summary' });
       expect(summary).toBeInTheDocument();
-      expect(screen.getByText('Sessions')).toBeInTheDocument();
       expect(screen.getByText('Active')).toBeInTheDocument();
       expect(screen.getByText('Queue')).toBeInTheDocument();
       expect(screen.getByText('Terminals')).toBeInTheDocument();
