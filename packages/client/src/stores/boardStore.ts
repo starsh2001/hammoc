@@ -30,9 +30,17 @@ interface BoardStore {
 }
 
 let _errorTimerId: ReturnType<typeof setTimeout> | null = null;
+let _fetchId = 0;
+
+function clearErrorTimer() {
+  if (_errorTimerId) {
+    clearTimeout(_errorTimerId);
+    _errorTimerId = null;
+  }
+}
 
 function setErrorWithAutoClear(set: (partial: Partial<BoardStore>) => void, message: string) {
-  if (_errorTimerId) clearTimeout(_errorTimerId);
+  clearErrorTimer();
   set({ error: message, isLoading: false });
   _errorTimerId = setTimeout(() => {
     set({ error: null });
@@ -61,11 +69,15 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
   // Actions
   fetchBoard: async (projectSlug: string) => {
+    const currentFetchId = ++_fetchId;
     set({ isLoading: true });
     try {
       const response = await boardApi.getBoard(projectSlug);
-      set({ items: response.items, isLoading: false });
+      if (currentFetchId !== _fetchId) return;
+      clearErrorTimer();
+      set({ items: response.items, isLoading: false, error: null });
     } catch (err) {
+      if (currentFetchId !== _fetchId) return;
       setErrorWithAutoClear(set, getErrorMessage(err));
     }
   },
@@ -77,6 +89,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       await get().fetchBoard(projectSlug);
     } catch (err) {
       setErrorWithAutoClear(set, getErrorMessage(err));
+      throw err;
     }
   },
 
@@ -87,6 +100,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       await get().fetchBoard(projectSlug);
     } catch (err) {
       setErrorWithAutoClear(set, getErrorMessage(err));
+      throw err;
     }
   },
 
@@ -97,6 +111,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       await get().fetchBoard(projectSlug);
     } catch (err) {
       setErrorWithAutoClear(set, getErrorMessage(err));
+      throw err;
     }
   },
 

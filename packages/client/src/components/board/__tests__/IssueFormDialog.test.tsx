@@ -114,6 +114,27 @@ describe('IssueFormDialog', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
+  it('should not close or reset form when submit fails', async () => {
+    mockOnSubmit.mockRejectedValue(new Error('API error'));
+    const user = userEvent.setup();
+    render(
+      <IssueFormDialog open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
+    );
+
+    await user.type(screen.getByLabelText(/제목/), 'Failing issue');
+    await user.click(screen.getByText('추가'));
+
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalled();
+    });
+
+    // Dialog should remain open and form should keep its values
+    expect(mockOnClose).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/제목/)).toHaveValue('Failing issue');
+    // Submit button should be re-enabled after failure
+    expect(screen.getByText('추가')).not.toBeDisabled();
+  });
+
   it('should include optional severity and issueType when selected', async () => {
     const user = userEvent.setup();
     render(
