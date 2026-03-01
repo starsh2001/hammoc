@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import crypto from 'crypto';
 import path from 'path';
 import yaml from 'js-yaml';
 import type {
@@ -9,6 +10,10 @@ import type {
   UpdateIssueRequest,
 } from '@bmad-studio/shared';
 import { bmadStatusService } from './bmadStatusService.js';
+
+const VALID_SEVERITIES = new Set(['low', 'medium', 'high', 'critical']);
+const VALID_ISSUE_TYPES = new Set(['bug', 'improvement']);
+const VALID_STATUSES = new Set(['Open', 'InProgress', 'Done', 'Closed']);
 
 /**
  * Map BmadStoryStatus.status (may include spaces) to BoardItemStatus.
@@ -110,6 +115,14 @@ function parseIssueMarkdown(content: string, issueId: string): BoardItem {
 /**
  * Generate issue markdown content from data.
  */
+/**
+ * Sanitize a string to prevent markdown header injection.
+ * Strips newlines and leading '#' characters.
+ */
+function sanitizeLine(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ').replace(/^#+\s*/, '').trim();
+}
+
 function generateIssueMarkdown(data: {
   title: string;
   status?: string;
@@ -119,11 +132,15 @@ function generateIssueMarkdown(data: {
   linkedStory?: string;
   linkedEpic?: string;
 }): string {
-  return `# ${data.title}
+  const safeTitle = sanitizeLine(data.title);
+  const safeSeverity = data.severity && VALID_SEVERITIES.has(data.severity) ? data.severity : '';
+  const safeType = data.issueType && VALID_ISSUE_TYPES.has(data.issueType) ? data.issueType : '';
+  const safeStatus = data.status && VALID_STATUSES.has(data.status) ? data.status : 'Open';
+  return `# ${safeTitle}
 
 ## Status
 
-${data.status || 'Open'}
+${safeStatus}
 
 ## Description
 
@@ -131,11 +148,11 @@ ${data.description || ''}
 
 ## Severity
 
-${data.severity || ''}
+${safeSeverity}
 
 ## Type
 
-${data.issueType || ''}
+${safeType}
 
 ## Linked Story
 
@@ -166,7 +183,14 @@ class IssueService {
       // Config not found or parse error — use default
     }
 
-    return path.join(projectPath, issuesLocation);
+    // Enforce boundary: resolved path must be within projectPath
+    const resolved = path.resolve(projectPath, issuesLocation);
+    const projectRoot = path.resolve(projectPath);
+    if (!resolved.startsWith(projectRoot + path.sep) && resolved !== projectRoot) {
+      return path.join(projectPath, 'docs', 'issues');
+    }
+
+    return resolved;
   }
 
   /**
@@ -191,15 +215,20 @@ class IssueService {
 
     const mdFiles = files.filter((f) => f.endsWith('.md'));
 
-    const items = await Promise.all(
+    const results = await Promise.all(
       mdFiles.map(async (file) => {
-        const content = await fs.readFile(path.join(issuesDir, file), 'utf-8');
-        const issueId = file.replace(/\.md$/, '');
-        return parseIssueMarkdown(content, issueId);
+        try {
+          const content = await fs.readFile(path.join(issuesDir, file), 'utf-8');
+          const issueId = file.replace(/\.md$/, '');
+          return parseIssueMarkdown(content, issueId);
+        } catch {
+          // Skip files that can't be read (deleted, permissions, etc.)
+          return null;
+        }
       })
     );
 
-    return items;
+    return results.filter((item): item is BoardItem => item !== null);
   }
 
   /**
@@ -211,7 +240,8 @@ class IssueService {
 
     const slug = slugify(data.title);
     const timestamp = Date.now();
-    const issueId = `${timestamp}-${slug}`;
+    const randomSuffix = crypto.randomBytes(3).toString('hex');
+    const issueId = `${timestamp}-${randomSuffix}-${slug}`;
     const fileName = `${issueId}.md`;
 
     const markdown = generateIssueMarkdown({
@@ -281,7 +311,10 @@ class IssueService {
       linkedEpic: data.linkedEpic ?? existing.linkedEpic ?? '',
     });
 
-    await fs.writeFile(filePath, updated, 'utf-8');
+    // Atomic write: write to temp file then rename to prevent partial writes
+    const tmpPath = `${filePath}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+    await fs.writeFile(tmpPath, updated, 'utf-8');
+    await fs.rename(tmpPath, filePath);
 
     return parseIssueMarkdown(updated, issueId);
   }
@@ -302,14 +335,16 @@ class IssueService {
     const filePath = path.join(issuesDir, `${issueId}.md`);
 
     try {
-      await fs.access(filePath);
-    } catch {
-      const err = new Error(`Issue not found: ${issueId}`);
-      (err as NodeJS.ErrnoException).code = 'ISSUE_NOT_FOUND';
-      throw err;
+      await fs.unlink(filePath);
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'ENOENT') {
+        const err = new Error(`Issue not found: ${issueId}`);
+        (err as NodeJS.ErrnoException).code = 'ISSUE_NOT_FOUND';
+        throw err;
+      }
+      throw error;
     }
-
-    await fs.unlink(filePath);
   }
 
   /**
