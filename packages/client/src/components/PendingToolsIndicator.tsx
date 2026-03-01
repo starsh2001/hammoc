@@ -81,7 +81,7 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
             >
               <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500 flex-shrink-0" />
               <Icon className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
-              <span className="font-medium flex-shrink-0">
+              <span className="font-medium truncate">
                 {displayName}
               </span>
               {tool.description && (

@@ -9,6 +9,7 @@ describe('DashboardSummaryBar', () => {
     );
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.getByText('Projects')).toBeInTheDocument();
+    expect(screen.getByText('Sessions')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('Queue')).toBeInTheDocument();
     expect(screen.getByText('Terminals')).toBeInTheDocument();
@@ -19,9 +20,17 @@ describe('DashboardSummaryBar', () => {
       <DashboardSummaryBar totals={{ totalSessions: 6, activeSessions: 3, queueRunning: 1, terminals: 2 }} projectCount={5} />
     );
     expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('6')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
+  it('shows subValue "/ totalSessions" on Active card when totalSessions > 0', () => {
+    render(
+      <DashboardSummaryBar totals={{ totalSessions: 6, activeSessions: 3, queueRunning: 0, terminals: 0 }} projectCount={1} />
+    );
+    expect(screen.getByText('/ 6')).toBeInTheDocument();
   });
 
   it('shows correct numbers for large values', () => {
