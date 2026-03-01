@@ -19,7 +19,7 @@ import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ProjectListPage } from './pages/ProjectListPage';
 import { SessionListPage } from './pages/SessionListPage';
-import { BmadDashboard } from './pages/BmadDashboard';
+import { BmadOverview } from './pages/BmadOverview';
 import { ProjectSessionsPage } from './pages/ProjectSessionsPage';
 import { ProjectQueuePage } from './pages/ProjectBatchPage';
 import { ProjectGitPage } from './pages/ProjectGitPage';
@@ -84,7 +84,7 @@ function AppContent() {
           </AuthGuard>
         }
       >
-        <Route index element={<BmadDashboard />} />
+        <Route index element={<BmadOverview />} />
         <Route path="files" element={<FileExplorerTab />} />
         <Route path="sessions" element={<ProjectSessionsPage />} />
         <Route path="queue" element={<ProjectQueuePage />} />

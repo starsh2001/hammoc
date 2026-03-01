@@ -1,7 +1,7 @@
 /**
- * BmadDashboard - BMad project dashboard page
- * Renders BMad cards on top of ProjectDashboardPage for BMad projects,
- * falls back to ProjectDashboardPage alone for non-BMad.
+ * BmadOverview - BMad project overview page
+ * Renders BMad cards on top of ProjectOverviewPage for BMad projects,
+ * falls back to ProjectOverviewPage alone for non-BMad.
  * [Source: Story 12.2 - Task 3]
  */
 
@@ -13,10 +13,10 @@ import { useProjectStore } from '../stores/projectStore.js';
 import { useBmadStatus } from '../hooks/useBmadStatus.js';
 import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator.js';
 
-import { ProjectDashboardPage } from './ProjectDashboardPage.js';
-import { DocumentStatusCard } from '../components/dashboard/DocumentStatusCard.js';
-import { EpicProgressCard } from '../components/dashboard/EpicProgressCard.js';
-import { NextStepRecommender } from '../components/dashboard/NextStepRecommender.js';
+import { ProjectOverviewPage } from './ProjectOverviewPage.js';
+import { DocumentStatusCard } from '../components/overview/DocumentStatusCard.js';
+import { EpicProgressCard } from '../components/overview/EpicProgressCard.js';
+import { NextStepRecommender } from '../components/overview/NextStepRecommender.js';
 
 function BmadSkeleton() {
   return (
@@ -167,7 +167,7 @@ function BmadSection({
   );
 }
 
-export function BmadDashboard() {
+export function BmadOverview() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const { projects } = useProjectStore();
   const project = projects.find((p) => p.projectSlug === projectSlug);
@@ -199,7 +199,7 @@ export function BmadDashboard() {
           <div className="mx-6 border-t border-gray-200 dark:border-gray-700" />
         </>
       )}
-      <ProjectDashboardPage quickActionsSlot={quickActionsSlot} />
+      <ProjectOverviewPage quickActionsSlot={quickActionsSlot} />
     </>
   );
 }

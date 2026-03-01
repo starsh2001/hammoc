@@ -8,7 +8,7 @@ import { MessageSquare, Clock, MoreVertical, Trash2, Wand2, EyeOff, Eye } from '
 import type { ProjectInfo, DashboardProjectStatus } from '@bmad-studio/shared';
 import { formatRelativeTime, formatProjectPath } from '../utils/formatters';
 import { ConfirmModal } from './ConfirmModal';
-import { ProjectStatusIndicators } from './dashboard/ProjectStatusIndicators';
+import { ProjectStatusIndicators } from './projectStatus/ProjectStatusIndicators';
 
 interface ProjectCardProps {
   project: ProjectInfo;

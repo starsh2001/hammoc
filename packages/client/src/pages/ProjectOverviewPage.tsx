@@ -1,5 +1,5 @@
 /**
- * ProjectDashboardPage - Project dashboard view
+ * ProjectOverviewPage - Project overview view
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
@@ -19,12 +19,12 @@ import { useEffect, type ReactNode } from 'react';
 import { formatRelativeTime } from '../utils/formatters';
 import { generateUUID } from '../utils/uuid';
 
-interface ProjectDashboardPageProps {
+interface ProjectOverviewPageProps {
   /** Optional slot to replace the default "Quick Start" card with custom content (e.g. BMad recommendations) */
   quickActionsSlot?: ReactNode;
 }
 
-export function ProjectDashboardPage({ quickActionsSlot }: ProjectDashboardPageProps = {}) {
+export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPageProps = {}) {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const navigate = useNavigate();
   const { sessions, fetchSessions, isLoading, isRefreshing } = useSessionStore();
