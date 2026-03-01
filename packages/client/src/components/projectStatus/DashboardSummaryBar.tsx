@@ -1,4 +1,4 @@
-import { Activity, Play, Terminal, FolderOpen, MessageSquare } from 'lucide-react';
+import { Activity, Play, Terminal, FolderOpen } from 'lucide-react';
 
 interface DashboardSummaryBarProps {
   totals: {
@@ -15,7 +15,6 @@ interface StatCardProps {
   label: string;
   value: number;
   variant?: 'default' | 'green' | 'blue' | 'yellow';
-  subValue?: string;
 }
 
 const cardStyles = {
@@ -41,7 +40,7 @@ const cardStyles = {
   },
 };
 
-function StatCard({ icon, label, value, variant = 'default', subValue }: StatCardProps) {
+function StatCard({ icon, label, value, variant = 'default' }: StatCardProps) {
   const isActive = variant !== 'default' && value > 0;
   const style = isActive ? cardStyles[variant] : cardStyles.default;
 
@@ -55,9 +54,6 @@ function StatCard({ icon, label, value, variant = 'default', subValue }: StatCar
       <div className={`text-2xl font-bold tabular-nums ${style.value}`}>
         {value}
       </div>
-      {subValue && (
-        <div className="text-xs text-gray-500 mt-0.5">{subValue}</div>
-      )}
       <div className="text-xs text-gray-500 mt-1 truncate w-full text-center">{label}</div>
     </div>
   );
@@ -68,7 +64,7 @@ export function DashboardSummaryBar({ totals, projectCount }: DashboardSummaryBa
     <div
       role="status"
       aria-label="Dashboard summary"
-      className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 mb-4"
+      className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4"
     >
       <StatCard
         icon={<FolderOpen className="w-5 h-5" />}
@@ -76,16 +72,10 @@ export function DashboardSummaryBar({ totals, projectCount }: DashboardSummaryBa
         value={projectCount}
       />
       <StatCard
-        icon={<MessageSquare className="w-5 h-5" />}
-        label="Sessions"
-        value={totals.totalSessions}
-      />
-      <StatCard
         icon={<Activity className="w-5 h-5" />}
         label="Active"
         value={totals.activeSessions}
         variant="green"
-        subValue={totals.totalSessions > 0 ? `/ ${totals.totalSessions}` : undefined}
       />
       <StatCard
         icon={<Play className="w-5 h-5" />}
