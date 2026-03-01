@@ -25,9 +25,9 @@ describe('ProjectStatusIndicators', () => {
 
   it('shows active session count format "N/M active" with green dot', () => {
     render(<ProjectStatusIndicators status={makeStatus({ activeSessionCount: 2, totalSessionCount: 5 })} />);
-    expect(screen.getByText('2 active')).toBeInTheDocument();
+    expect(screen.getByText('2/5 active')).toBeInTheDocument();
     // Green dot should be present
-    const container = screen.getByText('2 active').parentElement!;
+    const container = screen.getByText('2/5 active').parentElement!;
     const dot = container.querySelector('.bg-green-500.rounded-full');
     expect(dot).not.toBeNull();
   });
@@ -40,7 +40,7 @@ describe('ProjectStatusIndicators', () => {
   it('hides terminal count when terminalCount === 0', () => {
     render(<ProjectStatusIndicators status={makeStatus({ totalSessionCount: 3 })} />);
     // Only session text should appear, no standalone number for terminals
-    expect(screen.getByText('0 active')).toBeInTheDocument();
+    expect(screen.getByText('0/3 active')).toBeInTheDocument();
     expect(screen.queryByText('0')).toBeNull();
   });
 
@@ -60,7 +60,7 @@ describe('ProjectStatusIndicators', () => {
         })}
       />
     );
-    const container = screen.getByLabelText('Project status: 2 active sessions, queue running, 1 terminal');
+    const container = screen.getByLabelText('Project status: 2/5 active sessions, queue running, 1 terminal');
     expect(container).toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe('ProjectStatusIndicators', () => {
         status={makeStatus({ activeSessionCount: 0, totalSessionCount: 3 })}
       />
     );
-    const container = screen.getByLabelText('Project status: 0 active sessions');
+    const container = screen.getByLabelText('Project status: 0/3 active sessions');
     expect(container).toBeInTheDocument();
   });
 });
