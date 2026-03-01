@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, GitBranch, Terminal, Settings, MoreVertical, Moon, Sun, LogOut } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, GitBranch, Terminal, Kanban, Settings, MoreVertical, Moon, Sun, LogOut } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAuthStore } from '../stores/authStore';
 import { useTerminalStore } from '../stores/terminalStore';
@@ -23,6 +23,7 @@ const tabs: Array<{ id: string; label: string; icon: typeof LayoutDashboard; pat
   { id: 'files', label: '파일', icon: FolderOpen, path: '/files' },
   { id: 'git', label: 'Git', icon: GitBranch, path: '/git' },
   { id: 'terminal', label: '터미널', icon: Terminal, path: '/terminal' },
+  { id: 'board', label: '보드', icon: Kanban, path: '/board' },
 ];
 
 export function ProjectTabLayout() {
