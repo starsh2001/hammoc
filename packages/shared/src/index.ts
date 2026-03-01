@@ -126,5 +126,8 @@ export * from './types/terminal.js';
 // Story 20.1: Dashboard types
 export * from './types/dashboard.js';
 
+// Story 21.1: Board types (Epic 21)
+export * from './types/board.js';
+
 // Logger types (shared between server and client)
 export { LogLevel, type LogLevelName, parseLogLevel } from './types/logger.js';

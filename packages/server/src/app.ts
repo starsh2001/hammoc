@@ -23,6 +23,7 @@ import bmadStatusRoutes from './routes/bmadStatus.js';
 import queueRoutes from './routes/queue.js';
 import gitRoutes from './routes/git.js';
 import dashboardRoutes from './routes/dashboard.js';
+import boardRoutes from './routes/board.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 import { createLogger } from './utils/logger.js';
@@ -101,6 +102,9 @@ export async function createApp(): Promise<Express> {
 
   // Dashboard status aggregation routes (Story 20.1)
   app.use('/api/dashboard', dashboardRoutes);
+
+  // Board routes (Story 21.1)
+  app.use('/api/projects', boardRoutes);
 
   // Debug routes (server-side logging for client debugging)
   app.use('/api/debug', debugRoutes);
