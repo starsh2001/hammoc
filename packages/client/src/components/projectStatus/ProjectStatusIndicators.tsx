@@ -8,7 +8,7 @@ interface ProjectStatusIndicatorsProps {
 
 function buildAriaLabel(status: DashboardProjectStatus): string {
   const parts: string[] = [
-    `${status.activeSessionCount} active sessions`,
+    `${status.activeSessionCount}/${status.totalSessionCount} active sessions`,
   ];
 
   if (status.queueStatus !== 'idle') {
@@ -41,7 +41,7 @@ export function ProjectStatusIndicators({ status }: ProjectStatusIndicatorsProps
       {/* Active sessions */}
       <div className="flex items-center gap-1">
         <span className="w-2 h-2 bg-green-500 rounded-full" />
-        <span>{status.activeSessionCount} active</span>
+        <span>{status.activeSessionCount}/{status.totalSessionCount} active</span>
       </div>
 
       {/* Queue status badge */}
