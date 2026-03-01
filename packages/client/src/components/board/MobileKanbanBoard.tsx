@@ -1,0 +1,110 @@
+/**
+ * MobileKanbanBoard - Mobile kanban with swipe navigation and indicator dots
+ * [Source: Story 21.2 - Task 10]
+ */
+
+import { useState, useRef } from 'react';
+import type { BoardItem, BoardItemStatus } from '@bmad-studio/shared';
+import { BoardCard } from './BoardCard';
+import { BOARD_COLUMNS, STATUS_LABEL } from './constants';
+
+interface MobileKanbanBoardProps {
+  itemsByStatus: Record<BoardItemStatus, BoardItem[]>;
+}
+
+const SWIPE_THRESHOLD = 50;
+
+export function MobileKanbanBoard({ itemsByStatus }: MobileKanbanBoardProps) {
+  const [activeColumnIndex, setActiveColumnIndex] = useState(0);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const touchDeltaX = useRef(0);
+  const isHorizontalSwipe = useRef<boolean | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchDeltaX.current = 0;
+    isHorizontalSwipe.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = e.touches[0].clientY - touchStartY.current;
+
+    // Determine swipe direction on first significant move
+    if (isHorizontalSwipe.current === null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+      isHorizontalSwipe.current = Math.abs(dx) > Math.abs(dy);
+    }
+
+    if (isHorizontalSwipe.current) {
+      e.preventDefault();
+      touchDeltaX.current = dx;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (Math.abs(touchDeltaX.current) > SWIPE_THRESHOLD) {
+      if (touchDeltaX.current < 0 && activeColumnIndex < BOARD_COLUMNS.length - 1) {
+        setActiveColumnIndex((prev) => prev + 1);
+      } else if (touchDeltaX.current > 0 && activeColumnIndex > 0) {
+        setActiveColumnIndex((prev) => prev - 1);
+      }
+    }
+    touchDeltaX.current = 0;
+    isHorizontalSwipe.current = null;
+  };
+
+  const activeStatus = BOARD_COLUMNS[activeColumnIndex];
+  const activeItems = itemsByStatus[activeStatus] || [];
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Column content area */}
+      <div
+        className="flex-1 overflow-y-auto"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Column header */}
+        <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            {STATUS_LABEL[activeStatus]}
+          </span>
+          <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
+            {activeItems.length}
+          </span>
+        </div>
+
+        {/* Cards */}
+        <div className="p-3 space-y-2">
+          {activeItems.map((item) => (
+            <BoardCard key={item.id} item={item} />
+          ))}
+          {activeItems.length === 0 && (
+            <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-8">
+              항목 없음
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Indicator dots */}
+      <div className="flex justify-center gap-2 py-3 flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
+        {BOARD_COLUMNS.map((status, index) => (
+          <button
+            key={status}
+            onClick={() => setActiveColumnIndex(index)}
+            className={`w-2 h-2 rounded-full transition-colors ${
+              index === activeColumnIndex
+                ? 'bg-blue-500'
+                : 'bg-gray-300 dark:bg-gray-600'
+            }`}
+            aria-label={`${STATUS_LABEL[status]} 칼럼으로 이동`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
