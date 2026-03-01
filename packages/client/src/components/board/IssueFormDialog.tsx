@@ -61,6 +61,8 @@ export function IssueFormDialog({ open, onClose, onSubmit }: IssueFormDialogProp
       await onSubmit(data);
       resetForm();
       onClose();
+    } catch {
+      // Error is handled by the store's setErrorWithAutoClear
     } finally {
       setIsSubmitting(false);
     }

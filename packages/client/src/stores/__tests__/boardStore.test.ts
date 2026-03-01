@@ -82,6 +82,43 @@ describe('boardStore', () => {
       vi.advanceTimersByTime(5000);
       expect(useBoardStore.getState().error).toBeNull();
     });
+
+    it('should clear previous error on successful fetch', async () => {
+      useBoardStore.setState({ error: 'Previous error' });
+
+      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: mockItems });
+      await useBoardStore.getState().fetchBoard('test-project');
+
+      expect(useBoardStore.getState().error).toBeNull();
+    });
+
+    it('should discard stale response when a newer fetch is in progress', async () => {
+      let resolveFirst: (value: { items: typeof mockItems }) => void;
+      const firstPromise = new Promise<{ items: typeof mockItems }>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const secondItems = [
+        { id: 'new-1', type: 'issue' as const, title: 'New', status: 'Open' as const },
+      ];
+
+      vi.mocked(boardApi.getBoard)
+        .mockReturnValueOnce(firstPromise)
+        .mockResolvedValueOnce({ items: secondItems });
+
+      // Start first fetch (slow)
+      const fetch1 = useBoardStore.getState().fetchBoard('project-a');
+      // Start second fetch (fast) - should supersede the first
+      const fetch2 = useBoardStore.getState().fetchBoard('project-b');
+
+      await fetch2;
+      expect(useBoardStore.getState().items).toEqual(secondItems);
+
+      // Resolve first fetch (stale) - should be discarded
+      resolveFirst!({ items: mockItems });
+      await fetch1;
+
+      expect(useBoardStore.getState().items).toEqual(secondItems);
+    });
   });
 
   describe('createIssue', () => {
@@ -94,6 +131,16 @@ describe('boardStore', () => {
       expect(boardApi.createIssue).toHaveBeenCalledWith('test-project', { title: 'New issue' });
       expect(boardApi.getBoard).toHaveBeenCalledWith('test-project');
       expect(useBoardStore.getState().items).toEqual(mockItems);
+    });
+
+    it('should re-throw error on failure so callers can handle it', async () => {
+      vi.mocked(boardApi.createIssue).mockRejectedValue(new Error('Create failed'));
+
+      await expect(
+        useBoardStore.getState().createIssue('test-project', { title: 'New issue' }),
+      ).rejects.toThrow('Create failed');
+
+      expect(useBoardStore.getState().error).toBeTruthy();
     });
   });
 
