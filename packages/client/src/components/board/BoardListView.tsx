@@ -1,15 +1,16 @@
 /**
  * BoardListView - Accordion list view for desktop and mobile
- * [Source: Story 21.2 - Task 9]
+ * [Source: Story 21.2 - Task 9, Story 21.3 - Task 6]
  */
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { BoardItem, BoardItemStatus } from '@bmad-studio/shared';
 import { BoardCard } from './BoardCard';
+import type { CardActionCallbacks } from './BoardCard';
 import { BOARD_COLUMNS, STATUS_LABEL } from './constants';
 
-interface BoardListViewProps {
+interface BoardListViewProps extends CardActionCallbacks {
   itemsByStatus: Record<BoardItemStatus, BoardItem[]>;
   isMobile?: boolean;
 }
@@ -23,7 +24,16 @@ function getInitialExpanded(isMobile: boolean): Set<BoardItemStatus> {
   return new Set(BOARD_COLUMNS);
 }
 
-export function BoardListView({ itemsByStatus, isMobile = false }: BoardListViewProps) {
+export function BoardListView({
+  itemsByStatus,
+  isMobile = false,
+  onQuickFix,
+  onPromote,
+  onEdit,
+  onClose,
+  onWorkflowAction,
+  onViewEpicStories,
+}: BoardListViewProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<BoardItemStatus>>(
     () => getInitialExpanded(isMobile),
   );
@@ -80,7 +90,16 @@ export function BoardListView({ itemsByStatus, isMobile = false }: BoardListView
             {isExpanded && (
               <div className="p-2 space-y-2">
                 {items.map((item) => (
-                  <BoardCard key={item.id} item={item} />
+                  <BoardCard
+                    key={item.id}
+                    item={item}
+                    onQuickFix={onQuickFix}
+                    onPromote={onPromote}
+                    onEdit={onEdit}
+                    onClose={onClose}
+                    onWorkflowAction={onWorkflowAction}
+                    onViewEpicStories={onViewEpicStories}
+                  />
                 ))}
               </div>
             )}

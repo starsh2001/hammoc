@@ -1,10 +1,10 @@
 /**
  * BoardCard Component Tests
- * [Source: Story 21.2 - Task 12]
+ * [Source: Story 21.2 - Task 12, Story 21.3 - Task 7]
  */
 
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { BoardCard } from '../BoardCard';
 import type { BoardItem } from '@bmad-studio/shared';
 
@@ -110,6 +110,39 @@ describe('BoardCard', () => {
       const { container } = render(<BoardCard item={emptyEpic} />);
       const progressBar = container.querySelector('.bg-blue-500.rounded-full');
       expect((progressBar as HTMLElement).style.width).toBe('0%');
+    });
+  });
+
+  describe('Context menu integration', () => {
+    it('should render ⋮ button when action callbacks are provided', () => {
+      render(
+        <BoardCard item={issueItem} onQuickFix={vi.fn()} onEdit={vi.fn()} />,
+      );
+      expect(screen.getByLabelText('카드 메뉴')).toBeInTheDocument();
+    });
+
+    it('should show context menu when ⋮ button is clicked', () => {
+      render(
+        <BoardCard
+          item={issueItem}
+          onQuickFix={vi.fn()}
+          onPromote={vi.fn()}
+          onEdit={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      expect(screen.getByText('바로 수정하기')).toBeInTheDocument();
+    });
+
+    it('should not render ⋮ button for Done story without callbacks', () => {
+      render(<BoardCard item={storyItem} />);
+      expect(screen.queryByLabelText('카드 메뉴')).not.toBeInTheDocument();
+    });
+
+    it('should not render ⋮ button for Done story even with workflow callback', () => {
+      render(<BoardCard item={storyItem} onWorkflowAction={vi.fn()} />);
+      expect(screen.queryByLabelText('카드 메뉴')).not.toBeInTheDocument();
     });
   });
 });

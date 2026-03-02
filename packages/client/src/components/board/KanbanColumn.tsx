@@ -1,13 +1,14 @@
 /**
  * KanbanColumn - Single kanban column with header and card list
- * [Source: Story 21.2 - Task 7]
+ * [Source: Story 21.2 - Task 7, Story 21.3 - Task 6]
  */
 
 import type { BoardItem, BoardItemStatus } from '@bmad-studio/shared';
 import { BoardCard } from './BoardCard';
+import type { CardActionCallbacks } from './BoardCard';
 import { STATUS_LABEL } from './constants';
 
-interface KanbanColumnProps {
+interface KanbanColumnProps extends CardActionCallbacks {
   status: BoardItemStatus;
   items: BoardItem[];
 }
@@ -22,7 +23,16 @@ const STATUS_COLOR: Record<BoardItemStatus, string> = {
   Closed: 'border-t-gray-500',
 };
 
-export function KanbanColumn({ status, items }: KanbanColumnProps) {
+export function KanbanColumn({
+  status,
+  items,
+  onQuickFix,
+  onPromote,
+  onEdit,
+  onClose,
+  onWorkflowAction,
+  onViewEpicStories,
+}: KanbanColumnProps) {
   return (
     <div
       className={`min-w-[280px] w-[280px] flex flex-col bg-gray-50 dark:bg-gray-900 rounded-lg border-t-2 ${STATUS_COLOR[status]}`}
@@ -40,7 +50,16 @@ export function KanbanColumn({ status, items }: KanbanColumnProps) {
       {/* Card list */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
         {items.map((item) => (
-          <BoardCard key={item.id} item={item} />
+          <BoardCard
+            key={item.id}
+            item={item}
+            onQuickFix={onQuickFix}
+            onPromote={onPromote}
+            onEdit={onEdit}
+            onClose={onClose}
+            onWorkflowAction={onWorkflowAction}
+            onViewEpicStories={onViewEpicStories}
+          />
         ))}
       </div>
     </div>
