@@ -1,11 +1,21 @@
 /**
  * BoardCard - Board item card with type badge and progress bar
- * [Source: Story 21.2 - Task 6]
+ * [Source: Story 21.2 - Task 6, Story 21.3 - Task 2]
  */
 
 import type { BoardItem } from '@bmad-studio/shared';
+import { CardContextMenu } from './CardContextMenu';
 
-interface BoardCardProps {
+export interface CardActionCallbacks {
+  onQuickFix?: (item: BoardItem) => void;
+  onPromote?: (item: BoardItem, targetType: 'story' | 'epic') => void;
+  onEdit?: (item: BoardItem) => void;
+  onClose?: (item: BoardItem) => void;
+  onWorkflowAction?: (item: BoardItem) => void;
+  onViewEpicStories?: (item: BoardItem) => void;
+}
+
+interface BoardCardProps extends CardActionCallbacks {
   item: BoardItem;
 }
 
@@ -31,12 +41,20 @@ const SEVERITY_BADGE: Record<string, string> = {
   low: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
 };
 
-export function BoardCard({ item }: BoardCardProps) {
+export function BoardCard({
+  item,
+  onQuickFix,
+  onPromote,
+  onEdit,
+  onClose,
+  onWorkflowAction,
+  onViewEpicStories,
+}: BoardCardProps) {
   const typeBadge = TYPE_BADGE[item.type];
 
   return (
-    <div className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm cursor-default">
-      {/* Header: type badge + title */}
+    <div className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm cursor-default relative">
+      {/* Header: type badge + title + context menu */}
       <div className="flex items-start gap-2">
         {typeBadge && (
           <span
@@ -45,9 +63,18 @@ export function BoardCard({ item }: BoardCardProps) {
             {typeBadge.label}
           </span>
         )}
-        <span className="text-sm font-medium text-gray-900 dark:text-white leading-tight">
+        <span className="text-sm font-medium text-gray-900 dark:text-white leading-tight flex-1">
           {item.title}
         </span>
+        <CardContextMenu
+          item={item}
+          onQuickFix={onQuickFix}
+          onPromote={onPromote}
+          onEdit={onEdit}
+          onClose={onClose}
+          onWorkflowAction={onWorkflowAction}
+          onViewEpicStories={onViewEpicStories}
+        />
       </div>
 
       {/* Issue: description preview + severity */}

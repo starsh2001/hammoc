@@ -1,21 +1,26 @@
 /**
  * ProjectBoardPage - Board tab main page with kanban/list views
- * [Source: Story 21.2 - Task 5]
+ * [Source: Story 21.2 - Task 5, Story 21.3 - Task 5]
  */
 
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { LayoutList, Kanban, Plus, RefreshCw, AlertCircle } from 'lucide-react';
+import type { BoardItem, CreateIssueRequest, UpdateIssueRequest } from '@bmad-studio/shared';
 import { useBoard } from '../hooks/useBoard';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { KanbanBoard } from '../components/board/KanbanBoard';
 import { MobileKanbanBoard } from '../components/board/MobileKanbanBoard';
 import { BoardListView } from '../components/board/BoardListView';
 import { IssueFormDialog } from '../components/board/IssueFormDialog';
-import type { CreateIssueRequest } from '@bmad-studio/shared';
+import { IssueEditDialog } from '../components/board/IssueEditDialog';
+import { EpicStoriesDialog } from '../components/board/EpicStoriesDialog';
+import { boardApi } from '../services/api/board.js';
+import { generateUUID } from '../utils/uuid.js';
 
 export function ProjectBoardPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
+  const navigate = useNavigate();
   const {
     viewMode,
     isLoading,
@@ -28,9 +33,142 @@ export function ProjectBoardPage() {
   } = useBoard(projectSlug);
   const isMobile = useIsMobile();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [editingIssue, setEditingIssue] = useState<BoardItem | null>(null);
+  const [epicDialogData, setEpicDialogData] = useState<{ epic: BoardItem; stories: BoardItem[] } | null>(null);
+
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    };
+  }, []);
+
+  const setActionErrorWithClear = useCallback((msg: string) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setActionError(msg);
+    errorTimerRef.current = setTimeout(() => setActionError(null), 5000);
+  }, []);
 
   const handleCreateIssue = async (data: CreateIssueRequest) => {
     await createIssue(data);
+  };
+
+  // Quick fix: update status to InProgress, navigate to dev session
+  const handleQuickFix = useCallback(async (item: BoardItem) => {
+    if (!projectSlug) return;
+    try {
+      await boardApi.updateIssue(projectSlug, item.id, { status: 'InProgress' });
+      const sessionId = generateUUID();
+      const desc = item.description
+        ? (item.description.length > 500 ? item.description.slice(0, 500) + '...(잘림)' : item.description)
+        : '(설명 없음)';
+      const prompt = `다음 이슈를 해결해 주세요:\n\n# ${item.title}\n\n${desc}\n\n심각도: ${item.severity || '없음'}\n타입: ${item.issueType || '없음'}`;
+      const params = new URLSearchParams({ agent: '/BMad:agents:dev', task: prompt });
+      navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+    } catch {
+      setActionErrorWithClear('이슈 상태 변경에 실패했습니다.');
+    }
+  }, [projectSlug, navigate, setActionErrorWithClear]);
+
+  // Promote issue to story or epic
+  const handlePromote = useCallback(async (item: BoardItem, targetType: 'story' | 'epic') => {
+    if (!projectSlug) return;
+    try {
+      await boardApi.updateIssue(projectSlug, item.id, { status: 'Done' });
+      const sessionId = generateUUID();
+      const desc = item.description
+        ? (item.description.length > 500 ? item.description.slice(0, 500) + '...(잘림)' : item.description)
+        : '없음';
+      const taskName = targetType === 'story' ? '*create-brownfield-story' : '*create-brownfield-epic';
+      const taskWithContext = `${taskName}\n\n## 원본 이슈 (ID: ${item.id})\n**제목**: ${item.title}\n**설명**: ${desc}\n**심각도**: ${item.severity || '없음'}\n**타입**: ${item.issueType || '없음'}`;
+      const params = new URLSearchParams({ agent: '/BMad:agents:pm', task: taskWithContext });
+      navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+    } catch {
+      setActionErrorWithClear('승격 처리에 실패했습니다.');
+    }
+  }, [projectSlug, navigate, setActionErrorWithClear]);
+
+  // Edit issue
+  const handleEditIssue = useCallback((item: BoardItem) => {
+    setEditingIssue(item);
+  }, []);
+
+  const handleEditSubmit = useCallback(async (issueId: string, data: UpdateIssueRequest) => {
+    if (!projectSlug) return;
+    try {
+      await boardApi.updateIssue(projectSlug, issueId, data);
+      await refresh();
+      setEditingIssue(null);
+    } catch {
+      setActionErrorWithClear('이슈 수정에 실패했습니다.');
+      throw new Error('update failed');
+    }
+  }, [projectSlug, refresh, setActionErrorWithClear]);
+
+  // Close issue
+  const handleCloseIssue = useCallback(async (item: BoardItem) => {
+    if (!projectSlug) return;
+    if (!window.confirm('이 이슈를 닫으시겠습니까?')) return;
+    try {
+      await boardApi.updateIssue(projectSlug, item.id, { status: 'Closed' });
+      await refresh();
+    } catch {
+      setActionErrorWithClear('이슈 닫기에 실패했습니다.');
+    }
+  }, [projectSlug, refresh, setActionErrorWithClear]);
+
+  // Story workflow action
+  const handleWorkflowAction = useCallback((item: BoardItem) => {
+    if (!projectSlug) return;
+    const storyNum = item.id.replace(/^story-/, '');
+    const sessionId = generateUUID();
+    let agent = '';
+    let task = '';
+
+    switch (item.status) {
+      case 'Draft':
+        agent = '/BMad:agents:sm';
+        task = `*story-checklist ${storyNum}`;
+        break;
+      case 'Approved':
+        agent = '/BMad:agents:dev';
+        task = `*develop-story ${storyNum}`;
+        break;
+      case 'InProgress':
+        agent = '/BMad:agents:qa';
+        task = `*gate ${storyNum}`;
+        break;
+      case 'Review':
+        agent = '/BMad:agents:dev';
+        task = `*review-qa ${storyNum}`;
+        break;
+      default:
+        return;
+    }
+
+    const params = new URLSearchParams({ agent, task });
+    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+  }, [projectSlug, navigate]);
+
+  // View epic stories
+  const handleViewEpicStories = useCallback((item: BoardItem) => {
+    const allItems = Object.values(itemsByStatus).flat();
+    const epicStories = allItems.filter(
+      (i) => i.type === 'story' && i.epicNumber === item.epicNumber,
+    );
+    setEpicDialogData({ epic: item, stories: epicStories });
+  }, [itemsByStatus]);
+
+  // Card action callbacks
+  const cardCallbacks = {
+    onQuickFix: handleQuickFix,
+    onPromote: handlePromote,
+    onEdit: handleEditIssue,
+    onClose: handleCloseIssue,
+    onWorkflowAction: handleWorkflowAction,
+    onViewEpicStories: handleViewEpicStories,
   };
 
   // Loading skeleton
@@ -139,10 +277,10 @@ export function ProjectBoardPage() {
       </div>
 
       {/* Error banner (when items exist but refresh fails) */}
-      {error && (
+      {(error || actionError) && (
         <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          {error}
+          {actionError || error}
         </div>
       )}
 
@@ -150,12 +288,12 @@ export function ProjectBoardPage() {
       <div className="flex-1 min-h-0">
         {viewMode === 'kanban' ? (
           isMobile ? (
-            <MobileKanbanBoard itemsByStatus={itemsByStatus} />
+            <MobileKanbanBoard itemsByStatus={itemsByStatus} {...cardCallbacks} />
           ) : (
-            <KanbanBoard itemsByStatus={itemsByStatus} />
+            <KanbanBoard itemsByStatus={itemsByStatus} {...cardCallbacks} />
           )
         ) : (
-          <BoardListView itemsByStatus={itemsByStatus} isMobile={isMobile} />
+          <BoardListView itemsByStatus={itemsByStatus} isMobile={isMobile} {...cardCallbacks} />
         )}
       </div>
 
@@ -163,6 +301,20 @@ export function ProjectBoardPage() {
         open={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleCreateIssue}
+      />
+
+      <IssueEditDialog
+        open={!!editingIssue}
+        issue={editingIssue}
+        onClose={() => setEditingIssue(null)}
+        onSubmit={handleEditSubmit}
+      />
+
+      <EpicStoriesDialog
+        open={!!epicDialogData}
+        epic={epicDialogData?.epic ?? null}
+        stories={epicDialogData?.stories ?? []}
+        onClose={() => setEpicDialogData(null)}
       />
     </div>
   );

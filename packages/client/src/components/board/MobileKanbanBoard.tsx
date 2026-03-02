@@ -1,20 +1,29 @@
 /**
  * MobileKanbanBoard - Mobile kanban with swipe navigation and indicator dots
- * [Source: Story 21.2 - Task 10]
+ * [Source: Story 21.2 - Task 10, Story 21.3 - Task 6]
  */
 
 import { useState, useRef } from 'react';
 import type { BoardItem, BoardItemStatus } from '@bmad-studio/shared';
 import { BoardCard } from './BoardCard';
+import type { CardActionCallbacks } from './BoardCard';
 import { BOARD_COLUMNS, STATUS_LABEL } from './constants';
 
-interface MobileKanbanBoardProps {
+interface MobileKanbanBoardProps extends CardActionCallbacks {
   itemsByStatus: Record<BoardItemStatus, BoardItem[]>;
 }
 
 const SWIPE_THRESHOLD = 50;
 
-export function MobileKanbanBoard({ itemsByStatus }: MobileKanbanBoardProps) {
+export function MobileKanbanBoard({
+  itemsByStatus,
+  onQuickFix,
+  onPromote,
+  onEdit,
+  onClose,
+  onWorkflowAction,
+  onViewEpicStories,
+}: MobileKanbanBoardProps) {
   const [activeColumnIndex, setActiveColumnIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -80,7 +89,16 @@ export function MobileKanbanBoard({ itemsByStatus }: MobileKanbanBoardProps) {
         {/* Cards */}
         <div className="p-3 space-y-2">
           {activeItems.map((item) => (
-            <BoardCard key={item.id} item={item} />
+            <BoardCard
+              key={item.id}
+              item={item}
+              onQuickFix={onQuickFix}
+              onPromote={onPromote}
+              onEdit={onEdit}
+              onClose={onClose}
+              onWorkflowAction={onWorkflowAction}
+              onViewEpicStories={onViewEpicStories}
+            />
           ))}
           {activeItems.length === 0 && (
             <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-8">
