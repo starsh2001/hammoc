@@ -61,8 +61,8 @@ export function IssueEditDialog({ open, issue, onClose, onSubmit }: IssueEditDia
     } else {
       data.description = '';
     }
-    if (severity) data.severity = severity as UpdateIssueRequest['severity'];
-    if (issueType) data.issueType = issueType as UpdateIssueRequest['issueType'];
+    data.severity = (severity || undefined) as UpdateIssueRequest['severity'];
+    data.issueType = (issueType || undefined) as UpdateIssueRequest['issueType'];
 
     setIsSubmitting(true);
     try {

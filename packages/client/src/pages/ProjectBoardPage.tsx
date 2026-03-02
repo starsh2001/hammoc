@@ -138,7 +138,7 @@ export function ProjectBoardPage() {
         break;
       case 'InProgress':
         agent = '/BMad:agents:qa';
-        task = `*gate ${storyNum}`;
+        task = `*qa-gate ${storyNum}`;
         break;
       case 'Review':
         agent = '/BMad:agents:dev';
