@@ -4,30 +4,35 @@
  */
 
 import { useEffect, useMemo, useCallback } from 'react';
-import type { BoardItem, BoardItemStatus, CreateIssueRequest, UpdateIssueRequest } from '@bmad-studio/shared';
+import type { BoardItem, BoardConfig, CreateIssueRequest, UpdateIssueRequest } from '@bmad-studio/shared';
 import { useBoardStore } from '../stores/boardStore';
-import { BOARD_COLUMNS } from '../components/board/constants';
+import { projectsApi } from '../services/api/projects';
 
 interface UseBoardReturn {
   items: BoardItem[];
+  boardConfig: BoardConfig;
   viewMode: 'kanban' | 'list';
   isLoading: boolean;
   error: string | null;
-  itemsByStatus: Record<BoardItemStatus, BoardItem[]>;
+  itemsByColumn: Record<string, BoardItem[]>;
   setViewMode: (mode: 'kanban' | 'list') => void;
   createIssue: (data: CreateIssueRequest) => Promise<void>;
   updateIssue: (issueId: string, data: UpdateIssueRequest) => Promise<void>;
   deleteIssue: (issueId: string) => Promise<void>;
+  updateBoardConfig: (config: BoardConfig) => Promise<void>;
+  resetBoardConfig: () => Promise<void>;
   refresh: () => Promise<void>;
 }
 
 export function useBoard(projectSlug: string | undefined): UseBoardReturn {
   const items = useBoardStore((s) => s.items);
+  const boardConfig = useBoardStore((s) => s.boardConfig);
   const viewMode = useBoardStore((s) => s.viewMode);
   const isLoading = useBoardStore((s) => s.isLoading);
   const error = useBoardStore((s) => s.error);
   const fetchBoard = useBoardStore((s) => s.fetchBoard);
   const setViewMode = useBoardStore((s) => s.setViewMode);
+  const setBoardConfig = useBoardStore((s) => s.setBoardConfig);
   const storeCreateIssue = useBoardStore((s) => s.createIssue);
   const storeUpdateIssue = useBoardStore((s) => s.updateIssue);
   const storeDeleteIssue = useBoardStore((s) => s.deleteIssue);
@@ -38,18 +43,25 @@ export function useBoard(projectSlug: string | undefined): UseBoardReturn {
     }
   }, [projectSlug, fetchBoard]);
 
-  const itemsByStatus = useMemo(() => {
-    const grouped = {} as Record<BoardItemStatus, BoardItem[]>;
-    for (const status of BOARD_COLUMNS) {
-      grouped[status] = [];
+  const itemsByColumn = useMemo(() => {
+    const grouped: Record<string, BoardItem[]> = {};
+    for (const col of boardConfig.columns) {
+      grouped[col.id] = [];
     }
     for (const item of items) {
-      if (grouped[item.status]) {
-        grouped[item.status].push(item);
+      const columnId = boardConfig.statusToColumn[item.status] ?? boardConfig.columns[0]?.id;
+      if (columnId && grouped[columnId]) {
+        grouped[columnId].push(item);
+      } else {
+        // Fallback to first column
+        const fallback = boardConfig.columns[0]?.id;
+        if (fallback && grouped[fallback]) {
+          grouped[fallback].push(item);
+        }
       }
     }
     return grouped;
-  }, [items]);
+  }, [items, boardConfig]);
 
   const createIssue = useCallback(
     async (data: CreateIssueRequest) => {
@@ -72,20 +84,38 @@ export function useBoard(projectSlug: string | undefined): UseBoardReturn {
     [projectSlug, storeDeleteIssue],
   );
 
+  const updateBoardConfig = useCallback(
+    async (config: BoardConfig) => {
+      if (!projectSlug) return;
+      await projectsApi.updateSettings(projectSlug, { boardConfig: config });
+      setBoardConfig(config);
+    },
+    [projectSlug, setBoardConfig],
+  );
+
+  const resetBoardConfig = useCallback(async () => {
+    if (!projectSlug) return;
+    await projectsApi.updateSettings(projectSlug, { boardConfig: null });
+    await fetchBoard(projectSlug);
+  }, [projectSlug, fetchBoard]);
+
   const refresh = useCallback(async () => {
     if (projectSlug) await fetchBoard(projectSlug);
   }, [projectSlug, fetchBoard]);
 
   return {
     items,
+    boardConfig,
     viewMode,
     isLoading,
     error,
-    itemsByStatus,
+    itemsByColumn,
     setViewMode,
     createIssue,
     updateIssue,
     deleteIssue,
+    updateBoardConfig,
+    resetBoardConfig,
     refresh,
   };
 }

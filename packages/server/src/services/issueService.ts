@@ -30,7 +30,7 @@ function mapStoryStatus(status: string): BoardItemStatus {
     case 'Ready for Review':
       return 'Review';
     case 'Blocked':
-      return 'InProgress';
+      return 'Blocked';
     case 'Done':
       return 'Done';
     default:

@@ -570,7 +570,10 @@ export class StreamHandler {
         const parsed = this.parseMessage(message);
         this.processMessage(parsed, callbacks);
 
-        // Capture final response from result message
+        // Capture final response from result message and exit immediately.
+        // The SDK generator may not close promptly after RESULT, so waiting
+        // for the next generator.next() can hang indefinitely, leaving the
+        // queue item stuck in "pending" state even though the response is done.
         if (parsed.type === SDKMessageType.RESULT) {
           const resultMsg = parsed as ParsedResultMessage;
           finalResponse = {
@@ -581,6 +584,7 @@ export class StreamHandler {
             isError: resultMsg.isError,
             usage: resultMsg.usage,
           };
+          break;
         }
       }
     } catch (error) {

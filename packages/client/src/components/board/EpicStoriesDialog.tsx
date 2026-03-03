@@ -6,7 +6,7 @@
 import { useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import type { BoardItem } from '@bmad-studio/shared';
-import { STATUS_LABEL } from './constants';
+import { STATUS_LABEL, STATUS_BADGE_COLOR } from './constants';
 
 interface EpicStoriesDialogProps {
   open: boolean;
@@ -14,16 +14,6 @@ interface EpicStoriesDialogProps {
   stories: BoardItem[];
   onClose: () => void;
 }
-
-const STATUS_BADGE_CLASS: Record<string, string> = {
-  Open: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-  Draft: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
-  Approved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  InProgress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  Review: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  Done: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  Closed: 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-400',
-};
 
 export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesDialogProps) {
   const handleClose = useCallback(() => {
@@ -122,7 +112,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
                     </span>
                   </div>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${STATUS_BADGE_CLASS[story.status] || ''}`}
+                    className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${STATUS_BADGE_COLOR[story.status] || ''}`}
                   >
                     {STATUS_LABEL[story.status] || story.status}
                   </span>

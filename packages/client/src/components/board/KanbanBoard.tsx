@@ -3,17 +3,18 @@
  * [Source: Story 21.2 - Task 8, Story 21.3 - Task 6]
  */
 
-import type { BoardItem, BoardItemStatus } from '@bmad-studio/shared';
+import type { BoardItem, BoardConfig } from '@bmad-studio/shared';
 import type { CardActionCallbacks } from './BoardCard';
 import { KanbanColumn } from './KanbanColumn';
-import { BOARD_COLUMNS } from './constants';
 
 interface KanbanBoardProps extends CardActionCallbacks {
-  itemsByStatus: Record<BoardItemStatus, BoardItem[]>;
+  itemsByColumn: Record<string, BoardItem[]>;
+  boardConfig: BoardConfig;
 }
 
 export function KanbanBoard({
-  itemsByStatus,
+  itemsByColumn,
+  boardConfig,
   onQuickFix,
   onPromote,
   onEdit,
@@ -23,11 +24,11 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   return (
     <div className="flex gap-4 overflow-x-auto h-full pb-2">
-      {BOARD_COLUMNS.map((status) => (
+      {boardConfig.columns.map((col) => (
         <KanbanColumn
-          key={status}
-          status={status}
-          items={itemsByStatus[status] || []}
+          key={col.id}
+          columnConfig={col}
+          items={itemsByColumn[col.id] || []}
           onQuickFix={onQuickFix}
           onPromote={onPromote}
           onEdit={onEdit}

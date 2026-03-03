@@ -4,6 +4,30 @@ import typography from '@tailwindcss/typography';
 export default {
   darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  safelist: [
+    // Dynamic board column colors (COLUMN_COLOR_PALETTE from shared)
+    'border-t-gray-400',
+    'border-t-indigo-400',
+    'border-t-blue-400',
+    'border-t-yellow-400',
+    'border-t-emerald-500',
+    'border-t-red-400',
+    'border-t-purple-400',
+    'border-t-pink-400',
+    'border-t-orange-400',
+    'border-t-teal-400',
+    // Color swatch backgrounds for BoardConfigDialog
+    'bg-gray-400',
+    'bg-indigo-400',
+    'bg-blue-400',
+    'bg-yellow-400',
+    'bg-emerald-500',
+    'bg-red-400',
+    'bg-purple-400',
+    'bg-pink-400',
+    'bg-orange-400',
+    'bg-teal-400',
+  ],
   theme: {
     extend: {
       animation: {

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { DEFAULT_BOARD_CONFIG } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 import { issueService } from '../services/issueService.js';
 
@@ -12,7 +13,9 @@ export const boardController = {
       const { projectSlug } = req.params;
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       const result = await issueService.getBoard(projectRoot);
-      res.json(result);
+      const settings = await projectService.readProjectSettings(projectRoot);
+      const config = settings.boardConfig ?? DEFAULT_BOARD_CONFIG;
+      res.json({ ...result, config });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {

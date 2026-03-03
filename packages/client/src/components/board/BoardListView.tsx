@@ -5,27 +5,29 @@
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import type { BoardItem, BoardItemStatus } from '@bmad-studio/shared';
+import type { BoardItem, BoardConfig } from '@bmad-studio/shared';
 import { BoardCard } from './BoardCard';
 import type { CardActionCallbacks } from './BoardCard';
-import { BOARD_COLUMNS, STATUS_LABEL } from './constants';
 
 interface BoardListViewProps extends CardActionCallbacks {
-  itemsByStatus: Record<BoardItemStatus, BoardItem[]>;
+  itemsByColumn: Record<string, BoardItem[]>;
+  boardConfig: BoardConfig;
   isMobile?: boolean;
 }
 
-const DEFAULT_COLLAPSED_MOBILE: Set<BoardItemStatus> = new Set(['Done', 'Closed']);
-
-function getInitialExpanded(isMobile: boolean): Set<BoardItemStatus> {
+function getInitialExpanded(isMobile: boolean, config: BoardConfig): Set<string> {
+  const allIds = new Set(config.columns.map((c) => c.id));
   if (isMobile) {
-    return new Set(BOARD_COLUMNS.filter((s) => !DEFAULT_COLLAPSED_MOBILE.has(s)));
+    // Collapse the last column on mobile
+    const lastId = config.columns[config.columns.length - 1]?.id;
+    if (lastId) allIds.delete(lastId);
   }
-  return new Set(BOARD_COLUMNS);
+  return allIds;
 }
 
 export function BoardListView({
-  itemsByStatus,
+  itemsByColumn,
+  boardConfig,
   isMobile = false,
   onQuickFix,
   onPromote,
@@ -34,40 +36,40 @@ export function BoardListView({
   onWorkflowAction,
   onViewEpicStories,
 }: BoardListViewProps) {
-  const [expandedGroups, setExpandedGroups] = useState<Set<BoardItemStatus>>(
-    () => getInitialExpanded(isMobile),
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    () => getInitialExpanded(isMobile, boardConfig),
   );
 
-  const toggleGroup = (status: BoardItemStatus) => {
+  const toggleGroup = (columnId: string) => {
     setExpandedGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(status)) {
-        next.delete(status);
+      if (next.has(columnId)) {
+        next.delete(columnId);
       } else {
-        next.add(status);
+        next.add(columnId);
       }
       return next;
     });
   };
 
-  const visibleColumns = BOARD_COLUMNS.filter(
-    (status) => (itemsByStatus[status]?.length ?? 0) > 0,
+  const visibleColumns = boardConfig.columns.filter(
+    (col) => (itemsByColumn[col.id]?.length ?? 0) > 0,
   );
 
   return (
     <div className="space-y-2 overflow-y-auto h-full">
-      {visibleColumns.map((status) => {
-        const items = itemsByStatus[status];
-        const isExpanded = expandedGroups.has(status);
+      {visibleColumns.map((col) => {
+        const items = itemsByColumn[col.id] || [];
+        const isExpanded = expandedGroups.has(col.id);
 
         return (
           <div
-            key={status}
+            key={col.id}
             className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
           >
             {/* Accordion header */}
             <button
-              onClick={() => toggleGroup(status)}
+              onClick={() => toggleGroup(col.id)}
               aria-expanded={isExpanded}
               className="w-full px-4 py-2.5 flex items-center justify-between bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors"
             >
@@ -78,7 +80,7 @@ export function BoardListView({
                   }`}
                 />
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  {STATUS_LABEL[status]}
+                  {col.label}
                 </span>
                 <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
                   {items.length}

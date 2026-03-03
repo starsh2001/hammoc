@@ -7,6 +7,7 @@
  */
 
 import type { PermissionMode } from './sdk.js';
+import type { BoardConfig } from './board.js';
 
 /**
  * Project information returned by the API
@@ -35,6 +36,8 @@ export interface ProjectSettings {
   modelOverride?: string;
   /** undefined = use global */
   permissionModeOverride?: PermissionMode;
+  /** Custom board column configuration */
+  boardConfig?: BoardConfig;
 }
 
 /**
@@ -45,6 +48,8 @@ export interface UpdateProjectSettingsRequest {
   hidden?: boolean;
   modelOverride?: string | null;
   permissionModeOverride?: PermissionMode | null;
+  /** null = reset to default board config */
+  boardConfig?: BoardConfig | null;
 }
 
 /**
