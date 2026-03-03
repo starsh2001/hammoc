@@ -32,6 +32,7 @@ function mapStoryStatus(status: string): BoardItemStatus {
     case 'Blocked':
       return 'Blocked';
     case 'Done':
+    case 'Ready for Done':
       return 'Done';
     default:
       return 'Open';
@@ -350,7 +351,7 @@ class IssueService {
   /**
    * Get unified board data: issues + epics + stories from bmadStatusService.
    */
-  async getBoard(projectPath: string): Promise<BoardResponse> {
+  async getBoard(projectPath: string): Promise<Pick<BoardResponse, 'items'>> {
     const [issues, statusResponse] = await Promise.all([
       this.listIssues(projectPath),
       bmadStatusService.scanProject(projectPath),
@@ -366,11 +367,14 @@ class IssueService {
         const epicMatch = story.file.match(/^(\d+)\./);
         const epicNumber = epicMatch ? parseInt(epicMatch[1], 10) : undefined;
 
+        const mapped = mapStoryStatus(story.status);
         return {
           id: `story-${storyId}`,
           type: 'story' as const,
           title: story.title ?? story.file,
-          status: mapStoryStatus(story.status),
+          status: mapped,
+          // Include rawStatus when it differs from the standard mapped value
+          ...(story.status !== mapped && { rawStatus: story.status }),
           ...(epicNumber !== undefined && { epicNumber }),
         };
       });
@@ -411,6 +415,56 @@ class IssueService {
     }
 
     return { items };
+  }
+
+  /**
+   * Normalize a story file's status from a non-standard value (e.g. "Ready for Done")
+   * to the standard mapped value (e.g. "Done") in the actual markdown file.
+   * @param projectPath Absolute path to the project root
+   * @param storyNum Story number like "1.1"
+   * @returns The normalized status string
+   */
+  async normalizeStoryStatus(projectPath: string, storyNum: string): Promise<string> {
+    const config = await bmadStatusService.scanProject(projectPath).then((r) => r.config);
+    const storiesDir = config.devStoryLocation
+      ? path.join(projectPath, config.devStoryLocation)
+      : path.join(projectPath, 'docs', 'stories');
+
+    // Find the story file matching the number
+    const files = await fs.readdir(storiesDir);
+    const storyFile = files.find((f) => f.startsWith(`${storyNum}.`));
+    if (!storyFile) {
+      const err = new Error(`Story file not found: ${storyNum}`);
+      (err as NodeJS.ErrnoException).code = 'STORY_NOT_FOUND';
+      throw err;
+    }
+
+    const filePath = path.join(storiesDir, storyFile);
+    const content = await fs.readFile(filePath, 'utf-8');
+
+    // Extract current status
+    const statusMatch = content.match(/^(## Status\s*\n\s*\n\s*)(.+)/m);
+    if (!statusMatch) {
+      const err = new Error('Status section not found in story file');
+      (err as NodeJS.ErrnoException).code = 'STATUS_NOT_FOUND';
+      throw err;
+    }
+
+    const rawStatus = statusMatch[2].trim();
+    const mapped = mapStoryStatus(rawStatus);
+
+    if (rawStatus === mapped) {
+      return mapped; // Already standard, no change needed
+    }
+
+    // Replace the status in the file
+    const updated = content.replace(
+      /^(## Status\s*\n\s*\n\s*).+/m,
+      `$1${mapped}`,
+    );
+    await fs.writeFile(filePath, updated, 'utf-8');
+
+    return mapped;
   }
 }
 

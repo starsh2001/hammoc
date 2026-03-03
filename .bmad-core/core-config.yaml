@@ -17,6 +17,13 @@ devLoadAlwaysFiles:
   - docs/architecture/coding-standards.md
   - docs/architecture/tech-stack.md
   - docs/architecture/source-tree.md
+brownfieldEpic:
+  updateOnCreate:
+    - docs/prd/5-epic-list.md
+    - docs/prd/index.md
+  doNotUpdate:
+    - docs/prd (except epic list and index)
+    - docs/architecture
 devDebugLog: .ai/debug-log.md
 devStoryLocation: docs/stories
 slashPrefix: BMad

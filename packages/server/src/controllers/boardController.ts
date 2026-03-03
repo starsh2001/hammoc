@@ -123,6 +123,26 @@ export const boardController = {
     }
   },
 
+  async normalizeStoryStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug, storyNum } = req.params;
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      const normalizedStatus = await issueService.normalizeStoryStatus(projectRoot, storyNum);
+      res.json({ status: normalizedStatus });
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: `Project not found: ${req.params.projectSlug}` } });
+        return;
+      }
+      if (nodeError.code === 'STORY_NOT_FOUND' || nodeError.code === 'STATUS_NOT_FOUND') {
+        res.status(404).json({ error: { code: nodeError.code, message: nodeError.message } });
+        return;
+      }
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
+    }
+  },
+
   async deleteIssue(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug, issueId } = req.params;

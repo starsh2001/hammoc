@@ -24,4 +24,7 @@ export const boardApi = {
 
   deleteIssue: (projectSlug: string, issueId: string) =>
     api.delete<{ message: string }>(`/projects/${projectSlug}/board/issues/${issueId}`),
+
+  normalizeStoryStatus: (projectSlug: string, storyNum: string) =>
+    api.post<{ status: string }>(`/projects/${projectSlug}/board/stories/${storyNum}/normalize-status`),
 };

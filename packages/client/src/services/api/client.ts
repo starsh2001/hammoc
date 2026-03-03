@@ -3,7 +3,10 @@
  * [Source: docs/architecture/10-frontend-architecture.md - HTTP Client Layer]
  * [Source: Story 2.2 - Task 6]
  * [Extended: Story 3.6 - Task 4: AbortController support]
+ * [Extended: Epic 22 - Accept-Language header from i18next]
  */
+
+import i18n from '../../i18n';
 
 export class ApiError extends Error {
   constructor(
@@ -34,6 +37,7 @@ class ApiClient {
       credentials: 'include', // cookie 전송을 위해 필수
       headers: {
         'Content-Type': 'application/json',
+        'Accept-Language': i18n.language || 'en',
         ...options.headers,
       },
     });

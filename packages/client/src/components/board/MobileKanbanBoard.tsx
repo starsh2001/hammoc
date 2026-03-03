@@ -22,6 +22,7 @@ export function MobileKanbanBoard({
   onPromote,
   onEdit,
   onClose,
+  onDelete,
   onWorkflowAction,
   onViewEpicStories,
 }: MobileKanbanBoardProps) {
@@ -106,6 +107,7 @@ export function MobileKanbanBoard({
               onPromote={onPromote}
               onEdit={onEdit}
               onClose={onClose}
+              onDelete={onDelete}
               onWorkflowAction={onWorkflowAction}
               onViewEpicStories={onViewEpicStories}
             />

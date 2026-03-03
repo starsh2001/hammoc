@@ -419,7 +419,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto"
+        className="h-full overflow-y-auto overscroll-contain"
         tabIndex={0}
       >
       <div className="content-container px-4 pt-4 pb-4 space-y-4">

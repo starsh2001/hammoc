@@ -6,10 +6,11 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { RotateCcw, Terminal } from 'lucide-react';
+import { RotateCcw, Terminal, RefreshCw, Download } from 'lucide-react';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { projectsApi } from '../../services/api/projects';
+import { api } from '../../services/api/client.js';
 
 interface TemplateVariable {
   name: string;
@@ -110,8 +111,200 @@ export function AdvancedSettingsSection() {
     toast.success(newValue ? '터미널이 활성화되었습니다' : '터미널이 비활성화되었습니다');
   }, [terminalEnabled, isTerminalOverridden, updatePreference]);
 
+  // Server info
+  const [isDevMode, setIsDevMode] = useState<boolean | null>(null);
+  const [serverVersion, setServerVersion] = useState('');
+
+  useEffect(() => {
+    api.get<{ isDevMode: boolean; version: string }>('/server/info')
+      .then((data) => {
+        setIsDevMode(data.isDevMode);
+        setServerVersion(data.version);
+      })
+      .catch(() => { /* ignore */ });
+  }, []);
+
+  // Build/update progress state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [buildElapsed, setBuildElapsed] = useState(0);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Update check state
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }, []);
+
+  /** Shared polling logic: start timer + poll build-status until idle/failed */
+  const startPollingBuildStatus = useCallback((successMessage: string) => {
+    setBuildElapsed(0);
+    timerRef.current = setInterval(() => {
+      setBuildElapsed((prev) => prev + 1);
+    }, 1000);
+
+    let consecutiveErrors = 0;
+    pollRef.current = setInterval(async () => {
+      try {
+        const result = await api.get<{ status: string; error?: string }>('/server/build-status');
+        consecutiveErrors = 0;
+        if (result.status === 'failed') {
+          stopPolling();
+          toast.error(`실패: ${result.error?.slice(0, 200) ?? '알 수 없는 오류'}`);
+          setIsProcessing(false);
+        } else if (result.status === 'idle') {
+          stopPolling();
+          toast.success(successMessage);
+          setTimeout(() => window.location.reload(), 1500);
+        }
+      } catch {
+        consecutiveErrors++;
+        if (consecutiveErrors > 40) {
+          stopPolling();
+          toast.error('서버 응답 시간이 초과되었습니다. 수동으로 확인해주세요.');
+          setIsProcessing(false);
+        }
+      }
+    }, 3000);
+  }, [stopPolling]);
+
+  const handleServerRestart = useCallback(async () => {
+    if (!window.confirm('서버를 재빌드하고 재시작합니다. 진행할까요?')) return;
+    setIsProcessing(true);
+    try {
+      await api.post('/server/restart');
+      startPollingBuildStatus('빌드 완료! 페이지를 새로고침합니다...');
+    } catch {
+      toast.error('서버 재시작 요청에 실패했습니다.');
+      setIsProcessing(false);
+    }
+  }, [startPollingBuildStatus]);
+
+  const handleCheckUpdate = useCallback(async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const result = await api.get<{ currentVersion: string; latestVersion: string; updateAvailable: boolean }>('/server/check-update');
+      setLatestVersion(result.latestVersion);
+      setUpdateAvailable(result.updateAvailable);
+      if (!result.updateAvailable) {
+        toast.success('이미 최신 버전입니다.');
+      }
+    } catch {
+      toast.error('업데이트 확인에 실패했습니다.');
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  }, []);
+
+  const handleUpdate = useCallback(async () => {
+    if (!window.confirm(`v${latestVersion}으로 업데이트하고 서버를 재시작합니다. 진행할까요?`)) return;
+    setIsProcessing(true);
+    try {
+      await api.post('/server/update');
+      startPollingBuildStatus('업데이트 완료! 페이지를 새로고침합니다...');
+    } catch {
+      toast.error('업데이트 요청에 실패했습니다.');
+      setIsProcessing(false);
+    }
+  }, [latestVersion, startPollingBuildStatus]);
+
   return (
     <div className="space-y-8">
+      {/* Server Management - conditional on dev/user mode */}
+      {isDevMode !== null && (
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            {isDevMode
+              ? <RefreshCw className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              : <Download className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            }
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                {isDevMode ? '서버 재시작' : '소프트웨어 업데이트'}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {isDevMode
+                  ? '전체 프로젝트를 빌드하고 서버를 프로덕션 모드로 재시작합니다'
+                  : `현재 버전: v${serverVersion}`
+                }
+              </p>
+            </div>
+          </div>
+
+          {isDevMode ? (
+            /* Dev mode: rebuild & restart */
+            <button
+              type="button"
+              onClick={handleServerRestart}
+              disabled={isProcessing}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
+                ${isProcessing
+                  ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/40'
+                }`}
+            >
+              <RefreshCw className={`w-4 h-4 ${isProcessing ? 'animate-spin' : ''}`} />
+              {isProcessing ? `빌드 중... (${buildElapsed}초)` : '서버 재빌드 & 재시작'}
+            </button>
+          ) : (
+            /* User mode: check update & apply */
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleCheckUpdate}
+                disabled={isProcessing || isCheckingUpdate}
+                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
+                  border border-gray-300 dark:border-gray-600
+                  ${isCheckingUpdate
+                    ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+              >
+                <RefreshCw className={`w-4 h-4 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
+                {isCheckingUpdate ? '확인 중...' : '업데이트 확인'}
+              </button>
+
+              {updateAvailable && latestVersion && (
+                <button
+                  type="button"
+                  onClick={handleUpdate}
+                  disabled={isProcessing}
+                  className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
+                    ${isProcessing
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40'
+                    }`}
+                >
+                  <Download className={`w-4 h-4 ${isProcessing ? 'animate-bounce' : ''}`} />
+                  {isProcessing
+                    ? `업데이트 중... (${buildElapsed}초)`
+                    : `v${latestVersion}으로 업데이트`
+                  }
+                </button>
+              )}
+
+              {latestVersion && !updateAvailable && (
+                <span className="text-xs text-green-600 dark:text-green-400">
+                  최신 버전입니다
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Terminal Enable/Disable Toggle (Story 17.5) */}
       <div>
         <div className="flex items-center justify-between">

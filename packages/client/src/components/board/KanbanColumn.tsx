@@ -19,6 +19,7 @@ export function KanbanColumn({
   onPromote,
   onEdit,
   onClose,
+  onDelete,
   onWorkflowAction,
   onViewEpicStories,
 }: KanbanColumnProps) {
@@ -46,6 +47,7 @@ export function KanbanColumn({
             onPromote={onPromote}
             onEdit={onEdit}
             onClose={onClose}
+            onDelete={onDelete}
             onWorkflowAction={onWorkflowAction}
             onViewEpicStories={onViewEpicStories}
           />

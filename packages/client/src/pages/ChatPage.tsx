@@ -943,7 +943,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className={`h-dvh flex flex-col bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
@@ -952,7 +952,7 @@ export function ChatPage() {
         <main
           role="main"
           aria-label="채팅 페이지"
-          className="flex-1 flex flex-col min-h-0"
+          className="flex-1 flex flex-col min-h-0 overflow-hidden"
         >
           <section
             role="log"
@@ -1011,7 +1011,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className={`h-dvh flex flex-col bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
@@ -1020,7 +1020,7 @@ export function ChatPage() {
         <main
           role="main"
           aria-label="채팅 페이지"
-          className="flex-1 flex flex-col min-h-0"
+          className="flex-1 flex flex-col min-h-0 overflow-hidden"
         >
           <section
             role="log"
@@ -1076,7 +1076,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className={`h-dvh flex flex-col bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
@@ -1085,7 +1085,7 @@ export function ChatPage() {
         <main
           role="main"
           aria-label="채팅 페이지"
-          className="flex-1 flex flex-col min-h-0"
+          className="flex-1 flex flex-col min-h-0 overflow-hidden"
         >
           <MessageArea
             streamingSegments={streamingSegments}
@@ -1154,7 +1154,7 @@ export function ChatPage() {
     <ScrollProvider value={scrollContextValue}>
     <div
       data-testid="chat-page"
-      className={`h-dvh flex flex-col bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+      className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
       style={chatAreaStyle}
     >
       <ChatHeader
@@ -1179,7 +1179,7 @@ export function ChatPage() {
       <main
         role="main"
         aria-label="채팅 페이지"
-        className="flex-1 flex flex-col min-h-0"
+        className="flex-1 flex flex-col min-h-0 overflow-hidden"
       >
         <MessageArea ref={messageAreaRef} scrollDependencies={[messages]} streamingSegments={streamingSegments} isStreaming={isStreaming && !!streamingSessionId} isCompacting={isCompacting} isLoadingMore={isLoadingMore} segmentsPendingClear={segmentsPendingClear}>
           {/* Load older messages button */}

@@ -1,0 +1,8 @@
+{
+  "error": {
+    "notFound": "Resource not found",
+    "unauthorized": "Unauthorized",
+    "internal": "Internal server error",
+    "requestFailed": "Request failed ({{status}} {{statusText}})"
+  }
+}

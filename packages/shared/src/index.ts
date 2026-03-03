@@ -85,6 +85,8 @@ export {
   TelegramSettingsApiResponse,
   UpdateTelegramSettingsRequest,
   TelegramTestRequest,
+  SupportedLanguage,
+  SUPPORTED_LANGUAGES,
 } from './types/preferences.js';
 
 // Story 3.5: History types for Session History Loading
