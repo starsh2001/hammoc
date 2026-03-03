@@ -10,8 +10,8 @@ import { SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
 
 declare module 'express' {
   interface Request {
-    t: (key: string, options?: Record<string, unknown>) => string;
-    language: string;
+    t?: (key: string, options?: Record<string, unknown>) => string;
+    language?: string;
   }
 }
 

@@ -22,6 +22,7 @@ export function KanbanColumn({
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
+  onNormalizeStatus,
 }: KanbanColumnProps) {
   return (
     <div
@@ -50,6 +51,7 @@ export function KanbanColumn({
             onDelete={onDelete}
             onWorkflowAction={onWorkflowAction}
             onViewEpicStories={onViewEpicStories}
+            onNormalizeStatus={onNormalizeStatus}
           />
         ))}
       </div>

@@ -352,12 +352,19 @@ class IssueService {
    * Get unified board data: issues + epics + stories from bmadStatusService.
    */
   async getBoard(projectPath: string): Promise<Pick<BoardResponse, 'items'>> {
-    const [issues, statusResponse] = await Promise.all([
+    const [issues, statusResponse, issuesDir] = await Promise.all([
       this.listIssues(projectPath),
       bmadStatusService.scanProject(projectPath),
+      this.resolveIssuesDir(projectPath),
     ]);
 
-    const items: BoardItem[] = [...issues];
+    // Compute project-relative issues path for externalRef
+    const relativeIssuesDir = path.relative(projectPath, issuesDir).replace(/\\/g, '/');
+
+    const items: BoardItem[] = issues.map((issue) => ({
+      ...issue,
+      externalRef: `${relativeIssuesDir}/${issue.id}.md`,
+    }));
 
     for (const epic of statusResponse.epics) {
       // Convert stories to BoardItems
@@ -381,14 +388,15 @@ class IssueService {
 
       items.push(...storyItems);
 
-      // Calculate epic status from stories
+      // Calculate epic status from mapped story statuses
+      const mappedStatuses = epic.stories.map((s) => mapStoryStatus(s.status));
       let epicStatus: BoardItemStatus;
-      if (epic.stories.length === 0) {
+      if (mappedStatuses.length === 0) {
         epicStatus = 'Open';
       } else {
-        const allDone = epic.stories.every((s) => s.status === 'Done');
-        const allDraftOrEmpty = epic.stories.every(
-          (s) => s.status === 'Draft' || !s.status
+        const allDone = mappedStatuses.every((s) => s === 'Done');
+        const allDraftOrEmpty = mappedStatuses.every(
+          (s) => s === 'Draft' || s === 'Open'
         );
 
         if (allDone) {
@@ -400,9 +408,9 @@ class IssueService {
         }
       }
 
-      // Calculate story progress
-      const total = epic.stories.length;
-      const done = epic.stories.filter((s) => s.status === 'Done').length;
+      // Calculate story progress from mapped statuses
+      const total = mappedStatuses.length;
+      const done = mappedStatuses.filter((s) => s === 'Done').length;
 
       items.push({
         id: `epic-${epic.number}`,
@@ -457,12 +465,14 @@ class IssueService {
       return mapped; // Already standard, no change needed
     }
 
-    // Replace the status in the file
+    // Replace the status in the file (atomic write: temp + rename)
     const updated = content.replace(
       /^(## Status\s*\n\s*\n\s*).+/m,
       `$1${mapped}`,
     );
-    await fs.writeFile(filePath, updated, 'utf-8');
+    const tmpPath = `${filePath}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+    await fs.writeFile(tmpPath, updated, 'utf-8');
+    await fs.rename(tmpPath, filePath);
 
     return mapped;
   }
