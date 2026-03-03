@@ -63,7 +63,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
     if (columns.length >= 10) return;
     const usedColors = new Set(columns.map((c) => c.colorClass));
     const nextColor = COLUMN_COLOR_PALETTE.find((c) => !usedColors.has(c)) ?? COLUMN_COLOR_PALETTE[0];
-    const id = `col-${Date.now()}`;
+    const id = `col-${crypto.randomUUID().slice(0, 8)}`;
     setColumns([...columns, { id, label: '', colorClass: nextColor }]);
   };
 
