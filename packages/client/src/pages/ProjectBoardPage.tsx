@@ -66,7 +66,7 @@ export function ProjectBoardPage() {
     try {
       await boardApi.updateIssue(projectSlug, item.id, { status: 'InProgress' });
       const sessionId = generateUUID();
-      const issueFile = `docs/issues/${item.id}.md`;
+      const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
       const desc = item.description
         ? (item.description.length > 500 ? item.description.slice(0, 500) + '...(잘림)' : item.description)
         : '(설명 없음)';
