@@ -19,6 +19,7 @@ export function KanbanBoard({
   onPromote,
   onEdit,
   onClose,
+  onDelete,
   onWorkflowAction,
   onViewEpicStories,
 }: KanbanBoardProps) {
@@ -33,6 +34,7 @@ export function KanbanBoard({
           onPromote={onPromote}
           onEdit={onEdit}
           onClose={onClose}
+          onDelete={onDelete}
           onWorkflowAction={onWorkflowAction}
           onViewEpicStories={onViewEpicStories}
         />

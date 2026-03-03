@@ -9,9 +9,10 @@
  */
 
 import { create } from 'zustand';
-import type { UserPreferences } from '@bmad-studio/shared';
+import type { UserPreferences, SupportedLanguage } from '@bmad-studio/shared';
 import { preferencesApi } from '../services/api/preferences';
 import { debugLogger } from '../utils/debugLogger';
+import i18n from '../i18n';
 
 const CACHE_KEY = 'bmad-studio-preferences';
 const DEBOUNCE_MS = 300;
@@ -104,6 +105,7 @@ interface PreferencesStore {
   init: () => Promise<void>;
   updatePreference: <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => void;
   updatePreferences: (partial: Partial<UserPreferences>) => void;
+  setLanguage: (lang: SupportedLanguage) => void;
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -140,6 +142,10 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
         // Server has data — it's the source of truth
         set({ preferences: prefs, overrides: _overrides ?? [], loaded: true });
         writeCache(prefs);
+        // Sync i18next language with stored preference (Epic 22)
+        if (prefs.language) {
+          i18n.changeLanguage(prefs.language);
+        }
       } else {
         // Server empty — migrate from localStorage
         const legacy = collectLegacyPreferences();
@@ -172,5 +178,13 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
     set({ preferences: updated });
     writeCache(updated);
     schedulePatch(partial);
+  },
+
+  setLanguage: (lang: SupportedLanguage) => {
+    i18n.changeLanguage(lang);
+    const updated = { ...get().preferences, language: lang };
+    set({ preferences: updated });
+    writeCache(updated);
+    schedulePatch({ language: lang });
   },
 }));

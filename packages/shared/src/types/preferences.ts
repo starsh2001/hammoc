@@ -5,6 +5,10 @@
 
 import type { PermissionMode } from './sdk.js';
 
+/** Supported i18n languages (Epic 22) */
+export const SUPPORTED_LANGUAGES = ['en', 'ko', 'zh-CN', 'ja', 'es', 'pt'] as const;
+export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
+
 /**
  * Global user preferences stored at ~/.bmad-studio/preferences.json
  */
@@ -27,6 +31,8 @@ export interface UserPreferences {
   maxBudgetUsd?: number;            // SDK maxBudgetUsd (cost limit per query)
   // Terminal settings (Story 17.5)
   terminalEnabled?: boolean;        // Enable/disable terminal feature (default: true)
+  // i18n settings (Epic 22)
+  language?: SupportedLanguage;     // User's preferred language
 }
 
 /** Default values for global settings */

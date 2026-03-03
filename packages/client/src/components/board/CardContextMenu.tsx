@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { MoreVertical } from 'lucide-react';
 import type { BoardItem } from '@bmad-studio/shared';
 
@@ -13,8 +14,10 @@ export interface CardContextMenuProps {
   onPromote?: (item: BoardItem, targetType: 'story' | 'epic') => void;
   onEdit?: (item: BoardItem) => void;
   onClose?: (item: BoardItem) => void;
+  onDelete?: (item: BoardItem) => void;
   onWorkflowAction?: (item: BoardItem) => void;
   onViewEpicStories?: (item: BoardItem) => void;
+  onNormalizeStatus?: (item: BoardItem) => void;
   onMenuClose?: () => void;
 }
 
@@ -47,42 +50,63 @@ export function CardContextMenu({
   onPromote,
   onEdit,
   onClose,
+  onDelete,
   onWorkflowAction,
   onViewEpicStories,
+  onNormalizeStatus,
   onMenuClose,
 }: CardContextMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [focusIndex, setFocusIndex] = useState(-1);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const menuItems: MenuItem[] = [];
 
   if (item.type === 'issue') {
-    if (onQuickFix) {
-      menuItems.push({ label: '바로 수정하기', action: () => onQuickFix(item) });
-    }
-    if (onPromote) {
-      menuItems.push({
-        label: '스토리로 승격',
-        action: () => onPromote(item, 'story'),
-        disabled: !!item.linkedStory,
-        title: item.linkedStory ? '이미 스토리로 승격됨' : undefined,
-      });
-      menuItems.push({
-        label: '에픽으로 승격',
-        action: () => onPromote(item, 'epic'),
-        disabled: !!item.linkedEpic,
-        title: item.linkedEpic ? '이미 에픽으로 승격됨' : undefined,
-      });
+    if (item.status === 'Open') {
+      if (onQuickFix) {
+        menuItems.push({ label: '바로 수정하기', action: () => onQuickFix(item) });
+      }
+      if (onPromote) {
+        menuItems.push({
+          label: '스토리로 승격',
+          action: () => onPromote(item, 'story'),
+          disabled: !!item.linkedStory,
+          title: item.linkedStory ? '이미 스토리로 승격됨' : undefined,
+        });
+        menuItems.push({
+          label: '에픽으로 승격',
+          action: () => onPromote(item, 'epic'),
+          disabled: !!item.linkedEpic,
+          title: item.linkedEpic ? '이미 에픽으로 승격됨' : undefined,
+        });
+      }
     }
     if (onEdit) {
       menuItems.push({ label: '편집', action: () => onEdit(item) });
     }
-    if (onClose) {
+    if (item.status === 'Open' && onClose) {
       menuItems.push({ label: '닫기', action: () => onClose(item) });
     }
+    if (onDelete) {
+      const isWorking = item.status === 'InProgress';
+      menuItems.push({
+        label: '삭제',
+        action: () => onDelete(item),
+        disabled: isWorking,
+        title: isWorking ? 'AI가 작업 중이므로 삭제할 수 없습니다' : undefined,
+      });
+    }
   } else if (item.type === 'story') {
+    if (item.rawStatus && onNormalizeStatus) {
+      menuItems.push({
+        label: `상태 확정 (${item.rawStatus} → ${item.status})`,
+        action: () => onNormalizeStatus(item),
+      });
+    }
     const workflowItem = getStoryWorkflowAction(item, onWorkflowAction);
     if (workflowItem) {
       menuItems.push(workflowItem);
@@ -99,11 +123,25 @@ export function CardContextMenu({
     onMenuClose?.();
   }, [onMenuClose]);
 
+  // Compute menu position when opened
+  useEffect(() => {
+    if (!isOpen || !buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const menuWidth = 192; // w-48 = 12rem = 192px
+    let left = rect.right - menuWidth;
+    if (left < 0) left = rect.left;
+    setMenuPos({ top: rect.bottom + 4, left });
+  }, [isOpen]);
+
   // Outside click to close
   useEffect(() => {
     if (!isOpen) return;
     const handleMouseDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        menuRef.current && !menuRef.current.contains(target)
+      ) {
         closeMenu();
       }
     };
@@ -166,8 +204,9 @@ export function CardContextMenu({
   if (menuItems.length === 0) return null;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef}>
       <button
+        ref={buttonRef}
         onClick={(e) => {
           e.stopPropagation();
           setIsOpen((prev) => !prev);
@@ -181,11 +220,12 @@ export function CardContextMenu({
         <MoreVertical className="w-4 h-4" />
       </button>
 
-      {isOpen && (
+      {isOpen && menuPos && createPortal(
         <div
           ref={menuRef}
           role="menu"
-          className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1"
+          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
+          className="w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1"
         >
           {menuItems.map((mi, idx) => (
             <button
@@ -212,7 +252,8 @@ export function CardContextMenu({
               {mi.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

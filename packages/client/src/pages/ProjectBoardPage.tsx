@@ -60,16 +60,17 @@ export function ProjectBoardPage() {
     await createIssue(data);
   };
 
-  // Quick fix: update status to InProgress, navigate to dev session
+  // Quick fix: update status to InProgress, navigate to dev session with issue filename
   const handleQuickFix = useCallback(async (item: BoardItem) => {
     if (!projectSlug) return;
     try {
       await boardApi.updateIssue(projectSlug, item.id, { status: 'InProgress' });
       const sessionId = generateUUID();
+      const issueFile = `docs/issues/${item.id}.md`;
       const desc = item.description
         ? (item.description.length > 500 ? item.description.slice(0, 500) + '...(잘림)' : item.description)
         : '(설명 없음)';
-      const prompt = `다음 이슈를 해결해 주세요:\n\n# ${item.title}\n\n${desc}\n\n심각도: ${item.severity || '없음'}\n타입: ${item.issueType || '없음'}`;
+      const prompt = `다음 이슈를 해결해 주세요:\n\n# ${item.title}\n\n${desc}\n\n심각도: ${item.severity || '없음'}\n타입: ${item.issueType || '없음'}\n\n이슈 파일: ${issueFile}\n\n작업 완료 후 위 이슈 파일의 Status를 Done으로 변경해 주세요.`;
       const params = new URLSearchParams({ agent: '/BMad:agents:dev', task: prompt });
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
@@ -124,6 +125,18 @@ export function ProjectBoardPage() {
     }
   }, [projectSlug, refresh, setActionErrorWithClear]);
 
+  // Delete issue
+  const handleDeleteIssue = useCallback(async (item: BoardItem) => {
+    if (!projectSlug) return;
+    if (!window.confirm(`이슈 "${item.title}"을(를) 삭제하시겠습니까?`)) return;
+    try {
+      await boardApi.deleteIssue(projectSlug, item.id);
+      await refresh();
+    } catch {
+      setActionErrorWithClear('이슈 삭제에 실패했습니다.');
+    }
+  }, [projectSlug, refresh, setActionErrorWithClear]);
+
   // Story workflow action
   const handleWorkflowAction = useCallback((item: BoardItem) => {
     if (!projectSlug) return;
@@ -166,14 +179,28 @@ export function ProjectBoardPage() {
     setEpicDialogData({ epic: item, stories: epicStories });
   }, [itemsByColumn]);
 
+  // Normalize story status (fix non-standard statuses like "Ready for Done")
+  const handleNormalizeStatus = useCallback(async (item: BoardItem) => {
+    if (!projectSlug) return;
+    const storyNum = item.id.replace(/^story-/, '');
+    try {
+      await boardApi.normalizeStoryStatus(projectSlug, storyNum);
+      await refresh();
+    } catch {
+      setActionErrorWithClear('상태 확정에 실패했습니다.');
+    }
+  }, [projectSlug, refresh, setActionErrorWithClear]);
+
   // Card action callbacks
   const cardCallbacks = {
     onQuickFix: handleQuickFix,
     onPromote: handlePromote,
     onEdit: handleEditIssue,
     onClose: handleCloseIssue,
+    onDelete: handleDeleteIssue,
     onWorkflowAction: handleWorkflowAction,
     onViewEpicStories: handleViewEpicStories,
+    onNormalizeStatus: handleNormalizeStatus,
   };
 
   // Loading skeleton

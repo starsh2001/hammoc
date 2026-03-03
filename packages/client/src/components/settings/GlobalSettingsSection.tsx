@@ -1,33 +1,31 @@
 /**
  * GlobalSettingsSection - Global settings form for SettingsPage
  * Story 10.2: Theme, Default Model, Permission Mode, Chat Timeout
+ * Epic 22: i18n support with useTranslation
  */
 
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useTheme, type Theme } from '../../hooks/useTheme';
 import { MODEL_GROUPS } from '../ModelSelector';
-import type { PermissionMode } from '@bmad-studio/shared';
+import type { PermissionMode, SupportedLanguage } from '@bmad-studio/shared';
+import { SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
 
-const TIMEOUT_OPTIONS = [
-  { value: 60000, label: '1분' },
-  { value: 180000, label: '3분' },
-  { value: 300000, label: '5분 (기본)' },
-  { value: 600000, label: '10분' },
-  { value: 1800000, label: '30분' },
-];
-
-const PERMISSION_OPTIONS: { value: PermissionMode; label: string; description: string }[] = [
-  { value: 'plan', label: 'Plan', description: '코드 변경 전 계획을 먼저 제안합니다' },
-  { value: 'default', label: 'Ask before edits', description: '파일 수정 전 항상 확인을 요청합니다' },
-  { value: 'acceptEdits', label: 'Edit Automatically', description: '파일 수정을 자동으로 수행합니다' },
-  { value: 'bypassPermissions', label: 'Bypass', description: '모든 권한 확인을 건너뜁니다 (Bash 포함)' },
-];
+const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
+  en: 'English',
+  'zh-CN': '中文(简体)',
+  ja: '日本語',
+  ko: '한국어',
+  es: 'Español',
+  pt: 'Português',
+};
 
 export function GlobalSettingsSection() {
-  const { preferences, overrides, updatePreference } = usePreferencesStore();
+  const { t, i18n } = useTranslation('settings');
+  const { preferences, overrides, updatePreference, setLanguage } = usePreferencesStore();
   const { theme, setTheme } = useTheme();
   const permissionMode = useChatStore((s) => s.permissionMode);
   const setPermissionMode = useChatStore((s) => s.setPermissionMode);
@@ -36,23 +34,29 @@ export function GlobalSettingsSection() {
 
   const handleThemeChange = useCallback((newTheme: Theme) => {
     setTheme(newTheme);
-    toast.success('테마가 변경되었습니다');
-  }, [setTheme]);
+    toast.success(t('toast.themeChanged'));
+  }, [setTheme, t]);
 
   const handleModelChange = useCallback((value: string) => {
     updatePreference('defaultModel', value);
-    toast.success('기본 모델이 변경되었습니다');
-  }, [updatePreference]);
+    toast.success(t('toast.modelChanged'));
+  }, [updatePreference, t]);
 
   const handlePermissionChange = useCallback((value: PermissionMode) => {
     setPermissionMode(value);
-    toast.success('Permission Mode가 변경되었습니다');
-  }, [setPermissionMode]);
+    toast.success(t('toast.permissionChanged'));
+  }, [setPermissionMode, t]);
 
   const handleTimeoutChange = useCallback((value: number) => {
     updatePreference('chatTimeoutMs', value);
-    toast.success('채팅 타임아웃이 변경되었습니다');
-  }, [updatePreference]);
+    toast.success(t('toast.timeoutChanged'));
+  }, [updatePreference, t]);
+
+  const handleLanguageChange = useCallback((value: string) => {
+    if (!(SUPPORTED_LANGUAGES as readonly string[]).includes(value)) return;
+    setLanguage(value as SupportedLanguage);
+    toast.success(t('toast.languageChanged'));
+  }, [setLanguage, t]);
 
   const currentTimeout = preferences.chatTimeoutMs ?? 300000;
 
@@ -61,13 +65,13 @@ export function GlobalSettingsSection() {
       {/* Theme Setting */}
       <fieldset>
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-          테마
+          {t('global.theme')}
         </legend>
         <div className="flex flex-wrap gap-3">
           {([
-            { value: 'dark' as const, label: '다크' },
-            { value: 'light' as const, label: '라이트' },
-            { value: 'system' as const, label: '시스템' },
+            { value: 'dark' as const, labelKey: 'global.themeOption.dark' },
+            { value: 'light' as const, labelKey: 'global.themeOption.light' },
+            { value: 'system' as const, labelKey: 'global.themeOption.system' },
           ]).map((opt) => (
             <label
               key={opt.value}
@@ -89,7 +93,7 @@ export function GlobalSettingsSection() {
                 onChange={() => handleThemeChange(opt.value)}
                 className="sr-only"
               />
-              {opt.label}
+              {t(opt.labelKey)}
             </label>
           ))}
         </div>
@@ -101,7 +105,7 @@ export function GlobalSettingsSection() {
           htmlFor="default-model"
           className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
         >
-          기본 모델
+          {t('global.defaultModel')}
         </label>
         <select
           id="default-model"
@@ -123,13 +127,42 @@ export function GlobalSettingsSection() {
         </select>
       </div>
 
+      {/* Language Setting (Epic 22) */}
+      <div>
+        <label
+          htmlFor="language"
+          className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
+        >
+          {t('global.language')}
+        </label>
+        <select
+          id="language"
+          value={preferences.language ?? i18n.language ?? 'en'}
+          onChange={(e) => handleLanguageChange(e.target.value)}
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
+                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {SUPPORTED_LANGUAGES.map((lang) => (
+            <option key={lang} value={lang}>
+              {LANGUAGE_LABELS[lang]}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Permission Mode Setting */}
       <fieldset>
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-          Permission Mode
+          {t('global.permissionMode')}
         </legend>
         <div className="space-y-2">
-          {PERMISSION_OPTIONS.map((opt) => (
+          {([
+            { value: 'plan' as PermissionMode, label: 'Plan', descKey: 'global.permissionDesc.plan' },
+            { value: 'default' as PermissionMode, label: 'Ask before edits', descKey: 'global.permissionDesc.default' },
+            { value: 'acceptEdits' as PermissionMode, label: 'Edit Automatically', descKey: 'global.permissionDesc.acceptEdits' },
+            { value: 'bypassPermissions' as PermissionMode, label: 'Bypass', descKey: 'global.permissionDesc.bypass' },
+          ]).map((opt) => (
             <label
               key={opt.value}
               htmlFor={`permission-${opt.value}`}
@@ -159,7 +192,7 @@ export function GlobalSettingsSection() {
                   id={`permission-desc-${opt.value}`}
                   className="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
                 >
-                  {opt.description}
+                  {t(opt.descKey)}
                 </p>
               </div>
             </label>
@@ -170,12 +203,12 @@ export function GlobalSettingsSection() {
       {/* Markdown Default Mode */}
       <fieldset>
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-          마크다운 파일 열기 모드
+          {t('global.markdownMode')}
         </legend>
         <div className="flex flex-wrap gap-3">
           {([
-            { value: 'edit' as const, label: '편집' },
-            { value: 'preview' as const, label: '미리보기' },
+            { value: 'edit' as const, labelKey: 'global.markdownOption.edit' },
+            { value: 'preview' as const, labelKey: 'global.markdownOption.preview' },
           ]).map((opt) => (
             <label
               key={opt.value}
@@ -196,28 +229,28 @@ export function GlobalSettingsSection() {
                 checked={(preferences.markdownDefaultMode ?? 'edit') === opt.value}
                 onChange={() => {
                   updatePreference('markdownDefaultMode', opt.value);
-                  toast.success('마크다운 기본 모드가 변경되었습니다');
+                  toast.success(t('toast.markdownModeChanged'));
                 }}
                 className="sr-only"
               />
-              {opt.label}
+              {t(opt.labelKey)}
             </label>
           ))}
         </div>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          마크다운 파일을 열 때 기본으로 사용할 모드입니다.
+          {t('global.markdownDesc')}
         </p>
       </fieldset>
 
       {/* File Explorer Default View Mode */}
       <fieldset>
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-          파일 탐색기 기본 뷰
+          {t('global.fileExplorerView')}
         </legend>
         <div className="flex flex-wrap gap-3">
           {([
-            { value: 'grid' as const, label: '파인더 뷰' },
-            { value: 'list' as const, label: '리스트 뷰' },
+            { value: 'grid' as const, labelKey: 'global.fileExplorerOption.grid' },
+            { value: 'list' as const, labelKey: 'global.fileExplorerOption.list' },
           ]).map((opt) => (
             <label
               key={opt.value}
@@ -238,16 +271,16 @@ export function GlobalSettingsSection() {
                 checked={(preferences.fileExplorerViewMode ?? 'grid') === opt.value}
                 onChange={() => {
                   updatePreference('fileExplorerViewMode', opt.value);
-                  toast.success('파일 탐색기 기본 뷰가 변경되었습니다');
+                  toast.success(t('toast.fileExplorerViewChanged'));
                 }}
                 className="sr-only"
               />
-              {opt.label}
+              {t(opt.labelKey)}
             </label>
           ))}
         </div>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          파일 탐색기를 열 때 기본으로 사용할 뷰 모드입니다.
+          {t('global.fileExplorerDesc')}
         </p>
       </fieldset>
 
@@ -257,10 +290,10 @@ export function GlobalSettingsSection() {
           htmlFor="chat-timeout"
           className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
         >
-          채팅 타임아웃
+          {t('global.chatTimeout')}
           {isOverridden('chatTimeoutMs') && (
             <span className="ml-2 text-xs text-amber-600 dark:text-amber-400 font-normal">
-              (환경변수로 설정됨)
+              {t('global.chatTimeoutOverride')}
             </span>
           )}
         </label>
@@ -275,14 +308,20 @@ export function GlobalSettingsSection() {
                      focus:outline-none focus:ring-2 focus:ring-blue-500
                      disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {TIMEOUT_OPTIONS.map((opt) => (
+          {([
+            { value: 60000, labelKey: 'global.timeoutOption.1m' },
+            { value: 180000, labelKey: 'global.timeoutOption.3m' },
+            { value: 300000, labelKey: 'global.timeoutOption.5mDefault' },
+            { value: 600000, labelKey: 'global.timeoutOption.10m' },
+            { value: 1800000, labelKey: 'global.timeoutOption.30m' },
+          ]).map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {opt.label}
+              {t(opt.labelKey)}
             </option>
           ))}
         </select>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          응답이 없을 때 자동으로 요청을 중단하는 시간입니다.
+          {t('global.chatTimeoutDesc')}
         </p>
       </div>
     </div>
