@@ -72,28 +72,45 @@ const ALL_STATUSES: BoardItemStatus[] = [
   'Open', 'Draft', 'Approved', 'InProgress', 'Blocked', 'Review', 'Done', 'Closed',
 ];
 
-export function validateBoardConfig(config: BoardConfig): string[] {
+export function validateBoardConfig(config: unknown): string[] {
   const errors: string[] = [];
-  if (!config.columns || config.columns.length === 0) {
+
+  // Shape guard: ensure config is a well-formed object
+  if (typeof config !== 'object' || config === null) {
+    return ['Board config must be an object'];
+  }
+  const cfg = config as Record<string, unknown>;
+
+  if (!Array.isArray(cfg.columns)) {
+    return ['Board config must have a columns array'];
+  }
+  if (typeof cfg.statusToColumn !== 'object' || cfg.statusToColumn === null || Array.isArray(cfg.statusToColumn)) {
+    return ['Board config must have a statusToColumn object'];
+  }
+
+  const columns = cfg.columns as BoardColumnConfig[];
+  const statusToColumn = cfg.statusToColumn as Record<string, string>;
+
+  if (columns.length === 0) {
     errors.push('At least one column is required');
   }
-  if (config.columns.length > 10) {
+  if (columns.length > 10) {
     errors.push('Maximum 10 columns allowed');
   }
-  const columnIds = new Set(config.columns.map((c) => c.id));
-  if (columnIds.size !== config.columns.length) {
+  const columnIds = new Set(columns.map((c) => c.id));
+  if (columnIds.size !== columns.length) {
     errors.push('Column IDs must be unique');
   }
-  for (const col of config.columns) {
-    if (!col.id || !col.id.trim()) {
+  for (const col of columns) {
+    if (!col.id || typeof col.id !== 'string' || !col.id.trim()) {
       errors.push('Column ID cannot be empty');
     }
-    if (!col.label || !col.label.trim()) {
+    if (!col.label || typeof col.label !== 'string' || !col.label.trim()) {
       errors.push('Column label cannot be empty');
     }
   }
   for (const status of ALL_STATUSES) {
-    const target = config.statusToColumn[status];
+    const target = statusToColumn[status];
     if (!target || !columnIds.has(target)) {
       errors.push(`Status "${status}" maps to non-existent column "${target}"`);
     }

@@ -3,7 +3,7 @@
  * [Source: Story 21.2 - Task 10, Story 21.3 - Task 6]
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { BoardItem, BoardConfig } from '@bmad-studio/shared';
 import { BoardCard } from './BoardCard';
 import type { CardActionCallbacks } from './BoardCard';
@@ -32,6 +32,13 @@ export function MobileKanbanBoard({
   const isHorizontalSwipe = useRef<boolean | null>(null);
 
   const columns = boardConfig.columns;
+
+  // Clamp active index when column count changes
+  useEffect(() => {
+    if (columns.length > 0) {
+      setActiveColumnIndex((prev) => Math.min(prev, columns.length - 1));
+    }
+  }, [columns.length]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
