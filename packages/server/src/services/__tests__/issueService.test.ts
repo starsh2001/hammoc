@@ -376,7 +376,7 @@ Open
       expect(epic!.storyProgress).toEqual({ total: 0, done: 0 });
     });
 
-    it('should treat Blocked stories as InProgress for epic status', async () => {
+    it('should preserve Blocked status for stories', async () => {
       mockScanProject.mockResolvedValueOnce({
         config: {} as never,
         documents: {} as never,
@@ -398,7 +398,7 @@ Open
       expect(epic!.status).toBe('InProgress');
 
       const blockedStory = result.items.find((i: BoardItem) => i.id === 'story-5.1');
-      expect(blockedStory!.status).toBe('InProgress');
+      expect(blockedStory!.status).toBe('Blocked');
     });
 
     it('should use file name as fallback title for stories', async () => {

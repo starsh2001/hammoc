@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useBoardStore } from '../boardStore';
+import { DEFAULT_BOARD_CONFIG } from '@bmad-studio/shared';
 
 vi.mock('../../services/api/board', () => ({
   boardApi: {
@@ -41,7 +42,7 @@ describe('boardStore', () => {
 
   describe('fetchBoard', () => {
     it('should fetch board items successfully', async () => {
-      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: mockItems });
+      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: mockItems, config: DEFAULT_BOARD_CONFIG });
 
       await useBoardStore.getState().fetchBoard('test-project');
 
@@ -52,7 +53,7 @@ describe('boardStore', () => {
 
     it('should set loading state during fetch', async () => {
       vi.mocked(boardApi.getBoard).mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ items: [] }), 100)),
+        () => new Promise((resolve) => setTimeout(() => resolve({ items: [], config: DEFAULT_BOARD_CONFIG }), 100)),
       );
 
       const fetchPromise = useBoardStore.getState().fetchBoard('test-project');
@@ -86,15 +87,15 @@ describe('boardStore', () => {
     it('should clear previous error on successful fetch', async () => {
       useBoardStore.setState({ error: 'Previous error' });
 
-      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: mockItems });
+      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: mockItems, config: DEFAULT_BOARD_CONFIG });
       await useBoardStore.getState().fetchBoard('test-project');
 
       expect(useBoardStore.getState().error).toBeNull();
     });
 
     it('should discard stale response when a newer fetch is in progress', async () => {
-      let resolveFirst: (value: { items: typeof mockItems }) => void;
-      const firstPromise = new Promise<{ items: typeof mockItems }>((resolve) => {
+      let resolveFirst: (value: { items: typeof mockItems; config: typeof DEFAULT_BOARD_CONFIG }) => void;
+      const firstPromise = new Promise<{ items: typeof mockItems; config: typeof DEFAULT_BOARD_CONFIG }>((resolve) => {
         resolveFirst = resolve;
       });
       const secondItems = [
@@ -103,7 +104,7 @@ describe('boardStore', () => {
 
       vi.mocked(boardApi.getBoard)
         .mockReturnValueOnce(firstPromise)
-        .mockResolvedValueOnce({ items: secondItems });
+        .mockResolvedValueOnce({ items: secondItems, config: DEFAULT_BOARD_CONFIG });
 
       // Start first fetch (slow)
       const fetch1 = useBoardStore.getState().fetchBoard('project-a');
@@ -114,7 +115,7 @@ describe('boardStore', () => {
       expect(useBoardStore.getState().items).toEqual(secondItems);
 
       // Resolve first fetch (stale) - should be discarded
-      resolveFirst!({ items: mockItems });
+      resolveFirst!({ items: mockItems, config: DEFAULT_BOARD_CONFIG });
       await fetch1;
 
       expect(useBoardStore.getState().items).toEqual(secondItems);
@@ -124,7 +125,7 @@ describe('boardStore', () => {
   describe('createIssue', () => {
     it('should create issue and refresh board', async () => {
       vi.mocked(boardApi.createIssue).mockResolvedValue(mockItems[0]);
-      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: mockItems });
+      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: mockItems, config: DEFAULT_BOARD_CONFIG });
 
       await useBoardStore.getState().createIssue('test-project', { title: 'New issue' });
 
@@ -183,7 +184,7 @@ describe('boardStore', () => {
   describe('deleteIssue', () => {
     it('should delete issue and refresh board', async () => {
       vi.mocked(boardApi.deleteIssue).mockResolvedValue({ message: 'Issue deleted' });
-      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: [] });
+      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: [], config: DEFAULT_BOARD_CONFIG });
 
       await useBoardStore.getState().deleteIssue('test-project', 'issue-1');
 
@@ -195,7 +196,7 @@ describe('boardStore', () => {
   describe('updateIssue', () => {
     it('should update issue and refresh board', async () => {
       vi.mocked(boardApi.updateIssue).mockResolvedValue(mockItems[0]);
-      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: mockItems });
+      vi.mocked(boardApi.getBoard).mockResolvedValue({ items: mockItems, config: DEFAULT_BOARD_CONFIG });
 
       await useBoardStore.getState().updateIssue('test-project', 'issue-1', { title: 'Updated' });
 

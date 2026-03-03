@@ -7,15 +7,18 @@ import { create } from 'zustand';
 import type {
   BoardItem,
   BoardItemStatus,
+  BoardConfig,
   CreateIssueRequest,
   UpdateIssueRequest,
 } from '@bmad-studio/shared';
+import { DEFAULT_BOARD_CONFIG } from '@bmad-studio/shared';
 import { boardApi } from '../services/api/board';
 import { ApiError } from '../services/api/client';
 
 interface BoardStore {
   // State
   items: BoardItem[];
+  boardConfig: BoardConfig;
   viewMode: 'kanban' | 'list';
   isLoading: boolean;
   error: string | null;
@@ -25,6 +28,7 @@ interface BoardStore {
   updateIssue: (projectSlug: string, issueId: string, data: UpdateIssueRequest) => Promise<void>;
   deleteIssue: (projectSlug: string, issueId: string) => Promise<void>;
   setViewMode: (mode: 'kanban' | 'list') => void;
+  setBoardConfig: (config: BoardConfig) => void;
   getItemsByStatus: (status: BoardItemStatus) => BoardItem[];
   clearError: () => void;
 }
@@ -63,6 +67,7 @@ function getInitialViewMode(): 'kanban' | 'list' {
 export const useBoardStore = create<BoardStore>((set, get) => ({
   // State
   items: [],
+  boardConfig: DEFAULT_BOARD_CONFIG,
   viewMode: getInitialViewMode(),
   isLoading: false,
   error: null,
@@ -75,7 +80,12 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       const response = await boardApi.getBoard(projectSlug);
       if (currentFetchId !== _fetchId) return;
       clearErrorTimer();
-      set({ items: response.items, isLoading: false, error: null });
+      set({
+        items: response.items,
+        boardConfig: response.config ?? DEFAULT_BOARD_CONFIG,
+        isLoading: false,
+        error: null,
+      });
     } catch (err) {
       if (currentFetchId !== _fetchId) return;
       setErrorWithAutoClear(set, getErrorMessage(err));
@@ -118,6 +128,10 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   setViewMode: (mode: 'kanban' | 'list') => {
     localStorage.setItem('bmad-board-viewMode', mode);
     set({ viewMode: mode });
+  },
+
+  setBoardConfig: (config: BoardConfig) => {
+    set({ boardConfig: config });
   },
 
   getItemsByStatus: (status: BoardItemStatus) =>

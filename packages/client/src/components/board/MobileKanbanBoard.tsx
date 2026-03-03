@@ -4,19 +4,20 @@
  */
 
 import { useState, useRef } from 'react';
-import type { BoardItem, BoardItemStatus } from '@bmad-studio/shared';
+import type { BoardItem, BoardConfig } from '@bmad-studio/shared';
 import { BoardCard } from './BoardCard';
 import type { CardActionCallbacks } from './BoardCard';
-import { BOARD_COLUMNS, STATUS_LABEL } from './constants';
 
 interface MobileKanbanBoardProps extends CardActionCallbacks {
-  itemsByStatus: Record<BoardItemStatus, BoardItem[]>;
+  itemsByColumn: Record<string, BoardItem[]>;
+  boardConfig: BoardConfig;
 }
 
 const SWIPE_THRESHOLD = 50;
 
 export function MobileKanbanBoard({
-  itemsByStatus,
+  itemsByColumn,
+  boardConfig,
   onQuickFix,
   onPromote,
   onEdit,
@@ -29,6 +30,8 @@ export function MobileKanbanBoard({
   const touchStartY = useRef(0);
   const touchDeltaX = useRef(0);
   const isHorizontalSwipe = useRef<boolean | null>(null);
+
+  const columns = boardConfig.columns;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -54,7 +57,7 @@ export function MobileKanbanBoard({
 
   const handleTouchEnd = () => {
     if (Math.abs(touchDeltaX.current) > SWIPE_THRESHOLD) {
-      if (touchDeltaX.current < 0 && activeColumnIndex < BOARD_COLUMNS.length - 1) {
+      if (touchDeltaX.current < 0 && activeColumnIndex < columns.length - 1) {
         setActiveColumnIndex((prev) => prev + 1);
       } else if (touchDeltaX.current > 0 && activeColumnIndex > 0) {
         setActiveColumnIndex((prev) => prev - 1);
@@ -64,8 +67,8 @@ export function MobileKanbanBoard({
     isHorizontalSwipe.current = null;
   };
 
-  const activeStatus = BOARD_COLUMNS[activeColumnIndex];
-  const activeItems = itemsByStatus[activeStatus] || [];
+  const activeColumn = columns[activeColumnIndex];
+  const activeItems = activeColumn ? (itemsByColumn[activeColumn.id] || []) : [];
 
   return (
     <div className="h-full flex flex-col">
@@ -79,7 +82,7 @@ export function MobileKanbanBoard({
         {/* Column header */}
         <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            {STATUS_LABEL[activeStatus]}
+            {activeColumn?.label ?? ''}
           </span>
           <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
             {activeItems.length}
@@ -110,16 +113,16 @@ export function MobileKanbanBoard({
 
       {/* Indicator dots */}
       <div className="flex justify-center gap-2 py-3 flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
-        {BOARD_COLUMNS.map((status, index) => (
+        {columns.map((col, index) => (
           <button
-            key={status}
+            key={col.id}
             onClick={() => setActiveColumnIndex(index)}
             className={`w-2 h-2 rounded-full transition-colors ${
               index === activeColumnIndex
                 ? 'bg-blue-500'
                 : 'bg-gray-300 dark:bg-gray-600'
             }`}
-            aria-label={`${STATUS_LABEL[status]} 칼럼으로 이동`}
+            aria-label={`${col.label} 칼럼으로 이동`}
           />
         ))}
       </div>

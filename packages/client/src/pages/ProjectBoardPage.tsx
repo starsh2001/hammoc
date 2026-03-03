@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { LayoutList, Kanban, Plus, RefreshCw, AlertCircle } from 'lucide-react';
+import { LayoutList, Kanban, Plus, RefreshCw, AlertCircle, Settings } from 'lucide-react';
 import type { BoardItem, CreateIssueRequest, UpdateIssueRequest } from '@bmad-studio/shared';
 import { useBoard } from '../hooks/useBoard';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -15,6 +15,7 @@ import { BoardListView } from '../components/board/BoardListView';
 import { IssueFormDialog } from '../components/board/IssueFormDialog';
 import { IssueEditDialog } from '../components/board/IssueEditDialog';
 import { EpicStoriesDialog } from '../components/board/EpicStoriesDialog';
+import { BoardConfigDialog } from '../components/board/BoardConfigDialog';
 import { boardApi } from '../services/api/board.js';
 import { generateUUID } from '../utils/uuid.js';
 
@@ -25,10 +26,13 @@ export function ProjectBoardPage() {
     viewMode,
     isLoading,
     error,
-    itemsByStatus,
+    itemsByColumn,
     items,
+    boardConfig,
     setViewMode,
     createIssue,
+    updateBoardConfig,
+    resetBoardConfig,
     refresh,
   } = useBoard(projectSlug);
   const isMobile = useIsMobile();
@@ -36,6 +40,7 @@ export function ProjectBoardPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [editingIssue, setEditingIssue] = useState<BoardItem | null>(null);
   const [epicDialogData, setEpicDialogData] = useState<{ epic: BoardItem; stories: BoardItem[] } | null>(null);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
 
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -154,12 +159,12 @@ export function ProjectBoardPage() {
 
   // View epic stories
   const handleViewEpicStories = useCallback((item: BoardItem) => {
-    const allItems = Object.values(itemsByStatus).flat();
+    const allItems = Object.values(itemsByColumn).flat();
     const epicStories = allItems.filter(
       (i) => i.type === 'story' && i.epicNumber === item.epicNumber,
     );
     setEpicDialogData({ epic: item, stories: epicStories });
-  }, [itemsByStatus]);
+  }, [itemsByColumn]);
 
   // Card action callbacks
   const cardCallbacks = {
@@ -267,13 +272,22 @@ export function ProjectBoardPage() {
           </button>
         </div>
 
-        <button
-          onClick={() => setIsFormOpen(true)}
-          className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center gap-1.5 text-sm transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          이슈 추가
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsConfigOpen(true)}
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+            aria-label="보드 설정"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center gap-1.5 text-sm transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            이슈 추가
+          </button>
+        </div>
       </div>
 
       {/* Error banner (when items exist but refresh fails) */}
@@ -288,12 +302,12 @@ export function ProjectBoardPage() {
       <div className="flex-1 min-h-0">
         {viewMode === 'kanban' ? (
           isMobile ? (
-            <MobileKanbanBoard itemsByStatus={itemsByStatus} {...cardCallbacks} />
+            <MobileKanbanBoard itemsByColumn={itemsByColumn} boardConfig={boardConfig} {...cardCallbacks} />
           ) : (
-            <KanbanBoard itemsByStatus={itemsByStatus} {...cardCallbacks} />
+            <KanbanBoard itemsByColumn={itemsByColumn} boardConfig={boardConfig} {...cardCallbacks} />
           )
         ) : (
-          <BoardListView itemsByStatus={itemsByStatus} isMobile={isMobile} {...cardCallbacks} />
+          <BoardListView itemsByColumn={itemsByColumn} boardConfig={boardConfig} isMobile={isMobile} {...cardCallbacks} />
         )}
       </div>
 
@@ -315,6 +329,20 @@ export function ProjectBoardPage() {
         epic={epicDialogData?.epic ?? null}
         stories={epicDialogData?.stories ?? []}
         onClose={() => setEpicDialogData(null)}
+      />
+
+      <BoardConfigDialog
+        open={isConfigOpen}
+        config={boardConfig}
+        onClose={() => setIsConfigOpen(false)}
+        onSave={async (config) => {
+          await updateBoardConfig(config);
+          setIsConfigOpen(false);
+        }}
+        onReset={async () => {
+          await resetBoardConfig();
+          setIsConfigOpen(false);
+        }}
       />
     </div>
   );

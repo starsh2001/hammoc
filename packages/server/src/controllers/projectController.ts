@@ -18,6 +18,7 @@ import {
   SetupBmadResponse,
 } from '@bmad-studio/shared';
 import type { PermissionMode } from '@bmad-studio/shared';
+import { validateBoardConfig } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES, resolveTemplateVariables } from '../services/chatService.js';
 import { createLogger } from '../utils/logger.js';
@@ -324,6 +325,17 @@ export const projectController = {
         if (typeof settings.modelOverride !== 'string') {
           res.status(400).json({
             error: { code: 'INVALID_MODEL', message: '유효하지 않은 모델 ID입니다.' },
+          });
+          return;
+        }
+      }
+
+      // Validate boardConfig if provided (null = clear override)
+      if (settings.boardConfig !== undefined && settings.boardConfig !== null) {
+        const configErrors = validateBoardConfig(settings.boardConfig);
+        if (configErrors.length > 0) {
+          res.status(400).json({
+            error: { code: 'INVALID_BOARD_CONFIG', message: configErrors.join(', ') },
           });
           return;
         }
