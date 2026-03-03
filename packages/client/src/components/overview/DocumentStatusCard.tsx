@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FileText, CheckCircle, XCircle, Circle, FolderOpen, ArrowUpRight, ChevronDown } from 'lucide-react';
 import type { BmadDocuments, BmadAuxDocument, BmadSupplementaryDoc, DirEntry } from '@bmad-studio/shared';
+import type { TFunction } from 'i18next';
 
 import { useFileStore } from '../../stores/fileStore.js';
 import { generateUUID } from '../../utils/uuid.js';
@@ -12,13 +14,14 @@ interface DocumentStatusCardProps {
   projectSlug: string;
 }
 
-const AUX_DOC_LABELS: Record<string, string> = {
-  stories: '스토리',
-  qa: 'QA',
+const AUX_DOC_LABEL_KEYS: Record<string, string> = {
+  stories: 'document.stories',
+  qa: 'document.qa',
 };
 
-function getAuxDocLabel(type: string): string {
-  return AUX_DOC_LABELS[type] ?? type;
+function getAuxDocLabel(type: string, t: TFunction): string {
+  const key = AUX_DOC_LABEL_KEYS[type];
+  return key ? t(key) : type;
 }
 
 /** Agent command mapping for creating documents */
@@ -168,6 +171,7 @@ function DocRow({
   handleOpenDoc,
   handleCreateDoc,
   expandedDocs,
+  t,
 }: {
   doc: DocEntry;
   isDocExpanded: boolean;
@@ -175,6 +179,7 @@ function DocRow({
   handleOpenDoc: (path: string) => void;
   handleCreateDoc: (cmd: string) => void;
   expandedDocs: Set<string>;
+  t: TFunction;
 }) {
   const hasShardedFiles = doc.sharded && doc.shardedFiles && doc.shardedFiles.length > 0;
   const isCore = GROUP_CORE.has(doc.key);
@@ -215,7 +220,7 @@ function DocRow({
         {/* Sharded badge */}
         {hasShardedFiles && (
           <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
-            Sharded
+            {t('document.sharded')}
           </span>
         )}
 
@@ -233,19 +238,19 @@ function DocRow({
         )}
         {!doc.exists && !doc.optional && (
           <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
-            작성 필요
+            {t('document.writeRequired')}
           </span>
         )}
         {!doc.exists && doc.recommended && (
           <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">
-            작성 권장
+            {t('document.writeRecommended')}
           </span>
         )}
         {!doc.exists && doc.agentCommand && (
           <button
             onClick={() => handleCreateDoc(doc.agentCommand!)}
             className={`p-0.5 rounded transition-colors cursor-pointer ${!doc.optional || doc.recommended ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50' : 'bg-gray-100 dark:bg-gray-700/50 text-gray-300 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-500 dark:hover:text-gray-400'}`}
-            title="작성하러 가기"
+            title={t('document.writeGo')}
           >
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
@@ -276,6 +281,7 @@ function DocRow({
 }
 
 export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug }: DocumentStatusCardProps) {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const openFile = useFileStore((s) => s.requestFileNavigation);
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
@@ -309,17 +315,17 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
   return (
     <div
       role="region"
-      aria-label="문서 현황"
+      aria-label={t('document.statusTitle')}
       className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5"
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <h2 className="font-semibold text-gray-900 dark:text-white">문서 현황</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-white">{t('document.statusTitle')}</h2>
         </div>
         {totalRequired > 0 && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-            {doneRequired}/{totalRequired} 필수
+            {t('document.requiredCount', { done: doneRequired, total: totalRequired })}
           </span>
         )}
       </div>
@@ -335,13 +341,14 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
             handleOpenDoc={handleOpenDoc}
             handleCreateDoc={handleCreateDoc}
             expandedDocs={expandedDocs}
+            t={t}
           />
         ))}
 
         {/* Auxiliary Documents (stories, QA, etc.) */}
         {auxiliaryDocuments.length > 0 && (
           <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2 space-y-1">
-            <p className="text-[11px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 mb-1">산출물</p>
+            <p className="text-[11px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 mb-1">{t('document.deliverables')}</p>
             {auxiliaryDocuments.map((doc) => {
               const hasFiles = doc.files && doc.files.length > 0;
               const isExpanded = expandedDocs.has(`aux-${doc.type}`);
@@ -355,15 +362,15 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
                         onClick={() => toggleDoc(`aux-${doc.type}`)}
                         className="text-gray-700 dark:text-gray-300 hover:underline cursor-pointer inline-flex items-center gap-1"
                       >
-                        {getAuxDocLabel(doc.type)}
+                        {getAuxDocLabel(doc.type, t)}
                         <ChevronDown
                           className={`w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         />
                       </button>
                     ) : (
-                      <span className="text-gray-700 dark:text-gray-300">{getAuxDocLabel(doc.type)}</span>
+                      <span className="text-gray-700 dark:text-gray-300">{getAuxDocLabel(doc.type, t)}</span>
                     )}
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{doc.fileCount}개</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{doc.fileCount}{t('document.count')}</span>
                   </div>
 
                   {/* Expanded auxiliary file tree */}

@@ -5,6 +5,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CheckCircle,
   PlayCircle,
@@ -57,15 +58,15 @@ interface QueueRunnerPanelProps {
   isReordering?: boolean;
 }
 
-function getItemSummary(item: QueueItem): string {
-  if (item.isBreakpoint) return `일시정지${item.prompt ? `: ${item.prompt}` : ''}`;
-  if (item.isNewSession && item.prompt) return `[새 세션] ${item.prompt.slice(0, 80)}`;
-  if (item.isNewSession) return '새 세션 시작';
-  if (item.saveSessionName) return `세션 저장: ${item.saveSessionName}`;
-  if (item.loadSessionName) return `세션 로드: ${item.loadSessionName}`;
-  if (item.modelName && item.prompt) return `[모델: ${item.modelName}] ${item.prompt.slice(0, 60)}`;
-  if (item.modelName) return `모델 변경: ${item.modelName}`;
-  if (item.delayMs) return `대기: ${item.delayMs}ms`;
+function getItemSummary(item: QueueItem, t: (key: string, opts?: Record<string, unknown>) => string): string {
+  if (item.isBreakpoint) return `${t('queue.itemSummary.pause')}${item.prompt ? `: ${item.prompt}` : ''}`;
+  if (item.isNewSession && item.prompt) return `${t('queue.itemSummary.newSession')} ${item.prompt.slice(0, 80)}`;
+  if (item.isNewSession) return t('queue.itemSummary.newSessionStart');
+  if (item.saveSessionName) return `${t('queue.itemSummary.saveSession')} ${item.saveSessionName}`;
+  if (item.loadSessionName) return `${t('queue.itemSummary.loadSession')} ${item.loadSessionName}`;
+  if (item.modelName && item.prompt) return `${t('queue.itemSummary.modelPrefix')} ${item.modelName}] ${item.prompt.slice(0, 60)}`;
+  if (item.modelName) return `${t('queue.itemSummary.modelChange')} ${item.modelName}`;
+  if (item.delayMs) return `${t('queue.itemSummary.wait')} ${item.delayMs}ms`;
   return item.prompt.slice(0, 80) + (item.prompt.length > 80 ? '...' : '');
 }
 
@@ -122,6 +123,7 @@ export function QueueRunnerPanel({
   onDismiss,
   isReordering = false,
 }: QueueRunnerPanelProps) {
+  const { t } = useTranslation('common');
   const currentItemRef = useRef<HTMLDivElement>(null);
   const [newItemText, setNewItemText] = useState('');
 
@@ -145,7 +147,7 @@ export function QueueRunnerPanel({
   if (hasError) barColor = 'bg-red-500';
 
   const handleAbort = () => {
-    if (window.confirm('큐 실행을 중단하시겠습니까?')) {
+    if (window.confirm(t('queue.confirmAbort'))) {
       onAbort();
     }
   };
@@ -193,29 +195,29 @@ export function QueueRunnerPanel({
           {isRunning && !isPaused && (
             <>
               <PlayCircle className="w-4 h-4 text-blue-500" />
-              <span className="text-blue-600 dark:text-blue-400">실행 중...</span>
+              <span className="text-blue-600 dark:text-blue-400">{t('queue.statusRunning')}</span>
             </>
           )}
           {isPaused && (
             <>
               <PauseCircle className="w-4 h-4 text-amber-500" />
-              <span className="text-amber-600 dark:text-amber-400">일시정지됨</span>
+              <span className="text-amber-600 dark:text-amber-400">{t('queue.statusPaused')}</span>
             </>
           )}
           {isCompleted && (
             <>
               <CheckCircle className="w-4 h-4 text-green-500" />
-              <span className="text-green-600 dark:text-green-400">완료 ({completedCount}개 아이템 실행됨)</span>
+              <span className="text-green-600 dark:text-green-400">{t('queue.statusComplete', { count: completedCount })}</span>
             </>
           )}
           {hasError && !isRunning && !isPaused && (
             <>
               <XCircle className="w-4 h-4 text-red-500" />
-              <span className="text-red-600 dark:text-red-400">오류 발생</span>
+              <span className="text-red-600 dark:text-red-400">{t('queue.statusError')}</span>
             </>
           )}
           {!isRunning && !isPaused && !isCompleted && !hasError && (
-            <span className="text-gray-500">대기 중</span>
+            <span className="text-gray-500">{t('queue.statusWaiting')}</span>
           )}
         </div>
 
@@ -226,46 +228,46 @@ export function QueueRunnerPanel({
               to={`/project/${projectSlug}/session/${activeSessionId}`}
               className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
             >
-              세션 이동
+              {t('queue.goToSession')}
               <ExternalLink className="w-3 h-3" />
             </Link>
           )}
           {isRunning && !isPaused && (
             <button
               onClick={onPause}
-              aria-label="일시정지"
+              aria-label={t('queue.pause')}
               className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
                 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400
                 hover:bg-amber-200 dark:hover:bg-amber-900/50
                 min-w-[44px] min-h-[44px]"
             >
               <Pause className="w-3 h-3" />
-              <span>일시정지</span>
+              <span>{t('queue.pause')}</span>
             </button>
           )}
           {isPaused && (
             <>
               <button
                 onClick={onResume}
-                aria-label="재개"
+                aria-label={t('queue.resume')}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
                   bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400
                   hover:bg-blue-200 dark:hover:bg-blue-900/50
                   min-w-[44px] min-h-[44px]"
               >
                 <Play className="w-3 h-3" />
-                <span>재개</span>
+                <span>{t('queue.resume')}</span>
               </button>
               <button
                 onClick={handleAbort}
-                aria-label="중단"
+                aria-label={t('queue.abort')}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
                   bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400
                   hover:bg-red-200 dark:hover:bg-red-900/50
                   min-w-[44px] min-h-[44px]"
               >
                 <Square className="w-3 h-3" />
-                <span>중단</span>
+                <span>{t('queue.abort')}</span>
               </button>
             </>
           )}
@@ -273,14 +275,14 @@ export function QueueRunnerPanel({
           {onDismiss && !isRunning && !isPaused && (isCompleted || hasError) && (
             <button
               onClick={onDismiss}
-              aria-label="에디터로 돌아가기"
+              aria-label={t('queue.backToEditor')}
               className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
                 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
                 hover:bg-gray-200 dark:hover:bg-gray-600
                 min-w-[44px] min-h-[44px]"
             >
               <RotateCcw className="w-3 h-3" />
-              <span>에디터로 돌아가기</span>
+              <span>{t('queue.backToEditor')}</span>
             </button>
           )}
         </div>
@@ -289,7 +291,7 @@ export function QueueRunnerPanel({
       {/* Progress bar */}
       <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-          <span>진행: {completedCount} / {total}</span>
+          <span>{t('queue.progress', { current: completedCount, total })}</span>
           <span>{percentage}%</span>
         </div>
         <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -303,14 +305,14 @@ export function QueueRunnerPanel({
       {/* Pause reason banner */}
       {isPaused && pauseReason && (
         <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-sm border-b border-amber-200 dark:border-amber-800 flex-shrink-0">
-          사유: {pauseReason}
+          {t('queue.pauseReason', { reason: pauseReason })}
         </div>
       )}
 
       {/* Error banner */}
       {errorItem && (
         <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm border-b border-red-200 dark:border-red-800 flex-shrink-0">
-          오류: {errorItem.error}
+          {t('queue.errorMessage', { error: errorItem.error })}
         </div>
       )}
 
@@ -336,14 +338,14 @@ export function QueueRunnerPanel({
               <span
                 className={`truncate flex-1 ${status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}
               >
-                {getItemSummary(item)}
+                {getItemSummary(item, t)}
               </span>
               {/* Session link for completed and current items */}
               {(status === 'completed' || status === 'running' || status === 'paused') && itemSessionId && projectSlug && (
                 <Link
                   to={`/project/${projectSlug}/session/${itemSessionId}`}
                   className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 flex-shrink-0 p-0.5"
-                  title="세션 이동"
+                  title={t('queue.goToSession')}
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                 </Link>
@@ -379,15 +381,15 @@ export function QueueRunnerPanel({
                             <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{globalIndex + 1}</span>
                             <ItemStatusIcon status={status} />
                             <span className="truncate flex-1 text-gray-700 dark:text-gray-300">
-                              {getItemSummary(item)}
+                              {getItemSummary(item, t)}
                             </span>
                             {/* Delete button for pending items */}
                             {onRemoveItem && (
                               <button
                                 onClick={() => onRemoveItem(globalIndex)}
                                 className="text-gray-400 hover:text-red-500 flex-shrink-0 p-0.5"
-                                title="아이템 삭제"
-                                aria-label={`아이템 ${globalIndex + 1} 삭제`}
+                                title={t('queue.deleteItem')}
+                                aria-label={t('queue.deleteItemAria', { index: globalIndex + 1 })}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -416,7 +418,7 @@ export function QueueRunnerPanel({
                 <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{globalIndex + 1}</span>
                 <ItemStatusIcon status={status} />
                 <span className="truncate flex-1 text-gray-700 dark:text-gray-300">
-                  {getItemSummary(item)}
+                  {getItemSummary(item, t)}
                 </span>
               </div>
             );
@@ -436,7 +438,7 @@ export function QueueRunnerPanel({
                   handleAddItem();
                 }
               }}
-              placeholder="새 아이템 추가... (프롬프트 또는 @지시어)"
+              placeholder={t('queue.addItemPlaceholder')}
               className="flex-1 text-sm px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600
                 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300
                 placeholder:text-gray-400 dark:placeholder:text-gray-500
@@ -445,7 +447,7 @@ export function QueueRunnerPanel({
             <button
               onClick={handleAddItem}
               disabled={!newItemText.trim()}
-              aria-label="아이템 추가"
+              aria-label={t('queue.addItem')}
               className="inline-flex items-center justify-center w-8 h-8 rounded
                 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400
                 hover:bg-blue-200 dark:hover:bg-blue-900/50

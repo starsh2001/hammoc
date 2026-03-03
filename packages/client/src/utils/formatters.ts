@@ -3,9 +3,11 @@
  * [Source: Story 3.2 - Task 3]
  */
 
+import i18n from '../i18n';
+
 /**
  * Format a date string to relative time (e.g., "2시간 전", "3일 전")
- * MVP: Korean hardcoded (i18n can be added in future stories)
+ * Uses i18n for localized time strings
  */
 export function formatRelativeTime(isoDate: string): string {
   const date = new Date(isoDate);
@@ -16,10 +18,10 @@ export function formatRelativeTime(isoDate: string): string {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffDays > 0) return `${diffDays}일 전`;
-  if (diffHours > 0) return `${diffHours}시간 전`;
-  if (diffMins > 0) return `${diffMins}분 전`;
-  return '방금 전';
+  if (diffDays > 0) return i18n.t('common:time.daysAgo', { count: diffDays });
+  if (diffHours > 0) return i18n.t('common:time.hoursAgo', { count: diffHours });
+  if (diffMins > 0) return i18n.t('common:time.minutesAgo', { count: diffMins });
+  return i18n.t('common:time.justNow');
 }
 
 /**

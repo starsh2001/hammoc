@@ -4,6 +4,7 @@
  * Data comes from OAuth usage API polling (every 2 minutes).
  */
 
+import { useTranslation } from 'react-i18next';
 import type { SubscriptionRateLimit } from '@bmad-studio/shared';
 
 interface UsageStatusBarProps {
@@ -17,11 +18,12 @@ function getGlowDotClasses(utilization: number): string {
 }
 
 function GlowDot({ utilization, label, reset }: { utilization: number; label: string; reset?: string | null }) {
+  const { t } = useTranslation('common');
   const dotClasses = getGlowDotClasses(utilization);
   const pct = (utilization * 100).toFixed(0);
   const tooltip = reset
-    ? `${label}: ${pct}% (리셋: ${new Date(reset).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })} ${new Date(reset).toLocaleTimeString()})`
-    : `${label}: ${pct}%`;
+    ? t('usage.resetTooltip', { label, pct, reset: new Date(reset).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' }) + ' ' + new Date(reset).toLocaleTimeString() })
+    : t('usage.tooltip', { label, pct });
 
   return (
     <span className="inline-flex items-center gap-1" title={tooltip}>
@@ -37,13 +39,14 @@ function GlowDot({ utilization, label, reset }: { utilization: number; label: st
 }
 
 export function UsageStatusBar({ rateLimit }: UsageStatusBarProps) {
+  const { t } = useTranslation('common');
   if (!rateLimit?.fiveHour && !rateLimit?.sevenDay) return null;
 
   return (
     <div
       className="flex items-center gap-2 select-none"
       role="status"
-      aria-label="Rate Limit 사용률"
+      aria-label={t('usage.ariaLabel')}
       data-testid="usage-status-bar"
     >
       {rateLimit.fiveHour && (

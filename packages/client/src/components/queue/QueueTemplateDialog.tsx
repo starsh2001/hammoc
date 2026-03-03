@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Save, Upload, Trash2, Pencil, RefreshCw, WrapText, ChevronRight, FileText } from 'lucide-react';
 import { generateQueueFromTemplate } from '@bmad-studio/shared';
 import type { QueueStoryInfo, QueueTemplate } from '@bmad-studio/shared';
@@ -27,6 +28,7 @@ const sourceLabels: Record<TemplateSource, string> = {
 };
 
 export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: QueueTemplateDialogProps) {
+  const { t } = useTranslation('common');
   // Template input state
   const [templateSource, setTemplateSource] = useState<TemplateSource>('input');
   const [templateText, setTemplateText] = useState('');
@@ -61,14 +63,14 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
         setStories(data.stories);
         setSelectedStories(new Set(data.stories.map((s) => s.storyNum)));
       })
-      .catch(() => setStoriesError('스토리를 불러올 수 없습니다'))
+      .catch(() => setStoriesError(t('queue.template.storyLoadFailed')))
       .finally(() => setIsLoadingStories(false));
 
     setIsLoadingTemplates(true);
     setTemplatesError(null);
     queueApi.getTemplates(projectSlug)
       .then((data) => setSavedTemplates(data))
-      .catch(() => setTemplatesError('저장된 템플릿을 불러올 수 없습니다'))
+      .catch(() => setTemplatesError(t('queue.template.templateLoadFailed')))
       .finally(() => setIsLoadingTemplates(false));
   }, [open, projectSlug]);
 
@@ -173,12 +175,12 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
     if (!file) return;
 
     if (file.size === 0) {
-      alert('파일이 비어있습니다');
+      alert(t('queue.template.fileEmpty'));
       e.target.value = '';
       return;
     }
     if (file.size > 102_400) {
-      alert('파일이 너무 큽니다 (최대 100KB)');
+      alert(t('queue.template.fileTooLarge'));
       e.target.value = '';
       return;
     }
@@ -210,12 +212,12 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
       setTemplateName('');
       setSelectedTemplateId(null);
     } catch {
-      alert(selectedTemplateId ? '템플릿 업데이트에 실패했습니다' : '템플릿 저장에 실패했습니다');
+      alert(selectedTemplateId ? t('queue.template.templateUpdateFailed') : t('queue.template.templateSaveFailed'));
     }
   }, [projectSlug, templateName, templateText, selectedTemplateId]);
 
   const handleDeleteTemplate = useCallback(async (id: string) => {
-    if (!window.confirm('템플릿을 삭제하시겠습니까?')) return;
+    if (!window.confirm(t('queue.template.templateDeleteConfirm'))) return;
     try {
       await queueApi.deleteTemplate(projectSlug, id);
       const updated = await queueApi.getTemplates(projectSlug);
@@ -225,7 +227,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
         setTemplateText('');
       }
     } catch {
-      alert('템플릿 삭제에 실패했습니다');
+      alert(t('queue.template.templateDeleteFailed'));
     }
   }, [projectSlug, selectedTemplateId]);
 
@@ -255,9 +257,9 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
         setStories(data.stories);
         setSelectedStories(new Set(data.stories.map((s) => s.storyNum)));
       })
-      .catch(() => setStoriesError('스토리를 불러올 수 없습니다'))
+      .catch(() => setStoriesError(t('queue.template.storyLoadFailed')))
       .finally(() => setIsLoadingStories(false));
-  }, [projectSlug]);
+  }, [projectSlug, t]);
 
   if (!open) return null;
 
@@ -275,11 +277,11 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/50 flex-shrink-0">
           <h2 id="template-dialog-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
-            템플릿으로 큐 생성
+            {t('queue.template.title')}
           </h2>
           <button
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={t('queue.template.close')}
             className="p-1.5 -mr-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
               hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
@@ -295,7 +297,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
             <section>
               <div className="flex items-center justify-between mb-2.5">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  템플릿
+                  {t('queue.template.templateSection')}
                 </h3>
                 {templateText && !saveDialogOpen && (
                   <button
@@ -307,7 +309,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                       hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                   >
                     <Save className="w-3 h-3" />
-                    {selectedTemplateId ? '업데이트' : '저장'}
+                    {selectedTemplateId ? t('queue.template.update') : t('queue.template.save')}
                   </button>
                 )}
               </div>
@@ -340,13 +342,13 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                   {/* Textarea mini-toolbar */}
                   <div className="flex items-center justify-between px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
                     <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                      {'{story_num}'}, {'{epic_num}'}, {'{story_title}'} 사용 가능
+                      {t('queue.template.variablesHint', { variables: '{story_num}, {epic_num}, {story_title}' })}
                     </span>
                     <button
                       onClick={() => setIsAutoWrap((prev) => !prev)}
-                      aria-label="Toggle template wrap mode"
+                      aria-label={t('queue.template.toggleWrap')}
                       aria-pressed={isAutoWrap}
-                      title={isAutoWrap ? 'Wrap' : 'No wrap'}
+                      title={isAutoWrap ? t('queue.wrap') : t('queue.noWrap')}
                       className={`inline-flex items-center justify-center w-6 h-6 rounded transition-colors ${
                         isAutoWrap
                           ? 'bg-blue-100 dark:bg-blue-600/30 text-blue-600 dark:text-blue-400'
@@ -363,7 +365,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                       if (!selectedTemplateId) setTemplateName('');
                     }}
                     wrap={isAutoWrap ? 'soft' : 'off'}
-                    placeholder={'예: /dev {story_num} 스토리를 구현해주세요\n@pause 리뷰 후 계속'}
+                    placeholder={t('queue.template.placeholder')}
                     className="w-full h-28 px-3 py-2.5 text-sm font-mono bg-white dark:bg-gray-900
                       text-gray-900 dark:text-gray-100 resize-y border-0 focus:ring-0 focus:outline-none
                       placeholder:text-gray-300 dark:placeholder:text-gray-600"
@@ -384,8 +386,8 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                     <Upload className="w-5 h-5 text-gray-400" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">클릭하여 파일 선택</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">.txt, .qlaude-queue</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('queue.template.clickToSelectFile')}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t('queue.template.fileTypes')}</p>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -397,7 +399,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                   {templateText && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full
                       bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                      ✓ 로드됨
+                      {t('queue.template.loaded')}
                     </span>
                   )}
                 </div>
@@ -407,7 +409,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
               {templateSource === 'saved' && (
                 <div className="space-y-1.5">
                   {isLoadingTemplates && (
-                    <p className="text-sm text-gray-400 py-3 text-center">로딩 중...</p>
+                    <p className="text-sm text-gray-400 py-3 text-center">{t('queue.template.loading')}</p>
                   )}
                   {templatesError && (
                     <p className="text-sm text-red-500 py-3 text-center">{templatesError}</p>
@@ -415,7 +417,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                   {!isLoadingTemplates && !templatesError && savedTemplates.length === 0 && (
                     <div className="flex flex-col items-center gap-1.5 py-6 text-gray-400">
                       <FileText className="w-8 h-8 text-gray-300 dark:text-gray-600" />
-                      <p className="text-sm">저장된 템플릿이 없습니다</p>
+                      <p className="text-sm">{t('queue.template.noSavedTemplates')}</p>
                     </div>
                   )}
                   {savedTemplates.map((tmpl) => (
@@ -437,7 +439,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleEditTemplate(tmpl); }}
-                          aria-label={`${tmpl.name} 편집`}
+                          aria-label={t('queue.template.editTemplate', { name: tmpl.name })}
                           className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
                             hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                         >
@@ -445,7 +447,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(tmpl.id); }}
-                          aria-label={`${tmpl.name} 삭제`}
+                          aria-label={t('queue.template.deleteTemplate', { name: tmpl.name })}
                           className="p-1.5 rounded-md text-gray-400 hover:text-red-500
                             hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         >
@@ -464,7 +466,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                     type="text"
                     value={templateName}
                     onChange={(e) => setTemplateName(e.target.value)}
-                    placeholder="템플릿 이름"
+                    placeholder={t('queue.template.templateName')}
                     className="flex-1 px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md
                       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-400
                       focus:border-blue-400 outline-none"
@@ -477,13 +479,13 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                     className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white
                       hover:bg-blue-700 disabled:opacity-40 transition-colors"
                   >
-                    저장
+                    {t('queue.template.save')}
                   </button>
                   <button
                     onClick={() => setSaveDialogOpen(false)}
                     className="px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                   >
-                    취소
+                    {t('queue.template.cancel')}
                   </button>
                 </div>
               )}
@@ -493,7 +495,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
             <section>
               <div className="flex items-center justify-between mb-2.5">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  스토리
+                  {t('queue.template.storySection')}
                   {!isLoadingStories && !storiesError && stories.length > 0 && (
                     <span className="ml-1.5 font-normal normal-case tracking-normal text-gray-300 dark:text-gray-600">
                       {selectedStories.size}/{stories.length}
@@ -509,14 +511,14 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                         onChange={(e) => setInsertPause(e.target.checked)}
                         className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                       />
-                      <span className="text-[11px] text-gray-500 dark:text-gray-400">에픽 간 @pause</span>
+                      <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('queue.template.pauseBetweenEpics')}</span>
                     </label>
                     <div className="w-px h-3.5 bg-gray-200 dark:bg-gray-700" />
                     <button
                       onClick={selectedStories.size === stories.length ? handleDeselectAll : handleSelectAll}
                       className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                     >
-                      {selectedStories.size === stories.length ? '전체 해제' : '전체 선택'}
+                      {selectedStories.size === stories.length ? t('queue.template.deselectAll') : t('queue.template.selectAll')}
                     </button>
                   </div>
                 )}
@@ -537,13 +539,13 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                       text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     <RefreshCw className="w-3 h-3" />
-                    재시도
+                    {t('button.retry')}
                   </button>
                 </div>
               )}
 
               {!isLoadingStories && !storiesError && stories.length === 0 && (
-                <p className="text-sm text-gray-400 py-4 text-center">PRD에서 스토리를 찾을 수 없습니다</p>
+                <p className="text-sm text-gray-400 py-4 text-center">{t('queue.template.noStoriesFound')}</p>
               )}
 
               {!isLoadingStories && !storiesError && stories.length > 0 && (
@@ -570,7 +572,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                             className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                           />
                           <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Epic {epicNum}
+                            {t('queue.template.epicHeader', { num: epicNum })}
                           </span>
                           <span className="text-[10px] text-gray-300 dark:text-gray-600">
                             ({epicStories.filter((s) => selectedStories.has(s.storyNum)).length}/{epicStories.length})
@@ -611,7 +613,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
             {preview && (
               <section>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2.5">
-                  미리보기
+                  {t('queue.template.preview')}
                 </h3>
                 <pre
                   className="max-h-44 overflow-auto rounded-lg bg-gray-50 dark:bg-gray-900 p-3 text-xs ring-1 ring-gray-200 dark:ring-gray-800"
@@ -635,7 +637,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
             className="px-3.5 py-1.5 text-sm rounded-lg text-gray-600 dark:text-gray-400
               hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            취소
+            {t('queue.template.cancel')}
           </button>
           <button
             onClick={handleGenerate}
@@ -644,7 +646,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
               hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
               shadow-sm shadow-blue-600/20"
           >
-            에디터에 로드
+            {t('queue.template.loadToEditor')}
           </button>
         </div>
       </div>

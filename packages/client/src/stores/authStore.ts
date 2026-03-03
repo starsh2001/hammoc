@@ -8,6 +8,7 @@ import type { RateLimitInfo } from '@bmad-studio/shared';
 import { authApi } from '../services/api/auth';
 import { ApiError } from '../services/api/client';
 import { disconnectSocket } from '../services/socket';
+import i18n from '../i18n';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -70,7 +71,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
         }
       } else {
         set({
-          error: '로그인 중 오류가 발생했습니다.',
+          error: i18n.t('notification:auth.loginError'),
           isLoading: false,
         });
       }
@@ -144,7 +145,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       if (err instanceof ApiError) {
         set({ error: err.message, isLoading: false });
       } else {
-        set({ error: '패스워드 설정 중 오류가 발생했습니다.', isLoading: false });
+        set({ error: i18n.t('notification:auth.setupPasswordError'), isLoading: false });
       }
       return false;
     }

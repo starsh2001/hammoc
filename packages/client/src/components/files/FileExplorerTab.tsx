@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, FolderRoot, Loader2, List, LayoutGrid } from 'lucide-react';
 
@@ -19,24 +20,25 @@ import { fileSystemApi } from '../../services/api/fileSystem.js';
 import { FileTree } from './FileTree.js';
 import { FileGridView } from './FileGridView.js';
 
-const CRUD_ERROR_MESSAGES: Record<string, string> = {
-  FILE_ALREADY_EXISTS: '파일 또는 디렉토리가 이미 존재합니다.',
-  PARENT_NOT_FOUND: '상위 디렉토리가 존재하지 않습니다.',
-  PROTECTED_PATH: '보호된 경로는 삭제할 수 없습니다.',
-  RENAME_TARGET_EXISTS: '대상 경로에 파일이 이미 존재합니다.',
-  PATH_TRAVERSAL: '프로젝트 루트 외부 경로에 접근할 수 없습니다.',
-};
-
-function getCrudErrorMessage(err: unknown, fallbackPrefix: string): string {
-  const apiErr = err as { code?: string; message?: string };
-  if (apiErr.code && CRUD_ERROR_MESSAGES[apiErr.code]) {
-    return `${fallbackPrefix}: ${CRUD_ERROR_MESSAGES[apiErr.code]}`;
-  }
-  return `${fallbackPrefix}: ${(err as Error).message}`;
-}
-
 export function FileExplorerTab() {
+  const { t } = useTranslation('common');
   const { projectSlug } = useParams<{ projectSlug: string }>();
+
+  const CRUD_ERROR_MESSAGES: Record<string, string> = {
+    FILE_ALREADY_EXISTS: t('files.crudErrors.alreadyExists'),
+    PARENT_NOT_FOUND: t('files.crudErrors.parentNotFound'),
+    PROTECTED_PATH: t('files.crudErrors.protectedPath'),
+    RENAME_TARGET_EXISTS: t('files.crudErrors.targetExists'),
+    PATH_TRAVERSAL: t('files.crudErrors.outsideRoot'),
+  };
+
+  function getCrudErrorMessage(err: unknown, fallbackPrefix: string): string {
+    const apiErr = err as { code?: string; message?: string };
+    if (apiErr.code && CRUD_ERROR_MESSAGES[apiErr.code]) {
+      return `${fallbackPrefix}: ${CRUD_ERROR_MESSAGES[apiErr.code]}`;
+    }
+    return `${fallbackPrefix}: ${(err as Error).message}`;
+  }
   const [filterText, setFilterText] = useState('');
   const [showHidden, setShowHidden] = useState(false);
   const defaultViewMode = usePreferencesStore((s) => s.preferences.fileExplorerViewMode ?? 'grid');
@@ -98,9 +100,9 @@ export function FileExplorerTab() {
     try {
       const fullPath = parentPath === '.' ? name : `${parentPath}/${name}`;
       await fileSystemApi.createEntry(projectSlug!, fullPath, type);
-      showToast({ message: type === 'directory' ? `'${name}' 폴더가 생성되었습니다.` : `'${name}' 파일이 생성되었습니다.`, type: 'success' });
+      showToast({ message: type === 'directory' ? t('files.toast.folderCreated', { name }) : t('files.toast.fileCreated', { name }), type: 'success' });
     } catch (err) {
-      showToast({ message: getCrudErrorMessage(err, '생성 실패'), type: 'error' });
+      showToast({ message: getCrudErrorMessage(err, t('files.toast.createFailed')), type: 'error' });
       throw err;
     }
   }, [projectSlug, showToast]);
@@ -109,9 +111,9 @@ export function FileExplorerTab() {
     try {
       const name = path.includes('/') ? path.split('/').pop()! : path;
       await fileSystemApi.deleteEntry(projectSlug!, path);
-      showToast({ message: `'${name}'이(가) 삭제되었습니다.`, type: 'success' });
+      showToast({ message: t('files.toast.deleted', { name }), type: 'success' });
     } catch (err) {
-      showToast({ message: getCrudErrorMessage(err, '삭제 실패'), type: 'error' });
+      showToast({ message: getCrudErrorMessage(err, t('files.toast.deleteFailed')), type: 'error' });
       throw err;
     }
   }, [projectSlug, showToast]);
@@ -121,19 +123,19 @@ export function FileExplorerTab() {
       const parentPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '.';
       const newPath = parentPath === '.' ? newName : `${parentPath}/${newName}`;
       await fileSystemApi.renameEntry(projectSlug!, path, newPath);
-      showToast({ message: `'${newName}'(으)로 이름이 변경되었습니다.`, type: 'success' });
+      showToast({ message: t('files.toast.renamed', { name: newName }), type: 'success' });
     } catch (err) {
-      showToast({ message: getCrudErrorMessage(err, '이름 변경 실패'), type: 'error' });
+      showToast({ message: getCrudErrorMessage(err, t('files.toast.renameFailed')), type: 'error' });
       throw err;
     }
   }, [projectSlug, showToast]);
 
   const segments = (() => {
     if (currentPath === '.') {
-      return [{ name: 'Root', path: '.' }];
+      return [{ name: t('files.root'), path: '.' }];
     }
     const parts = currentPath.split('/');
-    const result = [{ name: 'Root', path: '.' }];
+    const result = [{ name: t('files.root'), path: '.' }];
     for (let i = 0; i < parts.length; i++) {
       result.push({
         name: parts[i],
@@ -146,7 +148,7 @@ export function FileExplorerTab() {
   if (!projectSlug) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-        프로젝트를 찾을 수 없습니다.
+        {t('files.projectNotFound')}
       </div>
     );
   }
@@ -160,7 +162,7 @@ export function FileExplorerTab() {
         <div className="flex items-center justify-between px-4 py-2 gap-3">
           {/* Breadcrumb — left side */}
           {!isSearching ? (
-            <nav aria-label="Breadcrumb" className="flex-shrink min-w-0">
+            <nav aria-label={t('files.breadcrumb')} className="flex-shrink min-w-0">
               <ol className="flex items-center gap-0.5 text-xs">
                 {segments.map((seg, i) => (
                   <li key={seg.path} className="flex items-center gap-0.5 min-w-0">
@@ -199,7 +201,7 @@ export function FileExplorerTab() {
                 type="text"
                 value={filterText}
                 onChange={(e) => setFilterText(e.target.value)}
-                placeholder="검색..."
+                placeholder={t('files.searchPlaceholder')}
                 className="w-36 sm:w-44 pl-8 pr-7 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 dark:text-white
                   border border-gray-200 dark:border-gray-700 rounded-lg
                   focus:outline-none focus:ring-1 focus:ring-blue-500 focus:w-56
@@ -209,7 +211,7 @@ export function FileExplorerTab() {
                 <button
                   onClick={() => setFilterText('')}
                   className="absolute right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  aria-label="검색어 지우기"
+                  aria-label={t('files.clearSearch')}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -221,13 +223,13 @@ export function FileExplorerTab() {
             {/* Hidden files toggle */}
             <button
               onClick={() => setShowHidden((prev) => !prev)}
-              title={showHidden ? '숨김 파일 숨기기' : '숨김 파일 표시'}
+              title={showHidden ? t('files.hideHidden') : t('files.showHidden')}
               className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${
                 showHidden
                   ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
                   : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
-              aria-label={showHidden ? '숨김 파일 숨기기' : '숨김 파일 표시'}
+              aria-label={showHidden ? t('files.hideHidden') : t('files.showHidden')}
             >
               {showHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             </button>
@@ -235,10 +237,10 @@ export function FileExplorerTab() {
             {/* View mode toggle */}
             <button
               onClick={() => setViewMode((prev) => (prev === 'list' ? 'grid' : 'list'))}
-              title={viewMode === 'list' ? '그리드 뷰' : '리스트 뷰'}
+              title={viewMode === 'list' ? t('files.gridView') : t('files.listView')}
               className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors
                 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-              aria-label={viewMode === 'list' ? '그리드 뷰' : '리스트 뷰'}
+              aria-label={viewMode === 'list' ? t('files.gridView') : t('files.listView')}
             >
               {viewMode === 'list' ? <LayoutGrid className="w-3.5 h-3.5" /> : <List className="w-3.5 h-3.5" />}
             </button>
@@ -253,11 +255,11 @@ export function FileExplorerTab() {
             {searchLoading ? (
               <div className="flex items-center gap-2 px-2 py-4 text-sm text-gray-500 dark:text-gray-400 justify-center">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>검색 중...</span>
+                <span>{t('files.searching')}</span>
               </div>
             ) : searchResults && searchResults.length === 0 ? (
               <div className="px-2 py-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-                검색 결과가 없습니다.
+                {t('files.noResults')}
               </div>
             ) : (
               searchResults?.map((result) => (

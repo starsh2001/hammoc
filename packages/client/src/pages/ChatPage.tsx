@@ -13,6 +13,8 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 import { toast } from 'sonner';
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useMessageStore } from '../stores/messageStore';
@@ -96,7 +98,7 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
         questions={mappedQuestions}
         multiSelect={rawQuestions?.[0]?.multiSelect}
         status="responded"
-        response={message.toolResult?.output ?? '응답됨'}
+        response={message.toolResult?.output ?? i18n.t('chat:interactive.responded')}
       />
     );
   }
@@ -135,6 +137,7 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
 }
 
 export function ChatPage() {
+  const { t } = useTranslation('chat');
   const { projectSlug, sessionId } = useParams<{
     projectSlug: string;
     sessionId: string;
@@ -231,7 +234,7 @@ export function ChatPage() {
       removeFavorite(command);
     } else {
       if (favoriteCommands.length >= 20) {
-        toast.warning('즐겨찾기는 최대 20개까지 추가할 수 있습니다');
+        toast.warning(t('favorites.maxReached'));
         return;
       }
       addFavorite(command);
@@ -271,7 +274,7 @@ export function ChatPage() {
       removeStarFavorite(command);
     } else {
       if (starFavorites.length >= 10) {
-        toast.warning('별표 즐겨찾기는 최대 10개까지 추가할 수 있습니다');
+        toast.warning(t('starFavorites.maxReached'));
         return;
       }
       addStarFavorite(command);
@@ -922,16 +925,16 @@ export function ChatPage() {
   const confirmModalElement = (
     <ConfirmModal
       isOpen={confirmModal.isOpen}
-      title={confirmModal.action === 'agentLaunch' ? '에이전트 시작 확인' : '진행 중인 응답'}
+      title={confirmModal.action === 'agentLaunch' ? t('confirmModal.agentLaunch.title') : t('confirmModal.agentLaunch.title')}
       message={
         confirmModal.action === 'agentLaunch'
-          ? '진행 중인 대화가 있습니다. 에이전트를 새 세션에서 시작하시겠습니까?'
+          ? t('confirmModal.agentLaunch.message')
           : confirmModal.action === 'newSession'
-            ? '진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?'
-            : '진행 중인 응답이 있습니다. 세션을 전환하시겠습니까?'
+            ? t('confirmModal.newSession.message')
+            : t('confirmModal.switchSession.message')
       }
-      confirmText="확인"
-      cancelText="취소"
+      confirmText={t('common:button.confirm')}
+      cancelText={t('common:button.cancel')}
       onConfirm={executeConfirmedAction}
       onCancel={handleCancelConfirm}
       variant="danger"
@@ -951,12 +954,12 @@ export function ChatPage() {
         {promptChainBannerElement}
         <main
           role="main"
-          aria-label="채팅 페이지"
+          aria-label={t('chatPage.ariaLabel')}
           className="flex-1 flex flex-col min-h-0 overflow-hidden"
         >
           <section
             role="log"
-            aria-label="메시지 목록"
+            aria-label={t('messageArea.ariaLabel')}
             aria-live="polite"
             data-testid="message-area"
             className="flex-1 overflow-y-auto"
@@ -973,7 +976,7 @@ export function ChatPage() {
             isStreaming={isStreaming}
             onAbort={handleAbort}
             queueLocked={isQueueLocked}
-            placeholder="로딩 중..."
+            placeholder={t('chatPage.loadingPlaceholder')}
             commands={commands}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
@@ -1019,12 +1022,12 @@ export function ChatPage() {
         {promptChainBannerElement}
         <main
           role="main"
-          aria-label="채팅 페이지"
+          aria-label={t('chatPage.ariaLabel')}
           className="flex-1 flex flex-col min-h-0 overflow-hidden"
         >
           <section
             role="log"
-            aria-label="메시지 목록"
+            aria-label={t('messageArea.ariaLabel')}
             data-testid="message-area"
             className="flex-1 flex items-center justify-center"
           >
@@ -1038,7 +1041,7 @@ export function ChatPage() {
             isStreaming={isStreaming}
             onAbort={handleAbort}
             queueLocked={isQueueLocked}
-            placeholder="오류가 발생했습니다"
+            placeholder={t('chatPage.errorPlaceholder')}
             commands={commands}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
@@ -1084,7 +1087,7 @@ export function ChatPage() {
         {promptChainBannerElement}
         <main
           role="main"
-          aria-label="채팅 페이지"
+          aria-label={t('chatPage.ariaLabel')}
           className="flex-1 flex flex-col min-h-0 overflow-hidden"
         >
           <MessageArea
@@ -1095,8 +1098,8 @@ export function ChatPage() {
             emptyState={
               !isStreaming && streamingSegments.length === 0 ? (
                 <EmptyState
-                  title="새 세션"
-                  description="Claude와 새 대화를 시작하세요."
+                  title={t('chatPage.empty.title')}
+                  description={t('chatPage.empty.description')}
                 />
               ) : undefined
             }
@@ -1110,7 +1113,7 @@ export function ChatPage() {
             isStreaming={isStreaming}
             onAbort={handleAbort}
             queueLocked={isQueueLocked}
-            placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
+            placeholder={isStreaming ? t('chatPage.streaming') : t('chatPage.default')}
             commands={commands}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
@@ -1178,7 +1181,7 @@ export function ChatPage() {
 
       <main
         role="main"
-        aria-label="채팅 페이지"
+        aria-label={t('chatPage.ariaLabel')}
         className="flex-1 flex flex-col min-h-0 overflow-hidden"
       >
         <MessageArea ref={messageAreaRef} scrollDependencies={[messages]} streamingSegments={streamingSegments} isStreaming={isStreaming && !!streamingSessionId} isCompacting={isCompacting} isLoadingMore={isLoadingMore} segmentsPendingClear={segmentsPendingClear}>
@@ -1193,7 +1196,7 @@ export function ChatPage() {
                            disabled:opacity-50 focus:outline-none focus:ring-2
                            focus:ring-blue-500 rounded-lg"
               >
-                {isLoadingMore ? '로딩 중...' : '이전 메시지 더 보기'}
+                {isLoadingMore ? t('chatPage.loadingMore') : t('chatPage.loadMore')}
               </button>
             </div>
           )}
@@ -1211,7 +1214,7 @@ export function ChatPage() {
           isStreaming={isStreaming}
           onAbort={handleAbort}
           queueLocked={isQueueLocked}
-          placeholder={isStreaming ? '응답 중...' : '메시지를 입력하세요...'}
+          placeholder={isStreaming ? t('chatPage.streaming') : t('chatPage.default')}
           commands={commands}
           permissionMode={permissionMode}
           onPermissionModeChange={setPermissionMode}

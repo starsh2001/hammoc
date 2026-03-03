@@ -111,7 +111,7 @@ describe('TestPage', () => {
     it('should render connection status indicator', () => {
       renderTestPage();
 
-      expect(screen.getByText('Connected')).toBeInTheDocument();
+      expect(screen.getByText('연결됨')).toBeInTheDocument();
     });
 
     it('should render theme toggle button', () => {

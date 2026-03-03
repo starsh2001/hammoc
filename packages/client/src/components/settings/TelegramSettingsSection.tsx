@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { ExternalLink, RefreshCw, Send, Loader2 } from 'lucide-react';
 import { preferencesApi } from '../../services/api/preferences';
@@ -26,6 +27,8 @@ export function TelegramSettingsSection() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
   const [cooldown, setCooldown] = useState(false);
+
+  const { t } = useTranslation('settings');
 
   // Fetch settings
   useEffect(() => {
@@ -50,9 +53,9 @@ export function TelegramSettingsSection() {
       setUpdating(true);
       const updated = await preferencesApi.updateTelegram(update);
       setSettings(updated);
-      toast.success(toastMsg ?? '설정이 저장되었습니다.');
+      toast.success(toastMsg ?? t('toast.settingSaved'));
     } catch {
-      toast.error('설정 저장에 실패했습니다.');
+      toast.error(t('toast.settingSaveFailed'));
     } finally {
       setUpdating(false);
     }
@@ -72,7 +75,7 @@ export function TelegramSettingsSection() {
     if (!editingField || !editValue.trim()) return;
     await handleUpdate(
       { [editingField]: editValue.trim() },
-      editingField === 'botToken' ? 'Bot Token이 저장되었습니다.' : 'Chat ID가 저장되었습니다.',
+      editingField === 'botToken' ? t('toast.botTokenSaved') : t('toast.chatIdSaved'),
     );
     setEditingField(null);
     setEditValue('');
@@ -81,7 +84,7 @@ export function TelegramSettingsSection() {
   const handleDelete = useCallback(async (field: 'botToken' | 'chatId') => {
     await handleUpdate(
       { [field]: null },
-      field === 'botToken' ? 'Bot Token이 삭제되었습니다.' : 'Chat ID가 삭제되었습니다.',
+      field === 'botToken' ? t('toast.botTokenDeleted') : t('toast.chatIdDeleted'),
     );
   }, [handleUpdate]);
 
@@ -105,13 +108,13 @@ export function TelegramSettingsSection() {
       );
       setTestResult(result);
       if (result.success) {
-        toast.success('테스트 알림이 전송되었습니다!');
+        toast.success(t('toast.testSent'));
       } else {
-        toast.error('테스트 알림 전송 실패');
+        toast.error(t('toast.testFailed'));
       }
     } catch {
-      setTestResult({ success: false, error: '서버 연결 오류' });
-      toast.error('테스트 알림 전송 실패');
+      setTestResult({ success: false, error: t('toast.testServerError') });
+      toast.error(t('toast.testFailed'));
     } finally {
       setTesting(false);
       setCooldown(true);
@@ -133,7 +136,7 @@ export function TelegramSettingsSection() {
     return (
       <div className="text-center py-8">
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-          Telegram 설정을 불러오는 중 오류가 발생했습니다.
+          {t('telegram.loadError')}
         </p>
         <button
           onClick={() => setFetchKey((k) => k + 1)}
@@ -142,7 +145,7 @@ export function TelegramSettingsSection() {
                      hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
-          재시도
+          {t('telegram.retry')}
         </button>
       </div>
     );
@@ -158,7 +161,7 @@ export function TelegramSettingsSection() {
       {/* Setup Guide */}
       <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Telegram 알림을 설정하려면:
+          {t('telegram.setupGuide')}
         </p>
         <ol className="text-sm text-gray-600 dark:text-gray-400 mt-2 ml-4 list-decimal space-y-1">
           <li>
@@ -166,26 +169,26 @@ export function TelegramSettingsSection() {
               href="https://t.me/BotFather"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Telegram BotFather 열기 (새 탭)"
+              aria-label={t('telegram.botTokenAriaLabel')}
               className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
             >
               @BotFather
               <ExternalLink className="w-3 h-3" />
             </a>
-            에서 봇을 생성하고 Bot Token을 받으세요
+            {t('telegram.setupStep1Suffix')}
           </li>
           <li>
             <a
               href="https://t.me/userinfobot"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Telegram userinfobot 열기 (새 탭)"
+              aria-label={t('telegram.chatIdAriaLabel')}
               className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
             >
               @userinfobot
               <ExternalLink className="w-3 h-3" />
             </a>
-            에서 Chat ID를 확인하세요
+            {t('telegram.setupStep2Suffix')}
           </li>
         </ol>
       </div>
@@ -199,7 +202,7 @@ export function TelegramSettingsSection() {
           Bot Token
           {settings.envOverrides.includes('botToken') && (
             <span className="ml-2 text-xs text-amber-600 dark:text-amber-400 font-normal">
-              (환경변수로 설정됨)
+              {t('telegram.envOverride')}
             </span>
           )}
         </label>
@@ -210,7 +213,7 @@ export function TelegramSettingsSection() {
               type="password"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              placeholder="Bot Token을 입력하세요"
+              placeholder={t('telegram.enterBotToken')}
               autoFocus
               className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -222,14 +225,14 @@ export function TelegramSettingsSection() {
               className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white
                          hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              저장
+              {t('common:button.save')}
             </button>
             <button
               onClick={handleCancelEdit}
               className="px-4 py-2 rounded-lg text-sm font-medium
                          text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              취소
+              {t('common:button.cancel')}
             </button>
           </div>
         ) : (
@@ -239,7 +242,7 @@ export function TelegramSettingsSection() {
               type="password"
               value={settings.maskedBotToken || ''}
               readOnly
-              placeholder="설정되지 않음"
+              placeholder={t('telegram.notConfigured')}
               className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
                          bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-default"
             />
@@ -250,7 +253,7 @@ export function TelegramSettingsSection() {
                          text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600
                          hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
             >
-              변경
+              {t('telegram.change')}
             </button>
             {settings.hasBotToken && !settings.envOverrides.includes('botToken') && (
               <button
@@ -259,14 +262,14 @@ export function TelegramSettingsSection() {
                 className="px-4 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400
                            hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
               >
-                삭제
+                {t('common:button.delete')}
               </button>
             )}
           </div>
         )}
         {settings.envOverrides.includes('botToken') && (
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            preferences 설정이 환경변수보다 우선됩니다.
+            {t('telegram.envPriority')}
           </p>
         )}
       </div>
@@ -280,7 +283,7 @@ export function TelegramSettingsSection() {
           Chat ID
           {settings.envOverrides.includes('chatId') && (
             <span className="ml-2 text-xs text-amber-600 dark:text-amber-400 font-normal">
-              (환경변수로 설정됨)
+              {t('telegram.envOverride')}
             </span>
           )}
         </label>
@@ -291,7 +294,7 @@ export function TelegramSettingsSection() {
               type="text"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              placeholder="Chat ID를 입력하세요"
+              placeholder={t('telegram.enterChatId')}
               autoFocus
               className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -303,14 +306,14 @@ export function TelegramSettingsSection() {
               className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white
                          hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              저장
+              {t('common:button.save')}
             </button>
             <button
               onClick={handleCancelEdit}
               className="px-4 py-2 rounded-lg text-sm font-medium
                          text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              취소
+              {t('common:button.cancel')}
             </button>
           </div>
         ) : (
@@ -320,7 +323,7 @@ export function TelegramSettingsSection() {
               type="text"
               value={settings.chatId || ''}
               readOnly
-              placeholder="설정되지 않음"
+              placeholder={t('telegram.notConfigured')}
               className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
                          bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-default"
             />
@@ -331,7 +334,7 @@ export function TelegramSettingsSection() {
                          text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600
                          hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
             >
-              변경
+              {t('telegram.change')}
             </button>
             {settings.hasChatId && !settings.envOverrides.includes('chatId') && (
               <button
@@ -340,14 +343,14 @@ export function TelegramSettingsSection() {
                 className="px-4 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400
                            hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
               >
-                삭제
+                {t('common:button.delete')}
               </button>
             )}
           </div>
         )}
         {settings.envOverrides.includes('chatId') && (
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            preferences 설정이 환경변수보다 우선됩니다.
+            {t('telegram.envPriority')}
           </p>
         )}
       </div>
@@ -361,7 +364,7 @@ export function TelegramSettingsSection() {
             checked={settings.enabled}
             onChange={() => handleUpdate(
               { enabled: !settings.enabled },
-              settings.enabled ? 'Telegram 알림이 비활성화되었습니다.' : 'Telegram 알림이 활성화되었습니다.',
+              t(settings.enabled ? 'toast.telegramDisabled' : 'toast.telegramEnabled'),
             )}
             disabled={!canToggle || updating}
             aria-disabled={!canToggle}
@@ -372,12 +375,12 @@ export function TelegramSettingsSection() {
             htmlFor="telegram-enabled"
             className="text-sm font-medium text-gray-900 dark:text-white"
           >
-            Telegram 알림 활성화
+            {t('telegram.enableNotifications')}
           </label>
         </div>
         {!canToggle && (
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-7">
-            Bot Token과 Chat ID를 먼저 설정하세요.
+            {t('telegram.enableHint')}
           </p>
         )}
       </div>
@@ -385,7 +388,7 @@ export function TelegramSettingsSection() {
       {/* Notification Type Toggles */}
       <fieldset className={!settings.enabled ? 'opacity-50' : ''}>
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-          알림 유형
+          {t('telegram.notificationType')}
         </legend>
         <div className="space-y-3 ml-1">
           <label htmlFor="notify-permission" className="flex items-center gap-3 cursor-pointer">
@@ -399,7 +402,7 @@ export function TelegramSettingsSection() {
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              권한 요청 알림 — 🔐 권한 확인이나 ❓ 질문이 필요할 때
+              {t('telegram.notifyPermission')}
             </span>
           </label>
           <label htmlFor="notify-complete" className="flex items-center gap-3 cursor-pointer">
@@ -413,7 +416,7 @@ export function TelegramSettingsSection() {
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              완료 알림 — ✅ 스트리밍이 완료되었을 때
+              {t('telegram.notifyComplete')}
             </span>
           </label>
           <label htmlFor="notify-error" className="flex items-center gap-3 cursor-pointer">
@@ -427,7 +430,7 @@ export function TelegramSettingsSection() {
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              에러 알림 — ❌ 스트리밍 중 에러가 발생했을 때
+              {t('telegram.notifyError')}
             </span>
           </label>
         </div>
@@ -436,7 +439,7 @@ export function TelegramSettingsSection() {
       {/* Queue Notification Toggles */}
       <fieldset className={!settings.enabled ? 'opacity-50' : ''}>
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-          큐 알림 유형
+          {t('telegram.queueNotificationType')}
         </legend>
         <div className="space-y-3 ml-1">
           <label htmlFor="notify-queue-start" className="flex items-center gap-3 cursor-pointer">
@@ -450,7 +453,7 @@ export function TelegramSettingsSection() {
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              큐 시작 알림 — 큐 실행이 시작될 때
+              {t('telegram.notifyQueueStart')}
             </span>
           </label>
           <label htmlFor="notify-queue-complete" className="flex items-center gap-3 cursor-pointer">
@@ -464,7 +467,7 @@ export function TelegramSettingsSection() {
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              큐 완료 알림 — 모든 항목이 처리된 후
+              {t('telegram.notifyQueueComplete')}
             </span>
           </label>
           <label htmlFor="notify-queue-error" className="flex items-center gap-3 cursor-pointer">
@@ -478,7 +481,7 @@ export function TelegramSettingsSection() {
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              큐 에러 알림 — QUEUE_STOP 또는 SDK 에러 시
+              {t('telegram.notifyQueueError')}
             </span>
           </label>
           <label htmlFor="notify-queue-input" className="flex items-center gap-3 cursor-pointer">
@@ -492,7 +495,7 @@ export function TelegramSettingsSection() {
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              큐 입력 요청 알림 — 사용자 응답이 필요할 때
+              {t('telegram.notifyQueueInput')}
             </span>
           </label>
         </div>
@@ -512,7 +515,7 @@ export function TelegramSettingsSection() {
           ) : (
             <Send className="w-4 h-4" />
           )}
-          {testing ? '전송 중...' : '테스트 알림 보내기'}
+          {testing ? t('telegram.testSending') : t('telegram.testSend')}
         </button>
 
         {/* Test Result */}
@@ -520,8 +523,8 @@ export function TelegramSettingsSection() {
           {testResult && (
             <p className={`text-sm ${testResult.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {testResult.success
-                ? '✅ 성공'
-                : `❌ 실패: ${testResult.error}`
+                ? t('telegram.testSuccess')
+                : t('telegram.testFailure', { error: testResult.error })
               }
             </p>
           )}

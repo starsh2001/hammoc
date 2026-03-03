@@ -4,6 +4,7 @@
  */
 
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Pause, Play, Square, CheckCircle, AlertTriangle, Loader2, ExternalLink, X } from 'lucide-react';
 
 export interface QueueLockedBannerProps {
@@ -47,12 +48,13 @@ export function QueueLockedBanner({
   onDismiss,
   onNavigateToSession,
 }: QueueLockedBannerProps) {
+  const { t } = useTranslation('common');
   const progressPercent = progress.total > 0
     ? Math.round(((progress.current) / progress.total) * 100)
     : 0;
 
   const handleAbort = () => {
-    if (window.confirm('큐 실행을 중단하시겠습니까? 남은 아이템은 큐에 보존됩니다.')) {
+    if (window.confirm(t('queue.locked.confirmAbort'))) {
       onAbort();
     }
   };
@@ -71,7 +73,7 @@ export function QueueLockedBanner({
           <div className="flex items-center gap-2">
             <Loader2 size={16} className="text-slate-500 dark:text-slate-400 flex-shrink-0 animate-spin" aria-hidden="true" />
             <span className="text-sm text-slate-600 dark:text-slate-300">
-              큐 러너가 다른 세션에서 작업 중 {progress.current + 1}/{progress.total}
+              {t('queue.locked.runningInOtherSession', { current: progress.current + 1, total: progress.total })}
             </span>
           </div>
           {onNavigateToSession ? (
@@ -80,7 +82,7 @@ export function QueueLockedBanner({
               onClick={() => onNavigateToSession(activeSessionId!)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 flex-shrink-0"
             >
-              해당 세션으로 이동
+              {t('queue.locked.goToSession')}
               <ExternalLink size={14} aria-hidden="true" />
             </button>
           ) : (
@@ -88,7 +90,7 @@ export function QueueLockedBanner({
               to={`/project/${projectSlug}/session/${activeSessionId}`}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 flex-shrink-0"
             >
-              해당 세션으로 이동
+              {t('queue.locked.goToSession')}
               <ExternalLink size={14} aria-hidden="true" />
             </Link>
           )}
@@ -111,14 +113,14 @@ export function QueueLockedBanner({
           <div className="flex items-center gap-2">
             <CheckCircle size={16} className="text-green-600 dark:text-green-400 flex-shrink-0" aria-hidden="true" />
             <span className="text-sm text-green-800 dark:text-green-200 font-medium">
-              완료 — {progress.total}개 아이템 실행됨
+              {t('queue.locked.complete', { total: progress.total })}
             </span>
           </div>
           {onDismiss && (
             <button
               type="button"
               onClick={onDismiss}
-              aria-label="배너 닫기"
+              aria-label={t('queue.locked.closeBanner')}
               className="p-1 rounded-md text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
             >
               <X size={16} aria-hidden="true" />
@@ -143,7 +145,7 @@ export function QueueLockedBanner({
           <div className="flex items-center gap-2">
             <AlertTriangle size={16} className="text-red-600 dark:text-red-400 flex-shrink-0" aria-hidden="true" />
             <span className="text-sm text-red-800 dark:text-red-200 font-medium">
-              큐 실행 중 오류로 중단됨
+              {t('queue.locked.errorStopped')}
             </span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -151,14 +153,14 @@ export function QueueLockedBanner({
               to={`/project/${projectSlug}/queue`}
               className="text-sm text-red-600 dark:text-red-400 hover:underline flex items-center gap-1"
             >
-              큐 에디터로 이동
+              {t('queue.locked.goToQueueEditor')}
               <ExternalLink size={14} aria-hidden="true" />
             </Link>
             {onDismiss && (
               <button
                 type="button"
                 onClick={onDismiss}
-                aria-label="배너 닫기"
+                aria-label={t('queue.locked.closeBanner')}
                 className="p-1 rounded-md text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
               >
                 <X size={16} aria-hidden="true" />
@@ -187,7 +189,7 @@ export function QueueLockedBanner({
     <div
       role="banner"
       aria-live="polite"
-      aria-label={`큐 진행률: ${progress.current + 1} / ${progress.total}`}
+      aria-label={t('queue.locked.progressAria', { current: progress.current + 1, total: progress.total })}
       data-testid="queue-locked-banner"
       className={`w-full content-container banner-full-mobile sticky top-0 z-10 shadow-sm transition-all duration-300 ${bgClass}`}
     >
@@ -210,9 +212,9 @@ export function QueueLockedBanner({
                 isPaused ? 'text-amber-800 dark:text-amber-200' :
                 'text-indigo-800 dark:text-indigo-200'
               }`}>
-                {isPausedWithError ? '오류로 일시정지' :
-                 isPaused ? '일시정지됨' :
-                 '큐 실행 중'}
+                {isPausedWithError ? t('queue.locked.errorPaused') :
+                 isPaused ? t('queue.locked.paused') :
+                 t('queue.locked.running')}
               </span>
               <span className={`text-sm whitespace-nowrap ${
                 isPausedWithError ? 'text-red-600 dark:text-red-300' :
@@ -241,7 +243,7 @@ export function QueueLockedBanner({
               <button
                 type="button"
                 onClick={onPause}
-                aria-label="큐 일시정지"
+                aria-label={t('queue.locked.pauseQueue')}
                 className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md
                            bg-white/80 dark:bg-gray-800/80 text-indigo-700 dark:text-indigo-300
                            hover:bg-white dark:hover:bg-gray-800
@@ -249,7 +251,7 @@ export function QueueLockedBanner({
                            transition-colors"
               >
                 <Pause size={12} aria-hidden="true" />
-                일시정지
+                {t('queue.pause')}
               </button>
             )}
 
@@ -257,7 +259,7 @@ export function QueueLockedBanner({
               <button
                 type="button"
                 onClick={onResume}
-                aria-label="큐 재개"
+                aria-label={t('queue.locked.resumeQueue')}
                 className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md
                            bg-white/80 dark:bg-gray-800/80
                            min-h-11 sm:min-h-0
@@ -268,14 +270,14 @@ export function QueueLockedBanner({
                            }`}
               >
                 <Play size={12} aria-hidden="true" />
-                재개
+                {t('queue.resume')}
               </button>
             )}
 
             <button
               type="button"
               onClick={handleAbort}
-              aria-label="큐 중단"
+              aria-label={t('queue.locked.abortQueue')}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md
                          bg-white/80 dark:bg-gray-800/80
                          min-h-11 sm:min-h-0
@@ -288,7 +290,7 @@ export function QueueLockedBanner({
                          }`}
             >
               <Square size={12} aria-hidden="true" />
-              중단
+              {t('queue.abort')}
             </button>
 
             {/* Queue editor link */}
@@ -300,7 +302,7 @@ export function QueueLockedBanner({
                 'text-indigo-600 dark:text-indigo-400'
               }`}
             >
-              큐 에디터
+              {t('queue.locked.queueEditor')}
               <ExternalLink size={12} aria-hidden="true" />
             </Link>
           </div>
@@ -336,7 +338,7 @@ export function QueueLockedBanner({
       {errorItem && (
         <div className="px-4 py-1 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800">
           <p className="text-xs text-red-700 dark:text-red-300">
-            아이템 {errorItem.index + 1} 오류: {errorItem.error}
+            {t('queue.errorMessage', { error: `${errorItem.index + 1}: ${errorItem.error}` })}
           </p>
         </div>
       )}

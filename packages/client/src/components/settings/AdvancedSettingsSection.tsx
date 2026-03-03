@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { RotateCcw, Terminal, RefreshCw, Download } from 'lucide-react';
 import { usePreferencesStore } from '../../stores/preferencesStore';
@@ -18,6 +19,7 @@ interface TemplateVariable {
 }
 
 export function AdvancedSettingsSection() {
+  const { t } = useTranslation('settings');
   const { preferences, overrides, updatePreference } = usePreferencesStore();
   const currentProjectSlug = useSessionStore((s) => s.currentProjectSlug);
 
@@ -71,7 +73,7 @@ export function AdvancedSettingsSection() {
       } else {
         updatePreference('customSystemPrompt', value || undefined);
       }
-      toast.success('시스템 프롬프트가 저장되었습니다');
+      toast.success(t('toast.systemPromptSaved'));
     }, 1000);
   }, [updatePreference, defaultTemplate]);
 
@@ -81,7 +83,7 @@ export function AdvancedSettingsSection() {
     if (defaultTemplate) {
       setPromptText(defaultTemplate);
     }
-    toast.success('기본 시스템 프롬프트로 복원되었습니다');
+    toast.success(t('toast.systemPromptRestored'));
   }, [updatePreference, defaultTemplate]);
 
   // Cleanup debounce on unmount
@@ -98,7 +100,7 @@ export function AdvancedSettingsSection() {
   ) => {
     const num = value === '' ? undefined : Number(value);
     updatePreference(key, num);
-    toast.success(`${label}이(가) 변경되었습니다`);
+    toast.success(t('toast.settingChanged', { label }));
   }, [updatePreference]);
 
   const isTerminalOverridden = overrides.includes('terminalEnabled');
@@ -108,7 +110,7 @@ export function AdvancedSettingsSection() {
     if (isTerminalOverridden) return;
     const newValue = !terminalEnabled;
     updatePreference('terminalEnabled', newValue);
-    toast.success(newValue ? '터미널이 활성화되었습니다' : '터미널이 비활성화되었습니다');
+    toast.success(t(newValue ? 'toast.terminalEnabled' : 'toast.terminalDisabled'));
   }, [terminalEnabled, isTerminalOverridden, updatePreference]);
 
   // Server info
@@ -162,7 +164,7 @@ export function AdvancedSettingsSection() {
         consecutiveErrors = 0;
         if (result.status === 'failed') {
           stopPolling();
-          toast.error(`실패: ${result.error?.slice(0, 200) ?? '알 수 없는 오류'}`);
+          toast.error(t('toast.buildFailed', { error: result.error?.slice(0, 200) ?? t('toast.buildFailedUnknown') }));
           setIsProcessing(false);
         } else if (result.status === 'idle') {
           stopPolling();
@@ -173,7 +175,7 @@ export function AdvancedSettingsSection() {
         consecutiveErrors++;
         if (consecutiveErrors > 40) {
           stopPolling();
-          toast.error('서버 응답 시간이 초과되었습니다. 수동으로 확인해주세요.');
+          toast.error(t('toast.serverTimeout'));
           setIsProcessing(false);
         }
       }
@@ -181,13 +183,13 @@ export function AdvancedSettingsSection() {
   }, [stopPolling]);
 
   const handleServerRestart = useCallback(async () => {
-    if (!window.confirm('서버를 재빌드하고 재시작합니다. 진행할까요?')) return;
+    if (!window.confirm(t('confirm.serverRestart'))) return;
     setIsProcessing(true);
     try {
       await api.post('/server/restart');
-      startPollingBuildStatus('빌드 완료! 페이지를 새로고침합니다...');
+      startPollingBuildStatus(t('toast.buildComplete'));
     } catch {
-      toast.error('서버 재시작 요청에 실패했습니다.');
+      toast.error(t('toast.serverRestartFailed'));
       setIsProcessing(false);
     }
   }, [startPollingBuildStatus]);
@@ -199,23 +201,23 @@ export function AdvancedSettingsSection() {
       setLatestVersion(result.latestVersion);
       setUpdateAvailable(result.updateAvailable);
       if (!result.updateAvailable) {
-        toast.success('이미 최신 버전입니다.');
+        toast.success(t('toast.alreadyLatest'));
       }
     } catch {
-      toast.error('업데이트 확인에 실패했습니다.');
+      toast.error(t('toast.updateCheckFailed'));
     } finally {
       setIsCheckingUpdate(false);
     }
   }, []);
 
   const handleUpdate = useCallback(async () => {
-    if (!window.confirm(`v${latestVersion}으로 업데이트하고 서버를 재시작합니다. 진행할까요?`)) return;
+    if (!window.confirm(t('confirm.updateVersion', { version: latestVersion }))) return;
     setIsProcessing(true);
     try {
       await api.post('/server/update');
-      startPollingBuildStatus('업데이트 완료! 페이지를 새로고침합니다...');
+      startPollingBuildStatus(t('toast.updateComplete'));
     } catch {
-      toast.error('업데이트 요청에 실패했습니다.');
+      toast.error(t('toast.updateFailed'));
       setIsProcessing(false);
     }
   }, [latestVersion, startPollingBuildStatus]);
@@ -232,13 +234,10 @@ export function AdvancedSettingsSection() {
             }
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {isDevMode ? '서버 재시작' : '소프트웨어 업데이트'}
+                {t(isDevMode ? 'advanced.serverRestart' : 'advanced.softwareUpdate')}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {isDevMode
-                  ? '전체 프로젝트를 빌드하고 서버를 프로덕션 모드로 재시작합니다'
-                  : `현재 버전: v${serverVersion}`
-                }
+                {t(isDevMode ? 'advanced.serverRestartDesc' : 'advanced.currentVersion', isDevMode ? undefined : { version: serverVersion })}
               </p>
             </div>
           </div>
@@ -256,7 +255,7 @@ export function AdvancedSettingsSection() {
                 }`}
             >
               <RefreshCw className={`w-4 h-4 ${isProcessing ? 'animate-spin' : ''}`} />
-              {isProcessing ? `빌드 중... (${buildElapsed}초)` : '서버 재빌드 & 재시작'}
+              {isProcessing ? t('advanced.building', { elapsed: buildElapsed }) : t('advanced.serverRebuild')}
             </button>
           ) : (
             /* User mode: check update & apply */
@@ -273,7 +272,7 @@ export function AdvancedSettingsSection() {
                   }`}
               >
                 <RefreshCw className={`w-4 h-4 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
-                {isCheckingUpdate ? '확인 중...' : '업데이트 확인'}
+                {isCheckingUpdate ? t('advanced.checking') : t('advanced.checkUpdate')}
               </button>
 
               {updateAvailable && latestVersion && (
@@ -289,15 +288,15 @@ export function AdvancedSettingsSection() {
                 >
                   <Download className={`w-4 h-4 ${isProcessing ? 'animate-bounce' : ''}`} />
                   {isProcessing
-                    ? `업데이트 중... (${buildElapsed}초)`
-                    : `v${latestVersion}으로 업데이트`
+                    ? t('advanced.updating', { elapsed: buildElapsed })
+                    : t('advanced.updateTo', { version: latestVersion })
                   }
                 </button>
               )}
 
               {latestVersion && !updateAvailable && (
                 <span className="text-xs text-green-600 dark:text-green-400">
-                  최신 버전입니다
+                  {t('advanced.latestVersion')}
                 </span>
               )}
             </div>
@@ -315,10 +314,10 @@ export function AdvancedSettingsSection() {
                 htmlFor="terminal-enabled"
                 className="block text-sm font-medium text-gray-900 dark:text-white"
               >
-                터미널 기능
+                {t('advanced.terminalFeature')}
               </label>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                웹 기반 터미널 셸 기능을 활성화합니다
+                {t('advanced.terminalDesc')}
               </p>
             </div>
           </div>
@@ -341,7 +340,7 @@ export function AdvancedSettingsSection() {
         </div>
         {isTerminalOverridden && (
           <p className="mt-1.5 ml-8 text-xs text-amber-600 dark:text-amber-400">
-            환경 변수 TERMINAL_ENABLED에 의해 비활성화되어 있습니다
+            {t('advanced.terminalOverrideWarning')}
           </p>
         )}
       </div>
@@ -353,7 +352,7 @@ export function AdvancedSettingsSection() {
             htmlFor="custom-system-prompt"
             className="block text-sm font-medium text-gray-900 dark:text-white"
           >
-            시스템 프롬프트
+            {t('advanced.systemPrompt')}
           </label>
           {isCustomized && (
             <button
@@ -365,7 +364,7 @@ export function AdvancedSettingsSection() {
                          border border-blue-200 dark:border-blue-700 rounded-md transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
-              기본값으로 복원
+              {t('advanced.restoreDefault')}
             </button>
           )}
         </div>
@@ -373,21 +372,20 @@ export function AdvancedSettingsSection() {
         {/* Warning banner */}
         <div className="mb-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
           <p className="text-xs text-amber-700 dark:text-amber-300">
-            <strong>주의:</strong> 시스템 프롬프트를 잘못 수정하면 응답 퀄리티가 크게 저하될 수 있습니다.
-            수정 내용에 확신이 없다면 기본값을 유지하세요.
+            <strong>{t('advanced.systemPromptWarning')}</strong> {t('advanced.systemPromptWarningDetail')}
           </p>
         </div>
 
         {/* Customized indicator */}
         {isCustomized && (
           <div className="mb-2 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-600 dark:text-blue-400">
-            사용자 정의 프롬프트 사용 중
+            {t('advanced.customPromptActive')}
           </div>
         )}
 
         {isLoadingPrompt ? (
           <div className="w-full h-[260px] rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
-            <span className="text-sm text-gray-400">프롬프트 로딩 중...</span>
+            <span className="text-sm text-gray-400">{t('advanced.promptLoading')}</span>
           </div>
         ) : (
           <textarea
@@ -403,13 +401,13 @@ export function AdvancedSettingsSection() {
         <div className="mt-1 flex items-center justify-between">
           {!currentProjectSlug ? (
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              프로젝트를 선택하면 현재 시스템 프롬프트를 확인할 수 있습니다.
+              {t('advanced.promptNoProject')}
             </p>
           ) : (
             <span />
           )}
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {promptText.length}자
+            {t('advanced.charCount', { count: promptText.length })}
           </p>
         </div>
 
@@ -417,7 +415,7 @@ export function AdvancedSettingsSection() {
         {variables.length > 0 && (
           <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
             <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-              사용 가능한 시스템 변수 (런타임에 자동 치환)
+              {t('advanced.templateVariables')}
             </p>
             <div className="space-y-1">
               {variables.map((v) => (
@@ -440,7 +438,7 @@ export function AdvancedSettingsSection() {
               onClick={() => setShowPreview(!showPreview)}
               className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 underline"
             >
-              {showPreview ? '미리보기 닫기' : '현재 프로젝트 기준 미리보기'}
+              {t(showPreview ? 'advanced.previewClose' : 'advanced.previewOpen')}
             </button>
             {showPreview && (
               <pre className="mt-2 p-3 text-xs font-mono bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto whitespace-pre-wrap text-gray-600 dark:text-gray-400 max-h-60 overflow-y-auto">
@@ -457,7 +455,7 @@ export function AdvancedSettingsSection() {
           htmlFor="max-thinking-tokens"
           className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
         >
-          Max Thinking Tokens
+          {t('advanced.maxThinkingTokens')}
         </label>
         <input
           id="max-thinking-tokens"
@@ -466,14 +464,14 @@ export function AdvancedSettingsSection() {
           max={128000}
           step={1024}
           value={preferences.maxThinkingTokens ?? ''}
-          onChange={(e) => handleNumberChange('maxThinkingTokens', e.target.value, 'Max Thinking Tokens')}
-          placeholder="SDK 기본값"
+          onChange={(e) => handleNumberChange('maxThinkingTokens', e.target.value, t('advanced.maxThinkingTokens'))}
+          placeholder={t('advanced.sdkDefault')}
           className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          모델의 사고(reasoning) 과정에 사용할 최대 토큰 수 (1,024 ~ 128,000)
+          {t('advanced.maxThinkingTokensDesc')}
         </p>
       </div>
 
@@ -483,7 +481,7 @@ export function AdvancedSettingsSection() {
           htmlFor="max-turns"
           className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
         >
-          Max Turns
+          {t('advanced.maxTurns')}
         </label>
         <input
           id="max-turns"
@@ -492,14 +490,14 @@ export function AdvancedSettingsSection() {
           max={100}
           step={1}
           value={preferences.maxTurns ?? ''}
-          onChange={(e) => handleNumberChange('maxTurns', e.target.value, 'Max Turns')}
-          placeholder="무제한"
+          onChange={(e) => handleNumberChange('maxTurns', e.target.value, t('advanced.maxTurns'))}
+          placeholder={t('advanced.unlimited')}
           className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          한 번의 대화에서 허용할 최대 턴 수 (1 ~ 100)
+          {t('advanced.maxTurnsDesc')}
         </p>
       </div>
 
@@ -509,7 +507,7 @@ export function AdvancedSettingsSection() {
           htmlFor="max-budget"
           className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
         >
-          Max Budget (USD)
+          {t('advanced.maxBudget')}
         </label>
         <input
           id="max-budget"
@@ -518,14 +516,14 @@ export function AdvancedSettingsSection() {
           max={100}
           step={0.01}
           value={preferences.maxBudgetUsd ?? ''}
-          onChange={(e) => handleNumberChange('maxBudgetUsd', e.target.value, 'Max Budget')}
-          placeholder="무제한"
+          onChange={(e) => handleNumberChange('maxBudgetUsd', e.target.value, t('advanced.maxBudget'))}
+          placeholder={t('advanced.unlimited')}
           className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          한 번의 쿼리당 최대 비용 제한 (USD, 0.01 ~ 100)
+          {t('advanced.maxBudgetDesc')}
         </p>
       </div>
     </div>

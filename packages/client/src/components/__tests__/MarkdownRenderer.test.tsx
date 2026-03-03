@@ -296,7 +296,7 @@ describe('MarkdownRenderer', () => {
       render(<MarkdownRenderer content="[app.ts](src/app.ts)" />);
       const link = screen.getByRole('link', { name: 'app.ts' });
       fireEvent.click(link);
-      expect(mockRequestFileNavigation).toHaveBeenCalledWith('test-project', 'src/app.ts');
+      expect(mockRequestFileNavigation).toHaveBeenCalledWith('test-project', 'src/app.ts', undefined);
     });
 
     it('TC-MR-FL3: should prevent default navigation on file link click', () => {
@@ -331,7 +331,7 @@ describe('MarkdownRenderer', () => {
       render(<MarkdownRenderer content="[readme](./README.md)" />);
       const link = screen.getByRole('link', { name: 'readme' });
       fireEvent.click(link);
-      expect(mockRequestFileNavigation).toHaveBeenCalledWith('test-project', './README.md');
+      expect(mockRequestFileNavigation).toHaveBeenCalledWith('test-project', './README.md', undefined);
     });
 
     it('TC-MR-FL8: should not call requestFileNavigation when projectSlug is null', () => {

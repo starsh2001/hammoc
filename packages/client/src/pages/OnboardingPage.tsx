@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { useCliStatusContext } from '../contexts/CliStatusContext';
 import {
@@ -18,15 +19,15 @@ function OnboardingContent() {
     useCliStatusContext();
   const logout = useAuthStore((state) => state.logout);
   const { toasts, showToast, removeToast } = useToast();
+  const { t } = useTranslation('auth');
 
-  // 복사 성공/실패 핸들러
   const handleCopySuccess = useCallback(() => {
-    showToast({ message: '명령어가 복사되었습니다', type: 'success' });
-  }, [showToast]);
+    showToast({ message: t('onboarding.copiedToast'), type: 'success' });
+  }, [showToast, t]);
 
   const handleCopyError = useCallback(() => {
-    showToast({ message: '복사에 실패했습니다', type: 'error' });
-  }, [showToast]);
+    showToast({ message: t('onboarding.copyErrorToast'), type: 'error' });
+  }, [showToast, t]);
 
   // 필수 항목 완료 시 자동 이동 (AC5) - 부드러운 전환
   useEffect(() => {
@@ -46,28 +47,28 @@ function OnboardingContent() {
     return [
       {
         id: 'cli-installed',
-        label: 'Claude Code 설치',
+        label: t('onboarding.checklist.cliInstalled.label'),
         status: cliStatus.cliInstalled ? 'complete' : 'incomplete',
-        description: 'Claude Code CLI가 설치되어 있어야 합니다.',
+        description: t('onboarding.checklist.cliInstalled.description'),
         command: cliStatus.setupCommands.install,
       },
       {
         id: 'authenticated',
-        label: '계정 인증',
+        label: t('onboarding.checklist.authenticated.label'),
         status: cliStatus.authenticated ? 'complete' : 'incomplete',
-        description: 'Claude 계정에 로그인해야 합니다.',
+        description: t('onboarding.checklist.authenticated.description'),
         command: cliStatus.setupCommands.login,
       },
       {
         id: 'api-key',
-        label: 'API 키 설정',
+        label: t('onboarding.checklist.apiKey.label'),
         status: cliStatus.apiKeySet ? 'complete' : 'optional',
-        description: 'API 키를 설정하면 별도 인증 없이 사용할 수 있습니다.',
+        description: t('onboarding.checklist.apiKey.description'),
         command: cliStatus.setupCommands.apiKey,
         isOptional: true,
       },
     ];
-  }, [cliStatus]);
+  }, [cliStatus, t]);
 
   // 뒤로가기 (로그아웃 후 로그인 페이지로) (AC6)
   const handleBack = useCallback(async () => {
@@ -87,7 +88,7 @@ function OnboardingContent() {
         <button
           onClick={handleBack}
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-          aria-label="뒤로 가기 (로그아웃)"
+          aria-label={t('onboarding.backButton')}
         >
           <ArrowLeft
             className="w-5 h-5 text-gray-600 dark:text-gray-400"
@@ -95,7 +96,7 @@ function OnboardingContent() {
           />
         </button>
         <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-          시작하기
+          {t('onboarding.headerTitle')}
         </h1>
       </header>
 
@@ -111,10 +112,10 @@ function OnboardingContent() {
               id="onboarding-title"
               className="text-2xl font-bold text-gray-900 dark:text-white"
             >
-              BMad Studio 설정
+              {t('onboarding.title')}
             </h2>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
-              아래 항목을 완료하면 BMad Studio를 사용할 수 있습니다.
+              {t('onboarding.subtitle')}
             </p>
           </div>
 
@@ -137,7 +138,7 @@ function OnboardingContent() {
             <div
               className="space-y-3 animate-fadeIn"
               role="list"
-              aria-label="설정 체크리스트"
+              aria-label={t('onboarding.checklist.ariaLabel')}
             >
               {checklistItems.map((item, index) => (
                 <div
@@ -160,14 +161,14 @@ function OnboardingContent() {
             onClick={handleRefresh}
             disabled={isLoading}
             className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-            aria-label={isLoading ? 'CLI 상태 확인 중...' : 'CLI 상태 다시 확인'}
+            aria-label={isLoading ? t('onboarding.refreshLoadingAria') : t('onboarding.refreshAria')}
             aria-busy={isLoading}
           >
             <RefreshCw
               className={`w-4 h-4 transition-transform ${isLoading ? 'animate-spin' : ''}`}
               aria-hidden="true"
             />
-            {isLoading ? '확인 중...' : '상태 다시 확인'}
+            {isLoading ? t('onboarding.refreshLoading') : t('onboarding.refreshButton')}
           </button>
 
           {/* CLI Error Message */}
@@ -188,7 +189,7 @@ function OnboardingContent() {
               aria-live="polite"
             >
               <p className="font-medium">
-                ✓ 설정이 완료되었습니다. 이동 중...
+                {t('onboarding.completionMessage')}
               </p>
             </div>
           )}

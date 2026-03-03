@@ -5,6 +5,7 @@
  */
 
 import { useRef, useEffect, useState, useCallback, useMemo, forwardRef, useImperativeHandle, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, CheckCircle, AlertCircle, RefreshCw, Bell, FileText, XOctagon, Database, Info } from 'lucide-react';
 import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
@@ -341,6 +342,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   isLoadingMore = false,
   segmentsPendingClear = false,
 }, ref) {
+  const { t } = useTranslation('chat');
   // Include streaming content changes in scroll dependencies for auto-scroll during streaming
   const lastTextContent = streamingSegments.length > 0
     ? streamingSegments.filter(isTextSegment).map((s) => s.content).join('')
@@ -395,7 +397,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
     return (
       <section
         role="log"
-        aria-label="메시지 목록"
+        aria-label={t('messageArea.ariaLabel')}
         aria-live="polite"
         data-testid="message-area"
         className="flex-1 flex items-center justify-center overflow-y-auto bg-white dark:bg-gray-900"
@@ -411,7 +413,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
     <ScrollProvider value={scrollContextValue}>
     <section
       role="log"
-      aria-label="메시지 목록"
+      aria-label={t('messageArea.ariaLabel')}
       aria-live="polite"
       data-testid="message-area"
       className="flex-1 overflow-hidden bg-white dark:bg-gray-900 relative"
@@ -637,10 +639,10 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                 <Database className="w-4 h-4 animate-pulse" aria-hidden="true" />
                 <span>
                   {hasResponse
-                    ? '컨텍스트 압축 완료 — 응답 재생성 중...'
+                    ? t('compaction.complete')
                     : usagePct !== null
-                      ? `컨텍스트 압축 중... (${usagePct}%)`
-                      : '컨텍스트 압축 중...'}
+                      ? t('compaction.inProgress', { percent: usagePct })
+                      : t('compaction.inProgressNoPercent')}
                 </span>
                 <StreamingIndicator />
               </div>
@@ -678,7 +680,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                      dark:bg-blue-500 dark:hover:bg-blue-600 text-gray-900 dark:text-white rounded-full
                      shadow-lg transition-colors focus:outline-none focus:ring-2
                      focus:ring-blue-500 focus:ring-offset-2"
-          aria-label="최신 메시지로 스크롤"
+          aria-label={t('messageArea.scrollToBottom')}
         >
           <ChevronDown className="w-5 h-5" />
         </button>

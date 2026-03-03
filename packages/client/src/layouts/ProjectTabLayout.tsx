@@ -6,6 +6,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, GitBranch, Terminal, Kanban, Settings, MoreVertical, Moon, Sun, LogOut } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAuthStore } from '../stores/authStore';
@@ -18,17 +19,18 @@ import { useClickOutside } from '../hooks/useClickOutside';
 import { useTheme } from '../hooks/useTheme';
 import { useWebSocket } from '../hooks/useWebSocket';
 
-const tabs: Array<{ id: string; label: string; icon: typeof LayoutDashboard; path: string }> = [
-  { id: 'overview', label: '개요', icon: LayoutDashboard, path: '' },
-  { id: 'board', label: '보드', icon: Kanban, path: '/board' },
-  { id: 'sessions', label: '세션', icon: MessageSquare, path: '/sessions' },
-  { id: 'queue', label: '큐 러너', icon: ListOrdered, path: '/queue' },
-  { id: 'files', label: '파일', icon: FolderOpen, path: '/files' },
-  { id: 'git', label: 'Git', icon: GitBranch, path: '/git' },
-  { id: 'terminal', label: '터미널', icon: Terminal, path: '/terminal' },
+const tabs: Array<{ id: string; labelKey: string; icon: typeof LayoutDashboard; path: string }> = [
+  { id: 'overview', labelKey: 'tabs.overview', icon: LayoutDashboard, path: '' },
+  { id: 'board', labelKey: 'tabs.board', icon: Kanban, path: '/board' },
+  { id: 'sessions', labelKey: 'tabs.sessions', icon: MessageSquare, path: '/sessions' },
+  { id: 'queue', labelKey: 'tabs.queue', icon: ListOrdered, path: '/queue' },
+  { id: 'files', labelKey: 'tabs.files', icon: FolderOpen, path: '/files' },
+  { id: 'git', labelKey: 'tabs.git', icon: GitBranch, path: '/git' },
+  { id: 'terminal', labelKey: 'tabs.terminal', icon: Terminal, path: '/terminal' },
 ];
 
 export function ProjectTabLayout() {
+  const { t } = useTranslation('common');
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -95,7 +97,7 @@ export function ProjectTabLayout() {
             <button
               onClick={handleBack}
               className="p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
-              aria-label="뒤로 가기"
+              aria-label={t('layout.back')}
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -120,14 +122,14 @@ export function ProjectTabLayout() {
             <ThemeToggleButton className="hidden sm:block" />
             <button
               onClick={() => navigate('/settings')}
-              aria-label="설정"
+              aria-label={t('project.settings')}
               className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
             >
               <Settings className="w-5 h-5" aria-hidden="true" />
             </button>
             <button
               onClick={handleLogout}
-              aria-label="로그아웃"
+              aria-label={t('project.logout')}
               className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-colors"
             >
               <LogOut className="w-5 h-5" aria-hidden="true" />
@@ -138,7 +140,7 @@ export function ProjectTabLayout() {
               <button
                 onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
-                aria-label="메뉴"
+                aria-label={t('project.menuLabel')}
                 aria-expanded={overflowMenuOpen}
                 aria-haspopup="menu"
               >
@@ -155,7 +157,7 @@ export function ProjectTabLayout() {
                     className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
                     {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    {theme === 'dark' ? '라이트 모드' : '다크 모드'}
+                    {theme === 'dark' ? t('project.lightMode') : t('project.darkMode')}
                   </button>
                   <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                   <button
@@ -164,7 +166,7 @@ export function ProjectTabLayout() {
                     className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
                     <Settings className="w-4 h-4" />
-                    설정
+                    {t('project.settings')}
                   </button>
                   <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                   <button
@@ -173,7 +175,7 @@ export function ProjectTabLayout() {
                     className="w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
                     <LogOut className="w-4 h-4" />
-                    로그아웃
+                    {t('project.logout')}
                   </button>
                 </div>
               )}
@@ -182,7 +184,7 @@ export function ProjectTabLayout() {
         </div>
 
         {/* Tab bar */}
-        <nav className="content-container flex px-4" aria-label="프로젝트 탭">
+        <nav className="content-container flex px-4" aria-label={t('layout.projectTabs')}>
           {tabs.map((tab) => {
             // Story 17.5: AC1 — hide terminal tab when disabled
             if (tab.id === 'terminal' && !isTerminalEnabled) return null;
@@ -207,10 +209,10 @@ export function ProjectTabLayout() {
                 }`}
                 aria-current={isActive ? 'page' : undefined}
                 aria-disabled={isDisabled || undefined}
-                aria-label={isDisabled ? '터미널 비활성화됨: 로컬 네트워크 외부 접근' : undefined}
+                aria-label={isDisabled ? t('layout.terminalDisabled') : undefined}
               >
                 <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="hidden sm:inline">{t(tab.labelKey)}</span>
               </button>
             );
           })}

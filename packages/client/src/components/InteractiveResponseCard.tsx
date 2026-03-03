@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CheckCircle,
   XCircle,
@@ -56,6 +57,7 @@ export function InteractiveResponseCard({
   errorMessage,
   onRespond,
 }: InteractiveResponseCardProps) {
+  const { t } = useTranslation('chat');
   // Per-question answers (keyed by question index)
   const [answers, setAnswers] = useState<AnswerMap>({});
   // Per-question multi-select selections (keyed by question index)
@@ -76,7 +78,7 @@ export function InteractiveResponseCard({
     : type === 'question'
       ? [{
           question: (toolInput?.questions as Array<{ question: string }>)?.[0]?.question ?? '',
-          header: (toolInput?.questions as Array<{ header: string }>)?.[0]?.header ?? '질문',
+          header: (toolInput?.questions as Array<{ header: string }>)?.[0]?.header ?? t('interactive.defaultHeader'),
           choices,
           multiSelect,
         }]
@@ -191,18 +193,18 @@ export function InteractiveResponseCard({
     if (!isResponded) return null;
 
     if (type === 'permission') {
-      const isApproved = typeof response === 'string' ? response === '승인됨' : true;
+      const isApproved = typeof response === 'string' ? response === t('interactive.approved') : true;
       return (
         <div className="flex items-center gap-2 mt-2 text-sm animate-fadeIn" aria-live="polite">
           {isApproved ? (
             <>
               <CheckCircle className="w-4 h-4 text-green-500" aria-hidden="true" />
-              <span className="text-green-700 dark:text-green-400">승인됨</span>
+              <span className="text-green-700 dark:text-green-400">{t('interactive.approved')}</span>
             </>
           ) : (
             <>
               <XCircle className="w-4 h-4 text-red-500" aria-hidden="true" />
-              <span className="text-red-700 dark:text-red-400">거절됨</span>
+              <span className="text-red-700 dark:text-red-400">{t('interactive.rejected')}</span>
             </>
           )}
         </div>
@@ -277,14 +279,14 @@ export function InteractiveResponseCard({
                 className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-md
                   bg-blue-500 hover:bg-blue-600 text-white
                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                aria-label="선택 제출"
+                aria-label={t('interactive.submitSelection')}
               >
                 {isSending ? (
                   <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                 ) : (
                   <Check className="w-4 h-4" aria-hidden="true" />
                 )}
-                제출
+                {t('interactive.submit')}
               </button>
             )}
           </div>
@@ -310,16 +312,16 @@ export function InteractiveResponseCard({
             {/* "Other" option */}
             <button
               onClick={() => standalone
-                ? handleSingleChoiceClick({ label: '기타', value: '__other__' })
-                : handleMultiQuestionChoice(qIndex, { label: '기타', value: '__other__', description: undefined })}
+                ? handleSingleChoiceClick({ label: t('interactive.other'), value: '__other__' })
+                : handleMultiQuestionChoice(qIndex, { label: t('interactive.other'), value: '__other__', description: undefined })}
               disabled={isDisabled}
               className="px-3 py-1.5 text-sm rounded-md border border-dashed
                 border-gray-300 hover:bg-gray-100 text-gray-500
                 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-400
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              aria-label="기타 (직접 입력)"
+              aria-label={t('interactive.otherOption')}
             >
-              기타...
+              {t('interactive.otherButton')}
             </button>
           </div>
         )}
@@ -334,13 +336,13 @@ export function InteractiveResponseCard({
               onChange={(e) => setOtherText(e.target.value.slice(0, 1000))}
               onKeyDown={(e) => handleOtherKeyDown(e, qIndex)}
               maxLength={1000}
-              placeholder="응답을 입력하세요..."
+              placeholder={t('interactive.otherPlaceholder')}
               disabled={isDisabled}
               className="flex-1 px-3 py-1.5 text-sm rounded-md border border-gray-300
                 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200
                 focus:outline-none focus:ring-2 focus:ring-blue-500
                 disabled:opacity-50"
-              aria-label="기타 응답 입력"
+              aria-label={t('interactive.otherInputLabel')}
             />
             <button
               onClick={() => {
@@ -354,9 +356,9 @@ export function InteractiveResponseCard({
               disabled={!otherText.trim() || isDisabled}
               className="px-3 py-1.5 text-sm rounded-md bg-blue-500 hover:bg-blue-600 text-white
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              aria-label="기타 응답 제출"
+              aria-label={t('interactive.submitOther')}
             >
-              전송
+              {t('interactive.send')}
             </button>
           </div>
         )}
@@ -364,7 +366,7 @@ export function InteractiveResponseCard({
         {/* Show selected "Other" answer for multi-question */}
         {!standalone && typeof answers[qIndex] === 'string' && !q.choices.some((c) => c.value === answers[qIndex]) && (
           <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
-            기타: {answers[qIndex]}
+            {t('interactive.otherResponse', { response: answers[qIndex] })}
           </div>
         )}
       </div>
@@ -373,10 +375,10 @@ export function InteractiveResponseCard({
 
   // Header text
   const headerText = type === 'permission'
-    ? `권한 요청: ${toolName}`
+    ? t('interactive.permissionRequest', { toolName })
     : isMultiQuestion
-      ? '질문'
-      : resolvedQuestions[0]?.header || '질문';
+      ? t('interactive.defaultHeader')
+      : resolvedQuestions[0]?.header || t('interactive.defaultHeader');
 
   return (
     <div
@@ -399,7 +401,7 @@ export function InteractiveResponseCard({
           {headerText}
         </span>
         {isSending && (
-          <Loader2 className="w-4 h-4 text-blue-500 animate-spin ml-auto" aria-label="전송 중" />
+          <Loader2 className="w-4 h-4 text-blue-500 animate-spin ml-auto" aria-label={t('interactive.sending')} />
         )}
       </div>
 
@@ -424,14 +426,14 @@ export function InteractiveResponseCard({
                 bg-green-50 hover:bg-green-100 text-green-700 border-green-200
                 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 dark:border-green-800
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              aria-label="승인"
+              aria-label={t('interactive.approve')}
             >
               {isSending ? (
                 <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
               ) : (
                 <Check className="w-4 h-4" aria-hidden="true" />
               )}
-              승인
+              {t('interactive.approve')}
             </button>
             <button
               onClick={() => handlePermissionResponse(false)}
@@ -440,14 +442,14 @@ export function InteractiveResponseCard({
                 bg-red-50 hover:bg-red-100 text-red-700 border-red-200
                 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 dark:border-red-800
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              aria-label="거절"
+              aria-label={t('interactive.reject')}
             >
               {isSending ? (
                 <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
               ) : (
                 <X className="w-4 h-4" aria-hidden="true" />
               )}
-              거절
+              {t('interactive.reject')}
             </button>
           </div>
         )}
@@ -467,14 +469,14 @@ export function InteractiveResponseCard({
                 className="flex items-center gap-1.5 px-4 py-2 mt-4 text-sm rounded-md
                   bg-blue-500 hover:bg-blue-600 text-white
                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                aria-label="전체 응답 제출"
+                aria-label={t('interactive.submitAll')}
               >
                 {isSending ? (
                   <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                 ) : (
                   <Check className="w-4 h-4" aria-hidden="true" />
                 )}
-                제출 ({Object.keys(answers).length + Object.values(multiSelections).filter((s) => s.size > 0).length}/{resolvedQuestions.length})
+                {t('interactive.submitProgress', { count: Object.keys(answers).length + Object.values(multiSelections).filter((s) => s.size > 0).length, total: resolvedQuestions.length })}
               </button>
             )}
           </div>

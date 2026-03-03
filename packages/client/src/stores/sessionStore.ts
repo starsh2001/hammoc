@@ -8,6 +8,7 @@ import type { SessionListItem } from '@bmad-studio/shared';
 import { sessionsApi } from '../services/api/sessions';
 import { ApiError } from '../services/api/client';
 import { getSocket } from '../services/socket';
+import i18n from '../i18n';
 
 export type ErrorType = 'none' | 'not_found' | 'network' | 'server' | 'unknown';
 
@@ -76,14 +77,14 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       if (err instanceof ApiError) {
         if (err.status === 404) {
           set({
-            error: '프로젝트를 찾을 수 없습니다.',
+            error: i18n.t('notification:session.notFound'),
             errorType: 'not_found',
             isLoading: false,
             isRefreshing: false,
           });
         } else if (err.status >= 500) {
           set({
-            error: '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+            error: i18n.t('notification:session.serverError'),
             errorType: 'server',
             isLoading: false,
             isRefreshing: false,
@@ -99,14 +100,14 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       } else if (err instanceof TypeError && err.message.includes('fetch')) {
         // Network error (fetch failed)
         set({
-          error: '네트워크 연결을 확인해주세요.',
+          error: i18n.t('notification:session.networkError'),
           errorType: 'network',
           isLoading: false,
           isRefreshing: false,
         });
       } else {
         set({
-          error: '세션 목록을 불러오는 중 오류가 발생했습니다.',
+          error: i18n.t('notification:session.loadError'),
           errorType: 'unknown',
           isLoading: false,
           isRefreshing: false,
@@ -143,7 +144,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       return true;
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : '세션 삭제 중 오류가 발생했습니다.';
+        err instanceof ApiError ? err.message : i18n.t('notification:session.deleteError');
       set({ error: message, errorType: 'unknown' });
       return false;
     }
@@ -185,7 +186,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       return true;
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : '세션 삭제 중 오류가 발생했습니다.';
+        err instanceof ApiError ? err.message : i18n.t('notification:session.deleteError');
       set({ error: message, errorType: 'unknown' });
       return false;
     }

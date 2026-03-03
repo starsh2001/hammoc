@@ -14,6 +14,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { Users, Check } from 'lucide-react';
 import type { SlashCommand } from '@bmad-studio/shared';
@@ -43,6 +44,7 @@ export function BmadAgentButton({
   openTrigger,
   activeAgentCommand,
 }: BmadAgentButtonProps) {
+  const { t } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -207,7 +209,7 @@ export function BmadAgentButton({
         onClick={handleToggle}
         onPointerDown={(e) => e.preventDefault()}
         disabled={disabled}
-        aria-label="BMad 에이전트 목록"
+        aria-label={t('agent.listAria')}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         data-testid="bmad-agent-button"
@@ -236,13 +238,13 @@ export function BmadAgentButton({
         >
           {agents.length === 0 ? (
             <div className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400">
-              등록된 에이전트가 없습니다
+              {t('agent.noAgents')}
             </div>
           ) : (
             <div
               ref={listRef}
               role="listbox"
-              aria-label="에이전트 목록"
+              aria-label={t('agent.agentListAria')}
             >
               {renderAgentItems()}
             </div>

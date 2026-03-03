@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Plus, Settings, LogOut } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -75,6 +76,7 @@ export function ChatHeader({
   onAgentIndicatorClick,
   isBmadProject,
 }: ChatHeaderProps) {
+  const { t } = useTranslation('chat');
   const navigate = useNavigate();
   const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
   const apiHealth = useChatStore((state) => state.apiHealth);
@@ -108,7 +110,7 @@ export function ChatHeader({
 
   return (
     <header
-      aria-label="채팅 헤더"
+      aria-label={t('header.ariaLabel')}
       data-testid="chat-header"
       className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800
                  border-b border-gray-200 dark:border-gray-700"
@@ -122,7 +124,7 @@ export function ChatHeader({
               className="p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-700
                          rounded-lg text-gray-700 dark:text-gray-300
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="세션 목록으로 돌아가기"
+              aria-label={t('header.backButton')}
             >
               <ArrowLeft className="w-6 h-6" aria-hidden="true" />
             </button>
@@ -135,7 +137,7 @@ export function ChatHeader({
               className="text-base font-semibold truncate text-gray-900 dark:text-white"
               title={projectSlug}
             >
-              {projectSlug ? projectSlug.replace(/[\\/]+$/, '').split(/[\\/]/).pop() : '채팅'}
+              {projectSlug ? projectSlug.replace(/[\\/]+$/, '').split(/[\\/]/).pop() : t('header.defaultTitle')}
             </h1>
             {sessionTitle && (
               isEditingTitle ? (
@@ -149,14 +151,14 @@ export function ChatHeader({
                     if (e.key === 'Escape') { e.preventDefault(); handleTitleCancel(); }
                   }}
                   onBlur={handleTitleSubmit}
-                  placeholder="세션 이름 입력..."
+                  placeholder={t('sessionTitle.placeholder')}
                   className="w-full text-xs bg-white dark:bg-gray-700 border border-blue-500 rounded px-1.5 py-0.5 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               ) : (
                 <div
                   className={`flex items-baseline gap-1.5 min-w-0 ${onRenameSession ? 'cursor-pointer group' : ''}`}
                   onClick={onRenameSession ? handleTitleClick : undefined}
-                  title={onRenameSession ? '클릭하여 세션 이름 변경' : undefined}
+                  title={onRenameSession ? t('sessionTitle.hint') : undefined}
                 >
                   {sessionName && (
                     <span className="flex-shrink-0 text-[11px] leading-tight font-medium px-1.5 py-px rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 max-w-[40%] truncate">
@@ -180,7 +182,7 @@ export function ChatHeader({
                             onAgentIndicatorClick?.();
                           }
                         }}
-                        aria-label={`현재 에이전트: ${activeAgent ? formatAgentRoleLabel(activeAgent.command) || activeAgent.name : 'Claude'}. 클릭하여 에이전트 목록 열기`}
+                        aria-label={t('agentIndicator.ariaLabel', { agent: activeAgent ? formatAgentRoleLabel(activeAgent.command) || activeAgent.name : 'Claude' })}
                         data-testid="agent-indicator"
                         className={`flex-shrink-0 text-xs cursor-pointer ${
                           activeAgent
@@ -221,7 +223,7 @@ export function ChatHeader({
               className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
                          text-gray-700 dark:text-gray-300
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="새 세션 시작"
+              aria-label={t('header.newSession')}
             >
               <Plus className="w-5 h-5" aria-hidden="true" />
             </button>
@@ -245,7 +247,7 @@ export function ChatHeader({
               className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
                          text-gray-700 dark:text-gray-300 disabled:opacity-50
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label={isRefreshing ? '새로고침 중' : '새로고침'}
+              aria-label={isRefreshing ? t('header.refreshing') : t('header.refresh')}
             >
               <RefreshCw
                 className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`}
@@ -262,7 +264,7 @@ export function ChatHeader({
           {/* Desktop-only: settings + logout */}
           <button
             onClick={() => navigate('/settings')}
-            aria-label="설정"
+            aria-label={t('header.settings')}
             className="hidden md:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
                        text-gray-700 dark:text-gray-300 transition-colors
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -272,7 +274,7 @@ export function ChatHeader({
           {onLogout && (
             <button
               onClick={onLogout}
-              aria-label="로그아웃"
+              aria-label={t('header.logout')}
               className="hidden md:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
                          text-red-600 dark:text-red-400 transition-colors
                          focus:outline-none focus:ring-2 focus:ring-blue-500"

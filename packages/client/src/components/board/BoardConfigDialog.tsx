@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import type { BoardConfig, BoardColumnConfig, BoardItemStatus } from '@bmad-studio/shared';
 import { COLUMN_COLOR_PALETTE, DEFAULT_BOARD_CONFIG, validateBoardConfig } from '@bmad-studio/shared';
@@ -27,6 +28,7 @@ function colorSwatchClass(colorClass: string): string {
 }
 
 export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: BoardConfigDialogProps) {
+  const { t } = useTranslation('board');
   const [columns, setColumns] = useState<BoardColumnConfig[]>([]);
   const [statusMap, setStatusMap] = useState<Record<BoardItemStatus, string>>({} as Record<BoardItemStatus, string>);
   const [errors, setErrors] = useState<string[]>([]);
@@ -118,19 +120,19 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
     try {
       await onSave(newConfig);
     } catch {
-      setErrors(['저장에 실패했습니다.']);
+      setErrors([t('errors.saveFailed')]);
     } finally {
       setSaving(false);
     }
   };
 
   const handleReset = async () => {
-    if (!window.confirm('기본 설정으로 복원하시겠습니까?')) return;
+    if (!window.confirm(t('config.resetConfirm'))) return;
     setSaving(true);
     try {
       await onReset();
     } catch {
-      setErrors(['복원에 실패했습니다.']);
+      setErrors([t('errors.resetFailed')]);
     } finally {
       setSaving(false);
     }
@@ -141,7 +143,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="보드 설정"
+      aria-label={t('config.title')}
     >
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} aria-hidden="true" />
@@ -150,11 +152,11 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
       <div className="relative w-full max-w-xl bg-white dark:bg-gray-800 rounded-lg shadow-xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">보드 설정</h2>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">{t('config.title')}</h2>
           <button
             onClick={handleClose}
             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
-            aria-label="닫기"
+            aria-label={t('common:button.close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -174,14 +176,14 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
           {/* Columns section */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">칼럼 정의</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('config.columnDefinition')}</h3>
               <button
                 onClick={handleAddColumn}
                 disabled={columns.length >= 10}
                 className="px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded flex items-center gap-1 transition-colors"
               >
                 <Plus className="w-3 h-3" />
-                추가
+                {t('common:button.add')}
               </button>
             </div>
 
@@ -193,7 +195,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
                     <button
                       onClick={() => setOpenColorPicker(openColorPicker === index ? null : index)}
                       className={`w-6 h-6 rounded border-2 border-gray-300 dark:border-gray-600 ${colorSwatchClass(col.colorClass)}`}
-                      aria-label="색상 선택"
+                      aria-label={t('config.selectColor')}
                     />
                     {openColorPicker === index && (
                       <div className="absolute left-0 top-8 flex flex-wrap gap-1 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 w-32">
@@ -219,7 +221,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
                     type="text"
                     value={col.label}
                     onChange={(e) => handleLabelChange(index, e.target.value)}
-                    placeholder="칼럼 이름"
+                    placeholder={t('config.columnNamePlaceholder')}
                     className="flex-1 px-2 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
                   />
 
@@ -233,7 +235,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
                     onClick={() => handleMoveColumn(index, -1)}
                     disabled={index === 0}
                     className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    aria-label="위로 이동"
+                    aria-label={t('config.moveUp')}
                   >
                     <ArrowUp className="w-4 h-4" />
                   </button>
@@ -243,7 +245,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
                     onClick={() => handleMoveColumn(index, 1)}
                     disabled={index === columns.length - 1}
                     className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    aria-label="아래로 이동"
+                    aria-label={t('config.moveDown')}
                   >
                     <ArrowDown className="w-4 h-4" />
                   </button>
@@ -253,7 +255,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
                     onClick={() => handleRemoveColumn(index)}
                     disabled={columns.length <= 1}
                     className="p-1 text-red-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    aria-label="삭제"
+                    aria-label={t('config.delete')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -264,7 +266,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
 
           {/* Status mapping section */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">상태 → 칼럼 매핑</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t('config.statusMapping')}</h3>
             <div className="space-y-2">
               {ALL_STATUSES.map((status) => (
                 <div key={status} className="flex items-center justify-between gap-3 px-2">
@@ -295,7 +297,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
             disabled={saving}
             className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-50 transition-colors"
           >
-            기본값 복원
+            {t('config.resetDefaults')}
           </button>
           <div className="flex gap-2">
             <button
@@ -303,14 +305,14 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
               disabled={saving}
               className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
             >
-              취소
+              {t('common:button.cancel')}
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
               className="px-4 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
             >
-              {saving ? '저장 중...' : '저장'}
+              {saving ? t('config.saving') : t('common:button.save')}
             </button>
           </div>
         </div>

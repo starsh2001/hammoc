@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, History, FolderOpen, GitBranch, Terminal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { QuickPanelType } from '../../stores/panelStore';
@@ -19,12 +20,12 @@ export const PANEL_TYPES: QuickPanelType[] = ['sessions', 'files', 'git', 'termi
 
 export const PANEL_CONFIG: Record<QuickPanelType, {
   icon: LucideIcon;
-  title: string;
+  titleKey: string;
 }> = {
-  sessions: { icon: History, title: '세션 목록' },
-  files: { icon: FolderOpen, title: '파일 탐색기' },
-  git: { icon: GitBranch, title: 'Git' },
-  terminal: { icon: Terminal, title: '터미널' },
+  sessions: { icon: History, titleKey: 'panel.sessions' },
+  files: { icon: FolderOpen, titleKey: 'panel.files' },
+  git: { icon: GitBranch, titleKey: 'panel.git' },
+  terminal: { icon: Terminal, titleKey: 'panel.terminal' },
 };
 
 interface QuickPanelProps {
@@ -56,6 +57,7 @@ export function QuickPanel({
   onWidthChange,
   isMobile,
 }: QuickPanelProps) {
+  const { t } = useTranslation('common');
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [visitedPanels, setVisitedPanels] = useState<Set<QuickPanelType>>(
@@ -198,7 +200,7 @@ export function QuickPanel({
         data-testid="quick-panel"
         role="dialog"
         aria-modal="true"
-        aria-label={config.title}
+        aria-label={t(config.titleKey)}
         className={`fixed inset-0 z-50 bg-white dark:bg-gray-900 flex flex-col
                     md:inset-auto md:top-0 md:right-0 md:bottom-0
                     md:bg-white md:dark:bg-gray-800
@@ -231,7 +233,7 @@ export function QuickPanel({
             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded
                        text-gray-700 dark:text-gray-300
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="패널 닫기"
+            aria-label={t('panel.close')}
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
@@ -247,7 +249,7 @@ export function QuickPanel({
                   activePanel === type ? '' : 'invisible'
                 }`}
                 role="tabpanel"
-                aria-label={PANEL_CONFIG[type].title}
+                aria-label={t(PANEL_CONFIG[type].titleKey)}
                 data-testid={`quick-panel-content-${type}`}
                 {...(activePanel !== type ? { inert: '' as unknown as boolean } : {})}
               >

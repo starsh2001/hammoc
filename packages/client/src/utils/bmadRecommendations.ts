@@ -12,6 +12,7 @@
  */
 
 import type { BmadStatusResponse, BmadSupplementaryDoc, BmadStoryStatus } from '@bmad-studio/shared';
+import i18n from '../i18n';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -116,10 +117,10 @@ function nextStoryNum(data: BmadStatusResponse): string {
 
 export function detectPhase(data: BmadStatusResponse): PhaseInfo {
   if (!data.documents.prd.exists) {
-    return { phase: 'pre-prd', label: 'PRD 작성 전' };
+    return { phase: 'pre-prd', label: i18n.t('common:phase.prePrd') };
   }
   if (!data.documents.architecture.exists) {
-    return { phase: 'pre-architecture', label: '아키텍처 작성 전' };
+    return { phase: 'pre-architecture', label: i18n.t('common:phase.preArchitecture') };
   }
 
   // Check if all planned work is complete
@@ -127,10 +128,10 @@ export function detectPhase(data: BmadStatusResponse): PhaseInfo {
   const totalPlanned = data.epics.reduce((s, e) => s + (e.plannedStories ?? e.stories.length), 0);
   const nonDoneStories = stories.filter((s) => s.status !== 'Done');
   if (stories.length > 0 && nonDoneStories.length === 0 && totalPlanned <= stories.length) {
-    return { phase: 'completed', label: '구현 완료' };
+    return { phase: 'completed', label: i18n.t('common:phase.completed') };
   }
 
-  return { phase: 'implementation', label: '구현 단계' };
+  return { phase: 'implementation', label: i18n.t('common:phase.implementation') };
 }
 
 // ---------------------------------------------------------------------------
@@ -144,8 +145,8 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
   // Primary: PRD creation (always present as the gate)
   recs.push({
     id: 'create-prd',
-    title: 'PRD \uc791\uc131',
-    description: 'PM \uc5d0\uc774\uc804\ud2b8\uc640 \ud568\uaed8 \uc694\uad6c\uc0ac\ud56d \ubb38\uc11c\ub97c \uc791\uc131\ud569\ub2c8\ub2e4',
+    title: i18n.t('common:rec.createPrd'),
+    description: i18n.t('common:rec.createPrdDesc'),
     agentCommand: '/BMad:agents:pm',
     taskCommand: '*create-prd',
     variant: 'primary',
@@ -156,8 +157,8 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
   if (!suppExists(supp, 'brainstorming')) {
     recs.push({
       id: 'brainstorming',
-      title: '\ube0c\ub808\uc778\uc2a4\ud1a0\ubc0d',
-      description: '\uc544\uc774\ub514\uc5b4\ub97c \uc790\uc720\ub86d\uac8c \ud0d0\uc0c9\ud569\ub2c8\ub2e4',
+      title: i18n.t('common:rec.brainstorming'),
+      description: i18n.t('common:rec.brainstormingDesc'),
       agentCommand: '/BMad:agents:analyst',
       taskCommand: '*brainstorm',
       variant: 'secondary',
@@ -168,8 +169,8 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
   if (!suppExists(supp, 'market-research')) {
     recs.push({
       id: 'market-research',
-      title: '\ub9c8\ucf13 \ub9ac\uc11c\uce58',
-      description: '\uc2dc\uc7a5 \ud658\uacbd\uacfc \ud2b8\ub80c\ub4dc\ub97c \ubd84\uc11d\ud569\ub2c8\ub2e4',
+      title: i18n.t('common:rec.marketResearch'),
+      description: i18n.t('common:rec.marketResearchDesc'),
       agentCommand: '/BMad:agents:analyst',
       taskCommand: '*perform-market-research',
       variant: 'secondary',
@@ -180,8 +181,8 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
   if (!suppExists(supp, 'competitor-analysis')) {
     recs.push({
       id: 'competitor-analysis',
-      title: '\uacbd\uc7c1\uc0ac \ubd84\uc11d',
-      description: '\uacbd\uc7c1 \uc81c\ud488\uc744 \uc870\uc0ac\ud558\uace0 \ube44\uad50\ud569\ub2c8\ub2e4',
+      title: i18n.t('common:rec.competitorAnalysis'),
+      description: i18n.t('common:rec.competitorAnalysisDesc'),
       agentCommand: '/BMad:agents:analyst',
       taskCommand: '*create-competitor-analysis',
       variant: 'secondary',
@@ -192,8 +193,8 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
   if (!suppExists(supp, 'brief')) {
     recs.push({
       id: 'brief',
-      title: '\ud504\ub85c\uc81d\ud2b8 \ube0c\ub9ac\ud504',
-      description: '\ud504\ub85c\uc81d\ud2b8 \uac1c\uc694\ub97c \uc815\ub9ac\ud569\ub2c8\ub2e4',
+      title: i18n.t('common:rec.projectBrief'),
+      description: i18n.t('common:rec.projectBriefDesc'),
       agentCommand: '/BMad:agents:analyst',
       taskCommand: '*create-project-brief',
       variant: 'secondary',
@@ -213,8 +214,8 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
   // Primary: Backend architecture (always available)
   recs.push({
     id: 'create-backend-arch',
-    title: '\ubc31\uc5d4\ub4dc \uc544\ud0a4\ud14d\ucc98',
-    description: 'Architect \uc5d0\uc774\uc804\ud2b8\uc640 \ud568\uaed8 \ubc31\uc5d4\ub4dc \uc124\uacc4\ub97c \uc791\uc131\ud569\ub2c8\ub2e4',
+    title: i18n.t('common:rec.backendArch'),
+    description: i18n.t('common:rec.backendArchDesc'),
     agentCommand: '/BMad:agents:architect',
     taskCommand: '*create-backend-architecture',
     variant: 'primary',
@@ -225,8 +226,8 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
   if (hasFESpec) {
     recs.push({
       id: 'create-frontend-arch',
-      title: 'FE \uc544\ud0a4\ud14d\ucc98',
-      description: 'FE \uc2a4\ud399 \uae30\ubc18 \ud504\ub860\ud2b8\uc5d4\ub4dc \uc544\ud0a4\ud14d\ucc98\ub97c \uc791\uc131\ud569\ub2c8\ub2e4',
+      title: i18n.t('common:rec.feArch'),
+      description: i18n.t('common:rec.feArchDesc'),
       agentCommand: '/BMad:agents:architect',
       taskCommand: '*create-front-end-architecture',
       variant: 'primary',
@@ -237,8 +238,8 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
   // Full-stack architecture (always available)
   recs.push({
     id: 'create-fullstack-arch',
-    title: '\ud480\uc2a4\ud0dd \uc544\ud0a4\ud14d\ucc98',
-    description: '\ud480\uc2a4\ud0dd \uc2dc\uc2a4\ud15c \uc124\uacc4\ub97c \ud55c\ubc88\uc5d0 \uc791\uc131\ud569\ub2c8\ub2e4',
+    title: i18n.t('common:rec.fullstackArch'),
+    description: i18n.t('common:rec.fullstackArchDesc'),
     agentCommand: '/BMad:agents:architect',
     taskCommand: '*create-full-stack-architecture',
     variant: 'primary',
@@ -249,8 +250,8 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
   if (!hasFESpec) {
     recs.push({
       id: 'fe-spec',
-      title: 'FE \uc2a4\ud399 \uc791\uc131',
-      description: 'UX Expert\uc640 \ud568\uaed8 \ud504\ub860\ud2b8\uc5d4\ub4dc \uc2a4\ud399\uc744 \uc791\uc131\ud569\ub2c8\ub2e4',
+      title: i18n.t('common:rec.feSpec'),
+      description: i18n.t('common:rec.feSpecDesc'),
       agentCommand: '/BMad:agents:ux-expert',
       taskCommand: '*create-front-end-spec',
       variant: 'secondary',
@@ -281,7 +282,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
 
     recs.push({
       id: 'continue-dev',
-      title: '\uac1c\ubc1c \uc774\uc5b4\uac00\uae30',
+      title: i18n.t('common:rec.continueDev'),
       description: label,
       agentCommand: '/BMad:agents:dev',
       taskCommand: `*develop-story ${num}`,
@@ -292,8 +293,8 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
 
     recs.push({
       id: 'qa-review',
-      title: 'QA \ub9ac\ubdf0 \uc694\uccad',
-      description: `${label} \uad6c\ud604 \uacb0\uacfc\ub97c \uac80\ud1a0\ud569\ub2c8\ub2e4`,
+      title: i18n.t('common:rec.qaReview'),
+      description: i18n.t('common:rec.qaReviewDesc', { label }),
       agentCommand: '/BMad:agents:qa',
       taskCommand: `*review ${num}`,
       variant: 'secondary',
@@ -303,8 +304,8 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
 
     recs.push({
       id: 'apply-qa-fixes',
-      title: 'QA \ubc18\uc601',
-      description: 'QA \ud53c\ub4dc\ubc31\uc744 \ucf54\ub4dc\uc5d0 \ubc18\uc601\ud569\ub2c8\ub2e4',
+      title: i18n.t('common:rec.applyQaFixes'),
+      description: i18n.t('common:rec.applyQaFixesDesc'),
       agentCommand: '/BMad:agents:dev',
       taskCommand: `*review-qa ${num}`,
       variant: 'secondary',
@@ -322,7 +323,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
 
     recs.push({
       id: 'validate-story',
-      title: '\uc2a4\ud1a0\ub9ac \uac80\uc99d',
+      title: i18n.t('common:rec.validateStory'),
       description: `${label}`,
       agentCommand: '/BMad:agents:po',
       taskCommand: `*validate-story-draft ${num}`,
@@ -341,7 +342,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
 
     recs.push({
       id: 'start-dev',
-      title: '\uac1c\ubc1c \uc2dc\uc791',
+      title: i18n.t('common:rec.startDev'),
       description: `${label}`,
       agentCommand: '/BMad:agents:dev',
       taskCommand: `*develop-story ${num}`,
@@ -362,10 +363,10 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     const nextNum = nextStoryNum(data);
     recs.push({
       id: 'create-story',
-      title: allDone || stories.length === 0 ? (stories.length === 0 ? '\uccab \uc2a4\ud1a0\ub9ac \uc0dd\uc131' : '\ub2e4\uc74c \uc2a4\ud1a0\ub9ac \uc0dd\uc131') : '\ub2e4\uc74c \uc2a4\ud1a0\ub9ac \uc0dd\uc131',
+      title: allDone || stories.length === 0 ? (stories.length === 0 ? i18n.t('common:rec.createFirstStory') : i18n.t('common:rec.createNextStory')) : i18n.t('common:rec.createNextStory'),
       description: hasMorePlanned
-        ? `\uc608\uc815\ub41c \uc2a4\ud1a0\ub9ac ${totalPlanned - doneCount}\uac1c \ub0a8\uc74c`
-        : 'SM \uc5d0\uc774\uc804\ud2b8\uac00 PRD \uae30\ubc18\uc73c\ub85c \uc2a4\ud1a0\ub9ac\ub97c \uc0dd\uc131\ud569\ub2c8\ub2e4',
+        ? i18n.t('common:rec.storiesRemaining', { count: totalPlanned - doneCount })
+        : i18n.t('common:rec.createStoryDesc'),
       agentCommand: '/BMad:agents:sm',
       taskCommand: `*draft ${nextNum}`,
       variant: hasActionable ? 'secondary' : 'primary',
@@ -383,8 +384,8 @@ function buildCompletedRecommendations(data: BmadStatusResponse): NextStepRecomm
 
   recs.push({
     id: 'brainstorm-features',
-    title: '새 기능 브레인스토밍',
-    description: '다음 단계를 위한 아이디어를 탐색합니다',
+    title: i18n.t('common:rec.newFeatureBrainstorm'),
+    description: i18n.t('common:rec.newFeatureBrainstormDesc'),
     agentCommand: '/BMad:agents:analyst',
     taskCommand: '*brainstorm',
     variant: 'primary',
@@ -393,8 +394,8 @@ function buildCompletedRecommendations(data: BmadStatusResponse): NextStepRecomm
 
   recs.push({
     id: 'new-epic',
-    title: '새 에픽 추가',
-    description: 'PRD에 새로운 에픽과 스토리를 추가합니다',
+    title: i18n.t('common:rec.addNewEpic'),
+    description: i18n.t('common:rec.addNewEpicDesc'),
     agentCommand: '/BMad:agents:pm',
     taskCommand: '*brownfield-create-epic',
     variant: 'primary',
@@ -403,8 +404,8 @@ function buildCompletedRecommendations(data: BmadStatusResponse): NextStepRecomm
 
   recs.push({
     id: 'add-brownfield-story',
-    title: '기존 에픽에 스토리 추가',
-    description: '기존 에픽에 새로운 스토리를 추가합니다',
+    title: i18n.t('common:rec.addStoryToEpic'),
+    description: i18n.t('common:rec.addStoryToEpicDesc'),
     agentCommand: '/BMad:agents:sm',
     taskCommand: '*brownfield-create-story',
     variant: 'secondary',

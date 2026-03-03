@@ -1,1 +1,97 @@
-{}
+{
+  "config": {
+    "title": "看板设置",
+    "columnDefinition": "列定义",
+    "statusMapping": "状态 → 列映射",
+    "selectColor": "选择颜色",
+    "columnNamePlaceholder": "列名称",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "delete": "删除",
+    "resetDefaults": "恢复默认",
+    "resetConfirm": "恢复默认设置？",
+    "saving": "正在保存..."
+  },
+  "issue": {
+    "add": "添加问题",
+    "edit": "编辑问题",
+    "title": "标题 *",
+    "titlePlain": "标题",
+    "titlePlaceholder": "输入问题标题",
+    "description": "描述",
+    "descriptionPlaceholder": "描述问题（可选）",
+    "severity": "严重程度",
+    "severityLabel": "严重程度：",
+    "severityLow": "低",
+    "severityMedium": "中",
+    "severityHigh": "高",
+    "severityCritical": "严重",
+    "type": "类型",
+    "typeLabel": "类型：",
+    "typeBug": "Bug",
+    "typeImprovement": "改进",
+    "quickFix": "快速修复",
+    "promoteToStory": "提升为 Story",
+    "alreadyPromotedToStory": "已提升为 Story",
+    "promoteToEpic": "提升为 Epic",
+    "alreadyPromotedToEpic": "已提升为 Epic",
+    "cannotDeleteWhileWorking": "AI 正在处理时无法删除",
+    "closeConfirm": "关闭此问题？",
+    "deleteConfirm": "删除问题「{{title}}」？"
+  },
+  "card": {
+    "menu": "卡片菜单"
+  },
+  "epic": {
+    "subStories": "Epic 子 Story",
+    "progress": "进度",
+    "noSubStories": "没有子 Story",
+    "viewSubStories": "查看子 Story"
+  },
+  "story": {
+    "normalizeStatus": "规范化状态（{{rawStatus}} → {{status}}）"
+  },
+  "workflow": {
+    "validateStory": "验证 Story",
+    "startDevelopment": "开始开发",
+    "requestQA": "请求 QA",
+    "applyQAFix": "应用 QA 修复"
+  },
+  "status": {
+    "open": "打开",
+    "draft": "草稿",
+    "approved": "已批准",
+    "inProgress": "进行中",
+    "blocked": "已阻塞",
+    "review": "审查中",
+    "done": "完成",
+    "closed": "已关闭"
+  },
+  "errors": {
+    "saveFailed": "保存失败。",
+    "resetFailed": "重置失败。",
+    "updateStatusFailed": "更新问题状态失败。",
+    "promoteFailed": "提升失败。",
+    "editFailed": "编辑问题失败。",
+    "closeFailed": "关闭问题失败。",
+    "deleteFailed": "删除问题失败。",
+    "normalizeStatusFailed": "规范化状态失败。"
+  },
+  "empty": {
+    "message": "看板上没有项目。试试添加一个问题。",
+    "items": "没有项目"
+  },
+  "view": {
+    "kanban": "Kanban 视图",
+    "list": "列表视图"
+  },
+  "promote": {
+    "originalIssueHeader": "原始问题（ID：{{id}}）",
+    "none": "无"
+  },
+  "truncated": "...（已截断）",
+  "noDescription": "（无描述）",
+  "mobileKanban": {
+    "goToColumn": "前往 {{column}} 列"
+  }
+}

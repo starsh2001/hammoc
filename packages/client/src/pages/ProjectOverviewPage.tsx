@@ -3,6 +3,7 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   MessageSquare,
   Clock,
@@ -25,6 +26,7 @@ interface ProjectOverviewPageProps {
 }
 
 export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPageProps = {}) {
+  const { t } = useTranslation('common');
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const navigate = useNavigate();
   const { sessions, fetchSessions, isLoading, isRefreshing } = useSessionStore();
@@ -56,7 +58,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{sessions.length}</p>
-              <p className="text-sm text-blue-700/70 dark:text-blue-300/70">총 세션</p>
+              <p className="text-sm text-blue-700/70 dark:text-blue-300/70">{t('overview.totalSessions')}</p>
             </div>
           </div>
         </div>
@@ -68,7 +70,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalMessages}</p>
-              <p className="text-sm text-violet-700/70 dark:text-violet-300/70">총 메시지</p>
+              <p className="text-sm text-violet-700/70 dark:text-violet-300/70">{t('overview.totalMessages')}</p>
             </div>
           </div>
         </div>
@@ -80,7 +82,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{activeSessions}</p>
-              <p className="text-sm text-emerald-700/70 dark:text-emerald-300/70">활성 세션</p>
+              <p className="text-sm text-emerald-700/70 dark:text-emerald-300/70">{t('overview.activeSessions')}</p>
             </div>
           </div>
         </div>
@@ -92,14 +94,14 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
         <div className="lg:col-span-2 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-gray-900 dark:text-white">최근 세션</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white">{t('overview.recentSessions')}</h2>
               <BackgroundRefreshIndicator isRefreshing={isRefreshing} />
             </div>
             <button
               onClick={() => navigate(`/project/${projectSlug}/sessions`)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
             >
-              모두 보기
+              {t('overview.viewAll')}
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -117,14 +119,14 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700/50 mb-4">
                 <MessageCircle className="w-7 h-7 text-gray-400 dark:text-gray-500" />
               </div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">아직 세션이 없습니다</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">새 세션을 시작하여 AI와 대화를 나눠보세요</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">{t('overview.sessionsEmpty')}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">{t('overview.sessionsEmptySubtext')}</p>
               <button
                 onClick={handleNewSession}
                 className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                첫 세션 시작하기
+                {t('overview.startFirstSession')}
               </button>
             </div>
           ) : (
@@ -150,7 +152,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
                       )}
                     </div>
                     <p className="text-sm text-gray-900 dark:text-white truncate">
-                      {session.firstPrompt || '(빈 세션)'}
+                      {session.firstPrompt || t('overview.emptySessionLabel')}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 ml-4 text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
@@ -167,28 +169,28 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
         <div className="space-y-4">
           {quickActionsSlot ?? (
             <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-              <h2 className="font-semibold text-gray-900 dark:text-white mb-4">빠른 시작</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white mb-4">{t('overview.quickStartTitle')}</h2>
               <div className="space-y-2">
                 <button
                   onClick={handleNewSession}
                   className="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-sm font-medium"
                 >
                   <Plus className="w-4 h-4" />
-                  새 세션 시작
+                  {t('overview.newSession')}
                 </button>
                 <button
                   onClick={() => navigate(`/project/${projectSlug}/queue`)}
                   className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
                 >
                   <ListOrdered className="w-4 h-4" />
-                  큐 작업 실행
+                  {t('overview.queueRunner')}
                 </button>
                 <button
                   onClick={() => navigate(`/project/${projectSlug}/files`)}
                   className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
                 >
                   <FolderOpen className="w-4 h-4" />
-                  파일 탐색
+                  {t('overview.fileExplore')}
                 </button>
               </div>
             </div>
@@ -203,11 +205,11 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
                 </span>
                 <span className="text-sm font-semibold text-green-800 dark:text-green-200">
-                  {activeSessions}개 세션 활성
+                  {t('overview.activeSessionsCount', { count: activeSessions })}
                 </span>
               </div>
               <p className="text-xs text-green-700/70 dark:text-green-300/60">
-                현재 AI가 응답을 생성하고 있습니다
+                {t('overview.aiGenerating')}
               </p>
             </div>
           )}

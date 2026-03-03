@@ -1,4 +1,5 @@
 import { CheckCircle, XCircle, Info, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ToastMessage } from '../../hooks/useToast';
 
 interface ToastProps {
@@ -7,6 +8,7 @@ interface ToastProps {
 }
 
 export function Toast({ toast, onClose }: ToastProps) {
+  const { t } = useTranslation('common');
   const icons = {
     success: (
       <CheckCircle className="w-5 h-5 text-green-500" aria-hidden="true" />
@@ -35,7 +37,7 @@ export function Toast({ toast, onClose }: ToastProps) {
       <button
         onClick={() => onClose(toast.id)}
         className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-        aria-label="알림 닫기"
+        aria-label={t('toast.closeAria')}
       >
         <X className="w-4 h-4 text-gray-500" aria-hidden="true" />
       </button>
@@ -53,12 +55,13 @@ interface ToastContainerProps {
  * 화면 우측 하단에 고정 배치
  */
 export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
+  const { t } = useTranslation('common');
   if (toasts.length === 0) return null;
 
   return (
     <div
       className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm"
-      aria-label="알림 목록"
+      aria-label={t('toast.containerAria')}
     >
       {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} onClose={onClose} />

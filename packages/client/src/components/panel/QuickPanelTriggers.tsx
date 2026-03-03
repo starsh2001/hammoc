@@ -3,6 +3,7 @@
  * [Source: Story 19.4 - Task 1]
  */
 
+import { useTranslation } from 'react-i18next';
 import { History, FolderOpen, GitBranch, Terminal, type LucideIcon } from 'lucide-react';
 import type { QuickPanelType } from '../../stores/panelStore';
 
@@ -20,15 +21,15 @@ export interface QuickPanelTriggersProps {
 interface TriggerConfig {
   type: QuickPanelType;
   icon: LucideIcon;
-  label: string;
+  labelKey: string;
   shortcutHint: string;
 }
 
 const TRIGGER_CONFIGS: TriggerConfig[] = [
-  { type: 'sessions', icon: History, label: '세션 목록', shortcutHint: 'Alt+1' },
-  { type: 'files', icon: FolderOpen, label: '파일 탐색기', shortcutHint: 'Alt+2' },
-  { type: 'git', icon: GitBranch, label: 'Git 패널', shortcutHint: 'Alt+3' },
-  { type: 'terminal', icon: Terminal, label: '터미널', shortcutHint: 'Alt+4' },
+  { type: 'sessions', icon: History, labelKey: 'panel.sessions', shortcutHint: 'Alt+1' },
+  { type: 'files', icon: FolderOpen, labelKey: 'panel.files', shortcutHint: 'Alt+2' },
+  { type: 'git', icon: GitBranch, labelKey: 'panel.gitPanel', shortcutHint: 'Alt+3' },
+  { type: 'terminal', icon: Terminal, labelKey: 'panel.terminal', shortcutHint: 'Alt+4' },
 ];
 
 export function QuickPanelTriggers({
@@ -37,9 +38,10 @@ export function QuickPanelTriggers({
   gitChangedCount,
   terminalAccessible = true,
 }: QuickPanelTriggersProps) {
+  const { t } = useTranslation('common');
   return (
-    <div className="flex items-center" role="toolbar" aria-label="퀵 패널">
-      {TRIGGER_CONFIGS.map(({ type, icon: Icon, label, shortcutHint }) => {
+    <div className="flex items-center" role="toolbar" aria-label={t('panel.toolbar')}>
+      {TRIGGER_CONFIGS.map(({ type, icon: Icon, labelKey, shortcutHint }) => {
         const isActive = activePanel === type;
         const isTerminal = type === 'terminal';
         const isDisabled = isTerminal && !terminalAccessible;
@@ -59,12 +61,12 @@ export function QuickPanelTriggers({
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
               }
             `}
-            aria-label={label}
+            aria-label={t(labelKey)}
             aria-pressed={isActive}
             aria-disabled={isDisabled || undefined}
             title={isDisabled
-              ? '보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다'
-              : `${label} (${shortcutHint})`
+              ? t('panel.terminalSecurityTooltip')
+              : `${t(labelKey)} (${shortcutHint})`
             }
             data-testid={`panel-trigger-${type}`}
           >

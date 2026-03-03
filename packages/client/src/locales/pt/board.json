@@ -1,1 +1,97 @@
-{}
+{
+  "config": {
+    "title": "Configurações do quadro",
+    "columnDefinition": "Definições de colunas",
+    "statusMapping": "Status → Mapeamento de colunas",
+    "selectColor": "Selecionar cor",
+    "columnNamePlaceholder": "Nome da coluna",
+    "moveUp": "Mover para cima",
+    "moveDown": "Mover para baixo",
+    "delete": "Excluir",
+    "resetDefaults": "Restaurar padrões",
+    "resetConfirm": "Restaurar configurações padrão?",
+    "saving": "Salvando..."
+  },
+  "issue": {
+    "add": "Adicionar issue",
+    "edit": "Editar issue",
+    "title": "Título *",
+    "titlePlain": "Título",
+    "titlePlaceholder": "Insira o título da issue",
+    "description": "Descrição",
+    "descriptionPlaceholder": "Descreva a issue (opcional)",
+    "severity": "Severidade",
+    "severityLabel": "Severidade:",
+    "severityLow": "Baixa",
+    "severityMedium": "Média",
+    "severityHigh": "Alta",
+    "severityCritical": "Crítica",
+    "type": "Tipo",
+    "typeLabel": "Tipo:",
+    "typeBug": "Bug",
+    "typeImprovement": "Melhoria",
+    "quickFix": "Correção rápida",
+    "promoteToStory": "Promover a story",
+    "alreadyPromotedToStory": "Já promovido a story",
+    "promoteToEpic": "Promover a epic",
+    "alreadyPromotedToEpic": "Já promovido a epic",
+    "cannotDeleteWhileWorking": "Não é possível excluir enquanto a IA está trabalhando",
+    "closeConfirm": "Fechar esta issue?",
+    "deleteConfirm": "Excluir issue \"{{title}}\"?"
+  },
+  "card": {
+    "menu": "Menu do cartão"
+  },
+  "epic": {
+    "subStories": "Sub-stories do epic",
+    "progress": "Progresso",
+    "noSubStories": "Nenhuma sub-story",
+    "viewSubStories": "Ver sub-stories"
+  },
+  "story": {
+    "normalizeStatus": "Normalizar status ({{rawStatus}} → {{status}})"
+  },
+  "workflow": {
+    "validateStory": "Validar story",
+    "startDevelopment": "Iniciar desenvolvimento",
+    "requestQA": "Solicitar QA",
+    "applyQAFix": "Aplicar correção de QA"
+  },
+  "status": {
+    "open": "Aberto",
+    "draft": "Rascunho",
+    "approved": "Aprovado",
+    "inProgress": "Em andamento",
+    "blocked": "Bloqueado",
+    "review": "Revisão",
+    "done": "Concluído",
+    "closed": "Fechado"
+  },
+  "errors": {
+    "saveFailed": "Falha ao salvar.",
+    "resetFailed": "Falha ao redefinir.",
+    "updateStatusFailed": "Falha ao atualizar o status da issue.",
+    "promoteFailed": "Falha ao promover.",
+    "editFailed": "Falha ao editar issue.",
+    "closeFailed": "Falha ao fechar issue.",
+    "deleteFailed": "Falha ao excluir issue.",
+    "normalizeStatusFailed": "Falha ao normalizar status."
+  },
+  "empty": {
+    "message": "Nenhum item no quadro. Tente adicionar uma issue.",
+    "items": "Nenhum item"
+  },
+  "view": {
+    "kanban": "Visualização Kanban",
+    "list": "Visualização em lista"
+  },
+  "promote": {
+    "originalIssueHeader": "Issue original (ID: {{id}})",
+    "none": "Nenhum"
+  },
+  "truncated": "...(truncado)",
+  "noDescription": "(Sem descrição)",
+  "mobileKanban": {
+    "goToColumn": "Ir para a coluna {{column}}"
+  }
+}

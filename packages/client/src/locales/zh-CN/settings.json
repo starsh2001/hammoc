@@ -1,1 +1,255 @@
-{}
+{
+  "global": {
+    "theme": "主题",
+    "themeOption": {
+      "dark": "深色",
+      "light": "浅色",
+      "system": "跟随系统"
+    },
+    "defaultModel": "默认模型",
+    "language": "语言",
+    "permissionMode": "权限模式",
+    "permissionModeLabel": {
+      "plan": "计划",
+      "default": "编辑前询问",
+      "acceptEdits": "自动编辑",
+      "bypass": "跳过"
+    },
+    "permissionDesc": {
+      "plan": "在修改代码前先建议计划",
+      "default": "编辑文件前始终请求确认",
+      "acceptEdits": "自动执行文件编辑",
+      "bypass": "跳过所有权限检查（包括 Bash）"
+    },
+    "markdownMode": "Markdown 文件打开模式",
+    "markdownOption": {
+      "edit": "编辑",
+      "preview": "预览"
+    },
+    "markdownDesc": "打开 Markdown 文件时的默认模式。",
+    "fileExplorerView": "文件浏览器默认视图",
+    "fileExplorerOption": {
+      "grid": "网格视图",
+      "list": "列表视图"
+    },
+    "fileExplorerDesc": "打开文件浏览器时的默认视图模式。",
+    "chatTimeout": "聊天超时",
+    "chatTimeoutOverride": "（由环境变量设置）",
+    "chatTimeoutDesc": "未收到响应时自动中止请求的时间。",
+    "timeoutOption": {
+      "1m": "1 分钟",
+      "3m": "3 分钟",
+      "5mDefault": "5 分钟（默认）",
+      "10m": "10 分钟",
+      "30m": "30 分钟"
+    }
+  },
+  "toast": {
+    "themeChanged": "主题已更改",
+    "modelChanged": "默认模型已更改",
+    "permissionChanged": "权限模式已更改",
+    "timeoutChanged": "聊天超时已更改",
+    "markdownModeChanged": "Markdown 默认模式已更改",
+    "fileExplorerViewChanged": "文件浏览器默认视图已更改",
+    "languageChanged": "语言已更改",
+    "systemPromptSaved": "系统提示词已保存",
+    "systemPromptRestored": "已恢复为默认系统提示词",
+    "settingChanged": "{{label}} 已更改",
+    "terminalEnabled": "终端已启用",
+    "terminalDisabled": "终端已禁用",
+    "buildFailed": "失败：{{error}}",
+    "buildFailedUnknown": "未知错误",
+    "serverTimeout": "服务器响应超时。请手动检查。",
+    "buildComplete": "构建完成！正在刷新页面...",
+    "serverRestartFailed": "服务器重启请求失败。",
+    "alreadyLatest": "已是最新版本。",
+    "updateCheckFailed": "检查更新失败。",
+    "updateComplete": "更新完成！正在刷新页面...",
+    "updateFailed": "更新请求失败。",
+    "settingSaved": "设置已保存。",
+    "settingSaveFailed": "保存设置失败。",
+    "botTokenSaved": "Bot Token 已保存。",
+    "botTokenDeleted": "Bot Token 已删除。",
+    "chatIdSaved": "Chat ID 已保存。",
+    "chatIdDeleted": "Chat ID 已删除。",
+    "telegramEnabled": "Telegram 通知已启用。",
+    "telegramDisabled": "Telegram 通知已禁用。",
+    "testSent": "测试通知已发送！",
+    "testFailed": "测试通知发送失败",
+    "testServerError": "服务器连接错误",
+    "resetToGlobal": "已重置为全局默认值",
+    "settingSavedFailed": "保存设置失败。请重试。"
+  },
+  "advanced": {
+    "serverRestart": "服务器重启",
+    "serverRestartDesc": "构建整个项目并以生产模式重启服务器",
+    "softwareUpdate": "软件更新",
+    "currentVersion": "当前版本：v{{version}}",
+    "building": "正在构建...（{{elapsed}}秒）",
+    "serverRebuild": "重新构建并重启服务器",
+    "checking": "正在检查...",
+    "checkUpdate": "检查更新",
+    "updateTo": "更新到 v{{version}}",
+    "updating": "正在更新...（{{elapsed}}秒）",
+    "latestVersion": "已是最新版本",
+    "terminalFeature": "终端",
+    "terminalDesc": "启用基于网页的终端功能",
+    "terminalOverrideWarning": "已被 TERMINAL_ENABLED 环境变量禁用",
+    "systemPrompt": "系统提示词",
+    "restoreDefault": "恢复默认",
+    "systemPromptWarning": "警告：",
+    "systemPromptWarningDetail": "不正确的系统提示词修改可能会显著降低响应质量。如不确定，请保持默认设置。",
+    "customPromptActive": "正在使用自定义提示词",
+    "promptLoading": "正在加载提示词...",
+    "promptNoProject": "选择一个项目以查看当前系统提示词。",
+    "charCount": "{{count}} 个字符",
+    "templateVariables": "可用系统变量（运行时自动替换）",
+    "previewClose": "关闭预览",
+    "previewOpen": "预览当前项目",
+    "maxThinkingTokens": "最大思考 Token 数",
+    "maxThinkingTokensDesc": "模型推理过程的最大 Token 数（1,024 ~ 128,000）",
+    "maxTurns": "最大轮次",
+    "maxTurnsDesc": "每次对话允许的最大轮次（1 ~ 100）",
+    "maxBudget": "最大预算（美元）",
+    "maxBudgetDesc": "每次查询的最大费用限额（美元，0.01 ~ 100）",
+    "sdkDefault": "SDK 默认值",
+    "unlimited": "无限制"
+  },
+  "confirm": {
+    "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",
+    "updateVersion": "这将更新到 v{{version}} 并重启服务器。确定要继续吗？",
+    "resetAllSettings": "重置所有项目设置。\n\n\u2022 模型/权限模式覆盖将被移除\n\u2022 项目隐藏将被禁用\n\n确定要继续吗？"
+  },
+  "telegram": {
+    "loadError": "加载 Telegram 设置时发生了错误。",
+    "retry": "重试",
+    "setupGuide": "设置 Telegram 通知：",
+    "setupStep1Suffix": " 创建机器人并获取 Bot Token",
+    "setupStep2Suffix": " 获取您的 Chat ID",
+    "botTokenAriaLabel": "打开 Telegram BotFather（新标签页）",
+    "chatIdAriaLabel": "打开 Telegram userinfobot（新标签页）",
+    "botToken": "Bot Token",
+    "chatId": "Chat ID",
+    "envOverride": "（由环境变量设置）",
+    "envPriority": "偏好设置优先于环境变量。",
+    "enterBotToken": "输入 Bot Token",
+    "enterChatId": "输入 Chat ID",
+    "notConfigured": "未配置",
+    "change": "更改",
+    "enableNotifications": "启用 Telegram 通知",
+    "enableHint": "请先设置 Bot Token 和 Chat ID。",
+    "notificationType": "通知类型",
+    "notifyPermission": "权限请求 — 当需要确认权限或回答问题时",
+    "notifyComplete": "完成 — 当流式响应完成时",
+    "notifyError": "错误 — 当流式传输过程中发生错误时",
+    "queueNotificationType": "队列通知类型",
+    "notifyQueueStart": "队列开始 — 当队列开始执行时",
+    "notifyQueueComplete": "队列完成 — 当所有项目处理完毕时",
+    "notifyQueueError": "队列错误 — 当发生 QUEUE_STOP 或 SDK 错误时",
+    "notifyQueueInput": "队列输入请求 — 当需要用户响应时",
+    "testSending": "正在发送...",
+    "testSend": "发送测试通知",
+    "testSuccess": "成功",
+    "testFailure": "失败：{{error}}"
+  },
+  "project": {
+    "selectProject": "选择项目",
+    "hidden": "（已隐藏）",
+    "loading": "正在加载设置...",
+    "loadError": "加载设置时发生了错误。",
+    "retry": "重试",
+    "noProjects": "未找到项目。",
+    "modelOverride": "模型覆盖",
+    "projectOverride": "（项目覆盖）",
+    "useGlobalDefault": "使用全局默认值（当前：{{value}}）",
+    "permissionOverride": "权限模式覆盖",
+    "hideInSidebar": "在侧边栏中隐藏此项目",
+    "resetToGlobal": "重置为全局默认值",
+    "noOverrides": "当前没有项目覆盖设置。"
+  },
+  "about": {
+    "issuesAndSuggestions": "错误报告和功能请求",
+    "githubIssuesAriaLabel": "前往 GitHub Issues（新标签页）",
+    "serverStatus": "服务器状态",
+    "checking": "正在检查...",
+    "connectionFailed": "服务器连接失败",
+    "retryCheckAriaLabel": "重新检查服务器状态",
+    "retry": "重试",
+    "status": "状态",
+    "statusHealthy": "正常",
+    "statusUnhealthy": "异常",
+    "version": "版本",
+    "serverTime": "服务器时间"
+  },
+  "help": {
+    "basicChat": "基本聊天用法",
+    "basicChatItems": [
+      "在聊天输入框中输入消息，按 Enter（桌面端）或发送按钮（移动端）发送",
+      "图片附件：通过回形针图标上传图片或粘贴（Ctrl+V）",
+      "新建会话：点击标题栏中的「+」按钮开始新的聊天会话",
+      "切换会话：通过时钟图标访问之前的会话"
+    ],
+    "slashCommands": "斜杠命令",
+    "slashCommandItems": [
+      "在聊天输入框中输入 / 查看可用命令",
+      "常用命令可以添加到收藏夹",
+      "添加收藏：在命令面板中点击星标或长按",
+      "收藏的命令将作为快捷按钮显示在输入区域上方"
+    ],
+    "permissionMode": "权限模式",
+    "permissionPlanLabel": "计划",
+    "permissionPlanDesc": "在修改代码前先建议计划",
+    "permissionDefaultLabel": "编辑前询问（默认）",
+    "permissionDefaultDesc": "编辑文件前始终请求确认",
+    "permissionAutoLabel": "自动编辑",
+    "permissionAutoDesc": "自动执行文件编辑",
+    "permissionNote": "您可以在设置 > 全局设置或项目设置中更改默认权限模式。",
+    "bmadMethod": "BMad Method 集成",
+    "bmadMethodItems": [
+      "BMad Method 是一个 AI 驱动的开发工作流框架",
+      "通过项目页面的「BMad 设置」按钮将 BMad Core 安装到项目中",
+      "安装后，可通过聊天右下角的 BMad 代理按钮快速调用专业代理",
+      "代理包括：SM（Scrum Master）、PM（项目经理）、Dev（开发者）、QA（质量保证）等"
+    ],
+    "keyboardShortcuts": "键盘快捷键",
+    "shortcutKey": "快捷键",
+    "shortcutAction": "操作",
+    "shortcuts": {
+      "enter": "发送消息（桌面端）",
+      "shiftEnter": "换行（桌面端）",
+      "escape": "停止流式响应 / 关闭弹窗",
+      "ctrlC": "停止流式响应（未选中文本时）",
+      "f7": "在 Diff 查看器中导航更改（上一个/下一个）",
+      "slash": "打开斜杠命令面板"
+    }
+  },
+  "tabs": {
+    "global": "全局设置",
+    "project": "项目设置",
+    "telegram": "Telegram 通知",
+    "advanced": "高级设置",
+    "help": "帮助",
+    "about": "关于"
+  },
+  "permissionMode": {
+    "planDescription": "Claude 只制定计划，不修改文件",
+    "askDescription": "修改文件前请求批准",
+    "autoDescription": "自动批准文件修改",
+    "bypassDescription": "跳过所有权限请求",
+    "selectorAria": "权限模式：{{label}}。{{description}}。点击切换到下一个模式"
+  },
+  "layout": {
+    "narrowAria": "切换到窄布局",
+    "wideAria": "切换到宽布局",
+    "narrowTitle": "窄布局",
+    "wideTitle": "宽布局"
+  },
+  "theme": {
+    "lightAria": "切换到浅色模式",
+    "darkAria": "切换到深色模式"
+  },
+  "page": {
+    "title": "设置",
+    "backAriaLabel": "返回"
+  }
+}

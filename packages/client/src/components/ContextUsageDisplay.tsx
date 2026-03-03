@@ -4,6 +4,7 @@
  * [Source: Story 5.6 - Task 7]
  */
 
+import { useTranslation } from 'react-i18next';
 import { CONTEXT_USAGE_THRESHOLDS } from '@bmad-studio/shared';
 import type { ChatUsage } from '@bmad-studio/shared';
 
@@ -29,6 +30,7 @@ const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact, disabled }: ContextUsageDisplayProps) {
+  const { t } = useTranslation('common');
   const hasData = contextUsage && contextUsage.contextWindow > 0;
 
   // Don't render until we have actual usage data (prevents misleading 0% display)
@@ -59,24 +61,24 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact, dis
 
   const tooltipText = [
     ...(isCritical
-      ? [`⚠ 컨텍스트가 거의 찼습니다 (${usagePercent}%)`, '클릭하여 새 세션 시작', '---']
-      : ['클릭하여 Context Compaction 실행']),
-    `컨텍스트: ${totalInputTokens.toLocaleString()} / ${effectiveLimit.toLocaleString()} 토큰 (${usagePercent}%)`,
-    `  (전체 윈도우: ${contextUsage.contextWindow.toLocaleString()} - 출력 예약: ${OUTPUT_TOKEN_RESERVE.toLocaleString()} - 버퍼: ${SAFETY_BUFFER.toLocaleString()})`,
-    `  - 신규: ${contextUsage.inputTokens.toLocaleString()}`,
-    `  - 캐시 생성: ${contextUsage.cacheCreationInputTokens.toLocaleString()}`,
-    `  - 캐시 읽기: ${contextUsage.cacheReadInputTokens.toLocaleString()}`,
-    `출력 토큰: ${contextUsage.outputTokens.toLocaleString()}`,
-    `비용: $${contextUsage.totalCostUSD.toFixed(4)}`,
+      ? [t('contextUsage.criticalWarning', { percent: usagePercent }), t('contextUsage.clickNewSession'), '---']
+      : [t('contextUsage.clickCompaction')]),
+    t('contextUsage.contextTokens', { used: totalInputTokens.toLocaleString(), limit: effectiveLimit.toLocaleString(), percent: usagePercent }),
+    t('contextUsage.contextWindow', { window: contextUsage.contextWindow.toLocaleString(), reserve: OUTPUT_TOKEN_RESERVE.toLocaleString(), buffer: SAFETY_BUFFER.toLocaleString() }),
+    t('contextUsage.newTokens', { value: contextUsage.inputTokens.toLocaleString() }),
+    t('contextUsage.cacheCreation', { value: contextUsage.cacheCreationInputTokens.toLocaleString() }),
+    t('contextUsage.cacheRead', { value: contextUsage.cacheReadInputTokens.toLocaleString() }),
+    t('contextUsage.outputTokens', { value: contextUsage.outputTokens.toLocaleString() }),
+    t('contextUsage.cost', { cost: contextUsage.totalCostUSD.toFixed(4) }),
     '---',
-    '※ tool 실행 중에는 추정치 (실제 값과 약간 차이날 수 있음)',
+    t('contextUsage.estimateNote'),
   ].join('\n');
 
   return (
     <button
       type="button"
       role="status"
-      aria-label={`컨텍스트 사용량 ${usagePercent}%`}
+      aria-label={t('contextUsage.ariaLabel', { percent: usagePercent })}
       title={tooltipText}
       disabled={disabled}
       className={`flex items-center gap-2 ml-1 sm:ml-3 mr-0.5 transition-opacity ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:opacity-80'}`}

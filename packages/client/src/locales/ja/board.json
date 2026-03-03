@@ -1,1 +1,97 @@
-{}
+{
+  "config": {
+    "title": "ボード設定",
+    "columnDefinition": "カラム定義",
+    "statusMapping": "ステータス → カラムマッピング",
+    "selectColor": "色を選択",
+    "columnNamePlaceholder": "カラム名",
+    "moveUp": "上に移動",
+    "moveDown": "下に移動",
+    "delete": "削除",
+    "resetDefaults": "デフォルトに戻す",
+    "resetConfirm": "デフォルト設定に戻しますか？",
+    "saving": "保存中..."
+  },
+  "issue": {
+    "add": "課題を追加",
+    "edit": "課題を編集",
+    "title": "タイトル *",
+    "titlePlain": "タイトル",
+    "titlePlaceholder": "課題のタイトルを入力",
+    "description": "説明",
+    "descriptionPlaceholder": "課題の説明を入力（任意）",
+    "severity": "重要度",
+    "severityLabel": "重要度：",
+    "severityLow": "低",
+    "severityMedium": "中",
+    "severityHigh": "高",
+    "severityCritical": "致命的",
+    "type": "タイプ",
+    "typeLabel": "タイプ：",
+    "typeBug": "バグ",
+    "typeImprovement": "改善",
+    "quickFix": "クイック修正",
+    "promoteToStory": "ストーリーに昇格",
+    "alreadyPromotedToStory": "既にストーリーに昇格済み",
+    "promoteToEpic": "エピックに昇格",
+    "alreadyPromotedToEpic": "既にエピックに昇格済み",
+    "cannotDeleteWhileWorking": "AIが作業中は削除できません",
+    "closeConfirm": "この課題を閉じますか？",
+    "deleteConfirm": "課題「{{title}}」を削除しますか？"
+  },
+  "card": {
+    "menu": "カードメニュー"
+  },
+  "epic": {
+    "subStories": "エピックのサブストーリー",
+    "progress": "進捗",
+    "noSubStories": "サブストーリーがありません",
+    "viewSubStories": "サブストーリーを表示"
+  },
+  "story": {
+    "normalizeStatus": "ステータスを正規化 ({{rawStatus}} → {{status}})"
+  },
+  "workflow": {
+    "validateStory": "ストーリーを検証",
+    "startDevelopment": "開発を開始",
+    "requestQA": "QAをリクエスト",
+    "applyQAFix": "QA修正を適用"
+  },
+  "status": {
+    "open": "オープン",
+    "draft": "ドラフト",
+    "approved": "承認済み",
+    "inProgress": "進行中",
+    "blocked": "ブロック中",
+    "review": "レビュー",
+    "done": "完了",
+    "closed": "クローズ"
+  },
+  "errors": {
+    "saveFailed": "保存に失敗しました。",
+    "resetFailed": "リセットに失敗しました。",
+    "updateStatusFailed": "課題ステータスの更新に失敗しました。",
+    "promoteFailed": "昇格に失敗しました。",
+    "editFailed": "課題の編集に失敗しました。",
+    "closeFailed": "課題のクローズに失敗しました。",
+    "deleteFailed": "課題の削除に失敗しました。",
+    "normalizeStatusFailed": "ステータスの正規化に失敗しました。"
+  },
+  "empty": {
+    "message": "ボードにアイテムがありません。課題を追加してみてください。",
+    "items": "アイテムなし"
+  },
+  "view": {
+    "kanban": "Kanban表示",
+    "list": "リスト表示"
+  },
+  "promote": {
+    "originalIssueHeader": "元の課題（ID：{{id}}）",
+    "none": "なし"
+  },
+  "truncated": "...（省略）",
+  "noDescription": "（説明なし）",
+  "mobileKanban": {
+    "goToColumn": "{{column}}カラムに移動"
+  }
+}

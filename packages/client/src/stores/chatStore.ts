@@ -10,6 +10,7 @@ import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { usePreferencesStore } from './preferencesStore';
 import { debugLog } from '../utils/debugLogger';
+import i18n from '../i18n';
 
 /** Delay before showing "waiting" UI (ms) — both sender and passive viewers */
 const STREAMING_UI_DELAY_MS = 1000;
@@ -698,7 +699,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         return {
           ...seg,
           status: 'error' as const,
-          toolCall: { ...seg.toolCall, output: '중단됨' },
+          toolCall: { ...seg.toolCall, output: i18n.t('notification:chat.aborted') },
         };
       }
       return seg;
@@ -916,7 +917,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         errorSegments[segIndex] = {
           ...errorSeg,
           status: 'error' as InteractiveStatus,
-          errorMessage: '연결이 끊어졌습니다. 재연결 후 다시 시도하세요',
+          errorMessage: i18n.t('notification:streaming.disconnectedRetry'),
         };
         set({ streamingSegments: errorSegments });
       }
@@ -938,7 +939,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       respondedSegments[segIndex] = {
         ...respondedSeg,
         status: 'responded' as InteractiveStatus,
-        response: response.value ?? (response.approved ? '승인됨' : '거절됨'),
+        response: response.value ?? (response.approved ? i18n.t('notification:chat.approved') : i18n.t('notification:chat.rejected')),
       };
       set({ streamingSegments: respondedSegments });
     }

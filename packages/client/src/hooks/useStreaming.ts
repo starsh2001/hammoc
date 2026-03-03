@@ -13,6 +13,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import i18n from '../i18n';
 import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
@@ -257,7 +258,7 @@ export function useStreaming() {
           return {
             ...seg,
             status: 'responded' as InteractiveStatus,
-            response: '(reconnect 전 응답됨)',
+            response: i18n.t('notification:streaming.respondedBeforeReconnect'),
           };
         }
         return seg;
@@ -460,7 +461,7 @@ export function useStreaming() {
             } else if (data.response && typeof data.response === 'object') {
               displayResponse = Object.values(data.response).flat().join(', ');
             } else {
-              displayResponse = '(다른 브라우저에서 응답됨)';
+              displayResponse = i18n.t('notification:streaming.respondedInOtherBrowser');
             }
             return { ...seg, status: 'responded' as InteractiveStatus, response: displayResponse };
           }
@@ -484,7 +485,7 @@ export function useStreaming() {
     // (respondToInteractive / respondToolPermission set state immediately).
     // The toast informs the user their response was ignored.
     const handlePermissionAlreadyResolved = (data: { requestId: string }) => {
-      toast.info('이미 다른 브라우저에서 응답되었습니다.');
+      toast.info(i18n.t('notification:streaming.alreadyResponded'));
     };
 
     // Handle tool input update (for real-time file path display)
@@ -512,7 +513,7 @@ export function useStreaming() {
           updated[staleIdx] = {
             ...seg,
             status: 'responded' as InteractiveStatus,
-            response: '(reconnect 전 응답됨)',
+            response: i18n.t('notification:streaming.respondedBeforeReconnect'),
           };
           useChatStore.setState({ streamingSegments: updated });
         }
@@ -772,12 +773,12 @@ export function useStreaming() {
         // If wasStreaming is false, this socket already called abortResponse() itself
         // (i.e., the user who initiated the abort) — skip the redundant toast.
         if (wasStreaming) {
-          toast.info('다른 브라우저에서 응답이 중단되었습니다.');
+          toast.info(i18n.t('notification:streaming.abortedInOtherBrowser'));
         }
       } else {
         // Another client took over (another-client) — lock this session
         useChatStore.setState({ isSessionLocked: true });
-        toast.warning('다른 브라우저에서 이 세션을 사용 중입니다. 새로고침 후 다시 사용할 수 있습니다.', {
+        toast.warning(i18n.t('notification:streaming.sessionInUseWarning'), {
           id: 'session-locked',
           duration: Infinity,
         });

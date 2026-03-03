@@ -86,15 +86,16 @@ describe('ToolCallCard', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('should render successful Read tool_result via ToolResultRenderer', () => {
+  it('should not render successful Read tool_result (already shown via tool_use)', () => {
     const readToolResult: HistoryMessage = {
       ...toolResultSuccess,
       toolName: 'Read',
       toolInput: { file_path: '/src/index.ts' },
     };
-    render(<ToolCallCard message={readToolResult} />);
+    const { container } = render(<ToolCallCard message={readToolResult} />);
 
-    expect(screen.getByTestId('mock-tool-result-renderer')).toBeInTheDocument();
+    // Read success results return null (skipped like Edit/Write)
+    expect(container.firstChild).toBeNull();
   });
 
   it('should render failed tool_result with error', () => {
@@ -392,7 +393,7 @@ describe('ToolCallCard', () => {
 
   // Story 7.3 - tool_result rendering integration
   describe('tool_result rendering (Story 7.3)', () => {
-    it('renders ToolResultRenderer for Read tool_result', () => {
+    it('skips result rendering for Read tool_result (success)', () => {
       const readResult: HistoryMessage = {
         id: 'msg-read-result',
         type: 'tool_result',
@@ -403,10 +404,10 @@ describe('ToolCallCard', () => {
         toolResult: { success: true, output: 'const x = 1;' },
       };
 
-      render(<ToolCallCard message={readResult} />);
+      const { container } = render(<ToolCallCard message={readResult} />);
 
-      expect(screen.getByTestId('mock-tool-result-renderer')).toBeInTheDocument();
-      expect(screen.getByText(/Read/)).toBeInTheDocument();
+      // Read success results return null (already shown via tool_use card)
+      expect(container.firstChild).toBeNull();
     });
 
     it('renders ToolResultRenderer for Bash tool_result', () => {

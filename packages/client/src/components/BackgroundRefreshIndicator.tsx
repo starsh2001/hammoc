@@ -4,6 +4,7 @@
  */
 
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface BackgroundRefreshIndicatorProps {
   isRefreshing: boolean;
@@ -14,13 +15,15 @@ export function BackgroundRefreshIndicator({
   isRefreshing,
   className = '',
 }: BackgroundRefreshIndicatorProps) {
+  const { t } = useTranslation('common');
+
   if (!isRefreshing) return null;
 
   return (
     <span
       className={`inline-flex items-center ${className}`}
       role="status"
-      aria-label="백그라운드 새로고침 중"
+      aria-label={t('backgroundRefreshAria')}
     >
       <Loader2
         className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 animate-spin"

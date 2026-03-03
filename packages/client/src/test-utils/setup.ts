@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import '../i18n'; // Initialize i18n for tests (Epic 22) — forces ko via import.meta.env.MODE
 
 // Mock scrollIntoView which is not supported in jsdom
 Element.prototype.scrollIntoView = () => {};

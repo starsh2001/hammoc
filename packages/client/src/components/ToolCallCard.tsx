@@ -5,6 +5,7 @@
  */
 
 import type { HistoryMessage } from '@bmad-studio/shared';
+import { useTranslation } from 'react-i18next';
 import { XCircle } from 'lucide-react';
 import { ToolCard } from './ToolCard';
 import { ToolResultRenderer } from './ToolResultRenderer';
@@ -16,6 +17,7 @@ interface ToolCallCardProps {
 }
 
 export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
+  const { t } = useTranslation('chat');
   const isToolUse = message.type === 'tool_use';
   const isSuccess = message.toolResult?.success !== false;
 
@@ -43,13 +45,13 @@ export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
       <div
         className="flex justify-start"
         role="listitem"
-        aria-label={`도구 결과: 실패`}
+        aria-label={t('tool.resultFailed')}
       >
         <div className="max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-red-200 dark:border-red-700">
           <div className="flex items-center gap-2">
             <XCircle className="w-4 h-4 text-red-500" aria-hidden="true" />
             <span className="text-sm font-medium text-red-600 dark:text-red-400">
-              도구 실패
+              {t('tool.toolFailed')}
             </span>
           </div>
           {message.toolResult?.error && (

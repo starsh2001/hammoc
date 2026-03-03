@@ -1,1 +1,97 @@
-{}
+{
+  "config": {
+    "title": "Configuración del tablero",
+    "columnDefinition": "Definiciones de columnas",
+    "statusMapping": "Estado → Mapeo de columnas",
+    "selectColor": "Seleccionar color",
+    "columnNamePlaceholder": "Nombre de columna",
+    "moveUp": "Mover arriba",
+    "moveDown": "Mover abajo",
+    "delete": "Eliminar",
+    "resetDefaults": "Restaurar valores predeterminados",
+    "resetConfirm": "¿Restaurar la configuración predeterminada?",
+    "saving": "Guardando..."
+  },
+  "issue": {
+    "add": "Agregar incidencia",
+    "edit": "Editar incidencia",
+    "title": "Título *",
+    "titlePlain": "Título",
+    "titlePlaceholder": "Ingresa el título de la incidencia",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Describe la incidencia (opcional)",
+    "severity": "Severidad",
+    "severityLabel": "Severidad:",
+    "severityLow": "Baja",
+    "severityMedium": "Media",
+    "severityHigh": "Alta",
+    "severityCritical": "Crítica",
+    "type": "Tipo",
+    "typeLabel": "Tipo:",
+    "typeBug": "Bug",
+    "typeImprovement": "Mejora",
+    "quickFix": "Corrección rápida",
+    "promoteToStory": "Promover a historia",
+    "alreadyPromotedToStory": "Ya promovido a historia",
+    "promoteToEpic": "Promover a épica",
+    "alreadyPromotedToEpic": "Ya promovido a épica",
+    "cannotDeleteWhileWorking": "No se puede eliminar mientras la IA está trabajando",
+    "closeConfirm": "¿Cerrar esta incidencia?",
+    "deleteConfirm": "¿Eliminar la incidencia \"{{title}}\"?"
+  },
+  "card": {
+    "menu": "Menú de tarjeta"
+  },
+  "epic": {
+    "subStories": "Sub-historias de la épica",
+    "progress": "Progreso",
+    "noSubStories": "Sin sub-historias",
+    "viewSubStories": "Ver sub-historias"
+  },
+  "story": {
+    "normalizeStatus": "Normalizar estado ({{rawStatus}} → {{status}})"
+  },
+  "workflow": {
+    "validateStory": "Validar historia",
+    "startDevelopment": "Iniciar desarrollo",
+    "requestQA": "Solicitar QA",
+    "applyQAFix": "Aplicar corrección QA"
+  },
+  "status": {
+    "open": "Abierto",
+    "draft": "Borrador",
+    "approved": "Aprobado",
+    "inProgress": "En progreso",
+    "blocked": "Bloqueado",
+    "review": "Revisión",
+    "done": "Hecho",
+    "closed": "Cerrado"
+  },
+  "errors": {
+    "saveFailed": "Error al guardar.",
+    "resetFailed": "Error al restablecer.",
+    "updateStatusFailed": "Error al actualizar el estado de la incidencia.",
+    "promoteFailed": "Error al promover.",
+    "editFailed": "Error al editar la incidencia.",
+    "closeFailed": "Error al cerrar la incidencia.",
+    "deleteFailed": "Error al eliminar la incidencia.",
+    "normalizeStatusFailed": "Error al normalizar el estado."
+  },
+  "empty": {
+    "message": "No hay elementos en el tablero. Intenta agregar una incidencia.",
+    "items": "Sin elementos"
+  },
+  "view": {
+    "kanban": "Vista Kanban",
+    "list": "Vista de lista"
+  },
+  "promote": {
+    "originalIssueHeader": "Incidencia original (ID: {{id}})",
+    "none": "Ninguno"
+  },
+  "truncated": "...(truncado)",
+  "noDescription": "(Sin descripción)",
+  "mobileKanban": {
+    "goToColumn": "Ir a la columna {{column}}"
+  }
+}

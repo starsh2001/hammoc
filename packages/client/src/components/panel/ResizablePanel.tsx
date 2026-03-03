@@ -5,6 +5,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePanelStore } from '../../stores/panelStore';
 
 interface ResizableHandleProps {
@@ -24,6 +25,7 @@ function ResizableHandle({
   minWidth = 280,
   maxWidthRatio = 0.6,
 }: ResizableHandleProps) {
+  const { t } = useTranslation('common');
   // Refs — no re-render needed for drag tracking values
   const isDragging = useRef(false);
   const startX = useRef(0);
@@ -123,7 +125,7 @@ function ResizableHandle({
       onPointerDown={handlePointerDown}
       role="separator"
       aria-orientation="vertical"
-      aria-label="패널 폭 조절"
+      aria-label={t('panel.resizeHandle')}
       aria-valuenow={width}
       aria-valuemin={minWidth}
       aria-valuemax={maxWidth}

@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FileText, Maximize2, Check, X, CheckCircle, XCircle } from 'lucide-react';
 import { DiffViewer } from './DiffViewer';
 
@@ -59,6 +60,7 @@ export function PermissionCard({
   onApprove,
   onReject,
 }: PermissionCardProps) {
+  const { t } = useTranslation('chat');
   const [showDiffViewer, setShowDiffViewer] = useState(false);
   const { filePath, original, modified } = extractDiffData(toolName, toolInput);
   const { added, removed } = computeLineChanges(original, modified);
@@ -81,7 +83,7 @@ export function PermissionCard({
         <button
           onClick={() => setShowDiffViewer(true)}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-t-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-          aria-label={`파일 변경사항 보기: ${filePath}`}
+          aria-label={t('permission.viewChanges', { path: filePath })}
         >
           <FileText className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" aria-hidden="true" />
           <span
@@ -92,7 +94,7 @@ export function PermissionCard({
           </span>
           <span
             className="text-xs whitespace-nowrap ml-auto"
-            title="블록 기준 근사치입니다. 탭하여 정확한 Diff를 확인하세요"
+            title={t('permission.approximateHint')}
           >
             <span className="text-green-600 dark:text-green-400">+{added}</span>
             <span className="text-gray-400 mx-0.5">/</span>
@@ -117,14 +119,14 @@ export function PermissionCard({
               bg-green-50 hover:bg-green-100 text-green-700 border-green-200
               dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 dark:border-green-800
               disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            aria-label="변경사항 승인"
+            aria-label={t('permission.approveChanges')}
           >
             {status === 'completed' ? (
               <CheckCircle className="w-4 h-4" aria-hidden="true" />
             ) : (
               <Check className="w-4 h-4" aria-hidden="true" />
             )}
-            승인
+            {t('permission.approve')}
           </button>
           <button
             onClick={() => onReject?.()}
@@ -133,14 +135,14 @@ export function PermissionCard({
               bg-red-50 hover:bg-red-100 text-red-700 border-red-200
               dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 dark:border-red-800
               disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            aria-label="변경사항 거절"
+            aria-label={t('permission.rejectChanges')}
           >
             {status === 'error' ? (
               <XCircle className="w-4 h-4" aria-hidden="true" />
             ) : (
               <X className="w-4 h-4" aria-hidden="true" />
             )}
-            거절
+            {t('permission.reject')}
           </button>
         </div>
       </div>

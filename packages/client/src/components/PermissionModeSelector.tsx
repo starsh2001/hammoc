@@ -9,7 +9,8 @@
  * - Neon-style colors per mode
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PermissionMode } from '@bmad-studio/shared';
 
 interface PermissionModeSelectorProps {
@@ -18,48 +19,59 @@ interface PermissionModeSelectorProps {
   disabled?: boolean;
 }
 
-const PERMISSION_MODE_OPTIONS: Array<{
+const PERMISSION_MODE_BASE: Array<{
   value: PermissionMode;
   label: string;
-  description: string;
+  descriptionKey: string;
   // Neon style: lighter bg, darker/saturated border
   colorClass: string;
 }> = [
   {
     value: 'plan',
     label: 'Plan',
-    description: 'Claude가 계획만 세우고 파일을 수정하지 않습니다',
+    descriptionKey: 'permissionMode.planDescription',
     colorClass: 'bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900/40 dark:border-blue-400 dark:text-blue-300',
   },
   {
     value: 'default',
     label: 'Ask',
-    description: '파일 수정 전 승인을 요청합니다',
+    descriptionKey: 'permissionMode.askDescription',
     colorClass: 'bg-orange-100 border-orange-500 text-orange-700 dark:bg-orange-900/40 dark:border-orange-400 dark:text-orange-300',
   },
   {
     value: 'acceptEdits',
     label: 'Auto',
-    description: '파일 수정을 자동으로 승인합니다',
+    descriptionKey: 'permissionMode.autoDescription',
     colorClass: 'bg-gray-50 border-gray-400 text-gray-700 dark:bg-gray-800 dark:border-gray-400 dark:text-gray-300',
   },
   {
     value: 'bypassPermissions',
     label: 'Bypass',
-    description: '모든 권한 요청을 건너뜁니다',
+    descriptionKey: 'permissionMode.bypassDescription',
     colorClass: 'bg-red-100 border-red-500 text-red-700 dark:bg-red-900/40 dark:border-red-400 dark:text-red-300',
   },
 ];
 
 export function PermissionModeSelector({ mode, onModeChange, disabled }: PermissionModeSelectorProps) {
-  const currentIndex = PERMISSION_MODE_OPTIONS.findIndex((opt) => opt.value === mode);
-  const currentOption = PERMISSION_MODE_OPTIONS[currentIndex] || PERMISSION_MODE_OPTIONS[1]; // default to Ask
+  const { t } = useTranslation('settings');
+
+  const options = useMemo(
+    () =>
+      PERMISSION_MODE_BASE.map((opt) => ({
+        ...opt,
+        description: t(opt.descriptionKey),
+      })),
+    [t]
+  );
+
+  const currentIndex = options.findIndex((opt) => opt.value === mode);
+  const currentOption = options[currentIndex] || options[1]; // default to Ask
 
   const handleClick = useCallback(() => {
     if (disabled) return;
-    const nextIndex = (currentIndex + 1) % PERMISSION_MODE_OPTIONS.length;
-    onModeChange(PERMISSION_MODE_OPTIONS[nextIndex].value);
-  }, [disabled, currentIndex, onModeChange]);
+    const nextIndex = (currentIndex + 1) % options.length;
+    onModeChange(options[nextIndex].value);
+  }, [disabled, currentIndex, onModeChange, options]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -70,15 +82,15 @@ export function PermissionModeSelector({ mode, onModeChange, disabled }: Permiss
         handleClick();
       } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault();
-        const nextIndex = (currentIndex + 1) % PERMISSION_MODE_OPTIONS.length;
-        onModeChange(PERMISSION_MODE_OPTIONS[nextIndex].value);
+        const nextIndex = (currentIndex + 1) % options.length;
+        onModeChange(options[nextIndex].value);
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault();
-        const prevIndex = (currentIndex - 1 + PERMISSION_MODE_OPTIONS.length) % PERMISSION_MODE_OPTIONS.length;
-        onModeChange(PERMISSION_MODE_OPTIONS[prevIndex].value);
+        const prevIndex = (currentIndex - 1 + options.length) % options.length;
+        onModeChange(options[prevIndex].value);
       }
     },
-    [disabled, currentIndex, onModeChange, handleClick]
+    [disabled, currentIndex, onModeChange, handleClick, options]
   );
 
   // Prevent focus from moving to button on both desktop and mobile.
@@ -95,7 +107,7 @@ export function PermissionModeSelector({ mode, onModeChange, disabled }: Permiss
       onKeyDown={handleKeyDown}
       disabled={disabled}
       title={currentOption.description}
-      aria-label={`권한 모드: ${currentOption.label}. ${currentOption.description}. 클릭하여 다음 모드로 전환`}
+      aria-label={t('permissionMode.selectorAria', { label: currentOption.label, description: currentOption.description })}
       className={`
         w-[60px] h-[28px] self-center ml-0.4 mr-1.0 text-xs font-semibold rounded-md transition-all
         border-1

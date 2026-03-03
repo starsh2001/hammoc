@@ -133,7 +133,7 @@ describe('QueueTemplateDialog', () => {
     fireEvent.change(textarea, { target: { value: '/dev {story_num} go' } });
 
     await waitFor(() => {
-      expect(screen.getByText('3. 미리보기')).toBeInTheDocument();
+      expect(screen.getByText('미리보기')).toBeInTheDocument();
     });
   });
 
@@ -143,7 +143,7 @@ describe('QueueTemplateDialog', () => {
     await waitFor(() => screen.getByText(/1\.1/));
 
     // Switch to file tab
-    fireEvent.click(screen.getByText('파일 로드'));
+    fireEvent.click(screen.getByText('파일'));
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['/dev {story_num}'], 'template.txt', { type: 'text/plain' });
@@ -152,7 +152,7 @@ describe('QueueTemplateDialog', () => {
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
-      const previewSection = screen.queryByText('3. 미리보기');
+      const previewSection = screen.queryByText('미리보기');
       // Preview should appear after file load + stories selected
       expect(previewSection).toBeInTheDocument();
     });
@@ -166,7 +166,7 @@ describe('QueueTemplateDialog', () => {
     const textarea = screen.getByPlaceholderText(/story_num/);
     fireEvent.change(textarea, { target: { value: '/dev {story_num}' } });
 
-    await waitFor(() => screen.getByText('3. 미리보기'));
+    await waitFor(() => screen.getByText('미리보기'));
 
     const loadBtn = screen.getByText('에디터에 로드');
     fireEvent.click(loadBtn);
@@ -182,7 +182,7 @@ describe('QueueTemplateDialog', () => {
     const textarea = screen.getByPlaceholderText(/story_num/);
     fireEvent.change(textarea, { target: { value: '/dev {story_num}' } });
 
-    await waitFor(() => screen.getByText('3. 미리보기'));
+    await waitFor(() => screen.getByText('미리보기'));
 
     // @pause should be in preview by default (insertPause=true)
     const previewEl = document.querySelector('pre');
@@ -230,7 +230,7 @@ describe('QueueTemplateDialog', () => {
     await waitFor(() => screen.getByText(/1\.1/));
 
     // Switch to saved templates tab
-    fireEvent.click(screen.getByText('저장된 템플릿'));
+    fireEvent.click(screen.getByText('저장됨'));
 
     await waitFor(() => screen.getByText('Basic Dev'));
 
@@ -248,14 +248,14 @@ describe('QueueTemplateDialog', () => {
     render(<QueueTemplateDialog {...defaultProps} />);
     await waitFor(() => screen.getByText(/1\.1/));
 
-    fireEvent.click(screen.getByText('저장된 템플릿'));
+    fireEvent.click(screen.getByText('저장됨'));
 
     await waitFor(() => screen.getByText('Basic Dev'));
     fireEvent.click(screen.getByText('Basic Dev'));
 
     // After selecting, the preview should show generated content
     await waitFor(() => {
-      expect(screen.getByText('3. 미리보기')).toBeInTheDocument();
+      expect(screen.getByText('미리보기')).toBeInTheDocument();
     });
   });
 
@@ -284,7 +284,7 @@ describe('QueueTemplateDialog', () => {
     await waitFor(() => screen.getByText(/1\.1/));
 
     // Go to saved tab
-    fireEvent.click(screen.getByText('저장된 템플릿'));
+    fireEvent.click(screen.getByText('저장됨'));
     await waitFor(() => screen.getByText('Basic Dev'));
 
     const editBtn = screen.getByLabelText('Basic Dev 편집');
@@ -308,7 +308,7 @@ describe('QueueTemplateDialog', () => {
     await waitFor(() => screen.getByText(/1\.1/));
 
     // Go to saved tab and edit
-    fireEvent.click(screen.getByText('저장된 템플릿'));
+    fireEvent.click(screen.getByText('저장됨'));
     await waitFor(() => screen.getByText('Basic Dev'));
 
     const editBtn = screen.getByLabelText('Basic Dev 편집');
@@ -334,7 +334,7 @@ describe('QueueTemplateDialog', () => {
     render(<QueueTemplateDialog {...defaultProps} />);
     await waitFor(() => screen.getByText(/1\.1/));
 
-    fireEvent.click(screen.getByText('파일 로드'));
+    fireEvent.click(screen.getByText('파일'));
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput.accept).toContain('.txt');
@@ -348,7 +348,7 @@ describe('QueueTemplateDialog', () => {
     render(<QueueTemplateDialog {...defaultProps} />);
     await waitFor(() => screen.getByText(/1\.1/));
 
-    fireEvent.click(screen.getByText('파일 로드'));
+    fireEvent.click(screen.getByText('파일'));
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const emptyFile = new File([''], 'empty.txt', { type: 'text/plain' });
@@ -367,7 +367,7 @@ describe('QueueTemplateDialog', () => {
     render(<QueueTemplateDialog {...defaultProps} />);
     await waitFor(() => screen.getByText(/1\.1/));
 
-    fireEvent.click(screen.getByText('파일 로드'));
+    fireEvent.click(screen.getByText('파일'));
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const bigFile = new File(['x'.repeat(200000)], 'big.txt', { type: 'text/plain' });

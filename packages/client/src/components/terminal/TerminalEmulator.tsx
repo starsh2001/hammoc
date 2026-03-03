@@ -8,6 +8,7 @@
  */
 
 import { useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -91,6 +92,7 @@ export function TerminalEmulator({
   autoFocus = false,
   onReady,
 }: TerminalEmulatorProps) {
+  const { t } = useTranslation('common');
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -220,7 +222,7 @@ export function TerminalEmulator({
       >
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">연결 중...</span>
+          <span className="text-sm">{t('terminal.connecting')}</span>
         </div>
       </div>
     );
@@ -233,7 +235,7 @@ export function TerminalEmulator({
       {status === 'disconnected' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
           <div className="text-sm text-white bg-red-600/90 px-4 py-2 rounded">
-            연결이 끊어졌습니다
+            {t('terminal.disconnected')}
           </div>
         </div>
       )}
@@ -241,7 +243,7 @@ export function TerminalEmulator({
       {status === 'exited' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
           <div className="text-sm text-white bg-gray-600/90 px-4 py-2 rounded">
-            프로세스 종료 (code: {session?.exitCode ?? '?'})
+            {t('terminal.exited', { exitCode: session?.exitCode ?? '?' })}
           </div>
         </div>
       )}
