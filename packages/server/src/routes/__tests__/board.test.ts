@@ -12,6 +12,7 @@ const TEST_PROJECT_ROOT = path.join(os.tmpdir(), `board-route-test-${Date.now()}
 vi.mock('../../services/projectService.js', () => ({
   projectService: {
     resolveOriginalPath: vi.fn(),
+    readProjectSettings: vi.fn().mockResolvedValue({}),
   },
 }));
 
@@ -26,6 +27,7 @@ import { projectService } from '../../services/projectService.js';
 import { bmadStatusService } from '../../services/bmadStatusService.js';
 
 const mockResolveOriginalPath = vi.mocked(projectService.resolveOriginalPath);
+const mockReadProjectSettings = vi.mocked(projectService.readProjectSettings);
 const mockScanProject = vi.mocked(bmadStatusService.scanProject);
 
 describe('Board Routes', () => {
@@ -48,6 +50,7 @@ describe('Board Routes', () => {
     );
 
     mockResolveOriginalPath.mockResolvedValue(TEST_PROJECT_ROOT);
+    mockReadProjectSettings.mockResolvedValue({} as never);
     mockScanProject.mockResolvedValue({
       config: {} as never,
       documents: {} as never,

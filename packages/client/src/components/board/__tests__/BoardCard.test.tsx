@@ -113,6 +113,37 @@ describe('BoardCard', () => {
     });
   });
 
+  describe('Status badge', () => {
+    it('should render status label on issue card', () => {
+      render(<BoardCard item={issueItem} />);
+      expect(screen.getByText('Open')).toBeInTheDocument();
+    });
+
+    it('should render status label on story card', () => {
+      render(<BoardCard item={storyItem} />);
+      expect(screen.getByText('Done')).toBeInTheDocument();
+    });
+
+    it('should render status label on epic card', () => {
+      render(<BoardCard item={epicItem} />);
+      expect(screen.getByText('In Progress')).toBeInTheDocument();
+    });
+
+    it('should render Blocked status with red badge', () => {
+      const blockedStory: BoardItem = {
+        id: 'story-blocked',
+        type: 'story',
+        title: 'Blocked Feature',
+        status: 'Blocked',
+        epicNumber: 1,
+      };
+      const { container } = render(<BoardCard item={blockedStory} />);
+      const badge = screen.getByText('Blocked');
+      expect(badge).toBeInTheDocument();
+      expect(badge.className).toContain('bg-red-100');
+    });
+  });
+
   describe('Context menu integration', () => {
     it('should render ⋮ button when action callbacks are provided', () => {
       render(

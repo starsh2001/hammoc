@@ -5,6 +5,7 @@
 
 import type { BoardItem } from '@bmad-studio/shared';
 import { CardContextMenu } from './CardContextMenu';
+import { STATUS_LABEL, STATUS_BADGE_COLOR } from './constants';
 
 export interface CardActionCallbacks {
   onQuickFix?: (item: BoardItem) => void;
@@ -129,6 +130,13 @@ export function BoardCard({
           </div>
         </div>
       )}
+
+      {/* Status badge */}
+      <div className="mt-2">
+        <span className={`text-xs px-1.5 py-0.5 rounded-full ${STATUS_BADGE_COLOR[item.status]}`}>
+          {STATUS_LABEL[item.status]}
+        </span>
+      </div>
     </div>
   );
 }
