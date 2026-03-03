@@ -1,0 +1,50 @@
+{
+  "global": {
+    "theme": "Theme",
+    "themeOption": {
+      "dark": "Dark",
+      "light": "Light",
+      "system": "System"
+    },
+    "defaultModel": "Default Model",
+    "language": "Language",
+    "permissionMode": "Permission Mode",
+    "permissionDesc": {
+      "plan": "Suggests a plan before code changes",
+      "default": "Always asks for confirmation before editing files",
+      "acceptEdits": "Automatically performs file edits",
+      "bypass": "Skips all permission checks (including Bash)"
+    },
+    "markdownMode": "Markdown File Open Mode",
+    "markdownOption": {
+      "edit": "Edit",
+      "preview": "Preview"
+    },
+    "markdownDesc": "Default mode when opening markdown files.",
+    "fileExplorerView": "File Explorer Default View",
+    "fileExplorerOption": {
+      "grid": "Finder View",
+      "list": "List View"
+    },
+    "fileExplorerDesc": "Default view mode when opening the file explorer.",
+    "chatTimeout": "Chat Timeout",
+    "chatTimeoutOverride": "(Set by environment variable)",
+    "chatTimeoutDesc": "Time to automatically abort request when no response is received.",
+    "timeoutOption": {
+      "1m": "1 min",
+      "3m": "3 min",
+      "5mDefault": "5 min (default)",
+      "10m": "10 min",
+      "30m": "30 min"
+    }
+  },
+  "toast": {
+    "themeChanged": "Theme changed",
+    "modelChanged": "Default model changed",
+    "permissionChanged": "Permission Mode changed",
+    "timeoutChanged": "Chat timeout changed",
+    "markdownModeChanged": "Markdown default mode changed",
+    "fileExplorerViewChanged": "File explorer default view changed",
+    "languageChanged": "Language changed"
+  }
+}

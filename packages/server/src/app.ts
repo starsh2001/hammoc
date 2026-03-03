@@ -24,9 +24,14 @@ import queueRoutes from './routes/queue.js';
 import gitRoutes from './routes/git.js';
 import dashboardRoutes from './routes/dashboard.js';
 import boardRoutes from './routes/board.js';
+import serverRoutes from './routes/server.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
+import { i18nMiddleware } from './middleware/i18n.js';
 import { createLogger } from './utils/logger.js';
+
+// Initialize server i18n (Epic 22)
+import './i18n.js';
 
 const log = createLogger('app');
 
@@ -55,6 +60,9 @@ export async function createApp(): Promise<Express> {
 
   // Authentication middleware (Story 2.5 - must be after session)
   app.use(authMiddlewareWithExclusions);
+
+  // i18n middleware (Epic 22 - must be before routes)
+  app.use(i18nMiddleware);
 
   // Health check endpoint (AC: 3)
   app.get('/health', (_req: Request, res: Response) => {
@@ -105,6 +113,9 @@ export async function createApp(): Promise<Express> {
 
   // Board routes (Story 21.1)
   app.use('/api/projects', boardRoutes);
+
+  // Server management routes (restart)
+  app.use('/api/server', serverRoutes);
 
   // Debug routes (server-side logging for client debugging)
   app.use('/api/debug', debugRoutes);

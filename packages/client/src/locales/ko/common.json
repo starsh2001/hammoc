@@ -1,0 +1,13 @@
+{
+  "button": {
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "confirm": "확인",
+    "close": "닫기"
+  },
+  "confirm": {
+    "delete": "정말 삭제하시겠습니까?",
+    "deleteItem": "{{name}}을(를) 삭제하시겠습니까?"
+  }
+}

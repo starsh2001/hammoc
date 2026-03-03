@@ -123,6 +123,8 @@ export interface BoardItem {
   type: BoardItemType;
   title: string;
   status: BoardItemStatus;
+  /** Original status from story file when it differs from the mapped status */
+  rawStatus?: string;
   description?: string;
   severity?: 'low' | 'medium' | 'high' | 'critical';
   issueType?: 'bug' | 'improvement';

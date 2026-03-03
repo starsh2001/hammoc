@@ -33,6 +33,7 @@ export function BoardListView({
   onPromote,
   onEdit,
   onClose,
+  onDelete,
   onWorkflowAction,
   onViewEpicStories,
 }: BoardListViewProps) {
@@ -110,6 +111,7 @@ export function BoardListView({
                     onPromote={onPromote}
                     onEdit={onEdit}
                     onClose={onClose}
+                    onDelete={onDelete}
                     onWorkflowAction={onWorkflowAction}
                     onViewEpicStories={onViewEpicStories}
                   />

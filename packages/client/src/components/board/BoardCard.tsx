@@ -12,8 +12,10 @@ export interface CardActionCallbacks {
   onPromote?: (item: BoardItem, targetType: 'story' | 'epic') => void;
   onEdit?: (item: BoardItem) => void;
   onClose?: (item: BoardItem) => void;
+  onDelete?: (item: BoardItem) => void;
   onWorkflowAction?: (item: BoardItem) => void;
   onViewEpicStories?: (item: BoardItem) => void;
+  onNormalizeStatus?: (item: BoardItem) => void;
 }
 
 interface BoardCardProps extends CardActionCallbacks {
@@ -48,8 +50,10 @@ export function BoardCard({
   onPromote,
   onEdit,
   onClose,
+  onDelete,
   onWorkflowAction,
   onViewEpicStories,
+  onNormalizeStatus,
 }: BoardCardProps) {
   const typeBadge = TYPE_BADGE[item.type];
 
@@ -73,8 +77,10 @@ export function BoardCard({
           onPromote={onPromote}
           onEdit={onEdit}
           onClose={onClose}
+          onDelete={onDelete}
           onWorkflowAction={onWorkflowAction}
           onViewEpicStories={onViewEpicStories}
+          onNormalizeStatus={onNormalizeStatus}
         />
       </div>
 

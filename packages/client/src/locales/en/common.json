@@ -1,0 +1,13 @@
+{
+  "button": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "close": "Close"
+  },
+  "confirm": {
+    "delete": "Are you sure you want to delete?",
+    "deleteItem": "Are you sure you want to delete {{name}}?"
+  }
+}

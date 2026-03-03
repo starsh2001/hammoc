@@ -13,17 +13,19 @@ import { useTerminalStore } from '../stores/terminalStore';
 import { BrandLogo } from '../components/BrandLogo';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
+import { ConnectionStatusIndicator } from '../components/ConnectionStatusIndicator';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useTheme } from '../hooks/useTheme';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 const tabs: Array<{ id: string; label: string; icon: typeof LayoutDashboard; path: string }> = [
   { id: 'overview', label: '개요', icon: LayoutDashboard, path: '' },
+  { id: 'board', label: '보드', icon: Kanban, path: '/board' },
   { id: 'sessions', label: '세션', icon: MessageSquare, path: '/sessions' },
   { id: 'queue', label: '큐 러너', icon: ListOrdered, path: '/queue' },
   { id: 'files', label: '파일', icon: FolderOpen, path: '/files' },
   { id: 'git', label: 'Git', icon: GitBranch, path: '/git' },
   { id: 'terminal', label: '터미널', icon: Terminal, path: '/terminal' },
-  { id: 'board', label: '보드', icon: Kanban, path: '/board' },
 ];
 
 export function ProjectTabLayout() {
@@ -32,6 +34,7 @@ export function ProjectTabLayout() {
   const location = useLocation();
   const { projects, fetchProjects } = useProjectStore();
   const { logout } = useAuthStore();
+  const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
 
   // Story 17.5: Terminal access control
   const terminalAccess = useTerminalStore((state) => state.terminalAccess);
@@ -106,6 +109,13 @@ export function ProjectTabLayout() {
 
           {/* Right side actions */}
           <div className="flex items-center gap-1 ml-4">
+            <ConnectionStatusIndicator
+              status={connectionStatus}
+              reconnectAttempt={reconnectAttempt}
+              lastError={lastError}
+              onReconnect={connect}
+              compact
+            />
             <LayoutToggleButton className="hidden sm:block" />
             <ThemeToggleButton className="hidden sm:block" />
             <button

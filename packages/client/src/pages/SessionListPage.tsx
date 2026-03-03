@@ -21,7 +21,9 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useSkeletonCount } from '../hooks/useSkeletonCount';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useTheme } from '../hooks/useTheme';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { BrandLogo } from '../components/BrandLogo';
+import { ConnectionStatusIndicator } from '../components/ConnectionStatusIndicator';
 import { generateUUID } from '../utils/uuid';
 
 
@@ -67,6 +69,7 @@ export function SessionListPage() {
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
   useClickOutside(overflowMenuRef, () => setOverflowMenuOpen(false));
+  const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
 
   // Get original project path for display
   const projectFullPath = useMemo(() => {
@@ -311,6 +314,15 @@ export function SessionListPage() {
 
           {/* Right side: Actions */}
           <div className="flex items-center gap-1 ml-4">
+          {!selectionMode && (
+            <ConnectionStatusIndicator
+              status={connectionStatus}
+              reconnectAttempt={reconnectAttempt}
+              lastError={lastError}
+              onReconnect={connect}
+              compact
+            />
+          )}
           {selectionMode ? (
             <>
               {selectedIds.size < sessions.length ? (

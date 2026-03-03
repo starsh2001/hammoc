@@ -5,7 +5,6 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { toast } from 'sonner';
 import { getSocket } from '../services/socket';
 import type { ConnectionStatus } from '@bmad-studio/shared';
 import { debugLogger } from '../utils/debugLogger';
@@ -36,11 +35,9 @@ export function useWebSocket(): UseWebSocketReturn {
   const [reconnectAttempt, setReconnectAttempt] = useState<number>(0);
   const [lastError, setLastError] = useState<string | null>(null);
 
-  // Track if we've been connected before (to show toast only on reconnect, not initial connect)
+  // Track if we've been connected before (to distinguish reconnect from initial connect)
   // Initialize based on current socket state
   const wasConnectedRef = useRef(socket.connected);
-  // Track if disconnect toast was shown (to avoid duplicate toasts)
-  const disconnectToastShownRef = useRef(false);
 
   const connect = useCallback(() => {
     if (!socket.connected) {
@@ -61,28 +58,14 @@ export function useWebSocket(): UseWebSocketReturn {
     }
 
     const handleConnect = () => {
-      const wasReconnecting = wasConnectedRef.current;
       setConnectionStatus('connected');
       setReconnectAttempt(0);
       setLastError(null);
-
-      // Show success toast only on reconnection (not initial connect)
-      if (wasReconnecting && disconnectToastShownRef.current) {
-        toast.success('서버에 다시 연결되었습니다.');
-        disconnectToastShownRef.current = false;
-      }
-
       wasConnectedRef.current = true;
     };
 
     const handleDisconnect = () => {
       setConnectionStatus('disconnected');
-
-      // Show error toast only if we were previously connected
-      if (wasConnectedRef.current && !disconnectToastShownRef.current) {
-        toast.error('서버와 연결이 끊어졌습니다.');
-        disconnectToastShownRef.current = true;
-      }
     };
 
     const handleReconnectAttempt = (attempt: number) => {
