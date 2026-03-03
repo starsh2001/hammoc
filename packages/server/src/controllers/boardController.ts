@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { DEFAULT_BOARD_CONFIG } from '@bmad-studio/shared';
+import { DEFAULT_BOARD_CONFIG, validateBoardConfig } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 import { issueService } from '../services/issueService.js';
 
@@ -12,9 +12,16 @@ export const boardController = {
     try {
       const { projectSlug } = req.params;
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
-      const result = await issueService.getBoard(projectRoot);
-      const settings = await projectService.readProjectSettings(projectRoot);
-      const config = settings.boardConfig ?? DEFAULT_BOARD_CONFIG;
+      const [result, settings] = await Promise.all([
+        issueService.getBoard(projectRoot),
+        projectService.readProjectSettings(projectRoot),
+      ]);
+      // Validate persisted config; fall back to default if malformed
+      let config = DEFAULT_BOARD_CONFIG;
+      if (settings.boardConfig) {
+        const configErrors = validateBoardConfig(settings.boardConfig);
+        config = configErrors.length === 0 ? settings.boardConfig : DEFAULT_BOARD_CONFIG;
+      }
       res.json({ ...result, config });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;

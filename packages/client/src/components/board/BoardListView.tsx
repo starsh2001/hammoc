@@ -3,7 +3,7 @@
  * [Source: Story 21.2 - Task 9, Story 21.3 - Task 6]
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { BoardItem, BoardConfig } from '@bmad-studio/shared';
 import { BoardCard } from './BoardCard';
@@ -39,6 +39,17 @@ export function BoardListView({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     () => getInitialExpanded(isMobile, boardConfig),
   );
+
+  // Stable key for column identity to detect config changes
+  const columnKey = useMemo(
+    () => boardConfig.columns.map((c) => c.id).join(','),
+    [boardConfig.columns],
+  );
+
+  // Reconcile expanded state when columns change
+  useEffect(() => {
+    setExpandedGroups(getInitialExpanded(isMobile, boardConfig));
+  }, [columnKey, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleGroup = (columnId: string) => {
     setExpandedGroups((prev) => {
