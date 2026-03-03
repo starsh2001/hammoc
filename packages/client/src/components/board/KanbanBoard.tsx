@@ -22,6 +22,7 @@ export function KanbanBoard({
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
+  onNormalizeStatus,
 }: KanbanBoardProps) {
   return (
     <div className="flex gap-4 overflow-x-auto h-full pb-2">
@@ -37,6 +38,7 @@ export function KanbanBoard({
           onDelete={onDelete}
           onWorkflowAction={onWorkflowAction}
           onViewEpicStories={onViewEpicStories}
+          onNormalizeStatus={onNormalizeStatus}
         />
       ))}
     </div>

@@ -61,7 +61,7 @@ describe('i18nMiddleware', () => {
     const req = mockReq('en');
     i18nMiddleware(req, mockRes(), next);
     expect(typeof req.t).toBe('function');
-    expect(req.t('error.notFound')).toBe('Resource not found');
+    expect(req.t!('error.notFound')).toBe('Resource not found');
   });
 
   it('detects zh-CN from Accept-Language', () => {

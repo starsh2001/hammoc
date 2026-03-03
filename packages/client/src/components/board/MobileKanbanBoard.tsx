@@ -25,6 +25,7 @@ export function MobileKanbanBoard({
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
+  onNormalizeStatus,
 }: MobileKanbanBoardProps) {
   const [activeColumnIndex, setActiveColumnIndex] = useState(0);
   const touchStartX = useRef(0);
@@ -110,6 +111,7 @@ export function MobileKanbanBoard({
               onDelete={onDelete}
               onWorkflowAction={onWorkflowAction}
               onViewEpicStories={onViewEpicStories}
+              onNormalizeStatus={onNormalizeStatus}
             />
           ))}
           {activeItems.length === 0 && (

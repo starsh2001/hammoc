@@ -5,8 +5,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Monorepo root: server/src/controllers → ../../..  (also works from dist/controllers)
-const MONOREPO_ROOT = path.resolve(__dirname, '..', '..', '..');
+// Monorepo root: packages/server/src/controllers → ../../../..  (also works from dist/controllers)
+const MONOREPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 // Detect dev mode: .git AND packages/server/src must both exist
 const isDevMode = fs.existsSync(path.join(MONOREPO_ROOT, '.git'))
@@ -26,17 +26,38 @@ function getPackageInfo(): { name: string; version: string } {
 let buildState: { status: 'idle' | 'building' | 'updating' | 'failed'; error?: string } = { status: 'idle' };
 
 function spawnAndExit(): void {
+  let exitCancelled = false;
+
   const child = spawn('npm', ['run', 'start'], {
     cwd: MONOREPO_ROOT,
     detached: true,
     stdio: 'ignore',
     shell: true,
   });
+
+  child.on('error', (err) => {
+    exitCancelled = true;
+    console.error('[server] Failed to spawn new process:', err.message);
+    buildState = { status: 'failed', error: `Spawn failed: ${err.message}` };
+  });
+
+  child.on('exit', (code) => {
+    if (code !== null && code !== 0) {
+      exitCancelled = true;
+      console.error(`[server] New process exited immediately with code ${code}`);
+      buildState = { status: 'failed', error: `New process exited with code ${code}` };
+    }
+  });
+
   child.unref();
   setTimeout(() => {
+    if (exitCancelled) {
+      console.log('[server] Not exiting — new process failed to start.');
+      return;
+    }
     console.log('[server] Exiting old server process.');
     process.exit(0);
-  }, 1000);
+  }, 3000);
 }
 
 export const serverController = {
