@@ -11,6 +11,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { CodeBlock } from './CodeBlock';
 
@@ -51,6 +52,7 @@ function getPreview(content: string): string {
 
 /** Expand/collapse button */
 function ExpandButton({ expanded, onToggle, totalCount }: { expanded: boolean; onToggle: () => void; totalCount?: number }) {
+  const { t } = useTranslation('chat');
   return (
     <button
       type="button"
@@ -61,12 +63,12 @@ function ExpandButton({ expanded, onToggle, totalCount }: { expanded: boolean; o
       {expanded ? (
         <>
           <ChevronUp className="w-3 h-3" aria-hidden="true" />
-          접기
+          {t('tool.collapseContent')}
         </>
       ) : (
         <>
           <ChevronDown className="w-3 h-3" aria-hidden="true" />
-          더 보기{totalCount != null ? ` (${totalCount}개)` : ''}
+          {totalCount != null ? t('tool.showMore', { count: totalCount }) : t('tool.showMoreSimple')}
         </>
       )}
     </button>

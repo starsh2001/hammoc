@@ -286,9 +286,9 @@ describe('ChatInput', () => {
       render(<ChatInput onSend={mockOnSend} />);
 
       const textarea = screen.getByRole('textbox');
-      expect(textarea.className).toContain('dark:bg-gray-800');
+      expect(textarea.className).toContain('bg-transparent');
       expect(textarea.className).toContain('dark:text-gray-100');
-      expect(textarea.className).toContain('dark:border-gray-600');
+      expect(textarea.className).toContain('dark:placeholder-gray-400');
     });
 
     it('button has dark mode classes', () => {

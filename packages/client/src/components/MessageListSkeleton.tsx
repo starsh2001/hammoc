@@ -3,18 +3,21 @@
  * [Source: Story 3.5 - Task 6]
  */
 
+import { useTranslation } from 'react-i18next';
+
 interface MessageListSkeletonProps {
   /** Number of skeleton messages to display (default: 5) */
   count?: number;
 }
 
 export function MessageListSkeleton({ count = 5 }: MessageListSkeletonProps) {
+  const { t } = useTranslation('chat');
   return (
-    <div className="space-y-4 animate-pulse" role="status" aria-label="메시지 로딩 중">
+    <div className="space-y-4 animate-pulse" role="status" aria-label={t('messageListSkeleton.ariaLabel')}>
       {Array.from({ length: count }).map((_, index) => (
         <SkeletonMessage key={index} isUser={index % 2 === 0} />
       ))}
-      <span className="sr-only">메시지를 불러오는 중입니다...</span>
+      <span className="sr-only">{t('messageListSkeleton.srText')}</span>
     </div>
   );
 }

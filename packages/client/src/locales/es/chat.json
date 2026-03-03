@@ -1,1 +1,270 @@
-{}
+{
+  "header": {
+    "ariaLabel": "Encabezado del chat",
+    "backButton": "Volver a la lista de sesiones",
+    "defaultTitle": "Chat",
+    "newSession": "Iniciar nueva sesión",
+    "refreshing": "Actualizando",
+    "refresh": "Actualizar",
+    "settings": "Configuración",
+    "logout": "Cerrar sesión"
+  },
+  "sessionTitle": {
+    "placeholder": "Ingresa nombre de sesión...",
+    "hint": "Haz clic para renombrar la sesión"
+  },
+  "agentIndicator": {
+    "ariaLabel": "Agente actual: {{agent}}"
+  },
+  "input": {
+    "placeholder": "Escribe un mensaje...",
+    "hint": "Enter para enviar, Shift+Enter para nueva línea",
+    "attachImage": "Adjuntar imagen",
+    "sessionLocked": "Sesión bloqueada",
+    "abort": "Cancelar",
+    "addToChain": "Agregar a la cadena",
+    "send": "Enviar"
+  },
+  "chainMode": {
+    "off": "Desactivar modo cadena",
+    "on": "Activar modo cadena"
+  },
+  "validation": {
+    "onlyImages": "Solo se pueden adjuntar archivos de imagen (PNG, JPEG, GIF, WebP)",
+    "unsupportedFormat": "Formato de imagen no soportado",
+    "fileTooLarge": "No se pueden adjuntar archivos de más de 10MB",
+    "maxImagesExceeded": "Se pueden adjuntar hasta 5 imágenes",
+    "failedToReadImage": "Error al leer la imagen: {{name}}"
+  },
+  "errors": {
+    "apiUnhealthy": "La API de Claude no responde. Tu mensaje podría no ser entregado.",
+    "disconnected": "Desconectado del servidor. Por favor, inténtalo de nuevo después de reconectar."
+  },
+  "attachment": {
+    "remove": "Eliminar imagen: {{name}}"
+  },
+  "interactive": {
+    "defaultHeader": "Pregunta",
+    "responded": "Respondido",
+    "approved": "Aprobado",
+    "rejected": "Rechazado",
+    "submitSelection": "Enviar selección",
+    "submit": "Enviar",
+    "other": "Otro",
+    "otherOption": "Otro (escribe el tuyo)",
+    "otherButton": "Otro...",
+    "otherPlaceholder": "Escribe tu respuesta...",
+    "otherInputLabel": "Escribe otra respuesta",
+    "submitOther": "Enviar otra respuesta",
+    "send": "Enviar",
+    "otherResponse": "Otro: {{response}}",
+    "permissionRequest": "Solicitud de permiso: {{toolName}}",
+    "sending": "Enviando",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "submitAll": "Enviar todas las respuestas",
+    "submitProgress": "Enviar ({{count}}/{{total}})"
+  },
+  "sessionListItem": {
+    "ariaLabel": "Sesión: {{prompt}}",
+    "checkbox": "Seleccionar {{prompt}}",
+    "nameInput": "Ingresa nombre de sesión...",
+    "emptySession": "(Sesión vacía)",
+    "streaming": "Transmitiendo",
+    "waiting": "Esperando",
+    "queueActive": "Ejecutor de cola activo",
+    "queue": "Cola",
+    "messageCount": "{{count}} mensajes",
+    "menu": "Menú de sesión",
+    "rename": "Renombrar",
+    "removeName": "Eliminar nombre",
+    "delete": "Eliminar sesión"
+  },
+  "messageArea": {
+    "ariaLabel": "Lista de mensajes",
+    "scrollToBottom": "Desplazarse a los mensajes más recientes"
+  },
+  "compaction": {
+    "complete": "Compactación de contexto completa — Regenerando respuesta...",
+    "inProgress": "Compactando contexto... ({{percent}}%)",
+    "inProgressNoPercent": "Compactando contexto..."
+  },
+  "inputArea": {
+    "ariaLabel": "Entrada de mensaje",
+    "placeholder": "La entrada de mensajes se implementará en la Historia 4.2."
+  },
+  "session": {
+    "back": "Volver",
+    "exitSelection": "Cancelar selección",
+    "selectedCount": "{{count}} seleccionados",
+    "selectAll": "Seleccionar todo",
+    "deselectAll": "Deseleccionar todo",
+    "delete": "Eliminar",
+    "newSession": "Nueva sesión",
+    "hideEmpty": "Ocultar sesiones vacías",
+    "showEmpty": "Mostrar sesiones vacías",
+    "deleteEmptyCount": "Eliminar {{count}} sesiones vacías",
+    "deleteEmpty": "Eliminar sesiones vacías",
+    "selectionMode": "Modo de selección",
+    "refresh": "Actualizar",
+    "settings": "Configuración",
+    "logout": "Cerrar sesión",
+    "menu": "Menú",
+    "lightMode": "Modo claro",
+    "darkMode": "Modo oscuro",
+    "loading": "Cargando",
+    "empty": {
+      "title": "Sin sesiones",
+      "description": "Inicia una nueva sesión para chatear con Claude.",
+      "action": "Iniciar nueva sesión"
+    },
+    "confirmDelete": {
+      "title": "Eliminar sesión",
+      "message": "¿Eliminar esta sesión? El archivo de sesión será eliminado permanentemente.",
+      "confirm": "Eliminar",
+      "cancel": "Cancelar"
+    },
+    "confirmBatchDelete": {
+      "title": "Eliminar sesiones",
+      "message": "¿Eliminar {{count}} sesiones seleccionadas? Los archivos de sesión serán eliminados permanentemente."
+    },
+    "confirmEmptyDelete": {
+      "title": "Eliminar sesiones vacías",
+      "message": "¿Eliminar {{count}} sesiones vacías? Los archivos de sesión serán eliminados permanentemente."
+    }
+  },
+  "messageBubble": {
+    "ariaLabel": "Mensaje de {{role}}, {{time}}",
+    "userRole": "Mi",
+    "assistantRole": "Claude",
+    "assistantName": "Claude",
+    "image": "Imagen adjunta {{index}}",
+    "copiedLabel": "Copiado",
+    "copyLabel": "Copiar mensaje",
+    "copiedTitle": "¡Copiado!",
+    "copyTitle": "Copiar al portapapeles"
+  },
+  "streamingMessage": {
+    "ariaLabel": "Claude está respondiendo",
+    "assistantName": "Claude",
+    "copiedLabel": "Copiado",
+    "copyLabel": "Copiar mensaje",
+    "copiedTitle": "¡Copiado!",
+    "copyTitle": "Copiar al portapapeles"
+  },
+  "messageListSkeleton": {
+    "ariaLabel": "Cargando mensajes",
+    "srText": "Cargando mensajes..."
+  },
+  "sessionQuickAccess": {
+    "loading": "Cargando",
+    "empty": "Sin sesiones",
+    "streaming": "Transmitiendo",
+    "waiting": "Esperando"
+  },
+  "favorites": {
+    "maxReached": "Puedes agregar hasta 20 favoritos"
+  },
+  "starFavorites": {
+    "maxReached": "Puedes agregar hasta 10 favoritos destacados"
+  },
+  "confirmModal": {
+    "agentLaunch": {
+      "title": "Confirmar inicio del agente",
+      "message": "Hay una conversación activa. ¿Iniciar el agente en una nueva sesión?"
+    },
+    "newSession": {
+      "message": "Hay una respuesta en curso. ¿Iniciar una nueva sesión?"
+    },
+    "switchSession": {
+      "message": "Hay una respuesta en curso. ¿Cambiar de sesión?"
+    }
+  },
+  "chatPage": {
+    "ariaLabel": "Página de chat",
+    "loadingPlaceholder": "Cargando...",
+    "errorPlaceholder": "Ocurrió un error",
+    "empty": {
+      "title": "Nueva sesión",
+      "description": "Inicia una nueva conversación con Claude."
+    },
+    "streaming": "Respondiendo...",
+    "default": "Escribe un mensaje...",
+    "loadingMore": "Cargando...",
+    "loadMore": "Cargar más mensajes"
+  },
+  "tool": {
+    "executionTime": "Tiempo de ejecución: {{duration}}",
+    "showResult": "Mostrar resultado",
+    "plan": "Plan",
+    "planEmpty": "Sin contenido de plan",
+    "requestedPermissions": "Permisos solicitados:",
+    "rejectedAria": "Herramienta rechazada: {{name}}",
+    "failedAria": "Herramienta fallida: {{name}}",
+    "runningAria": "Herramienta ejecutándose: {{name}}",
+    "completedAria": "Herramienta completada: {{name}}",
+    "rejected": "Rechazado",
+    "failed": "Fallido",
+    "collapse": "Contraer",
+    "showFullPath": "Mostrar ruta completa",
+    "showDiff": "Mostrar diferencias",
+    "clickToShowDiff": "Clic para mostrar diferencias",
+    "approveBypass": "Aprobar en modo Omitir",
+    "yesBypass": "Sí (Omitir)",
+    "approveAuto": "Aprobar en modo Automático",
+    "yesAuto": "Sí (Automático)",
+    "approveAsk": "Aprobar en modo Preguntar",
+    "yesAsk": "Sí (Preguntar)",
+    "rejectContinuePlanning": "Rechazar (continuar planificando)",
+    "allowTool": "Permitir ejecución de herramienta",
+    "allow": "Permitir",
+    "denyTool": "Denegar ejecución de herramienta",
+    "deny": "Denegar",
+    "resultFailed": "Resultado de herramienta: Fallido",
+    "toolFailed": "Herramienta fallida",
+    "showMore": "Mostrar más ({{count}})",
+    "showMoreSimple": "Mostrar más",
+    "detailCollapseAria": "Contraer detalles de herramienta",
+    "detailExpandAria": "Expandir detalles de herramienta",
+    "detail": "Detalle",
+    "collapseContent": "Contraer",
+    "expandContent": "Mostrar contenido completo"
+  },
+  "permission": {
+    "viewChanges": "Ver cambios del archivo: {{path}}",
+    "approximateHint": "Aproximación basada en bloques. Toca para ver diferencias exactas",
+    "approveChanges": "Aprobar cambios",
+    "approve": "Aprobar",
+    "rejectChanges": "Rechazar cambios",
+    "reject": "Rechazar"
+  },
+  "chain": {
+    "waitingAria": "Cadena de prompts: Esperando el siguiente comando — {{prompt}}",
+    "next": "Siguiente",
+    "collapseList": "Contraer lista de cadena",
+    "expandList": "Expandir lista de cadena",
+    "cancelAll": "Cancelar todos los prompts pendientes",
+    "cancelAllTitle": "Cancelar todo",
+    "removePrompt": "Eliminar prompt {{index}}",
+    "removeTitle": "Eliminar"
+  },
+  "streaming": {
+    "ariaLabel": "Claude está generando una respuesta",
+    "srText": "Claude está pensando..."
+  },
+  "markdown": {
+    "openFile": "Abrir archivo: {{href}}"
+  },
+  "model": {
+    "defaultLabel": "Predeterminado",
+    "aliases": "Alias (Último)",
+    "latestSonnet": "Último Sonnet",
+    "latestOpus": "Último Opus",
+    "latestHaiku": "Último Haiku",
+    "claude4x": "Claude 4.x",
+    "claude3x": "Claude 3.x",
+    "mostCapable": "Más capaz",
+    "selectorAria": "Modelo: {{label}}. Haz clic para cambiar el modelo",
+    "selectAria": "Seleccionar modelo"
+  }
+}

@@ -14,6 +14,7 @@ import type {
 import { DEFAULT_BOARD_CONFIG } from '@bmad-studio/shared';
 import { boardApi } from '../services/api/board';
 import { ApiError } from '../services/api/client';
+import i18n from '../i18n';
 
 interface BoardStore {
   // State
@@ -54,7 +55,7 @@ function setErrorWithAutoClear(set: (partial: Partial<BoardStore>) => void, mess
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof ApiError) return err.message;
-  return '보드 데이터를 불러오는 중 오류가 발생했습니다.';
+  return i18n.t('notification:board.loadError');
 }
 
 function getInitialViewMode(): 'kanban' | 'list' {

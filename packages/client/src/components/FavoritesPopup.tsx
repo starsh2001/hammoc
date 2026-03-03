@@ -11,6 +11,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GripVertical, X } from 'lucide-react';
 import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
 
@@ -55,6 +56,7 @@ export function FavoritesPopup({
   onRemoveStarFavorite,
   onSelectStarFavorite,
 }: FavoritesPopupProps) {
+  const { t } = useTranslation('common');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
@@ -162,11 +164,11 @@ export function FavoritesPopup({
                    border border-gray-200 dark:border-gray-700
                    shadow-lg rounded-lg z-50 p-4"
         role="listbox"
-        aria-label="즐겨찾기 커맨드 목록"
+        aria-label={t('favorites.listAria')}
         data-testid="favorites-popup"
       >
         <p className="text-sm text-gray-500 dark:text-gray-400" data-testid="favorites-empty-message">
-          즐겨찾기가 비어있습니다. 슬래시 커맨드 목록에서 ⭐을 눌러 추가하세요.
+          {t('favorites.emptyMessage')}
         </p>
       </div>
     );
@@ -180,7 +182,7 @@ export function FavoritesPopup({
                  shadow-lg rounded-lg z-50
                  max-h-[300px] overflow-y-auto"
       role="listbox"
-      aria-label="즐겨찾기 커맨드 목록"
+      aria-label={t('favorites.listAria')}
       data-testid="favorites-popup"
     >
       {/* Star favorites section (Story 9.12) — agent commands first */}
@@ -225,7 +227,7 @@ export function FavoritesPopup({
                 {/* Drag handle */}
                 <span
                   className="flex-shrink-0 cursor-grab text-gray-400"
-                  aria-label="순서 변경"
+                  aria-label={t('favorites.reorderHandle')}
                 >
                   <GripVertical className="w-4 h-4" />
                 </span>
@@ -258,7 +260,7 @@ export function FavoritesPopup({
                       onRemoveStarFavorite?.(commandStr);
                     }
                   }}
-                  aria-label={`별표 즐겨찾기에서 제거: *${commandStr}`}
+                  aria-label={t('favorites.removeStarPrefix', { command: commandStr })}
                   className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600
                              text-gray-400 hover:text-red-500 dark:hover:text-red-400
                              transition-colors"
@@ -318,7 +320,7 @@ export function FavoritesPopup({
             {/* Drag handle */}
             <span
               className="flex-shrink-0 cursor-grab text-gray-400"
-              aria-label="순서 변경"
+              aria-label={t('favorites.reorderHandle')}
             >
               <GripVertical className="w-4 h-4" />
             </span>
@@ -351,7 +353,7 @@ export function FavoritesPopup({
                   onRemoveFavorite(commandStr);
                 }
               }}
-              aria-label={`즐겨찾기에서 제거: ${commandStr}`}
+              aria-label={t('favorites.removePrefix', { command: commandStr })}
               className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600
                          text-gray-400 hover:text-red-500 dark:hover:text-red-400
                          transition-colors"

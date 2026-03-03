@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import i18n from '../../i18n';
 import { debugLogger } from '../../utils/debugLogger';
 
 interface Props {
@@ -52,10 +53,10 @@ export class OnboardingErrorBoundary extends Component<Props, State> {
               aria-hidden="true"
             />
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              문제가 발생했습니다
+              {i18n.t('common:error.problemOccurred')}
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
-              페이지를 불러오는 중 오류가 발생했습니다. 다시 시도해 주세요.
+              {i18n.t('common:error.loadingError')}
             </p>
             {this.state.error && (
               <p className="text-sm text-gray-500 dark:text-gray-500 font-mono">
@@ -65,10 +66,10 @@ export class OnboardingErrorBoundary extends Component<Props, State> {
             <button
               onClick={this.handleRetry}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              aria-label="다시 시도"
+              aria-label={i18n.t('common:button.retry')}
             >
               <RefreshCw className="w-4 h-4" aria-hidden="true" />
-              다시 시도
+              {i18n.t('common:button.retry')}
             </button>
           </div>
         </div>

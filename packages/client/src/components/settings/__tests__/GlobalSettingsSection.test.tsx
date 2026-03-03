@@ -28,58 +28,6 @@ vi.mock('../../../hooks/useTheme', () => ({
   }),
 }));
 
-// Mock i18n module to prevent actual initialization
-vi.mock('../../../i18n', () => ({
-  default: { language: 'en', changeLanguage: vi.fn() },
-}));
-
-// Mock react-i18next — return key as value for predictable assertions
-vi.mock('react-i18next', () => ({
-  initReactI18next: { type: '3rdParty', init: vi.fn() },
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'global.theme': 'Theme',
-        'global.themeOption.dark': 'Dark',
-        'global.themeOption.light': 'Light',
-        'global.themeOption.system': 'System',
-        'global.defaultModel': 'Default Model',
-        'global.language': 'Language',
-        'global.permissionMode': 'Permission Mode',
-        'global.permissionDesc.plan': 'Suggests a plan before code changes',
-        'global.permissionDesc.default': 'Always asks for confirmation before editing files',
-        'global.permissionDesc.acceptEdits': 'Automatically performs file edits',
-        'global.permissionDesc.bypass': 'Skips all permission checks (including Bash)',
-        'global.markdownMode': 'Markdown File Open Mode',
-        'global.markdownOption.edit': 'Edit',
-        'global.markdownOption.preview': 'Preview',
-        'global.markdownDesc': 'Default mode when opening markdown files.',
-        'global.fileExplorerView': 'File Explorer Default View',
-        'global.fileExplorerOption.grid': 'Finder View',
-        'global.fileExplorerOption.list': 'List View',
-        'global.fileExplorerDesc': 'Default view mode when opening the file explorer.',
-        'global.chatTimeout': 'Chat Timeout',
-        'global.chatTimeoutOverride': '(Set by environment variable)',
-        'global.chatTimeoutDesc': 'Time to automatically abort request when no response is received.',
-        'global.timeoutOption.1m': '1 min',
-        'global.timeoutOption.3m': '3 min',
-        'global.timeoutOption.5mDefault': '5 min (default)',
-        'global.timeoutOption.10m': '10 min',
-        'global.timeoutOption.30m': '30 min',
-        'toast.themeChanged': 'Theme changed',
-        'toast.modelChanged': 'Default model changed',
-        'toast.permissionChanged': 'Permission Mode changed',
-        'toast.timeoutChanged': 'Chat timeout changed',
-        'toast.markdownModeChanged': 'Markdown default mode changed',
-        'toast.fileExplorerViewChanged': 'File explorer default view changed',
-        'toast.languageChanged': 'Language changed',
-      };
-      return translations[key] || key;
-    },
-    i18n: { language: 'en' },
-  }),
-}));
-
 describe('GlobalSettingsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -100,16 +48,16 @@ describe('GlobalSettingsSection', () => {
 
   it('TC-1: renders all setting sections', () => {
     render(<GlobalSettingsSection />);
-    expect(screen.getByText('Theme')).toBeInTheDocument();
-    expect(screen.getByText('Default Model')).toBeInTheDocument();
+    expect(screen.getByText('테마')).toBeInTheDocument();
+    expect(screen.getByText('기본 모델')).toBeInTheDocument();
     expect(screen.getByText('Permission Mode')).toBeInTheDocument();
-    expect(screen.getByText('Chat Timeout')).toBeInTheDocument();
-    expect(screen.getByText('Language')).toBeInTheDocument();
+    expect(screen.getByText('채팅 타임아웃')).toBeInTheDocument();
+    expect(screen.getByText('언어')).toBeInTheDocument();
   });
 
   it('TC-2: theme change calls setTheme', () => {
     render(<GlobalSettingsSection />);
-    const lightRadio = screen.getByLabelText('Light');
+    const lightRadio = screen.getByLabelText('라이트');
     fireEvent.click(lightRadio);
     expect(mockSetTheme).toHaveBeenCalledWith('light');
   });
@@ -117,7 +65,7 @@ describe('GlobalSettingsSection', () => {
   it('TC-3: default model change calls updatePreference', () => {
     const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
     render(<GlobalSettingsSection />);
-    const modelSelect = screen.getByLabelText('Default Model');
+    const modelSelect = screen.getByLabelText('기본 모델');
     fireEvent.change(modelSelect, { target: { value: 'opus' } });
     expect(updateSpy).toHaveBeenCalledWith('defaultModel', 'opus');
   });
@@ -134,7 +82,7 @@ describe('GlobalSettingsSection', () => {
   it('TC-5: chat timeout change calls updatePreference', () => {
     const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
     render(<GlobalSettingsSection />);
-    const timeoutSelect = screen.getByLabelText(/Chat Timeout/);
+    const timeoutSelect = screen.getByLabelText(/채팅 타임아웃/);
     fireEvent.change(timeoutSelect, { target: { value: '60000' } });
     expect(updateSpy).toHaveBeenCalledWith('chatTimeoutMs', 60000);
   });
@@ -142,22 +90,22 @@ describe('GlobalSettingsSection', () => {
   it('TC-6: shows env var override indicator and disables timeout', () => {
     usePreferencesStore.setState({ overrides: ['chatTimeoutMs'] });
     render(<GlobalSettingsSection />);
-    expect(screen.getByText('(Set by environment variable)')).toBeInTheDocument();
-    const timeoutSelect = screen.getByLabelText(/Chat Timeout/) as HTMLSelectElement;
+    expect(screen.getByText('(환경변수로 설정됨)')).toBeInTheDocument();
+    const timeoutSelect = screen.getByLabelText(/채팅 타임아웃/) as HTMLSelectElement;
     expect(timeoutSelect.disabled).toBe(true);
   });
 
   it('TC-7: renders theme radio buttons', () => {
     render(<GlobalSettingsSection />);
-    expect(screen.getByText('Theme')).toBeInTheDocument();
-    expect(screen.getByLabelText('Dark')).toBeInTheDocument();
-    expect(screen.getByLabelText('Light')).toBeInTheDocument();
-    expect(screen.getByLabelText('System')).toBeInTheDocument();
+    expect(screen.getByText('테마')).toBeInTheDocument();
+    expect(screen.getByLabelText('다크')).toBeInTheDocument();
+    expect(screen.getByLabelText('라이트')).toBeInTheDocument();
+    expect(screen.getByLabelText('시스템')).toBeInTheDocument();
   });
 
   it('TC-8: language selector renders 6 language options', () => {
     render(<GlobalSettingsSection />);
-    const langSelect = screen.getByLabelText('Language') as HTMLSelectElement;
+    const langSelect = screen.getByLabelText('언어') as HTMLSelectElement;
     expect(langSelect).toBeInTheDocument();
     const options = langSelect.querySelectorAll('option');
     expect(options.length).toBe(6);
@@ -173,7 +121,7 @@ describe('GlobalSettingsSection', () => {
   it('TC-9: language change calls setLanguage', () => {
     const setLanguageSpy = vi.spyOn(usePreferencesStore.getState(), 'setLanguage');
     render(<GlobalSettingsSection />);
-    const langSelect = screen.getByLabelText('Language');
+    const langSelect = screen.getByLabelText('언어');
     fireEvent.change(langSelect, { target: { value: 'ko' } });
     expect(setLanguageSpy).toHaveBeenCalledWith('ko');
   });

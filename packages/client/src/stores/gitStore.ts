@@ -11,6 +11,7 @@ import type {
 } from '@bmad-studio/shared';
 import { gitApi } from '../services/api/git';
 import { ApiError } from '../services/api/client';
+import i18n from '../i18n';
 
 interface GitStore {
   // State
@@ -49,7 +50,7 @@ function setErrorWithAutoClear(set: (partial: Partial<GitStore>) => void, messag
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof ApiError) return err.message;
-  return 'Git 작업 중 오류가 발생했습니다.';
+  return i18n.t('notification:git.operationError');
 }
 
 export const useGitStore = create<GitStore>((set, get) => ({

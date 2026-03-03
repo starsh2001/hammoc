@@ -5,6 +5,7 @@
  */
 
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MessageSquare, Loader2 } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import { formatRelativeTime } from '../utils/formatters';
@@ -20,6 +21,7 @@ export function SessionQuickAccessPanel({
   currentSessionId,
   onSelectSession,
 }: SessionQuickAccessPanelProps) {
+  const { t } = useTranslation('chat');
   const { sessions, isLoading, fetchSessions } = useSessionStore();
 
   // Fetch sessions on mount (mount = panel open, since QuickPanel conditionally renders content)
@@ -34,11 +36,11 @@ export function SessionQuickAccessPanel({
         {isLoading ? (
           <div className="flex items-center justify-center py-8" data-testid="loading-indicator">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" aria-hidden="true" />
-            <span className="sr-only">로딩 중</span>
+            <span className="sr-only">{t('sessionQuickAccess.loading')}</span>
           </div>
         ) : sessions.length === 0 ? (
           <p className="text-center text-gray-500 dark:text-gray-400 py-8" data-testid="empty-state">
-            세션이 없습니다
+            {t('sessionQuickAccess.empty')}
           </p>
         ) : (
           sessions.map((session) => {
@@ -67,7 +69,7 @@ export function SessionQuickAccessPanel({
                   </p>
                 </div>
                 <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  <span className="relative flex h-2 w-2" title={session.isStreaming ? '스트리밍 중' : '대기 중'}>
+                  <span className="relative flex h-2 w-2" title={session.isStreaming ? t('sessionQuickAccess.streaming') : t('sessionQuickAccess.waiting')}>
                     {session.isStreaming && (
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                     )}

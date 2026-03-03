@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, FolderPlus, AlertTriangle, Loader2 } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 
@@ -17,6 +18,7 @@ interface NewProjectDialogProps {
 }
 
 export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialogProps) {
+  const { t } = useTranslation('common');
   const [path, setPath] = useState('');
   const [setupBmad, setSetupBmad] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState('');
@@ -90,7 +92,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
     const trimmedPath = path.trim();
 
     if (!trimmedPath) {
-      setLocalError('프로젝트 경로를 입력해 주세요.');
+      setLocalError(t('newProjectDialog.pathRequired'));
       return;
     }
 
@@ -101,7 +103,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
     }
 
     if (!validation.valid) {
-      setLocalError(validation.error || '유효하지 않은 경로입니다.');
+      setLocalError(validation.error || t('newProjectDialog.pathInvalid'));
       return;
     }
 
@@ -130,7 +132,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
   const handleCancel = useCallback(() => {
     if (isCreating) {
       // Show confirmation if operation is in progress
-      if (window.confirm('프로젝트 생성이 진행 중입니다. 취소하시겠습니까?')) {
+      if (window.confirm(t('newProjectDialog.cancelCreating'))) {
         abortCreation();
         onClose();
       }
@@ -196,12 +198,12 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
             className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2"
           >
             <FolderPlus className="w-5 h-5" aria-hidden="true" />
-            새 프로젝트
+            {t('newProjectDialog.title')}
           </h2>
           <button
             onClick={handleCancel}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
-            aria-label="닫기"
+            aria-label={t('newProjectDialog.closeAria')}
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -215,7 +217,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
               htmlFor="project-path"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
-              프로젝트 경로
+              {t('newProjectDialog.pathLabel')}
             </label>
             <input
               ref={inputRef}
@@ -240,7 +242,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
             {isValidating && (
               <p className="mt-1 text-sm text-gray-500 flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                경로 확인 중...
+                {t('newProjectDialog.pathValidating')}
               </p>
             )}
           </div>
@@ -258,14 +260,14 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                 />
                 <div className="flex-1">
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    이 경로는 이미 프로젝트로 등록되어 있습니다.
+                    {t('newProjectDialog.existingProject')}
                   </p>
                   <button
                     onClick={handleNavigateToExisting}
                     className="mt-2 text-sm text-yellow-700 dark:text-yellow-300 underline hover:no-underline
                                min-h-[44px] py-2"
                   >
-                    기존 프로젝트로 이동하기
+                    {t('newProjectDialog.navigateToExisting')}
                   </button>
                 </div>
               </div>
@@ -291,7 +293,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                 disabled={isCreating}
               />
               <label htmlFor="setup-bmad" className="text-sm text-gray-700 dark:text-gray-300">
-                BMad Method 초기화
+                {t('newProjectDialog.bmadInit')}
               </label>
             </div>
 
@@ -302,12 +304,12 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                   htmlFor="bmad-version"
                   className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                 >
-                  버전
+                  {t('newProjectDialog.versionLabel')}
                 </label>
                 {isFetchingVersions ? (
                   <p className="text-xs text-gray-500 flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    버전 목록 로딩 중...
+                    {t('newProjectDialog.versionLoading')}
                   </p>
                 ) : bmadVersions.length > 0 ? (
                   <select
@@ -327,7 +329,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                   </select>
                 ) : (
                   <p className="text-xs text-red-500">
-                    사용 가능한 BMad 버전이 없습니다.
+                    {t('newProjectDialog.noVersions')}
                   </p>
                 )}
               </div>
@@ -343,7 +345,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                        min-h-[44px] min-w-[80px]"
             disabled={isCreating}
           >
-            취소
+            {t('button.cancel')}
           </button>
           <button
             onClick={handleSubmit}
@@ -354,7 +356,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                        min-h-[44px] min-w-[80px]"
           >
             {isCreating && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isCreating ? '생성 중...' : '생성'}
+            {isCreating ? t('button.creating') : t('button.create')}
           </button>
         </div>
       </div>

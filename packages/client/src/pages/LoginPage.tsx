@@ -5,10 +5,12 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 export function LoginPage() {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -86,12 +88,12 @@ export function LoginPage() {
         {/* Logo/Title */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            BMad Studio
+            {t('login.title')}
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             {isSetupMode
-              ? '시작하려면 패스워드를 설정하세요'
-              : '로그인하여 시작하세요'}
+              ? t('login.setupSubtitle')
+              : t('login.loginSubtitle')}
           </p>
         </div>
 
@@ -106,7 +108,7 @@ export function LoginPage() {
               htmlFor="password"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
-              패스워드
+              {t('login.passwordLabel')}
             </label>
             <input
               id="password"
@@ -119,7 +121,7 @@ export function LoginPage() {
                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent
                          disabled:opacity-50 disabled:cursor-not-allowed"
-              placeholder={isSetupMode ? '패스워드를 설정하세요 (4자 이상)' : '패스워드를 입력하세요'}
+              placeholder={isSetupMode ? t('login.setupPlaceholder') : t('login.loginPlaceholder')}
             />
           </div>
 
@@ -130,7 +132,7 @@ export function LoginPage() {
                 htmlFor="confirmPassword"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                패스워드 확인
+                {t('login.confirmLabel')}
               </label>
               <input
                 id="confirmPassword"
@@ -142,7 +144,7 @@ export function LoginPage() {
                            bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                            focus:ring-2 focus:ring-blue-500 focus:border-transparent
                            disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="패스워드를 다시 입력하세요"
+                placeholder={t('login.confirmPlaceholder')}
               />
             </div>
           )}
@@ -168,10 +170,10 @@ export function LoginPage() {
                              dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800
                              disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                자동 로그인 유지
+                {t('login.rememberMe')}
               </label>
               <span id="rememberMe-description" className="sr-only">
-                체크하면 브라우저를 닫아도 로그인이 30일간 유지됩니다
+                {t('login.rememberMeDescription')}
               </span>
             </div>
           )}
@@ -186,7 +188,7 @@ export function LoginPage() {
           {/* Rate Limit Countdown */}
           {countdown > 0 && (
             <div className="text-orange-600 dark:text-orange-400 text-sm" role="alert">
-              로그인 시도 횟수를 초과했습니다. {countdown}초 후에 다시 시도해주세요.
+              {t('login.rateLimitExceeded', { seconds: countdown })}
             </div>
           )}
 
@@ -204,10 +206,10 @@ export function LoginPage() {
             {isLoading ? (
               <>
                 <LoadingSpinner size="sm" className="mr-2" />
-                {isSetupMode ? '설정 중...' : '로그인 중...'}
+                {isSetupMode ? t('login.settingUp') : t('login.loggingIn')}
               </>
             ) : (
-              isSetupMode ? '설정 완료' : '로그인'
+              isSetupMode ? t('login.setupComplete') : t('login.loginButton')
             )}
           </button>
         </form>

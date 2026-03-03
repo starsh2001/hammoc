@@ -111,7 +111,7 @@ describe('FileExplorerTab', () => {
       expect(screen.getByText('src')).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText('파일 검색...');
+    const searchInput = screen.getByPlaceholderText('검색...');
     expect(searchInput).toBeInTheDocument();
   });
 
@@ -132,7 +132,7 @@ describe('FileExplorerTab', () => {
       expect(screen.getByText('src')).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText('파일 검색...');
+    const searchInput = screen.getByPlaceholderText('검색...');
     fireEvent.change(searchInput, { target: { value: 'App' } });
 
     // Advance debounce timer
@@ -207,7 +207,7 @@ describe('FileExplorerTab', () => {
       expect(screen.getByText('src')).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText('파일 검색...');
+    const searchInput = screen.getByPlaceholderText('검색...');
     fireEvent.change(searchInput, { target: { value: 'App' } });
 
     await act(async () => {

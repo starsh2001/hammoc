@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BarChart3, ChevronDown, FileText } from 'lucide-react';
 import type { BmadEpicStatus } from '@bmad-studio/shared';
 
@@ -31,6 +32,7 @@ function getStatusStyle(status: string): string {
 }
 
 export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProgressCardProps) {
+  const { t } = useTranslation('common');
   const [expandedEpics, setExpandedEpics] = useState<Set<number>>(new Set());
   const openFile = useFileStore((s) => s.requestFileNavigation);
 
@@ -54,12 +56,12 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
   return (
     <div
       role="region"
-      aria-label="에픽 진행률"
+      aria-label={t('epic.progressTitle')}
       className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5"
     >
       <div className="flex items-center gap-2 mb-4">
         <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-        <h2 className="font-semibold text-gray-900 dark:text-white">에픽 진행률</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-white">{t('epic.progressTitle')}</h2>
       </div>
       <div className="space-y-3 text-sm">
         {epics.map((epic) => {
@@ -100,7 +102,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                   <span className="text-gray-700 dark:text-gray-300 truncate mr-2">
                     {epic.number}. {epic.name}
                   </span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">스토리 미정의</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">{t('epic.storiesUndefined')}</span>
                 </div>
               )}
 
@@ -143,12 +145,12 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                     })
                   ) : (
                     <p className="text-xs text-gray-400 dark:text-gray-500">
-                      PRD에 {planned}개 스토리 예정 — 아직 작성된 스토리 파일 없음
+                      {t('epic.plannedStoriesNoFiles', { count: planned })}
                     </p>
                   )}
                   {writtenCount > 0 && planned > writtenCount && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      + {planned - writtenCount}개 스토리 미작성
+                      {t('epic.unwrittenStories', { count: planned - writtenCount })}
                     </p>
                   )}
                 </div>
@@ -157,7 +159,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
           );
         })}
         {epics.length === 0 && (
-          <p className="text-gray-500 dark:text-gray-400">에픽이 없습니다.</p>
+          <p className="text-gray-500 dark:text-gray-400">{t('epic.noEpics')}</p>
         )}
       </div>
     </div>

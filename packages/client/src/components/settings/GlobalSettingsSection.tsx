@@ -158,10 +158,10 @@ export function GlobalSettingsSection() {
         </legend>
         <div className="space-y-2">
           {([
-            { value: 'plan' as PermissionMode, label: 'Plan', descKey: 'global.permissionDesc.plan' },
-            { value: 'default' as PermissionMode, label: 'Ask before edits', descKey: 'global.permissionDesc.default' },
-            { value: 'acceptEdits' as PermissionMode, label: 'Edit Automatically', descKey: 'global.permissionDesc.acceptEdits' },
-            { value: 'bypassPermissions' as PermissionMode, label: 'Bypass', descKey: 'global.permissionDesc.bypass' },
+            { value: 'plan' as PermissionMode, labelKey: 'global.permissionModeLabel.plan', descKey: 'global.permissionDesc.plan' },
+            { value: 'default' as PermissionMode, labelKey: 'global.permissionModeLabel.default', descKey: 'global.permissionDesc.default' },
+            { value: 'acceptEdits' as PermissionMode, labelKey: 'global.permissionModeLabel.acceptEdits', descKey: 'global.permissionDesc.acceptEdits' },
+            { value: 'bypassPermissions' as PermissionMode, labelKey: 'global.permissionModeLabel.bypass', descKey: 'global.permissionDesc.bypass' },
           ]).map((opt) => (
             <label
               key={opt.value}
@@ -186,7 +186,7 @@ export function GlobalSettingsSection() {
               />
               <div>
                 <span className={`text-sm font-medium ${permissionMode === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </span>
                 <p
                   id={`permission-desc-${opt.value}`}

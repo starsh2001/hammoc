@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MessageSquare, MoreVertical, Trash2, Pencil, X, ListOrdered } from 'lucide-react';
 import type { SessionListItem as SessionListItemType } from '@bmad-studio/shared';
 import { formatRelativeTime } from '../utils/formatters';
@@ -27,6 +28,7 @@ interface SessionListItemProps {
 }
 
 export function SessionListItem({ session, onClick, onDelete, onRename, selectionMode, selected, onToggleSelect, agentInfo, isEditing, onEditStart, onEditEnd, isQueueActive }: SessionListItemProps) {
+  const { t } = useTranslation('chat');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [editValue, setEditValue] = useState(session.name || '');
@@ -119,7 +121,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
           ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
           : 'border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400'
       }`}
-      aria-label={`세션: ${session.firstPrompt || '(빈 세션)'}. 메시지 ${session.messageCount}개. ${formatRelativeTime(session.modified)}`}
+      aria-label={`${t('sessionListItem.ariaLabel', { prompt: session.firstPrompt || t('sessionListItem.emptySession') })}. ${t('sessionListItem.messageCount', { count: session.messageCount })}. ${formatRelativeTime(session.modified)}`}
     >
       <div className="flex items-start gap-3">
         {/* Selection checkbox */}
@@ -131,7 +133,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
               onChange={handleCheckboxChange}
               onClick={(e) => e.stopPropagation()}
               className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
-              aria-label={`${session.firstPrompt || '(빈 세션)'} 선택`}
+              aria-label={t('sessionListItem.checkbox', { prompt: session.firstPrompt || t('sessionListItem.emptySession') })}
             />
           </div>
         )}
@@ -171,20 +173,20 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
               }}
               onBlur={handleEditSubmit}
               onClick={(e) => e.stopPropagation()}
-              placeholder="세션 이름 입력..."
+              placeholder={t('sessionListItem.nameInput')}
               className="w-full text-sm font-medium bg-white dark:bg-gray-700 border border-blue-500 rounded px-2 py-1 mb-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           ) : (
             /* Primary title: always firstPrompt */
             <p className="text-gray-900 dark:text-white font-medium truncate mb-1">
-              {session.firstPrompt || '(빈 세션)'}
+              {session.firstPrompt || t('sessionListItem.emptySession')}
             </p>
           )}
 
           {/* Meta Info */}
           <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
             <div className="flex items-center gap-1">
-              <span className="relative flex h-2 w-2 mr-1" title={session.isStreaming ? '스트리밍 중' : '대기 중'}>
+              <span className="relative flex h-2 w-2 mr-1" title={session.isStreaming ? t('sessionListItem.streaming') : t('sessionListItem.waiting')}>
                 {session.isStreaming && (
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                 )}
@@ -193,14 +195,14 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
               {isQueueActive && (
                 <span
                   className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-px rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300"
-                  title="큐 러너 작업 중"
+                  title={t('sessionListItem.queueActive')}
                 >
                   <ListOrdered className="w-3 h-3" />
-                  큐
+                  {t('sessionListItem.queue')}
                 </span>
               )}
               <MessageSquare className="w-4 h-4" aria-hidden="true" />
-              <span>{session.messageCount}개 메시지</span>
+              <span>{t('sessionListItem.messageCount', { count: session.messageCount })}</span>
             </div>
             <span>{formatRelativeTime(session.modified)}</span>
           </div>
@@ -213,7 +215,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
           <button
             type="button"
             onClick={handleMenuToggle}
-            aria-label="세션 메뉴"
+            aria-label={t('sessionListItem.menu')}
             aria-expanded={menuOpen}
             className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
           >
@@ -233,7 +235,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <Pencil className="w-4 h-4" aria-hidden="true" />
-                  이름 변경
+                  {t('sessionListItem.rename')}
                 </button>
               )}
               {onRename && session.name && (
@@ -244,7 +246,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <X className="w-4 h-4" aria-hidden="true" />
-                  이름 제거
+                  {t('sessionListItem.removeName')}
                 </button>
               )}
               {onDelete && (
@@ -255,7 +257,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" aria-hidden="true" />
-                  세션 삭제
+                  {t('sessionListItem.delete')}
                 </button>
               )}
             </div>

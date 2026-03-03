@@ -4,6 +4,7 @@
  */
 
 import { Moon, Sun } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 
 interface ThemeToggleButtonProps {
@@ -13,6 +14,7 @@ interface ThemeToggleButtonProps {
 
 export function ThemeToggleButton({ className = '' }: ThemeToggleButtonProps) {
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation('settings');
   const isDark = theme === 'dark';
 
   return (
@@ -21,7 +23,7 @@ export function ThemeToggleButton({ className = '' }: ThemeToggleButtonProps) {
       className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
                  text-gray-600 dark:text-gray-400 transition-colors
                  focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
-      aria-label={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
+      aria-label={isDark ? t('theme.lightAria') : t('theme.darkAria')}
     >
       {isDark ? (
         <Sun className="w-5 h-5" aria-hidden="true" />

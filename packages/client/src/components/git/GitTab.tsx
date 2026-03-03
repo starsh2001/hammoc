@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { GitFileStatus } from '@bmad-studio/shared';
 import {
   GitBranch,
@@ -25,6 +26,7 @@ import { DiffViewer } from '../DiffViewer';
 import { ConfirmModal } from '../ConfirmModal';
 
 export function GitTab() {
+  const { t } = useTranslation('common');
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const { status, isLoading: statusLoading } = useGitStatus(projectSlug);
 
@@ -181,10 +183,10 @@ export function GitTab() {
           <GitBranch className="w-10 h-10 text-purple-600 dark:text-purple-400" />
         </div>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          Git 저장소 초기화
+          {t('git.initTitle')}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          이 프로젝트는 아직 Git 저장소가 아닙니다.
+          {t('git.initMessage')}
         </p>
         <button
           type="button"
@@ -193,7 +195,7 @@ export function GitTab() {
           className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2"
         >
           {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-          Git Init
+          {t('git.initButton')}
         </button>
       </div>
     );
@@ -242,7 +244,7 @@ export function GitTab() {
 
           {branchDropdownOpen && (
             <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-40 max-h-64 overflow-y-auto">
-              <ul role="listbox" aria-label="Branch list">
+              <ul role="listbox" aria-label={t('git.branchList')}>
                 {(branches?.local ?? []).map((branch, index) => (
                   <li
                     key={branch}
@@ -277,7 +279,7 @@ export function GitTab() {
                         handleCreateBranch();
                       }
                     }}
-                    placeholder="새 브랜치 이름..."
+                    placeholder={t('git.newBranchPlaceholder')}
                     className="flex-1 text-sm bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 placeholder-gray-400"
                   />
                 </div>
@@ -292,7 +294,7 @@ export function GitTab() {
           onClick={() => pullAction(projectSlug)}
           disabled={isLoading}
           className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm disabled:opacity-50"
-          title="Pull"
+          title={t('git.pull')}
         >
           <ArrowDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
           {status?.behind !== undefined && (
@@ -304,7 +306,7 @@ export function GitTab() {
           onClick={() => pushAction(projectSlug)}
           disabled={isLoading}
           className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm disabled:opacity-50"
-          title="Push"
+          title={t('git.push')}
         >
           <ArrowUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
           {status?.ahead !== undefined && (
@@ -321,12 +323,12 @@ export function GitTab() {
           {allEmpty && status?.initialized !== false ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <CheckCircle className="w-10 h-10 text-green-400 mb-3" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">변경된 파일이 없습니다</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('git.noChanges')}</p>
             </div>
           ) : (
             <>
               <GitFileList
-                title="Staged Changes"
+                title={t('git.stagedChanges')}
                 files={staged}
                 type="staged"
                 onUnstageAll={() => unstageFiles(projectSlug, staged.map((f) => f.path))}
@@ -335,7 +337,7 @@ export function GitTab() {
                 isLoading={isLoading}
               />
               <GitFileList
-                title="Changes"
+                title={t('git.changes')}
                 files={unstaged}
                 type="unstaged"
                 onStageAll={() => stageFiles(projectSlug, unstaged.map((f) => f.path))}
@@ -344,7 +346,7 @@ export function GitTab() {
                 isLoading={isLoading}
               />
               <GitFileList
-                title="Untracked"
+                title={t('git.untracked')}
                 files={untracked}
                 type="untracked"
                 onStageAll={() => stageFiles(projectSlug, untracked)}
@@ -360,7 +362,7 @@ export function GitTab() {
             <textarea
               value={commitMessage}
               onChange={(e) => setCommitMessage(e.target.value)}
-              placeholder="커밋 메시지를 입력하세요..."
+              placeholder={t('git.commitPlaceholder')}
               rows={3}
               className="w-full text-sm bg-transparent border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-300 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -371,15 +373,15 @@ export function GitTab() {
               className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              커밋
+              {t('git.commit')}
             </button>
           </div>
 
           {/* History section */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">커밋 히스토리</h3>
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('git.commitHistory')}</h3>
             {commits.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500">커밋 히스토리가 없습니다</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">{t('git.noCommitHistory')}</p>
             ) : (
               <ul className="space-y-1">
                 {commits.map((c) => (
@@ -393,7 +395,7 @@ export function GitTab() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{c.message}</p>
                       <p className="text-xs text-gray-400 dark:text-gray-500">
-                        {c.author} · {formatRelativeDate(c.date)}
+                        {c.author} · {formatRelativeDate(c.date, t)}
                       </p>
                     </div>
                   </li>
@@ -407,10 +409,10 @@ export function GitTab() {
       {/* Branch checkout confirmation */}
       <ConfirmModal
         isOpen={pendingCheckout !== null}
-        title="브랜치 전환"
-        message="커밋되지 않은 변경사항이 있습니다. 브랜치를 전환하시겠습니까?"
-        confirmText="전환"
-        cancelText="취소"
+        title={t('git.switchBranchTitle')}
+        message={t('git.switchBranchMessage')}
+        confirmText={t('git.switchButton')}
+        cancelText={t('button.cancel')}
         variant="danger"
         onConfirm={() => {
           if (pendingCheckout && projectSlug) {
@@ -473,7 +475,7 @@ export function GitTab() {
   );
 }
 
-function formatRelativeDate(dateStr: string): string {
+function formatRelativeDate(dateStr: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -481,9 +483,9 @@ function formatRelativeDate(dateStr: string): string {
   const diffHour = Math.floor(diffMs / 3_600_000);
   const diffDay = Math.floor(diffMs / 86_400_000);
 
-  if (diffMin < 1) return '방금 전';
-  if (diffMin < 60) return `${diffMin}분 전`;
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  if (diffDay < 30) return `${diffDay}일 전`;
-  return date.toLocaleDateString('ko-KR');
+  if (diffMin < 1) return t('git.justNow');
+  if (diffMin < 60) return t('git.minutesAgo', { count: diffMin });
+  if (diffHour < 24) return t('git.hoursAgo', { count: diffHour });
+  if (diffDay < 30) return t('git.daysAgo', { count: diffDay });
+  return date.toLocaleDateString();
 }

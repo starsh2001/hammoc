@@ -29,10 +29,20 @@ vi.mock('../ToolResultRenderer', () => ({
 
 // Mock ThinkingBlock
 vi.mock('../ThinkingBlock', () => ({
-  ThinkingBlock: ({ content, defaultExpanded }: { content: string; defaultExpanded?: boolean }) => (
-    <div data-testid="mock-thinking-block" data-expanded={defaultExpanded}>{content}</div>
+  ThinkingBlock: ({ content, isStreaming }: { content: string; isStreaming?: boolean }) => (
+    <div data-testid="mock-thinking-block" data-streaming={isStreaming}>{content}</div>
   ),
 }));
+
+// Mock ResizeObserver which is not supported in jsdom
+const mockObserve = vi.fn();
+const mockUnobserve = vi.fn();
+const mockDisconnect = vi.fn();
+vi.stubGlobal('ResizeObserver', vi.fn(() => ({
+  observe: mockObserve,
+  unobserve: mockUnobserve,
+  disconnect: mockDisconnect,
+})));
 
 describe('MessageArea', () => {
   beforeEach(() => {
@@ -244,7 +254,7 @@ describe('MessageArea', () => {
       );
 
       expect(screen.getByLabelText('도구 실패: Bash')).toBeInTheDocument();
-      expect(screen.getByText('Tool 실행 실패: command not found')).toBeInTheDocument();
+      expect(screen.getByText('command not found')).toBeInTheDocument();
     });
 
     it('should render segments in order: text → tool → text', () => {
@@ -286,7 +296,7 @@ describe('MessageArea', () => {
     });
 
     // Story 6.5 - PermissionCard delegation tests
-    it('renders PermissionCard for Edit tool streaming segment', () => {
+    it('renders ToolCard for Edit tool streaming segment', () => {
       const editSegment: StreamingSegment = {
         type: 'tool',
         toolCall: {
@@ -303,11 +313,12 @@ describe('MessageArea', () => {
         </MessageArea>
       );
 
-      expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
+      // ToolCard renders tool name and file path
       expect(screen.getByText('Edit')).toBeInTheDocument();
+      expect(screen.getByLabelText('도구 실행 중: Edit')).toBeInTheDocument();
     });
 
-    it('renders PermissionCard for Write tool streaming segment', () => {
+    it('renders ToolCard for Write tool streaming segment', () => {
       const writeSegment: StreamingSegment = {
         type: 'tool',
         toolCall: {
@@ -324,8 +335,9 @@ describe('MessageArea', () => {
         </MessageArea>
       );
 
-      expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
+      // ToolCard renders tool name
       expect(screen.getByText('Write')).toBeInTheDocument();
+      expect(screen.getByLabelText('도구 완료: Write')).toBeInTheDocument();
     });
   });
 
@@ -347,7 +359,7 @@ describe('MessageArea', () => {
       expect(screen.getByText('Let me analyze this problem...')).toBeInTheDocument();
     });
 
-    it('renders thinking segment with defaultExpanded=true during streaming', () => {
+    it('renders thinking segment with isStreaming=true during streaming', () => {
       const thinkingSegment: StreamingSegment = {
         type: 'thinking',
         content: 'Thinking...',
@@ -360,7 +372,7 @@ describe('MessageArea', () => {
       );
 
       const thinkingBlock = screen.getByTestId('mock-thinking-block');
-      expect(thinkingBlock).toHaveAttribute('data-expanded', 'true');
+      expect(thinkingBlock).toHaveAttribute('data-streaming', 'true');
     });
 
     it('renders thinking and text segments in correct order', () => {
@@ -671,8 +683,8 @@ describe('MessageArea', () => {
         </MessageArea>
       );
 
-      // Edit uses PermissionCard, not ToolResultRenderer
-      expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
+      // Edit uses ToolCard with diff display, not ToolResultRenderer
+      expect(screen.getByText('Edit')).toBeInTheDocument();
       expect(screen.queryByTestId('mock-tool-result-renderer')).not.toBeInTheDocument();
     });
 
@@ -689,8 +701,8 @@ describe('MessageArea', () => {
         </MessageArea>
       );
 
-      // Write uses PermissionCard, not ToolResultRenderer
-      expect(screen.getByTestId('mock-permission-card')).toBeInTheDocument();
+      // Write uses ToolCard with diff display, not ToolResultRenderer
+      expect(screen.getByText('Write')).toBeInTheDocument();
       expect(screen.queryByTestId('mock-tool-result-renderer')).not.toBeInTheDocument();
     });
 

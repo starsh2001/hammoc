@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MessageSquare, Clock, MoreVertical, Trash2, Wand2, EyeOff, Eye } from 'lucide-react';
 import type { ProjectInfo, DashboardProjectStatus } from '@bmad-studio/shared';
 import { formatRelativeTime, formatProjectPath } from '../utils/formatters';
@@ -23,6 +24,7 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, onUnhide, isHidden, bmadVersions = [], dashboardStatus }: ProjectCardProps) {
+  const { t } = useTranslation('common');
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
@@ -113,7 +115,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
           }
         }}
         className={`relative w-full text-left bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer ${isHidden ? 'opacity-50' : ''}`}
-        aria-label={`프로젝트: ${project.originalPath.split(/[/\\]/).filter(Boolean).pop() || project.originalPath}, 세션 ${project.sessionCount}개`}
+        aria-label={t('project.ariaLabel', { name: project.originalPath.split(/[/\\]/).filter(Boolean).pop() || project.originalPath, count: project.sessionCount })}
       >
         {/* Kebab menu */}
         {(onDelete || onSetupBmad || onHide || onUnhide) && (
@@ -121,7 +123,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
             <button
               type="button"
               onClick={handleMenuToggle}
-              aria-label="프로젝트 메뉴"
+              aria-label={t('project.menu')}
               aria-expanded={menuOpen}
               className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             >
@@ -141,7 +143,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                   >
                     <Wand2 className="w-4 h-4" aria-hidden="true" />
-                    BMad 전환
+                    {t('project.setupBmad')}
                   </button>
                 )}
                 {(onHide || onUnhide) && (
@@ -152,9 +154,9 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     {isHidden ? (
-                      <><Eye className="w-4 h-4" aria-hidden="true" />숨김 해제</>
+                      <><Eye className="w-4 h-4" aria-hidden="true" />{t('project.unhide')}</>
                     ) : (
-                      <><EyeOff className="w-4 h-4" aria-hidden="true" />숨기기</>
+                      <><EyeOff className="w-4 h-4" aria-hidden="true" />{t('project.hide')}</>
                     )}
                   </button>
                 )}
@@ -166,7 +168,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" aria-hidden="true" />
-                    프로젝트 삭제
+                    {t('project.deleteProject')}
                   </button>
                 )}
               </div>
@@ -213,10 +215,10 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
       {/* Delete confirmation modal */}
       <ConfirmModal
         isOpen={showDeleteConfirm}
-        title="프로젝트 삭제"
-        message="세션 데이터가 모두 삭제됩니다."
-        confirmText="삭제"
-        cancelText="취소"
+        title={t('project.deleteTitle')}
+        message={t('project.deleteMessage')}
+        confirmText={t('button.delete')}
+        cancelText={t('button.cancel')}
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
@@ -229,12 +231,12 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
             className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500 dark:bg-gray-700"
           />
           <span className="text-sm text-gray-700 dark:text-gray-300">
-            프로젝트 파일도 함께 삭제
+            {t('project.deleteFiles')}
           </span>
         </label>
         {deleteFiles && (
           <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">
-            디스크의 프로젝트 파일이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+            {t('project.deleteFilesWarning')}
           </p>
         )}
       </ConfirmModal>
@@ -242,17 +244,17 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
       {/* BMad setup confirmation modal */}
       <ConfirmModal
         isOpen={showBmadConfirm}
-        title="BMad 전환"
-        message="이 프로젝트에 BMad Method를 설치합니다."
-        confirmText="설치"
-        cancelText="취소"
+        title={t('project.bmadSetupTitle')}
+        message={t('project.bmadSetupMessage')}
+        confirmText={t('button.install')}
+        cancelText={t('button.cancel')}
         onConfirm={handleBmadConfirm}
         onCancel={handleBmadCancel}
       >
         {bmadVersions.length > 0 && (
           <div className="flex items-center gap-2">
             <label htmlFor="bmad-version-select" className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-              버전
+              {t('project.version')}
             </label>
             <select
               id="bmad-version-select"

@@ -1,1 +1,255 @@
-{}
+{
+  "global": {
+    "theme": "Tema",
+    "themeOption": {
+      "dark": "Oscuro",
+      "light": "Claro",
+      "system": "Sistema"
+    },
+    "defaultModel": "Modelo predeterminado",
+    "language": "Idioma",
+    "permissionMode": "Modo de permisos",
+    "permissionModeLabel": {
+      "plan": "Planificar",
+      "default": "Preguntar antes de editar",
+      "acceptEdits": "Editar automáticamente",
+      "bypass": "Omitir"
+    },
+    "permissionDesc": {
+      "plan": "Sugiere un plan antes de realizar cambios en el código",
+      "default": "Siempre pide confirmación antes de editar archivos",
+      "acceptEdits": "Realiza ediciones de archivos automáticamente",
+      "bypass": "Omite todas las verificaciones de permisos (incluyendo Bash)"
+    },
+    "markdownMode": "Modo de apertura de archivos Markdown",
+    "markdownOption": {
+      "edit": "Editar",
+      "preview": "Vista previa"
+    },
+    "markdownDesc": "Modo predeterminado al abrir archivos markdown.",
+    "fileExplorerView": "Vista predeterminada del explorador de archivos",
+    "fileExplorerOption": {
+      "grid": "Vista de cuadrícula",
+      "list": "Vista de lista"
+    },
+    "fileExplorerDesc": "Modo de vista predeterminado al abrir el explorador de archivos.",
+    "chatTimeout": "Tiempo de espera del chat",
+    "chatTimeoutOverride": "(Establecido por variable de entorno)",
+    "chatTimeoutDesc": "Tiempo para cancelar automáticamente la solicitud cuando no se recibe respuesta.",
+    "timeoutOption": {
+      "1m": "1 min",
+      "3m": "3 min",
+      "5mDefault": "5 min (predeterminado)",
+      "10m": "10 min",
+      "30m": "30 min"
+    }
+  },
+  "toast": {
+    "themeChanged": "Tema cambiado",
+    "modelChanged": "Modelo predeterminado cambiado",
+    "permissionChanged": "Modo de permisos cambiado",
+    "timeoutChanged": "Tiempo de espera del chat cambiado",
+    "markdownModeChanged": "Modo predeterminado de Markdown cambiado",
+    "fileExplorerViewChanged": "Vista predeterminada del explorador de archivos cambiada",
+    "languageChanged": "Idioma cambiado",
+    "systemPromptSaved": "Prompt del sistema guardado",
+    "systemPromptRestored": "Prompt del sistema restaurado al predeterminado",
+    "settingChanged": "{{label}} cambiado",
+    "terminalEnabled": "Terminal habilitado",
+    "terminalDisabled": "Terminal deshabilitado",
+    "buildFailed": "Falló: {{error}}",
+    "buildFailedUnknown": "Error desconocido",
+    "serverTimeout": "El servidor no respondió a tiempo. Por favor, verifica manualmente.",
+    "buildComplete": "¡Compilación completada! Recargando página...",
+    "serverRestartFailed": "La solicitud de reinicio del servidor falló.",
+    "alreadyLatest": "Ya tienes la última versión.",
+    "updateCheckFailed": "La verificación de actualizaciones falló.",
+    "updateComplete": "¡Actualización completada! Recargando página...",
+    "updateFailed": "La solicitud de actualización falló.",
+    "settingSaved": "Configuración guardada.",
+    "settingSaveFailed": "Error al guardar la configuración.",
+    "botTokenSaved": "Bot Token guardado.",
+    "botTokenDeleted": "Bot Token eliminado.",
+    "chatIdSaved": "Chat ID guardado.",
+    "chatIdDeleted": "Chat ID eliminado.",
+    "telegramEnabled": "Notificaciones de Telegram habilitadas.",
+    "telegramDisabled": "Notificaciones de Telegram deshabilitadas.",
+    "testSent": "¡Notificación de prueba enviada!",
+    "testFailed": "La notificación de prueba falló",
+    "testServerError": "Error de conexión con el servidor",
+    "resetToGlobal": "Restablecido a valores globales predeterminados",
+    "settingSavedFailed": "Error al guardar la configuración. Por favor, inténtalo de nuevo."
+  },
+  "advanced": {
+    "serverRestart": "Reinicio del servidor",
+    "serverRestartDesc": "Compila todo el proyecto y reinicia el servidor en modo producción",
+    "softwareUpdate": "Actualización de software",
+    "currentVersion": "Versión actual: v{{version}}",
+    "building": "Compilando... ({{elapsed}}s)",
+    "serverRebuild": "Recompilar y reiniciar servidor",
+    "checking": "Verificando...",
+    "checkUpdate": "Buscar actualización",
+    "updateTo": "Actualizar a v{{version}}",
+    "updating": "Actualizando... ({{elapsed}}s)",
+    "latestVersion": "Ya tienes la última versión",
+    "terminalFeature": "Terminal",
+    "terminalDesc": "Habilitar la función de terminal web",
+    "terminalOverrideWarning": "Deshabilitado por la variable de entorno TERMINAL_ENABLED",
+    "systemPrompt": "Prompt del sistema",
+    "restoreDefault": "Restaurar predeterminado",
+    "systemPromptWarning": "Advertencia:",
+    "systemPromptWarningDetail": "Modificaciones incorrectas del prompt del sistema pueden degradar significativamente la calidad de las respuestas. Mantén el predeterminado si no estás seguro.",
+    "customPromptActive": "Prompt personalizado en uso",
+    "promptLoading": "Cargando prompt...",
+    "promptNoProject": "Selecciona un proyecto para ver el prompt del sistema actual.",
+    "charCount": "{{count}} caracteres",
+    "templateVariables": "Variables del sistema disponibles (sustituidas automáticamente en tiempo de ejecución)",
+    "previewClose": "Cerrar vista previa",
+    "previewOpen": "Vista previa para el proyecto actual",
+    "maxThinkingTokens": "Tokens máximos de razonamiento",
+    "maxThinkingTokensDesc": "Tokens máximos para el proceso de razonamiento del modelo (1,024 ~ 128,000)",
+    "maxTurns": "Turnos máximos",
+    "maxTurnsDesc": "Turnos máximos permitidos por conversación (1 ~ 100)",
+    "maxBudget": "Presupuesto máximo (USD)",
+    "maxBudgetDesc": "Límite de costo máximo por consulta (USD, 0.01 ~ 100)",
+    "sdkDefault": "Predeterminado del SDK",
+    "unlimited": "Ilimitado"
+  },
+  "confirm": {
+    "serverRestart": "Esto recompilará y reiniciará el servidor. ¿Continuar?",
+    "updateVersion": "Esto actualizará a v{{version}} y reiniciará el servidor. ¿Continuar?",
+    "resetAllSettings": "Restablecer toda la configuración del proyecto.\n\n\u2022 Se eliminarán las anulaciones de modelo/modo de permisos\n\u2022 Se deshabilitará la ocultación del proyecto\n\n¿Continuar?"
+  },
+  "telegram": {
+    "loadError": "Ocurrió un error al cargar la configuración de Telegram.",
+    "retry": "Reintentar",
+    "setupGuide": "Para configurar las notificaciones de Telegram:",
+    "setupStep1Suffix": " para crear un bot y obtener el Bot Token",
+    "setupStep2Suffix": " para obtener tu Chat ID",
+    "botTokenAriaLabel": "Abrir Telegram BotFather (nueva pestaña)",
+    "chatIdAriaLabel": "Abrir Telegram userinfobot (nueva pestaña)",
+    "botToken": "Bot Token",
+    "chatId": "Chat ID",
+    "envOverride": "(Establecido por variable de entorno)",
+    "envPriority": "La configuración de preferencias tiene prioridad sobre la variable de entorno.",
+    "enterBotToken": "Ingresar Bot Token",
+    "enterChatId": "Ingresar Chat ID",
+    "notConfigured": "No configurado",
+    "change": "Cambiar",
+    "enableNotifications": "Habilitar notificaciones de Telegram",
+    "enableHint": "Por favor, configura primero el Bot Token y el Chat ID.",
+    "notificationType": "Tipos de notificación",
+    "notifyPermission": "Solicitud de permiso — Cuando se necesita confirmación de permiso 🔐 o una pregunta ❓",
+    "notifyComplete": "Completado — Cuando la transmisión ✅ se completa",
+    "notifyError": "Error — Cuando ocurre un error ❌ durante la transmisión",
+    "queueNotificationType": "Tipos de notificación de cola",
+    "notifyQueueStart": "Inicio de cola — Cuando comienza la ejecución de la cola",
+    "notifyQueueComplete": "Cola completada — Después de procesar todos los elementos",
+    "notifyQueueError": "Error de cola — En QUEUE_STOP o error del SDK",
+    "notifyQueueInput": "Solicitud de entrada de cola — Cuando se necesita respuesta del usuario",
+    "testSending": "Enviando...",
+    "testSend": "Enviar notificación de prueba",
+    "testSuccess": "✅ Exitoso",
+    "testFailure": "❌ Falló: {{error}}"
+  },
+  "project": {
+    "selectProject": "Seleccionar proyecto",
+    "hidden": " (oculto)",
+    "loading": "Cargando configuración...",
+    "loadError": "Ocurrió un error al cargar la configuración.",
+    "retry": "Reintentar",
+    "noProjects": "No se encontraron proyectos.",
+    "modelOverride": "Anulación de modelo",
+    "projectOverride": "(anulación del proyecto)",
+    "useGlobalDefault": "Usar predeterminado global (actual: {{value}})",
+    "permissionOverride": "Anulación del modo de permisos",
+    "hideInSidebar": "Ocultar este proyecto de la barra lateral",
+    "resetToGlobal": "Restablecer a valores globales predeterminados",
+    "noOverrides": "No hay anulaciones de proyecto configuradas actualmente."
+  },
+  "about": {
+    "issuesAndSuggestions": "Reportes de errores y solicitudes de funcionalidades",
+    "githubIssuesAriaLabel": "Ir a GitHub Issues (nueva pestaña)",
+    "serverStatus": "Estado del servidor",
+    "checking": "Verificando...",
+    "connectionFailed": "La conexión al servidor falló",
+    "retryCheckAriaLabel": "Verificar nuevamente el estado del servidor",
+    "retry": "Reintentar",
+    "status": "Estado",
+    "statusHealthy": "Saludable",
+    "statusUnhealthy": "No saludable",
+    "version": "Versión",
+    "serverTime": "Hora del servidor"
+  },
+  "help": {
+    "basicChat": "Uso básico del chat",
+    "basicChatItems": [
+      "Escribe un mensaje en el campo de chat y presiona Enter (escritorio) o el botón de enviar (móvil) para enviar",
+      "Adjuntar imagen: Sube imágenes con el ícono de clip o pega (Ctrl+V)",
+      "Nueva sesión: Inicia una nueva sesión de chat con el botón \"+\" en el encabezado",
+      "Cambiar sesiones: Accede a sesiones anteriores con el ícono de reloj"
+    ],
+    "slashCommands": "Comandos de barra",
+    "slashCommandItems": [
+      "Escribe / en el campo de chat para ver los comandos disponibles",
+      "Los comandos de uso frecuente se pueden agregar a ★ favoritos",
+      "Agregar favoritos: Haz clic en ★ o mantén presionado en la paleta de comandos",
+      "Los favoritos aparecen como botones de acceso rápido sobre el área de entrada"
+    ],
+    "permissionMode": "Modo de permisos",
+    "permissionPlanLabel": "Planificar",
+    "permissionPlanDesc": "Sugiere un plan antes de realizar cambios en el código",
+    "permissionDefaultLabel": "Preguntar antes de editar (predeterminado)",
+    "permissionDefaultDesc": "Siempre pide confirmación antes de editar archivos",
+    "permissionAutoLabel": "Editar automáticamente",
+    "permissionAutoDesc": "Realiza ediciones de archivos automáticamente",
+    "permissionNote": "Puedes cambiar el modo de permisos predeterminado en Configuración > Configuración global o Configuración del proyecto.",
+    "bmadMethod": "Integración con BMad Method",
+    "bmadMethodItems": [
+      "BMad Method es un framework de flujo de trabajo de desarrollo impulsado por IA",
+      "Instala BMad Core en un proyecto con el botón \"Configurar BMad\" en la página del proyecto",
+      "Después de la instalación, invoca rápidamente agentes especializados desde el botón de agente BMad (esquina inferior derecha del chat)",
+      "Agentes: SM (Scrum Master), PM (Project Manager), Dev (Desarrollador), QA (Aseguramiento de calidad), etc."
+    ],
+    "keyboardShortcuts": "Atajos de teclado",
+    "shortcutKey": "Atajo",
+    "shortcutAction": "Acción",
+    "shortcuts": {
+      "enter": "Enviar mensaje (escritorio)",
+      "shiftEnter": "Nueva línea (escritorio)",
+      "escape": "Detener transmisión / Cerrar ventana emergente",
+      "ctrlC": "Detener transmisión (cuando no hay texto seleccionado)",
+      "f7": "Navegar cambios en el visor de diferencias (siguiente/anterior)",
+      "slash": "Abrir paleta de comandos de barra"
+    }
+  },
+  "tabs": {
+    "global": "Configuración global",
+    "project": "Configuración del proyecto",
+    "telegram": "Notificaciones de Telegram",
+    "advanced": "Configuración avanzada",
+    "help": "Ayuda",
+    "about": "Acerca de"
+  },
+  "permissionMode": {
+    "planDescription": "Claude solo planifica y no modifica archivos",
+    "askDescription": "Pide aprobación antes de modificar archivos",
+    "autoDescription": "Aprueba automáticamente las modificaciones de archivos",
+    "bypassDescription": "Omite todas las solicitudes de permisos",
+    "selectorAria": "Modo de permisos: {{label}}. {{description}}. Haz clic para cambiar al siguiente modo"
+  },
+  "layout": {
+    "narrowAria": "Cambiar a diseño estrecho",
+    "wideAria": "Cambiar a diseño ancho",
+    "narrowTitle": "Diseño estrecho",
+    "wideTitle": "Diseño ancho"
+  },
+  "theme": {
+    "lightAria": "Cambiar a modo claro",
+    "darkAria": "Cambiar a modo oscuro"
+  },
+  "page": {
+    "title": "Configuración",
+    "backAriaLabel": "Volver"
+  }
+}

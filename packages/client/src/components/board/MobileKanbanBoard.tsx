@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { BoardItem, BoardConfig } from '@bmad-studio/shared';
 import { BoardCard } from './BoardCard';
 import type { CardActionCallbacks } from './BoardCard';
@@ -27,6 +28,7 @@ export function MobileKanbanBoard({
   onViewEpicStories,
   onNormalizeStatus,
 }: MobileKanbanBoardProps) {
+  const { t } = useTranslation('board');
   const [activeColumnIndex, setActiveColumnIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -116,7 +118,7 @@ export function MobileKanbanBoard({
           ))}
           {activeItems.length === 0 && (
             <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-8">
-              항목 없음
+              {t('empty.items')}
             </p>
           )}
         </div>
@@ -133,7 +135,7 @@ export function MobileKanbanBoard({
                 ? 'bg-blue-500'
                 : 'bg-gray-300 dark:bg-gray-600'
             }`}
-            aria-label={`${col.label} 칼럼으로 이동`}
+            aria-label={t('mobileKanban.goToColumn', { column: col.label })}
           />
         ))}
       </div>

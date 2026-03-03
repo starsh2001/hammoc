@@ -3,6 +3,7 @@
  * [Source: Story 3.4 - Task 4]
  */
 
+import { useTranslation } from 'react-i18next';
 import { RefreshCw } from 'lucide-react';
 
 interface PullToRefreshIndicatorProps {
@@ -16,6 +17,7 @@ export function PullToRefreshIndicator({
   threshold,
   isRefreshing,
 }: PullToRefreshIndicatorProps) {
+  const { t } = useTranslation('common');
   const progress = Math.min(pullDistance / threshold, 1);
   const rotation = progress * 180;
 
@@ -32,7 +34,7 @@ export function PullToRefreshIndicator({
         aria-hidden="true"
       />
       {isRefreshing && (
-        <span className="sr-only">새로고침 중...</span>
+        <span className="sr-only">{t('pullToRefresh')}</span>
       )}
     </div>
   );

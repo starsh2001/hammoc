@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle, XCircle, AlertCircle, ChevronRight, ChevronDown, Loader2, Files, ShieldCheck, ShieldX } from 'lucide-react';
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { DiffViewer } from './DiffViewer';
@@ -36,6 +37,7 @@ export interface ToolCardProps {
 
 /** Real-time elapsed timer for pending tool calls */
 function ToolTimer({ startedAt }: { startedAt: number }) {
+  const { t } = useTranslation('chat');
   const [elapsed, setElapsed] = useState(() => Date.now() - startedAt);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ function ToolTimer({ startedAt }: { startedAt: number }) {
   }, [startedAt]);
 
   return (
-    <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto" aria-label={`실행 시간: ${formatDuration(elapsed)}`}>
+    <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(elapsed) })}>
       {formatDuration(elapsed)}
     </span>
   );
@@ -54,6 +56,7 @@ function ToolTimer({ startedAt }: { startedAt: number }) {
 
 /** Collapsible tool result section */
 function CollapsibleResult({ toolName, toolInput, result }: { toolName: string; toolInput?: Record<string, unknown>; result: string }) {
+  const { t } = useTranslation('chat');
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -65,7 +68,7 @@ function CollapsibleResult({ toolName, toolInput, result }: { toolName: string; 
         aria-expanded={expanded}
       >
         {expanded ? <ChevronDown className="w-3 h-3" aria-hidden="true" /> : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
-        <span>결과 보기</span>
+        <span>{t('tool.showResult')}</span>
       </button>
       {expanded && (
         <div className="mt-1">
@@ -114,6 +117,7 @@ function ExitPlanModeContent({
   allowedPrompts: Array<{ tool: string; prompt: string }> | null;
   defaultExpanded?: boolean;
 }) {
+  const { t } = useTranslation('chat');
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
@@ -125,7 +129,7 @@ function ExitPlanModeContent({
         aria-expanded={expanded}
       >
         {expanded ? <ChevronDown className="w-3 h-3" aria-hidden="true" /> : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
-        <span>Plan</span>
+        <span>{t('tool.plan')}</span>
       </button>
       {expanded && (
         <div className="mt-1 max-h-64 overflow-y-auto rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 p-2">
@@ -135,7 +139,7 @@ function ExitPlanModeContent({
             </div>
           ) : (
             <p className="text-xs text-gray-400 dark:text-gray-500 italic">
-              Plan 내용이 없습니다
+              {t('tool.planEmpty')}
             </p>
           )}
         </div>
@@ -144,7 +148,7 @@ function ExitPlanModeContent({
       {allowedPrompts && allowedPrompts.length > 0 && (
         <div className="mt-2">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
-            요청된 권한:
+            {t('tool.requestedPermissions')}
           </p>
           <ul className="space-y-0.5 text-xs text-gray-600 dark:text-gray-400">
             {allowedPrompts.map((ap, i) => (
@@ -176,6 +180,7 @@ export function ToolCard({
   onPermissionRespond,
   onPlanModeExit,
 }: ToolCardProps) {
+  const { t } = useTranslation('chat');
   const output = stripXmlWrapperTags(rawOutput);
   const resultOutput = stripXmlWrapperTags(rawResultOutput);
   const [showDiffViewer, setShowDiffViewer] = useState(false);
@@ -224,12 +229,12 @@ export function ToolCard({
         role="listitem"
         aria-label={
           isDenied
-            ? `도구 거절됨: ${toolDisplayName}`
+            ? t('tool.rejectedAria', { name: toolDisplayName })
             : isError
-              ? `도구 실패: ${toolDisplayName}`
+              ? t('tool.failedAria', { name: toolDisplayName })
               : isPending
-                ? `도구 실행 중: ${toolDisplayName}`
-                : `도구 완료: ${toolDisplayName}`
+                ? t('tool.runningAria', { name: toolDisplayName })
+                : t('tool.completedAria', { name: toolDisplayName })
         }
       >
         <div className={`max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border ${
@@ -245,7 +250,7 @@ export function ToolCard({
               <>
                 <XCircle className="w-4 h-4 text-red-500" aria-hidden="true" />
                 <span className="text-xs text-red-500 dark:text-red-400">
-                  {isUserDenied ? '거절됨' : '실패'}
+                  {isUserDenied ? t('tool.rejected') : t('tool.failed')}
                 </span>
               </>
             ) : isError ? (
@@ -257,7 +262,7 @@ export function ToolCard({
             )}
             {/* Duration display */}
             {!isPending && duration != null && (
-              <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto" aria-label={`실행 시간: ${formatDuration(duration)}`}>
+              <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(duration) })}>
                 {formatDuration(duration)}
               </span>
             )}
@@ -284,7 +289,7 @@ export function ToolCard({
                 onClick={() => setIsPathExpanded(!isPathExpanded)}
                 className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 transition-colors text-left"
                 aria-expanded={isPathExpanded}
-                aria-label={isPathExpanded ? '접기' : '전체 경로 보기'}
+                aria-label={isPathExpanded ? t('tool.collapse') : t('tool.showFullPath')}
               >
                 {isPathExpanded ? (
                   <ChevronDown className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
@@ -298,8 +303,8 @@ export function ToolCard({
               <button
                 onClick={() => setShowDiffViewer(true)}
                 className="group flex items-center gap-0.5 whitespace-nowrap hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                aria-label="Diff 보기"
-                title="클릭하여 Diff 보기"
+                aria-label={t('tool.showDiff')}
+                title={t('tool.clickToShowDiff')}
               >
                 <span className="text-green-600 dark:text-green-400">+{lineChanges.added}</span>
                 <span className="text-gray-400">/</span>
@@ -358,34 +363,34 @@ export function ToolCard({
                 type="button"
                 onClick={() => onPlanModeExit('bypassPermissions')}
                 className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 rounded border border-green-200 dark:border-green-800 transition-colors"
-                aria-label="Bypass 모드로 승인"
+                aria-label={t('tool.approveBypass')}
               >
                 <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-                Yes (Bypass)
+                {t('tool.yesBypass')}
               </button>
               <button
                 type="button"
                 onClick={() => onPlanModeExit('acceptEdits')}
                 className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded border border-blue-200 dark:border-blue-800 transition-colors"
-                aria-label="Auto 모드로 승인"
+                aria-label={t('tool.approveAuto')}
               >
                 <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-                Yes (Auto)
+                {t('tool.yesAuto')}
               </button>
               <button
                 type="button"
                 onClick={() => onPlanModeExit('default')}
                 className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 transition-colors"
-                aria-label="Ask 모드로 승인"
+                aria-label={t('tool.approveAsk')}
               >
                 <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-                Yes (Ask)
+                {t('tool.yesAsk')}
               </button>
               <button
                 type="button"
                 onClick={() => onPermissionRespond(false)}
                 className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded border border-red-200 dark:border-red-800 transition-colors"
-                aria-label="거절 (계속 플래닝)"
+                aria-label={t('tool.rejectContinuePlanning')}
               >
                 <ShieldX className="w-3.5 h-3.5" aria-hidden="true" />
                 No
@@ -400,19 +405,19 @@ export function ToolCard({
                 type="button"
                 onClick={() => onPermissionRespond(true)}
                 className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 rounded border border-green-200 dark:border-green-800 transition-colors"
-                aria-label="도구 실행 허용"
+                aria-label={t('tool.allowTool')}
               >
                 <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-                Allow
+                {t('tool.allow')}
               </button>
               <button
                 type="button"
                 onClick={() => onPermissionRespond(false)}
                 className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded border border-red-200 dark:border-red-800 transition-colors"
-                aria-label="도구 실행 거절"
+                aria-label={t('tool.denyTool')}
               >
                 <ShieldX className="w-3.5 h-3.5" aria-hidden="true" />
-                Deny
+                {t('tool.deny')}
               </button>
             </div>
           )}

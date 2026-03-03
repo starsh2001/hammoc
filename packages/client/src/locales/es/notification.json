@@ -1,1 +1,52 @@
-{}
+{
+  "auth": {
+    "loginError": "Ocurrió un error al iniciar sesión.",
+    "setupPasswordError": "Ocurrió un error al configurar la contraseña."
+  },
+  "project": {
+    "loadError": "Ocurrió un error al cargar la lista de proyectos.",
+    "deleteError": "Ocurrió un error al eliminar el proyecto.",
+    "bmadSetupError": "Ocurrió un error durante la configuración de BMad.",
+    "pathValidationError": "Ocurrió un error durante la validación de la ruta.",
+    "createError": "Ocurrió un error al crear el proyecto.",
+    "createCancelled": "Creación del proyecto cancelada."
+  },
+  "session": {
+    "notFound": "Proyecto no encontrado.",
+    "serverError": "Ocurrió un error en el servidor. Por favor, inténtalo más tarde.",
+    "networkError": "Por favor, verifica tu conexión de red.",
+    "loadError": "Ocurrió un error al cargar la lista de sesiones.",
+    "deleteError": "Ocurrió un error al eliminar la sesión."
+  },
+  "chat": {
+    "aborted": "Cancelado",
+    "approved": "Aprobado",
+    "rejected": "Rechazado"
+  },
+  "board": {
+    "loadError": "Ocurrió un error al cargar los datos del tablero."
+  },
+  "git": {
+    "operationError": "Ocurrió un error durante la operación de Git."
+  },
+  "file": {
+    "binaryNotEditable": "Los archivos binarios no se pueden editar."
+  },
+  "message": {
+    "loadError": "Ocurrió un error al cargar los mensajes."
+  },
+  "streaming": {
+    "alreadyResponded": "Ya se respondió en otro navegador.",
+    "respondedBeforeReconnect": "(Respondido antes de la reconexión)",
+    "abortedInOtherBrowser": "La respuesta fue cancelada en otro navegador.",
+    "sessionInUseWarning": "Esta sesión se está usando en otro navegador. Actualiza e inténtalo de nuevo.",
+    "respondedInOtherBrowser": "(Respondido en otro navegador)",
+    "disconnectedRetry": "Conexión perdida. Por favor, inténtalo de nuevo después de reconectar."
+  },
+  "bmadStatus": {
+    "loadError": "Ocurrió un error al cargar el estado del proyecto BMad."
+  },
+  "cliStatus": {
+    "checkFailed": "La verificación del estado del CLI falló"
+  }
+}

@@ -4,6 +4,7 @@
  * [Source: Story 19.2 - Task 2]
  */
 
+import { useTranslation } from 'react-i18next';
 import type { QuickPanelType } from '../../stores/panelStore';
 import { PANEL_CONFIG, PANEL_TYPES } from './QuickPanel';
 
@@ -18,9 +19,10 @@ export function PanelTabSwitcher({
   onSwitchPanel,
   terminalAccessible = true,
 }: PanelTabSwitcherProps) {
+  const { t } = useTranslation('common');
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const enabledTypes = PANEL_TYPES.filter(
-      t => !(t === 'terminal' && !terminalAccessible)
+      pt => !(pt === 'terminal' && !terminalAccessible)
     );
     const currentIndex = enabledTypes.indexOf(activePanel);
     let nextIndex: number | null = null;
@@ -51,7 +53,7 @@ export function PanelTabSwitcher({
   };
 
   return (
-    <div className="flex items-center gap-1" role="tablist" aria-label="패널 탭" onKeyDown={handleKeyDown}>
+    <div className="flex items-center gap-1" role="tablist" aria-label={t('panel.tabList')} onKeyDown={handleKeyDown}>
       {PANEL_TYPES.map(type => {
         const config = PANEL_CONFIG[type];
         const IconComponent = config.icon;
@@ -63,7 +65,7 @@ export function PanelTabSwitcher({
             key={type}
             role="tab"
             aria-selected={isActive}
-            aria-label={config.title}
+            aria-label={t(config.titleKey)}
             aria-disabled={isDisabled}
             tabIndex={isActive ? 0 : -1}
             onClick={() => !isDisabled && onSwitchPanel(type)}
@@ -74,7 +76,7 @@ export function PanelTabSwitcher({
                 : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300'}
               ${isDisabled ? 'opacity-50 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent' : ''}
             `}
-            title={isDisabled ? `${config.title} (접근 불가)` : config.title}
+            title={isDisabled ? `${t(config.titleKey)} ${t('panel.disabledSuffix')}` : t(config.titleKey)}
             data-testid={`panel-tab-${type}`}
           >
             <IconComponent className="w-5 h-5" aria-hidden="true" />

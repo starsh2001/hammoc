@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { Search, X, File, Folder, Loader2, Clock } from 'lucide-react';
 import type { FileSearchResult } from '@bmad-studio/shared';
@@ -21,6 +22,7 @@ interface QuickFileExplorerProps {
 export function QuickFileExplorer({
   projectSlug,
 }: QuickFileExplorerProps) {
+  const { t } = useTranslation('common');
   const { sessionId } = useParams<{ sessionId: string }>();
 
   // Search state
@@ -98,7 +100,7 @@ export function QuickFileExplorer({
             type="text"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            placeholder="파일 검색..."
+            placeholder={t('files.fileSearchPlaceholder')}
             className="w-full pl-9 pr-8 py-1.5 text-sm bg-gray-100 dark:bg-gray-800
                        dark:text-white border border-gray-200 dark:border-gray-700
                        rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
@@ -109,7 +111,7 @@ export function QuickFileExplorer({
               onClick={() => setSearchText('')}
               className="absolute right-2 w-4 h-4 text-gray-400
                          hover:text-gray-600 cursor-pointer"
-              aria-label="검색어 지우기"
+              aria-label={t('files.clearSearch')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -124,11 +126,11 @@ export function QuickFileExplorer({
             {searchLoading ? (
               <div className="flex items-center gap-2 px-2 py-4 text-sm text-gray-500 dark:text-gray-400 justify-center">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>검색 중...</span>
+                <span>{t('files.searching')}</span>
               </div>
             ) : searchResults && searchResults.length === 0 ? (
               <div className="px-2 py-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-                검색 결과가 없습니다.
+                {t('files.noResults')}
               </div>
             ) : (
               searchResults?.map((result) => {
@@ -178,7 +180,7 @@ export function QuickFileExplorer({
                 <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium
                                 text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   <Clock className="w-3.5 h-3.5" aria-hidden="true" />
-                  최근 열기
+                  {t('files.recentlyOpened')}
                 </div>
                 {recentFiles.map((filePath) => {
                   const fileName = filePath.includes('/') ? filePath.split('/').pop()! : filePath;

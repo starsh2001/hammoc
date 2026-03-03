@@ -1,1 +1,270 @@
-{}
+{
+  "header": {
+    "ariaLabel": "채팅 헤더",
+    "backButton": "세션 목록으로 돌아가기",
+    "defaultTitle": "채팅",
+    "newSession": "새 세션 시작",
+    "refreshing": "새로고침 중",
+    "refresh": "새로고침",
+    "settings": "설정",
+    "logout": "로그아웃"
+  },
+  "sessionTitle": {
+    "placeholder": "세션 이름 입력...",
+    "hint": "클릭하여 세션 이름 변경"
+  },
+  "agentIndicator": {
+    "ariaLabel": "현재 에이전트: {{agent}}"
+  },
+  "input": {
+    "placeholder": "메시지를 입력하세요...",
+    "hint": "Enter로 전송, Shift+Enter로 줄바꿈",
+    "attachImage": "이미지 첨부",
+    "sessionLocked": "세션 잠김",
+    "abort": "중단",
+    "addToChain": "체인에 추가",
+    "send": "전송"
+  },
+  "chainMode": {
+    "off": "체인 모드 끄기",
+    "on": "체인 모드 켜기"
+  },
+  "validation": {
+    "onlyImages": "이미지 파일만 첨부할 수 있습니다 (PNG, JPEG, GIF, WebP)",
+    "unsupportedFormat": "지원되지 않는 이미지 형식입니다",
+    "fileTooLarge": "10MB를 초과하는 파일은 첨부할 수 없습니다",
+    "maxImagesExceeded": "이미지는 최대 5개까지 첨부할 수 있습니다",
+    "failedToReadImage": "이미지를 읽을 수 없습니다: {{name}}"
+  },
+  "errors": {
+    "apiUnhealthy": "Claude API가 현재 응답하지 않습니다. 메시지가 전달되지 않을 수 있습니다.",
+    "disconnected": "서버와 연결이 끊어졌습니다. 재연결 후 다시 시도해주세요."
+  },
+  "attachment": {
+    "remove": "이미지 제거: {{name}}"
+  },
+  "interactive": {
+    "defaultHeader": "질문",
+    "responded": "응답됨",
+    "approved": "승인됨",
+    "rejected": "거절됨",
+    "submitSelection": "선택 제출",
+    "submit": "제출",
+    "other": "기타",
+    "otherOption": "기타 (직접 입력)",
+    "otherButton": "기타...",
+    "otherPlaceholder": "응답을 입력하세요...",
+    "otherInputLabel": "기타 응답 입력",
+    "submitOther": "기타 응답 제출",
+    "send": "전송",
+    "otherResponse": "기타: {{response}}",
+    "permissionRequest": "권한 요청: {{toolName}}",
+    "sending": "전송 중",
+    "approve": "승인",
+    "reject": "거절",
+    "submitAll": "전체 응답 제출",
+    "submitProgress": "제출 ({{count}}/{{total}})"
+  },
+  "sessionListItem": {
+    "ariaLabel": "세션: {{prompt}}",
+    "checkbox": "{{prompt}} 선택",
+    "nameInput": "세션 이름 입력...",
+    "emptySession": "(빈 세션)",
+    "streaming": "스트리밍 중",
+    "waiting": "대기 중",
+    "queueActive": "큐 러너 작업 중",
+    "queue": "큐",
+    "messageCount": "{{count}}개 메시지",
+    "menu": "세션 메뉴",
+    "rename": "이름 변경",
+    "removeName": "이름 제거",
+    "delete": "세션 삭제"
+  },
+  "messageArea": {
+    "ariaLabel": "메시지 목록",
+    "scrollToBottom": "최신 메시지로 스크롤"
+  },
+  "compaction": {
+    "complete": "컨텍스트 압축 완료 — 응답 재생성 중...",
+    "inProgress": "컨텍스트 압축 중... ({{percent}}%)",
+    "inProgressNoPercent": "컨텍스트 압축 중..."
+  },
+  "inputArea": {
+    "ariaLabel": "메시지 입력",
+    "placeholder": "메시지 입력은 Story 4.2에서 구현됩니다."
+  },
+  "session": {
+    "back": "뒤로 가기",
+    "exitSelection": "선택 취소",
+    "selectedCount": "{{count}}개 선택됨",
+    "selectAll": "모두 선택",
+    "deselectAll": "선택 해제",
+    "delete": "삭제",
+    "newSession": "새 세션",
+    "hideEmpty": "빈 세션 숨기기",
+    "showEmpty": "빈 세션 표시",
+    "deleteEmptyCount": "빈 세션 {{count}}개 삭제",
+    "deleteEmpty": "빈 세션 삭제",
+    "selectionMode": "선택 모드",
+    "refresh": "새로고침",
+    "settings": "설정",
+    "logout": "로그아웃",
+    "menu": "메뉴",
+    "lightMode": "라이트 모드",
+    "darkMode": "다크 모드",
+    "loading": "로딩 중",
+    "empty": {
+      "title": "세션이 없습니다",
+      "description": "새 세션을 시작하여 Claude와 대화하세요.",
+      "action": "새 세션 시작"
+    },
+    "confirmDelete": {
+      "title": "세션 삭제",
+      "message": "이 세션을 삭제하시겠습니까? 세션 파일이 영구적으로 삭제됩니다.",
+      "confirm": "삭제",
+      "cancel": "취소"
+    },
+    "confirmBatchDelete": {
+      "title": "세션 일괄 삭제",
+      "message": "선택한 {{count}}개 세션을 삭제하시겠습니까? 세션 파일이 영구적으로 삭제됩니다."
+    },
+    "confirmEmptyDelete": {
+      "title": "빈 세션 삭제",
+      "message": "빈 세션 {{count}}개를 삭제하시겠습니까? 세션 파일이 영구적으로 삭제됩니다."
+    }
+  },
+  "messageBubble": {
+    "ariaLabel": "{{role}} 메시지, {{time}}",
+    "userRole": "내",
+    "assistantRole": "Claude",
+    "assistantName": "Claude",
+    "image": "첨부 이미지 {{index}}",
+    "copiedLabel": "복사됨",
+    "copyLabel": "메시지 복사",
+    "copiedTitle": "복사됨!",
+    "copyTitle": "클립보드에 복사"
+  },
+  "streamingMessage": {
+    "ariaLabel": "Claude 응답 중",
+    "assistantName": "Claude",
+    "copiedLabel": "복사됨",
+    "copyLabel": "메시지 복사",
+    "copiedTitle": "복사됨!",
+    "copyTitle": "클립보드에 복사"
+  },
+  "messageListSkeleton": {
+    "ariaLabel": "메시지 로딩 중",
+    "srText": "메시지를 불러오는 중입니다..."
+  },
+  "sessionQuickAccess": {
+    "loading": "로딩 중",
+    "empty": "세션이 없습니다",
+    "streaming": "스트리밍 중",
+    "waiting": "대기 중"
+  },
+  "favorites": {
+    "maxReached": "즐겨찾기는 최대 20개까지 추가할 수 있습니다"
+  },
+  "starFavorites": {
+    "maxReached": "별표 즐겨찾기는 최대 10개까지 추가할 수 있습니다"
+  },
+  "confirmModal": {
+    "agentLaunch": {
+      "title": "에이전트 시작 확인",
+      "message": "진행 중인 대화가 있습니다. 에이전트를 새 세션에서 시작하시겠습니까?"
+    },
+    "newSession": {
+      "message": "진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?"
+    },
+    "switchSession": {
+      "message": "진행 중인 응답이 있습니다. 세션을 전환하시겠습니까?"
+    }
+  },
+  "chatPage": {
+    "ariaLabel": "채팅 페이지",
+    "loadingPlaceholder": "로딩 중...",
+    "errorPlaceholder": "오류가 발생했습니다",
+    "empty": {
+      "title": "새 세션",
+      "description": "Claude와 새 대화를 시작하세요."
+    },
+    "streaming": "응답 중...",
+    "default": "메시지를 입력하세요...",
+    "loadingMore": "로딩 중...",
+    "loadMore": "이전 메시지 더 보기"
+  },
+  "tool": {
+    "executionTime": "실행 시간: {{duration}}",
+    "showResult": "결과 보기",
+    "plan": "Plan",
+    "planEmpty": "Plan 내용이 없습니다",
+    "requestedPermissions": "요청된 권한:",
+    "rejectedAria": "도구 거절됨: {{name}}",
+    "failedAria": "도구 실패: {{name}}",
+    "runningAria": "도구 실행 중: {{name}}",
+    "completedAria": "도구 완료: {{name}}",
+    "rejected": "거절됨",
+    "failed": "실패",
+    "collapse": "접기",
+    "showFullPath": "전체 경로 보기",
+    "showDiff": "Diff 보기",
+    "clickToShowDiff": "클릭하여 Diff 보기",
+    "approveBypass": "Bypass 모드로 승인",
+    "yesBypass": "Yes (Bypass)",
+    "approveAuto": "Auto 모드로 승인",
+    "yesAuto": "Yes (Auto)",
+    "approveAsk": "Ask 모드로 승인",
+    "yesAsk": "Yes (Ask)",
+    "rejectContinuePlanning": "거절 (계속 플래닝)",
+    "allowTool": "도구 실행 허용",
+    "allow": "Allow",
+    "denyTool": "도구 실행 거절",
+    "deny": "Deny",
+    "resultFailed": "도구 결과: 실패",
+    "toolFailed": "도구 실패",
+    "showMore": "더 보기 ({{count}}개)",
+    "showMoreSimple": "더 보기",
+    "detailCollapseAria": "도구 상세 정보 접기",
+    "detailExpandAria": "도구 상세 정보 펼치기",
+    "detail": "상세",
+    "collapseContent": "접기",
+    "expandContent": "전체 내용 보기"
+  },
+  "permission": {
+    "viewChanges": "파일 변경사항 보기: {{path}}",
+    "approximateHint": "블록 기준 근사치입니다. 탭하여 정확한 Diff를 확인하세요",
+    "approveChanges": "변경사항 승인",
+    "approve": "승인",
+    "rejectChanges": "변경사항 거절",
+    "reject": "거절"
+  },
+  "chain": {
+    "waitingAria": "프롬프트 체인: 다음 명령 대기 중 — {{prompt}}",
+    "next": "다음",
+    "collapseList": "체인 목록 접기",
+    "expandList": "체인 목록 펼치기",
+    "cancelAll": "대기 중인 프롬프트 전체 취소",
+    "cancelAllTitle": "전체 취소",
+    "removePrompt": "{{index}}번 프롬프트 제거",
+    "removeTitle": "제거"
+  },
+  "streaming": {
+    "ariaLabel": "Claude가 응답을 생성하고 있습니다",
+    "srText": "Claude is thinking..."
+  },
+  "markdown": {
+    "openFile": "파일 열기: {{href}}"
+  },
+  "model": {
+    "defaultLabel": "Default",
+    "aliases": "Aliases (Latest)",
+    "latestSonnet": "Latest Sonnet",
+    "latestOpus": "Latest Opus",
+    "latestHaiku": "Latest Haiku",
+    "claude4x": "Claude 4.x",
+    "claude3x": "Claude 3.x",
+    "mostCapable": "Most capable",
+    "selectorAria": "모델: {{label}}. 클릭하여 모델 변경",
+    "selectAria": "모델 선택"
+  }
+}

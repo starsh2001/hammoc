@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { LayoutList, Kanban, Plus, RefreshCw, AlertCircle, Settings } from 'lucide-react';
 import type { BoardItem, CreateIssueRequest, UpdateIssueRequest } from '@bmad-studio/shared';
 import { useBoard } from '../hooks/useBoard';
@@ -20,6 +21,7 @@ import { boardApi } from '../services/api/board.js';
 import { generateUUID } from '../utils/uuid.js';
 
 export function ProjectBoardPage() {
+  const { t } = useTranslation('board');
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const navigate = useNavigate();
   const {
@@ -68,13 +70,13 @@ export function ProjectBoardPage() {
       const sessionId = generateUUID();
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
       const desc = item.description
-        ? (item.description.length > 500 ? item.description.slice(0, 500) + '...(잘림)' : item.description)
-        : '(설명 없음)';
-      const prompt = `다음 이슈를 해결해 주세요:\n\n# ${item.title}\n\n${desc}\n\n심각도: ${item.severity || '없음'}\n타입: ${item.issueType || '없음'}\n\n이슈 파일: ${issueFile}\n\n작업 완료 후 위 이슈 파일의 Status를 Done으로 변경해 주세요.`;
+        ? (item.description.length > 500 ? item.description.slice(0, 500) + t('truncated') : item.description)
+        : t('noDescription');
+      const prompt = `다음 이슈를 해결해 주세요:\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n이슈 파일: ${issueFile}\n\n작업 완료 후 위 이슈 파일의 Status를 Done으로 변경해 주세요.`;
       const params = new URLSearchParams({ agent: '/BMad:agents:dev', task: prompt });
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
-      setActionErrorWithClear('이슈 상태 변경에 실패했습니다.');
+      setActionErrorWithClear(t('errors.updateStatusFailed'));
     }
   }, [projectSlug, navigate, setActionErrorWithClear]);
 
@@ -85,14 +87,14 @@ export function ProjectBoardPage() {
       await boardApi.updateIssue(projectSlug, item.id, { status: 'Done' });
       const sessionId = generateUUID();
       const desc = item.description
-        ? (item.description.length > 500 ? item.description.slice(0, 500) + '...(잘림)' : item.description)
-        : '없음';
+        ? (item.description.length > 500 ? item.description.slice(0, 500) + t('truncated') : item.description)
+        : t('promote.none');
       const taskName = targetType === 'story' ? '*create-brownfield-story' : '*create-brownfield-epic';
-      const taskWithContext = `${taskName}\n\n## 원본 이슈 (ID: ${item.id})\n**제목**: ${item.title}\n**설명**: ${desc}\n**심각도**: ${item.severity || '없음'}\n**타입**: ${item.issueType || '없음'}`;
+      const taskWithContext = `${taskName}\n\n## ${t('promote.originalIssueHeader', { id: item.id })}\n**${t('issue.titlePlain')}**: ${item.title}\n**${t('issue.description')}**: ${desc}\n**${t('issue.severity')}**: ${item.severity || t('promote.none')}\n**${t('issue.type')}**: ${item.issueType || t('promote.none')}`;
       const params = new URLSearchParams({ agent: '/BMad:agents:pm', task: taskWithContext });
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
-      setActionErrorWithClear('승격 처리에 실패했습니다.');
+      setActionErrorWithClear(t('errors.promoteFailed'));
     }
   }, [projectSlug, navigate, setActionErrorWithClear]);
 
@@ -108,7 +110,7 @@ export function ProjectBoardPage() {
       await refresh();
       setEditingIssue(null);
     } catch {
-      setActionErrorWithClear('이슈 수정에 실패했습니다.');
+      setActionErrorWithClear(t('errors.editFailed'));
       throw new Error('update failed');
     }
   }, [projectSlug, refresh, setActionErrorWithClear]);
@@ -116,24 +118,24 @@ export function ProjectBoardPage() {
   // Close issue
   const handleCloseIssue = useCallback(async (item: BoardItem) => {
     if (!projectSlug) return;
-    if (!window.confirm('이 이슈를 닫으시겠습니까?')) return;
+    if (!window.confirm(t('issue.closeConfirm'))) return;
     try {
       await boardApi.updateIssue(projectSlug, item.id, { status: 'Closed' });
       await refresh();
     } catch {
-      setActionErrorWithClear('이슈 닫기에 실패했습니다.');
+      setActionErrorWithClear(t('errors.closeFailed'));
     }
   }, [projectSlug, refresh, setActionErrorWithClear]);
 
   // Delete issue
   const handleDeleteIssue = useCallback(async (item: BoardItem) => {
     if (!projectSlug) return;
-    if (!window.confirm(`이슈 "${item.title}"을(를) 삭제하시겠습니까?`)) return;
+    if (!window.confirm(t('issue.deleteConfirm', { title: item.title }))) return;
     try {
       await boardApi.deleteIssue(projectSlug, item.id);
       await refresh();
     } catch {
-      setActionErrorWithClear('이슈 삭제에 실패했습니다.');
+      setActionErrorWithClear(t('errors.deleteFailed'));
     }
   }, [projectSlug, refresh, setActionErrorWithClear]);
 
@@ -187,7 +189,7 @@ export function ProjectBoardPage() {
       await boardApi.normalizeStoryStatus(projectSlug, storyNum);
       await refresh();
     } catch {
-      setActionErrorWithClear('상태 확정에 실패했습니다.');
+      setActionErrorWithClear(t('errors.normalizeStatusFailed'));
     }
   }, [projectSlug, refresh, setActionErrorWithClear]);
 
@@ -238,7 +240,7 @@ export function ProjectBoardPage() {
           className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center gap-2 transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
-          다시 시도
+          {t('common:button.retry')}
         </button>
       </div>
     );
@@ -250,14 +252,14 @@ export function ProjectBoardPage() {
       <div className="p-4 flex flex-col items-center justify-center min-h-[300px] text-center">
         <Kanban className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
         <p className="text-gray-500 dark:text-gray-400 mb-4">
-          보드에 항목이 없습니다. 이슈를 추가해 보세요.
+          {t('empty.message')}
         </p>
         <button
           onClick={() => setIsFormOpen(true)}
           className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center gap-2 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          이슈 추가
+          {t('issue.add')}
         </button>
         <IssueFormDialog
           open={isFormOpen}
@@ -280,7 +282,7 @@ export function ProjectBoardPage() {
                 ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                 : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
             }`}
-            aria-label="칸반 뷰"
+            aria-label={t('view.kanban')}
             aria-pressed={viewMode === 'kanban'}
           >
             <Kanban className="w-5 h-5" />
@@ -292,7 +294,7 @@ export function ProjectBoardPage() {
                 ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                 : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
             }`}
-            aria-label="리스트 뷰"
+            aria-label={t('view.list')}
             aria-pressed={viewMode === 'list'}
           >
             <LayoutList className="w-5 h-5" />
@@ -303,7 +305,7 @@ export function ProjectBoardPage() {
           <button
             onClick={() => setIsConfigOpen(true)}
             className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
-            aria-label="보드 설정"
+            aria-label={t('config.title')}
           >
             <Settings className="w-5 h-5" />
           </button>
@@ -312,7 +314,7 @@ export function ProjectBoardPage() {
             className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center gap-1.5 text-sm transition-colors"
           >
             <Plus className="w-4 h-4" />
-            이슈 추가
+            {t('issue.add')}
           </button>
         </div>
       </div>

@@ -1,1 +1,255 @@
-{}
+{
+  "global": {
+    "theme": "テーマ",
+    "themeOption": {
+      "dark": "ダーク",
+      "light": "ライト",
+      "system": "システム"
+    },
+    "defaultModel": "デフォルトモデル",
+    "language": "言語",
+    "permissionMode": "権限モード",
+    "permissionModeLabel": {
+      "plan": "プラン",
+      "default": "編集前に確認",
+      "acceptEdits": "自動編集",
+      "bypass": "バイパス"
+    },
+    "permissionDesc": {
+      "plan": "コード変更前にプランを提案します",
+      "default": "ファイル編集前に必ず確認を求めます",
+      "acceptEdits": "ファイル編集を自動的に実行します",
+      "bypass": "すべての権限チェックをスキップします（Bashを含む）"
+    },
+    "markdownMode": "Markdownファイルの表示モード",
+    "markdownOption": {
+      "edit": "編集",
+      "preview": "プレビュー"
+    },
+    "markdownDesc": "Markdownファイルを開く際のデフォルトモードです。",
+    "fileExplorerView": "ファイルエクスプローラーの既定表示",
+    "fileExplorerOption": {
+      "grid": "Finder表示",
+      "list": "リスト表示"
+    },
+    "fileExplorerDesc": "ファイルエクスプローラーを開く際のデフォルト表示モードです。",
+    "chatTimeout": "チャットタイムアウト",
+    "chatTimeoutOverride": "（環境変数で設定済み）",
+    "chatTimeoutDesc": "応答がない場合にリクエストを自動中止するまでの時間です。",
+    "timeoutOption": {
+      "1m": "1分",
+      "3m": "3分",
+      "5mDefault": "5分（デフォルト）",
+      "10m": "10分",
+      "30m": "30分"
+    }
+  },
+  "toast": {
+    "themeChanged": "テーマが変更されました",
+    "modelChanged": "デフォルトモデルが変更されました",
+    "permissionChanged": "権限モードが変更されました",
+    "timeoutChanged": "チャットタイムアウトが変更されました",
+    "markdownModeChanged": "Markdownの既定モードが変更されました",
+    "fileExplorerViewChanged": "ファイルエクスプローラーの既定表示が変更されました",
+    "languageChanged": "言語が変更されました",
+    "systemPromptSaved": "システムプロンプトが保存されました",
+    "systemPromptRestored": "デフォルトのシステムプロンプトに復元されました",
+    "settingChanged": "{{label}}が変更されました",
+    "terminalEnabled": "ターミナルが有効になりました",
+    "terminalDisabled": "ターミナルが無効になりました",
+    "buildFailed": "失敗：{{error}}",
+    "buildFailedUnknown": "不明なエラー",
+    "serverTimeout": "サーバーの応答がタイムアウトしました。手動で確認してください。",
+    "buildComplete": "ビルド完了！ページを更新しています...",
+    "serverRestartFailed": "サーバー再起動のリクエストに失敗しました。",
+    "alreadyLatest": "既に最新バージョンです。",
+    "updateCheckFailed": "アップデートの確認に失敗しました。",
+    "updateComplete": "アップデート完了！ページを更新しています...",
+    "updateFailed": "アップデートのリクエストに失敗しました。",
+    "settingSaved": "設定が保存されました。",
+    "settingSaveFailed": "設定の保存に失敗しました。",
+    "botTokenSaved": "Bot Tokenが保存されました。",
+    "botTokenDeleted": "Bot Tokenが削除されました。",
+    "chatIdSaved": "Chat IDが保存されました。",
+    "chatIdDeleted": "Chat IDが削除されました。",
+    "telegramEnabled": "Telegram通知が有効になりました。",
+    "telegramDisabled": "Telegram通知が無効になりました。",
+    "testSent": "テスト通知を送信しました！",
+    "testFailed": "テスト通知に失敗しました",
+    "testServerError": "サーバー接続エラー",
+    "resetToGlobal": "グローバルデフォルトにリセット",
+    "settingSavedFailed": "設定の保存に失敗しました。もう一度お試しください。"
+  },
+  "advanced": {
+    "serverRestart": "サーバー再起動",
+    "serverRestartDesc": "プロジェクト全体をビルドし、サーバーを本番モードで再起動します",
+    "softwareUpdate": "ソフトウェアアップデート",
+    "currentVersion": "現在のバージョン：v{{version}}",
+    "building": "ビルド中...（{{elapsed}}秒）",
+    "serverRebuild": "リビルド＆サーバー再起動",
+    "checking": "確認中...",
+    "checkUpdate": "アップデートを確認",
+    "updateTo": "v{{version}}にアップデート",
+    "updating": "アップデート中...（{{elapsed}}秒）",
+    "latestVersion": "既に最新バージョンです",
+    "terminalFeature": "ターミナル",
+    "terminalDesc": "Webベースのターミナルシェル機能を有効にする",
+    "terminalOverrideWarning": "TERMINAL_ENABLED環境変数により無効化されています",
+    "systemPrompt": "システムプロンプト",
+    "restoreDefault": "デフォルトに復元",
+    "systemPromptWarning": "警告：",
+    "systemPromptWarningDetail": "システムプロンプトを不適切に変更すると、応答品質が大幅に低下する可能性があります。不明な場合はデフォルトのままにしてください。",
+    "customPromptActive": "カスタムプロンプト使用中",
+    "promptLoading": "プロンプトを読み込み中...",
+    "promptNoProject": "プロジェクトを選択すると、現在のシステムプロンプトが表示されます。",
+    "charCount": "{{count}}文字",
+    "templateVariables": "利用可能なシステム変数（実行時に自動置換されます）",
+    "previewClose": "プレビューを閉じる",
+    "previewOpen": "現在のプロジェクトでプレビュー",
+    "maxThinkingTokens": "最大思考トークン数",
+    "maxThinkingTokensDesc": "モデルの推論プロセスの最大トークン数（1,024 ～ 128,000）",
+    "maxTurns": "最大ターン数",
+    "maxTurnsDesc": "1回の会話で許可される最大ターン数（1 ～ 100）",
+    "maxBudget": "最大予算（USD）",
+    "maxBudgetDesc": "1クエリあたりの最大コスト制限（USD、0.01 ～ 100）",
+    "sdkDefault": "SDKデフォルト",
+    "unlimited": "無制限"
+  },
+  "confirm": {
+    "serverRestart": "リビルドしてサーバーを再起動します。続行しますか？",
+    "updateVersion": "v{{version}}にアップデートしてサーバーを再起動します。続行しますか？",
+    "resetAllSettings": "プロジェクト設定をすべてリセットします。\n\n\u2022 モデル/権限モードのオーバーライドが削除されます\n\u2022 プロジェクトの非表示設定が解除されます\n\n続行しますか？"
+  },
+  "telegram": {
+    "loadError": "Telegram設定の読み込み中にエラーが発生しました。",
+    "retry": "再試行",
+    "setupGuide": "Telegram通知を設定するには：",
+    "setupStep1Suffix": " でボットを作成し、Bot Tokenを取得してください",
+    "setupStep2Suffix": " でChat IDを取得してください",
+    "botTokenAriaLabel": "Telegram BotFatherを開く（新しいタブ）",
+    "chatIdAriaLabel": "Telegram userinfobot を開く（新しいタブ）",
+    "botToken": "Bot Token",
+    "chatId": "Chat ID",
+    "envOverride": "（環境変数で設定済み）",
+    "envPriority": "設定画面の値が環境変数より優先されます。",
+    "enterBotToken": "Bot Tokenを入力",
+    "enterChatId": "Chat IDを入力",
+    "notConfigured": "未設定",
+    "change": "変更",
+    "enableNotifications": "Telegram通知を有効にする",
+    "enableHint": "先にBot TokenとChat IDを設定してください。",
+    "notificationType": "通知タイプ",
+    "notifyPermission": "権限リクエスト — 🔐 権限確認や ❓ 質問が必要な場合",
+    "notifyComplete": "完了 — ✅ ストリーミングが完了した場合",
+    "notifyError": "エラー — ❌ ストリーミング中にエラーが発生した場合",
+    "queueNotificationType": "キュー通知タイプ",
+    "notifyQueueStart": "キュー開始 — キューの実行が開始された場合",
+    "notifyQueueComplete": "キュー完了 — すべてのアイテムが処理された後",
+    "notifyQueueError": "キューエラー — QUEUE_STOPまたはSDKエラーの場合",
+    "notifyQueueInput": "キュー入力リクエスト — ユーザーの応答が必要な場合",
+    "testSending": "送信中...",
+    "testSend": "テスト通知を送信",
+    "testSuccess": "✅ 成功",
+    "testFailure": "❌ 失敗：{{error}}"
+  },
+  "project": {
+    "selectProject": "プロジェクトを選択",
+    "hidden": "（非表示）",
+    "loading": "設定を読み込み中...",
+    "loadError": "設定の読み込み中にエラーが発生しました。",
+    "retry": "再試行",
+    "noProjects": "プロジェクトが見つかりません。",
+    "modelOverride": "モデルオーバーライド",
+    "projectOverride": "（プロジェクトオーバーライド）",
+    "useGlobalDefault": "グローバルデフォルトを使用（現在：{{value}}）",
+    "permissionOverride": "権限モードオーバーライド",
+    "hideInSidebar": "このプロジェクトをサイドバーから非表示にする",
+    "resetToGlobal": "グローバルデフォルトにリセット",
+    "noOverrides": "現在、プロジェクトのオーバーライドは設定されていません。"
+  },
+  "about": {
+    "issuesAndSuggestions": "バグ報告と機能リクエスト",
+    "githubIssuesAriaLabel": "GitHub Issuesに移動（新しいタブ）",
+    "serverStatus": "サーバーステータス",
+    "checking": "確認中...",
+    "connectionFailed": "サーバーへの接続に失敗しました",
+    "retryCheckAriaLabel": "サーバーステータスを再確認",
+    "retry": "再試行",
+    "status": "ステータス",
+    "statusHealthy": "正常",
+    "statusUnhealthy": "異常",
+    "version": "バージョン",
+    "serverTime": "サーバー時刻"
+  },
+  "help": {
+    "basicChat": "基本的なチャットの使い方",
+    "basicChatItems": [
+      "チャット入力欄にメッセージを入力し、Enter（デスクトップ）または送信ボタン（モバイル）で送信します",
+      "画像の添付：クリップアイコンまたはペースト（Ctrl+V）で画像をアップロード",
+      "新しいセッション：ヘッダーの「+」ボタンで新しいチャットセッションを開始",
+      "セッションの切り替え：時計アイコンから以前のセッションにアクセス"
+    ],
+    "slashCommands": "スラッシュコマンド",
+    "slashCommandItems": [
+      "チャット入力欄で / を入力すると、利用可能なコマンドが表示されます",
+      "よく使うコマンドは ★ お気に入りに追加できます",
+      "お気に入りの追加：コマンドパレットで ★ をクリックまたは長押し",
+      "お気に入りは入力エリアの上にクイックアクセスボタンとして表示されます"
+    ],
+    "permissionMode": "権限モード",
+    "permissionPlanLabel": "プラン",
+    "permissionPlanDesc": "コード変更前にプランを提案します",
+    "permissionDefaultLabel": "編集前に確認（デフォルト）",
+    "permissionDefaultDesc": "ファイル編集前に必ず確認を求めます",
+    "permissionAutoLabel": "自動編集",
+    "permissionAutoDesc": "ファイル編集を自動的に実行します",
+    "permissionNote": "デフォルトの権限モードは、設定 > グローバル設定またはプロジェクト設定で変更できます。",
+    "bmadMethod": "BMad Method連携",
+    "bmadMethodItems": [
+      "BMad MethodはAIを活用した開発ワークフローフレームワークです",
+      "プロジェクトページの「BMadセットアップ」ボタンからBMad Coreをインストールできます",
+      "インストール後、チャット画面右下のBMadエージェントボタンから専門エージェントを素早く呼び出せます",
+      "エージェント：SM（スクラムマスター）、PM（プロジェクトマネージャー）、Dev（開発者）、QA（品質保証）など"
+    ],
+    "keyboardShortcuts": "キーボードショートカット",
+    "shortcutKey": "ショートカット",
+    "shortcutAction": "動作",
+    "shortcuts": {
+      "enter": "メッセージを送信（デスクトップ）",
+      "shiftEnter": "改行（デスクトップ）",
+      "escape": "ストリーミングを停止 / ポップアップを閉じる",
+      "ctrlC": "ストリーミングを停止（テキスト未選択時）",
+      "f7": "Diffビューアーの変更箇所を移動（次/前）",
+      "slash": "スラッシュコマンドパレットを開く"
+    }
+  },
+  "tabs": {
+    "global": "グローバル設定",
+    "project": "プロジェクト設定",
+    "telegram": "Telegram通知",
+    "advanced": "詳細設定",
+    "help": "ヘルプ",
+    "about": "バージョン情報"
+  },
+  "permissionMode": {
+    "planDescription": "Claudeはプランのみ作成し、ファイルを変更しません",
+    "askDescription": "ファイル変更前に承認を求めます",
+    "autoDescription": "ファイルの変更を自動的に承認します",
+    "bypassDescription": "すべての権限リクエストをスキップします",
+    "selectorAria": "権限モード：{{label}}。{{description}}。クリックして次のモードに切り替え"
+  },
+  "layout": {
+    "narrowAria": "狭いレイアウトに切り替え",
+    "wideAria": "広いレイアウトに切り替え",
+    "narrowTitle": "狭いレイアウト",
+    "wideTitle": "広いレイアウト"
+  },
+  "theme": {
+    "lightAria": "ライトモードに切り替え",
+    "darkAria": "ダークモードに切り替え"
+  },
+  "page": {
+    "title": "設定",
+    "backAriaLabel": "戻る"
+  }
+}

@@ -1,1 +1,52 @@
-{}
+{
+  "auth": {
+    "loginError": "Ocorreu um erro ao fazer login.",
+    "setupPasswordError": "Ocorreu um erro ao configurar a senha."
+  },
+  "project": {
+    "loadError": "Ocorreu um erro ao carregar a lista de projetos.",
+    "deleteError": "Ocorreu um erro ao excluir o projeto.",
+    "bmadSetupError": "Ocorreu um erro durante a configuração do BMad.",
+    "pathValidationError": "Ocorreu um erro durante a validação do caminho.",
+    "createError": "Ocorreu um erro ao criar o projeto.",
+    "createCancelled": "Criação do projeto cancelada."
+  },
+  "session": {
+    "notFound": "Projeto não encontrado.",
+    "serverError": "Ocorreu um erro no servidor. Por favor, tente novamente mais tarde.",
+    "networkError": "Por favor, verifique sua conexão de rede.",
+    "loadError": "Ocorreu um erro ao carregar a lista de sessões.",
+    "deleteError": "Ocorreu um erro ao excluir a sessão."
+  },
+  "chat": {
+    "aborted": "Abortado",
+    "approved": "Aprovado",
+    "rejected": "Rejeitado"
+  },
+  "board": {
+    "loadError": "Ocorreu um erro ao carregar os dados do quadro."
+  },
+  "git": {
+    "operationError": "Ocorreu um erro durante a operação Git."
+  },
+  "file": {
+    "binaryNotEditable": "Arquivos binários não podem ser editados."
+  },
+  "message": {
+    "loadError": "Ocorreu um erro ao carregar as mensagens."
+  },
+  "streaming": {
+    "alreadyResponded": "Já respondido em outro navegador.",
+    "respondedBeforeReconnect": "(Respondido antes da reconexão)",
+    "abortedInOtherBrowser": "A resposta foi abortada em outro navegador.",
+    "sessionInUseWarning": "Esta sessão está sendo usada em outro navegador. Atualize e tente novamente.",
+    "respondedInOtherBrowser": "(Respondido em outro navegador)",
+    "disconnectedRetry": "Conexão perdida. Por favor, tente novamente após reconectar."
+  },
+  "bmadStatus": {
+    "loadError": "Ocorreu um erro ao carregar o status do projeto BMad."
+  },
+  "cliStatus": {
+    "checkFailed": "Falha na verificação do status do CLI"
+  }
+}

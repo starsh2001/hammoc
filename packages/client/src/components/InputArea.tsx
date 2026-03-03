@@ -5,6 +5,7 @@
  */
 
 import { type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface InputAreaProps {
   /** Child elements to render (input field, buttons, etc.) */
@@ -14,9 +15,10 @@ interface InputAreaProps {
 }
 
 export function InputArea({ children, disabled = false }: InputAreaProps) {
+  const { t } = useTranslation('chat');
   return (
     <footer
-      aria-label="메시지 입력"
+      aria-label={t('inputArea.ariaLabel')}
       data-testid="input-area"
       className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700
                   bg-[#fbfbfc] dark:bg-[#151d2c]
@@ -27,7 +29,7 @@ export function InputArea({ children, disabled = false }: InputAreaProps) {
       <div className="content-container px-4 pt-[10px] pb-1">
       {children || (
         <div className="text-center text-gray-500 dark:text-gray-400 text-sm">
-          메시지 입력은 Story 4.2에서 구현됩니다.
+          {t('inputArea.placeholder')}
         </div>
       )}
       </div>

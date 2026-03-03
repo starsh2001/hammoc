@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } from '../utils/toolUtils';
 import { useScrollContext } from '../contexts/ScrollContext';
@@ -38,6 +39,7 @@ function ElapsedTime({ startedAt }: { startedAt: number }) {
 }
 
 export function PendingToolsIndicator({ segments }: { segments: StreamingSegment[] }) {
+  const { t } = useTranslation('common');
   const pendingTools: PendingTool[] = segments
     .filter((seg): seg is Extract<StreamingSegment, { type: 'tool' }> =>
       seg.type === 'tool' && seg.status === 'pending',
@@ -77,7 +79,7 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
               className="flex items-center gap-2 text-left w-full px-2 py-1 rounded
                          hover:bg-gray-200/60 dark:hover:bg-gray-700/60 transition-colors
                          text-sm text-gray-600 dark:text-gray-400 group"
-              title="클릭하여 해당 카드로 이동"
+              title={t('pendingTools.clickToScroll')}
             >
               <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500 flex-shrink-0" />
               <Icon className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
@@ -97,7 +99,7 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
         })}
         {remaining > 0 && (
           <span className="text-xs text-gray-400 dark:text-gray-500 px-2">
-            +{remaining} more
+            {t('pendingTools.moreCount', { count: remaining })}
           </span>
         )}
       </div>

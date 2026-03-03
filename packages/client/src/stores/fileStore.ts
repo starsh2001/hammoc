@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { fileSystemApi } from '../services/api/fileSystem';
 import { isMarkdownPath } from '../utils/languageDetect';
 import { usePreferencesStore } from './preferencesStore';
+import i18n from '../i18n';
 
 interface FileState {
   openFile: { projectSlug: string; path: string } | null;
@@ -76,7 +77,7 @@ export const useFileStore = create<FileStore>((set, get) => ({
     try {
       const response = await fileSystemApi.readFile(projectSlug, path);
       if (response.isBinary) {
-        set({ error: '바이너리 파일은 편집할 수 없습니다.', isLoading: false });
+        set({ error: i18n.t('notification:file.binaryNotEditable'), isLoading: false });
         return;
       }
       const fileContent = response.content ?? '';

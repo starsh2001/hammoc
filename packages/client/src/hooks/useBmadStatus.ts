@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { BmadStatusResponse } from '@bmad-studio/shared';
+import i18n from '../i18n';
 import { bmadStatusApi } from '../services/api/bmadStatus.js';
 import { ApiError } from '../services/api/client.js';
 
@@ -63,7 +64,7 @@ export function useBmadStatus(projectSlug: string | undefined): UseBmadStatusRet
           if (err instanceof ApiError) {
             setError(err.message);
           } else {
-            setError('BMad 프로젝트 현황을 불러오는 중 오류가 발생했습니다.');
+            setError(i18n.t('notification:bmadStatus.loadError'));
           }
           setIsLoading(false);
           setIsRefreshing(false);

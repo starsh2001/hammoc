@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Minus, ChevronDown, ChevronRight } from 'lucide-react';
 import type { GitFileStatus } from '@bmad-studio/shared';
 
@@ -56,6 +57,7 @@ export function GitFileList({
   onFileClick,
   isLoading = false,
 }: GitFileListProps) {
+  const { t } = useTranslation('common');
   const [collapsed, setCollapsed] = useState(false);
 
   if (files.length === 0) return null;
@@ -89,9 +91,9 @@ export function GitFileList({
             onClick={(e) => { e.stopPropagation(); onUnstageAll(); }}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onUnstageAll(); } }}
             className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 px-1"
-            title="Unstage All"
+            title={t('git.unstageAll')}
           >
-            <Minus className="w-3.5 h-3.5 inline" /> All
+            <Minus className="w-3.5 h-3.5 inline" /> {t('git.all')}
           </span>
         )}
         {!staged && onStageAll && (
@@ -101,9 +103,9 @@ export function GitFileList({
             onClick={(e) => { e.stopPropagation(); onStageAll(); }}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onStageAll(); } }}
             className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 px-1"
-            title="Stage All"
+            title={t('git.stageAll')}
           >
-            <Plus className="w-3.5 h-3.5 inline" /> All
+            <Plus className="w-3.5 h-3.5 inline" /> {t('git.all')}
           </span>
         )}
       </button>
@@ -141,7 +143,7 @@ export function GitFileList({
                     type="button"
                     onClick={() => onUnstageFile(path)}
                     className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                    title="Unstage"
+                    title={t('git.unstage')}
                     disabled={isLoading}
                   >
                     <Minus className="w-3.5 h-3.5" />
@@ -152,7 +154,7 @@ export function GitFileList({
                     type="button"
                     onClick={() => onStageFile(path)}
                     className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                    title="Stage"
+                    title={t('git.stage')}
                     disabled={isLoading}
                   >
                     <Plus className="w-3.5 h-3.5" />

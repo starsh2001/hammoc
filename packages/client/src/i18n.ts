@@ -65,6 +65,8 @@ i18n
       pt: { common: ptCommon, settings: ptSettings, board: ptBoard, chat: ptChat, auth: ptAuth, notification: ptNotification },
     },
     fallbackLng: 'en',
+    // Force Korean in test environment (existing tests assume Korean UI)
+    ...(import.meta.env?.MODE === 'test' ? { lng: 'ko' } : {}),
     supportedLngs: [...SUPPORTED_LANGUAGES],
     ns: ['common', 'settings', 'board', 'chat', 'auth', 'notification'],
     defaultNS: 'common',

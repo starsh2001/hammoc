@@ -6,6 +6,7 @@
  */
 
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Layers, BookOpen } from 'lucide-react';
 import type { BmadStatusResponse, BmadEpicStatus } from '@bmad-studio/shared';
 
@@ -51,6 +52,7 @@ function computeStats(epics: BmadEpicStatus[]) {
 }
 
 function BmadSummaryCard({ epics, isRefreshing }: { epics: BmadEpicStatus[]; isRefreshing: boolean }) {
+  const { t } = useTranslation('common');
   const { totalEpics, doneEpics, totalStories, doneStories, pct } = computeStats(epics);
 
   return (
@@ -59,12 +61,12 @@ function BmadSummaryCard({ epics, isRefreshing }: { epics: BmadEpicStatus[]; isR
         {/* Left: BMad badge + progress */}
         <div className="flex items-center gap-4 min-w-0">
           <span className="text-sm font-semibold px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded-md">
-            BMad
+            {t('overview.bmadLabel')}
           </span>
           <BackgroundRefreshIndicator isRefreshing={isRefreshing} />
           <div className="flex items-center gap-1 min-w-0">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">{pct}%</span>
-            <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">완료</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">{t('overview.completedStatus')}</span>
           </div>
         </div>
 
@@ -73,13 +75,13 @@ function BmadSummaryCard({ epics, isRefreshing }: { epics: BmadEpicStatus[]; isR
           <div className="flex items-center gap-1.5">
             <Layers className="w-4 h-4 text-blue-500 dark:text-blue-400" />
             <span className="text-sm text-gray-600 dark:text-gray-300">
-              <span className="font-semibold text-gray-900 dark:text-white">{doneEpics}/{totalEpics}</span> 에픽
+              <span className="font-semibold text-gray-900 dark:text-white">{doneEpics}/{totalEpics}</span> {t('overview.epicsLabel')}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <BookOpen className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
             <span className="text-sm text-gray-600 dark:text-gray-300">
-              <span className="font-semibold text-gray-900 dark:text-white">{doneStories}/{totalStories}</span> 스토리
+              <span className="font-semibold text-gray-900 dark:text-white">{doneStories}/{totalStories}</span> {t('overview.storiesLabel')}
             </span>
           </div>
         </div>
@@ -111,6 +113,7 @@ function BmadSection({
   retry: () => void;
   projectSlug: string;
 }) {
+  const { t } = useTranslation('common');
   return (
     <div className="px-6 pt-6 space-y-4">
       {/* Loading: show badge + skeleton */}
@@ -118,7 +121,7 @@ function BmadSection({
         <>
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200 dark:border-blue-800/50 p-5">
             <span className="text-sm font-semibold px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded-md">
-              BMad
+              {t('overview.bmadLabel')}
             </span>
           </div>
           <BmadSkeleton />
@@ -133,14 +136,14 @@ function BmadSection({
         >
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
-            <span className="text-sm font-medium text-red-800 dark:text-red-200">BMad 현황 로드 실패</span>
+            <span className="text-sm font-medium text-red-800 dark:text-red-200">{t('overview.bmadLoadFailed')}</span>
           </div>
           <p className="text-xs text-red-700 dark:text-red-300 mb-2">{error}</p>
           <button
             onClick={retry}
             className="text-xs px-3 py-1 bg-red-100 dark:bg-red-800/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors"
           >
-            다시 시도
+            {t('button.retry')}
           </button>
         </div>
       )}

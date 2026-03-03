@@ -4,6 +4,7 @@
  * [Source: Story 17.4 - Task 3, Story 19.1 - Task 7]
  */
 
+import { useTranslation } from 'react-i18next';
 import { ExternalLink, Minus, Plus, ShieldAlert, Terminal } from 'lucide-react';
 import { useTerminal } from '../../hooks/useTerminal';
 import { useTerminalStore } from '../../stores/terminalStore';
@@ -18,6 +19,7 @@ export function QuickTerminal({
   projectSlug,
   onNavigateToTerminalTab,
 }: QuickTerminalProps) {
+  const { t } = useTranslation('common');
   const { terminalId, terminals, terminalAccess, create } = useTerminal(projectSlug);
   const fontSize = useTerminalStore((s) => s.fontSize);
   const increaseFontSize = useTerminalStore((s) => s.increaseFontSize);
@@ -32,21 +34,21 @@ export function QuickTerminal({
           <button
             onClick={decreaseFontSize}
             className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            aria-label="폰트 축소"
+            aria-label={t('terminal.fontDecrease')}
           >
             <Minus className="w-3 h-3" />
           </button>
           <button
             onClick={resetFontSize}
             className="px-1 py-0.5 text-xs tabular-nums text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors min-w-[1.75rem] text-center"
-            aria-label="폰트 초기화"
+            aria-label={t('terminal.fontReset')}
           >
             {fontSize}
           </button>
           <button
             onClick={increaseFontSize}
             className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            aria-label="폰트 확대"
+            aria-label={t('terminal.fontIncrease')}
           >
             <Plus className="w-3 h-3" />
           </button>
@@ -58,7 +60,7 @@ export function QuickTerminal({
                        dark:text-blue-400 dark:hover:text-blue-300 transition-colors
                        focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1"
           >
-            터미널 탭에서 열기
+            {t('terminal.openInTab')}
             <ExternalLink className="w-3 h-3" aria-hidden="true" />
           </button>
         )}
@@ -71,13 +73,13 @@ export function QuickTerminal({
             <ShieldAlert className="w-8 h-8 text-amber-500 dark:text-amber-400 mb-3" aria-hidden="true" />
             <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
               {!terminalAccess.enabled
-                ? '터미널 기능이 비활성화되어 있습니다'
-                : '보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다'}
+                ? t('terminal.disabledMessage')
+                : t('terminal.securityMessage')}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {!terminalAccess.enabled
-                ? '설정에서 터미널을 활성화하세요.'
-                : '로컬 네트워크에서 접속해 주세요.'}
+                ? t('terminal.disabledDescriptionShort')
+                : t('terminal.securityDescriptionShort')}
             </p>
           </div>
         ) : terminalId ? (
@@ -88,14 +90,14 @@ export function QuickTerminal({
               <Terminal className="w-8 h-8 text-gray-400 dark:text-gray-500" />
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-              활성 터미널이 없습니다
+              {t('terminal.emptyMessage')}
             </p>
             <button
               onClick={create}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              새 터미널
+              {t('terminal.newTerminal')}
             </button>
           </div>
         )}

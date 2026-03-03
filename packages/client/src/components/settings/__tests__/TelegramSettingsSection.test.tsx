@@ -183,10 +183,10 @@ describe('TelegramSettingsSection', () => {
       expect(permCheck.checked).toBe(true);
     });
 
-    const completeCheck = screen.getByLabelText(/완료 알림/) as HTMLInputElement;
+    const completeCheck = screen.getByLabelText(/완료 알림 — ✅/) as HTMLInputElement;
     expect(completeCheck.checked).toBe(true);
 
-    const errorCheck = screen.getByLabelText(/에러 알림/) as HTMLInputElement;
+    const errorCheck = screen.getByLabelText(/에러 알림 — ❌/) as HTMLInputElement;
     expect(errorCheck.checked).toBe(false);
   });
 

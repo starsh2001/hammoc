@@ -15,6 +15,7 @@
  */
 
 import { memo, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './CodeBlock';
@@ -47,6 +48,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   isStreaming = false,
   onCodeCopy,
 }: MarkdownRendererProps) {
+  const { t } = useTranslation('chat');
   // Throttle content during streaming (~20fps), immediate when complete.
   // Throttle (leading + trailing) renders the first change instantly, then
   // coalesces updates for 50ms — unlike debounce which never fires during
@@ -129,7 +131,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
                 useFileStore.getState().requestFileNavigation(projectSlug, filePath, targetLine);
               }}
               className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-              title={`파일 열기: ${href}`}
+              title={t('markdown.openFile', { href })}
               {...props}
             >
               {children}
@@ -257,7 +259,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
         return <em className="italic">{children}</em>;
       },
     }),
-    [onCodeCopy]
+    [onCodeCopy, t]
   );
 
   return (

@@ -7,6 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MoreVertical, Moon, Sun, History, Plus, FolderOpen, GitBranch, Terminal, RefreshCw, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
@@ -35,6 +36,7 @@ export function HeaderOverflowMenu({
   onNavigateSettings,
   onLogout,
 }: HeaderOverflowMenuProps) {
+  const { t } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
@@ -128,7 +130,7 @@ export function HeaderOverflowMenu({
         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
                    text-gray-700 dark:text-gray-300
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
-        aria-label="더보기 메뉴"
+        aria-label={t('headerMenu.moreMenu')}
         aria-haspopup="menu"
         aria-expanded={isOpen}
       >
@@ -154,7 +156,7 @@ export function HeaderOverflowMenu({
             ) : (
               <Moon className="w-4 h-4" aria-hidden="true" />
             )}
-            {isDark ? '라이트 모드' : '다크 모드'}
+            {isDark ? t('project.lightMode') : t('project.darkMode')}
           </button>
 
           {/* Divider */}
@@ -169,7 +171,7 @@ export function HeaderOverflowMenu({
               className={itemClass}
             >
               <Plus className="w-4 h-4" aria-hidden="true" />
-              새 세션
+              {t('headerMenu.newSession')}
             </button>
           )}
 
@@ -182,7 +184,7 @@ export function HeaderOverflowMenu({
               className={itemClass}
             >
               <History className="w-4 h-4" aria-hidden="true" />
-              세션 목록
+              {t('headerMenu.sessionList')}
             </button>
           )}
 
@@ -195,7 +197,7 @@ export function HeaderOverflowMenu({
               className={itemClass}
             >
               <FolderOpen className="w-4 h-4" aria-hidden="true" />
-              파일 리스트
+              {t('headerMenu.fileList')}
             </button>
           )}
 
@@ -208,7 +210,7 @@ export function HeaderOverflowMenu({
               className={itemClass}
             >
               <GitBranch className="w-4 h-4" aria-hidden="true" />
-              Git
+              {t('headerMenu.git')}
             </button>
           )}
 
@@ -223,7 +225,7 @@ export function HeaderOverflowMenu({
               className={`${itemClass} ${!terminalAccessible ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Terminal className="w-4 h-4" aria-hidden="true" />
-              터미널
+              {t('headerMenu.terminal')}
             </button>
           )}
 
@@ -240,7 +242,7 @@ export function HeaderOverflowMenu({
                 className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
                 aria-hidden="true"
               />
-              {isRefreshing ? '새로고침 중...' : '새로고침'}
+              {isRefreshing ? t('headerMenu.refreshing') : t('headerMenu.refresh')}
             </button>
           )}
 
@@ -255,7 +257,7 @@ export function HeaderOverflowMenu({
                 className={itemClass}
               >
                 <Settings className="w-4 h-4" aria-hidden="true" />
-                설정
+                {t('project.settings')}
               </button>
             </>
           )}
@@ -271,7 +273,7 @@ export function HeaderOverflowMenu({
                 className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 <LogOut className="w-4 h-4" aria-hidden="true" />
-                로그아웃
+                {t('project.logout')}
               </button>
             </>
           )}

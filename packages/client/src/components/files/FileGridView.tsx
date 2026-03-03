@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Folder, File, Loader2, AlertCircle, MoreVertical } from 'lucide-react';
 import type { DirectoryEntry } from '@bmad-studio/shared';
 
@@ -54,6 +55,7 @@ interface GridInlineRenameProps {
 }
 
 function GridInlineRename({ entryType, initialValue, onConfirm, onCancel }: GridInlineRenameProps) {
+  const { t } = useTranslation('common');
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -100,7 +102,7 @@ function GridInlineRename({ entryType, initialValue, onConfirm, onCancel }: Grid
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         className="text-xs text-center w-full bg-white dark:bg-gray-900 dark:text-white border border-blue-500 rounded px-1 py-0 outline-none h-4 leading-4"
-        aria-label="이름 변경"
+        aria-label={t('files.renameAria')}
       />
     </div>
   );
@@ -131,6 +133,7 @@ export function FileGridView({
   onDeleteEntry,
   onRenameEntry,
 }: FileGridViewProps) {
+  const { t } = useTranslation('common');
   const [entries, setEntries] = useState<DirectoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSpinner, setShowSpinner] = useState(false);
@@ -290,7 +293,7 @@ export function FileGridView({
     return (
       <div className="flex items-center gap-2 p-4 text-sm text-gray-500 dark:text-gray-400 justify-center">
         <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Loading...</span>
+        <span>{t('loadingStatus')}</span>
       </div>
     );
   }
@@ -305,7 +308,7 @@ export function FileGridView({
             className="text-xs text-blue-500 dark:text-blue-400 hover:underline cursor-pointer ml-2"
             onClick={loadDirectory}
           >
-            Retry
+            {t('button.retry')}
           </button>
         </div>
       </div>
@@ -332,7 +335,7 @@ export function FileGridView({
 
       {filteredEntries.length === 0 && !inlineInput ? (
         <div className="text-sm text-gray-400 dark:text-gray-500 italic text-center py-8">
-          Empty folder
+          {t('files.emptyFolder')}
         </div>
       ) : (
         <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-1">
@@ -355,7 +358,7 @@ export function FileGridView({
               }}
             >
               <Folder className="w-8 h-8 text-blue-500 dark:text-blue-400" />
-              <span className="text-xs text-center w-full truncate text-gray-500 dark:text-gray-400">..</span>
+              <span className="text-xs text-center w-full truncate text-gray-500 dark:text-gray-400">{t('files.parentDir')}</span>
             </div>
           )}
           {filteredEntries.map((entry) => {
@@ -403,7 +406,7 @@ export function FileGridView({
                   <button
                     className="absolute top-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity"
                     onClick={(e) => handleMenuButtonClick(e, entry)}
-                    aria-label="더보기 메뉴"
+                    aria-label={t('files.moreMenu')}
                   >
                     <MoreVertical className="w-3 h-3 text-gray-400" />
                   </button>
