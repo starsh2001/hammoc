@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { HistoryMessage } from '@bmad-studio/shared';
 import { formatRelativeTime } from '../utils/formatters';
 import { Bot, Copy, Check } from 'lucide-react';
@@ -27,6 +28,7 @@ export function MessageBubble({
   onCopy,
   timestampMode = 'always',
 }: MessageBubbleProps) {
+  const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -63,7 +65,7 @@ export function MessageBubble({
     <div
       className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
       role="listitem"
-      aria-label={`${isUser ? '내' : 'Claude'} 메시지, ${formattedTime}`}
+      aria-label={t('messageBubble.ariaLabel', { role: t(isUser ? 'messageBubble.userRole' : 'messageBubble.assistantRole'), time: formattedTime })}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -78,7 +80,7 @@ export function MessageBubble({
         {!isUser && (
           <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 dark:text-gray-400">
             <Bot className="w-4 h-4" aria-hidden="true" />
-            <span>Claude</span>
+            <span>{t('messageBubble.assistantName')}</span>
           </div>
         )}
 
@@ -89,7 +91,7 @@ export function MessageBubble({
               <img
                 key={`${message.id}-img-${idx}`}
                 src={`data:${img.mimeType};base64,${img.data}`}
-                alt={img.name || `첨부 이미지 ${idx + 1}`}
+                alt={img.name || t('messageBubble.image', { index: idx + 1 })}
                 className="max-w-[200px] max-h-[150px] rounded object-cover cursor-pointer hover:opacity-90"
                 onClick={() => window.open(`data:${img.mimeType};base64,${img.data}`, '_blank')}
               />
@@ -116,8 +118,8 @@ export function MessageBubble({
         {/* Copy button - visible on hover */}
         <button
           onClick={handleCopy}
-          aria-label={isCopied ? '복사됨' : '메시지 복사'}
-          title={isCopied ? '복사됨!' : '클립보드에 복사'}
+          aria-label={isCopied ? t('messageBubble.copiedLabel') : t('messageBubble.copyLabel')}
+          title={isCopied ? t('messageBubble.copiedTitle') : t('messageBubble.copyTitle')}
           className={`absolute top-2 right-2 z-10 p-1.5 flex items-center justify-center rounded transition-opacity duration-200 ${
             isHovered ? 'opacity-100' : 'opacity-0'
           } ${

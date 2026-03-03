@@ -10,6 +10,7 @@
  */
 
 import { Component, ErrorInfo, ReactNode } from 'react';
+import i18n from '../i18n';
 import { debugLogger } from '../utils/debugLogger';
 
 interface StreamingErrorBoundaryProps {
@@ -57,13 +58,13 @@ export class StreamingErrorBoundary extends Component<
       return (
         <div className="flex flex-col items-center gap-3 p-4 text-center">
           <div className="text-red-500 dark:text-red-400">
-            스트리밍 중 오류가 발생했습니다.
+            {i18n.t('common:error.streamingError')}
           </div>
           <button
             onClick={this.handleRetry}
             className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            다시 시도
+            {i18n.t('common:button.retry')}
           </button>
         </div>
       );

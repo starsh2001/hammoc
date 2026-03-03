@@ -10,6 +10,7 @@
  * - ARIA toolbar accessibility
  */
 
+import { useTranslation } from 'react-i18next';
 import { Star } from 'lucide-react';
 import type { SlashCommand } from '@bmad-studio/shared';
 
@@ -50,6 +51,7 @@ export function FavoritesChipBar({
   onExecuteStarFavorite,
   disabled,
 }: FavoritesChipBarProps) {
+  const { t } = useTranslation('common');
   // AC: 8 — hide when both slash and star favorites are empty
   const hasStarFavorites = activeAgent && starFavorites && starFavorites.length > 0;
   if (favoriteCommands.length === 0 && !hasStarFavorites) {
@@ -64,7 +66,7 @@ export function FavoritesChipBar({
     <div
       className="flex items-center gap-1 -mx-[1px]"
       role="toolbar"
-      aria-label="즐겨찾기 커맨드 바로실행"
+      aria-label={t('favorites.toolbar')}
       data-testid="favorites-chip-bar"
     >
       {/* Fixed star button */}
@@ -72,7 +74,7 @@ export function FavoritesChipBar({
         type="button"
         onClick={onOpenDialog}
         disabled={disabled}
-        aria-label="즐겨찾기 편집"
+        aria-label={t('favorites.editButton')}
         data-testid="chip-bar-star-button"
         className={`flex-shrink-0 w-7 h-7 flex items-center justify-center rounded
                    transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
@@ -94,7 +96,7 @@ export function FavoritesChipBar({
                 type="button"
                 role="button"
                 disabled={disabled}
-                aria-label={`*${commandStr} 실행`}
+                aria-label={t('favorites.executeStarPrefix', { command: commandStr })}
                 onClick={() => onExecuteStarFavorite?.(commandStr)}
                 className={`px-2 py-1 rounded-full text-xs
                            bg-yellow-50 dark:bg-yellow-900/30
@@ -127,7 +129,7 @@ export function FavoritesChipBar({
               type="button"
               role="button"
               disabled={disabled}
-              aria-label={`${label} 실행`}
+              aria-label={t('favorites.executePrefix', { label })}
               onClick={() => onExecute(commandStr)}
               className={`px-2 py-1 rounded-full text-xs
                          bg-gray-100 dark:bg-gray-700

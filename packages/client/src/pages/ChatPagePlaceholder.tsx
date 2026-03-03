@@ -7,10 +7,12 @@
  * - Story 4.x: Core Chat Interface
  */
 
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MessageSquare } from 'lucide-react';
 
 export function ChatPagePlaceholder() {
+  const { t } = useTranslation('common');
   const { projectSlug, sessionId } = useParams<{
     projectSlug: string;
     sessionId?: string;
@@ -31,12 +33,12 @@ export function ChatPagePlaceholder() {
           <button
             onClick={handleBack}
             className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-            aria-label="세션 목록으로 돌아가기"
+            aria-label={t('chatPlaceholder.backToSessions')}
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="ml-2 text-lg font-semibold">
-            {isNewSession ? '새 세션' : '채팅'}
+            {isNewSession ? t('chatPlaceholder.newSession') : t('chatPlaceholder.chat')}
           </h1>
         </div>
       </header>
@@ -45,10 +47,10 @@ export function ChatPagePlaceholder() {
       <div className="flex flex-col items-center justify-center p-8 mt-20">
         <MessageSquare className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
         <h2 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
-          채팅 페이지 준비 중
+          {t('chatPlaceholder.preparingPage')}
         </h2>
         <p className="text-gray-500 dark:text-gray-400 text-center">
-          이 기능은 다음 스토리에서 구현됩니다.
+          {t('chatPlaceholder.futureStory')}
           <br />
           {isNewSession
             ? 'Story 4.x: Core Chat Interface'

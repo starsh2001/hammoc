@@ -3,6 +3,7 @@
  */
 
 import { Maximize2, Minimize2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useLayoutMode } from '../hooks/useLayoutMode';
 
 interface LayoutToggleButtonProps {
@@ -11,6 +12,7 @@ interface LayoutToggleButtonProps {
 
 export function LayoutToggleButton({ className = '' }: LayoutToggleButtonProps) {
   const { layoutMode, toggleLayoutMode } = useLayoutMode();
+  const { t } = useTranslation('settings');
   const isWide = layoutMode === 'wide';
 
   return (
@@ -19,8 +21,8 @@ export function LayoutToggleButton({ className = '' }: LayoutToggleButtonProps) 
       className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
                  text-gray-600 dark:text-gray-400 transition-colors
                  focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
-      aria-label={isWide ? '좁은 레이아웃으로 전환' : '넓은 레이아웃으로 전환'}
-      title={isWide ? '좁은 레이아웃' : '넓은 레이아웃'}
+      aria-label={isWide ? t('layout.narrowAria') : t('layout.wideAria')}
+      title={isWide ? t('layout.narrowTitle') : t('layout.wideTitle')}
     >
       {isWide ? (
         <Minimize2 className="w-5 h-5" aria-hidden="true" />

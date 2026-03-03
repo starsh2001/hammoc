@@ -76,7 +76,7 @@ describe('InputArea', () => {
 
       const inputArea = screen.getByTestId('input-area');
       expect(inputArea.className).toContain('dark:border-gray-700');
-      expect(inputArea.className).toContain('dark:bg-gray-800');
+      expect(inputArea.className).toContain('dark:bg-[#151d2c]');
     });
   });
 
@@ -85,7 +85,7 @@ describe('InputArea', () => {
       render(<InputArea />);
 
       const inputArea = screen.getByTestId('input-area');
-      expect(inputArea.className).toContain('pb-[max(1rem,env(safe-area-inset-bottom))]');
+      expect(inputArea.className).toContain('pb-[max(0.25rem,env(safe-area-inset-bottom))]');
     });
   });
 

@@ -1,1 +1,270 @@
-{}
+{
+  "header": {
+    "ariaLabel": "チャットヘッダー",
+    "backButton": "セッション一覧に戻る",
+    "defaultTitle": "チャット",
+    "newSession": "新しいセッションを開始",
+    "refreshing": "更新中",
+    "refresh": "更新",
+    "settings": "設定",
+    "logout": "ログアウト"
+  },
+  "sessionTitle": {
+    "placeholder": "セッション名を入力...",
+    "hint": "クリックしてセッション名を変更"
+  },
+  "agentIndicator": {
+    "ariaLabel": "現在のエージェント：{{agent}}"
+  },
+  "input": {
+    "placeholder": "メッセージを入力...",
+    "hint": "Enterで送信、Shift+Enterで改行",
+    "attachImage": "画像を添付",
+    "sessionLocked": "セッションがロックされています",
+    "abort": "中止",
+    "addToChain": "チェーンに追加",
+    "send": "送信"
+  },
+  "chainMode": {
+    "off": "チェーンモードをオフにする",
+    "on": "チェーンモードをオンにする"
+  },
+  "validation": {
+    "onlyImages": "画像ファイルのみ添付できます（PNG、JPEG、GIF、WebP）",
+    "unsupportedFormat": "サポートされていない画像形式です",
+    "fileTooLarge": "10MBを超えるファイルは添付できません",
+    "maxImagesExceeded": "画像は最大5枚まで添付できます",
+    "failedToReadImage": "画像の読み込みに失敗しました：{{name}}"
+  },
+  "errors": {
+    "apiUnhealthy": "Claude APIが応答していません。メッセージが配信されない可能性があります。",
+    "disconnected": "サーバーとの接続が切断されました。再接続後にもう一度お試しください。"
+  },
+  "attachment": {
+    "remove": "画像を削除：{{name}}"
+  },
+  "interactive": {
+    "defaultHeader": "質問",
+    "responded": "応答済み",
+    "approved": "承認済み",
+    "rejected": "拒否済み",
+    "submitSelection": "選択を送信",
+    "submit": "送信",
+    "other": "その他",
+    "otherOption": "その他（自由入力）",
+    "otherButton": "その他...",
+    "otherPlaceholder": "回答を入力...",
+    "otherInputLabel": "その他の回答を入力",
+    "submitOther": "その他の回答を送信",
+    "send": "送信",
+    "otherResponse": "その他：{{response}}",
+    "permissionRequest": "権限リクエスト：{{toolName}}",
+    "sending": "送信中",
+    "approve": "承認",
+    "reject": "拒否",
+    "submitAll": "すべての回答を送信",
+    "submitProgress": "送信（{{count}}/{{total}}）"
+  },
+  "sessionListItem": {
+    "ariaLabel": "セッション：{{prompt}}",
+    "checkbox": "{{prompt}}を選択",
+    "nameInput": "セッション名を入力...",
+    "emptySession": "（空のセッション）",
+    "streaming": "ストリーミング中",
+    "waiting": "待機中",
+    "queueActive": "キューランナー実行中",
+    "queue": "キュー",
+    "messageCount": "{{count}}件のメッセージ",
+    "menu": "セッションメニュー",
+    "rename": "名前を変更",
+    "removeName": "名前を削除",
+    "delete": "セッションを削除"
+  },
+  "messageArea": {
+    "ariaLabel": "メッセージ一覧",
+    "scrollToBottom": "最新のメッセージにスクロール"
+  },
+  "compaction": {
+    "complete": "コンテキスト圧縮完了 — レスポンスを再生成しています...",
+    "inProgress": "コンテキストを圧縮中...（{{percent}}%）",
+    "inProgressNoPercent": "コンテキストを圧縮中..."
+  },
+  "inputArea": {
+    "ariaLabel": "メッセージ入力",
+    "placeholder": "メッセージ入力はStory 4.2で実装されます。"
+  },
+  "session": {
+    "back": "戻る",
+    "exitSelection": "選択を解除",
+    "selectedCount": "{{count}}件選択中",
+    "selectAll": "すべて選択",
+    "deselectAll": "すべて選択解除",
+    "delete": "削除",
+    "newSession": "新しいセッション",
+    "hideEmpty": "空のセッションを非表示",
+    "showEmpty": "空のセッションを表示",
+    "deleteEmptyCount": "{{count}}件の空のセッションを削除",
+    "deleteEmpty": "空のセッションを削除",
+    "selectionMode": "選択モード",
+    "refresh": "更新",
+    "settings": "設定",
+    "logout": "ログアウト",
+    "menu": "メニュー",
+    "lightMode": "ライトモード",
+    "darkMode": "ダークモード",
+    "loading": "読み込み中",
+    "empty": {
+      "title": "セッションがありません",
+      "description": "新しいセッションを開始してClaudeとチャットしましょう。",
+      "action": "新しいセッションを開始"
+    },
+    "confirmDelete": {
+      "title": "セッションを削除",
+      "message": "このセッションを削除しますか？セッションファイルは完全に削除されます。",
+      "confirm": "削除",
+      "cancel": "キャンセル"
+    },
+    "confirmBatchDelete": {
+      "title": "セッションを削除",
+      "message": "選択した{{count}}件のセッションを削除しますか？セッションファイルは完全に削除されます。"
+    },
+    "confirmEmptyDelete": {
+      "title": "空のセッションを削除",
+      "message": "{{count}}件の空のセッションを削除しますか？セッションファイルは完全に削除されます。"
+    }
+  },
+  "messageBubble": {
+    "ariaLabel": "{{role}}のメッセージ、{{time}}",
+    "userRole": "自分",
+    "assistantRole": "Claude",
+    "assistantName": "Claude",
+    "image": "添付画像 {{index}}",
+    "copiedLabel": "コピー済み",
+    "copyLabel": "メッセージをコピー",
+    "copiedTitle": "コピーしました！",
+    "copyTitle": "クリップボードにコピー"
+  },
+  "streamingMessage": {
+    "ariaLabel": "Claudeが応答中です",
+    "assistantName": "Claude",
+    "copiedLabel": "コピー済み",
+    "copyLabel": "メッセージをコピー",
+    "copiedTitle": "コピーしました！",
+    "copyTitle": "クリップボードにコピー"
+  },
+  "messageListSkeleton": {
+    "ariaLabel": "メッセージを読み込み中",
+    "srText": "メッセージを読み込み中..."
+  },
+  "sessionQuickAccess": {
+    "loading": "読み込み中",
+    "empty": "セッションなし",
+    "streaming": "ストリーミング中",
+    "waiting": "待機中"
+  },
+  "favorites": {
+    "maxReached": "お気に入りは最大20件まで追加できます"
+  },
+  "starFavorites": {
+    "maxReached": "スターお気に入りは最大10件まで追加できます"
+  },
+  "confirmModal": {
+    "agentLaunch": {
+      "title": "エージェント起動の確認",
+      "message": "アクティブな会話があります。新しいセッションでエージェントを起動しますか？"
+    },
+    "newSession": {
+      "message": "応答が進行中です。新しいセッションを開始しますか？"
+    },
+    "switchSession": {
+      "message": "応答が進行中です。セッションを切り替えますか？"
+    }
+  },
+  "chatPage": {
+    "ariaLabel": "チャットページ",
+    "loadingPlaceholder": "読み込み中...",
+    "errorPlaceholder": "エラーが発生しました",
+    "empty": {
+      "title": "新しいセッション",
+      "description": "Claudeとの新しい会話を始めましょう。"
+    },
+    "streaming": "応答中...",
+    "default": "メッセージを入力...",
+    "loadingMore": "読み込み中...",
+    "loadMore": "メッセージをもっと読み込む"
+  },
+  "tool": {
+    "executionTime": "実行時間：{{duration}}",
+    "showResult": "結果を表示",
+    "plan": "プラン",
+    "planEmpty": "プランの内容がありません",
+    "requestedPermissions": "リクエストされた権限：",
+    "rejectedAria": "ツールが拒否されました：{{name}}",
+    "failedAria": "ツールが失敗しました：{{name}}",
+    "runningAria": "ツール実行中：{{name}}",
+    "completedAria": "ツール完了：{{name}}",
+    "rejected": "拒否済み",
+    "failed": "失敗",
+    "collapse": "折りたたむ",
+    "showFullPath": "フルパスを表示",
+    "showDiff": "差分を表示",
+    "clickToShowDiff": "クリックして差分を表示",
+    "approveBypass": "バイパスモードで承認",
+    "yesBypass": "はい（バイパス）",
+    "approveAuto": "自動モードで承認",
+    "yesAuto": "はい（自動）",
+    "approveAsk": "確認モードで承認",
+    "yesAsk": "はい（確認）",
+    "rejectContinuePlanning": "拒否（プランニングを続行）",
+    "allowTool": "ツールの実行を許可",
+    "allow": "許可",
+    "denyTool": "ツールの実行を拒否",
+    "deny": "拒否",
+    "resultFailed": "ツールの結果：失敗",
+    "toolFailed": "ツール失敗",
+    "showMore": "もっと表示（{{count}}）",
+    "showMoreSimple": "もっと表示",
+    "detailCollapseAria": "ツール詳細を折りたたむ",
+    "detailExpandAria": "ツール詳細を展開",
+    "detail": "詳細",
+    "collapseContent": "折りたたむ",
+    "expandContent": "全内容を表示"
+  },
+  "permission": {
+    "viewChanges": "ファイルの変更を表示：{{path}}",
+    "approximateHint": "ブロックベースの概算です。タップして正確なDiffを表示",
+    "approveChanges": "変更を承認",
+    "approve": "承認",
+    "rejectChanges": "変更を拒否",
+    "reject": "拒否"
+  },
+  "chain": {
+    "waitingAria": "プロンプトチェーン：次のコマンドを待機中 — {{prompt}}",
+    "next": "次へ",
+    "collapseList": "チェーン一覧を折りたたむ",
+    "expandList": "チェーン一覧を展開",
+    "cancelAll": "保留中のすべてのプロンプトをキャンセル",
+    "cancelAllTitle": "すべてキャンセル",
+    "removePrompt": "プロンプト{{index}}を削除",
+    "removeTitle": "削除"
+  },
+  "streaming": {
+    "ariaLabel": "Claudeがレスポンスを生成中です",
+    "srText": "Claudeが考えています..."
+  },
+  "markdown": {
+    "openFile": "ファイルを開く：{{href}}"
+  },
+  "model": {
+    "defaultLabel": "デフォルト",
+    "aliases": "エイリアス（最新）",
+    "latestSonnet": "最新のSonnet",
+    "latestOpus": "最新のOpus",
+    "latestHaiku": "最新のHaiku",
+    "claude4x": "Claude 4.x",
+    "claude3x": "Claude 3.x",
+    "mostCapable": "最高性能",
+    "selectorAria": "モデル：{{label}}。クリックしてモデルを変更",
+    "selectAria": "モデルを選択"
+  }
+}

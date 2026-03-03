@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreVertical } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { BoardItem } from '@bmad-studio/shared';
 
 export interface CardContextMenuProps {
@@ -30,14 +31,15 @@ interface MenuItem {
 
 function getStoryWorkflowAction(
   item: BoardItem,
-  onWorkflowAction?: (item: BoardItem) => void,
+  onWorkflowAction: ((item: BoardItem) => void) | undefined,
+  t: (key: string) => string,
 ): MenuItem | null {
   if (!onWorkflowAction) return null;
   const map: Record<string, string> = {
-    Draft: '스토리 검증',
-    Approved: '개발 시작',
-    InProgress: 'QA 요청',
-    Review: 'QA 수정 적용',
+    Draft: t('workflow.validateStory'),
+    Approved: t('workflow.startDevelopment'),
+    InProgress: t('workflow.requestQA'),
+    Review: t('workflow.applyQAFix'),
   };
   const label = map[item.status];
   if (!label) return null;
@@ -56,6 +58,7 @@ export function CardContextMenu({
   onNormalizeStatus,
   onMenuClose,
 }: CardContextMenuProps) {
+  const { t } = useTranslation('board');
   const [isOpen, setIsOpen] = useState(false);
   const [focusIndex, setFocusIndex] = useState(-1);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -68,52 +71,52 @@ export function CardContextMenu({
   if (item.type === 'issue') {
     if (item.status === 'Open') {
       if (onQuickFix) {
-        menuItems.push({ label: '바로 수정하기', action: () => onQuickFix(item) });
+        menuItems.push({ label: t('issue.quickFix'), action: () => onQuickFix(item) });
       }
       if (onPromote) {
         menuItems.push({
-          label: '스토리로 승격',
+          label: t('issue.promoteToStory'),
           action: () => onPromote(item, 'story'),
           disabled: !!item.linkedStory,
-          title: item.linkedStory ? '이미 스토리로 승격됨' : undefined,
+          title: item.linkedStory ? t('issue.alreadyPromotedToStory') : undefined,
         });
         menuItems.push({
-          label: '에픽으로 승격',
+          label: t('issue.promoteToEpic'),
           action: () => onPromote(item, 'epic'),
           disabled: !!item.linkedEpic,
-          title: item.linkedEpic ? '이미 에픽으로 승격됨' : undefined,
+          title: item.linkedEpic ? t('issue.alreadyPromotedToEpic') : undefined,
         });
       }
     }
     if (onEdit) {
-      menuItems.push({ label: '편집', action: () => onEdit(item) });
+      menuItems.push({ label: t('common:button.edit'), action: () => onEdit(item) });
     }
     if (item.status === 'Open' && onClose) {
-      menuItems.push({ label: '닫기', action: () => onClose(item) });
+      menuItems.push({ label: t('common:button.close'), action: () => onClose(item) });
     }
     if (onDelete) {
       const isWorking = item.status === 'InProgress';
       menuItems.push({
-        label: '삭제',
+        label: t('common:button.delete'),
         action: () => onDelete(item),
         disabled: isWorking,
-        title: isWorking ? 'AI가 작업 중이므로 삭제할 수 없습니다' : undefined,
+        title: isWorking ? t('issue.cannotDeleteWhileWorking') : undefined,
       });
     }
   } else if (item.type === 'story') {
     if (item.rawStatus && onNormalizeStatus) {
       menuItems.push({
-        label: `상태 확정 (${item.rawStatus} → ${item.status})`,
+        label: t('story.normalizeStatus', { rawStatus: item.rawStatus, status: item.status }),
         action: () => onNormalizeStatus(item),
       });
     }
-    const workflowItem = getStoryWorkflowAction(item, onWorkflowAction);
+    const workflowItem = getStoryWorkflowAction(item, onWorkflowAction, t);
     if (workflowItem) {
       menuItems.push(workflowItem);
     }
   } else if (item.type === 'epic') {
     if (onViewEpicStories) {
-      menuItems.push({ label: '하위 스토리 보기', action: () => onViewEpicStories(item) });
+      menuItems.push({ label: t('epic.viewSubStories'), action: () => onViewEpicStories(item) });
     }
   }
 
@@ -213,7 +216,7 @@ export function CardContextMenu({
           setFocusIndex(-1);
         }}
         className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
-        aria-label="카드 메뉴"
+        aria-label={t('card.menu')}
         aria-haspopup="true"
         aria-expanded={isOpen}
       >

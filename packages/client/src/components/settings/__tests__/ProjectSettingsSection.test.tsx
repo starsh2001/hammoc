@@ -119,7 +119,7 @@ describe('ProjectSettingsSection', () => {
     mockUpdateSettings.mockResolvedValue(mockSettingsNoOverride);
     render(<ProjectSettingsSection />);
     await waitFor(() => {
-      expect(screen.getByText('전역 기본값 사용')).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /전역 기본값 사용/ })).toBeInTheDocument();
     });
     const globalRadio = screen.getByRole('radio', { name: /전역 기본값 사용/ });
     fireEvent.click(globalRadio);

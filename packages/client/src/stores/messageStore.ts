@@ -10,6 +10,7 @@ import { ApiError } from '../services/api/client';
 import { useChatStore } from './chatStore';
 import { generateUUID } from '../utils/uuid';
 import { debugLog } from '../utils/debugLogger';
+import i18n from '../i18n';
 
 /** Client-local extension: marks optimistic messages for reconciliation */
 type OptimisticHistoryMessage = HistoryMessage & { _optimistic?: boolean };
@@ -279,7 +280,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       const message =
         err instanceof ApiError
           ? err.message
-          : '메시지를 불러오는 중 오류가 발생했습니다.';
+          : i18n.t('notification:message.loadError');
       set({ error: message, isLoading: false });
     }
   },

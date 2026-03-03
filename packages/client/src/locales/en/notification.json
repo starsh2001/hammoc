@@ -1,1 +1,52 @@
-{}
+{
+  "auth": {
+    "loginError": "An error occurred while logging in.",
+    "setupPasswordError": "An error occurred while setting up the password."
+  },
+  "project": {
+    "loadError": "An error occurred while loading the project list.",
+    "deleteError": "An error occurred while deleting the project.",
+    "bmadSetupError": "An error occurred during BMad setup.",
+    "pathValidationError": "An error occurred during path validation.",
+    "createError": "An error occurred while creating the project.",
+    "createCancelled": "Project creation cancelled."
+  },
+  "session": {
+    "notFound": "Project not found.",
+    "serverError": "A server error occurred. Please try again later.",
+    "networkError": "Please check your network connection.",
+    "loadError": "An error occurred while loading the session list.",
+    "deleteError": "An error occurred while deleting the session."
+  },
+  "chat": {
+    "aborted": "Aborted",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  },
+  "board": {
+    "loadError": "An error occurred while loading board data."
+  },
+  "git": {
+    "operationError": "An error occurred during Git operation."
+  },
+  "file": {
+    "binaryNotEditable": "Binary files cannot be edited."
+  },
+  "message": {
+    "loadError": "An error occurred while loading messages."
+  },
+  "streaming": {
+    "alreadyResponded": "Already responded in another browser.",
+    "respondedBeforeReconnect": "(Responded before reconnect)",
+    "abortedInOtherBrowser": "Response was aborted in another browser.",
+    "sessionInUseWarning": "This session is being used in another browser. Refresh and try again.",
+    "respondedInOtherBrowser": "(Responded in another browser)",
+    "disconnectedRetry": "Connection lost. Please try again after reconnecting."
+  },
+  "bmadStatus": {
+    "loadError": "An error occurred while loading BMad project status."
+  },
+  "cliStatus": {
+    "checkFailed": "CLI status check failed"
+  }
+}

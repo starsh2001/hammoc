@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -40,6 +41,7 @@ export function TextEditor() {
     cancelPendingNavigation,
   } = useFileStore();
 
+  const { t } = useTranslation('common');
   const [showConfirm, setShowConfirm] = useState(false);
   const editorRef = useRef<EditorView | null>(null);
 
@@ -65,9 +67,9 @@ export function TextEditor() {
     if (!isDirty || isSaving) return;
     const success = await saveFile();
     if (success) {
-      toast.success('파일이 저장되었습니다.');
+      toast.success(t('editor.fileSaved'));
     } else {
-      toast.error('파일 저장에 실패했습니다.');
+      toast.error(t('editor.fileSaveFailed'));
     }
   }, [isDirty, isSaving, saveFile]);
 
@@ -171,18 +173,18 @@ export function TextEditor() {
               <button
                 onClick={toggleMarkdownPreview}
                 className="flex items-center gap-1 px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-                title={isMarkdownPreview ? 'Switch to edit mode' : 'Switch to preview mode'}
-                aria-label={isMarkdownPreview ? 'Switch to edit mode' : 'Switch to preview mode'}
+                title={isMarkdownPreview ? t('editor.editMode') : t('editor.previewLabel')}
+                aria-label={isMarkdownPreview ? t('editor.editMode') : t('editor.previewLabel')}
               >
                 {isMarkdownPreview ? (
                   <>
                     <Pencil className="w-4 h-4" />
-                    <span>Edit</span>
+                    <span>{t('editor.editLabel')}</span>
                   </>
                 ) : (
                   <>
                     <Eye className="w-4 h-4" />
-                    <span>Preview</span>
+                    <span>{t('editor.previewLabel')}</span>
                   </>
                 )}
               </button>
@@ -190,15 +192,15 @@ export function TextEditor() {
             <button
               onClick={handleSave}
               disabled={!isDirty || isSaving}
-              title="Ctrl+S"
+              title={t('editor.saveShortcut')}
               className="px-3 py-1 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {isSaving ? 'Saving...' : 'Save'}
+              {isSaving ? t('editor.saving') : t('editor.save')}
             </button>
             <button
               onClick={handleClose}
               className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-              aria-label="Close editor"
+              aria-label={t('editor.close')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -210,7 +212,7 @@ export function TextEditor() {
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
             <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-              Loading file...
+              {t('editor.loadingFile')}
             </span>
           </div>
         ) : error ? (
@@ -223,15 +225,14 @@ export function TextEditor() {
               }}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
-              다시 시도
+              {t('button.retry')}
             </button>
           </div>
         ) : (
           <>
             {isTruncated && (
               <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs border-b border-amber-200 dark:border-amber-800">
-                이 파일은 크기 제한(1MB)을 초과하여 일부만 표시됩니다. 저장 시
-                표시된 내용만 저장됩니다.
+                {t('editor.fileTruncated')}
               </div>
             )}
             {isMarkdownPreview && isMarkdownFile ? (
@@ -245,7 +246,7 @@ export function TextEditor() {
                   <div className="h-full flex items-center justify-center">
                     <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
                     <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                      Loading editor...
+                      {t('editor.loadingEditor')}
                     </span>
                   </div>
                 }>
@@ -275,10 +276,10 @@ export function TextEditor() {
       {/* Confirm Dialog */}
       <ConfirmModal
         isOpen={showConfirm}
-        title="저장하지 않은 변경 사항"
-        message="저장하지 않은 변경 사항이 있습니다. 닫으시겠습니까?"
-        confirmText="저장하지 않고 닫기"
-        cancelText="취소"
+        title={t('editor.unsavedTitle')}
+        message={t('editor.unsavedCloseMessage')}
+        confirmText={t('editor.closeWithoutSaving')}
+        cancelText={t('button.cancel')}
         variant="danger"
         onConfirm={() => {
           closeEditor();
@@ -290,10 +291,10 @@ export function TextEditor() {
       {/* Pending Navigation Confirm Dialog */}
       <ConfirmModal
         isOpen={!!pendingNavigation}
-        title="저장하지 않은 변경 사항"
-        message={`저장하지 않은 변경 사항이 있습니다. '${pendingNavigation?.path ?? ''}'을(를) 열까요?`}
-        confirmText="저장하지 않고 열기"
-        cancelText="취소"
+        title={t('editor.unsavedTitle')}
+        message={t('editor.unsavedOpenMessage', { path: pendingNavigation?.path ?? '' })}
+        confirmText={t('editor.openWithoutSaving')}
+        cancelText={t('button.cancel')}
         variant="danger"
         onConfirm={confirmPendingNavigation}
         onCancel={cancelPendingNavigation}

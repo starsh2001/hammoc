@@ -12,6 +12,7 @@ import type {
 } from '@bmad-studio/shared';
 import { projectsApi } from '../services/api/projects';
 import { ApiError } from '../services/api/client';
+import i18n from '../i18n';
 
 interface ProjectState {
   projects: ProjectInfo[];
@@ -83,7 +84,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       if (err instanceof ApiError) {
         set({ error: err.message, isLoading: false, isRefreshing: false });
       } else {
-        set({ error: '프로젝트 목록을 불러오는 중 오류가 발생했습니다.', isLoading: false, isRefreshing: false });
+        set({ error: i18n.t('notification:project.loadError'), isLoading: false, isRefreshing: false });
       }
     }
   },
@@ -100,7 +101,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       return true;
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : '프로젝트 삭제 중 오류가 발생했습니다.';
+        err instanceof ApiError ? err.message : i18n.t('notification:project.deleteError');
       set({ error: message });
       return false;
     }
@@ -118,7 +119,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       return { success: true };
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'BMad 설정 중 오류가 발생했습니다.';
+        err instanceof ApiError ? err.message : i18n.t('notification:project.bmadSetupError');
       // Do NOT set global error — it triggers full-page error screen
       // Return error message so caller can show specific toast
       return { success: false, error: message };
@@ -153,7 +154,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       }
 
       const message =
-        err instanceof ApiError ? err.message : '프로젝트 생성 중 오류가 발생했습니다.';
+        err instanceof ApiError ? err.message : i18n.t('notification:project.createError');
       set({ createError: message, isCreating: false });
       createAbortController = null;
       return null;
@@ -171,7 +172,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         valid: false,
         exists: false,
         isProject: false,
-        error: '경로 검증 중 오류가 발생했습니다.',
+        error: i18n.t('notification:project.pathValidationError'),
       };
       set({ pathValidation: errorResult, isValidating: false });
       return errorResult;
@@ -185,7 +186,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (createAbortController) {
       createAbortController.abort();
       createAbortController = null;
-      set({ isCreating: false, createError: '프로젝트 생성이 취소되었습니다.' });
+      set({ isCreating: false, createError: i18n.t('notification:project.createCancelled') });
     }
   },
 

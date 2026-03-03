@@ -243,7 +243,7 @@ describe('FileTree', () => {
     render(<FileTree projectSlug="test-project" onFileSelect={vi.fn()} />);
 
     // Should show loading state
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('로딩 중...')).toBeInTheDocument();
 
     // Resolve the promise
     resolveList(mockRootResponse);
@@ -367,7 +367,7 @@ describe('FileTree', () => {
     fireEvent.click(screen.getByText('src'));
 
     await waitFor(() => {
-      expect(screen.getByText('Empty folder')).toBeInTheDocument();
+      expect(screen.getByText('빈 폴더')).toBeInTheDocument();
     });
   });
 
@@ -391,10 +391,10 @@ describe('FileTree', () => {
       expect(screen.getByText('Network error')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Retry')).toBeInTheDocument();
+    expect(screen.getByText('다시 시도')).toBeInTheDocument();
 
     // Click retry
-    fireEvent.click(screen.getByText('Retry'));
+    fireEvent.click(screen.getByText('다시 시도'));
 
     await waitFor(() => {
       expect(screen.getByText('App.tsx')).toBeInTheDocument();

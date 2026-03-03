@@ -134,10 +134,15 @@ let mockStoreState = {
 };
 
 vi.mock('../../../stores/fileStore', () => ({
-  useFileStore: (selector?: (state: typeof mockStoreState) => unknown) => {
-    if (selector) return selector(mockStoreState);
-    return mockStoreState;
-  },
+  useFileStore: Object.assign(
+    (selector?: (state: typeof mockStoreState) => unknown) => {
+      if (selector) return selector(mockStoreState);
+      return mockStoreState;
+    },
+    {
+      getState: () => mockStoreState,
+    },
+  ),
 }));
 
 // Helper to render and wait for lazy CodeMirror to load
@@ -226,7 +231,7 @@ describe('TextEditor', () => {
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    expect(screen.getByText('Loading file...')).toBeDefined();
+    expect(screen.getByText('파일 로딩 중...')).toBeDefined();
   });
 
   it('TC-TE6: should show error message', async () => {
@@ -256,7 +261,7 @@ describe('TextEditor', () => {
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    const closeButton = screen.getByLabelText('Close editor');
+    const closeButton = screen.getByLabelText('편집기 닫기');
     fireEvent.click(closeButton);
 
     expect(screen.getByTestId('confirm-modal')).toBeDefined();
@@ -269,7 +274,7 @@ describe('TextEditor', () => {
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    const closeButton = screen.getByLabelText('Close editor');
+    const closeButton = screen.getByLabelText('편집기 닫기');
     fireEvent.click(closeButton);
 
     expect(mockCloseEditor).toHaveBeenCalled();
@@ -305,7 +310,7 @@ describe('TextEditor', () => {
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    const closeButton = screen.getByLabelText('Close editor');
+    const closeButton = screen.getByLabelText('편집기 닫기');
     fireEvent.click(closeButton);
     expect(screen.getByTestId('confirm-modal')).toBeDefined();
 
@@ -323,8 +328,8 @@ describe('TextEditor', () => {
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    expect(screen.getByText('Preview')).toBeDefined();
-    expect(screen.getByLabelText('Switch to preview mode')).toBeDefined();
+    expect(screen.getByText('미리보기')).toBeDefined();
+    expect(screen.getByLabelText('미리보기')).toBeDefined();
   });
 
   it('TC-TE14: should not show Preview toggle button for non-.md files', async () => {
@@ -333,8 +338,8 @@ describe('TextEditor', () => {
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    expect(screen.queryByText('Preview')).toBeNull();
-    expect(screen.queryByText('Edit')).toBeNull();
+    expect(screen.queryByText('미리보기')).toBeNull();
+    expect(screen.queryByText('편집')).toBeNull();
   });
 
   it('TC-TE15: should call toggleMarkdownPreview on toggle button click', async () => {
@@ -343,7 +348,7 @@ describe('TextEditor', () => {
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    fireEvent.click(screen.getByText('Preview'));
+    fireEvent.click(screen.getByText('미리보기'));
     expect(mockToggleMarkdownPreview).toHaveBeenCalled();
   });
 
@@ -368,8 +373,8 @@ describe('TextEditor', () => {
 
     expect(screen.queryByTestId('codemirror-editor')).toBeNull();
     expect(screen.getByTestId('markdown-preview')).toBeDefined();
-    expect(screen.getByText('Edit')).toBeDefined();
-    expect(screen.getByLabelText('Switch to edit mode')).toBeDefined();
+    expect(screen.getByText('편집')).toBeDefined();
+    expect(screen.getByLabelText('편집 모드로 전환')).toBeDefined();
   });
 
   it('TC-TE18: should restore editor focus when switching from preview to edit', async () => {

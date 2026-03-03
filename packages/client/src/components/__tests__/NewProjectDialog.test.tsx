@@ -189,7 +189,7 @@ describe('NewProjectDialog', () => {
       });
 
       await waitFor(() => {
-        expect(mockOnSuccess).toHaveBeenCalledWith('new-slug', false);
+        expect(mockOnSuccess).toHaveBeenCalledWith('new-slug', false, undefined);
       });
     });
 

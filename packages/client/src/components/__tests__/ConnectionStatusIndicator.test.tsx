@@ -24,7 +24,7 @@ describe('ConnectionStatusIndicator', () => {
         />
       );
 
-      expect(screen.getByText('Connected')).toBeInTheDocument();
+      expect(screen.getByText('연결됨')).toBeInTheDocument();
     });
 
     it('should have correct aria-label for connected status', () => {
@@ -49,7 +49,7 @@ describe('ConnectionStatusIndicator', () => {
         />
       );
 
-      expect(screen.getByText('Disconnected')).toBeInTheDocument();
+      expect(screen.getByText('연결 끊김')).toBeInTheDocument();
     });
 
     it('should have correct aria-label for disconnected status', () => {
@@ -114,7 +114,7 @@ describe('ConnectionStatusIndicator', () => {
         />
       );
 
-      expect(screen.getByText('Reconnecting (3/5)')).toBeInTheDocument();
+      expect(screen.getByText('재연결 중 (3/5)')).toBeInTheDocument();
     });
 
     it('should have correct aria-label with attempt count', () => {
@@ -198,7 +198,7 @@ describe('ConnectionStatusIndicator', () => {
       );
 
       // In compact mode, text should not be directly visible
-      expect(screen.queryByText('Connected')).not.toBeInTheDocument();
+      expect(screen.queryByText('연결됨')).not.toBeInTheDocument();
       // But testid should be present
       expect(screen.getByTestId('connection-status-indicator')).toBeInTheDocument();
     });
@@ -213,7 +213,7 @@ describe('ConnectionStatusIndicator', () => {
       );
 
       const statusElement = screen.getByTestId('connection-status-indicator');
-      expect(statusElement).toHaveAttribute('title', 'Connected');
+      expect(statusElement).toHaveAttribute('title', '연결됨');
     });
 
     it('should show error message in tooltip when lastError is present in compact mode', () => {

@@ -28,7 +28,7 @@ describe('IssueFormDialog', () => {
     render(
       <IssueFormDialog open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
     );
-    expect(screen.getByText('이슈 추가')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '이슈 추가' })).toBeInTheDocument();
     expect(screen.getByLabelText(/제목/)).toBeInTheDocument();
     expect(screen.getByLabelText(/설명/)).toBeInTheDocument();
   });
@@ -37,7 +37,7 @@ describe('IssueFormDialog', () => {
     render(
       <IssueFormDialog open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
     );
-    const submitButton = screen.getByText('추가');
+    const submitButton = screen.getByRole('button', { name: '이슈 추가' });
     expect(submitButton).toBeDisabled();
   });
 
@@ -48,7 +48,7 @@ describe('IssueFormDialog', () => {
     );
 
     await user.type(screen.getByLabelText(/제목/), '   ');
-    const submitButton = screen.getByText('추가');
+    const submitButton = screen.getByRole('button', { name: '이슈 추가' });
     expect(submitButton).toBeDisabled();
   });
 
@@ -59,7 +59,7 @@ describe('IssueFormDialog', () => {
     );
 
     await user.type(screen.getByLabelText(/제목/), 'Valid title');
-    const submitButton = screen.getByText('추가');
+    const submitButton = screen.getByRole('button', { name: '이슈 추가' });
     expect(submitButton).not.toBeDisabled();
   });
 
@@ -71,7 +71,7 @@ describe('IssueFormDialog', () => {
 
     await user.type(screen.getByLabelText(/제목/), '  New Bug  ');
     await user.type(screen.getByLabelText(/설명/), 'Description text');
-    await user.click(screen.getByText('추가'));
+    await user.click(screen.getByRole('button', { name: '이슈 추가' }));
 
     await waitFor(() => {
       expect(mockOnSubmit).toHaveBeenCalledWith({
@@ -122,7 +122,7 @@ describe('IssueFormDialog', () => {
     );
 
     await user.type(screen.getByLabelText(/제목/), 'Failing issue');
-    await user.click(screen.getByText('추가'));
+    await user.click(screen.getByRole('button', { name: '이슈 추가' }));
 
     await waitFor(() => {
       expect(mockOnSubmit).toHaveBeenCalled();
@@ -132,7 +132,7 @@ describe('IssueFormDialog', () => {
     expect(mockOnClose).not.toHaveBeenCalled();
     expect(screen.getByLabelText(/제목/)).toHaveValue('Failing issue');
     // Submit button should be re-enabled after failure
-    expect(screen.getByText('추가')).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: '이슈 추가' })).not.toBeDisabled();
   });
 
   it('should include optional severity and issueType when selected', async () => {
@@ -144,7 +144,7 @@ describe('IssueFormDialog', () => {
     await user.type(screen.getByLabelText(/제목/), 'Critical Bug');
     await user.selectOptions(screen.getByLabelText(/심각도/), 'critical');
     await user.selectOptions(screen.getByLabelText(/타입/), 'bug');
-    await user.click(screen.getByText('추가'));
+    await user.click(screen.getByRole('button', { name: '이슈 추가' }));
 
     await waitFor(() => {
       expect(mockOnSubmit).toHaveBeenCalledWith({

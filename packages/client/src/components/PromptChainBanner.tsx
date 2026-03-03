@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Link2, ChevronDown, ChevronUp } from 'lucide-react';
 
 export interface PromptChainBannerProps {
@@ -27,6 +28,7 @@ function shortLabel(prompt: string): string {
 }
 
 export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: PromptChainBannerProps) {
+  const { t } = useTranslation('chat');
   const [expanded, setExpanded] = useState(false);
 
   if (pendingPrompts.length === 0) return null;
@@ -38,7 +40,7 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
     <div
       role="status"
       aria-live="polite"
-      aria-label={`프롬프트 체인: 다음 명령 대기 중 — ${nextPrompt}`}
+      aria-label={t('chain.waitingAria', { prompt: nextPrompt })}
       data-testid="prompt-chain-banner"
       className="content-container banner-full-mobile sticky top-0 z-[9] transition-all duration-300
                  bg-violet-50 dark:bg-violet-950/30 border-b border-violet-200 dark:border-violet-800/50"
@@ -54,7 +56,7 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
 
         {/* Label */}
         <span className="text-xs font-medium text-violet-700 dark:text-violet-300 flex items-center gap-1.5 min-w-0">
-          <span className="flex-shrink-0">다음</span>
+          <span className="flex-shrink-0">{t('chain.next')}</span>
           <span className="truncate text-violet-600/70 dark:text-violet-400/70 font-mono">
             {shortLabel(nextPrompt)}
           </span>
@@ -75,8 +77,8 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
             className="p-1 rounded hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors
                        text-violet-400 dark:text-violet-500 hover:text-violet-600 dark:hover:text-violet-300
                        cursor-pointer flex-shrink-0"
-            aria-label={expanded ? '체인 목록 접기' : '체인 목록 펼치기'}
-            title={expanded ? '접기' : '펼치기'}
+            aria-label={expanded ? t('chain.collapseList') : t('chain.expandList')}
+            title={expanded ? t('chain.collapseList') : t('chain.expandList')}
           >
             {expanded
               ? <ChevronUp size={14} aria-hidden="true" />
@@ -90,8 +92,8 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
           className="p-1 rounded hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors
                      text-violet-400 dark:text-violet-500 hover:text-violet-600 dark:hover:text-violet-300
                      cursor-pointer flex-shrink-0"
-          aria-label="대기 중인 프롬프트 전체 취소"
-          title="전체 취소"
+          aria-label={t('chain.cancelAll')}
+          title={t('chain.cancelAllTitle')}
         >
           <X size={14} />
         </button>
@@ -126,8 +128,8 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
                   className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity
                              text-violet-400 dark:text-violet-500 hover:text-red-500 dark:hover:text-red-400
                              hover:bg-violet-100 dark:hover:bg-violet-900/40 cursor-pointer flex-shrink-0"
-                  aria-label={`${index + 1}번 프롬프트 제거`}
-                  title="제거"
+                  aria-label={t('chain.removePrompt', { index: index + 1 })}
+                  title={t('chain.removeTitle')}
                 >
                   <X size={12} />
                 </button>

@@ -1,1 +1,97 @@
-{}
+{
+  "config": {
+    "title": "Board Settings",
+    "columnDefinition": "Column Definitions",
+    "statusMapping": "Status → Column Mapping",
+    "selectColor": "Select color",
+    "columnNamePlaceholder": "Column name",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "delete": "Delete",
+    "resetDefaults": "Restore Defaults",
+    "resetConfirm": "Restore default settings?",
+    "saving": "Saving..."
+  },
+  "issue": {
+    "add": "Add Issue",
+    "edit": "Edit Issue",
+    "title": "Title *",
+    "titlePlain": "Title",
+    "titlePlaceholder": "Enter issue title",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe the issue (optional)",
+    "severity": "Severity",
+    "severityLabel": "Severity:",
+    "severityLow": "Low",
+    "severityMedium": "Medium",
+    "severityHigh": "High",
+    "severityCritical": "Critical",
+    "type": "Type",
+    "typeLabel": "Type:",
+    "typeBug": "Bug",
+    "typeImprovement": "Improvement",
+    "quickFix": "Quick Fix",
+    "promoteToStory": "Promote to Story",
+    "alreadyPromotedToStory": "Already promoted to Story",
+    "promoteToEpic": "Promote to Epic",
+    "alreadyPromotedToEpic": "Already promoted to Epic",
+    "cannotDeleteWhileWorking": "Cannot delete while AI is working",
+    "closeConfirm": "Close this issue?",
+    "deleteConfirm": "Delete issue \"{{title}}\"?"
+  },
+  "card": {
+    "menu": "Card menu"
+  },
+  "epic": {
+    "subStories": "Epic Sub-Stories",
+    "progress": "Progress",
+    "noSubStories": "No sub-stories",
+    "viewSubStories": "View Sub-Stories"
+  },
+  "story": {
+    "normalizeStatus": "Normalize status ({{rawStatus}} → {{status}})"
+  },
+  "workflow": {
+    "validateStory": "Validate Story",
+    "startDevelopment": "Start Development",
+    "requestQA": "Request QA",
+    "applyQAFix": "Apply QA Fix"
+  },
+  "status": {
+    "open": "Open",
+    "draft": "Draft",
+    "approved": "Approved",
+    "inProgress": "In Progress",
+    "blocked": "Blocked",
+    "review": "Review",
+    "done": "Done",
+    "closed": "Closed"
+  },
+  "errors": {
+    "saveFailed": "Failed to save.",
+    "resetFailed": "Failed to reset.",
+    "updateStatusFailed": "Failed to update issue status.",
+    "promoteFailed": "Failed to promote.",
+    "editFailed": "Failed to edit issue.",
+    "closeFailed": "Failed to close issue.",
+    "deleteFailed": "Failed to delete issue.",
+    "normalizeStatusFailed": "Failed to normalize status."
+  },
+  "empty": {
+    "message": "No items on the board. Try adding an issue.",
+    "items": "No items"
+  },
+  "view": {
+    "kanban": "Kanban view",
+    "list": "List view"
+  },
+  "promote": {
+    "originalIssueHeader": "Original Issue (ID: {{id}})",
+    "none": "None"
+  },
+  "truncated": "...(truncated)",
+  "noDescription": "(No description)",
+  "mobileKanban": {
+    "goToColumn": "Go to {{column}} column"
+  }
+}

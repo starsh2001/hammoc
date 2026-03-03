@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { getToolExtraParams } from '../utils/toolUtils';
 
@@ -42,6 +43,7 @@ function isPath(displayInfo: string): boolean {
 const SHOW_FULL_BY_DEFAULT = ['Glob', 'Grep', 'Bash'];
 
 export function ToolPathDisplay({ displayInfo, toolName, toolInput, additionalParams }: ToolPathDisplayProps) {
+  const { t } = useTranslation('chat');
   const [isExpanded, setIsExpanded] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
   const textRef = useRef<HTMLSpanElement>(null);
@@ -88,7 +90,7 @@ export function ToolPathDisplay({ displayInfo, toolName, toolInput, additionalPa
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-start gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors text-left max-w-full"
         aria-expanded={isExpanded}
-        aria-label={isExpanded ? '접기' : '전체 내용 보기'}
+        aria-label={isExpanded ? t('tool.collapseContent') : t('tool.expandContent')}
       >
         {isExpanded ? (
           <ChevronDown className="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true" />

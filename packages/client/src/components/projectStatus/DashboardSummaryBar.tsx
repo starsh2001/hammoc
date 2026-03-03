@@ -1,4 +1,5 @@
 import { Activity, Play, Terminal, FolderOpen, MessageSquare } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface DashboardSummaryBarProps {
   totals: {
@@ -64,38 +65,40 @@ function StatCard({ icon, label, value, variant = 'default', subValue }: StatCar
 }
 
 export function DashboardSummaryBar({ totals, projectCount }: DashboardSummaryBarProps) {
+  const { t } = useTranslation('common');
+
   return (
     <div
       role="status"
-      aria-label="Dashboard summary"
+      aria-label={t('dashboard.summaryStatus')}
       className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 mb-4"
     >
       <StatCard
         icon={<FolderOpen className="w-5 h-5" />}
-        label="Projects"
+        label={t('dashboard.projects')}
         value={projectCount}
       />
       <StatCard
         icon={<MessageSquare className="w-5 h-5" />}
-        label="Sessions"
+        label={t('dashboard.sessions')}
         value={totals.totalSessions}
       />
       <StatCard
         icon={<Activity className="w-5 h-5" />}
-        label="Active"
+        label={t('dashboard.active')}
         value={totals.activeSessions}
         variant="green"
         subValue={totals.totalSessions > 0 ? `/ ${totals.totalSessions}` : undefined}
       />
       <StatCard
         icon={<Play className="w-5 h-5" />}
-        label="Queue"
+        label={t('dashboard.queue')}
         value={totals.queueRunning}
         variant="blue"
       />
       <StatCard
         icon={<Terminal className="w-5 h-5" />}
-        label="Terminals"
+        label={t('dashboard.terminals')}
         value={totals.terminals}
         variant="yellow"
       />

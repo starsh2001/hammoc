@@ -10,6 +10,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Bot, Copy, Check } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { debugLogger } from '../utils/debugLogger';
@@ -28,6 +29,7 @@ export function StreamingMessage({
   isComplete = false,
   onCopy,
 }: StreamingMessageProps) {
+  const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -62,7 +64,7 @@ export function StreamingMessage({
     <div
       className="flex justify-start"
       role="listitem"
-      aria-label="Claude 응답 중"
+      aria-label={t('streamingMessage.ariaLabel')}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -70,7 +72,7 @@ export function StreamingMessage({
         {/* Claude icon and name */}
         <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 dark:text-gray-400">
           <Bot className="w-4 h-4" aria-hidden="true" />
-          <span>Claude</span>
+          <span>{t('streamingMessage.assistantName')}</span>
         </div>
 
         {/* Streaming markdown content */}
@@ -80,8 +82,8 @@ export function StreamingMessage({
         {isComplete && (
           <button
             onClick={handleCopy}
-            aria-label={isCopied ? '복사됨' : '메시지 복사'}
-            title={isCopied ? '복사됨!' : '클립보드에 복사'}
+            aria-label={isCopied ? t('streamingMessage.copiedLabel') : t('streamingMessage.copyLabel')}
+            title={isCopied ? t('streamingMessage.copiedTitle') : t('streamingMessage.copyTitle')}
             className={`absolute top-2 right-2 z-10 p-1.5 flex items-center justify-center rounded transition-opacity duration-200 ${
               isHovered ? 'opacity-100' : 'opacity-0'
             } bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300`}

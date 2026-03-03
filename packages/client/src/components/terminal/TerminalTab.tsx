@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Minus, Terminal, X, ShieldAlert } from 'lucide-react';
 import { useTerminal } from '../../hooks/useTerminal';
 import { useTerminalStore } from '../../stores/terminalStore';
@@ -21,6 +22,7 @@ function getShellName(shellPath: string): string {
 }
 
 export function TerminalTab({ projectSlug }: TerminalTabProps) {
+  const { t } = useTranslation('common');
   const {
     terminalId: activeTerminalId,
     terminals,
@@ -40,11 +42,11 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
   // Story 17.5: Show warning when terminal access is denied
   if (terminalAccess && !terminalAccess.allowed) {
     const message = !terminalAccess.enabled
-      ? '터미널 기능이 비활성화되어 있습니다'
-      : '보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다';
+      ? t('terminal.disabledMessage')
+      : t('terminal.securityMessage');
     const description = !terminalAccess.enabled
-      ? '설정 페이지의 고급 설정에서 터미널 기능을 활성화할 수 있습니다.'
-      : '터미널은 로컬 네트워크 환경(localhost, 사설 IP)에서만 사용할 수 있습니다.';
+      ? t('terminal.disabledDescription')
+      : t('terminal.securityDescription');
 
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center" role="alert">
@@ -138,21 +140,21 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
         return (
           <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
             <span className="w-2 h-2 rounded-full bg-green-500" />
-            연결됨
+            {t('terminal.connected')}
           </span>
         );
       case 'disconnected':
         return (
           <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
             <span className="w-2 h-2 rounded-full bg-red-500" />
-            연결 끊김
+            {t('terminal.disconnectedBadge')}
           </span>
         );
       case 'exited':
         return (
           <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
             <span className="w-2 h-2 rounded-full bg-gray-400" />
-            종료됨 (code: {activeSession.exitCode ?? '?'})
+            {t('terminal.exitedBadge', { exitCode: activeSession.exitCode ?? '?' })}
           </span>
         );
       default:
@@ -181,24 +183,24 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
             <button
               onClick={decreaseFontSize}
               className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              aria-label="폰트 축소"
-              title="폰트 축소 (Ctrl+-)"
+              aria-label={t('terminal.fontDecrease')}
+              title={t('terminal.fontDecreaseTooltip')}
             >
               <Minus className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={resetFontSize}
               className="px-1 py-0.5 text-xs tabular-nums text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors min-w-[2rem] text-center"
-              aria-label="폰트 초기화"
-              title="폰트 초기화 (Ctrl+0)"
+              aria-label={t('terminal.fontReset')}
+              title={t('terminal.fontResetTooltip')}
             >
               {fontSize}
             </button>
             <button
               onClick={increaseFontSize}
               className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              aria-label="폰트 확대"
-              title="폰트 확대 (Ctrl+=)"
+              aria-label={t('terminal.fontIncrease')}
+              title={t('terminal.fontIncreaseTooltip')}
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -215,7 +217,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
-            새 터미널
+            {t('terminal.newTerminal')}
           </button>
         </div>
       </div>
@@ -277,17 +279,17 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
               <Terminal className="w-10 h-10 text-gray-400 dark:text-gray-500" />
             </div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              활성 터미널이 없습니다
+              {t('terminal.emptyMessage')}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              새 터미널 버튼을 눌러 터미널을 시작하세요
+              {t('terminal.emptyHelpText')}
             </p>
             <button
               onClick={create}
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-colors"
             >
               <Plus className="w-4 h-4" />
-              새 터미널
+              {t('terminal.newTerminal')}
             </button>
           </div>
         )}

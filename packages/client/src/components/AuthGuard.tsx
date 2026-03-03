@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState, useCallback, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../services/api/client';
@@ -56,6 +57,7 @@ if (restoredStatus) {
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
+  const { t } = useTranslation('common');
   const { isAuthenticated, isLoading: authLoading, checkAuth } = useAuthStore();
   const location = useLocation();
 
@@ -83,7 +85,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       const needsSetup = !status.cliInstalled || !status.authenticated;
       setNeedsOnboarding(needsSetup);
     } catch (err) {
-      setCLIError(err instanceof Error ? err.message : 'CLI 상태 확인 실패');
+      setCLIError(err instanceof Error ? err.message : t('error.cliStatusFailed'));
       setNeedsOnboarding(true); // 에러 시 안전하게 Onboarding으로
     } finally {
       setCLILoading(false);
@@ -125,7 +127,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       <div
         className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900"
         role="status"
-        aria-label="로딩 중"
+        aria-label={t('loading')}
       >
         <div className="flex flex-col items-center gap-3">
           <div
@@ -133,7 +135,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
             aria-hidden="true"
           />
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            CLI 상태 확인 중...
+            {t('cliStatusChecking')}
           </p>
         </div>
       </div>

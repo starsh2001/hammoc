@@ -13,6 +13,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Send, Square, Paperclip, X, Lock, Link2, Plus } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -165,7 +166,7 @@ interface ChatInputProps {
 export function ChatInput({
   onSend,
   disabled = false,
-  placeholder = '메시지를 입력하세요...',
+  placeholder,
   commands = [],
   isStreaming = false,
   onAbort,
@@ -200,6 +201,7 @@ export function ChatInput({
   chainMax = 5,
   getChainLength,
 }: ChatInputProps) {
+  const { t } = useTranslation('chat');
   // Session lock state (another browser took over this session)
   const isSessionLocked = useChatStore((s) => s.isSessionLocked);
   const subscriptionRateLimit = useChatStore((s) => s.subscriptionRateLimit);
@@ -375,17 +377,17 @@ export function ChatInput({
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
 
     if (files.length > 0 && imageFiles.length === 0) {
-      showValidationError('이미지 파일만 첨부할 수 있습니다 (PNG, JPEG, GIF, WebP)');
+      showValidationError(t('validation.onlyImages'));
       return;
     }
 
     for (const file of imageFiles) {
       if (!(IMAGE_CONSTRAINTS.ACCEPTED_TYPES as readonly string[]).includes(file.type)) {
-        showValidationError('지원되지 않는 이미지 형식입니다');
+        showValidationError(t('validation.unsupportedFormat'));
         return;
       }
       if (file.size > IMAGE_CONSTRAINTS.MAX_SIZE_BYTES) {
-        showValidationError('10MB를 초과하는 파일은 첨부할 수 없습니다');
+        showValidationError(t('validation.fileTooLarge'));
         return;
       }
     }
@@ -396,12 +398,12 @@ export function ChatInput({
     const currentCount = attachments.length;
     const remaining = IMAGE_CONSTRAINTS.MAX_COUNT - currentCount;
     if (remaining <= 0) {
-      showValidationError('이미지는 최대 5개까지 첨부할 수 있습니다');
+      showValidationError(t('validation.maxImagesExceeded'));
       return;
     }
     const toAdd = imageFiles.slice(0, remaining);
     if (imageFiles.length > remaining) {
-      showValidationError('이미지는 최대 5개까지 첨부할 수 있습니다');
+      showValidationError(t('validation.maxImagesExceeded'));
     }
 
     // Read files and create attachments
@@ -422,7 +424,7 @@ export function ChatInput({
         });
       } catch (err) {
         debugLogger.error('Failed to read image file', { error: err instanceof Error ? err.message : String(err), fileName: file.name });
-        showValidationError(`이미지를 읽을 수 없습니다: ${file.name}`);
+        showValidationError(t('validation.failedToReadImage', { name: file.name }));
       }
     }
     if (newAttachments.length > 0) {
@@ -584,7 +586,7 @@ export function ChatInput({
     // Warn (but don't block) if API is unhealthy
     const apiHealth = useChatStore.getState().apiHealth;
     if (apiHealth && !apiHealth.healthy) {
-      toast.warning('Claude API가 현재 응답하지 않습니다. 메시지가 전달되지 않을 수 있습니다.', {
+      toast.warning(t('errors.apiUnhealthy'), {
         id: 'api-health-warning',
         duration: 5000,
       });
@@ -777,7 +779,7 @@ export function ChatInput({
           className="px-3 py-2 text-sm text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-md"
           data-testid="connection-warning"
         >
-          서버와 연결이 끊어졌습니다. 재연결 후 다시 시도해주세요.
+          {t('errors.disconnected')}
         </div>
       )}
 
@@ -816,7 +818,7 @@ export function ChatInput({
                       handleRemoveAttachment(attachment.id);
                     }
                   }}
-                  aria-label={`이미지 제거: ${attachment.name}`}
+                  aria-label={t('attachment.remove', { name: attachment.name })}
                   className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center
                              bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800
                              rounded-full hover:bg-red-600 dark:hover:bg-red-400
@@ -958,7 +960,7 @@ export function ChatInput({
               userHasFocusedRef.current = false;
             }}
             disabled={isSessionLocked || queueLocked || undefined}
-            placeholder={isSessionLocked ? '다른 브라우저에서 사용 중 — 새로고침 후 사용 가능' : queueLocked ? '큐 러너가 제어 중' : isStreaming && chainMode ? (isChainFull ? '체인 최대 5개' : '체인에 추가...') : placeholder}
+            placeholder={isSessionLocked ? '다른 브라우저에서 사용 중 — 새로고침 후 사용 가능' : queueLocked ? '큐 러너가 제어 중' : isStreaming && chainMode ? (isChainFull ? '체인 최대 5개' : '체인에 추가...') : placeholder || t('input.placeholder')}
             role={showCommands || showStarCommands ? 'combobox' : undefined}
             aria-label="메시지 입력"
             aria-describedby="input-hint"
@@ -982,7 +984,7 @@ export function ChatInput({
           />
         </div>
         <span id="input-hint" className="sr-only">
-          Enter로 전송, Shift+Enter로 줄바꿈
+          {t('input.hint')}
         </span>
       </div>
 
@@ -1029,7 +1031,7 @@ export function ChatInput({
             onClick={onChainModeToggle}
             onPointerDown={preventFocusLoss}
             disabled={queueLocked}
-            aria-label={chainMode ? '체인 모드 끄기' : '체인 모드 켜기'}
+            aria-label={chainMode ? t('chainMode.off') : t('chainMode.on')}
             aria-pressed={chainMode}
             title="프롬프트 체인"
             className={`relative p-1 rounded-md flex-shrink-0 flex items-center justify-center transition-all duration-150 cursor-pointer
@@ -1071,7 +1073,7 @@ export function ChatInput({
           onClick={() => fileInputRef.current?.click()}
           onPointerDown={preventFocusLoss}
           disabled={isAttachDisabled || queueLocked}
-          aria-label="이미지 첨부"
+          aria-label={t('input.attachImage')}
           className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
                      text-gray-500 dark:text-gray-400
                      hover:text-gray-700 dark:hover:text-gray-200
@@ -1089,7 +1091,7 @@ export function ChatInput({
             type="button"
             disabled
             onPointerDown={preventFocusLoss}
-            aria-label="세션 잠김"
+            aria-label={t('input.sessionLocked')}
             className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
                        bg-gray-400 dark:bg-gray-600
                        text-white
@@ -1104,7 +1106,7 @@ export function ChatInput({
             onClick={onAbort}
             onPointerDown={preventFocusLoss}
             disabled={queueLocked}
-            aria-label="중단"
+            aria-label={t('input.abort')}
             className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
                        bg-red-600 hover:bg-red-700
                        dark:bg-red-500 dark:hover:bg-red-600
@@ -1122,7 +1124,7 @@ export function ChatInput({
             onClick={handleButtonClick}
             onPointerDown={preventFocusLoss}
             disabled={isButtonDisabled}
-            aria-label={chainMode ? '체인에 추가' : '전송'}
+            aria-label={chainMode ? t('input.addToChain') : t('input.send')}
             className={`p-1 rounded-md flex-shrink-0 flex items-center justify-center
                        ${chainMode
                          ? 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600'

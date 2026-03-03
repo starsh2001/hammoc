@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { getToolExtraParams } from '../utils/toolUtils';
 
@@ -15,6 +16,7 @@ interface ToolDetailToggleProps {
 }
 
 export function ToolDetailToggle({ toolName, input, toolCallId }: ToolDetailToggleProps) {
+  const { t } = useTranslation('chat');
   const [expanded, setExpanded] = useState(false);
   const params = getToolExtraParams(toolName, input);
   if (!params) return null;
@@ -28,12 +30,12 @@ export function ToolDetailToggle({ toolName, input, toolCallId }: ToolDetailTogg
         className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         aria-expanded={expanded}
         aria-controls={panelId}
-        aria-label={expanded ? '도구 상세 정보 접기' : '도구 상세 정보 펼치기'}
+        aria-label={expanded ? t('tool.detailCollapseAria') : t('tool.detailExpandAria')}
       >
         {expanded
           ? <ChevronDown className="w-3 h-3" aria-hidden="true" />
           : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
-        <span>상세</span>
+        <span>{t('tool.detail')}</span>
       </button>
       {expanded && (
         <div id={panelId} className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 pl-6">

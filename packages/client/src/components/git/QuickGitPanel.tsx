@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GitBranch, GitCommitHorizontal, Loader2, ExternalLink } from 'lucide-react';
 import { useGitStatus } from '../../hooks/useGitStatus';
 import { useGitStore } from '../../stores/gitStore';
@@ -19,6 +20,7 @@ export function QuickGitPanel({
   projectSlug,
   onNavigateToGitTab,
 }: QuickGitPanelProps) {
+  const { t } = useTranslation('common');
   const { status, refresh, changedFileCount } = useGitStatus(projectSlug);
   const commits = useGitStore((s) => s.commits);
   const isLoading = useGitStore((s) => s.isLoading);
@@ -84,7 +86,7 @@ export function QuickGitPanel({
         {status?.initialized === false ? (
           <div className="text-center py-8 space-y-4">
             <p className="text-gray-500 dark:text-gray-400">
-              Git 저장소가 초기화되지 않았습니다
+              {t('git.notInitialized')}
             </p>
             <button
               onClick={handleInit}
@@ -95,7 +97,7 @@ export function QuickGitPanel({
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin inline mr-2" aria-hidden="true" />
               ) : null}
-              Git Init
+              {t('git.initButton')}
             </button>
           </div>
         ) : (
@@ -112,7 +114,7 @@ export function QuickGitPanel({
                     data-testid="changed-file-badge"
                     className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 text-xs font-medium px-2 py-0.5 rounded-full"
                   >
-                    {changedFileCount} 변경
+                    {t('git.changesCount', { count: changedFileCount })}
                   </span>
                 )}
               </div>
@@ -124,7 +126,7 @@ export function QuickGitPanel({
                 data-testid="commit-message-input"
                 value={commitMessage}
                 onChange={(e) => setCommitMessage(e.target.value)}
-                placeholder="커밋 메시지 입력..."
+                placeholder={t('git.commitMessagePlaceholder')}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600
                            bg-white dark:bg-gray-700 text-gray-900 dark:text-white
@@ -145,11 +147,11 @@ export function QuickGitPanel({
                 ) : (
                   <GitCommitHorizontal className="w-4 h-4" aria-hidden="true" />
                 )}
-                Stage All & Commit
+                {t('git.stageAllCommit')}
               </button>
               {showSuccess && (
                 <p data-testid="commit-success" className="text-sm text-green-600 dark:text-green-400 text-center">
-                  커밋 완료
+                  {t('git.commitSuccess')}
                 </p>
               )}
             </div>
@@ -157,11 +159,11 @@ export function QuickGitPanel({
             {/* Recent commits */}
             <div className="space-y-2">
               <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                최근 커밋
+                {t('git.recentCommits')}
               </h3>
               {recentCommits.length === 0 ? (
                 <p className="text-sm text-gray-400 dark:text-gray-500">
-                  커밋 히스토리가 없습니다
+                  {t('git.noCommitHistory')}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -198,7 +200,7 @@ export function QuickGitPanel({
                      hover:text-blue-700 dark:hover:text-blue-300 transition-colors
                      focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg py-1.5"
         >
-          Git 탭에서 상세 보기
+          {t('git.viewInGitTab')}
           <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
         </button>
       </div>

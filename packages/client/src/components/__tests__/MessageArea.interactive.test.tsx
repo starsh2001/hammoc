@@ -18,6 +18,13 @@ vi.mock('../../services/socket', () => ({
   }),
 }));
 
+// Mock ResizeObserver which is not supported in jsdom
+vi.stubGlobal('ResizeObserver', vi.fn(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+})));
+
 describe('MessageArea PermissionCard WebSocket integration (Story 7.1)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,7 +71,7 @@ describe('MessageArea PermissionCard WebSocket integration (Story 7.1)', () => {
       </MessageArea>
     );
 
-    const approveBtn = screen.getByLabelText('변경사항 승인');
+    const approveBtn = screen.getByLabelText('승인');
     fireEvent.click(approveBtn);
 
     expect(mockSocketEmit).toHaveBeenCalledWith('permission:respond', expect.objectContaining({
@@ -83,7 +90,7 @@ describe('MessageArea PermissionCard WebSocket integration (Story 7.1)', () => {
       </MessageArea>
     );
 
-    const rejectBtn = screen.getByLabelText('변경사항 거절');
+    const rejectBtn = screen.getByLabelText('거절');
     fireEvent.click(rejectBtn);
 
     expect(mockSocketEmit).toHaveBeenCalledWith('permission:respond', expect.objectContaining({
@@ -128,7 +135,7 @@ describe('MessageArea PermissionCard WebSocket integration (Story 7.1)', () => {
       </MessageArea>
     );
 
-    const approveBtn = screen.getByLabelText('변경사항 승인');
+    const approveBtn = screen.getByLabelText('승인');
     fireEvent.click(approveBtn);
 
     expect(mockSocketEmit).toHaveBeenCalledWith('permission:respond', expect.objectContaining({

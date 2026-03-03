@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Folder,
   FolderOpen,
@@ -108,6 +109,7 @@ export function FileTreeContextMenu({
   onDelete,
   onClose,
 }: FileTreeContextMenuProps) {
+  const { t } = useTranslation('common');
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedPos, setAdjustedPos] = useState({ x, y });
 
@@ -140,11 +142,11 @@ export function FileTreeContextMenu({
   }, [onClose]);
 
   const menuItems = [
-    { icon: FilePlus, label: '새 파일', action: onNewFile, danger: false },
-    { icon: FolderPlus, label: '새 폴더', action: onNewFolder, danger: false },
+    { icon: FilePlus, label: t('files.newFile'), action: onNewFile, danger: false },
+    { icon: FolderPlus, label: t('files.newFolder'), action: onNewFolder, danger: false },
     { type: 'separator' as const },
-    { icon: Pencil, label: '이름 변경', action: onRename, danger: false },
-    { icon: Trash2, label: '삭제', action: onDelete, danger: true },
+    { icon: Pencil, label: t('files.rename'), action: onRename, danger: false },
+    { icon: Trash2, label: t('button.delete'), action: onDelete, danger: true },
   ];
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -218,6 +220,7 @@ export interface InlineInputProps {
 }
 
 export function InlineInput({ initialValue, entryType, depth, onConfirm, onCancel }: InlineInputProps) {
+  const { t } = useTranslation('common');
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -267,7 +270,7 @@ export function InlineInput({ initialValue, entryType, depth, onConfirm, onCance
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         className="text-sm bg-white dark:bg-gray-900 dark:text-white border border-blue-500 rounded px-1 py-0 outline-none flex-1 h-5 leading-5"
-        aria-label={initialValue ? '이름 변경' : '새 항목 이름'}
+        aria-label={initialValue ? t('files.renameAria') : t('files.newItemAria')}
       />
     </div>
   );
@@ -283,6 +286,7 @@ export interface DeleteConfirmDialogProps {
 }
 
 export function DeleteConfirmDialog({ name, type, onConfirm, onCancel }: DeleteConfirmDialogProps) {
+  const { t } = useTranslation('common');
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel();
@@ -302,13 +306,13 @@ export function DeleteConfirmDialog({ name, type, onConfirm, onCancel }: DeleteC
       >
         <div className="flex items-center gap-2 mb-4">
           <Trash2 className="w-5 h-5 text-red-500" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">삭제 확인</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('files.deleteConfirmTitle')}</h3>
         </div>
         <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
-          &apos;{name}&apos; {type === 'directory' ? '폴더' : '파일'}을(를) 삭제하시겠습니까?
+          {t('files.deleteConfirmMessage', { name, type: t(type === 'directory' ? 'files.folder' : 'files.file') })}
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          이 작업은 되돌릴 수 없습니다.
+          {t('files.cannotUndo')}
         </p>
         <div className="flex justify-end gap-3">
           <button
@@ -316,13 +320,13 @@ export function DeleteConfirmDialog({ name, type, onConfirm, onCancel }: DeleteC
             onClick={onCancel}
             className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
           >
-            취소
+            {t('button.cancel')}
           </button>
           <button
             onClick={onConfirm}
             className="px-4 py-2 text-sm text-white bg-red-500 hover:bg-red-600 rounded-lg"
           >
-            삭제
+            {t('button.delete')}
           </button>
         </div>
       </div>
@@ -355,6 +359,7 @@ export function FileTree({
   onDeleteEntry,
   onRenameEntry,
 }: FileTreeProps) {
+  const { t } = useTranslation('common');
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [dirCache, setDirCache] = useState<Map<string, DirectoryEntry[]>>(new Map());
   const [loadingDirs, setLoadingDirs] = useState<Set<string>>(new Set());
@@ -631,7 +636,7 @@ export function FileTree({
     return (
       <div className="flex items-center gap-2 p-3 text-sm text-gray-500 dark:text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Loading...</span>
+        <span>{t('loadingStatus')}</span>
       </div>
     );
   }
@@ -646,7 +651,7 @@ export function FileTree({
             className="text-xs text-blue-500 dark:text-blue-400 hover:underline cursor-pointer ml-2"
             onClick={() => retryLoadDirectory(basePath)}
           >
-            Retry
+            {t('button.retry')}
           </button>
         </div>
       </div>
@@ -656,7 +661,7 @@ export function FileTree({
   return (
     <div
       role="tree"
-      aria-label="File tree"
+      aria-label={t('files.fileTree')}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       className="outline-none"
@@ -775,6 +780,7 @@ function FileTreeNode({
   onInlineConfirm,
   onInlineCancel,
 }: FileTreeNodeProps) {
+  const { t } = useTranslation('common');
   const isDirectory = entry.type === 'directory';
   const isExpanded = expandedDirs.has(path);
   const isLoading = loadingDirs.has(path);
@@ -892,7 +898,7 @@ function FileTreeNode({
           <button
             className="ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity"
             onClick={(e) => onMenuButtonClick(e, path, entry.type)}
-            aria-label="더보기 메뉴"
+            aria-label={t('files.moreMenu')}
           >
             <MoreVertical className="w-3.5 h-3.5 text-gray-400" />
           </button>
@@ -915,7 +921,7 @@ function FileTreeNode({
                   onRetryLoad(path);
                 }}
               >
-                Retry
+                {t('button.retry')}
               </button>
             </div>
           )}
@@ -926,7 +932,7 @@ function FileTreeNode({
               style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
             >
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>Loading...</span>
+              <span>{t('loadingStatus')}</span>
             </div>
           )}
 
@@ -935,7 +941,7 @@ function FileTreeNode({
               className="text-xs text-gray-400 dark:text-gray-500 italic py-1"
               style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
             >
-              Empty folder
+              {t('files.emptyFolder')}
             </div>
           )}
 

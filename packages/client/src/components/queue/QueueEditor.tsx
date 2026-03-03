@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Play, Upload, FileText, AlertTriangle, Loader2, WrapText } from 'lucide-react';
 import { useQueueStore } from '../../stores/queueStore';
 import { useQueueRunner } from '../../hooks/useQueueRunner';
@@ -37,6 +38,7 @@ interface QueueEditorProps {
 }
 
 export function QueueEditor({ projectSlug }: QueueEditorProps) {
+  const { t } = useTranslation('common');
   const {
     script,
     parsedItems,
@@ -68,7 +70,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
 
     // File size limit: 1MB
     if (file.size > 1_048_576) {
-      alert('파일 크기가 1MB를 초과합니다');
+      alert(t('queue.fileTooLarge'));
       return;
     }
 
@@ -138,7 +140,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
             <button
               onClick={handleRun}
               disabled={!canRun}
-              aria-label="실행"
+              aria-label={t('queue.run')}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
                 bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white
                 hover:bg-blue-200 dark:hover:bg-blue-500
@@ -147,12 +149,12 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
               {runner.isStarting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>시작 중...</span>
+                  <span>{t('queue.starting')}</span>
                 </>
               ) : (
                 <>
                   <Play className="w-3.5 h-3.5" />
-                  <span>실행</span>
+                  <span>{t('queue.run')}</span>
                 </>
               )}
             </button>
@@ -162,8 +164,8 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
             <button
               onClick={handleFileLoad}
               disabled={isLocked}
-              aria-label="파일 로드"
-              title="파일 로드"
+              aria-label={t('queue.loadFile')}
+              title={t('queue.loadFile')}
               className="inline-flex items-center justify-center w-7 h-7 rounded-lg
                 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -174,8 +176,8 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
             <button
               onClick={() => setTemplateDialogOpen(true)}
               disabled={isLocked}
-              aria-label="템플릿으로 생성"
-              title="템플릿"
+              aria-label={t('queue.createFromTemplate')}
+              title={t('queue.createFromTemplate')}
               className="inline-flex items-center justify-center w-7 h-7 rounded-lg
                 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -187,9 +189,9 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
 
             <button
               onClick={() => setIsAutoWrap((prev) => !prev)}
-              aria-label="Toggle wrap mode"
+              aria-label={t('queue.toggleWrap')}
               aria-pressed={isAutoWrap}
-              title={isAutoWrap ? 'Wrap' : 'No wrap'}
+              title={isAutoWrap ? t('queue.wrap') : t('queue.noWrap')}
               className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors
                 ${isAutoWrap
                   ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
@@ -216,28 +218,28 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           >
             <FileText className="w-10 h-10 text-gray-400 dark:text-gray-600" />
             <div className="text-center px-4">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">큐 스크립트를 작성하세요</p>
-              <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">메시지를 한 줄씩 입력하면 순서대로 전송됩니다</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">{t('queue.emptyTitle')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">{t('queue.emptyDescription')}</p>
               <div className="inline-grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-left text-xs font-mono">
                 <span className="text-purple-600 dark:text-purple-400">@new</span>
-                <span className="text-gray-500 dark:text-gray-500">새 세션 시작</span>
+                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdNewSession')}</span>
                 <span className="text-purple-600 dark:text-purple-400">@save <span className="text-teal-600 dark:text-emerald-400">name</span></span>
-                <span className="text-gray-500 dark:text-gray-500">세션 저장</span>
+                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdSave')}</span>
                 <span className="text-purple-600 dark:text-purple-400">@load <span className="text-teal-600 dark:text-emerald-400">name</span></span>
-                <span className="text-gray-500 dark:text-gray-500">저장된 세션 불러오기</span>
+                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdLoad')}</span>
                 <span className="text-purple-600 dark:text-purple-400">@pause <span className="text-teal-600 dark:text-emerald-400">[reason]</span></span>
-                <span className="text-gray-500 dark:text-gray-500">실행 일시정지</span>
+                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdPause')}</span>
                 <span className="text-purple-600 dark:text-purple-400">@model <span className="text-teal-600 dark:text-emerald-400">name</span></span>
-                <span className="text-gray-500 dark:text-gray-500">모델 변경</span>
+                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdModel')}</span>
                 <span className="text-purple-600 dark:text-purple-400">@delay <span className="text-teal-600 dark:text-emerald-400">ms</span></span>
-                <span className="text-gray-500 dark:text-gray-500">대기 시간 (밀리초)</span>
+                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdWait')}</span>
                 <span><span className="text-blue-700 dark:text-blue-400">@(</span> <span className="text-gray-400 dark:text-gray-600">…</span> <span className="text-blue-700 dark:text-blue-400">@)</span></span>
-                <span className="text-gray-500 dark:text-gray-500">여러 줄 프롬프트</span>
+                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdMultiline')}</span>
                 <span className="text-gray-500 dark:text-gray-500">#</span>
-                <span className="text-gray-500 dark:text-gray-500">주석 (무시됨)</span>
+                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdComment')}</span>
               </div>
             </div>
-            <p className="text-[11px] text-gray-500 dark:text-gray-600 mt-1">클릭하여 편집 시작 · 파일 로드 또는 템플릿 사용 가능</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-600 mt-1">{t('queue.emptyHint')}</p>
           </div>
         )}
 
@@ -259,7 +261,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
             onKeyDown={handleKeyDown}
             wrap={isAutoWrap ? 'soft' : 'off'}
             readOnly={isLocked}
-            aria-label="큐 스크립트 에디터"
+            aria-label={t('queue.scriptEditorAria')}
             aria-describedby={warnings.length > 0 ? 'queue-warnings' : undefined}
             className="queue-editor-textarea"
             spellCheck={false}
@@ -292,7 +294,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
                 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
             >
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              <span>Line {w.line}: {w.message}</span>
+              <span>{t('queue.lineWarning', { line: w.line, message: w.message })}</span>
             </div>
           ))}
         </div>
@@ -331,7 +333,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
         >
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           <span className="flex-1">
-            이전 큐 실행 오류 (아이템 {runner.errorItem.index + 1}): {runner.errorItem.error}
+            {t('queue.previousError', { index: runner.errorItem.index + 1, error: runner.errorItem.error })}
           </span>
         </div>
       )}

@@ -30,12 +30,13 @@ const renderPublicRoute = (children: React.ReactNode = <div>Protected Content</d
 
 describe('PublicRoute', () => {
   beforeEach(() => {
-    // Reset store state
+    // Reset store state, override checkAuth to prevent it from setting isLoading: true
     useAuthStore.setState({
       isAuthenticated: false,
       isLoading: false,
       error: null,
       rateLimitInfo: null,
+      checkAuth: vi.fn().mockResolvedValue(undefined),
     });
     vi.clearAllMocks();
   });

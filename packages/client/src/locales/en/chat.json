@@ -1,1 +1,270 @@
-{}
+{
+  "header": {
+    "ariaLabel": "Chat header",
+    "backButton": "Go back to session list",
+    "defaultTitle": "Chat",
+    "newSession": "Start new session",
+    "refreshing": "Refreshing",
+    "refresh": "Refresh",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "sessionTitle": {
+    "placeholder": "Enter session name...",
+    "hint": "Click to rename session"
+  },
+  "agentIndicator": {
+    "ariaLabel": "Current agent: {{agent}}"
+  },
+  "input": {
+    "placeholder": "Type a message...",
+    "hint": "Enter to send, Shift+Enter for new line",
+    "attachImage": "Attach image",
+    "sessionLocked": "Session locked",
+    "abort": "Abort",
+    "addToChain": "Add to chain",
+    "send": "Send"
+  },
+  "chainMode": {
+    "off": "Turn off chain mode",
+    "on": "Turn on chain mode"
+  },
+  "validation": {
+    "onlyImages": "Only image files can be attached (PNG, JPEG, GIF, WebP)",
+    "unsupportedFormat": "Unsupported image format",
+    "fileTooLarge": "Files over 10MB cannot be attached",
+    "maxImagesExceeded": "Up to 5 images can be attached",
+    "failedToReadImage": "Failed to read image: {{name}}"
+  },
+  "errors": {
+    "apiUnhealthy": "Claude API is not responding. Your message may not be delivered.",
+    "disconnected": "Disconnected from server. Please try again after reconnection."
+  },
+  "attachment": {
+    "remove": "Remove image: {{name}}"
+  },
+  "interactive": {
+    "defaultHeader": "Question",
+    "responded": "Responded",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "submitSelection": "Submit selection",
+    "submit": "Submit",
+    "other": "Other",
+    "otherOption": "Other (type your own)",
+    "otherButton": "Other...",
+    "otherPlaceholder": "Type your response...",
+    "otherInputLabel": "Type other response",
+    "submitOther": "Submit other response",
+    "send": "Send",
+    "otherResponse": "Other: {{response}}",
+    "permissionRequest": "Permission request: {{toolName}}",
+    "sending": "Sending",
+    "approve": "Approve",
+    "reject": "Reject",
+    "submitAll": "Submit all responses",
+    "submitProgress": "Submit ({{count}}/{{total}})"
+  },
+  "sessionListItem": {
+    "ariaLabel": "Session: {{prompt}}",
+    "checkbox": "Select {{prompt}}",
+    "nameInput": "Enter session name...",
+    "emptySession": "(Empty session)",
+    "streaming": "Streaming",
+    "waiting": "Waiting",
+    "queueActive": "Queue runner active",
+    "queue": "Queue",
+    "messageCount": "{{count}} messages",
+    "menu": "Session menu",
+    "rename": "Rename",
+    "removeName": "Remove name",
+    "delete": "Delete session"
+  },
+  "messageArea": {
+    "ariaLabel": "Message list",
+    "scrollToBottom": "Scroll to latest messages"
+  },
+  "compaction": {
+    "complete": "Context compaction complete — Regenerating response...",
+    "inProgress": "Compacting context... ({{percent}}%)",
+    "inProgressNoPercent": "Compacting context..."
+  },
+  "inputArea": {
+    "ariaLabel": "Message input",
+    "placeholder": "Message input will be implemented in Story 4.2."
+  },
+  "session": {
+    "back": "Go back",
+    "exitSelection": "Cancel selection",
+    "selectedCount": "{{count}} selected",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "delete": "Delete",
+    "newSession": "New Session",
+    "hideEmpty": "Hide empty sessions",
+    "showEmpty": "Show empty sessions",
+    "deleteEmptyCount": "Delete {{count}} empty sessions",
+    "deleteEmpty": "Delete empty sessions",
+    "selectionMode": "Selection mode",
+    "refresh": "Refresh",
+    "settings": "Settings",
+    "logout": "Logout",
+    "menu": "Menu",
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode",
+    "loading": "Loading",
+    "empty": {
+      "title": "No sessions",
+      "description": "Start a new session to chat with Claude.",
+      "action": "Start New Session"
+    },
+    "confirmDelete": {
+      "title": "Delete Session",
+      "message": "Delete this session? The session file will be permanently deleted.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
+    "confirmBatchDelete": {
+      "title": "Delete Sessions",
+      "message": "Delete {{count}} selected sessions? Session files will be permanently deleted."
+    },
+    "confirmEmptyDelete": {
+      "title": "Delete Empty Sessions",
+      "message": "Delete {{count}} empty sessions? Session files will be permanently deleted."
+    }
+  },
+  "messageBubble": {
+    "ariaLabel": "{{role}} message, {{time}}",
+    "userRole": "My",
+    "assistantRole": "Claude",
+    "assistantName": "Claude",
+    "image": "Attached image {{index}}",
+    "copiedLabel": "Copied",
+    "copyLabel": "Copy message",
+    "copiedTitle": "Copied!",
+    "copyTitle": "Copy to clipboard"
+  },
+  "streamingMessage": {
+    "ariaLabel": "Claude is responding",
+    "assistantName": "Claude",
+    "copiedLabel": "Copied",
+    "copyLabel": "Copy message",
+    "copiedTitle": "Copied!",
+    "copyTitle": "Copy to clipboard"
+  },
+  "messageListSkeleton": {
+    "ariaLabel": "Loading messages",
+    "srText": "Loading messages..."
+  },
+  "sessionQuickAccess": {
+    "loading": "Loading",
+    "empty": "No sessions",
+    "streaming": "Streaming",
+    "waiting": "Waiting"
+  },
+  "favorites": {
+    "maxReached": "You can add up to 20 favorites"
+  },
+  "starFavorites": {
+    "maxReached": "You can add up to 10 star favorites"
+  },
+  "confirmModal": {
+    "agentLaunch": {
+      "title": "Confirm Agent Launch",
+      "message": "There is an active conversation. Start the agent in a new session?"
+    },
+    "newSession": {
+      "message": "There is a response in progress. Start a new session?"
+    },
+    "switchSession": {
+      "message": "There is a response in progress. Switch sessions?"
+    }
+  },
+  "chatPage": {
+    "ariaLabel": "Chat page",
+    "loadingPlaceholder": "Loading...",
+    "errorPlaceholder": "An error occurred",
+    "empty": {
+      "title": "New Session",
+      "description": "Start a new conversation with Claude."
+    },
+    "streaming": "Responding...",
+    "default": "Type a message...",
+    "loadingMore": "Loading...",
+    "loadMore": "Load more messages"
+  },
+  "tool": {
+    "executionTime": "Execution time: {{duration}}",
+    "showResult": "Show result",
+    "plan": "Plan",
+    "planEmpty": "No plan content",
+    "requestedPermissions": "Requested permissions:",
+    "rejectedAria": "Tool rejected: {{name}}",
+    "failedAria": "Tool failed: {{name}}",
+    "runningAria": "Tool running: {{name}}",
+    "completedAria": "Tool completed: {{name}}",
+    "rejected": "Rejected",
+    "failed": "Failed",
+    "collapse": "Collapse",
+    "showFullPath": "Show full path",
+    "showDiff": "Show diff",
+    "clickToShowDiff": "Click to show diff",
+    "approveBypass": "Approve in Bypass mode",
+    "yesBypass": "Yes (Bypass)",
+    "approveAuto": "Approve in Auto mode",
+    "yesAuto": "Yes (Auto)",
+    "approveAsk": "Approve in Ask mode",
+    "yesAsk": "Yes (Ask)",
+    "rejectContinuePlanning": "Reject (continue planning)",
+    "allowTool": "Allow tool execution",
+    "allow": "Allow",
+    "denyTool": "Deny tool execution",
+    "deny": "Deny",
+    "resultFailed": "Tool result: Failed",
+    "toolFailed": "Tool failed",
+    "showMore": "Show more ({{count}})",
+    "showMoreSimple": "Show more",
+    "detailCollapseAria": "Collapse tool details",
+    "detailExpandAria": "Expand tool details",
+    "detail": "Detail",
+    "collapseContent": "Collapse",
+    "expandContent": "Show full content"
+  },
+  "permission": {
+    "viewChanges": "View file changes: {{path}}",
+    "approximateHint": "Block-based approximation. Tap to view exact diff",
+    "approveChanges": "Approve changes",
+    "approve": "Approve",
+    "rejectChanges": "Reject changes",
+    "reject": "Reject"
+  },
+  "chain": {
+    "waitingAria": "Prompt chain: Waiting for next command — {{prompt}}",
+    "next": "Next",
+    "collapseList": "Collapse chain list",
+    "expandList": "Expand chain list",
+    "cancelAll": "Cancel all pending prompts",
+    "cancelAllTitle": "Cancel all",
+    "removePrompt": "Remove prompt {{index}}",
+    "removeTitle": "Remove"
+  },
+  "streaming": {
+    "ariaLabel": "Claude is generating a response",
+    "srText": "Claude is thinking..."
+  },
+  "markdown": {
+    "openFile": "Open file: {{href}}"
+  },
+  "model": {
+    "defaultLabel": "Default",
+    "aliases": "Aliases (Latest)",
+    "latestSonnet": "Latest Sonnet",
+    "latestOpus": "Latest Opus",
+    "latestHaiku": "Latest Haiku",
+    "claude4x": "Claude 4.x",
+    "claude3x": "Claude 3.x",
+    "mostCapable": "Most capable",
+    "selectorAria": "Model: {{label}}. Click to change model",
+    "selectAria": "Select model"
+  }
+}

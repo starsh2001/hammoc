@@ -5,6 +5,7 @@
  */
 
 import { Wifi, WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { ConnectionStatus } from '@bmad-studio/shared';
 
 export interface ConnectionStatusIndicatorProps {
@@ -30,30 +31,32 @@ export function ConnectionStatusIndicator({
   compact = false,
   apiHealthy,
 }: ConnectionStatusIndicatorProps) {
+  const { t } = useTranslation('common');
+
   const statusConfig = {
     connected: apiHealthy === false
       ? {
           icon: <AlertTriangle className="w-4 h-4 text-yellow-500" aria-hidden="true" />,
-          text: 'API Unavailable',
-          ariaLabel: '연결 상태: 서버 연결됨, API 사용 불가',
+          text: t('connection.apiUnavailable'),
+          ariaLabel: t('connection.apiUnavailableAria'),
           bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
         }
       : {
           icon: <Wifi className="w-4 h-4 text-green-500" aria-hidden="true" />,
-          text: 'Connected',
-          ariaLabel: 'WebSocket 연결 상태: 연결됨',
+          text: t('connection.connected'),
+          ariaLabel: t('connection.connectedAria'),
           bgColor: 'bg-green-100 dark:bg-green-900/30',
         },
     disconnected: {
       icon: <WifiOff className="w-4 h-4 text-red-500" aria-hidden="true" />,
-      text: 'Disconnected',
-      ariaLabel: 'WebSocket 연결 상태: 연결 끊김',
+      text: t('connection.disconnected'),
+      ariaLabel: t('connection.disconnectedAria'),
       bgColor: 'bg-red-100 dark:bg-red-900/30',
     },
     reconnecting: {
       icon: <RefreshCw className="w-4 h-4 text-yellow-500 animate-spin" aria-hidden="true" />,
-      text: 'Reconnecting',
-      ariaLabel: 'WebSocket 연결 상태: 재연결 중',
+      text: t('connection.reconnecting'),
+      ariaLabel: t('connection.reconnectingAria'),
       bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
     },
   };
@@ -66,12 +69,12 @@ export function ConnectionStatusIndicator({
 
   const ariaLabel =
     status === 'reconnecting'
-      ? `WebSocket 연결 상태: 재연결 중 ${reconnectAttempt}번째 시도`
+      ? t('connection.reconnectingAttemptAria', { attempt: reconnectAttempt })
       : config.ariaLabel;
 
   // Tooltip content shows error message if available, otherwise status text
   const tooltipContent = lastError
-    || (status === 'connected' && apiHealthy === false ? 'Claude API에 연결할 수 없습니다' : displayText);
+    || (status === 'connected' && apiHealthy === false ? t('connection.apiCannotConnect') : displayText);
 
   // Compact mode: icon only with tooltip
   if (compact) {
@@ -89,8 +92,8 @@ export function ConnectionStatusIndicator({
           <button
             onClick={onReconnect}
             className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
-            aria-label="서버에 다시 연결 시도"
-            title="재연결"
+            aria-label={t('connection.reconnectButtonAria')}
+            title={t('connection.reconnectButton')}
           >
             <RefreshCw className="w-3 h-3 text-blue-500" aria-hidden="true" />
           </button>
@@ -115,9 +118,9 @@ export function ConnectionStatusIndicator({
         <button
           onClick={onReconnect}
           className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline"
-          aria-label="서버에 다시 연결 시도"
+          aria-label={t('connection.reconnectButtonAria')}
         >
-          재연결
+          {t('connection.reconnectButton')}
         </button>
       )}
     </div>

@@ -5,6 +5,7 @@
  */
 
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FileText,
   Lightbulb,
@@ -97,6 +98,7 @@ interface NextStepRecommenderProps {
 }
 
 export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderProps) {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { phase, recommendations } = computeNextSteps(data);
 
@@ -120,7 +122,7 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
     <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-white">
-          {isCompleted ? '다음 단계' : '다음 작업'}
+          {isCompleted ? t('nextSteps.title') : t('nextSteps.tasks')}
         </h2>
         <span className={`text-xs px-2 py-0.5 rounded-full ${
           isCompleted
@@ -150,7 +152,7 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
           className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 cursor-pointer"
         >
           <Plus className="w-3 h-3" />
-          새 세션
+          {t('nextSteps.newSession')}
         </button>
         <span className="text-gray-200 dark:text-gray-700">|</span>
         <button
@@ -158,7 +160,7 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
           className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 cursor-pointer"
         >
           <ListOrdered className="w-3 h-3" />
-          큐 작업
+          {t('nextSteps.queueTask')}
         </button>
         <span className="text-gray-200 dark:text-gray-700">|</span>
         <button
@@ -166,7 +168,7 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
           className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 cursor-pointer"
         >
           <FolderOpen className="w-3 h-3" />
-          파일 탐색
+          {t('nextSteps.fileExplore')}
         </button>
       </div>
     </div>

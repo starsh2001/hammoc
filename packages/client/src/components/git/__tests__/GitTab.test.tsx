@@ -150,8 +150,10 @@ describe('GitTab', () => {
   // TC-GIT-T3: Shows ahead/behind counts on pull/push buttons
   it('shows ahead/behind counts on pull/push buttons', () => {
     renderGitTab();
-    expect(screen.getByText('2')).toBeInTheDocument(); // ahead
-    expect(screen.getByText('1')).toBeInTheDocument(); // behind
+    const pullButton = screen.getByTitle('Pull');
+    const pushButton = screen.getByTitle('Push');
+    expect(pullButton).toHaveTextContent('1'); // behind
+    expect(pushButton).toHaveTextContent('2'); // ahead
   });
 
   // TC-GIT-T4: Shows file list groups

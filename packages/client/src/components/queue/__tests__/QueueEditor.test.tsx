@@ -154,12 +154,12 @@ describe('QueueEditor', () => {
     expect(screen.getByText('Line 1: Unknown directive: @unknown')).toBeInTheDocument();
   });
 
-  it('TC-QE-19: textarea becomes read-only when queue is running', () => {
+  it('TC-QE-19: editor is hidden when queue is running (execution view shown)', () => {
     mockRunner.isRunning = true;
     render(<QueueEditor projectSlug="test-project" />);
 
-    const textarea = screen.getByLabelText('큐 스크립트 에디터');
-    expect(textarea).toHaveAttribute('readonly');
+    // When isRunning=true, the editor area is hidden and execution progress is shown instead
+    expect(screen.queryByLabelText('큐 스크립트 에디터')).not.toBeInTheDocument();
   });
 
   it('TC-QE-19b: textarea becomes read-only when isStarting', () => {

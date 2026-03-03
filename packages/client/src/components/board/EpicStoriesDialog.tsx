@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import type { BoardItem } from '@bmad-studio/shared';
 import { STATUS_LABEL, STATUS_BADGE_COLOR } from './constants';
@@ -16,6 +17,7 @@ interface EpicStoriesDialogProps {
 }
 
 export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesDialogProps) {
+  const { t } = useTranslation('board');
   const handleClose = useCallback(() => {
     onClose();
   }, [onClose]);
@@ -49,7 +51,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="에픽 하위 스토리"
+      aria-label={t('epic.subStories')}
     >
       {/* Overlay */}
       <div
@@ -68,7 +70,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
           <button
             onClick={handleClose}
             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors flex-shrink-0"
-            aria-label="닫기"
+            aria-label={t('common:button.close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -77,7 +79,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
         {/* Progress bar */}
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs text-gray-500 dark:text-gray-400">진행률</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{t('epic.progress')}</span>
             <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
               {doneCount}/{totalCount} ({Math.round(progressPercent)}%)
             </span>
@@ -94,7 +96,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
         <div className="p-4 max-h-80 overflow-y-auto">
           {stories.length === 0 ? (
             <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-4">
-              하위 스토리가 없습니다
+              {t('epic.noSubStories')}
             </p>
           ) : (
             <ul className="space-y-2">

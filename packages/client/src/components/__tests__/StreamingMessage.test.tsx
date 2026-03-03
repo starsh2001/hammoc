@@ -48,13 +48,15 @@ describe('StreamingMessage', () => {
     it('shows streaming indicator when not complete', () => {
       render(<StreamingMessage content="Hello" isComplete={false} />);
 
-      expect(screen.getByLabelText('Claude가 응답을 생성하고 있습니다')).toBeInTheDocument();
+      // StreamingIndicator is now rendered by MessageArea, not StreamingMessage.
+      // StreamingMessage renders with aria-label indicating active streaming.
+      expect(screen.getByLabelText('Claude 응답 중')).toBeInTheDocument();
     });
 
-    it('hides streaming indicator when complete', () => {
-      render(<StreamingMessage content="Hello" isComplete={true} />);
+    it('hides copy button when not complete (streaming)', () => {
+      render(<StreamingMessage content="Hello" isComplete={false} />);
 
-      expect(screen.queryByLabelText('Claude가 응답을 생성하고 있습니다')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('메시지 복사')).not.toBeInTheDocument();
     });
   });
 
@@ -100,7 +102,7 @@ describe('StreamingMessage', () => {
     it('has assistant message styling', () => {
       render(<StreamingMessage content="Hello" />);
 
-      const message = screen.getByRole('listitem').querySelector('.bg-white');
+      const message = screen.getByRole('listitem').querySelector('.bg-gray-50');
       expect(message).toBeInTheDocument();
     });
 

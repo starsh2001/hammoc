@@ -73,13 +73,16 @@ describe('ContextUsageDisplay', () => {
   });
 
   // totalInput = 105000+50000+3000 = 158,000 → 95% (warning)
-  it('shows warning icon when above 90%', () => {
+  it('shows warning in tooltip when above 90%', () => {
     render(
       <ContextUsageDisplay
         contextUsage={createUsage({ inputTokens: 105000, contextWindow: 200000 })}
       />
     );
-    expect(screen.getByTestId('context-usage-warning')).toBeTruthy();
+    const el = screen.getByTestId('context-usage-display');
+    const title = el.getAttribute('title');
+    expect(title).toContain('⚠');
+    expect(title).toContain('컨텍스트가 거의 찼습니다');
   });
 
   // totalInput = 80000+50000+3000 = 133,000 → 80% (no warning)

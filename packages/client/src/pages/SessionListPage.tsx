@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useCallback, useMemo, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Plus, CheckSquare, Trash2, X, Eye, EyeOff, MoreVertical, Moon, Sun, Settings, LogOut } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
@@ -31,6 +32,7 @@ import { generateUUID } from '../utils/uuid';
 const PULL_THRESHOLD = 80;
 
 export function SessionListPage() {
+  const { t } = useTranslation('chat');
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -255,7 +257,7 @@ export function SessionListPage() {
               <button
                 onClick={handleBack}
                 className="p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
-                aria-label="뒤로 가기"
+                aria-label={t('session.back')}
               >
                 <ArrowLeft className="w-6 h-6" />
               </button>
@@ -288,14 +290,14 @@ export function SessionListPage() {
             <button
               onClick={selectionMode ? handleExitSelectionMode : handleBack}
               className="p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
-              aria-label={selectionMode ? '선택 취소' : '뒤로 가기'}
+              aria-label={selectionMode ? t('session.exitSelection') : t('session.back')}
             >
               {selectionMode ? <X className="w-6 h-6" /> : <ArrowLeft className="w-6 h-6" />}
             </button>
 
           {selectionMode ? (
               <span className="text-base font-semibold text-gray-900 dark:text-white whitespace-nowrap">
-                {selectedIds.size}개 선택됨
+                {t('session.selectedCount', { count: selectedIds.size })}
               </span>
           ) : (
             <>
@@ -330,14 +332,14 @@ export function SessionListPage() {
                   onClick={handleSelectAll}
                   className="px-3 py-1.5 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors whitespace-nowrap"
                 >
-                  모두 선택
+                  {t('session.selectAll')}
                 </button>
               ) : (
                 <button
                   onClick={handleDeselectAll}
                   className="px-3 py-1.5 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors whitespace-nowrap"
                 >
-                  선택 해제
+                  {t('session.deselectAll')}
                 </button>
               )}
               <button
@@ -346,7 +348,7 @@ export function SessionListPage() {
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-red-100 dark:bg-red-600 text-red-700 dark:text-white hover:bg-red-200 dark:hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
                 <Trash2 className="w-4 h-4" />
-                삭제
+                {t('session.delete')}
               </button>
             </>
           ) : (
@@ -357,7 +359,7 @@ export function SessionListPage() {
                 className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white text-sm rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500 transition-colors whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
-                새 세션
+                {t('session.newSession')}
               </button>
 
               <button
@@ -367,8 +369,8 @@ export function SessionListPage() {
                     ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
                 }`}
-                aria-label={includeEmpty ? '빈 세션 숨기기' : '빈 세션 표시'}
-                title={includeEmpty ? '빈 세션 숨기기' : '빈 세션 표시'}
+                aria-label={includeEmpty ? t('session.hideEmpty') : t('session.showEmpty')}
+                title={includeEmpty ? t('session.hideEmpty') : t('session.showEmpty')}
               >
                 {includeEmpty ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
               </button>
@@ -376,17 +378,17 @@ export function SessionListPage() {
                 <button
                   onClick={handleEmptyDeleteRequest}
                   className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-red-100 dark:bg-red-600 text-red-700 dark:text-white hover:bg-red-200 dark:hover:bg-red-500 transition-colors whitespace-nowrap"
-                  title={`빈 세션 ${emptySessionIds.length}개 삭제`}
+                  title={t('session.deleteEmptyCount', { count: emptySessionIds.length })}
                 >
                   <Trash2 className="w-4 h-4" />
-                  빈 세션 삭제
+                  {t('session.deleteEmpty')}
                 </button>
               )}
               {sessions.length > 0 && (
                 <button
                   onClick={handleEnterSelectionMode}
                   className="hidden sm:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
-                  aria-label="선택 모드"
+                  aria-label={t('session.selectionMode')}
                 >
                   <CheckSquare className="w-5 h-5" />
                 </button>
@@ -395,21 +397,21 @@ export function SessionListPage() {
                 onClick={handleRefresh}
                 disabled={isLoading || isRefreshing}
                 className="hidden sm:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 text-gray-700 dark:text-gray-300"
-                aria-label="새로고침"
+                aria-label={t('session.refresh')}
               >
                 <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
               <ThemeToggleButton className="hidden sm:block" />
               <button
                 onClick={() => navigate('/settings')}
-                aria-label="설정"
+                aria-label={t('session.settings')}
                 className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
               >
                 <Settings className="w-5 h-5" aria-hidden="true" />
               </button>
               <button
                 onClick={handleLogout}
-                aria-label="로그아웃"
+                aria-label={t('session.logout')}
                 className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-colors"
               >
                 <LogOut className="w-5 h-5" aria-hidden="true" />
@@ -420,7 +422,7 @@ export function SessionListPage() {
                 <button
                   onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
-                  aria-label="메뉴"
+                  aria-label={t('session.menu')}
                   aria-expanded={overflowMenuOpen}
                   aria-haspopup="menu"
                 >
@@ -437,7 +439,7 @@ export function SessionListPage() {
                       className="w-full px-4 py-2 text-left text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                     >
                       <Plus className="w-4 h-4" />
-                      새 세션
+                      {t('session.newSession')}
                     </button>
                     <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                     <button
@@ -446,7 +448,7 @@ export function SessionListPage() {
                       className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                     >
                       {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                      {theme === 'dark' ? '라이트 모드' : '다크 모드'}
+                      {theme === 'dark' ? t('session.lightMode') : t('session.darkMode')}
                     </button>
                     <button
                       role="menuitem"
@@ -454,7 +456,7 @@ export function SessionListPage() {
                       className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                     >
                       {includeEmpty ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                      {includeEmpty ? '빈 세션 숨기기' : '빈 세션 표시'}
+                      {includeEmpty ? t('session.hideEmpty') : t('session.showEmpty')}
                     </button>
                     {includeEmpty && emptySessionIds.length > 0 && (
                       <button
@@ -463,7 +465,7 @@ export function SessionListPage() {
                         className="w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                       >
                         <Trash2 className="w-4 h-4" />
-                        빈 세션 삭제 ({emptySessionIds.length})
+                        {t('session.deleteEmptyCount', { count: emptySessionIds.length })}
                       </button>
                     )}
                     {sessions.length > 0 && (
@@ -473,7 +475,7 @@ export function SessionListPage() {
                         className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                       >
                         <CheckSquare className="w-4 h-4" />
-                        선택 모드
+                        {t('session.selectionMode')}
                       </button>
                     )}
                     <button
@@ -483,7 +485,7 @@ export function SessionListPage() {
                       className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 flex items-center gap-2"
                     >
                       <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                      새로고침
+                      {t('session.refresh')}
                     </button>
                     <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                     <button
@@ -492,7 +494,7 @@ export function SessionListPage() {
                       className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                     >
                       <Settings className="w-4 h-4" />
-                      설정
+                      {t('session.settings')}
                     </button>
                     <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                     <button
@@ -501,7 +503,7 @@ export function SessionListPage() {
                       className="w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                     >
                       <LogOut className="w-4 h-4" />
-                      로그아웃
+                      {t('session.logout')}
                     </button>
                   </div>
                 )}
@@ -523,7 +525,7 @@ export function SessionListPage() {
       <div ref={containerRef} className="flex-1 overflow-auto overscroll-contain">
         {/* Loading state */}
         {isLoading && !isRefreshing && (
-          <div className="p-4 space-y-3" aria-label="로딩 중" role="status">
+          <div className="p-4 space-y-3" aria-label={t('session.loading')} role="status">
             {Array.from({ length: skeletonCount }).map((_, index) => (
               <SessionListItemSkeleton key={index} />
             ))}
@@ -533,9 +535,9 @@ export function SessionListPage() {
         {/* Empty state */}
         {!isLoading && sessions.length === 0 && (
           <EmptyState
-            title="세션이 없습니다"
-            description="새 세션을 시작하여 Claude와 대화하세요."
-            actionLabel="새 세션 시작"
+            title={t('session.empty.title')}
+            description={t('session.empty.description')}
+            actionLabel={t('session.empty.action')}
             onAction={handleNewSession}
           />
         )}
@@ -566,10 +568,10 @@ export function SessionListPage() {
       {/* Individual delete confirmation modal */}
       <ConfirmModal
         isOpen={!!deleteTarget}
-        title="세션 삭제"
-        message="이 세션을 삭제하시겠습니까? 세션 파일이 영구적으로 삭제됩니다."
-        confirmText="삭제"
-        cancelText="취소"
+        title={t('session.confirmDelete.title')}
+        message={t('session.confirmDelete.message')}
+        confirmText={t('session.confirmDelete.confirm')}
+        cancelText={t('session.confirmDelete.cancel')}
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
@@ -578,10 +580,10 @@ export function SessionListPage() {
       {/* Batch delete confirmation modal */}
       <ConfirmModal
         isOpen={showBatchDeleteConfirm}
-        title="세션 일괄 삭제"
-        message={`선택한 ${selectedIds.size}개 세션을 삭제하시겠습니까? 세션 파일이 영구적으로 삭제됩니다.`}
-        confirmText="삭제"
-        cancelText="취소"
+        title={t('session.confirmBatchDelete.title')}
+        message={t('session.confirmBatchDelete.message', { count: selectedIds.size })}
+        confirmText={t('session.confirmDelete.confirm')}
+        cancelText={t('session.confirmDelete.cancel')}
         variant="danger"
         onConfirm={handleBatchDeleteConfirm}
         onCancel={handleBatchDeleteCancel}
@@ -590,10 +592,10 @@ export function SessionListPage() {
       {/* Empty sessions delete confirmation modal */}
       <ConfirmModal
         isOpen={showEmptyDeleteConfirm}
-        title="빈 세션 삭제"
-        message={`빈 세션 ${emptySessionIds.length}개를 삭제하시겠습니까? 세션 파일이 영구적으로 삭제됩니다.`}
-        confirmText="삭제"
-        cancelText="취소"
+        title={t('session.confirmEmptyDelete.title')}
+        message={t('session.confirmEmptyDelete.message', { count: emptySessionIds.length })}
+        confirmText={t('session.confirmDelete.confirm')}
+        cancelText={t('session.confirmDelete.cancel')}
         variant="danger"
         onConfirm={handleEmptyDeleteConfirm}
         onCancel={handleEmptyDeleteCancel}

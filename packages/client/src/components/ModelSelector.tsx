@@ -11,6 +11,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Cpu, Check } from 'lucide-react';
 
 interface ModelSelectorProps {
@@ -97,6 +98,7 @@ function formatModelId(modelId: string): string {
 }
 
 export function ModelSelector({ model, onModelChange, disabled, activeModel }: ModelSelectorProps) {
+  const { t } = useTranslation('chat');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -158,7 +160,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
         onPointerDown={handlePointerDown}
         disabled={disabled}
         title={`Model: ${displayLabel}`}
-        aria-label={`모델: ${displayLabel}. 클릭하여 모델 변경`}
+        aria-label={t('model.selectorAria', { label: displayLabel })}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={`
@@ -182,7 +184,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
       {isOpen && (
         <div
           role="listbox"
-          aria-label="모델 선택"
+          aria-label={t('model.selectAria')}
           className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
         >
           {MODEL_GROUPS.map((group, gi) => (

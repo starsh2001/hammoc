@@ -1,1 +1,270 @@
-{}
+{
+  "header": {
+    "ariaLabel": "聊天标题栏",
+    "backButton": "返回会话列表",
+    "defaultTitle": "聊天",
+    "newSession": "开始新会话",
+    "refreshing": "正在刷新",
+    "refresh": "刷新",
+    "settings": "设置",
+    "logout": "退出登录"
+  },
+  "sessionTitle": {
+    "placeholder": "输入会话名称...",
+    "hint": "点击重命名会话"
+  },
+  "agentIndicator": {
+    "ariaLabel": "当前代理：{{agent}}"
+  },
+  "input": {
+    "placeholder": "输入消息...",
+    "hint": "Enter 发送，Shift+Enter 换行",
+    "attachImage": "附加图片",
+    "sessionLocked": "会话已锁定",
+    "abort": "中止",
+    "addToChain": "添加到链",
+    "send": "发送"
+  },
+  "chainMode": {
+    "off": "关闭链式模式",
+    "on": "开启链式模式"
+  },
+  "validation": {
+    "onlyImages": "只能附加图片文件（PNG、JPEG、GIF、WebP）",
+    "unsupportedFormat": "不支持的图片格式",
+    "fileTooLarge": "无法附加超过 10MB 的文件",
+    "maxImagesExceeded": "最多可以附加 5 张图片",
+    "failedToReadImage": "读取图片失败：{{name}}"
+  },
+  "errors": {
+    "apiUnhealthy": "Claude API 未响应。您的消息可能无法送达。",
+    "disconnected": "与服务器断开连接。请在重新连接后重试。"
+  },
+  "attachment": {
+    "remove": "移除图片：{{name}}"
+  },
+  "interactive": {
+    "defaultHeader": "问题",
+    "approved": "已批准",
+    "rejected": "已拒绝",
+    "submitSelection": "提交选择",
+    "submit": "提交",
+    "other": "其他",
+    "otherOption": "其他（自行输入）",
+    "otherButton": "其他...",
+    "otherPlaceholder": "输入您的回复...",
+    "otherInputLabel": "输入其他回复",
+    "submitOther": "提交其他回复",
+    "send": "发送",
+    "otherResponse": "其他：{{response}}",
+    "permissionRequest": "权限请求：{{toolName}}",
+    "sending": "正在发送",
+    "approve": "批准",
+    "reject": "拒绝",
+    "submitAll": "提交所有回复",
+    "submitProgress": "提交（{{count}}/{{total}}）",
+    "responded": "已回复"
+  },
+  "sessionListItem": {
+    "ariaLabel": "会话：{{prompt}}",
+    "checkbox": "选择 {{prompt}}",
+    "nameInput": "输入会话名称...",
+    "emptySession": "（空会话）",
+    "streaming": "流式响应中",
+    "waiting": "等待中",
+    "queueActive": "队列运行器运行中",
+    "queue": "队列",
+    "messageCount": "{{count}} 条消息",
+    "menu": "会话菜单",
+    "rename": "重命名",
+    "removeName": "移除名称",
+    "delete": "删除会话"
+  },
+  "messageArea": {
+    "ariaLabel": "消息列表",
+    "scrollToBottom": "滚动到最新消息"
+  },
+  "compaction": {
+    "complete": "上下文压缩完成 — 正在重新生成回复...",
+    "inProgress": "正在压缩上下文...（{{percent}}%）",
+    "inProgressNoPercent": "正在压缩上下文..."
+  },
+  "inputArea": {
+    "ariaLabel": "消息输入",
+    "placeholder": "消息输入功能将在 Story 4.2 中实现。"
+  },
+  "session": {
+    "back": "返回",
+    "exitSelection": "取消选择",
+    "selectedCount": "已选择 {{count}} 项",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "delete": "删除",
+    "newSession": "新建会话",
+    "hideEmpty": "隐藏空会话",
+    "showEmpty": "显示空会话",
+    "deleteEmptyCount": "删除 {{count}} 个空会话",
+    "deleteEmpty": "删除空会话",
+    "selectionMode": "选择模式",
+    "refresh": "刷新",
+    "settings": "设置",
+    "logout": "退出登录",
+    "menu": "菜单",
+    "lightMode": "浅色模式",
+    "darkMode": "深色模式",
+    "loading": "加载中",
+    "empty": {
+      "title": "没有会话",
+      "description": "开始新会话，与 Claude 聊天。",
+      "action": "开始新会话"
+    },
+    "confirmDelete": {
+      "title": "删除会话",
+      "message": "删除此会话？会话文件将被永久删除。",
+      "confirm": "删除",
+      "cancel": "取消"
+    },
+    "confirmBatchDelete": {
+      "title": "删除会话",
+      "message": "删除 {{count}} 个选中的会话？会话文件将被永久删除。"
+    },
+    "confirmEmptyDelete": {
+      "title": "删除空会话",
+      "message": "删除 {{count}} 个空会话？会话文件将被永久删除。"
+    }
+  },
+  "messageBubble": {
+    "ariaLabel": "{{role}} 的消息，{{time}}",
+    "userRole": "我",
+    "assistantRole": "Claude",
+    "assistantName": "Claude",
+    "image": "附件图片 {{index}}",
+    "copiedLabel": "已复制",
+    "copyLabel": "复制消息",
+    "copiedTitle": "已复制！",
+    "copyTitle": "复制到剪贴板"
+  },
+  "streamingMessage": {
+    "ariaLabel": "Claude 正在回复",
+    "assistantName": "Claude",
+    "copiedLabel": "已复制",
+    "copyLabel": "复制消息",
+    "copiedTitle": "已复制！",
+    "copyTitle": "复制到剪贴板"
+  },
+  "messageListSkeleton": {
+    "ariaLabel": "正在加载消息",
+    "srText": "正在加载消息..."
+  },
+  "sessionQuickAccess": {
+    "loading": "加载中",
+    "empty": "没有会话",
+    "streaming": "流式响应中",
+    "waiting": "等待中"
+  },
+  "favorites": {
+    "maxReached": "最多可以添加 20 个收藏"
+  },
+  "starFavorites": {
+    "maxReached": "最多可以添加 10 个星标收藏"
+  },
+  "confirmModal": {
+    "agentLaunch": {
+      "title": "确认启动代理",
+      "message": "当前有活跃的对话。是否在新会话中启动代理？"
+    },
+    "newSession": {
+      "message": "当前正在回复中。是否开始新会话？"
+    },
+    "switchSession": {
+      "message": "当前正在回复中。是否切换会话？"
+    }
+  },
+  "chatPage": {
+    "ariaLabel": "聊天页面",
+    "loadingPlaceholder": "加载中...",
+    "errorPlaceholder": "发生了错误",
+    "empty": {
+      "title": "新建会话",
+      "description": "开始与 Claude 的新对话。"
+    },
+    "streaming": "正在回复...",
+    "default": "输入消息...",
+    "loadingMore": "加载中...",
+    "loadMore": "加载更多消息"
+  },
+  "tool": {
+    "executionTime": "执行时间：{{duration}}",
+    "showResult": "显示结果",
+    "plan": "计划",
+    "planEmpty": "没有计划内容",
+    "requestedPermissions": "请求的权限：",
+    "rejectedAria": "工具已拒绝：{{name}}",
+    "failedAria": "工具失败：{{name}}",
+    "runningAria": "工具运行中：{{name}}",
+    "completedAria": "工具已完成：{{name}}",
+    "rejected": "已拒绝",
+    "failed": "失败",
+    "collapse": "折叠",
+    "showFullPath": "显示完整路径",
+    "showDiff": "显示差异",
+    "clickToShowDiff": "点击显示差异",
+    "approveBypass": "以 Bypass 模式批准",
+    "yesBypass": "是（Bypass）",
+    "approveAuto": "以 Auto 模式批准",
+    "yesAuto": "是（Auto）",
+    "approveAsk": "以 Ask 模式批准",
+    "yesAsk": "是（Ask）",
+    "rejectContinuePlanning": "拒绝（继续规划）",
+    "allowTool": "允许工具执行",
+    "allow": "允许",
+    "denyTool": "拒绝工具执行",
+    "deny": "拒绝",
+    "resultFailed": "工具结果：失败",
+    "toolFailed": "工具失败",
+    "showMore": "显示更多（{{count}}）",
+    "showMoreSimple": "显示更多",
+    "detailCollapseAria": "折叠工具详情",
+    "detailExpandAria": "展开工具详情",
+    "detail": "详情",
+    "collapseContent": "折叠",
+    "expandContent": "显示完整内容"
+  },
+  "permission": {
+    "viewChanges": "查看文件更改：{{path}}",
+    "approximateHint": "基于块的近似值。点击查看精确差异",
+    "approveChanges": "批准更改",
+    "approve": "批准",
+    "rejectChanges": "拒绝更改",
+    "reject": "拒绝"
+  },
+  "chain": {
+    "waitingAria": "提示链：等待下一个命令 — {{prompt}}",
+    "next": "下一个",
+    "collapseList": "折叠链列表",
+    "expandList": "展开链列表",
+    "cancelAll": "取消所有待处理的提示",
+    "cancelAllTitle": "全部取消",
+    "removePrompt": "移除提示 {{index}}",
+    "removeTitle": "移除"
+  },
+  "streaming": {
+    "ariaLabel": "Claude 正在生成回复",
+    "srText": "Claude 正在思考..."
+  },
+  "markdown": {
+    "openFile": "打开文件：{{href}}"
+  },
+  "model": {
+    "defaultLabel": "默认",
+    "aliases": "别名（最新）",
+    "latestSonnet": "最新 Sonnet",
+    "latestOpus": "最新 Opus",
+    "latestHaiku": "最新 Haiku",
+    "claude4x": "Claude 4.x",
+    "claude3x": "Claude 3.x",
+    "mostCapable": "最强大",
+    "selectorAria": "模型：{{label}}。点击更改模型",
+    "selectAria": "选择模型"
+  }
+}

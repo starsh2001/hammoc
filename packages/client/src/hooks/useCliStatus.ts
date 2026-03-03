@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api/client';
+import i18n from '../i18n';
 import type { CLIStatusResponse } from '@bmad-studio/shared';
 
 interface UseCliStatusOptions {
@@ -51,7 +52,7 @@ export function useCliStatus(options?: UseCliStatusOptions): UseCliStatusResult 
       hasDataRef.current = true;
       setCliStatus(status);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'CLI 상태 확인 실패');
+      setError(err instanceof Error ? err.message : i18n.t('notification:cliStatus.checkFailed'));
     } finally {
       setIsLoading(false);
     }

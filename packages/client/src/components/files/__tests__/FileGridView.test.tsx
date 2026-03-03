@@ -129,14 +129,14 @@ describe('FileGridView', () => {
     render(<FileGridView {...defaultProps} />);
 
     // Spinner should NOT be visible immediately
-    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    expect(screen.queryByText('로딩 중...')).not.toBeInTheDocument();
 
     // After 300ms, spinner should appear
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('로딩 중...')).toBeInTheDocument();
     vi.useRealTimers();
   });
 
@@ -189,7 +189,7 @@ describe('FileGridView', () => {
       expect(screen.getByText('Network error')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Retry')).toBeInTheDocument();
+    expect(screen.getByText('다시 시도')).toBeInTheDocument();
   });
 
   // TC-FGV-9: Empty folder message
@@ -199,7 +199,7 @@ describe('FileGridView', () => {
     render(<FileGridView {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Empty folder')).toBeInTheDocument();
+      expect(screen.getByText('빈 폴더')).toBeInTheDocument();
     });
   });
 

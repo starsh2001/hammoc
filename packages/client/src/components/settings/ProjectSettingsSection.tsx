@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
@@ -17,10 +18,10 @@ import type {
   UpdateProjectSettingsRequest,
 } from '@bmad-studio/shared';
 
-const PERMISSION_OPTIONS: { value: PermissionMode; label: string; description: string }[] = [
-  { value: 'plan', label: 'Plan', description: '코드 변경 전 계획을 먼저 제안합니다' },
-  { value: 'default', label: 'Ask before edits', description: '파일 수정 전 항상 확인을 요청합니다' },
-  { value: 'acceptEdits', label: 'Edit Automatically', description: '파일 수정을 자동으로 수행합니다' },
+const PERMISSION_OPTIONS: { value: PermissionMode; labelKey: string; descKey: string }[] = [
+  { value: 'plan', labelKey: 'global.permissionModeLabel.plan', descKey: 'global.permissionDesc.plan' },
+  { value: 'default', labelKey: 'global.permissionModeLabel.default', descKey: 'global.permissionDesc.default' },
+  { value: 'acceptEdits', labelKey: 'global.permissionModeLabel.acceptEdits', descKey: 'global.permissionDesc.acceptEdits' },
 ];
 
 /** Sentinel value for "use global default" option */
@@ -37,12 +38,13 @@ function getModelDisplayLabel(value: string): string {
 }
 
 /** Find display label for a permission mode */
-function getPermissionLabel(mode: PermissionMode): string {
+function getPermissionLabel(mode: PermissionMode, t: (key: string) => string): string {
   const found = PERMISSION_OPTIONS.find((o) => o.value === mode);
-  return found?.label ?? mode;
+  return found ? t(found.labelKey) : mode;
 }
 
 export function ProjectSettingsSection() {
+  const { t } = useTranslation('settings');
   const projects = useProjectStore((s) => s.projects);
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
   const currentProjectSlug = useSessionStore((s) => s.currentProjectSlug);
@@ -84,7 +86,7 @@ export function ProjectSettingsSection() {
       })
       .catch(() => {
         if (!cancelled) {
-          setError('설정을 불러오는 중 오류가 발생했습니다.');
+          setError(t('project.loadError'));
           setSettings(null);
           setLoading(false);
         }
@@ -99,14 +101,14 @@ export function ProjectSettingsSection() {
       setUpdating(true);
       const updated = await projectsApi.updateSettings(selectedProjectSlug, update);
       setSettings(updated);
-      toast.success(toastMessage ?? '설정이 저장되었습니다.');
+      toast.success(toastMessage ?? t('toast.settingSaved'));
 
       // Sync sidebar if hidden changed
       if (update.hidden !== undefined) {
         fetchProjects();
       }
     } catch {
-      toast.error('설정 저장에 실패했습니다. 다시 시도해 주세요.');
+      toast.error(t('toast.settingSavedFailed'));
     } finally {
       setUpdating(false);
     }
@@ -130,26 +132,21 @@ export function ProjectSettingsSection() {
   }, [settings, handleUpdateSetting]);
 
   const handleResetAll = useCallback(() => {
-    const confirmed = window.confirm(
-      '모든 프로젝트 설정을 초기화합니다.\n\n' +
-      '\u2022 모델/Permission Mode 오버라이드가 제거됩니다\n' +
-      '\u2022 프로젝트 숨기기가 해제됩니다\n\n' +
-      '계속하시겠습니까?'
-    );
+    const confirmed = window.confirm(t('confirm.resetAllSettings'));
     if (!confirmed) return;
 
     handleUpdateSetting({
       modelOverride: null,
       permissionModeOverride: null,
       hidden: false,
-    }, '전역 설정으로 초기화되었습니다');
+    }, t('toast.resetToGlobal'));
   }, [handleUpdateSetting]);
 
   // No projects state
   if (projects.length === 0) {
     return (
       <div className="text-gray-500 dark:text-gray-400 text-sm">
-        프로젝트가 없습니다.
+        {t('project.noProjects')}
       </div>
     );
   }
@@ -177,7 +174,7 @@ export function ProjectSettingsSection() {
           htmlFor="project-select"
           className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
         >
-          프로젝트 선택
+          {t('project.selectProject')}
         </label>
         <select
           id="project-select"
@@ -191,7 +188,7 @@ export function ProjectSettingsSection() {
         >
           {projects.map((p) => (
             <option key={p.projectSlug} value={p.projectSlug}>
-              {p.originalPath}{p.hidden ? ' (숨김)' : ''}
+              {p.originalPath}{p.hidden ? t('project.hidden') : ''}
             </option>
           ))}
         </select>
@@ -201,7 +198,7 @@ export function ProjectSettingsSection() {
       {loading && (
         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">설정을 불러오는 중...</span>
+          <span className="text-sm">{t('project.loading')}</span>
         </div>
       )}
 
@@ -214,7 +211,7 @@ export function ProjectSettingsSection() {
             onClick={() => setFetchKey((k) => k + 1)}
             className="ml-2 underline hover:no-underline"
           >
-            재시도
+            {t('project.retry')}
           </button>
         </div>
       )}
@@ -228,10 +225,10 @@ export function ProjectSettingsSection() {
               htmlFor="project-model"
               className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
             >
-              모델 오버라이드
+              {t('project.modelOverride')}
               {overrides.includes('modelOverride') && (
                 <span className="ml-2 text-xs text-blue-600 dark:text-blue-400 font-normal">
-                  (프로젝트 오버라이드)
+                  {t('project.projectOverride')}
                 </span>
               )}
             </label>
@@ -246,7 +243,7 @@ export function ProjectSettingsSection() {
                          disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value={GLOBAL_SENTINEL}>
-                전역 기본값 사용 (현재: {getModelDisplayLabel(globalModel)})
+                {t('project.useGlobalDefault', { value: getModelDisplayLabel(globalModel) })}
               </option>
               {MODEL_GROUPS.map((group) => (
                 <optgroup key={group.label} label={group.label}>
@@ -263,10 +260,10 @@ export function ProjectSettingsSection() {
           {/* Permission Mode Override */}
           <fieldset>
             <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-              Permission Mode 오버라이드
+              {t('project.permissionOverride')}
               {overrides.includes('permissionModeOverride') && (
                 <span className="ml-2 text-xs text-blue-600 dark:text-blue-400 font-normal">
-                  (프로젝트 오버라이드)
+                  {t('project.projectOverride')}
                 </span>
               )}
             </legend>
@@ -294,11 +291,8 @@ export function ProjectSettingsSection() {
                 />
                 <div>
                   <span className={`text-sm font-medium ${permissionValue === GLOBAL_SENTINEL ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
-                    전역 기본값 사용
+                    {t('project.useGlobalDefault', { value: getPermissionLabel(globalPermission as PermissionMode, t) })}
                   </span>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    현재: {getPermissionLabel(globalPermission as PermissionMode)}
-                  </p>
                 </div>
               </label>
 
@@ -328,13 +322,13 @@ export function ProjectSettingsSection() {
                   />
                   <div>
                     <span className={`text-sm font-medium ${permissionValue === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </span>
                     <p
                       id={`project-perm-desc-${opt.value}`}
                       className="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
                     >
-                      {opt.description}
+                      {t(opt.descKey)}
                     </p>
                   </div>
                 </label>
@@ -358,7 +352,7 @@ export function ProjectSettingsSection() {
                            text-blue-600 focus:ring-blue-500"
               />
               <span className="text-sm text-gray-900 dark:text-white">
-                이 프로젝트를 사이드바에서 숨기기
+                {t('project.hideInSidebar')}
               </span>
             </label>
           </div>
@@ -375,11 +369,11 @@ export function ProjectSettingsSection() {
                          hover:bg-red-50 dark:hover:bg-red-900/20
                          disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              전역 기본값으로 초기화
+              {t('project.resetToGlobal')}
             </button>
             {!hasOverrides && (
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                현재 프로젝트 오버라이드가 없습니다.
+                {t('project.noOverrides')}
               </p>
             )}
           </div>

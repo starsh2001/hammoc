@@ -1,1 +1,52 @@
-{}
+{
+  "auth": {
+    "loginError": "登录时发生了错误。",
+    "setupPasswordError": "设置密码时发生了错误。"
+  },
+  "project": {
+    "loadError": "加载项目列表时发生了错误。",
+    "deleteError": "删除项目时发生了错误。",
+    "bmadSetupError": "BMad 设置过程中发生了错误。",
+    "pathValidationError": "路径验证过程中发生了错误。",
+    "createError": "创建项目时发生了错误。",
+    "createCancelled": "项目创建已取消。"
+  },
+  "session": {
+    "notFound": "未找到项目。",
+    "serverError": "发生了服务器错误。请稍后重试。",
+    "networkError": "请检查您的网络连接。",
+    "loadError": "加载会话列表时发生了错误。",
+    "deleteError": "删除会话时发生了错误。"
+  },
+  "chat": {
+    "aborted": "已中止",
+    "approved": "已批准",
+    "rejected": "已拒绝"
+  },
+  "board": {
+    "loadError": "加载看板数据时发生了错误。"
+  },
+  "git": {
+    "operationError": "Git 操作过程中发生了错误。"
+  },
+  "file": {
+    "binaryNotEditable": "无法编辑二进制文件。"
+  },
+  "message": {
+    "loadError": "加载消息时发生了错误。"
+  },
+  "streaming": {
+    "alreadyResponded": "已在其他浏览器中回复。",
+    "respondedBeforeReconnect": "（在重新连接前已回复）",
+    "abortedInOtherBrowser": "回复已在其他浏览器中中止。",
+    "sessionInUseWarning": "此会话正在其他浏览器中使用。请刷新后重试。",
+    "respondedInOtherBrowser": "（已在其他浏览器中回复）",
+    "disconnectedRetry": "连接已断开。请在重新连接后重试。"
+  },
+  "bmadStatus": {
+    "loadError": "加载 BMad 项目状态时发生了错误。"
+  },
+  "cliStatus": {
+    "checkFailed": "CLI 状态检查失败"
+  }
+}

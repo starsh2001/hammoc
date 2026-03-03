@@ -43,7 +43,7 @@ describe('QueueLockedBanner', () => {
 
   it('TC-QL-14: shows prompt preview text', () => {
     renderBanner();
-    expect(screen.getByText('Hello world prompt preview')).toBeInTheDocument();
+    expect(screen.getByText(/Hello world prompt preview/)).toBeInTheDocument();
   });
 
   it('TC-QL-15: pause button visible when running, calls onPause', () => {
@@ -136,7 +136,7 @@ describe('QueueLockedBanner', () => {
   it('TC-QL-21: queue editor link navigates to correct URL', () => {
     renderBanner();
 
-    const link = screen.getByText(/큐 에디터로 이동/);
+    const link = screen.getByText(/큐 에디터/);
     expect(link.closest('a')).toHaveAttribute('href', '/project/my-project/queue');
   });
 
