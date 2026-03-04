@@ -43,8 +43,8 @@ describe('KanbanBoard', () => {
 
     render(<KanbanBoard itemsByColumn={itemsByColumn} boardConfig={DEFAULT_BOARD_CONFIG} />);
 
-    expect(screen.getByText('2')).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByTestId('column-count-Open')).toHaveTextContent('2');
+    expect(screen.getByTestId('column-count-Doing')).toHaveTextContent('1');
   });
 
   it('should render cards in correct columns', () => {

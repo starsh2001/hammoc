@@ -25,11 +25,18 @@ describe('ProjectStatusIndicators', () => {
 
   it('shows active session count with green dot', () => {
     render(<ProjectStatusIndicators status={makeStatus({ activeSessionCount: 2, totalSessionCount: 5 })} />);
-    expect(screen.getByText('2')).toBeInTheDocument();
-    // Green dot should be present
-    const container = screen.getByText('2').parentElement!;
+    expect(screen.getByText('2 active')).toBeInTheDocument();
+    const container = screen.getByText('2 active').parentElement!;
     const dot = container.querySelector('.bg-green-500.rounded-full');
     expect(dot).not.toBeNull();
+  });
+
+  it('shows 0 active without green dot when no active sessions', () => {
+    render(<ProjectStatusIndicators status={makeStatus({ activeSessionCount: 0, totalSessionCount: 3 })} />);
+    expect(screen.getByText('0 active')).toBeInTheDocument();
+    const container = screen.getByText('0 active').parentElement!;
+    const dot = container.querySelector('.bg-green-500.rounded-full');
+    expect(dot).toBeNull();
   });
 
   it('shows terminal count with icon when terminalCount > 0', () => {
@@ -39,8 +46,7 @@ describe('ProjectStatusIndicators', () => {
 
   it('hides terminal count when terminalCount === 0', () => {
     render(<ProjectStatusIndicators status={makeStatus({ activeSessionCount: 1, totalSessionCount: 3 })} />);
-    // Active session count shown, but no terminal number
-    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('1 active')).toBeInTheDocument();
     expect(screen.queryByText('0')).toBeNull();
   });
 
@@ -60,17 +66,17 @@ describe('ProjectStatusIndicators', () => {
         })}
       />
     );
-    const container = screen.getByLabelText('프로젝트 상태: 활성 세션 2개, queue Running, 1 terminal(s)');
+    const container = screen.getByLabelText('프로젝트 상태: 2/5 active sessions, queue Running, 1 terminal(s)');
     expect(container).toBeInTheDocument();
   });
 
   it('renders correct dynamic aria-label — minimal case', () => {
     render(
       <ProjectStatusIndicators
-        status={makeStatus({ activeSessionCount: 1, totalSessionCount: 3 })}
+        status={makeStatus({ activeSessionCount: 0, totalSessionCount: 3 })}
       />
     );
-    const container = screen.getByLabelText('프로젝트 상태: 활성 세션 1개');
+    const container = screen.getByLabelText('프로젝트 상태: 0/3 active sessions');
     expect(container).toBeInTheDocument();
   });
 });
