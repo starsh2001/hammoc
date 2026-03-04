@@ -90,7 +90,9 @@
   },
   "view": {
     "kanban": "Kanban表示",
-    "list": "リスト表示"
+    "list": "リスト表示",
+    "lessColumns": "表示列を減らす",
+    "moreColumns": "表示列を増やす"
   },
   "promote": {
     "originalIssueHeader": "元の課題（ID：{{id}}）",

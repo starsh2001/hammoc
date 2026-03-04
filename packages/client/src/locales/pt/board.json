@@ -90,7 +90,9 @@
   },
   "view": {
     "kanban": "Visualização Kanban",
-    "list": "Visualização em lista"
+    "list": "Visualização em lista",
+    "lessColumns": "Mostrar menos colunas",
+    "moreColumns": "Mostrar mais colunas"
   },
   "promote": {
     "originalIssueHeader": "Issue original (ID: {{id}})",

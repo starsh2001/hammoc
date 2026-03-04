@@ -12,10 +12,12 @@ interface UseBoardReturn {
   items: BoardItem[];
   boardConfig: BoardConfig;
   viewMode: 'kanban' | 'list';
+  visibleColumns: number;
   isLoading: boolean;
   error: string | null;
   itemsByColumn: Record<string, BoardItem[]>;
   setViewMode: (mode: 'kanban' | 'list') => void;
+  setVisibleColumns: (count: number) => void;
   createIssue: (data: CreateIssueRequest) => Promise<void>;
   updateIssue: (issueId: string, data: UpdateIssueRequest) => Promise<void>;
   deleteIssue: (issueId: string) => Promise<void>;
@@ -28,10 +30,12 @@ export function useBoard(projectSlug: string | undefined): UseBoardReturn {
   const items = useBoardStore((s) => s.items);
   const boardConfig = useBoardStore((s) => s.boardConfig);
   const viewMode = useBoardStore((s) => s.viewMode);
+  const visibleColumns = useBoardStore((s) => s.visibleColumns);
   const isLoading = useBoardStore((s) => s.isLoading);
   const error = useBoardStore((s) => s.error);
   const fetchBoard = useBoardStore((s) => s.fetchBoard);
   const setViewMode = useBoardStore((s) => s.setViewMode);
+  const setVisibleColumns = useBoardStore((s) => s.setVisibleColumns);
   const setBoardConfig = useBoardStore((s) => s.setBoardConfig);
   const storeCreateIssue = useBoardStore((s) => s.createIssue);
   const storeUpdateIssue = useBoardStore((s) => s.updateIssue);
@@ -107,10 +111,12 @@ export function useBoard(projectSlug: string | undefined): UseBoardReturn {
     items,
     boardConfig,
     viewMode,
+    visibleColumns,
     isLoading,
     error,
     itemsByColumn,
     setViewMode,
+    setVisibleColumns,
     createIssue,
     updateIssue,
     deleteIssue,

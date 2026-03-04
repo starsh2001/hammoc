@@ -6,7 +6,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutList, Kanban, Plus, RefreshCw, AlertCircle, Settings } from 'lucide-react';
+import { LayoutList, Kanban, Plus, RefreshCw, AlertCircle, Settings, Minus } from 'lucide-react';
 import type { BoardItem, CreateIssueRequest, UpdateIssueRequest } from '@bmad-studio/shared';
 import { useBoard } from '../hooks/useBoard';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -27,12 +27,14 @@ export function ProjectBoardPage() {
   const navigate = useNavigate();
   const {
     viewMode,
+    visibleColumns,
     isLoading,
     error,
     itemsByColumn,
     items,
     boardConfig,
     setViewMode,
+    setVisibleColumns,
     createIssue,
     updateBoardConfig,
     resetBoardConfig,
@@ -322,6 +324,31 @@ export function ProjectBoardPage() {
           >
             <LayoutList className="w-5 h-5" />
           </button>
+
+          {/* Visible columns stepper (kanban mode only) */}
+          {viewMode === 'kanban' && !isMobile && (
+            <div className="flex items-center gap-1 ml-2 border-l border-gray-200 dark:border-gray-700 pl-2">
+              <button
+                onClick={() => setVisibleColumns(visibleColumns - 1)}
+                disabled={visibleColumns <= 2}
+                className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                aria-label={t('view.lessColumns')}
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400 min-w-[1.5rem] text-center tabular-nums">
+                {visibleColumns}
+              </span>
+              <button
+                onClick={() => setVisibleColumns(visibleColumns + 1)}
+                disabled={visibleColumns >= boardConfig.columns.length}
+                className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                aria-label={t('view.moreColumns')}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -356,7 +383,7 @@ export function ProjectBoardPage() {
           isMobile ? (
             <MobileKanbanBoard itemsByColumn={itemsByColumn} boardConfig={boardConfig} {...cardCallbacks} />
           ) : (
-            <KanbanBoard itemsByColumn={itemsByColumn} boardConfig={boardConfig} {...cardCallbacks} />
+            <KanbanBoard itemsByColumn={itemsByColumn} boardConfig={boardConfig} visibleColumns={visibleColumns} {...cardCallbacks} />
           )
         ) : (
           <BoardListView itemsByColumn={itemsByColumn} boardConfig={boardConfig} isMobile={isMobile} {...cardCallbacks} />

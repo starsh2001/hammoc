@@ -90,7 +90,9 @@
   },
   "view": {
     "kanban": "칸반 뷰",
-    "list": "리스트 뷰"
+    "list": "리스트 뷰",
+    "lessColumns": "표시 컬럼 줄이기",
+    "moreColumns": "표시 컬럼 늘리기"
   },
   "promote": {
     "originalIssueHeader": "원본 이슈 (ID: {{id}})",
