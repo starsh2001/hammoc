@@ -23,7 +23,13 @@
     "sessionLocked": "Session locked",
     "abort": "Abort",
     "addToChain": "Add to chain",
-    "send": "Send"
+    "send": "Send",
+    "lockedOtherBrowser": "In use from another browser — refresh to use",
+    "queueControlled": "Queue runner is in control",
+    "chainFull": "Chain max 5",
+    "chainAdd": "Add to chain...",
+    "ariaLabel": "Message input",
+    "promptChainTitle": "Prompt chain"
   },
   "chainMode": {
     "off": "Turn off chain mode",
@@ -174,9 +180,11 @@
       "message": "There is an active conversation. Start the agent in a new session?"
     },
     "newSession": {
+      "title": "Confirm New Session",
       "message": "There is a response in progress. Start a new session?"
     },
     "switchSession": {
+      "title": "Confirm Session Switch",
       "message": "There is a response in progress. Switch sessions?"
     }
   },

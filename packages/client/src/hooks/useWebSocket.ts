@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getSocket } from '../services/socket';
 import type { ConnectionStatus } from '@bmad-studio/shared';
 import { debugLogger } from '../utils/debugLogger';
@@ -24,6 +25,7 @@ export interface UseWebSocketReturn {
  * @returns WebSocket connection state and control functions
  */
 export function useWebSocket(): UseWebSocketReturn {
+  const { t } = useTranslation('common');
   const socket = getSocket();
 
   // Initialize state based on current socket connection status.
@@ -75,12 +77,12 @@ export function useWebSocket(): UseWebSocketReturn {
 
     const handleReconnectFailed = () => {
       setConnectionStatus('disconnected');
-      setLastError('서버 연결에 실패했습니다. 네트워크 연결을 확인해주세요.');
+      setLastError(t('connection.reconnectFailed'));
       debugLogger.error('WebSocket reconnection failed', { error: 'Maximum reconnection attempts exceeded' });
     };
 
     const handleConnectError = (error: Error) => {
-      setLastError(`연결 오류: ${error.message}`);
+      setLastError(t('connection.connectError', { message: error.message }));
     };
 
     socket.on('connect', handleConnect);
@@ -96,7 +98,7 @@ export function useWebSocket(): UseWebSocketReturn {
       socket.io.off('reconnect_failed', handleReconnectFailed);
       socket.off('connect_error', handleConnectError);
     };
-  }, [socket]);
+  }, [socket, t]);
 
   return {
     connectionStatus,

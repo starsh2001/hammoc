@@ -29,7 +29,9 @@
     "reconnectingAttemptAria": "WebSocket 연결 상태: 재연결 중 {{attempt}}번째 시도",
     "apiCannotConnect": "Claude API에 연결할 수 없습니다",
     "reconnectButton": "재연결",
-    "reconnectButtonAria": "서버에 다시 연결 시도"
+    "reconnectButtonAria": "서버에 다시 연결 시도",
+    "reconnectFailed": "서버 연결에 실패했습니다. 네트워크 연결을 확인해주세요.",
+    "connectError": "연결 오류: {{message}}"
   },
   "error": {
     "title": "오류가 발생했습니다",
@@ -186,7 +188,7 @@
     "statusTitle": "문서 현황",
     "requiredCount": "{{done}}/{{total}} 필수",
     "deliverables": "산출물",
-    "count": "개"
+    "count": "{{count}}개"
   },
   "nextSteps": {
     "title": "다음 단계",
@@ -370,6 +372,7 @@
   },
   "queue": {
     "fileTooLarge": "파일 크기가 1MB를 초과합니다",
+    "fileReadError": "파일 읽기 실패: {{name}}",
     "run": "실행",
     "starting": "시작 중...",
     "loadFile": "파일 로드",

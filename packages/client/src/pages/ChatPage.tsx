@@ -925,7 +925,7 @@ export function ChatPage() {
   const confirmModalElement = (
     <ConfirmModal
       isOpen={confirmModal.isOpen}
-      title={confirmModal.action === 'agentLaunch' ? t('confirmModal.agentLaunch.title') : t('confirmModal.agentLaunch.title')}
+      title={confirmModal.action === 'agentLaunch' ? t('confirmModal.agentLaunch.title') : confirmModal.action === 'newSession' ? t('confirmModal.newSession.title') : t('confirmModal.switchSession.title')}
       message={
         confirmModal.action === 'agentLaunch'
           ? t('confirmModal.agentLaunch.message')

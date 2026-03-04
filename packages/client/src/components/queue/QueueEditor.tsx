@@ -81,11 +81,14 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
         setScript(content);
       }
     };
+    reader.onerror = () => {
+      alert(t('queue.fileReadError', { name: file.name }));
+    };
     reader.readAsText(file);
 
     // Reset file input so same file can be re-selected
     e.target.value = '';
-  }, [setScript]);
+  }, [setScript, t]);
 
   // Run button handler
   const handleRun = useCallback(() => {
