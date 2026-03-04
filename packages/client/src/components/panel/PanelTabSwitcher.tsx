@@ -12,12 +12,15 @@ interface PanelTabSwitcherProps {
   activePanel: QuickPanelType;
   onSwitchPanel: (type: QuickPanelType) => void;
   terminalAccessible?: boolean;
+  /** Git changed file count for badge on git tab */
+  gitChangedCount?: number;
 }
 
 export function PanelTabSwitcher({
   activePanel,
   onSwitchPanel,
   terminalAccessible = true,
+  gitChangedCount,
 }: PanelTabSwitcherProps) {
   const { t } = useTranslation('common');
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -79,7 +82,14 @@ export function PanelTabSwitcher({
             title={isDisabled ? `${t(config.titleKey)} ${t('panel.disabledSuffix')}` : t(config.titleKey)}
             data-testid={`panel-tab-${type}`}
           >
-            <IconComponent className="w-5 h-5" aria-hidden="true" />
+            <div className="relative">
+              <IconComponent className="w-5 h-5" aria-hidden="true" />
+              {type === 'git' && !!gitChangedCount && gitChangedCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center leading-none px-1">
+                  {gitChangedCount}
+                </span>
+              )}
+            </div>
           </button>
         );
       })}

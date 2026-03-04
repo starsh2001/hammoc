@@ -7,7 +7,8 @@
     "refreshing": "Actualizando",
     "refresh": "Actualizar",
     "settings": "Configuración",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "panelToggle": "Alternar panel"
   },
   "sessionTitle": {
     "placeholder": "Ingresa nombre de sesión...",

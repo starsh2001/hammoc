@@ -7,7 +7,8 @@
     "refreshing": "Atualizando",
     "refresh": "Atualizar",
     "settings": "Configurações",
-    "logout": "Sair"
+    "logout": "Sair",
+    "panelToggle": "Alternar painel"
   },
   "sessionTitle": {
     "placeholder": "Insira o nome da sessão...",
