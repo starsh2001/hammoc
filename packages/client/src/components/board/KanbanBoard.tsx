@@ -27,7 +27,7 @@ export function KanbanBoard({
   onCardClick,
 }: KanbanBoardProps) {
   return (
-    <div className="flex gap-4 overflow-x-auto h-full pb-2">
+    <div className="flex gap-2 overflow-x-auto h-full pb-2">
       {boardConfig.columns.map((col) => (
         <KanbanColumn
           key={col.id}

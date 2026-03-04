@@ -28,7 +28,7 @@ export function KanbanColumn({
 }: KanbanColumnProps) {
   return (
     <div
-      className={`min-w-[240px] flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 rounded-lg border-t-2 ${columnConfig.colorClass}`}
+      className={`min-w-[200px] flex-1 flex flex-col h-full min-h-0 bg-gray-50 dark:bg-gray-900 rounded-lg border-t-2 ${columnConfig.colorClass}`}
     >
       {/* Column header */}
       <div className="px-3 py-2 flex items-center justify-between">
@@ -41,7 +41,7 @@ export function KanbanColumn({
       </div>
 
       {/* Card list */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2 space-y-2">
         {items.map((item) => (
           <BoardCard
             key={item.id}

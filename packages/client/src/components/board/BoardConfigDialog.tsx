@@ -9,6 +9,7 @@ import { X, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import type { BoardConfig, BoardColumnConfig, BoardItemStatus } from '@bmad-studio/shared';
 import { COLUMN_COLOR_PALETTE, DEFAULT_BOARD_CONFIG, REQUIRED_COLUMN_IDS, validateBoardConfig } from '@bmad-studio/shared';
 import { STATUS_LABEL } from './constants';
+import { generateUUID } from '../../utils/uuid';
 
 interface BoardConfigDialogProps {
   open: boolean;
@@ -73,7 +74,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
     if (columns.length >= 10) return;
     const usedColors = new Set(columns.map((c) => c.colorClass));
     const nextColor = COLUMN_COLOR_PALETTE.find((c) => !usedColors.has(c)) ?? COLUMN_COLOR_PALETTE[0];
-    const id = `col-${crypto.randomUUID().slice(0, 8)}`;
+    const id = `col-${generateUUID().slice(0, 8)}`;
     setColumns([...columns, { id, label: '', colorClass: nextColor }]);
   };
 
