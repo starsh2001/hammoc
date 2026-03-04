@@ -168,6 +168,40 @@ describe('useStreaming interactive events', () => {
     expect(useChatStore.getState().streamingSegments).toHaveLength(1);
   });
 
+  it('buffers permission:request that arrives before tool:call and attaches when tool segment is created', () => {
+    renderHook(() => useStreaming());
+
+    // Permission arrives BEFORE tool:call (race condition)
+    act(() => {
+      emitSocketEvent('permission:request', {
+        id: 'perm-race-1',
+        sessionId: 'test-session',
+        toolCall: { id: 'tool-race-1', name: 'Bash', input: { command: 'ls' } },
+        requiresApproval: true,
+      });
+    });
+
+    // No segments yet — permission is buffered
+    expect(useChatStore.getState().streamingSegments).toHaveLength(0);
+
+    // tool:call arrives later — should pick up the buffered permission
+    act(() => {
+      emitSocketEvent('tool:call', {
+        id: 'tool-race-1',
+        name: 'Bash',
+        input: { command: 'ls' },
+      });
+    });
+
+    const segments = useChatStore.getState().streamingSegments;
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({
+      type: 'tool',
+      permissionId: 'perm-race-1',
+      permissionStatus: 'waiting',
+    });
+  });
+
   it('adds multiple permission requests to separate tool segments', () => {
     renderHook(() => useStreaming());
 

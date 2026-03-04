@@ -979,7 +979,13 @@ describe('ChatPage', () => {
     it('should navigate to new session and set pending agent command', () => {
       setupBmadProject();
       const mockAbortResponse = vi.fn();
-      useChatStore.setState({ abortResponse: mockAbortResponse });
+      const mockClearStreamingSegments = vi.fn();
+      const mockResetSelectedModel = vi.fn();
+      useChatStore.setState({
+        abortResponse: mockAbortResponse,
+        clearStreamingSegments: mockClearStreamingSegments,
+        resetSelectedModel: mockResetSelectedModel,
+      });
       useMessageStore.setState({
         messages: mockMessages,
         pagination: mockPagination,
@@ -990,23 +996,25 @@ describe('ChatPage', () => {
       // Open agent popup and click agent
       fireEvent.click(screen.getByTestId('bmad-agent-button'));
       fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
+
+      // Verify all handleAgentLaunch preparation steps
+      expect(mockAbortResponse).toHaveBeenCalled();
+      expect(mockClearMessages).toHaveBeenCalled();
+      expect(mockClearStreamingSegments).toHaveBeenCalled();
+      expect(mockResetSelectedModel).toHaveBeenCalled();
 
       // Navigate directly to new session (UUID-based)
       expect(mockNavigate).toHaveBeenCalledWith(
         expect.stringMatching(/\/project\/test-project\/session\/[a-f0-9-]+/)
       );
-      // clearMessages should be called
-      expect(mockClearMessages).toHaveBeenCalled();
     });
 
-    it('should auto-send agent command via pendingAgentCommandRef without confirm', () => {
+    it('should call sendMessage directly when agent is selected in empty session', () => {
       setupBmadProject();
-      const mockAbortResponse = vi.fn();
-      useChatStore.setState({ abortResponse: mockAbortResponse });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
+      const sendMessageSpy = vi.fn();
+      useChatStore.setState({ sendMessage: sendMessageSpy });
+      // Empty session — agent command should be sent immediately
+      useMessageStore.setState({ messages: [] });
 
       renderChatPage();
 
@@ -1014,12 +1022,16 @@ describe('ChatPage', () => {
       fireEvent.click(screen.getByTestId('bmad-agent-button'));
       fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
 
-      // Verify agentLaunch action: navigate to new session
-      expect(mockNavigate).toHaveBeenCalledWith(
-        expect.stringMatching(/\/project\/test-project\/session\/[a-f0-9-]+/)
+      // In empty sessions, sendMessage is called directly with the agent command
+      expect(sendMessageSpy).toHaveBeenCalledWith(
+        '/BMad:agents:dev',
+        expect.objectContaining({
+          workingDirectory: '/test/path',
+          resume: false,
+        })
       );
-      // clearMessages should be called
-      expect(mockClearMessages).toHaveBeenCalled();
+      // Should NOT navigate — stays in same session
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
 
     it('should navigate directly to new session without showing confirm dialog message', () => {
