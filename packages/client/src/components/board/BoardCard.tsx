@@ -67,7 +67,7 @@ export function BoardCard({
 
   return (
     <div
-      className={`p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm relative ${
+      className={`p-3 min-w-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm relative ${
         isClickable
           ? 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all'
           : 'cursor-default'
