@@ -528,6 +528,22 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const messages: HistoryMessage[] = [];
     let pendingThinking: string | undefined;
 
+    // Generate sequential timestamps starting 1ms after the last user message
+    // to ensure addMessages' timestamp sort keeps them in correct order
+    // (right after user message, not at end of history).
+    const existingMsgs = useMessageStore.getState().messages;
+    let lastUserTs = prev.streamingStartedAt
+      ? new Date(prev.streamingStartedAt).getTime()
+      : Date.now();
+    for (let i = existingMsgs.length - 1; i >= 0; i--) {
+      if (existingMsgs[i].type === 'user') {
+        lastUserTs = new Date(existingMsgs[i].timestamp).getTime();
+        break;
+      }
+    }
+    let tsCounter = 1;
+    const nextTimestamp = () => new Date(lastUserTs + tsCounter++).toISOString();
+
     for (const seg of prev.streamingSegments) {
       if (seg.type === 'thinking') {
         // If there's already pending thinking (e.g. system segment in between),
@@ -537,7 +553,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             id: `${prev.streamingMessageId}-thinking-${messages.length}`,
             type: 'assistant' as const,
             content: '',
-            timestamp: new Date().toISOString(),
+            timestamp: nextTimestamp(),
             thinking: pendingThinking,
           });
         }
@@ -547,7 +563,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           id: `${prev.streamingMessageId}-text-${messages.length}`,
           type: 'assistant' as const,
           content: seg.content,
-          timestamp: new Date().toISOString(),
+          timestamp: nextTimestamp(),
           thinking: pendingThinking,
         });
         pendingThinking = undefined;
@@ -556,7 +572,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           id: `${prev.streamingMessageId}-tool-${seg.toolCall.id}`,
           type: 'tool_use' as const,
           content: `Calling ${seg.toolCall.name}`,
-          timestamp: new Date().toISOString(),
+          timestamp: nextTimestamp(),
           toolName: seg.toolCall.name,
           toolInput: seg.toolCall.input,
           thinking: pendingThinking,
@@ -588,7 +604,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           id: `${prev.streamingMessageId}-tool-${toolCallId}`,
           type: 'tool_use' as const,
           content: `Calling ${seg.toolCall?.name || 'AskUserQuestion'}`,
-          timestamp: new Date().toISOString(),
+          timestamp: nextTimestamp(),
           toolName: seg.toolCall?.name || 'AskUserQuestion',
           toolInput: seg.toolCall?.input,
           thinking: pendingThinking,
@@ -609,7 +625,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         id: `${prev.streamingMessageId}-thinking`,
         type: 'assistant' as const,
         content: '',
-        timestamp: new Date().toISOString(),
+        timestamp: nextTimestamp(),
         thinking: pendingThinking,
       });
     }
