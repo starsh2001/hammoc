@@ -151,7 +151,8 @@
   "queue": {
     "validation": {
       "slugRequired": "projectSlug가 필요합니다",
-      "itemsRequired": "items 배열은 비어있을 수 없습니다"
+      "itemsRequired": "items 배열은 비어있을 수 없습니다",
+      "invalidInput": "잘못된 큐 입력: {{value}}"
     },
     "error": {
       "alreadyRunning": "이 프로젝트에서 이미 큐가 실행 중입니다",
