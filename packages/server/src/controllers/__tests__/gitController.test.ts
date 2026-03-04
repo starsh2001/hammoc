@@ -63,7 +63,7 @@ function createMockReq(
   query: Record<string, string> = {},
   body: Record<string, unknown> = {},
 ): Request {
-  return { params, query, body } as unknown as Request;
+  return { params, query, body, t: (key: string) => key, language: 'en' } as unknown as Request;
 }
 
 function createMockRes(): Response {
@@ -127,7 +127,7 @@ describe('gitController.getStatus', () => {
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'PROJECT_NOT_FOUND', message: 'Project not found' },
+      error: { code: 'PROJECT_NOT_FOUND', message: 'project.error.notFound' },
     });
   });
 
@@ -141,7 +141,7 @@ describe('gitController.getStatus', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' },
+      error: { code: 'INVALID_REQUEST', message: 'git.validation.slugRequired' },
     });
   });
 });
@@ -226,7 +226,7 @@ describe('gitController.getDiff', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'INVALID_REQUEST', message: 'file query parameter is required' },
+      error: { code: 'INVALID_REQUEST', message: 'git.validation.fileRequired' },
     });
   });
 
@@ -242,7 +242,7 @@ describe('gitController.getDiff', () => {
 
     expect(res.status).toHaveBeenCalledWith(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+      error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: 'fs.error.pathTraversal' },
     });
   });
 
@@ -269,7 +269,7 @@ describe('gitController.getDiff', () => {
 
     expect(res.status).toHaveBeenCalledWith(GIT_ERRORS.GIT_ERROR.httpStatus);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: GIT_ERRORS.GIT_ERROR.code, message: 'Unexpected git failure' },
+      error: { code: GIT_ERRORS.GIT_ERROR.code, message: 'git.error.operationFailed' },
     });
   });
 });
@@ -288,7 +288,7 @@ describe('gitController.getBranches - error handling', () => {
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'PROJECT_NOT_FOUND', message: 'Project not found' },
+      error: { code: 'PROJECT_NOT_FOUND', message: 'project.error.notFound' },
     });
   });
 
@@ -303,7 +303,7 @@ describe('gitController.getBranches - error handling', () => {
 
     expect(res.status).toHaveBeenCalledWith(GIT_ERRORS.GIT_ERROR.httpStatus);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: GIT_ERRORS.GIT_ERROR.code, message: 'Unexpected branch error' },
+      error: { code: GIT_ERRORS.GIT_ERROR.code, message: 'git.error.operationFailed' },
     });
   });
 });
@@ -339,7 +339,7 @@ describe('gitController.init', () => {
 
     await gitController.init(req, res);
 
-    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Git repository initialized' });
+    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'git.success.initialized' });
   });
 
   // TC-GIT-W22: POST /git/init returns 404 for unknown project
@@ -363,7 +363,7 @@ describe('gitController.stage', () => {
 
     await gitController.stage(req, res);
 
-    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Files staged successfully' });
+    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'git.success.staged' });
     expect(mockStage).toHaveBeenCalledWith('/projects/test', ['src/index.ts']);
   });
 
@@ -376,7 +376,7 @@ describe('gitController.stage', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'INVALID_REQUEST', message: 'files array is required and must not be empty' },
+      error: { code: 'INVALID_REQUEST', message: 'git.validation.filesRequired' },
     });
   });
 
@@ -410,7 +410,7 @@ describe('gitController.stage', () => {
 
     expect(res.status).toHaveBeenCalledWith(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: GIT_ERRORS.GIT_NOT_INITIALIZED.message },
+      error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: 'git.error.notInitialized' },
     });
   });
 });
@@ -424,7 +424,7 @@ describe('gitController.unstage', () => {
 
     await gitController.unstage(req, res);
 
-    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Files unstaged successfully' });
+    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'git.success.unstaged' });
   });
 
   // TC-GIT-W29: POST /git/unstage returns 400 when files missing in body
@@ -457,7 +457,7 @@ describe('gitController.commit', () => {
 
     await gitController.commit(req, res);
 
-    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Changes committed successfully' });
+    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'git.success.committed' });
     expect(mockCommit).toHaveBeenCalledWith('/projects/test', 'test commit');
   });
 
@@ -470,7 +470,7 @@ describe('gitController.commit', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'INVALID_REQUEST', message: 'commit message is required and must not be empty' },
+      error: { code: 'INVALID_REQUEST', message: 'git.validation.commitMessageRequired' },
     });
   });
 
@@ -503,7 +503,7 @@ describe('gitController.commit', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'INVALID_REQUEST', message: 'Commit message exceeds maximum length of 10,000 characters' },
+      error: { code: 'INVALID_REQUEST', message: 'git.validation.commitMessageTooLong' },
     });
   });
 
@@ -516,7 +516,7 @@ describe('gitController.commit', () => {
 
     expect(res.status).toHaveBeenCalledWith(GIT_ERRORS.GIT_NOTHING_TO_COMMIT.httpStatus);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: GIT_ERRORS.GIT_NOTHING_TO_COMMIT.code, message: GIT_ERRORS.GIT_NOTHING_TO_COMMIT.message },
+      error: { code: GIT_ERRORS.GIT_NOTHING_TO_COMMIT.code, message: 'git.error.nothingToCommit' },
     });
   });
 });
@@ -530,7 +530,7 @@ describe('gitController.push', () => {
 
     await gitController.push(req, res);
 
-    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Pushed to remote successfully' });
+    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'git.success.pushed' });
   });
 
   // TC-GIT-W34: POST /git/push returns 409 on conflict error
@@ -543,7 +543,7 @@ describe('gitController.push', () => {
 
     expect(res.status).toHaveBeenCalledWith(GIT_ERRORS.GIT_CONFLICT.httpStatus);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: GIT_ERRORS.GIT_CONFLICT.code, message: 'Git push failed: rejected' },
+      error: { code: GIT_ERRORS.GIT_CONFLICT.code, message: 'git.error.conflict' },
     });
   });
 });
@@ -557,7 +557,7 @@ describe('gitController.pull', () => {
 
     await gitController.pull(req, res);
 
-    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Pulled from remote successfully' });
+    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'git.success.pulled' });
   });
 
   // TC-GIT-W36: POST /git/pull returns 409 on conflict error
@@ -581,7 +581,7 @@ describe('gitController.checkout', () => {
 
     await gitController.checkout(req, res);
 
-    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Switched to branch feature' });
+    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'git.success.switchedBranch' });
   });
 
   // TC-GIT-W38: POST /git/checkout returns 400 when branch missing in body
@@ -593,7 +593,7 @@ describe('gitController.checkout', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'INVALID_REQUEST', message: 'branch name is required' },
+      error: { code: 'INVALID_REQUEST', message: 'git.validation.branchRequired' },
     });
   });
 
@@ -618,7 +618,7 @@ describe('gitController.createBranch', () => {
 
     await gitController.createBranch(req, res);
 
-    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Branch new-branch created successfully' });
+    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'git.success.branchCreated' });
     expect(mockCreateBranch).toHaveBeenCalledWith('/projects/test', 'new-branch', undefined);
   });
 
@@ -631,7 +631,7 @@ describe('gitController.createBranch', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'INVALID_REQUEST', message: 'branch name is required' },
+      error: { code: 'INVALID_REQUEST', message: 'git.validation.branchRequired' },
     });
   });
 
@@ -644,7 +644,7 @@ describe('gitController.createBranch', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'INVALID_REQUEST', message: 'Invalid branch name: contains invalid characters' },
+      error: { code: 'INVALID_REQUEST', message: 'git.validation.invalidBranchName' },
     });
   });
 
@@ -675,7 +675,7 @@ describe('gitController.createBranch', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: 'INVALID_REQUEST', message: 'Invalid startPoint: contains invalid characters' },
+      error: { code: 'INVALID_REQUEST', message: 'git.validation.invalidStartPoint' },
     });
   });
 
@@ -689,7 +689,7 @@ describe('gitController.createBranch', () => {
 
     expect(res.status).toHaveBeenCalledWith(GIT_ERRORS.GIT_BRANCH_EXISTS.httpStatus);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: GIT_ERRORS.GIT_BRANCH_EXISTS.code, message: GIT_ERRORS.GIT_BRANCH_EXISTS.message },
+      error: { code: GIT_ERRORS.GIT_BRANCH_EXISTS.code, message: 'git.error.branchExists' },
     });
   });
 
@@ -715,7 +715,7 @@ describe('gitController write handlers - common error handling', () => {
 
     expect(res.status).toHaveBeenCalledWith(GIT_ERRORS.GIT_ERROR.httpStatus);
     expect(res.json).toHaveBeenCalledWith({
-      error: { code: GIT_ERRORS.GIT_ERROR.code, message: 'Unexpected error' },
+      error: { code: GIT_ERRORS.GIT_ERROR.code, message: 'git.error.operationFailed' },
     });
   });
 

@@ -7,9 +7,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Request, Response } from 'express';
 import { SESSION_ERRORS } from '@bmad-studio/shared';
 
-// Create hoisted mock for sessionService
-const { mockListSessionsBySlug } = vi.hoisted(() => ({
+// Create hoisted mocks
+const { mockListSessionsBySlug, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds } = vi.hoisted(() => ({
   mockListSessionsBySlug: vi.fn(),
+  mockReadSessionNamesBySlug: vi.fn(),
+  mockGetActiveStreamSessionIds: vi.fn(),
 }));
 
 // Mock sessionService
@@ -17,6 +19,18 @@ vi.mock('../../services/sessionService', () => ({
   sessionService: {
     listSessionsBySlug: mockListSessionsBySlug,
   },
+}));
+
+// Mock projectService
+vi.mock('../../services/projectService', () => ({
+  projectService: {
+    readSessionNamesBySlug: mockReadSessionNamesBySlug,
+  },
+}));
+
+// Mock websocket handler
+vi.mock('../../handlers/websocket', () => ({
+  getActiveStreamSessionIds: mockGetActiveStreamSessionIds,
 }));
 
 import { sessionController } from '../sessionController';
@@ -28,12 +42,19 @@ describe('sessionController', () => {
   beforeEach(() => {
     mockReq = {
       params: { projectSlug: 'test-project' },
+      query: {},
+      t: vi.fn((key: string) => key),
+      language: 'en',
     };
 
     mockRes = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn().mockReturnThis(),
     };
+
+    // Default mocks for supporting services
+    mockGetActiveStreamSessionIds.mockReturnValue([]);
+    mockReadSessionNamesBySlug.mockResolvedValue({});
 
     vi.clearAllMocks();
   });
@@ -54,10 +75,12 @@ describe('sessionController', () => {
         },
       ];
       mockListSessionsBySlug.mockResolvedValue(mockSessions);
+      mockGetActiveStreamSessionIds.mockReturnValue([]);
+      mockReadSessionNamesBySlug.mockResolvedValue({});
 
       await sessionController.list(mockReq as Request, mockRes as Response);
 
-      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project');
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project', false, 0);
       expect(mockRes.json).toHaveBeenCalledWith({
         sessions: mockSessions,
       });
@@ -65,6 +88,8 @@ describe('sessionController', () => {
 
     it('should return 200 with empty session list', async () => {
       mockListSessionsBySlug.mockResolvedValue([]);
+      mockGetActiveStreamSessionIds.mockReturnValue([]);
+      mockReadSessionNamesBySlug.mockResolvedValue({});
 
       await sessionController.list(mockReq as Request, mockRes as Response);
 
@@ -82,7 +107,7 @@ describe('sessionController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: SESSION_ERRORS.PROJECT_NOT_FOUND.code,
-          message: SESSION_ERRORS.PROJECT_NOT_FOUND.message,
+          message: 'session.error.projectNotFound',
         },
       });
     });
@@ -96,7 +121,7 @@ describe('sessionController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: SESSION_ERRORS.SESSION_LIST_ERROR.code,
-          message: SESSION_ERRORS.SESSION_LIST_ERROR.message,
+          message: 'session.error.listError',
         },
       });
     });
@@ -104,10 +129,12 @@ describe('sessionController', () => {
     it('should use projectSlug from request params', async () => {
       mockReq.params = { projectSlug: 'my-custom-project-slug' };
       mockListSessionsBySlug.mockResolvedValue([]);
+      mockGetActiveStreamSessionIds.mockReturnValue([]);
+      mockReadSessionNamesBySlug.mockResolvedValue({});
 
       await sessionController.list(mockReq as Request, mockRes as Response);
 
-      expect(mockListSessionsBySlug).toHaveBeenCalledWith('my-custom-project-slug');
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('my-custom-project-slug', false, 0);
     });
   });
 });

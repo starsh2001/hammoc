@@ -19,6 +19,8 @@ import type {
 } from '@bmad-studio/shared';
 import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS } from '@bmad-studio/shared';
 import type { TerminalCreateRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@bmad-studio/shared';
+import i18next from '../i18n.js';
+import { SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
 import { isLocalIP, extractClientIP } from '../utils/networkUtils.js';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import { ChatService } from '../services/chatService.js';
@@ -73,8 +75,9 @@ function triggerDashboardStatusChange(projectSlug: string): void {
  * Story 17.5: Terminal Security
  */
 async function checkTerminalAccess(
-  socket: Socket
+  socket: Socket, lang: string
 ): Promise<{ allowed: boolean; error?: TerminalErrorEvent }> {
+  const t = i18next.getFixedT(lang);
   try {
     const terminalEnabled = await preferencesService.getTerminalEnabled();
     if (!terminalEnabled) {
@@ -82,7 +85,7 @@ async function checkTerminalAccess(
         allowed: false,
         error: {
           code: TERMINAL_ERRORS.TERMINAL_DISABLED.code,
-          message: TERMINAL_ERRORS.TERMINAL_DISABLED.message,
+          message: t('ws.error.terminalDisabled'),
         },
       };
     }
@@ -93,7 +96,7 @@ async function checkTerminalAccess(
       allowed: false,
       error: {
         code: TERMINAL_ERRORS.TERMINAL_DISABLED.code,
-        message: TERMINAL_ERRORS.TERMINAL_DISABLED.message,
+        message: t('ws.error.terminalDisabled'),
       },
     };
   }
@@ -104,7 +107,7 @@ async function checkTerminalAccess(
       allowed: false,
       error: {
         code: TERMINAL_ERRORS.TERMINAL_ACCESS_DENIED.code,
-        message: TERMINAL_ERRORS.TERMINAL_ACCESS_DENIED.message,
+        message: t('ws.error.terminalAccessDenied'),
       },
     };
   }
@@ -297,9 +300,19 @@ export async function initializeWebSocket(
     return next(new Error('Unauthorized'));
   });
 
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     connectedClients++;
     log.info(`Client connected. Total: ${connectedClients}`);
+
+    // Resolve user language preference and store on socket
+    try {
+      const prefs = await preferencesService.readPreferences();
+      const prefLang = prefs.language && SUPPORTED_LANGUAGES.includes(prefs.language as typeof SUPPORTED_LANGUAGES[number])
+        ? prefs.language : null;
+      socket.data.language = prefLang || 'en';
+    } catch {
+      socket.data.language = 'en';
+    }
 
     // Start rate limit polling on first client connection
     if (connectedClients === 1) {
@@ -322,6 +335,8 @@ export async function initializeWebSocket(
     }
 
     // Story 17.5: Send terminal access info on connection
+    const lang = socket.data.language || 'en';
+    const t = i18next.getFixedT(lang);
     (async () => {
       try {
         const clientIP = extractClientIP(socket);
@@ -331,9 +346,9 @@ export async function initializeWebSocket(
           allowed: terminalEnabled && isLocal,
           enabled: terminalEnabled,
           reason: !terminalEnabled
-            ? 'Terminal feature is disabled'
+            ? t('ws.error.terminalDisabled')
             : !isLocal
-            ? TERMINAL_ERRORS.TERMINAL_ACCESS_DENIED.message
+            ? t('ws.error.terminalAccessDenied')
             : undefined,
         });
       } catch (err) {
@@ -342,7 +357,7 @@ export async function initializeWebSocket(
         socket.emit('terminal:access', {
           allowed: false,
           enabled: false,
-          reason: 'Terminal feature is disabled',
+          reason: t('ws.error.terminalDisabled'),
         });
       }
     })();
@@ -355,7 +370,7 @@ export async function initializeWebSocket(
           if (qs.lockedSessionId === data.sessionId) {
             socket.emit('error', {
               code: ERROR_CODES.CHAT_ERROR,
-              message: '큐가 실행 중인 세션에는 메시지를 보낼 수 없습니다.',
+              message: t('ws.error.queueSessionLocked'),
             });
             return;
           }
@@ -408,7 +423,7 @@ export async function initializeWebSocket(
       }
 
       try {
-        await handleChatSend(stream, data, abortController);
+        await handleChatSend(stream, data, abortController, lang);
       } finally {
         stream.status = 'completed';
         const endedSessionId = stream.sessionId;
@@ -548,7 +563,7 @@ export async function initializeWebSocket(
 
     // Handle session:list event
     socket.on('session:list', async (data) => {
-      await handleSessionList(socket, data);
+      await handleSessionList(socket, data, lang);
     });
 
     // Story 20.1: Dashboard subscribe/unsubscribe
@@ -573,7 +588,7 @@ export async function initializeWebSocket(
       socket.join(`project:${projectSlug}`);
       const queueService = getOrCreateQueueService(projectSlug);
       if (queueService.isRunning) {
-        socket.emit('error', { code: 'QUEUE_ALREADY_RUNNING', message: 'Queue is already running for this project' });
+        socket.emit('error', { code: 'QUEUE_ALREADY_RUNNING', message: t('ws.error.queueAlreadyRunning') });
         return;
       }
       queueService.start(items, projectSlug, sessionId, permissionMode).catch((err) => {
@@ -622,7 +637,7 @@ export async function initializeWebSocket(
 
     socket.on('terminal:create', async (data: TerminalCreateRequest) => {
       // Story 17.5: Security guard
-      const access = await checkTerminalAccess(socket);
+      const access = await checkTerminalAccess(socket, lang);
       if (!access.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:create`);
         socket.emit('terminal:error', access.error!);
@@ -638,7 +653,7 @@ export async function initializeWebSocket(
             socket.emit('terminal:error', {
               terminalId: tid,
               code: TERMINAL_ERRORS.TERMINAL_NOT_FOUND.code,
-              message: TERMINAL_ERRORS.TERMINAL_NOT_FOUND.message,
+              message: t('ws.error.terminalNotFound'),
             });
             return;
           }
@@ -660,7 +675,7 @@ export async function initializeWebSocket(
         if (!projectPath) {
           socket.emit('terminal:error', {
             code: TERMINAL_ERRORS.PTY_SPAWN_ERROR.code,
-            message: `Project not found: ${data.projectSlug}`,
+            message: t('ws.error.terminalProjectNotFound'),
           });
           return;
         }
@@ -683,14 +698,14 @@ export async function initializeWebSocket(
         triggerDashboardStatusChange(data.projectSlug);
       } catch (err) {
         const code = (err as Error & { code?: string }).code || TERMINAL_ERRORS.PTY_SPAWN_ERROR.code;
-        const message = (err as Error).message || TERMINAL_ERRORS.PTY_SPAWN_ERROR.message;
+        const message = (err as Error).message || t('ws.error.ptySpawnError');
         socket.emit('terminal:error', { terminalId: data.terminalId, code, message });
       }
     });
 
     socket.on('terminal:input', async (data: TerminalInputEvent) => {
       // Story 17.5: Security guard
-      const inputAccess = await checkTerminalAccess(socket);
+      const inputAccess = await checkTerminalAccess(socket, lang);
       if (!inputAccess.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:input`);
         socket.emit('terminal:error', { ...inputAccess.error!, terminalId: data.terminalId });
@@ -707,7 +722,7 @@ export async function initializeWebSocket(
 
     socket.on('terminal:resize', async (data: TerminalResizeEvent) => {
       // Story 17.5: Security guard
-      const resizeAccess = await checkTerminalAccess(socket);
+      const resizeAccess = await checkTerminalAccess(socket, lang);
       if (!resizeAccess.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:resize`);
         socket.emit('terminal:error', { ...resizeAccess.error!, terminalId: data.terminalId });
@@ -724,7 +739,7 @@ export async function initializeWebSocket(
 
     socket.on('terminal:close', async (data: { terminalId: string }) => {
       // Story 17.5: Security guard
-      const closeAccess = await checkTerminalAccess(socket);
+      const closeAccess = await checkTerminalAccess(socket, lang);
       if (!closeAccess.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:close`);
         socket.emit('terminal:error', { ...closeAccess.error!, terminalId: data.terminalId });
@@ -807,19 +822,20 @@ export function getConnectedClientsCount(): number {
  * Validate image attachments
  * Story 5.5: Image Attachment
  */
-function validateImages(images: ImageAttachment[]): { valid: boolean; error?: string } {
+function validateImages(images: ImageAttachment[], lang: string): { valid: boolean; error?: string } {
+  const t = i18next.getFixedT(lang);
   if (images.length > IMAGE_CONSTRAINTS.MAX_COUNT) {
-    return { valid: false, error: `이미지는 최대 ${IMAGE_CONSTRAINTS.MAX_COUNT}개까지 첨부할 수 있습니다.` };
+    return { valid: false, error: t('ws.error.maxImages', { value: IMAGE_CONSTRAINTS.MAX_COUNT }) };
   }
 
   for (const img of images) {
     if (!(IMAGE_CONSTRAINTS.ACCEPTED_TYPES as readonly string[]).includes(img.mimeType)) {
-      return { valid: false, error: `지원되지 않는 이미지 형식입니다: ${img.mimeType}` };
+      return { valid: false, error: t('ws.error.unsupportedImageFormat', { value: img.mimeType }) };
     }
     // base64 size approximation: base64 length * 0.75 ≈ original bytes
     const sizeBytes = Math.ceil(img.data.length * 0.75);
     if (sizeBytes > IMAGE_CONSTRAINTS.MAX_SIZE_BYTES) {
-      return { valid: false, error: `이미지 크기가 10MB를 초과합니다: ${img.name}` };
+      return { valid: false, error: t('ws.error.imageSizeExceeded', { value: img.name }) };
     }
   }
 
@@ -847,14 +863,16 @@ function isSessionNotFoundError(error: Error): boolean {
 async function handleChatSend(
   stream: ActiveStream,
   data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[] },
-  abortController: AbortController
+  abortController: AbortController,
+  lang: string
 ): Promise<void> {
   const emit = createStreamEmit(stream);
+  const t = i18next.getFixedT(lang);
   const { content, workingDirectory, sessionId, resume, permissionMode, model, images } = data;
 
   // Validate images if present (Story 5.5)
   if (images && images.length > 0) {
-    const validation = validateImages(images);
+    const validation = validateImages(images, lang);
     if (!validation.valid) {
       emit('error', {
         code: ERROR_CODES.VALIDATION_ERROR,
@@ -868,7 +886,7 @@ async function handleChatSend(
   if (!workingDirectory || !existsSync(workingDirectory)) {
     emit('error', {
       code: ERROR_CODES.INVALID_WORKING_DIR,
-      message: '지정된 프로젝트 경로가 존재하지 않습니다.',
+      message: t('ws.error.projectPathNotFound'),
     });
     return;
   }
@@ -1028,12 +1046,12 @@ async function handleChatSend(
         }
       }
 
-      const sdkError = parseSDKError(error);
+      const sdkError = parseSDKError(error, lang);
 
       if (isResuming && isSessionNotFoundError(error)) {
         emit('error', {
           code: ERROR_CODES.SESSION_NOT_FOUND,
-          message: '세션을 찾을 수 없습니다. 새 세션을 시작해주세요.',
+          message: t('ws.error.sessionNotFound'),
         });
         return;
       }
@@ -1053,7 +1071,7 @@ async function handleChatSend(
       resetTimeout(`raw:${messageType}`);
     });
   } catch (error) {
-    const sdkError = parseSDKError(error);
+    const sdkError = parseSDKError(error, lang);
 
     if (sdkError instanceof AbortedError || abortController.signal.aborted) {
       if (abortController.signal.reason === 'user-abort' || abortController.signal.reason === 'another-client') {
@@ -1061,7 +1079,7 @@ async function handleChatSend(
       }
       emit('error', {
         code: ERROR_CODES.TIMEOUT_ERROR,
-        message: '응답 시간이 초과되었습니다. 다시 시도해 주세요.',
+        message: t('ws.error.timeout'),
       });
       return;
     }
@@ -1069,7 +1087,7 @@ async function handleChatSend(
     if (isResuming && error instanceof Error && isSessionNotFoundError(error)) {
       emit('error', {
         code: ERROR_CODES.SESSION_NOT_FOUND,
-        message: '세션을 찾을 수 없습니다. 새 세션을 시작해주세요.',
+        message: t('ws.error.sessionNotFound'),
       });
       return;
     }
@@ -1091,14 +1109,16 @@ async function handleChatSend(
  */
 async function handleSessionList(
   socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
-  data: { projectPath: string }
+  data: { projectPath: string },
+  lang: string
 ): Promise<void> {
+  const t = i18next.getFixedT(lang);
   const { projectPath } = data;
 
   if (!projectPath || !existsSync(projectPath)) {
     socket.emit('error', {
       code: ERROR_CODES.INVALID_WORKING_DIR,
-      message: '지정된 프로젝트 경로가 존재하지 않습니다.',
+      message: t('ws.error.projectPathNotFound'),
     });
     return;
   }
@@ -1110,7 +1130,7 @@ async function handleSessionList(
   } catch {
     socket.emit('error', {
       code: ERROR_CODES.CHAT_ERROR,
-      message: '세션 목록을 불러오는 데 실패했습니다.',
+      message: t('ws.error.sessionListFailed'),
     });
   }
 }

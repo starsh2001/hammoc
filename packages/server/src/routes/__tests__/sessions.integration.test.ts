@@ -165,7 +165,7 @@ describe('Sessions Integration Tests', () => {
       const response = await agent.get('/api/projects/nonexistent-project/sessions').expect(404);
 
       expect(response.body.error.code).toBe('PROJECT_NOT_FOUND');
-      expect(response.body.error.message).toBe('프로젝트를 찾을 수 없습니다.');
+      expect(response.body.error.message).toBe('Project not found.');
     });
 
     it('should return 200 with empty sessions array for project with no sessions (AC1, AC2)', async () => {

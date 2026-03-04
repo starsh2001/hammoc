@@ -6,7 +6,9 @@
 
 import { config } from '../config/index.js';
 import { preferencesService } from './preferencesService.js';
+import { SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
 import type { TelegramSettings } from '@bmad-studio/shared';
+import i18next from '../i18n.js';
 
 class NotificationService {
   private effectiveBotToken: string;
@@ -78,49 +80,74 @@ class NotificationService {
     }
   }
 
+  /** Resolve the user's preferred language for Telegram messages */
+  private async resolveLanguage(): Promise<string> {
+    try {
+      const prefs = await preferencesService.readPreferences();
+      if (prefs.language && SUPPORTED_LANGUAGES.includes(prefs.language as typeof SUPPORTED_LANGUAGES[number])) {
+        return prefs.language;
+      }
+    } catch { /* fallback to 'en' */ }
+    return 'en';
+  }
+
   /** Notify that user input is needed (permission or AskUserQuestion) */
   async notifyInputRequired(sessionId: string, toolName: string, prompt?: string): Promise<void> {
     if (!this.shouldNotifyPermission) return;
+    const lang = await this.resolveLanguage();
+    const t = i18next.getFixedT(lang);
     const emoji = toolName === 'AskUserQuestion' ? '❓' : '🔐';
-    const label = toolName === 'AskUserQuestion' ? 'Question' : 'Permission';
+    const label = toolName === 'AskUserQuestion' ? t('notification.question.title') : t('notification.permission.title');
     const detail = prompt ? `\n${prompt}` : '';
-    await this.send(`${emoji} <b>${label} Required</b>\nSession: <code>${sessionId}</code>${detail}`);
+    await this.send(`${emoji} <b>${label}</b>\nSession: <code>${sessionId}</code>${detail}`);
   }
 
   /** Notify that streaming completed successfully */
   async notifyComplete(sessionId: string): Promise<void> {
     if (!this.shouldNotifyComplete) return;
-    await this.send(`✅ <b>Complete</b>\nSession: <code>${sessionId}</code>`);
+    const lang = await this.resolveLanguage();
+    const t = i18next.getFixedT(lang);
+    await this.send(`✅ <b>${t('notification.complete.title')}</b>\nSession: <code>${sessionId}</code>`);
   }
 
   /** Notify that an error occurred during streaming */
   async notifyError(sessionId: string, error: string): Promise<void> {
     if (!this.shouldNotifyError) return;
-    await this.send(`❌ <b>Error</b>\nSession: <code>${sessionId}</code>\n${error}`);
+    const lang = await this.resolveLanguage();
+    const t = i18next.getFixedT(lang);
+    await this.send(`❌ <b>${t('notification.error.title')}</b>\nSession: <code>${sessionId}</code>\n${error}`);
   }
 
   /** Notify that queue execution has started */
   async notifyQueueStart(totalItems: number, sessionUrl: string): Promise<void> {
     if (!this.shouldNotifyQueueStart) return;
-    await this.send(`🚀 <b>Queue Started</b>\n${totalItems} items to execute\n\n${sessionUrl}`);
+    const lang = await this.resolveLanguage();
+    const t = i18next.getFixedT(lang);
+    await this.send(`🚀 <b>${t('notification.queueStart.title')}</b>\n${t('notification.queueStart.body', { value: totalItems })}\n\n${sessionUrl}`);
   }
 
   /** Notify that queue execution completed all items */
   async notifyQueueComplete(sessionUrl: string): Promise<void> {
     if (!this.shouldNotifyQueueComplete) return;
-    await this.send(`✅ <b>Queue Complete</b>\nAll items processed\n\n${sessionUrl}`);
+    const lang = await this.resolveLanguage();
+    const t = i18next.getFixedT(lang);
+    await this.send(`✅ <b>${t('notification.queueComplete.title')}</b>\n${t('notification.queueComplete.body')}\n\n${sessionUrl}`);
   }
 
   /** Notify that queue paused due to error (QUEUE_STOP, SDK error, etc.) */
   async notifyQueueError(reason: string, sessionUrl: string): Promise<void> {
     if (!this.shouldNotifyQueueError) return;
-    await this.send(`⚠️ <b>Queue Paused</b>\n${reason}\n\n${sessionUrl}`);
+    const lang = await this.resolveLanguage();
+    const t = i18next.getFixedT(lang);
+    await this.send(`⚠️ <b>${t('notification.queuePaused.title')}</b>\n${reason}\n\n${sessionUrl}`);
   }
 
   /** Notify that queue is waiting for user input (permission or AskUserQuestion) */
   async notifyQueueInputRequired(sessionUrl: string): Promise<void> {
     if (!this.shouldNotifyQueueInputRequired) return;
-    await this.send(`❓ <b>Input Required</b>\nWaiting for user response\n\n${sessionUrl}`);
+    const lang = await this.resolveLanguage();
+    const t = i18next.getFixedT(lang);
+    await this.send(`❓ <b>${t('notification.inputRequired.title')}</b>\n${t('notification.inputRequired.body')}\n\n${sessionUrl}`);
   }
 
   /**
@@ -136,17 +163,21 @@ class NotificationService {
     const testChatId = overrides?.chatId ?? telegram.chatId ?? config.telegram.chatId;
 
     if (!testBotToken || !testChatId) {
-      return { success: false, error: 'Bot Token과 Chat ID가 모두 설정되어야 합니다.' };
+      const lang = await this.resolveLanguage();
+      const t = i18next.getFixedT(lang);
+      return { success: false, error: t('notification.error.configRequired') };
     }
 
     try {
+      const lang = await this.resolveLanguage();
+      const t = i18next.getFixedT(lang);
       const apiUrl = `https://api.telegram.org/bot${testBotToken}/sendMessage`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: testChatId,
-          text: '🔔 <b>BMad Studio</b>\n테스트 알림입니다. Telegram 알림이 정상 작동합니다!',
+          text: `🔔 <b>BMad Studio</b>\n${t('notification.test.message')}`,
           parse_mode: 'HTML',
         }),
       });

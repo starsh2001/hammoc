@@ -1,1 +1,290 @@
-{}
+{
+  "error": {
+    "notFound": "リソースが見つかりません",
+    "unauthorized": "認証されていません",
+    "internal": "内部サーバーエラー",
+    "requestFailed": "リクエストが失敗しました ({{status}} {{statusText}})",
+    "rateLimit": "APIリクエスト制限に達しました。しばらくしてから再試行してください。",
+    "authRequired": "Claude Code CLI認証が必要です。\"claude login\"を実行してください。",
+    "networkError": "ネットワーク接続に問題があります。インターネット接続を確認してください。",
+    "invalidPath": "無効なパス: {{path}}",
+    "serviceUnavailable": "Claudeサービスが利用できません。しばらくしてから再試行してください。",
+    "aborted": "操作がキャンセルされました。"
+  },
+  "auth": {
+    "validation": {
+      "passwordRequired": "パスワードを入力してください。",
+      "passwordMinLength": "パスワードは{{value}}文字以上必要です。",
+      "passwordConfirmRequired": "パスワードの確認を入力してください。",
+      "invalidRequest": "無効なリクエストです。"
+    },
+    "login": {
+      "success": "ログイン成功",
+      "serverError": "ログイン中にサーバーエラーが発生しました",
+      "invalidPassword": "パスワードが正しくありません。",
+      "rateLimitExceeded": "ログイン試行回数が多すぎます。しばらくしてから再試行してください。"
+    },
+    "password": {
+      "alreadySet": "パスワードは既に設定されています。",
+      "mismatch": "パスワードが一致しません。",
+      "setSuccess": "パスワードが設定されました。",
+      "setError": "パスワード設定中にサーバーエラーが発生しました。"
+    },
+    "logout": {
+      "success": "ログアウト成功",
+      "error": "ログアウト中にエラーが発生しました"
+    }
+  },
+  "project": {
+    "validation": {
+      "pathRequired": "プロジェクトパスを入力してください。",
+      "slugRequired": "プロジェクト識別子を入力してください。",
+      "invalidPermissionMode": "無効な権限モード: {{value}}",
+      "invalidModelId": "無効なモデルIDです。",
+      "invalidPathFormat": "無効なパス形式です。",
+      "pathIsFile": "パスはディレクトリではなくファイルです。",
+      "pathParameterRequired": "パスは必須です。"
+    },
+    "error": {
+      "createFailed": "プロジェクトの作成でエラーが発生しました。",
+      "bmadVersionsFailed": "BMadバージョンリストの取得でエラーが発生しました。",
+      "notFound": "プロジェクトが見つかりません。",
+      "deleteFailed": "プロジェクトの削除でエラーが発生しました。",
+      "bmadSetupFailed": "BMadセットアップでエラーが発生しました。",
+      "validatePathFailed": "パス検証でエラーが発生しました。",
+      "settingsLoadFailed": "設定の読み込みでエラーが発生しました。",
+      "settingsSaveFailed": "設定の保存でエラーが発生しました。",
+      "systemPromptFailed": "システムプロンプトの取得でエラーが発生しました。",
+      "scanError": "プロジェクトスキャンでエラーが発生しました。",
+      "dirNotFound": "ディレクトリが見つかりません。",
+      "permissionDenied": "アクセスが拒否されました。",
+      "invalidSessionIndex": "無効なセッションインデックスです。",
+      "pathNotFound": "パスが見つかりません。",
+      "pathNotDirectory": "パスはディレクトリではありません。",
+      "alreadyBmad": "既にBMadプロジェクトです。",
+      "alreadyExists": "プロジェクトは既に存在します。"
+    }
+  },
+  "board": {
+    "error": {
+      "projectNotFound": "プロジェクトが見つかりません: {{value}}",
+      "internal": "内部サーバーエラー",
+      "issueNotFound": "課題が見つかりません: {{value}}"
+    },
+    "validation": {
+      "titleRequired": "タイトルは必須です",
+      "invalidSeverity": "無効な重要度: {{value}}",
+      "invalidIssueType": "無効な課題タイプ: {{value}}",
+      "invalidStatus": "無効なステータス: {{value}}",
+      "invalidIssueId": "無効な課題IDです"
+    },
+    "success": {
+      "issueDeleted": "課題が削除されました"
+    }
+  },
+  "session": {
+    "validation": {
+      "deleteIdsRequired": "削除するセッションIDリストが必要です。"
+    },
+    "error": {
+      "saveNameFailed": "セッション名の保存でエラーが発生しました。",
+      "projectNotFound": "プロジェクトが見つかりません。",
+      "listError": "セッション一覧の取得でエラーが発生しました。",
+      "invalidPath": "無効なパスが検出されました。",
+      "parseError": "セッションデータの解析でエラーが発生しました。",
+      "deleteError": "セッションの削除でエラーが発生しました。",
+      "nameError": "セッション名の更新でエラーが発生しました。"
+    }
+  },
+  "fs": {
+    "validation": {
+      "slugRequired": "プロジェクト識別子が必要です。",
+      "pathRequired": "pathクエリパラメータが必要です",
+      "contentRequired": "リクエストボディのcontentは文字列である必要があります",
+      "typeRequired": "typeは\"file\"または\"directory\"である必要があります",
+      "newPathRequired": "newPathクエリパラメータが必要です",
+      "queryRequired": "queryパラメータが必要です"
+    },
+    "error": {
+      "pathTraversal": "パストラバーサルが検出されました。",
+      "fileNotFound": "ファイルが見つかりません。",
+      "directoryNotFound": "ディレクトリが見つかりません。",
+      "notADirectory": "ディレクトリではありません。",
+      "readError": "ファイル読み取りエラー。",
+      "writeError": "ファイル書き込みエラー。",
+      "fileAlreadyExists": "ファイルは既に存在します。",
+      "protectedPath": "保護されたパスです。",
+      "renameTargetExists": "リネーム先が既に存在します。",
+      "parentNotFound": "親ディレクトリが見つかりません。"
+    }
+  },
+  "git": {
+    "validation": {
+      "slugRequired": "projectSlugが必要です",
+      "fileRequired": "fileクエリパラメータが必要です",
+      "filesRequired": "files配列が必要で、空であってはなりません",
+      "commitMessageRequired": "コミットメッセージが必要で、空であってはなりません",
+      "commitMessageTooLong": "コミットメッセージが最大長10,000文字を超えています",
+      "branchRequired": "ブランチ名が必要です",
+      "invalidBranchName": "無効なブランチ名: 無効な文字が含まれています",
+      "invalidStartPoint": "無効なstartPoint: 無効な文字が含まれています",
+      "startPointFormat": "startPointは空でない文字列である必要があります（指定する場合）"
+    },
+    "success": {
+      "initialized": "Gitリポジトリが初期化されました",
+      "staged": "ファイルのステージングに成功しました",
+      "unstaged": "ファイルのアンステージに成功しました",
+      "committed": "変更のコミットに成功しました",
+      "pushed": "リモートへのプッシュに成功しました",
+      "pulled": "リモートからのプルに成功しました",
+      "switchedBranch": "ブランチ {{value}} に切り替えました",
+      "branchCreated": "ブランチ {{value}} が作成されました"
+    },
+    "error": {
+      "operationFailed": "Git操作に失敗しました。",
+      "notInitialized": "Gitリポジトリが初期化されていません。",
+      "conflict": "Gitコンフリクトが検出されました。",
+      "nothingToCommit": "コミットするものがありません。",
+      "branchExists": "ブランチは既に存在します。"
+    }
+  },
+  "queue": {
+    "validation": {
+      "slugRequired": "projectSlugが必要です",
+      "itemsRequired": "items配列は空であってはなりません"
+    },
+    "error": {
+      "alreadyRunning": "このプロジェクトのキューは既に実行中です",
+      "noRunningQueue": "このプロジェクトに実行中のキューはありません",
+      "sdkError": "SDKエラー: {{value}}",
+      "queueStopDetected": "レスポンスでQUEUE_STOPが検出されました",
+      "sessionNotFound": "セッション名 \"{{value}}\" が見つかりません"
+    },
+    "pause": {
+      "userPaused": "ユーザーが一時停止しました",
+      "waitingForPermission": "{{value}}を待機中: {{toolName}}"
+    }
+  },
+  "queueTemplate": {
+    "error": {
+      "listFailed": "テンプレート一覧の取得に失敗しました",
+      "createFailed": "テンプレートの作成に失敗しました",
+      "updateFailed": "テンプレートの更新に失敗しました",
+      "deleteFailed": "テンプレートの削除に失敗しました",
+      "notFound": "テンプレートが見つかりません",
+      "projectPathFailed": "プロジェクトパスの解決に失敗しました",
+      "bmadConfigNotFound": "このプロジェクトのBMad設定が見つかりません",
+      "prdNotFound": "PRDファイルが見つかりません"
+    },
+    "validation": {
+      "nameTemplateRequired": "nameとtemplateは必須の非空文字列です"
+    }
+  },
+  "notification": {
+    "permission": {
+      "title": "権限が必要です"
+    },
+    "question": {
+      "title": "質問"
+    },
+    "complete": {
+      "title": "完了"
+    },
+    "error": {
+      "title": "エラー",
+      "configRequired": "Bot TokenとChat IDの両方を設定する必要があります。"
+    },
+    "queueStart": {
+      "title": "キュー開始",
+      "body": "{{value}}件のアイテムを実行します"
+    },
+    "queueComplete": {
+      "title": "キュー完了",
+      "body": "すべてのアイテムが処理されました"
+    },
+    "queuePaused": {
+      "title": "キュー一時停止"
+    },
+    "inputRequired": {
+      "title": "入力が必要です",
+      "body": "ユーザーの応答を待機中"
+    },
+    "test": {
+      "message": "これはテスト通知です。Telegram通知は正常に動作しています！"
+    }
+  },
+  "ws": {
+    "error": {
+      "queueSessionLocked": "キュー実行中のセッションにはメッセージを送信できません。",
+      "queueAlreadyRunning": "このプロジェクトのキューは既に実行中です",
+      "maxImages": "画像は最大{{value}}枚まで添付できます。",
+      "unsupportedImageFormat": "サポートされていない画像形式: {{value}}",
+      "imageSizeExceeded": "画像サイズが10MBを超えています: {{value}}",
+      "projectPathNotFound": "指定されたプロジェクトパスが存在しません。",
+      "sessionNotFound": "セッションが見つかりません。新しいセッションを開始してください。",
+      "timeout": "応答がタイムアウトしました。もう一度お試しください。",
+      "sessionListFailed": "セッション一覧の取得に失敗しました。",
+      "terminalDisabled": "ターミナル機能は無効です",
+      "terminalProjectNotFound": "ターミナルのプロジェクトパスが見つかりません",
+      "terminalAccessDenied": "セキュリティ上の理由により、ローカルネットワーク外からのターミナルアクセスはできません",
+      "terminalNotFound": "ターミナルが見つかりません",
+      "ptySpawnError": "ターミナルプロセスの起動に失敗しました"
+    }
+  },
+  "pathGuard": {
+    "nullByte": "無効なパス: NULLバイトが検出されました",
+    "absolutePath": "無効なパス: 絶対パスは許可されていません",
+    "traversal": "無効なパス: パストラバーサルが検出されました"
+  },
+  "dashboard": {
+    "error": {
+      "statusFailed": "ダッシュボードステータスの取得に失敗しました"
+    }
+  },
+  "cli": {
+    "error": {
+      "executionFailed": "CLI実行中にエラーが発生しました。"
+    }
+  },
+  "command": {
+    "error": {
+      "listFailed": "コマンド一覧の取得に失敗しました"
+    }
+  },
+  "server": {
+    "error": {
+      "rebuildDevOnly": "リビルドは開発モードでのみ利用可能です。",
+      "buildInProgress": "ビルドは既に進行中です。",
+      "updateCheckDevOnly": "更新チェックは開発モードでは利用できません。",
+      "npmCheckFailed": "npmレジストリの確認に失敗しました。",
+      "useRebuildInDev": "開発モードではリビルド＆再起動を使用してください。",
+      "operationInProgress": "操作は既に進行中です。"
+    },
+    "info": {
+      "buildStarted": "ビルドが開始されました。/api/server/build-status で進捗を確認してください。",
+      "updateStarted": "更新が開始されました。/api/server/build-status で進捗を確認してください。"
+    }
+  },
+  "bmadStatus": {
+    "error": {
+      "notBmadProject": "BMadプロジェクトではありません。",
+      "configParseError": "core-config.yamlの解析でエラーが発生しました。",
+      "scanError": "プロジェクトステータスのスキャンでエラーが発生しました。"
+    }
+  },
+  "preferences": {
+    "readError": "設定の読み込みでエラーが発生しました。",
+    "writeError": "設定の保存に失敗しました。",
+    "telegram": {
+      "readError": "Telegram設定の読み込みでエラーが発生しました。",
+      "invalidBotToken": "無効なBot Tokenです。",
+      "invalidChatId": "無効なChat IDです。",
+      "writeError": "Telegram設定の保存に失敗しました。",
+      "testError": "テスト通知の送信中にサーバーエラーが発生しました。"
+    },
+    "rateLimit": {
+      "projectCreate": "プロジェクト作成リクエストが多すぎます。しばらくしてから再試行してください。",
+      "pathValidation": "パス検証リクエストが多すぎます。しばらくしてから再試行してください。"
+    }
+  }
+}

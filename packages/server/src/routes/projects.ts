@@ -68,8 +68,8 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
           code: 'RATE_LIMIT_EXCEEDED',
           message:
             maxRequests === 10
-              ? '프로젝트 생성 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.'
-              : '경로 검증 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+              ? req.t!('preferences.rateLimit.projectCreate')
+              : req.t!('preferences.rateLimit.pathValidation'),
           details: { retryAfter },
         },
       });

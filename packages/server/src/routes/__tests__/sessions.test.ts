@@ -32,6 +32,7 @@ describe('Sessions Routes', () => {
   beforeEach(() => {
     app = express();
     app.use(express.json());
+    app.use((req: any, _res: any, next: any) => { req.t = (key: string) => key; req.language = 'en'; next(); });
     app.use('/api/projects', sessionsRoutes);
     vi.clearAllMocks();
     // Default: path params are valid
@@ -60,7 +61,7 @@ describe('Sessions Routes', () => {
         .expect(200);
 
       expect(response.body).toEqual({ sessions: mockSessions });
-      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project');
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project', false, 0);
     });
 
     it('should return 200 with empty array when no sessions', async () => {
@@ -83,7 +84,7 @@ describe('Sessions Routes', () => {
       expect(response.body).toEqual({
         error: {
           code: 'PROJECT_NOT_FOUND',
-          message: '프로젝트를 찾을 수 없습니다.',
+          message: 'session.error.projectNotFound',
         },
       });
     });
@@ -98,7 +99,7 @@ describe('Sessions Routes', () => {
       expect(response.body).toEqual({
         error: {
           code: 'SESSION_LIST_ERROR',
-          message: '세션 목록을 가져오는 중 오류가 발생했습니다.',
+          message: 'session.error.listError',
         },
       });
     });
@@ -110,7 +111,7 @@ describe('Sessions Routes', () => {
         .get('/api/projects/D--repo-my-project/sessions')
         .expect(200);
 
-      expect(mockListSessionsBySlug).toHaveBeenCalledWith('D--repo-my-project');
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('D--repo-my-project', false, 0);
     });
   });
 
@@ -208,19 +209,15 @@ describe('Sessions Routes', () => {
       });
     });
 
-    it('should return 404 for non-existent session', async () => {
+    it('should return 200 with empty messages for non-existent session', async () => {
       mockGetSessionMessages.mockResolvedValue(null);
 
       const response = await request(app)
         .get('/api/projects/test-project/sessions/nonexistent/messages')
-        .expect(404);
+        .expect(200);
 
-      expect(response.body).toEqual({
-        error: {
-          code: 'SESSION_NOT_FOUND',
-          message: '세션을 찾을 수 없습니다.',
-        },
-      });
+      expect(response.body.messages).toEqual([]);
+      expect(response.body.pagination.total).toBe(0);
     });
 
     it('should return 400 for invalid path param in projectSlug', async () => {
@@ -234,7 +231,7 @@ describe('Sessions Routes', () => {
       expect(response.body).toEqual({
         error: {
           code: 'INVALID_PATH',
-          message: '잘못된 경로 파라미터입니다.',
+          message: 'session.error.invalidPath',
         },
       });
     });
@@ -251,7 +248,7 @@ describe('Sessions Routes', () => {
       expect(response.body).toEqual({
         error: {
           code: 'INVALID_PATH',
-          message: '잘못된 경로 파라미터입니다.',
+          message: 'session.error.invalidPath',
         },
       });
     });
@@ -266,7 +263,7 @@ describe('Sessions Routes', () => {
       expect(response.body).toEqual({
         error: {
           code: 'SESSION_PARSE_ERROR',
-          message: '세션 파일 파싱 중 오류가 발생했습니다.',
+          message: 'session.error.parseError',
         },
       });
     });

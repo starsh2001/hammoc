@@ -37,6 +37,7 @@ describe('Board Routes', () => {
     vi.clearAllMocks();
     app = express();
     app.use(express.json());
+    app.use((req: any, _res: any, next: any) => { req.t = (key: string) => key; req.language = 'en'; next(); });
     app.use('/api/projects', boardRoutes);
 
     // Setup test project directory with issues dir
@@ -91,7 +92,7 @@ describe('Board Routes', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.error.code).toBe('VALIDATION_ERROR');
-      expect(response.body.error.message).toBe('Title is required');
+      expect(response.body.error.message).toBe('board.validation.titleRequired');
     });
 
     it('should return 400 when title is empty string', async () => {
@@ -167,7 +168,7 @@ describe('Board Routes', () => {
         .delete(`/api/projects/test-project/board/issues/${issueId}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Issue deleted');
+      expect(response.body.message).toBe('board.success.issueDeleted');
 
       // Verify it's gone
       const listRes = await request(app)

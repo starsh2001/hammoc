@@ -3,6 +3,8 @@
  * Custom error classes for handling Claude Agent SDK errors
  */
 
+import i18next from '../i18n.js';
+
 /**
  * Error codes for SDK errors
  */
@@ -78,9 +80,9 @@ export class SDKError extends Error {
  * Rate Limit Error - thrown when API rate limits are exceeded
  */
 export class RateLimitError extends SDKError {
-  constructor(retryAfter: number = 60, originalError?: Error) {
+  constructor(retryAfter: number = 60, originalError?: Error, message?: string) {
     super(
-      'API 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.',
+      message || 'API request limit reached. Please try again later.',
       SDKErrorCode.RATE_LIMIT_EXCEEDED,
       { retryAfter, originalError }
     );
@@ -92,9 +94,9 @@ export class RateLimitError extends SDKError {
  * Authentication Error - thrown when CLI authentication fails
  */
 export class AuthenticationError extends SDKError {
-  constructor(originalError?: Error) {
+  constructor(originalError?: Error, message?: string) {
     super(
-      'Claude Code CLI 인증이 필요합니다. "claude login" 명령을 실행하세요.',
+      message || 'Claude Code CLI authentication is required. Run "claude login".',
       SDKErrorCode.AUTHENTICATION_ERROR,
       { originalError }
     );
@@ -106,9 +108,9 @@ export class AuthenticationError extends SDKError {
  * Network Error - thrown when network connectivity issues occur
  */
 export class NetworkError extends SDKError {
-  constructor(originalError?: Error) {
+  constructor(originalError?: Error, message?: string) {
     super(
-      '네트워크 연결에 문제가 있습니다. 인터넷 연결을 확인하세요.',
+      message || 'Network connection problem. Please check your internet connection.',
       SDKErrorCode.NETWORK_ERROR,
       { originalError }
     );
@@ -122,9 +124,9 @@ export class NetworkError extends SDKError {
 export class InvalidPathError extends SDKError {
   readonly path: string;
 
-  constructor(path: string, originalError?: Error) {
+  constructor(path: string, originalError?: Error, message?: string) {
     super(
-      `유효하지 않은 경로입니다: ${path}`,
+      message || `Invalid path: ${path}`,
       SDKErrorCode.INVALID_PATH,
       { originalError }
     );
@@ -137,9 +139,9 @@ export class InvalidPathError extends SDKError {
  * Service Unavailable Error - thrown when Claude service is down
  */
 export class ServiceUnavailableError extends SDKError {
-  constructor(originalError?: Error) {
+  constructor(originalError?: Error, message?: string) {
     super(
-      'Claude 서비스를 사용할 수 없습니다. 잠시 후 다시 시도해주세요.',
+      message || 'Claude service is unavailable. Please try again later.',
       SDKErrorCode.SERVICE_UNAVAILABLE,
       { originalError }
     );
@@ -151,9 +153,9 @@ export class ServiceUnavailableError extends SDKError {
  * Aborted Error - thrown when operation is cancelled
  */
 export class AbortedError extends SDKError {
-  constructor(originalError?: Error) {
+  constructor(originalError?: Error, message?: string) {
     super(
-      '작업이 취소되었습니다.',
+      message || 'Operation cancelled.',
       SDKErrorCode.ABORTED,
       { originalError }
     );
@@ -163,11 +165,14 @@ export class AbortedError extends SDKError {
 
 /**
  * Parse SDK error and return appropriate error class
+ * @param lang - optional language code for translated error messages
  */
-export function parseSDKError(error: unknown): SDKError {
+export function parseSDKError(error: unknown, lang?: string): SDKError {
   if (error instanceof SDKError) {
     return error;
   }
+
+  const t = lang ? i18next.getFixedT(lang) : null;
 
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
@@ -176,7 +181,7 @@ export function parseSDKError(error: unknown): SDKError {
     if (message.includes('rate limit') || message.includes('too many requests')) {
       const retryMatch = message.match(/retry.+?(\d+)/i);
       const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : 60;
-      return new RateLimitError(retryAfter, error);
+      return new RateLimitError(retryAfter, error, t?.('error.rateLimit'));
     }
 
     // Check for authentication errors
@@ -185,7 +190,7 @@ export function parseSDKError(error: unknown): SDKError {
       message.includes('unauthorized') ||
       message.includes('login')
     ) {
-      return new AuthenticationError(error);
+      return new AuthenticationError(error, t?.('error.authRequired'));
     }
 
     // Check for network errors
@@ -195,17 +200,17 @@ export function parseSDKError(error: unknown): SDKError {
       message.includes('etimedout') ||
       message.includes('enotfound')
     ) {
-      return new NetworkError(error);
+      return new NetworkError(error, t?.('error.networkError'));
     }
 
     // Check for abort errors
     if (message.includes('abort') || error.name === 'AbortError') {
-      return new AbortedError(error);
+      return new AbortedError(error, t?.('error.aborted'));
     }
 
     // Check for service unavailable
     if (message.includes('service unavailable') || message.includes('503')) {
-      return new ServiceUnavailableError(error);
+      return new ServiceUnavailableError(error, t?.('error.serviceUnavailable'));
     }
 
     // Default to generic SDK error

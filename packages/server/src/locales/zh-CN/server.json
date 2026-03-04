@@ -1,1 +1,290 @@
-{}
+{
+  "error": {
+    "notFound": "未找到资源",
+    "unauthorized": "未授权",
+    "internal": "内部服务器错误",
+    "requestFailed": "请求失败 ({{status}} {{statusText}})",
+    "rateLimit": "API请求已达上限。请稍后再试。",
+    "authRequired": "需要Claude Code CLI认证。请运行 \"claude login\"。",
+    "networkError": "网络连接异常。请检查您的网络连接。",
+    "invalidPath": "无效路径: {{path}}",
+    "serviceUnavailable": "Claude服务暂不可用。请稍后再试。",
+    "aborted": "操作已取消。"
+  },
+  "auth": {
+    "validation": {
+      "passwordRequired": "请输入密码。",
+      "passwordMinLength": "密码至少需要{{value}}个字符。",
+      "passwordConfirmRequired": "请确认密码。",
+      "invalidRequest": "无效请求。"
+    },
+    "login": {
+      "success": "登录成功",
+      "serverError": "登录时服务器错误",
+      "invalidPassword": "密码错误。",
+      "rateLimitExceeded": "登录尝试次数过多。请稍后再试。"
+    },
+    "password": {
+      "alreadySet": "密码已设置。",
+      "mismatch": "两次输入的密码不一致。",
+      "setSuccess": "密码设置成功。",
+      "setError": "设置密码时服务器错误。"
+    },
+    "logout": {
+      "success": "已成功登出",
+      "error": "登出时出错"
+    }
+  },
+  "project": {
+    "validation": {
+      "pathRequired": "请输入项目路径。",
+      "slugRequired": "请输入项目标识。",
+      "invalidPermissionMode": "无效的权限模式: {{value}}",
+      "invalidModelId": "无效的模型ID。",
+      "invalidPathFormat": "无效的路径格式。",
+      "pathIsFile": "路径为文件而非目录。",
+      "pathParameterRequired": "路径为必填项。"
+    },
+    "error": {
+      "createFailed": "创建项目时出错。",
+      "bmadVersionsFailed": "获取BMad版本列表时出错。",
+      "notFound": "未找到项目。",
+      "deleteFailed": "删除项目时出错。",
+      "bmadSetupFailed": "BMad设置过程中出错。",
+      "validatePathFailed": "路径验证时出错。",
+      "settingsLoadFailed": "加载设置时出错。",
+      "settingsSaveFailed": "保存设置时出错。",
+      "systemPromptFailed": "获取系统提示词时出错。",
+      "scanError": "扫描项目时出错。",
+      "dirNotFound": "未找到目录。",
+      "permissionDenied": "权限被拒绝。",
+      "invalidSessionIndex": "无效的会话索引。",
+      "pathNotFound": "未找到路径。",
+      "pathNotDirectory": "路径不是目录。",
+      "alreadyBmad": "已经是BMad项目。",
+      "alreadyExists": "项目已存在。"
+    }
+  },
+  "board": {
+    "error": {
+      "projectNotFound": "未找到项目: {{value}}",
+      "internal": "内部服务器错误",
+      "issueNotFound": "未找到问题: {{value}}"
+    },
+    "validation": {
+      "titleRequired": "标题为必填项",
+      "invalidSeverity": "无效的严重程度: {{value}}",
+      "invalidIssueType": "无效的问题类型: {{value}}",
+      "invalidStatus": "无效的状态: {{value}}",
+      "invalidIssueId": "无效的问题ID"
+    },
+    "success": {
+      "issueDeleted": "问题已删除"
+    }
+  },
+  "session": {
+    "validation": {
+      "deleteIdsRequired": "需要提供要删除的会话ID列表。"
+    },
+    "error": {
+      "saveNameFailed": "保存会话名称时出错。",
+      "projectNotFound": "未找到项目。",
+      "listError": "获取会话列表时出错。",
+      "invalidPath": "检测到无效路径。",
+      "parseError": "解析会话数据时出错。",
+      "deleteError": "删除会话时出错。",
+      "nameError": "更新会话名称时出错。"
+    }
+  },
+  "fs": {
+    "validation": {
+      "slugRequired": "请输入项目标识。",
+      "pathRequired": "path查询参数为必填项",
+      "contentRequired": "请求体中content必须为字符串",
+      "typeRequired": "type必须为\"file\"或\"directory\"",
+      "newPathRequired": "newPath查询参数为必填项",
+      "queryRequired": "query参数为必填项"
+    },
+    "error": {
+      "pathTraversal": "检测到路径遍历攻击。",
+      "fileNotFound": "未找到文件。",
+      "directoryNotFound": "未找到目录。",
+      "notADirectory": "不是目录。",
+      "readError": "文件读取错误。",
+      "writeError": "文件写入错误。",
+      "fileAlreadyExists": "文件已存在。",
+      "protectedPath": "受保护的路径。",
+      "renameTargetExists": "重命名目标已存在。",
+      "parentNotFound": "未找到父目录。"
+    }
+  },
+  "git": {
+    "validation": {
+      "slugRequired": "projectSlug为必填项",
+      "fileRequired": "file查询参数为必填项",
+      "filesRequired": "files数组为必填项且不能为空",
+      "commitMessageRequired": "提交信息为必填项且不能为空",
+      "commitMessageTooLong": "提交信息超过10,000字符的最大长度",
+      "branchRequired": "分支名称为必填项",
+      "invalidBranchName": "无效的分支名称: 包含无效字符",
+      "invalidStartPoint": "无效的startPoint: 包含无效字符",
+      "startPointFormat": "startPoint（如提供）必须为非空字符串"
+    },
+    "success": {
+      "initialized": "Git仓库已初始化",
+      "staged": "文件暂存成功",
+      "unstaged": "文件取消暂存成功",
+      "committed": "更改提交成功",
+      "pushed": "推送到远程仓库成功",
+      "pulled": "拉取远程仓库成功",
+      "switchedBranch": "已切换到分支 {{value}}",
+      "branchCreated": "分支 {{value}} 创建成功"
+    },
+    "error": {
+      "operationFailed": "Git操作失败。",
+      "notInitialized": "Git仓库未初始化。",
+      "conflict": "检测到Git冲突。",
+      "nothingToCommit": "没有可提交的更改。",
+      "branchExists": "分支已存在。"
+    }
+  },
+  "queue": {
+    "validation": {
+      "slugRequired": "projectSlug为必填项",
+      "itemsRequired": "items数组不能为空"
+    },
+    "error": {
+      "alreadyRunning": "该项目的队列已在运行中",
+      "noRunningQueue": "该项目没有正在运行的队列",
+      "sdkError": "SDK错误: {{value}}",
+      "queueStopDetected": "响应中检测到QUEUE_STOP",
+      "sessionNotFound": "未找到会话名称 \"{{value}}\""
+    },
+    "pause": {
+      "userPaused": "用户已暂停",
+      "waitingForPermission": "等待{{value}}: {{toolName}}"
+    }
+  },
+  "queueTemplate": {
+    "error": {
+      "listFailed": "获取模板列表失败",
+      "createFailed": "创建模板失败",
+      "updateFailed": "更新模板失败",
+      "deleteFailed": "删除模板失败",
+      "notFound": "未找到模板",
+      "projectPathFailed": "解析项目路径失败",
+      "bmadConfigNotFound": "该项目未找到BMad配置",
+      "prdNotFound": "未找到PRD文件"
+    },
+    "validation": {
+      "nameTemplateRequired": "name和template为必填的非空字符串"
+    }
+  },
+  "notification": {
+    "permission": {
+      "title": "需要权限"
+    },
+    "question": {
+      "title": "提问"
+    },
+    "complete": {
+      "title": "完成"
+    },
+    "error": {
+      "title": "错误",
+      "configRequired": "Bot Token和Chat ID必须同时配置。"
+    },
+    "queueStart": {
+      "title": "队列已启动",
+      "body": "共{{value}}个项目待执行"
+    },
+    "queueComplete": {
+      "title": "队列完成",
+      "body": "所有项目已处理完毕"
+    },
+    "queuePaused": {
+      "title": "队列已暂停"
+    },
+    "inputRequired": {
+      "title": "需要输入",
+      "body": "等待用户响应"
+    },
+    "test": {
+      "message": "这是一条测试通知。Telegram通知功能正常运行！"
+    }
+  },
+  "ws": {
+    "error": {
+      "queueSessionLocked": "无法向正在运行队列的会话发送消息。",
+      "queueAlreadyRunning": "该项目的队列已在运行中",
+      "maxImages": "最多可附加{{value}}张图片。",
+      "unsupportedImageFormat": "不支持的图片格式: {{value}}",
+      "imageSizeExceeded": "图片大小超过10MB: {{value}}",
+      "projectPathNotFound": "指定的项目路径不存在。",
+      "sessionNotFound": "未找到会话。请启动新会话。",
+      "timeout": "响应超时。请重试。",
+      "sessionListFailed": "获取会话列表失败。",
+      "terminalDisabled": "终端功能已禁用",
+      "terminalProjectNotFound": "未找到终端对应的项目路径",
+      "terminalAccessDenied": "出于安全考虑，不支持从本地网络外部访问终端",
+      "terminalNotFound": "未找到终端",
+      "ptySpawnError": "终端进程启动失败"
+    }
+  },
+  "pathGuard": {
+    "nullByte": "无效路径: 检测到空字节",
+    "absolutePath": "无效路径: 不允许使用绝对路径",
+    "traversal": "无效路径: 检测到路径遍历"
+  },
+  "dashboard": {
+    "error": {
+      "statusFailed": "获取仪表盘状态失败"
+    }
+  },
+  "cli": {
+    "error": {
+      "executionFailed": "运行CLI时发生错误。"
+    }
+  },
+  "command": {
+    "error": {
+      "listFailed": "获取命令列表失败"
+    }
+  },
+  "server": {
+    "error": {
+      "rebuildDevOnly": "重新构建仅在开发模式下可用。",
+      "buildInProgress": "构建已在进行中。",
+      "updateCheckDevOnly": "更新检查在开发模式下不可用。",
+      "npmCheckFailed": "检查npm注册表失败。",
+      "useRebuildInDev": "在开发模式下请使用重新构建并重启。",
+      "operationInProgress": "操作已在进行中。"
+    },
+    "info": {
+      "buildStarted": "构建已启动。请轮询 /api/server/build-status 获取进度。",
+      "updateStarted": "更新已启动。请轮询 /api/server/build-status 获取进度。"
+    }
+  },
+  "bmadStatus": {
+    "error": {
+      "notBmadProject": "这不是BMad项目。",
+      "configParseError": "解析core-config.yaml时出错。",
+      "scanError": "扫描项目状态时出错。"
+    }
+  },
+  "preferences": {
+    "readError": "读取偏好设置时出错。",
+    "writeError": "保存偏好设置失败。",
+    "telegram": {
+      "readError": "加载Telegram设置时出错。",
+      "invalidBotToken": "无效的Bot Token。",
+      "invalidChatId": "无效的Chat ID。",
+      "writeError": "保存Telegram设置失败。",
+      "testError": "发送测试通知时服务器出错。"
+    },
+    "rateLimit": {
+      "projectCreate": "项目创建请求过多。请稍后再试。",
+      "pathValidation": "路径验证请求过多。请稍后再试。"
+    }
+  }
+}
