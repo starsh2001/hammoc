@@ -18,6 +18,7 @@ import { ProjectOverviewPage } from './ProjectOverviewPage.js';
 import { DocumentStatusCard } from '../components/overview/DocumentStatusCard.js';
 import { EpicProgressCard } from '../components/overview/EpicProgressCard.js';
 import { NextStepRecommender } from '../components/overview/NextStepRecommender.js';
+import { RecentIssuesCard } from '../components/overview/RecentIssuesCard.js';
 
 function BmadSkeleton() {
   return (
@@ -148,10 +149,11 @@ function BmadSection({
         </div>
       )}
 
-      {/* BMad summary + detail cards */}
+      {/* BMad summary + next steps + detail cards */}
       {data && (
         <>
           <BmadSummaryCard epics={data.epics} isRefreshing={isRefreshing} />
+          <NextStepRecommender data={data} projectSlug={projectSlug} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <DocumentStatusCard
               documents={data.documents}
@@ -180,11 +182,8 @@ export function BmadOverview() {
     isBmadProject ? projectSlug : undefined,
   );
 
-  // Build the quick-actions slot when BMad data is available
-  const quickActionsSlot =
-    data && projectSlug ? (
-      <NextStepRecommender data={data} projectSlug={projectSlug} />
-    ) : undefined;
+  // For BMad projects, replace the quick-actions slot with recent issues
+  const quickActionsSlot = isBmadProject ? <RecentIssuesCard /> : undefined;
 
   return (
     <>
