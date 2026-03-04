@@ -26,7 +26,7 @@ export const commandController = {
       res.status(500).json({
         error: {
           code: 'COMMAND_LIST_ERROR',
-          message: 'Failed to list commands',
+          message: req.t!('command.error.listFailed'),
         },
       });
     }

@@ -16,10 +16,11 @@ import type {
   PermissionMode,
   PermissionRequest,
 } from '@bmad-studio/shared';
-import { ERROR_CODES } from '@bmad-studio/shared';
+import { ERROR_CODES, SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
 import { ChatService } from './chatService.js';
 import { parseSDKError } from '../utils/errors.js';
 import { createLogger } from '../utils/logger.js';
+import i18next from '../i18n.js';
 
 const log = createLogger('queueService');
 import { projectService as _ps } from './projectService.js';
@@ -65,6 +66,7 @@ export class QueueService {
   private _isErrored: boolean = false;
   /** Snapshot of totalItems for completed/errored display */
   private _finalTotalItems: number = 0;
+  private lang: string = 'en';
   constructor(
     private projectService: ProjectService,
     private notificationService: NotificationService,
@@ -81,6 +83,14 @@ export class QueueService {
   }
 
   async start(items: QueueItem[], projectSlug: string, sessionId?: string, permissionMode?: PermissionMode): Promise<void> {
+    // Resolve user language preference for translated messages
+    try {
+      const prefs = await this.preferencesService.readPreferences();
+      if (prefs.language && SUPPORTED_LANGUAGES.includes(prefs.language as typeof SUPPORTED_LANGUAGES[number])) {
+        this.lang = prefs.language;
+      }
+    } catch { /* keep default 'en' */ }
+
     this.workingDirectory = await this.projectService.resolveOriginalPath(projectSlug);
     this.chatService = new ChatService({ workingDirectory: this.workingDirectory, permissionMode });
     this.abortController = new AbortController();
@@ -112,7 +122,8 @@ export class QueueService {
   async pause(): Promise<void> {
     log.info(`PAUSE: index=${this.currentIndex}/${this.items.length}, sessionId=${this.currentSessionId}`);
     this.isPaused = true;
-    this.pauseReason = 'User paused';
+    const t = i18next.getFixedT(this.lang);
+    this.pauseReason = t('queue.pause.userPaused');
     this.emitProgress('paused');
   }
 
@@ -379,8 +390,9 @@ export class QueueService {
       log.debug(`canUseTool: tool=${toolName}, isAskUserQuestion=${isAskUserQuestion}, requestId=${requestId}`);
 
       // Pause queue execution
+      const t = i18next.getFixedT(this.lang);
       this.isPaused = true;
-      this.pauseReason = `Waiting for ${isAskUserQuestion ? 'user answer' : 'permission'}: ${toolName}`;
+      this.pauseReason = t('queue.pause.waitingForPermission', { value: isAskUserQuestion ? 'user answer' : 'permission', toolName });
       this.emitProgress('paused');
       await this.notificationService.notifyQueueInputRequired(this.buildSessionUrl());
 
@@ -511,7 +523,8 @@ export class QueueService {
       if (sdkError.originalError && sdkError.originalError !== error) {
         log.error(`executePrompt CATCH originalError:`, sdkError.originalError.message);
       }
-      this.pauseWithError(`SDK Error: ${sdkError.message}`);
+      const te = i18next.getFixedT(this.lang);
+      this.pauseWithError(te('queue.error.sdkError', { value: sdkError.message }));
       await this.notificationService.notifyQueueError(sdkError.message, this.buildSessionUrl());
       return { shouldAdvance: false };
     } finally {
@@ -529,8 +542,9 @@ export class QueueService {
     const fullText = chunks.join('');
     if (fullText.includes('QUEUE_STOP')) {
       log.warn(`executePrompt: QUEUE_STOP marker detected in response`);
-      this.pauseWithError('QUEUE_STOP detected in response');
-      await this.notificationService.notifyQueueError('QUEUE_STOP detected in response', this.buildSessionUrl());
+      const tq = i18next.getFixedT(this.lang);
+      this.pauseWithError(tq('queue.error.queueStopDetected'));
+      await this.notificationService.notifyQueueError(tq('queue.error.queueStopDetected'), this.buildSessionUrl());
       return { shouldAdvance: false, markerDetected: 'QUEUE_STOP' };
     }
     if (fullText.includes('QUEUE_PASS')) {
@@ -544,7 +558,8 @@ export class QueueService {
     const sessionNames = await this.projectService.readSessionNamesBySlug(this.projectSlug);
     const entry = Object.entries(sessionNames).find(([, n]) => n === name);
     if (!entry) {
-      this.pauseWithError(`Session name "${name}" not found`);
+      const t = i18next.getFixedT(this.lang);
+      this.pauseWithError(t('queue.error.sessionNotFound', { value: name }));
       return false;
     }
     this.currentSessionId = entry[0];

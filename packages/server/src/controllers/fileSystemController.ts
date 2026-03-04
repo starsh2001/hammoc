@@ -20,11 +20,11 @@ export const fileSystemController = {
       const filePath = req.query.path as string;
 
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.slugRequired') } });
         return;
       }
       if (!filePath) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'path query parameter is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.pathRequired') } });
         return;
       }
 
@@ -34,23 +34,23 @@ export const fileSystemController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
         res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code) {
         res.status(FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code, message: FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.message },
+          error: { code: FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code, message: req.t!('fs.error.fileNotFound') },
         });
         return;
       }
       res.status(FILE_SYSTEM_ERRORS.FS_READ_ERROR.httpStatus).json({
-        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: FILE_SYSTEM_ERRORS.FS_READ_ERROR.message },
+        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: req.t!('fs.error.readError') },
       });
     }
   },
@@ -65,7 +65,7 @@ export const fileSystemController = {
       const dirPath = (req.query.path as string) || '.';
 
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.slugRequired') } });
         return;
       }
 
@@ -75,29 +75,29 @@ export const fileSystemController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
         res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.code) {
         res.status(FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.code, message: FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.message },
+          error: { code: FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.code, message: req.t!('fs.error.directoryNotFound') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.code) {
         res.status(FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.code, message: FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.message },
+          error: { code: FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.code, message: req.t!('fs.error.notADirectory') },
         });
         return;
       }
       res.status(FILE_SYSTEM_ERRORS.FS_READ_ERROR.httpStatus).json({
-        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: FILE_SYSTEM_ERRORS.FS_READ_ERROR.message },
+        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: req.t!('fs.error.readError') },
       });
     }
   },
@@ -112,7 +112,7 @@ export const fileSystemController = {
       const dirPath = (req.query.path as string) || '.';
 
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.slugRequired') } });
         return;
       }
 
@@ -122,29 +122,29 @@ export const fileSystemController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
         res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.code) {
         res.status(FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.code, message: FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.message },
+          error: { code: FILE_SYSTEM_ERRORS.DIRECTORY_NOT_FOUND.code, message: req.t!('fs.error.directoryNotFound') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.code) {
         res.status(FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.code, message: FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.message },
+          error: { code: FILE_SYSTEM_ERRORS.NOT_A_DIRECTORY.code, message: req.t!('fs.error.notADirectory') },
         });
         return;
       }
       res.status(FILE_SYSTEM_ERRORS.FS_READ_ERROR.httpStatus).json({
-        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: FILE_SYSTEM_ERRORS.FS_READ_ERROR.message },
+        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: req.t!('fs.error.readError') },
       });
     }
   },
@@ -159,11 +159,11 @@ export const fileSystemController = {
       const query = req.query.query as string;
 
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.slugRequired') } });
         return;
       }
       if (!query || !query.trim()) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'query parameter is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.queryRequired') } });
         return;
       }
 
@@ -174,11 +174,11 @@ export const fileSystemController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       res.status(FILE_SYSTEM_ERRORS.FS_READ_ERROR.httpStatus).json({
-        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: FILE_SYSTEM_ERRORS.FS_READ_ERROR.message },
+        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: req.t!('fs.error.readError') },
       });
     }
   },
@@ -194,15 +194,15 @@ export const fileSystemController = {
       const { content } = req.body || {};
 
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.slugRequired') } });
         return;
       }
       if (!filePath) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'path query parameter is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.pathRequired') } });
         return;
       }
       if (content === undefined || content === null || typeof content !== 'string') {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'content must be a string in request body' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.contentRequired') } });
         return;
       }
 
@@ -212,23 +212,23 @@ export const fileSystemController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
         res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code) {
         res.status(FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code, message: FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.message },
+          error: { code: FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code, message: req.t!('fs.error.parentNotFound') },
         });
         return;
       }
       res.status(FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.httpStatus).json({
-        error: { code: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.code, message: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.message },
+        error: { code: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.code, message: req.t!('fs.error.writeError') },
       });
     }
   },
@@ -245,15 +245,15 @@ export const fileSystemController = {
       const entryType = type || 'file';
 
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.slugRequired') } });
         return;
       }
       if (!entryPath) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'path query parameter is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.pathRequired') } });
         return;
       }
       if (type !== undefined && type !== 'file' && type !== 'directory') {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'type must be "file" or "directory"' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.typeRequired') } });
         return;
       }
 
@@ -263,29 +263,29 @@ export const fileSystemController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
         res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.FILE_ALREADY_EXISTS.code) {
         res.status(FILE_SYSTEM_ERRORS.FILE_ALREADY_EXISTS.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.FILE_ALREADY_EXISTS.code, message: FILE_SYSTEM_ERRORS.FILE_ALREADY_EXISTS.message },
+          error: { code: FILE_SYSTEM_ERRORS.FILE_ALREADY_EXISTS.code, message: req.t!('fs.error.fileAlreadyExists') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code) {
         res.status(FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code, message: FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.message },
+          error: { code: FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code, message: req.t!('fs.error.parentNotFound') },
         });
         return;
       }
       res.status(FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.httpStatus).json({
-        error: { code: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.code, message: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.message },
+        error: { code: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.code, message: req.t!('fs.error.writeError') },
       });
     }
   },
@@ -301,11 +301,11 @@ export const fileSystemController = {
       const force = req.query.force === 'true';
 
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.slugRequired') } });
         return;
       }
       if (!entryPath) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'path query parameter is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.pathRequired') } });
         return;
       }
 
@@ -315,29 +315,29 @@ export const fileSystemController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
         res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code) {
         res.status(FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code, message: FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.message },
+          error: { code: FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code, message: req.t!('fs.error.fileNotFound') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PROTECTED_PATH.code) {
         res.status(FILE_SYSTEM_ERRORS.PROTECTED_PATH.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PROTECTED_PATH.code, message: FILE_SYSTEM_ERRORS.PROTECTED_PATH.message },
+          error: { code: FILE_SYSTEM_ERRORS.PROTECTED_PATH.code, message: req.t!('fs.error.protectedPath') },
         });
         return;
       }
       res.status(FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.httpStatus).json({
-        error: { code: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.code, message: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.message },
+        error: { code: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.code, message: req.t!('fs.error.writeError') },
       });
     }
   },
@@ -353,15 +353,15 @@ export const fileSystemController = {
       const newPath = req.query.newPath as string;
 
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.slugRequired') } });
         return;
       }
       if (!entryPath) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'path query parameter is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.pathRequired') } });
         return;
       }
       if (!newPath) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'newPath query parameter is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.newPathRequired') } });
         return;
       }
 
@@ -371,35 +371,35 @@ export const fileSystemController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
         res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code) {
         res.status(FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code, message: FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.message },
+          error: { code: FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code, message: req.t!('fs.error.fileNotFound') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.RENAME_TARGET_EXISTS.code) {
         res.status(FILE_SYSTEM_ERRORS.RENAME_TARGET_EXISTS.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.RENAME_TARGET_EXISTS.code, message: FILE_SYSTEM_ERRORS.RENAME_TARGET_EXISTS.message },
+          error: { code: FILE_SYSTEM_ERRORS.RENAME_TARGET_EXISTS.code, message: req.t!('fs.error.renameTargetExists') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code) {
         res.status(FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code, message: FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.message },
+          error: { code: FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code, message: req.t!('fs.error.parentNotFound') },
         });
         return;
       }
       res.status(FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.httpStatus).json({
-        error: { code: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.code, message: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.message },
+        error: { code: FILE_SYSTEM_ERRORS.FS_WRITE_ERROR.code, message: req.t!('fs.error.writeError') },
       });
     }
   },

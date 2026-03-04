@@ -46,7 +46,7 @@ vi.mock('../../handlers/websocket.js', () => ({
 import { startQueue, pauseQueue, resumeQueue, abortQueue, getQueueStatus } from '../queueController.js';
 
 function createMockReq(params: Record<string, string> = {}, body: Record<string, unknown> = {}): Request {
-  return { params, body } as unknown as Request;
+  return { params, body, t: (key: string) => key, language: 'en' } as unknown as Request;
 }
 
 function createMockRes(): Response {

@@ -26,6 +26,7 @@ describe('Commands Routes', () => {
   beforeEach(() => {
     app = express();
     app.use(express.json());
+    app.use((req: any, _res: any, next: any) => { req.t = (key: string) => key; req.language = 'en'; next(); });
     app.use('/api/projects', commandsRoutes);
     vi.clearAllMocks();
   });

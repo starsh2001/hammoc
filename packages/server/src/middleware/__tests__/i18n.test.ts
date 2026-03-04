@@ -4,6 +4,14 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
+
+// Mock preferencesService so the async middleware doesn't read from disk
+vi.mock('../../services/preferencesService.js', () => ({
+  preferencesService: {
+    readPreferences: vi.fn().mockResolvedValue({ language: null }),
+  },
+}));
+
 import { i18nMiddleware } from '../i18n.js';
 
 function mockReq(acceptLanguage?: string): Request {
@@ -36,37 +44,57 @@ describe('i18nMiddleware', () => {
     next = vi.fn();
   });
 
-  it('sets req.language from Accept-Language header', () => {
+  it('sets req.language from Accept-Language header', async () => {
     const req = mockReq('ko');
-    i18nMiddleware(req, mockRes(), next);
+    await i18nMiddleware(req, mockRes(), next);
     expect(req.language).toBe('ko');
     expect(next).toHaveBeenCalled();
   });
 
-  it('falls back to en when no Accept-Language header', () => {
+  it('falls back to en when no Accept-Language header', async () => {
     const req = mockReq();
-    i18nMiddleware(req, mockRes(), next);
+    await i18nMiddleware(req, mockRes(), next);
     expect(req.language).toBe('en');
     expect(next).toHaveBeenCalled();
   });
 
-  it('falls back to en for unsupported language', () => {
+  it('falls back to en for unsupported language', async () => {
     const req = mockReq('fr');
-    i18nMiddleware(req, mockRes(), next);
+    await i18nMiddleware(req, mockRes(), next);
     expect(req.language).toBe('en');
     expect(next).toHaveBeenCalled();
   });
 
-  it('attaches req.t as a translation function', () => {
+  it('attaches req.t as a translation function', async () => {
     const req = mockReq('en');
-    i18nMiddleware(req, mockRes(), next);
+    await i18nMiddleware(req, mockRes(), next);
     expect(typeof req.t).toBe('function');
     expect(req.t!('error.notFound')).toBe('Resource not found');
   });
 
-  it('detects zh-CN from Accept-Language', () => {
+  it('detects zh-CN from Accept-Language', async () => {
     const req = mockReq('zh-CN');
-    i18nMiddleware(req, mockRes(), next);
+    await i18nMiddleware(req, mockRes(), next);
     expect(req.language).toBe('zh-CN');
+  });
+
+  it('uses language preference over Accept-Language header when set', async () => {
+    const { preferencesService } = await import('../../services/preferencesService.js');
+    vi.mocked(preferencesService.readPreferences).mockResolvedValueOnce({ language: 'ko' } as never);
+
+    const req = mockReq('en'); // header says 'en' but preference is 'ko'
+    await i18nMiddleware(req, mockRes(), next);
+    expect(req.language).toBe('ko');
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('falls back to en when preferencesService throws', async () => {
+    const { preferencesService } = await import('../../services/preferencesService.js');
+    vi.mocked(preferencesService.readPreferences).mockRejectedValueOnce(new Error('disk error'));
+
+    const req = mockReq('ko');
+    await i18nMiddleware(req, mockRes(), next);
+    expect(req.language).toBe('en');
+    expect(next).toHaveBeenCalled();
   });
 });

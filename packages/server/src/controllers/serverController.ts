@@ -68,18 +68,18 @@ export const serverController = {
   },
 
   /** POST /api/server/restart - rebuild & restart (dev only) */
-  async restart(_req: Request, res: Response): Promise<void> {
+  async restart(req: Request, res: Response): Promise<void> {
     if (!isDevMode) {
-      res.status(403).json({ error: { code: 'DEV_ONLY', message: 'Rebuild is only available in development mode.' } });
+      res.status(403).json({ error: { code: 'DEV_ONLY', message: req.t!('server.error.rebuildDevOnly') } });
       return;
     }
     if (buildState.status === 'building' || buildState.status === 'updating') {
-      res.status(409).json({ error: { code: 'BUILD_IN_PROGRESS', message: 'Build is already in progress.' } });
+      res.status(409).json({ error: { code: 'BUILD_IN_PROGRESS', message: req.t!('server.error.buildInProgress') } });
       return;
     }
 
     buildState = { status: 'building' };
-    res.json({ message: 'Build started. Poll /api/server/build-status for progress.' });
+    res.json({ message: req.t!('server.info.buildStarted') });
 
     exec('npm run build', { cwd: MONOREPO_ROOT, timeout: 300_000 }, (err, _stdout, stderr) => {
       if (err) {
@@ -94,16 +94,16 @@ export const serverController = {
   },
 
   /** GET /api/server/check-update - check npm registry for newer version */
-  async checkUpdate(_req: Request, res: Response): Promise<void> {
+  async checkUpdate(req: Request, res: Response): Promise<void> {
     if (isDevMode) {
-      res.status(501).json({ error: { code: 'NOT_APPLICABLE', message: 'Update check is not available in development mode.' } });
+      res.status(501).json({ error: { code: 'NOT_APPLICABLE', message: req.t!('server.error.updateCheckDevOnly') } });
       return;
     }
 
     const { name, version: currentVersion } = getPackageInfo();
     exec(`npm view ${name} version`, { timeout: 30_000 }, (err, stdout) => {
       if (err) {
-        res.status(502).json({ error: { code: 'REGISTRY_ERROR', message: 'Failed to check npm registry.' } });
+        res.status(502).json({ error: { code: 'REGISTRY_ERROR', message: req.t!('server.error.npmCheckFailed') } });
         return;
       }
       const latestVersion = stdout.trim();
@@ -116,19 +116,19 @@ export const serverController = {
   },
 
   /** POST /api/server/update - npm update & restart (non-dev only) */
-  async update(_req: Request, res: Response): Promise<void> {
+  async update(req: Request, res: Response): Promise<void> {
     if (isDevMode) {
-      res.status(403).json({ error: { code: 'DEV_ONLY', message: 'Use rebuild & restart in development mode.' } });
+      res.status(403).json({ error: { code: 'DEV_ONLY', message: req.t!('server.error.useRebuildInDev') } });
       return;
     }
     if (buildState.status === 'building' || buildState.status === 'updating') {
-      res.status(409).json({ error: { code: 'UPDATE_IN_PROGRESS', message: 'An operation is already in progress.' } });
+      res.status(409).json({ error: { code: 'UPDATE_IN_PROGRESS', message: req.t!('server.error.operationInProgress') } });
       return;
     }
 
     const { name } = getPackageInfo();
     buildState = { status: 'updating' };
-    res.json({ message: 'Update started. Poll /api/server/build-status for progress.' });
+    res.json({ message: req.t!('server.info.updateStarted') });
 
     exec(`npm install -g ${name}@latest`, { timeout: 300_000 }, (err, _stdout, stderr) => {
       if (err) {

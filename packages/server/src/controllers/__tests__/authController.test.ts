@@ -45,6 +45,8 @@ describe('authController', () => {
       socket: { remoteAddress: '127.0.0.1' } as Request['socket'],
       session: {},
       sessionOptions: { maxAge: THIRTY_DAYS_MS },
+      t: vi.fn((key: string) => key),
+      language: 'en',
     };
 
     mockRes = {
@@ -73,7 +75,7 @@ describe('authController', () => {
 
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        message: '로그인 성공',
+        message: 'auth.login.success',
       });
       expect(rateLimiter.reset).toHaveBeenCalledWith('127.0.0.1');
       expect(mockReq.session?.authenticated).toBe(true);
@@ -89,7 +91,7 @@ describe('authController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: 'INVALID_PASSWORD',
-          message: '패스워드가 올바르지 않습니다.',
+          message: 'auth.login.invalidPassword',
         },
       });
       expect(rateLimiter.recordFailure).toHaveBeenCalledWith('127.0.0.1');
@@ -108,7 +110,7 @@ describe('authController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: 'RATE_LIMIT_EXCEEDED',
-          message: '로그인 시도 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.',
+          message: 'auth.login.rateLimitExceeded',
           details: {
             retryAfter: 25,
             remainingAttempts: 0,
@@ -126,7 +128,7 @@ describe('authController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: 'VALIDATION_ERROR',
-          message: '패스워드를 입력해주세요.',
+          message: 'auth.validation.passwordRequired',
         },
       });
     });
@@ -155,7 +157,7 @@ describe('authController', () => {
 
         expect(mockRes.json).toHaveBeenCalledWith({
           success: true,
-          message: '로그인 성공',
+          message: 'auth.login.success',
         });
         expect(mockReq.session?.authenticated).toBe(true);
         expect(mockReq.session?.rememberMe).toBe(true);
@@ -171,7 +173,7 @@ describe('authController', () => {
 
         expect(mockRes.json).toHaveBeenCalledWith({
           success: true,
-          message: '로그인 성공',
+          message: 'auth.login.success',
         });
         expect(mockReq.session?.authenticated).toBe(true);
         expect(mockReq.session?.rememberMe).toBe(false);
@@ -187,7 +189,7 @@ describe('authController', () => {
 
         expect(mockRes.json).toHaveBeenCalledWith({
           success: true,
-          message: '로그인 성공',
+          message: 'auth.login.success',
         });
         expect(mockReq.session?.authenticated).toBe(true);
         expect(mockReq.session?.rememberMe).toBe(true);
@@ -240,7 +242,7 @@ describe('authController', () => {
 
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        message: '로그아웃 성공',
+        message: 'auth.logout.success',
       });
     });
   });

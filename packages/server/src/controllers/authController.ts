@@ -21,13 +21,13 @@ import { createLogger } from '../utils/logger.js';
 const log = createLogger('auth');
 
 const loginSchema = z.object({
-  password: z.string().min(1, '패스워드를 입력해주세요.'),
+  password: z.string().min(1),
   rememberMe: z.boolean().optional().default(true),
 });
 
 const setupSchema = z.object({
-  password: z.string().min(MIN_PASSWORD_LENGTH, `패스워드는 최소 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다.`),
-  confirmPassword: z.string().min(1, '패스워드 확인을 입력해주세요.'),
+  password: z.string().min(MIN_PASSWORD_LENGTH),
+  confirmPassword: z.string().min(1),
 });
 
 const authConfigService = new AuthConfigService();
@@ -48,7 +48,7 @@ export const authController = {
       res.status(429).json({
         error: {
           code: LOGIN_ERRORS.RATE_LIMIT_EXCEEDED.code,
-          message: LOGIN_ERRORS.RATE_LIMIT_EXCEEDED.message,
+          message: req.t!('auth.login.rateLimitExceeded'),
           details: {
             retryAfter: rateLimitResult.retryAfter ?? 0,
             remainingAttempts: 0,
@@ -61,10 +61,14 @@ export const authController = {
     // Validate request body
     const validation = loginSchema.safeParse(req.body);
     if (!validation.success) {
+      const field = validation.error.issues[0]?.path[0];
+      const message = field === 'password'
+        ? req.t!('auth.validation.passwordRequired')
+        : req.t!('auth.validation.invalidRequest');
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: validation.error.issues[0]?.message || '잘못된 요청입니다.',
+          message,
         },
       });
       return;
@@ -82,7 +86,7 @@ export const authController = {
       res.status(401).json({
         error: {
           code: LOGIN_ERRORS.INVALID_PASSWORD.code,
-          message: LOGIN_ERRORS.INVALID_PASSWORD.message,
+          message: req.t!('auth.login.invalidPassword'),
         },
       });
       return;
@@ -109,14 +113,14 @@ export const authController = {
 
     res.json({
       success: true,
-      message: '로그인 성공',
+      message: req.t!('auth.login.success'),
     });
     } catch (err) {
       log.error('Login handler error:', err);
       res.status(500).json({
         error: {
           code: 'LOGIN_ERROR',
-          message: `로그인 처리 중 서버 오류: ${err instanceof Error ? err.message : String(err)}`,
+          message: req.t!('auth.login.serverError'),
         },
       });
     }
@@ -142,7 +146,7 @@ export const authController = {
         res.status(403).json({
           error: {
             code: 'ALREADY_CONFIGURED',
-            message: '패스워드가 이미 설정되어 있습니다.',
+            message: req.t!('auth.password.alreadySet'),
           },
         });
         return;
@@ -150,10 +154,19 @@ export const authController = {
 
       const validation = setupSchema.safeParse(req.body);
       if (!validation.success) {
+        const field = validation.error.issues[0]?.path[0];
+        let message: string;
+        if (field === 'password') {
+          message = req.t!('auth.validation.passwordMinLength', { value: MIN_PASSWORD_LENGTH });
+        } else if (field === 'confirmPassword') {
+          message = req.t!('auth.validation.passwordConfirmRequired');
+        } else {
+          message = req.t!('auth.validation.invalidRequest');
+        }
         res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
-            message: validation.error.issues[0]?.message || '잘못된 요청입니다.',
+            message,
           },
         });
         return;
@@ -165,7 +178,7 @@ export const authController = {
         res.status(400).json({
           error: {
             code: 'PASSWORD_MISMATCH',
-            message: '패스워드가 일치하지 않습니다.',
+            message: req.t!('auth.password.mismatch'),
           },
         });
         return;
@@ -179,7 +192,7 @@ export const authController = {
         req.session.rememberMe = true;
       }
 
-      res.json({ success: true, message: '패스워드가 설정되었습니다.' });
+      res.json({ success: true, message: req.t!('auth.password.setSuccess') });
     } catch (err) {
       if (err instanceof AuthConfigError) {
         res.status(400).json({
@@ -191,7 +204,7 @@ export const authController = {
       res.status(500).json({
         error: {
           code: 'SETUP_ERROR',
-          message: '패스워드 설정 중 서버 오류가 발생했습니다.',
+          message: req.t!('auth.password.setError'),
         },
       });
     }
@@ -209,14 +222,14 @@ export const authController = {
 
       const response: LogoutResponse = {
         success: true,
-        message: '로그아웃 성공',
+        message: req.t!('auth.logout.success'),
       };
       res.json(response);
     } catch {
       res.status(500).json({
         error: {
           code: AUTH_ERROR_CODES.LOGOUT_FAILED,
-          message: '로그아웃 처리 중 오류가 발생했습니다',
+          message: req.t!('auth.logout.error'),
         },
       });
     }

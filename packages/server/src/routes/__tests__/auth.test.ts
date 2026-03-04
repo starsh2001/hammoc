@@ -41,6 +41,7 @@ describe('Auth Routes', () => {
     // Create fresh express app for each test
     app = express();
     app.use(express.json());
+    app.use((req: any, _res: any, next: any) => { req.t = (key: string) => key; req.language = 'en'; next(); });
     app.use(
       cookieSession({
         name: 'test-session',
@@ -72,7 +73,7 @@ describe('Auth Routes', () => {
 
       expect(response.body).toEqual({
         success: true,
-        message: '로그인 성공',
+        message: 'auth.login.success',
       });
 
       // Verify session cookie is set
@@ -90,7 +91,7 @@ describe('Auth Routes', () => {
       expect(response.body).toEqual({
         error: {
           code: 'INVALID_PASSWORD',
-          message: '패스워드가 올바르지 않습니다.',
+          message: 'auth.login.invalidPassword',
         },
       });
     });
@@ -109,7 +110,7 @@ describe('Auth Routes', () => {
       expect(response.body).toEqual({
         error: {
           code: 'RATE_LIMIT_EXCEEDED',
-          message: '로그인 시도 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.',
+          message: 'auth.login.rateLimitExceeded',
           details: {
             retryAfter: 30,
             remainingAttempts: 0,
@@ -175,7 +176,7 @@ describe('Auth Routes', () => {
 
       expect(logoutResponse.body).toEqual({
         success: true,
-        message: '로그아웃 성공',
+        message: 'auth.logout.success',
       });
 
       // Verify session is cleared

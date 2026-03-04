@@ -22,14 +22,14 @@ export async function listTemplates(req: Request, res: Response): Promise<void> 
     const templates = await queueTemplateService.getTemplates(projectRoot);
     res.status(200).json(templates);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to list templates' });
+    res.status(500).json({ error: req.t!('queueTemplate.error.listFailed') });
   }
 }
 
 export async function createTemplate(req: Request, res: Response): Promise<void> {
   const { name, template } = req.body;
   if (!name || typeof name !== 'string' || !template || typeof template !== 'string') {
-    res.status(400).json({ error: 'name and template are required non-empty strings' });
+    res.status(400).json({ error: req.t!('queueTemplate.validation.nameTemplateRequired') });
     return;
   }
   try {
@@ -37,7 +37,7 @@ export async function createTemplate(req: Request, res: Response): Promise<void>
     const created = await queueTemplateService.saveTemplate(projectRoot, name, template);
     res.status(201).json(created);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create template' });
+    res.status(500).json({ error: req.t!('queueTemplate.error.createFailed') });
   }
 }
 
@@ -45,7 +45,7 @@ export async function updateTemplate(req: Request, res: Response): Promise<void>
   const { name, template } = req.body;
   const { id } = req.params;
   if (!name || typeof name !== 'string' || !template || typeof template !== 'string') {
-    res.status(400).json({ error: 'name and template are required non-empty strings' });
+    res.status(400).json({ error: req.t!('queueTemplate.validation.nameTemplateRequired') });
     return;
   }
   try {
@@ -54,10 +54,10 @@ export async function updateTemplate(req: Request, res: Response): Promise<void>
     res.status(200).json(updated);
   } catch (error) {
     if ((error as Error).message?.includes('not found')) {
-      res.status(404).json({ error: 'Template not found' });
+      res.status(404).json({ error: req.t!('queueTemplate.error.notFound') });
       return;
     }
-    res.status(500).json({ error: 'Failed to update template' });
+    res.status(500).json({ error: req.t!('queueTemplate.error.updateFailed') });
   }
 }
 
@@ -69,10 +69,10 @@ export async function deleteTemplate(req: Request, res: Response): Promise<void>
     res.status(204).send();
   } catch (error) {
     if ((error as Error).message?.includes('not found')) {
-      res.status(404).json({ error: 'Template not found' });
+      res.status(404).json({ error: req.t!('queueTemplate.error.notFound') });
       return;
     }
-    res.status(500).json({ error: 'Failed to delete template' });
+    res.status(500).json({ error: req.t!('queueTemplate.error.deleteFailed') });
   }
 }
 
@@ -85,7 +85,7 @@ export async function extractStories(req: Request, res: Response): Promise<void>
   try {
     projectRoot = await getProjectRoot(req.params.projectSlug);
   } catch {
-    res.status(500).json({ error: 'Failed to resolve project path' });
+    res.status(500).json({ error: req.t!('queueTemplate.error.projectPathFailed') });
     return;
   }
 
@@ -103,7 +103,7 @@ export async function extractStories(req: Request, res: Response): Promise<void>
       epicFilePattern: prd?.epicFilePattern as string | undefined,
     };
   } catch {
-    res.status(404).json({ error: 'BMad config not found for this project' });
+    res.status(404).json({ error: req.t!('queueTemplate.error.bmadConfigNotFound') });
     return;
   }
 
@@ -152,7 +152,7 @@ export async function extractStories(req: Request, res: Response): Promise<void>
   }
 
   if (!prdContent) {
-    res.status(200).json({ stories: [], error: 'PRD file not found' });
+    res.status(200).json({ stories: [], error: req.t!('queueTemplate.error.prdNotFound') });
     return;
   }
 

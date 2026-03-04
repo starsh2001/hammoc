@@ -11,13 +11,13 @@ import type { UpdateTelegramSettingsRequest } from '@bmad-studio/shared';
 const router = Router();
 
 // GET /api/preferences/telegram — Get Telegram settings (masked)
-router.get('/telegram', async (_req: Request, res: Response) => {
+router.get('/telegram', async (req: Request, res: Response) => {
   try {
     const settings = await preferencesService.getTelegramSettings();
     res.json(settings);
   } catch {
     res.status(500).json({
-      error: { code: 'TELEGRAM_SETTINGS_READ_ERROR', message: 'Telegram 설정을 불러오는 중 오류가 발생했습니다.' },
+      error: { code: 'TELEGRAM_SETTINGS_READ_ERROR', message: req.t!('preferences.telegram.readError') },
     });
   }
 });
@@ -31,7 +31,7 @@ router.patch('/telegram', async (req: Request, res: Response) => {
     if (update.botToken !== undefined && update.botToken !== null) {
       if (typeof update.botToken !== 'string' || update.botToken.trim().length === 0) {
         res.status(400).json({
-          error: { code: 'INVALID_BOT_TOKEN', message: '유효하지 않은 Bot Token입니다.' },
+          error: { code: 'INVALID_BOT_TOKEN', message: req.t!('preferences.telegram.invalidBotToken') },
         });
         return;
       }
@@ -40,7 +40,7 @@ router.patch('/telegram', async (req: Request, res: Response) => {
     if (update.chatId !== undefined && update.chatId !== null) {
       if (typeof update.chatId !== 'string' || update.chatId.trim().length === 0) {
         res.status(400).json({
-          error: { code: 'INVALID_CHAT_ID', message: '유효하지 않은 Chat ID입니다.' },
+          error: { code: 'INVALID_CHAT_ID', message: req.t!('preferences.telegram.invalidChatId') },
         });
         return;
       }
@@ -51,7 +51,7 @@ router.patch('/telegram', async (req: Request, res: Response) => {
     res.json(settings);
   } catch {
     res.status(500).json({
-      error: { code: 'TELEGRAM_SETTINGS_WRITE_ERROR', message: 'Telegram 설정 저장에 실패했습니다.' },
+      error: { code: 'TELEGRAM_SETTINGS_WRITE_ERROR', message: req.t!('preferences.telegram.writeError') },
     });
   }
 });
@@ -71,13 +71,13 @@ router.post('/telegram/test', async (req: Request, res: Response) => {
   } catch {
     res.status(500).json({
       success: false,
-      error: '테스트 알림 전송 중 서버 오류가 발생했습니다.',
+      error: req.t!('preferences.telegram.testError'),
     });
   }
 });
 
 // GET /api/preferences — Read all preferences (with env var overrides)
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const preferences = await preferencesService.getEffectivePreferences();
     const overrides: string[] = [];
@@ -85,7 +85,7 @@ router.get('/', async (_req: Request, res: Response) => {
     if (process.env.TERMINAL_ENABLED) overrides.push('terminalEnabled');
     res.json({ ...preferences, _overrides: overrides });
   } catch {
-    res.status(500).json({ error: { code: 'PREFERENCES_READ_ERROR', message: 'Failed to read preferences' } });
+    res.status(500).json({ error: { code: 'PREFERENCES_READ_ERROR', message: req.t!('preferences.readError') } });
   }
 });
 
@@ -95,7 +95,7 @@ router.patch('/', async (req: Request, res: Response) => {
     const updated = await preferencesService.writePreferences(req.body);
     res.json(updated);
   } catch {
-    res.status(500).json({ error: { code: 'PREFERENCES_WRITE_ERROR', message: 'Failed to write preferences' } });
+    res.status(500).json({ error: { code: 'PREFERENCES_WRITE_ERROR', message: req.t!('preferences.writeError') } });
   }
 });
 

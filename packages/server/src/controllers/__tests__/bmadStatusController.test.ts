@@ -36,6 +36,8 @@ describe('bmadStatusController', () => {
   beforeEach(() => {
     mockReq = {
       params: { projectSlug: 'test-project' },
+      t: vi.fn((key: string) => key),
+      language: 'en',
     };
     mockRes = {
       status: vi.fn().mockReturnThis(),
@@ -78,13 +80,13 @@ describe('bmadStatusController', () => {
 
     expect(mockRes.status).toHaveBeenCalledWith(400);
     expect(mockRes.json).toHaveBeenCalledWith({
-      error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' },
+      error: { code: 'INVALID_REQUEST', message: 'project.validation.slugRequired' },
     });
   });
 
   // TC-BC-3: 프로젝트 미존재 시 404를 반환한다
   it('returns 404 when project is not found', async () => {
-    const err = new Error('프로젝트를 찾을 수 없습니다.');
+    const err = new Error('project.error.notFound');
     (err as NodeJS.ErrnoException).code = 'PROJECT_NOT_FOUND';
     mockResolveOriginalPath.mockRejectedValue(err);
 
@@ -92,7 +94,7 @@ describe('bmadStatusController', () => {
 
     expect(mockRes.status).toHaveBeenCalledWith(404);
     expect(mockRes.json).toHaveBeenCalledWith({
-      error: { code: 'PROJECT_NOT_FOUND', message: '프로젝트를 찾을 수 없습니다.' },
+      error: { code: 'PROJECT_NOT_FOUND', message: 'project.error.notFound' },
     });
   });
 
@@ -108,7 +110,7 @@ describe('bmadStatusController', () => {
     expect(mockRes.json).toHaveBeenCalledWith({
       error: {
         code: 'NOT_BMAD_PROJECT',
-        message: 'BMad 프로젝트가 아닙니다. (.bmad-core/core-config.yaml 없음)',
+        message: 'bmadStatus.error.notBmadProject',
       },
     });
   });
@@ -125,7 +127,7 @@ describe('bmadStatusController', () => {
     expect(mockRes.json).toHaveBeenCalledWith({
       error: {
         code: 'CONFIG_PARSE_ERROR',
-        message: 'core-config.yaml 파싱 중 오류가 발생했습니다.',
+        message: 'bmadStatus.error.configParseError',
       },
     });
   });
@@ -140,7 +142,7 @@ describe('bmadStatusController', () => {
     expect(mockRes.json).toHaveBeenCalledWith({
       error: {
         code: 'SCAN_ERROR',
-        message: '프로젝트 스캔 중 오류가 발생했습니다.',
+        message: 'bmadStatus.error.scanError',
       },
     });
   });

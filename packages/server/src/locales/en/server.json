@@ -3,6 +3,288 @@
     "notFound": "Resource not found",
     "unauthorized": "Unauthorized",
     "internal": "Internal server error",
-    "requestFailed": "Request failed ({{status}} {{statusText}})"
+    "requestFailed": "Request failed ({{status}} {{statusText}})",
+    "rateLimit": "API request limit reached. Please try again later.",
+    "authRequired": "Claude Code CLI authentication is required. Run \"claude login\".",
+    "networkError": "Network connection problem. Please check your internet connection.",
+    "invalidPath": "Invalid path: {{path}}",
+    "serviceUnavailable": "Claude service is unavailable. Please try again later.",
+    "aborted": "Operation cancelled."
+  },
+  "auth": {
+    "validation": {
+      "passwordRequired": "Password is required.",
+      "passwordMinLength": "Password must be at least {{value}} characters.",
+      "passwordConfirmRequired": "Password confirmation is required.",
+      "invalidRequest": "Invalid request."
+    },
+    "login": {
+      "success": "Login successful",
+      "serverError": "Server error during login",
+      "invalidPassword": "Invalid password.",
+      "rateLimitExceeded": "Too many login attempts. Please try again later."
+    },
+    "password": {
+      "alreadySet": "Password is already configured.",
+      "mismatch": "Passwords do not match.",
+      "setSuccess": "Password has been set.",
+      "setError": "Server error while setting password."
+    },
+    "logout": {
+      "success": "Logout successful",
+      "error": "Error during logout"
+    }
+  },
+  "project": {
+    "validation": {
+      "pathRequired": "Project path is required.",
+      "slugRequired": "Project identifier is required.",
+      "invalidPermissionMode": "Invalid Permission Mode: {{value}}",
+      "invalidModelId": "Invalid model ID.",
+      "invalidPathFormat": "Invalid path format.",
+      "pathIsFile": "Path is a file, not a directory.",
+      "pathParameterRequired": "Path is required."
+    },
+    "error": {
+      "createFailed": "Error creating project.",
+      "bmadVersionsFailed": "Error fetching BMad version list.",
+      "notFound": "Project not found.",
+      "deleteFailed": "Error deleting project.",
+      "bmadSetupFailed": "Error during BMad setup.",
+      "validatePathFailed": "Error validating path.",
+      "settingsLoadFailed": "Error loading settings.",
+      "settingsSaveFailed": "Error saving settings.",
+      "systemPromptFailed": "Error fetching system prompt.",
+      "scanError": "Error scanning projects.",
+      "dirNotFound": "Directory not found.",
+      "permissionDenied": "Permission denied.",
+      "invalidSessionIndex": "Invalid session index.",
+      "pathNotFound": "Path not found.",
+      "pathNotDirectory": "Path is not a directory.",
+      "alreadyBmad": "Already a BMad project.",
+      "alreadyExists": "Project already exists."
+    }
+  },
+  "board": {
+    "error": {
+      "projectNotFound": "Project not found: {{value}}",
+      "internal": "Internal server error",
+      "issueNotFound": "Issue not found: {{value}}"
+    },
+    "validation": {
+      "titleRequired": "Title is required",
+      "invalidSeverity": "Invalid severity: {{value}}",
+      "invalidIssueType": "Invalid issueType: {{value}}",
+      "invalidStatus": "Invalid status: {{value}}",
+      "invalidIssueId": "Invalid issue ID"
+    },
+    "success": {
+      "issueDeleted": "Issue deleted"
+    }
+  },
+  "session": {
+    "validation": {
+      "deleteIdsRequired": "Session ID list for deletion is required."
+    },
+    "error": {
+      "saveNameFailed": "Error saving session name.",
+      "projectNotFound": "Project not found.",
+      "listError": "Error listing sessions.",
+      "invalidPath": "Invalid path detected.",
+      "parseError": "Error parsing session data.",
+      "deleteError": "Error deleting session.",
+      "nameError": "Error updating session name."
+    }
+  },
+  "fs": {
+    "validation": {
+      "slugRequired": "Project identifier is required.",
+      "pathRequired": "path query parameter is required",
+      "contentRequired": "content must be a string in request body",
+      "typeRequired": "type must be \"file\" or \"directory\"",
+      "newPathRequired": "newPath query parameter is required",
+      "queryRequired": "query parameter is required"
+    },
+    "error": {
+      "pathTraversal": "Path traversal detected.",
+      "fileNotFound": "File not found.",
+      "directoryNotFound": "Directory not found.",
+      "notADirectory": "Not a directory.",
+      "readError": "File read error.",
+      "writeError": "File write error.",
+      "fileAlreadyExists": "File already exists.",
+      "protectedPath": "Protected path.",
+      "renameTargetExists": "Rename target already exists.",
+      "parentNotFound": "Parent directory not found."
+    }
+  },
+  "git": {
+    "validation": {
+      "slugRequired": "projectSlug is required",
+      "fileRequired": "file query parameter is required",
+      "filesRequired": "files array is required and must not be empty",
+      "commitMessageRequired": "commit message is required and must not be empty",
+      "commitMessageTooLong": "Commit message exceeds maximum length of 10,000 characters",
+      "branchRequired": "branch name is required",
+      "invalidBranchName": "Invalid branch name: contains invalid characters",
+      "invalidStartPoint": "Invalid startPoint: contains invalid characters",
+      "startPointFormat": "startPoint must be a non-empty string if provided"
+    },
+    "success": {
+      "initialized": "Git repository initialized",
+      "staged": "Files staged successfully",
+      "unstaged": "Files unstaged successfully",
+      "committed": "Changes committed successfully",
+      "pushed": "Pushed to remote successfully",
+      "pulled": "Pulled from remote successfully",
+      "switchedBranch": "Switched to branch {{value}}",
+      "branchCreated": "Branch {{value}} created successfully"
+    },
+    "error": {
+      "operationFailed": "Git operation failed.",
+      "notInitialized": "Git repository is not initialized.",
+      "conflict": "Git conflict detected.",
+      "nothingToCommit": "Nothing to commit.",
+      "branchExists": "Branch already exists."
+    }
+  },
+  "queue": {
+    "validation": {
+      "slugRequired": "projectSlug is required",
+      "itemsRequired": "items array must not be empty"
+    },
+    "error": {
+      "alreadyRunning": "Queue is already running for this project",
+      "noRunningQueue": "No running queue for this project",
+      "sdkError": "SDK Error: {{value}}",
+      "queueStopDetected": "QUEUE_STOP detected in response",
+      "sessionNotFound": "Session name \"{{value}}\" not found"
+    },
+    "pause": {
+      "userPaused": "User paused",
+      "waitingForPermission": "Waiting for {{value}}: {{toolName}}"
+    }
+  },
+  "queueTemplate": {
+    "error": {
+      "listFailed": "Failed to list templates",
+      "createFailed": "Failed to create template",
+      "updateFailed": "Failed to update template",
+      "deleteFailed": "Failed to delete template",
+      "notFound": "Template not found",
+      "projectPathFailed": "Failed to resolve project path",
+      "bmadConfigNotFound": "BMad config not found for this project",
+      "prdNotFound": "PRD file not found"
+    },
+    "validation": {
+      "nameTemplateRequired": "name and template are required non-empty strings"
+    }
+  },
+  "notification": {
+    "permission": {
+      "title": "Permission Required"
+    },
+    "question": {
+      "title": "Question"
+    },
+    "complete": {
+      "title": "Complete"
+    },
+    "error": {
+      "title": "Error",
+      "configRequired": "Both Bot Token and Chat ID must be configured."
+    },
+    "queueStart": {
+      "title": "Queue Started",
+      "body": "{{value}} items to execute"
+    },
+    "queueComplete": {
+      "title": "Queue Complete",
+      "body": "All items processed"
+    },
+    "queuePaused": {
+      "title": "Queue Paused"
+    },
+    "inputRequired": {
+      "title": "Input Required",
+      "body": "Waiting for user response"
+    },
+    "test": {
+      "message": "This is a test notification. Telegram notifications are working correctly!"
+    }
+  },
+  "ws": {
+    "error": {
+      "queueSessionLocked": "Cannot send messages to a session where a queue is running.",
+      "queueAlreadyRunning": "Queue is already running for this project",
+      "maxImages": "You can attach up to {{value}} images.",
+      "unsupportedImageFormat": "Unsupported image format: {{value}}",
+      "imageSizeExceeded": "Image size exceeds 10MB: {{value}}",
+      "projectPathNotFound": "The specified project path does not exist.",
+      "sessionNotFound": "Session not found. Please start a new session.",
+      "timeout": "Response timed out. Please try again.",
+      "sessionListFailed": "Failed to load session list.",
+      "terminalDisabled": "Terminal feature is disabled",
+      "terminalProjectNotFound": "Project path not found for terminal",
+      "terminalAccessDenied": "Terminal access is not available from outside the local network for security reasons",
+      "terminalNotFound": "Terminal not found",
+      "ptySpawnError": "Failed to spawn terminal process"
+    }
+  },
+  "pathGuard": {
+    "nullByte": "Invalid path: null byte detected",
+    "absolutePath": "Invalid path: absolute paths are not allowed",
+    "traversal": "Invalid path: path traversal detected"
+  },
+  "dashboard": {
+    "error": {
+      "statusFailed": "Failed to get dashboard status"
+    }
+  },
+  "cli": {
+    "error": {
+      "executionFailed": "An error occurred while running the CLI."
+    }
+  },
+  "command": {
+    "error": {
+      "listFailed": "Failed to list commands"
+    }
+  },
+  "server": {
+    "error": {
+      "rebuildDevOnly": "Rebuild is only available in development mode.",
+      "buildInProgress": "Build is already in progress.",
+      "updateCheckDevOnly": "Update check is not available in development mode.",
+      "npmCheckFailed": "Failed to check npm registry.",
+      "useRebuildInDev": "Use rebuild & restart in development mode.",
+      "operationInProgress": "An operation is already in progress."
+    },
+    "info": {
+      "buildStarted": "Build started. Poll /api/server/build-status for progress.",
+      "updateStarted": "Update started. Poll /api/server/build-status for progress."
+    }
+  },
+  "bmadStatus": {
+    "error": {
+      "notBmadProject": "This is not a BMad project.",
+      "configParseError": "Error parsing core-config.yaml.",
+      "scanError": "Error scanning project status."
+    }
+  },
+  "preferences": {
+    "readError": "Failed to read preferences.",
+    "writeError": "Failed to save preferences.",
+    "telegram": {
+      "readError": "Failed to load Telegram settings.",
+      "invalidBotToken": "Invalid Bot Token.",
+      "invalidChatId": "Invalid Chat ID.",
+      "writeError": "Failed to save Telegram settings.",
+      "testError": "Server error while sending test notification."
+    },
+    "rateLimit": {
+      "projectCreate": "Too many project creation requests. Please try again later.",
+      "pathValidation": "Too many path validation requests. Please try again later."
+    }
   }
 }

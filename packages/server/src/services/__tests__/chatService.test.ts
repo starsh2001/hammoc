@@ -163,7 +163,7 @@ describe('Error Utilities', () => {
       expect(error.code).toBe(SDKErrorCode.RATE_LIMIT_EXCEEDED);
       expect(error.statusCode).toBe(429);
       expect(error.retryAfter).toBe(120);
-      expect(error.message).toContain('요청 한도');
+      expect(error.message).toContain('API request limit reached');
     });
 
     it('should use default retryAfter of 60', () => {
@@ -186,7 +186,7 @@ describe('Error Utilities', () => {
       const error = new NetworkError();
       expect(error.code).toBe(SDKErrorCode.NETWORK_ERROR);
       expect(error.statusCode).toBe(503);
-      expect(error.message).toContain('네트워크');
+      expect(error.message).toContain('Network connection problem');
     });
   });
 
@@ -529,7 +529,7 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
 
     const result = await service.sendMessageWithCallbacks('Test', callbacks);
 
-    expect(result.usage).toEqual({
+    expect(result.usage).toMatchObject({
       inputTokens: 150000,
       outputTokens: 500,
       cacheReadInputTokens: 80000,

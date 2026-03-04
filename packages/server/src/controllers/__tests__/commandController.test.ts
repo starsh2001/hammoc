@@ -26,6 +26,8 @@ describe('commandController', () => {
   beforeEach(() => {
     mockReq = {
       params: { projectSlug: 'test-slug' },
+      t: vi.fn((key: string) => key),
+      language: 'en',
     };
     mockRes = {
       status: vi.fn().mockReturnThis(),
@@ -77,7 +79,7 @@ describe('commandController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: 'COMMAND_LIST_ERROR',
-          message: 'Failed to list commands',
+          message: 'command.error.listFailed',
         },
       });
     });

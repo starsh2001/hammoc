@@ -132,4 +132,5 @@ export interface InterServerEvents {
 export interface SocketData {
   userId?: string;
   sessionId?: string;
+  language?: string;
 }

@@ -406,7 +406,7 @@ describe('WebSocket Handler', () => {
       const error = await errorPromise;
 
       expect(error.code).toBe(ERROR_CODES.INVALID_WORKING_DIR);
-      expect(error.message).toBe('지정된 프로젝트 경로가 존재하지 않습니다.');
+      expect(error.message).toBe('ws.error.projectPathNotFound');
     });
 
     it('should emit error for empty workingDirectory', async () => {
@@ -690,7 +690,7 @@ describe('WebSocket Handler', () => {
       const error = await errorPromise;
 
       expect(error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
-      expect(error.message).toContain('10MB');
+      expect(error.message).toBe('ws.error.imageSizeExceeded');
     });
 
     it('should reject unsupported MIME types', async () => {
@@ -719,7 +719,7 @@ describe('WebSocket Handler', () => {
       const error = await errorPromise;
 
       expect(error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
-      expect(error.message).toContain('지원되지 않는 이미지 형식');
+      expect(error.message).toBe('ws.error.unsupportedImageFormat');
     });
 
     it('should reject more than 5 images', async () => {
@@ -752,7 +752,7 @@ describe('WebSocket Handler', () => {
       const error = await errorPromise;
 
       expect(error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
-      expect(error.message).toContain('최대');
+      expect(error.message).toBe('ws.error.maxImages');
     });
   });
 
@@ -823,7 +823,7 @@ describe('WebSocket Handler', () => {
       const error = await errorPromise;
 
       expect(error.code).toBe(ERROR_CODES.SESSION_NOT_FOUND);
-      expect(error.message).toContain('세션을 찾을 수 없습니다');
+      expect(error.message).toBe('ws.error.sessionNotFound');
     });
 
     it('should emit CHAT_ERROR for non-session errors during resume', async () => {
@@ -920,7 +920,7 @@ describe('WebSocket Handler', () => {
       const error = await errorPromise;
 
       expect(error.code).toBe(ERROR_CODES.TIMEOUT_ERROR);
-      expect(error.message).toContain('응답 시간이 초과되었습니다');
+      expect(error.message).toBe('ws.error.timeout');
     });
 
     it('should call abortController.abort() when timeout occurs', async () => {

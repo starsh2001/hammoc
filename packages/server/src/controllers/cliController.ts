@@ -6,7 +6,7 @@ import { cliService } from '../services/cliService.js';
  * GET /api/cli-status
  */
 export async function getCliStatus(
-  _req: Request,
+  req: Request,
   res: Response
 ): Promise<void> {
   try {
@@ -26,7 +26,7 @@ export async function getCliStatus(
     res.status(500).json({
       error: {
         code: 'CLI_EXECUTION_ERROR',
-        message: 'CLI 실행 중 오류가 발생했습니다.',
+        message: req.t!('cli.error.executionFailed'),
         ...(process.env.NODE_ENV === 'development' && { details: message }),
       },
     });

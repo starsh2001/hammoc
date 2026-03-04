@@ -48,6 +48,7 @@ describe('Projects Routes', () => {
     vi.spyOn(Date, 'now').mockReturnValue(fakeTime);
     app = express();
     app.use(express.json());
+    app.use((req: any, _res: any, next: any) => { req.t = (key: string) => key; req.language = 'en'; next(); });
     app.use('/api/projects', projectsRoutes);
   });
 
@@ -91,7 +92,7 @@ describe('Projects Routes', () => {
       expect(response.body).toEqual({
         error: {
           code: 'PERMISSION_DENIED',
-          message: '디렉토리 접근 권한이 없습니다.',
+          message: 'project.error.permissionDenied',
         },
       });
     });
@@ -104,7 +105,7 @@ describe('Projects Routes', () => {
       expect(response.body).toEqual({
         error: {
           code: 'PROJECT_SCAN_ERROR',
-          message: '프로젝트 목록을 가져오는 중 오류가 발생했습니다.',
+          message: 'project.error.scanError',
         },
       });
     });
@@ -296,7 +297,7 @@ describe('Projects Routes', () => {
         .expect(200);
 
       expect(response.body.valid).toBe(false);
-      expect(response.body.error).toContain('존재하지 않습니다');
+      expect(response.body.error).toBe('project.validation.invalidPathFormat');
     });
 
     it('should return 400 for missing path', async () => {
