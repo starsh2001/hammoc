@@ -745,7 +745,7 @@ describe('ChatPage', () => {
   });
 
   describe('Session quick access panel (Story 5.7)', () => {
-    it('should render session history button in header', () => {
+    it('should render panel toggle button in header', () => {
       useMessageStore.setState({
         messages: mockMessages,
         pagination: mockPagination,
@@ -753,10 +753,10 @@ describe('ChatPage', () => {
 
       renderChatPage();
 
-      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+      expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
     });
 
-    it('should render session history button in all render paths', () => {
+    it('should render panel toggle button in all render paths', () => {
       // New session state
       const { unmount: unmount1 } = render(
         <MemoryRouter initialEntries={['/project/test-project/session/new']}>
@@ -765,29 +765,29 @@ describe('ChatPage', () => {
           </Routes>
         </MemoryRouter>
       );
-      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+      expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
       unmount1();
 
       // Loading state
       useMessageStore.setState({ isLoading: true });
       const { unmount: unmount2 } = renderChatPage();
-      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+      expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
       unmount2();
 
       // Error state
       useMessageStore.setState({ isLoading: false, error: '오류 발생' });
       const { unmount: unmount3 } = renderChatPage();
-      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+      expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
       unmount3();
 
       // Empty state
       useMessageStore.setState({ error: null, messages: [] });
       const { unmount: unmount4 } = renderChatPage();
-      expect(screen.getByRole('button', { name: '세션 목록' })).toBeInTheDocument();
+      expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
       unmount4();
     });
 
-    it('should navigate to selected session when session is selected', () => {
+    it('should open panel when toggle button is clicked', () => {
       useMessageStore.setState({
         messages: mockMessages,
         pagination: mockPagination,
@@ -796,9 +796,9 @@ describe('ChatPage', () => {
       renderChatPage();
 
       // Open the panel
-      fireEvent.click(screen.getByRole('button', { name: '세션 목록' }));
+      fireEvent.click(screen.getByTestId('panel-toggle-button'));
 
-      // QuickPanel should be visible with sessions content
+      // QuickPanel should be visible with sessions content (default)
       expect(screen.getByTestId('quick-panel')).toBeInTheDocument();
       expect(screen.getByTestId('quick-panel')).toHaveAttribute('aria-label', '세션 목록');
     });

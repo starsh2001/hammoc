@@ -7,7 +7,8 @@
     "refreshing": "Refreshing",
     "refresh": "Refresh",
     "settings": "Settings",
-    "logout": "Logout"
+    "logout": "Logout",
+    "panelToggle": "Toggle panel"
   },
   "sessionTitle": {
     "placeholder": "Enter session name...",

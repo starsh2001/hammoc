@@ -41,6 +41,8 @@ interface QuickPanelProps {
   panelWidth: number;
   onWidthChange: (width: number) => void;
   isMobile: boolean;
+  /** Git changed file count for badge on git tab */
+  gitChangedCount?: number;
 }
 
 export function QuickPanel({
@@ -56,6 +58,7 @@ export function QuickPanel({
   panelWidth,
   onWidthChange,
   isMobile,
+  gitChangedCount,
 }: QuickPanelProps) {
   const { t } = useTranslation('common');
   const [isVisible, setIsVisible] = useState(false);
@@ -104,18 +107,21 @@ export function QuickPanel({
     if (!isOpen) setIsVisible(false);
   }, [isOpen]);
 
-  // Focus management: save/restore + auto-focus close button
+  // Focus management: save/restore + auto-focus close button (mobile only)
+  // Desktop: sidebar coexistence — no focus steal so user can keep typing in chat
   useEffect(() => {
-    if (isOpen) {
-      previousFocusRef.current = document.activeElement;
-      setTimeout(() => closeButtonRef.current?.focus(), 0);
-    } else if (previousFocusRef.current instanceof HTMLElement) {
-      previousFocusRef.current.focus();
-      previousFocusRef.current = null;
+    if (isMobile) {
+      if (isOpen) {
+        previousFocusRef.current = document.activeElement;
+        setTimeout(() => closeButtonRef.current?.focus(), 0);
+      } else if (previousFocusRef.current instanceof HTMLElement) {
+        previousFocusRef.current.focus();
+        previousFocusRef.current = null;
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
-  // Escape key + focus trap
+  // Escape key + focus trap (focus trap is mobile-only for full-screen modal)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -125,7 +131,8 @@ export function QuickPanel({
         return;
       }
 
-      if (e.key === 'Tab' && panelRef.current) {
+      // Focus trap only on mobile (full-screen modal)
+      if (isMobile && e.key === 'Tab' && panelRef.current) {
         const focusableElements = panelRef.current.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
@@ -144,7 +151,7 @@ export function QuickPanel({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isMobile]);
 
   // Content rendering per panel type
   const renderPanelContent = (type: QuickPanelType) => {
@@ -184,22 +191,24 @@ export function QuickPanel({
 
   return (
     <>
-      {/* Backdrop overlay - desktop only */}
-      <div
-        data-testid="quick-panel-backdrop"
-        aria-hidden="true"
-        className={`hidden md:block fixed inset-0 z-40 bg-black/30
-                    transition-opacity duration-300 ease-in-out
-                    ${isAnimating ? 'opacity-100' : 'opacity-0'}`}
-        onClick={onClose}
-      />
+      {/* Backdrop overlay - mobile only (desktop uses sidebar coexistence) */}
+      {isMobile && (
+        <div
+          data-testid="quick-panel-backdrop"
+          aria-hidden="true"
+          className={`fixed inset-0 z-40 bg-black/30
+                      transition-opacity duration-300 ease-in-out
+                      ${isAnimating ? 'opacity-100' : 'opacity-0'}`}
+          onClick={onClose}
+        />
+      )}
 
       {/* Panel container */}
       <div
         ref={panelRef}
         data-testid="quick-panel"
-        role="dialog"
-        aria-modal="true"
+        role={isMobile ? 'dialog' : 'complementary'}
+        aria-modal={isMobile ? true : undefined}
         aria-label={t(config.titleKey)}
         className={`fixed inset-0 z-50 bg-white dark:bg-gray-900 flex flex-col
                     md:inset-auto md:top-0 md:right-0 md:bottom-0
@@ -226,6 +235,7 @@ export function QuickPanel({
             activePanel={activePanel}
             onSwitchPanel={onSwitchPanel}
             terminalAccessible={terminalAccessible}
+            gitChangedCount={gitChangedCount}
           />
           <button
             ref={closeButtonRef}

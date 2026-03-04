@@ -11,7 +11,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Plus, Settings, LogOut } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Plus, Settings, LogOut, PanelRight } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { useChatStore } from '../stores/chatStore';
@@ -19,7 +19,6 @@ import { formatAgentRoleLabel } from '../utils/agentUtils';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { LayoutToggleButton } from './LayoutToggleButton';
 import { HeaderOverflowMenu } from './HeaderOverflowMenu';
-import { QuickPanelTriggers } from './panel/QuickPanelTriggers';
 import type { QuickPanelType } from '../stores/panelStore';
 import { BrandLogo } from './BrandLogo';
 
@@ -40,6 +39,8 @@ interface ChatHeaderProps {
   onNewSession?: () => void;
   /** Currently active quick panel type */
   activePanel?: QuickPanelType | null;
+  /** Last active panel type (used to restore tab on reopen) */
+  lastActivePanel?: QuickPanelType;
   /** Toggle quick panel by type */
   onTogglePanel?: (type: QuickPanelType) => void;
   /** Changed file count for Git badge */
@@ -67,6 +68,7 @@ export function ChatHeader({
   isRefreshing = false,
   onNewSession,
   activePanel,
+  lastActivePanel = 'sessions',
   onTogglePanel,
   gitChangedCount,
   terminalAccessible = true,
@@ -230,14 +232,21 @@ export function ChatHeader({
           )}
 
           {onTogglePanel && (
-            <div className="hidden md:block">
-              <QuickPanelTriggers
-                activePanel={activePanel ?? null}
-                onTogglePanel={onTogglePanel}
-                gitChangedCount={gitChangedCount}
-                terminalAccessible={terminalAccessible}
-              />
-            </div>
+            <button
+              onClick={() => onTogglePanel(activePanel ?? lastActivePanel)}
+              className={`hidden md:block p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
+                transition-colors relative
+                ${activePanel
+                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                }`}
+              aria-label={t('header.panelToggle')}
+              aria-pressed={!!activePanel}
+              title={t('header.panelToggle')}
+              data-testid="panel-toggle-button"
+            >
+              <PanelRight className="w-5 h-5" aria-hidden="true" />
+            </button>
           )}
 
           {onRefresh && (

@@ -4,14 +4,15 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { usePanelStore, DEFAULT_PANEL_WIDTHS } from '../panelStore';
+import { usePanelStore, DEFAULT_PANEL_WIDTH } from '../panelStore';
 
 describe('panelStore', () => {
   beforeEach(() => {
     localStorage.clear();
     usePanelStore.setState({
       activePanel: null,
-      panelWidths: { ...DEFAULT_PANEL_WIDTHS },
+      lastActivePanel: 'sessions',
+      panelWidth: DEFAULT_PANEL_WIDTH,
       isDragging: false,
     });
   });
@@ -54,71 +55,72 @@ describe('panelStore', () => {
     expect(usePanelStore.getState().activePanel).toBe('git');
   });
 
-  // Story 19.3 — panelWidths tests
-  describe('panelWidths', () => {
-    it('should initialize with default widths', () => {
-      const { panelWidths } = usePanelStore.getState();
-      expect(panelWidths.sessions).toBe(320);
-      expect(panelWidths.files).toBe(320);
-      expect(panelWidths.git).toBe(320);
-      expect(panelWidths.terminal).toBe(384);
+  // lastActivePanel — remembers last tab for reopen
+  describe('lastActivePanel', () => {
+    it('should default to sessions', () => {
+      expect(usePanelStore.getState().lastActivePanel).toBe('sessions');
     });
 
-    it('should set panel width for a specific type', () => {
-      usePanelStore.getState().setPanelWidth('sessions', 400);
-      expect(usePanelStore.getState().panelWidths.sessions).toBe(400);
+    it('should update when opening a panel', () => {
+      usePanelStore.getState().openPanel('git');
+      expect(usePanelStore.getState().lastActivePanel).toBe('git');
     });
 
-    it('should preserve other panel widths when setting one', () => {
-      usePanelStore.getState().setPanelWidth('sessions', 400);
-      expect(usePanelStore.getState().panelWidths.terminal).toBe(384);
-      expect(usePanelStore.getState().panelWidths.files).toBe(320);
-      expect(usePanelStore.getState().panelWidths.git).toBe(320);
+    it('should update when toggling to a panel', () => {
+      usePanelStore.getState().togglePanel('terminal');
+      expect(usePanelStore.getState().lastActivePanel).toBe('terminal');
+    });
+
+    it('should preserve lastActivePanel when closing', () => {
+      usePanelStore.getState().openPanel('files');
+      usePanelStore.getState().closePanel();
+      expect(usePanelStore.getState().lastActivePanel).toBe('files');
+    });
+
+    it('should preserve lastActivePanel when toggling closed', () => {
+      usePanelStore.getState().togglePanel('git');
+      usePanelStore.getState().togglePanel('git');
+      expect(usePanelStore.getState().activePanel).toBeNull();
+      expect(usePanelStore.getState().lastActivePanel).toBe('git');
+    });
+  });
+
+  // Story 19.3 — panelWidth tests (unified single width)
+  describe('panelWidth', () => {
+    it('should initialize with default width', () => {
+      expect(usePanelStore.getState().panelWidth).toBe(320);
+    });
+
+    it('should set panel width', () => {
+      usePanelStore.getState().setPanelWidth(400);
+      expect(usePanelStore.getState().panelWidth).toBe(400);
     });
 
     it('should persist panel width to localStorage', () => {
-      usePanelStore.getState().setPanelWidth('sessions', 400);
-      const stored = JSON.parse(localStorage.getItem('bmad-panel-widths')!);
-      expect(stored.sessions).toBe(400);
+      usePanelStore.getState().setPanelWidth(400);
+      expect(localStorage.getItem('bmad-panel-width')).toBe('400');
     });
 
-    it('should restore panel widths from localStorage', () => {
-      const customWidths = { sessions: 450, files: 350, git: 300, terminal: 500 };
-      localStorage.setItem('bmad-panel-widths', JSON.stringify(customWidths));
+    it('should restore panel width from localStorage', () => {
+      localStorage.setItem('bmad-panel-width', '450');
 
-      // Re-create store state by calling the internal initializer pattern
-      // Since Zustand stores are singletons, we manually reset with localStorage values
-      const raw = localStorage.getItem('bmad-panel-widths');
-      const parsed = raw ? { ...DEFAULT_PANEL_WIDTHS, ...JSON.parse(raw) } : { ...DEFAULT_PANEL_WIDTHS };
-      usePanelStore.setState({ panelWidths: parsed });
+      // Simulate re-read from localStorage
+      const raw = localStorage.getItem('bmad-panel-width');
+      const width = raw ? Number(raw) : DEFAULT_PANEL_WIDTH;
+      usePanelStore.setState({ panelWidth: Number.isFinite(width) && width >= 280 ? width : DEFAULT_PANEL_WIDTH });
 
-      const { panelWidths } = usePanelStore.getState();
-      expect(panelWidths.sessions).toBe(450);
-      expect(panelWidths.files).toBe(350);
-      expect(panelWidths.git).toBe(300);
-      expect(panelWidths.terminal).toBe(500);
+      expect(usePanelStore.getState().panelWidth).toBe(450);
     });
 
-    it('should fallback to defaults when localStorage has invalid JSON', () => {
-      localStorage.setItem('bmad-panel-widths', 'invalid-json');
+    it('should fallback to default when localStorage has invalid value', () => {
+      localStorage.setItem('bmad-panel-width', 'invalid');
 
-      // Simulate readPanelWidths behavior
-      let widths: Record<string, number>;
-      try {
-        const raw = localStorage.getItem('bmad-panel-widths');
-        if (!raw) {
-          widths = { ...DEFAULT_PANEL_WIDTHS };
-        } else {
-          widths = { ...DEFAULT_PANEL_WIDTHS, ...JSON.parse(raw) };
-        }
-      } catch {
-        widths = { ...DEFAULT_PANEL_WIDTHS };
-      }
-      usePanelStore.setState({ panelWidths: widths as Record<'sessions' | 'files' | 'git' | 'terminal', number> });
+      const raw = localStorage.getItem('bmad-panel-width');
+      const parsed = raw ? Number(raw) : DEFAULT_PANEL_WIDTH;
+      const width = Number.isFinite(parsed) && parsed >= 280 ? parsed : DEFAULT_PANEL_WIDTH;
+      usePanelStore.setState({ panelWidth: width });
 
-      const { panelWidths } = usePanelStore.getState();
-      expect(panelWidths.sessions).toBe(320);
-      expect(panelWidths.terminal).toBe(384);
+      expect(usePanelStore.getState().panelWidth).toBe(DEFAULT_PANEL_WIDTH);
     });
   });
 
