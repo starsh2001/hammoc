@@ -10,11 +10,13 @@ import { KanbanColumn } from './KanbanColumn';
 interface KanbanBoardProps extends CardActionCallbacks {
   itemsByColumn: Record<string, BoardItem[]>;
   boardConfig: BoardConfig;
+  visibleColumns?: number;
 }
 
 export function KanbanBoard({
   itemsByColumn,
   boardConfig,
+  visibleColumns,
   onQuickFix,
   onPromote,
   onEdit,
@@ -26,6 +28,13 @@ export function KanbanBoard({
   onNormalizeStatus,
   onCardClick,
 }: KanbanBoardProps) {
+  const totalColumns = boardConfig.columns.length;
+  const effectiveVisible = visibleColumns ? Math.min(visibleColumns, totalColumns) : totalColumns;
+  const columnStyle = {
+    flex: 'none',
+    width: `calc((100% - ${(effectiveVisible - 1) * 8}px) / ${effectiveVisible})`,
+  };
+
   return (
     <div className="flex gap-2 overflow-x-auto h-full pb-2">
       {boardConfig.columns.map((col) => (
@@ -33,6 +42,7 @@ export function KanbanBoard({
           key={col.id}
           columnConfig={col}
           items={itemsByColumn[col.id] || []}
+          style={columnStyle}
           onQuickFix={onQuickFix}
           onPromote={onPromote}
           onEdit={onEdit}

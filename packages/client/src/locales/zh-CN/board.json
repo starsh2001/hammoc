@@ -90,7 +90,9 @@
   },
   "view": {
     "kanban": "Kanban 视图",
-    "list": "列表视图"
+    "list": "列表视图",
+    "lessColumns": "减少显示列数",
+    "moreColumns": "增加显示列数"
   },
   "promote": {
     "originalIssueHeader": "原始问题（ID：{{id}}）",

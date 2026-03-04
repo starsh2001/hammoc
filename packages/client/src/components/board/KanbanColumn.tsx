@@ -10,11 +10,13 @@ import type { CardActionCallbacks } from './BoardCard';
 interface KanbanColumnProps extends CardActionCallbacks {
   columnConfig: BoardColumnConfig;
   items: BoardItem[];
+  style?: React.CSSProperties;
 }
 
 export function KanbanColumn({
   columnConfig,
   items,
+  style,
   onQuickFix,
   onPromote,
   onEdit,
@@ -28,7 +30,8 @@ export function KanbanColumn({
 }: KanbanColumnProps) {
   return (
     <div
-      className={`min-w-[200px] flex-1 flex flex-col h-full min-h-0 bg-gray-50 dark:bg-gray-900 rounded-lg border-t-2 ${columnConfig.colorClass}`}
+      className={`flex flex-col h-full min-h-0 bg-gray-50 dark:bg-gray-900 rounded-lg border-t-2 ${columnConfig.colorClass}`}
+      style={style}
     >
       {/* Column header */}
       <div className="px-3 py-2 flex items-center justify-between">
