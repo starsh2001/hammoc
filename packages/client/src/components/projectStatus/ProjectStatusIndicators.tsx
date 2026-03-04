@@ -11,8 +11,8 @@ interface ProjectStatusIndicatorsProps {
 function buildAriaLabel(status: DashboardProjectStatus, t: TFunction): string {
   const parts: string[] = [];
 
-  if (status.activeSessionCount > 0) {
-    parts.push(t('dashboard.activeSessionsCount', { count: status.activeSessionCount }));
+  if (status.totalSessionCount > 0) {
+    parts.push(t('dashboard.activeSessionsFormat', { active: status.activeSessionCount, total: status.totalSessionCount }));
   }
 
   if (status.queueStatus !== 'idle') {
@@ -45,10 +45,12 @@ export function ProjectStatusIndicators({ status }: ProjectStatusIndicatorsProps
       aria-label={buildAriaLabel(status, t)}
     >
       {/* Active sessions */}
-      {status.activeSessionCount > 0 && (
+      {status.totalSessionCount > 0 && (
         <div className="flex items-center gap-1">
-          <span className="w-2 h-2 bg-green-500 rounded-full" />
-          <span>{status.activeSessionCount}</span>
+          {status.activeSessionCount > 0 && (
+            <span className="w-2 h-2 bg-green-500 rounded-full" />
+          )}
+          <span>{status.activeSessionCount} active</span>
         </div>
       )}
 
