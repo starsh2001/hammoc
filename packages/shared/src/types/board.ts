@@ -1,7 +1,7 @@
 // Epic 21: Project Board types (Story 21.1)
 
 export type BoardItemType = 'issue' | 'story' | 'epic';
-export type BoardItemStatus = 'Open' | 'Draft' | 'Approved' | 'InProgress' | 'Blocked' | 'Review' | 'Done' | 'Closed';
+export type BoardItemStatus = 'Open' | 'Draft' | 'Approved' | 'InProgress' | 'Blocked' | 'Review' | 'Done' | 'Closed' | 'Promoted';
 
 // Board column is a string to support custom column configurations
 export type BoardColumn = string;
@@ -17,6 +17,8 @@ export interface BoardColumnConfig {
 export interface BoardConfig {
   columns: BoardColumnConfig[];
   statusToColumn: Record<BoardItemStatus, string>;
+  /** Custom raw-status → BoardItemStatus mappings (e.g. "Complete" → "Done") */
+  customStatusMappings?: Record<string, BoardItemStatus>;
 }
 
 // Available colors for column customization
@@ -51,6 +53,7 @@ export const DEFAULT_STATUS_TO_COLUMN: Record<BoardItemStatus, string> = {
   Review: 'Review',
   Done: 'Close',
   Closed: 'Close',
+  Promoted: 'Close',
 };
 
 export const DEFAULT_BOARD_CONFIG: BoardConfig = {
@@ -69,8 +72,11 @@ export const COLUMN_LABEL: Record<string, string> = Object.fromEntries(
 
 // All possible statuses (used for validation)
 const ALL_STATUSES: BoardItemStatus[] = [
-  'Open', 'Draft', 'Approved', 'InProgress', 'Blocked', 'Review', 'Done', 'Closed',
+  'Open', 'Draft', 'Approved', 'InProgress', 'Blocked', 'Review', 'Done', 'Closed', 'Promoted',
 ];
+
+// Required column IDs that cannot be removed
+export const REQUIRED_COLUMN_IDS = ['Open', 'Close'] as const;
 
 export function validateBoardConfig(config: unknown): string[] {
   const errors: string[] = [];
@@ -101,6 +107,11 @@ export function validateBoardConfig(config: unknown): string[] {
   if (columnIds.size !== columns.length) {
     errors.push('Column IDs must be unique');
   }
+  for (const requiredId of REQUIRED_COLUMN_IDS) {
+    if (!columnIds.has(requiredId)) {
+      errors.push(`Required column "${requiredId}" is missing`);
+    }
+  }
   for (const col of columns) {
     if (!col.id || typeof col.id !== 'string' || !col.id.trim()) {
       errors.push('Column ID cannot be empty');
@@ -115,6 +126,25 @@ export function validateBoardConfig(config: unknown): string[] {
       errors.push(`Status "${status}" maps to non-existent column "${target}"`);
     }
   }
+
+  // Validate customStatusMappings if present
+  const allStatusSet = new Set<string>(ALL_STATUSES);
+  if (cfg.customStatusMappings != null) {
+    if (typeof cfg.customStatusMappings !== 'object' || Array.isArray(cfg.customStatusMappings)) {
+      errors.push('customStatusMappings must be an object');
+    } else {
+      const csm = cfg.customStatusMappings as Record<string, string>;
+      for (const [rawKey, target] of Object.entries(csm)) {
+        if (!rawKey.trim()) {
+          errors.push('Custom status mapping key cannot be empty');
+        }
+        if (!allStatusSet.has(target)) {
+          errors.push(`Custom status mapping "${rawKey}" targets invalid status "${target}"`);
+        }
+      }
+    }
+  }
+
   return errors;
 }
 
@@ -136,6 +166,8 @@ export interface BoardItem {
   linkedStory?: string;
   linkedEpic?: string;
   externalRef?: string;
+  /** Project-relative path to the source file (story/epic markdown) */
+  filePath?: string;
 }
 
 export interface BoardResponse {
@@ -153,7 +185,7 @@ export interface CreateIssueRequest {
 export interface UpdateIssueRequest {
   title?: string;
   description?: string;
-  status?: 'Open' | 'InProgress' | 'Done' | 'Closed';
+  status?: 'Open' | 'InProgress' | 'Done' | 'Closed' | 'Promoted';
   severity?: 'low' | 'medium' | 'high' | 'critical';
   issueType?: 'bug' | 'improvement';
   linkedStory?: string;

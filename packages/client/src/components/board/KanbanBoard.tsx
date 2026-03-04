@@ -19,10 +19,12 @@ export function KanbanBoard({
   onPromote,
   onEdit,
   onClose,
+  onReopen,
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
   onNormalizeStatus,
+  onCardClick,
 }: KanbanBoardProps) {
   return (
     <div className="flex gap-4 overflow-x-auto h-full pb-2">
@@ -35,10 +37,12 @@ export function KanbanBoard({
           onPromote={onPromote}
           onEdit={onEdit}
           onClose={onClose}
+          onReopen={onReopen}
           onDelete={onDelete}
           onWorkflowAction={onWorkflowAction}
           onViewEpicStories={onViewEpicStories}
           onNormalizeStatus={onNormalizeStatus}
+          onCardClick={onCardClick}
         />
       ))}
     </div>

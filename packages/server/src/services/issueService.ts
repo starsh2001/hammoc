@@ -13,12 +13,23 @@ import { bmadStatusService } from './bmadStatusService.js';
 
 const VALID_SEVERITIES = new Set(['low', 'medium', 'high', 'critical']);
 const VALID_ISSUE_TYPES = new Set(['bug', 'improvement']);
-const VALID_STATUSES = new Set(['Open', 'InProgress', 'Done', 'Closed']);
+const VALID_STATUSES = new Set(['Open', 'InProgress', 'Done', 'Closed', 'Promoted']);
 
 /**
  * Map BmadStoryStatus.status (may include spaces) to BoardItemStatus.
+ * Uses case-insensitive matching for common variations.
+ * Custom mappings (from board config) take priority over built-in ones.
  */
-function mapStoryStatus(status: string): BoardItemStatus {
+function mapStoryStatus(status: string, customMappings?: Record<string, BoardItemStatus>): BoardItemStatus {
+  // Custom mappings take highest priority (case-insensitive)
+  if (customMappings) {
+    const lower = status.toLowerCase().trim();
+    for (const [key, value] of Object.entries(customMappings)) {
+      if (key.toLowerCase().trim() === lower) return value;
+    }
+  }
+
+  // Exact matches first (most common)
   switch (status) {
     case 'Draft':
       return 'Draft';
@@ -34,9 +45,26 @@ function mapStoryStatus(status: string): BoardItemStatus {
     case 'Done':
     case 'Ready for Done':
       return 'Done';
+    case 'Open':
+    case 'Closed':
+    case 'InProgress':
+      return status;
     default:
-      return 'Open';
+      break;
   }
+
+  // Case-insensitive fuzzy matching for non-standard values
+  const lower = status.toLowerCase().trim();
+  if (lower === 'complete' || lower === 'completed') return 'Done';
+  if (lower === 'wip' || lower === 'in development' || lower === 'developing') return 'InProgress';
+  if (lower === 'todo' || lower === 'to do' || lower === 'to-do') return 'Draft';
+  if (lower === 'pending' || lower === 'new') return 'Open';
+  if (lower === 'in review' || lower === 'reviewing' || lower === 'under review') return 'Review';
+  if (lower === 'on hold' || lower === 'hold') return 'Blocked';
+  if (lower === 'closed' || lower === 'archived' || lower === 'cancelled') return 'Closed';
+
+  // Truly unknown status — fallback to Open
+  return 'Open';
 }
 
 /**
@@ -351,7 +379,7 @@ class IssueService {
   /**
    * Get unified board data: issues + epics + stories from bmadStatusService.
    */
-  async getBoard(projectPath: string): Promise<Pick<BoardResponse, 'items'>> {
+  async getBoard(projectPath: string, customStatusMappings?: Record<string, BoardItemStatus>): Promise<Pick<BoardResponse, 'items'>> {
     const [issues, statusResponse, issuesDir] = await Promise.all([
       this.listIssues(projectPath),
       bmadStatusService.scanProject(projectPath),
@@ -366,6 +394,9 @@ class IssueService {
       externalRef: `${relativeIssuesDir}/${issue.id}.md`,
     }));
 
+    // Resolve story directory (project-relative) for filePath
+    const storyLocation = statusResponse.config.devStoryLocation || 'docs/stories';
+
     for (const epic of statusResponse.epics) {
       // Convert stories to BoardItems
       const storyItems: BoardItem[] = epic.stories.map((story) => {
@@ -374,7 +405,7 @@ class IssueService {
         const epicMatch = story.file.match(/^(\d+)\./);
         const epicNumber = epicMatch ? parseInt(epicMatch[1], 10) : undefined;
 
-        const mapped = mapStoryStatus(story.status);
+        const mapped = mapStoryStatus(story.status, customStatusMappings);
         return {
           id: `story-${storyId}`,
           type: 'story' as const,
@@ -383,13 +414,14 @@ class IssueService {
           // Include rawStatus when it differs from the standard mapped value
           ...(story.status !== mapped && { rawStatus: story.status }),
           ...(epicNumber !== undefined && { epicNumber }),
+          filePath: `${storyLocation}/${story.file}`,
         };
       });
 
       items.push(...storyItems);
 
       // Calculate epic status from mapped story statuses
-      const mappedStatuses = epic.stories.map((s) => mapStoryStatus(s.status));
+      const mappedStatuses = epic.stories.map((s) => mapStoryStatus(s.status, customStatusMappings));
       let epicStatus: BoardItemStatus;
       if (mappedStatuses.length === 0) {
         epicStatus = 'Open';
@@ -419,6 +451,7 @@ class IssueService {
         status: epicStatus,
         epicNumber: epic.number,
         storyProgress: { total, done },
+        ...(epic.filePath && { filePath: epic.filePath }),
       });
     }
 

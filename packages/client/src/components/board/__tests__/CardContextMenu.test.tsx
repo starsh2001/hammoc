@@ -96,7 +96,7 @@ describe('CardContextMenu', () => {
       render(<CardContextMenu item={issueItem} {...allCallbacks} />);
       fireEvent.click(screen.getByLabelText('카드 메뉴'));
 
-      expect(screen.getByText('바로 수정하기')).toBeInTheDocument();
+      expect(screen.getByText('바로 작업하기')).toBeInTheDocument();
       expect(screen.getByText('스토리로 승격')).toBeInTheDocument();
       expect(screen.getByText('에픽으로 승격')).toBeInTheDocument();
       expect(screen.getByText('편집')).toBeInTheDocument();
@@ -121,10 +121,10 @@ describe('CardContextMenu', () => {
       expect(promoteBtn).toHaveAttribute('title', '이미 에픽으로 승격됨');
     });
 
-    it('should call onQuickFix when "바로 수정하기" is clicked', () => {
+    it('should call onQuickFix when "바로 작업하기" is clicked', () => {
       render(<CardContextMenu item={issueItem} {...allCallbacks} />);
       fireEvent.click(screen.getByLabelText('카드 메뉴'));
-      fireEvent.click(screen.getByText('바로 수정하기'));
+      fireEvent.click(screen.getByText('바로 작업하기'));
 
       expect(mockQuickFix).toHaveBeenCalledWith(issueItem);
     });
@@ -224,19 +224,19 @@ describe('CardContextMenu', () => {
     it('should close menu on outside click', () => {
       render(<CardContextMenu item={issueItem} {...allCallbacks} />);
       fireEvent.click(screen.getByLabelText('카드 메뉴'));
-      expect(screen.getByText('바로 수정하기')).toBeInTheDocument();
+      expect(screen.getByText('바로 작업하기')).toBeInTheDocument();
 
       fireEvent.mouseDown(document.body);
-      expect(screen.queryByText('바로 수정하기')).not.toBeInTheDocument();
+      expect(screen.queryByText('바로 작업하기')).not.toBeInTheDocument();
     });
 
     it('should close menu on Escape key', () => {
       render(<CardContextMenu item={issueItem} {...allCallbacks} />);
       fireEvent.click(screen.getByLabelText('카드 메뉴'));
-      expect(screen.getByText('바로 수정하기')).toBeInTheDocument();
+      expect(screen.getByText('바로 작업하기')).toBeInTheDocument();
 
       fireEvent.keyDown(document, { key: 'Escape' });
-      expect(screen.queryByText('바로 수정하기')).not.toBeInTheDocument();
+      expect(screen.queryByText('바로 작업하기')).not.toBeInTheDocument();
     });
 
     it('should navigate menu items with ArrowDown and ArrowUp', () => {
@@ -245,7 +245,7 @@ describe('CardContextMenu', () => {
 
       // ArrowDown should focus first item
       fireEvent.keyDown(document, { key: 'ArrowDown' });
-      const firstItem = screen.getByText('바로 수정하기');
+      const firstItem = screen.getByText('바로 작업하기');
       expect(firstItem.className).toContain('bg-gray-100');
 
       // ArrowDown again should focus second item
@@ -272,10 +272,10 @@ describe('CardContextMenu', () => {
       const button = screen.getByLabelText('카드 메뉴');
 
       fireEvent.click(button);
-      expect(screen.getByText('바로 수정하기')).toBeInTheDocument();
+      expect(screen.getByText('바로 작업하기')).toBeInTheDocument();
 
       fireEvent.click(button);
-      expect(screen.queryByText('바로 수정하기')).not.toBeInTheDocument();
+      expect(screen.queryByText('바로 작업하기')).not.toBeInTheDocument();
     });
   });
 });

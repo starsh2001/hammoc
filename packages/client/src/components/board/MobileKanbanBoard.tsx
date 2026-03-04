@@ -23,10 +23,12 @@ export function MobileKanbanBoard({
   onPromote,
   onEdit,
   onClose,
+  onReopen,
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
   onNormalizeStatus,
+  onCardClick,
 }: MobileKanbanBoardProps) {
   const { t } = useTranslation('board');
   const [activeColumnIndex, setActiveColumnIndex] = useState(0);
@@ -110,10 +112,12 @@ export function MobileKanbanBoard({
               onPromote={onPromote}
               onEdit={onEdit}
               onClose={onClose}
+              onReopen={onReopen}
               onDelete={onDelete}
               onWorkflowAction={onWorkflowAction}
               onViewEpicStories={onViewEpicStories}
               onNormalizeStatus={onNormalizeStatus}
+              onCardClick={onCardClick}
             />
           ))}
           {activeItems.length === 0 && (

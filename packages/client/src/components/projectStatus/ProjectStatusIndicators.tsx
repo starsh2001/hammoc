@@ -9,9 +9,11 @@ interface ProjectStatusIndicatorsProps {
 }
 
 function buildAriaLabel(status: DashboardProjectStatus, t: TFunction): string {
-  const parts: string[] = [
-    t('dashboard.activeSessionsFormat', { active: status.activeSessionCount, total: status.totalSessionCount }),
-  ];
+  const parts: string[] = [];
+
+  if (status.activeSessionCount > 0) {
+    parts.push(t('dashboard.activeSessionsCount', { count: status.activeSessionCount }));
+  }
 
   if (status.queueStatus !== 'idle') {
     parts.push(t('dashboard.queueStatusFormat', { status: t(`queueStatus.${status.queueStatus}`) }));
@@ -43,10 +45,12 @@ export function ProjectStatusIndicators({ status }: ProjectStatusIndicatorsProps
       aria-label={buildAriaLabel(status, t)}
     >
       {/* Active sessions */}
-      <div className="flex items-center gap-1">
-        <span className="w-2 h-2 bg-green-500 rounded-full" />
-        <span>{t('dashboard.activeFormat', { active: status.activeSessionCount, total: status.totalSessionCount })}</span>
-      </div>
+      {status.activeSessionCount > 0 && (
+        <div className="flex items-center gap-1">
+          <span className="w-2 h-2 bg-green-500 rounded-full" />
+          <span>{status.activeSessionCount}</span>
+        </div>
+      )}
 
       {/* Queue status badge */}
       <QueueStatusBadge status={status.queueStatus} />

@@ -64,6 +64,8 @@ export interface BmadEpicStatus {
   stories: BmadStoryStatus[];
   /** Number of stories defined in the PRD epic file (may exceed stories.length) */
   plannedStories?: number;
+  /** Project-relative path to the PRD file containing this epic */
+  filePath?: string;
 }
 
 /** Auxiliary document info */

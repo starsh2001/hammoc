@@ -10,7 +10,10 @@
     "delete": "Excluir",
     "resetDefaults": "Restaurar padrões",
     "resetConfirm": "Restaurar configurações padrão?",
-    "saving": "Salvando..."
+    "saving": "Salvando...",
+    "customStatusMapping": "Mapeamento de status personalizado",
+    "customStatusMappingHint": "Mapeia status não padrão de stories para status do quadro",
+    "customStatusKeyPlaceholder": "ex. Complete"
   },
   "issue": {
     "add": "Adicionar issue",
@@ -30,17 +33,19 @@
     "typeLabel": "Tipo:",
     "typeBug": "Bug",
     "typeImprovement": "Melhoria",
-    "quickFix": "Correção rápida",
+    "quickFix": "Ação rápida",
     "promoteToStory": "Promover a story",
     "alreadyPromotedToStory": "Já promovido a story",
     "promoteToEpic": "Promover a epic",
     "alreadyPromotedToEpic": "Já promovido a epic",
     "cannotDeleteWhileWorking": "Não é possível excluir enquanto a IA está trabalhando",
+    "reopen": "Reabrir",
     "closeConfirm": "Fechar esta issue?",
     "deleteConfirm": "Excluir issue \"{{title}}\"?"
   },
   "card": {
-    "menu": "Menu do cartão"
+    "menu": "Menu do cartão",
+    "unmappedStatus": "Status não padrão \"{{rawStatus}}\" mapeado para {{status}}. Use o menu de contexto para normalizar."
   },
   "epic": {
     "subStories": "Sub-stories do epic",
@@ -65,7 +70,8 @@
     "blocked": "Bloqueado",
     "review": "Revisão",
     "done": "Concluído",
-    "closed": "Fechado"
+    "closed": "Fechado",
+    "promoted": "Promovido"
   },
   "errors": {
     "saveFailed": "Falha ao salvar.",
@@ -74,6 +80,7 @@
     "promoteFailed": "Falha ao promover.",
     "editFailed": "Falha ao editar issue.",
     "closeFailed": "Falha ao fechar issue.",
+    "reopenFailed": "Falha ao reabrir issue.",
     "deleteFailed": "Falha ao excluir issue.",
     "normalizeStatusFailed": "Falha ao normalizar status."
   },

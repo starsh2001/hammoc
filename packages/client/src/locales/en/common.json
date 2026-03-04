@@ -249,6 +249,7 @@
     "terminals": "Terminals",
     "projectStatus": "Project status: {{details}}",
     "activeSessionsFormat": "{{active}}/{{total}} active sessions",
+    "activeSessionsCount": "{{count}} active session(s)",
     "activeFormat": "{{active}}/{{total}} active",
     "queueStatusFormat": "queue {{status}}",
     "terminalsFormat": "{{count}} terminal(s)"

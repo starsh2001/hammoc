@@ -186,6 +186,8 @@ class BmadStatusService {
     const epicMap = new Map<number, string>();
     // Planned story count from PRD epic headers (## Story N.N / ### Story N.N)
     const plannedMap = new Map<number, number>();
+    // Track which file each epic was found in (project-relative path)
+    const epicFileMap = new Map<number, string>();
 
     // 3-step fallback strategy for epic discovery
     if (config.prdSharded && config.prdShardedLocation) {
@@ -203,6 +205,7 @@ class BmadStatusService {
               const content = await fs.readFile(path.join(shardedDir, file), 'utf-8');
               const nameMatch = content.match(EPIC_HEADER_RE);
               epicMap.set(epicNum, nameMatch ? nameMatch[2].trim() : `Epic ${epicNum}`);
+              epicFileMap.set(epicNum, `${config.prdShardedLocation}/${file}`);
               this.countPlannedStories(content, plannedMap);
             }
           }
@@ -222,7 +225,9 @@ class BmadStatusService {
             const regex = new RegExp(EPIC_HEADER_RE.source, 'gm');
             let match;
             while ((match = regex.exec(content)) !== null) {
-              epicMap.set(parseInt(match[1], 10), match[2].trim());
+              const epicNum = parseInt(match[1], 10);
+              epicMap.set(epicNum, match[2].trim());
+              epicFileMap.set(epicNum, `${config.prdShardedLocation}/${file}`);
             }
             this.countPlannedStories(content, plannedMap);
           }
@@ -237,7 +242,9 @@ class BmadStatusService {
         const regex = new RegExp(EPIC_HEADER_RE.source, 'gm');
         let match;
         while ((match = regex.exec(content)) !== null) {
-          epicMap.set(parseInt(match[1], 10), match[2].trim());
+          const epicNum = parseInt(match[1], 10);
+          epicMap.set(epicNum, match[2].trim());
+          epicFileMap.set(epicNum, config.prdFile);
         }
         this.countPlannedStories(content, plannedMap);
       } catch {
@@ -285,6 +292,7 @@ class BmadStatusService {
         name,
         stories: (storyMap.get(number) || []).sort((a, b) => a.file.localeCompare(b.file, undefined, { numeric: true })),
         ...(plannedMap.has(number) && { plannedStories: plannedMap.get(number) }),
+        ...(epicFileMap.has(number) && { filePath: epicFileMap.get(number) }),
       }));
 
     return epics;

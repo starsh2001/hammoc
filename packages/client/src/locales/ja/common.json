@@ -247,6 +247,7 @@
     "terminals": "ターミナル",
     "projectStatus": "プロジェクトステータス：{{details}}",
     "activeSessionsFormat": "{{active}}/{{total}}件のアクティブセッション",
+    "activeSessionsCount": "アクティブセッション{{count}}件",
     "activeFormat": "{{active}}/{{total}}件アクティブ",
     "queueStatusFormat": "キュー {{status}}",
     "terminalsFormat": "ターミナル{{count}}台"
