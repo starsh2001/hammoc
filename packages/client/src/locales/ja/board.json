@@ -10,7 +10,10 @@
     "delete": "削除",
     "resetDefaults": "デフォルトに戻す",
     "resetConfirm": "デフォルト設定に戻しますか？",
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "customStatusMapping": "カスタムステータスマッピング",
+    "customStatusMappingHint": "非標準のストーリーステータスをボードステータスにマッピング",
+    "customStatusKeyPlaceholder": "例: Complete"
   },
   "issue": {
     "add": "課題を追加",
@@ -30,17 +33,19 @@
     "typeLabel": "タイプ：",
     "typeBug": "バグ",
     "typeImprovement": "改善",
-    "quickFix": "クイック修正",
+    "quickFix": "クイック作業",
     "promoteToStory": "ストーリーに昇格",
     "alreadyPromotedToStory": "既にストーリーに昇格済み",
     "promoteToEpic": "エピックに昇格",
     "alreadyPromotedToEpic": "既にエピックに昇格済み",
     "cannotDeleteWhileWorking": "AIが作業中は削除できません",
+    "reopen": "再オープン",
     "closeConfirm": "この課題を閉じますか？",
     "deleteConfirm": "課題「{{title}}」を削除しますか？"
   },
   "card": {
-    "menu": "カードメニュー"
+    "menu": "カードメニュー",
+    "unmappedStatus": "非標準ステータス「{{rawStatus}}」が{{status}}にマッピングされました。コンテキストメニューで正規化してください。"
   },
   "epic": {
     "subStories": "エピックのサブストーリー",
@@ -65,7 +70,8 @@
     "blocked": "ブロック中",
     "review": "レビュー",
     "done": "完了",
-    "closed": "クローズ"
+    "closed": "クローズ",
+    "promoted": "昇格済み"
   },
   "errors": {
     "saveFailed": "保存に失敗しました。",
@@ -74,6 +80,7 @@
     "promoteFailed": "昇格に失敗しました。",
     "editFailed": "課題の編集に失敗しました。",
     "closeFailed": "課題のクローズに失敗しました。",
+    "reopenFailed": "課題の再オープンに失敗しました。",
     "deleteFailed": "課題の削除に失敗しました。",
     "normalizeStatusFailed": "ステータスの正規化に失敗しました。"
   },

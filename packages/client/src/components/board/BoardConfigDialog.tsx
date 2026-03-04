@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import type { BoardConfig, BoardColumnConfig, BoardItemStatus } from '@bmad-studio/shared';
-import { COLUMN_COLOR_PALETTE, DEFAULT_BOARD_CONFIG, validateBoardConfig } from '@bmad-studio/shared';
+import { COLUMN_COLOR_PALETTE, DEFAULT_BOARD_CONFIG, REQUIRED_COLUMN_IDS, validateBoardConfig } from '@bmad-studio/shared';
 import { STATUS_LABEL } from './constants';
 
 interface BoardConfigDialogProps {
@@ -19,8 +19,10 @@ interface BoardConfigDialogProps {
 }
 
 const ALL_STATUSES: BoardItemStatus[] = [
-  'Open', 'Draft', 'Approved', 'InProgress', 'Blocked', 'Review', 'Done', 'Closed',
+  'Open', 'Draft', 'Approved', 'InProgress', 'Blocked', 'Review', 'Done', 'Closed', 'Promoted',
 ];
+
+const REQUIRED_IDS = new Set<string>(REQUIRED_COLUMN_IDS);
 
 // Color swatch display name (extract color from class)
 function colorSwatchClass(colorClass: string): string {
@@ -31,6 +33,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
   const { t } = useTranslation('board');
   const [columns, setColumns] = useState<BoardColumnConfig[]>([]);
   const [statusMap, setStatusMap] = useState<Record<BoardItemStatus, string>>({} as Record<BoardItemStatus, string>);
+  const [customMappings, setCustomMappings] = useState<{ key: string; value: BoardItemStatus }[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [openColorPicker, setOpenColorPicker] = useState<number | null>(null);
@@ -40,6 +43,11 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
     if (open) {
       setColumns(config.columns.map((c) => ({ ...c })));
       setStatusMap({ ...config.statusToColumn });
+      setCustomMappings(
+        config.customStatusMappings
+          ? Object.entries(config.customStatusMappings).map(([key, value]) => ({ key, value }))
+          : [],
+      );
       setErrors([]);
       setOpenColorPicker(null);
     }
@@ -72,6 +80,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
   const handleRemoveColumn = (index: number) => {
     if (columns.length <= 1) return;
     const removed = columns[index];
+    if (REQUIRED_IDS.has(removed.id)) return;
     const newColumns = columns.filter((_, i) => i !== index);
     setColumns(newColumns);
     // Re-map any statuses pointing to removed column to first column
@@ -109,7 +118,17 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
   };
 
   const handleSave = async () => {
-    const newConfig: BoardConfig = { columns, statusToColumn: statusMap };
+    // Build customStatusMappings from entries with non-empty keys
+    const csm: Record<string, BoardItemStatus> = {};
+    for (const entry of customMappings) {
+      const trimmed = entry.key.trim();
+      if (trimmed) csm[trimmed] = entry.value;
+    }
+    const newConfig: BoardConfig = {
+      columns,
+      statusToColumn: statusMap,
+      ...(Object.keys(csm).length > 0 && { customStatusMappings: csm }),
+    };
     const validationErrors = validateBoardConfig(newConfig);
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
@@ -253,7 +272,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
                   {/* Delete */}
                   <button
                     onClick={() => handleRemoveColumn(index)}
-                    disabled={columns.length <= 1}
+                    disabled={columns.length <= 1 || REQUIRED_IDS.has(col.id)}
                     className="p-1 text-red-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     aria-label={t('config.delete')}
                   >
@@ -287,6 +306,65 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Custom status mapping section */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('config.customStatusMapping')}</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t('config.customStatusMappingHint')}</p>
+              </div>
+              <button
+                onClick={() => setCustomMappings([...customMappings, { key: '', value: 'Open' }])}
+                disabled={customMappings.length >= 20}
+                className="px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded flex items-center gap-1 transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                {t('common:button.add')}
+              </button>
+            </div>
+
+            {customMappings.length > 0 && (
+              <div className="space-y-2">
+                {customMappings.map((entry, index) => (
+                  <div key={index} className="flex items-center gap-2 px-2">
+                    <input
+                      type="text"
+                      value={entry.key}
+                      onChange={(e) => {
+                        const updated = [...customMappings];
+                        updated[index] = { ...entry, key: e.target.value };
+                        setCustomMappings(updated);
+                      }}
+                      placeholder={t('config.customStatusKeyPlaceholder')}
+                      className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    />
+                    <span className="text-gray-400 text-sm flex-shrink-0">&rarr;</span>
+                    <select
+                      value={entry.value}
+                      onChange={(e) => {
+                        const updated = [...customMappings];
+                        updated[index] = { ...entry, value: e.target.value as BoardItemStatus };
+                        setCustomMappings(updated);
+                      }}
+                      className="w-32 px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    >
+                      {ALL_STATUSES.map((s) => (
+                        <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setCustomMappings(customMappings.filter((_, i) => i !== index))}
+                      className="p-1 text-red-400 hover:text-red-600 transition-colors"
+                      aria-label={t('config.delete')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

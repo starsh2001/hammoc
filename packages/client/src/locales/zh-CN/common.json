@@ -247,6 +247,7 @@
     "terminals": "终端",
     "projectStatus": "项目状态：{{details}}",
     "activeSessionsFormat": "{{active}}/{{total}} 个活跃会话",
+    "activeSessionsCount": "{{count}} 个活跃会话",
     "activeFormat": "{{active}}/{{total}} 活跃",
     "queueStatusFormat": "队列 {{status}}",
     "terminalsFormat": "{{count}} 个终端"

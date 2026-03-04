@@ -3,6 +3,8 @@
  * [Source: Story 21.2 - Task 6, Story 21.3 - Task 2]
  */
 
+import { AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { BoardItem } from '@bmad-studio/shared';
 import { CardContextMenu } from './CardContextMenu';
 import { STATUS_LABEL, STATUS_BADGE_COLOR } from './constants';
@@ -12,10 +14,12 @@ export interface CardActionCallbacks {
   onPromote?: (item: BoardItem, targetType: 'story' | 'epic') => void;
   onEdit?: (item: BoardItem) => void;
   onClose?: (item: BoardItem) => void;
+  onReopen?: (item: BoardItem) => void;
   onDelete?: (item: BoardItem) => void;
   onWorkflowAction?: (item: BoardItem) => void;
   onViewEpicStories?: (item: BoardItem) => void;
   onNormalizeStatus?: (item: BoardItem) => void;
+  onCardClick?: (item: BoardItem) => void;
 }
 
 interface BoardCardProps extends CardActionCallbacks {
@@ -50,15 +54,26 @@ export function BoardCard({
   onPromote,
   onEdit,
   onClose,
+  onReopen,
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
   onNormalizeStatus,
+  onCardClick,
 }: BoardCardProps) {
+  const { t } = useTranslation('board');
   const typeBadge = TYPE_BADGE[item.type];
+  const isClickable = item.type === 'issue' || ((item.type === 'story' || item.type === 'epic') && !!item.filePath);
 
   return (
-    <div className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm cursor-default relative">
+    <div
+      className={`p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm relative ${
+        isClickable
+          ? 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all'
+          : 'cursor-default'
+      }`}
+      onClick={isClickable ? () => onCardClick?.(item) : undefined}
+    >
       {/* Header: type badge + title + context menu */}
       <div className="flex items-start gap-2">
         {typeBadge && (
@@ -69,6 +84,11 @@ export function BoardCard({
           </span>
         )}
         <span className="text-sm font-medium text-gray-900 dark:text-white leading-tight flex-1">
+          {(item.type === 'story' || item.type === 'epic') && (
+            <span className="text-gray-400 dark:text-gray-500 mr-1">
+              {item.id.replace(/^(story|epic)-/, '')}
+            </span>
+          )}
           {item.title}
         </span>
         <CardContextMenu
@@ -77,6 +97,7 @@ export function BoardCard({
           onPromote={onPromote}
           onEdit={onEdit}
           onClose={onClose}
+          onReopen={onReopen}
           onDelete={onDelete}
           onWorkflowAction={onWorkflowAction}
           onViewEpicStories={onViewEpicStories}
@@ -138,10 +159,18 @@ export function BoardCard({
       )}
 
       {/* Status badge */}
-      <div className="mt-2">
+      <div className="mt-2 flex items-center gap-1.5">
         <span className={`text-xs px-1.5 py-0.5 rounded-full ${STATUS_BADGE_COLOR[item.status]}`}>
           {STATUS_LABEL[item.status]}
         </span>
+        {item.rawStatus && (
+          <span
+            title={t('card.unmappedStatus', { rawStatus: item.rawStatus, status: item.status })}
+            className="text-amber-500 dark:text-amber-400 flex-shrink-0"
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+          </span>
+        )}
       </div>
     </div>
   );

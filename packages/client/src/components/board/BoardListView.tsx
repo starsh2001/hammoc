@@ -33,10 +33,12 @@ export function BoardListView({
   onPromote,
   onEdit,
   onClose,
+  onReopen,
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
   onNormalizeStatus,
+  onCardClick,
 }: BoardListViewProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     () => getInitialExpanded(isMobile, boardConfig),
@@ -112,10 +114,12 @@ export function BoardListView({
                     onPromote={onPromote}
                     onEdit={onEdit}
                     onClose={onClose}
+                    onReopen={onReopen}
                     onDelete={onDelete}
                     onWorkflowAction={onWorkflowAction}
                     onViewEpicStories={onViewEpicStories}
                     onNormalizeStatus={onNormalizeStatus}
+                    onCardClick={onCardClick}
                   />
                 ))}
               </div>

@@ -27,4 +27,11 @@ export const preferencesApi = {
   /** Send test Telegram notification (optional overrides for unsaved values) */
   testTelegram: (overrides?: { botToken?: string; chatId?: string }) =>
     api.post<{ success: boolean; error?: string }>('/preferences/telegram/test', overrides),
+
+  /** Get default system prompt template (no project required) */
+  getSystemPromptTemplate: () =>
+    api.get<{
+      template: string;
+      variables: readonly { name: string; description: string }[];
+    }>('/preferences/system-prompt'),
 };

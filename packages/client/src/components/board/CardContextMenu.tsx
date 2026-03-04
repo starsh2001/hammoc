@@ -15,6 +15,7 @@ export interface CardContextMenuProps {
   onPromote?: (item: BoardItem, targetType: 'story' | 'epic') => void;
   onEdit?: (item: BoardItem) => void;
   onClose?: (item: BoardItem) => void;
+  onReopen?: (item: BoardItem) => void;
   onDelete?: (item: BoardItem) => void;
   onWorkflowAction?: (item: BoardItem) => void;
   onViewEpicStories?: (item: BoardItem) => void;
@@ -52,6 +53,7 @@ export function CardContextMenu({
   onPromote,
   onEdit,
   onClose,
+  onReopen,
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
@@ -87,20 +89,19 @@ export function CardContextMenu({
           title: item.linkedEpic ? t('issue.alreadyPromotedToEpic') : undefined,
         });
       }
-    }
-    if (onEdit) {
-      menuItems.push({ label: t('common:button.edit'), action: () => onEdit(item) });
-    }
-    if (item.status === 'Open' && onClose) {
-      menuItems.push({ label: t('common:button.close'), action: () => onClose(item) });
+      if (onEdit) {
+        menuItems.push({ label: t('common:button.edit'), action: () => onEdit(item) });
+      }
+      if (onClose) {
+        menuItems.push({ label: t('common:button.close'), action: () => onClose(item) });
+      }
+    } else if ((item.status === 'Closed' || item.status === 'Done' || item.status === 'Promoted') && onReopen) {
+      menuItems.push({ label: t('issue.reopen'), action: () => onReopen(item) });
     }
     if (onDelete) {
-      const isWorking = item.status === 'InProgress';
       menuItems.push({
         label: t('common:button.delete'),
         action: () => onDelete(item),
-        disabled: isWorking,
-        title: isWorking ? t('issue.cannotDeleteWhileWorking') : undefined,
       });
     }
   } else if (item.type === 'story') {

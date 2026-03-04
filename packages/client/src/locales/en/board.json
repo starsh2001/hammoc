@@ -10,7 +10,10 @@
     "delete": "Delete",
     "resetDefaults": "Restore Defaults",
     "resetConfirm": "Restore default settings?",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "customStatusMapping": "Custom Status Mapping",
+    "customStatusMappingHint": "Map non-standard story statuses to board statuses",
+    "customStatusKeyPlaceholder": "e.g. Complete"
   },
   "issue": {
     "add": "Add Issue",
@@ -30,17 +33,19 @@
     "typeLabel": "Type:",
     "typeBug": "Bug",
     "typeImprovement": "Improvement",
-    "quickFix": "Quick Fix",
+    "quickFix": "Quick Action",
     "promoteToStory": "Promote to Story",
     "alreadyPromotedToStory": "Already promoted to Story",
     "promoteToEpic": "Promote to Epic",
     "alreadyPromotedToEpic": "Already promoted to Epic",
     "cannotDeleteWhileWorking": "Cannot delete while AI is working",
+    "reopen": "Re-Open",
     "closeConfirm": "Close this issue?",
     "deleteConfirm": "Delete issue \"{{title}}\"?"
   },
   "card": {
-    "menu": "Card menu"
+    "menu": "Card menu",
+    "unmappedStatus": "Non-standard status \"{{rawStatus}}\" mapped to {{status}}. Use context menu to normalize."
   },
   "epic": {
     "subStories": "Epic Sub-Stories",
@@ -65,7 +70,8 @@
     "blocked": "Blocked",
     "review": "Review",
     "done": "Done",
-    "closed": "Closed"
+    "closed": "Closed",
+    "promoted": "Promoted"
   },
   "errors": {
     "saveFailed": "Failed to save.",
@@ -74,6 +80,7 @@
     "promoteFailed": "Failed to promote.",
     "editFailed": "Failed to edit issue.",
     "closeFailed": "Failed to close issue.",
+    "reopenFailed": "Failed to re-open issue.",
     "deleteFailed": "Failed to delete issue.",
     "normalizeStatusFailed": "Failed to normalize status."
   },
