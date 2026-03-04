@@ -193,9 +193,12 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
         setSelectedTemplateId(null);
       }
     };
+    reader.onerror = () => {
+      alert(t('queue.fileReadError', { name: file.name }));
+    };
     reader.readAsText(file);
     e.target.value = '';
-  }, []);
+  }, [t]);
 
   const handleSaveTemplate = useCallback(async () => {
     const normalizedTemplate = normalizeLineEndings(templateText);

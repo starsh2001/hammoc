@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import { exec, spawn } from 'child_process';
+import { exec, execFile, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { isLocalIP } from '../utils/networkUtils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Monorepo root: packages/server/src/controllers → ../../../..  (also works from dist/controllers)
@@ -67,8 +68,13 @@ export const serverController = {
     res.json({ isDevMode, version, packageName: name });
   },
 
-  /** POST /api/server/restart - rebuild & restart (dev only) */
+  /** POST /api/server/restart - rebuild & restart (dev only, local only) */
   async restart(req: Request, res: Response): Promise<void> {
+    const clientIP = req.socket.remoteAddress || '';
+    if (!isLocalIP(clientIP)) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Local access only' } });
+      return;
+    }
     if (!isDevMode) {
       res.status(403).json({ error: { code: 'DEV_ONLY', message: req.t!('server.error.rebuildDevOnly') } });
       return;
@@ -93,15 +99,20 @@ export const serverController = {
     });
   },
 
-  /** GET /api/server/check-update - check npm registry for newer version */
+  /** GET /api/server/check-update - check npm registry for newer version (local only) */
   async checkUpdate(req: Request, res: Response): Promise<void> {
+    const clientIP = req.socket.remoteAddress || '';
+    if (!isLocalIP(clientIP)) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Local access only' } });
+      return;
+    }
     if (isDevMode) {
       res.status(501).json({ error: { code: 'NOT_APPLICABLE', message: req.t!('server.error.updateCheckDevOnly') } });
       return;
     }
 
     const { name, version: currentVersion } = getPackageInfo();
-    exec(`npm view ${name} version`, { timeout: 30_000 }, (err, stdout) => {
+    execFile('npm', ['view', name, 'version'], { timeout: 30_000, shell: true }, (err, stdout) => {
       if (err) {
         res.status(502).json({ error: { code: 'REGISTRY_ERROR', message: req.t!('server.error.npmCheckFailed') } });
         return;
@@ -115,8 +126,13 @@ export const serverController = {
     });
   },
 
-  /** POST /api/server/update - npm update & restart (non-dev only) */
+  /** POST /api/server/update - npm update & restart (non-dev only, local only) */
   async update(req: Request, res: Response): Promise<void> {
+    const clientIP = req.socket.remoteAddress || '';
+    if (!isLocalIP(clientIP)) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Local access only' } });
+      return;
+    }
     if (isDevMode) {
       res.status(403).json({ error: { code: 'DEV_ONLY', message: req.t!('server.error.useRebuildInDev') } });
       return;
@@ -130,7 +146,7 @@ export const serverController = {
     buildState = { status: 'updating' };
     res.json({ message: req.t!('server.info.updateStarted') });
 
-    exec(`npm install -g ${name}@latest`, { timeout: 300_000 }, (err, _stdout, stderr) => {
+    execFile('npm', ['install', '-g', `${name}@latest`], { timeout: 300_000, shell: true }, (err, _stdout, stderr) => {
       if (err) {
         const errorMsg = stderr?.trim() || err.message;
         console.error('[update] npm install failed:', errorMsg);

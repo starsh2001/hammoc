@@ -959,7 +959,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       respondedSegments[segIndex] = {
         ...respondedSeg,
         status: 'responded' as InteractiveStatus,
-        response: response.value ?? (response.approved ? i18n.t('notification:chat.approved') : i18n.t('notification:chat.rejected')),
+        response: response.value ?? (response.approved ? i18n.t('chat:interactive.approved') : i18n.t('chat:interactive.rejected')),
       };
       set({ streamingSegments: respondedSegments });
     }

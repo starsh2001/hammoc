@@ -29,7 +29,9 @@
     "reconnectingAttemptAria": "WebSocket connection status: Reconnecting attempt {{attempt}}",
     "apiCannotConnect": "Cannot connect to Claude API",
     "reconnectButton": "Reconnect",
-    "reconnectButtonAria": "Attempt to reconnect to server"
+    "reconnectButtonAria": "Attempt to reconnect to server",
+    "reconnectFailed": "Failed to connect to server. Please check your network connection.",
+    "connectError": "Connection error: {{message}}"
   },
   "error": {
     "title": "An error occurred",
@@ -186,7 +188,7 @@
     "statusTitle": "Document status",
     "requiredCount": "{{done}}/{{total}} required",
     "deliverables": "Deliverables",
-    "count": "items"
+    "count": "{{count}} items"
   },
   "nextSteps": {
     "title": "Next steps",
@@ -370,6 +372,7 @@
   },
   "queue": {
     "fileTooLarge": "File size exceeds 1MB",
+    "fileReadError": "Failed to read file: {{name}}",
     "run": "Run",
     "starting": "Starting...",
     "loadFile": "Load file",

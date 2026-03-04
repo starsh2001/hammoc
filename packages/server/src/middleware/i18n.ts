@@ -17,20 +17,37 @@ declare module 'express' {
   }
 }
 
+// In-memory cache for language preference (avoids disk I/O on every request)
+let cachedPrefLang: string | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 30_000; // 30 seconds
+
 export async function i18nMiddleware(req: Request, _res: Response, next: NextFunction): Promise<void> {
   try {
-    const prefs = await preferencesService.readPreferences();
-    const prefLang = prefs.language && SUPPORTED_LANGUAGES.includes(prefs.language as typeof SUPPORTED_LANGUAGES[number])
-      ? prefs.language
-      : null;
+    const now = Date.now();
+    if (now - cacheTimestamp > CACHE_TTL_MS) {
+      const prefs = await preferencesService.readPreferences();
+      cachedPrefLang = prefs.language && SUPPORTED_LANGUAGES.includes(prefs.language as typeof SUPPORTED_LANGUAGES[number])
+        ? prefs.language
+        : null;
+      cacheTimestamp = now;
+    }
     const headerLang = req.acceptsLanguages([...SUPPORTED_LANGUAGES]);
-    const lang = prefLang || (headerLang as string) || 'en';
+    const lang = cachedPrefLang || (headerLang as string) || 'en';
 
     req.t = i18next.getFixedT(lang);
     req.language = lang;
   } catch {
-    req.t = i18next.getFixedT('en');
-    req.language = 'en';
+    // Fallback: try Accept-Language before hard-coding 'en'
+    const headerLang = req.acceptsLanguages([...SUPPORTED_LANGUAGES]);
+    const lang = (headerLang as string) || 'en';
+    req.t = i18next.getFixedT(lang);
+    req.language = lang;
   }
   next();
+}
+
+/** Reset the preference cache (e.g., after language preference changes) */
+export function invalidateI18nCache(): void {
+  cacheTimestamp = 0;
 }

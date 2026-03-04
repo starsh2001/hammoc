@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "node --import tsx/esm --watch src/dev.ts",
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').cpSync('src/locales','dist/locales',{recursive:true})\"",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude '**/**.integration.test.ts'",

@@ -69,7 +69,9 @@
     "error": {
       "projectNotFound": "프로젝트를 찾을 수 없습니다: {{value}}",
       "internal": "내부 서버 오류",
-      "issueNotFound": "이슈를 찾을 수 없습니다: {{value}}"
+      "issueNotFound": "이슈를 찾을 수 없습니다: {{value}}",
+      "storyNotFound": "스토리를 찾을 수 없습니다: {{value}}",
+      "statusNotFound": "스토리 상태를 찾을 수 없습니다: {{value}}"
     },
     "validation": {
       "titleRequired": "제목은 필수입니다",
@@ -163,7 +165,9 @@
     },
     "pause": {
       "userPaused": "사용자가 일시정지했습니다",
-      "waitingForPermission": "{{value}} 대기 중: {{toolName}}"
+      "waitingForPermission": "{{value}} 대기 중: {{toolName}}",
+      "userAnswer": "사용자 응답",
+      "permissionApproval": "권한 승인"
     }
   },
   "queueTemplate": {
