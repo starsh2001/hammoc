@@ -169,7 +169,10 @@
     "queueRunner": "큐 작업 실행",
     "fileExplore": "파일 탐색",
     "activeSessionsCount": "{{count}}개 세션 활성",
-    "aiGenerating": "현재 AI가 응답을 생성하고 있습니다"
+    "aiGenerating": "현재 AI가 응답을 생성하고 있습니다",
+    "recentIssues": "최근 이슈",
+    "viewBoard": "보드 보기",
+    "noIssues": "등록된 이슈가 없습니다"
   },
   "epic": {
     "progressTitle": "에픽 진행률",

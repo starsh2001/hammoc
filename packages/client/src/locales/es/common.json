@@ -167,7 +167,10 @@
     "queueRunner": "Ejecutar tarea de cola",
     "fileExplore": "Explorar archivos",
     "activeSessionsCount": "{{count}} sesiones activas",
-    "aiGenerating": "La IA está generando una respuesta actualmente"
+    "aiGenerating": "La IA está generando una respuesta actualmente",
+    "recentIssues": "Problemas recientes",
+    "viewBoard": "Ver tablero",
+    "noIssues": "No hay problemas registrados"
   },
   "epic": {
     "progressTitle": "Progreso de épicas",

@@ -169,7 +169,10 @@
     "queueRunner": "Run queue task",
     "fileExplore": "Browse files",
     "activeSessionsCount": "{{count}} active sessions",
-    "aiGenerating": "AI is currently generating a response"
+    "aiGenerating": "AI is currently generating a response",
+    "recentIssues": "Recent issues",
+    "viewBoard": "View board",
+    "noIssues": "No issues registered"
   },
   "epic": {
     "progressTitle": "Epic progress",
