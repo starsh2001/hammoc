@@ -57,7 +57,10 @@ export async function startQueue(req: Request, res: Response): Promise<void> {
 
   const parseResult = startQueueSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({ error: req.t!('queue.validation.itemsRequired') });
+    const firstIssue = parseResult.error.issues[0];
+    const isItemsEmpty = firstIssue?.code === 'too_small' && firstIssue?.path?.[0] === 'items';
+    const errorKey = isItemsEmpty ? 'queue.validation.itemsRequired' : 'queue.validation.invalidInput';
+    res.status(400).json({ error: req.t!(errorKey, { value: firstIssue?.message }) });
     return;
   }
 

@@ -83,7 +83,8 @@ export class QueueService {
   }
 
   async start(items: QueueItem[], projectSlug: string, sessionId?: string, permissionMode?: PermissionMode): Promise<void> {
-    // Resolve user language preference for translated messages
+    // Reset language to default before reading preferences (prevent stale value from prior run)
+    this.lang = 'en';
     try {
       const prefs = await this.preferencesService.readPreferences();
       if (prefs.language && SUPPORTED_LANGUAGES.includes(prefs.language as typeof SUPPORTED_LANGUAGES[number])) {
