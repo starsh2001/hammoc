@@ -341,7 +341,7 @@ export async function initializeWebSocket(
       }
 
       // Story 17.5: Send terminal access info on connection (after language resolved)
-      const lang = socket.data.language;
+      const lang = socket.data.language || 'en';
       const t = i18next.getFixedT(lang);
       try {
         const clientIP = extractClientIP(socket);
@@ -665,6 +665,7 @@ export async function initializeWebSocket(
 
     socket.on('terminal:create', async (data: TerminalCreateRequest) => {
       const lang = socket.data.language || 'en';
+      const t = i18next.getFixedT(lang);
       // Story 17.5: Security guard
       const access = await checkTerminalAccess(socket, lang);
       if (!access.allowed) {
@@ -727,7 +728,7 @@ export async function initializeWebSocket(
         triggerDashboardStatusChange(data.projectSlug);
       } catch (err) {
         const code = (err as Error & { code?: string }).code || TERMINAL_ERRORS.PTY_SPAWN_ERROR.code;
-        const message = (err as Error).message || i18next.getFixedT(lang)('ws.error.ptySpawnError');
+        const message = (err as Error).message || t('ws.error.ptySpawnError');
         socket.emit('terminal:error', { terminalId: data.terminalId, code, message });
       }
     });

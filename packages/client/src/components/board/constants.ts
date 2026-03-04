@@ -14,6 +14,7 @@ export const STATUS_LABEL: Record<BoardItemStatus, string> = {
   Review: 'Review',
   Done: 'Done',
   Closed: 'Closed',
+  Promoted: 'Promoted',
 };
 
 export const STATUS_BADGE_COLOR: Record<BoardItemStatus, string> = {
@@ -25,4 +26,5 @@ export const STATUS_BADGE_COLOR: Record<BoardItemStatus, string> = {
   Review: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
   Done: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   Closed: 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-400',
+  Promoted: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
 };

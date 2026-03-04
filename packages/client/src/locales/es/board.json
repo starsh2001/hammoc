@@ -10,7 +10,10 @@
     "delete": "Eliminar",
     "resetDefaults": "Restaurar valores predeterminados",
     "resetConfirm": "¿Restaurar la configuración predeterminada?",
-    "saving": "Guardando..."
+    "saving": "Guardando...",
+    "customStatusMapping": "Mapeo de estados personalizado",
+    "customStatusMappingHint": "Mapea estados no estándar de historias a estados del tablero",
+    "customStatusKeyPlaceholder": "ej. Complete"
   },
   "issue": {
     "add": "Agregar incidencia",
@@ -30,17 +33,19 @@
     "typeLabel": "Tipo:",
     "typeBug": "Bug",
     "typeImprovement": "Mejora",
-    "quickFix": "Corrección rápida",
+    "quickFix": "Acción rápida",
     "promoteToStory": "Promover a historia",
     "alreadyPromotedToStory": "Ya promovido a historia",
     "promoteToEpic": "Promover a épica",
     "alreadyPromotedToEpic": "Ya promovido a épica",
     "cannotDeleteWhileWorking": "No se puede eliminar mientras la IA está trabajando",
+    "reopen": "Reabrir",
     "closeConfirm": "¿Cerrar esta incidencia?",
     "deleteConfirm": "¿Eliminar la incidencia \"{{title}}\"?"
   },
   "card": {
-    "menu": "Menú de tarjeta"
+    "menu": "Menú de tarjeta",
+    "unmappedStatus": "Estado no estándar \"{{rawStatus}}\" mapeado a {{status}}. Use el menú contextual para normalizar."
   },
   "epic": {
     "subStories": "Sub-historias de la épica",
@@ -65,7 +70,8 @@
     "blocked": "Bloqueado",
     "review": "Revisión",
     "done": "Hecho",
-    "closed": "Cerrado"
+    "closed": "Cerrado",
+    "promoted": "Promovido"
   },
   "errors": {
     "saveFailed": "Error al guardar.",
@@ -74,6 +80,7 @@
     "promoteFailed": "Error al promover.",
     "editFailed": "Error al editar la incidencia.",
     "closeFailed": "Error al cerrar la incidencia.",
+    "reopenFailed": "Error al reabrir la incidencia.",
     "deleteFailed": "Error al eliminar la incidencia.",
     "normalizeStatusFailed": "Error al normalizar el estado."
   },

@@ -6,6 +6,8 @@
 import { Router, Request, Response } from 'express';
 import { preferencesService } from '../services/preferencesService.js';
 import { notificationService } from '../services/notificationService.js';
+import { invalidateI18nCache } from '../middleware/i18n.js';
+import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES } from '../services/chatService.js';
 import type { UpdateTelegramSettingsRequest } from '@bmad-studio/shared';
 
 const router = Router();
@@ -76,6 +78,14 @@ router.post('/telegram/test', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/preferences/system-prompt — Get default system prompt template (no project required)
+router.get('/system-prompt', (_req: Request, res: Response) => {
+  res.json({
+    template: DEFAULT_WORKSPACE_TEMPLATE,
+    variables: TEMPLATE_VARIABLES,
+  });
+});
+
 // GET /api/preferences — Read all preferences (with env var overrides)
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -93,6 +103,10 @@ router.get('/', async (req: Request, res: Response) => {
 router.patch('/', async (req: Request, res: Response) => {
   try {
     const updated = await preferencesService.writePreferences(req.body);
+    // Invalidate cached language when preference changes
+    if (req.body.language) {
+      invalidateI18nCache();
+    }
     res.json(updated);
   } catch {
     res.status(500).json({ error: { code: 'PREFERENCES_WRITE_ERROR', message: req.t!('preferences.writeError') } });

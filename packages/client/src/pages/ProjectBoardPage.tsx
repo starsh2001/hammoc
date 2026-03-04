@@ -10,6 +10,7 @@ import { LayoutList, Kanban, Plus, RefreshCw, AlertCircle, Settings } from 'luci
 import type { BoardItem, CreateIssueRequest, UpdateIssueRequest } from '@bmad-studio/shared';
 import { useBoard } from '../hooks/useBoard';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useFileStore } from '../stores/fileStore';
 import { KanbanBoard } from '../components/board/KanbanBoard';
 import { MobileKanbanBoard } from '../components/board/MobileKanbanBoard';
 import { BoardListView } from '../components/board/BoardListView';
@@ -62,17 +63,17 @@ export function ProjectBoardPage() {
     await createIssue(data);
   };
 
-  // Quick fix: update status to InProgress, navigate to dev session with issue filename
+  // Quick action: mark issue Done and navigate to dev session with issue filename
   const handleQuickFix = useCallback(async (item: BoardItem) => {
     if (!projectSlug) return;
     try {
-      await boardApi.updateIssue(projectSlug, item.id, { status: 'InProgress' });
+      await boardApi.updateIssue(projectSlug, item.id, { status: 'Done' });
       const sessionId = generateUUID();
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
       const desc = item.description
         ? (item.description.length > 500 ? item.description.slice(0, 500) + t('truncated') : item.description)
         : t('noDescription');
-      const prompt = `다음 이슈를 해결해 주세요:\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n이슈 파일: ${issueFile}\n\n작업 완료 후 위 이슈 파일의 Status를 Done으로 변경해 주세요.`;
+      const prompt = `다음 이슈를 해결해 주세요:\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n이슈 파일: ${issueFile}`;
       const params = new URLSearchParams({ agent: '/BMad:agents:dev', task: prompt });
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
@@ -84,7 +85,7 @@ export function ProjectBoardPage() {
   const handlePromote = useCallback(async (item: BoardItem, targetType: 'story' | 'epic') => {
     if (!projectSlug) return;
     try {
-      await boardApi.updateIssue(projectSlug, item.id, { status: 'Done' });
+      await boardApi.updateIssue(projectSlug, item.id, { status: 'Promoted' });
       const sessionId = generateUUID();
       const desc = item.description
         ? (item.description.length > 500 ? item.description.slice(0, 500) + t('truncated') : item.description)
@@ -118,12 +119,22 @@ export function ProjectBoardPage() {
   // Close issue
   const handleCloseIssue = useCallback(async (item: BoardItem) => {
     if (!projectSlug) return;
-    if (!window.confirm(t('issue.closeConfirm'))) return;
     try {
       await boardApi.updateIssue(projectSlug, item.id, { status: 'Closed' });
       await refresh();
     } catch {
       setActionErrorWithClear(t('errors.closeFailed'));
+    }
+  }, [projectSlug, refresh, setActionErrorWithClear]);
+
+  // Re-open a closed issue
+  const handleReopenIssue = useCallback(async (item: BoardItem) => {
+    if (!projectSlug) return;
+    try {
+      await boardApi.updateIssue(projectSlug, item.id, { status: 'Open' });
+      await refresh();
+    } catch {
+      setActionErrorWithClear(t('errors.reopenFailed'));
     }
   }, [projectSlug, refresh, setActionErrorWithClear]);
 
@@ -181,6 +192,16 @@ export function ProjectBoardPage() {
     setEpicDialogData({ epic: item, stories: epicStories });
   }, [itemsByColumn]);
 
+  // Card click: issues open edit dialog, stories/epics open file in editor
+  const handleCardClick = useCallback((item: BoardItem) => {
+    if (item.type === 'issue') {
+      setEditingIssue(item);
+      return;
+    }
+    if (!projectSlug || !item.filePath) return;
+    useFileStore.getState().openFileInEditor(projectSlug, item.filePath);
+  }, [projectSlug]);
+
   // Normalize story status (fix non-standard statuses like "Ready for Done")
   const handleNormalizeStatus = useCallback(async (item: BoardItem) => {
     if (!projectSlug) return;
@@ -199,10 +220,12 @@ export function ProjectBoardPage() {
     onPromote: handlePromote,
     onEdit: handleEditIssue,
     onClose: handleCloseIssue,
+    onReopen: handleReopenIssue,
     onDelete: handleDeleteIssue,
     onWorkflowAction: handleWorkflowAction,
     onViewEpicStories: handleViewEpicStories,
     onNormalizeStatus: handleNormalizeStatus,
+    onCardClick: handleCardClick,
   };
 
   // Loading skeleton

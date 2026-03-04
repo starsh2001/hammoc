@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { RotateCcw, Terminal, RefreshCw, Download } from 'lucide-react';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useSessionStore } from '../../stores/sessionStore';
+import { preferencesApi } from '../../services/api/preferences';
 import { projectsApi } from '../../services/api/projects';
 import { api } from '../../services/api/client.js';
 
@@ -35,14 +36,12 @@ export function AdvancedSettingsSection() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCustomized = preferences.customSystemPrompt != null;
 
-  // Fetch default template from server when project is available
+  // Fetch default template (project-independent)
   useEffect(() => {
-    if (!currentProjectSlug) return;
     setIsLoadingPrompt(true);
-    projectsApi.getSystemPrompt(currentProjectSlug)
+    preferencesApi.getSystemPromptTemplate()
       .then((data) => {
         setDefaultTemplate(data.template);
-        setResolvedPreview(data.resolved);
         setVariables(data.variables as TemplateVariable[]);
         if (!preferences.customSystemPrompt) {
           setPromptText(data.template);
@@ -52,7 +51,19 @@ export function AdvancedSettingsSection() {
         // Silently fail
       })
       .finally(() => setIsLoadingPrompt(false));
-  }, [currentProjectSlug]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch resolved preview when project is available
+  useEffect(() => {
+    if (!currentProjectSlug) return;
+    projectsApi.getSystemPrompt(currentProjectSlug)
+      .then((data) => {
+        setResolvedPreview(data.resolved);
+      })
+      .catch(() => {
+        // Silently fail
+      });
+  }, [currentProjectSlug]);
 
   // Sync local state when preferences load from server
   useEffect(() => {

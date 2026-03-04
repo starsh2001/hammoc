@@ -163,7 +163,7 @@ describe('BoardCard', () => {
         />,
       );
       fireEvent.click(screen.getByLabelText('카드 메뉴'));
-      expect(screen.getByText('바로 수정하기')).toBeInTheDocument();
+      expect(screen.getByText('바로 작업하기')).toBeInTheDocument();
     });
 
     it('should not render ⋮ button for Done story without callbacks', () => {

@@ -6,7 +6,9 @@
 
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Settings, FolderCog, Bell, Wrench, HelpCircle, Info } from 'lucide-react';
+import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { SettingsSection } from '../components/SettingsSection';
 import { GlobalSettingsSection } from '../components/settings/GlobalSettingsSection';
 import { ProjectSettingsSection } from '../components/settings/ProjectSettingsSection';
@@ -15,20 +17,21 @@ import { HelpSection } from '../components/settings/HelpSection';
 import { AboutSection } from '../components/settings/AboutSection';
 import { AdvancedSettingsSection } from '../components/settings/AdvancedSettingsSection';
 
-const settingsSections = [
-  { id: 'global', title: '전역 설정', icon: Settings },
-  { id: 'project', title: '프로젝트 설정', icon: FolderCog },
-  { id: 'telegram', title: 'Telegram 알림', icon: Bell },
-  { id: 'advanced', title: '고급 설정', icon: Wrench },
-  { id: 'help', title: '도움말', icon: HelpCircle },
-  { id: 'about', title: '만든이', icon: Info },
+const sectionDefs = [
+  { id: 'global', titleKey: 'tabs.global', icon: Settings },
+  { id: 'project', titleKey: 'tabs.project', icon: FolderCog },
+  { id: 'telegram', titleKey: 'tabs.telegram', icon: Bell },
+  { id: 'advanced', titleKey: 'tabs.advanced', icon: Wrench },
+  { id: 'help', titleKey: 'tabs.help', icon: HelpCircle },
+  { id: 'about', titleKey: 'tabs.about', icon: Info },
 ] as const;
 
-type SectionId = typeof settingsSections[number]['id'];
+type SectionId = typeof sectionDefs[number]['id'];
 
-const validTabs = settingsSections.map(s => s.id) as readonly string[];
+const validTabs = sectionDefs.map(s => s.id) as readonly string[];
 
 export function SettingsPage() {
+  const { t } = useTranslation('settings');
   const navigate = useNavigate();
   const { tab } = useParams<{ tab?: string }>();
   const activeSection: SectionId = (tab && validTabs.includes(tab)) ? tab as SectionId : 'global';
@@ -72,18 +75,19 @@ export function SettingsPage() {
             className="p-2 -ml-2 mr-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
                        text-gray-700 dark:text-gray-300
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="뒤로 가기"
+            aria-label={t('page.backAriaLabel')}
           >
             <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">설정</h1>
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1">{t('page.title')}</h1>
+          <LayoutToggleButton className="hidden sm:block" />
         </div>
       </header>
 
       {/* Desktop layout: sidebar + content */}
-      <div className="hidden md:flex flex-1 overflow-hidden">
-        <nav className="w-56 border-r border-gray-200 dark:border-gray-700 overflow-y-auto py-4 px-3">
-          {settingsSections.map(section => (
+      <div className="content-container hidden md:flex flex-1 overflow-hidden w-full">
+        <nav className="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 overflow-y-auto py-4 px-3">
+          {sectionDefs.map(section => (
             <button
               key={section.id}
               onClick={() => navigate(`/settings/${section.id}`)}
@@ -93,25 +97,25 @@ export function SettingsPage() {
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
             >
-              <section.icon className="w-4 h-4" aria-hidden="true" />
-              {section.title}
+              <section.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+              <span className="whitespace-nowrap">{t(section.titleKey)}</span>
             </button>
           ))}
         </nav>
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 min-w-0 overflow-y-auto p-6">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
-            {settingsSections.find(s => s.id === activeSection)?.title}
+            {t(sectionDefs.find(s => s.id === activeSection)!.titleKey)}
           </h2>
           {renderSectionContent(activeSection)}
         </main>
       </div>
 
       {/* Mobile layout: accordion */}
-      <div className="md:hidden flex-1 overflow-y-auto">
-        {settingsSections.map(section => (
+      <div className="content-container md:hidden flex-1 overflow-y-auto">
+        {sectionDefs.map(section => (
           <SettingsSection
             key={section.id}
-            title={section.title}
+            title={t(section.titleKey)}
             icon={section.icon}
             isExpanded={expandedSection === section.id}
             onToggle={() => toggleSection(section.id)}

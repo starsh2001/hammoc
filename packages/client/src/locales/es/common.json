@@ -247,6 +247,7 @@
     "terminals": "Terminales",
     "projectStatus": "Estado del proyecto: {{details}}",
     "activeSessionsFormat": "{{active}}/{{total}} sesiones activas",
+    "activeSessionsCount": "{{count}} sesión(es) activa(s)",
     "activeFormat": "{{active}}/{{total}} activos",
     "queueStatusFormat": "cola {{status}}",
     "terminalsFormat": "{{count}} terminal(es)"

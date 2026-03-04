@@ -19,14 +19,16 @@ export function KanbanColumn({
   onPromote,
   onEdit,
   onClose,
+  onReopen,
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
   onNormalizeStatus,
+  onCardClick,
 }: KanbanColumnProps) {
   return (
     <div
-      className={`min-w-[280px] w-[280px] flex flex-col bg-gray-50 dark:bg-gray-900 rounded-lg border-t-2 ${columnConfig.colorClass}`}
+      className={`min-w-[240px] flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 rounded-lg border-t-2 ${columnConfig.colorClass}`}
     >
       {/* Column header */}
       <div className="px-3 py-2 flex items-center justify-between">
@@ -48,10 +50,12 @@ export function KanbanColumn({
             onPromote={onPromote}
             onEdit={onEdit}
             onClose={onClose}
+            onReopen={onReopen}
             onDelete={onDelete}
             onWorkflowAction={onWorkflowAction}
             onViewEpicStories={onViewEpicStories}
             onNormalizeStatus={onNormalizeStatus}
+            onCardClick={onCardClick}
           />
         ))}
       </div>

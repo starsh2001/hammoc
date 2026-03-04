@@ -249,6 +249,7 @@
     "terminals": "Terminals",
     "projectStatus": "프로젝트 상태: {{details}}",
     "activeSessionsFormat": "{{active}}/{{total}} active sessions",
+    "activeSessionsCount": "활성 세션 {{count}}개",
     "activeFormat": "{{active}}/{{total}} active",
     "queueStatusFormat": "queue {{status}}",
     "terminalsFormat": "{{count}} terminal(s)"

@@ -12,16 +12,14 @@ export const boardController = {
     try {
       const { projectSlug } = req.params;
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
-      const [result, settings] = await Promise.all([
-        issueService.getBoard(projectRoot),
-        projectService.readProjectSettings(projectRoot),
-      ]);
+      const settings = await projectService.readProjectSettings(projectRoot);
       // Validate persisted config; fall back to default if malformed
       let config = DEFAULT_BOARD_CONFIG;
       if (settings.boardConfig) {
         const configErrors = validateBoardConfig(settings.boardConfig);
         config = configErrors.length === 0 ? settings.boardConfig : DEFAULT_BOARD_CONFIG;
       }
+      const result = await issueService.getBoard(projectRoot, config.customStatusMappings);
       res.json({ ...result, config });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;

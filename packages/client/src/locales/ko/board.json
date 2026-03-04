@@ -10,7 +10,10 @@
     "delete": "삭제",
     "resetDefaults": "기본값 복원",
     "resetConfirm": "기본 설정으로 복원하시겠습니까?",
-    "saving": "저장 중..."
+    "saving": "저장 중...",
+    "customStatusMapping": "커스텀 상태 매핑",
+    "customStatusMappingHint": "비표준 스토리 상태를 보드 상태로 매핑합니다",
+    "customStatusKeyPlaceholder": "예: Complete"
   },
   "issue": {
     "add": "이슈 추가",
@@ -30,17 +33,19 @@
     "typeLabel": "타입:",
     "typeBug": "Bug",
     "typeImprovement": "Improvement",
-    "quickFix": "바로 수정하기",
+    "quickFix": "바로 작업하기",
     "promoteToStory": "스토리로 승격",
     "alreadyPromotedToStory": "이미 스토리로 승격됨",
     "promoteToEpic": "에픽으로 승격",
     "alreadyPromotedToEpic": "이미 에픽으로 승격됨",
     "cannotDeleteWhileWorking": "AI가 작업 중이므로 삭제할 수 없습니다",
+    "reopen": "다시 열기",
     "closeConfirm": "이 이슈를 닫으시겠습니까?",
     "deleteConfirm": "이슈 \"{{title}}\"을(를) 삭제하시겠습니까?"
   },
   "card": {
-    "menu": "카드 메뉴"
+    "menu": "카드 메뉴",
+    "unmappedStatus": "비표준 상태 \"{{rawStatus}}\"이(가) {{status}}(으)로 매핑됨. 컨텍스트 메뉴에서 정규화하세요."
   },
   "epic": {
     "subStories": "에픽 하위 스토리",
@@ -65,7 +70,8 @@
     "blocked": "Blocked",
     "review": "Review",
     "done": "Done",
-    "closed": "Closed"
+    "closed": "Closed",
+    "promoted": "승격됨"
   },
   "errors": {
     "saveFailed": "저장에 실패했습니다.",
@@ -74,6 +80,7 @@
     "promoteFailed": "승격 처리에 실패했습니다.",
     "editFailed": "이슈 수정에 실패했습니다.",
     "closeFailed": "이슈 닫기에 실패했습니다.",
+    "reopenFailed": "이슈 다시 열기에 실패했습니다.",
     "deleteFailed": "이슈 삭제에 실패했습니다.",
     "normalizeStatusFailed": "상태 확정에 실패했습니다."
   },

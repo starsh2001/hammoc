@@ -10,7 +10,10 @@
     "delete": "删除",
     "resetDefaults": "恢复默认",
     "resetConfirm": "恢复默认设置？",
-    "saving": "正在保存..."
+    "saving": "正在保存...",
+    "customStatusMapping": "自定义状态映射",
+    "customStatusMappingHint": "将非标准 Story 状态映射为看板状态",
+    "customStatusKeyPlaceholder": "例如 Complete"
   },
   "issue": {
     "add": "添加问题",
@@ -30,17 +33,19 @@
     "typeLabel": "类型：",
     "typeBug": "Bug",
     "typeImprovement": "改进",
-    "quickFix": "快速修复",
+    "quickFix": "快速操作",
     "promoteToStory": "提升为 Story",
     "alreadyPromotedToStory": "已提升为 Story",
     "promoteToEpic": "提升为 Epic",
     "alreadyPromotedToEpic": "已提升为 Epic",
     "cannotDeleteWhileWorking": "AI 正在处理时无法删除",
+    "reopen": "重新打开",
     "closeConfirm": "关闭此问题？",
     "deleteConfirm": "删除问题「{{title}}」？"
   },
   "card": {
-    "menu": "卡片菜单"
+    "menu": "卡片菜单",
+    "unmappedStatus": "非标准状态「{{rawStatus}}」已映射为 {{status}}。请使用右键菜单进行规范化。"
   },
   "epic": {
     "subStories": "Epic 子 Story",
@@ -65,7 +70,8 @@
     "blocked": "已阻塞",
     "review": "审查中",
     "done": "完成",
-    "closed": "已关闭"
+    "closed": "已关闭",
+    "promoted": "已提升"
   },
   "errors": {
     "saveFailed": "保存失败。",
@@ -74,6 +80,7 @@
     "promoteFailed": "提升失败。",
     "editFailed": "编辑问题失败。",
     "closeFailed": "关闭问题失败。",
+    "reopenFailed": "重新打开问题失败。",
     "deleteFailed": "删除问题失败。",
     "normalizeStatusFailed": "规范化状态失败。"
   },
