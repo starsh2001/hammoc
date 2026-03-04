@@ -13,6 +13,19 @@ import { useProjectStore } from '../../stores/projectStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import type { HistoryMessage, PaginationInfo } from '@bmad-studio/shared';
 
+// Mock ResizeObserver (not available in jsdom)
+vi.stubGlobal('ResizeObserver', class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+});
+
+// Mock Element.scrollTo (not available in jsdom)
+Element.prototype.scrollTo = vi.fn();
+
+// Mock HTMLCanvasElement.getContext (used by ContextUsageDisplay chart)
+HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as never;
+
 // Mock useNavigate
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -354,7 +367,7 @@ describe('ChatPage', () => {
       const backButton = screen.getByRole('button', { name: '세션 목록으로 돌아가기' });
       fireEvent.click(backButton);
 
-      expect(mockNavigate).toHaveBeenCalledWith('/project/test-project');
+      expect(mockNavigate).toHaveBeenCalledWith('/project/test-project/sessions');
     });
 
     it('should have refresh button in header when messages are shown', () => {
@@ -925,8 +938,10 @@ describe('ChatPage', () => {
       }));
     });
 
-    it('should show confirm dialog when messages exist', () => {
+    it('should navigate to new session directly when messages exist (no confirm dialog)', () => {
       setupBmadProject();
+      const mockAbortResponse = vi.fn();
+      useChatStore.setState({ abortResponse: mockAbortResponse });
       useMessageStore.setState({
         messages: mockMessages,
         pagination: mockPagination,
@@ -940,29 +955,28 @@ describe('ChatPage', () => {
       // Click the agent
       fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
 
-      // Confirm dialog should appear
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByText('진행 중인 대화가 있습니다. 에이전트를 새 세션에서 시작하시겠습니까?')).toBeInTheDocument();
+      // Agent select now navigates directly without confirmation
+      expect(mockAbortResponse).toHaveBeenCalled();
+      expect(mockClearMessages).toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/project\/test-project\/session\/[a-f0-9-]+/));
     });
 
-    it('should disable agent button during streaming to prevent launch', () => {
+    it('should allow agent popup during streaming', () => {
       setupBmadProject();
       useChatStore.setState({ isStreaming: true });
       useMessageStore.setState({ messages: [] });
 
       renderChatPage();
 
-      // BmadAgentButton is disabled during streaming — clicking does nothing
+      // BmadAgentButton can be opened during streaming
       const agentButton = screen.getByTestId('bmad-agent-button');
       fireEvent.click(agentButton);
 
-      // Agent popup should not open, so no agent items are rendered
-      expect(screen.queryByTestId('bmad-agent-item-0')).not.toBeInTheDocument();
-      // No confirm dialog either
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      // Agent popup opens and shows items
+      expect(screen.getByTestId('bmad-agent-item-0')).toBeInTheDocument();
     });
 
-    it('should navigate to new session after confirm', () => {
+    it('should navigate to new session and set pending agent command', () => {
       setupBmadProject();
       const mockAbortResponse = vi.fn();
       useChatStore.setState({ abortResponse: mockAbortResponse });
@@ -977,41 +991,38 @@ describe('ChatPage', () => {
       fireEvent.click(screen.getByTestId('bmad-agent-button'));
       fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
 
-      // Confirm
-      fireEvent.click(screen.getByRole('button', { name: '확인' }));
-
-      expect(mockAbortResponse).toHaveBeenCalled();
-      expect(mockClearMessages).toHaveBeenCalled();
-      expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/project\/test-project\/session\/.+/));
-    });
-
-    it('should auto-send agent command via pendingAgentCommandRef after confirm', () => {
-      setupBmadProject();
-      const mockAbortResponse = vi.fn();
-      useChatStore.setState({ abortResponse: mockAbortResponse });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
-      renderChatPage();
-
-      // Open agent popup and click agent
-      fireEvent.click(screen.getByTestId('bmad-agent-button'));
-      fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
-
-      // Confirm → executes agentLaunch action
-      fireEvent.click(screen.getByRole('button', { name: '확인' }));
-
-      // Verify the agentLaunch action: navigate to new session
+      // Navigate directly to new session (UUID-based)
       expect(mockNavigate).toHaveBeenCalledWith(
         expect.stringMatching(/\/project\/test-project\/session\/[a-f0-9-]+/)
       );
-      // clearMessages and clearStreamingSegments should be called
+      // clearMessages should be called
       expect(mockClearMessages).toHaveBeenCalled();
     });
 
-    it('should show agentLaunch title in confirm dialog', () => {
+    it('should auto-send agent command via pendingAgentCommandRef without confirm', () => {
+      setupBmadProject();
+      const mockAbortResponse = vi.fn();
+      useChatStore.setState({ abortResponse: mockAbortResponse });
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+      });
+
+      renderChatPage();
+
+      // Open agent popup and click agent
+      fireEvent.click(screen.getByTestId('bmad-agent-button'));
+      fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
+
+      // Verify agentLaunch action: navigate to new session
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringMatching(/\/project\/test-project\/session\/[a-f0-9-]+/)
+      );
+      // clearMessages should be called
+      expect(mockClearMessages).toHaveBeenCalled();
+    });
+
+    it('should navigate directly to new session without showing confirm dialog message', () => {
       setupBmadProject();
       useMessageStore.setState({
         messages: mockMessages,
@@ -1024,8 +1035,9 @@ describe('ChatPage', () => {
       fireEvent.click(screen.getByTestId('bmad-agent-button'));
       fireEvent.click(screen.getByTestId('bmad-agent-item-0'));
 
-      // Check dialog title
-      expect(screen.getByText('에이전트 시작 확인')).toBeInTheDocument();
+      // Agent launches immediately without confirm dialog text
+      expect(screen.queryByText('진행 중인 대화가 있습니다. 에이전트를 새 세션에서 시작하시겠습니까?')).not.toBeInTheDocument();
+      expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/project\/test-project\/session\/[a-f0-9-]+/));
     });
   });
 

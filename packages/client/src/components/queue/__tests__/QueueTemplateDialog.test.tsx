@@ -189,7 +189,7 @@ describe('QueueTemplateDialog', () => {
     expect(previewEl?.textContent).toContain('@pause');
 
     // Toggle off
-    const pauseCheckbox = screen.getByLabelText(/에픽 간 @pause 자동 삽입/);
+    const pauseCheckbox = screen.getByLabelText(/에픽 간 @pause/);
     fireEvent.click(pauseCheckbox);
 
     await waitFor(() => {
@@ -207,8 +207,8 @@ describe('QueueTemplateDialog', () => {
     fireEvent.change(textarea, { target: { value: '/dev {story_num}' } });
 
     // Click save button
-    await waitFor(() => screen.getByText('현재 템플릿 저장'));
-    fireEvent.click(screen.getByText('현재 템플릿 저장'));
+    await waitFor(() => screen.getByText('저장'));
+    fireEvent.click(screen.getByText('저장'));
 
     // Fill in template name
     const nameInput = screen.getByPlaceholderText('템플릿 이름');
@@ -298,7 +298,7 @@ describe('QueueTemplateDialog', () => {
 
     // Save button should now say "템플릿 업데이트"
     await waitFor(() => {
-      expect(screen.getByText('템플릿 업데이트')).toBeInTheDocument();
+      expect(screen.getByText('업데이트')).toBeInTheDocument();
     });
   });
 
@@ -314,9 +314,9 @@ describe('QueueTemplateDialog', () => {
     const editBtn = screen.getByLabelText('Basic Dev 편집');
     fireEvent.click(editBtn);
 
-    await waitFor(() => screen.getByText('템플릿 업데이트'));
+    await waitFor(() => screen.getByText('업데이트'));
 
-    fireEvent.click(screen.getByText('템플릿 업데이트'));
+    fireEvent.click(screen.getByText('업데이트'));
 
     // Name input should appear with pre-filled name
     const nameInput = screen.getByPlaceholderText('템플릿 이름');

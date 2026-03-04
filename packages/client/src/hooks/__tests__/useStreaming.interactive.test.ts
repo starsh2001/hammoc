@@ -71,9 +71,19 @@ describe('useStreaming interactive events', () => {
     expect(mockSocket.on).toHaveBeenCalledWith('permission:request', expect.any(Function));
   });
 
-  it('creates interactive segment on permission:request event', () => {
+  it('creates tool permission on permission:request event (attaches to existing tool segment)', () => {
     renderHook(() => useStreaming());
 
+    // First, create the tool segment that the permission will attach to
+    act(() => {
+      emitSocketEvent('tool:call', {
+        id: 'perm-1',
+        name: 'Bash',
+        input: { command: 'rm -rf /' },
+      });
+    });
+
+    // Then issue the permission request — it attaches to the existing tool segment
     act(() => {
       emitSocketEvent('permission:request', {
         id: 'perm-1',
@@ -86,31 +96,36 @@ describe('useStreaming interactive events', () => {
     const segments = useChatStore.getState().streamingSegments;
     expect(segments).toHaveLength(1);
     expect(segments[0]).toMatchObject({
-      type: 'interactive',
-      id: 'perm-1',
-      interactionType: 'permission',
-      status: 'waiting',
+      type: 'tool',
+      permissionId: 'perm-1',
     });
   });
 
-  it('creates interactive segment for AskUserQuestion tool_use', () => {
+  it('creates interactive segment for AskUserQuestion via permission:request', () => {
     renderHook(() => useStreaming());
 
+    // AskUserQuestion is now handled via permission:request, NOT tool:call
+    // tool:call with AskUserQuestion name is skipped (input is incomplete)
     act(() => {
-      emitSocketEvent('tool:call', {
-        id: 'tool-ask-1',
-        name: 'AskUserQuestion',
-        input: {
-          questions: [{
-            question: 'Which option?',
-            header: 'Choice',
-            options: [
-              { label: 'A', description: 'First' },
-              { label: 'B' },
-            ],
-            multiSelect: false,
-          }],
+      emitSocketEvent('permission:request', {
+        id: 'perm-ask-1',
+        sessionId: 'test-session',
+        toolCall: {
+          id: 'tool-ask-1',
+          name: 'AskUserQuestion',
+          input: {
+            questions: [{
+              question: 'Which option?',
+              header: 'Choice',
+              options: [
+                { label: 'A', description: 'First' },
+                { label: 'B' },
+              ],
+              multiSelect: false,
+            }],
+          },
         },
+        requiresApproval: true,
       });
     });
 
@@ -118,7 +133,7 @@ describe('useStreaming interactive events', () => {
     expect(segments).toHaveLength(1);
     expect(segments[0]).toMatchObject({
       type: 'interactive',
-      id: 'tool-ask-1',
+      id: 'perm-ask-1',
       interactionType: 'question',
     });
     // Should NOT create a tool segment
@@ -127,6 +142,15 @@ describe('useStreaming interactive events', () => {
 
   it('ignores duplicate permission:request with same ID', () => {
     renderHook(() => useStreaming());
+
+    // First, create the tool segment
+    act(() => {
+      emitSocketEvent('tool:call', {
+        id: 'perm-1',
+        name: 'Bash',
+        input: {},
+      });
+    });
 
     const data = {
       id: 'perm-1',
@@ -137,14 +161,21 @@ describe('useStreaming interactive events', () => {
 
     act(() => {
       emitSocketEvent('permission:request', data);
-      emitSocketEvent('permission:request', data);
+      emitSocketEvent('permission:request', data); // duplicate — should be ignored
     });
 
+    // Only one tool segment with permission attached
     expect(useChatStore.getState().streamingSegments).toHaveLength(1);
   });
 
-  it('adds multiple permission requests as separate segments', () => {
+  it('adds multiple permission requests to separate tool segments', () => {
     renderHook(() => useStreaming());
+
+    // Create tool segments first
+    act(() => {
+      emitSocketEvent('tool:call', { id: 'perm-1', name: 'Bash', input: {} });
+      emitSocketEvent('tool:call', { id: 'perm-2', name: 'Write', input: {} });
+    });
 
     act(() => {
       emitSocketEvent('permission:request', {
@@ -161,7 +192,10 @@ describe('useStreaming interactive events', () => {
       });
     });
 
-    expect(useChatStore.getState().streamingSegments).toHaveLength(2);
+    const segments = useChatStore.getState().streamingSegments;
+    expect(segments).toHaveLength(2);
+    expect(segments[0]).toMatchObject({ type: 'tool', permissionId: 'perm-1' });
+    expect(segments[1]).toMatchObject({ type: 'tool', permissionId: 'perm-2' });
   });
 
   it('creates regular tool segment for non-AskUserQuestion tools', () => {

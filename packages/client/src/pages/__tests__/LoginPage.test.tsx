@@ -31,12 +31,14 @@ const renderLoginPage = () => {
 
 describe('LoginPage', () => {
   beforeEach(() => {
-    // Reset store state
+    // Reset store state — isPasswordConfigured must be set to avoid LoadingSpinner
     useAuthStore.setState({
       isAuthenticated: false,
+      isPasswordConfigured: true,
       isLoading: false,
       error: null,
       rateLimitInfo: null,
+      checkAuth: vi.fn(),
     });
     vi.clearAllMocks();
   });
@@ -244,7 +246,7 @@ describe('LoginPage', () => {
 
   describe('loading state', () => {
     it('should show loading spinner when isLoading', () => {
-      useAuthStore.setState({ isLoading: true });
+      useAuthStore.setState({ isLoading: true, isPasswordConfigured: true });
 
       renderLoginPage();
 
@@ -253,7 +255,7 @@ describe('LoginPage', () => {
     });
 
     it('should disable input and button when loading', () => {
-      useAuthStore.setState({ isLoading: true });
+      useAuthStore.setState({ isLoading: true, isPasswordConfigured: true });
 
       renderLoginPage();
 
@@ -262,7 +264,7 @@ describe('LoginPage', () => {
     });
 
     it('should disable checkbox when loading', () => {
-      useAuthStore.setState({ isLoading: true });
+      useAuthStore.setState({ isLoading: true, isPasswordConfigured: true });
 
       renderLoginPage();
 

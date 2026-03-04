@@ -236,7 +236,7 @@ describe('SessionListPage', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /다시 시도/i }));
 
-      expect(mockSetRefreshing).toHaveBeenCalledWith(true);
+      // handleRefresh now calls fetchSessions directly (no setRefreshing)
       expect(mockFetchSessions).toHaveBeenCalled();
     });
   });
@@ -299,7 +299,8 @@ describe('SessionListPage', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /새 세션 시작/i }));
 
-      expect(mockNavigate).toHaveBeenCalledWith('/project/my-project/session/new');
+      // New session now uses UUID instead of 'new'
+      expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/project\/my-project\/session\/[a-f0-9-]+/));
     });
   });
 
@@ -463,7 +464,8 @@ describe('SessionListPage', () => {
       const headerButtons = screen.getAllByRole('button', { name: /새 세션/ });
       fireEvent.click(headerButtons[0]);
 
-      expect(mockNavigate).toHaveBeenCalledWith('/project/my-project/session/new');
+      // New session now uses UUID instead of 'new'
+      expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/project\/my-project\/session\/[a-f0-9-]+/));
     });
   });
 
@@ -492,7 +494,7 @@ describe('SessionListPage', () => {
 
       fireEvent.click(screen.getByLabelText('새로고침'));
 
-      expect(mockSetRefreshing).toHaveBeenCalledWith(true);
+      // handleRefresh now calls fetchSessions directly (no setRefreshing)
       expect(mockFetchSessions).toHaveBeenCalled();
     });
   });
