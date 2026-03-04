@@ -40,8 +40,7 @@ export function SettingsPage() {
   const [expandedSection, setExpandedSection] = useState<SectionId | null>(activeSection);
 
   const handleBack = () => {
-    if (window.history.length > 1) navigate(-1);
-    else navigate('/');
+    navigate('/');
   };
 
   const toggleSection = (id: SectionId) => {

@@ -23,11 +23,11 @@ describe('ProjectStatusIndicators', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('shows active session count format "N/M active" with green dot', () => {
+  it('shows active session count with green dot', () => {
     render(<ProjectStatusIndicators status={makeStatus({ activeSessionCount: 2, totalSessionCount: 5 })} />);
-    expect(screen.getByText('2/5 active')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
     // Green dot should be present
-    const container = screen.getByText('2/5 active').parentElement!;
+    const container = screen.getByText('2').parentElement!;
     const dot = container.querySelector('.bg-green-500.rounded-full');
     expect(dot).not.toBeNull();
   });
@@ -38,9 +38,9 @@ describe('ProjectStatusIndicators', () => {
   });
 
   it('hides terminal count when terminalCount === 0', () => {
-    render(<ProjectStatusIndicators status={makeStatus({ totalSessionCount: 3 })} />);
-    // Only session text should appear, no standalone number for terminals
-    expect(screen.getByText('0/3 active')).toBeInTheDocument();
+    render(<ProjectStatusIndicators status={makeStatus({ activeSessionCount: 1, totalSessionCount: 3 })} />);
+    // Active session count shown, but no terminal number
+    expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.queryByText('0')).toBeNull();
   });
 
@@ -60,17 +60,17 @@ describe('ProjectStatusIndicators', () => {
         })}
       />
     );
-    const container = screen.getByLabelText('프로젝트 상태: 2/5 active sessions, queue Running, 1 terminal(s)');
+    const container = screen.getByLabelText('프로젝트 상태: 활성 세션 2개, queue Running, 1 terminal(s)');
     expect(container).toBeInTheDocument();
   });
 
   it('renders correct dynamic aria-label — minimal case', () => {
     render(
       <ProjectStatusIndicators
-        status={makeStatus({ activeSessionCount: 0, totalSessionCount: 3 })}
+        status={makeStatus({ activeSessionCount: 1, totalSessionCount: 3 })}
       />
     );
-    const container = screen.getByLabelText('프로젝트 상태: 0/3 active sessions');
+    const container = screen.getByLabelText('프로젝트 상태: 활성 세션 1개');
     expect(container).toBeInTheDocument();
   });
 });
