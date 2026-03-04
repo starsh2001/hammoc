@@ -21,6 +21,9 @@ let streamingDelayTimeoutId: ReturnType<typeof setTimeout> | null = null;
 /** Track the absolute timeout for segment cleanup so it can be cancelled on new streaming */
 let segmentCleanupTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
+/** Buffer for permission requests that arrive before their tool:call segment */
+const pendingPermissionBuffer = new Map<string, string>();
+
 /** Streaming tool call state */
 export interface StreamingToolCall {
   id: string;
@@ -456,11 +459,22 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const segments = get().streamingSegments;
     // Avoid duplicates
     if (segments.some((seg) => seg.type === 'tool' && seg.toolCall.id === toolCall.id)) return;
+    // Check if a permission request arrived before this tool segment
+    const bufferedPermissionId = pendingPermissionBuffer.get(toolCall.id);
+    if (bufferedPermissionId) {
+      pendingPermissionBuffer.delete(toolCall.id);
+    }
     // Add tool segment with startedAt timestamp (previous text segment is automatically "closed")
+    // If a buffered permission exists, attach it immediately
     set({
       streamingSegments: [
         ...segments,
-        { type: 'tool', toolCall: { ...toolCall, startedAt: toolCall.startedAt ?? Date.now() }, status: 'pending' },
+        {
+          type: 'tool',
+          toolCall: { ...toolCall, startedAt: toolCall.startedAt ?? Date.now() },
+          status: 'pending',
+          ...(bufferedPermissionId && { permissionId: bufferedPermissionId, permissionStatus: 'waiting' as const }),
+        },
       ],
     });
   },
@@ -503,6 +517,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       segmentTypes: prev.streamingSegments.map(s => s.type),
       msgCount: useMessageStore.getState().messages.length,
     });
+    pendingPermissionBuffer.clear();
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
@@ -659,6 +674,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       segmentCount: prev.streamingSegments.length,
       msgCount: useMessageStore.getState().messages.length,
     });
+    pendingPermissionBuffer.clear();
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
@@ -859,7 +875,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         .filter(s => s.type === 'tool')
         .map(s => (s as { type: 'tool'; toolCall: { id: string } }).toolCall.id),
     });
-    if (idx === -1) return;
+    if (idx === -1) {
+      // Buffer the permission — tool:call segment hasn't arrived yet (race condition)
+      pendingPermissionBuffer.set(toolCallId, permissionId);
+      return;
+    }
     const updated = [...segments];
     const seg = updated[idx];
     if (seg.type === 'tool') {
