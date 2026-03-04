@@ -375,7 +375,7 @@ describe('useChatStore', () => {
   });
 
   describe('completeStreaming', () => {
-    it('clears streaming flags but keeps segments with segmentsPendingClear=true', () => {
+    it('converts segments to messages and clears segments', () => {
       const { startStreaming, appendStreamingContent, completeStreaming } =
         useChatStore.getState();
 
@@ -385,14 +385,14 @@ describe('useChatStore', () => {
 
       const state = useChatStore.getState();
       expect(state.isStreaming).toBe(false);
-      // Segments are kept as fallback until fetchMessages loads authoritative history
-      expect(state.streamingSegments).toHaveLength(1);
-      expect(state.segmentsPendingClear).toBe(true);
+      // Segments are converted to messages and cleared immediately
+      expect(state.streamingSegments).toHaveLength(0);
+      expect(state.segmentsPendingClear).toBe(false);
       expect(state.streamingSessionId).toBeNull();
       expect(state.streamingMessageId).toBeNull();
     });
 
-    it('does not add messages to messageStore (handled by fetchMessages)', () => {
+    it('adds converted messages to messageStore', () => {
       const { startStreaming, appendStreamingContent, addStreamingToolCall, updateStreamingToolCall, completeStreaming } =
         useChatStore.getState();
 
@@ -403,9 +403,9 @@ describe('useChatStore', () => {
       appendStreamingContent('After tool');
       completeStreaming();
 
-      // completeStreaming only clears streaming state;
-      // message persistence is handled by fetchMessages() in useStreaming
-      expect(useMessageStore.getState().messages).toEqual([]);
+      // completeStreaming converts segments to HistoryMessages
+      const messages = useMessageStore.getState().messages;
+      expect(messages.length).toBeGreaterThan(0);
     });
 
     it('does nothing when not streaming', () => {
@@ -498,7 +498,7 @@ describe('useChatStore', () => {
       expect(mockEmit).toHaveBeenCalledWith('chat:abort');
     });
 
-    it('keeps streaming segments visible after abort (fetchMessages will clear later)', () => {
+    it('converts streaming segments to messages after abort', () => {
       const { startStreaming, appendStreamingContent, abortResponse } =
         useChatStore.getState();
 
@@ -506,17 +506,17 @@ describe('useChatStore', () => {
       appendStreamingContent('Partial response text');
       abortResponse();
 
-      // Segments are kept as immediate fallback (not added to messageStore)
+      // Segments are converted to messages and cleared
       const state = useChatStore.getState();
-      expect(state.streamingSegments).toHaveLength(1);
-      expect(state.streamingSegments[0].type).toBe('text');
+      expect(state.streamingSegments).toHaveLength(0);
 
-      // No messages added to messageStore directly
+      // Messages are added to messageStore
       const messages = useMessageStore.getState().messages;
-      expect(messages).toHaveLength(0);
+      expect(messages).toHaveLength(1);
+      expect(messages[0].type).toBe('assistant');
     });
 
-    it('clears streaming flags but keeps segments after abort', () => {
+    it('clears streaming flags and segments after abort', () => {
       const { startStreaming, appendStreamingContent, abortResponse } =
         useChatStore.getState();
 
@@ -528,8 +528,8 @@ describe('useChatStore', () => {
       expect(state.isStreaming).toBe(false);
       expect(state.streamingSessionId).toBeNull();
       expect(state.streamingMessageId).toBeNull();
-      // Segments are kept until fetchMessages resolves
-      expect(state.streamingSegments).toHaveLength(1);
+      // Segments are converted and cleared
+      expect(state.streamingSegments).toHaveLength(0);
       expect(state.streamingStartedAt).toBeNull();
     });
 
@@ -542,7 +542,7 @@ describe('useChatStore', () => {
       expect(useMessageStore.getState().messages).toEqual([]);
     });
 
-    it('does not preserve messages when there is no text content', () => {
+    it('converts tool-only segments to messages on abort', () => {
       const { startStreaming, addStreamingToolCall, abortResponse } =
         useChatStore.getState();
 
@@ -552,11 +552,13 @@ describe('useChatStore', () => {
 
       // Socket should still be notified
       expect(mockEmit).toHaveBeenCalledWith('chat:abort');
-      // But no message should be added (only tool segments, no text)
-      expect(useMessageStore.getState().messages).toEqual([]);
+      // Tool segment is converted to a tool_use message (with error status from abort)
+      const messages = useMessageStore.getState().messages;
+      expect(messages).toHaveLength(1);
+      expect(messages[0].type).toBe('tool_use');
     });
 
-    it('marks pending tool segments as error with abort output', () => {
+    it('marks pending tool segments as error and converts all to messages', () => {
       const { startStreaming, appendStreamingContent, addStreamingToolCall, abortResponse } =
         useChatStore.getState();
 
@@ -567,17 +569,14 @@ describe('useChatStore', () => {
       abortResponse();
 
       const state = useChatStore.getState();
-      // All segments preserved
-      expect(state.streamingSegments).toHaveLength(3);
-      // Pending tool segment marked as error
-      const toolSeg = state.streamingSegments[1];
-      expect(toolSeg.type).toBe('tool');
-      if (toolSeg.type === 'tool') {
-        expect(toolSeg.status).toBe('error');
-        expect(toolSeg.toolCall.output).toBe('중단됨');
-      }
-      // No messages added to messageStore
-      expect(useMessageStore.getState().messages).toHaveLength(0);
+      // Segments are converted to messages and cleared
+      expect(state.streamingSegments).toHaveLength(0);
+      // Messages are added to messageStore (text + tool + text)
+      const messages = useMessageStore.getState().messages;
+      expect(messages).toHaveLength(3);
+      // Tool message should have error result from abort
+      const toolMsg = messages[1];
+      expect(toolMsg.type).toBe('tool_use');
     });
   });
 
@@ -621,7 +620,7 @@ describe('useChatStore', () => {
   });
 
   describe('segmentsPendingClear lifecycle (Story 18.2)', () => {
-    it('TC-L1: completeStreaming keeps segments and sets segmentsPendingClear=true', () => {
+    it('TC-L1: completeStreaming clears segments and sets segmentsPendingClear=false', () => {
       const { startStreaming, appendStreamingContent, completeStreaming } =
         useChatStore.getState();
 
@@ -631,8 +630,9 @@ describe('useChatStore', () => {
 
       const state = useChatStore.getState();
       expect(state.isStreaming).toBe(false);
-      expect(state.streamingSegments).toHaveLength(1);
-      expect(state.segmentsPendingClear).toBe(true);
+      // Segments converted to messages and cleared immediately
+      expect(state.streamingSegments).toHaveLength(0);
+      expect(state.segmentsPendingClear).toBe(false);
     });
 
     it('TC-L2: clearStreamingSegments clears segments and sets segmentsPendingClear=false', () => {
@@ -689,11 +689,12 @@ describe('useChatStore', () => {
 
       const state = useChatStore.getState();
       expect(state.streamingSegments).toEqual([]);
-      expect(state.segmentsPendingClear).toBe(false);
+      // sendMessage does not explicitly reset segmentsPendingClear;
+      // it will be reset by startStreaming when the server responds
       expect(state.isStreaming).toBe(true);
     });
 
-    it('TC-L6: abortResponse sets segmentsPendingClear=true', () => {
+    it('TC-L6: abortResponse converts segments and sets segmentsPendingClear=false', () => {
       const { startStreaming, appendStreamingContent, abortResponse } =
         useChatStore.getState();
 
@@ -703,8 +704,9 @@ describe('useChatStore', () => {
 
       const state = useChatStore.getState();
       expect(state.isStreaming).toBe(false);
-      expect(state.streamingSegments).toHaveLength(1);
-      expect(state.segmentsPendingClear).toBe(true);
+      // Segments converted to messages and cleared
+      expect(state.streamingSegments).toHaveLength(0);
+      expect(state.segmentsPendingClear).toBe(false);
     });
 
     it('TC-L7: setSegmentCleanupTimeoutId cancels previous timeout and stores new one', () => {

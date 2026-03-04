@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useStreaming } from '../useStreaming';
 import { useChatStore } from '../../stores/chatStore';
 import { useMessageStore } from '../../stores/messageStore';
@@ -24,6 +24,15 @@ describe('useStreaming', () => {
     mockSocket = createMockSocket();
     vi.mocked(socketModule.getSocket).mockReturnValue(mockSocket as unknown as ReturnType<typeof socketModule.getSocket>);
 
+    // Mock requestAnimationFrame for frame-based chunk coalescing.
+    // Use queueMicrotask to schedule the callback asynchronously but before
+    // the next macrotask, avoiding the return-value race with frameRequestId.
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      queueMicrotask(() => cb(0));
+      return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
     // Reset store states
     useChatStore.setState({
       isStreaming: false,
@@ -31,11 +40,14 @@ describe('useStreaming', () => {
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
+      segmentsPendingClear: false,
+      isCompacting: false,
+      isSessionLocked: false,
     });
     useMessageStore.setState({
       messages: [],
       currentProjectSlug: 'test-project',
-      currentSessionId: 'test-session',
+      currentSessionId: 'session-1',
       isLoading: false,
       isLoadingMore: false,
       error: null,
@@ -48,7 +60,7 @@ describe('useStreaming', () => {
   });
 
   describe('message:chunk event', () => {
-    it('starts streaming on first chunk', () => {
+    it('starts streaming on first chunk', async () => {
       renderHook(() => useStreaming());
 
       // Simulate first chunk
@@ -58,6 +70,8 @@ describe('useStreaming', () => {
         content: 'Hello',
         done: false,
       });
+      // Drain microtask queue to flush frame buffer
+      await act(async () => {});
 
       const state = useChatStore.getState();
       expect(state.isStreaming).toBe(true);
@@ -65,7 +79,7 @@ describe('useStreaming', () => {
       expect(state.streamingSegments[0]).toEqual({ type: 'text', content: 'Hello' });
     });
 
-    it('appends content on subsequent chunks', () => {
+    it('appends content on subsequent chunks', async () => {
       renderHook(() => useStreaming());
 
       // Simulate multiple chunks
@@ -75,12 +89,16 @@ describe('useStreaming', () => {
         content: 'Hello ',
         done: false,
       });
+      // Drain microtask queue to flush frame buffer
+      await act(async () => {});
+
       mockSocket.trigger('message:chunk', {
         sessionId: 'session-1',
         messageId: 'msg-1',
         content: 'World!',
         done: false,
       });
+      await act(async () => {});
 
       const segments = useChatStore.getState().streamingSegments;
       expect(segments).toHaveLength(1);
@@ -99,6 +117,7 @@ describe('useStreaming', () => {
         content: 'Hello',
         done: false,
       });
+      await act(async () => {});
 
       expect(useChatStore.getState().isStreaming).toBe(true);
 
@@ -115,13 +134,13 @@ describe('useStreaming', () => {
       await vi.waitFor(() => {
         expect(useChatStore.getState().isStreaming).toBe(false);
       });
-      // Segments are kept pending clear until fetchMessages loads authoritative history
-      expect(useChatStore.getState().segmentsPendingClear).toBe(true);
+      // Segments are converted to messages and cleared immediately
+      expect(useChatStore.getState().segmentsPendingClear).toBe(false);
     });
   });
 
   describe('tool:call event', () => {
-    it('adds tool segment on tool:call', () => {
+    it('adds tool segment on tool:call', async () => {
       renderHook(() => useStreaming());
 
       // Start streaming with some text
@@ -131,6 +150,7 @@ describe('useStreaming', () => {
         content: 'Let me check that file.',
         done: false,
       });
+      await act(async () => {});
 
       // Tool call event
       mockSocket.trigger('tool:call', {
@@ -151,7 +171,7 @@ describe('useStreaming', () => {
   });
 
   describe('tool:result event', () => {
-    it('updates tool segment status on tool:result', () => {
+    it('updates tool segment status on tool:result', async () => {
       renderHook(() => useStreaming());
 
       // Start streaming
@@ -161,6 +181,7 @@ describe('useStreaming', () => {
         content: 'Text',
         done: false,
       });
+      await act(async () => {});
 
       // Tool call
       mockSocket.trigger('tool:call', {
@@ -222,12 +243,12 @@ describe('useStreaming', () => {
       const event = new KeyboardEvent('keydown', { key: 'Escape' });
       document.dispatchEvent(event);
 
-      // abortResponse: streaming stopped, segments kept as fallback
+      // abortResponse: streaming stopped, segments converted to messages and cleared
       expect(useChatStore.getState().isStreaming).toBe(false);
-      expect(useChatStore.getState().streamingSegments).toHaveLength(1);
+      expect(useChatStore.getState().streamingSegments).toHaveLength(0);
 
-      // No messages added to messageStore directly (fetchMessages will load later)
-      expect(useMessageStore.getState().messages).toHaveLength(0);
+      // Partial content converted to message by abortResponse
+      expect(useMessageStore.getState().messages).toHaveLength(1);
     });
 
     it('does not abort when Escape is pressed while not streaming', () => {
@@ -264,11 +285,11 @@ describe('useStreaming', () => {
       const event = new KeyboardEvent('keydown', { key: 'c', ctrlKey: true });
       document.dispatchEvent(event);
 
-      // abortResponse should be called - segments kept as fallback
+      // abortResponse: streaming stopped, segments converted to messages and cleared
       expect(useChatStore.getState().isStreaming).toBe(false);
-      expect(useChatStore.getState().streamingSegments).toHaveLength(1);
-      // No messages added to messageStore directly
-      expect(useMessageStore.getState().messages).toHaveLength(0);
+      expect(useChatStore.getState().streamingSegments).toHaveLength(0);
+      // Partial content converted to message by abortResponse
+      expect(useMessageStore.getState().messages).toHaveLength(1);
 
       vi.restoreAllMocks();
     });
@@ -444,18 +465,19 @@ describe('useStreaming', () => {
 
       mockSocket.trigger('stream:status', { active: false, sessionId: 'session-1' });
 
-      // completeStreaming sets isStreaming: false, segmentsPendingClear: true
+      // completeStreaming: converts segments to messages, sets isStreaming: false
       expect(useChatStore.getState().isStreaming).toBe(false);
-      expect(useChatStore.getState().segmentsPendingClear).toBe(true);
+      expect(useChatStore.getState().segmentsPendingClear).toBe(false);
     });
 
-    it('TC-R4: calls fetchMessages in silent mode when stream:status active=false', async () => {
+    it('TC-R4: calls fetchMessages in silent mode when stream:status active=false and no segments', async () => {
       const fetchMessagesSpy = vi.fn().mockResolvedValue(undefined);
       useChatStore.setState({
         isStreaming: true,
         streamingSessionId: 'session-1',
         streamingMessageId: 'msg-1',
-        streamingSegments: [{ type: 'text', content: 'partial' }],
+        // No segments (stream completed entirely during disconnect)
+        streamingSegments: [],
         streamingStartedAt: new Date(),
       });
       useMessageStore.setState({
@@ -469,7 +491,7 @@ describe('useStreaming', () => {
 
       mockSocket.trigger('stream:status', { active: false, sessionId: 'session-1' });
 
-      // fetchMessages should be called with silent: true
+      // fetchMessages should be called with silent: true when hadSegments=false
       await vi.waitFor(() => {
         expect(fetchMessagesSpy).toHaveBeenCalledWith('test-project', 'session-1', { silent: true });
       });
@@ -531,7 +553,7 @@ describe('useStreaming', () => {
 
       // After timeout: streaming should be completed
       expect(useChatStore.getState().isStreaming).toBe(false);
-      expect(useChatStore.getState().segmentsPendingClear).toBe(true);
+      expect(useChatStore.getState().segmentsPendingClear).toBe(false);
     });
 
     it('TC-R7: cancels timeout when stream:status is received', () => {

@@ -104,7 +104,7 @@ describe('QueueLockedBanner', () => {
       errorItem: { index: 3, error: 'QUEUE_STOP detected' },
     });
 
-    expect(screen.getByText(/아이템 4 오류: QUEUE_STOP detected/)).toBeInTheDocument();
+    expect(screen.getByText(/오류: 4: QUEUE_STOP detected/)).toBeInTheDocument();
   });
 
   it('TC-QL-20: shows completed state with checkmark', () => {

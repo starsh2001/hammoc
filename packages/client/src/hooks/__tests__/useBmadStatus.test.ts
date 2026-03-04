@@ -58,7 +58,8 @@ describe('useBmadStatus', () => {
   it('sets isLoading true initially, then false after fetch completes', async () => {
     vi.mocked(bmadStatusApi.getStatus).mockResolvedValue(mockData);
 
-    const { result } = renderHook(() => useBmadStatus('test-project'));
+    // Use unique slug to avoid module-level cache from previous tests
+    const { result } = renderHook(() => useBmadStatus('test-project-loading'));
 
     expect(result.current.isLoading).toBe(true);
 
@@ -85,7 +86,8 @@ describe('useBmadStatus', () => {
       new ApiError(500, 'SCAN_ERROR', '프로젝트 스캔 중 오류가 발생했습니다.'),
     );
 
-    const { result } = renderHook(() => useBmadStatus('test-project'));
+    // Use unique slug to avoid module-level cache from previous tests
+    const { result } = renderHook(() => useBmadStatus('test-project-error'));
 
     await waitFor(() => {
       expect(result.current.error).toBe('프로젝트 스캔 중 오류가 발생했습니다.');
