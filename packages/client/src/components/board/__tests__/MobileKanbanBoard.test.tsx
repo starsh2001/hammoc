@@ -59,7 +59,8 @@ describe('MobileKanbanBoard', () => {
 
     // "Open" appears as both column header and status badge
     expect(screen.getAllByText('Open').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('1')).toBeInTheDocument();
+    // Multiple columns may show "1" count since all columns render in the carousel
+    expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(1);
   });
 
   it('should navigate to column when dot is clicked', () => {
