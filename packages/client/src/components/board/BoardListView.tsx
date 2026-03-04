@@ -97,7 +97,7 @@ export function BoardListView({
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                   {col.label}
                 </span>
-                <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full" data-testid={`column-count-${col.id}`}>
                   {items.length}
                 </span>
               </div>

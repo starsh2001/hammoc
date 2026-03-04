@@ -26,11 +26,11 @@ describe('DashboardSummaryBar', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 
-  it('shows subValue "/ totalSessions" on Active card when totalSessions > 0', () => {
+  it('does not show subValue on Active card', () => {
     render(
       <DashboardSummaryBar totals={{ totalSessions: 6, activeSessions: 3, queueRunning: 0, terminals: 0 }} projectCount={1} />
     );
-    expect(screen.getByText('/ 6')).toBeInTheDocument();
+    expect(screen.queryByText('/ 6')).toBeNull();
   });
 
   it('shows correct numbers for large values', () => {

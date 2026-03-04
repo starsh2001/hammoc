@@ -56,9 +56,9 @@ describe('BoardListView', () => {
   it('should show item count in accordion header', () => {
     render(<BoardListView itemsByColumn={createMockItemsByColumn()} boardConfig={DEFAULT_BOARD_CONFIG} />);
 
-    // Backlog has 2 items, Done has 2 items
-    const twos = screen.getAllByText('2');
-    expect(twos).toHaveLength(2);
+    // Open has 2 items, Close has 2 items
+    expect(screen.getByTestId('column-count-Open')).toHaveTextContent('2');
+    expect(screen.getByTestId('column-count-Close')).toHaveTextContent('2');
   });
 
   it('should toggle accordion group on click', () => {

@@ -88,7 +88,6 @@ export function DashboardSummaryBar({ totals, projectCount }: DashboardSummaryBa
         label={t('dashboard.active')}
         value={totals.activeSessions}
         variant="green"
-        subValue={totals.totalSessions > 0 ? `/ ${totals.totalSessions}` : undefined}
       />
       <StatCard
         icon={<Play className="w-5 h-5" />}
