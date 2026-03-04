@@ -37,6 +37,8 @@ const defaultStoreState = {
   isRunning: false,
   isPaused: false,
   isStarting: false,
+  isCompleted: false,
+  isErrored: false,
   currentIndex: 0,
   totalItems: 0,
   pauseReason: undefined,
@@ -115,11 +117,12 @@ describe('useQueueSession', () => {
 
     expect(result.current.isQueueLocked).toBe(true);
 
-    // Queue completes (isRunning → false)
+    // Queue completes — store sets isCompleted: true
     act(() => {
       useQueueStore.setState({
         isRunning: false,
         isPaused: false,
+        isCompleted: true,
         lockedSessionId: 'session-1',
         errorItem: null,
       });
@@ -143,11 +146,12 @@ describe('useQueueSession', () => {
 
     expect(result.current.isQueueLocked).toBe(true);
 
-    // Queue errors (isRunning → false with errorItem)
+    // Queue errors — store sets isErrored: true with errorItem
     act(() => {
       useQueueStore.setState({
         isRunning: false,
         isPaused: false,
+        isErrored: true,
         lockedSessionId: 'session-1',
         errorItem: { index: 2, error: 'QUEUE_STOP' },
       });
@@ -157,7 +161,7 @@ describe('useQueueSession', () => {
     expect(result.current.isQueueCompleted).toBe(false);
   });
 
-  it('TC-QL-5: isQueueCompleted auto-resets to false after 5 seconds', async () => {
+  it('TC-QL-5: isQueueCompleted auto-resets to false after TERMINAL_BANNER_DURATION (4s)', async () => {
     useQueueStore.setState({
       isRunning: true,
       isPaused: false,
@@ -167,26 +171,27 @@ describe('useQueueSession', () => {
     const { result } = renderHook(() => useQueueSession('my-project', 'session-1'));
     await act(async () => {});
 
-    // Queue completes
+    // Queue completes — store sets isCompleted: true
     act(() => {
       useQueueStore.setState({
         isRunning: false,
         isPaused: false,
+        isCompleted: true,
         errorItem: null,
       });
     });
 
     expect(result.current.isQueueCompleted).toBe(true);
 
-    // Advance 5 seconds
+    // Advance 4 seconds (TERMINAL_BANNER_DURATION)
     act(() => {
-      vi.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(4000);
     });
 
     expect(result.current.isQueueCompleted).toBe(false);
   });
 
-  it('TC-QL-5b: isQueueErrored auto-resets to false after 5 seconds', async () => {
+  it('TC-QL-5b: isQueueErrored auto-resets to false after TERMINAL_BANNER_DURATION (4s)', async () => {
     useQueueStore.setState({
       isRunning: true,
       isPaused: false,
@@ -196,11 +201,12 @@ describe('useQueueSession', () => {
     const { result } = renderHook(() => useQueueSession('my-project', 'session-1'));
     await act(async () => {});
 
-    // Queue errors
+    // Queue errors — store sets isErrored: true
     act(() => {
       useQueueStore.setState({
         isRunning: false,
         isPaused: false,
+        isErrored: true,
         errorItem: { index: 1, error: 'Something failed' },
       });
     });
@@ -208,7 +214,7 @@ describe('useQueueSession', () => {
     expect(result.current.isQueueErrored).toBe(true);
 
     act(() => {
-      vi.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(4000);
     });
 
     expect(result.current.isQueueErrored).toBe(false);

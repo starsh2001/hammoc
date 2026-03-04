@@ -26,9 +26,10 @@ describe('useWebSocket', () => {
     it('should have disconnected status initially', () => {
       const { result } = renderHook(() => useWebSocket());
 
-      expect(result.current.connectionStatus).toBe('disconnected');
+      // Initial state: 'reconnecting' (not 'disconnected') to avoid brief red flash
+      expect(result.current.connectionStatus).toBe('reconnecting');
       expect(result.current.isConnected).toBe(false);
-      expect(result.current.isReconnecting).toBe(false);
+      expect(result.current.isReconnecting).toBe(true);
       expect(result.current.reconnectAttempt).toBe(0);
       expect(result.current.lastError).toBeNull();
     });
@@ -183,7 +184,7 @@ describe('useWebSocket', () => {
       });
 
       expect(result.current.connectionStatus).toBe('disconnected');
-      expect(result.current.lastError).toContain('5회');
+      expect(result.current.lastError).toContain('서버 연결에 실패했습니다');
     });
   });
 

@@ -13,6 +13,19 @@ import type { HistoryMessage, PaginationInfo } from '@bmad-studio/shared';
 
 expect.extend(toHaveNoViolations);
 
+// Mock ResizeObserver (not available in jsdom)
+vi.stubGlobal('ResizeObserver', class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+});
+
+// Mock Element.scrollTo (not available in jsdom)
+Element.prototype.scrollTo = vi.fn();
+
+// Mock HTMLCanvasElement.getContext (used by ContextUsageDisplay chart)
+HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as never;
+
 // Mock useNavigate
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -110,7 +123,7 @@ describe('ChatPage Accessibility', () => {
     hasMore: false,
   };
 
-  const mockFetchMessages = vi.fn();
+  const mockFetchMessages = vi.fn().mockResolvedValue(undefined);
   const mockFetchMoreMessages = vi.fn();
   const mockClearMessages = vi.fn();
 
