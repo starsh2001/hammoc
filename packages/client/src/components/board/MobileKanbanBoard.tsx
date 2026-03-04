@@ -3,7 +3,7 @@
  * [Source: Story 21.2 - Task 10, Story 21.3 - Task 6]
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BoardItem, BoardConfig } from '@bmad-studio/shared';
 import { BoardCard } from './BoardCard';
@@ -32,10 +32,12 @@ export function MobileKanbanBoard({
 }: MobileKanbanBoardProps) {
   const { t } = useTranslation('board');
   const [activeColumnIndex, setActiveColumnIndex] = useState(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
-  const touchDeltaX = useRef(0);
   const isHorizontalSwipe = useRef<boolean | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const columns = boardConfig.columns;
 
@@ -46,10 +48,19 @@ export function MobileKanbanBoard({
     }
   }, [columns.length]);
 
+  const goToColumn = useCallback((index: number) => {
+    setIsTransitioning(true);
+    setDragOffset(0);
+    setActiveColumnIndex(index);
+  }, []);
+
   const handleTouchStart = (e: React.TouchEvent) => {
+    // Cancel any in-progress transition so the user can immediately swipe again
+    if (isTransitioning) {
+      setIsTransitioning(false);
+    }
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
-    touchDeltaX.current = 0;
     isHorizontalSwipe.current = null;
   };
 
@@ -64,67 +75,110 @@ export function MobileKanbanBoard({
 
     if (isHorizontalSwipe.current) {
       e.preventDefault();
-      touchDeltaX.current = dx;
+      // Apply rubber-band resistance at edges
+      const atStart = activeColumnIndex === 0 && dx > 0;
+      const atEnd = activeColumnIndex === columns.length - 1 && dx < 0;
+      setDragOffset(atStart || atEnd ? dx * 0.3 : dx);
     }
   };
 
   const handleTouchEnd = () => {
-    if (Math.abs(touchDeltaX.current) > SWIPE_THRESHOLD) {
-      if (touchDeltaX.current < 0 && activeColumnIndex < columns.length - 1) {
-        setActiveColumnIndex((prev) => prev + 1);
-      } else if (touchDeltaX.current > 0 && activeColumnIndex > 0) {
-        setActiveColumnIndex((prev) => prev - 1);
-      }
+    if (isHorizontalSwipe.current === null) {
+      // No horizontal swipe detected
+      return;
     }
-    touchDeltaX.current = 0;
+
+    const dx = dragOffset;
+    if (Math.abs(dx) > SWIPE_THRESHOLD) {
+      if (dx < 0 && activeColumnIndex < columns.length - 1) {
+        goToColumn(activeColumnIndex + 1);
+      } else if (dx > 0 && activeColumnIndex > 0) {
+        goToColumn(activeColumnIndex - 1);
+      } else {
+        // Snap back (edge rubber-band)
+        setIsTransitioning(true);
+        setDragOffset(0);
+      }
+    } else {
+      // Didn't meet threshold — snap back
+      setIsTransitioning(true);
+      setDragOffset(0);
+    }
     isHorizontalSwipe.current = null;
   };
 
-  const activeColumn = columns[activeColumnIndex];
-  const activeItems = activeColumn ? (itemsByColumn[activeColumn.id] || []) : [];
+  const handleTransitionEnd = () => {
+    setIsTransitioning(false);
+  };
+
+  // Compute the horizontal translate for the carousel strip
+  const containerWidth = containerRef.current?.clientWidth ?? 0;
+  const translateX = -(activeColumnIndex * containerWidth) + dragOffset;
 
   return (
     <div className="h-full flex flex-col">
-      {/* Column content area */}
+      {/* Carousel viewport */}
       <div
-        className="flex-1 overflow-y-auto"
+        ref={containerRef}
+        className="flex-1 overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Column header */}
-        <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
-          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            {activeColumn?.label ?? ''}
-          </span>
-          <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
-            {activeItems.length}
-          </span>
-        </div>
+        {/* Sliding strip containing all columns */}
+        <div
+          className="flex h-full"
+          style={{
+            transform: `translateX(${translateX}px)`,
+            transition: isTransitioning ? 'transform 300ms ease-out' : 'none',
+          }}
+          onTransitionEnd={handleTransitionEnd}
+        >
+          {columns.map((col) => {
+            const items = itemsByColumn[col.id] || [];
+            return (
+              <div
+                key={col.id}
+                className="flex-shrink-0 h-full overflow-y-auto"
+                style={{ width: containerWidth || '100%' }}
+              >
+                {/* Column header */}
+                <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    {col.label}
+                  </span>
+                  <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
+                    {items.length}
+                  </span>
+                </div>
 
-        {/* Cards */}
-        <div className="p-3 space-y-2">
-          {activeItems.map((item) => (
-            <BoardCard
-              key={item.id}
-              item={item}
-              onQuickFix={onQuickFix}
-              onPromote={onPromote}
-              onEdit={onEdit}
-              onClose={onClose}
-              onReopen={onReopen}
-              onDelete={onDelete}
-              onWorkflowAction={onWorkflowAction}
-              onViewEpicStories={onViewEpicStories}
-              onNormalizeStatus={onNormalizeStatus}
-              onCardClick={onCardClick}
-            />
-          ))}
-          {activeItems.length === 0 && (
-            <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-8">
-              {t('empty.items')}
-            </p>
-          )}
+                {/* Cards */}
+                <div className="p-3 space-y-2">
+                  {items.map((item) => (
+                    <BoardCard
+                      key={item.id}
+                      item={item}
+                      onQuickFix={onQuickFix}
+                      onPromote={onPromote}
+                      onEdit={onEdit}
+                      onClose={onClose}
+                      onReopen={onReopen}
+                      onDelete={onDelete}
+                      onWorkflowAction={onWorkflowAction}
+                      onViewEpicStories={onViewEpicStories}
+                      onNormalizeStatus={onNormalizeStatus}
+                      onCardClick={onCardClick}
+                    />
+                  ))}
+                  {items.length === 0 && (
+                    <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-8">
+                      {t('empty.items')}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -133,7 +187,7 @@ export function MobileKanbanBoard({
         {columns.map((col, index) => (
           <button
             key={col.id}
-            onClick={() => setActiveColumnIndex(index)}
+            onClick={() => goToColumn(index)}
             className={`w-2 h-2 rounded-full transition-colors ${
               index === activeColumnIndex
                 ? 'bg-blue-500'
