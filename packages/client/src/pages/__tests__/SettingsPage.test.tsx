@@ -50,18 +50,12 @@ describe('SettingsPage', () => {
     expect(screen.getAllByText('만든이').length).toBeGreaterThanOrEqual(1);
   });
 
-  // TC-3: Back button calls navigate(-1)
-  it('calls navigate(-1) when back button is clicked', () => {
-    // Simulate history length > 1
-    Object.defineProperty(window, 'history', {
-      value: { ...window.history, length: 3 },
-      writable: true,
-    });
-
+  // TC-3: Back button navigates to home
+  it('navigates to home when back button is clicked', () => {
     renderSettingsPage();
     const backButton = screen.getByLabelText('뒤로 가기');
     fireEvent.click(backButton);
-    expect(mockNavigate).toHaveBeenCalledWith(-1);
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
   // TC-4: Section navigation click navigates to section

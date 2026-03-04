@@ -591,7 +591,7 @@ describe('ChatPage', () => {
       expect(mockClearMessages).toHaveBeenCalled();
     });
 
-    it('should show confirm modal when streaming and new session button is clicked', () => {
+    it('should navigate to new session directly even when streaming is active', () => {
       useChatStore.setState({ isStreaming: true });
       useMessageStore.setState({
         messages: mockMessages,
@@ -602,45 +602,7 @@ describe('ChatPage', () => {
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
-      // ConfirmModal should be shown
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByText('진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?')).toBeInTheDocument();
-    });
-
-    it('should not navigate when cancel is clicked in confirm modal during streaming', () => {
-      useChatStore.setState({ isStreaming: true });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
-      renderChatPage();
-
-      fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
-
-      // Click cancel button in the modal
-      fireEvent.click(screen.getByRole('button', { name: '취소' }));
-
-      expect(mockNavigate).not.toHaveBeenCalledWith('/project/test-project/session/new');
-      expect(mockClearMessages).not.toHaveBeenCalled();
-    });
-
-    it('should abort streaming and navigate when confirm is accepted in modal during streaming', () => {
-      const mockAbortResponse = vi.fn();
-      useChatStore.setState({ isStreaming: true, abortResponse: mockAbortResponse });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
-      renderChatPage();
-
-      fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
-
-      // Click confirm button in the modal
-      fireEvent.click(screen.getByRole('button', { name: '확인' }));
-
-      expect(mockAbortResponse).toHaveBeenCalled();
+      // Should navigate without showing a confirm modal
       expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/project\/test-project\/session\/.+/));
       expect(mockClearMessages).toHaveBeenCalled();
     });
@@ -853,9 +815,8 @@ describe('ChatPage', () => {
       expect(screen.getByRole('button', { name: /중단/i })).toBeInTheDocument();
     });
 
-    it('should call abortResponse when new session button confirmed in modal during streaming', () => {
-      const mockAbortResponse = vi.fn();
-      useChatStore.setState({ isStreaming: true, abortResponse: mockAbortResponse });
+    it('should navigate to new session without aborting when streaming is active', () => {
+      useChatStore.setState({ isStreaming: true });
       useMessageStore.setState({
         messages: mockMessages,
         pagination: mockPagination,
@@ -865,10 +826,8 @@ describe('ChatPage', () => {
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
-      // Click confirm button in the modal
-      fireEvent.click(screen.getByRole('button', { name: '확인' }));
-
-      expect(mockAbortResponse).toHaveBeenCalled();
+      // Should navigate immediately without showing a modal
+      expect(mockNavigate).toHaveBeenCalledWith(expect.stringMatching(/\/project\/test-project\/session\/.+/));
     });
   });
 

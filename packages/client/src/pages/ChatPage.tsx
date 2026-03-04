@@ -683,14 +683,32 @@ export function ChatPage() {
   usePanelShortcuts();
   const isMobile = useIsMobile();
 
+  // Track viewport width for panel overlay detection
+  const MIN_CONTENT_WIDTH = 480;
+  const [windowWidth, setWindowWidth] = useState(
+    () => typeof window !== 'undefined' ? window.innerWidth : 1024
+  );
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Panel switches to full-screen overlay when content area would be too narrow
+  const panelOverlay = isMobile || (activePanel !== null && windowWidth - panelWidth < MIN_CONTENT_WIDTH);
+
   const handlePanelWidthChange = useCallback((width: number) => {
     setPanelWidth(width);
   }, [setPanelWidth]);
 
-  const chatAreaStyle = !isMobile && activePanel
+  const handlePanelReopen = useCallback(() => {
+    openPanel(lastActivePanel);
+  }, [openPanel, lastActivePanel]);
+
+  const chatAreaStyle = !panelOverlay && activePanel
     ? { paddingRight: `${panelWidth}px` }
     : undefined;
-  const chatAreaTransition = !isMobile && !isDragging
+  const chatAreaTransition = !panelOverlay && !isDragging
     ? 'transition-[padding-right] duration-300 ease-in-out'
     : '';
 
@@ -698,10 +716,9 @@ export function ChatPage() {
   // Confirm modal state (non-blocking replacement for window.confirm)
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
-    action: 'newSession' | 'switchSession' | 'agentLaunch';
-    targetSessionId?: string;
+    action: 'agentLaunch';
     agentCommand?: string;
-  }>({ isOpen: false, action: 'newSession' });
+  }>({ isOpen: false, action: 'agentLaunch' });
 
   // Ref to store pending agent command for auto-send after navigation (Story 8.3)
   const pendingAgentCommandRef = useRef<string | null>(null);
@@ -737,24 +754,13 @@ export function ChatPage() {
 
   // Execute confirmed action (after user confirms in modal)
   const executeConfirmedAction = useCallback(() => {
-    setConfirmModal({ isOpen: false, action: 'newSession' });
+    setConfirmModal({ isOpen: false, action: 'agentLaunch' });
     // Clear chain state before navigating away
     setPromptChain([]); promptChainRef.current = [];
     if (chainSendTimerRef.current) { clearTimeout(chainSendTimerRef.current); chainSendTimerRef.current = null; }
     abortResponse();
 
-    if (confirmModal.action === 'newSession') {
-      clearMessages();
-      clearStreamingSegments();
-      resetSelectedModel();
-      const newSessionId = generateUUID();
-      navigate(`/project/${projectSlug}/session/${newSessionId}`);
-    } else if (confirmModal.action === 'switchSession' && confirmModal.targetSessionId) {
-      clearMessages();
-      clearStreamingSegments();
-      resetSelectedModel();
-      navigate(`/project/${projectSlug}/session/${confirmModal.targetSessionId}`);
-    } else if (confirmModal.action === 'agentLaunch') {
+    if (confirmModal.action === 'agentLaunch') {
       clearMessages();
       clearStreamingSegments();
       resetSelectedModel();
@@ -762,43 +768,23 @@ export function ChatPage() {
       const newSessionId = generateUUID();
       navigate(`/project/${projectSlug}/session/${newSessionId}`);
     }
-  }, [confirmModal.action, confirmModal.targetSessionId, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
+  }, [confirmModal.action, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
 
   const handleSessionSelect = useCallback((selectedSessionId: string) => {
     closePanel();
     if (!projectSlug) return;
     // Don't navigate if selecting the current session
     if (selectedSessionId === sessionId) return;
-    // Confirm if streaming is active
-    const currentIsStreaming = useChatStore.getState().isStreaming;
-    if (currentIsStreaming) {
-      setConfirmModal({
-        isOpen: true,
-        action: 'switchSession',
-        targetSessionId: selectedSessionId,
-      });
-      return;
-    }
     setPromptChain([]); promptChainRef.current = [];
     if (chainSendTimerRef.current) { clearTimeout(chainSendTimerRef.current); chainSendTimerRef.current = null; }
     clearMessages();
     clearStreamingSegments();
     resetSelectedModel();
-    navigate(`/project/${projectSlug}/session/${selectedSessionId}`);
+    navigate(`/project/${projectSlug}/session/${selectedSessionId}`, { replace: true });
   }, [closePanel, sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
 
   const handleNewSession = useCallback(() => {
     if (!projectSlug) return;
-    const currentIsStreaming = useChatStore.getState().isStreaming;
-
-    if (currentIsStreaming) {
-      setConfirmModal({
-        isOpen: true,
-        action: 'newSession',
-      });
-      return;
-    }
-
     setPromptChain([]); promptChainRef.current = [];
     if (chainSendTimerRef.current) { clearTimeout(chainSendTimerRef.current); chainSendTimerRef.current = null; }
     clearMessages();
@@ -809,7 +795,7 @@ export function ChatPage() {
   }, [clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
 
   const handleCancelConfirm = useCallback(() => {
-    setConfirmModal({ isOpen: false, action: 'newSession' });
+    setConfirmModal({ isOpen: false, action: 'agentLaunch' });
   }, []);
 
   const handleRetry = useCallback(() => {
@@ -872,6 +858,7 @@ export function ChatPage() {
     <QuickPanel
       activePanel={activePanel}
       onClose={closePanel}
+      onReopen={handlePanelReopen}
       onSwitchPanel={openPanel}
       terminalAccessible={isTerminalAccessible}
       projectSlug={projectSlug}
@@ -881,7 +868,7 @@ export function ChatPage() {
       onNavigateToTerminalTab={handleNavigateToTerminalTab}
       panelWidth={panelWidth}
       onWidthChange={handlePanelWidthChange}
-      isMobile={isMobile}
+      isMobile={panelOverlay}
       gitChangedCount={changedFileCount}
     />
   );
@@ -925,14 +912,8 @@ export function ChatPage() {
   const confirmModalElement = (
     <ConfirmModal
       isOpen={confirmModal.isOpen}
-      title={confirmModal.action === 'agentLaunch' ? t('confirmModal.agentLaunch.title') : confirmModal.action === 'newSession' ? t('confirmModal.newSession.title') : t('confirmModal.switchSession.title')}
-      message={
-        confirmModal.action === 'agentLaunch'
-          ? t('confirmModal.agentLaunch.message')
-          : confirmModal.action === 'newSession'
-            ? t('confirmModal.newSession.message')
-            : t('confirmModal.switchSession.message')
-      }
+      title={t('confirmModal.agentLaunch.title')}
+      message={t('confirmModal.agentLaunch.message')}
       confirmText={t('common:button.confirm')}
       cancelText={t('common:button.cancel')}
       onConfirm={executeConfirmedAction}
