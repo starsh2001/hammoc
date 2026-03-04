@@ -13,6 +13,9 @@ import { FileText, X, Loader2, Eye, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useFileStore } from '../../stores/fileStore';
+import { usePanelStore } from '../../stores/panelStore';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { useOverlayBackHandler } from '../../hooks/useOverlayBackHandler';
 import { useTheme } from '../../hooks/useTheme';
 import { ConfirmModal } from '../ConfirmModal';
 import { MarkdownPreview } from './MarkdownPreview';
@@ -44,8 +47,25 @@ export function TextEditor() {
   const { t } = useTranslation('common');
   const [showConfirm, setShowConfirm] = useState(false);
   const editorRef = useRef<EditorView | null>(null);
+  const lastFileRef = useRef<{ projectSlug: string; path: string } | null>(null);
 
   const { theme } = useTheme();
+
+  // Adjust editor position when quick panel is open as sidebar
+  const isMobile = useIsMobile();
+  const activePanel = usePanelStore((s) => s.activePanel);
+  const panelWidth = usePanelStore((s) => s.panelWidth);
+  const MIN_CONTENT_WIDTH = 480;
+  const [windowWidth, setWindowWidth] = useState(
+    () => typeof window !== 'undefined' ? window.innerWidth : 1024
+  );
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  const panelOverlay = isMobile || (activePanel !== null && windowWidth - panelWidth < MIN_CONTENT_WIDTH);
+  const editorRight = !panelOverlay && activePanel ? panelWidth : 0;
 
   const isMarkdownFile = openFile ? isMarkdownPath(openFile.path) : false;
 
@@ -83,6 +103,22 @@ export function TextEditor() {
       closeEditor();
     }
   }, [isDirty, closeEditor, pendingNavigation, cancelPendingNavigation]);
+
+  // Track last opened file for reopen via forward navigation
+  useEffect(() => {
+    if (openFile) {
+      lastFileRef.current = { ...openFile };
+    }
+  }, [openFile]);
+
+  const handleReopen = useCallback(() => {
+    if (lastFileRef.current) {
+      openFileInEditor(lastFileRef.current.projectSlug, lastFileRef.current.path);
+    }
+  }, [openFileInEditor]);
+
+  // Close/reopen overlay on browser back/forward navigation
+  useOverlayBackHandler(!!openFile, handleClose, handleReopen);
 
   // Ctrl+S / Cmd+S save and Escape close
   useEffect(() => {
@@ -153,10 +189,17 @@ export function TextEditor() {
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 z-40" onClick={handleClose} />
+      <div
+        className="fixed inset-0 bg-black/50 z-40 transition-[right] duration-300 ease-in-out"
+        style={{ right: editorRight }}
+        onClick={handleClose}
+      />
 
       {/* Editor Panel */}
-      <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900">
+      <div
+        className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900 transition-[right] duration-300 ease-in-out"
+        style={{ right: editorRight }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <div className="flex items-center gap-2 min-w-0">

@@ -156,6 +156,7 @@ export function PermissionCard({
           fullscreen={true}
           responsiveLayout={true}
           onClose={() => setShowDiffViewer(false)}
+          onReopen={() => setShowDiffViewer(true)}
           readOnly={true}
         />
       )}

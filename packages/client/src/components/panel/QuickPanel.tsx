@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { X, History, FolderOpen, GitBranch, Terminal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { QuickPanelType } from '../../stores/panelStore';
+import { useOverlayBackHandler } from '../../hooks/useOverlayBackHandler';
 import { PanelTabSwitcher } from './PanelTabSwitcher';
 import { ResizableHandle } from './ResizablePanel';
 import { SessionQuickAccessPanel } from '../SessionQuickAccessPanel';
@@ -31,6 +32,7 @@ export const PANEL_CONFIG: Record<QuickPanelType, {
 interface QuickPanelProps {
   activePanel: QuickPanelType | null;
   onClose: () => void;
+  onReopen?: () => void;
   onSwitchPanel: (type: QuickPanelType) => void;
   terminalAccessible?: boolean;
   projectSlug: string;
@@ -48,6 +50,7 @@ interface QuickPanelProps {
 export function QuickPanel({
   activePanel,
   onClose,
+  onReopen,
   onSwitchPanel,
   terminalAccessible,
   projectSlug,
@@ -72,6 +75,9 @@ export function QuickPanel({
   const previousFocusRef = useRef<Element | null>(null);
 
   const isOpen = activePanel !== null;
+
+  // Close/reopen overlay on browser back/forward navigation
+  useOverlayBackHandler(isOpen, onClose, onReopen);
 
   // Track visited panels
   useEffect(() => {
@@ -210,12 +216,14 @@ export function QuickPanel({
         role={isMobile ? 'dialog' : 'complementary'}
         aria-modal={isMobile ? true : undefined}
         aria-label={t(config.titleKey)}
-        className={`fixed inset-0 z-50 bg-white dark:bg-gray-900 flex flex-col
-                    md:inset-auto md:top-0 md:right-0 md:bottom-0
-                    md:bg-white md:dark:bg-gray-800
-                    md:border-l md:border-gray-200 md:dark:border-gray-700 md:shadow-xl
-                    md:transition-transform md:duration-300 md:ease-in-out
-                    ${isAnimating ? 'md:translate-x-0' : 'md:translate-x-full'}`}
+        className={`fixed z-50 flex flex-col ${
+          isMobile
+            ? 'inset-0 bg-white dark:bg-gray-900'
+            : `inset-y-0 right-0 bg-white dark:bg-gray-800
+               border-l border-gray-200 dark:border-gray-700 shadow-xl
+               transition-transform duration-300 ease-in-out
+               ${isAnimating ? 'translate-x-0' : 'translate-x-full'}`
+        }`}
         style={!isMobile ? { width: `${panelWidth}px` } : undefined}
         onTransitionEnd={handleTransitionEnd}
       >

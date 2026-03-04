@@ -15,6 +15,9 @@ import { FileText, X, Loader2, AlertCircle, AlertTriangle, Columns2, Rows2, Chev
 
 import { useTheme } from '../hooks/useTheme';
 import { useDiffLayout } from '../hooks/useDiffLayout';
+import { useOverlayBackHandler } from '../hooks/useOverlayBackHandler';
+import { usePanelStore } from '../stores/panelStore';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { getLanguageExtension } from '../utils/languageDetect';
 export { getLanguageFromPath } from '../utils/languageDetect';
 
@@ -35,6 +38,8 @@ export interface DiffViewerProps {
   fullscreen?: boolean;
   /** Close callback @default undefined */
   onClose?: () => void;
+  /** Reopen callback for browser forward navigation */
+  onReopen?: () => void;
   /** Test-only: Force error state for testing */
   _testForceError?: boolean;
 }
@@ -78,11 +83,33 @@ export function DiffViewer({
   readOnly = DEFAULT_PROPS.readOnly,
   fullscreen = DEFAULT_PROPS.fullscreen,
   onClose,
+  onReopen,
   _testForceError = false,
 }: DiffViewerProps) {
   const { theme } = useTheme();
   const diffLayoutHook = useDiffLayout();
+
+  // Adjust fullscreen position when quick panel is open as sidebar
+  const isMobileViewport = useIsMobile();
+  const activePanel = usePanelStore((s) => s.activePanel);
+  const panelWidth = usePanelStore((s) => s.panelWidth);
+  const MIN_CONTENT_WIDTH = 480;
+  const [windowWidth, setWindowWidth] = useState(
+    () => typeof window !== 'undefined' ? window.innerWidth : 1024
+  );
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  const panelOverlay = isMobileViewport || (activePanel !== null && windowWidth - panelWidth < MIN_CONTENT_WIDTH);
+  const editorRight = fullscreen && !panelOverlay && activePanel ? panelWidth : 0;
   const effectiveLayout = responsiveLayout ? diffLayoutHook.layout : layout;
+
+  // Close/reopen overlay on browser back/forward navigation (fullscreen only)
+  const noop = useCallback(() => {}, []);
+  useOverlayBackHandler(fullscreen && !!onClose, onClose ?? noop, onReopen);
+
   const [state, setState] = useState<DiffViewerState>({
     isLoading: true,
     error: null,
@@ -387,12 +414,18 @@ export function DiffViewer({
 
   // Wrapper classes for fullscreen mode
   const wrapperClasses = fullscreen
-    ? 'fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900'
+    ? 'fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900 transition-[right] duration-300 ease-in-out'
     : 'flex flex-col h-full';
+  const wrapperStyle = fullscreen && editorRight ? { right: editorRight } : undefined;
 
   // Overlay for fullscreen mode
   const overlay = fullscreen ? (
-    <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} aria-hidden="true" />
+    <div
+      className="fixed inset-0 bg-black/50 z-40 transition-[right] duration-300 ease-in-out"
+      style={editorRight ? { right: editorRight } : undefined}
+      onClick={onClose}
+      aria-hidden="true"
+    />
   ) : null;
 
   return (
@@ -400,6 +433,7 @@ export function DiffViewer({
       {overlay}
       <div
         className={wrapperClasses}
+        style={wrapperStyle}
         role="region"
         aria-label={`Diff viewer for ${filePath}`}
       >
