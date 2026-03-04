@@ -21,15 +21,14 @@ export function useQuickPanel(): UseQuickPanelReturn {
   const open = usePanelStore((s) => s.openPanel);
   const close = usePanelStore((s) => s.closePanel);
   const toggle = usePanelStore((s) => s.togglePanel);
-  const panelWidths = usePanelStore((s) => s.panelWidths);
+  const panelWidth = usePanelStore((s) => s.panelWidth);
   const setPanelWidth = usePanelStore((s) => s.setPanelWidth);
 
-  const panelWidth = activePanel ? panelWidths[activePanel] : 320;
   const setWidth = useCallback(
     (width: number) => {
-      if (activePanel) setPanelWidth(activePanel, width);
+      setPanelWidth(width);
     },
-    [activePanel, setPanelWidth]
+    [setPanelWidth]
   );
 
   return {

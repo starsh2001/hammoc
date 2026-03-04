@@ -94,17 +94,30 @@ describe('QuickPanel', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  // TC-QP-8: Backdrop click calls onClose
-  it('should call onClose when backdrop is clicked', () => {
+  // TC-QP-8: Backdrop click calls onClose (mobile only)
+  it('should call onClose when backdrop is clicked on mobile', () => {
     const onClose = vi.fn();
-    render(<QuickPanel {...defaultProps} activePanel="sessions" onClose={onClose} />);
+    render(<QuickPanel {...defaultProps} activePanel="sessions" isMobile={true} onClose={onClose} />);
     fireEvent.click(screen.getByTestId('quick-panel-backdrop'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  // TC-QP-9: Panel has role="dialog" and aria-modal="true"
-  it('should have role="dialog" and aria-modal="true"', () => {
-    render(<QuickPanel {...defaultProps} activePanel="sessions" />);
+  // TC-QP-8b: No backdrop on desktop (sidebar coexistence)
+  it('should not render backdrop on desktop', () => {
+    render(<QuickPanel {...defaultProps} activePanel="sessions" isMobile={false} />);
+    expect(screen.queryByTestId('quick-panel-backdrop')).not.toBeInTheDocument();
+  });
+
+  // TC-QP-9: Desktop uses role="complementary", mobile uses role="dialog"
+  it('should have role="complementary" on desktop', () => {
+    render(<QuickPanel {...defaultProps} activePanel="sessions" isMobile={false} />);
+    const panel = screen.getByTestId('quick-panel');
+    expect(panel).toHaveAttribute('role', 'complementary');
+    expect(panel).not.toHaveAttribute('aria-modal');
+  });
+
+  it('should have role="dialog" and aria-modal="true" on mobile', () => {
+    render(<QuickPanel {...defaultProps} activePanel="sessions" isMobile={true} />);
     const panel = screen.getByTestId('quick-panel');
     expect(panel).toHaveAttribute('role', 'dialog');
     expect(panel).toHaveAttribute('aria-modal', 'true');
@@ -140,9 +153,9 @@ describe('QuickPanel', () => {
     expect(screen.getByTestId('quick-panel')).toHaveAttribute('aria-label', 'Git');
   });
 
-  // TC-QP-12: Backdrop has aria-hidden="true"
-  it('should have aria-hidden on backdrop', () => {
-    render(<QuickPanel {...defaultProps} activePanel="sessions" />);
+  // TC-QP-12: Backdrop has aria-hidden="true" (mobile only)
+  it('should have aria-hidden on backdrop on mobile', () => {
+    render(<QuickPanel {...defaultProps} activePanel="sessions" isMobile={true} />);
     expect(screen.getByTestId('quick-panel-backdrop')).toHaveAttribute('aria-hidden', 'true');
   });
 

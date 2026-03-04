@@ -22,18 +22,6 @@ vi.mock('../../hooks/useWebSocket', () => ({
   })),
 }));
 
-// Mock QuickPanelTriggers to isolate ChatHeader tests (Story 19.4)
-vi.mock('../panel/QuickPanelTriggers', () => ({
-  QuickPanelTriggers: (props: { activePanel: string | null; onTogglePanel: unknown; gitChangedCount?: number; terminalAccessible?: boolean }) => (
-    <div
-      data-testid="quick-panel-triggers"
-      data-active={props.activePanel}
-      data-git-count={props.gitChangedCount}
-      data-terminal-accessible={props.terminalAccessible}
-    />
-  ),
-}));
-
 // Import after mock
 import { useWebSocket } from '../../hooks/useWebSocket';
 
@@ -151,38 +139,48 @@ describe('ChatHeader', () => {
     });
   });
 
-  // Story 19.4 - Task 7: QuickPanelTriggers integration
-  describe('quick panel triggers', () => {
+  // Panel toggle button (consolidated from 4 QuickPanelTriggers)
+  describe('panel toggle button', () => {
     const mockOnTogglePanel = vi.fn();
 
-    it('should render QuickPanelTriggers when onTogglePanel is provided', () => {
+    it('should render panel toggle button when onTogglePanel is provided', () => {
       renderComponent({ onTogglePanel: mockOnTogglePanel });
 
-      expect(screen.getByTestId('quick-panel-triggers')).toBeInTheDocument();
+      expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
     });
 
-    it('should not render QuickPanelTriggers when onTogglePanel is not provided', () => {
+    it('should not render panel toggle button when onTogglePanel is not provided', () => {
       renderComponent();
 
-      expect(screen.queryByTestId('quick-panel-triggers')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('panel-toggle-button')).not.toBeInTheDocument();
     });
 
-    it('should pass activePanel prop to QuickPanelTriggers', () => {
+    it('should call onTogglePanel with "sessions" when clicked and no panel is active', () => {
+      renderComponent({ onTogglePanel: mockOnTogglePanel, activePanel: null });
+
+      fireEvent.click(screen.getByTestId('panel-toggle-button'));
+      expect(mockOnTogglePanel).toHaveBeenCalledWith('sessions');
+    });
+
+    it('should call onTogglePanel with active panel type when clicked and a panel is active', () => {
+      renderComponent({ onTogglePanel: mockOnTogglePanel, activePanel: 'files' });
+
+      fireEvent.click(screen.getByTestId('panel-toggle-button'));
+      expect(mockOnTogglePanel).toHaveBeenCalledWith('files');
+    });
+
+    it('should show active style when a panel is open', () => {
       renderComponent({ onTogglePanel: mockOnTogglePanel, activePanel: 'sessions' });
 
-      expect(screen.getByTestId('quick-panel-triggers')).toHaveAttribute('data-active', 'sessions');
+      const button = screen.getByTestId('panel-toggle-button');
+      expect(button).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('should pass gitChangedCount prop to QuickPanelTriggers', () => {
-      renderComponent({ onTogglePanel: mockOnTogglePanel, gitChangedCount: 3 });
+    it('should not show git badge on toggle button (badge is in panel tabs)', () => {
+      renderComponent({ onTogglePanel: mockOnTogglePanel, gitChangedCount: 5 });
 
-      expect(screen.getByTestId('quick-panel-triggers')).toHaveAttribute('data-git-count', '3');
-    });
-
-    it('should pass terminalAccessible prop to QuickPanelTriggers', () => {
-      renderComponent({ onTogglePanel: mockOnTogglePanel, terminalAccessible: false });
-
-      expect(screen.getByTestId('quick-panel-triggers')).toHaveAttribute('data-terminal-accessible', 'false');
+      const button = screen.getByTestId('panel-toggle-button');
+      expect(button.querySelector('span')).toBeNull();
     });
   });
 
