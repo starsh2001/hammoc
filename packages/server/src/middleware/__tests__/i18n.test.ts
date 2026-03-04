@@ -12,7 +12,7 @@ vi.mock('../../services/preferencesService.js', () => ({
   },
 }));
 
-import { i18nMiddleware } from '../i18n.js';
+import { i18nMiddleware, invalidateI18nCache } from '../i18n.js';
 
 function mockReq(acceptLanguage?: string): Request {
   const headers: Record<string, string> = {};
@@ -42,6 +42,8 @@ describe('i18nMiddleware', () => {
 
   beforeEach(() => {
     next = vi.fn();
+    // Reset cache between tests so each test gets fresh preference data
+    invalidateI18nCache();
   });
 
   it('sets req.language from Accept-Language header', async () => {
@@ -88,11 +90,22 @@ describe('i18nMiddleware', () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it('falls back to en when preferencesService throws', async () => {
+  it('falls back to Accept-Language when preferencesService throws', async () => {
     const { preferencesService } = await import('../../services/preferencesService.js');
     vi.mocked(preferencesService.readPreferences).mockRejectedValueOnce(new Error('disk error'));
 
     const req = mockReq('ko');
+    await i18nMiddleware(req, mockRes(), next);
+    // Should use Accept-Language in catch block instead of hard-coding 'en'
+    expect(req.language).toBe('ko');
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('falls back to en when preferencesService throws and no Accept-Language', async () => {
+    const { preferencesService } = await import('../../services/preferencesService.js');
+    vi.mocked(preferencesService.readPreferences).mockRejectedValueOnce(new Error('disk error'));
+
+    const req = mockReq(); // no Accept-Language header
     await i18nMiddleware(req, mockRes(), next);
     expect(req.language).toBe('en');
     expect(next).toHaveBeenCalled();

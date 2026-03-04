@@ -135,8 +135,12 @@ export const boardController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
         return;
       }
-      if (nodeError.code === 'STORY_NOT_FOUND' || nodeError.code === 'STATUS_NOT_FOUND') {
-        res.status(404).json({ error: { code: nodeError.code, message: nodeError.message } });
+      if (nodeError.code === 'STORY_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'STORY_NOT_FOUND', message: req.t!('board.error.storyNotFound', { value: req.params.storyNum }) } });
+        return;
+      }
+      if (nodeError.code === 'STATUS_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'STATUS_NOT_FOUND', message: req.t!('board.error.statusNotFound', { value: req.params.storyNum }) } });
         return;
       }
       res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });

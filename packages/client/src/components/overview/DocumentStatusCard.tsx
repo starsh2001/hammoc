@@ -370,7 +370,7 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
                     ) : (
                       <span className="text-gray-700 dark:text-gray-300">{getAuxDocLabel(doc.type, t)}</span>
                     )}
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{doc.fileCount}{t('document.count')}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{t('document.count', { count: doc.fileCount })}</span>
                   </div>
 
                   {/* Expanded auxiliary file tree */}

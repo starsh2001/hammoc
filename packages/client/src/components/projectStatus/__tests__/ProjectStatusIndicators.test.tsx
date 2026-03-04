@@ -60,7 +60,7 @@ describe('ProjectStatusIndicators', () => {
         })}
       />
     );
-    const container = screen.getByLabelText('프로젝트 상태: 2/5 active sessions, queue running, 1 terminal(s)');
+    const container = screen.getByLabelText('프로젝트 상태: 2/5 active sessions, queue Running, 1 terminal(s)');
     expect(container).toBeInTheDocument();
   });
 

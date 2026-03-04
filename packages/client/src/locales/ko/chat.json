@@ -23,7 +23,13 @@
     "sessionLocked": "세션 잠김",
     "abort": "중단",
     "addToChain": "체인에 추가",
-    "send": "전송"
+    "send": "전송",
+    "lockedOtherBrowser": "다른 브라우저에서 사용 중 — 새로고침 후 사용 가능",
+    "queueControlled": "큐 러너가 제어 중",
+    "chainFull": "체인 최대 5개",
+    "chainAdd": "체인에 추가...",
+    "ariaLabel": "메시지 입력",
+    "promptChainTitle": "프롬프트 체인"
   },
   "chainMode": {
     "off": "체인 모드 끄기",
@@ -174,9 +180,11 @@
       "message": "진행 중인 대화가 있습니다. 에이전트를 새 세션에서 시작하시겠습니까?"
     },
     "newSession": {
+      "title": "새 세션 확인",
       "message": "진행 중인 응답이 있습니다. 새 세션을 시작하시겠습니까?"
     },
     "switchSession": {
+      "title": "세션 전환 확인",
       "message": "진행 중인 응답이 있습니다. 세션을 전환하시겠습니까?"
     }
   },

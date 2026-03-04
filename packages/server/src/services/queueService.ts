@@ -393,7 +393,7 @@ export class QueueService {
       // Pause queue execution
       const t = i18next.getFixedT(this.lang);
       this.isPaused = true;
-      this.pauseReason = t('queue.pause.waitingForPermission', { value: isAskUserQuestion ? 'user answer' : 'permission', toolName });
+      this.pauseReason = t('queue.pause.waitingForPermission', { value: isAskUserQuestion ? t('queue.pause.userAnswer') : t('queue.pause.permissionApproval'), toolName });
       this.emitProgress('paused');
       await this.notificationService.notifyQueueInputRequired(this.buildSessionUrl());
 

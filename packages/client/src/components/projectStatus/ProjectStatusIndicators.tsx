@@ -14,7 +14,7 @@ function buildAriaLabel(status: DashboardProjectStatus, t: TFunction): string {
   ];
 
   if (status.queueStatus !== 'idle') {
-    parts.push(t('dashboard.queueStatusFormat', { status: status.queueStatus }));
+    parts.push(t('dashboard.queueStatusFormat', { status: t(`queueStatus.${status.queueStatus}`) }));
   }
 
   if (status.terminalCount > 0) {

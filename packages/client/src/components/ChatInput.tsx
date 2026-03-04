@@ -960,9 +960,9 @@ export function ChatInput({
               userHasFocusedRef.current = false;
             }}
             disabled={isSessionLocked || queueLocked || undefined}
-            placeholder={isSessionLocked ? '다른 브라우저에서 사용 중 — 새로고침 후 사용 가능' : queueLocked ? '큐 러너가 제어 중' : isStreaming && chainMode ? (isChainFull ? '체인 최대 5개' : '체인에 추가...') : placeholder || t('input.placeholder')}
+            placeholder={isSessionLocked ? t('input.lockedOtherBrowser') : queueLocked ? t('input.queueControlled') : isStreaming && chainMode ? (isChainFull ? t('input.chainFull') : t('input.chainAdd')) : placeholder || t('input.placeholder')}
             role={showCommands || showStarCommands ? 'combobox' : undefined}
-            aria-label="메시지 입력"
+            aria-label={t('input.ariaLabel')}
             aria-describedby="input-hint"
             aria-expanded={showCommands || showStarCommands ? true : undefined}
             aria-controls={showCommands ? 'command-palette' : showStarCommands ? 'star-command-palette' : undefined}
@@ -1033,7 +1033,7 @@ export function ChatInput({
             disabled={queueLocked}
             aria-label={chainMode ? t('chainMode.off') : t('chainMode.on')}
             aria-pressed={chainMode}
-            title="프롬프트 체인"
+            title={t('input.promptChainTitle')}
             className={`relative p-1 rounded-md flex-shrink-0 flex items-center justify-center transition-all duration-150 cursor-pointer
                        ${chainMode
                          ? 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 text-white'
