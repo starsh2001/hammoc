@@ -265,6 +265,24 @@ export function broadcastStreamChange(sessionId: string, active: boolean): void 
 }
 
 /**
+ * Match Accept-Language header against SUPPORTED_LANGUAGES.
+ * Returns the first matching language code or null.
+ */
+function matchAcceptLanguage(header: string | undefined): string | null {
+  if (!header) return null;
+  const parts = header.split(',').map(part => {
+    const [lang, qStr] = part.trim().split(';q=');
+    return { lang: lang.trim().split('-')[0].toLowerCase(), q: qStr ? parseFloat(qStr) : 1.0 };
+  }).sort((a, b) => b.q - a.q);
+  for (const { lang } of parts) {
+    if ((SUPPORTED_LANGUAGES as readonly string[]).includes(lang)) {
+      return lang;
+    }
+  }
+  return null;
+}
+
+/**
  * Initialize Socket.io server with the HTTP server
  * @param httpServer - HTTP server instance from Express
  * @returns Socket.io server instance
@@ -300,44 +318,31 @@ export async function initializeWebSocket(
     return next(new Error('Unauthorized'));
   });
 
-  io.on('connection', async (socket) => {
+  io.on('connection', (socket) => {
     connectedClients++;
     log.info(`Client connected. Total: ${connectedClients}`);
 
-    // Resolve user language preference and store on socket
-    try {
-      const prefs = await preferencesService.readPreferences();
-      const prefLang = prefs.language && SUPPORTED_LANGUAGES.includes(prefs.language as typeof SUPPORTED_LANGUAGES[number])
-        ? prefs.language : null;
-      socket.data.language = prefLang || 'en';
-    } catch {
-      socket.data.language = 'en';
-    }
+    // Set default language synchronously; resolved asynchronously below.
+    // Handlers read socket.data.language at invocation time (not capture time).
+    socket.data.language = 'en';
 
-    // Start rate limit polling on first client connection
-    if (connectedClients === 1) {
-      rateLimitProbeService.startPolling(
-        (data) => { io.emit('rateLimit:update', data); },
-        (data) => { io.emit('apiHealth:update', data); },
-      );
-    }
-
-    // Send cached rate limit data immediately to newly connected client
-    const cachedRateLimit = rateLimitProbeService.getCachedResult();
-    if (cachedRateLimit) {
-      socket.emit('rateLimit:update', cachedRateLimit);
-    }
-
-    // Send cached API health status to newly connected client
-    const cachedHealth = rateLimitProbeService.getApiHealth();
-    if (cachedHealth) {
-      socket.emit('apiHealth:update', cachedHealth);
-    }
-
-    // Story 17.5: Send terminal access info on connection
-    const lang = socket.data.language || 'en';
-    const t = i18next.getFixedT(lang);
+    // Resolve language preference and send terminal:access asynchronously.
+    // Event listeners are registered synchronously below to prevent race conditions
+    // where early client emits could be dropped during async preference loading.
     (async () => {
+      try {
+        const prefs = await preferencesService.readPreferences();
+        const prefLang = prefs.language && SUPPORTED_LANGUAGES.includes(prefs.language as typeof SUPPORTED_LANGUAGES[number])
+          ? prefs.language : null;
+        const headerLang = matchAcceptLanguage(socket.request?.headers?.['accept-language']);
+        socket.data.language = prefLang || headerLang || 'en';
+      } catch {
+        // Keep default 'en'
+      }
+
+      // Story 17.5: Send terminal access info on connection (after language resolved)
+      const lang = socket.data.language;
+      const t = i18next.getFixedT(lang);
       try {
         const clientIP = extractClientIP(socket);
         const isLocal = isLocalIP(clientIP);
@@ -362,8 +367,30 @@ export async function initializeWebSocket(
       }
     })();
 
+    // Start rate limit polling on first client connection
+    if (connectedClients === 1) {
+      rateLimitProbeService.startPolling(
+        (data) => { io.emit('rateLimit:update', data); },
+        (data) => { io.emit('apiHealth:update', data); },
+      );
+    }
+
+    // Send cached rate limit data immediately to newly connected client
+    const cachedRateLimit = rateLimitProbeService.getCachedResult();
+    if (cachedRateLimit) {
+      socket.emit('rateLimit:update', cachedRateLimit);
+    }
+
+    // Send cached API health status to newly connected client
+    const cachedHealth = rateLimitProbeService.getApiHealth();
+    if (cachedHealth) {
+      socket.emit('apiHealth:update', cachedHealth);
+    }
+
     // Handle chat:send event — background streaming with reconnect support
     socket.on('chat:send', async (data) => {
+      const lang = socket.data.language || 'en';
+      const t = i18next.getFixedT(lang);
       // Reject if queue has locked this session (server-side enforcement)
       if (data.sessionId) {
         for (const [, qs] of queueInstances()) {
@@ -563,7 +590,7 @@ export async function initializeWebSocket(
 
     // Handle session:list event
     socket.on('session:list', async (data) => {
-      await handleSessionList(socket, data, lang);
+      await handleSessionList(socket, data, socket.data.language || 'en');
     });
 
     // Story 20.1: Dashboard subscribe/unsubscribe
@@ -588,6 +615,7 @@ export async function initializeWebSocket(
       socket.join(`project:${projectSlug}`);
       const queueService = getOrCreateQueueService(projectSlug);
       if (queueService.isRunning) {
+        const t = i18next.getFixedT(socket.data.language || 'en');
         socket.emit('error', { code: 'QUEUE_ALREADY_RUNNING', message: t('ws.error.queueAlreadyRunning') });
         return;
       }
@@ -636,6 +664,7 @@ export async function initializeWebSocket(
     socketTerminals.set(socket.id, new Set());
 
     socket.on('terminal:create', async (data: TerminalCreateRequest) => {
+      const lang = socket.data.language || 'en';
       // Story 17.5: Security guard
       const access = await checkTerminalAccess(socket, lang);
       if (!access.allowed) {
@@ -698,14 +727,14 @@ export async function initializeWebSocket(
         triggerDashboardStatusChange(data.projectSlug);
       } catch (err) {
         const code = (err as Error & { code?: string }).code || TERMINAL_ERRORS.PTY_SPAWN_ERROR.code;
-        const message = (err as Error).message || t('ws.error.ptySpawnError');
+        const message = (err as Error).message || i18next.getFixedT(lang)('ws.error.ptySpawnError');
         socket.emit('terminal:error', { terminalId: data.terminalId, code, message });
       }
     });
 
     socket.on('terminal:input', async (data: TerminalInputEvent) => {
       // Story 17.5: Security guard
-      const inputAccess = await checkTerminalAccess(socket, lang);
+      const inputAccess = await checkTerminalAccess(socket, socket.data.language || 'en');
       if (!inputAccess.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:input`);
         socket.emit('terminal:error', { ...inputAccess.error!, terminalId: data.terminalId });
@@ -722,7 +751,7 @@ export async function initializeWebSocket(
 
     socket.on('terminal:resize', async (data: TerminalResizeEvent) => {
       // Story 17.5: Security guard
-      const resizeAccess = await checkTerminalAccess(socket, lang);
+      const resizeAccess = await checkTerminalAccess(socket, socket.data.language || 'en');
       if (!resizeAccess.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:resize`);
         socket.emit('terminal:error', { ...resizeAccess.error!, terminalId: data.terminalId });
@@ -739,7 +768,7 @@ export async function initializeWebSocket(
 
     socket.on('terminal:close', async (data: { terminalId: string }) => {
       // Story 17.5: Security guard
-      const closeAccess = await checkTerminalAccess(socket, lang);
+      const closeAccess = await checkTerminalAccess(socket, socket.data.language || 'en');
       if (!closeAccess.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:close`);
         socket.emit('terminal:error', { ...closeAccess.error!, terminalId: data.terminalId });

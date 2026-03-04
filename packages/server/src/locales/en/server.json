@@ -151,7 +151,8 @@
   "queue": {
     "validation": {
       "slugRequired": "projectSlug is required",
-      "itemsRequired": "items array must not be empty"
+      "itemsRequired": "items array must not be empty",
+      "invalidInput": "Invalid queue input: {{value}}"
     },
     "error": {
       "alreadyRunning": "Queue is already running for this project",
