@@ -90,7 +90,9 @@
   },
   "view": {
     "kanban": "Vista Kanban",
-    "list": "Vista de lista"
+    "list": "Vista de lista",
+    "lessColumns": "Mostrar menos columnas",
+    "moreColumns": "Mostrar más columnas"
   },
   "promote": {
     "originalIssueHeader": "Incidencia original (ID: {{id}})",

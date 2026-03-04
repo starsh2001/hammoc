@@ -21,6 +21,7 @@ interface BoardStore {
   items: BoardItem[];
   boardConfig: BoardConfig;
   viewMode: 'kanban' | 'list';
+  visibleColumns: number;
   isLoading: boolean;
   error: string | null;
   // Actions
@@ -29,6 +30,7 @@ interface BoardStore {
   updateIssue: (projectSlug: string, issueId: string, data: UpdateIssueRequest) => Promise<void>;
   deleteIssue: (projectSlug: string, issueId: string) => Promise<void>;
   setViewMode: (mode: 'kanban' | 'list') => void;
+  setVisibleColumns: (count: number) => void;
   setBoardConfig: (config: BoardConfig) => void;
   getItemsByStatus: (status: BoardItemStatus) => BoardItem[];
   clearError: () => void;
@@ -65,11 +67,22 @@ function getInitialViewMode(): 'kanban' | 'list' {
   return window.matchMedia('(max-width: 767px)').matches ? 'list' : 'kanban';
 }
 
+function getInitialVisibleColumns(): number {
+  if (typeof window === 'undefined') return 5;
+  const stored = localStorage.getItem('bmad-board-visibleColumns');
+  if (stored) {
+    const num = parseInt(stored, 10);
+    if (num >= 2 && num <= 10) return num;
+  }
+  return 5;
+}
+
 export const useBoardStore = create<BoardStore>((set, get) => ({
   // State
   items: [],
   boardConfig: DEFAULT_BOARD_CONFIG,
   viewMode: getInitialViewMode(),
+  visibleColumns: getInitialVisibleColumns(),
   isLoading: false,
   error: null,
 
@@ -129,6 +142,12 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   setViewMode: (mode: 'kanban' | 'list') => {
     localStorage.setItem('bmad-board-viewMode', mode);
     set({ viewMode: mode });
+  },
+
+  setVisibleColumns: (count: number) => {
+    const clamped = Math.max(2, Math.min(10, count));
+    localStorage.setItem('bmad-board-visibleColumns', String(clamped));
+    set({ visibleColumns: clamped });
   },
 
   setBoardConfig: (config: BoardConfig) => {
