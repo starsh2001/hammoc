@@ -30,7 +30,7 @@ export const projectController = {
    * GET /api/projects
    * List all available projects
    */
-  async list(_req: Request, res: Response): Promise<void> {
+  async list(req: Request, res: Response): Promise<void> {
     try {
       const projects = await projectService.scanProjects();
 
@@ -44,7 +44,7 @@ export const projectController = {
         res.status(PROJECT_ERRORS.PERMISSION_DENIED.httpStatus).json({
           error: {
             code: PROJECT_ERRORS.PERMISSION_DENIED.code,
-            message: PROJECT_ERRORS.PERMISSION_DENIED.message,
+            message: req.t!('project.error.permissionDenied'),
           },
         });
         return;
@@ -54,7 +54,7 @@ export const projectController = {
         res.status(PROJECT_ERRORS.INVALID_SESSION_INDEX.httpStatus).json({
           error: {
             code: PROJECT_ERRORS.INVALID_SESSION_INDEX.code,
-            message: PROJECT_ERRORS.INVALID_SESSION_INDEX.message,
+            message: req.t!('project.error.invalidSessionIndex'),
           },
         });
         return;
@@ -64,7 +64,7 @@ export const projectController = {
       res.status(PROJECT_ERRORS.SCAN_ERROR.httpStatus).json({
         error: {
           code: PROJECT_ERRORS.SCAN_ERROR.code,
-          message: PROJECT_ERRORS.SCAN_ERROR.message,
+          message: req.t!('project.error.scanError'),
         },
       });
     }
@@ -83,7 +83,7 @@ export const projectController = {
         res.status(400).json({
           error: {
             code: 'INVALID_REQUEST',
-            message: '프로젝트 경로가 필요합니다.',
+            message: req.t!('project.validation.pathRequired'),
           },
         });
         return;
@@ -102,7 +102,7 @@ export const projectController = {
         res.status(PROJECT_ERRORS.INVALID_PATH_FORMAT.httpStatus).json({
           error: {
             code: PROJECT_ERRORS.INVALID_PATH_FORMAT.code,
-            message: nodeError.message || PROJECT_ERRORS.INVALID_PATH_FORMAT.message,
+            message: req.t!('project.validation.invalidPathFormat'),
           },
         });
         return;
@@ -112,7 +112,7 @@ export const projectController = {
       res.status(500).json({
         error: {
           code: 'PROJECT_CREATE_ERROR',
-          message: '프로젝트 생성 중 오류가 발생했습니다.',
+          message: req.t!('project.error.createFailed'),
         },
       });
     }
@@ -122,7 +122,7 @@ export const projectController = {
    * GET /api/projects/bmad-versions
    * List available BMad method versions
    */
-  async bmadVersions(_req: Request, res: Response): Promise<void> {
+  async bmadVersions(req: Request, res: Response): Promise<void> {
     try {
       const versions = await projectService.getBmadVersions();
       const response: BmadVersionsResponse = { versions };
@@ -131,7 +131,7 @@ export const projectController = {
       res.status(500).json({
         error: {
           code: 'BMAD_VERSIONS_ERROR',
-          message: 'BMad 버전 목록을 가져오는 중 오류가 발생했습니다.',
+          message: req.t!('project.error.bmadVersionsFailed'),
         },
       });
     }
@@ -150,7 +150,7 @@ export const projectController = {
         res.status(400).json({
           error: {
             code: 'INVALID_REQUEST',
-            message: '프로젝트 식별자가 필요합니다.',
+            message: req.t!('project.validation.slugRequired'),
           },
         });
         return;
@@ -162,7 +162,7 @@ export const projectController = {
         res.status(404).json({
           error: {
             code: 'PROJECT_NOT_FOUND',
-            message: '해당 프로젝트를 찾을 수 없습니다.',
+            message: req.t!('project.error.notFound'),
           },
         });
         return;
@@ -175,7 +175,7 @@ export const projectController = {
       res.status(500).json({
         error: {
           code: 'PROJECT_DELETE_ERROR',
-          message: '프로젝트 삭제 중 오류가 발생했습니다.',
+          message: req.t!('project.error.deleteFailed'),
         },
       });
     }
@@ -192,7 +192,7 @@ export const projectController = {
 
       if (!projectSlug) {
         res.status(400).json({
-          error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' },
+          error: { code: 'INVALID_REQUEST', message: req.t!('project.validation.slugRequired') },
         });
         return;
       }
@@ -208,27 +208,27 @@ export const projectController = {
 
       if (nodeError.code === 'ALREADY_BMAD') {
         res.status(409).json({
-          error: { code: 'ALREADY_BMAD', message: nodeError.message },
+          error: { code: 'ALREADY_BMAD', message: req.t!('project.error.alreadyBmad') },
         });
         return;
       }
 
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
         res.status(404).json({
-          error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message },
+          error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') },
         });
         return;
       }
 
       if (nodeError.code === 'NO_BMAD_VERSION') {
         res.status(500).json({
-          error: { code: 'NO_BMAD_VERSION', message: nodeError.message },
+          error: { code: 'NO_BMAD_VERSION', message: req.t!('project.error.bmadVersionsFailed') },
         });
         return;
       }
 
       res.status(500).json({
-        error: { code: 'BMAD_SETUP_ERROR', message: 'BMad 설정 중 오류가 발생했습니다.' },
+        error: { code: 'BMAD_SETUP_ERROR', message: req.t!('project.error.bmadSetupFailed') },
       });
     }
   },
@@ -246,19 +246,23 @@ export const projectController = {
         res.status(400).json({
           error: {
             code: 'INVALID_REQUEST',
-            message: '경로가 필요합니다.',
+            message: req.t!('project.validation.pathParameterRequired'),
           },
         });
         return;
       }
 
       const result = await projectService.validatePath(path);
+      // Wrap service-level error text with translated message (Task 4.3)
+      if (result.error) {
+        result.error = req.t!('project.validation.invalidPathFormat');
+      }
       res.json(result);
     } catch (error) {
       res.status(500).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: '경로 검증 중 오류가 발생했습니다.',
+          message: req.t!('project.error.validatePathFailed'),
         },
       });
     }
@@ -273,7 +277,7 @@ export const projectController = {
       const { projectSlug } = req.params;
       if (!projectSlug) {
         res.status(400).json({
-          error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' },
+          error: { code: 'INVALID_REQUEST', message: req.t!('project.validation.slugRequired') },
         });
         return;
       }
@@ -283,12 +287,12 @@ export const projectController = {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
         res.status(404).json({
-          error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message },
+          error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') },
         });
         return;
       }
       res.status(500).json({
-        error: { code: 'SETTINGS_READ_ERROR', message: '설정을 불러오는 중 오류가 발생했습니다.' },
+        error: { code: 'SETTINGS_READ_ERROR', message: req.t!('project.error.settingsLoadFailed') },
       });
     }
   },
@@ -304,7 +308,7 @@ export const projectController = {
 
       if (!projectSlug) {
         res.status(400).json({
-          error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' },
+          error: { code: 'INVALID_REQUEST', message: req.t!('project.validation.slugRequired') },
         });
         return;
       }
@@ -314,7 +318,7 @@ export const projectController = {
       if (settings.permissionModeOverride !== undefined && settings.permissionModeOverride !== null) {
         if (!VALID_PERMISSION_MODES.includes(settings.permissionModeOverride)) {
           res.status(400).json({
-            error: { code: 'INVALID_PERMISSION_MODE', message: `유효하지 않은 Permission Mode: ${settings.permissionModeOverride}` },
+            error: { code: 'INVALID_PERMISSION_MODE', message: req.t!('project.validation.invalidPermissionMode', { value: settings.permissionModeOverride }) },
           });
           return;
         }
@@ -324,7 +328,7 @@ export const projectController = {
       if (settings.modelOverride !== undefined && settings.modelOverride !== null) {
         if (typeof settings.modelOverride !== 'string') {
           res.status(400).json({
-            error: { code: 'INVALID_MODEL', message: '유효하지 않은 모델 ID입니다.' },
+            error: { code: 'INVALID_MODEL', message: req.t!('project.validation.invalidModelId') },
           });
           return;
         }
@@ -348,13 +352,13 @@ export const projectController = {
 
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
         res.status(404).json({
-          error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message },
+          error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') },
         });
         return;
       }
 
       res.status(500).json({
-        error: { code: 'SETTINGS_UPDATE_ERROR', message: '설정 저장 중 오류가 발생했습니다.' },
+        error: { code: 'SETTINGS_UPDATE_ERROR', message: req.t!('project.error.settingsSaveFailed') },
       });
     }
   },
@@ -368,7 +372,7 @@ export const projectController = {
       const { projectSlug } = req.params;
       if (!projectSlug) {
         res.status(400).json({
-          error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' },
+          error: { code: 'INVALID_REQUEST', message: req.t!('project.validation.slugRequired') },
         });
         return;
       }
@@ -376,7 +380,7 @@ export const projectController = {
       const projectPath = await projectService.resolveProjectPath(projectSlug);
       if (!projectPath) {
         res.status(404).json({
-          error: { code: 'PROJECT_NOT_FOUND', message: '프로젝트를 찾을 수 없습니다.' },
+          error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') },
         });
         return;
       }
@@ -390,7 +394,7 @@ export const projectController = {
     } catch (error) {
       log.error('Error getting system prompt:', error);
       res.status(500).json({
-        error: { code: 'SYSTEM_PROMPT_ERROR', message: '시스템 프롬프트를 가져오는 중 오류가 발생했습니다.' },
+        error: { code: 'SYSTEM_PROMPT_ERROR', message: req.t!('project.error.systemPromptFailed') },
       });
     }
   },

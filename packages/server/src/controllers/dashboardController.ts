@@ -18,7 +18,7 @@ export const dashboardController = {
     } catch (error) {
       log.error('Failed to get dashboard status:', error);
       res.status(500).json({
-        error: { code: 'DASHBOARD_ERROR', message: 'Failed to get dashboard status' },
+        error: { code: 'DASHBOARD_ERROR', message: req.t!('dashboard.error.statusFailed') },
       });
     }
   },

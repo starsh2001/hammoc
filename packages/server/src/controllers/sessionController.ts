@@ -28,7 +28,7 @@ export const sessionController = {
         res.status(SESSION_ERRORS.PROJECT_NOT_FOUND.httpStatus).json({
           error: {
             code: SESSION_ERRORS.PROJECT_NOT_FOUND.code,
-            message: SESSION_ERRORS.PROJECT_NOT_FOUND.message,
+            message: req.t!('session.error.projectNotFound'),
           },
         });
         return;
@@ -50,7 +50,7 @@ export const sessionController = {
       res.status(SESSION_ERRORS.SESSION_LIST_ERROR.httpStatus).json({
         error: {
           code: SESSION_ERRORS.SESSION_LIST_ERROR.code,
-          message: SESSION_ERRORS.SESSION_LIST_ERROR.message,
+          message: req.t!('session.error.listError'),
         },
       });
     }
@@ -73,7 +73,7 @@ export const sessionController = {
       res.status(SESSION_ERRORS.INVALID_PATH.httpStatus).json({
         error: {
           code: SESSION_ERRORS.INVALID_PATH.code,
-          message: SESSION_ERRORS.INVALID_PATH.message,
+          message: req.t!('session.error.invalidPath'),
         },
       });
       return;
@@ -100,7 +100,7 @@ export const sessionController = {
       res.status(SESSION_ERRORS.SESSION_PARSE_ERROR.httpStatus).json({
         error: {
           code: SESSION_ERRORS.SESSION_PARSE_ERROR.code,
-          message: SESSION_ERRORS.SESSION_PARSE_ERROR.message,
+          message: req.t!('session.error.parseError'),
         },
       });
     }
@@ -117,7 +117,7 @@ export const sessionController = {
       res.status(SESSION_ERRORS.INVALID_PATH.httpStatus).json({
         error: {
           code: SESSION_ERRORS.INVALID_PATH.code,
-          message: SESSION_ERRORS.INVALID_PATH.message,
+          message: req.t!('session.error.invalidPath'),
         },
       });
       return;
@@ -130,7 +130,7 @@ export const sessionController = {
       res.status(SESSION_ERRORS.SESSION_DELETE_ERROR.httpStatus).json({
         error: {
           code: SESSION_ERRORS.SESSION_DELETE_ERROR.code,
-          message: SESSION_ERRORS.SESSION_DELETE_ERROR.message,
+          message: req.t!('session.error.deleteError'),
         },
       });
     }
@@ -148,7 +148,7 @@ export const sessionController = {
       res.status(SESSION_ERRORS.INVALID_PATH.httpStatus).json({
         error: {
           code: SESSION_ERRORS.INVALID_PATH.code,
-          message: SESSION_ERRORS.INVALID_PATH.message,
+          message: req.t!('session.error.invalidPath'),
         },
       });
       return;
@@ -158,7 +158,7 @@ export const sessionController = {
       res.status(400).json({
         error: {
           code: 'INVALID_REQUEST',
-          message: '삭제할 세션 ID 목록이 필요합니다.',
+          message: req.t!('session.validation.deleteIdsRequired'),
         },
       });
       return;
@@ -171,7 +171,7 @@ export const sessionController = {
       res.status(SESSION_ERRORS.SESSION_DELETE_ERROR.httpStatus).json({
         error: {
           code: SESSION_ERRORS.SESSION_DELETE_ERROR.code,
-          message: SESSION_ERRORS.SESSION_DELETE_ERROR.message,
+          message: req.t!('session.error.deleteError'),
         },
       });
     }
@@ -188,7 +188,7 @@ export const sessionController = {
       res.status(SESSION_ERRORS.INVALID_PATH.httpStatus).json({
         error: {
           code: SESSION_ERRORS.INVALID_PATH.code,
-          message: SESSION_ERRORS.INVALID_PATH.message,
+          message: req.t!('session.error.invalidPath'),
         },
       });
       return;
@@ -207,12 +207,12 @@ export const sessionController = {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
         res.status(404).json({
-          error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message },
+          error: { code: 'PROJECT_NOT_FOUND', message: req.t!('session.error.projectNotFound') },
         });
         return;
       }
       res.status(500).json({
-        error: { code: 'SESSION_NAME_UPDATE_ERROR', message: '세션 이름 저장 중 오류가 발생했습니다.' },
+        error: { code: 'SESSION_NAME_UPDATE_ERROR', message: req.t!('session.error.saveNameFailed') },
       });
     }
   },

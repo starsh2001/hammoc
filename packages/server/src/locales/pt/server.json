@@ -1,1 +1,290 @@
-{}
+{
+  "error": {
+    "notFound": "Recurso não encontrado",
+    "unauthorized": "Não autorizado",
+    "internal": "Erro interno do servidor",
+    "requestFailed": "Requisição falhou ({{status}} {{statusText}})",
+    "rateLimit": "Limite de requisições da API atingido. Tente novamente mais tarde.",
+    "authRequired": "Autenticação do Claude Code CLI é necessária. Execute \"claude login\".",
+    "networkError": "Problema de conexão de rede. Verifique sua conexão com a Internet.",
+    "invalidPath": "Caminho inválido: {{path}}",
+    "serviceUnavailable": "O serviço Claude está indisponível. Tente novamente mais tarde.",
+    "aborted": "Operação cancelada."
+  },
+  "auth": {
+    "validation": {
+      "passwordRequired": "A senha é obrigatória.",
+      "passwordMinLength": "A senha deve ter pelo menos {{value}} caracteres.",
+      "passwordConfirmRequired": "A confirmação da senha é obrigatória.",
+      "invalidRequest": "Requisição inválida."
+    },
+    "login": {
+      "success": "Login realizado com sucesso",
+      "serverError": "Erro do servidor durante o login",
+      "invalidPassword": "Senha inválida.",
+      "rateLimitExceeded": "Muitas tentativas de login. Tente novamente mais tarde."
+    },
+    "password": {
+      "alreadySet": "A senha já está configurada.",
+      "mismatch": "As senhas não coincidem.",
+      "setSuccess": "Senha definida.",
+      "setError": "Erro do servidor ao definir a senha."
+    },
+    "logout": {
+      "success": "Logout realizado com sucesso",
+      "error": "Erro ao fazer logout"
+    }
+  },
+  "project": {
+    "validation": {
+      "pathRequired": "O caminho do projeto é obrigatório.",
+      "slugRequired": "O identificador do projeto é obrigatório.",
+      "invalidPermissionMode": "Modo de permissão inválido: {{value}}",
+      "invalidModelId": "ID do modelo inválido.",
+      "invalidPathFormat": "Formato de caminho inválido.",
+      "pathIsFile": "O caminho é um arquivo, não um diretório.",
+      "pathParameterRequired": "O caminho é obrigatório."
+    },
+    "error": {
+      "createFailed": "Erro ao criar o projeto.",
+      "bmadVersionsFailed": "Erro ao obter a lista de versões do BMad.",
+      "notFound": "Projeto não encontrado.",
+      "deleteFailed": "Erro ao excluir o projeto.",
+      "bmadSetupFailed": "Erro durante a configuração do BMad.",
+      "validatePathFailed": "Erro ao validar o caminho.",
+      "settingsLoadFailed": "Erro ao carregar configurações.",
+      "settingsSaveFailed": "Erro ao salvar configurações.",
+      "systemPromptFailed": "Erro ao obter o prompt do sistema.",
+      "scanError": "Erro ao escanear projetos.",
+      "dirNotFound": "Diretório não encontrado.",
+      "permissionDenied": "Permissão negada.",
+      "invalidSessionIndex": "Índice de sessão inválido.",
+      "pathNotFound": "Caminho não encontrado.",
+      "pathNotDirectory": "O caminho não é um diretório.",
+      "alreadyBmad": "Já é um projeto BMad.",
+      "alreadyExists": "O projeto já existe."
+    }
+  },
+  "board": {
+    "error": {
+      "projectNotFound": "Projeto não encontrado: {{value}}",
+      "internal": "Erro interno do servidor",
+      "issueNotFound": "Issue não encontrada: {{value}}"
+    },
+    "validation": {
+      "titleRequired": "O título é obrigatório",
+      "invalidSeverity": "Severidade inválida: {{value}}",
+      "invalidIssueType": "Tipo de issue inválido: {{value}}",
+      "invalidStatus": "Status inválido: {{value}}",
+      "invalidIssueId": "ID de issue inválido"
+    },
+    "success": {
+      "issueDeleted": "Issue excluída"
+    }
+  },
+  "session": {
+    "validation": {
+      "deleteIdsRequired": "A lista de IDs de sessão para exclusão é obrigatória."
+    },
+    "error": {
+      "saveNameFailed": "Erro ao salvar nome da sessão.",
+      "projectNotFound": "Projeto não encontrado.",
+      "listError": "Erro ao listar sessões.",
+      "invalidPath": "Caminho inválido detectado.",
+      "parseError": "Erro ao analisar dados da sessão.",
+      "deleteError": "Erro ao excluir sessão.",
+      "nameError": "Erro ao atualizar nome da sessão."
+    }
+  },
+  "fs": {
+    "validation": {
+      "slugRequired": "O identificador do projeto é obrigatório.",
+      "pathRequired": "O parâmetro de consulta path é obrigatório",
+      "contentRequired": "content deve ser uma string no corpo da requisição",
+      "typeRequired": "type deve ser \"file\" ou \"directory\"",
+      "newPathRequired": "O parâmetro de consulta newPath é obrigatório",
+      "queryRequired": "O parâmetro query é obrigatório"
+    },
+    "error": {
+      "pathTraversal": "Traversal de caminho detectado.",
+      "fileNotFound": "Arquivo não encontrado.",
+      "directoryNotFound": "Diretório não encontrado.",
+      "notADirectory": "Não é um diretório.",
+      "readError": "Erro de leitura do arquivo.",
+      "writeError": "Erro de escrita do arquivo.",
+      "fileAlreadyExists": "O arquivo já existe.",
+      "protectedPath": "Caminho protegido.",
+      "renameTargetExists": "O destino da renomeação já existe.",
+      "parentNotFound": "Diretório pai não encontrado."
+    }
+  },
+  "git": {
+    "validation": {
+      "slugRequired": "projectSlug é obrigatório",
+      "fileRequired": "O parâmetro de consulta file é obrigatório",
+      "filesRequired": "O array files é obrigatório e não pode estar vazio",
+      "commitMessageRequired": "A mensagem de commit é obrigatória e não pode estar vazia",
+      "commitMessageTooLong": "A mensagem de commit excede o comprimento máximo de 10.000 caracteres",
+      "branchRequired": "O nome da branch é obrigatório",
+      "invalidBranchName": "Nome de branch inválido: contém caracteres inválidos",
+      "invalidStartPoint": "startPoint inválido: contém caracteres inválidos",
+      "startPointFormat": "startPoint deve ser uma string não vazia se fornecido"
+    },
+    "success": {
+      "initialized": "Repositório Git inicializado",
+      "staged": "Arquivos preparados com sucesso",
+      "unstaged": "Arquivos removidos da preparação com sucesso",
+      "committed": "Alterações commitadas com sucesso",
+      "pushed": "Push para o remoto realizado com sucesso",
+      "pulled": "Pull do remoto realizado com sucesso",
+      "switchedBranch": "Alterado para a branch {{value}}",
+      "branchCreated": "Branch {{value}} criada com sucesso"
+    },
+    "error": {
+      "operationFailed": "A operação Git falhou.",
+      "notInitialized": "O repositório Git não está inicializado.",
+      "conflict": "Conflito de Git detectado.",
+      "nothingToCommit": "Nada para commitar.",
+      "branchExists": "A branch já existe."
+    }
+  },
+  "queue": {
+    "validation": {
+      "slugRequired": "projectSlug é obrigatório",
+      "itemsRequired": "O array items não pode estar vazio"
+    },
+    "error": {
+      "alreadyRunning": "A fila já está em execução para este projeto",
+      "noRunningQueue": "Não há fila em execução para este projeto",
+      "sdkError": "Erro SDK: {{value}}",
+      "queueStopDetected": "QUEUE_STOP detectado na resposta",
+      "sessionNotFound": "Nome de sessão \"{{value}}\" não encontrado"
+    },
+    "pause": {
+      "userPaused": "Pausado pelo usuário",
+      "waitingForPermission": "Aguardando {{value}}: {{toolName}}"
+    }
+  },
+  "queueTemplate": {
+    "error": {
+      "listFailed": "Falha ao listar templates",
+      "createFailed": "Falha ao criar template",
+      "updateFailed": "Falha ao atualizar template",
+      "deleteFailed": "Falha ao excluir template",
+      "notFound": "Template não encontrado",
+      "projectPathFailed": "Falha ao resolver caminho do projeto",
+      "bmadConfigNotFound": "Configuração BMad não encontrada para este projeto",
+      "prdNotFound": "Arquivo PRD não encontrado"
+    },
+    "validation": {
+      "nameTemplateRequired": "name e template são strings obrigatórias não vazias"
+    }
+  },
+  "notification": {
+    "permission": {
+      "title": "Permissão necessária"
+    },
+    "question": {
+      "title": "Pergunta"
+    },
+    "complete": {
+      "title": "Concluído"
+    },
+    "error": {
+      "title": "Erro",
+      "configRequired": "Tanto o Bot Token quanto o Chat ID devem estar configurados."
+    },
+    "queueStart": {
+      "title": "Fila iniciada",
+      "body": "{{value}} itens para executar"
+    },
+    "queueComplete": {
+      "title": "Fila concluída",
+      "body": "Todos os itens processados"
+    },
+    "queuePaused": {
+      "title": "Fila pausada"
+    },
+    "inputRequired": {
+      "title": "Entrada necessária",
+      "body": "Aguardando resposta do usuário"
+    },
+    "test": {
+      "message": "Esta é uma notificação de teste. As notificações do Telegram estão funcionando corretamente!"
+    }
+  },
+  "ws": {
+    "error": {
+      "queueSessionLocked": "Não é possível enviar mensagens para uma sessão onde uma fila está em execução.",
+      "queueAlreadyRunning": "A fila já está em execução para este projeto",
+      "maxImages": "Você pode anexar até {{value}} imagens.",
+      "unsupportedImageFormat": "Formato de imagem não suportado: {{value}}",
+      "imageSizeExceeded": "O tamanho da imagem excede 10MB: {{value}}",
+      "projectPathNotFound": "O caminho do projeto especificado não existe.",
+      "sessionNotFound": "Sessão não encontrada. Inicie uma nova sessão.",
+      "timeout": "Tempo de resposta esgotado. Tente novamente.",
+      "sessionListFailed": "Falha ao carregar a lista de sessões.",
+      "terminalDisabled": "O recurso de terminal está desabilitado",
+      "terminalProjectNotFound": "Caminho do projeto não encontrado para o terminal",
+      "terminalAccessDenied": "O acesso ao terminal não está disponível fora da rede local por motivos de segurança",
+      "terminalNotFound": "Terminal não encontrado",
+      "ptySpawnError": "Falha ao iniciar o processo do terminal"
+    }
+  },
+  "pathGuard": {
+    "nullByte": "Caminho inválido: byte nulo detectado",
+    "absolutePath": "Caminho inválido: caminhos absolutos não são permitidos",
+    "traversal": "Caminho inválido: traversal de caminho detectado"
+  },
+  "dashboard": {
+    "error": {
+      "statusFailed": "Falha ao obter o status do painel"
+    }
+  },
+  "cli": {
+    "error": {
+      "executionFailed": "Ocorreu um erro ao executar o CLI."
+    }
+  },
+  "command": {
+    "error": {
+      "listFailed": "Falha ao listar comandos"
+    }
+  },
+  "server": {
+    "error": {
+      "rebuildDevOnly": "A reconstrução está disponível apenas no modo de desenvolvimento.",
+      "buildInProgress": "A compilação já está em andamento.",
+      "updateCheckDevOnly": "A verificação de atualização não está disponível no modo de desenvolvimento.",
+      "npmCheckFailed": "Falha ao verificar o registro npm.",
+      "useRebuildInDev": "Use reconstruir e reiniciar no modo de desenvolvimento.",
+      "operationInProgress": "Uma operação já está em andamento."
+    },
+    "info": {
+      "buildStarted": "Compilação iniciada. Consulte /api/server/build-status para acompanhar o progresso.",
+      "updateStarted": "Atualização iniciada. Consulte /api/server/build-status para acompanhar o progresso."
+    }
+  },
+  "bmadStatus": {
+    "error": {
+      "notBmadProject": "Este não é um projeto BMad.",
+      "configParseError": "Erro ao analisar core-config.yaml.",
+      "scanError": "Erro ao escanear o status do projeto."
+    }
+  },
+  "preferences": {
+    "readError": "Erro ao ler preferências.",
+    "writeError": "Erro ao salvar preferências.",
+    "telegram": {
+      "readError": "Erro ao carregar configurações do Telegram.",
+      "invalidBotToken": "Bot Token inválido.",
+      "invalidChatId": "Chat ID inválido.",
+      "writeError": "Erro ao salvar configurações do Telegram.",
+      "testError": "Erro do servidor ao enviar notificação de teste."
+    },
+    "rateLimit": {
+      "projectCreate": "Muitas solicitações de criação de projeto. Tente novamente mais tarde.",
+      "pathValidation": "Muitas solicitações de validação de caminho. Tente novamente mais tarde."
+    }
+  }
+}

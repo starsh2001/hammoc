@@ -45,7 +45,7 @@ import fs from 'fs/promises';
 import yaml from 'js-yaml';
 
 function createMockReq(params: Record<string, string> = {}, body: Record<string, unknown> = {}): Request {
-  return { params, body } as unknown as Request;
+  return { params, body, t: (key: string) => key, language: 'en' } as unknown as Request;
 }
 
 function createMockRes(): Response & { _status: number; _json: unknown } {
@@ -184,7 +184,7 @@ describe('QueueTemplateController', () => {
       expect(res._status).toBe(200);
       const json = res._json as { stories: unknown[]; error?: string };
       expect(json.stories).toEqual([]);
-      expect(json.error).toBe('PRD file not found');
+      expect(json.error).toBe('queueTemplate.error.prdNotFound');
     });
 
     // TC-QT-25b
@@ -198,7 +198,7 @@ describe('QueueTemplateController', () => {
 
       expect(res._status).toBe(404);
       const json = res._json as { error: string };
-      expect(json.error).toContain('BMad config not found');
+      expect(json.error).toBe('queueTemplate.error.bmadConfigNotFound');
     });
   });
 });

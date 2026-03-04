@@ -44,26 +44,26 @@ const startQueueSchema = z.object({
     isMultiline: z.boolean().optional(),
     modelName: z.string().optional(),
     delayMs: z.number().optional(),
-  })).min(1, 'items array must not be empty'),
+  })).min(1),
   sessionId: z.string().optional(),
 });
 
 export async function startQueue(req: Request, res: Response): Promise<void> {
   const projectSlug = req.params.projectSlug;
   if (!projectSlug) {
-    res.status(400).json({ error: 'projectSlug is required' });
+    res.status(400).json({ error: req.t!('queue.validation.slugRequired') });
     return;
   }
 
   const parseResult = startQueueSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({ error: parseResult.error.issues[0].message });
+    res.status(400).json({ error: req.t!('queue.validation.itemsRequired') });
     return;
   }
 
   const queueService = getOrCreateQueueService(projectSlug);
   if (queueService.isRunning) {
-    res.status(409).json({ error: 'Queue is already running for this project' });
+    res.status(409).json({ error: req.t!('queue.error.alreadyRunning') });
     return;
   }
 
@@ -79,13 +79,13 @@ export async function startQueue(req: Request, res: Response): Promise<void> {
 export async function pauseQueue(req: Request, res: Response): Promise<void> {
   const projectSlug = req.params.projectSlug;
   if (!projectSlug) {
-    res.status(400).json({ error: 'projectSlug is required' });
+    res.status(400).json({ error: req.t!('queue.validation.slugRequired') });
     return;
   }
 
   const queueService = queueInstances.get(projectSlug);
   if (!queueService || !queueService.isRunning) {
-    res.status(404).json({ error: 'No running queue for this project' });
+    res.status(404).json({ error: req.t!('queue.error.noRunningQueue') });
     return;
   }
 
@@ -96,13 +96,13 @@ export async function pauseQueue(req: Request, res: Response): Promise<void> {
 export async function resumeQueue(req: Request, res: Response): Promise<void> {
   const projectSlug = req.params.projectSlug;
   if (!projectSlug) {
-    res.status(400).json({ error: 'projectSlug is required' });
+    res.status(400).json({ error: req.t!('queue.validation.slugRequired') });
     return;
   }
 
   const queueService = queueInstances.get(projectSlug);
   if (!queueService || !queueService.isRunning) {
-    res.status(404).json({ error: 'No running queue for this project' });
+    res.status(404).json({ error: req.t!('queue.error.noRunningQueue') });
     return;
   }
 
@@ -117,13 +117,13 @@ export async function resumeQueue(req: Request, res: Response): Promise<void> {
 export async function abortQueue(req: Request, res: Response): Promise<void> {
   const projectSlug = req.params.projectSlug;
   if (!projectSlug) {
-    res.status(400).json({ error: 'projectSlug is required' });
+    res.status(400).json({ error: req.t!('queue.validation.slugRequired') });
     return;
   }
 
   const queueService = queueInstances.get(projectSlug);
   if (!queueService || !queueService.isRunning) {
-    res.status(404).json({ error: 'No running queue for this project' });
+    res.status(404).json({ error: req.t!('queue.error.noRunningQueue') });
     return;
   }
 
@@ -134,7 +134,7 @@ export async function abortQueue(req: Request, res: Response): Promise<void> {
 export async function getQueueStatus(req: Request, res: Response): Promise<void> {
   const projectSlug = req.params.projectSlug;
   if (!projectSlug) {
-    res.status(400).json({ error: 'projectSlug is required' });
+    res.status(400).json({ error: req.t!('queue.validation.slugRequired') });
     return;
   }
 

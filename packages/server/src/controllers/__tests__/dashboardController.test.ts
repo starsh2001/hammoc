@@ -32,7 +32,10 @@ describe('dashboardController', () => {
   let mockRes: Partial<Response>;
 
   beforeEach(() => {
-    mockReq = {};
+    mockReq = {
+      t: vi.fn((key: string) => key),
+      language: 'en',
+    };
     mockRes = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn().mockReturnThis(),
@@ -67,7 +70,7 @@ describe('dashboardController', () => {
 
     expect(mockRes.status).toHaveBeenCalledWith(500);
     expect(mockRes.json).toHaveBeenCalledWith({
-      error: { code: 'DASHBOARD_ERROR', message: 'Failed to get dashboard status' },
+      error: { code: 'DASHBOARD_ERROR', message: 'dashboard.error.statusFailed' },
     });
   });
 });

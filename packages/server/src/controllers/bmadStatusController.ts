@@ -10,7 +10,7 @@ export const bmadStatusController = {
       if (!projectSlug) {
         res
           .status(400)
-          .json({ error: { code: 'INVALID_REQUEST', message: '프로젝트 식별자가 필요합니다.' } });
+          .json({ error: { code: 'INVALID_REQUEST', message: req.t!('project.validation.slugRequired') } });
         return;
       }
 
@@ -22,14 +22,14 @@ export const bmadStatusController = {
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
         res
           .status(404)
-          .json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+          .json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === BMAD_STATUS_ERRORS.NOT_BMAD_PROJECT.code) {
         res.status(BMAD_STATUS_ERRORS.NOT_BMAD_PROJECT.httpStatus).json({
           error: {
             code: BMAD_STATUS_ERRORS.NOT_BMAD_PROJECT.code,
-            message: BMAD_STATUS_ERRORS.NOT_BMAD_PROJECT.message,
+            message: req.t!('bmadStatus.error.notBmadProject'),
           },
         });
         return;
@@ -38,7 +38,7 @@ export const bmadStatusController = {
         res.status(BMAD_STATUS_ERRORS.CONFIG_PARSE_ERROR.httpStatus).json({
           error: {
             code: BMAD_STATUS_ERRORS.CONFIG_PARSE_ERROR.code,
-            message: BMAD_STATUS_ERRORS.CONFIG_PARSE_ERROR.message,
+            message: req.t!('bmadStatus.error.configParseError'),
           },
         });
         return;
@@ -46,7 +46,7 @@ export const bmadStatusController = {
       res.status(BMAD_STATUS_ERRORS.SCAN_ERROR.httpStatus).json({
         error: {
           code: BMAD_STATUS_ERRORS.SCAN_ERROR.code,
-          message: BMAD_STATUS_ERRORS.SCAN_ERROR.message,
+          message: req.t!('bmadStatus.error.scanError'),
         },
       });
     }

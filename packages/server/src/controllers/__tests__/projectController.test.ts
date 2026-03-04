@@ -28,7 +28,10 @@ describe('projectController', () => {
   let mockRes: Partial<Response>;
 
   beforeEach(() => {
-    mockReq = {};
+    mockReq = {
+      t: vi.fn((key: string) => key),
+      language: 'en',
+    };
     mockRes = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn().mockReturnThis(),
@@ -85,7 +88,7 @@ describe('projectController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: 'PERMISSION_DENIED',
-          message: '디렉토리 접근 권한이 없습니다.',
+          message: 'project.error.permissionDenied',
         },
       });
     });
@@ -101,7 +104,7 @@ describe('projectController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: 'INVALID_SESSION_INDEX',
-          message: 'sessions-index.json 파일 형식이 올바르지 않습니다.',
+          message: 'project.error.invalidSessionIndex',
         },
       });
     });
@@ -116,7 +119,7 @@ describe('projectController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: 'PROJECT_SCAN_ERROR',
-          message: '프로젝트 목록을 가져오는 중 오류가 발생했습니다.',
+          message: 'project.error.scanError',
         },
       });
     });
@@ -132,6 +135,8 @@ describe('projectController', () => {
 
     it('TC-S6: returns 400 for invalid permissionModeOverride', async () => {
       mockReq = {
+        t: vi.fn((key: string) => key),
+        language: 'en',
         params: { projectSlug: 'test-project' },
         body: { permissionModeOverride: 'invalidMode' },
       };
@@ -142,7 +147,7 @@ describe('projectController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: 'INVALID_PERMISSION_MODE',
-          message: '유효하지 않은 Permission Mode: invalidMode',
+          message: 'project.validation.invalidPermissionMode',
         },
       });
       expect(mockUpdateProjectSettings).not.toHaveBeenCalled();
@@ -151,6 +156,8 @@ describe('projectController', () => {
     it('TC-S7: permissionModeOverride null clears override successfully', async () => {
       mockUpdateProjectSettings.mockResolvedValue(mockUpdatedResponse);
       mockReq = {
+        t: vi.fn((key: string) => key),
+        language: 'en',
         params: { projectSlug: 'test-project' },
         body: { permissionModeOverride: null },
       };
@@ -164,6 +171,8 @@ describe('projectController', () => {
 
     it('returns 400 when projectSlug is missing', async () => {
       mockReq = {
+        t: vi.fn((key: string) => key),
+        language: 'en',
         params: {},
         body: { hidden: true },
       };
@@ -174,7 +183,7 @@ describe('projectController', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           code: 'INVALID_REQUEST',
-          message: '프로젝트 식별자가 필요합니다.',
+          message: 'project.validation.slugRequired',
         },
       });
     });
@@ -187,6 +196,8 @@ describe('projectController', () => {
         _overrides: ['permissionModeOverride'],
       });
       mockReq = {
+        t: vi.fn((key: string) => key),
+        language: 'en',
         params: { projectSlug: 'test-project' },
         body: { permissionModeOverride: 'plan' },
       };

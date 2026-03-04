@@ -30,13 +30,12 @@ function isValidBranchName(name: string): boolean {
 export const gitController = {
   /**
    * GET /api/projects/:projectSlug/git/status
-   * Returns current branch, staged/unstaged/untracked files, ahead/behind counts.
    */
   async getStatus(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
@@ -46,24 +45,23 @@ export const gitController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
 
   /**
    * GET /api/projects/:projectSlug/git/log?limit=&offset=
-   * Returns commit history with pagination.
    */
   async getLog(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
@@ -76,24 +74,23 @@ export const gitController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
 
   /**
    * GET /api/projects/:projectSlug/git/branches
-   * Returns local and remote branches with current branch.
    */
   async getBranches(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
@@ -103,30 +100,29 @@ export const gitController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
 
   /**
    * GET /api/projects/:projectSlug/git/diff?file=&staged=
-   * Returns diff for a specific file (staged or unstaged).
    */
   async getDiff(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
       const file = req.query.file as string;
       if (!file) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'file query parameter is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.fileRequired') } });
         return;
       }
 
@@ -140,17 +136,17 @@ export const gitController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
         res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
         });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
@@ -159,40 +155,38 @@ export const gitController = {
 
   /**
    * POST /api/projects/:projectSlug/git/init
-   * Initialize a Git repository in the project directory.
    */
   async init(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       await gitService.init(projectRoot);
-      res.json({ success: true, message: 'Git repository initialized' });
+      res.json({ success: true, message: req.t!('git.success.initialized') });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
 
   /**
    * POST /api/projects/:projectSlug/git/stage
-   * Stage files for commit.
    */
   async stage(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
@@ -200,7 +194,7 @@ export const gitController = {
       if (!files || !Array.isArray(files) || files.length === 0) {
         res
           .status(400)
-          .json({ error: { code: 'INVALID_REQUEST', message: 'files array is required and must not be empty' } });
+          .json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.filesRequired') } });
         return;
       }
 
@@ -210,40 +204,39 @@ export const gitController = {
       }
 
       await gitService.stage(projectRoot, files);
-      res.json({ success: true, message: 'Files staged successfully' });
+      res.json({ success: true, message: req.t!('git.success.staged') });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: GIT_ERRORS.GIT_NOT_INITIALIZED.message },
+          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
         res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
         });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
 
   /**
    * POST /api/projects/:projectSlug/git/unstage
-   * Unstage files from the index.
    */
   async unstage(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
@@ -251,7 +244,7 @@ export const gitController = {
       if (!files || !Array.isArray(files) || files.length === 0) {
         res
           .status(400)
-          .json({ error: { code: 'INVALID_REQUEST', message: 'files array is required and must not be empty' } });
+          .json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.filesRequired') } });
         return;
       }
 
@@ -261,40 +254,39 @@ export const gitController = {
       }
 
       await gitService.unstage(projectRoot, files);
-      res.json({ success: true, message: 'Files unstaged successfully' });
+      res.json({ success: true, message: req.t!('git.success.unstaged') });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: GIT_ERRORS.GIT_NOT_INITIALIZED.message },
+          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
         });
         return;
       }
       if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
         res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
-          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.message },
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
         });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
 
   /**
    * POST /api/projects/:projectSlug/git/commit
-   * Commit staged changes with a message.
    */
   async commit(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
@@ -302,7 +294,7 @@ export const gitController = {
       if (!message || typeof message !== 'string' || message.trim().length === 0) {
         res
           .status(400)
-          .json({ error: { code: 'INVALID_REQUEST', message: 'commit message is required and must not be empty' } });
+          .json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.commitMessageRequired') } });
         return;
       }
 
@@ -310,7 +302,7 @@ export const gitController = {
         res.status(400).json({
           error: {
             code: 'INVALID_REQUEST',
-            message: 'Commit message exceeds maximum length of 10,000 characters',
+            message: req.t!('git.validation.commitMessageTooLong'),
           },
         });
         return;
@@ -318,175 +310,171 @@ export const gitController = {
 
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       await gitService.commit(projectRoot, message.trim());
-      res.json({ success: true, message: 'Changes committed successfully' });
+      res.json({ success: true, message: req.t!('git.success.committed') });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: GIT_ERRORS.GIT_NOT_INITIALIZED.message },
+          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
         });
         return;
       }
       if (nodeError.code === 'GIT_NOTHING_TO_COMMIT') {
         res.status(GIT_ERRORS.GIT_NOTHING_TO_COMMIT.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_NOTHING_TO_COMMIT.code, message: GIT_ERRORS.GIT_NOTHING_TO_COMMIT.message },
+          error: { code: GIT_ERRORS.GIT_NOTHING_TO_COMMIT.code, message: req.t!('git.error.nothingToCommit') },
         });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
 
   /**
    * POST /api/projects/:projectSlug/git/push
-   * Push current branch to remote.
    */
   async push(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       await gitService.push(projectRoot);
-      res.json({ success: true, message: 'Pushed to remote successfully' });
+      res.json({ success: true, message: req.t!('git.success.pushed') });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: GIT_ERRORS.GIT_NOT_INITIALIZED.message },
+          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
         });
         return;
       }
       if (isConflictError(nodeError)) {
         res.status(GIT_ERRORS.GIT_CONFLICT.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_CONFLICT.code, message: nodeError.message || GIT_ERRORS.GIT_CONFLICT.message },
+          error: { code: GIT_ERRORS.GIT_CONFLICT.code, message: req.t!('git.error.conflict') },
         });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
 
   /**
    * POST /api/projects/:projectSlug/git/pull
-   * Pull current branch from remote.
    */
   async pull(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       await gitService.pull(projectRoot);
-      res.json({ success: true, message: 'Pulled from remote successfully' });
+      res.json({ success: true, message: req.t!('git.success.pulled') });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: GIT_ERRORS.GIT_NOT_INITIALIZED.message },
+          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
         });
         return;
       }
       if (isConflictError(nodeError)) {
         res.status(GIT_ERRORS.GIT_CONFLICT.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_CONFLICT.code, message: nodeError.message || GIT_ERRORS.GIT_CONFLICT.message },
+          error: { code: GIT_ERRORS.GIT_CONFLICT.code, message: req.t!('git.error.conflict') },
         });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
 
   /**
    * POST /api/projects/:projectSlug/git/checkout
-   * Switch to an existing branch.
    */
   async checkout(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
       const { branch } = req.body;
       if (!branch || typeof branch !== 'string' || branch.trim().length === 0) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'branch name is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.branchRequired') } });
         return;
       }
 
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       await gitService.checkout(projectRoot, branch);
-      res.json({ success: true, message: `Switched to branch ${branch}` });
+      res.json({ success: true, message: req.t!('git.success.switchedBranch', { value: branch }) });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: GIT_ERRORS.GIT_NOT_INITIALIZED.message },
+          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
         });
         return;
       }
       if (isConflictError(nodeError)) {
         res.status(GIT_ERRORS.GIT_CONFLICT.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_CONFLICT.code, message: nodeError.message || GIT_ERRORS.GIT_CONFLICT.message },
+          error: { code: GIT_ERRORS.GIT_CONFLICT.code, message: req.t!('git.error.conflict') },
         });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },
 
   /**
    * POST /api/projects/:projectSlug/git/branch
-   * Create a new branch (without switching to it).
    */
   async createBranch(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       if (!projectSlug) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.slugRequired') } });
         return;
       }
 
       const { name, startPoint } = req.body;
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
-        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'branch name is required' } });
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.branchRequired') } });
         return;
       }
 
       if (!isValidBranchName(name)) {
         res.status(400).json({
-          error: { code: 'INVALID_REQUEST', message: 'Invalid branch name: contains invalid characters' },
+          error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.invalidBranchName') },
         });
         return;
       }
@@ -494,13 +482,13 @@ export const gitController = {
       if (startPoint !== undefined) {
         if (typeof startPoint !== 'string' || startPoint.trim().length === 0) {
           res.status(400).json({
-            error: { code: 'INVALID_REQUEST', message: 'startPoint must be a non-empty string if provided' },
+            error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.startPointFormat') },
           });
           return;
         }
         if (!isValidBranchName(startPoint.trim())) {
           res.status(400).json({
-            error: { code: 'INVALID_REQUEST', message: 'Invalid startPoint: contains invalid characters' },
+            error: { code: 'INVALID_REQUEST', message: req.t!('git.validation.invalidStartPoint') },
           });
           return;
         }
@@ -508,27 +496,27 @@ export const gitController = {
 
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       await gitService.createBranch(projectRoot, name, startPoint?.trim());
-      res.json({ success: true, message: `Branch ${name} created successfully` });
+      res.json({ success: true, message: req.t!('git.success.branchCreated', { value: name }) });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: nodeError.message } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: GIT_ERRORS.GIT_NOT_INITIALIZED.message },
+          error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
         });
         return;
       }
       if (nodeError.code === 'GIT_BRANCH_EXISTS') {
         res.status(GIT_ERRORS.GIT_BRANCH_EXISTS.httpStatus).json({
-          error: { code: GIT_ERRORS.GIT_BRANCH_EXISTS.code, message: GIT_ERRORS.GIT_BRANCH_EXISTS.message },
+          error: { code: GIT_ERRORS.GIT_BRANCH_EXISTS.code, message: req.t!('git.error.branchExists') },
         });
         return;
       }
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
-        error: { code: GIT_ERRORS.GIT_ERROR.code, message: nodeError.message || GIT_ERRORS.GIT_ERROR.message },
+        error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
     }
   },

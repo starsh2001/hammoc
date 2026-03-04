@@ -19,6 +19,7 @@ describe('CLI Routes', () => {
     vi.clearAllMocks();
     app = express();
     app.use(express.json());
+    app.use((req: any, _res: any, next: any) => { req.t = (key: string) => key; req.language = 'en'; next(); });
     app.use('/api', cliRoutes);
   });
 
@@ -106,7 +107,7 @@ describe('CLI Routes', () => {
       expect(response.status).toBe(500);
       expect(response.body.error.code).toBe('CLI_EXECUTION_ERROR');
       expect(response.body.error.message).toBe(
-        'CLI 실행 중 오류가 발생했습니다.'
+        'cli.error.executionFailed'
       );
     });
 

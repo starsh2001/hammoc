@@ -26,10 +26,10 @@ export const boardController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: `Project not found: ${req.params.projectSlug}` } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
         return;
       }
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
     }
   },
 
@@ -42,10 +42,10 @@ export const boardController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: `Project not found: ${req.params.projectSlug}` } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
         return;
       }
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
     }
   },
 
@@ -55,17 +55,17 @@ export const boardController = {
       const { title, description, severity, issueType } = req.body;
 
       if (!title || typeof title !== 'string' || !title.trim()) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Title is required' } });
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: req.t!('board.validation.titleRequired') } });
         return;
       }
 
       if (severity && !VALID_SEVERITIES.includes(severity)) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `Invalid severity: ${severity}` } });
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: req.t!('board.validation.invalidSeverity', { value: severity }) } });
         return;
       }
 
       if (issueType && !VALID_ISSUE_TYPES.includes(issueType)) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `Invalid issueType: ${issueType}` } });
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: req.t!('board.validation.invalidIssueType', { value: issueType }) } });
         return;
       }
 
@@ -75,10 +75,10 @@ export const boardController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: `Project not found: ${req.params.projectSlug}` } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
         return;
       }
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
     }
   },
 
@@ -88,17 +88,17 @@ export const boardController = {
       const { severity, issueType, status } = req.body;
 
       if (severity && !VALID_SEVERITIES.includes(severity)) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `Invalid severity: ${severity}` } });
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: req.t!('board.validation.invalidSeverity', { value: severity }) } });
         return;
       }
 
       if (issueType && !VALID_ISSUE_TYPES.includes(issueType)) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `Invalid issueType: ${issueType}` } });
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: req.t!('board.validation.invalidIssueType', { value: issueType }) } });
         return;
       }
 
       if (status && !VALID_STATUSES.includes(status)) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `Invalid status: ${status}` } });
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: req.t!('board.validation.invalidStatus', { value: status }) } });
         return;
       }
 
@@ -108,18 +108,18 @@ export const boardController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: `Project not found: ${req.params.projectSlug}` } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
         return;
       }
       if (nodeError.code === 'ISSUE_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'ISSUE_NOT_FOUND', message: `Issue not found: ${req.params.issueId}` } });
+        res.status(404).json({ error: { code: 'ISSUE_NOT_FOUND', message: req.t!('board.error.issueNotFound', { value: req.params.issueId }) } });
         return;
       }
       if (nodeError.code === 'INVALID_ISSUE_ID') {
-        res.status(400).json({ error: { code: 'INVALID_ISSUE_ID', message: 'Invalid issue ID' } });
+        res.status(400).json({ error: { code: 'INVALID_ISSUE_ID', message: req.t!('board.validation.invalidIssueId') } });
         return;
       }
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
     }
   },
 
@@ -132,14 +132,14 @@ export const boardController = {
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: `Project not found: ${req.params.projectSlug}` } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
         return;
       }
       if (nodeError.code === 'STORY_NOT_FOUND' || nodeError.code === 'STATUS_NOT_FOUND') {
         res.status(404).json({ error: { code: nodeError.code, message: nodeError.message } });
         return;
       }
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
     }
   },
 
@@ -148,22 +148,22 @@ export const boardController = {
       const { projectSlug, issueId } = req.params;
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       await issueService.deleteIssue(projectRoot, issueId);
-      res.json({ message: 'Issue deleted' });
+      res.json({ message: req.t!('board.success.issueDeleted') });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: `Project not found: ${req.params.projectSlug}` } });
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
         return;
       }
       if (nodeError.code === 'ISSUE_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'ISSUE_NOT_FOUND', message: `Issue not found: ${req.params.issueId}` } });
+        res.status(404).json({ error: { code: 'ISSUE_NOT_FOUND', message: req.t!('board.error.issueNotFound', { value: req.params.issueId }) } });
         return;
       }
       if (nodeError.code === 'INVALID_ISSUE_ID') {
-        res.status(400).json({ error: { code: 'INVALID_ISSUE_ID', message: 'Invalid issue ID' } });
+        res.status(400).json({ error: { code: 'INVALID_ISSUE_ID', message: req.t!('board.validation.invalidIssueId') } });
         return;
       }
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
     }
   },
 };
