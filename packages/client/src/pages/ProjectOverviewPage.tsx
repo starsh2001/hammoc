@@ -138,22 +138,22 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
                   className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-colors text-left"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2">
                       {session.isStreaming && (
-                        <span className="relative flex h-2 w-2">
+                        <span className="relative flex h-2 w-2 flex-shrink-0">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
                         </span>
                       )}
                       {session.name && (
-                        <span className="text-[11px] font-medium px-1.5 py-px rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                        <span className="text-[11px] font-medium px-1.5 py-px rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex-shrink-0">
                           {session.name}
                         </span>
                       )}
+                      <p className="text-sm text-gray-900 dark:text-white truncate">
+                        {session.firstPrompt || t('overview.emptySessionLabel')}
+                      </p>
                     </div>
-                    <p className="text-sm text-gray-900 dark:text-white truncate">
-                      {session.firstPrompt || t('overview.emptySessionLabel')}
-                    </p>
                   </div>
                   <div className="flex items-center gap-3 ml-4 text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
                     <span>{session.messageCount}개</span>

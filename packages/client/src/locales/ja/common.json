@@ -167,7 +167,10 @@
     "queueRunner": "キュータスクを実行",
     "fileExplore": "ファイルを閲覧",
     "activeSessionsCount": "{{count}}件のアクティブセッション",
-    "aiGenerating": "AIが現在レスポンスを生成中です"
+    "aiGenerating": "AIが現在レスポンスを生成中です",
+    "recentIssues": "最近のイシュー",
+    "viewBoard": "ボードを見る",
+    "noIssues": "登録されたイシューはありません"
   },
   "epic": {
     "progressTitle": "エピックの進捗",

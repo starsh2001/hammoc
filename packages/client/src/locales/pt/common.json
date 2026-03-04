@@ -167,7 +167,10 @@
     "queueRunner": "Executar tarefa de fila",
     "fileExplore": "Explorar arquivos",
     "activeSessionsCount": "{{count}} sessões ativas",
-    "aiGenerating": "A IA está gerando uma resposta no momento"
+    "aiGenerating": "A IA está gerando uma resposta no momento",
+    "recentIssues": "Problemas recentes",
+    "viewBoard": "Ver quadro",
+    "noIssues": "Nenhum problema registrado"
   },
   "epic": {
     "progressTitle": "Progresso do epic",

@@ -167,7 +167,10 @@
     "queueRunner": "运行队列任务",
     "fileExplore": "浏览文件",
     "activeSessionsCount": "{{count}} 个活跃会话",
-    "aiGenerating": "AI 正在生成回复"
+    "aiGenerating": "AI 正在生成回复",
+    "recentIssues": "最近的问题",
+    "viewBoard": "查看看板",
+    "noIssues": "暂无问题"
   },
   "epic": {
     "progressTitle": "Epic 进度",
