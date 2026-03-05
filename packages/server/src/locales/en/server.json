@@ -82,7 +82,8 @@
       "fileRequired": "File is required",
       "invalidFileType": "Unsupported file type",
       "fileTooLarge": "File size exceeds 10MB limit",
-      "maxAttachments": "Maximum attachment count reached"
+      "maxAttachments": "Maximum attachment count reached",
+      "invalidFilename": "Invalid filename"
     },
     "success": {
       "issueDeleted": "Issue deleted"

@@ -128,20 +128,24 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     set({ isLoadingMore: true });
     try {
-      const { includeEmpty, sessions: existing } = get();
+      const { includeEmpty } = get();
       const limit = options?.limit ?? 20;
+      // Capture offset from current state right before the API call
+      const offset = get().sessions.length;
       const response = await sessionsApi.list(projectSlug, {
         includeEmpty,
         limit,
-        offset: existing.length,
+        offset,
       });
-      // Deduplicate by sessionId
-      const existingIds = new Set(existing.map(s => s.sessionId));
-      const newSessions = response.sessions.filter(s => !existingIds.has(s.sessionId));
-      set({
-        sessions: [...existing, ...newSessions],
-        hasMore: response.hasMore,
-        isLoadingMore: false,
+      // Use functional set to avoid stale state after await
+      set((prev) => {
+        const existingIds = new Set(prev.sessions.map(s => s.sessionId));
+        const newSessions = response.sessions.filter(s => !existingIds.has(s.sessionId));
+        return {
+          sessions: [...prev.sessions, ...newSessions],
+          hasMore: response.hasMore,
+          isLoadingMore: false,
+        };
       });
     } catch {
       set({ isLoadingMore: false });

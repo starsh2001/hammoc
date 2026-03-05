@@ -234,10 +234,21 @@ export class SessionService {
           })
         );
 
-        // Sort by mtime descending, take slice [offset, offset+limit]
+        // Sort by mtime descending
         fileStats.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
-        const total = fileStats.length;
-        const topFiles = fileStats.slice(offset, offset + limit);
+
+        // Pre-filter known-empty sessions from index cache when !includeEmpty
+        let candidates = fileStats;
+        if (!includeEmpty) {
+          candidates = fileStats.filter(({ sessionId }) => {
+            const cached = indexMap.get(sessionId);
+            // If cached and firstPrompt is empty, exclude
+            if (cached && !cached.firstPrompt) return false;
+            return true; // Include cache misses — will filter after resolution
+          });
+        }
+
+        const topFiles = candidates.slice(offset, offset + limit);
 
         // Resolve metadata: use index cache when available, parse JSONL only for misses (in parallel)
         const sessions = (await Promise.all(
@@ -270,6 +281,9 @@ export class SessionService {
                 }
               }
 
+              // Filter empty sessions for cache misses when !includeEmpty
+              if (!includeEmpty && !rawText) return null;
+
               return {
                 sessionId,
                 firstPrompt: rawText ? this.truncateFirstPrompt(rawText) : '',
@@ -283,7 +297,7 @@ export class SessionService {
           })
         )).filter((s): s is SessionListItem => s !== null);
 
-        return { sessions, total };
+        return { sessions, total: candidates.length };
       } catch {
         return { sessions: [], total: 0 };
       }
