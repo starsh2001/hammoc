@@ -158,7 +158,8 @@
       "noRunningQueue": "Não há fila em execução para este projeto",
       "sdkError": "Erro SDK: {{value}}",
       "queueStopDetected": "QUEUE_STOP detectado na resposta",
-      "sessionNotFound": "Nome de sessão \"{{value}}\" não encontrado"
+      "sessionNotFound": "Nome de sessão \"{{value}}\" não encontrado",
+      "sessionBusy": "A sessão está transmitindo no momento — fila pausada para evitar conflitos"
     },
     "pause": {
       "userPaused": "Pausado pelo usuário",

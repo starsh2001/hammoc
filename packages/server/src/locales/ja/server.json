@@ -158,7 +158,8 @@
       "noRunningQueue": "このプロジェクトに実行中のキューはありません",
       "sdkError": "SDKエラー: {{value}}",
       "queueStopDetected": "レスポンスでQUEUE_STOPが検出されました",
-      "sessionNotFound": "セッション名 \"{{value}}\" が見つかりません"
+      "sessionNotFound": "セッション名 \"{{value}}\" が見つかりません",
+      "sessionBusy": "セッションは現在ストリーミング中です — 競合を防ぐためキューを一時停止しました"
     },
     "pause": {
       "userPaused": "ユーザーが一時停止しました",

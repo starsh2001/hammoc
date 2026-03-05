@@ -158,7 +158,8 @@
       "noRunningQueue": "该项目没有正在运行的队列",
       "sdkError": "SDK错误: {{value}}",
       "queueStopDetected": "响应中检测到QUEUE_STOP",
-      "sessionNotFound": "未找到会话名称 \"{{value}}\""
+      "sessionNotFound": "未找到会话名称 \"{{value}}\"",
+      "sessionBusy": "会话正在流式传输中——队列已暂停以避免冲突"
     },
     "pause": {
       "userPaused": "用户已暂停",
