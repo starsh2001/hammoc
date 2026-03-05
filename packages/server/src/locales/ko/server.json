@@ -78,7 +78,11 @@
       "invalidSeverity": "잘못된 심각도: {{value}}",
       "invalidIssueType": "잘못된 이슈 유형: {{value}}",
       "invalidStatus": "잘못된 상태: {{value}}",
-      "invalidIssueId": "잘못된 이슈 ID"
+      "invalidIssueId": "잘못된 이슈 ID",
+      "fileRequired": "파일이 필요합니다",
+      "invalidFileType": "지원하지 않는 파일 형식입니다",
+      "fileTooLarge": "파일 크기가 10MB를 초과합니다",
+      "maxAttachments": "최대 첨부 파일 수에 도달했습니다"
     },
     "success": {
       "issueDeleted": "이슈가 삭제되었습니다"

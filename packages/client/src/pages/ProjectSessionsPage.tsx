@@ -6,7 +6,7 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Plus, CheckSquare, Trash2, X, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Plus, CheckSquare, Trash2, X, Eye, EyeOff, RefreshCw, Loader2 } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
 import { useQueueStore } from '../stores/queueStore';
@@ -31,7 +31,10 @@ export function ProjectSessionsPage() {
     isLoading,
     error,
     isRefreshing,
+    isLoadingMore,
+    hasMore,
     fetchSessions,
+    loadMoreSessions,
     setRefreshing,
     deleteSession,
     deleteSessions,
@@ -60,10 +63,10 @@ export function ProjectSessionsPage() {
     [sessions]
   );
 
-  // Fetch sessions
+  // Fetch sessions (paginated: 20 at a time)
   useEffect(() => {
     if (projectSlug) {
-      fetchSessions(projectSlug);
+      fetchSessions(projectSlug, { limit: 20 });
     }
   }, [projectSlug, fetchSessions, location.key, includeEmpty]);
 
@@ -81,7 +84,7 @@ export function ProjectSessionsPage() {
 
   const handleRefresh = useCallback(async () => {
     if (projectSlug) {
-      await fetchSessions(projectSlug);
+      await fetchSessions(projectSlug, { limit: 20 });
     }
   }, [projectSlug, fetchSessions]);
 
@@ -277,6 +280,23 @@ export function ProjectSessionsPage() {
                 isQueueActive={queueLockedSessionId === session.sessionId}
               />
             ))}
+            {hasMore && projectSlug && (
+              <button
+                onClick={() => loadMoreSessions(projectSlug, { limit: 20 })}
+                disabled={isLoadingMore}
+                className="w-full py-3 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                data-testid="load-more-sessions"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    {t('session.loadingMore')}
+                  </>
+                ) : (
+                  t('session.loadMore')
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>

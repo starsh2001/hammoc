@@ -41,7 +41,16 @@
     "cannotDeleteWhileWorking": "Cannot delete while AI is working",
     "reopen": "Re-Open",
     "closeConfirm": "Close this issue?",
-    "deleteConfirm": "Delete issue \"{{title}}\"?"
+    "deleteConfirm": "Delete issue \"{{title}}\"?",
+    "attachments": "Attachments",
+    "addAttachment": "Attach File",
+    "removeAttachment": "Remove Attachment",
+    "dropzone": "Drag or click to attach images",
+    "uploadFailed": "Failed to upload file",
+    "fileTooLarge": "File size exceeds 10MB",
+    "invalidFileType": "Unsupported file type (PNG, JPG, GIF, WebP only)",
+    "maxAttachments": "Maximum attachment count (10) reached",
+    "uploading": "Uploading..."
   },
   "card": {
     "menu": "Card menu",

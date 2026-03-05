@@ -10,6 +10,8 @@ import type {
   BoardItem,
   CreateIssueRequest,
   UpdateIssueRequest,
+  UploadAttachmentResponse,
+  IssueAttachment,
 } from '@bmad-studio/shared';
 
 export const boardApi = {
@@ -27,4 +29,22 @@ export const boardApi = {
 
   normalizeStoryStatus: (projectSlug: string, storyNum: string) =>
     api.post<{ status: string }>(`/projects/${projectSlug}/board/stories/${storyNum}/normalize-status`),
+
+  uploadAttachment: (projectSlug: string, issueId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.upload<UploadAttachmentResponse>(
+      `/projects/${projectSlug}/board/issues/${issueId}/attachments`,
+      formData
+    );
+  },
+
+  listAttachments: (projectSlug: string, issueId: string) =>
+    api.get<{ attachments: IssueAttachment[] }>(`/projects/${projectSlug}/board/issues/${issueId}/attachments`),
+
+  deleteAttachment: (projectSlug: string, issueId: string, filename: string) =>
+    api.delete<{ message: string }>(`/projects/${projectSlug}/board/issues/${issueId}/attachments/${filename}`),
+
+  getAttachmentUrl: (projectSlug: string, issueId: string, filename: string) =>
+    `/api/projects/${projectSlug}/board/issues/${issueId}/attachments/${filename}`,
 };

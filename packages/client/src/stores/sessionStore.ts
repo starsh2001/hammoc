@@ -17,6 +17,8 @@ interface SessionState {
   currentProjectSlug: string | null;
   isLoading: boolean;
   isRefreshing: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
   error: string | null;
   errorType: ErrorType;
   includeEmpty: boolean;
@@ -24,6 +26,8 @@ interface SessionState {
 
 interface SessionActions {
   fetchSessions: (projectSlug: string, options?: { limit?: number }) => Promise<void>;
+  /** Load more sessions (append to existing list) */
+  loadMoreSessions: (projectSlug: string, options?: { limit?: number }) => Promise<void>;
   clearSessions: () => void;
   clearError: () => void;
   setRefreshing: (isRefreshing: boolean) => void;
@@ -47,6 +51,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   currentProjectSlug: null,
   isLoading: false,
   isRefreshing: false,
+  isLoadingMore: false,
+  hasMore: false,
   error: null,
   errorType: 'none',
   includeEmpty: false,
@@ -71,8 +77,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
     try {
       const { includeEmpty } = get();
-      const { sessions } = await sessionsApi.list(projectSlug, { includeEmpty, limit: options?.limit });
-      set({ sessions, isLoading: false, isRefreshing: false });
+      const response = await sessionsApi.list(projectSlug, { includeEmpty, limit: options?.limit });
+      set({ sessions: response.sessions, hasMore: response.hasMore, isLoading: false, isRefreshing: false });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 404) {
@@ -116,8 +122,34 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }
   },
 
+  loadMoreSessions: async (projectSlug: string, options?: { limit?: number }) => {
+    const state = get();
+    if (state.isLoadingMore || !state.hasMore) return;
+
+    set({ isLoadingMore: true });
+    try {
+      const { includeEmpty, sessions: existing } = get();
+      const limit = options?.limit ?? 20;
+      const response = await sessionsApi.list(projectSlug, {
+        includeEmpty,
+        limit,
+        offset: existing.length,
+      });
+      // Deduplicate by sessionId
+      const existingIds = new Set(existing.map(s => s.sessionId));
+      const newSessions = response.sessions.filter(s => !existingIds.has(s.sessionId));
+      set({
+        sessions: [...existing, ...newSessions],
+        hasMore: response.hasMore,
+        isLoadingMore: false,
+      });
+    } catch {
+      set({ isLoadingMore: false });
+    }
+  },
+
   clearSessions: () =>
-    set({ sessions: [], currentProjectSlug: null, error: null, errorType: 'none' }),
+    set({ sessions: [], currentProjectSlug: null, hasMore: false, error: null, errorType: 'none' }),
 
   clearError: () => set({ error: null, errorType: 'none' }),
 

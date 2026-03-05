@@ -40,8 +40,8 @@ class DashboardService {
       projects.map(async (project) => {
         const slug = project.projectSlug;
 
-        const allSessions = await sessionService.listSessionsBySlug(slug);
-        const activeCount = (allSessions ?? []).filter((s) => activeIds.has(s.sessionId)).length;
+        const result = await sessionService.listSessionsBySlug(slug);
+        const activeCount = (result?.sessions ?? []).filter((s) => activeIds.has(s.sessionId)).length;
 
         const queueStatus = mapQueueStatus(queueMap.get(slug)?.getState());
         const terminalCount = ptyService.getSessionsByProject(slug).length;
@@ -75,8 +75,8 @@ class DashboardService {
     }
 
     const activeIds = new Set(getActiveStreamSessionIds());
-    const allSessions = await sessionService.listSessionsBySlug(projectSlug);
-    const activeCount = (allSessions ?? []).filter((s) => activeIds.has(s.sessionId)).length;
+    const result = await sessionService.listSessionsBySlug(projectSlug);
+    const activeCount = (result?.sessions ?? []).filter((s) => activeIds.has(s.sessionId)).length;
 
     const queueStatus = mapQueueStatus(getQueueInstances().get(projectSlug)?.getState());
     const terminalCount = ptyService.getSessionsByProject(projectSlug).length;

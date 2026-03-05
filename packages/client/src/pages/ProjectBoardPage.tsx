@@ -61,8 +61,18 @@ export function ProjectBoardPage() {
     errorTimerRef.current = setTimeout(() => setActionError(null), 5000);
   }, []);
 
-  const handleCreateIssue = async (data: CreateIssueRequest) => {
-    await createIssue(data);
+  const handleCreateIssue = async (data: CreateIssueRequest, files?: File[]) => {
+    const item = await createIssue(data);
+    if (item && files && files.length > 0 && projectSlug) {
+      for (const file of files) {
+        try {
+          await boardApi.uploadAttachment(projectSlug, item.id, file);
+        } catch {
+          // Individual upload failures don't block issue creation
+        }
+      }
+      await refresh();
+    }
   };
 
   // Quick action: mark issue Done and navigate to dev session with issue filename
@@ -403,6 +413,7 @@ export function ProjectBoardPage() {
       <IssueEditDialog
         open={!!editingIssue}
         issue={editingIssue}
+        projectSlug={projectSlug}
         onClose={() => setEditingIssue(null)}
         onSubmit={handleEditSubmit}
       />
