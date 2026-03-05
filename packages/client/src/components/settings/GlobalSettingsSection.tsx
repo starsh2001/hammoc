@@ -183,9 +183,18 @@ export function GlobalSettingsSection() {
                 value={opt.value}
                 checked={permissionModePref === opt.value}
                 onChange={() => handlePermissionChange(opt.value)}
-                className="mt-0.5"
+                className="sr-only"
                 aria-describedby={`permission-desc-${opt.value}`}
               />
+              <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                permissionModePref === opt.value
+                  ? 'border-blue-500'
+                  : 'border-gray-400 dark:border-gray-500'
+              }`}>
+                {permissionModePref === opt.value && (
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                )}
+              </div>
               <div>
                 <span className={`text-sm font-medium ${permissionModePref === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
                   {t(opt.labelKey)}

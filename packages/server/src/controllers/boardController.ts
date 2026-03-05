@@ -26,7 +26,7 @@ export function attachmentUpload(req: Request, res: Response, next: NextFunction
 
 const VALID_SEVERITIES = ['low', 'medium', 'high', 'critical'];
 const VALID_ISSUE_TYPES = ['bug', 'improvement'];
-const VALID_STATUSES = ['Open', 'InProgress', 'Done', 'Closed'];
+const VALID_STATUSES = ['Open', 'InProgress', 'Done', 'Closed', 'Promoted'];
 
 export const boardController = {
   async getBoard(req: Request, res: Response): Promise<void> {
