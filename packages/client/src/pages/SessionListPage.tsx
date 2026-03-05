@@ -6,7 +6,7 @@
 import { useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Plus, CheckSquare, Trash2, X, Eye, EyeOff, MoreVertical, Moon, Sun, Settings, LogOut } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Plus, CheckSquare, Trash2, X, Eye, EyeOff, MoreVertical, Moon, Sun, Settings, LogOut, Loader2 } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import { useProjectStore } from '../stores/projectStore';
 import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
@@ -42,7 +42,10 @@ export function SessionListPage() {
     error,
     errorType,
     isRefreshing,
+    isLoadingMore,
+    hasMore,
     fetchSessions,
+    loadMoreSessions,
     setRefreshing,
     deleteSession,
     deleteSessions,
@@ -100,7 +103,7 @@ export function SessionListPage() {
   // Fetch sessions on mount, navigation, projectSlug or includeEmpty changes
   useEffect(() => {
     if (projectSlug) {
-      fetchSessions(projectSlug);
+      fetchSessions(projectSlug, { limit: 20 });
     }
   }, [projectSlug, fetchSessions, location.key, includeEmpty]);
 
@@ -118,7 +121,7 @@ export function SessionListPage() {
 
   const handleRefresh = useCallback(async () => {
     if (projectSlug) {
-      await fetchSessions(projectSlug);
+      await fetchSessions(projectSlug, { limit: 20 });
     }
   }, [projectSlug, fetchSessions]);
 
@@ -561,6 +564,23 @@ export function SessionListPage() {
                 onEditEnd={() => setEditingSessionId(null)}
               />
             ))}
+            {hasMore && projectSlug && (
+              <button
+                onClick={() => loadMoreSessions(projectSlug, { limit: 20 })}
+                disabled={isLoadingMore}
+                className="w-full py-3 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                data-testid="load-more-sessions"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    {t('session.loadingMore')}
+                  </>
+                ) : (
+                  t('session.loadMore')
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>
