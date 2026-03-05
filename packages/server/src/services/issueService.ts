@@ -129,11 +129,13 @@ function extractAttachments(content: string): IssueAttachment[] {
   if (!section) return [];
 
   const attachments: IssueAttachment[] = [];
-  const lineRegex = /^- \[([^\]]+)\]\([^)]+\/([^/)]+)\)\s*<!--\s*size:(\d+)\s+type:(\S+)\s*-->/gm;
+  const lineRegex = /^- \[((?:[^\]\\]|\\.)+)\]\([^)]+\/([^/)]+)\)\s*<!--\s*size:(\d+)\s+type:(\S+)\s*-->/gm;
   let match: RegExpExecArray | null;
   while ((match = lineRegex.exec(section)) !== null) {
+    // Unescape markdown link text
+    const originalName = match[1].replace(/\\([\[\]\\])/g, '$1');
     attachments.push({
-      originalName: match[1],
+      originalName,
       filename: match[2],
       size: parseInt(match[3], 10),
       mimeType: match[4],
@@ -221,6 +223,25 @@ ${data.linkedStory || ''}
 
 ${data.linkedEpic || ''}
 `;
+}
+
+/**
+ * Per-issue write lock to serialize attachment add/remove operations.
+ * Prevents concurrent writes from corrupting the ## Attachments section.
+ */
+const issueLocks = new Map<string, Promise<unknown>>();
+
+function withIssueLock<T>(issueId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = issueLocks.get(issueId) ?? Promise.resolve();
+  const next = prev.then(fn, fn); // always run fn after previous settles
+  issueLocks.set(issueId, next);
+  // Clean up after completion to avoid memory leak
+  next.then(() => {
+    if (issueLocks.get(issueId) === next) {
+      issueLocks.delete(issueId);
+    }
+  });
+  return next;
 }
 
 class IssueService {
@@ -360,7 +381,7 @@ class IssueService {
 
     const existing = parseIssueMarkdown(content, issueId);
 
-    const updated = generateIssueMarkdown({
+    let updated = generateIssueMarkdown({
       title: data.title ?? existing.title,
       status: data.status ?? existing.status,
       description: data.description ?? existing.description ?? '',
@@ -369,6 +390,12 @@ class IssueService {
       linkedStory: data.linkedStory ?? existing.linkedStory ?? '',
       linkedEpic: data.linkedEpic ?? existing.linkedEpic ?? '',
     });
+
+    // Preserve existing ## Attachments section
+    const existingAttachments = extractAttachments(content);
+    if (existingAttachments.length > 0) {
+      updated = updateAttachmentsSection(updated, existingAttachments, issueId);
+    }
 
     // Atomic write: write to temp file then rename to prevent partial writes
     const tmpPath = `${filePath}.${crypto.randomBytes(4).toString('hex')}.tmp`;
@@ -403,6 +430,14 @@ class IssueService {
         throw err;
       }
       throw error;
+    }
+
+    // Clean up attachment directory if it exists
+    const attachDir = await this.resolveAttachmentsDir(issuesDir, issueId);
+    try {
+      await fs.rm(attachDir, { recursive: true, force: true });
+    } catch {
+      // Best-effort cleanup — don't fail the delete
     }
   }
 
@@ -557,6 +592,14 @@ class IssueService {
     issueId: string,
     file: { originalname: string; buffer: Buffer; mimetype: string; size: number }
   ): Promise<IssueAttachment> {
+    return withIssueLock(issueId, () => this._addAttachment(projectPath, issueId, file));
+  }
+
+  private async _addAttachment(
+    projectPath: string,
+    issueId: string,
+    file: { originalname: string; buffer: Buffer; mimetype: string; size: number }
+  ): Promise<IssueAttachment> {
     if (!validateIssueId(issueId)) {
       const err = new Error('Invalid issue ID');
       (err as NodeJS.ErrnoException).code = 'INVALID_ISSUE_ID';
@@ -630,6 +673,10 @@ class IssueService {
    * Remove an attachment from an issue.
    */
   async removeAttachment(projectPath: string, issueId: string, filename: string): Promise<void> {
+    return withIssueLock(issueId, () => this._removeAttachment(projectPath, issueId, filename));
+  }
+
+  private async _removeAttachment(projectPath: string, issueId: string, filename: string): Promise<void> {
     if (!validateIssueId(issueId)) {
       const err = new Error('Invalid issue ID');
       (err as NodeJS.ErrnoException).code = 'INVALID_ISSUE_ID';
@@ -713,9 +760,16 @@ class IssueService {
 /**
  * Update or create the ## Attachments section in issue markdown.
  */
+/**
+ * Escape markdown link-breaking characters in display text.
+ */
+function escapeMarkdownLinkText(text: string): string {
+  return text.replace(/[\[\]\\]/g, (ch) => `\\${ch}`);
+}
+
 function updateAttachmentsSection(content: string, attachments: IssueAttachment[], issueId: string): string {
   const attachmentLines = attachments.map(
-    (a) => `- [${a.originalName}](${ATTACHMENTS_DIR_NAME}/${issueId}/${a.filename}) <!-- size:${a.size} type:${a.mimeType} -->`
+    (a) => `- [${escapeMarkdownLinkText(a.originalName)}](${ATTACHMENTS_DIR_NAME}/${issueId}/${a.filename}) <!-- size:${a.size} type:${a.mimeType} -->`
   );
   const newSection = attachments.length > 0
     ? `## Attachments\n\n${attachmentLines.join('\n')}\n`
