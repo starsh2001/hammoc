@@ -129,9 +129,10 @@ class NotificationService {
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
     let message = `✅ <b>${t('notification.complete.title')}</b>\nSession: <code>${sessionId}</code>`;
-    if (queueProgress) {
-      const pct = Math.round((queueProgress.current / queueProgress.total) * 100);
-      message += `\n📊 ${t('notification.complete.queueProgress', { current: queueProgress.current, total: queueProgress.total, pct })}`;
+    if (queueProgress && queueProgress.total > 0) {
+      const current = Math.max(0, Math.min(queueProgress.current, queueProgress.total));
+      const pct = Math.round((current / queueProgress.total) * 100);
+      message += `\n📊 ${t('notification.complete.queueProgress', { current, total: queueProgress.total, pct })}`;
     }
     if (lastContent) {
       const MAX_LEN = 500;
