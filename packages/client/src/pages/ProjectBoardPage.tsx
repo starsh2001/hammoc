@@ -200,9 +200,13 @@ export function ProjectBoardPage() {
       setEditingIssue(item);
       return;
     }
+    if (item.type === 'epic') {
+      handleViewEpicStories(item);
+      return;
+    }
     if (!projectSlug || !item.filePath) return;
     useFileStore.getState().openFileInEditor(projectSlug, item.filePath);
-  }, [projectSlug]);
+  }, [projectSlug, handleViewEpicStories]);
 
   // Normalize story status (fix non-standard statuses like "Ready for Done")
   const handleNormalizeStatus = useCallback(async (item: BoardItem) => {

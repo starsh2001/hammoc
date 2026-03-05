@@ -10,12 +10,14 @@
     "language": "Language",
     "permissionMode": "Permission Mode",
     "permissionModeLabel": {
+      "latest": "Last Used",
       "plan": "Plan",
       "default": "Ask before edits",
       "acceptEdits": "Edit Automatically",
       "bypass": "Bypass"
     },
     "permissionDesc": {
+      "latest": "New sessions keep the permission mode from the previous session",
       "plan": "Suggests a plan before code changes",
       "default": "Always asks for confirmation before editing files",
       "acceptEdits": "Automatically performs file edits",

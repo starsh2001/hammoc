@@ -263,6 +263,8 @@ interface ChatActions {
   setSelectedModel: (model: string) => void;
   /** Reset selected model to user's default preference */
   resetSelectedModel: () => void;
+  /** Reset permission mode to user's default preference */
+  resetPermissionMode: () => void;
   /** Set active model reported by SDK */
   setActiveModel: (model: string | null) => void;
   /** Toggle all thinking blocks expanded/collapsed */
@@ -290,7 +292,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamCompletedAt: null,
   streamCompleteCount: 0,
   projectSettings: null,
-  permissionMode: usePreferencesStore.getState().preferences.permissionMode ?? 'default',
+  permissionMode: (() => {
+    const prefs = usePreferencesStore.getState().preferences;
+    if (prefs.permissionMode === 'latest') return prefs.lastPermissionMode ?? 'default';
+    return prefs.permissionMode ?? 'default';
+  })(),
   contextUsage: null,
   subscriptionRateLimit: null,
   apiHealth: null,
@@ -818,8 +824,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   setPermissionMode: (mode: PermissionMode) => {
     set({ permissionMode: mode });
-    // Persist to server preferences
-    usePreferencesStore.getState().updatePreference('permissionMode', mode);
+    // When preference is 'latest', persist the actual mode so it carries
+    // across sessions and page refreshes.
+    const pref = usePreferencesStore.getState().preferences.permissionMode;
+    if (pref === 'latest') {
+      usePreferencesStore.getState().updatePreference('lastPermissionMode', mode);
+    }
     // If streaming, notify server to update SDK's permission mode in real-time
     if (get().isStreaming) {
       const socket = getSocket();
@@ -1103,6 +1113,22 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const globalDefault = usePreferencesStore.getState().preferences.defaultModel || '';
     const effectiveDefault = projectSettings?.modelOverride ?? globalDefault;
     set({ selectedModel: effectiveDefault });
+  },
+
+  resetPermissionMode: () => {
+    const projectSettings = get().projectSettings;
+    if (projectSettings?.permissionModeOverride) {
+      set({ permissionMode: projectSettings.permissionModeOverride });
+      return;
+    }
+    const prefs = usePreferencesStore.getState().preferences;
+    if (prefs.permissionMode === 'latest') {
+      // 'latest': keep last-used mode (or fall back to stored lastPermissionMode)
+      const last = prefs.lastPermissionMode ?? get().permissionMode;
+      set({ permissionMode: last });
+    } else {
+      set({ permissionMode: prefs.permissionMode ?? 'default' });
+    }
   },
 
   setActiveModel: (model: string | null) => set({ activeModel: model }),
