@@ -24,6 +24,9 @@ let segmentCleanupTimeoutId: ReturnType<typeof setTimeout> | null = null;
 /** Buffer for permission requests that arrive before their tool:call segment */
 const pendingPermissionBuffer = new Map<string, string>();
 
+/** Buffer for tool input updates that arrive before their tool:call segment */
+const pendingInputBuffer = new Map<string, Record<string, unknown>>();
+
 /** Streaming tool call state */
 export interface StreamingToolCall {
   id: string;
@@ -470,14 +473,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (bufferedPermissionId) {
       pendingPermissionBuffer.delete(toolCall.id);
     }
+    // Check if a tool input update arrived before this tool segment
+    // (e.g. ExitPlanMode's enriched input with 'plan' field from permission:request)
+    const bufferedInput = pendingInputBuffer.get(toolCall.id);
+    if (bufferedInput) {
+      pendingInputBuffer.delete(toolCall.id);
+    }
     // Add tool segment with startedAt timestamp (previous text segment is automatically "closed")
     // If a buffered permission exists, attach it immediately
+    // If a buffered input exists, merge it (enriched input takes precedence)
     set({
       streamingSegments: [
         ...segments,
         {
           type: 'tool',
-          toolCall: { ...toolCall, startedAt: toolCall.startedAt ?? Date.now() },
+          toolCall: { ...toolCall, ...(bufferedInput && { input: bufferedInput }), startedAt: toolCall.startedAt ?? Date.now() },
           status: 'pending',
           ...(bufferedPermissionId && { permissionId: bufferedPermissionId, permissionStatus: 'waiting' as const }),
         },
@@ -487,6 +497,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   updateStreamingToolCallInput: (toolCallId: string, input: Record<string, unknown>) => {
     const segments = get().streamingSegments;
+    const found = segments.some(
+      (seg) => seg.type === 'tool' && seg.toolCall.id === toolCallId
+    );
+    if (!found) {
+      // Buffer the input — tool:call segment hasn't arrived yet (race condition)
+      pendingInputBuffer.set(toolCallId, input);
+      return;
+    }
     const updated = segments.map((seg) =>
       seg.type === 'tool' && seg.toolCall.id === toolCallId
         ? { ...seg, toolCall: { ...seg.toolCall, input } }
@@ -524,6 +542,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       msgCount: useMessageStore.getState().messages.length,
     });
     pendingPermissionBuffer.clear();
+    pendingInputBuffer.clear();
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
@@ -697,6 +716,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       msgCount: useMessageStore.getState().messages.length,
     });
     pendingPermissionBuffer.clear();
+    pendingInputBuffer.clear();
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
