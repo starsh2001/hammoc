@@ -224,6 +224,17 @@ class BmadStatusService {
       // while others (1–19) are defined in PRD shard files like 6-epic-details.md
       {
         const shardedDir = path.join(projectRoot, config.prdShardedLocation);
+        // Track files already scanned in Step 1 to avoid double-counting planned stories
+        const scannedFiles = new Set<string>();
+        if (config.epicFilePattern) {
+          const pattern = this.epicFilePatternToRegex(config.epicFilePattern);
+          try {
+            const files = await fs.readdir(shardedDir);
+            for (const file of files) {
+              if (file.match(pattern)) scannedFiles.add(file);
+            }
+          } catch { /* ignore */ }
+        }
         try {
           const files = await fs.readdir(shardedDir);
           for (const file of files) {
@@ -239,7 +250,10 @@ class BmadStatusService {
                 epicFileMap.set(epicNum, `${config.prdShardedLocation}/${file}`);
               }
             }
-            this.countPlannedStories(content, plannedMap);
+            // Only count planned stories for files not already scanned in Step 1
+            if (!scannedFiles.has(file)) {
+              this.countPlannedStories(content, plannedMap);
+            }
           }
         } catch {
           // Directory not found

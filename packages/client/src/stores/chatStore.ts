@@ -824,12 +824,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   setPermissionMode: (mode: PermissionMode) => {
     set({ permissionMode: mode });
-    // When preference is 'latest', persist the actual mode so it carries
-    // across sessions and page refreshes.
-    const pref = usePreferencesStore.getState().preferences.permissionMode;
-    if (pref === 'latest') {
-      usePreferencesStore.getState().updatePreference('lastPermissionMode', mode);
-    }
+    // Always persist the actual mode as lastPermissionMode so that switching
+    // to 'latest' in the future correctly restores the most recently used mode.
+    usePreferencesStore.getState().updatePreference('lastPermissionMode', mode);
     // If streaming, notify server to update SDK's permission mode in real-time
     if (get().isStreaming) {
       const socket = getSocket();
