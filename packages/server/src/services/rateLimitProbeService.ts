@@ -85,6 +85,7 @@ class RateLimitProbeService {
         if (response.status === 401 || response.status === 403) {
           this.cachedToken = null;
           this.tokenCachedAt = 0;
+          this.consecutiveThrottles = 0;
           log.debug('Usage API auth failed (status: %d), token cache invalidated', response.status);
           // Auth errors mean the API is reachable, just credentials are invalid
           this.updateApiHealth(true);
@@ -94,6 +95,7 @@ class RateLimitProbeService {
           // 429 means the API is reachable, just throttled
           this.updateApiHealth(true);
         } else {
+          this.consecutiveThrottles = 0;
           log.debug('Usage API error (status: %d)', response.status);
           this.updateApiHealth(false, `API returned ${response.status}`);
         }
@@ -112,6 +114,7 @@ class RateLimitProbeService {
       return result;
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
+      this.consecutiveThrottles = 0;
       log.debug('Usage API fetch failed: %s', errMsg);
       this.updateApiHealth(false, errMsg);
       return null;

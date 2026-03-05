@@ -148,6 +148,8 @@ export class QueueService {
     this._finalTotalItems = this.items.length;
     this._isRunning = false;
     this.isExecuting = false;
+    this.isPaused = false;
+    this.pauseReason = undefined;
     this.lastError = null;
     this._isCompleted = false;
     this._isErrored = false;
