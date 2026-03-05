@@ -130,7 +130,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const { authenticated, passwordConfigured } = await authApi.status();
       set({ isAuthenticated: authenticated, isPasswordConfigured: passwordConfigured });
     } catch {
-      set({ isAuthenticated: false, isPasswordConfigured: null });
+      // Network error (e.g. mobile resume, unstable connection) — keep current
+      // auth state. Only the server's explicit rejection should clear auth.
+      // The user's cookie may still be valid; clearing auth here causes a
+      // false logged-out state that only resolves on manual page refresh.
     }
   },
 

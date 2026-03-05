@@ -193,21 +193,21 @@ export function QueueLockedBanner({
       data-testid="queue-locked-banner"
       className={`w-full content-container banner-full-mobile sticky top-0 z-10 shadow-sm transition-all duration-300 ${bgClass}`}
     >
-      {/* Main row */}
-      <div className="px-4 py-1.5">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
+      {/* Main row — always single-line (horizontal) */}
+      <div className="px-3 sm:px-4 py-1 sm:py-1.5">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Status icon + progress */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
             {isPausedWithError ? (
-              <AlertTriangle size={16} className="text-red-600 dark:text-red-400 flex-shrink-0" aria-hidden="true" />
+              <AlertTriangle size={14} className="text-red-600 dark:text-red-400 flex-shrink-0 sm:w-4 sm:h-4" aria-hidden="true" />
             ) : isPaused ? (
-              <Pause size={16} className="text-amber-600 dark:text-amber-400 flex-shrink-0" aria-hidden="true" />
+              <Pause size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 sm:w-4 sm:h-4" aria-hidden="true" />
             ) : (
-              <Loader2 size={16} className="text-indigo-600 dark:text-indigo-400 flex-shrink-0 animate-spin" aria-hidden="true" />
+              <Loader2 size={14} className="text-indigo-600 dark:text-indigo-400 flex-shrink-0 animate-spin sm:w-4 sm:h-4" aria-hidden="true" />
             )}
 
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              <span className={`font-medium text-sm whitespace-nowrap ${
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
+              <span className={`font-medium text-xs sm:text-sm whitespace-nowrap ${
                 isPausedWithError ? 'text-red-800 dark:text-red-200' :
                 isPaused ? 'text-amber-800 dark:text-amber-200' :
                 'text-indigo-800 dark:text-indigo-200'
@@ -216,7 +216,7 @@ export function QueueLockedBanner({
                  isPaused ? t('queue.locked.paused') :
                  t('queue.locked.running')}
               </span>
-              <span className={`text-sm whitespace-nowrap ${
+              <span className={`text-xs sm:text-sm whitespace-nowrap ${
                 isPausedWithError ? 'text-red-600 dark:text-red-300' :
                 isPaused ? 'text-amber-600 dark:text-amber-300' :
                 'text-indigo-600 dark:text-indigo-300'
@@ -224,7 +224,7 @@ export function QueueLockedBanner({
                 {progress.current + 1}/{progress.total}
               </span>
 
-              {/* Prompt preview - inline */}
+              {/* Prompt preview - desktop only */}
               {currentPromptPreview && (
                 <span className={`text-xs truncate hidden sm:inline opacity-70 ${
                   isPausedWithError ? 'text-red-600 dark:text-red-300' :
@@ -237,21 +237,20 @@ export function QueueLockedBanner({
             </div>
           </div>
 
-          {/* Control buttons */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Control buttons — icon-only on mobile, icon+text on desktop */}
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
             {isRunning && !isPaused && (
               <button
                 type="button"
                 onClick={onPause}
                 aria-label={t('queue.locked.pauseQueue')}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md
+                className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 text-xs font-medium rounded-md
                            bg-white/80 dark:bg-gray-800/80 text-indigo-700 dark:text-indigo-300
                            hover:bg-white dark:hover:bg-gray-800
-                           min-h-11 sm:min-h-0
                            transition-colors"
               >
-                <Pause size={12} aria-hidden="true" />
-                {t('queue.pause')}
+                <Pause size={14} className="sm:w-3 sm:h-3" aria-hidden="true" />
+                <span className="hidden sm:inline">{t('queue.pause')}</span>
               </button>
             )}
 
@@ -260,17 +259,16 @@ export function QueueLockedBanner({
                 type="button"
                 onClick={onResume}
                 aria-label={t('queue.locked.resumeQueue')}
-                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md
+                className={`flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 text-xs font-medium rounded-md
                            bg-white/80 dark:bg-gray-800/80
-                           min-h-11 sm:min-h-0
                            transition-colors ${
                              isPausedWithError
                                ? 'text-red-700 dark:text-red-300 hover:bg-white dark:hover:bg-gray-800'
                                : 'text-amber-700 dark:text-amber-300 hover:bg-white dark:hover:bg-gray-800'
                            }`}
               >
-                <Play size={12} aria-hidden="true" />
-                {t('queue.resume')}
+                <Play size={14} className="sm:w-3 sm:h-3" aria-hidden="true" />
+                <span className="hidden sm:inline">{t('queue.resume')}</span>
               </button>
             )}
 
@@ -278,9 +276,8 @@ export function QueueLockedBanner({
               type="button"
               onClick={handleAbort}
               aria-label={t('queue.locked.abortQueue')}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md
+              className={`flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 text-xs font-medium rounded-md
                          bg-white/80 dark:bg-gray-800/80
-                         min-h-11 sm:min-h-0
                          transition-colors ${
                            isPausedWithError
                              ? 'text-red-700 dark:text-red-300 hover:bg-white dark:hover:bg-gray-800'
@@ -289,14 +286,14 @@ export function QueueLockedBanner({
                                : 'text-indigo-700 dark:text-indigo-300 hover:bg-white dark:hover:bg-gray-800'
                          }`}
             >
-              <Square size={12} aria-hidden="true" />
-              {t('queue.abort')}
+              <Square size={14} className="sm:w-3 sm:h-3" aria-hidden="true" />
+              <span className="hidden sm:inline">{t('queue.abort')}</span>
             </button>
 
-            {/* Queue editor link */}
+            {/* Queue editor link — desktop only */}
             <Link
               to={`/project/${projectSlug}/queue`}
-              className={`text-xs hover:underline flex items-center gap-1 flex-shrink-0 ml-1 ${
+              className={`text-xs hover:underline hidden sm:flex items-center gap-1 flex-shrink-0 ml-1 ${
                 isPausedWithError ? 'text-red-600 dark:text-red-400' :
                 isPaused ? 'text-amber-600 dark:text-amber-400' :
                 'text-indigo-600 dark:text-indigo-400'
