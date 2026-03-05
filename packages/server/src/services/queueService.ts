@@ -145,13 +145,14 @@ export class QueueService {
 
   async abort(): Promise<void> {
     log.info(`ABORT: index=${this.currentIndex}/${this.items.length}, sessionId=${this.currentSessionId}`);
+    this._finalTotalItems = this.items.length;
     this._isRunning = false;
     this.isExecuting = false;
     this.lastError = null;
     this._isCompleted = false;
     this._isErrored = false;
     this.abortController?.abort();
-    this.emitProgress('completed');
+    this.emitProgress('aborted');
   }
 
   /** Dismiss the completed/errored terminal state banner */
@@ -164,6 +165,10 @@ export class QueueService {
   }
 
   getState() {
+    // Include items when queue has meaningful state to display
+    const hasActiveState = this._isRunning || this.isPaused || this._isCompleted || this._isErrored;
+    // After abort: _finalTotalItems is set, items are still in memory
+    const hasAbortedState = !hasActiveState && this._finalTotalItems > 0;
     return {
       isRunning: this._isRunning,
       isPaused: this.isPaused,
@@ -175,8 +180,7 @@ export class QueueService {
       lockedSessionId: this.lockedSessionId,
       currentModel: this.currentModel,
       lastError: this.lastError,
-      items: this._isRunning || this.isPaused || this._isCompleted || this._isErrored
-        ? this.items : undefined,
+      items: hasActiveState || hasAbortedState ? this.items : undefined,
       completedSessionIds: (() => {
         // Include current running item's sessionId so clients joining mid-run see the link
         const all = new Map(this.completedSessionIds);
@@ -616,11 +620,11 @@ export class QueueService {
     return `${baseUrl}/projects/${this.projectSlug}/sessions/${this.currentSessionId || ''}`;
   }
 
-  private emitProgress(status: 'running' | 'paused' | 'completed' | 'error'): void {
+  private emitProgress(status: 'running' | 'paused' | 'completed' | 'error' | 'aborted'): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.io.to(`project:${this.projectSlug}`).emit('queue:progress' as any, {
       currentIndex: this.currentIndex,
-      totalItems: this.items.length,
+      totalItems: this._isRunning || this.isPaused ? this.items.length : this._finalTotalItems,
       status,
       pauseReason: this.pauseReason,
       sessionId: this.currentSessionId || '',
