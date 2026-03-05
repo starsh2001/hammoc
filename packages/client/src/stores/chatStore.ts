@@ -741,6 +741,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const state = get();
     if (!state.isStreaming) return;
 
+    pendingPermissionBuffer.clear();
+    pendingInputBuffer.clear();
+
     // Clear delay timeout
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
@@ -871,6 +874,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       isStreaming: prev.isStreaming,
       wasPending: prev.segmentsPendingClear,
     });
+    pendingPermissionBuffer.clear();
+    pendingInputBuffer.clear();
     set({ streamingSegments: [], segmentsPendingClear: false });
   },
 
