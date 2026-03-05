@@ -29,7 +29,38 @@ vi.mock('../preferencesService.js', () => ({
 }));
 
 // Import after mocks
-import { notificationService } from '../notificationService.js';
+import { notificationService, formatAskQuestionPrompt } from '../notificationService.js';
+
+describe('formatAskQuestionPrompt', () => {
+  it('returns question with numbered options', () => {
+    const result = formatAskQuestionPrompt({
+      questions: [{
+        question: 'Which DB?',
+        options: [
+          { label: 'PostgreSQL' },
+          { label: 'MySQL' },
+          { label: 'SQLite' },
+        ],
+      }],
+    });
+    expect(result).toBe('Which DB?\n1. PostgreSQL\n2. MySQL\n3. SQLite');
+  });
+
+  it('returns question only when no options', () => {
+    const result = formatAskQuestionPrompt({
+      questions: [{ question: 'What is your name?' }],
+    });
+    expect(result).toBe('What is your name?');
+  });
+
+  it('returns empty string when questions array is empty', () => {
+    expect(formatAskQuestionPrompt({ questions: [] })).toBe('');
+  });
+
+  it('returns empty string when questions is undefined', () => {
+    expect(formatAskQuestionPrompt({})).toBe('');
+  });
+});
 
 describe('NotificationService', () => {
   beforeEach(() => {
@@ -135,6 +166,58 @@ describe('NotificationService', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
+    it('TC-N7a: notifyComplete includes truncated lastContent when provided', async () => {
+      mockReadPreferences.mockResolvedValueOnce({
+        telegram: {
+          botToken: 'tok', chatId: 'cid', enabled: true,
+          notifyComplete: true,
+        },
+      });
+      await notificationService.reload();
+
+      await notificationService.notifyComplete('sess', 'Hello, this is the last response.');
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.text).toContain('Hello, this is the last response.');
+      expect(body.text).toContain('<pre>');
+    });
+
+    it('TC-N7b: notifyComplete truncates long lastContent at 500 chars', async () => {
+      mockReadPreferences.mockResolvedValueOnce({
+        telegram: {
+          botToken: 'tok', chatId: 'cid', enabled: true,
+          notifyComplete: true,
+        },
+      });
+      await notificationService.reload();
+
+      const longContent = 'A'.repeat(600);
+      await notificationService.notifyComplete('sess', longContent);
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      // 500 chars + ellipsis
+      expect(body.text).toContain('A'.repeat(500) + '…');
+      expect(body.text).not.toContain('A'.repeat(501));
+    });
+
+    it('TC-N7c: notifyComplete escapes HTML in lastContent', async () => {
+      mockReadPreferences.mockResolvedValueOnce({
+        telegram: {
+          botToken: 'tok', chatId: 'cid', enabled: true,
+          notifyComplete: true,
+        },
+      });
+      await notificationService.reload();
+
+      await notificationService.notifyComplete('sess', 'Use <script> & "quotes"');
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.text).toContain('&lt;script&gt;');
+      expect(body.text).toContain('&amp;');
+      expect(body.text).not.toContain('<script>');
+    });
+
     it('TC-N7: notifyComplete does not send when shouldNotifyComplete is false', async () => {
       mockReadPreferences.mockResolvedValueOnce({
         telegram: {
@@ -146,6 +229,33 @@ describe('NotificationService', () => {
 
       await notificationService.notifyComplete('sess');
       expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('TC-N9: notifyInputRequired includes options from AskUserQuestion', async () => {
+      mockReadPreferences.mockResolvedValueOnce({
+        telegram: {
+          botToken: 'tok', chatId: 'cid', enabled: true,
+          notifyPermission: true,
+        },
+      });
+      await notificationService.reload();
+
+      const prompt = formatAskQuestionPrompt({
+        questions: [{
+          question: 'Which approach?',
+          options: [
+            { label: 'Option A', description: 'First approach' },
+            { label: 'Option B', description: 'Second approach' },
+          ],
+        }],
+      });
+
+      await notificationService.notifyInputRequired('sess', 'AskUserQuestion', prompt);
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.text).toContain('Which approach?');
+      expect(body.text).toContain('1. Option A');
+      expect(body.text).toContain('2. Option B');
     });
 
     it('TC-N8: notifyError does not send when shouldNotifyError is false', async () => {

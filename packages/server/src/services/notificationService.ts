@@ -14,6 +14,7 @@ class NotificationService {
   private effectiveBotToken: string;
   private effectiveChatId: string;
   private enabled: boolean;
+  private baseUrl: string;
   private shouldNotifyPermission: boolean;
   private shouldNotifyComplete: boolean;
   private shouldNotifyError: boolean;
@@ -27,6 +28,7 @@ class NotificationService {
     this.effectiveBotToken = config.telegram.botToken;
     this.effectiveChatId = config.telegram.chatId;
     this.enabled = config.telegram.enabled;
+    this.baseUrl = '';
     this.shouldNotifyPermission = true;
     this.shouldNotifyComplete = true;
     this.shouldNotifyError = true;
@@ -49,6 +51,7 @@ class NotificationService {
       this.effectiveBotToken = telegram.botToken ?? config.telegram.botToken;
       this.effectiveChatId = telegram.chatId ?? config.telegram.chatId;
       this.enabled = (telegram.enabled ?? false) && !!this.effectiveBotToken && !!this.effectiveChatId;
+      this.baseUrl = telegram.baseUrl ?? process.env.BASE_URL ?? '';
       this.shouldNotifyPermission = telegram.notifyPermission ?? true;
       this.shouldNotifyComplete = telegram.notifyComplete ?? true;
       this.shouldNotifyError = telegram.notifyError ?? true;
@@ -59,6 +62,11 @@ class NotificationService {
     } catch {
       // If preferences can't be read, keep current config
     }
+  }
+
+  /** Get the configured base URL for building access links */
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 
   /** Send a Telegram message (best-effort, silent fail) */
@@ -91,6 +99,19 @@ class NotificationService {
     return 'en';
   }
 
+  /** Build an access link suffix if baseUrl is configured */
+  private buildLink(): string {
+    return this.baseUrl ? `\n\n🔗 ${this.baseUrl}` : '';
+  }
+
+  /** Escape HTML special characters for Telegram HTML parse_mode */
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
   /** Notify that user input is needed (permission or AskUserQuestion) */
   async notifyInputRequired(sessionId: string, toolName: string, prompt?: string): Promise<void> {
     if (!this.shouldNotifyPermission) return;
@@ -99,15 +120,23 @@ class NotificationService {
     const emoji = toolName === 'AskUserQuestion' ? '❓' : '🔐';
     const label = toolName === 'AskUserQuestion' ? t('notification.question.title') : t('notification.permission.title');
     const detail = prompt ? `\n${prompt}` : '';
-    await this.send(`${emoji} <b>${label}</b>\nSession: <code>${sessionId}</code>${detail}`);
+    await this.send(`${emoji} <b>${label}</b>\nSession: <code>${sessionId}</code>${detail}${this.buildLink()}`);
   }
 
-  /** Notify that streaming completed successfully */
-  async notifyComplete(sessionId: string): Promise<void> {
+  /** Notify that streaming completed successfully, optionally including last assistant message */
+  async notifyComplete(sessionId: string, lastContent?: string): Promise<void> {
     if (!this.shouldNotifyComplete) return;
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
-    await this.send(`✅ <b>${t('notification.complete.title')}</b>\nSession: <code>${sessionId}</code>`);
+    let message = `✅ <b>${t('notification.complete.title')}</b>\nSession: <code>${sessionId}</code>`;
+    if (lastContent) {
+      const MAX_LEN = 500;
+      const escaped = this.escapeHtml(lastContent);
+      const truncated = escaped.length > MAX_LEN ? escaped.slice(0, MAX_LEN) + '…' : escaped;
+      message += `\n\n<b>${t('notification.complete.lastMessage')}</b>\n<pre>${truncated}</pre>`;
+    }
+    message += this.buildLink();
+    await this.send(message);
   }
 
   /** Notify that an error occurred during streaming */
@@ -115,7 +144,7 @@ class NotificationService {
     if (!this.shouldNotifyError) return;
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
-    await this.send(`❌ <b>${t('notification.error.title')}</b>\nSession: <code>${sessionId}</code>\n${error}`);
+    await this.send(`❌ <b>${t('notification.error.title')}</b>\nSession: <code>${sessionId}</code>\n${error}${this.buildLink()}`);
   }
 
   /** Notify that queue execution has started */
@@ -194,6 +223,24 @@ class NotificationService {
       return { success: false, error: message };
     }
   }
+}
+
+/**
+ * Extract question text with options from AskUserQuestion tool input.
+ * Used by websocket.ts and queueService.ts to build Telegram notification prompts.
+ */
+export function formatAskQuestionPrompt(input: Record<string, unknown>): string {
+  const questions = input.questions as Array<{
+    question: string;
+    options?: Array<{ label: string; description?: string }>;
+  }> | undefined;
+  const q = questions?.[0];
+  if (!q) return '';
+  let prompt = q.question;
+  if (q.options?.length) {
+    prompt += '\n' + q.options.map((o, i) => `${i + 1}. ${o.label}`).join('\n');
+  }
+  return prompt;
 }
 
 export const notificationService = new NotificationService();
