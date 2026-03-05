@@ -355,6 +355,39 @@ export function TelegramSettingsSection() {
         )}
       </div>
 
+      {/* Base URL */}
+      <div>
+        <label
+          htmlFor="base-url"
+          className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
+        >
+          {t('telegram.baseUrl')}
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            id="base-url"
+            type="text"
+            value={settings.baseUrl || ''}
+            onChange={(e) => {
+              setSettings({ ...settings, baseUrl: e.target.value });
+            }}
+            onBlur={(e) => {
+              const value = e.target.value.trim();
+              // Remove trailing slash
+              const normalized = value.replace(/\/+$/, '');
+              handleUpdate({ baseUrl: normalized || null });
+            }}
+            placeholder={t('telegram.baseUrlPlaceholder')}
+            className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {t('telegram.baseUrlHint')}
+        </p>
+      </div>
+
       {/* Enable Toggle */}
       <div>
         <div className="flex items-center gap-3">
@@ -383,6 +416,30 @@ export function TelegramSettingsSection() {
             {t('telegram.enableHint')}
           </p>
         )}
+      </div>
+
+      {/* Always Notify Toggle */}
+      <div className={!settings.enabled ? 'opacity-50' : ''}>
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="always-notify"
+            checked={settings.alwaysNotify}
+            onChange={() => handleUpdate({ alwaysNotify: !settings.alwaysNotify })}
+            disabled={!settings.enabled || updating}
+            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600
+                       text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <label
+            htmlFor="always-notify"
+            className="text-sm font-medium text-gray-900 dark:text-white"
+          >
+            {t('telegram.alwaysNotify')}
+          </label>
+        </div>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-7">
+          {t('telegram.alwaysNotifyHint')}
+        </p>
       </div>
 
       {/* Notification Type Toggles */}

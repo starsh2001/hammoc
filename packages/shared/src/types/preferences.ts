@@ -56,6 +56,8 @@ export interface TelegramSettings {
   botToken?: string;
   chatId?: string;
   enabled?: boolean;
+  /** Base URL for access links in notifications (e.g. "http://192.168.1.100:3000") */
+  baseUrl?: string;
   notifyPermission?: boolean;
   notifyComplete?: boolean;
   notifyError?: boolean;
@@ -63,6 +65,8 @@ export interface TelegramSettings {
   notifyQueueComplete?: boolean;
   notifyQueueError?: boolean;
   notifyQueueInputRequired?: boolean;
+  /** Send notifications even when the session is visible (socket connected) */
+  alwaysNotify?: boolean;
 }
 
 /** GET /api/preferences/telegram response type */
@@ -70,6 +74,7 @@ export interface TelegramSettingsApiResponse {
   maskedBotToken: string;
   chatId: string;
   enabled: boolean;
+  baseUrl: string;
   notifyPermission: boolean;
   notifyComplete: boolean;
   notifyError: boolean;
@@ -77,6 +82,7 @@ export interface TelegramSettingsApiResponse {
   notifyQueueComplete: boolean;
   notifyQueueError: boolean;
   notifyQueueInputRequired: boolean;
+  alwaysNotify: boolean;
   envOverrides: string[];
   hasBotToken: boolean;
   hasChatId: boolean;
@@ -87,6 +93,7 @@ export interface UpdateTelegramSettingsRequest {
   botToken?: string | null;
   chatId?: string | null;
   enabled?: boolean;
+  baseUrl?: string | null;
   notifyPermission?: boolean;
   notifyComplete?: boolean;
   notifyError?: boolean;
@@ -94,6 +101,7 @@ export interface UpdateTelegramSettingsRequest {
   notifyQueueComplete?: boolean;
   notifyQueueError?: boolean;
   notifyQueueInputRequired?: boolean;
+  alwaysNotify?: boolean;
 }
 
 /** POST /api/preferences/telegram/test request body */
