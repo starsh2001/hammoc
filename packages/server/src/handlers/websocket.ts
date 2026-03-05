@@ -980,8 +980,8 @@ async function handleChatSend(
         requiresApproval: true,
       } as PermissionRequest);
 
-      // Notify via Telegram if no socket connected (user not watching)
-      if (stream.sockets.size === 0) {
+      // Notify via Telegram if no socket connected (or alwaysNotify enabled)
+      if (notificationService.shouldNotify(stream.sockets.size)) {
         const prompt = isAskUserQuestion
           ? formatAskQuestionPrompt(input as Record<string, unknown>)
           : `${toolName}`;
@@ -1097,8 +1097,8 @@ async function handleChatSend(
         message: sdkError.message,
       });
 
-      // Notify via Telegram if no socket connected
-      if (stream.sockets.size === 0) {
+      // Notify via Telegram if no socket connected (or alwaysNotify enabled)
+      if (notificationService.shouldNotify(stream.sockets.size)) {
         notificationService.notifyError(stream.sessionId, sdkError.message);
       }
     };
