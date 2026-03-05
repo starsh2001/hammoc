@@ -68,13 +68,13 @@ function getInitialViewMode(): 'kanban' | 'list' {
 }
 
 function getInitialVisibleColumns(): number {
-  if (typeof window === 'undefined') return 5;
+  if (typeof window === 'undefined') return 4;
   const stored = localStorage.getItem('bmad-board-visibleColumns');
   if (stored) {
     const num = parseInt(stored, 10);
     if (num >= 2 && num <= 10) return num;
   }
-  return 5;
+  return 4;
 }
 
 export const useBoardStore = create<BoardStore>((set, get) => ({

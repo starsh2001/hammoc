@@ -63,7 +63,7 @@ export function BoardCard({
 }: BoardCardProps) {
   const { t } = useTranslation('board');
   const typeBadge = TYPE_BADGE[item.type];
-  const isClickable = item.type === 'issue' || ((item.type === 'story' || item.type === 'epic') && !!item.filePath);
+  const isClickable = item.type === 'issue' || item.type === 'epic' || (item.type === 'story' && !!item.filePath);
 
   return (
     <div

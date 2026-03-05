@@ -27,7 +27,7 @@ export function GlobalSettingsSection() {
   const { t, i18n } = useTranslation('settings');
   const { preferences, overrides, updatePreference, setLanguage } = usePreferencesStore();
   const { theme, setTheme } = useTheme();
-  const permissionMode = useChatStore((s) => s.permissionMode);
+  const permissionModePref = preferences.permissionMode ?? 'default';
   const setPermissionMode = useChatStore((s) => s.setPermissionMode);
 
   const isOverridden = useCallback((field: string) => overrides.includes(field), [overrides]);
@@ -42,10 +42,14 @@ export function GlobalSettingsSection() {
     toast.success(t('toast.modelChanged'));
   }, [updatePreference, t]);
 
-  const handlePermissionChange = useCallback((value: PermissionMode) => {
-    setPermissionMode(value);
+  const handlePermissionChange = useCallback((value: PermissionMode | 'latest') => {
+    updatePreference('permissionMode', value);
+    // When a fixed mode is selected, also update the current session
+    if (value !== 'latest') {
+      setPermissionMode(value);
+    }
     toast.success(t('toast.permissionChanged'));
-  }, [setPermissionMode, t]);
+  }, [updatePreference, setPermissionMode, t]);
 
   const handleTimeoutChange = useCallback((value: number) => {
     updatePreference('chatTimeoutMs', value);
@@ -158,17 +162,18 @@ export function GlobalSettingsSection() {
         </legend>
         <div className="space-y-2">
           {([
-            { value: 'plan' as PermissionMode, labelKey: 'global.permissionModeLabel.plan', descKey: 'global.permissionDesc.plan' },
-            { value: 'default' as PermissionMode, labelKey: 'global.permissionModeLabel.default', descKey: 'global.permissionDesc.default' },
-            { value: 'acceptEdits' as PermissionMode, labelKey: 'global.permissionModeLabel.acceptEdits', descKey: 'global.permissionDesc.acceptEdits' },
-            { value: 'bypassPermissions' as PermissionMode, labelKey: 'global.permissionModeLabel.bypass', descKey: 'global.permissionDesc.bypass' },
+            { value: 'latest' as const, labelKey: 'global.permissionModeLabel.latest', descKey: 'global.permissionDesc.latest' },
+            { value: 'plan' as const, labelKey: 'global.permissionModeLabel.plan', descKey: 'global.permissionDesc.plan' },
+            { value: 'default' as const, labelKey: 'global.permissionModeLabel.default', descKey: 'global.permissionDesc.default' },
+            { value: 'acceptEdits' as const, labelKey: 'global.permissionModeLabel.acceptEdits', descKey: 'global.permissionDesc.acceptEdits' },
+            { value: 'bypassPermissions' as const, labelKey: 'global.permissionModeLabel.bypass', descKey: 'global.permissionDesc.bypass' },
           ]).map((opt) => (
             <label
               key={opt.value}
               htmlFor={`permission-${opt.value}`}
               className={`
                 flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                ${permissionMode === opt.value
+                ${permissionModePref === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                   : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }
@@ -179,13 +184,13 @@ export function GlobalSettingsSection() {
                 id={`permission-${opt.value}`}
                 name="permissionMode"
                 value={opt.value}
-                checked={permissionMode === opt.value}
+                checked={permissionModePref === opt.value}
                 onChange={() => handlePermissionChange(opt.value)}
                 className="mt-0.5"
                 aria-describedby={`permission-desc-${opt.value}`}
               />
               <div>
-                <span className={`text-sm font-medium ${permissionMode === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+                <span className={`text-sm font-medium ${permissionModePref === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
                   {t(opt.labelKey)}
                 </span>
                 <p

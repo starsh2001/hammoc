@@ -16,7 +16,9 @@ export interface UserPreferences {
   theme?: 'light' | 'dark' | 'system';
   layoutMode?: 'narrow' | 'wide';
   diffLayout?: 'side-by-side' | 'inline';
-  permissionMode?: PermissionMode;
+  permissionMode?: PermissionMode | 'latest';
+  /** Stores the actual last-used mode when permissionMode is 'latest' */
+  lastPermissionMode?: PermissionMode;
   commandFavorites?: string[];
   starFavorites?: Record<string, string[]>; // agentId → commands
   defaultModel?: string; // model ID (e.g. 'sonnet', 'claude-opus-4-6') or '' for CLI default

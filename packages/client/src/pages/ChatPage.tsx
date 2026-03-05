@@ -157,7 +157,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, streamCompleteCount } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, streamCompleteCount } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   const { logout } = useAuthStore();
@@ -436,11 +436,12 @@ export function ChatPage() {
       clearMessages();
       clearStreamingSegments();
       resetSelectedModel();
+      resetPermissionMode();
       pendingAgentCommandRef.current = agentCommand;
       const newSessionId = generateUUID();
       navigate(`/project/${projectSlug}/session/${newSessionId}`);
     }
-  }, [handleSendMessage, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
+  }, [handleSendMessage, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
 
   // Ref to keep latest handleSendMessage for use in fetchMessages callback (Story 8.3)
   const handleSendMessageRef = useRef(handleSendMessage);
@@ -764,11 +765,12 @@ export function ChatPage() {
       clearMessages();
       clearStreamingSegments();
       resetSelectedModel();
+      resetPermissionMode();
       pendingAgentCommandRef.current = confirmModal.agentCommand ?? null;
       const newSessionId = generateUUID();
       navigate(`/project/${projectSlug}/session/${newSessionId}`);
     }
-  }, [confirmModal.action, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
+  }, [confirmModal.action, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
 
   const handleSessionSelect = useCallback((selectedSessionId: string) => {
     closePanel();
@@ -780,8 +782,9 @@ export function ChatPage() {
     clearMessages();
     clearStreamingSegments();
     resetSelectedModel();
+    resetPermissionMode();
     navigate(`/project/${projectSlug}/session/${selectedSessionId}`, { replace: true });
-  }, [closePanel, sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
+  }, [closePanel, sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
 
   const handleNewSession = useCallback(() => {
     if (!projectSlug) return;
@@ -790,9 +793,10 @@ export function ChatPage() {
     clearMessages();
     clearStreamingSegments();
     resetSelectedModel();
+    resetPermissionMode();
     const newSessionId = generateUUID();
     navigate(`/project/${projectSlug}/session/${newSessionId}`);
-  }, [clearMessages, clearStreamingSegments, resetSelectedModel, navigate, projectSlug]);
+  }, [clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
 
   const handleCancelConfirm = useCallback(() => {
     setConfirmModal({ isOpen: false, action: 'agentLaunch' });

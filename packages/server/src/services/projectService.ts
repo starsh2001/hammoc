@@ -329,7 +329,8 @@ class ProjectService {
     return {
       ...projectSettings,
       effectiveModel: projectSettings.modelOverride ?? globalPrefs.defaultModel ?? '',
-      effectivePermissionMode: projectSettings.permissionModeOverride ?? globalPrefs.permissionMode ?? 'default',
+      effectivePermissionMode: projectSettings.permissionModeOverride
+        ?? (globalPrefs.permissionMode === 'latest' ? (globalPrefs.lastPermissionMode ?? 'default') : (globalPrefs.permissionMode ?? 'default')),
       _overrides,
     };
   }
