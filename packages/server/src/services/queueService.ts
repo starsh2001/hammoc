@@ -24,7 +24,7 @@ import i18next from '../i18n.js';
 
 const log = createLogger('queueService');
 import { projectService as _ps } from './projectService.js';
-import { notificationService as _ns } from './notificationService.js';
+import { notificationService as _ns, formatAskQuestionPrompt } from './notificationService.js';
 import { preferencesService as _prs } from './preferencesService.js';
 import {
   createHeadlessStream,
@@ -428,7 +428,7 @@ export class QueueService {
       // Notify via Telegram if no socket connected
       if (stream.sockets.size === 0) {
         const prompt = isAskUserQuestion
-          ? ((input as Record<string, unknown>).questions as Array<{ question: string }>)?.[0]?.question
+          ? formatAskQuestionPrompt(input as Record<string, unknown>)
           : `${toolName}`;
         this.notificationService.notifyInputRequired(stream.sessionId, toolName, prompt);
       }
@@ -618,7 +618,7 @@ export class QueueService {
   }
 
   private buildSessionUrl(): string {
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const baseUrl = this.notificationService.getBaseUrl() || `http://localhost:${process.env.PORT || 3000}`;
     return `${baseUrl}/projects/${this.projectSlug}/sessions/${this.currentSessionId || ''}`;
   }
 
