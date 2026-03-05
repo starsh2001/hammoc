@@ -28,7 +28,7 @@ import { SessionService } from '../services/sessionService.js';
 import { parseSDKError, AbortedError } from '../utils/errors.js';
 import { createSessionMiddleware } from '../middleware/session.js';
 import { config } from '../config/index.js';
-import { notificationService } from '../services/notificationService.js';
+import { notificationService, formatAskQuestionPrompt } from '../services/notificationService.js';
 import { preferencesService } from '../services/preferencesService.js';
 import { getOrCreateQueueService, getQueueInstances } from '../controllers/queueController.js';
 import { createLogger } from '../utils/logger.js';
@@ -983,7 +983,7 @@ async function handleChatSend(
       // Notify via Telegram if no socket connected (user not watching)
       if (stream.sockets.size === 0) {
         const prompt = isAskUserQuestion
-          ? ((input as Record<string, unknown>).questions as Array<{ question: string }>)?.[0]?.question
+          ? formatAskQuestionPrompt(input as Record<string, unknown>)
           : `${toolName}`;
         notificationService.notifyInputRequired(stream.sessionId, toolName, prompt);
       }
