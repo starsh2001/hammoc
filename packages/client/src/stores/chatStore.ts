@@ -204,8 +204,8 @@ interface ChatActions {
   addStreamingThinking: (content: string) => void;
   /** Add a streaming tool call segment */
   addStreamingToolCall: (toolCall: StreamingToolCall) => void;
-  /** Update a streaming tool call's input */
-  updateStreamingToolCallInput: (toolCallId: string, input: Record<string, unknown>) => void;
+  /** Update a streaming tool call's input. Set buffer=true to queue the update if the segment doesn't exist yet. */
+  updateStreamingToolCallInput: (toolCallId: string, input: Record<string, unknown>, buffer?: boolean) => void;
   /** Update a streaming tool call result and status */
   updateStreamingToolCall: (toolCallId: string, result: string, isError?: boolean) => void;
   /** Complete streaming: convert segments to HistoryMessages and clear state */
@@ -495,14 +495,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
   },
 
-  updateStreamingToolCallInput: (toolCallId: string, input: Record<string, unknown>) => {
+  updateStreamingToolCallInput: (toolCallId: string, input: Record<string, unknown>, buffer?: boolean) => {
     const segments = get().streamingSegments;
     const found = segments.some(
       (seg) => seg.type === 'tool' && seg.toolCall.id === toolCallId
     );
     if (!found) {
-      // Buffer the input — tool:call segment hasn't arrived yet (race condition)
-      pendingInputBuffer.set(toolCallId, input);
+      // Only buffer when explicitly requested (permission:request path).
+      // tool:input-update deltas for skipped tools (e.g. AskUserQuestion) should be dropped.
+      if (buffer) {
+        pendingInputBuffer.set(toolCallId, input);
+      }
       return;
     }
     const updated = segments.map((seg) =>
