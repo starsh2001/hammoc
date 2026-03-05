@@ -21,9 +21,10 @@ import type {
  *   # 6. Epic 1: Name        (numbered prefix)
  *   ## Epic 1 - Name         (dash separator)
  *   ## Epic 1 Name            (no separator)
+ *   Epic 1: Name              (plain text, no heading prefix)
  * Capture groups: (1) epic number, (2) epic name
  */
-const EPIC_HEADER_RE = /^#{1,3}\s+(?:\d+\.\s+)?Epic\s+(\d+)[\s:–-]+(.+)/m;
+const EPIC_HEADER_RE = /^(?:#{1,3}\s+)?(?:\d+\.\s+)?Epic\s+(\d+)[\s:–-]+(.+)/m;
 
 class BmadStatusService {
   /**
@@ -218,8 +219,10 @@ class BmadStatusService {
         }
       }
 
-      // Step 2: Fallback - scan all .md files for epic headers
-      if (epicMap.size === 0) {
+      // Step 2: Scan all .md files for epic headers to fill gaps
+      // Always run — Step 1 may only find some epics (e.g. epic-20, 21, 22)
+      // while others (1–19) are defined in PRD shard files like 6-epic-details.md
+      {
         const shardedDir = path.join(projectRoot, config.prdShardedLocation);
         try {
           const files = await fs.readdir(shardedDir);
@@ -230,8 +233,11 @@ class BmadStatusService {
             let match;
             while ((match = regex.exec(content)) !== null) {
               const epicNum = parseInt(match[1], 10);
-              epicMap.set(epicNum, match[2].trim());
-              epicFileMap.set(epicNum, `${config.prdShardedLocation}/${file}`);
+              // Don't overwrite epics found in dedicated files (Step 1)
+              if (!epicMap.has(epicNum)) {
+                epicMap.set(epicNum, match[2].trim());
+                epicFileMap.set(epicNum, `${config.prdShardedLocation}/${file}`);
+              }
             }
             this.countPlannedStories(content, plannedMap);
           }

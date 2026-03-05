@@ -21,7 +21,9 @@ import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './CodeBlock';
 import { useThrottle } from '../hooks/useThrottle';
 import { useFileStore } from '../stores/fileStore';
+import { useImageViewerStore } from '../stores/imageViewerStore';
 import { useMessageStore } from '../stores/messageStore';
+import { isImagePath } from '../utils/languageDetect';
 
 /**
  * Check if a URL is an external link (not a relative file path).
@@ -128,7 +130,11 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
                 e.preventDefault();
                 const projectSlug = useMessageStore.getState().currentProjectSlug;
                 if (!projectSlug) return;
-                useFileStore.getState().requestFileNavigation(projectSlug, filePath, targetLine);
+                if (isImagePath(filePath)) {
+                  useImageViewerStore.getState().openImageViewer(projectSlug, filePath);
+                } else {
+                  useFileStore.getState().requestFileNavigation(projectSlug, filePath, targetLine);
+                }
               }}
               className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
               title={t('markdown.openFile', { href })}

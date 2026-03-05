@@ -16,6 +16,7 @@ const log = createLogger('rateLimitProbe');
 const USAGE_API_URL = 'https://api.anthropic.com/api/oauth/usage';
 const CREDENTIALS_PATH = path.join(os.homedir(), '.claude', '.credentials.json');
 const POLL_INTERVAL_MS = 120_000; // 2min polling interval
+const MAX_BACKOFF_MS = 1_800_000; // 30min max backoff on 429
 const TOKEN_CACHE_TTL_MS = 300_000; // 5min token file cache
 
 class RateLimitProbeService {
@@ -28,6 +29,7 @@ class RateLimitProbeService {
   private apiHealthy = true;
   private healthLastCheckedAt = 0;
   private healthLastError: string | null = null;
+  private consecutiveThrottles = 0;
 
   /**
    * Read OAuth access token from ~/.claude/.credentials.json
@@ -86,6 +88,11 @@ class RateLimitProbeService {
           log.debug('Usage API auth failed (status: %d), token cache invalidated', response.status);
           // Auth errors mean the API is reachable, just credentials are invalid
           this.updateApiHealth(true);
+        } else if (response.status === 429) {
+          this.consecutiveThrottles++;
+          log.debug('Usage API rate limited (429), consecutive: %d', this.consecutiveThrottles);
+          // 429 means the API is reachable, just throttled
+          this.updateApiHealth(true);
         } else {
           log.debug('Usage API error (status: %d)', response.status);
           this.updateApiHealth(false, `API returned ${response.status}`);
@@ -96,6 +103,7 @@ class RateLimitProbeService {
       const body = await response.json();
       const result = this.parseUsageResponse(body);
       this.lastProbeResult = result;
+      this.consecutiveThrottles = 0;
       this.updateApiHealth(true);
       log.debug('Rate limit probe success: 5h=%s, 7d=%s',
         result?.fiveHour?.utilization?.toFixed(2) ?? 'n/a',
@@ -181,6 +189,21 @@ class RateLimitProbeService {
   }
 
   private pollOnce(): void {
+    // Exponential backoff on consecutive 429s: skip polls until backoff expires.
+    // Backoff doubles each time: 4min, 8min, 16min, capped at 30min.
+    if (this.consecutiveThrottles > 0) {
+      const backoffMs = Math.min(
+        POLL_INTERVAL_MS * Math.pow(2, this.consecutiveThrottles),
+        MAX_BACKOFF_MS,
+      );
+      const elapsed = Date.now() - this.healthLastCheckedAt;
+      if (elapsed < backoffMs) {
+        log.debug('Skipping probe (backoff: %ds remaining)',
+          Math.round((backoffMs - elapsed) / 1000));
+        return;
+      }
+    }
+
     this.probe().then((result) => {
       if (result && this.broadcastFn) {
         this.broadcastFn(result);

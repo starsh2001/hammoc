@@ -10,12 +10,14 @@
     "language": "언어",
     "permissionMode": "Permission Mode",
     "permissionModeLabel": {
+      "latest": "마지막 사용 모드",
       "plan": "Plan",
       "default": "Ask before edits",
       "acceptEdits": "Edit Automatically",
       "bypass": "Bypass"
     },
     "permissionDesc": {
+      "latest": "새 세션에서 이전 세션의 권한 모드를 유지합니다",
       "plan": "코드 변경 전 계획을 먼저 제안합니다",
       "default": "파일 수정 전 항상 확인을 요청합니다",
       "acceptEdits": "파일 수정을 자동으로 수행합니다",
