@@ -124,11 +124,15 @@ class NotificationService {
   }
 
   /** Notify that streaming completed successfully, optionally including last assistant message */
-  async notifyComplete(sessionId: string, lastContent?: string): Promise<void> {
+  async notifyComplete(sessionId: string, lastContent?: string, queueProgress?: { current: number; total: number }): Promise<void> {
     if (!this.shouldNotifyComplete) return;
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
     let message = `✅ <b>${t('notification.complete.title')}</b>\nSession: <code>${sessionId}</code>`;
+    if (queueProgress) {
+      const pct = Math.round((queueProgress.current / queueProgress.total) * 100);
+      message += `\n📊 ${t('notification.complete.queueProgress', { current: queueProgress.current, total: queueProgress.total, pct })}`;
+    }
     if (lastContent) {
       const MAX_LEN = 500;
       const escaped = this.escapeHtml(lastContent);

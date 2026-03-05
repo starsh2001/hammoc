@@ -199,7 +199,9 @@
       "title": "질문"
     },
     "complete": {
-      "title": "완료"
+      "title": "완료",
+      "lastMessage": "마지막 응답:",
+      "queueProgress": "큐: {{current}}/{{total}} ({{pct}}%)"
     },
     "error": {
       "title": "오류",

@@ -189,7 +189,9 @@
       "title": "質問"
     },
     "complete": {
-      "title": "完了"
+      "title": "完了",
+      "lastMessage": "最後の応答:",
+      "queueProgress": "キュー: {{current}}/{{total}} ({{pct}}%)"
     },
     "error": {
       "title": "エラー",
