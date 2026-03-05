@@ -199,7 +199,9 @@
       "title": "Question"
     },
     "complete": {
-      "title": "Complete"
+      "title": "Complete",
+      "lastMessage": "Last Response:",
+      "queueProgress": "Queue: {{current}}/{{total}} ({{pct}}%)"
     },
     "error": {
       "title": "Error",

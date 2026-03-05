@@ -482,6 +482,10 @@ export class QueueService {
           rekeyStream: (sid) => rekeyStream(stream, sid),
           broadcastStreamChange,
           notificationService: this.notificationService,
+          getQueueProgress: () => ({
+            current: this.currentIndex + 1,
+            total: this.items.length,
+          }),
         },
         {
           onSessionIdResolved: (sid) => { this.currentSessionId = sid; },
