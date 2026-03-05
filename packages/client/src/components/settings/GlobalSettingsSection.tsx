@@ -79,7 +79,6 @@ export function GlobalSettingsSection() {
           ]).map((opt) => (
             <label
               key={opt.value}
-              htmlFor={`theme-${opt.value}`}
               className={`
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${theme === opt.value
@@ -170,7 +169,6 @@ export function GlobalSettingsSection() {
           ]).map((opt) => (
             <label
               key={opt.value}
-              htmlFor={`permission-${opt.value}`}
               className={`
                 flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                 ${permissionModePref === opt.value
@@ -181,7 +179,6 @@ export function GlobalSettingsSection() {
             >
               <input
                 type="radio"
-                id={`permission-${opt.value}`}
                 name="permissionMode"
                 value={opt.value}
                 checked={permissionModePref === opt.value}
@@ -217,7 +214,6 @@ export function GlobalSettingsSection() {
           ]).map((opt) => (
             <label
               key={opt.value}
-              htmlFor={`md-mode-${opt.value}`}
               className={`
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.markdownDefaultMode ?? 'edit') === opt.value
@@ -259,7 +255,6 @@ export function GlobalSettingsSection() {
           ]).map((opt) => (
             <label
               key={opt.value}
-              htmlFor={`explorer-view-${opt.value}`}
               className={`
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.fileExplorerViewMode ?? 'grid') === opt.value

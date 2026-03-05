@@ -65,7 +65,7 @@ describe('useSessionStore', () => {
     ];
 
     it('should fetch sessions successfully', async () => {
-      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: mockSessions });
+      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: mockSessions, total: mockSessions.length, hasMore: false });
 
       await useSessionStore.getState().fetchSessions('my-project');
 
@@ -77,7 +77,7 @@ describe('useSessionStore', () => {
     });
 
     it('should handle empty sessions list', async () => {
-      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: [] });
+      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: [], total: 0, hasMore: false });
 
       await useSessionStore.getState().fetchSessions('empty-project');
 
@@ -87,7 +87,7 @@ describe('useSessionStore', () => {
     });
 
     it('should set isLoading during fetch', async () => {
-      let resolvePromise: (value: { sessions: [] }) => void;
+      let resolvePromise: (value: { sessions: []; total: number; hasMore: boolean }) => void;
       vi.mocked(sessionsApi.list).mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -104,7 +104,7 @@ describe('useSessionStore', () => {
       expect(useSessionStore.getState().errorType).toBe('none');
 
       // Resolve promise
-      resolvePromise!({ sessions: [] });
+      resolvePromise!({ sessions: [], total: 0, hasMore: false });
       await fetchPromise;
 
       // Check state after completion
@@ -118,7 +118,7 @@ describe('useSessionStore', () => {
         currentProjectSlug: 'old-project',
       });
 
-      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: [] });
+      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: [], total: 0, hasMore: false });
 
       await useSessionStore.getState().fetchSessions('new-project');
 
@@ -133,7 +133,7 @@ describe('useSessionStore', () => {
       });
 
       const newSessions = [{ ...mockSessions[0], messageCount: 20 }];
-      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: newSessions });
+      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: newSessions, total: newSessions.length, hasMore: false });
 
       await useSessionStore.getState().fetchSessions('my-project');
 
@@ -209,7 +209,7 @@ describe('useSessionStore', () => {
     it('should clear previous error on new fetch', async () => {
       useSessionStore.setState({ error: 'Previous error', errorType: 'network' });
 
-      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: [] });
+      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: [], total: 0, hasMore: false });
 
       await useSessionStore.getState().fetchSessions('my-project');
 
@@ -220,7 +220,7 @@ describe('useSessionStore', () => {
     it('should reset isRefreshing on success', async () => {
       useSessionStore.setState({ isRefreshing: true });
 
-      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: [] });
+      vi.mocked(sessionsApi.list).mockResolvedValue({ sessions: [], total: 0, hasMore: false });
 
       await useSessionStore.getState().fetchSessions('my-project');
 

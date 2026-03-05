@@ -1,7 +1,13 @@
 import { Request, Response } from 'express';
+import multer from 'multer';
 import { DEFAULT_BOARD_CONFIG, validateBoardConfig } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 import { issueService } from '../services/issueService.js';
+
+export const attachmentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+}).single('file');
 
 const VALID_SEVERITIES = ['low', 'medium', 'high', 'critical'];
 const VALID_ISSUE_TYPES = ['bug', 'improvement'];
@@ -156,6 +162,111 @@ export const boardController = {
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
       await issueService.deleteIssue(projectRoot, issueId);
       res.json({ message: req.t!('board.success.issueDeleted') });
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
+        return;
+      }
+      if (nodeError.code === 'ISSUE_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'ISSUE_NOT_FOUND', message: req.t!('board.error.issueNotFound', { value: req.params.issueId }) } });
+        return;
+      }
+      if (nodeError.code === 'INVALID_ISSUE_ID') {
+        res.status(400).json({ error: { code: 'INVALID_ISSUE_ID', message: req.t!('board.validation.invalidIssueId') } });
+        return;
+      }
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
+    }
+  },
+
+  async uploadAttachment(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug, issueId } = req.params;
+      if (!req.file) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: req.t!('board.validation.fileRequired') } });
+        return;
+      }
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      const attachment = await issueService.addAttachment(projectRoot, issueId, {
+        originalname: req.file.originalname,
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+      });
+      res.status(201).json({ attachment });
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
+        return;
+      }
+      if (nodeError.code === 'ISSUE_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'ISSUE_NOT_FOUND', message: req.t!('board.error.issueNotFound', { value: req.params.issueId }) } });
+        return;
+      }
+      if (nodeError.code === 'INVALID_ISSUE_ID') {
+        res.status(400).json({ error: { code: 'INVALID_ISSUE_ID', message: req.t!('board.validation.invalidIssueId') } });
+        return;
+      }
+      if (nodeError.code === 'INVALID_FILE_TYPE') {
+        res.status(400).json({ error: { code: 'INVALID_FILE_TYPE', message: req.t!('board.validation.invalidFileType') } });
+        return;
+      }
+      if (nodeError.code === 'FILE_TOO_LARGE') {
+        res.status(400).json({ error: { code: 'FILE_TOO_LARGE', message: req.t!('board.validation.fileTooLarge') } });
+        return;
+      }
+      if (nodeError.code === 'MAX_ATTACHMENTS') {
+        res.status(400).json({ error: { code: 'MAX_ATTACHMENTS', message: req.t!('board.validation.maxAttachments') } });
+        return;
+      }
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
+    }
+  },
+
+  async listAttachments(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug, issueId } = req.params;
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      const attachments = await issueService.listAttachments(projectRoot, issueId);
+      res.json({ attachments });
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
+        return;
+      }
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
+    }
+  },
+
+  async serveAttachment(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug, issueId, filename } = req.params;
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      const filePath = await issueService.resolveAttachmentPath(projectRoot, issueId, filename);
+      if (!filePath) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Attachment not found' } });
+        return;
+      }
+      res.sendFile(filePath);
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
+        return;
+      }
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
+    }
+  },
+
+  async deleteAttachment(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug, issueId, filename } = req.params;
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      await issueService.removeAttachment(projectRoot, issueId, filename);
+      res.json({ message: 'Attachment deleted' });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
       if (nodeError.code === 'PROJECT_NOT_FOUND') {

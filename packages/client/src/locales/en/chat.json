@@ -138,7 +138,9 @@
     "confirmEmptyDelete": {
       "title": "Delete Empty Sessions",
       "message": "Delete {{count}} empty sessions? Session files will be permanently deleted."
-    }
+    },
+    "loadMore": "Load more",
+    "loadingMore": "Loading..."
   },
   "messageBubble": {
     "ariaLabel": "{{role}} message, {{time}}",
@@ -167,7 +169,8 @@
     "loading": "Loading",
     "empty": "No sessions",
     "streaming": "Streaming",
-    "waiting": "Waiting"
+    "waiting": "Waiting",
+    "loadMore": "Load more"
   },
   "favorites": {
     "maxReached": "You can add up to 20 favorites"

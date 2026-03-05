@@ -391,7 +391,7 @@ export function TelegramSettingsSection() {
           {t('telegram.notificationType')}
         </legend>
         <div className="space-y-3 ml-1">
-          <label htmlFor="notify-permission" className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
               id="notify-permission"
@@ -405,7 +405,7 @@ export function TelegramSettingsSection() {
               {t('telegram.notifyPermission')}
             </span>
           </label>
-          <label htmlFor="notify-complete" className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
               id="notify-complete"
@@ -419,7 +419,7 @@ export function TelegramSettingsSection() {
               {t('telegram.notifyComplete')}
             </span>
           </label>
-          <label htmlFor="notify-error" className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
               id="notify-error"
@@ -442,7 +442,7 @@ export function TelegramSettingsSection() {
           {t('telegram.queueNotificationType')}
         </legend>
         <div className="space-y-3 ml-1">
-          <label htmlFor="notify-queue-start" className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
               id="notify-queue-start"
@@ -456,7 +456,7 @@ export function TelegramSettingsSection() {
               {t('telegram.notifyQueueStart')}
             </span>
           </label>
-          <label htmlFor="notify-queue-complete" className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
               id="notify-queue-complete"
@@ -470,7 +470,7 @@ export function TelegramSettingsSection() {
               {t('telegram.notifyQueueComplete')}
             </span>
           </label>
-          <label htmlFor="notify-queue-error" className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
               id="notify-queue-error"
@@ -484,7 +484,7 @@ export function TelegramSettingsSection() {
               {t('telegram.notifyQueueError')}
             </span>
           </label>
-          <label htmlFor="notify-queue-input" className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
               id="notify-queue-input"

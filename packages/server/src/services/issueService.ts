@@ -8,12 +8,18 @@ import type {
   BoardResponse,
   CreateIssueRequest,
   UpdateIssueRequest,
+  IssueAttachment,
 } from '@bmad-studio/shared';
 import { bmadStatusService } from './bmadStatusService.js';
 
 const VALID_SEVERITIES = new Set(['low', 'medium', 'high', 'critical']);
 const VALID_ISSUE_TYPES = new Set(['bug', 'improvement']);
 const VALID_STATUSES = new Set(['Open', 'InProgress', 'Done', 'Closed', 'Promoted']);
+
+const ATTACHMENT_ACCEPTED_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024; // 10MB
+const ATTACHMENT_MAX_COUNT = 10;
+const ATTACHMENTS_DIR_NAME = 'attachments';
 
 /**
  * Map BmadStoryStatus.status (may include spaces) to BoardItemStatus.
@@ -115,6 +121,28 @@ function extractSection(content: string, sectionName: string): string | undefine
 }
 
 /**
+ * Extract attachments from the ## Attachments section.
+ * Format: - [originalName](attachments/{issueId}/filename) <!-- size:1234 type:image/png -->
+ */
+function extractAttachments(content: string): IssueAttachment[] {
+  const section = extractSection(content, 'Attachments');
+  if (!section) return [];
+
+  const attachments: IssueAttachment[] = [];
+  const lineRegex = /^- \[([^\]]+)\]\([^)]+\/([^/)]+)\)\s*<!--\s*size:(\d+)\s+type:(\S+)\s*-->/gm;
+  let match: RegExpExecArray | null;
+  while ((match = lineRegex.exec(section)) !== null) {
+    attachments.push({
+      originalName: match[1],
+      filename: match[2],
+      size: parseInt(match[3], 10),
+      mimeType: match[4],
+    });
+  }
+  return attachments;
+}
+
+/**
  * Parse an issue markdown file into a BoardItem.
  */
 function parseIssueMarkdown(content: string, issueId: string): BoardItem {
@@ -127,6 +155,7 @@ function parseIssueMarkdown(content: string, issueId: string): BoardItem {
   const issueType = extractSection(content, 'Type') as BoardItem['issueType'];
   const linkedStory = extractSection(content, 'Linked Story');
   const linkedEpic = extractSection(content, 'Linked Epic');
+  const attachments = extractAttachments(content);
 
   return {
     id: issueId,
@@ -138,6 +167,7 @@ function parseIssueMarkdown(content: string, issueId: string): BoardItem {
     ...(issueType && { issueType }),
     ...(linkedStory && { linkedStory }),
     ...(linkedEpic && { linkedEpic }),
+    ...(attachments.length > 0 && { attachments }),
   };
 }
 
@@ -509,6 +539,222 @@ class IssueService {
     await fs.rename(tmpPath, filePath);
 
     return mapped;
+  }
+
+  /**
+   * Resolve the attachments directory for an issue.
+   */
+  private async resolveAttachmentsDir(issuesDir: string, issueId: string): Promise<string> {
+    return path.join(issuesDir, ATTACHMENTS_DIR_NAME, issueId);
+  }
+
+  /**
+   * Add an attachment to an issue.
+   * Saves the file to disk and updates the ## Attachments section in the markdown.
+   */
+  async addAttachment(
+    projectPath: string,
+    issueId: string,
+    file: { originalname: string; buffer: Buffer; mimetype: string; size: number }
+  ): Promise<IssueAttachment> {
+    if (!validateIssueId(issueId)) {
+      const err = new Error('Invalid issue ID');
+      (err as NodeJS.ErrnoException).code = 'INVALID_ISSUE_ID';
+      throw err;
+    }
+
+    if (!ATTACHMENT_ACCEPTED_TYPES.has(file.mimetype)) {
+      const err = new Error(`Unsupported file type: ${file.mimetype}`);
+      (err as NodeJS.ErrnoException).code = 'INVALID_FILE_TYPE';
+      throw err;
+    }
+
+    if (file.size > ATTACHMENT_MAX_SIZE) {
+      const err = new Error('File too large');
+      (err as NodeJS.ErrnoException).code = 'FILE_TOO_LARGE';
+      throw err;
+    }
+
+    const issuesDir = await this.resolveIssuesDir(projectPath);
+    const issueFilePath = path.join(issuesDir, `${issueId}.md`);
+
+    // Verify issue exists
+    let content: string;
+    try {
+      content = await fs.readFile(issueFilePath, 'utf-8');
+    } catch {
+      const err = new Error(`Issue not found: ${issueId}`);
+      (err as NodeJS.ErrnoException).code = 'ISSUE_NOT_FOUND';
+      throw err;
+    }
+
+    // Check attachment count
+    const existing = extractAttachments(content);
+    if (existing.length >= ATTACHMENT_MAX_COUNT) {
+      const err = new Error('Maximum attachment count reached');
+      (err as NodeJS.ErrnoException).code = 'MAX_ATTACHMENTS';
+      throw err;
+    }
+
+    // Generate unique filename
+    const ext = path.extname(file.originalname) || mimeToExt(file.mimetype);
+    const baseName = path.basename(file.originalname, path.extname(file.originalname))
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .slice(0, 50);
+    const uniqueSuffix = crypto.randomBytes(4).toString('hex');
+    const filename = `${baseName}-${uniqueSuffix}${ext}`;
+
+    // Save file to disk
+    const attachDir = await this.resolveAttachmentsDir(issuesDir, issueId);
+    await fs.mkdir(attachDir, { recursive: true });
+    await fs.writeFile(path.join(attachDir, filename), file.buffer);
+
+    const attachment: IssueAttachment = {
+      filename,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+    };
+
+    // Update markdown
+    const updatedAttachments = [...existing, attachment];
+    const updatedContent = updateAttachmentsSection(content, updatedAttachments, issueId);
+    const tmpPath = `${issueFilePath}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+    await fs.writeFile(tmpPath, updatedContent, 'utf-8');
+    await fs.rename(tmpPath, issueFilePath);
+
+    return attachment;
+  }
+
+  /**
+   * Remove an attachment from an issue.
+   */
+  async removeAttachment(projectPath: string, issueId: string, filename: string): Promise<void> {
+    if (!validateIssueId(issueId)) {
+      const err = new Error('Invalid issue ID');
+      (err as NodeJS.ErrnoException).code = 'INVALID_ISSUE_ID';
+      throw err;
+    }
+
+    // Validate filename to prevent path traversal
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      const err = new Error('Invalid filename');
+      (err as NodeJS.ErrnoException).code = 'INVALID_FILENAME';
+      throw err;
+    }
+
+    const issuesDir = await this.resolveIssuesDir(projectPath);
+    const issueFilePath = path.join(issuesDir, `${issueId}.md`);
+
+    let content: string;
+    try {
+      content = await fs.readFile(issueFilePath, 'utf-8');
+    } catch {
+      const err = new Error(`Issue not found: ${issueId}`);
+      (err as NodeJS.ErrnoException).code = 'ISSUE_NOT_FOUND';
+      throw err;
+    }
+
+    // Delete file from disk
+    const attachDir = await this.resolveAttachmentsDir(issuesDir, issueId);
+    try {
+      await fs.unlink(path.join(attachDir, filename));
+    } catch {
+      // File may already be deleted, continue to update markdown
+    }
+
+    // Update markdown
+    const existing = extractAttachments(content);
+    const updatedAttachments = existing.filter((a) => a.filename !== filename);
+    const updatedContent = updateAttachmentsSection(content, updatedAttachments, issueId);
+    const tmpPath = `${issueFilePath}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+    await fs.writeFile(tmpPath, updatedContent, 'utf-8');
+    await fs.rename(tmpPath, issueFilePath);
+  }
+
+  /**
+   * List attachments for an issue.
+   */
+  async listAttachments(projectPath: string, issueId: string): Promise<IssueAttachment[]> {
+    if (!validateIssueId(issueId)) {
+      return [];
+    }
+
+    const issuesDir = await this.resolveIssuesDir(projectPath);
+    const issueFilePath = path.join(issuesDir, `${issueId}.md`);
+
+    try {
+      const content = await fs.readFile(issueFilePath, 'utf-8');
+      return extractAttachments(content);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Resolve the absolute path to an attachment file (for serving).
+   */
+  async resolveAttachmentPath(projectPath: string, issueId: string, filename: string): Promise<string | null> {
+    if (!validateIssueId(issueId)) return null;
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) return null;
+
+    const issuesDir = await this.resolveIssuesDir(projectPath);
+    const filePath = path.join(issuesDir, ATTACHMENTS_DIR_NAME, issueId, filename);
+
+    try {
+      await fs.access(filePath);
+      return filePath;
+    } catch {
+      return null;
+    }
+  }
+}
+
+/**
+ * Update or create the ## Attachments section in issue markdown.
+ */
+function updateAttachmentsSection(content: string, attachments: IssueAttachment[], issueId: string): string {
+  const attachmentLines = attachments.map(
+    (a) => `- [${a.originalName}](${ATTACHMENTS_DIR_NAME}/${issueId}/${a.filename}) <!-- size:${a.size} type:${a.mimeType} -->`
+  );
+  const newSection = attachments.length > 0
+    ? `## Attachments\n\n${attachmentLines.join('\n')}\n`
+    : '';
+
+  // Check if ## Attachments section already exists
+  const headerPattern = '## Attachments';
+  const headerIndex = content.indexOf(headerPattern);
+
+  if (headerIndex !== -1) {
+    // Find the end of the Attachments section (next ## or EOF)
+    const afterHeader = content.indexOf('\n', headerIndex);
+    if (afterHeader === -1) {
+      return newSection ? content.slice(0, headerIndex) + newSection : content.slice(0, headerIndex).trimEnd() + '\n';
+    }
+    const nextHeader = content.indexOf('\n## ', afterHeader);
+    if (nextHeader === -1) {
+      return newSection ? content.slice(0, headerIndex) + newSection : content.slice(0, headerIndex).trimEnd() + '\n';
+    }
+    return newSection
+      ? content.slice(0, headerIndex) + newSection + '\n' + content.slice(nextHeader + 1)
+      : content.slice(0, headerIndex) + content.slice(nextHeader + 1);
+  }
+
+  // No existing section — append at end
+  if (!newSection) return content;
+  return content.trimEnd() + '\n\n' + newSection;
+}
+
+/**
+ * Map MIME type to file extension.
+ */
+function mimeToExt(mimeType: string): string {
+  switch (mimeType) {
+    case 'image/png': return '.png';
+    case 'image/jpeg': return '.jpg';
+    case 'image/gif': return '.gif';
+    case 'image/webp': return '.webp';
+    default: return '.bin';
   }
 }
 

@@ -41,7 +41,16 @@
     "cannotDeleteWhileWorking": "AI가 작업 중이므로 삭제할 수 없습니다",
     "reopen": "다시 열기",
     "closeConfirm": "이 이슈를 닫으시겠습니까?",
-    "deleteConfirm": "이슈 \"{{title}}\"을(를) 삭제하시겠습니까?"
+    "deleteConfirm": "이슈 \"{{title}}\"을(를) 삭제하시겠습니까?",
+    "attachments": "첨부파일",
+    "addAttachment": "파일 첨부",
+    "removeAttachment": "첨부 삭제",
+    "dropzone": "이미지를 드래그하거나 클릭하여 첨부",
+    "uploadFailed": "파일 업로드에 실패했습니다",
+    "fileTooLarge": "파일 크기가 10MB를 초과합니다",
+    "invalidFileType": "지원하지 않는 파일 형식입니다 (PNG, JPG, GIF, WebP만 가능)",
+    "maxAttachments": "최대 첨부 파일 수(10개)에 도달했습니다",
+    "uploading": "업로드 중..."
   },
   "card": {
     "menu": "카드 메뉴",

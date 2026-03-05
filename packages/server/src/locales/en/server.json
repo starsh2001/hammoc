@@ -78,7 +78,11 @@
       "invalidSeverity": "Invalid severity: {{value}}",
       "invalidIssueType": "Invalid issueType: {{value}}",
       "invalidStatus": "Invalid status: {{value}}",
-      "invalidIssueId": "Invalid issue ID"
+      "invalidIssueId": "Invalid issue ID",
+      "fileRequired": "File is required",
+      "invalidFileType": "Unsupported file type",
+      "fileTooLarge": "File size exceeds 10MB limit",
+      "maxAttachments": "Maximum attachment count reached"
     },
     "success": {
       "issueDeleted": "Issue deleted"

@@ -110,7 +110,7 @@ export function SettingsPage() {
       </div>
 
       {/* Mobile layout: accordion */}
-      <div className="content-container md:hidden flex-1 overflow-y-auto">
+      <div className="content-container md:hidden flex-1 overflow-y-auto w-full">
         {sectionDefs.map(section => (
           <SettingsSection
             key={section.id}

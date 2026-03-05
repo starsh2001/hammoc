@@ -270,7 +270,6 @@ export function ProjectSettingsSection() {
             <div className="space-y-2">
               {/* Global default option */}
               <label
-                htmlFor="project-perm-global"
                 className={`
                   flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                   ${permissionValue === GLOBAL_SENTINEL
@@ -281,7 +280,6 @@ export function ProjectSettingsSection() {
               >
                 <input
                   type="radio"
-                  id="project-perm-global"
                   name="projectPermissionMode"
                   value={GLOBAL_SENTINEL}
                   checked={permissionValue === GLOBAL_SENTINEL}
@@ -300,7 +298,6 @@ export function ProjectSettingsSection() {
               {PERMISSION_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  htmlFor={`project-perm-${opt.value}`}
                   className={`
                     flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                     ${permissionValue === opt.value
@@ -311,7 +308,6 @@ export function ProjectSettingsSection() {
                 >
                   <input
                     type="radio"
-                    id={`project-perm-${opt.value}`}
                     name="projectPermissionMode"
                     value={opt.value}
                     checked={permissionValue === opt.value}
@@ -339,12 +335,10 @@ export function ProjectSettingsSection() {
           {/* Hidden Toggle */}
           <div>
             <label
-              htmlFor="project-hidden"
               className="flex items-center gap-3 cursor-pointer"
             >
               <input
                 type="checkbox"
-                id="project-hidden"
                 checked={settings.hidden ?? false}
                 onChange={handleHiddenChange}
                 disabled={updating}
