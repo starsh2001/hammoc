@@ -97,6 +97,8 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       socket.off('queue:itemsUpdated' as any, onItemsUpdated);
       socket.emit('project:leave', projectSlug);
+      // Clear stale queue state when leaving project
+      useQueueStore.getState().reset();
     };
   }, [projectSlug]);
 

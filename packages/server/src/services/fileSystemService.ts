@@ -5,6 +5,8 @@
  */
 
 import fs from 'fs/promises';
+import { createReadStream } from 'fs';
+import type { ReadStream } from 'fs';
 import path from 'path';
 import { validateProjectPath } from '../middleware/pathGuard.js';
 import { isBinaryFile, getMimeType, MAX_FILE_SIZE, isProtectedPath } from '../utils/pathUtils.js';
@@ -504,6 +506,39 @@ class FileSystemService {
       (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
       throw err;
     }
+  }
+
+  /**
+   * Get a readable stream for a file (for raw binary serving).
+   * Returns the stream along with file size and MIME type.
+   * @param projectRoot Absolute path to the project root
+   * @param relativePath Relative path to the file
+   * @returns Object with stream, size, and mimeType
+   */
+  async readFileRaw(projectRoot: string, relativePath: string): Promise<{ stream: ReadStream; size: number; mimeType: string }> {
+    const absolutePath = validateProjectPath(projectRoot, relativePath);
+
+    let stat;
+    try {
+      stat = await fs.stat(absolutePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('File not found');
+        (err as NodeJS.ErrnoException).code = 'FILE_NOT_FOUND';
+        throw err;
+      }
+      throw error;
+    }
+
+    if (!stat.isFile()) {
+      const err = new Error('Path is not a file');
+      (err as NodeJS.ErrnoException).code = 'FILE_NOT_FOUND';
+      throw err;
+    }
+
+    const mimeType = getMimeType(absolutePath);
+    const stream = createReadStream(absolutePath);
+    return { stream, size: stat.size, mimeType };
   }
 }
 

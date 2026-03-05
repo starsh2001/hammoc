@@ -27,6 +27,11 @@ export const boardController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
         return;
       }
+      if (nodeError.code === 'NOT_BMAD_PROJECT') {
+        // Return empty board for non-BMad projects instead of 500
+        res.json({ items: [], config: DEFAULT_BOARD_CONFIG });
+        return;
+      }
       res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
     }
   },

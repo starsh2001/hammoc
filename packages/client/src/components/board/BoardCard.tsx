@@ -85,11 +85,15 @@ export function BoardCard({
         )}
         <span className="text-sm font-medium text-gray-900 dark:text-white leading-tight flex-1">
           {(item.type === 'story' || item.type === 'epic') && (
-            <span className="text-gray-400 dark:text-gray-500 mr-1">
-              {item.id.replace(/^(story|epic)-/, '')}
+            <span className="text-gray-500 dark:text-gray-400 mr-1.5 font-mono">
+              {item.type === 'epic'
+                ? `Epic ${item.epicNumber ?? item.id.replace(/^epic-/, '')}`
+                : item.id.replace(/^story-/, '')}
             </span>
           )}
-          {item.title}
+          {item.type === 'epic' && /^Epic\s+\d+$/.test(item.title)
+            ? null
+            : item.title}
         </span>
         <CardContextMenu
           item={item}

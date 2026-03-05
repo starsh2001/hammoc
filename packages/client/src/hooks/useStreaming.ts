@@ -718,18 +718,21 @@ export function useStreaming() {
           // Complete streaming: converts segments to messages and clears them
           completeStreaming();
 
-          // If no segments were received (stream completed entirely during disconnect),
-          // fetch authoritative history from JSONL so the completed response is displayed.
-          if (!hadSegments) {
-            const msgState = useMessageStore.getState();
-            const { currentProjectSlug, currentSessionId } = msgState;
-            if (currentProjectSlug && currentSessionId) {
-              debugLog.stream('stream:status → fetching messages after empty completion', {
-                projectSlug: currentProjectSlug,
-                sessionId: currentSessionId,
-              });
-              msgState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true });
-            }
+          // Always fetch authoritative history from JSONL when stream completed during
+          // disconnect. When hadSegments is true, completeStreaming() converted partial
+          // segments to messages — but these may be incomplete (stream continued after
+          // disconnect, e.g. mobile sleep). JSONL has the full completed response.
+          // The stale-data guard in fetchMessages will correctly allow updates when
+          // the server returns more messages than we have locally.
+          const msgState = useMessageStore.getState();
+          const { currentProjectSlug, currentSessionId } = msgState;
+          if (currentProjectSlug && currentSessionId) {
+            debugLog.stream('stream:status → fetching messages after stale stream completion', {
+              projectSlug: currentProjectSlug,
+              sessionId: currentSessionId,
+              hadSegments,
+            });
+            msgState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true });
           }
         } else {
           debugLog.stream('stream:status → inactive, no-op (not streaming)');
