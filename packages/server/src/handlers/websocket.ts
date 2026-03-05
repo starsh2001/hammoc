@@ -169,6 +169,12 @@ export function getActiveStreamSessionIds(): string[] {
     .map(([key]) => key);
 }
 
+/** Check if a specific session has a running active stream */
+export function isSessionStreaming(sessionId: string): boolean {
+  const stream = activeStreams.get(sessionId);
+  return !!stream && stream.status === 'running';
+}
+
 /** Clean up a stream from all maps */
 function cleanupStream(streamKey: string) {
   activeStreams.delete(streamKey);

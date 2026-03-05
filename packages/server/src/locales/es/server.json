@@ -158,7 +158,8 @@
       "noRunningQueue": "No hay cola en ejecución para este proyecto",
       "sdkError": "Error SDK: {{value}}",
       "queueStopDetected": "QUEUE_STOP detectado en la respuesta",
-      "sessionNotFound": "Nombre de sesión \"{{value}}\" no encontrado"
+      "sessionNotFound": "Nombre de sesión \"{{value}}\" no encontrado",
+      "sessionBusy": "La sesión está transmitiendo actualmente — cola pausada para evitar conflictos"
     },
     "pause": {
       "userPaused": "Pausado por el usuario",

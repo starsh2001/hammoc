@@ -161,7 +161,8 @@
       "noRunningQueue": "No running queue for this project",
       "sdkError": "SDK Error: {{value}}",
       "queueStopDetected": "QUEUE_STOP detected in response",
-      "sessionNotFound": "Session name \"{{value}}\" not found"
+      "sessionNotFound": "Session name \"{{value}}\" not found",
+      "sessionBusy": "Session is currently streaming — queue paused to avoid conflict"
     },
     "pause": {
       "userPaused": "User paused",

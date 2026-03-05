@@ -240,6 +240,12 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       // (includes image preservation from optimistic originals)
       const reconciledMessages = reconcileOptimisticMessages(currentMessages, response.messages);
 
+      // Ensure chronological order — reconciliation preserves server order but
+      // appended unmatched optimistic messages or edge cases may break ordering.
+      reconciledMessages.sort((a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+
       // Detailed debug: message type sequences for history loss tracking
       const summarize = (msgs: { type: string; content?: string }[]) =>
         msgs.map((m, i) => `${i}:${m.type}:${(m.content || '').slice(0, 30)}`);
@@ -302,9 +308,13 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         { limit: pagination.limit, offset: pagination.offset + pagination.limit }
       );
 
+      // Merge older messages with current and sort to guarantee chronological order
+      const merged = [...response.messages, ...messages];
+      merged.sort((a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
       set({
-        // Prepend older messages to the beginning (they come before current messages)
-        messages: [...response.messages, ...messages],
+        messages: merged,
         pagination: response.pagination,
         lastAgentCommand: response.lastAgentCommand ?? get().lastAgentCommand,
         isLoadingMore: false,
@@ -365,7 +375,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       });
       if (uniqueNewMessages.length === 0) return state;
       const merged = [...state.messages, ...uniqueNewMessages];
-      merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+      merged.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       return { messages: merged };
     });
   },

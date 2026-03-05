@@ -28,6 +28,7 @@ import { notificationService as _ns } from './notificationService.js';
 import { preferencesService as _prs } from './preferencesService.js';
 import {
   createHeadlessStream,
+  isSessionStreaming,
   rekeyStream,
   finalizeStream,
   broadcastStreamChange,
@@ -381,6 +382,14 @@ export class QueueService {
     const chatOptions = this.buildChatOptions();
     const streamKey = this.currentSessionId || `queue-pending-${Date.now()}`;
     log.debug(`executePrompt: START prompt=${JSON.stringify((item.prompt || '').slice(0, 120))}, streamKey=${streamKey}, model=${chatOptions.model || '(default)'}, resume=${chatOptions.resume || 'none'}, sessionId=${chatOptions.sessionId || 'none'}`);
+
+    // Guard: don't overwrite an active user stream on this session
+    if (isSessionStreaming(streamKey)) {
+      log.warn(`executePrompt: session ${streamKey} already has an active stream — pausing queue`);
+      const t = i18next.getFixedT(this.lang);
+      this.pauseWithError(t('queue.error.sessionBusy'));
+      return { shouldAdvance: false };
+    }
 
     // Identical to handleChatSend: headless stream → createStreamEmit
     const { stream, emit } = createHeadlessStream(streamKey, this.abortController!);
