@@ -89,7 +89,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   // Actions
   fetchBoard: async (projectSlug: string) => {
     const currentFetchId = ++_fetchId;
-    set({ isLoading: true });
+    set({ isLoading: true, items: [], error: null });
     try {
       const response = await boardApi.getBoard(projectSlug);
       if (currentFetchId !== _fetchId) return;

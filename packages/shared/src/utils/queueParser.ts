@@ -13,7 +13,6 @@ export function parseQueueScript(script: string): QueueParseResult {
   let inMultilineBlock = false;
   let multilineContent: string[] = [];
   let multilineStartLine = 0;
-  let pendingNewSession = false;
 
   for (let i = 0; i < lines.length; i++) {
     const lineNum = i + 1;
@@ -25,10 +24,9 @@ export function parseQueueScript(script: string): QueueParseResult {
       if (trimmed.toLowerCase() === '@)') {
         items.push({
           prompt: multilineContent.join('\n'),
-          isNewSession: pendingNewSession,
+          isNewSession: false,
           isMultiline: true,
         });
-        pendingNewSession = false;
         inMultilineBlock = false;
         multilineContent = [];
       } else {
@@ -51,9 +49,8 @@ export function parseQueueScript(script: string): QueueParseResult {
     if (trimmed.startsWith('\\\\@')) {
       items.push({
         prompt: trimmed.slice(1), // remove first backslash
-        isNewSession: pendingNewSession,
+        isNewSession: false,
       });
-      pendingNewSession = false;
       continue;
     }
 
@@ -61,9 +58,8 @@ export function parseQueueScript(script: string): QueueParseResult {
     if (trimmed.startsWith('\\@')) {
       items.push({
         prompt: trimmed.slice(1), // remove backslash
-        isNewSession: pendingNewSession,
+        isNewSession: false,
       });
-      pendingNewSession = false;
       continue;
     }
 
@@ -79,7 +75,10 @@ export function parseQueueScript(script: string): QueueParseResult {
 
       switch (directive) {
         case '@new':
-          pendingNewSession = true;
+          items.push({
+            prompt: '',
+            isNewSession: true,
+          });
           break;
 
         case '@save':
@@ -152,9 +151,8 @@ export function parseQueueScript(script: string): QueueParseResult {
           warnings.push({ line: lineNum, message: `Unknown directive: ${directive}` });
           items.push({
             prompt: trimmed,
-            isNewSession: pendingNewSession,
+            isNewSession: false,
           });
-          pendingNewSession = false;
           break;
       }
       continue;
@@ -163,9 +161,8 @@ export function parseQueueScript(script: string): QueueParseResult {
     // Regular line (prompt)
     items.push({
       prompt: trimmed,
-      isNewSession: pendingNewSession,
+      isNewSession: false,
     });
-    pendingNewSession = false;
   }
 
   // Unclosed multiline block
@@ -176,10 +173,9 @@ export function parseQueueScript(script: string): QueueParseResult {
     });
     items.push({
       prompt: multilineContent.join('\n'),
-      isNewSession: pendingNewSession,
+      isNewSession: false,
       isMultiline: true,
     });
-    pendingNewSession = false;
   }
 
   return { items, warnings };

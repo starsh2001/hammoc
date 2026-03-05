@@ -440,8 +440,9 @@ class IssueService {
         }
       }
 
-      // Calculate story progress from mapped statuses
-      const total = mappedStatuses.length;
+      // Calculate story progress: use planned count from PRD as denominator when available
+      const planned = epic.plannedStories ?? mappedStatuses.length;
+      const total = Math.max(planned, mappedStatuses.length);
       const done = mappedStatuses.filter((s) => s === 'Done').length;
 
       items.push({

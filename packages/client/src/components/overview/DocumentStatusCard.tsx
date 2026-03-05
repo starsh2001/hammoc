@@ -139,7 +139,7 @@ function EntryTree({
                 <div className="mt-0.5 ml-4">
                   <EntryTree
                     entries={entry.children}
-                    basePath={`${basePath}/${entry.name}`}
+                    basePath={basePath ? `${basePath}/${entry.name}` : entry.name}
                     onOpenFile={onOpenFile}
                     expandedDocs={expandedDocs}
                     toggleDoc={toggleDoc}
@@ -153,7 +153,7 @@ function EntryTree({
         return (
           <button
             key={entry.name}
-            onClick={() => onOpenFile(`${basePath}/${entry.name}`)}
+            onClick={() => onOpenFile(basePath ? `${basePath}/${entry.name}` : entry.name)}
             className="block text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer"
           >
             {entry.name}

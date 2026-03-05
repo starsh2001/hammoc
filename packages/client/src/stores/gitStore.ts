@@ -34,6 +34,7 @@ interface GitStore {
   createBranch: (projectSlug: string, name: string, startPoint?: string) => Promise<void>;
   initRepo: (projectSlug: string) => Promise<void>;
   refreshAll: (projectSlug: string) => Promise<void>;
+  resetData: () => void;
   clearError: () => void;
 }
 
@@ -189,6 +190,14 @@ export const useGitStore = create<GitStore>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  resetData: () => {
+    if (_errorTimerId) {
+      clearTimeout(_errorTimerId);
+      _errorTimerId = null;
+    }
+    set({ status: null, commits: [], branches: null, error: null, isLoading: false });
   },
 
   clearError: () => {

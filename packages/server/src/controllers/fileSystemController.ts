@@ -56,6 +56,55 @@ export const fileSystemController = {
   },
 
   /**
+   * GET /api/projects/:projectSlug/fs/raw?path=
+   * Serve raw file content with appropriate Content-Type header.
+   */
+  async readFileRaw(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      const filePath = req.query.path as string;
+
+      if (!projectSlug) {
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.slugRequired') } });
+        return;
+      }
+      if (!filePath) {
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.pathRequired') } });
+        return;
+      }
+
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      const { stream, size, mimeType } = await fileSystemService.readFileRaw(projectRoot, filePath);
+
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Length', size);
+      res.setHeader('Cache-Control', 'no-cache');
+      stream.pipe(res);
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
+        return;
+      }
+      if (nodeError.code === FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code) {
+        res.status(FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.httpStatus).json({
+          error: { code: FILE_SYSTEM_ERRORS.PATH_TRAVERSAL.code, message: req.t!('fs.error.pathTraversal') },
+        });
+        return;
+      }
+      if (nodeError.code === FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code) {
+        res.status(FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.httpStatus).json({
+          error: { code: FILE_SYSTEM_ERRORS.FILE_NOT_FOUND.code, message: req.t!('fs.error.fileNotFound') },
+        });
+        return;
+      }
+      res.status(FILE_SYSTEM_ERRORS.FS_READ_ERROR.httpStatus).json({
+        error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: req.t!('fs.error.readError') },
+      });
+    }
+  },
+
+  /**
    * GET /api/projects/:projectSlug/fs/list?path=
    * List directory entries within a project.
    */

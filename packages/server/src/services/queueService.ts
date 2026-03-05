@@ -176,9 +176,14 @@ export class QueueService {
       lastError: this.lastError,
       items: this._isRunning || this.isPaused || this._isCompleted || this._isErrored
         ? this.items : undefined,
-      completedSessionIds: this.completedSessionIds.size > 0
-        ? Object.fromEntries(this.completedSessionIds)
-        : undefined,
+      completedSessionIds: (() => {
+        // Include current running item's sessionId so clients joining mid-run see the link
+        const all = new Map(this.completedSessionIds);
+        if (this.currentSessionId && (this._isRunning || this.isPaused)) {
+          all.set(this.currentIndex, this.currentSessionId);
+        }
+        return all.size > 0 ? Object.fromEntries(all) : undefined;
+      })(),
     };
   }
 

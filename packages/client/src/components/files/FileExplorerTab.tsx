@@ -11,7 +11,9 @@ import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, FolderRoot, Loader2
 
 import type { FileSearchResult } from '@bmad-studio/shared';
 import { useFileStore } from '../../stores/fileStore.js';
+import { useImageViewerStore } from '../../stores/imageViewerStore.js';
 import { usePreferencesStore } from '../../stores/preferencesStore.js';
+import { isImagePath } from '../../utils/languageDetect.js';
 
 const HIDDEN_PATTERNS = ['.env', '.git', 'node_modules', '.next', '.cache', '__pycache__', '.DS_Store', 'dist', '.turbo'];
 import { useToast } from '../../hooks/useToast.js';
@@ -81,7 +83,11 @@ export function FileExplorerTab() {
 
   const handleFileSelect = useCallback(
     (path: string) => {
-      useFileStore.getState().requestFileNavigation(projectSlug!, path);
+      if (isImagePath(path)) {
+        useImageViewerStore.getState().openImageViewer(projectSlug!, path);
+      } else {
+        useFileStore.getState().requestFileNavigation(projectSlug!, path);
+      }
     },
     [projectSlug],
   );
@@ -89,7 +95,11 @@ export function FileExplorerTab() {
   const handleSearchResultClick = useCallback(
     (result: FileSearchResult) => {
       if (result.type === 'file') {
-        useFileStore.getState().requestFileNavigation(projectSlug!, result.path);
+        if (isImagePath(result.path)) {
+          useImageViewerStore.getState().openImageViewer(projectSlug!, result.path);
+        } else {
+          useFileStore.getState().requestFileNavigation(projectSlug!, result.path);
+        }
       }
       setFilterText('');
     },
