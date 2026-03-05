@@ -51,6 +51,19 @@ export function isMarkdownPath(filePath: string): boolean {
   return filePath.toLowerCase().endsWith('.md');
 }
 
+const IMAGE_EXTENSIONS = new Set([
+  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp', '.ico',
+]);
+
+/**
+ * Check if a file path corresponds to an image file.
+ */
+export function isImagePath(filePath: string): boolean {
+  const lastDotIndex = filePath.lastIndexOf('.');
+  if (lastDotIndex === -1) return false;
+  return IMAGE_EXTENSIONS.has(filePath.slice(lastDotIndex).toLowerCase());
+}
+
 // Legacy string-based language mapping (kept for tests and re-exports)
 export const EXTENSION_TO_LANGUAGE_STRING: Record<string, string> = {
   '.ts': 'typescript',

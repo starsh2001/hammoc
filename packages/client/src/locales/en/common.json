@@ -338,6 +338,14 @@
     "unsavedOpenMessage": "You have unsaved changes. Open '{{path}}'?",
     "openWithoutSaving": "Open without saving"
   },
+  "imageViewer": {
+    "close": "Close viewer",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resetZoom": "Reset view",
+    "loadingImage": "Loading image...",
+    "loadFailed": "Failed to load image."
+  },
   "git": {
     "initTitle": "Initialize Git repository",
     "initMessage": "This project is not yet a Git repository.",

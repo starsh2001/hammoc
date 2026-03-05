@@ -33,6 +33,7 @@ import { PublicRoute } from './components/PublicRoute';
 import { useTheme } from './hooks/useTheme';
 import { usePreferencesStore } from './stores/preferencesStore';
 import { TextEditor } from './components/editor/TextEditor';
+import { ImageViewer } from './components/viewer/ImageViewer';
 import { FileExplorerTab } from './components/files/FileExplorerTab.js';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAppResumeRecovery } from './hooks/useAppResumeRecovery';
@@ -127,6 +128,7 @@ function App() {
       <BrowserRouter>
         <Toaster position="top-right" richColors duration={3000} />
         <TextEditor />
+        <ImageViewer />
         <AppContent />
       </BrowserRouter>
     </ErrorBoundary>

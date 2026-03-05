@@ -27,9 +27,12 @@ export function useGitStatus(projectSlug: string | undefined): UseGitStatusRetur
     }
   }, [projectSlug, fetchStatus]);
 
-  // Fetch on mount and auto-poll
+  // Fetch on mount and auto-poll; clear stale data on project switch
   useEffect(() => {
     if (!projectSlug) return;
+
+    // Clear previous project's data to prevent stale UI
+    useGitStore.getState().resetData();
 
     fetchStatus(projectSlug);
     const intervalId = setInterval(() => {

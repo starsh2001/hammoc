@@ -11,7 +11,9 @@ import type { FileSearchResult } from '@bmad-studio/shared';
 
 import { FileTree } from './FileTree.js';
 import { useFileStore } from '../../stores/fileStore.js';
+import { useImageViewerStore } from '../../stores/imageViewerStore.js';
 import { fileSystemApi } from '../../services/api/fileSystem.js';
+import { isImagePath } from '../../utils/languageDetect.js';
 
 const EMPTY_RECENT_FILES: string[] = [];
 
@@ -66,7 +68,11 @@ export function QuickFileExplorer({
 
   const handleFileSelect = useCallback(
     (path: string) => {
-      useFileStore.getState().requestFileNavigation(projectSlug, path);
+      if (isImagePath(path)) {
+        useImageViewerStore.getState().openImageViewer(projectSlug, path);
+      } else {
+        useFileStore.getState().requestFileNavigation(projectSlug, path);
+      }
       if (sessionId) {
         useFileStore.getState().addRecentFile(sessionId, path);
       }
@@ -77,7 +83,11 @@ export function QuickFileExplorer({
   const handleSearchResultClick = useCallback(
     (result: FileSearchResult) => {
       if (result.type === 'file') {
-        useFileStore.getState().requestFileNavigation(projectSlug, result.path);
+        if (isImagePath(result.path)) {
+          useImageViewerStore.getState().openImageViewer(projectSlug, result.path);
+        } else {
+          useFileStore.getState().requestFileNavigation(projectSlug, result.path);
+        }
         if (sessionId) {
           useFileStore.getState().addRecentFile(sessionId, result.path);
         }

@@ -51,10 +51,14 @@ class BmadStatusService {
     let content: string;
     try {
       content = await fs.readFile(configPath, 'utf-8');
-    } catch {
-      const err = new Error('BMad 프로젝트가 아닙니다. (.bmad-core/core-config.yaml 없음)');
-      (err as NodeJS.ErrnoException).code = 'NOT_BMAD_PROJECT';
-      throw err;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('BMad 프로젝트가 아닙니다. (.bmad-core/core-config.yaml 없음)');
+        (err as NodeJS.ErrnoException).code = 'NOT_BMAD_PROJECT';
+        throw err;
+      }
+      // File exists but can't be read (locked, permissions, etc.) — re-throw original
+      throw error;
     }
 
     let parsed: Record<string, unknown>;
@@ -331,7 +335,17 @@ class BmadStatusService {
       return { status: 'Unknown' };
     }
 
-    const statusMatch = header.match(/^## Status\s*\n\s*\n\s*(.+)/m);
+    // Match status in multiple formats:
+    //   1. "## Status\n\nDone"       (heading + blank line + value)
+    //   2. "## Status\nDone"         (heading + value, no blank line)
+    //   3. "## Status: Done"         (heading with inline value)
+    //   4. "Status: Done"            (key-value, no heading)
+    //   5. "**Status:** Done"        (bold key-value)
+    const statusMatch =
+      header.match(/^## Status\s*\n\s*\n\s*(.+)/m) ||      // format 1
+      header.match(/^## Status\s*\n\s*([^\n#].+)/m) ||      // format 2
+      header.match(/^## Status\s*:\s*(.+)/m) ||              // format 3
+      header.match(/^\*{0,2}Status\*{0,2}\s*:\s*(.+)/m);    // format 4 & 5
     const status = statusMatch ? statusMatch[1].trim() : 'Unknown';
 
     // Match: "# Story 1.1: Title" or "# Story 1.1 — Title"

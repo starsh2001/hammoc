@@ -56,20 +56,22 @@ describe('parseQueueScript', () => {
     const result = parseQueueScript(script);
     expect(result.warnings).toHaveLength(0);
 
-    // @new + prompt
-    expect(result.items[0]).toEqual({ prompt: 'prompt after new', isNewSession: true });
+    // @new (standalone item)
+    expect(result.items[0]).toEqual({ prompt: '', isNewSession: true });
+    // prompt after new
+    expect(result.items[1]).toEqual({ prompt: 'prompt after new', isNewSession: false });
     // @save
-    expect(result.items[1]).toEqual({ prompt: '', isNewSession: false, saveSessionName: 'my_session' });
+    expect(result.items[2]).toEqual({ prompt: '', isNewSession: false, saveSessionName: 'my_session' });
     // @load
-    expect(result.items[2]).toEqual({ prompt: '', isNewSession: false, loadSessionName: 'my_session' });
+    expect(result.items[3]).toEqual({ prompt: '', isNewSession: false, loadSessionName: 'my_session' });
     // @pause
-    expect(result.items[3]).toEqual({ prompt: '', isNewSession: false, isBreakpoint: true });
+    expect(result.items[4]).toEqual({ prompt: '', isNewSession: false, isBreakpoint: true });
     // @model
-    expect(result.items[4]).toEqual({ prompt: '', isNewSession: false, modelName: 'sonnet' });
+    expect(result.items[5]).toEqual({ prompt: '', isNewSession: false, modelName: 'sonnet' });
     // @delay
-    expect(result.items[5]).toEqual({ prompt: '', isNewSession: false, delayMs: 5000 });
+    expect(result.items[6]).toEqual({ prompt: '', isNewSession: false, delayMs: 5000 });
     // @( ... @) multiline
-    expect(result.items[6]).toEqual({ prompt: 'multiline content', isNewSession: false, isMultiline: true });
+    expect(result.items[7]).toEqual({ prompt: 'multiline content', isNewSession: false, isMultiline: true });
   });
 
   // TC-QP-5: Directive parsing is case-insensitive (AC: 4)
@@ -77,12 +79,13 @@ describe('parseQueueScript', () => {
     const script = '@NEW\nupper\n@Save session1\n@LOAD session2\n@PAUSE\n@Model opus\n@DELAY 1000';
     const result = parseQueueScript(script);
     expect(result.warnings).toHaveLength(0);
-    expect(result.items[0]).toEqual({ prompt: 'upper', isNewSession: true });
-    expect(result.items[1]).toEqual({ prompt: '', isNewSession: false, saveSessionName: 'session1' });
-    expect(result.items[2]).toEqual({ prompt: '', isNewSession: false, loadSessionName: 'session2' });
-    expect(result.items[3]).toEqual({ prompt: '', isNewSession: false, isBreakpoint: true });
-    expect(result.items[4]).toEqual({ prompt: '', isNewSession: false, modelName: 'opus' });
-    expect(result.items[5]).toEqual({ prompt: '', isNewSession: false, delayMs: 1000 });
+    expect(result.items[0]).toEqual({ prompt: '', isNewSession: true });
+    expect(result.items[1]).toEqual({ prompt: 'upper', isNewSession: false });
+    expect(result.items[2]).toEqual({ prompt: '', isNewSession: false, saveSessionName: 'session1' });
+    expect(result.items[3]).toEqual({ prompt: '', isNewSession: false, loadSessionName: 'session2' });
+    expect(result.items[4]).toEqual({ prompt: '', isNewSession: false, isBreakpoint: true });
+    expect(result.items[5]).toEqual({ prompt: '', isNewSession: false, modelName: 'opus' });
+    expect(result.items[6]).toEqual({ prompt: '', isNewSession: false, delayMs: 1000 });
   });
 
   // TC-QP-6: \@text escape produces literal @text, \\@text produces \@text (AC: 5)
@@ -139,13 +142,14 @@ describe('parseQueueScript', () => {
     expect(result.warnings[1].line).toBe(5); // @unknown
   });
 
-  // TC-QP-11: @new sets isNewSession on the next prompt (AC: 3)
-  it('TC-QP-11: @new sets isNewSession on the next prompt', () => {
+  // TC-QP-11: @new creates a standalone session item (AC: 3)
+  it('TC-QP-11: @new creates a standalone session item', () => {
     const script = '@new\nfirst prompt\nsecond prompt';
     const result = parseQueueScript(script);
-    expect(result.items).toHaveLength(2);
-    expect(result.items[0].isNewSession).toBe(true);
-    expect(result.items[1].isNewSession).toBe(false);
+    expect(result.items).toHaveLength(3);
+    expect(result.items[0]).toEqual({ prompt: '', isNewSession: true });
+    expect(result.items[1]).toEqual({ prompt: 'first prompt', isNewSession: false });
+    expect(result.items[2]).toEqual({ prompt: 'second prompt', isNewSession: false });
   });
 
   // TC-QP-12: @pause with reason includes reason in prompt field (AC: 3)
@@ -167,12 +171,15 @@ describe('parseQueueScript', () => {
     expect(result.warnings).toHaveLength(0);
   });
 
-  // TC-QP-14: Multiple consecutive @new lines are equivalent to one (edge case)
-  it('TC-QP-14: multiple consecutive @new lines are equivalent to one', () => {
+  // TC-QP-14: Multiple consecutive @new lines each create a standalone item
+  it('TC-QP-14: multiple consecutive @new lines each create a standalone item', () => {
     const script = '@new\n@new\n@new\nmy prompt';
     const result = parseQueueScript(script);
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0]).toEqual({ prompt: 'my prompt', isNewSession: true });
+    expect(result.items).toHaveLength(4);
+    expect(result.items[0]).toEqual({ prompt: '', isNewSession: true });
+    expect(result.items[1]).toEqual({ prompt: '', isNewSession: true });
+    expect(result.items[2]).toEqual({ prompt: '', isNewSession: true });
+    expect(result.items[3]).toEqual({ prompt: 'my prompt', isNewSession: false });
     expect(result.warnings).toHaveLength(0);
   });
 
@@ -196,39 +203,44 @@ describe('parseQueueScript', () => {
     ].join('\n');
     const result = parseQueueScript(script);
     expect(result.warnings).toHaveLength(0);
-    expect(result.items).toHaveLength(9);
+    expect(result.items).toHaveLength(11);
 
-    // @new + /BMad:agents:sm
-    expect(result.items[0]).toEqual({ prompt: '/BMad:agents:sm', isNewSession: true });
+    // @new (standalone)
+    expect(result.items[0]).toEqual({ prompt: '', isNewSession: true });
+    // /BMad:agents:sm
+    expect(result.items[1]).toEqual({ prompt: '/BMad:agents:sm', isNewSession: false });
     // *draft 15.1
-    expect(result.items[1]).toEqual({ prompt: '*draft 15.1', isNewSession: false });
-    // @new + /BMad:agents:po
-    expect(result.items[2]).toEqual({ prompt: '/BMad:agents:po', isNewSession: true });
+    expect(result.items[2]).toEqual({ prompt: '*draft 15.1', isNewSession: false });
+    // @new (standalone)
+    expect(result.items[3]).toEqual({ prompt: '', isNewSession: true });
+    // /BMad:agents:po
+    expect(result.items[4]).toEqual({ prompt: '/BMad:agents:po', isNewSession: false });
     // *validate-story-draft ...
-    expect(result.items[3]).toEqual({
+    expect(result.items[5]).toEqual({
       prompt: '*validate-story-draft 15.1 Check if a draft file exists...',
       isNewSession: false,
     });
     // @save dev_15.1
-    expect(result.items[4]).toEqual({ prompt: '', isNewSession: false, saveSessionName: 'dev_15.1' });
+    expect(result.items[6]).toEqual({ prompt: '', isNewSession: false, saveSessionName: 'dev_15.1' });
     // @load dev_15.1
-    expect(result.items[5]).toEqual({ prompt: '', isNewSession: false, loadSessionName: 'dev_15.1' });
+    expect(result.items[7]).toEqual({ prompt: '', isNewSession: false, loadSessionName: 'dev_15.1' });
     // /BMad:agents:dev
-    expect(result.items[6]).toEqual({ prompt: '/BMad:agents:dev', isNewSession: false });
+    expect(result.items[8]).toEqual({ prompt: '/BMad:agents:dev', isNewSession: false });
     // *review-qa 15.1
-    expect(result.items[7]).toEqual({ prompt: '*review-qa 15.1', isNewSession: false });
+    expect(result.items[9]).toEqual({ prompt: '*review-qa 15.1', isNewSession: false });
     // @pause
-    expect(result.items[8]).toEqual({ prompt: '', isNewSession: false, isBreakpoint: true });
+    expect(result.items[10]).toEqual({ prompt: '', isNewSession: false, isBreakpoint: true });
   });
 
-  // TC-QP-16: @new followed by multiline block sets isNewSession: true on the multiline prompt
-  it('TC-QP-16: @new followed by multiline block sets isNewSession', () => {
+  // TC-QP-16: @new followed by multiline block creates two separate items
+  it('TC-QP-16: @new followed by multiline block creates two items', () => {
     const script = '@new\n@(\nline one\nline two\n@)';
     const result = parseQueueScript(script);
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0]).toEqual({
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0]).toEqual({ prompt: '', isNewSession: true });
+    expect(result.items[1]).toEqual({
       prompt: 'line one\nline two',
-      isNewSession: true,
+      isNewSession: false,
       isMultiline: true,
     });
     expect(result.warnings).toHaveLength(0);
@@ -241,12 +253,13 @@ describe('parseQueueScript', () => {
     expect(result.warnings).toHaveLength(0);
   });
 
-  // TC-QP-18: @new at end of file with no subsequent prompt is silently ignored
-  it('TC-QP-18: @new at end of file is silently ignored', () => {
+  // TC-QP-18: @new at end of file creates a standalone session item
+  it('TC-QP-18: @new at end of file creates a standalone item', () => {
     const script = 'first prompt\n@new';
     const result = parseQueueScript(script);
-    expect(result.items).toHaveLength(1);
+    expect(result.items).toHaveLength(2);
     expect(result.items[0]).toEqual({ prompt: 'first prompt', isNewSession: false });
+    expect(result.items[1]).toEqual({ prompt: '', isNewSession: true });
     expect(result.warnings).toHaveLength(0);
   });
 });

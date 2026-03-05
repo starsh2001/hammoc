@@ -53,7 +53,7 @@ export function getToolDisplayName(toolName: string): string {
  * - >= 60s: "1m 23s"
  */
 export function formatDuration(durationMs: number): string {
-  const seconds = durationMs / 1000;
+  const seconds = Math.max(0, durationMs) / 1000;
   if (seconds < 60) return `${seconds.toFixed(1)}s`;
   const mins = Math.floor(seconds / 60);
   const secs = Math.round(seconds % 60);
