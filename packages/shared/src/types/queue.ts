@@ -62,7 +62,7 @@ export interface QueueItemsUpdatedEvent {
 export interface QueueProgressEvent {
   currentIndex: number;
   totalItems: number;
-  status: 'running' | 'paused' | 'completed' | 'error';
+  status: 'running' | 'paused' | 'completed' | 'error' | 'aborted';
   pauseReason?: string;
   sessionId: string;
 }

@@ -133,6 +133,12 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
         update.isPaused = false;
         update.isCompleted = true;
         break;
+      case 'aborted':
+        update.isRunning = false;
+        update.isPaused = false;
+        update.isCompleted = false;
+        update.isErrored = false;
+        break;
       case 'error':
         update.isRunning = false;
         update.isPaused = false;
@@ -181,8 +187,12 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   },
 
   syncFromStatus: (state: QueueExecutionState) => {
-    const completedItems = state.isRunning || state.currentIndex > 0
-      ? new Set(Array.from({ length: state.currentIndex }, (_, i) => i))
+    // Clamp completedItems to actual totalItems to prevent impossible progress (e.g. 36/32)
+    const maxCompleted = state.totalItems > 0
+      ? Math.min(state.currentIndex, state.totalItems)
+      : state.currentIndex;
+    const completedItems = state.isRunning || maxCompleted > 0
+      ? new Set(Array.from({ length: maxCompleted }, (_, i) => i))
       : new Set<number>();
 
     set({
@@ -192,7 +202,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       isErrored: state.isErrored ?? false,
       isAborted: false, // clear abort flag on server state sync
       isReordering: false,
-      currentIndex: state.currentIndex,
+      currentIndex: Math.min(state.currentIndex, state.totalItems > 0 ? state.totalItems : state.currentIndex),
       totalItems: state.totalItems,
       pauseReason: state.pauseReason,
       lockedSessionId: state.lockedSessionId,
