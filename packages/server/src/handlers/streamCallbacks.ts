@@ -179,7 +179,7 @@ export function buildStreamCallbacks(
         emit('context:usage', response.usage);
       }
 
-      if (stream.sockets.size === 0) {
+      if (notificationService.shouldNotify(stream.sockets.size)) {
         notificationService.notifyComplete(stream.sessionId, response.content, deps.getQueueProgress?.());
       }
     },

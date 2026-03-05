@@ -22,6 +22,7 @@ class NotificationService {
   private shouldNotifyQueueComplete: boolean;
   private shouldNotifyQueueError: boolean;
   private shouldNotifyQueueInputRequired: boolean;
+  private alwaysNotify: boolean;
 
   constructor() {
     // Initial config from env vars (preferences not yet loaded at startup)
@@ -36,6 +37,7 @@ class NotificationService {
     this.shouldNotifyQueueComplete = true;
     this.shouldNotifyQueueError = true;
     this.shouldNotifyQueueInputRequired = true;
+    this.alwaysNotify = false;
   }
 
   /**
@@ -59,6 +61,7 @@ class NotificationService {
       this.shouldNotifyQueueComplete = telegram.notifyQueueComplete ?? true;
       this.shouldNotifyQueueError = telegram.notifyQueueError ?? true;
       this.shouldNotifyQueueInputRequired = telegram.notifyQueueInputRequired ?? true;
+      this.alwaysNotify = telegram.alwaysNotify ?? false;
     } catch {
       // If preferences can't be read, keep current config
     }
@@ -67,6 +70,14 @@ class NotificationService {
   /** Get the configured base URL for building access links */
   getBaseUrl(): string {
     return this.baseUrl;
+  }
+
+  /**
+   * Determine if notifications should be sent based on socket visibility.
+   * Returns true if no sockets are connected, or if alwaysNotify is enabled.
+   */
+  shouldNotify(socketCount: number): boolean {
+    return socketCount === 0 || this.alwaysNotify;
   }
 
   /** Send a Telegram message (best-effort, silent fail) */
