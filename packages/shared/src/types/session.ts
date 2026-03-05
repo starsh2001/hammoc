@@ -63,6 +63,8 @@ export interface SessionListItem {
  */
 export interface SessionListResponse {
   sessions: SessionListItem[];
+  total: number;    // Total number of sessions available
+  hasMore: boolean; // Whether more sessions can be loaded
 }
 
 /**

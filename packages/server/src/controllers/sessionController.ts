@@ -21,10 +21,11 @@ export const sessionController = {
     try {
       const includeEmpty = req.query.includeEmpty === 'true';
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 0;
-      const sessions = await sessionService.listSessionsBySlug(projectSlug, includeEmpty, limit > 0 ? limit : 0);
+      const offset = req.query.offset ? Math.max(parseInt(req.query.offset as string, 10), 0) : 0;
+      const result = await sessionService.listSessionsBySlug(projectSlug, includeEmpty, limit > 0 ? limit : 0, offset);
 
       // AC 6: Return 404 for non-existent project
-      if (sessions === null) {
+      if (result === null) {
         res.status(SESSION_ERRORS.PROJECT_NOT_FOUND.httpStatus).json({
           error: {
             code: SESSION_ERRORS.PROJECT_NOT_FOUND.code,
@@ -38,12 +39,16 @@ export const sessionController = {
       // Mark sessions that have an active background stream + merge session names
       const activeIds = new Set(getActiveStreamSessionIds());
       const sessionNames = await projectService.readSessionNamesBySlug(projectSlug);
+      const sessions = result.sessions;
+      const total = result.total;
       const response: SessionListResponse = {
         sessions: sessions.map(s => ({
           ...s,
           ...(activeIds.has(s.sessionId) && { isStreaming: true }),
           ...(sessionNames[s.sessionId] && { name: sessionNames[s.sessionId] }),
         })),
+        total,
+        hasMore: limit > 0 ? (offset + sessions.length) < total : false,
       };
       res.json(response);
     } catch {

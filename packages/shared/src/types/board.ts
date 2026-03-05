@@ -148,6 +148,17 @@ export function validateBoardConfig(config: unknown): string[] {
   return errors;
 }
 
+export interface IssueAttachment {
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+}
+
+export interface UploadAttachmentResponse {
+  attachment: IssueAttachment;
+}
+
 export interface BoardItem {
   id: string;
   type: BoardItemType;
@@ -168,6 +179,7 @@ export interface BoardItem {
   externalRef?: string;
   /** Project-relative path to the source file (story/epic markdown) */
   filePath?: string;
+  attachments?: IssueAttachment[];
 }
 
 export interface BoardResponse {

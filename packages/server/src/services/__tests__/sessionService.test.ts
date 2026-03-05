@@ -370,7 +370,7 @@ describe('SessionService', () => {
 
       const result = await service.listSessionsBySlug('project-hash');
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({ sessions: [], total: 0 });
     });
 
     it('should return sessions sorted by modified descending', async () => {
@@ -406,9 +406,9 @@ describe('SessionService', () => {
       const result = await service.listSessionsBySlug('project-hash');
 
       expect(result).not.toBeNull();
-      expect(result![0].sessionId).toBe('new');
-      expect(result![1].sessionId).toBe('middle');
-      expect(result![2].sessionId).toBe('old');
+      expect(result!.sessions[0].sessionId).toBe('new');
+      expect(result!.sessions[1].sessionId).toBe('middle');
+      expect(result!.sessions[2].sessionId).toBe('old');
     });
 
     it('should truncate firstPrompt to 100 chars', async () => {
@@ -431,8 +431,8 @@ describe('SessionService', () => {
       const result = await service.listSessionsBySlug('project-hash');
 
       expect(result).not.toBeNull();
-      expect(result![0].firstPrompt.length).toBe(100);
-      expect(result![0].firstPrompt.endsWith('...')).toBe(true);
+      expect(result!.sessions[0].firstPrompt.length).toBe(100);
+      expect(result!.sessions[0].firstPrompt.endsWith('...')).toBe(true);
     });
 
     it('should preserve ISO 8601 date format in response', async () => {
@@ -454,8 +454,8 @@ describe('SessionService', () => {
       const result = await service.listSessionsBySlug('project-hash');
 
       expect(result).not.toBeNull();
-      expect(result![0].created).toBe('2026-01-15T09:30:00Z');
-      expect(result![0].modified).toBe('2026-01-31T14:22:00Z');
+      expect(result!.sessions[0].created).toBe('2026-01-15T09:30:00Z');
+      expect(result!.sessions[0].modified).toBe('2026-01-31T14:22:00Z');
     });
 
     it('should handle missing entries array', async () => {
@@ -467,7 +467,7 @@ describe('SessionService', () => {
 
       const result = await service.listSessionsBySlug('project-hash');
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({ sessions: [], total: 0 });
     });
   });
 });

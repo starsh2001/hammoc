@@ -26,7 +26,7 @@ interface BoardStore {
   error: string | null;
   // Actions
   fetchBoard: (projectSlug: string) => Promise<void>;
-  createIssue: (projectSlug: string, data: CreateIssueRequest) => Promise<void>;
+  createIssue: (projectSlug: string, data: CreateIssueRequest) => Promise<BoardItem>;
   updateIssue: (projectSlug: string, issueId: string, data: UpdateIssueRequest) => Promise<void>;
   deleteIssue: (projectSlug: string, issueId: string) => Promise<void>;
   setViewMode: (mode: 'kanban' | 'list') => void;
@@ -109,8 +109,9 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   createIssue: async (projectSlug: string, data: CreateIssueRequest) => {
     set({ isLoading: true });
     try {
-      await boardApi.createIssue(projectSlug, data);
+      const item = await boardApi.createIssue(projectSlug, data);
       await get().fetchBoard(projectSlug);
+      return item;
     } catch (err) {
       setErrorWithAutoClear(set, getErrorMessage(err));
       throw err;

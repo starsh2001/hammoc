@@ -93,6 +93,41 @@ class ApiClient {
   async delete<T>(path: string): Promise<T> {
     return this.request<T>(path, { method: 'DELETE' });
   }
+
+  /**
+   * Upload a file using FormData (multipart/form-data).
+   * Does NOT set Content-Type — browser auto-sets multipart boundary.
+   */
+  async upload<T>(path: string, formData: FormData): Promise<T> {
+    const response = await fetch(`${this.baseURL}${path}`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers: {
+        'Accept-Language': i18n.language || 'en',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      if (errorData?.error?.message) {
+        throw new ApiError(
+          response.status,
+          errorData.error.code || 'UNKNOWN_ERROR',
+          errorData.error.message,
+          errorData.error.details
+        );
+      }
+      const url = `${this.baseURL}${path}`;
+      throw new ApiError(
+        response.status,
+        'UNKNOWN_ERROR',
+        `요청 실패 (${response.status} ${response.statusText}) - ${url}`,
+      );
+    }
+
+    return response.json();
+  }
 }
 
 export const api = new ApiClient({ baseURL: '/api' });

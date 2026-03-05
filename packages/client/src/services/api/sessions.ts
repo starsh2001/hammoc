@@ -10,10 +10,11 @@ export const sessionsApi = {
   /**
    * List all sessions for a project
    */
-  list: (projectSlug: string, options?: { includeEmpty?: boolean; limit?: number }) => {
+  list: (projectSlug: string, options?: { includeEmpty?: boolean; limit?: number; offset?: number }) => {
     const params = new URLSearchParams();
     if (options?.includeEmpty) params.set('includeEmpty', 'true');
     if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.offset) params.set('offset', String(options.offset));
     const qs = params.toString();
     return api.get<SessionListResponse>(`/projects/${projectSlug}/sessions${qs ? `?${qs}` : ''}`);
   },

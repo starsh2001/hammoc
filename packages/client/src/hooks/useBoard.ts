@@ -18,7 +18,7 @@ interface UseBoardReturn {
   itemsByColumn: Record<string, BoardItem[]>;
   setViewMode: (mode: 'kanban' | 'list') => void;
   setVisibleColumns: (count: number) => void;
-  createIssue: (data: CreateIssueRequest) => Promise<void>;
+  createIssue: (data: CreateIssueRequest) => Promise<BoardItem | undefined>;
   updateIssue: (issueId: string, data: UpdateIssueRequest) => Promise<void>;
   deleteIssue: (issueId: string) => Promise<void>;
   updateBoardConfig: (config: BoardConfig) => Promise<void>;
@@ -69,7 +69,7 @@ export function useBoard(projectSlug: string | undefined): UseBoardReturn {
 
   const createIssue = useCallback(
     async (data: CreateIssueRequest) => {
-      if (projectSlug) await storeCreateIssue(projectSlug, data);
+      if (projectSlug) return storeCreateIssue(projectSlug, data);
     },
     [projectSlug, storeCreateIssue],
   );

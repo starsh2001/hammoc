@@ -3,25 +3,37 @@
  * [Source: Story 21.3 - Task 3]
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Loader2 } from 'lucide-react';
-import type { BoardItem, UpdateIssueRequest } from '@bmad-studio/shared';
+import { X, Loader2, ImagePlus, Trash2 } from 'lucide-react';
+import type { BoardItem, UpdateIssueRequest, IssueAttachment } from '@bmad-studio/shared';
+import { boardApi } from '../../services/api/board.js';
+
+const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const ACCEPT_STRING = ACCEPTED_TYPES.join(',');
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILES = 10;
 
 interface IssueEditDialogProps {
   open: boolean;
   issue: BoardItem | null;
+  projectSlug?: string;
   onClose: () => void;
   onSubmit: (issueId: string, data: UpdateIssueRequest) => Promise<void>;
 }
 
-export function IssueEditDialog({ open, issue, onClose, onSubmit }: IssueEditDialogProps) {
+export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }: IssueEditDialogProps) {
   const { t } = useTranslation('board');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState('');
   const [issueType, setIssueType] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingAttachments, setExistingAttachments] = useState<IssueAttachment[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<{ file: File; previewUrl: string }[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Populate form when issue changes
   useEffect(() => {
@@ -30,14 +42,19 @@ export function IssueEditDialog({ open, issue, onClose, onSubmit }: IssueEditDia
       setDescription(issue.description || '');
       setSeverity(issue.severity || '');
       setIssueType(issue.issueType || '');
+      setExistingAttachments(issue.attachments || []);
+      setPendingFiles([]);
+      setFileError(null);
     }
   }, [issue]);
 
   const handleClose = useCallback(() => {
-    if (!isSubmitting) {
+    if (!isSubmitting && !isUploading) {
+      pendingFiles.forEach((pf) => URL.revokeObjectURL(pf.previewUrl));
+      setPendingFiles([]);
       onClose();
     }
-  }, [isSubmitting, onClose]);
+  }, [isSubmitting, isUploading, onClose, pendingFiles]);
 
   // Escape key to close
   useEffect(() => {
@@ -48,6 +65,59 @@ export function IssueEditDialog({ open, issue, onClose, onSubmit }: IssueEditDia
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, handleClose]);
+
+  const totalAttachments = existingAttachments.length + pendingFiles.length;
+
+  const addFiles = useCallback((files: FileList | File[]) => {
+    setFileError(null);
+    const newFiles: { file: File; previewUrl: string }[] = [];
+
+    for (const file of Array.from(files)) {
+      if (totalAttachments + newFiles.length >= MAX_FILES) {
+        setFileError(t('issue.maxAttachments'));
+        break;
+      }
+      if (!ACCEPTED_TYPES.includes(file.type)) {
+        setFileError(t('issue.invalidFileType'));
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        setFileError(t('issue.fileTooLarge'));
+        continue;
+      }
+      newFiles.push({ file, previewUrl: URL.createObjectURL(file) });
+    }
+
+    if (newFiles.length > 0) {
+      setPendingFiles((prev) => [...prev, ...newFiles]);
+    }
+  }, [totalAttachments, t]);
+
+  const removePendingFile = useCallback((index: number) => {
+    setPendingFiles((prev) => {
+      const removed = prev[index];
+      if (removed) URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+    setFileError(null);
+  }, []);
+
+  const removeExistingAttachment = useCallback(async (attachment: IssueAttachment) => {
+    if (!projectSlug || !issue) return;
+    try {
+      await boardApi.deleteAttachment(projectSlug, issue.id, attachment.filename);
+      setExistingAttachments((prev) => prev.filter((a) => a.filename !== attachment.filename));
+    } catch {
+      // Silently fail — user can retry
+    }
+  }, [projectSlug, issue]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length > 0) {
+      addFiles(e.dataTransfer.files);
+    }
+  }, [addFiles]);
 
   const isTitleValid = title.trim().length > 0;
 
@@ -69,11 +139,26 @@ export function IssueEditDialog({ open, issue, onClose, onSubmit }: IssueEditDia
     setIsSubmitting(true);
     try {
       await onSubmit(issue.id, data);
-      // Parent handles closing via setEditingIssue(null)
+
+      // Upload pending files
+      if (pendingFiles.length > 0 && projectSlug) {
+        setIsUploading(true);
+        for (const pf of pendingFiles) {
+          try {
+            await boardApi.uploadAttachment(projectSlug, issue.id, pf.file);
+          } catch {
+            // Individual upload failures don't block
+          }
+        }
+        pendingFiles.forEach((pf) => URL.revokeObjectURL(pf.previewUrl));
+        setPendingFiles([]);
+        setIsUploading(false);
+      }
     } catch {
       // Error is handled by the parent component
     } finally {
       setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
@@ -94,9 +179,9 @@ export function IssueEditDialog({ open, issue, onClose, onSubmit }: IssueEditDia
       />
 
       {/* Dialog */}
-      <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl">
+      <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">
             {t('issue.edit')}
           </h2>
@@ -110,7 +195,7 @@ export function IssueEditDialog({ open, issue, onClose, onSubmit }: IssueEditDia
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 space-y-4 overflow-y-auto">
           {/* Title */}
           <div>
             <label
@@ -193,23 +278,108 @@ export function IssueEditDialog({ open, issue, onClose, onSubmit }: IssueEditDia
             </div>
           </div>
 
+          {/* Attachments */}
+          {projectSlug && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('issue.attachments')}
+              </label>
+
+              {/* Existing attachments */}
+              {existingAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {existingAttachments.map((att) => (
+                    <div key={att.filename} className="relative group">
+                      <img
+                        src={boardApi.getAttachmentUrl(projectSlug, issue.id, att.filename)}
+                        alt={att.originalName}
+                        className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeExistingAttachment(att)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label={t('issue.removeAttachment')}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                      <p className="text-[10px] text-gray-400 truncate w-16 text-center mt-0.5">{att.originalName}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Pending files preview */}
+              {pendingFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {pendingFiles.map((pf, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={pf.previewUrl}
+                        alt={pf.file.name}
+                        className="w-16 h-16 object-cover rounded-lg border-2 border-dashed border-blue-300 dark:border-blue-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePendingFile(index)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label={t('issue.removeAttachment')}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <p className="text-[10px] text-blue-400 truncate w-16 text-center mt-0.5">{pf.file.name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add more button / drop zone */}
+              {totalAttachments < MAX_FILES && (
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-2 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                >
+                  <ImagePlus className="w-4 h-4 mx-auto text-gray-400 dark:text-gray-500 mb-0.5" />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('issue.addAttachment')}</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ACCEPT_STRING}
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) addFiles(e.target.files);
+                      e.target.value = '';
+                    }}
+                  />
+                </div>
+              )}
+
+              {fileError && (
+                <p className="mt-1 text-xs text-red-500">{fileError}</p>
+              )}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={handleClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isUploading}
               className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
             >
               {t('common:button.cancel')}
             </button>
             <button
               type="submit"
-              disabled={!isTitleValid || isSubmitting}
+              disabled={!isTitleValid || isSubmitting || isUploading}
               className="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {t('common:button.save')}
+              {(isSubmitting || isUploading) && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isUploading ? t('issue.uploading') : t('common:button.save')}
             </button>
           </div>
         </form>

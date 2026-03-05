@@ -197,7 +197,7 @@ export class SessionService {
    * - firstPrompt truncated to 100 chars (AC 4)
    * - Also scans for .jsonl files not yet in sessions-index.json
    */
-  async listSessionsBySlug(projectSlug: string, includeEmpty = false, limit = 0): Promise<SessionListItem[] | null> {
+  async listSessionsBySlug(projectSlug: string, includeEmpty = false, limit = 0, offset = 0): Promise<{ sessions: SessionListItem[]; total: number } | null> {
     const projectDir = path.join(this.claudeProjectsDir, projectSlug);
     const indexPath = path.join(projectDir, 'sessions-index.json');
 
@@ -206,9 +206,23 @@ export class SessionService {
       return null;
     }
 
-    // Fast path: stat files for mtime, sort, parse only top N
+    // Fast path: use index as metadata cache, stat for sort, parse only missing
     if (limit > 0) {
       try {
+        // Load sessions-index.json as metadata cache (non-blocking)
+        const indexMap = new Map<string, SessionIndexEntry>();
+        try {
+          const indexContent = await fs.readFile(indexPath, 'utf-8');
+          const index: SessionsIndex = JSON.parse(indexContent);
+          if (index.entries && Array.isArray(index.entries)) {
+            for (const entry of index.entries) {
+              indexMap.set(entry.sessionId, entry);
+            }
+          }
+        } catch {
+          // Index missing or invalid — will fall back to JSONL parsing
+        }
+
         const files = await fs.readdir(projectDir);
         const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
 
@@ -220,44 +234,58 @@ export class SessionService {
           })
         );
 
-        // Sort by mtime descending, take top N
+        // Sort by mtime descending, take slice [offset, offset+limit]
         fileStats.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
-        const topFiles = fileStats.slice(0, limit);
+        const total = fileStats.length;
+        const topFiles = fileStats.slice(offset, offset + limit);
 
-        // Parse only the top N files (expensive part, but limited)
-        const sessions: SessionListItem[] = [];
-        for (const { file, sessionId, stat } of topFiles) {
-          try {
-            const rawMessages = await parseJSONLFile(path.join(projectDir, file));
-            const userMessage = rawMessages.find(m => m.type === 'user');
-            const content = userMessage?.message?.content;
-            let rawText: string | null = null;
-
-            if (typeof content === 'string') {
-              rawText = content;
-            } else if (Array.isArray(content)) {
-              const textBlock = content
-                .filter((b: { type: string }) => b.type === 'text')
-                .find((b) => 'text' in b && cleanCommandTags(b.text as string).trim());
-              if (textBlock && 'text' in textBlock) {
-                rawText = textBlock.text as string;
-              }
+        // Resolve metadata: use index cache when available, parse JSONL only for misses (in parallel)
+        const sessions = (await Promise.all(
+          topFiles.map(async ({ file, sessionId, stat }): Promise<SessionListItem | null> => {
+            const cached = indexMap.get(sessionId);
+            if (cached) {
+              return {
+                sessionId,
+                firstPrompt: this.truncateFirstPrompt(cached.firstPrompt),
+                messageCount: cached.messageCount,
+                created: stat.birthtime.toISOString(),
+                modified: stat.mtime.toISOString(),
+              };
             }
+            // Cache miss — parse JSONL
+            try {
+              const rawMessages = await parseJSONLFile(path.join(projectDir, file));
+              const userMessage = rawMessages.find(m => m.type === 'user');
+              const content = userMessage?.message?.content;
+              let rawText: string | null = null;
 
-            sessions.push({
-              sessionId,
-              firstPrompt: rawText ? this.truncateFirstPrompt(rawText) : '',
-              messageCount: rawMessages.filter(m => m.type === 'user' || m.type === 'assistant').length,
-              created: stat.birthtime.toISOString(),
-              modified: stat.mtime.toISOString(),
-            });
-          } catch {
-            // Skip unparseable files
-          }
-        }
-        return sessions;
+              if (typeof content === 'string') {
+                rawText = content;
+              } else if (Array.isArray(content)) {
+                const textBlock = content
+                  .filter((b: { type: string }) => b.type === 'text')
+                  .find((b) => 'text' in b && cleanCommandTags(b.text as string).trim());
+                if (textBlock && 'text' in textBlock) {
+                  rawText = textBlock.text as string;
+                }
+              }
+
+              return {
+                sessionId,
+                firstPrompt: rawText ? this.truncateFirstPrompt(rawText) : '',
+                messageCount: rawMessages.filter(m => m.type === 'user' || m.type === 'assistant').length,
+                created: stat.birthtime.toISOString(),
+                modified: stat.mtime.toISOString(),
+              };
+            } catch {
+              return null; // Skip unparseable files
+            }
+          })
+        )).filter((s): s is SessionListItem => s !== null);
+
+        return { sessions, total };
       } catch {
-        return [];
+        return { sessions: [], total: 0 };
       }
     }
 
@@ -350,7 +378,7 @@ export class SessionService {
     }
 
     if (sessionMap.size === 0) {
-      return [];
+      return { sessions: [], total: 0 };
     }
 
     // Sort by modified descending (AC 3)
@@ -358,7 +386,7 @@ export class SessionService {
       (a, b) => this.parseDate(b.modified) - this.parseDate(a.modified)
     );
 
-    return sorted;
+    return { sessions: sorted, total: sorted.length };
   }
 
   // Session deletion methods
