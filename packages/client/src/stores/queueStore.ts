@@ -138,6 +138,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
         update.isPaused = false;
         update.isCompleted = false;
         update.isErrored = false;
+        update.errorItem = null;
+        update.pauseReason = undefined;
         break;
       case 'error':
         update.isRunning = false;
