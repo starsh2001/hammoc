@@ -27,8 +27,13 @@ export interface StreamRef {
   sockets: { size: number };
 }
 
+export interface QueueProgress {
+  current: number;
+  total: number;
+}
+
 export interface NotificationRef {
-  notifyComplete(sessionId: string): void;
+  notifyComplete(sessionId: string, lastContent?: string, queueProgress?: QueueProgress): void;
   notifyError(sessionId: string, error: string): void;
 }
 
@@ -43,6 +48,8 @@ export interface CallbackBuilderDeps {
   notificationService: NotificationRef;
   /** Initial sessionId before SDK resolves the actual one (used as fallback in emit payloads) */
   initialSessionId?: string;
+  /** Returns current queue progress when running inside queue executor */
+  getQueueProgress?: () => QueueProgress | undefined;
 }
 
 export interface CallbackBuilderHooks {
@@ -173,7 +180,7 @@ export function buildStreamCallbacks(
       }
 
       if (stream.sockets.size === 0) {
-        notificationService.notifyComplete(stream.sessionId);
+        notificationService.notifyComplete(stream.sessionId, response.content, deps.getQueueProgress?.());
       }
     },
 

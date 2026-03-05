@@ -189,7 +189,9 @@
       "title": "提问"
     },
     "complete": {
-      "title": "完成"
+      "title": "完成",
+      "lastMessage": "最后回复:",
+      "queueProgress": "队列: {{current}}/{{total}} ({{pct}}%)"
     },
     "error": {
       "title": "错误",

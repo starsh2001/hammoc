@@ -189,7 +189,9 @@
       "title": "Pregunta"
     },
     "complete": {
-      "title": "Completado"
+      "title": "Completado",
+      "lastMessage": "Última respuesta:",
+      "queueProgress": "Cola: {{current}}/{{total}} ({{pct}}%)"
     },
     "error": {
       "title": "Error",
