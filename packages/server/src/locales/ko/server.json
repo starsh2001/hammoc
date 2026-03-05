@@ -82,7 +82,8 @@
       "fileRequired": "파일이 필요합니다",
       "invalidFileType": "지원하지 않는 파일 형식입니다",
       "fileTooLarge": "파일 크기가 10MB를 초과합니다",
-      "maxAttachments": "최대 첨부 파일 수에 도달했습니다"
+      "maxAttachments": "최대 첨부 파일 수에 도달했습니다",
+      "invalidFilename": "잘못된 파일명입니다"
     },
     "success": {
       "issueDeleted": "이슈가 삭제되었습니다"

@@ -1,13 +1,28 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { DEFAULT_BOARD_CONFIG, validateBoardConfig } from '@bmad-studio/shared';
 import { projectService } from '../services/projectService.js';
 import { issueService } from '../services/issueService.js';
 
-export const attachmentUpload = multer({
+const rawUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 }).single('file');
+
+/** Wraps multer middleware to catch MulterError and return structured JSON */
+export function attachmentUpload(req: Request, res: Response, next: NextFunction): void {
+  rawUpload(req, res, (err: unknown) => {
+    if (err) {
+      if ((err as { code?: string }).code === 'LIMIT_FILE_SIZE') {
+        res.status(400).json({ error: { code: 'FILE_TOO_LARGE', message: req.t!('board.validation.fileTooLarge') } });
+        return;
+      }
+      res.status(400).json({ error: { code: 'UPLOAD_ERROR', message: (err as Error).message || 'Upload failed' } });
+      return;
+    }
+    next();
+  });
+}
 
 const VALID_SEVERITIES = ['low', 'medium', 'high', 'critical'];
 const VALID_ISSUE_TYPES = ['bug', 'improvement'];
@@ -279,6 +294,10 @@ export const boardController = {
       }
       if (nodeError.code === 'INVALID_ISSUE_ID') {
         res.status(400).json({ error: { code: 'INVALID_ISSUE_ID', message: req.t!('board.validation.invalidIssueId') } });
+        return;
+      }
+      if (nodeError.code === 'INVALID_FILENAME') {
+        res.status(400).json({ error: { code: 'INVALID_FILENAME', message: req.t!('board.validation.invalidFilename') } });
         return;
       }
       res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
