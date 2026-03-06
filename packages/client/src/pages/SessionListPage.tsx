@@ -111,16 +111,27 @@ export function SessionListPage() {
     }
   }, [projects.length, fetchProjects]);
 
+  // Track whether the includeEmpty effect is the initial mount
+  const includeEmptyInitialRef = useRef(true);
+
   // Clear search and fetch sessions on mount/navigation/projectSlug change
   useEffect(() => {
     if (projectSlug) {
+      clearTimeout(debounceRef.current);
       setLocalSearchQuery('');
       clearSearch(projectSlug);
     }
+    // Reset the includeEmpty guard so toggling works after navigation
+    includeEmptyInitialRef.current = true;
   }, [projectSlug, clearSearch, location.key]);
 
-  // Re-fetch when includeEmpty toggles (search-aware, preserves active search)
+  // Re-fetch when includeEmpty toggles (search-aware, preserves active search).
+  // Skip the initial mount to avoid double-fetch (clearSearch above already fetches).
   useEffect(() => {
+    if (includeEmptyInitialRef.current) {
+      includeEmptyInitialRef.current = false;
+      return;
+    }
     if (projectSlug) {
       fetchSessions(projectSlug, { limit: 20 });
     }
