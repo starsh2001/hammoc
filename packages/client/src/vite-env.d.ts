@@ -3,6 +3,11 @@
 interface ImportMetaEnv {
   readonly VITE_SERVER_PORT?: string;
   readonly VITE_CLIENT_PORT?: string;
+  readonly VITE_LOG_LEVEL?: string;
+  readonly MODE: string;
+  readonly DEV: boolean;
+  readonly PROD: boolean;
+  readonly SSR: boolean;
 }
 
 interface ImportMeta {

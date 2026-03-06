@@ -36,5 +36,5 @@ export async function createSessionMiddleware(): Promise<RequestHandler> {
     httpOnly: true,
     sameSite: 'lax',
     secure: false, // localhost only
-  });
+  }) as unknown as RequestHandler;
 }

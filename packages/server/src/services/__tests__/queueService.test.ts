@@ -58,6 +58,7 @@ const mockNotificationService = {
   notifyError: vi.fn(),
   notifyInputRequired: vi.fn(),
   reload: vi.fn().mockResolvedValue(undefined),
+  getBaseUrl: vi.fn().mockReturnValue(''),
 };
 
 // Mock preferencesService

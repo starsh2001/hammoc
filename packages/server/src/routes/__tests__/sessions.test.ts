@@ -9,10 +9,12 @@ import express from 'express';
 import type { SessionListItem, HistoryMessage, PaginationInfo } from '@bmad-studio/shared';
 
 // Create hoisted mocks for sessionService
-const { mockListSessionsBySlug, mockGetSessionMessages, mockIsValidPathParam } = vi.hoisted(() => ({
+const { mockListSessionsBySlug, mockGetSessionMessages, mockIsValidPathParam, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds } = vi.hoisted(() => ({
   mockListSessionsBySlug: vi.fn(),
   mockGetSessionMessages: vi.fn(),
   mockIsValidPathParam: vi.fn(),
+  mockReadSessionNamesBySlug: vi.fn().mockResolvedValue({}),
+  mockGetActiveStreamSessionIds: vi.fn().mockReturnValue([]),
 }));
 
 // Mock sessionService
@@ -22,6 +24,20 @@ vi.mock('../../services/sessionService', () => ({
     getSessionMessages: mockGetSessionMessages,
     isValidPathParam: mockIsValidPathParam,
   },
+}));
+
+// Mock projectService (needed by sessionController for search params)
+vi.mock('../../services/projectService', () => ({
+  projectService: {
+    readSessionNamesBySlug: mockReadSessionNamesBySlug,
+    readPromptHistoryBySlug: vi.fn().mockResolvedValue({ entries: [] }),
+    writePromptHistoryBySlug: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+// Mock websocket handler
+vi.mock('../../handlers/websocket', () => ({
+  getActiveStreamSessionIds: mockGetActiveStreamSessionIds,
 }));
 
 import sessionsRoutes from '../sessions';
@@ -54,24 +70,28 @@ describe('Sessions Routes', () => {
           modified: '2026-01-31T14:22:00Z',
         },
       ];
-      mockListSessionsBySlug.mockResolvedValue(mockSessions);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: mockSessions, total: 1 });
 
       const response = await request(app)
         .get('/api/projects/test-project/sessions')
         .expect(200);
 
-      expect(response.body).toEqual({ sessions: mockSessions });
-      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project', false, 0);
+      expect(response.body.sessions).toEqual(mockSessions);
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project', expect.objectContaining({
+        includeEmpty: false,
+        limit: 0,
+        offset: 0,
+      }));
     });
 
     it('should return 200 with empty array when no sessions', async () => {
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
 
       const response = await request(app)
         .get('/api/projects/empty-project/sessions')
         .expect(200);
 
-      expect(response.body).toEqual({ sessions: [] });
+      expect(response.body.sessions).toEqual([]);
     });
 
     it('should return 404 for non-existent project', async () => {
@@ -105,13 +125,15 @@ describe('Sessions Routes', () => {
     });
 
     it('should handle projectSlug with special characters', async () => {
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
 
       await request(app)
         .get('/api/projects/D--repo-my-project/sessions')
         .expect(200);
 
-      expect(mockListSessionsBySlug).toHaveBeenCalledWith('D--repo-my-project', false, 0);
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('D--repo-my-project', expect.objectContaining({
+        includeEmpty: false,
+      }));
     });
   });
 
