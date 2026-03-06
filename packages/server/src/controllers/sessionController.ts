@@ -22,7 +22,24 @@ export const sessionController = {
       const includeEmpty = req.query.includeEmpty === 'true';
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 0;
       const offset = req.query.offset ? Math.max(parseInt(req.query.offset as string, 10), 0) : 0;
-      const result = await sessionService.listSessionsBySlug(projectSlug, includeEmpty, limit > 0 ? limit : 0, offset);
+
+      // Story 23.1: Extract and sanitize search parameters
+      let query = typeof req.query.query === 'string' ? req.query.query.trim() : undefined;
+      if (query && query.length > 200) query = query.slice(0, 200);
+      if (query === '') query = undefined;
+      const searchContent = req.query.searchContent === 'true';
+
+      // Load session names BEFORE calling service (needed for search)
+      const sessionNames = await projectService.readSessionNamesBySlug(projectSlug);
+
+      const result = await sessionService.listSessionsBySlug(projectSlug, {
+        includeEmpty,
+        limit: limit > 0 ? limit : 0,
+        offset,
+        query,
+        searchContent,
+        sessionNames,
+      });
 
       // AC 6: Return 404 for non-existent project
       if (result === null) {
@@ -38,7 +55,6 @@ export const sessionController = {
       // Note: Empty array is a valid response (project exists but no sessions)
       // Mark sessions that have an active background stream + merge session names
       const activeIds = new Set(getActiveStreamSessionIds());
-      const sessionNames = await projectService.readSessionNamesBySlug(projectSlug);
       const sessions = result.sessions;
       const total = result.total;
       const response: SessionListResponse = {

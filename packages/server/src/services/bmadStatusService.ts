@@ -190,7 +190,7 @@ class BmadStatusService {
   ): Promise<BmadEpicStatus[]> {
     const epicMap = new Map<number, string>();
     // Planned story count from PRD epic headers (## Story N.N / ### Story N.N)
-    const plannedMap = new Map<number, number>();
+    const plannedMap = new Map<number, Set<string>>();
     // Track which file each epic was found in (project-relative path)
     const epicFileMap = new Map<number, string>();
 
@@ -211,7 +211,7 @@ class BmadStatusService {
               const nameMatch = content.match(EPIC_HEADER_RE);
               epicMap.set(epicNum, nameMatch ? nameMatch[2].trim() : `Epic ${epicNum}`);
               epicFileMap.set(epicNum, `${config.prdShardedLocation}/${file}`);
-              this.countPlannedStories(content, plannedMap);
+              this.countPlannedStories(content, plannedMap, epicNum);
             }
           }
         } catch {
@@ -242,8 +242,10 @@ class BmadStatusService {
             const content = await fs.readFile(path.join(shardedDir, file), 'utf-8');
             const regex = new RegExp(EPIC_HEADER_RE.source, 'gm');
             let match;
+            const epicsInFile: number[] = [];
             while ((match = regex.exec(content)) !== null) {
               const epicNum = parseInt(match[1], 10);
+              epicsInFile.push(epicNum);
               // Don't overwrite epics found in dedicated files (Step 1)
               if (!epicMap.has(epicNum)) {
                 epicMap.set(epicNum, match[2].trim());
@@ -252,7 +254,9 @@ class BmadStatusService {
             }
             // Only count planned stories for files not already scanned in Step 1
             if (!scannedFiles.has(file)) {
-              this.countPlannedStories(content, plannedMap);
+              // Pass epic context for single-epic files so standalone "Story N" headers are counted
+              const epicContext = epicsInFile.length === 1 ? epicsInFile[0] : undefined;
+              this.countPlannedStories(content, plannedMap, epicContext);
             }
           }
         } catch {
@@ -315,7 +319,7 @@ class BmadStatusService {
         number,
         name,
         stories: (storyMap.get(number) || []).sort((a, b) => a.file.localeCompare(b.file, undefined, { numeric: true })),
-        ...(plannedMap.has(number) && { plannedStories: plannedMap.get(number) }),
+        ...(plannedMap.has(number) && { plannedStories: plannedMap.get(number)!.size }),
         ...(epicFileMap.has(number) && { filePath: epicFileMap.get(number) }),
       }));
 
@@ -323,16 +327,36 @@ class BmadStatusService {
   }
 
   /**
-   * Count planned stories from PRD content by matching story headers.
+   * Collect planned story identifiers from PRD content by matching story headers.
    * Matches: "## Story 3.1: ...", "### Story 3.1: ...", "## Story 3.1 — ..."
-   * Accumulates counts into the provided map keyed by epic number.
+   * Also matches standalone format: "### Story 1: ..." when epicContext is provided.
+   * Uses a Set per epic to deduplicate stories that appear in multiple files.
    */
-  private countPlannedStories(content: string, plannedMap: Map<number, number>): void {
-    const regex = /^#{2,3}\s+Story\s+(\d+)\.\d+/gm;
+  private countPlannedStories(content: string, plannedMap: Map<number, Set<string>>, epicContext?: number): void {
+    const regex = /^#{2,3}\s+Story\s+(\d+(?:\.\d+)?)/gm;
     let match;
     while ((match = regex.exec(content)) !== null) {
-      const epicNum = parseInt(match[1], 10);
-      plannedMap.set(epicNum, (plannedMap.get(epicNum) || 0) + 1);
+      const rawId = match[1];
+      let epicNum: number;
+      let storyId: string;
+
+      if (rawId.includes('.')) {
+        // Dotted format: "Story 3.1" → epic 3, story "3.1"
+        storyId = rawId;
+        epicNum = parseInt(rawId.split('.')[0], 10);
+      } else if (epicContext != null) {
+        // Standalone format: "Story 1" in an epic-specific file → "epicContext.rawId"
+        storyId = `${epicContext}.${rawId}`;
+        epicNum = epicContext;
+      } else {
+        // Standalone without context — can't determine epic, skip
+        continue;
+      }
+
+      if (!plannedMap.has(epicNum)) {
+        plannedMap.set(epicNum, new Set());
+      }
+      plannedMap.get(epicNum)!.add(storyId);
     }
   }
 

@@ -10,6 +10,15 @@ vi.mock('fs', () => ({
   existsSync: vi.fn(() => true),
 }));
 
+// Mock historyParser for content search tests
+vi.mock('../historyParser.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../historyParser.js')>();
+  return {
+    ...original,
+    parseJSONLFile: vi.fn().mockResolvedValue([]),
+  };
+});
+
 const mockFs = vi.mocked(fs);
 
 // Mock data
@@ -353,7 +362,8 @@ describe('SessionService', () => {
 
   describe('listSessionsBySlug', () => {
     it('should return null for non-existent project', async () => {
-      mockFs.readFile.mockRejectedValue(new Error('ENOENT'));
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValueOnce(false);
 
       const result = await service.listSessionsBySlug('nonexistent');
 
@@ -468,6 +478,396 @@ describe('SessionService', () => {
       const result = await service.listSessionsBySlug('project-hash');
 
       expect(result).toEqual({ sessions: [], total: 0 });
+    });
+  });
+
+  // Story 23.1: Session search tests
+  describe('listSessionsBySlug - metadata search', () => {
+    const mockIndexWithSearch = {
+      originalPath: '/test/project',
+      entries: [
+        {
+          sessionId: 'session-abc',
+          firstPrompt: 'Create a React component for dashboard',
+          messageCount: 10,
+          created: '2026-01-01T00:00:00Z',
+          modified: '2026-01-03T00:00:00Z',
+        },
+        {
+          sessionId: 'session-def',
+          firstPrompt: 'Fix authentication bug',
+          messageCount: 5,
+          created: '2026-01-02T00:00:00Z',
+          modified: '2026-01-02T00:00:00Z',
+        },
+        {
+          sessionId: 'session-ghi',
+          firstPrompt: 'Refactor API endpoints',
+          messageCount: 8,
+          created: '2026-01-03T00:00:00Z',
+          modified: '2026-01-01T00:00:00Z',
+        },
+      ],
+    };
+
+    it('should return all sessions when query is empty (backward compatible)', async () => {
+      mockFs.readFile.mockResolvedValue(JSON.stringify(mockIndexWithSearch));
+
+      const result = await service.listSessionsBySlug('project-hash', {});
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(3);
+    });
+
+    it('should return all sessions when query is undefined', async () => {
+      mockFs.readFile.mockResolvedValue(JSON.stringify(mockIndexWithSearch));
+
+      const result = await service.listSessionsBySlug('project-hash', { query: undefined });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(3);
+    });
+
+    it('should filter by firstPrompt match (case-insensitive)', async () => {
+      mockFs.readFile.mockResolvedValue(JSON.stringify(mockIndexWithSearch));
+
+      const result = await service.listSessionsBySlug('project-hash', { query: 'react' });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(1);
+      expect(result!.sessions[0].sessionId).toBe('session-abc');
+      expect(result!.total).toBe(1);
+    });
+
+    it('should filter by sessionId match', async () => {
+      mockFs.readFile.mockResolvedValue(JSON.stringify(mockIndexWithSearch));
+
+      const result = await service.listSessionsBySlug('project-hash', { query: 'def' });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(1);
+      expect(result!.sessions[0].sessionId).toBe('session-def');
+    });
+
+    it('should filter by session name match', async () => {
+      mockFs.readFile.mockResolvedValue(JSON.stringify(mockIndexWithSearch));
+
+      const result = await service.listSessionsBySlug('project-hash', {
+        query: 'dashboard work',
+        sessionNames: {
+          'session-ghi': 'Dashboard Work Session',
+        },
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(1);
+      expect(result!.sessions[0].sessionId).toBe('session-ghi');
+    });
+
+    it('should return empty list when no matches', async () => {
+      mockFs.readFile.mockResolvedValue(JSON.stringify(mockIndexWithSearch));
+
+      const result = await service.listSessionsBySlug('project-hash', { query: 'nonexistent-xyz' });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(0);
+      expect(result!.total).toBe(0);
+    });
+
+    it('should be case-insensitive for all metadata fields', async () => {
+      mockFs.readFile.mockResolvedValue(JSON.stringify(mockIndexWithSearch));
+
+      const result = await service.listSessionsBySlug('project-hash', { query: 'FIX AUTHENTICATION' });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(1);
+      expect(result!.sessions[0].sessionId).toBe('session-def');
+    });
+
+    it('should return multiple matches', async () => {
+      mockFs.readFile.mockResolvedValue(JSON.stringify(mockIndexWithSearch));
+
+      // 'session-' appears in all session IDs
+      const result = await service.listSessionsBySlug('project-hash', { query: 'session-' });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(3);
+      expect(result!.total).toBe(3);
+    });
+  });
+
+  describe('listSessionsBySlug - search with pagination (fast path)', () => {
+    it('should filter before pagination and return correct total', async () => {
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const indexData = {
+        entries: [
+          { sessionId: 's1', firstPrompt: 'React component', messageCount: 1, created: '2026-01-01T00:00:00Z', modified: '2026-01-01T00:00:00Z' },
+          { sessionId: 's2', firstPrompt: 'Vue component', messageCount: 2, created: '2026-01-02T00:00:00Z', modified: '2026-01-02T00:00:00Z' },
+          { sessionId: 's3', firstPrompt: 'React hooks', messageCount: 3, created: '2026-01-03T00:00:00Z', modified: '2026-01-03T00:00:00Z' },
+        ],
+      };
+
+      mockFs.readFile.mockResolvedValue(JSON.stringify(indexData));
+      mockFs.readdir.mockResolvedValue(['s1.jsonl', 's2.jsonl', 's3.jsonl'] as any);
+
+      const mockStat = (mtime: Date) => ({
+        mtimeMs: mtime.getTime(),
+        mtime,
+        birthtime: mtime,
+      });
+
+      mockFs.stat
+        .mockResolvedValueOnce(mockStat(new Date('2026-01-01')) as any)
+        .mockResolvedValueOnce(mockStat(new Date('2026-01-02')) as any)
+        .mockResolvedValueOnce(mockStat(new Date('2026-01-03')) as any);
+
+      const result = await service.listSessionsBySlug('project-hash', {
+        query: 'react',
+        limit: 1,
+        offset: 0,
+      });
+
+      expect(result).not.toBeNull();
+      // 2 matches for 'react' (s1 and s3), but limit=1 so only 1 returned
+      expect(result!.sessions).toHaveLength(1);
+      expect(result!.total).toBe(2);
+    });
+  });
+
+  describe('listSessionsBySlug - content search (fast path)', () => {
+    it('should search JSONL content in fast path (limit>0, searchContent=true)', async () => {
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const indexData = {
+        entries: [
+          { sessionId: 's1', firstPrompt: 'No match here', messageCount: 1, created: '2026-01-01T00:00:00Z', modified: '2026-01-01T00:00:00Z' },
+          { sessionId: 's2', firstPrompt: 'Also no match', messageCount: 2, created: '2026-01-02T00:00:00Z', modified: '2026-01-02T00:00:00Z' },
+        ],
+      };
+
+      mockFs.readFile.mockResolvedValue(JSON.stringify(indexData));
+      mockFs.readdir.mockResolvedValue(['s1.jsonl', 's2.jsonl'] as any);
+
+      const mockStat = (mtime: Date) => ({
+        mtimeMs: mtime.getTime(),
+        mtime,
+        birthtime: mtime,
+      });
+
+      mockFs.stat
+        .mockResolvedValueOnce(mockStat(new Date('2026-01-01')) as any)
+        .mockResolvedValueOnce(mockStat(new Date('2026-01-02')) as any);
+
+      const { parseJSONLFile: mockParseJSONL } = await import('../historyParser.js');
+      vi.mocked(mockParseJSONL).mockImplementation(async (filePath: string) => {
+        if (filePath.includes('s1')) {
+          return [
+            { type: 'user', message: { content: 'Tell me about GraphQL' }, uuid: '1', timestamp: '2026-01-01T00:00:00Z' },
+          ] as any;
+        }
+        return [
+          { type: 'user', message: { content: 'Hello world' }, uuid: '2', timestamp: '2026-01-02T00:00:00Z' },
+        ] as any;
+      });
+
+      const result = await service.listSessionsBySlug('project-hash', {
+        query: 'graphql',
+        searchContent: true,
+        limit: 10,
+        offset: 0,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(1);
+      expect(result!.sessions[0].sessionId).toBe('s1');
+      expect(result!.total).toBe(1);
+    });
+
+    it('should cap content search at 100 unmatched sessions', async () => {
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      // Create 120 sessions, none matching by metadata
+      const entries = Array.from({ length: 120 }, (_, i) => ({
+        sessionId: `s${i}`,
+        firstPrompt: 'No match',
+        messageCount: 1,
+        created: '2026-01-01T00:00:00Z',
+        modified: `2026-01-01T00:00:${String(i).padStart(2, '0')}Z`,
+      }));
+
+      mockFs.readFile.mockResolvedValue(JSON.stringify({ entries }));
+      mockFs.readdir.mockResolvedValue(entries.map(e => `${e.sessionId}.jsonl`) as any);
+
+      const mockStat = (i: number) => ({
+        mtimeMs: i,
+        mtime: new Date(i),
+        birthtime: new Date(i),
+      });
+
+      for (let i = 0; i < 120; i++) {
+        mockFs.stat.mockResolvedValueOnce(mockStat(i) as any);
+      }
+
+      const { parseJSONLFile: mockParseJSONL } = await import('../historyParser.js');
+      vi.mocked(mockParseJSONL).mockResolvedValue([
+        { type: 'user', message: { content: 'target keyword found' }, uuid: '1', timestamp: '2026-01-01T00:00:00Z' },
+      ] as any);
+
+      const result = await service.listSessionsBySlug('project-hash', {
+        query: 'target',
+        searchContent: true,
+        limit: 200,
+        offset: 0,
+      });
+
+      expect(result).not.toBeNull();
+      // Only 100 sessions should be content-searched (cap), even though 120 exist
+      expect(mockParseJSONL).toHaveBeenCalledTimes(100);
+      // All 100 searched sessions match, so total should be 100
+      expect(result!.total).toBe(100);
+    });
+  });
+
+  describe('listSessionsBySlug - content search', () => {
+    it('should search JSONL content when searchContent=true', async () => {
+      mockFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          entries: [
+            {
+              sessionId: 'no-meta-match',
+              firstPrompt: 'Hello world',
+              messageCount: 2,
+              created: '2026-01-01T00:00:00Z',
+              modified: '2026-01-01T00:00:00Z',
+            },
+          ],
+        })
+      );
+
+      // Mock parseJSONLFile for content search
+      const { parseJSONLFile: mockParseJSONL } = await import('../historyParser.js');
+      vi.mocked(mockParseJSONL).mockResolvedValue([
+        {
+          type: 'user',
+          message: { content: 'How do I implement Redux in my app?' },
+          uuid: '1',
+          timestamp: '2026-01-01T00:00:00Z',
+        },
+        {
+          type: 'assistant',
+          message: { content: 'Here is how to set up Redux...' },
+          uuid: '2',
+          timestamp: '2026-01-01T00:01:00Z',
+        },
+      ] as any);
+
+      const result = await service.listSessionsBySlug('project-hash', {
+        query: 'redux',
+        searchContent: true,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(1);
+      expect(result!.sessions[0].sessionId).toBe('no-meta-match');
+    });
+
+    it('should not re-search sessions already matched by metadata', async () => {
+      mockFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          entries: [
+            {
+              sessionId: 'meta-match',
+              firstPrompt: 'Redux setup guide',
+              messageCount: 2,
+              created: '2026-01-01T00:00:00Z',
+              modified: '2026-01-01T00:00:00Z',
+            },
+          ],
+        })
+      );
+
+      const { parseJSONLFile: mockParseJSONL } = await import('../historyParser.js');
+      vi.mocked(mockParseJSONL).mockClear();
+
+      const result = await service.listSessionsBySlug('project-hash', {
+        query: 'redux',
+        searchContent: true,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(1);
+      // parseJSONLFile should NOT be called for content search since metadata already matched
+      expect(mockParseJSONL).not.toHaveBeenCalled();
+    });
+
+    it('should handle content with array of content blocks', async () => {
+      mockFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          entries: [
+            {
+              sessionId: 'block-session',
+              firstPrompt: 'Simple prompt',
+              messageCount: 1,
+              created: '2026-01-01T00:00:00Z',
+              modified: '2026-01-01T00:00:00Z',
+            },
+          ],
+        })
+      );
+
+      const { parseJSONLFile: mockParseJSONL } = await import('../historyParser.js');
+      vi.mocked(mockParseJSONL).mockResolvedValue([
+        {
+          type: 'assistant',
+          message: {
+            content: [
+              { type: 'text', text: 'Here is the Kubernetes deployment config' },
+              { type: 'text', text: 'And here is the service config' },
+            ],
+          },
+          uuid: '1',
+          timestamp: '2026-01-01T00:00:00Z',
+        },
+      ] as any);
+
+      const result = await service.listSessionsBySlug('project-hash', {
+        query: 'kubernetes',
+        searchContent: true,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(1);
+    });
+
+    it('should skip unparseable files during content search', async () => {
+      mockFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          entries: [
+            {
+              sessionId: 'bad-file',
+              firstPrompt: 'No match here',
+              messageCount: 1,
+              created: '2026-01-01T00:00:00Z',
+              modified: '2026-01-01T00:00:00Z',
+            },
+          ],
+        })
+      );
+
+      const { parseJSONLFile: mockParseJSONL } = await import('../historyParser.js');
+      vi.mocked(mockParseJSONL).mockRejectedValue(new Error('Parse error'));
+
+      const result = await service.listSessionsBySlug('project-hash', {
+        query: 'anything',
+        searchContent: true,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.sessions).toHaveLength(0);
     });
   });
 });

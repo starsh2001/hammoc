@@ -33,6 +33,7 @@ export interface QueueProgress {
 }
 
 export interface NotificationRef {
+  shouldNotify(socketCount: number): boolean;
   notifyComplete(sessionId: string, lastContent?: string, queueProgress?: QueueProgress): void;
   notifyError(sessionId: string, error: string): void;
 }

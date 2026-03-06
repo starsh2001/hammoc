@@ -74,20 +74,26 @@ describe('sessionController', () => {
           modified: '2026-01-31T14:22:00Z',
         },
       ];
-      mockListSessionsBySlug.mockResolvedValue(mockSessions);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: mockSessions, total: 1 });
       mockGetActiveStreamSessionIds.mockReturnValue([]);
       mockReadSessionNamesBySlug.mockResolvedValue({});
 
       await sessionController.list(mockReq as Request, mockRes as Response);
 
-      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project', false, 0);
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project', expect.objectContaining({
+        includeEmpty: false,
+        limit: 0,
+        offset: 0,
+      }));
       expect(mockRes.json).toHaveBeenCalledWith({
         sessions: mockSessions,
+        total: 1,
+        hasMore: false,
       });
     });
 
     it('should return 200 with empty session list', async () => {
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
       mockGetActiveStreamSessionIds.mockReturnValue([]);
       mockReadSessionNamesBySlug.mockResolvedValue({});
 
@@ -95,6 +101,8 @@ describe('sessionController', () => {
 
       expect(mockRes.json).toHaveBeenCalledWith({
         sessions: [],
+        total: 0,
+        hasMore: false,
       });
     });
 
@@ -128,13 +136,56 @@ describe('sessionController', () => {
 
     it('should use projectSlug from request params', async () => {
       mockReq.params = { projectSlug: 'my-custom-project-slug' };
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
       mockGetActiveStreamSessionIds.mockReturnValue([]);
       mockReadSessionNamesBySlug.mockResolvedValue({});
 
       await sessionController.list(mockReq as Request, mockRes as Response);
 
-      expect(mockListSessionsBySlug).toHaveBeenCalledWith('my-custom-project-slug', false, 0);
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('my-custom-project-slug', expect.objectContaining({
+        includeEmpty: false,
+      }));
+    });
+
+    it('should pass query and searchContent to service', async () => {
+      mockReq.query = { query: '  hello  ', searchContent: 'true' };
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
+      mockGetActiveStreamSessionIds.mockReturnValue([]);
+      mockReadSessionNamesBySlug.mockResolvedValue({ s1: 'My Session' });
+
+      await sessionController.list(mockReq as Request, mockRes as Response);
+
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project', expect.objectContaining({
+        query: 'hello',
+        searchContent: true,
+        sessionNames: { s1: 'My Session' },
+      }));
+    });
+
+    it('should truncate query to 200 chars', async () => {
+      mockReq.query = { query: 'A'.repeat(250) };
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
+      mockGetActiveStreamSessionIds.mockReturnValue([]);
+      mockReadSessionNamesBySlug.mockResolvedValue({});
+
+      await sessionController.list(mockReq as Request, mockRes as Response);
+
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project', expect.objectContaining({
+        query: 'A'.repeat(200),
+      }));
+    });
+
+    it('should treat empty query as undefined', async () => {
+      mockReq.query = { query: '   ' };
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
+      mockGetActiveStreamSessionIds.mockReturnValue([]);
+      mockReadSessionNamesBySlug.mockResolvedValue({});
+
+      await sessionController.list(mockReq as Request, mockRes as Response);
+
+      expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project', expect.objectContaining({
+        query: undefined,
+      }));
     });
   });
 });

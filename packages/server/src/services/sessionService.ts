@@ -15,6 +15,7 @@ import type {
   SessionsIndex,
   SessionIndexEntry,
   SessionListItem,
+  SessionListParams,
   HistoryMessage,
   PaginationInfo,
   PaginationOptions,
@@ -192,12 +193,61 @@ export class SessionService {
   }
 
   /**
+   * Check if a session matches the search query by metadata
+   * Matches against session name, session ID, and firstPrompt (case-insensitive)
+   */
+  private matchesMetadata(
+    sessionId: string,
+    firstPrompt: string,
+    queryLower: string,
+    sessionNames?: Record<string, string>
+  ): boolean {
+    if (sessionId.toLowerCase().includes(queryLower)) return true;
+    if (firstPrompt && firstPrompt.toLowerCase().includes(queryLower)) return true;
+    const name = sessionNames?.[sessionId];
+    if (name && name.toLowerCase().includes(queryLower)) return true;
+    return false;
+  }
+
+  /**
+   * Search JSONL file content for a query string
+   * Returns true on first match (early termination)
+   */
+  private async searchFileContent(filePath: string, queryLower: string): Promise<boolean> {
+    try {
+      const rawMessages = await parseJSONLFile(filePath);
+      for (const msg of rawMessages) {
+        if (msg.type !== 'user' && msg.type !== 'assistant') continue;
+        const content = msg.message?.content;
+        if (typeof content === 'string') {
+          if (content.toLowerCase().includes(queryLower)) return true;
+        } else if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === 'text' && 'text' in block) {
+              if ((block.text as string).toLowerCase().includes(queryLower)) return true;
+            }
+          }
+        }
+      }
+    } catch {
+      // Skip unparseable files
+    }
+    return false;
+  }
+
+  /**
    * List sessions for API response (by projectSlug)
    * - Sorted by modified descending (AC 3)
    * - firstPrompt truncated to 100 chars (AC 4)
    * - Also scans for .jsonl files not yet in sessions-index.json
+   * - Supports search by query and content search (Story 23.1)
    */
-  async listSessionsBySlug(projectSlug: string, includeEmpty = false, limit = 0, offset = 0): Promise<{ sessions: SessionListItem[]; total: number } | null> {
+  async listSessionsBySlug(
+    projectSlug: string,
+    params: SessionListParams & { sessionNames?: Record<string, string> } = {}
+  ): Promise<{ sessions: SessionListItem[]; total: number } | null> {
+    const { includeEmpty = false, limit = 0, offset = 0, query, searchContent, sessionNames } = params;
+    const queryLower = query?.toLowerCase();
     const projectDir = path.join(this.claudeProjectsDir, projectSlug);
     const indexPath = path.join(projectDir, 'sessions-index.json');
 
@@ -246,6 +296,46 @@ export class SessionService {
             if (cached && !cached.firstPrompt) return false;
             return true; // Include cache misses — will filter after resolution
           });
+        }
+
+        // Apply search filter BEFORE pagination
+        if (queryLower) {
+          const metadataMatched = new Set<string>();
+          const metadataFiltered = candidates.filter(({ sessionId }) => {
+            const cached = indexMap.get(sessionId);
+            const firstPrompt = cached?.firstPrompt || '';
+            if (this.matchesMetadata(sessionId, firstPrompt, queryLower, sessionNames)) {
+              metadataMatched.add(sessionId);
+              return true;
+            }
+            return false;
+          });
+
+          if (searchContent) {
+            // Content search for sessions not already matched by metadata (cap at 100)
+            const unmatchedCandidates = candidates
+              .filter(({ sessionId }) => !metadataMatched.has(sessionId))
+              .slice(0, 100);
+
+            const contentMatched = await Promise.all(
+              unmatchedCandidates.map(async (entry) => {
+                const matched = await this.searchFileContent(
+                  path.join(projectDir, entry.file),
+                  queryLower
+                );
+                return matched ? entry : null;
+              })
+            );
+
+            const contentHits = contentMatched.filter(
+              (e): e is (typeof candidates)[number] => e !== null
+            );
+            candidates = [...metadataFiltered, ...contentHits];
+            // Re-sort after merging
+            candidates.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
+          } else {
+            candidates = metadataFiltered;
+          }
         }
 
         const topFiles = candidates.slice(offset, offset + limit);
@@ -305,6 +395,8 @@ export class SessionService {
 
     // Full path: build complete session map from index + file scan
     const sessionMap = new Map<string, SessionListItem>();
+    // Keep raw firstPrompt (full text) for search matching
+    const rawFirstPromptMap = new Map<string, string>();
 
     try {
       const content = await fs.readFile(indexPath, 'utf-8');
@@ -312,6 +404,7 @@ export class SessionService {
 
       if (index.entries && Array.isArray(index.entries)) {
         for (const entry of index.entries) {
+          rawFirstPromptMap.set(entry.sessionId, entry.firstPrompt);
           sessionMap.set(entry.sessionId, {
             sessionId: entry.sessionId,
             firstPrompt: this.truncateFirstPrompt(entry.firstPrompt),
@@ -357,6 +450,7 @@ export class SessionService {
               const firstPrompt = rawText ? this.truncateFirstPrompt(rawText) : null;
 
               if (rawText || includeEmpty) {
+                if (rawText) rawFirstPromptMap.set(sessionId, rawText);
                 sessionMap.set(sessionId, {
                   sessionId,
                   firstPrompt: firstPrompt || '',
@@ -396,9 +490,41 @@ export class SessionService {
     }
 
     // Sort by modified descending (AC 3)
-    const sorted = [...sessionMap.values()].sort(
+    let sorted = [...sessionMap.values()].sort(
       (a, b) => this.parseDate(b.modified) - this.parseDate(a.modified)
     );
+
+    // Apply search filter for full path
+    if (queryLower) {
+      const metadataMatched = new Set<string>();
+      const metadataFiltered = sorted.filter((s) => {
+        const rawPrompt = rawFirstPromptMap.get(s.sessionId) || '';
+        if (this.matchesMetadata(s.sessionId, rawPrompt, queryLower, sessionNames)) {
+          metadataMatched.add(s.sessionId);
+          return true;
+        }
+        return false;
+      });
+
+      if (searchContent) {
+        // Content search for sessions not already matched (cap at 100)
+        const unmatched = sorted
+          .filter((s) => !metadataMatched.has(s.sessionId))
+          .slice(0, 100);
+
+        const contentHits: SessionListItem[] = [];
+        for (const s of unmatched) {
+          const filePath = path.join(projectDir, `${s.sessionId}.jsonl`);
+          const matched = await this.searchFileContent(filePath, queryLower);
+          if (matched) contentHits.push(s);
+        }
+
+        sorted = [...metadataFiltered, ...contentHits];
+        sorted.sort((a, b) => this.parseDate(b.modified) - this.parseDate(a.modified));
+      } else {
+        sorted = metadataFiltered;
+      }
+    }
 
     return { sessions: sorted, total: sorted.length };
   }
