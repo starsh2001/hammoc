@@ -8,8 +8,9 @@ import { Request, Response } from 'express';
 import { SESSION_ERRORS } from '@bmad-studio/shared';
 
 // Create hoisted mocks
-const { mockListSessionsBySlug, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds } = vi.hoisted(() => ({
+const { mockListSessionsBySlug, mockIsValidPathParam, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds } = vi.hoisted(() => ({
   mockListSessionsBySlug: vi.fn(),
+  mockIsValidPathParam: vi.fn(() => true),
   mockReadSessionNamesBySlug: vi.fn(),
   mockGetActiveStreamSessionIds: vi.fn(),
 }));
@@ -18,6 +19,7 @@ const { mockListSessionsBySlug, mockReadSessionNamesBySlug, mockGetActiveStreamS
 vi.mock('../../services/sessionService', () => ({
   sessionService: {
     listSessionsBySlug: mockListSessionsBySlug,
+    isValidPathParam: mockIsValidPathParam,
   },
 }));
 
@@ -186,6 +188,16 @@ describe('sessionController', () => {
       expect(mockListSessionsBySlug).toHaveBeenCalledWith('test-project', expect.objectContaining({
         query: undefined,
       }));
+    });
+
+    it('should reject invalid projectSlug with INVALID_PATH', async () => {
+      mockReq.params = { projectSlug: '../malicious' };
+      mockIsValidPathParam.mockReturnValueOnce(false);
+
+      await sessionController.list(mockReq as Request, mockRes as Response);
+
+      expect(mockRes.status).toHaveBeenCalledWith(SESSION_ERRORS.INVALID_PATH.httpStatus);
+      expect(mockListSessionsBySlug).not.toHaveBeenCalled();
     });
   });
 });
