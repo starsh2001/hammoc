@@ -24,6 +24,7 @@ export interface UseTerminalReturn {
   close: () => void;
   closeById: (terminalId: string) => void;
   switchTerminal: (terminalId: string) => void;
+  listTerminals: () => void;
 }
 
 export function useTerminal(projectSlug: string): UseTerminalReturn {
@@ -35,6 +36,7 @@ export function useTerminal(projectSlug: string): UseTerminalReturn {
   const createTerminal = useTerminalStore((s) => s.createTerminal);
   const closeTerminal = useTerminalStore((s) => s.closeTerminal);
   const setActiveTerminalId = useTerminalStore((s) => s.setActiveTerminalId);
+  const listTerminalsAction = useTerminalStore((s) => s.listTerminals);
 
   const session = activeTerminalId ? terminals.get(activeTerminalId) ?? null : null;
 
@@ -71,6 +73,10 @@ export function useTerminal(projectSlug: string): UseTerminalReturn {
     [setActiveTerminalId]
   );
 
+  const listTerminals = useCallback(() => {
+    listTerminalsAction(projectSlug);
+  }, [listTerminalsAction, projectSlug]);
+
   return {
     terminalId: activeTerminalId,
     isConnected: session?.status === 'connected',
@@ -82,5 +88,6 @@ export function useTerminal(projectSlug: string): UseTerminalReturn {
     close,
     closeById,
     switchTerminal,
+    listTerminals,
   };
 }
