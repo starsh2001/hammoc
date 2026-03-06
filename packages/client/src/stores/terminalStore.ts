@@ -222,18 +222,25 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     };
 
     _onList = (data: TerminalListResponse) => {
-      if (data.terminals.length === 0) return;
-      const terminals = new Map(get().terminals);
+      // Ignore responses for a different project (race condition guard)
+      if (data.projectSlug !== get().currentProjectSlug) return;
+
+      // Treat server response as authoritative — rebuild terminal map
+      const terminals = new Map<string, TerminalSession>();
       for (const t of data.terminals) {
-        if (!terminals.has(t.terminalId)) {
-          terminals.set(t.terminalId, {
-            terminalId: t.terminalId,
-            shell: t.shell,
-            status: 'connected',
-          });
-        }
+        const existing = get().terminals.get(t.terminalId);
+        terminals.set(t.terminalId, existing ?? {
+          terminalId: t.terminalId,
+          shell: t.shell,
+          status: 'connected',
+        });
       }
-      const activeTerminalId = get().activeTerminalId ?? terminals.keys().next().value ?? null;
+      let activeTerminalId = get().activeTerminalId;
+      if (activeTerminalId && !terminals.has(activeTerminalId)) {
+        activeTerminalId = terminals.keys().next().value ?? null;
+      } else if (!activeTerminalId && terminals.size > 0) {
+        activeTerminalId = terminals.keys().next().value ?? null;
+      }
       set({ terminals, activeTerminalId });
     };
 
