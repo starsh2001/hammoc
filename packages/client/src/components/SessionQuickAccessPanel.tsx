@@ -1,12 +1,13 @@
 /**
  * SessionQuickAccessPanel Component
  * Content-only panel for quick session switching (rendered inside QuickPanel)
- * [Source: Story 5.7 - Task 2, Story 19.1 - Task 4]
+ * Includes search functionality for finding sessions without leaving chat
+ * [Source: Story 5.7 - Task 2, Story 19.1 - Task 4, Story 23.3 - Task 2]
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MessageSquare, Loader2 } from 'lucide-react';
+import { MessageSquare, Loader2, Search, X } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import { formatRelativeTime } from '../utils/formatters';
 
@@ -22,22 +23,104 @@ export function SessionQuickAccessPanel({
   onSelectSession,
 }: SessionQuickAccessPanelProps) {
   const { t } = useTranslation('chat');
-  const { sessions, isLoading, isLoadingMore, hasMore, fetchSessions, loadMoreSessions } = useSessionStore();
+  const {
+    sessions,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    loadMoreSessions,
+    searchSessions,
+    clearSearch,
+    searchQuery,
+    isSearching,
+  } = useSessionStore();
 
-  // Fetch sessions on mount (mount = panel open, since QuickPanel conditionally renders content)
+  const [inputValue, setInputValue] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const projectSlugRef = useRef(projectSlug);
+  projectSlugRef.current = projectSlug;
+
+  // On mount: clear stale search and fetch fresh
   useEffect(() => {
-    fetchSessions(projectSlug, { limit: 20 });
-  }, [projectSlug, fetchSessions]);
+    clearSearch(projectSlug);
+  }, [projectSlug, clearSearch]);
+
+  // On unmount: clear search state
+  useEffect(() => {
+    return () => {
+      clearTimeout(debounceRef.current);
+      clearSearch(projectSlugRef.current);
+    };
+  }, []); // empty deps = cleanup only on unmount
+
+  const handleSearchChange = (value: string) => {
+    setInputValue(value);
+    clearTimeout(debounceRef.current);
+    if (value.trim()) {
+      debounceRef.current = setTimeout(() => {
+        searchSessions(projectSlug, value.trim(), false);
+      }, 300);
+    } else {
+      clearSearch(projectSlug);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setInputValue('');
+    clearTimeout(debounceRef.current);
+    clearSearch(projectSlug);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && inputValue) {
+      e.stopPropagation();
+      handleClearSearch();
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
+      {/* Search input */}
+      <div className="px-4 pt-3 pb-2" role="search">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t('session.searchPlaceholder')}
+            className="w-full pl-8 pr-7 py-1.5 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            aria-label={t('session.searchPlaceholder')}
+            autoFocus
+            data-testid="search-input"
+          />
+          {inputValue && (
+            <button
+              onClick={handleClearSearch}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
+              aria-label={t('session.clearSearch')}
+              data-testid="clear-search-button"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Session list */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {isLoading ? (
+      <div className="flex-1 overflow-y-auto p-4 pt-2 space-y-2" aria-live="polite">
+        {isLoading || isSearching ? (
           <div className="flex items-center justify-center py-8" data-testid="loading-indicator">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" aria-hidden="true" />
-            <span className="sr-only">{t('sessionQuickAccess.loading')}</span>
+            <span className="sr-only">
+              {isSearching ? t('session.searching') : t('sessionQuickAccess.loading')}
+            </span>
           </div>
+        ) : sessions.length === 0 && searchQuery ? (
+          <p className="text-center text-gray-500 dark:text-gray-400 py-8" data-testid="search-no-results">
+            {t('session.searchNoResults')}
+          </p>
         ) : sessions.length === 0 ? (
           <p className="text-center text-gray-500 dark:text-gray-400 py-8" data-testid="empty-state">
             {t('sessionQuickAccess.empty')}
