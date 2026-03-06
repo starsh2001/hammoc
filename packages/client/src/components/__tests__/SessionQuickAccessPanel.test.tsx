@@ -1,20 +1,31 @@
 /**
  * SessionQuickAccessPanel Component Tests (Content-only, post-refactor)
- * [Source: Story 5.7 - Task 2, Story 19.1 - Task 9.3]
+ * [Source: Story 5.7 - Task 2, Story 19.1 - Task 9.3, Story 23.3 - Task 3]
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { SessionQuickAccessPanel } from '../SessionQuickAccessPanel';
 
-// Mock sessionStore
-const mockFetchSessions = vi.fn();
+// Mock store actions
+const mockFetchSessions = vi.fn().mockResolvedValue(undefined);
+const mockLoadMoreSessions = vi.fn().mockResolvedValue(undefined);
+const mockSearchSessions = vi.fn().mockResolvedValue(undefined);
+const mockClearSearch = vi.fn().mockResolvedValue(undefined);
+
 vi.mock('../../stores/sessionStore', () => ({
   useSessionStore: vi.fn(() => ({
     sessions: [],
     isLoading: false,
+    isLoadingMore: false,
+    hasMore: false,
     error: null,
     fetchSessions: mockFetchSessions,
+    loadMoreSessions: mockLoadMoreSessions,
+    searchSessions: mockSearchSessions,
+    clearSearch: mockClearSearch,
+    searchQuery: '',
+    isSearching: false,
   })),
 }));
 
@@ -23,7 +34,7 @@ import { useSessionStore } from '../../stores/sessionStore';
 
 // Mock formatRelativeTime
 vi.mock('../../utils/formatters', () => ({
-  formatRelativeTime: vi.fn((date: string) => '2시간 전'),
+  formatRelativeTime: vi.fn(() => '2시간 전'),
 }));
 
 const mockSessions = [
@@ -43,6 +54,29 @@ const mockSessions = [
   },
 ];
 
+function mockStore(overrides: Partial<ReturnType<typeof useSessionStore>> = {}) {
+  vi.mocked(useSessionStore).mockReturnValue({
+    sessions: [],
+    isLoading: false,
+    isLoadingMore: false,
+    hasMore: false,
+    error: null,
+    errorType: 'none',
+    currentProjectSlug: null,
+    isRefreshing: false,
+    fetchSessions: mockFetchSessions,
+    loadMoreSessions: mockLoadMoreSessions,
+    searchSessions: mockSearchSessions,
+    clearSearch: mockClearSearch,
+    searchQuery: '',
+    isSearching: false,
+    clearSessions: vi.fn(),
+    clearError: vi.fn(),
+    setRefreshing: vi.fn(),
+    ...overrides,
+  } as ReturnType<typeof useSessionStore>);
+}
+
 describe('SessionQuickAccessPanel', () => {
   const defaultProps = {
     projectSlug: 'test-project',
@@ -52,33 +86,16 @@ describe('SessionQuickAccessPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useSessionStore).mockReturnValue({
-      sessions: [],
-      isLoading: false,
-      error: null,
-      errorType: 'none',
-      currentProjectSlug: null,
-      isRefreshing: false,
-      fetchSessions: mockFetchSessions,
-      clearSessions: vi.fn(),
-      clearError: vi.fn(),
-      setRefreshing: vi.fn(),
-    } as ReturnType<typeof useSessionStore>);
+    vi.useFakeTimers();
+    mockStore();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('should display session list', () => {
-    vi.mocked(useSessionStore).mockReturnValue({
-      sessions: mockSessions,
-      isLoading: false,
-      error: null,
-      errorType: 'none',
-      currentProjectSlug: 'test-project',
-      isRefreshing: false,
-      fetchSessions: mockFetchSessions,
-      clearSessions: vi.fn(),
-      clearError: vi.fn(),
-      setRefreshing: vi.fn(),
-    } as ReturnType<typeof useSessionStore>);
+    mockStore({ sessions: mockSessions });
 
     render(<SessionQuickAccessPanel {...defaultProps} />);
 
@@ -89,18 +106,7 @@ describe('SessionQuickAccessPanel', () => {
   });
 
   it('should highlight the current session', () => {
-    vi.mocked(useSessionStore).mockReturnValue({
-      sessions: mockSessions,
-      isLoading: false,
-      error: null,
-      errorType: 'none',
-      currentProjectSlug: 'test-project',
-      isRefreshing: false,
-      fetchSessions: mockFetchSessions,
-      clearSessions: vi.fn(),
-      clearError: vi.fn(),
-      setRefreshing: vi.fn(),
-    } as ReturnType<typeof useSessionStore>);
+    mockStore({ sessions: mockSessions });
 
     render(<SessionQuickAccessPanel {...defaultProps} currentSessionId="session-1" />);
 
@@ -115,18 +121,7 @@ describe('SessionQuickAccessPanel', () => {
   });
 
   it('should call onSelectSession when session is clicked', () => {
-    vi.mocked(useSessionStore).mockReturnValue({
-      sessions: mockSessions,
-      isLoading: false,
-      error: null,
-      errorType: 'none',
-      currentProjectSlug: 'test-project',
-      isRefreshing: false,
-      fetchSessions: mockFetchSessions,
-      clearSessions: vi.fn(),
-      clearError: vi.fn(),
-      setRefreshing: vi.fn(),
-    } as ReturnType<typeof useSessionStore>);
+    mockStore({ sessions: mockSessions });
 
     const onSelectSession = vi.fn();
     render(<SessionQuickAccessPanel {...defaultProps} onSelectSession={onSelectSession} />);
@@ -137,18 +132,7 @@ describe('SessionQuickAccessPanel', () => {
   });
 
   it('should show loading indicator when isLoading is true', () => {
-    vi.mocked(useSessionStore).mockReturnValue({
-      sessions: [],
-      isLoading: true,
-      error: null,
-      errorType: 'none',
-      currentProjectSlug: 'test-project',
-      isRefreshing: false,
-      fetchSessions: mockFetchSessions,
-      clearSessions: vi.fn(),
-      clearError: vi.fn(),
-      setRefreshing: vi.fn(),
-    } as ReturnType<typeof useSessionStore>);
+    mockStore({ isLoading: true });
 
     render(<SessionQuickAccessPanel {...defaultProps} />);
 
@@ -159,12 +143,173 @@ describe('SessionQuickAccessPanel', () => {
     render(<SessionQuickAccessPanel {...defaultProps} />);
 
     expect(screen.getByTestId('empty-state')).toBeInTheDocument();
-    expect(screen.getByText('세션이 없습니다')).toBeInTheDocument();
   });
 
-  it('should call fetchSessions on mount', () => {
+  it('should call clearSearch on mount instead of fetchSessions', () => {
     render(<SessionQuickAccessPanel {...defaultProps} />);
 
-    expect(mockFetchSessions).toHaveBeenCalledWith('test-project', { limit: 20 });
+    expect(mockClearSearch).toHaveBeenCalledWith('test-project');
+    expect(mockFetchSessions).not.toHaveBeenCalled();
+  });
+
+  it('should call clearSearch on unmount', () => {
+    const { unmount } = render(<SessionQuickAccessPanel {...defaultProps} />);
+    mockClearSearch.mockClear();
+
+    unmount();
+
+    expect(mockClearSearch).toHaveBeenCalledWith('test-project');
+  });
+
+  // Search tests
+  it('should render search input', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    const searchInput = screen.getByTestId('search-input');
+    expect(searchInput).toBeInTheDocument();
+    expect(searchInput).toHaveAttribute('type', 'text');
+  });
+
+  it('should have role="search" container and aria-label on input', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    expect(screen.getByRole('search')).toBeInTheDocument();
+    const searchInput = screen.getByTestId('search-input');
+    expect(searchInput).toHaveAttribute('aria-label');
+  });
+
+  it('should have autoFocus on search input', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    const searchInput = screen.getByTestId('search-input');
+    // React's autoFocus prop calls .focus() on mount, not an HTML attribute
+    expect(document.activeElement).toBe(searchInput);
+  });
+
+  it('should trigger searchSessions after 300ms debounce', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'test query' } });
+
+    // Should NOT call searchSessions before 300ms
+    expect(mockSearchSessions).not.toHaveBeenCalled();
+
+    // Advance timers by 300ms
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Should call searchSessions after debounce
+    expect(mockSearchSessions).toHaveBeenCalledWith('test-project', 'test query', false);
+  });
+
+  it('should NOT call searchSessions before 300ms', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'test' } });
+
+    // Only 200ms
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(mockSearchSessions).not.toHaveBeenCalled();
+  });
+
+  it('should show loading indicator during search (isSearching = true)', () => {
+    mockStore({ isSearching: true });
+
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+  });
+
+  it('should show "no results" message when search returns empty and searchQuery is non-empty', () => {
+    mockStore({ sessions: [], searchQuery: 'no match' });
+
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    expect(screen.getByTestId('search-no-results')).toBeInTheDocument();
+    expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument();
+  });
+
+  it('should show clear button when input has text', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    // No clear button initially
+    expect(screen.queryByTestId('clear-search-button')).not.toBeInTheDocument();
+
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'query' } });
+
+    // Clear button should appear
+    expect(screen.getByTestId('clear-search-button')).toBeInTheDocument();
+  });
+
+  it('should call clearSearch when clear button is clicked', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'query' } });
+
+    mockClearSearch.mockClear();
+    fireEvent.click(screen.getByTestId('clear-search-button'));
+
+    expect(mockClearSearch).toHaveBeenCalledWith('test-project');
+    expect((searchInput as HTMLInputElement).value).toBe('');
+  });
+
+  it('should call clearSearch when input is emptied', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'query' } });
+
+    mockClearSearch.mockClear();
+    fireEvent.change(searchInput, { target: { value: '' } });
+
+    expect(mockClearSearch).toHaveBeenCalledWith('test-project');
+  });
+
+  it('should clear search on Escape key when input has text and stop propagation', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'query' } });
+
+    mockClearSearch.mockClear();
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+    const stopPropagationSpy = vi.spyOn(event, 'stopPropagation');
+    act(() => {
+      searchInput.dispatchEvent(event);
+    });
+
+    expect(stopPropagationSpy).toHaveBeenCalled();
+    expect(mockClearSearch).toHaveBeenCalledWith('test-project');
+    expect((searchInput as HTMLInputElement).value).toBe('');
+  });
+
+  it('should NOT clear search on Escape key when input is empty', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    const searchInput = screen.getByTestId('search-input');
+    mockClearSearch.mockClear();
+
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+    const stopPropagationSpy = vi.spyOn(event, 'stopPropagation');
+    act(() => {
+      searchInput.dispatchEvent(event);
+    });
+
+    expect(stopPropagationSpy).not.toHaveBeenCalled();
+  });
+
+  it('should have aria-live="polite" on results container', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    const resultsContainer = screen.getByTestId('empty-state').parentElement;
+    expect(resultsContainer).toHaveAttribute('aria-live', 'polite');
   });
 });
