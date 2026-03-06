@@ -223,8 +223,8 @@ export class SessionService {
           if (content.toLowerCase().includes(queryLower)) return true;
         } else if (Array.isArray(content)) {
           for (const block of content) {
-            if (block.type === 'text' && 'text' in block) {
-              if ((block.text as string).toLowerCase().includes(queryLower)) return true;
+            if (block.type === 'text' && 'text' in block && typeof block.text === 'string') {
+              if (block.text.toLowerCase().includes(queryLower)) return true;
             }
           }
         }
@@ -233,6 +233,30 @@ export class SessionService {
       // Skip unparseable files
     }
     return false;
+  }
+
+  /**
+   * Execute async tasks with bounded concurrency
+   */
+  private async pMapWithLimit<T, R>(
+    items: T[],
+    fn: (item: T) => Promise<R>,
+    concurrency: number
+  ): Promise<R[]> {
+    const results: R[] = new Array(items.length);
+    let nextIndex = 0;
+
+    const worker = async () => {
+      while (nextIndex < items.length) {
+        const i = nextIndex++;
+        results[i] = await fn(items[i]);
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
+    );
+    return results;
   }
 
   /**
@@ -300,6 +324,38 @@ export class SessionService {
 
         // Apply search filter BEFORE pagination
         if (queryLower) {
+          // Resolve first prompts for cache-miss sessions before metadata filtering
+          const cacheMisses = candidates.filter(({ sessionId }) => !indexMap.has(sessionId));
+          if (cacheMisses.length > 0) {
+            await this.pMapWithLimit(cacheMisses, async ({ file, sessionId }) => {
+              try {
+                const rawMessages = await parseJSONLFile(path.join(projectDir, file));
+                const userMessage = rawMessages.find(m => m.type === 'user');
+                const content = userMessage?.message?.content;
+                let rawText = '';
+                if (typeof content === 'string') {
+                  rawText = content;
+                } else if (Array.isArray(content)) {
+                  const textBlock = content
+                    .filter((b: { type: string }) => b.type === 'text')
+                    .find((b) => 'text' in b && typeof b.text === 'string' && cleanCommandTags(b.text).trim());
+                  if (textBlock && 'text' in textBlock) {
+                    rawText = textBlock.text as string;
+                  }
+                }
+                indexMap.set(sessionId, {
+                  sessionId,
+                  firstPrompt: rawText,
+                  messageCount: rawMessages.filter(m => m.type === 'user' || m.type === 'assistant').length,
+                  created: '',
+                  modified: '',
+                });
+              } catch {
+                // Skip unparseable files — treated as empty firstPrompt
+              }
+            }, 8);
+          }
+
           const metadataMatched = new Set<string>();
           const metadataFiltered = candidates.filter(({ sessionId }) => {
             const cached = indexMap.get(sessionId);
@@ -317,14 +373,16 @@ export class SessionService {
               .filter(({ sessionId }) => !metadataMatched.has(sessionId))
               .slice(0, 100);
 
-            const contentMatched = await Promise.all(
-              unmatchedCandidates.map(async (entry) => {
+            const contentMatched = await this.pMapWithLimit(
+              unmatchedCandidates,
+              async (entry) => {
                 const matched = await this.searchFileContent(
                   path.join(projectDir, entry.file),
                   queryLower
                 );
                 return matched ? entry : null;
-              })
+              },
+              8
             );
 
             const contentHits = contentMatched.filter(

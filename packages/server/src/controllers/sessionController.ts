@@ -18,6 +18,17 @@ export const sessionController = {
   async list(req: Request, res: Response): Promise<void> {
     const { projectSlug } = req.params;
 
+    // Security validation: prevent path traversal
+    if (!sessionService.isValidPathParam(projectSlug)) {
+      res.status(SESSION_ERRORS.INVALID_PATH.httpStatus).json({
+        error: {
+          code: SESSION_ERRORS.INVALID_PATH.code,
+          message: req.t!('session.error.invalidPath'),
+        },
+      });
+      return;
+    }
+
     try {
       const includeEmpty = req.query.includeEmpty === 'true';
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 0;
