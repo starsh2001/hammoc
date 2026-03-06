@@ -25,6 +25,7 @@ export interface TerminalListRequest {
 
 /** Server → Client: list of active terminal sessions */
 export interface TerminalListResponse {
+  projectSlug: string;
   terminals: Array<{ terminalId: string; shell: string }>;
 }
 

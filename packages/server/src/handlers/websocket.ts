@@ -777,30 +777,33 @@ export async function initializeWebSocket(
       const lang = socket.data.language || 'en';
       const access = await checkTerminalAccess(socket, lang);
       if (!access.allowed) {
-        socket.emit('terminal:list', { terminals: [] });
+        socket.emit('terminal:list', { projectSlug: data.projectSlug, terminals: [] });
         return;
       }
 
       try {
         const sessions = ptyService.getSessionsByProject(data.projectSlug);
+        const socketTerminalSet = socketTerminals.get(socket.id);
         const terminals = sessions.map((s) => {
-          // Cancel cleanup and re-register callbacks for each session
           ptyService.cancelCleanup(s.terminalId);
-          ptyService.onData(s.terminalId, (output: string) => {
-            socket.emit('terminal:data', { terminalId: s.terminalId, data: output });
-          });
-          ptyService.onExit(s.terminalId, (exitCode: number) => {
-            socket.emit('terminal:exit', { terminalId: s.terminalId, exitCode });
-            socketTerminals.get(socket.id)?.delete(s.terminalId);
-            triggerDashboardStatusChange(data.projectSlug);
-          });
-          socketTerminals.get(socket.id)?.add(s.terminalId);
+          // Only re-register callbacks if not already attached to this socket
+          if (!socketTerminalSet?.has(s.terminalId)) {
+            ptyService.onData(s.terminalId, (output: string) => {
+              socket.emit('terminal:data', { terminalId: s.terminalId, data: output });
+            });
+            ptyService.onExit(s.terminalId, (exitCode: number) => {
+              socket.emit('terminal:exit', { terminalId: s.terminalId, exitCode });
+              socketTerminals.get(socket.id)?.delete(s.terminalId);
+              triggerDashboardStatusChange(data.projectSlug);
+            });
+            socketTerminalSet?.add(s.terminalId);
+          }
           return { terminalId: s.terminalId, shell: s.shell };
         });
-        socket.emit('terminal:list', { terminals });
+        socket.emit('terminal:list', { projectSlug: data.projectSlug, terminals });
       } catch (err) {
         log.error('terminal:list error:', err);
-        socket.emit('terminal:list', { terminals: [] });
+        socket.emit('terminal:list', { projectSlug: data.projectSlug, terminals: [] });
       }
     });
 
