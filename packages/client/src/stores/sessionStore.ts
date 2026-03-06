@@ -19,9 +19,13 @@ interface SessionState {
   isRefreshing: boolean;
   isLoadingMore: boolean;
   hasMore: boolean;
+  total: number;
   error: string | null;
   errorType: ErrorType;
   includeEmpty: boolean;
+  searchQuery: string;
+  searchContent: boolean;
+  isSearching: boolean;
 }
 
 interface SessionActions {
@@ -41,6 +45,14 @@ interface SessionActions {
   setIncludeEmpty: (includeEmpty: boolean) => void;
   /** Rename a session (optimistic update + API call) */
   renameSession: (projectSlug: string, sessionId: string, name: string | null) => Promise<boolean>;
+  /** Search sessions by query */
+  searchSessions: (projectSlug: string, query: string, searchContent: boolean) => Promise<void>;
+  /** Clear search state and re-fetch normal list */
+  clearSearch: (projectSlug: string) => Promise<void>;
+  /** Update search query state (for UI binding) */
+  setSearchQuery: (query: string) => void;
+  /** Update search content toggle state */
+  setSearchContent: (searchContent: boolean) => void;
 }
 
 type SessionStore = SessionState & SessionActions;
@@ -53,9 +65,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   isRefreshing: false,
   isLoadingMore: false,
   hasMore: false,
+  total: 0,
   error: null,
   errorType: 'none',
   includeEmpty: false,
+  searchQuery: '',
+  searchContent: false,
+  isSearching: false,
 
   // Actions
   fetchSessions: async (projectSlug: string, options?: { limit?: number }) => {
@@ -76,9 +92,17 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       errorType: 'none',
     });
     try {
-      const { includeEmpty } = get();
-      const response = await sessionsApi.list(projectSlug, { includeEmpty, limit: options?.limit });
-      set({ sessions: response.sessions, hasMore: response.hasMore, isLoading: false, isRefreshing: false });
+      const { includeEmpty, searchQuery, searchContent } = get();
+      const apiOptions: { includeEmpty?: boolean; limit?: number; query?: string; searchContent?: boolean } = {
+        includeEmpty,
+        limit: options?.limit,
+      };
+      if (searchQuery) {
+        apiOptions.query = searchQuery;
+        apiOptions.searchContent = searchContent;
+      }
+      const response = await sessionsApi.list(projectSlug, apiOptions);
+      set({ sessions: response.sessions, hasMore: response.hasMore, total: response.total, isLoading: false, isRefreshing: false });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 404) {
@@ -128,15 +152,20 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     set({ isLoadingMore: true });
     try {
-      const { includeEmpty } = get();
+      const { includeEmpty, searchQuery, searchContent } = get();
       const limit = options?.limit ?? 20;
       // Capture offset from current state right before the API call
       const offset = get().sessions.length;
-      const response = await sessionsApi.list(projectSlug, {
+      const apiOptions: { includeEmpty?: boolean; limit?: number; offset?: number; query?: string; searchContent?: boolean } = {
         includeEmpty,
         limit,
         offset,
-      });
+      };
+      if (searchQuery) {
+        apiOptions.query = searchQuery;
+        apiOptions.searchContent = searchContent;
+      }
+      const response = await sessionsApi.list(projectSlug, apiOptions);
       // Use functional set to avoid stale state after await
       set((prev) => {
         const existingIds = new Set(prev.sessions.map(s => s.sessionId));
@@ -187,6 +216,38 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   setIncludeEmpty: (includeEmpty: boolean) => set({ includeEmpty }),
+
+  searchSessions: async (projectSlug: string, query: string, searchContent: boolean) => {
+    set({ isSearching: true, searchQuery: query, searchContent, error: null, errorType: 'none' });
+    try {
+      const { includeEmpty } = get();
+      const response = await sessionsApi.list(projectSlug, {
+        query,
+        searchContent,
+        includeEmpty,
+        limit: 20,
+        offset: 0,
+      });
+      set({
+        sessions: response.sessions,
+        hasMore: response.hasMore,
+        total: response.total,
+        isSearching: false,
+      });
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : i18n.t('chat:session.searchError');
+      set({ error: message, errorType: 'unknown', isSearching: false });
+    }
+  },
+
+  clearSearch: async (projectSlug: string) => {
+    set({ searchQuery: '', searchContent: false, isSearching: false });
+    await get().fetchSessions(projectSlug, { limit: 20 });
+  },
+
+  setSearchQuery: (query: string) => set({ searchQuery: query }),
+
+  setSearchContent: (searchContent: boolean) => set({ searchContent }),
 
   renameSession: async (projectSlug: string, sessionId: string, name: string | null) => {
     // Save previous name for revert

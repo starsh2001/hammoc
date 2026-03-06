@@ -6,7 +6,7 @@
 import { useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Plus, CheckSquare, Trash2, X, Eye, EyeOff, MoreVertical, Moon, Sun, Settings, LogOut, Loader2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Plus, CheckSquare, Trash2, X, Eye, EyeOff, MoreVertical, Moon, Sun, Settings, LogOut, Loader2, Search } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import { useProjectStore } from '../stores/projectStore';
 import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
@@ -52,6 +52,13 @@ export function SessionListPage() {
     renameSession,
     includeEmpty,
     setIncludeEmpty,
+    searchQuery,
+    searchContent,
+    isSearching,
+    searchSessions,
+    clearSearch,
+    setSearchQuery,
+    setSearchContent,
   } = useSessionStore();
   const { projects, fetchProjects } = useProjectStore();
   const { logout } = useAuthStore();
@@ -68,6 +75,10 @@ export function SessionListPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // single session delete
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
   const [showEmptyDeleteConfirm, setShowEmptyDeleteConfirm] = useState(false);
+
+  // Search state
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Overflow menu state (narrow screens)
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
@@ -100,12 +111,20 @@ export function SessionListPage() {
     }
   }, [projects.length, fetchProjects]);
 
-  // Fetch sessions on mount, navigation, projectSlug or includeEmpty changes
+  // Clear search and fetch sessions on mount/navigation/projectSlug change
+  useEffect(() => {
+    if (projectSlug) {
+      setLocalSearchQuery('');
+      clearSearch(projectSlug);
+    }
+  }, [projectSlug, clearSearch, location.key]);
+
+  // Re-fetch when includeEmpty toggles (search-aware, preserves active search)
   useEffect(() => {
     if (projectSlug) {
       fetchSessions(projectSlug, { limit: 20 });
     }
-  }, [projectSlug, fetchSessions, location.key, includeEmpty]);
+  }, [includeEmpty, projectSlug, fetchSessions]);
 
   // Exit selection mode on ESC key
   useEffect(() => {
@@ -118,6 +137,52 @@ export function SessionListPage() {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectionMode]);
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => clearTimeout(debounceRef.current);
+  }, []);
+
+  // Search input handler with 300ms debounce
+  const handleSearchChange = useCallback((value: string) => {
+    setLocalSearchQuery(value);
+    clearTimeout(debounceRef.current);
+    if (value.trim()) {
+      debounceRef.current = setTimeout(() => {
+        if (projectSlug) {
+          searchSessions(projectSlug, value.trim(), searchContent);
+        }
+      }, 300);
+    } else if (projectSlug) {
+      clearSearch(projectSlug);
+    }
+  }, [projectSlug, searchContent, searchSessions, clearSearch]);
+
+  // Content search toggle handler — re-trigger search with new value
+  const handleSearchContentToggle = useCallback(() => {
+    const newValue = !searchContent;
+    setSearchContent(newValue);
+    if (localSearchQuery.trim() && projectSlug) {
+      clearTimeout(debounceRef.current);
+      searchSessions(projectSlug, localSearchQuery.trim(), newValue);
+    }
+  }, [searchContent, setSearchContent, localSearchQuery, projectSlug, searchSessions]);
+
+  // Clear search
+  const handleClearSearch = useCallback(() => {
+    setLocalSearchQuery('');
+    clearTimeout(debounceRef.current);
+    if (projectSlug) {
+      clearSearch(projectSlug);
+    }
+  }, [projectSlug, clearSearch]);
+
+  // Retry search
+  const handleRetrySearch = useCallback(() => {
+    if (projectSlug && searchQuery) {
+      searchSessions(projectSlug, searchQuery, searchContent);
+    }
+  }, [projectSlug, searchQuery, searchContent, searchSessions]);
 
   const handleRefresh = useCallback(async () => {
     if (projectSlug) {
@@ -249,8 +314,8 @@ export function SessionListPage() {
     setShowEmptyDeleteConfirm(false);
   }, []);
 
-  // Error state rendering
-  if (error && errorType !== 'none') {
+  // Error state rendering (skip if search error — handled inline)
+  if (error && errorType !== 'none' && !searchQuery) {
     return (
       <div className="h-dvh flex flex-col bg-white dark:bg-gray-900">
         {/* Header */}
@@ -524,10 +589,74 @@ export function SessionListPage() {
         isRefreshing={isPullRefreshing}
       />
 
+      {/* Search bar */}
+      {!selectionMode && (
+        <div className="px-4 pt-3 pb-1 bg-white dark:bg-gray-900">
+          <div role="search" className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" aria-hidden="true" />
+            <input
+              type="text"
+              value={localSearchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder={t('session.searchPlaceholder')}
+              aria-label={t('session.searchPlaceholder')}
+              className="w-full pl-10 pr-9 py-2.5 min-h-[44px] text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {localSearchQuery && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
+                aria-label={t('session.clearSearch')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          {/* Content search toggle — only visible when search has text */}
+          {localSearchQuery.trim() && (
+            <div className="mt-2 flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 dark:text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={searchContent}
+                  onChange={handleSearchContentToggle}
+                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                />
+                {t('session.searchContent')}
+              </label>
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                {searchContent ? t('session.searchContentCap') : t('session.searchContentHint')}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Content area with ref for pull-to-refresh */}
-      <div ref={containerRef} className="flex-1 overflow-auto overscroll-contain">
+      <div ref={containerRef} className="flex-1 overflow-auto overscroll-contain" aria-live="polite">
+        {/* Search loading state */}
+        {isSearching && (
+          <div className="flex items-center justify-center py-12 gap-2 text-gray-500 dark:text-gray-400" role="status">
+            <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+            <span>{t('session.searching')}</span>
+          </div>
+        )}
+
+        {/* Search error state */}
+        {!isSearching && error && searchQuery && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-500 dark:text-gray-400">
+            <p className="text-sm">{t('session.searchError')}</p>
+            <button
+              onClick={handleRetrySearch}
+              className="px-4 py-2 text-sm bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500 transition-colors"
+            >
+              {t('session.refresh')}
+            </button>
+          </div>
+        )}
+
         {/* Loading state */}
-        {isLoading && !isRefreshing && (
+        {!isSearching && isLoading && !isRefreshing && (
           <div className="p-4 space-y-3" aria-label={t('session.loading')} role="status">
             {Array.from({ length: skeletonCount }).map((_, index) => (
               <SessionListItemSkeleton key={index} />
@@ -535,8 +664,15 @@ export function SessionListPage() {
           </div>
         )}
 
-        {/* Empty state */}
-        {!isLoading && sessions.length === 0 && (
+        {/* Search no results state */}
+        {!isSearching && !isLoading && sessions.length === 0 && searchQuery && !error && (
+          <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+            <p className="text-sm">{t('session.searchNoResults')}</p>
+          </div>
+        )}
+
+        {/* Empty state (no search active) */}
+        {!isSearching && !isLoading && sessions.length === 0 && !searchQuery && !error && (
           <EmptyState
             title={t('session.empty.title')}
             description={t('session.empty.description')}
@@ -546,7 +682,7 @@ export function SessionListPage() {
         )}
 
         {/* Session list */}
-        {!isLoading && sessions.length > 0 && (
+        {!isSearching && !isLoading && sessions.length > 0 && (
           <div className="p-4 space-y-3">
             {sessions.map((session) => (
               <SessionListItem

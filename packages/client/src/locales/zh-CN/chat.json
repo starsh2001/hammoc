@@ -132,7 +132,15 @@
     "confirmEmptyDelete": {
       "title": "删除空会话",
       "message": "删除 {{count}} 个空会话？会话文件将被永久删除。"
-    }
+    },
+    "searchPlaceholder": "Search sessions...",
+    "searchContent": "Search conversation content",
+    "searchContentHint": "Searches message text (may be slower)",
+    "searchNoResults": "No sessions found",
+    "searching": "Searching...",
+    "searchError": "Search failed. Please try again.",
+    "searchContentCap": "Content search covers up to 100 sessions",
+    "clearSearch": "Clear search"
   },
   "messageBubble": {
     "ariaLabel": "{{role}} 的消息，{{time}}",
