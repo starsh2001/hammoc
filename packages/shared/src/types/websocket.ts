@@ -9,7 +9,7 @@ import type { ToolResult, CompactMetadata, TaskNotificationData } from './stream
 import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
 import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from './queue.js';
-import type { TerminalCreateRequest, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent, TerminalAccessInfo } from './terminal.js';
+import type { TerminalCreateRequest, TerminalListRequest, TerminalListResponse, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent, TerminalAccessInfo } from './terminal.js';
 import type { DashboardStatusChangeEvent } from './dashboard.js';
 
 // ===== Connection Status =====
@@ -60,6 +60,7 @@ export interface ClientToServerEvents {
   'terminal:input': (data: TerminalInputEvent) => void;
   'terminal:resize': (data: TerminalResizeEvent) => void;
   'terminal:close': (data: { terminalId: string }) => void;
+  'terminal:list': (data: TerminalListRequest) => void;
   // Story 20.1: Dashboard subscription events
   'dashboard:subscribe': () => void;
   'dashboard:unsubscribe': () => void;
@@ -109,6 +110,7 @@ export interface ServerToClientEvents {
   'terminal:data': (data: TerminalOutputEvent) => void;
   'terminal:exit': (data: TerminalExitEvent) => void;
   'terminal:error': (data: TerminalErrorEvent) => void;
+  'terminal:list': (data: TerminalListResponse) => void;
   // Story 17.5: Terminal security — access info sent on connection
   'terminal:access': (data: TerminalAccessInfo) => void;
   // Story 20.1: Dashboard status change event
