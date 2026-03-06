@@ -3,7 +3,7 @@
  * [Source: Story 3.4 - Task 4]
  */
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SessionListPage } from '../SessionListPage';
@@ -56,10 +56,44 @@ describe('SessionListPage', () => {
     },
   ];
 
-  const mockFetchSessions = vi.fn();
+  const mockFetchSessions = vi.fn().mockResolvedValue(undefined);
   const mockSetRefreshing = vi.fn();
   const mockClearError = vi.fn();
   const mockClearSessions = vi.fn();
+  const mockSearchSessions = vi.fn().mockResolvedValue(undefined);
+  const mockClearSearch = vi.fn().mockResolvedValue(undefined);
+  const mockSetSearchQuery = vi.fn();
+  const mockSetSearchContent = vi.fn();
+
+  const defaultMockState = {
+    sessions: [] as SessionListItem[],
+    currentProjectSlug: null as string | null,
+    isLoading: false,
+    isRefreshing: false,
+    isLoadingMore: false,
+    hasMore: false,
+    total: 0,
+    error: null as string | null,
+    errorType: 'none' as const,
+    includeEmpty: false,
+    searchQuery: '',
+    searchContent: false,
+    isSearching: false,
+    fetchSessions: mockFetchSessions,
+    loadMoreSessions: vi.fn(),
+    setRefreshing: mockSetRefreshing,
+    clearError: mockClearError,
+    clearSessions: mockClearSessions,
+    updateSessionStreaming: vi.fn(),
+    deleteSession: vi.fn(),
+    deleteSessions: vi.fn(),
+    setIncludeEmpty: vi.fn(),
+    renameSession: vi.fn(),
+    searchSessions: mockSearchSessions,
+    clearSearch: mockClearSearch,
+    setSearchQuery: mockSetSearchQuery,
+    setSearchContent: mockSetSearchContent,
+  };
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -67,18 +101,7 @@ describe('SessionListPage', () => {
     vi.clearAllMocks();
 
     // Default mock state
-    vi.mocked(useSessionStore).mockReturnValue({
-      sessions: [],
-      currentProjectSlug: null,
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      errorType: 'none',
-      fetchSessions: mockFetchSessions,
-      setRefreshing: mockSetRefreshing,
-      clearError: mockClearError,
-      clearSessions: mockClearSessions,
-    });
+    vi.mocked(useSessionStore).mockReturnValue({ ...defaultMockState });
   });
 
   afterEach(() => {
@@ -98,16 +121,8 @@ describe('SessionListPage', () => {
   describe('loading state', () => {
     it('renders skeleton loading state', () => {
       vi.mocked(useSessionStore).mockReturnValue({
-        sessions: [],
-        currentProjectSlug: null,
+        ...defaultMockState,
         isLoading: true,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -117,16 +132,8 @@ describe('SessionListPage', () => {
 
     it('disables refresh button while loading', () => {
       vi.mocked(useSessionStore).mockReturnValue({
-        sessions: [],
-        currentProjectSlug: null,
+        ...defaultMockState,
         isLoading: true,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -139,16 +146,9 @@ describe('SessionListPage', () => {
   describe('error states', () => {
     it('renders 404 error with back button', () => {
       vi.mocked(useSessionStore).mockReturnValue({
-        sessions: [],
-        currentProjectSlug: null,
-        isLoading: false,
-        isRefreshing: false,
+        ...defaultMockState,
         error: '프로젝트를 찾을 수 없습니다.',
         errorType: 'not_found',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -159,16 +159,9 @@ describe('SessionListPage', () => {
 
     it('navigates back on 404 error back button click', () => {
       vi.mocked(useSessionStore).mockReturnValue({
-        sessions: [],
-        currentProjectSlug: null,
-        isLoading: false,
-        isRefreshing: false,
+        ...defaultMockState,
         error: '프로젝트를 찾을 수 없습니다.',
         errorType: 'not_found',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -180,16 +173,9 @@ describe('SessionListPage', () => {
 
     it('renders network error with retry button', () => {
       vi.mocked(useSessionStore).mockReturnValue({
-        sessions: [],
-        currentProjectSlug: null,
-        isLoading: false,
-        isRefreshing: false,
+        ...defaultMockState,
         error: '네트워크 연결을 확인해주세요.',
         errorType: 'network',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -200,16 +186,9 @@ describe('SessionListPage', () => {
 
     it('renders server error with retry button', () => {
       vi.mocked(useSessionStore).mockReturnValue({
-        sessions: [],
-        currentProjectSlug: null,
-        isLoading: false,
-        isRefreshing: false,
+        ...defaultMockState,
         error: '서버 오류가 발생했습니다.',
         errorType: 'server',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -220,16 +199,9 @@ describe('SessionListPage', () => {
 
     it('calls fetchSessions on retry button click', () => {
       vi.mocked(useSessionStore).mockReturnValue({
-        sessions: [],
-        currentProjectSlug: null,
-        isLoading: false,
-        isRefreshing: false,
+        ...defaultMockState,
         error: '네트워크 오류',
         errorType: 'network',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -244,16 +216,8 @@ describe('SessionListPage', () => {
   describe('empty state', () => {
     it('renders empty state message when no sessions', () => {
       vi.mocked(useSessionStore).mockReturnValue({
-        sessions: [],
+        ...defaultMockState,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -264,16 +228,8 @@ describe('SessionListPage', () => {
 
     it('renders new session button in empty state', () => {
       vi.mocked(useSessionStore).mockReturnValue({
-        sessions: [],
+        ...defaultMockState,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -283,16 +239,8 @@ describe('SessionListPage', () => {
 
     it('navigates to new session on empty state button click', () => {
       vi.mocked(useSessionStore).mockReturnValue({
-        sessions: [],
+        ...defaultMockState,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -307,16 +255,9 @@ describe('SessionListPage', () => {
   describe('session list', () => {
     it('renders session list items', () => {
       vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
         sessions: mockSessions,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -327,16 +268,9 @@ describe('SessionListPage', () => {
 
     it('renders message count for each session', () => {
       vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
         sessions: mockSessions,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -347,16 +281,9 @@ describe('SessionListPage', () => {
 
     it('navigates to session on click', () => {
       vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
         sessions: mockSessions,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -375,16 +302,9 @@ describe('SessionListPage', () => {
   describe('header', () => {
     it('renders project slug as title', () => {
       vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
         sessions: mockSessions,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -408,16 +328,9 @@ describe('SessionListPage', () => {
 
     it('renders refresh button', () => {
       vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
         sessions: mockSessions,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -427,16 +340,9 @@ describe('SessionListPage', () => {
 
     it('renders new session button in header', () => {
       vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
         sessions: mockSessions,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -446,16 +352,9 @@ describe('SessionListPage', () => {
 
     it('navigates to new session on header button click', () => {
       vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
         sessions: mockSessions,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -473,21 +372,14 @@ describe('SessionListPage', () => {
     it('fetches sessions on mount', () => {
       renderPage();
 
-      expect(mockFetchSessions).toHaveBeenCalledWith('my-project');
+      expect(mockClearSearch).toHaveBeenCalledWith('my-project');
     });
 
     it('calls fetchSessions on refresh button click', () => {
       vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
         sessions: mockSessions,
         currentProjectSlug: 'my-project',
-        isLoading: false,
-        isRefreshing: false,
-        error: null,
-        errorType: 'none',
-        fetchSessions: mockFetchSessions,
-        setRefreshing: mockSetRefreshing,
-        clearError: mockClearError,
-        clearSessions: mockClearSessions,
       });
 
       renderPage();
@@ -496,6 +388,140 @@ describe('SessionListPage', () => {
 
       // handleRefresh now calls fetchSessions directly (no setRefreshing)
       expect(mockFetchSessions).toHaveBeenCalled();
+    });
+  });
+
+  describe('search UI', () => {
+    it('renders search input', () => {
+      renderPage();
+
+      const searchInput = screen.getByPlaceholderText('세션 검색...');
+      expect(searchInput).toBeInTheDocument();
+    });
+
+    it('search input has role="search" container and aria-label', () => {
+      renderPage();
+
+      expect(screen.getByRole('search')).toBeInTheDocument();
+      const searchInput = screen.getByPlaceholderText('세션 검색...');
+      expect(searchInput).toHaveAttribute('aria-label', '세션 검색...');
+    });
+
+    it('typing triggers search after 300ms debounce', () => {
+      renderPage();
+
+      const searchInput = screen.getByPlaceholderText('세션 검색...');
+      fireEvent.change(searchInput, { target: { value: 'test query' } });
+
+      // Search should NOT be called immediately
+      expect(mockSearchSessions).not.toHaveBeenCalled();
+
+      // Advance time by 300ms
+      vi.advanceTimersByTime(300);
+
+      // Search should be called after debounce
+      expect(mockSearchSessions).toHaveBeenCalledWith('my-project', 'test query', false);
+    });
+
+    it('does not trigger search before 300ms', () => {
+      renderPage();
+
+      const searchInput = screen.getByPlaceholderText('세션 검색...');
+      fireEvent.change(searchInput, { target: { value: 'test' } });
+
+      vi.advanceTimersByTime(200);
+
+      expect(mockSearchSessions).not.toHaveBeenCalled();
+    });
+
+    it('content search toggle appears when input has text', () => {
+      renderPage();
+
+      // Toggle should not be visible initially
+      expect(screen.queryByText('대화 내용 검색')).not.toBeInTheDocument();
+
+      // Type in search
+      const searchInput = screen.getByPlaceholderText('세션 검색...');
+      fireEvent.change(searchInput, { target: { value: 'test' } });
+
+      // Toggle should now be visible
+      expect(screen.getByText('대화 내용 검색')).toBeInTheDocument();
+    });
+
+    it('content search toggle is hidden when input is empty', () => {
+      renderPage();
+
+      const searchInput = screen.getByPlaceholderText('세션 검색...');
+      fireEvent.change(searchInput, { target: { value: '' } });
+
+      expect(screen.queryByText('대화 내용 검색')).not.toBeInTheDocument();
+    });
+
+    it('shows loading indicator when isSearching is true', () => {
+      vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
+        isSearching: true,
+      });
+
+      renderPage();
+
+      expect(screen.getByText('검색 중...')).toBeInTheDocument();
+    });
+
+    it('shows no results message when search returns empty', () => {
+      vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
+        searchQuery: 'nonexistent',
+      });
+
+      renderPage();
+
+      expect(screen.getByText('검색 결과가 없습니다')).toBeInTheDocument();
+    });
+
+    it('shows error message when search fails', () => {
+      vi.mocked(useSessionStore).mockReturnValue({
+        ...defaultMockState,
+        searchQuery: 'failed query',
+        error: 'Search failed',
+        errorType: 'unknown',
+      });
+
+      renderPage();
+
+      expect(screen.getByText('검색에 실패했습니다. 다시 시도해 주세요.')).toBeInTheDocument();
+    });
+
+    it('clearing search input restores normal session list', () => {
+      renderPage();
+
+      const searchInput = screen.getByPlaceholderText('세션 검색...');
+
+      // Type something first
+      fireEvent.change(searchInput, { target: { value: 'test' } });
+
+      // Clear the input
+      fireEvent.change(searchInput, { target: { value: '' } });
+
+      expect(mockClearSearch).toHaveBeenCalledWith('my-project');
+    });
+
+    it('clear button calls clearSearch', () => {
+      renderPage();
+
+      // Type to show clear button
+      const searchInput = screen.getByPlaceholderText('세션 검색...');
+      fireEvent.change(searchInput, { target: { value: 'test' } });
+
+      // Find and click the clear button inside the search container
+      const searchContainer = screen.getByRole('search');
+      const clearBtn = searchContainer.querySelector('button');
+      if (clearBtn) {
+        act(() => {
+          fireEvent.click(clearBtn);
+        });
+        expect(mockClearSearch).toHaveBeenCalledWith('my-project');
+      }
     });
   });
 });

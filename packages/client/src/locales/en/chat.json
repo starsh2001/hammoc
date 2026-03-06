@@ -140,7 +140,15 @@
       "message": "Delete {{count}} empty sessions? Session files will be permanently deleted."
     },
     "loadMore": "Load more",
-    "loadingMore": "Loading..."
+    "loadingMore": "Loading...",
+    "searchPlaceholder": "Search sessions...",
+    "searchContent": "Search conversation content",
+    "searchContentHint": "Searches message text (may be slower)",
+    "searchNoResults": "No sessions found",
+    "searching": "Searching...",
+    "searchError": "Search failed. Please try again.",
+    "searchContentCap": "Content search covers up to 100 sessions",
+    "clearSearch": "Clear search"
   },
   "messageBubble": {
     "ariaLabel": "{{role}} message, {{time}}",

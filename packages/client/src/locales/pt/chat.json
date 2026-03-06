@@ -132,7 +132,15 @@
     "confirmEmptyDelete": {
       "title": "Excluir sessões vazias",
       "message": "Excluir {{count}} sessões vazias? Os arquivos das sessões serão excluídos permanentemente."
-    }
+    },
+    "searchPlaceholder": "Search sessions...",
+    "searchContent": "Search conversation content",
+    "searchContentHint": "Searches message text (may be slower)",
+    "searchNoResults": "No sessions found",
+    "searching": "Searching...",
+    "searchError": "Search failed. Please try again.",
+    "searchContentCap": "Content search covers up to 100 sessions",
+    "clearSearch": "Clear search"
   },
   "messageBubble": {
     "ariaLabel": "Mensagem de {{role}}, {{time}}",
