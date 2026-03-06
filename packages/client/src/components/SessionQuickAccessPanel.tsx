@@ -15,12 +15,15 @@ interface SessionQuickAccessPanelProps {
   projectSlug: string;
   currentSessionId?: string;
   onSelectSession: (sessionId: string) => void;
+  /** Auto-focus search input on mount (mobile only — desktop preserves chat focus) */
+  autoFocusSearch?: boolean;
 }
 
 export function SessionQuickAccessPanel({
   projectSlug,
   currentSessionId,
   onSelectSession,
+  autoFocusSearch = false,
 }: SessionQuickAccessPanelProps) {
   const { t } = useTranslation('chat');
   const {
@@ -31,6 +34,7 @@ export function SessionQuickAccessPanel({
     loadMoreSessions,
     searchSessions,
     clearSearch,
+    resetSearchState,
     searchQuery,
     isSearching,
   } = useSessionStore();
@@ -40,16 +44,18 @@ export function SessionQuickAccessPanel({
   const projectSlugRef = useRef(projectSlug);
   projectSlugRef.current = projectSlug;
 
-  // On mount: clear stale search and fetch fresh
+  // On mount / projectSlug change: reset local input and clear stale search
   useEffect(() => {
+    setInputValue('');
+    clearTimeout(debounceRef.current);
     clearSearch(projectSlug);
   }, [projectSlug, clearSearch]);
 
-  // On unmount: clear search state
+  // On unmount: reset search state without triggering a fetch
   useEffect(() => {
     return () => {
       clearTimeout(debounceRef.current);
-      clearSearch(projectSlugRef.current);
+      resetSearchState();
     };
   }, []); // empty deps = cleanup only on unmount
 
@@ -92,7 +98,7 @@ export function SessionQuickAccessPanel({
             placeholder={t('session.searchPlaceholder')}
             className="w-full pl-8 pr-7 py-1.5 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             aria-label={t('session.searchPlaceholder')}
-            autoFocus
+            autoFocus={autoFocusSearch}
             data-testid="search-input"
           />
           {inputValue && (

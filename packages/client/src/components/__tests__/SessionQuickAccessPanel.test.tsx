@@ -12,6 +12,7 @@ const mockFetchSessions = vi.fn().mockResolvedValue(undefined);
 const mockLoadMoreSessions = vi.fn().mockResolvedValue(undefined);
 const mockSearchSessions = vi.fn().mockResolvedValue(undefined);
 const mockClearSearch = vi.fn().mockResolvedValue(undefined);
+const mockResetSearchState = vi.fn();
 
 vi.mock('../../stores/sessionStore', () => ({
   useSessionStore: vi.fn(() => ({
@@ -24,6 +25,7 @@ vi.mock('../../stores/sessionStore', () => ({
     loadMoreSessions: mockLoadMoreSessions,
     searchSessions: mockSearchSessions,
     clearSearch: mockClearSearch,
+    resetSearchState: mockResetSearchState,
     searchQuery: '',
     isSearching: false,
   })),
@@ -68,6 +70,7 @@ function mockStore(overrides: Partial<ReturnType<typeof useSessionStore>> = {}) 
     loadMoreSessions: mockLoadMoreSessions,
     searchSessions: mockSearchSessions,
     clearSearch: mockClearSearch,
+    resetSearchState: mockResetSearchState,
     searchQuery: '',
     isSearching: false,
     clearSessions: vi.fn(),
@@ -152,13 +155,13 @@ describe('SessionQuickAccessPanel', () => {
     expect(mockFetchSessions).not.toHaveBeenCalled();
   });
 
-  it('should call clearSearch on unmount', () => {
+  it('should call resetSearchState on unmount instead of clearSearch', () => {
     const { unmount } = render(<SessionQuickAccessPanel {...defaultProps} />);
-    mockClearSearch.mockClear();
+    mockResetSearchState.mockClear();
 
     unmount();
 
-    expect(mockClearSearch).toHaveBeenCalledWith('test-project');
+    expect(mockResetSearchState).toHaveBeenCalled();
   });
 
   // Search tests
@@ -178,12 +181,18 @@ describe('SessionQuickAccessPanel', () => {
     expect(searchInput).toHaveAttribute('aria-label');
   });
 
-  it('should have autoFocus on search input', () => {
+  it('should autoFocus search input when autoFocusSearch is true', () => {
+    render(<SessionQuickAccessPanel {...defaultProps} autoFocusSearch />);
+
+    const searchInput = screen.getByTestId('search-input');
+    expect(document.activeElement).toBe(searchInput);
+  });
+
+  it('should NOT autoFocus search input by default', () => {
     render(<SessionQuickAccessPanel {...defaultProps} />);
 
     const searchInput = screen.getByTestId('search-input');
-    // React's autoFocus prop calls .focus() on mount, not an HTML attribute
-    expect(document.activeElement).toBe(searchInput);
+    expect(document.activeElement).not.toBe(searchInput);
   });
 
   it('should trigger searchSessions after 300ms debounce', () => {
