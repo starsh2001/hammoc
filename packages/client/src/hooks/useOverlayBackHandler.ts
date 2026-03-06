@@ -1,6 +1,14 @@
 import { useEffect, useRef } from 'react';
 
 /**
+ * Module-level flag to prevent overlays from interfering with each other.
+ * When an overlay closes programmatically (X button, Escape) and calls
+ * history.back(), the resulting popstate event should NOT trigger other
+ * overlays to close.
+ */
+let _programmaticBack = false;
+
+/**
  * Intercepts browser back/forward navigation for overlay management.
  * - Open:    pushState adds an overlay history entry
  * - Back:    popstate closes the overlay; forward entry remains for reopen
@@ -19,6 +27,9 @@ export function useOverlayBackHandler(
   // Persistent popstate listener (survives open/close toggles)
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
+      // Skip popstate events triggered by another overlay's programmatic close
+      if (_programmaticBack) return;
+
       if (e.state?.__overlay && !isOpenRef.current && onReopen) {
         // Forward into overlay state while closed → reopen
         stateRef.current = 'pushed';
@@ -44,7 +55,17 @@ export function useOverlayBackHandler(
     } else if (stateRef.current === 'pushed') {
       // Closed normally (X, Escape) — remove the overlay entry
       stateRef.current = 'idle';
+      _programmaticBack = true;
       window.history.back();
+      // Reset flag after the popstate event from this back() is processed.
+      // The reset listener is registered after all overlay handlers (which were
+      // registered earlier during mount), so it fires last — ensuring all
+      // handlers see the flag as true before it's cleared.
+      const reset = () => {
+        _programmaticBack = false;
+        window.removeEventListener('popstate', reset);
+      };
+      window.addEventListener('popstate', reset);
     }
     // If 'popped' (closed via back), the forward entry stays for reopen
   }, [isOpen]);
