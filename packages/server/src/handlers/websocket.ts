@@ -18,7 +18,7 @@ import type {
   PermissionRequest,
 } from '@bmad-studio/shared';
 import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS } from '@bmad-studio/shared';
-import type { TerminalCreateRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@bmad-studio/shared';
+import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@bmad-studio/shared';
 import i18next from '../i18n.js';
 import { SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
 import { isLocalIP, extractClientIP } from '../utils/networkUtils.js';
@@ -770,6 +770,37 @@ export async function initializeWebSocket(
       } catch (err) {
         const code = (err as Error & { code?: string }).code || TERMINAL_ERRORS.INVALID_DIMENSIONS.code;
         socket.emit('terminal:error', { terminalId: data.terminalId, code, message: (err as Error).message });
+      }
+    });
+
+    socket.on('terminal:list', async (data: TerminalListRequest) => {
+      const lang = socket.data.language || 'en';
+      const access = await checkTerminalAccess(socket, lang);
+      if (!access.allowed) {
+        socket.emit('terminal:list', { terminals: [] });
+        return;
+      }
+
+      try {
+        const sessions = ptyService.getSessionsByProject(data.projectSlug);
+        const terminals = sessions.map((s) => {
+          // Cancel cleanup and re-register callbacks for each session
+          ptyService.cancelCleanup(s.terminalId);
+          ptyService.onData(s.terminalId, (output: string) => {
+            socket.emit('terminal:data', { terminalId: s.terminalId, data: output });
+          });
+          ptyService.onExit(s.terminalId, (exitCode: number) => {
+            socket.emit('terminal:exit', { terminalId: s.terminalId, exitCode });
+            socketTerminals.get(socket.id)?.delete(s.terminalId);
+            triggerDashboardStatusChange(data.projectSlug);
+          });
+          socketTerminals.get(socket.id)?.add(s.terminalId);
+          return { terminalId: s.terminalId, shell: s.shell };
+        });
+        socket.emit('terminal:list', { terminals });
+      } catch (err) {
+        log.error('terminal:list error:', err);
+        socket.emit('terminal:list', { terminals: [] });
       }
     });
 

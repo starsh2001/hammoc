@@ -18,6 +18,16 @@ export interface TerminalCreatedResponse {
   shell: string;
 }
 
+/** Client → Server: request list of active terminal sessions for a project */
+export interface TerminalListRequest {
+  projectSlug: string;
+}
+
+/** Server → Client: list of active terminal sessions */
+export interface TerminalListResponse {
+  terminals: Array<{ terminalId: string; shell: string }>;
+}
+
 // ===== Event Types =====
 
 /** Client → Server: stdin input */

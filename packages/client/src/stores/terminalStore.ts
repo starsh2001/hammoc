@@ -10,6 +10,7 @@ import type {
   ClientToServerEvents,
   ServerToClientEvents,
   TerminalCreatedResponse,
+  TerminalListResponse,
   TerminalOutputEvent,
   TerminalExitEvent,
   TerminalErrorEvent,
@@ -45,6 +46,7 @@ interface TerminalStore {
   setTerminalAccess: (access: TerminalAccessInfo) => void;
   createTerminal: (projectSlug: string) => void;
   reattachTerminal: (projectSlug: string, terminalId: string) => void;
+  listTerminals: (projectSlug: string) => void;
   closeTerminal: (terminalId: string) => void;
   sendInput: (terminalId: string, data: string) => void;
   resize: (terminalId: string, cols: number, rows: number) => void;
@@ -72,6 +74,7 @@ let _onData: ((data: TerminalOutputEvent) => void) | null = null;
 let _onExit: ((data: TerminalExitEvent) => void) | null = null;
 let _onError: ((data: TerminalErrorEvent) => void) | null = null;
 let _onAccess: ((data: TerminalAccessInfo) => void) | null = null;
+let _onList: ((data: TerminalListResponse) => void) | null = null;
 
 export const useTerminalStore = create<TerminalStore>((set, get) => ({
   // State
@@ -117,6 +120,11 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     socket.emit('terminal:create', { projectSlug, terminalId });
   },
 
+  listTerminals: (projectSlug: string) => {
+    const socket = getSocket();
+    socket.emit('terminal:list', { projectSlug });
+  },
+
   closeTerminal: (terminalId: string) => {
     const socket = getSocket();
     socket.emit('terminal:close', { terminalId });
@@ -153,10 +161,8 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   clearTerminalsForProjectChange: (newProjectSlug: string) => {
     const { currentProjectSlug, terminals } = get();
     if (currentProjectSlug && currentProjectSlug !== newProjectSlug && terminals.size > 0) {
-      // Close all existing terminals from previous project
-      const socket = getSocket();
+      // Clear client state only — server terminals persist per project
       for (const terminalId of terminals.keys()) {
-        socket.emit('terminal:close', { terminalId });
         dataCallbacks.delete(terminalId);
       }
       set({ terminals: new Map(), activeTerminalId: null, currentProjectSlug: newProjectSlug, pendingCreate: false });
@@ -215,10 +221,27 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       }
     };
 
+    _onList = (data: TerminalListResponse) => {
+      if (data.terminals.length === 0) return;
+      const terminals = new Map(get().terminals);
+      for (const t of data.terminals) {
+        if (!terminals.has(t.terminalId)) {
+          terminals.set(t.terminalId, {
+            terminalId: t.terminalId,
+            shell: t.shell,
+            status: 'connected',
+          });
+        }
+      }
+      const activeTerminalId = get().activeTerminalId ?? terminals.keys().next().value ?? null;
+      set({ terminals, activeTerminalId });
+    };
+
     _onAccess = (data: TerminalAccessInfo) => {
       get().setTerminalAccess(data);
     };
 
+    socket.on('terminal:list', _onList);
     socket.on('terminal:access', _onAccess);
     socket.on('terminal:created', _onCreated);
     socket.on('terminal:data', _onData);
@@ -227,6 +250,10 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   },
 
   cleanupTerminalListeners: (socket: TypedSocket) => {
+    if (_onList) {
+      socket.off('terminal:list', _onList);
+      _onList = null;
+    }
     if (_onAccess) {
       socket.off('terminal:access', _onAccess);
       _onAccess = null;

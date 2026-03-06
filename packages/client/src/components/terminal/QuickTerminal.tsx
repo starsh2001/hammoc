@@ -5,7 +5,7 @@
  * [Source: Story 17.4 - Task 3, Story 19.1 - Task 7]
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExternalLink, Minus, Plus, ShieldAlert, Terminal, X } from 'lucide-react';
 import { useTerminal } from '../../hooks/useTerminal';
@@ -29,7 +29,13 @@ export function QuickTerminal({
   onNavigateToTerminalTab,
 }: QuickTerminalProps) {
   const { t } = useTranslation('common');
-  const { terminalId, terminals, terminalAccess, create, closeById, switchTerminal } = useTerminal(projectSlug);
+  const { terminalId, terminals, terminalAccess, create, closeById, switchTerminal, listTerminals } = useTerminal(projectSlug);
+
+  // Restore existing server sessions on mount
+  useEffect(() => {
+    listTerminals();
+  }, [listTerminals]);
+
   const fontSize = useTerminalStore((s) => s.fontSize);
   const increaseFontSize = useTerminalStore((s) => s.increaseFontSize);
   const decreaseFontSize = useTerminalStore((s) => s.decreaseFontSize);

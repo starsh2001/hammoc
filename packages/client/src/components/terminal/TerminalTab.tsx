@@ -32,6 +32,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
     create,
     closeById,
     switchTerminal,
+    listTerminals,
   } = useTerminal(projectSlug);
 
   const fontSize = useTerminalStore((s) => s.fontSize);
@@ -66,10 +67,11 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
 
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  // Project change detection + auto-create on mount
+  // Project change detection + restore existing server sessions
   useEffect(() => {
     clearTerminalsForProjectChange(projectSlug);
-  }, [projectSlug, clearTerminalsForProjectChange]);
+    listTerminals();
+  }, [projectSlug, clearTerminalsForProjectChange, listTerminals]);
 
   // Auto-select first terminal when active one is removed
   useEffect(() => {
