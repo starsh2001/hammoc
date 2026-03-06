@@ -80,6 +80,7 @@ export function ImageViewer() {
     if (!openImage) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
         handleClose();
       }
     };
@@ -148,14 +149,14 @@ export function ImageViewer() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-40 transition-[right] duration-300 ease-in-out"
+        className="fixed inset-0 bg-black/50 z-[55] transition-[right] duration-300 ease-in-out"
         style={{ right: viewerRight }}
         onClick={handleClose}
       />
 
       {/* Viewer Panel */}
       <div
-        className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900 transition-[right] duration-300 ease-in-out"
+        className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-gray-900 transition-[right] duration-300 ease-in-out"
         style={{ right: viewerRight }}
       >
         {/* Header */}
