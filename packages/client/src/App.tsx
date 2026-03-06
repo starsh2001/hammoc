@@ -18,7 +18,6 @@ import { Toaster } from 'sonner';
 import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ProjectListPage } from './pages/ProjectListPage';
-import { SessionListPage } from './pages/SessionListPage';
 import { BmadOverview } from './pages/BmadOverview';
 import { ProjectSessionsPage } from './pages/ProjectSessionsPage';
 import { ProjectQueuePage } from './pages/ProjectBatchPage';
