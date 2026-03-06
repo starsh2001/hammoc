@@ -64,8 +64,9 @@ vi.mock('../../services/sessionService.js', async () => {
     }
 
     async listSessionsBySlug(
-      projectSlug: string
-    ): Promise<import('@bmad-studio/shared').SessionListItem[] | null> {
+      projectSlug: string,
+      _params: Record<string, unknown> = {}
+    ): Promise<{ sessions: import('@bmad-studio/shared').SessionListItem[]; total: number } | null> {
       const projectDir = path.join(this.claudeProjectsDir, projectSlug);
       const indexPath = path.join(projectDir, 'sessions-index.json');
 
@@ -74,7 +75,7 @@ vi.mock('../../services/sessionService.js', async () => {
         const index = JSON.parse(content);
 
         if (!index.entries || !Array.isArray(index.entries)) {
-          return [];
+          return { sessions: [], total: 0 };
         }
 
         // Sort by modified descending
@@ -84,7 +85,7 @@ vi.mock('../../services/sessionService.js', async () => {
         );
 
         // Map to API response format with truncated firstPrompt
-        return sorted.map(
+        const sessions = sorted.map(
           (entry: {
             sessionId: string;
             firstPrompt: string;
@@ -99,6 +100,7 @@ vi.mock('../../services/sessionService.js', async () => {
             modified: entry.modified,
           })
         );
+        return { sessions, total: sessions.length };
       } catch {
         return null;
       }
@@ -116,7 +118,13 @@ vi.mock('../../services/sessionService.js', async () => {
 vi.mock('../../services/projectService.js', () => ({
   projectService: {
     scanProjects: vi.fn().mockResolvedValue([]),
+    readSessionNamesBySlug: vi.fn().mockResolvedValue({}),
   },
+}));
+
+// Mock websocket handler
+vi.mock('../../handlers/websocket.js', () => ({
+  getActiveStreamSessionIds: vi.fn().mockReturnValue([]),
 }));
 
 import { createApp } from '../../app.js';
@@ -187,7 +195,7 @@ describe('Sessions Integration Tests', () => {
 
       const response = await agent.get(`/api/projects/${projectSlug}/sessions`).expect(200);
 
-      expect(response.body).toEqual({ sessions: [] });
+      expect(response.body.sessions).toEqual([]);
 
       // Cleanup
       await fs.rm(projectDir, { recursive: true, force: true });
@@ -373,7 +381,7 @@ describe('Sessions Integration Tests', () => {
 
       const response = await agent.get(`/api/projects/${projectSlug}/sessions`).expect(200);
 
-      expect(response.body).toEqual({ sessions: [] });
+      expect(response.body.sessions).toEqual([]);
 
       // Cleanup
       await fs.rm(projectDir, { recursive: true, force: true });

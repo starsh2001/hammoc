@@ -69,17 +69,23 @@ describe('DashboardService', () => {
       // project-a has sessions, one is active
       mockListSessionsBySlug.mockImplementation((slug: string) => {
         if (slug === 'project-a') {
-          return Promise.resolve([
-            { sessionId: 'session-1' },
-            { sessionId: 'session-2' },
-          ]);
+          return Promise.resolve({
+            sessions: [
+              { sessionId: 'session-1' },
+              { sessionId: 'session-2' },
+            ],
+            total: 2,
+          });
         }
         if (slug === 'project-b') {
-          return Promise.resolve([
-            { sessionId: 'session-3' },
-          ]);
+          return Promise.resolve({
+            sessions: [
+              { sessionId: 'session-3' },
+            ],
+            total: 1,
+          });
         }
-        return Promise.resolve([]);
+        return Promise.resolve({ sessions: [], total: 0 });
       });
 
       // project-a has a running queue
@@ -122,9 +128,10 @@ describe('DashboardService', () => {
       mockScanProjects.mockResolvedValue([
         { projectSlug: 'project-a', sessionCount: 2 },
       ]);
-      mockListSessionsBySlug.mockResolvedValue([
-        { sessionId: 'session-1' },
-      ]);
+      mockListSessionsBySlug.mockResolvedValue({
+        sessions: [{ sessionId: 'session-1' }],
+        total: 1,
+      });
       mockGetActiveStreamSessionIds.mockReturnValue([]);
       mockGetSessionsByProject.mockReturnValue([]);
 
@@ -154,7 +161,7 @@ describe('DashboardService', () => {
 
     it('maps queue status: running', async () => {
       mockScanProjects.mockResolvedValue([{ projectSlug: 'p1', sessionCount: 0 }]);
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
       mockGetSessionsByProject.mockReturnValue([]);
       const queueMap = new Map();
       queueMap.set('p1', {
@@ -168,7 +175,7 @@ describe('DashboardService', () => {
 
     it('maps queue status: paused', async () => {
       mockScanProjects.mockResolvedValue([{ projectSlug: 'p1', sessionCount: 0 }]);
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
       mockGetSessionsByProject.mockReturnValue([]);
       const queueMap = new Map();
       queueMap.set('p1', {
@@ -182,7 +189,7 @@ describe('DashboardService', () => {
 
     it('maps queue status: error', async () => {
       mockScanProjects.mockResolvedValue([{ projectSlug: 'p1', sessionCount: 0 }]);
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
       mockGetSessionsByProject.mockReturnValue([]);
       const queueMap = new Map();
       queueMap.set('p1', {
@@ -196,7 +203,7 @@ describe('DashboardService', () => {
 
     it('maps queue status: idle (no instance)', async () => {
       mockScanProjects.mockResolvedValue([{ projectSlug: 'p1', sessionCount: 0 }]);
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
       mockGetSessionsByProject.mockReturnValue([]);
       mockGetQueueInstances.mockReturnValue(new Map());
 
@@ -206,7 +213,7 @@ describe('DashboardService', () => {
 
     it('maps queue status: idle (completed state)', async () => {
       mockScanProjects.mockResolvedValue([{ projectSlug: 'p1', sessionCount: 0 }]);
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
       mockGetSessionsByProject.mockReturnValue([]);
       const queueMap = new Map();
       queueMap.set('p1', {
@@ -224,7 +231,7 @@ describe('DashboardService', () => {
         sessionCount: i,
       }));
       mockScanProjects.mockResolvedValue(projects);
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
       mockGetSessionsByProject.mockReturnValue([]);
 
       const start = performance.now();
@@ -242,10 +249,10 @@ describe('DashboardService', () => {
         { projectSlug: 'my-project', sessionCount: 10 },
       ]);
       mockGetActiveStreamSessionIds.mockReturnValue(['s1']);
-      mockListSessionsBySlug.mockResolvedValue([
-        { sessionId: 's1' },
-        { sessionId: 's2' },
-      ]);
+      mockListSessionsBySlug.mockResolvedValue({
+        sessions: [{ sessionId: 's1' }, { sessionId: 's2' }],
+        total: 2,
+      });
       mockGetSessionsByProject.mockReturnValue([{ terminalId: 't1' }]);
 
       const result = await dashboardService.getProjectStatus('my-project');
@@ -284,7 +291,7 @@ describe('DashboardService', () => {
     it('defaults totalSessionCount to 0 when project not in scan results', async () => {
       mockResolveOriginalPath.mockResolvedValue('/path');
       mockScanProjects.mockResolvedValue([]); // project not in results
-      mockListSessionsBySlug.mockResolvedValue([]);
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
       mockGetSessionsByProject.mockReturnValue([]);
 
       const result = await dashboardService.getProjectStatus('orphan-slug');

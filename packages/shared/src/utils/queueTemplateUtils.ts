@@ -7,17 +7,33 @@ import type { QueueStoryInfo } from '../types/queue.js';
 
 /**
  * Extract story numbers from PRD content by matching "## Story N.N" / "### Story N.N" headers.
+ * Also matches standalone "## Story N" / "### Story N" when epicContext is provided.
  * Returns sorted array by epicNum then storyIndex.
  */
-export function extractStoryNumbers(prdContent: string): QueueStoryInfo[] {
-  const regex = /^#{2,3}\s+Story\s+(\d+)\.(\d+)(?:[:  \t\u2013-]+(.+))?/gm;
+export function extractStoryNumbers(prdContent: string, epicContext?: number): QueueStoryInfo[] {
+  const regex = /^#{2,3}\s+Story\s+(\d+)(?:\.(\d+))?(?:[: \t\u2013-]+(.+))?/gm;
   const stories: QueueStoryInfo[] = [];
   let match;
 
   while ((match = regex.exec(prdContent)) !== null) {
-    const epicNum = parseInt(match[1], 10);
-    const storyIndex = parseInt(match[2], 10);
-    const title = match[3]?.trim() || undefined;
+    let epicNum: number;
+    let storyIndex: number;
+    let title: string | undefined;
+
+    if (match[2] != null) {
+      // Dotted format: "Story 3.1" → epic 3, story index 1
+      epicNum = parseInt(match[1], 10);
+      storyIndex = parseInt(match[2], 10);
+      title = match[3]?.trim() || undefined;
+    } else if (epicContext != null) {
+      // Standalone format: "Story 1" in an epic-specific file
+      epicNum = epicContext;
+      storyIndex = parseInt(match[1], 10);
+      title = match[3]?.trim() || undefined;
+    } else {
+      // Standalone without context — can't determine epic, skip
+      continue;
+    }
 
     stories.push({
       storyNum: `${epicNum}.${storyIndex}`,

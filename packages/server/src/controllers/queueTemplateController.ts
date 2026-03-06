@@ -8,7 +8,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'js-yaml';
 import { extractStoryNumbers } from '@bmad-studio/shared';
-import type { BmadConfig } from '@bmad-studio/shared';
+import type { BmadConfig, QueueStoryInfo } from '@bmad-studio/shared';
 import { queueTemplateService } from '../services/queueTemplateService.js';
 import { projectService } from '../services/projectService.js';
 
@@ -107,21 +107,30 @@ export async function extractStories(req: Request, res: Response): Promise<void>
     return;
   }
 
-  let prdContent = '';
+  const allStories: QueueStoryInfo[] = [];
+  let hasPrdContent = false;
+
+  // Regex to detect epic headers within file content (same as bmadStatusService)
+  const EPIC_HEADER_RE = /^(?:#{1,3}\s+)?(?:\d+\.\s+)?Epic\s+(\d+)[\s:\u2013-]+(.+)/m;
 
   // 3-step fallback strategy (mirrors bmadStatusService)
   if (config.prdSharded && config.prdShardedLocation) {
     const shardedDir = path.join(projectRoot, config.prdShardedLocation);
+    const scannedFiles = new Set<string>();
 
-    // Step 1: Try epicFilePattern
+    // Step 1: Try epicFilePattern — process each file individually with epic context
     if (config.epicFilePattern) {
       const pattern = epicFilePatternToRegex(config.epicFilePattern);
       try {
         const files = await fs.readdir(shardedDir);
         for (const file of files) {
-          if (pattern.test(file)) {
+          const fileMatch = file.match(pattern);
+          if (fileMatch) {
+            scannedFiles.add(file);
+            const epicNum = parseInt(fileMatch[1], 10);
             const content = await fs.readFile(path.join(shardedDir, file), 'utf-8');
-            prdContent += content + '\n';
+            hasPrdContent = true;
+            allStories.push(...extractStoryNumbers(content, epicNum));
           }
         }
       } catch {
@@ -129,34 +138,47 @@ export async function extractStories(req: Request, res: Response): Promise<void>
       }
     }
 
-    // Step 2: Fallback — read all .md files
-    if (!prdContent) {
-      try {
-        const files = await fs.readdir(shardedDir);
-        for (const file of files) {
-          if (!file.endsWith('.md')) continue;
-          const content = await fs.readFile(path.join(shardedDir, file), 'utf-8');
-          prdContent += content + '\n';
+    // Step 2: Scan remaining .md files for additional stories
+    try {
+      const files = await fs.readdir(shardedDir);
+      for (const file of files) {
+        if (!file.endsWith('.md') || scannedFiles.has(file)) continue;
+        const content = await fs.readFile(path.join(shardedDir, file), 'utf-8');
+        hasPrdContent = true;
+        // Detect single-epic files to provide context for standalone story headers
+        const epicHeaders: number[] = [];
+        const epicRegex = new RegExp(EPIC_HEADER_RE.source, 'gm');
+        let epicMatch;
+        while ((epicMatch = epicRegex.exec(content)) !== null) {
+          epicHeaders.push(parseInt(epicMatch[1], 10));
         }
-      } catch {
-        // Directory not found
+        const epicContext = epicHeaders.length === 1 ? epicHeaders[0] : undefined;
+        allStories.push(...extractStoryNumbers(content, epicContext));
       }
+    } catch {
+      // Directory not found
     }
   } else if (config.prdFile) {
     // Step 3: Monolithic PRD
     try {
-      prdContent = await fs.readFile(path.join(projectRoot, config.prdFile), 'utf-8');
+      const prdContent = await fs.readFile(path.join(projectRoot, config.prdFile), 'utf-8');
+      hasPrdContent = true;
+      allStories.push(...extractStoryNumbers(prdContent));
     } catch {
       // File not found
     }
   }
 
-  if (!prdContent) {
+  if (!hasPrdContent) {
     res.status(200).json({ stories: [], error: req.t!('queueTemplate.error.prdNotFound') });
     return;
   }
 
-  const stories = extractStoryNumbers(prdContent);
+  // Deduplicate and sort
+  const seen = new Set<string>();
+  const stories = allStories
+    .sort((a, b) => a.epicNum - b.epicNum || a.storyIndex - b.storyIndex)
+    .filter((s) => { if (seen.has(s.storyNum)) return false; seen.add(s.storyNum); return true; });
   res.status(200).json({ stories });
 }
 

@@ -139,6 +139,18 @@ export const SESSION_ERRORS = {
 export type SessionErrorCode = keyof typeof SESSION_ERRORS;
 
 /**
+ * Parameters for session list API request
+ * Story 23.1: Server-Side Session Search API
+ */
+export interface SessionListParams {
+  includeEmpty?: boolean;
+  limit?: number;
+  offset?: number;
+  query?: string;
+  searchContent?: boolean;
+}
+
+/**
  * Request for PATCH /api/projects/:projectSlug/sessions/:sessionId/name
  */
 export interface UpdateSessionNameRequest {
