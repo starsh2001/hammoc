@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useSessionStore } from '../sessionStore';
 import { ApiError } from '../../services/api/client';
+import type { SessionListItem } from '@bmad-studio/shared';
 
 // Mock the sessions API
 vi.mock('../../services/api/sessions', () => ({
@@ -24,11 +25,16 @@ describe('useSessionStore', () => {
       currentProjectSlug: null,
       isLoading: false,
       isRefreshing: false,
+      isLoadingMore: false,
+      hasMore: false,
+      total: 0,
       error: null,
       errorType: 'none',
+      includeEmpty: false,
       searchQuery: '',
       searchContent: false,
       isSearching: false,
+      _searchVersion: 0,
     });
     vi.clearAllMocks();
   });
@@ -370,6 +376,70 @@ describe('useSessionStore', () => {
       await useSessionStore.getState().searchSessions('my-project', 'query', false);
 
       expect(useSessionStore.getState().error).toBe('Server exploded');
+      expect(useSessionStore.getState().isSearching).toBe(false);
+    });
+  });
+
+  describe('searchSessions race conditions', () => {
+    it('should discard stale search response when a newer search is issued', async () => {
+      let resolveFirst: (value: { sessions: SessionListItem[]; total: number; hasMore: boolean }) => void;
+      let resolveSecond: (value: { sessions: SessionListItem[]; total: number; hasMore: boolean }) => void;
+      let callCount = 0;
+
+      vi.mocked(sessionsApi.list).mockImplementation(
+        () => new Promise((resolve) => {
+          callCount++;
+          if (callCount === 1) resolveFirst = resolve as typeof resolveFirst;
+          else resolveSecond = resolve as typeof resolveSecond;
+        })
+      );
+
+      const firstResult = { sessionId: 'stale', firstPrompt: 'Stale', messageCount: 1, created: '2026-01-01T00:00:00Z', modified: '2026-01-01T00:00:00Z' };
+      const secondResult = { sessionId: 'fresh', firstPrompt: 'Fresh', messageCount: 2, created: '2026-01-02T00:00:00Z', modified: '2026-01-02T00:00:00Z' };
+
+      // Start first search
+      const p1 = useSessionStore.getState().searchSessions('my-project', 'query1', false);
+      // Start second search before first resolves
+      const p2 = useSessionStore.getState().searchSessions('my-project', 'query2', false);
+
+      // Resolve first (stale) — should be discarded
+      resolveFirst!({ sessions: [firstResult], total: 1, hasMore: false });
+      await p1;
+      // First response should be discarded, isSearching should still be true
+      expect(useSessionStore.getState().isSearching).toBe(true);
+
+      // Resolve second (current) — should be applied
+      resolveSecond!({ sessions: [secondResult], total: 1, hasMore: false });
+      await p2;
+      expect(useSessionStore.getState().sessions[0].sessionId).toBe('fresh');
+      expect(useSessionStore.getState().isSearching).toBe(false);
+    });
+
+    it('should discard in-flight search response after clearSearch', async () => {
+      let resolveSearch: (value: { sessions: SessionListItem[]; total: number; hasMore: boolean }) => void;
+      let callCount = 0;
+
+      vi.mocked(sessionsApi.list).mockImplementation(
+        () => new Promise((resolve) => {
+          callCount++;
+          if (callCount === 1) resolveSearch = resolve as typeof resolveSearch;
+          else resolve({ sessions: [], total: 0, hasMore: false });
+        })
+      );
+
+      // Start search
+      const searchPromise = useSessionStore.getState().searchSessions('my-project', 'query', false);
+      // Clear search while search is in-flight
+      await useSessionStore.getState().clearSearch('my-project');
+
+      expect(useSessionStore.getState().searchQuery).toBe('');
+
+      // Resolve the stale search — should be discarded
+      resolveSearch!({ sessions: [{ sessionId: 'stale', firstPrompt: 'Stale', messageCount: 1, created: '2026-01-01T00:00:00Z', modified: '2026-01-01T00:00:00Z' }], total: 1, hasMore: false });
+      await searchPromise;
+
+      // searchQuery should still be empty (not overwritten by stale search)
+      expect(useSessionStore.getState().searchQuery).toBe('');
       expect(useSessionStore.getState().isSearching).toBe(false);
     });
   });

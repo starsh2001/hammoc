@@ -79,6 +79,7 @@ describe('SessionListPage', () => {
     searchQuery: '',
     searchContent: false,
     isSearching: false,
+    _searchVersion: 0,
     fetchSessions: mockFetchSessions,
     loadMoreSessions: vi.fn(),
     setRefreshing: mockSetRefreshing,
@@ -369,10 +370,13 @@ describe('SessionListPage', () => {
   });
 
   describe('interactions', () => {
-    it('fetches sessions on mount', () => {
+    it('fetches sessions on mount via clearSearch (no duplicate fetchSessions)', () => {
       renderPage();
 
+      // Mount effect calls clearSearch which internally fetches sessions
       expect(mockClearSearch).toHaveBeenCalledWith('my-project');
+      // fetchSessions should NOT be called separately on mount (includeEmpty effect is skipped)
+      expect(mockFetchSessions).not.toHaveBeenCalled();
     });
 
     it('calls fetchSessions on refresh button click', () => {
@@ -513,15 +517,14 @@ describe('SessionListPage', () => {
       const searchInput = screen.getByPlaceholderText('세션 검색...');
       fireEvent.change(searchInput, { target: { value: 'test' } });
 
-      // Find and click the clear button inside the search container
-      const searchContainer = screen.getByRole('search');
-      const clearBtn = searchContainer.querySelector('button');
-      if (clearBtn) {
-        act(() => {
-          fireEvent.click(clearBtn);
-        });
-        expect(mockClearSearch).toHaveBeenCalledWith('my-project');
-      }
+      // Clear button must exist when input has text
+      const clearBtn = screen.getByRole('button', { name: '검색 지우기' });
+      expect(clearBtn).toBeInTheDocument();
+
+      act(() => {
+        fireEvent.click(clearBtn);
+      });
+      expect(mockClearSearch).toHaveBeenCalledWith('my-project');
     });
   });
 });
