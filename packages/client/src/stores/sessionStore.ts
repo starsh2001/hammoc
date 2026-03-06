@@ -51,6 +51,8 @@ interface SessionActions {
   searchSessions: (projectSlug: string, query: string, searchContent: boolean) => Promise<void>;
   /** Clear search state and re-fetch normal list */
   clearSearch: (projectSlug: string) => Promise<void>;
+  /** Reset search state without re-fetching (for unmount cleanup) */
+  resetSearchState: () => void;
   /** Update search query state (for UI binding) */
   setSearchQuery: (query: string) => void;
   /** Update search content toggle state */
@@ -256,6 +258,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const version = get()._searchVersion + 1;
     set({ searchQuery: '', searchContent: false, isSearching: false, _searchVersion: version });
     await get().fetchSessions(projectSlug, { limit: 20 });
+  },
+
+  resetSearchState: () => {
+    const version = get()._searchVersion + 1;
+    set({ searchQuery: '', searchContent: false, isSearching: false, _searchVersion: version });
   },
 
   setSearchQuery: (query: string) => set({ searchQuery: query }),

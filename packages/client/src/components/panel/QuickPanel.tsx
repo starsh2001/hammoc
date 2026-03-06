@@ -168,6 +168,7 @@ export function QuickPanel({
             projectSlug={projectSlug}
             currentSessionId={currentSessionId}
             onSelectSession={onSelectSession ?? (() => {})}
+            autoFocusSearch={isMobile}
           />
         );
       case 'files':
