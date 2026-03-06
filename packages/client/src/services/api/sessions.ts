@@ -4,17 +4,19 @@
  */
 
 import { api } from './client';
-import type { SessionListResponse, HistoryMessagesResponse, DeleteSessionResponse, DeleteSessionsBatchResponse, UpdateSessionNameResponse, PromptHistoryData } from '@bmad-studio/shared';
+import type { SessionListResponse, SessionListParams, HistoryMessagesResponse, DeleteSessionResponse, DeleteSessionsBatchResponse, UpdateSessionNameResponse, PromptHistoryData } from '@bmad-studio/shared';
 
 export const sessionsApi = {
   /**
    * List all sessions for a project
    */
-  list: (projectSlug: string, options?: { includeEmpty?: boolean; limit?: number; offset?: number }) => {
+  list: (projectSlug: string, options?: SessionListParams) => {
     const params = new URLSearchParams();
     if (options?.includeEmpty) params.set('includeEmpty', 'true');
     if (options?.limit) params.set('limit', String(options.limit));
     if (options?.offset) params.set('offset', String(options.offset));
+    if (options?.query) params.set('query', options.query);
+    if (options?.searchContent) params.set('searchContent', 'true');
     const qs = params.toString();
     return api.get<SessionListResponse>(`/projects/${projectSlug}/sessions${qs ? `?${qs}` : ''}`);
   },
