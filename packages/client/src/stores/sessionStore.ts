@@ -26,6 +26,8 @@ interface SessionState {
   searchQuery: string;
   searchContent: boolean;
   isSearching: boolean;
+  /** @internal monotonic counter to discard stale search responses */
+  _searchVersion: number;
 }
 
 interface SessionActions {
@@ -72,6 +74,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   searchQuery: '',
   searchContent: false,
   isSearching: false,
+  _searchVersion: 0,
 
   // Actions
   fetchSessions: async (projectSlug: string, options?: { limit?: number }) => {
@@ -166,8 +169,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         apiOptions.searchContent = searchContent;
       }
       const response = await sessionsApi.list(projectSlug, apiOptions);
-      // Use functional set to avoid stale state after await
+      // Use functional set to avoid stale state after await.
+      // Discard response if context changed (project switch or query change).
       set((prev) => {
+        if (prev.currentProjectSlug !== projectSlug || prev.searchQuery !== searchQuery) {
+          return { isLoadingMore: false };
+        }
         const existingIds = new Set(prev.sessions.map(s => s.sessionId));
         const newSessions = response.sessions.filter(s => !existingIds.has(s.sessionId));
         return {
@@ -218,7 +225,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setIncludeEmpty: (includeEmpty: boolean) => set({ includeEmpty }),
 
   searchSessions: async (projectSlug: string, query: string, searchContent: boolean) => {
-    set({ isSearching: true, searchQuery: query, searchContent, error: null, errorType: 'none' });
+    const version = get()._searchVersion + 1;
+    set({ isSearching: true, searchQuery: query, searchContent, error: null, errorType: 'none', _searchVersion: version });
     try {
       const { includeEmpty } = get();
       const response = await sessionsApi.list(projectSlug, {
@@ -228,6 +236,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         limit: 20,
         offset: 0,
       });
+      // Discard stale response if a newer search or clearSearch was issued
+      if (get()._searchVersion !== version) return;
       set({
         sessions: response.sessions,
         hasMore: response.hasMore,
@@ -235,13 +245,16 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         isSearching: false,
       });
     } catch (err) {
+      if (get()._searchVersion !== version) return;
       const message = err instanceof ApiError ? err.message : i18n.t('chat:session.searchError');
       set({ error: message, errorType: 'unknown', isSearching: false });
     }
   },
 
   clearSearch: async (projectSlug: string) => {
-    set({ searchQuery: '', searchContent: false, isSearching: false });
+    // Bump version to invalidate any in-flight searchSessions
+    const version = get()._searchVersion + 1;
+    set({ searchQuery: '', searchContent: false, isSearching: false, _searchVersion: version });
     await get().fetchSessions(projectSlug, { limit: 20 });
   },
 
