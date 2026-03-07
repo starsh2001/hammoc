@@ -40,7 +40,7 @@ export function SessionQuickAccessPanel({
   } = useSessionStore();
 
   const [inputValue, setInputValue] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const projectSlugRef = useRef(projectSlug);
   projectSlugRef.current = projectSlug;
 
