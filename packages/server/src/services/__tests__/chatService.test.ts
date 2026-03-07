@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ChatService, createChatService } from '../chatService.js';
+import { ChatService } from '../chatService.js';
 import {
   SDKError,
   RateLimitError,
@@ -7,8 +7,6 @@ import {
   NetworkError,
   InvalidPathError,
   parseSDKError,
-  isRetriableError,
-  getRetryDelay,
   SDKErrorCode,
 } from '../../utils/errors.js';
 import type { Stats } from 'node:fs';
@@ -107,17 +105,6 @@ describe('ChatService', () => {
     });
   });
 
-  describe('createChatService', () => {
-    it('should create a new ChatService instance', () => {
-      const service = createChatService();
-      expect(service).toBeInstanceOf(ChatService);
-    });
-
-    it('should pass config to ChatService', () => {
-      const service = createChatService({ workingDirectory: '/test' });
-      expect(service.getWorkingDirectory()).toBe('/test');
-    });
-  });
 });
 
 describe('Error Utilities', () => {
@@ -239,35 +226,6 @@ describe('Error Utilities', () => {
     });
   });
 
-  describe('isRetriableError', () => {
-    it('should return true for rate limit errors', () => {
-      expect(isRetriableError(new RateLimitError())).toBe(true);
-    });
-
-    it('should return true for network errors', () => {
-      expect(isRetriableError(new NetworkError())).toBe(true);
-    });
-
-    it('should return false for authentication errors', () => {
-      expect(isRetriableError(new AuthenticationError())).toBe(false);
-    });
-
-    it('should return false for non-SDKError', () => {
-      expect(isRetriableError(new Error('test'))).toBe(false);
-    });
-  });
-
-  describe('getRetryDelay', () => {
-    it('should return retryAfter in milliseconds', () => {
-      const error = new RateLimitError(30);
-      expect(getRetryDelay(error)).toBe(30000);
-    });
-
-    it('should return default 5000ms for errors without retryAfter', () => {
-      const error = new NetworkError();
-      expect(getRetryDelay(error)).toBe(5000);
-    });
-  });
 });
 
 describe('Cross-Platform Path Handling', () => {

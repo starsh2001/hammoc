@@ -345,15 +345,3 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
 
   return results;
 }
-
-/**
- * Parse a session file and return processed HistoryMessages
- * Combines parseJSONLFile, sortMessagesByParentUuid, and transformToHistoryMessages
- * @param filePath Path to the JSONL session file
- * @returns Array of processed HistoryMessages ready for display
- */
-export async function parseSessionHistory(filePath: string): Promise<HistoryMessage[]> {
-  const rawMessages = await parseJSONLFile(filePath);
-  const sorted = sortMessagesByParentUuid(rawMessages);
-  return transformToHistoryMessages(sorted);
-}

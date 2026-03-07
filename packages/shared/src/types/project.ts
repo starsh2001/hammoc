@@ -129,8 +129,6 @@ export const PROJECT_ERRORS = {
   },
 } as const;
 
-export type ProjectErrorCode = keyof typeof PROJECT_ERRORS;
-
 /**
  * Request for POST /api/projects
  * [Source: Story 3.6 - Task 1]

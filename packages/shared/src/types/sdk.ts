@@ -116,27 +116,6 @@ export const CONTEXT_USAGE_THRESHOLDS = {
   CRITICAL: 90,
 } as const;
 
-/**
- * Configuration for allowed/disallowed tools
- */
-export interface AllowedToolsConfig {
-  /** Tools that are explicitly allowed */
-  allowed: string[];
-  /** Tools that are explicitly disallowed */
-  disallowed: string[];
-}
-
-/**
- * Default tools that are commonly allowed
- */
-export const DEFAULT_ALLOWED_TOOLS: string[] = [
-  'Read',
-  'Edit',
-  'Write',
-  'Bash',
-  'Glob',
-  'Grep',
-];
 
 /**
  * Permission modes for tool usage

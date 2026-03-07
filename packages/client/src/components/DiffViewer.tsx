@@ -19,7 +19,6 @@ import { useOverlayBackHandler } from '../hooks/useOverlayBackHandler';
 import { usePanelStore } from '../stores/panelStore';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { getLanguageExtension } from '../utils/languageDetect';
-export { getLanguageFromPath } from '../utils/languageDetect';
 
 export interface DiffViewerProps {
   /** Original file path (required) */

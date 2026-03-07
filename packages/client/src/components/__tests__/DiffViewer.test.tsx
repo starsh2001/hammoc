@@ -5,7 +5,8 @@
 
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { DiffViewer, getLanguageFromPath } from '../DiffViewer';
+import { DiffViewer } from '../DiffViewer';
+import { getLanguageFromPath } from '../../utils/languageDetect';
 
 // Mock MergeView and unifiedMergeView from @codemirror/merge
 const mockMergeViewDestroy = vi.fn();

@@ -3,7 +3,6 @@ import {
   parseJSONLFile,
   sortMessagesByParentUuid,
   transformToHistoryMessages,
-  parseSessionHistory,
 } from '../historyParser.js';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
@@ -491,34 +490,6 @@ invalid json line
 
       expect(transformed).toHaveLength(1);
       expect(transformed[0].thinking).toBeUndefined();
-    });
-  });
-
-  describe('parseSessionHistory', () => {
-    it('combines parsing, sorting, and transforming', async () => {
-      const content = `{"uuid":"msg-2","type":"assistant","parentUuid":"msg-1","message":{"role":"assistant","content":"Hi!"},"timestamp":"2026-01-15T10:00:05Z"}
-{"uuid":"msg-1","type":"user","message":{"role":"user","content":"Hello"},"timestamp":"2026-01-15T10:00:00Z"}
-{"uuid":"msg-0","type":"init","timestamp":"2026-01-15T09:59:59Z"}`;
-
-      mockFs.readFile.mockResolvedValue(content);
-
-      const messages = await parseSessionHistory('/path/to/session.jsonl');
-
-      // Should be sorted (msg-1 before msg-2)
-      // Should filter out init message
-      expect(messages).toHaveLength(2);
-      expect(messages[0].id).toBe('msg-1');
-      expect(messages[0].type).toBe('user');
-      expect(messages[1].id).toBe('msg-2');
-      expect(messages[1].type).toBe('assistant');
-    });
-
-    it('returns empty array for non-existent file', async () => {
-      mockExistsSync.mockReturnValue(false);
-
-      const messages = await parseSessionHistory('/nonexistent.jsonl');
-
-      expect(messages).toEqual([]);
     });
   });
 

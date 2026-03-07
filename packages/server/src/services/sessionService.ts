@@ -764,12 +764,5 @@ export class SessionService {
   }
 }
 
-/**
- * Create a new SessionService instance
- */
-export function createSessionService(): SessionService {
-  return new SessionService();
-}
-
 // Singleton export for controllers (Story 3.3)
 export const sessionService = new SessionService();

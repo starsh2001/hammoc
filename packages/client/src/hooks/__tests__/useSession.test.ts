@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useSession, useSessionResumeOptions } from '../useSession';
+import { useSession } from '../useSession';
 import { createMockSocket, MockSocket } from '../../test-utils/mockSocket';
 
 // Mock the socket module
@@ -180,60 +180,3 @@ describe('useSession', () => {
   });
 });
 
-describe('useSessionResumeOptions', () => {
-  describe('initial state', () => {
-    it('should return null pendingSessionId', () => {
-      const { result } = renderHook(() => useSessionResumeOptions());
-
-      expect(result.current.pendingSessionId).toBeNull();
-    });
-
-    it('should return empty resume options', () => {
-      const { result } = renderHook(() => useSessionResumeOptions());
-
-      expect(result.current.getResumeOptions()).toEqual({});
-    });
-  });
-
-  describe('setPendingSessionId', () => {
-    it('should set pending session ID', () => {
-      const { result } = renderHook(() => useSessionResumeOptions());
-
-      act(() => {
-        result.current.setPendingSessionId('session-123');
-      });
-
-      expect(result.current.pendingSessionId).toBe('session-123');
-    });
-
-    it('should update getResumeOptions to return resume options', () => {
-      const { result } = renderHook(() => useSessionResumeOptions());
-
-      act(() => {
-        result.current.setPendingSessionId('session-123');
-      });
-
-      expect(result.current.getResumeOptions()).toEqual({
-        sessionId: 'session-123',
-        resume: true,
-      });
-    });
-
-    it('should clear pending session ID when set to null', () => {
-      const { result } = renderHook(() => useSessionResumeOptions());
-
-      act(() => {
-        result.current.setPendingSessionId('session-123');
-      });
-
-      expect(result.current.pendingSessionId).toBe('session-123');
-
-      act(() => {
-        result.current.setPendingSessionId(null);
-      });
-
-      expect(result.current.pendingSessionId).toBeNull();
-      expect(result.current.getResumeOptions()).toEqual({});
-    });
-  });
-});

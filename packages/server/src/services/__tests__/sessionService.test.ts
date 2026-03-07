@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { SessionService, createSessionService, sessionService } from '../sessionService.js';
+import { SessionService, sessionService } from '../sessionService.js';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -52,13 +52,6 @@ describe('SessionService', () => {
 
   afterEach(() => {
     vi.resetAllMocks();
-  });
-
-  describe('createSessionService', () => {
-    it('should create a new SessionService instance', () => {
-      const instance = createSessionService();
-      expect(instance).toBeInstanceOf(SessionService);
-    });
   });
 
   describe('encodeProjectPath', () => {

@@ -115,28 +115,3 @@ export function useSession(): UseSessionReturn {
     listSessions,
   };
 }
-
-/**
- * Get resume options for use with useChatMessages
- * This is a helper to integrate with sendMessage
- */
-export function useSessionResumeOptions(): {
-  pendingSessionId: string | null;
-  getResumeOptions: () => { sessionId?: string; resume?: boolean };
-  setPendingSessionId: (id: string | null) => void;
-} {
-  const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
-
-  const getResumeOptions = useCallback(() => {
-    if (pendingSessionId) {
-      return { sessionId: pendingSessionId, resume: true };
-    }
-    return {};
-  }, [pendingSessionId]);
-
-  return {
-    pendingSessionId,
-    getResumeOptions,
-    setPendingSessionId,
-  };
-}

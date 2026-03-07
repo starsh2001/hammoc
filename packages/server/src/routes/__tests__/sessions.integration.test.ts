@@ -110,7 +110,6 @@ vi.mock('../../services/sessionService.js', async () => {
   return {
     sessionService: new TestSessionService(),
     SessionService: TestSessionService,
-    createSessionService: () => new TestSessionService(),
   };
 });
 

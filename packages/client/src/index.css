@@ -8,22 +8,6 @@ html, body {
   height: 100%;
 }
 
-/* Cursor blink animation for streaming indicator */
-@keyframes blink {
-  0%,
-  50% {
-    opacity: 1;
-  }
-  51%,
-  100% {
-    opacity: 0;
-  }
-}
-
-.animate-blink {
-  animation: blink 1s step-end infinite;
-}
-
 /* Queue editor textarea — theme-aware caret + selection */
 .queue-editor-textarea {
   caret-color: #1f2937; /* gray-800 for light mode */

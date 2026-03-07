@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getLanguageFromPath, EXTENSION_TO_LANGUAGE } from '../languageDetect';
+import { getLanguageFromPath } from '../languageDetect';
 
 describe('getLanguageFromPath', () => {
   it('TC-LD1: .ts → typescript', () => {
@@ -59,10 +59,3 @@ describe('getLanguageFromPath', () => {
   });
 });
 
-describe('EXTENSION_TO_LANGUAGE', () => {
-  it('should be exported and contain expected entries', () => {
-    expect(EXTENSION_TO_LANGUAGE['.ts']).toBe('typescript');
-    expect(EXTENSION_TO_LANGUAGE['.py']).toBe('python');
-    expect(EXTENSION_TO_LANGUAGE['.go']).toBe('go');
-  });
-});
