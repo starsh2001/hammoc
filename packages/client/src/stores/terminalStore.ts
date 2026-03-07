@@ -52,7 +52,6 @@ interface TerminalStore {
   resize: (terminalId: string, cols: number, rows: number) => void;
   setActiveTerminalId: (terminalId: string) => void;
   clearTerminalsForProjectChange: (newProjectSlug: string) => void;
-  setFontSize: (size: number) => void;
   increaseFontSize: () => void;
   decreaseFontSize: () => void;
   resetFontSize: () => void;
@@ -88,10 +87,6 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   // Actions
   setTerminalAccess: (access: TerminalAccessInfo) => {
     set({ terminalAccess: access });
-  },
-
-  setFontSize: (size: number) => {
-    set({ fontSize: Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, size)) });
   },
 
   increaseFontSize: () => {

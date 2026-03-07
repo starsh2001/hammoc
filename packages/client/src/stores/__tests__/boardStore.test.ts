@@ -164,23 +164,6 @@ describe('boardStore', () => {
     });
   });
 
-  describe('getItemsByStatus', () => {
-    it('should filter items by status', () => {
-      useBoardStore.setState({ items: mockItems });
-
-      const openItems = useBoardStore.getState().getItemsByStatus('Open');
-      expect(openItems).toHaveLength(2);
-      expect(openItems.every((item) => item.status === 'Open')).toBe(true);
-    });
-
-    it('should return empty array for status with no items', () => {
-      useBoardStore.setState({ items: mockItems });
-
-      const doneItems = useBoardStore.getState().getItemsByStatus('Done');
-      expect(doneItems).toHaveLength(0);
-    });
-  });
-
   describe('deleteIssue', () => {
     it('should delete issue and refresh board', async () => {
       vi.mocked(boardApi.deleteIssue).mockResolvedValue({ message: 'Issue deleted' });

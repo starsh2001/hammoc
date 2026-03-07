@@ -610,11 +610,6 @@ export async function initializeWebSocket(
       }
     });
 
-    // Handle session:list event
-    socket.on('session:list', async (data) => {
-      await handleSessionList(socket, data, socket.data.language || 'en');
-    });
-
     // Story 20.1: Dashboard subscribe/unsubscribe
     socket.on('dashboard:subscribe', () => {
       socket.join('dashboard');
@@ -1186,37 +1181,5 @@ async function handleChatSend(
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-  }
-}
-
-/**
- * Handle session:list event from client
- * Lists all sessions for a given project
- */
-async function handleSessionList(
-  socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
-  data: { projectPath: string },
-  lang: string
-): Promise<void> {
-  const t = i18next.getFixedT(lang);
-  const { projectPath } = data;
-
-  if (!projectPath || !existsSync(projectPath)) {
-    socket.emit('error', {
-      code: ERROR_CODES.INVALID_WORKING_DIR,
-      message: t('ws.error.projectPathNotFound'),
-    });
-    return;
-  }
-
-  try {
-    const sessionService = new SessionService();
-    const sessions = await sessionService.listSessions(projectPath);
-    socket.emit('session:list', { sessions });
-  } catch {
-    socket.emit('error', {
-      code: ERROR_CODES.CHAT_ERROR,
-      message: t('ws.error.sessionListFailed'),
-    });
   }
 }

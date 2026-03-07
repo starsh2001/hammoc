@@ -70,17 +70,6 @@ class RateLimiterService {
   reset(ip: string): void {
     this.attempts.delete(ip);
   }
-
-  /**
-   * Get remaining attempts for an IP
-   */
-  getRemainingAttempts(ip: string): number {
-    const record = this.attempts.get(ip);
-    if (!record) {
-      return MAX_ATTEMPTS;
-    }
-    return Math.max(0, MAX_ATTEMPTS - record.count);
-  }
 }
 
 // Export singleton instance
