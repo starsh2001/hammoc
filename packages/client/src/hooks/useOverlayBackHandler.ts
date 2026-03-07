@@ -8,11 +8,14 @@ import { useEffect, useRef } from 'react';
  */
 let _programmaticBack = false;
 
+/** Auto-incrementing ID so each pushState gets a unique overlay identifier. */
+let _nextOverlayId = 0;
+
 /**
  * Intercepts browser back/forward navigation for overlay management.
- * - Open:    pushState adds an overlay history entry
+ * - Open:    pushState adds an overlay history entry (with unique ID)
  * - Back:    popstate closes the overlay; forward entry remains for reopen
- * - Forward: popstate reopens the overlay (if onReopen provided)
+ * - Forward: popstate reopens the overlay ONLY if the entry's ID matches
  * - Normal close (X, Escape): history.back() removes the entry cleanly
  */
 export function useOverlayBackHandler(
@@ -22,6 +25,8 @@ export function useOverlayBackHandler(
 ) {
   const isOpenRef = useRef(isOpen);
   const stateRef = useRef<'idle' | 'pushed' | 'popped'>('idle');
+  /** The unique ID of the history entry this overlay last pushed. */
+  const myIdRef = useRef<number | null>(null);
   isOpenRef.current = isOpen;
 
   // Persistent popstate listener (survives open/close toggles)
@@ -30,8 +35,12 @@ export function useOverlayBackHandler(
       // Skip popstate events triggered by another overlay's programmatic close
       if (_programmaticBack) return;
 
-      if (e.state?.__overlay && !isOpenRef.current && onReopen) {
-        // Forward into overlay state while closed → reopen
+      if (
+        e.state?.__overlayId === myIdRef.current &&
+        !isOpenRef.current &&
+        onReopen
+      ) {
+        // Forward into THIS overlay's entry while closed → reopen
         stateRef.current = 'pushed';
         onReopen();
       } else if (isOpenRef.current && stateRef.current === 'pushed') {
@@ -49,7 +58,9 @@ export function useOverlayBackHandler(
   useEffect(() => {
     if (isOpen) {
       if (stateRef.current !== 'pushed') {
-        window.history.pushState({ __overlay: true }, '');
+        const id = ++_nextOverlayId;
+        myIdRef.current = id;
+        window.history.pushState({ __overlay: true, __overlayId: id }, '');
         stateRef.current = 'pushed';
       }
     } else if (stateRef.current === 'pushed') {
