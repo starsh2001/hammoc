@@ -1013,10 +1013,3 @@ export class StreamHandler {
     this.state.pendingToolCalls.clear();
   }
 }
-
-/**
- * Create a new StreamHandler instance
- */
-export function createStreamHandler(): StreamHandler {
-  return new StreamHandler();
-}

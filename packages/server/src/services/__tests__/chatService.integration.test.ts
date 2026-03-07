@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { ChatService, createChatService } from '../chatService.js';
+import { ChatService } from '../chatService.js';
 import os from 'os';
 import path from 'path';
 
@@ -24,7 +24,7 @@ describe.skipIf(SKIP_INTEGRATION)('ChatService Integration Tests', () => {
   const testDir = os.tmpdir();
 
   beforeAll(async () => {
-    service = createChatService();
+    service = new ChatService();
     await service.initSession(testDir);
   });
 
@@ -34,13 +34,13 @@ describe.skipIf(SKIP_INTEGRATION)('ChatService Integration Tests', () => {
 
   describe('Session Initialization', () => {
     it('should initialize session with valid directory', async () => {
-      const newService = createChatService();
+      const newService = new ChatService();
       await newService.initSession(testDir);
       expect(newService.getWorkingDirectory()).toBe(path.resolve(testDir));
     });
 
     it('should reject invalid directory', async () => {
-      const newService = createChatService();
+      const newService = new ChatService();
       await expect(
         newService.initSession('/non/existent/directory/path/12345')
       ).rejects.toThrow();
@@ -49,7 +49,7 @@ describe.skipIf(SKIP_INTEGRATION)('ChatService Integration Tests', () => {
 
   describe('Error Scenarios', () => {
     it('should handle invalid path gracefully', async () => {
-      const newService = createChatService();
+      const newService = new ChatService();
       try {
         await newService.initSession('/invalid/path/that/does/not/exist');
         expect.fail('Should have thrown an error');

@@ -94,14 +94,6 @@ export function resolveTemplateVariables(template: string, cwd: string): string 
   });
 }
 
-/**
- * Build workspace context by resolving the default template.
- * Kept for backward compatibility.
- */
-export function buildWorkspaceContext(cwd: string): string {
-  return resolveTemplateVariables(DEFAULT_WORKSPACE_TEMPLATE, cwd);
-}
-
 // Intentionally duplicated in streamHandler.ts for file independence
 function extractContextWindow(modelUsage?: { [model: string]: { contextWindow: number } }): number {
   if (!modelUsage) return 0;
@@ -386,13 +378,6 @@ export class ChatService {
 
     return streamHandler.processStream(wrapGenerator(), callbacks);
   }
-}
-
-/**
- * Create a new ChatService instance
- */
-export function createChatService(config?: ChatServiceConfig): ChatService {
-  return new ChatService(config);
 }
 
 /**

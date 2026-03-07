@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { StreamHandler, createStreamHandler } from '../streamHandler.js';
+import { StreamHandler } from '../streamHandler.js';
 import {
   SDKMessageType,
   ContentBlockType,
@@ -175,13 +175,6 @@ describe('StreamHandler', () => {
 
   beforeEach(() => {
     handler = new StreamHandler();
-  });
-
-  describe('createStreamHandler', () => {
-    it('should create a new StreamHandler instance', () => {
-      const handler = createStreamHandler();
-      expect(handler).toBeInstanceOf(StreamHandler);
-    });
   });
 
   describe('getState', () => {

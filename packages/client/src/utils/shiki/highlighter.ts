@@ -25,13 +25,3 @@ export async function getHighlighter(): Promise<Highlighter> {
   }
   return highlighterPromise;
 }
-
-/**
- * Preload the Shiki highlighter in the background
- * Call this at app startup to minimize first code block render delay
- */
-export function preloadShiki(): void {
-  getHighlighter().catch((err) => {
-    debugLogger.warn('Shiki preload failed', { error: err instanceof Error ? err.message : String(err) });
-  });
-}
