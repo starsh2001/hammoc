@@ -180,4 +180,4 @@ export function CommandPalette({
 }
 
 // Export for testing
-export { filterCommands, groupCommands };
+export { filterCommands };
