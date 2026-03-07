@@ -276,22 +276,6 @@ describe('useSessionStore', () => {
     });
   });
 
-  describe('setRefreshing', () => {
-    it('should set isRefreshing to true', () => {
-      useSessionStore.getState().setRefreshing(true);
-
-      expect(useSessionStore.getState().isRefreshing).toBe(true);
-    });
-
-    it('should set isRefreshing to false', () => {
-      useSessionStore.setState({ isRefreshing: true });
-
-      useSessionStore.getState().setRefreshing(false);
-
-      expect(useSessionStore.getState().isRefreshing).toBe(false);
-    });
-  });
-
   describe('searchSessions', () => {
     const mockSearchResults = [
       {
@@ -532,12 +516,7 @@ describe('useSessionStore', () => {
     });
   });
 
-  describe('setSearchQuery and setSearchContent', () => {
-    it('should update searchQuery state', () => {
-      useSessionStore.getState().setSearchQuery('new query');
-      expect(useSessionStore.getState().searchQuery).toBe('new query');
-    });
-
+  describe('setSearchContent', () => {
     it('should update searchContent state', () => {
       useSessionStore.getState().setSearchContent(true);
       expect(useSessionStore.getState().searchContent).toBe(true);

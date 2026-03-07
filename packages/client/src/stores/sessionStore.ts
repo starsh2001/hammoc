@@ -36,7 +36,6 @@ interface SessionActions {
   loadMoreSessions: (projectSlug: string, options?: { limit?: number }) => Promise<void>;
   clearSessions: () => void;
   clearError: () => void;
-  setRefreshing: (isRefreshing: boolean) => void;
   /** Update a session's streaming status (called from socket listener) */
   updateSessionStreaming: (sessionId: string, active: boolean) => void;
   /** Delete a single session */
@@ -53,8 +52,6 @@ interface SessionActions {
   clearSearch: (projectSlug: string) => Promise<void>;
   /** Reset search state without re-fetching (for unmount cleanup) */
   resetSearchState: () => void;
-  /** Update search query state (for UI binding) */
-  setSearchQuery: (query: string) => void;
   /** Update search content toggle state */
   setSearchContent: (searchContent: boolean) => void;
 }
@@ -195,8 +192,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   clearError: () => set({ error: null, errorType: 'none' }),
 
-  setRefreshing: (isRefreshing: boolean) => set({ isRefreshing }),
-
   updateSessionStreaming: (sessionId: string, active: boolean) => {
     const { sessions } = get();
     const updated = sessions.map((s) =>
@@ -264,8 +259,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const version = get()._searchVersion + 1;
     set({ searchQuery: '', searchContent: false, isSearching: false, _searchVersion: version });
   },
-
-  setSearchQuery: (query: string) => set({ searchQuery: query }),
 
   setSearchContent: (searchContent: boolean) => set({ searchContent }),
 

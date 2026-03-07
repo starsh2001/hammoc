@@ -80,7 +80,6 @@ vi.mock('../../stores/sessionStore', () => ({
     fetchSessions: vi.fn(),
     clearSessions: vi.fn(),
     clearError: vi.fn(),
-    setRefreshing: vi.fn(),
   })),
 }));
 
