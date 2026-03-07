@@ -169,6 +169,19 @@ export function getActiveStreamSessionIds(): string[] {
     .map(([key]) => key);
 }
 
+/** Get active (running) session counts grouped by project slug (in-memory, no I/O) */
+export function getActiveSessionCountsByProject(): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const [sessionId, stream] of activeStreams.entries()) {
+    if (stream.status !== 'running') continue;
+    const slug = sessionProjectMap.get(sessionId);
+    if (slug) {
+      counts.set(slug, (counts.get(slug) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
 /** Check if a specific session has a running active stream */
 export function isSessionStreaming(sessionId: string): boolean {
   const stream = activeStreams.get(sessionId);
@@ -414,7 +427,10 @@ export async function initializeWebSocket(
 
       // Story 20.1: Populate session→project mapping for dashboard triggers
       projectService.findProjectByPath(data.workingDirectory).then((project) => {
-        if (project) sessionProjectMap.set(streamKey, project.projectSlug);
+        if (project) {
+          sessionProjectMap.set(streamKey, project.projectSlug);
+          triggerDashboardStatusChange(project.projectSlug);
+        }
       }).catch(() => {});
 
       // Abort existing active stream for same session — notify all watchers
