@@ -39,22 +39,6 @@ export function formatAgentRoleLabel(command: string): string {
   }).join(' ');
 }
 
-/**
- * Get the display label for an agent in a list context: "Role (Name)"
- * Avoids redundancy when name already matches the role label.
- */
-export function getAgentDisplayLabel(agent: SlashCommand): string {
-  const roleLabel = formatAgentRoleLabel(agent.command);
-  if (!roleLabel) return agent.name;
-
-  // Avoid redundancy: if name ≈ role label, just show name
-  const normalizedRole = roleLabel.toLowerCase().replace(/\s/g, '');
-  const normalizedName = agent.name.toLowerCase().replace(/\s/g, '');
-  if (normalizedRole === normalizedName) return agent.name;
-
-  return `${roleLabel} (${agent.name})`;
-}
-
 /** Agent group definition for categorized display */
 export interface AgentGroup {
   label: string;

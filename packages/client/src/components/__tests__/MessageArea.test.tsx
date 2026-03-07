@@ -8,13 +8,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MessageArea } from '../MessageArea';
 import type { StreamingSegment } from '../../stores/chatStore';
 
-// Mock PermissionCard and DiffViewer for Edit/Write delegation tests
-vi.mock('../PermissionCard', () => ({
-  PermissionCard: vi.fn(({ toolName }: { toolName: string }) => (
-    <div data-testid="mock-permission-card">{toolName}</div>
-  )),
-}));
-
+// Mock DiffViewer for Edit/Write delegation tests
 vi.mock('../DiffViewer', () => ({
   DiffViewer: vi.fn(() => <div data-testid="mock-diff-viewer" />),
   default: vi.fn(),
@@ -295,7 +289,6 @@ describe('MessageArea', () => {
       expect(container.querySelector('[aria-label="Claude 응답 중"]')).toBeInTheDocument();
     });
 
-    // Story 6.5 - PermissionCard delegation tests
     it('renders ToolCard for Edit tool streaming segment', () => {
       const editSegment: StreamingSegment = {
         type: 'tool',
