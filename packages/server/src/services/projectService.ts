@@ -591,6 +591,18 @@ class ProjectService {
   }
 
   /**
+   * Get session count for a single project (lightweight, no full scan).
+   * Used by dashboard to avoid expensive scanProjects() calls.
+   */
+  async getProjectSessionCount(projectSlug: string): Promise<number> {
+    const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
+    const info = await this.parseSessionsIndex(projectDir, projectSlug);
+    if (info) return info.sessionCount;
+    const fallback = await this.buildProjectFromDirectory(projectDir, projectSlug);
+    return fallback?.sessionCount ?? 0;
+  }
+
+  /**
    * Check if a path exists on the filesystem
    * @param targetPath Path to check
    * @returns true if path exists

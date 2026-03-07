@@ -8,11 +8,10 @@ import type {
   DashboardProjectStatus,
   DashboardStatusResponse,
 } from '@bmad-studio/shared';
-import { sessionService } from './sessionService.js';
 import { ptyService } from './ptyService.js';
 import { projectService } from './projectService.js';
 import { getQueueInstances } from '../controllers/queueController.js';
-import { getActiveStreamSessionIds } from '../handlers/websocket.js';
+import { getActiveSessionCountsByProject } from '../handlers/websocket.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('dashboardService');
@@ -28,42 +27,44 @@ function mapQueueStatus(
 }
 
 class DashboardService {
+  private statusCache: { data: DashboardStatusResponse; timestamp: number } | null = null;
+  private static readonly CACHE_TTL_MS = 5000;
+
   /**
-   * Aggregate status across all registered projects.
+   * Aggregate status across all registered projects (cached for 5s).
+   * Uses in-memory active session counts — no per-project file I/O for session listing.
    */
   async getStatus(): Promise<DashboardStatusResponse> {
+    const now = Date.now();
+    if (this.statusCache && now - this.statusCache.timestamp < DashboardService.CACHE_TTL_MS) {
+      return this.statusCache.data;
+    }
+
     const projects = await projectService.scanProjects();
-    const activeIds = new Set(getActiveStreamSessionIds());
+    const activeCounts = getActiveSessionCountsByProject();
     const queueMap = getQueueInstances();
 
-    const statuses: DashboardProjectStatus[] = await Promise.all(
-      projects.map(async (project) => {
-        const slug = project.projectSlug;
+    const statuses: DashboardProjectStatus[] = projects.map((project) => {
+      const slug = project.projectSlug;
+      return {
+        projectSlug: slug,
+        activeSessionCount: activeCounts.get(slug) ?? 0,
+        totalSessionCount: project.sessionCount,
+        queueStatus: mapQueueStatus(queueMap.get(slug)?.getState()),
+        terminalCount: ptyService.getSessionsByProject(slug).length,
+      };
+    });
 
-        const result = await sessionService.listSessionsBySlug(slug);
-        const activeCount = (result?.sessions ?? []).filter((s) => activeIds.has(s.sessionId)).length;
-
-        const queueStatus = mapQueueStatus(queueMap.get(slug)?.getState());
-        const terminalCount = ptyService.getSessionsByProject(slug).length;
-
-        return {
-          projectSlug: slug,
-          activeSessionCount: activeCount,
-          totalSessionCount: project.sessionCount,
-          queueStatus,
-          terminalCount,
-        };
-      })
-    );
-
-    return { projects: statuses };
+    const response = { projects: statuses };
+    this.statusCache = { data: response, timestamp: now };
+    return response;
   }
 
   /**
    * Get status for a single project (used for status change events).
+   * Uses in-memory lookup — no listSessionsBySlug I/O.
    */
   async getProjectStatus(projectSlug: string): Promise<DashboardProjectStatus> {
-    // resolveOriginalPath throws PROJECT_NOT_FOUND for invalid slugs
     try {
       await projectService.resolveOriginalPath(projectSlug);
     } catch (error: unknown) {
@@ -74,16 +75,10 @@ class DashboardService {
       throw error;
     }
 
-    const activeIds = new Set(getActiveStreamSessionIds());
-    const result = await sessionService.listSessionsBySlug(projectSlug);
-    const activeCount = (result?.sessions ?? []).filter((s) => activeIds.has(s.sessionId)).length;
-
+    const activeCount = getActiveSessionCountsByProject().get(projectSlug) ?? 0;
     const queueStatus = mapQueueStatus(getQueueInstances().get(projectSlug)?.getState());
     const terminalCount = ptyService.getSessionsByProject(projectSlug).length;
-
-    const projects = await projectService.scanProjects();
-    const project = projects.find((p) => p.projectSlug === projectSlug);
-    const totalSessionCount = project?.sessionCount ?? 0;
+    const totalSessionCount = await projectService.getProjectSessionCount(projectSlug);
 
     return {
       projectSlug,

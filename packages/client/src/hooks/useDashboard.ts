@@ -3,7 +3,7 @@
  * [Source: Story 20.3 - Task 4]
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import type { DashboardProjectStatus, DashboardStatusChangeEvent } from '@bmad-studio/shared';
 import { getSocket } from '../services/socket';
@@ -29,24 +29,20 @@ export function useDashboard(): UseDashboardReturn {
     const { subscribe, unsubscribe, fetchStatus, updateProjectStatus } =
       useDashboardStore.getState();
 
-    // Handler for WebSocket status change events
     const onStatusChange = (event: DashboardStatusChangeEvent) => {
       updateProjectStatus(event);
     };
 
-    // Handler for (re)connection — subscribe and fetch fresh data
     const onConnect = () => {
       subscribe();
       fetchStatus();
     };
 
-    // If socket is already connected, subscribe + fetch immediately
     if (socket.connected) {
       subscribe();
       fetchStatus();
     }
 
-    // Register listeners
     socket.on('connect', onConnect);
     socket.on('dashboard:status-change', onStatusChange);
 
@@ -57,9 +53,25 @@ export function useDashboard(): UseDashboardReturn {
     };
   }, []);
 
-  // Stable refs from getState() — not subscribed state
-  const totals = useDashboardStore.getState().getTotals();
-  const getProjectStatus = useDashboardStore.getState().getProjectStatus;
+  // Reactive totals — recomputed only when projectStatuses changes
+  const totals = useMemo(() => {
+    let totalSessions = 0;
+    let activeSessions = 0;
+    let queueRunning = 0;
+    let terminals = 0;
+    for (const status of projectStatuses.values()) {
+      totalSessions += status.totalSessionCount;
+      activeSessions += status.activeSessionCount;
+      if (status.queueStatus === 'running') queueRunning++;
+      terminals += status.terminalCount;
+    }
+    return { totalSessions, activeSessions, queueRunning, terminals };
+  }, [projectStatuses]);
+
+  const getProjectStatus = useCallback(
+    (projectSlug: string) => projectStatuses.get(projectSlug),
+    [projectStatuses]
+  );
 
   return {
     projectStatuses,
