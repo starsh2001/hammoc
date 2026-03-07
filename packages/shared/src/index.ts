@@ -7,7 +7,6 @@ export * from './types/streaming.js';
 // Story 1.4: WebSocket types for Socket.io
 export * from './types/websocket.js';
 
-// Story 1.5: Message types for display and error codes
 // Story 5.5: Attachment, ImageAttachment, IMAGE_CONSTRAINTS
 export * from './types/message.js';
 export * from './constants/errorCodes.js';
@@ -25,7 +24,6 @@ export {
   PasswordValidationResult,
   MIN_PASSWORD_LENGTH,
   AUTH_CONFIG_ERRORS,
-  AuthConfigErrorCode,
   AuthConfigError,
 } from './types/auth.js';
 
@@ -43,7 +41,6 @@ export {
   LogoutResponse,
   AuthStatus,
   AUTH_ERROR_CODES,
-  AuthErrorCode,
   SetupPasswordRequest,
   SetupPasswordResponse,
 } from './types/auth.js';
@@ -83,7 +80,6 @@ export {
   TelegramSettings,
   TelegramSettingsApiResponse,
   UpdateTelegramSettingsRequest,
-  TelegramTestRequest,
   SupportedLanguage,
   SUPPORTED_LANGUAGES,
 } from './types/preferences.js';

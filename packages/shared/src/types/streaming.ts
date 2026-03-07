@@ -36,7 +36,7 @@ export enum ContentBlockType {
 /**
  * Base interface for parsed content blocks
  */
-export interface ParsedContentBlockBase {
+interface ParsedContentBlockBase {
   type: ContentBlockType;
 }
 
@@ -225,7 +225,7 @@ export type ParsedSDKMessage =
 /**
  * Tool call status for tracking
  */
-export type ToolCallStatus = 'pending' | 'completed';
+type ToolCallStatus = 'pending' | 'completed';
 
 /**
  * Extended tool call with status tracking

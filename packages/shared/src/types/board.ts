@@ -3,9 +3,6 @@
 export type BoardItemType = 'issue' | 'story' | 'epic';
 export type BoardItemStatus = 'Open' | 'Draft' | 'Approved' | 'InProgress' | 'Blocked' | 'Review' | 'Done' | 'Closed' | 'Promoted';
 
-// Board column is a string to support custom column configurations
-export type BoardColumn = string;
-
 // Column definition for dynamic board configuration
 export interface BoardColumnConfig {
   id: string;

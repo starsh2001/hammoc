@@ -64,7 +64,7 @@ export interface ChatResponse {
 /**
  * Rate limit window info (for subscription users via OAuth beta header)
  */
-export interface RateLimitWindow {
+interface RateLimitWindow {
   utilization: number;
   reset: string | null;
   status: string;
