@@ -13,6 +13,9 @@ ref/
 # Windows special files
 nul
 
+# Claude Code
+.claude/
+
 # IDE
 .idea/
 .vscode/*

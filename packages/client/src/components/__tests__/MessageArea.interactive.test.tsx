@@ -1,6 +1,6 @@
 /**
  * MessageArea Interactive Integration Tests
- * Verifies PermissionCard onApprove/onReject → WebSocket permission:respond integration
+ * Verifies permission onApprove/onReject → WebSocket permission:respond integration
  * [Source: Story 7.1 - Task 7]
  */
 
@@ -25,7 +25,7 @@ vi.stubGlobal('ResizeObserver', vi.fn(() => ({
   disconnect: vi.fn(),
 })));
 
-describe('MessageArea PermissionCard WebSocket integration (Story 7.1)', () => {
+describe('MessageArea permission WebSocket integration (Story 7.1)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -62,7 +62,7 @@ describe('MessageArea PermissionCard WebSocket integration (Story 7.1)', () => {
     return segments;
   }
 
-  it('should emit permission:respond with approved=true when PermissionCard approve is clicked', () => {
+  it('should emit permission:respond with approved=true when approve is clicked', () => {
     const segments = setupEditPermission();
 
     render(
@@ -81,7 +81,7 @@ describe('MessageArea PermissionCard WebSocket integration (Story 7.1)', () => {
     }));
   });
 
-  it('should emit permission:respond with approved=false when PermissionCard reject is clicked', () => {
+  it('should emit permission:respond with approved=false when reject is clicked', () => {
     const segments = setupEditPermission();
 
     render(
@@ -100,7 +100,7 @@ describe('MessageArea PermissionCard WebSocket integration (Story 7.1)', () => {
     }));
   });
 
-  it('should emit permission:respond for Write tool PermissionCard approve', () => {
+  it('should emit permission:respond for Write tool approve', () => {
     const segments: StreamingSegment[] = [
       {
         type: 'tool',
