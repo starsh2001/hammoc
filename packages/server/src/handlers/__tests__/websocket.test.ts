@@ -500,65 +500,6 @@ describe('WebSocket Handler', () => {
     });
   });
 
-  describe('session:list event handler', () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
-    it('should emit error for invalid projectPath', async () => {
-      vi.mocked(existsSync).mockReturnValue(false);
-
-      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
-        transports: ['websocket'],
-      });
-
-      await new Promise<void>((resolve) => {
-        clientSocket.on('connect', () => resolve());
-      });
-
-      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
-        clientSocket.on('error', (error) => resolve(error));
-      });
-
-      clientSocket.emit('session:list', {
-        projectPath: '/non/existent/path',
-      });
-
-      const error = await errorPromise;
-
-      expect(error.code).toBe(ERROR_CODES.INVALID_WORKING_DIR);
-    });
-
-    it('should emit session:list with sessions for valid projectPath', async () => {
-      vi.mocked(existsSync).mockReturnValue(true);
-
-      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
-        transports: ['websocket'],
-      });
-
-      await new Promise<void>((resolve) => {
-        clientSocket.on('connect', () => resolve());
-      });
-
-      const sessionsPromise = new Promise<{ sessions: unknown[] }>((resolve) => {
-        clientSocket.on('session:list', (data) => resolve(data));
-      });
-
-      clientSocket.emit('session:list', {
-        projectPath: '/valid/path',
-      });
-
-      const result = await sessionsPromise;
-
-      expect(result.sessions).toBeDefined();
-      expect(result.sessions).toHaveLength(1);
-      expect(result.sessions[0]).toMatchObject({
-        sessionId: 'session-123',
-        firstPrompt: 'Create a component',
-      });
-    });
-  });
-
   describe('WebSocket Authentication (Story 2.5)', () => {
     it('should accept connection with authenticated session', async () => {
       // Default mock has authenticated: true

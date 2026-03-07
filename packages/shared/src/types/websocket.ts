@@ -44,7 +44,6 @@ export interface ClientToServerEvents {
   'permission:mode-change': (data: { mode: PermissionMode }) => void;
   'session:join': (sessionId: string) => void;
   'session:leave': (sessionId: string) => void;
-  'session:list': (data: { projectPath: string }) => void;
   // Story 15.2: Queue runner events
   'queue:start': (data: { items: QueueItem[]; sessionId?: string; projectSlug: string; permissionMode?: PermissionMode }) => void;
   'queue:pause': (data: { projectSlug: string }) => void;
@@ -81,7 +80,6 @@ export interface ServerToClientEvents {
   'error': (data: { code: string; message: string }) => void;
   'session:created': (data: { sessionId: string; model?: string }) => void;
   'session:resumed': (data: { sessionId: string; model?: string }) => void;
-  'session:list': (data: { sessions: SessionInfo[] }) => void;
   'context:usage': (data: ChatUsage) => void;
   'assistant:usage': (data: { inputTokens: number; outputTokens: number; cacheCreationInputTokens: number; cacheReadInputTokens: number }) => void;
   'context:estimate': (data: { estimatedTokens: number; contextWindow: number }) => void;
