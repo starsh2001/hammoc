@@ -61,15 +61,6 @@ export const DEFAULT_BOARD_CONFIG: BoardConfig = {
   statusToColumn: DEFAULT_STATUS_TO_COLUMN,
 };
 
-// Derived constants for backward compatibility
-export const BOARD_COLUMN_ORDER: string[] = DEFAULT_BOARD_COLUMNS.map((c) => c.id);
-
-export const STATUS_TO_COLUMN: Record<BoardItemStatus, string> = DEFAULT_STATUS_TO_COLUMN;
-
-export const COLUMN_LABEL: Record<string, string> = Object.fromEntries(
-  DEFAULT_BOARD_COLUMNS.map((c) => [c.id, c.label]),
-);
-
 // All possible statuses (used for validation)
 const ALL_STATUSES: BoardItemStatus[] = [
   'Open', 'Draft', 'Approved', 'InProgress', 'Blocked', 'Review', 'Done', 'Closed', 'Promoted',

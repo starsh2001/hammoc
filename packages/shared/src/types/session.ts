@@ -136,8 +136,6 @@ export const SESSION_ERRORS = {
   },
 } as const;
 
-export type SessionErrorCode = keyof typeof SESSION_ERRORS;
-
 /**
  * Parameters for session list API request
  * Story 23.1: Server-Side Session Search API

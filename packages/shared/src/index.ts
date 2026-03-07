@@ -57,7 +57,6 @@ export {
   ProjectInfo,
   ProjectListResponse,
   PROJECT_ERRORS,
-  ProjectErrorCode,
   CreateProjectRequest,
   CreateProjectResponse,
   DeleteProjectResponse,
@@ -73,7 +72,7 @@ export {
 
 // Story 5.1: SlashCommand types for command autocomplete
 // Story 9.8: StarCommand, CommandsResponse types
-export { SlashCommand, CommandListResponse, StarCommand, CommandsResponse } from './types/command.js';
+export { SlashCommand, StarCommand, CommandsResponse } from './types/command.js';
 
 // User Preferences types (server-side settings)
 export {
@@ -132,4 +131,4 @@ export * from './types/dashboard.js';
 export * from './types/board.js';
 
 // Logger types (shared between server and client)
-export { LogLevel, type LogLevelName, parseLogLevel } from './types/logger.js';
+export { LogLevel, parseLogLevel } from './types/logger.js';

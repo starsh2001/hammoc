@@ -141,8 +141,6 @@ export const FILE_SYSTEM_ERRORS = {
   },
 } as const;
 
-export type FileSystemErrorCode = keyof typeof FILE_SYSTEM_ERRORS;
-
 /**
  * Single search result entry
  */

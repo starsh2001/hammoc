@@ -102,5 +102,3 @@ export const BMAD_STATUS_ERRORS = {
     httpStatus: 500,
   },
 } as const;
-
-export type BmadStatusErrorCode = keyof typeof BMAD_STATUS_ERRORS;

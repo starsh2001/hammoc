@@ -10,7 +10,7 @@ export enum LogLevel {
   VERBOSE = 4,
 }
 
-export type LogLevelName = keyof typeof LogLevel;
+type LogLevelName = keyof typeof LogLevel;
 
 /**
  * Parse a string into a LogLevel.

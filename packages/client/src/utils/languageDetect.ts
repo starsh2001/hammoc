@@ -64,8 +64,7 @@ export function isImagePath(filePath: string): boolean {
   return IMAGE_EXTENSIONS.has(filePath.slice(lastDotIndex).toLowerCase());
 }
 
-// Legacy string-based language mapping (kept for tests and re-exports)
-export const EXTENSION_TO_LANGUAGE_STRING: Record<string, string> = {
+const EXTENSION_TO_LANGUAGE_STRING: Record<string, string> = {
   '.ts': 'typescript',
   '.tsx': 'typescript',
   '.js': 'javascript',
@@ -84,9 +83,6 @@ export const EXTENSION_TO_LANGUAGE_STRING: Record<string, string> = {
   '.yaml': 'yaml',
   '.yml': 'yaml',
 };
-
-// Keep original export name for backwards compatibility
-export { EXTENSION_TO_LANGUAGE_STRING as EXTENSION_TO_LANGUAGE };
 
 export function getLanguageFromPath(filePath: string): string {
   const lastDotIndex = filePath.lastIndexOf('.');

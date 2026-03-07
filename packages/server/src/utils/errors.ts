@@ -225,27 +225,3 @@ export function parseSDKError(error: unknown, lang?: string): SDKError {
     SDKErrorCode.UNKNOWN
   );
 }
-
-/**
- * Check if an error is retriable
- */
-export function isRetriableError(error: unknown): boolean {
-  if (error instanceof SDKError) {
-    return [
-      SDKErrorCode.RATE_LIMIT_EXCEEDED,
-      SDKErrorCode.NETWORK_ERROR,
-      SDKErrorCode.SERVICE_UNAVAILABLE,
-    ].includes(error.code);
-  }
-  return false;
-}
-
-/**
- * Get retry delay for an error in milliseconds
- */
-export function getRetryDelay(error: unknown): number {
-  if (error instanceof SDKError && error.retryAfter) {
-    return error.retryAfter * 1000;
-  }
-  return 5000; // Default 5 seconds
-}

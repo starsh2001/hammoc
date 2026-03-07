@@ -16,11 +16,6 @@ export interface SlashCommand {
   icon?: string;
 }
 
-/** @deprecated Use CommandsResponse instead */
-export interface CommandListResponse {
-  commands: SlashCommand[];
-}
-
 /**
  * Star command definition parsed from agent YAML commands: section
  * [Source: Story 9.8 - Task 1]
