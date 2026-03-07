@@ -9,7 +9,6 @@ import type {
   FileReadResponse,
   FileWriteResponse,
   DirectoryListResponse,
-  DirectoryTreeResponse,
   FileCreateResponse,
   FileDeleteResponse,
   FileRenameResponse,
@@ -25,9 +24,6 @@ export const fileSystemApi = {
 
   listDirectory: (projectSlug: string, path: string = '.') =>
     api.get<DirectoryListResponse>(`/projects/${projectSlug}/fs/list?path=${encodeURIComponent(path)}`),
-
-  listDirectoryTree: (projectSlug: string, path: string = '.') =>
-    api.get<DirectoryTreeResponse>(`/projects/${projectSlug}/fs/tree?path=${encodeURIComponent(path)}`),
 
   createEntry: (projectSlug: string, path: string, type: 'file' | 'directory' = 'file') =>
     api.post<FileCreateResponse>(
