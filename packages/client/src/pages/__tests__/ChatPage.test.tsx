@@ -86,7 +86,6 @@ vi.mock('../../stores/sessionStore', () => ({
     fetchSessions: vi.fn(),
     clearSessions: vi.fn(),
     clearError: vi.fn(),
-    setRefreshing: vi.fn(),
   })),
 }));
 
@@ -147,7 +146,6 @@ describe('ChatPage', () => {
       fetchSessions: vi.fn(),
       clearSessions: vi.fn(),
       clearError: vi.fn(),
-      setRefreshing: vi.fn(),
     } as ReturnType<typeof useSessionStore>);
     useChatStore.setState({
       isStreaming: false,
