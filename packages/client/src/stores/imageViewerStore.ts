@@ -7,7 +7,6 @@ import { create } from 'zustand';
 interface ImageViewerState {
   openImage: { projectSlug: string; path: string } | null;
   zoomLevel: number;
-  position: { x: number; y: number };
 }
 
 interface ImageViewerActions {
@@ -22,7 +21,6 @@ type ImageViewerStore = ImageViewerState & ImageViewerActions;
 const initialState: ImageViewerState = {
   openImage: null,
   zoomLevel: 1,
-  position: { x: 0, y: 0 },
 };
 
 export const useImageViewerStore = create<ImageViewerStore>((set) => ({
@@ -32,7 +30,6 @@ export const useImageViewerStore = create<ImageViewerStore>((set) => ({
     set({
       openImage: { projectSlug, path },
       zoomLevel: 1,
-      position: { x: 0, y: 0 },
     });
   },
 
@@ -45,6 +42,6 @@ export const useImageViewerStore = create<ImageViewerStore>((set) => ({
   },
 
   resetView: () => {
-    set({ zoomLevel: 1, position: { x: 0, y: 0 } });
+    set({ zoomLevel: 1 });
   },
 }));

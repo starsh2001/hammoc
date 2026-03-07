@@ -33,7 +33,7 @@ export const COLUMN_COLOR_PALETTE = [
 ] as const;
 
 // Default 5-column board configuration
-export const DEFAULT_BOARD_COLUMNS: BoardColumnConfig[] = [
+const DEFAULT_BOARD_COLUMNS: BoardColumnConfig[] = [
   { id: 'Open', label: 'Open', colorClass: 'border-t-gray-400' },
   { id: 'ToDo', label: 'To Do', colorClass: 'border-t-indigo-400' },
   { id: 'Doing', label: 'Doing', colorClass: 'border-t-blue-400' },
@@ -41,7 +41,7 @@ export const DEFAULT_BOARD_COLUMNS: BoardColumnConfig[] = [
   { id: 'Close', label: 'Close', colorClass: 'border-t-emerald-500' },
 ];
 
-export const DEFAULT_STATUS_TO_COLUMN: Record<BoardItemStatus, string> = {
+const DEFAULT_STATUS_TO_COLUMN: Record<BoardItemStatus, string> = {
   Open: 'Open',
   Draft: 'ToDo',
   Approved: 'ToDo',
