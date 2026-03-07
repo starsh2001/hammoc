@@ -54,8 +54,8 @@ export const AUTH_CONFIG_ERRORS = {
   },
 } as const;
 
-/** 에러 코드 타입 */
-export type AuthConfigErrorCode = keyof typeof AUTH_CONFIG_ERRORS;
+/** 에러 코드 타입 (internal) */
+type AuthConfigErrorCode = keyof typeof AUTH_CONFIG_ERRORS;
 
 /**
  * 인증 설정 관련 에러 클래스
@@ -163,7 +163,7 @@ export const AUTH_ERROR_CODES = {
   UNAUTHORIZED: 'UNAUTHORIZED',
 } as const;
 
-export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];
+type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];
 
 /**
  * API Error Messages (centralized for consistency)
