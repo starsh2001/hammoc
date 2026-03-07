@@ -260,8 +260,6 @@ interface ChatActions {
   startStreamingDelay: (sessionId: string) => void;
   /** Restore streaming state for background stream reconnection */
   restoreStreaming: (sessionId: string) => void;
-  /** Store segment cleanup timeout ID (for cancellation on rapid successive completions) */
-  setSegmentCleanupTimeoutId: (id: ReturnType<typeof setTimeout>) => void;
   /** Set model for next message */
   setSelectedModel: (model: string) => void;
   /** Reset selected model to user's default preference */
@@ -1116,19 +1114,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       lastResultError: null,
       segmentsPendingClear: false,
     });
-  },
-
-  setSegmentCleanupTimeoutId: (id) => {
-    debugLog.state('setSegmentCleanupTimeoutId (15s absolute timeout)', {
-      hadPrevious: !!segmentCleanupTimeoutId,
-      segmentCount: get().streamingSegments.length,
-      msgCount: useMessageStore.getState().messages.length,
-    });
-    // Cancel previous timeout if exists (rapid successive completions guard)
-    if (segmentCleanupTimeoutId) {
-      clearTimeout(segmentCleanupTimeoutId);
-    }
-    segmentCleanupTimeoutId = id;
   },
 
   setSelectedModel: (model: string) => set({ selectedModel: model }),

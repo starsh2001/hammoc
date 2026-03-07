@@ -45,29 +45,6 @@ async function promptPasswordWithConfirmation(): Promise<string> {
 }
 
 /**
- * 초기 패스워드 설정
- */
-export async function setupInitialPassword(): Promise<void> {
-  const authConfig = new AuthConfigService();
-
-  console.log('\nBMad Studio requires a password for secure access.');
-  console.log('Please set your password (minimum 4 characters):\n');
-
-  const password = await promptPasswordWithConfirmation();
-
-  try {
-    await authConfig.setPassword(password);
-    console.log('\nPassword configured successfully!\n');
-  } catch (error) {
-    if (error instanceof AuthConfigError) {
-      console.error(`\nError: ${error.message}\n`);
-      process.exit(1);
-    }
-    throw error;
-  }
-}
-
-/**
  * 패스워드 재설정 (--reset-password 옵션)
  */
 export async function resetPassword(): Promise<void> {

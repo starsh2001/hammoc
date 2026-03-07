@@ -104,12 +104,6 @@ export interface UpdateTelegramSettingsRequest {
   alwaysNotify?: boolean;
 }
 
-/** POST /api/preferences/telegram/test request body */
-export interface TelegramTestRequest {
-  botToken?: string;
-  chatId?: string;
-}
-
 /**
  * Per-session prompt history stored at {projectPath}/.bmad-studio/prompt-history/{sessionId}.json
  */

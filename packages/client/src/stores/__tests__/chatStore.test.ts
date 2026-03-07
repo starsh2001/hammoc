@@ -709,28 +709,6 @@ describe('useChatStore', () => {
       expect(state.segmentsPendingClear).toBe(false);
     });
 
-    it('TC-L7: setSegmentCleanupTimeoutId cancels previous timeout and stores new one', () => {
-      vi.useFakeTimers();
-      const callback1 = vi.fn();
-      const callback2 = vi.fn();
-
-      const timeoutId1 = setTimeout(callback1, 10000) as unknown as ReturnType<typeof setTimeout>;
-      useChatStore.getState().setSegmentCleanupTimeoutId(timeoutId1);
-
-      // Set new timeout — should cancel previous
-      const timeoutId2 = setTimeout(callback2, 10000) as unknown as ReturnType<typeof setTimeout>;
-      useChatStore.getState().setSegmentCleanupTimeoutId(timeoutId2);
-
-      vi.advanceTimersByTime(10000);
-
-      // First callback should have been cancelled
-      expect(callback1).not.toHaveBeenCalled();
-      // Second callback should fire
-      expect(callback2).toHaveBeenCalledTimes(1);
-
-      vi.useRealTimers();
-    });
-
     it('TC-L8: restoreStreaming resets segmentsPendingClear=false', () => {
       useChatStore.setState({
         segmentsPendingClear: true,
