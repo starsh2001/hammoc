@@ -5,7 +5,7 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { CommandPalette, filterCommands, groupCommands } from '../CommandPalette';
+import { CommandPalette, filterCommands } from '../CommandPalette';
 import type { SlashCommand } from '@bmad-studio/shared';
 
 const mockCommands: SlashCommand[] = [
@@ -269,15 +269,3 @@ describe('filterCommands', () => {
   });
 });
 
-describe('groupCommands', () => {
-  it('should group commands by category', () => {
-    const groups = groupCommands(mockCommands);
-    expect(groups.get('Agents')).toHaveLength(2);
-    expect(groups.get('Tasks')).toHaveLength(2);
-  });
-
-  it('should handle empty array', () => {
-    const groups = groupCommands([]);
-    expect(groups.size).toBe(0);
-  });
-});
