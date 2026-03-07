@@ -32,7 +32,6 @@ interface BoardStore {
   setViewMode: (mode: 'kanban' | 'list') => void;
   setVisibleColumns: (count: number) => void;
   setBoardConfig: (config: BoardConfig) => void;
-  getItemsByStatus: (status: BoardItemStatus) => BoardItem[];
   clearError: () => void;
 }
 
@@ -154,9 +153,6 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   setBoardConfig: (config: BoardConfig) => {
     set({ boardConfig: config });
   },
-
-  getItemsByStatus: (status: BoardItemStatus) =>
-    get().items.filter((item) => item.status === status),
 
   clearError: () => {
     if (_errorTimerId) {

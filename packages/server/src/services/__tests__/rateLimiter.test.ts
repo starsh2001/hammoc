@@ -95,16 +95,19 @@ describe('RateLimiter', () => {
   });
 
   describe('recordFailure', () => {
-    it('should increment failure count', () => {
+    it('should increment failure count until lockout', () => {
       const ip = '127.0.0.1';
 
-      expect(rateLimiter.getRemainingAttempts(ip)).toBe(5);
+      expect(rateLimiter.canAttempt(ip).allowed).toBe(true);
 
       rateLimiter.recordFailure(ip);
-      expect(rateLimiter.getRemainingAttempts(ip)).toBe(4);
+      expect(rateLimiter.canAttempt(ip).allowed).toBe(true);
 
-      rateLimiter.recordFailure(ip);
-      expect(rateLimiter.getRemainingAttempts(ip)).toBe(3);
+      // Exhaust all attempts
+      for (let i = 0; i < 4; i++) {
+        rateLimiter.recordFailure(ip);
+      }
+      expect(rateLimiter.canAttempt(ip).allowed).toBe(false);
     });
   });
 
@@ -115,13 +118,12 @@ describe('RateLimiter', () => {
       // Record some failures
       rateLimiter.recordFailure(ip);
       rateLimiter.recordFailure(ip);
-      expect(rateLimiter.getRemainingAttempts(ip)).toBe(3);
 
       // Reset
       rateLimiter.reset(ip);
 
       // Should be back to full attempts
-      expect(rateLimiter.getRemainingAttempts(ip)).toBe(5);
+      expect(rateLimiter.canAttempt(ip).allowed).toBe(true);
     });
 
     it('should clear lockout', () => {
@@ -138,22 +140,6 @@ describe('RateLimiter', () => {
 
       // Should be allowed again
       expect(rateLimiter.canAttempt(ip).allowed).toBe(true);
-    });
-  });
-
-  describe('getRemainingAttempts', () => {
-    it('should return max attempts for new IP', () => {
-      expect(rateLimiter.getRemainingAttempts('new-ip')).toBe(5);
-    });
-
-    it('should return 0 when at limit', () => {
-      const ip = '127.0.0.1';
-
-      for (let i = 0; i < 5; i++) {
-        rateLimiter.recordFailure(ip);
-      }
-
-      expect(rateLimiter.getRemainingAttempts(ip)).toBe(0);
     });
   });
 });
