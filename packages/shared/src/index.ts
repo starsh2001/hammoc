@@ -23,7 +23,6 @@ export {
   AuthConfig,
   PasswordValidationResult,
   MIN_PASSWORD_LENGTH,
-  AUTH_CONFIG_ERRORS,
   AuthConfigError,
 } from './types/auth.js';
 
