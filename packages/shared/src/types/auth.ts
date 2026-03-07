@@ -31,7 +31,7 @@ export const MIN_PASSWORD_LENGTH = 4;
 /**
  * 패스워드 관련 에러 코드 상수
  */
-export const AUTH_CONFIG_ERRORS = {
+const AUTH_CONFIG_ERRORS = {
   PASSWORD_TOO_SHORT: {
     code: 'PASSWORD_TOO_SHORT',
     message: '패스워드는 최소 4자 이상이어야 합니다.',
