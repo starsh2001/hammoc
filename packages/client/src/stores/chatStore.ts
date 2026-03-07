@@ -18,9 +18,6 @@ const STREAMING_UI_DELAY_MS = 1000;
 /** Track the delay timeout so we can cancel if response arrives early */
 let streamingDelayTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-/** Track the absolute timeout for segment cleanup so it can be cancelled on new streaming */
-let segmentCleanupTimeoutId: ReturnType<typeof setTimeout> | null = null;
-
 /** Buffer for permission requests that arrive before their tool:call segment */
 const pendingPermissionBuffer = new Map<string, string>();
 
@@ -330,12 +327,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (get().streamingSegments.length > 0) {
       set({ streamingSegments: [] });
     }
-    // Cancel previous handleComplete's absolute timeout (prevents old timer from clearing new segments)
-    if (segmentCleanupTimeoutId) {
-      clearTimeout(segmentCleanupTimeoutId);
-      segmentCleanupTimeoutId = null;
-    }
-
     // Set isStreaming true immediately (disables input), but delay the visual "waiting" UI.
     // If server responds (session:created/resumed) before the delay, startStreaming cancels it.
     // Detect /compact command to show compaction-specific indicator early
@@ -387,20 +378,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       sessionId,
       messageId,
       hadDelayTimeout: !!streamingDelayTimeoutId,
-      hadCleanupTimeout: !!segmentCleanupTimeoutId,
       msgCount: useMessageStore.getState().messages.length,
     });
     // Cancel delay timeout if response arrived early
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
-    }
-    // Cancel any pending segment cleanup timeout from previous completion
-    // (guards against rapid successive completions where old timeout would
-    //  clear the NEW response's segments)
-    if (segmentCleanupTimeoutId) {
-      clearTimeout(segmentCleanupTimeoutId);
-      segmentCleanupTimeoutId = null;
     }
 
     // Dismiss session-locked toast if it was showing (from another-client takeover)
@@ -721,10 +704,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
-    }
-    if (segmentCleanupTimeoutId) {
-      clearTimeout(segmentCleanupTimeoutId);
-      segmentCleanupTimeoutId = null;
     }
     set({
       isStreaming: false,
@@ -1094,11 +1073,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (streamingDelayTimeoutId) {
       clearTimeout(streamingDelayTimeoutId);
       streamingDelayTimeoutId = null;
-    }
-    // Cancel any pending segment cleanup timeout from previous completion
-    if (segmentCleanupTimeoutId) {
-      clearTimeout(segmentCleanupTimeoutId);
-      segmentCleanupTimeoutId = null;
     }
     // Dismiss session-locked toast if it was showing
     if (get().isSessionLocked) {
