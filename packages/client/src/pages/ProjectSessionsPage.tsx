@@ -35,7 +35,6 @@ export function ProjectSessionsPage() {
     hasMore,
     fetchSessions,
     loadMoreSessions,
-    setRefreshing,
     deleteSession,
     deleteSessions,
     renameSession,

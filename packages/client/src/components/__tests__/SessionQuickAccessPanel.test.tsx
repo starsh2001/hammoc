@@ -75,7 +75,6 @@ function mockStore(overrides: Partial<ReturnType<typeof useSessionStore>> = {}) 
     isSearching: false,
     clearSessions: vi.fn(),
     clearError: vi.fn(),
-    setRefreshing: vi.fn(),
     ...overrides,
   } as ReturnType<typeof useSessionStore>);
 }
