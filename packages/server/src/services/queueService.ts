@@ -334,9 +334,25 @@ export class QueueService {
     }
     if (item.saveSessionName) {
       log.debug(`executeItem: SAVE session name="${item.saveSessionName}", sessionId=${this.currentSessionId}`);
-      await this.projectService.updateSessionName(
-        this.projectSlug, this.currentSessionId!, item.saveSessionName
-      );
+      // Retry with backoff for transient file lock (sessions-index.json concurrent write by SDK)
+      const maxAttempts = 5;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          await this.projectService.updateSessionName(
+            this.projectSlug, this.currentSessionId!, item.saveSessionName
+          );
+          break;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          if (attempt < maxAttempts) {
+            const delayMs = attempt * 500; // 500, 1000, 1500, 2000ms
+            log.warn(`executeItem: SAVE session name attempt ${attempt}/${maxAttempts} failed (${msg}), retrying in ${delayMs}ms...`);
+            await new Promise(r => setTimeout(r, delayMs));
+          } else {
+            log.warn(`executeItem: SAVE session name failed after ${maxAttempts} attempts (${msg}), continuing execution`);
+          }
+        }
+      }
     }
     if (item.loadSessionName) {
       log.debug(`executeItem: LOAD session name="${item.loadSessionName}"`);
@@ -398,7 +414,7 @@ export class QueueService {
     }
 
     // Identical to handleChatSend: headless stream → createStreamEmit
-    const { stream, emit } = createHeadlessStream(streamKey, this.abortController!);
+    const { stream, emit } = createHeadlessStream(streamKey, this.abortController!, this.projectSlug);
     stream.chatService = this.chatService!;
 
     const chunks: string[] = [];
