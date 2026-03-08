@@ -58,8 +58,9 @@ npm run dev
 
 1. Open http://localhost:3000 in your browser
 2. **Password Setup**: Set an admin password on first visit. This protects your instance from unauthorized access.
-3. **CLI Verification**: The onboarding wizard checks that Claude Code CLI is installed and authenticated. Follow the prompts if any step fails.
-4. **Project Selection**: Choose an existing Claude Code project or create a new one.
+3. **Login**: Enter your password to sign in. **"Stay signed in"** keeps you logged in for 30 days (checked by default). After 5 failed attempts, login is locked for 30 seconds with a countdown timer.
+4. **CLI Verification**: The onboarding wizard checks that Claude Code CLI is installed and authenticated. Follow the prompts if any step fails.
+5. **Project Selection**: Choose an existing Claude Code project or create a new one.
 
 ### 1.4 Mobile Access
 
@@ -105,6 +106,9 @@ Claude's responses stream in real-time, character by character. You'll see:
 - **Text content** — Rendered as markdown as it arrives
 - **Tool calls** — Shown as expandable cards with tool name, inputs, and results
 - **Thinking blocks** — Claude's extended reasoning displayed in collapsible sections
+- **Timestamps** — Each message shows a relative timestamp (e.g., "2 hours ago")
+- **Copy button** — Click the copy icon on any message to copy its content to the clipboard
+- **Scroll to bottom** — When scrolled up, a down-arrow button appears to jump back to the latest message
 
 ### 2.3 Markdown & Code Blocks
 
@@ -126,7 +130,7 @@ Messages support full GitHub-flavored markdown:
 
 Attach images to your messages for Claude to analyze:
 
-- Click the image icon in the input area
+- Click the attachment button (paperclip icon) in the input area
 - Or drag and drop images directly
 - Supported formats: PNG, JPEG, GIF, WebP
 - Maximum: 5 images per message, 10MB per image
@@ -138,7 +142,7 @@ When Claude uses tools (reading files, editing code, running commands), each too
 
 - **Tool name** — e.g., Read, Edit, Bash, Grep
 - **Input parameters** — What was passed to the tool
-- **Status indicator** — Running (spinner), completed (checkmark), failed (X), rejected (blocked)
+- **Status indicator** — Running (spinner), completed (checkmark), failed (X), denied (shield icon)
 - **Execution time** — How long the tool took
 - **Result** — Expandable section showing tool output
 - **File paths** — Toggle between short and full path display
@@ -231,7 +235,6 @@ Access the session list via the sidebar or quick panel:
 ### 3.2 Creating a New Session
 
 - Click the **New Session** button in the header
-- If you're in an active streaming session, a confirmation dialog appears
 - Each session gets a unique ID
 
 ### 3.3 Session Search
@@ -240,7 +243,7 @@ Two distinct search modes:
 
 - **By name/ID** — Quick client-side filtering of the session list by name or session ID
 - **By content** — Toggle "Search content" to search through actual conversation messages (server-side, slower but thorough)
-- Results highlight matching sessions
+- Matching sessions are filtered and displayed in the list
 - "Load more" pagination for large result sets
 
 ### 3.4 Session Operations
@@ -351,7 +354,7 @@ Each card has a **kebab menu** (⋮) with:
 Configure per-project overrides (accessible from the Settings page):
 
 - **Default model** — Override the global model selection
-- **Permission mode** — Override the global permission mode (plan, default, acceptEdits)
+- **Permission mode** — Override the global permission mode (Plan, Ask before edits, Edit automatically). Note: Bypass permissions is not available at project level
 - **Hidden toggle** — Hide the project from the project list
 - **Reset to Global Defaults** — Remove all overrides at once
 
@@ -362,7 +365,18 @@ Configure per-project overrides (accessible from the Settings page):
 - Toggle "Show hidden" (eye icon in header) to reveal them
 - Hiding doesn't delete any data
 
-### 5.5 Deleting Projects
+### 5.5 Project Overview Page
+
+Clicking a project card opens the Overview tab:
+
+- **Stats cards** — Three cards showing Total Sessions, Total Messages, and Active Sessions
+- **Recent Sessions** — Last 5 sessions with streaming indicators, session name badges, and message counts. Click to navigate directly to the session
+- **Quick Start** — Buttons for New Session, Queue Runner, and File Explorer
+- **Active streaming banner** — Green banner shown when sessions are actively streaming, with animated pulse indicator
+
+For BMad projects, additional sections appear above this standard overview (see §11.4).
+
+### 5.6 Deleting Projects
 
 - Delete removes the project from BMad Studio's list
 - Optionally check **"Delete project files"** to also remove the directory on disk
@@ -382,7 +396,7 @@ Access the file explorer from the sidebar tab. Toggle between views with the too
 - ".." entry to navigate to parent directory
 - Breadcrumb navigation at the top
 
-**Tree View**
+**List View (hierarchical tree)**
 - Recursive tree with expand/collapse chevrons
 - Lazy-loaded subdirectories
 - Sorted by type (folders first) then by name
@@ -396,7 +410,7 @@ Access the file explorer from the sidebar tab. Toggle between views with the too
 **Toolbar**
 - **Search** — Server-side file search with debounce (300ms)
 - **Hidden files** — Toggle visibility of ignored patterns (`.git`, `node_modules`, `.env`, `dist`, etc.)
-- **View toggle** — Switch between Grid and Tree views
+- **View toggle** — Switch between Grid and List views
 - Default view mode configurable in settings
 
 ### 6.2 Text Editor
@@ -574,7 +588,7 @@ Terminal access is restricted for safety:
 - **Shield warning** — When access is denied, a ShieldAlert icon with explanation is shown (both in full tab and quick panel)
 - **Configurable** — Enable/disable via Settings > Advanced toggle or the `TERMINAL_ENABLED` environment variable (`false` overrides preferences)
 - **Max sessions** — Server-side limit (default: 10) via `MAX_TERMINAL_SESSIONS`; client limits to 5 per project
-- **Shell timeout** — Configurable idle timeout (default: 30s) via `SHELL_TIMEOUT`
+- **Session persistence** — Terminal sessions survive browser refreshes and temporary network interruptions. Sessions persist until explicitly closed by the user, the PTY process exits, or the server shuts down
 
 ### 8.6 Quick Terminal
 
@@ -687,7 +701,7 @@ Claude's responses can contain special markers to control queue execution:
 
 While the queue is running, a **sticky banner** appears at the top of chat sessions:
 
-- **Running** (indigo) — Spinner + progress (current/total) + current prompt preview (desktop)
+- **Running** (blue) — Spinner + progress (current/total) + current prompt preview (desktop)
 - **Paused** (amber) — Pause icon + progress; pause reason shown below if provided
 - **Error-paused** (red) — Alert icon + error details
 - **Completed** (green) — Checkmark + total count; dismissible with X button
@@ -792,7 +806,7 @@ Status is automatically set to **Open** (not a user-editable field).
 Click the context menu (⋮) → **Edit** on any issue card:
 
 - Same fields as the create dialog (title, description, type, severity)
-- **Existing attachments** are shown with options to view or delete each one
+- **Existing attachments** are shown with a delete button to remove each one
 - **Add new attachments** via drag-and-drop, click, or paste
 
 ### 10.5 Issue Types
@@ -930,7 +944,7 @@ The `.bmad-core` folder contains agents, tasks, templates, workflows, and config
 
 ### 11.3 BMad Agents
 
-Click the **Agent Button** (Users icon, in the chat bottom bar left of the model selector) to open the agent dropdown:
+Click the **Agent Button** (Users icon, in the chat bottom bar right of the model selector) to open the agent dropdown:
 
 **Planning group:**
 
@@ -959,7 +973,7 @@ Click the **Agent Button** (Users icon, in the chat bottom bar left of the model
 
 ### 11.4 Project Overview Dashboard
 
-For BMad projects, the overview page displays additional sections above the standard project overview:
+For BMad projects, the overview page displays additional sections above the standard project overview (see §5.5):
 
 **BMad Summary Card:**
 - Overall **completion percentage** with a progress bar
@@ -1286,7 +1300,7 @@ Note: Quick panel shortcuts are disabled when an input or textarea is focused.
 | `CORS_ORIGIN` | `true` | CORS origin policy (`true` allows any origin, or set a specific URL) |
 | `LOG_LEVEL` | `INFO` (prod) / `DEBUG` (dev) | Logging level: ERROR, WARN, INFO, DEBUG, VERBOSE |
 | `TERMINAL_ENABLED` | `true` | Enable/disable terminal feature (set `false` to disable). Overrides the Settings UI value |
-| `SHELL_TIMEOUT` | `30000` | Terminal idle timeout in milliseconds |
+| `SHELL_TIMEOUT` | `30000` | Terminal session cleanup grace period in milliseconds |
 | `MAX_TERMINAL_SESSIONS` | `10` | Maximum concurrent terminal sessions |
 | `TELEGRAM_BOT_TOKEN` | — | Telegram bot token (takes priority over Settings UI value) |
 | `TELEGRAM_CHAT_ID` | — | Telegram chat ID (takes priority over Settings UI value) |
@@ -1379,7 +1393,7 @@ This prompts you to set a new password. Alternatively, delete `~/.bmad-studio/co
 If Claude's responses are timing out:
 
 1. Go to **Settings > Global** and adjust the **Chat Timeout** dropdown
-2. Available values: 2 min, 5 min (default), 10 min, 20 min, 30 min
+2. Available values: 1 min, 3 min, 5 min (default), 10 min, 30 min
 3. Complex tasks (large codebases, multi-file edits) may need longer timeouts
 4. If the `CHAT_TIMEOUT_MS` environment variable is set, it overrides the UI setting (shown with an indicator)
 
