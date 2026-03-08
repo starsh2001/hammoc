@@ -276,6 +276,11 @@ export function finalizeStream(sessionId: string): void {
     cleanupStream(sessionId);
   }
   io.emit('session:stream-change', { sessionId, active: false });
+  const slug = sessionProjectMap.get(sessionId);
+  if (slug) {
+    sessionProjectMap.delete(sessionId);
+    triggerDashboardStatusChange(slug);
+  }
 }
 
 /**
@@ -434,14 +439,6 @@ export async function initializeWebSocket(
       const abortController = new AbortController();
       const streamKey = data.sessionId || `pending-${socket.id}`;
 
-      // Story 20.1: Populate session→project mapping for dashboard triggers
-      projectService.findProjectByPath(data.workingDirectory).then((project) => {
-        if (project) {
-          sessionProjectMap.set(streamKey, project.projectSlug);
-          triggerDashboardStatusChange(project.projectSlug);
-        }
-      }).catch(() => {});
-
       // Abort existing active stream for same session — notify all watchers
       const existingStream = activeStreams.get(streamKey);
       if (existingStream && existingStream.status === 'running') {
@@ -479,6 +476,16 @@ export async function initializeWebSocket(
       for (const sock of initialSockets) {
         socketToSession.set(sock.id, streamKey);
       }
+
+      // Story 20.1: Populate session→project mapping for dashboard triggers
+      // Use stream.sessionId (mutable) instead of captured streamKey to handle
+      // race condition where rekeyStream() may have already changed the session ID
+      projectService.findProjectByPath(data.workingDirectory).then((project) => {
+        if (project && stream.status === 'running') {
+          sessionProjectMap.set(stream.sessionId, project.projectSlug);
+          triggerDashboardStatusChange(project.projectSlug);
+        }
+      }).catch(() => {});
 
       try {
         await handleChatSend(stream, data, abortController, lang);

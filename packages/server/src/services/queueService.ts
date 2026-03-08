@@ -345,9 +345,14 @@ export class QueueService {
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           if (attempt < maxAttempts) {
+            if (this.abortController?.signal.aborted) break;
             const delayMs = attempt * 500; // 500, 1000, 1500, 2000ms
             log.warn(`executeItem: SAVE session name attempt ${attempt}/${maxAttempts} failed (${msg}), retrying in ${delayMs}ms...`);
-            await new Promise(r => setTimeout(r, delayMs));
+            await new Promise<void>(r => {
+              const timer = setTimeout(r, delayMs);
+              this.abortController?.signal.addEventListener('abort', () => { clearTimeout(timer); r(); }, { once: true });
+            });
+            if (this.abortController?.signal.aborted) break;
           } else {
             log.warn(`executeItem: SAVE session name failed after ${maxAttempts} attempts (${msg}), continuing execution`);
           }
