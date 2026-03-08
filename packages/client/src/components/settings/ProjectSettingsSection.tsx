@@ -246,7 +246,7 @@ export function ProjectSettingsSection() {
                 {t('project.useGlobalDefault', { value: getModelDisplayLabel(globalModel) })}
               </option>
               {MODEL_GROUPS.map((group) => (
-                <optgroup key={group.label} label={group.label}>
+                <optgroup key={group.label} label={group.labelKey ? t(group.labelKey) : group.label}>
                   {group.models.map((model) => (
                     <option key={model.value} value={model.value}>
                       {model.label}{model.description ? ` \u2014 ${model.description}` : ''}

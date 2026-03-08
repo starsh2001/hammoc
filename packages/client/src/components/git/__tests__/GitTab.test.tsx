@@ -137,8 +137,8 @@ describe('GitTab', () => {
   it('renders top bar with branch selector and pull/push buttons', () => {
     renderGitTab();
     expect(screen.getByText('main')).toBeInTheDocument();
-    expect(screen.getByTitle('Pull')).toBeInTheDocument();
-    expect(screen.getByTitle('Push')).toBeInTheDocument();
+    expect(screen.getByTitle('풀')).toBeInTheDocument();
+    expect(screen.getByTitle('푸시')).toBeInTheDocument();
   });
 
   // TC-GIT-T2: Shows current branch name in selector
@@ -150,8 +150,8 @@ describe('GitTab', () => {
   // TC-GIT-T3: Shows ahead/behind counts on pull/push buttons
   it('shows ahead/behind counts on pull/push buttons', () => {
     renderGitTab();
-    const pullButton = screen.getByTitle('Pull');
-    const pushButton = screen.getByTitle('Push');
+    const pullButton = screen.getByTitle('풀');
+    const pushButton = screen.getByTitle('푸시');
     expect(pullButton).toHaveTextContent('1'); // behind
     expect(pushButton).toHaveTextContent('2'); // ahead
   });
@@ -159,9 +159,9 @@ describe('GitTab', () => {
   // TC-GIT-T4: Shows file list groups
   it('shows file list groups (staged, unstaged, untracked)', () => {
     renderGitTab();
-    expect(screen.getByText('Staged Changes')).toBeInTheDocument();
-    expect(screen.getByText('Changes')).toBeInTheDocument();
-    expect(screen.getByText('Untracked')).toBeInTheDocument();
+    expect(screen.getByText('스테이지된 변경사항')).toBeInTheDocument();
+    expect(screen.getByText('변경사항')).toBeInTheDocument();
+    expect(screen.getByText('추적되지 않음')).toBeInTheDocument();
   });
 
   // TC-GIT-T5: Commit button disabled when no staged files
@@ -194,7 +194,7 @@ describe('GitTab', () => {
   it('shows Git Init button when not initialized', () => {
     storeState.status = { initialized: false };
     renderGitTab();
-    expect(screen.getByText('Git Init')).toBeInTheDocument();
+    expect(screen.getByText('Git 초기화')).toBeInTheDocument();
     expect(screen.getByText('이 프로젝트는 아직 Git 저장소가 아닙니다.')).toBeInTheDocument();
   });
 
@@ -256,7 +256,7 @@ describe('GitTab', () => {
   it('triggers initRepo when Git Init button is clicked', () => {
     storeState.status = { initialized: false };
     renderGitTab();
-    fireEvent.click(screen.getByText('Git Init'));
+    fireEvent.click(screen.getByText('Git 초기화'));
     expect(mockInitRepo).toHaveBeenCalledWith('test-project');
   });
 

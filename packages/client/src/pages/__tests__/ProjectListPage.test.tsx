@@ -4,7 +4,7 @@
  * [Extended: Story 3.6 - Task 7: New project dialog integration]
  */
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { ProjectListPage } from '../ProjectListPage';
@@ -386,10 +386,10 @@ describe('ProjectListPage', () => {
       // DashboardSummaryBar renders card layout with labels and values
       const summary = screen.getByRole('status', { name: 'Dashboard summary' });
       expect(summary).toBeInTheDocument();
-      expect(screen.getByText('Active')).toBeInTheDocument();
-      expect(screen.getByText('Queue')).toBeInTheDocument();
-      expect(screen.getByText('Terminals')).toBeInTheDocument();
-      expect(screen.getByText('Projects')).toBeInTheDocument();
+      expect(within(summary).getByText('활성')).toBeInTheDocument();
+      expect(within(summary).getByText('큐')).toBeInTheDocument();
+      expect(within(summary).getByText('터미널')).toBeInTheDocument();
+      expect(within(summary).getByText('프로젝트')).toBeInTheDocument();
 
       // Reset
       mockUseDashboard.totals = { totalSessions: 0, activeSessions: 0, queueRunning: 0, terminals: 0 };

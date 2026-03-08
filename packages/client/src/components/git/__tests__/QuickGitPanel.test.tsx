@@ -129,7 +129,7 @@ describe('QuickGitPanel', () => {
     renderPanel();
     expect(screen.getByTestId('commit-message-input')).toBeInTheDocument();
     expect(screen.getByTestId('stage-commit-button')).toBeInTheDocument();
-    expect(screen.getByText('Stage All & Commit')).toBeInTheDocument();
+    expect(screen.getByText('모두 스테이지 및 커밋')).toBeInTheDocument();
   });
 
   it('disables commit button when message is empty', () => {
@@ -175,7 +175,7 @@ describe('QuickGitPanel', () => {
     storeState.status = mockUninitializedStatus;
     renderPanel();
     expect(screen.getByText('Git 저장소가 초기화되지 않았습니다')).toBeInTheDocument();
-    expect(screen.getByText('Git Init')).toBeInTheDocument();
+    expect(screen.getByText('Git 초기화')).toBeInTheDocument();
   });
 
   it('shows error banner when error is set', () => {

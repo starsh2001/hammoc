@@ -13,6 +13,7 @@
 
 import { useRef, useEffect, useMemo } from 'react';
 import { Star } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { SlashCommand } from '@bmad-studio/shared';
 
 interface CommandPaletteProps {
@@ -76,6 +77,7 @@ export function CommandPalette({
   isFavorite,
   onToggleFavorite,
 }: CommandPaletteProps) {
+  const { t } = useTranslation('common');
   const listRef = useRef<HTMLUListElement>(null);
 
   const filtered = useMemo(() => filterCommands(commands, filter), [commands, filter]);
@@ -101,7 +103,7 @@ export function CommandPalette({
                    max-h-[300px] overflow-y-auto z-50"
       >
         <p className="text-center text-gray-500 dark:text-gray-400 text-sm py-4">
-          일치하는 커맨드가 없습니다
+          {t('command.noMatch')}
         </p>
       </div>
     );
@@ -112,7 +114,7 @@ export function CommandPalette({
       ref={listRef}
       role="listbox"
       id="command-palette"
-      aria-label="슬래시 커맨드 목록"
+      aria-label={t('command.slashListAria')}
       data-testid="command-palette"
       className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-gray-800
                  border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg
@@ -161,7 +163,7 @@ export function CommandPalette({
                         e.stopPropagation();
                         onToggleFavorite(cmd.command);
                       }}
-                      aria-label={isFavorite(cmd.command) ? '즐겨찾기 제거' : '즐겨찾기 추가'}
+                      aria-label={isFavorite(cmd.command) ? t('command.removeFavorite') : t('command.addFavorite')}
                       className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                       <Star

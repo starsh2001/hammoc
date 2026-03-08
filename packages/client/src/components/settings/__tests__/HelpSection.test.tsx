@@ -41,10 +41,10 @@ describe('HelpSection', () => {
   it('TC-3: renders all three Permission Mode options', () => {
     render(<HelpSection />);
 
-    expect(screen.getByText('Permission Mode')).toBeInTheDocument();
-    expect(screen.getByText('Plan')).toBeInTheDocument();
+    expect(screen.getByText('권한 모드')).toBeInTheDocument();
+    expect(screen.getByText('계획 모드')).toBeInTheDocument();
     expect(screen.getByText('Ask before edits (기본)')).toBeInTheDocument();
-    expect(screen.getByText('Edit Automatically')).toBeInTheDocument();
+    expect(screen.getByText('자동 모드')).toBeInTheDocument();
   });
 
   it('TC-4: renders BMad Method guide', () => {

@@ -69,14 +69,21 @@
     "error": {
       "projectNotFound": "未找到项目: {{value}}",
       "internal": "内部服务器错误",
-      "issueNotFound": "未找到问题: {{value}}"
+      "issueNotFound": "未找到问题: {{value}}",
+      "storyNotFound": "未找到 Story：{{value}}",
+      "statusNotFound": "未找到 Story 的状态：{{value}}"
     },
     "validation": {
       "titleRequired": "标题为必填项",
       "invalidSeverity": "无效的严重程度: {{value}}",
       "invalidIssueType": "无效的问题类型: {{value}}",
       "invalidStatus": "无效的状态: {{value}}",
-      "invalidIssueId": "无效的问题ID"
+      "invalidIssueId": "无效的问题ID",
+      "fileRequired": "文件为必填项",
+      "invalidFileType": "不支持的文件类型",
+      "fileTooLarge": "文件大小超过 10MB 限制",
+      "maxAttachments": "已达到附件数量上限",
+      "invalidFilename": "无效的文件名"
     },
     "success": {
       "issueDeleted": "问题已删除"
@@ -151,7 +158,8 @@
   "queue": {
     "validation": {
       "slugRequired": "projectSlug为必填项",
-      "itemsRequired": "items数组不能为空"
+      "itemsRequired": "items数组不能为空",
+      "invalidInput": "无效的队列输入：{{value}}"
     },
     "error": {
       "alreadyRunning": "该项目的队列已在运行中",
@@ -163,7 +171,9 @@
     },
     "pause": {
       "userPaused": "用户已暂停",
-      "waitingForPermission": "等待{{value}}: {{toolName}}"
+      "waitingForPermission": "等待{{value}}: {{toolName}}",
+      "userAnswer": "用户回答",
+      "permissionApproval": "权限"
     }
   },
   "queueTemplate": {

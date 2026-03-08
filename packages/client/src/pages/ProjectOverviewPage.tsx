@@ -156,7 +156,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
                     </div>
                   </div>
                   <div className="flex items-center gap-3 ml-4 text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
-                    <span>{session.messageCount}개</span>
+                    <span>{t('overview.messageCountFormat', { count: session.messageCount })}</span>
                     <span>{formatRelativeTime(session.modified)}</span>
                   </div>
                 </button>

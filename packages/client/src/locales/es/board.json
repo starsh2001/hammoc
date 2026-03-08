@@ -41,7 +41,16 @@
     "cannotDeleteWhileWorking": "No se puede eliminar mientras la IA está trabajando",
     "reopen": "Reabrir",
     "closeConfirm": "¿Cerrar esta incidencia?",
-    "deleteConfirm": "¿Eliminar la incidencia \"{{title}}\"?"
+    "deleteConfirm": "¿Eliminar la incidencia \"{{title}}\"?",
+    "attachments": "Adjuntos",
+    "addAttachment": "Adjuntar archivo",
+    "removeAttachment": "Eliminar adjunto",
+    "dropzone": "Arrastre o haga clic para adjuntar imágenes",
+    "uploadFailed": "Error al subir el archivo",
+    "fileTooLarge": "El archivo supera los 10MB",
+    "invalidFileType": "Tipo de archivo no soportado (solo PNG, JPG, GIF, WebP)",
+    "maxAttachments": "Cantidad máxima de adjuntos (10) alcanzada",
+    "uploading": "Subiendo..."
   },
   "card": {
     "menu": "Menú de tarjeta",
@@ -60,7 +69,9 @@
     "validateStory": "Validar historia",
     "startDevelopment": "Iniciar desarrollo",
     "requestQA": "Solicitar QA",
-    "applyQAFix": "Aplicar corrección QA"
+    "applyQAFix": "Aplicar corrección QA",
+    "quickFixIntro": "Por favor, solucione el siguiente problema:",
+    "issueFileLabel": "Archivo del problema:"
   },
   "status": {
     "open": "Abierto",

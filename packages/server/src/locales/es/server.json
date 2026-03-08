@@ -69,14 +69,21 @@
     "error": {
       "projectNotFound": "Proyecto no encontrado: {{value}}",
       "internal": "Error interno del servidor",
-      "issueNotFound": "Incidencia no encontrada: {{value}}"
+      "issueNotFound": "Incidencia no encontrada: {{value}}",
+      "storyNotFound": "Story no encontrada: {{value}}",
+      "statusNotFound": "Estado no encontrado para story: {{value}}"
     },
     "validation": {
       "titleRequired": "El título es obligatorio",
       "invalidSeverity": "Severidad inválida: {{value}}",
       "invalidIssueType": "Tipo de incidencia inválido: {{value}}",
       "invalidStatus": "Estado inválido: {{value}}",
-      "invalidIssueId": "ID de incidencia inválido"
+      "invalidIssueId": "ID de incidencia inválido",
+      "fileRequired": "El archivo es obligatorio",
+      "invalidFileType": "Tipo de archivo no soportado",
+      "fileTooLarge": "El archivo supera el límite de 10MB",
+      "maxAttachments": "Cantidad máxima de adjuntos alcanzada",
+      "invalidFilename": "Nombre de archivo inválido"
     },
     "success": {
       "issueDeleted": "Incidencia eliminada"
@@ -151,7 +158,8 @@
   "queue": {
     "validation": {
       "slugRequired": "projectSlug es obligatorio",
-      "itemsRequired": "El array items no puede estar vacío"
+      "itemsRequired": "El array items no puede estar vacío",
+      "invalidInput": "Entrada de cola inválida: {{value}}"
     },
     "error": {
       "alreadyRunning": "La cola ya está en ejecución para este proyecto",
@@ -163,7 +171,9 @@
     },
     "pause": {
       "userPaused": "Pausado por el usuario",
-      "waitingForPermission": "Esperando {{value}}: {{toolName}}"
+      "waitingForPermission": "Esperando {{value}}: {{toolName}}",
+      "userAnswer": "respuesta del usuario",
+      "permissionApproval": "permiso"
     }
   },
   "queueTemplate": {

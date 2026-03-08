@@ -59,7 +59,8 @@
       "message": "A problem occurred while loading the session list."
     },
     "goBackToProjects": "Go back to project list",
-    "cliStatusFailed": "CLI status check failed"
+    "cliStatusFailed": "CLI status check failed",
+    "unknownError": "Unknown error"
   },
   "toast": {
     "closeAria": "Close notification",
@@ -101,6 +102,7 @@
     "menuLabel": "Menu",
     "bmadSetupSuccess": "BMad setup completed.",
     "bmadSetupFailed": "BMad setup failed.",
+    "missingClaudeCommands": "Slash commands won't work. BMad re-setup required. (.claude/commands missing)",
     "navigateToExisting": "Navigating to existing project.",
     "createdButBmadFailed": "Project created but BMad setup failed: {{error}}",
     "newProjectCreated": "New project created."
@@ -172,7 +174,8 @@
     "aiGenerating": "AI is currently generating a response",
     "recentIssues": "Recent issues",
     "viewBoard": "View board",
-    "noIssues": "No issues registered"
+    "noIssues": "No issues registered",
+    "messageCountFormat": "{{count}}"
   },
   "epic": {
     "progressTitle": "Epic progress",
@@ -485,7 +488,10 @@
       "resumeQueue": "Resume queue",
       "abortQueue": "Abort queue",
       "queueEditor": "Queue editor"
-    }
+    },
+    "sourceInput": "Manual input",
+    "sourceFile": "File",
+    "sourceSaved": "Saved"
   },
   "panel": {
     "sessions": "Session list",
@@ -527,7 +533,11 @@
   "agent": {
     "listAria": "BMad agent list",
     "noAgents": "No agents registered",
-    "agentListAria": "Agent list"
+    "agentListAria": "Agent list",
+    "groupPlanning": "Planning",
+    "groupImplementation": "Implementation",
+    "groupOther": "Other",
+    "qaDescription": "Quality Advisor"
   },
   "favorites": {
     "toolbar": "Favorite commands quick execute",
@@ -560,5 +570,52 @@
     "chat": "Chat",
     "preparingPage": "Preparing chat page",
     "futureStory": "This feature will be implemented in a future story."
+  },
+  "command": {
+    "noMatch": "No matching commands",
+    "slashListAria": "Slash command list",
+    "starListAria": "Star command list",
+    "removeFavorite": "Remove from favorites",
+    "addFavorite": "Add to favorites"
+  },
+  "code": {
+    "copied": "Copied",
+    "copyFailed": "Copy failed",
+    "copyCode": "Copy code",
+    "blockAria": "{{lang}} code block"
+  },
+  "onboarding": {
+    "statusComplete": "Complete",
+    "statusIncomplete": "Incomplete",
+    "statusOptional": "Optional",
+    "optionalTag": "Optional",
+    "optionalTagAria": "Optional item",
+    "commandAria": "Command: {{command}}",
+    "copied": "Copied",
+    "copyCommand": "Copy command",
+    "copy": "Copy",
+    "loadingAria": "Loading",
+    "loadingText": "Loading checklist items...",
+    "listLoadingAria": "Loading checklist"
+  },
+  "diff": {
+    "loadFailed": "Failed to load diff viewer.",
+    "retryAria": "Retry loading diff viewer",
+    "retry": "Retry",
+    "loading": "Loading diff viewer...",
+    "prevChange": "Go to previous change",
+    "nextChange": "Go to next change",
+    "switchToInline": "Switch to inline layout",
+    "switchToSideBySide": "Switch to side-by-side layout",
+    "closeDiffViewer": "Close diff viewer",
+    "largeFileTitle": "Large file ({{lines}} lines)",
+    "largeFileDesc": "This file is very large. Loading it may affect browser performance.",
+    "largeFileLoadAll": "Load all",
+    "largeFileLoadAllAria": "Load full diff for large file"
+  },
+  "thinking": {
+    "thinking": "Thinking",
+    "thinkingStreaming": "Thinking...",
+    "contentAria": "Thinking content"
   }
 }

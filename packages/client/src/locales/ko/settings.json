@@ -8,13 +8,13 @@
     },
     "defaultModel": "기본 모델",
     "language": "언어",
-    "permissionMode": "Permission Mode",
+    "permissionMode": "권한 모드",
     "permissionModeLabel": {
       "latest": "마지막 사용 모드",
-      "plan": "Plan",
-      "default": "Ask before edits",
-      "acceptEdits": "Edit Automatically",
-      "bypass": "Bypass"
+      "plan": "계획",
+      "default": "기본",
+      "acceptEdits": "편집 승인",
+      "bypass": "우회"
     },
     "permissionDesc": {
       "latest": "새 세션에서 이전 세션의 권한 모드를 유지합니다",
@@ -108,11 +108,11 @@
     "templateVariables": "사용 가능한 시스템 변수 (런타임에 자동 치환)",
     "previewClose": "미리보기 닫기",
     "previewOpen": "현재 프로젝트 기준 미리보기",
-    "maxThinkingTokens": "Max Thinking Tokens",
+    "maxThinkingTokens": "최대 사고 토큰 수",
     "maxThinkingTokensDesc": "모델의 사고(reasoning) 과정에 사용할 최대 토큰 수 (1,024 ~ 128,000)",
-    "maxTurns": "Max Turns",
+    "maxTurns": "최대 턴 수",
     "maxTurnsDesc": "한 번의 대화에서 허용할 최대 턴 수 (1 ~ 100)",
-    "maxBudget": "Max Budget (USD)",
+    "maxBudget": "최대 예산",
     "maxBudgetDesc": "한 번의 쿼리당 최대 비용 제한 (USD, 0.01 ~ 100)",
     "sdkDefault": "SDK 기본값",
     "unlimited": "무제한"
@@ -120,7 +120,7 @@
   "confirm": {
     "serverRestart": "서버를 재빌드하고 재시작합니다. 진행할까요?",
     "updateVersion": "v{{version}}으로 업데이트하고 서버를 재시작합니다. 진행할까요?",
-    "resetAllSettings": "모든 프로젝트 설정을 초기화합니다.\n\n\u2022 모델/Permission Mode 오버라이드가 제거됩니다\n\u2022 프로젝트 숨기기가 해제됩니다\n\n계속하시겠습니까?"
+    "resetAllSettings": "모든 프로젝트 설정을 초기화합니다.\n\n• 모델/Permission Mode 오버라이드가 제거됩니다\n• 프로젝트 숨기기가 해제됩니다\n\n계속하시겠습니까?"
   },
   "telegram": {
     "loadError": "Telegram 설정을 불러오는 중 오류가 발생했습니다.",
@@ -186,7 +186,10 @@
     "statusHealthy": "정상",
     "statusUnhealthy": "비정상",
     "version": "버전",
-    "serverTime": "서버 시간"
+    "serverTime": "서버 시간",
+    "madeBy": "제작자:",
+    "license": "{{name}} 라이선스",
+    "githubIssuesLink": "GitHub Issues"
   },
   "help": {
     "basicChat": "기본 채팅 사용법",
@@ -203,12 +206,12 @@
       "즐겨찾기 등록: 커맨드 팔레트에서 ★ 클릭 또는 길게 누르기",
       "등록된 즐겨찾기는 입력창 상단에 빠른 접근 버튼으로 표시됨"
     ],
-    "permissionMode": "Permission Mode",
-    "permissionPlanLabel": "Plan",
+    "permissionMode": "권한 모드",
+    "permissionPlanLabel": "계획 모드",
     "permissionPlanDesc": "코드 변경 전 계획을 먼저 제안합니다",
     "permissionDefaultLabel": "Ask before edits (기본)",
     "permissionDefaultDesc": "파일 수정 전 항상 확인을 요청합니다",
-    "permissionAutoLabel": "Edit Automatically",
+    "permissionAutoLabel": "자동 모드",
     "permissionAutoDesc": "파일 수정을 자동으로 수행합니다",
     "permissionNote": "설정 > 전역 설정 또는 프로젝트 설정에서 기본 Permission Mode를 변경할 수 있습니다.",
     "bmadMethod": "BMad Method 연동",

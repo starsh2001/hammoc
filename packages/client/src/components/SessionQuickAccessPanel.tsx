@@ -155,7 +155,7 @@ export function SessionQuickAccessPanel({
                       </span>
                     )}
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {session.firstPrompt || '(빈 세션)'}
+                      {session.firstPrompt || t('sessionListItem.emptySession')}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">

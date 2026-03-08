@@ -29,7 +29,9 @@
     "reconnectingAttemptAria": "Estado de conexión WebSocket: Intento de reconexión {{attempt}}",
     "apiCannotConnect": "No se puede conectar a la API de Claude",
     "reconnectButton": "Reconectar",
-    "reconnectButtonAria": "Intentar reconectar al servidor"
+    "reconnectButtonAria": "Intentar reconectar al servidor",
+    "reconnectFailed": "Error al conectar con el servidor. Verifique su conexión de red.",
+    "connectError": "Error de conexión: {{message}}"
   },
   "error": {
     "title": "Ocurrió un error",
@@ -57,7 +59,8 @@
       "message": "Ocurrió un problema al cargar la lista de sesiones."
     },
     "goBackToProjects": "Volver a la lista de proyectos",
-    "cliStatusFailed": "La verificación del estado del CLI falló"
+    "cliStatusFailed": "La verificación del estado del CLI falló",
+    "unknownError": "Error desconocido"
   },
   "toast": {
     "closeAria": "Cerrar notificación",
@@ -99,6 +102,7 @@
     "menuLabel": "Menú",
     "bmadSetupSuccess": "Configuración de BMad completada.",
     "bmadSetupFailed": "La configuración de BMad falló.",
+    "missingClaudeCommands": "No se encontraron archivos de configuración de agente BMad (.bmad-agent). Cree archivos de agente en su repositorio para usar la función de agentes.",
     "navigateToExisting": "Navegando al proyecto existente.",
     "createdButBmadFailed": "Proyecto creado pero la configuración de BMad falló: {{error}}",
     "newProjectCreated": "Nuevo proyecto creado."
@@ -170,7 +174,8 @@
     "aiGenerating": "La IA está generando una respuesta actualmente",
     "recentIssues": "Problemas recientes",
     "viewBoard": "Ver tablero",
-    "noIssues": "No hay problemas registrados"
+    "noIssues": "No hay problemas registrados",
+    "messageCountFormat": "{{count}}"
   },
   "epic": {
     "progressTitle": "Progreso de épicas",
@@ -339,7 +344,7 @@
   "git": {
     "initTitle": "Inicializar repositorio Git",
     "initMessage": "Este proyecto aún no es un repositorio Git.",
-    "initButton": "Git Init",
+    "initButton": "Inicializar Git",
     "branchList": "Lista de ramas",
     "newBranchPlaceholder": "Nombre de nueva rama...",
     "pull": "Pull",
@@ -349,7 +354,7 @@
     "changes": "Cambios",
     "untracked": "Sin seguimiento",
     "commitPlaceholder": "Ingresa mensaje de commit...",
-    "commit": "Commit",
+    "commit": "Confirmar",
     "commitHistory": "Historial de commits",
     "noCommitHistory": "Sin historial de commits",
     "switchBranchTitle": "Cambiar de rama",
@@ -408,7 +413,7 @@
     "backToEditor": "Volver al editor",
     "progress": "Progreso: {{current}} / {{total}}",
     "pauseReason": "Motivo: {{reason}}",
-    "errorMessage": "Error: {{error}}",
+    "errorMessage": "Se produjo un error",
     "deleteItem": "Eliminar elemento",
     "deleteItemAria": "Eliminar elemento {{index}}",
     "addItemPlaceholder": "Agregar nuevo elemento... (prompt o @directiva)",
@@ -474,7 +479,11 @@
       "resumeQueue": "Reanudar cola",
       "abortQueue": "Cancelar cola",
       "queueEditor": "Editor de cola"
-    }
+    },
+    "fileReadError": "Error al leer el archivo: {{name}}",
+    "sourceInput": "Entrada manual",
+    "sourceFile": "Archivo",
+    "sourceSaved": "Guardado"
   },
   "panel": {
     "sessions": "Lista de sesiones",
@@ -516,7 +525,11 @@
   "agent": {
     "listAria": "Lista de agentes BMad",
     "noAgents": "No hay agentes registrados",
-    "agentListAria": "Lista de agentes"
+    "agentListAria": "Lista de agentes",
+    "groupPlanning": "Planificación",
+    "groupImplementation": "Implementación",
+    "groupOther": "Otro",
+    "qaDescription": "Asesor de calidad"
   },
   "favorites": {
     "toolbar": "Ejecución rápida de comandos favoritos",
@@ -549,5 +562,60 @@
     "chat": "Chat",
     "preparingPage": "Preparando página de chat",
     "futureStory": "Esta función se implementará en una historia futura."
+  },
+  "imageViewer": {
+    "close": "Cerrar visor",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "resetZoom": "Restablecer vista",
+    "loadingImage": "Cargando imagen...",
+    "loadFailed": "Error al cargar la imagen."
+  },
+  "command": {
+    "noMatch": "No se encontraron comandos",
+    "slashListAria": "Lista de comandos slash",
+    "starListAria": "Lista de comandos estrella",
+    "removeFavorite": "Eliminar de favoritos",
+    "addFavorite": "Agregar a favoritos"
+  },
+  "code": {
+    "copied": "Copiado",
+    "copyFailed": "Error al copiar",
+    "copyCode": "Copiar código",
+    "blockAria": "Bloque de código {{lang}}"
+  },
+  "onboarding": {
+    "statusComplete": "Completado",
+    "statusIncomplete": "Incompleto",
+    "statusOptional": "Opcional",
+    "optionalTag": "Opcional",
+    "optionalTagAria": "Elemento opcional",
+    "commandAria": "Comando: {{command}}",
+    "copied": "Copiado",
+    "copyCommand": "Copiar comando",
+    "copy": "Copiar",
+    "loadingAria": "Cargando",
+    "loadingText": "Cargando elementos de la lista...",
+    "listLoadingAria": "Cargando lista de verificación"
+  },
+  "diff": {
+    "loadFailed": "Error al cargar el visor de diferencias.",
+    "retryAria": "Reintentar la carga del visor de diferencias",
+    "retry": "Reintentar",
+    "loading": "Cargando visor de diferencias...",
+    "prevChange": "Ir al cambio anterior",
+    "nextChange": "Ir al siguiente cambio",
+    "switchToInline": "Cambiar a diseño en línea",
+    "switchToSideBySide": "Cambiar a diseño lado a lado",
+    "closeDiffViewer": "Cerrar visor de diferencias",
+    "largeFileTitle": "Archivo grande ({{lines}} líneas)",
+    "largeFileDesc": "Este archivo es muy grande. Cargarlo puede afectar el rendimiento del navegador.",
+    "largeFileLoadAll": "Cargar todo",
+    "largeFileLoadAllAria": "Cargar diferencia completa del archivo grande"
+  },
+  "thinking": {
+    "thinking": "Pensando",
+    "thinkingStreaming": "Pensando...",
+    "contentAria": "Contenido de pensamiento"
   }
 }
