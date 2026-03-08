@@ -1,56 +1,77 @@
 # BMad Studio
 
-BMad Studio is a monorepo project that provides a unified development environment for building AI-powered applications with a Node.js backend and React frontend.
+A web-based IDE for managing [Claude Code](https://docs.anthropic.com/en/docs/claude-code) sessions, projects, and workflows.
+
+## Quick Start
+
+Run directly with npx (no installation needed):
+
+```bash
+npx bmad-studio
+```
+
+Or install globally:
+
+```bash
+npm install -g bmad-studio
+bmad-studio
+```
+
+Then open http://localhost:3000 in your browser.
+
+### CLI Options
+
+```
+bmad-studio [options]
+
+Options:
+  --port <number>   Port to listen on (default: 3000, env: PORT)
+  --host <string>   Host to bind to (default: 0.0.0.0, env: HOST)
+  --reset-password  Reset the admin password
+  -h, --help        Show this help message
+  -v, --version     Show version number
+```
 
 ## Prerequisites
 
-- **Node.js** ^22.0.0 (LTS recommended)
-- **npm** ^10.0.0 (included with Node.js)
-- **Claude Code CLI** (for AI-assisted development)
+- **Node.js** >= 18.0.0 (v22 LTS recommended)
+- **Claude Code CLI** installed and configured
 
-## Installation
+## Development
+
+### Setup
 
 ```bash
-# Clone the repository
-git clone <repository-url>
+git clone https://github.com/bmad-studio/bmad-studio.git
 cd bmad-studio
-
-# Install all dependencies
 npm install
 ```
 
-## Running the Application
-
 ### Development Mode
 
-Start both server and client in development mode with hot-reload:
+Start both server and client with hot-reload:
 
 ```bash
 npm run dev
 ```
 
-- Server runs at: http://localhost:3000
-- Client runs at: http://localhost:5173
+- Server: http://localhost:3000
+- Client: http://localhost:5173
 
 ### Production Mode
 
-Build and run in production mode:
-
 ```bash
-# Build all packages
 npm run build
-
-# Start server and client
 npm start
 ```
 
-### Other Commands
+### Commands
 
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start all packages in development mode |
 | `npm run build` | Build all packages for production |
-| `npm run start` | Run server and client concurrently |
+| `npm run start` | Run server in production mode |
 | `npm run test` | Run all tests |
 | `npm run lint` | Run ESLint on all packages |
 | `npm run format` | Format code with Prettier |
@@ -60,45 +81,17 @@ npm start
 
 ```
 bmad-studio/
-├── package.json              # Root package with workspaces
-├── tsconfig.base.json        # Shared TypeScript config
-├── eslint.config.js          # ESLint 9 flat config
-├── .prettierrc               # Shared Prettier config
-│
+├── bin/
+│   └── bmad-studio.js            # CLI entry point
+├── package.json                  # Root package with workspaces
 ├── packages/
-│   ├── shared/               # Shared types and utilities
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── src/
-│   │       └── index.ts
-│   │
-│   ├── server/               # Express backend (port 3000)
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── src/
-│   │       ├── index.ts      # Server entry point
-│   │       └── app.ts        # Express app configuration
-│   │
-│   └── client/               # React frontend (port 5173)
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── vite.config.ts
-│       ├── index.html
-│       └── src/
-│           ├── main.tsx      # React entry point
-│           └── App.tsx       # Main App component
-│
-└── .vscode/
-    └── settings.json         # VS Code workspace settings
+│   ├── shared/                   # Shared types and utilities
+│   ├── server/                   # Express + Socket.io backend
+│   └── client/                   # React + Vite frontend
+└── scripts/
+    └── postinstall.cjs           # Post-install shared package linker
 ```
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Basic health check, returns `{ status: "ok" }` |
-| `/api/health` | GET | Detailed health check with version and timestamp |
 
 ## License
 
-Private
+MIT
