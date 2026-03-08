@@ -71,7 +71,7 @@ http://<your-computer-ip>:3000
 
 - Desktop: Enter sends message, Shift+Enter for new line
 - Mobile (touch devices): Enter adds new line, tap the send button to send
-- **Pull-to-refresh**: Swipe down on the session list or project list to refresh (80px threshold)
+- **Pull-to-refresh**: Swipe down on the session list to refresh (80px threshold)
 
 ### 1.5 CLI Options
 
@@ -129,7 +129,7 @@ Attach images to your messages for Claude to analyze:
 - Click the image icon in the input area
 - Or drag and drop images directly
 - Supported formats: PNG, JPEG, GIF, WebP
-- Maximum: 5 images per message, 10MB total
+- Maximum: 5 images per message, 10MB per image
 - Images preview in the input area before sending
 
 ### 2.5 Tool Call Visualization
@@ -153,7 +153,7 @@ When Claude modifies files, a diff viewer shows the changes:
 - **Diff navigation** — `F7` next change, `Shift+F7` previous change
 - **Large file handling** — Files over 5,000 lines are handled with optimized rendering
 - **Responsive layout** — Automatically switches between side-by-side and inline modes
-- Powered by Monaco Editor (same engine as VS Code)
+- Powered by CodeMirror 6 merge view
 
 ### 2.7 Permission Requests
 
@@ -168,11 +168,12 @@ Depending on your permission mode, Claude may ask for approval before modifying 
 
 Queue multiple prompts for sequential execution:
 
-1. Type your first prompt and send it
-2. While Claude is responding, type the next prompt — it enters the chain
-3. Up to 5 prompts can be queued
-4. A banner shows the chain status with Next/Remove/Cancel controls
-5. Each prompt auto-executes when the previous one completes
+1. Toggle **chain mode** ON via the chain button (link icon next to send) or hold `Ctrl`
+2. Type your first prompt and send it
+3. While Claude is responding, type the next prompt and send — it enters the chain
+4. Up to 5 prompts can be queued
+5. A banner shows the chain status with Next/Remove/Cancel controls
+6. Each prompt auto-executes when the previous one completes
 
 ### 2.9 Context Usage
 
@@ -182,8 +183,8 @@ Monitor token usage in real-time:
 - **Cost display** — Estimated cost for the session
 - **Cache tokens** — Cache creation and read token counts
 - **Rate limit dots** — 5h/7d utilization indicators in the input area
-- **Color thresholds** — Green (normal), Yellow (≥75%), Red (≥80%)
-- **Context compaction** — When usage exceeds 80%, click the usage donut to trigger compaction, which summarizes the conversation to free up context space
+- **Color thresholds** — Green (normal), Yellow (≥50%), Red (≥80%)
+- **Context compaction** — Click the usage donut to trigger compaction, which summarizes the conversation to free up context space. When usage exceeds 90% (critical), clicking instead creates a new session
 
 ### 2.10 Aborting Responses
 
@@ -218,10 +219,14 @@ When Claude uses extended thinking, the reasoning is shown in a collapsible bloc
 Access the session list via the sidebar or quick panel:
 
 - **Preview** — First prompt of each session
+- **Session name badge** — Custom name shown as a blue badge (if renamed)
+- **Agent badge** — Active BMad agent shown as a purple badge (if set)
+- **Session ID** — Truncated monospace identifier
 - **Message count** — Number of messages in the session
 - **Date** — When the session was last active
-- **Streaming indicator** — Shows if a session is currently active
-- Empty sessions are automatically filtered out
+- **Streaming indicator** — Green dot with animation when streaming
+- **Queue badge** — Shown when queue runner is active on the session
+- Empty sessions are hidden by default (toggle with the eye icon)
 
 ### 3.2 Creating a New Session
 
@@ -242,7 +247,8 @@ Two distinct search modes:
 
 - **Rename** — Click the edit icon next to the session name
 - **Delete** — Remove a session (with confirmation)
-- **Selection mode** — Select multiple sessions for batch operations
+- **Selection mode** — Select multiple sessions for batch delete
+- **Delete empty sessions** — Bulk-delete all empty sessions at once
 
 ### 3.5 Quick Session Panel
 
@@ -260,38 +266,51 @@ Access sessions without leaving the chat:
 
 Type `/` in the chat input to open the command palette:
 
-- Browse available commands with descriptions
+- Browse available commands grouped by category (Agents, Tasks, Skills, Commands)
 - Filter by typing: `/test` shows commands containing "test"
-- Commands are context-aware (project-specific and agent-specific)
-- Press Enter or click to insert the selected command
+- Commands are project-specific — loaded from the project's configured agents and tasks
+- Navigate with **ArrowUp/Down**, close with **Escape**
+- Press **Enter** or click to insert the selected command
 
-### 4.2 Favorites
+### 4.2 Star Command Palette
 
-Pin your most-used commands for quick access:
+Type `*` in the chat input to open the star command palette (requires an active agent):
 
-- **Favorites bar** — Appears above the chat input
+- Shows commands specific to the currently active agent
+- Filter by typing: `*create` filters matching commands
+- Navigate with **ArrowUp/Down**, close with **Escape**
+- Press **Enter** or click to insert — placeholders like `{name}` are auto-selected
+- Add to star favorites by clicking the star icon on any command
+
+### 4.3 Favorites
+
+Pin your most-used slash commands for quick access:
+
+- **Favorites bar** — Appears above the chat input (hidden when empty)
 - Hold up to **20 favorites**
 - Click a favorite chip to instantly insert it
-- **Add**: Click the star icon on any command in the palette
-- **Remove**: Long-press or right-click a favorite chip
-- **Reorder**: Drag and drop chips to rearrange
+- **Add**: Click the star icon on any command in the slash command palette
+- **Remove**: Open the favorites popup and click the X button
+- **Reorder**: Open the favorites popup and drag to rearrange
+- Disabled during queue runner execution
 
-### 4.3 Star Favorites
+### 4.4 Star Favorites
 
-Mark up to **10 star favorites** for even quicker access:
+Mark up to **10 star favorites** per agent for even quicker access:
 
-- Star favorites appear with a special indicator
-- They are prioritized at the top of the favorites bar
-- Toggle star status from the favorites management popup
+- Star favorites appear with a yellow indicator and `*` prefix
+- They are prioritized at the top of the favorites bar, before slash favorites
+- **Add**: Click the star icon on any command in the star command palette (`*`)
+- **Remove**: Open the favorites popup and click the X button
 
-### 4.4 Favorite Management
+### 4.5 Favorite Management
 
-Open the favorites popup to manage all your favorites:
+Click the star button (★) on the favorites bar to open the management popup:
 
-- View all favorites in one list
-- Remove favorites
-- Toggle star status
-- Drag to reorder
+- **Two sections**: "Agent Command" (star favorites) and "Slash Command" (slash favorites), separated by a divider
+- Remove favorites with the X button
+- Drag to reorder within each section
+- Click a command to insert it into the chat input
 
 ---
 
@@ -299,54 +318,54 @@ Open the favorites popup to manage all your favorites:
 
 ### 5.1 Project List
 
-The project list page shows all your Claude Code projects:
+The project list page shows all your Claude Code projects in a responsive grid (1–4 columns):
+
+Each project card displays:
 
 - **Project name** — Derived from the directory name
 - **Path** — Full project directory path
 - **Session count** — Number of chat sessions
 - **Last modified** — When the project was last active
 - **BMad badge** — Indicates BMAD-METHOD enabled projects
+- **Status indicators** — Active sessions (green dot), queue status badge, terminal count (real-time via WebSocket)
+
+Each card has a **kebab menu** (⋮) with:
+
+- **Setup BMad** — Initialize BMAD-METHOD on non-BMad projects (with version selection)
+- **Hide / Unhide** — Toggle project visibility
+- **Delete** — Remove the project
+
+**Dashboard summary bar** appears at the top when projects exist, showing aggregate stats: Projects, Sessions, Active, Queue, Terminals.
 
 ### 5.2 Creating a New Project
 
 1. Click **"New Project"** on the project list page
 2. Enter the project directory path
-3. The path is validated (must exist, must be a valid directory)
-4. Optionally enable BMad Method initialization
-5. Rate limited: 10 creations per minute
+3. The path is validated on blur (must exist, must be a valid directory)
+4. If the path already belongs to an existing project, a warning with "Navigate to existing" link appears
+5. Optionally enable BMad Method initialization with version selection
+6. Rate limited: 10 creations per minute
 
-### 5.3 Project Dashboard
+### 5.3 Project Settings
 
-Each project has a real-time status dashboard:
-
-- **Active chats** — Number of streaming chat sessions
-- **Queue status** — Queue runner state (running/paused/idle)
-- **Terminal count** — Number of open terminal sessions
-- **Summary bar** — Aggregate stats across all projects
-
-Status updates are pushed via WebSocket in real-time.
-
-### 5.4 Project Settings
-
-Configure per-project overrides (accessible from project context):
+Configure per-project overrides (accessible from the Settings page):
 
 - **Default model** — Override the global model selection
-- **Permission mode** — Override the global permission mode
-- **System prompt** — Custom instructions for Claude in this project
-- **Max thinking tokens** — Limit Claude's extended thinking
-- **Max turns** — Limit conversation turns
-- **Max budget (USD)** — Set spending limits
+- **Permission mode** — Override the global permission mode (plan, default, acceptEdits)
+- **Hidden toggle** — Hide the project from the project list
+- **Reset to Global Defaults** — Remove all overrides at once
 
-### 5.5 Hiding Projects
+### 5.4 Hiding Projects
 
-- Hide projects you don't use frequently
-- Toggle "Show hidden" to reveal them
+- Hide projects from the kebab menu or project settings
+- Hidden projects appear with reduced opacity when visible
+- Toggle "Show hidden" (eye icon in header) to reveal them
 - Hiding doesn't delete any data
 
-### 5.6 Deleting Projects
+### 5.5 Deleting Projects
 
 - Delete removes the project from BMad Studio's list
-- The actual project directory on disk is NOT deleted
+- Optionally check **"Delete project files"** to also remove the directory on disk
 - Confirmation dialog prevents accidental deletion
 
 ---
@@ -355,35 +374,41 @@ Configure per-project overrides (accessible from project context):
 
 ### 6.1 File Explorer
 
-Access the file explorer from the sidebar or quick panel:
+Access the file explorer from the sidebar tab. Toggle between views with the toolbar button:
 
-**Grid View (Finder-style)**
-- Icon-based display with file type indicators
-- Click to open files, double-click folders to navigate
+**Grid View (Finder-style, default)**
+- Icon-based card display with folder/file icons
+- Click folders to navigate in, click files to open
+- ".." entry to navigate to parent directory
 - Breadcrumb navigation at the top
 
-**List View**
-- Traditional file list with details
-- Sort by name, size, date
-- Compact layout for large directories
+**Tree View**
+- Recursive tree with expand/collapse chevrons
+- Lazy-loaded subdirectories
+- Sorted by type (folders first) then by name
+- Keyboard navigation: ArrowUp/Down/Left/Right, Enter, Home/End
 
-**Common Features**
-- **Search** — Filter files by name
-- **Hidden files** — Toggle visibility of dotfiles
-- **Create** — New file or folder via dialog
-- **Rename** — Inline file/folder renaming
+**Context Menu** (right-click or ⋮ button on hover)
+- **New File** / **New Folder** — Creates via inline input
+- **Rename** — Inline renaming
 - **Delete** — With confirmation dialog
+
+**Toolbar**
+- **Search** — Server-side file search with debounce (300ms)
+- **Hidden files** — Toggle visibility of ignored patterns (`.git`, `node_modules`, `.env`, `dist`, etc.)
+- **View toggle** — Switch between Grid and Tree views
+- Default view mode configurable in settings
 
 ### 6.2 Text Editor
 
-Click any text file to open it in the editor:
+Click any text file to open it in a fullscreen overlay editor (CodeMirror):
 
 - **Syntax highlighting** — Language-aware (detected from file extension)
-- **Edit mode** — Full text editing with the edit button
-- **Preview mode** — Rendered view (especially useful for Markdown)
-- **Save** — `Ctrl+S` or the save button
-- **Unsaved changes warning** — Prevents accidental data loss
-- **File size limit** — Files over 1MB show a truncation warning
+- **Line numbers** and **active line highlighting**
+- **Save** — `Ctrl+S` / `Cmd+S` or the save button
+- **Close** — `Escape` key or the X button
+- **Unsaved changes warning** — Confirmation dialog prevents accidental data loss
+- **File size limit** — Files over 1MB are truncated and read-only
 
 ### 6.3 Markdown Preview
 
@@ -391,23 +416,25 @@ For `.md` files:
 
 - Toggle between **Edit** and **Preview** modes via the header button
 - Preview renders full markdown with styles
-- Default mode configurable in settings (Edit or Preview)
+- Default mode (Edit or Preview) configurable in settings
 
 ### 6.4 Image Viewer
 
-Click any image file to open the viewer:
+Click any image file to open the viewer in a fullscreen overlay:
 
-- **Zoom in/out** — Button controls
-- **Reset zoom** — Return to original size
-- **Loading indicator** — Shows while image loads
-- Supports PNG, JPEG, GIF, WebP, SVG
+- **Zoom in/out** — Button controls or mouse wheel scroll
+- **Drag to pan** — Click and drag to move the image
+- **Zoom percentage** — Displayed between zoom buttons
+- **Reset view** — Return to original size and position
+- **Close** — `Escape` key or the X button
+- Supports PNG, JPEG, GIF, WebP, SVG, BMP, ICO
 
 ### 6.5 Quick File Panel
 
 Access files without leaving the chat:
 
 - Open the quick panel and switch to the Files tab
-- Recently accessed files appear at the top
+- **Recently opened** files appear at the top (max 5 per session)
 - Search and navigate the file tree
 - Click to open in the editor overlay
 
@@ -417,57 +444,83 @@ Access files without leaving the chat:
 
 ### 7.1 Git Status
 
-The Git tab shows the current repository state:
+The Git tab shows the current repository state with auto-polling every 30 seconds:
 
-- **Current branch** — Displayed at the top
-- **Staged changes** — Files ready to commit (green)
-- **Unstaged changes** — Modified files not yet staged (yellow)
-- **Untracked files** — New files not tracked by Git (gray)
-- Each file shows its change type: Added, Modified, Deleted, Renamed
+- **Top bar** — Branch selector dropdown + Pull/Push buttons
+- **File groups** — Three collapsible sections (chevron toggle), each with file count badge:
+  - **Staged Changes** — Files ready to commit (status indicators: M green, A green, D red, R blue)
+  - **Unstaged Changes** — Modified files not yet staged (status indicators: M yellow, D red)
+  - **Untracked Files** — New files not tracked by Git (status indicator: ?)
+- **File click** — Clicking a file name opens the Diff viewer slide panel (see 7.8)
+- **Error banner** — Git errors appear at the top and auto-clear after 5 seconds; dismiss manually with X
+- **Clean state** — When no changes exist, a green checkmark with "No changes" message is shown
 
 ### 7.2 Staging Files
 
-- **Stage individual files** — Click the "+" button next to each file
-- **Stage all** — Click "Stage All" to stage everything
-- **Unstage** — Click the "-" button on staged files
+- **Stage individual files** — Click the "+" button next to each file (appears on hover)
+- **Stage all** — Click "+ All" in the group header to stage all files in that group
+- **Unstage individual** — Click the "-" button on staged files (appears on hover)
+- **Unstage all** — Click "- All" in the Staged Changes group header
 
 ### 7.3 Committing
 
 1. Stage the files you want to commit
-2. Write a commit message in the text input
-3. Click **"Commit"** or use **"Stage All & Commit"**
-4. Success notification confirms the commit
+2. Write a commit message in the textarea
+3. Click **"Commit"** (enabled only when staged files exist and message is non-empty)
+4. The commit history refreshes automatically after a successful commit
+
+> **Note:** "Stage All & Commit" is available only in the Quick Git Panel (see 7.7). The full Git tab requires staging first, then committing separately.
 
 ### 7.4 Branch Management
 
-- **View branches** — See all local branches
-- **Current branch** — Highlighted in the list
-- **Create branch** — Enter a new branch name
-- **Switch branch** — Click on a branch to switch
-- **Conflict warning** — Alerts if switching would cause issues
+- **Branch selector** — Dropdown button in the top bar showing the current branch
+- **Branch list** — All local branches displayed; current branch highlighted with a blue checkmark
+- **Create branch** — Input field at the bottom of the dropdown; press Enter to create
+- **Switch branch** — Click on a branch name to switch
+- **Uncommitted changes warning** — If there are staged, unstaged, or untracked files, a ConfirmModal asks for confirmation before switching
+- **Keyboard navigation** — ArrowUp/Down to navigate, Enter to select, Escape to close dropdown
 
 ### 7.5 Commit History
 
-- Browse recent commits with:
+- Browse recent commits (up to 20 in the full tab):
+  - Short commit hash (7 characters, monospace, blue)
   - Commit message
   - Author name
-  - Relative timestamp (e.g., "2 hours ago")
-- Scroll for older commits
+  - Relative timestamp (e.g., "2 hours ago", "3 days ago")
 
 ### 7.6 Pull & Push
 
-- **Pull** — Fetch and merge remote changes
-- **Push** — Upload local commits to remote
-- Status indicators show success or failure
-- Error messages displayed for conflicts or authentication issues
+- **Pull** — Fetch and merge remote changes (↓ arrow button)
+- **Push** — Upload local commits to remote (↑ arrow button)
+- **Ahead/Behind counts** — Each button shows the number of commits ahead or behind the remote
+- Errors displayed in the error banner (auto-clears after 5 seconds)
 
 ### 7.7 Quick Git Panel
 
-Lightweight Git access from the chat view:
+Lightweight Git access from the quick panel side bar:
 
-- Open the quick panel and switch to the Git tab
-- Stage, commit, and view status without leaving chat
-- Compact layout optimized for the side panel
+- **Branch name** with changed file count badge (e.g., "3 changes")
+- **Commit input** — Textarea for commit message
+- **"Stage All & Commit"** — Single green button that automatically stages all unstaged/untracked files and commits in one action
+- **Success message** — Displayed for 3 seconds after a successful commit
+- **Recent commits** — Shows only the 3 most recent commits (hash, timestamp, message)
+- **"View in Git Tab"** link — Navigates to the full Git tab for advanced operations
+- **Git init support** — If the project is not a Git repository, shows an init button
+
+### 7.8 Diff Viewer
+
+- Clicking a file in the Git tab opens a **slide panel** from the right side (600px wide, max 80vw)
+- Shows the unified diff for the selected file using CodeMirror
+- **Close** — Click X button, click the backdrop, or press Escape
+- Animated slide-in/out transition (300ms)
+
+### 7.9 Git Repository Initialization
+
+If the project directory is not a Git repository:
+
+- **Git tab** — Shows a centered "Initialize Repository" view with a purple Git icon and init button
+- **Quick Git panel** — Shows a message and init button
+- After initialization, the Git status refreshes automatically
 
 ---
 
@@ -477,47 +530,61 @@ Lightweight Git access from the chat view:
 
 Full terminal access in your browser:
 
-- **Shell emulation** — Real PTY (pseudo-terminal) connection
+- **Shell emulation** — Real PTY (pseudo-terminal) connection via Socket.io
 - **Working directory** — Opens in your project directory
 - Supports all shell commands, interactive programs, and TUI apps
-- Powered by xterm.js for accurate terminal rendering
+- Powered by **xterm.js** with FitAddon for auto-resize (ResizeObserver)
+- **Theme** — Automatically matches app theme (dark/light), Tokyo Night color palette
+- **Font** — JetBrains Mono, Fira Code, Cascadia Code (fallback chain)
+- **Scrollback** — 1000 lines
 
 ### 8.2 Multiple Tabs
 
-- Click **"+"** to open a new terminal tab
-- Switch between tabs by clicking their labels
-- Each tab is an independent shell session
-- Close tabs individually
+- Click **"New Terminal"** button (+ icon) in the header to open a new terminal tab
+- **Maximum 5 terminals** per project (client-side limit); button disabled at limit
+- **Tab labels** — Named after shell (e.g., "bash", "zsh"); numbered when multiple share the same shell ("bash 1", "bash 2")
+- **Switch tabs** — Click on a tab label or use **ArrowLeft/ArrowRight** keyboard navigation
+- **Close tabs** — Click the X button on each tab, or press **Delete** to close the active tab
+- **Empty state** — When no terminals exist, a centered prompt with "New Terminal" button is shown
 
 ### 8.3 Font Size
 
-- `Ctrl++` (or `Ctrl+=`) — Increase font size
+Font size controls are available both via keyboard shortcuts and GUI buttons in the header:
+
+- **GUI controls** — Minus (-), current size display (click to reset), Plus (+) buttons in the header
+- `Ctrl+=` / `Ctrl++` — Increase font size
 - `Ctrl+-` — Decrease font size
-- `Ctrl+0` — Reset to default size
+- `Ctrl+0` — Reset to default size (14)
+- Range: 8 to 24
 
 ### 8.4 Connection Status
 
-- **Connected** — Green indicator, terminal is active
-- **Disconnected** — Terminal session ended or connection lost
-- **Process exit code** — Shown when a process terminates
+The header shows the current terminal status:
+
+- **Connecting** — Spinner with "Connecting..." text
+- **Connected** — Green dot indicator with "Connected" text
+- **Disconnected** — Red dot badge; fullscreen overlay with "Disconnected" message
+- **Exited** — Gray dot badge with exit code; fullscreen overlay with exit code display
 
 ### 8.5 Security
 
 Terminal access is restricted for safety:
 
-- **Local network only** — Disabled when accessed from outside the local network
-- **Localhost/private IP detection** — Automatically determines if the connection is local
-- **Configurable** — Enable/disable via Settings > Advanced or the `TERMINAL_ENABLED` environment variable
-- **Max sessions** — Configurable limit (default: 10) via `MAX_TERMINAL_SESSIONS`
+- **Local network only** — Blocked when accessed from outside the local network (private IP detection)
+- **Shield warning** — When access is denied, a ShieldAlert icon with explanation is shown (both in full tab and quick panel)
+- **Configurable** — Enable/disable via Settings > Advanced toggle or the `TERMINAL_ENABLED` environment variable (`false` overrides preferences)
+- **Max sessions** — Server-side limit (default: 10) via `MAX_TERMINAL_SESSIONS`; client limits to 5 per project
 - **Shell timeout** — Configurable idle timeout (default: 30s) via `SHELL_TIMEOUT`
 
 ### 8.6 Quick Terminal
 
-Launch a terminal overlay from the chat view:
+Lightweight terminal access from the quick panel side bar:
 
-- Open the quick panel and switch to the Terminal tab
-- Click "New Terminal" to start a session
-- Use without leaving your chat context
+- **Multi-terminal support** — Same tab management as the full Terminal tab (create, switch, close, max 5)
+- **Font size controls** — Minus, size display (click to reset), Plus buttons in the header
+- **"Open in Tab"** link — Navigate to the full Terminal tab
+- **Tab keyboard navigation** — ArrowLeft/Right to switch, Delete to close
+- **Security warning** — Same ShieldAlert display when terminal access is denied
 
 ---
 
@@ -527,17 +594,27 @@ The Queue Runner automates sequences of prompts for batch processing.
 
 ### 9.1 Queue Editor
 
-Write your prompt sequence in the editor:
+The editor provides a monospace code area with **syntax highlighting**:
 
-```
-Create a new React component for user profile
-@new
-Write unit tests for the user profile component
-@pause
-Review and refactor the component
-```
+- **Directives** (`@new`, `@pause`, etc.) — purple
+- **Directive arguments** — teal
+- **Multiline markers** (`@(`, `@)`) — blue
+- **Comments** (`#`) — gray
+- **Regular prompts** — default text color
 
-Each line is one prompt. Special commands start with `@`.
+**Toolbar buttons:**
+- **Run** (Play icon) — Start queue execution; also available via `Ctrl+Enter` / `Cmd+Enter`
+- **Load File** (Upload icon) — Import a `.txt` or `.qlaude-queue` file (max 1MB)
+- **Template** (FileText icon) — Open the template dialog (see 9.7)
+- **Word Wrap** (WrapText icon) — Toggle line wrapping (persisted across sessions)
+
+**Editor behavior:**
+- Auto-parses script on edit with 300ms debounce
+- **Validation warnings** displayed below the editor (e.g., missing arguments, unclosed multiline blocks, unknown directives)
+- **Empty state** shows a visual command reference overlay listing all available directives
+- Editor is hidden during queue execution, replaced by the runner panel
+
+Each line is one prompt. Special commands start with `@`. Empty lines are ignored.
 
 ### 9.2 Special Commands
 
@@ -546,12 +623,16 @@ Each line is one prompt. Special commands start with `@`.
 | `@new` | Start a new chat session before the next prompt |
 | `@save <name>` | Save the current session with a name |
 | `@load <name>` | Load a previously saved session |
-| `@pause` | Pause execution; resume manually |
+| `@pause [reason]` | Pause execution; optional reason text shown in the pause banner |
 | `@model <name>` | Switch Claude model (e.g., `@model opus`) |
-| `@delay <ms>` | Wait before the next prompt (in milliseconds, e.g., `@delay 5000` for 5 seconds) |
+| `@delay <ms>` | Wait before the next prompt (positive integer in ms, e.g., `@delay 5000`) |
 | `@(` | Start a multiline prompt (all lines until `@)` are treated as one prompt) |
 | `@)` | End a multiline prompt |
-| `@comment <text>` | Add a comment (not sent to Claude) |
+| `# comment` | Comment line (not sent to Claude) |
+| `\@` | Escape: send literal `@` as a prompt (not treated as directive) |
+
+- Missing required arguments (e.g., `@save` without a name) produce a validation warning
+- Unknown directives (e.g., `@unknown`) produce a warning and are sent as regular prompts
 
 ### 9.3 Multiline Prompts
 
@@ -566,65 +647,98 @@ Please review this code and check for:
 @)
 ```
 
+An unclosed multiline block (missing `@)`) produces a warning and is still sent as a single prompt.
+
 ### 9.4 Response Markers
 
 Claude's responses can contain special markers to control queue execution:
 
-- **`QUEUE_STOP`** — If Claude's response contains this text, queue execution pauses automatically. Useful when Claude detects an issue that needs human review.
+- **`QUEUE_STOP`** — Queue execution pauses automatically. Useful when Claude detects an issue that needs human review.
 - **`QUEUE_PASS`** — Advances the queue silently without waiting for user interaction.
 
 ### 9.5 Running the Queue
 
 1. Write your prompts in the queue editor
-2. Click **"Run"** to start
-3. Monitor progress: **Current / Total** display
-4. **Pause** — Temporarily halt execution
-5. **Resume** — Continue from where you paused
-6. **Abort** — Stop completely (with confirmation)
+2. Click **"Run"** or press `Ctrl+Enter` to start
+3. The editor switches to the **Runner Panel** showing:
+   - **Progress bar** — With percentage and count (completed / total)
+   - **Color coding** — Blue (running), amber (paused), green (completed), red (error)
+   - **Item list** with per-item status icons:
+     - Spinner (blue) — currently executing
+     - Pause icon (amber) — paused at this item
+     - Checkmark (green) — completed (shown with strikethrough text)
+     - X circle (red) — error
+     - Clock (gray) — pending
+   - **Auto-scroll** to the current item
+4. **Controls:**
+   - **Pause** — Temporarily halt execution (shown during running)
+   - **Resume** / **Abort** — Shown during paused state
+   - **Abort** requires `window.confirm` confirmation
+   - **"Go to Session"** link — Navigate to the active chat session
+5. **Session links** — Completed items show a link icon to navigate to their associated session
+6. **"Back to Editor"** button — Dismiss the runner panel after completion or error
+
+**During execution (pending items only):**
+- **Drag-and-drop reorder** — Drag pending items by the grip handle to reorder
+- **Delete** — Click the trash icon to remove a pending item
+- **Add** — Inline input at the bottom to add new items to the queue
 
 ### 9.6 Session Locking
 
-While the queue is running:
+While the queue is running, a **sticky banner** appears at the top of chat sessions:
 
-- The active session is **locked** — manual input is disabled
-- A banner shows the queue status
-- "Go to Queue Session" button lets you observe
-- Other sessions remain accessible
+- **Running** (indigo) — Spinner + progress (current/total) + current prompt preview (desktop)
+- **Paused** (amber) — Pause icon + progress; pause reason shown below if provided
+- **Error-paused** (red) — Alert icon + error details
+- **Completed** (green) — Checkmark + total count; dismissible with X button
+- **Error-stopped** (red) — Error message + link to queue editor; dismissible
+
+**Banner controls:**
+- **Pause / Resume / Abort** buttons directly in the banner (icon-only on mobile, icon+text on desktop)
+- **"Queue Editor"** link — Navigate to the full queue editor (desktop only)
+- **"Go to Session"** link — Navigate to the active queue session
+
+**On other sessions:**
+- A banner shows "Queue running in another session" with a link to navigate to it
+- Other sessions remain fully accessible
 
 ### 9.7 Templates
 
-Save and reuse queue scripts:
+Templates generate queue scripts by combining a template pattern with story selections from your project's PRD.
 
-**Saving a Template**
-1. Write your queue in the editor
-2. Click **"Save as Template"**
-3. Give it a name and optional description
+**Template Dialog** (opened via FileText icon in toolbar):
 
-**Loading a Template**
-1. Click **"Load Template"**
-2. Browse saved templates
-3. Click to load into the editor
+The dialog has two main sections:
 
-**Template Variables**
-Use `{{variable}}` syntax for customizable templates:
+**1. Template Source** — Three tabs:
+- **Input** — Type template text directly in a monospace textarea with word wrap toggle; variable hint shown: `{story_num}, {epic_num}, {story_title}`
+- **File** — Upload a `.txt` or `.qlaude-queue` file (max 100KB) via drag area
+- **Saved** — Browse, select, edit, or delete previously saved templates
+
+**2. Story Selection** — Stories extracted from your PRD:
+- Grouped by epic with collapsible sections and checkbox selection
+- **Select All / Deselect All** toggle
+- **"Pause between epics"** checkbox — Inserts `@pause` between different epic groups
+- Each epic header shows selected/total count with indeterminate checkbox state
+
+**Template Variables:**
+Use `{story_num}` in your template. It will be replaced with each selected story number:
 
 ```
-Create a {{component_type}} component named {{name}}
-Write tests for {{name}}
+@load base-session
+Implement Story {story_num} following the PRD exactly
+@save story-{story_num}-done
 ```
 
-Variables are prompted when loading the template.
+**Live Preview** — Shows the generated script with syntax highlighting below the template and story selection.
 
-### 9.8 Story-Based Generation
+**Template Management:**
+- **Save** — Save the current template with a name (inline form)
+- **Update** — Overwrite a previously saved template
+- **Delete** — Remove a saved template (with confirmation)
+- Templates are stored per-project on the server
 
-For BMAD-METHOD projects:
-
-1. Click **"Generate from PRD"** in the queue editor
-2. Select epics and stories to include
-3. Optionally add `@pause` between epics
-4. The queue is auto-generated from your project's PRD structure
-
-### 9.9 Queue Status Badge
+### 9.8 Queue Status Badge
 
 A badge on the project card shows queue status:
 
@@ -637,107 +751,151 @@ A badge on the project card shows queue status:
 
 ## 10. Project Board
 
-Visual task and issue management for your projects.
+Visual task and issue management for your projects. The board displays three card types: Issues, Stories, and Epics.
 
 ### 10.1 Kanban Board
 
-The default view is a drag-and-drop Kanban board:
+The default view is a scrollable Kanban board:
 
-- **Columns** represent statuses (e.g., Open, In Progress, Done)
-- **Cards** represent issues
-- Drag cards between columns to change status
-- Columns are customizable
+- **Columns** represent statuses — each with a colored top border, label, and item count badge
+- **Cards** display issues, stories, and epics with type badges: **[I]** (amber), **[S]** (blue), **[E]** (purple)
+- **Horizontal scroll** — overflow columns peek from the edge with gradient fade overlays (no drag-and-drop between columns)
+- Status changes are made via the card **context menu** (⋮), not by dragging
+- Columns are fully customizable (see §10.11)
 
 ### 10.2 List View
 
-Switch to a tabular view:
+Switch to an accordion-style list view:
 
-- Sort by any column (title, status, severity, type, date)
-- Inline status editing
-- Compact layout for many issues
-- Filter by status
+- Items grouped by status column with chevron toggle
+- **Item count** displayed next to each group header
+- Only **non-empty columns** are shown (empty ones are hidden)
+- On mobile, the last column auto-collapses to save space
+- Compact card layout for browsing many items at once
 
 ### 10.3 Creating Issues
 
 Click **"New Issue"** to create:
 
-| Field | Options |
+| Field | Details |
 |-------|---------|
-| **Title** | Required, free text |
+| **Title** | Required, max 200 characters |
 | **Description** | Optional, supports markdown |
-| **Type** | Bug, Improvement, Quick Action |
+| **Type** | Bug, Improvement |
 | **Severity** | Low, Medium, High, Critical |
-| **Status** | Open (default) |
+| **Attachments** | Optional — drag-and-drop, click to browse, or paste from clipboard |
 
-### 10.4 Issue Types
+Status is automatically set to **Open** (not a user-editable field).
+
+### 10.4 Editing Issues
+
+Click the context menu (⋮) → **Edit** on any issue card:
+
+- Same fields as the create dialog (title, description, type, severity)
+- **Existing attachments** are shown with options to view or delete each one
+- **Add new attachments** via drag-and-drop, click, or paste
+
+### 10.5 Issue Types
 
 - **Bug** — Something is broken and needs fixing
 - **Improvement** — Enhancement to existing functionality
-- **Quick Action** — Small task that can be done quickly
 
-### 10.5 Severity Levels
+### 10.6 Severity Levels
 
-- **Low** — Minor issue, no urgency
-- **Medium** — Should be addressed in normal workflow
-- **High** — Important, prioritize soon
-- **Critical** — Urgent, needs immediate attention
+Severity badges are color-coded on cards:
 
-### 10.6 Status Workflow
+- **Critical** — Red badge, urgent, needs immediate attention
+- **High** — Orange badge, important, prioritize soon
+- **Medium** — Yellow badge, should be addressed in normal workflow
+- **Low** — Gray badge, minor issue, no urgency
 
-Issues follow this lifecycle:
+### 10.7 Status Workflow
+
+Items follow this lifecycle with 9 possible statuses:
 
 ```
 Open → Draft → Approved → In Progress → Blocked → Review → Done → Closed
+                                                              ↓
+                                                          Promoted
 ```
 
-Not all statuses are required. You can drag cards directly from Open to Done if appropriate.
+Not all statuses are required. Use the context menu to change status directly. **Promoted** indicates an issue that has been escalated to a story or epic.
 
-### 10.7 File Attachments
+### 10.8 File Attachments
 
-Attach files to issues:
+Attach image files to issues:
 
 - Up to **10 files** per issue
 - Maximum **10MB** per file
 - Supported formats: PNG, JPEG, GIF, WebP
-- View attachments inline on the issue card
+- Upload methods: **drag-and-drop** onto the attachment zone, **click** to browse, or **paste** from clipboard
+- Attachments are managed in the issue create/edit dialogs — they are not shown inline on board cards
+- Preview thumbnails are shown in a grid with a remove button (×) for each
 
-### 10.8 Issue Promotion
+### 10.9 Card Context Menu
 
-Escalate issues through the BMad workflow:
+Click the **⋮** button on any card to open the context menu. Actions vary by card type:
 
-- **Promote to Story** — Convert an issue into a development story
-- **Promote to Epic** — Elevate a story into an epic
-- Available from the card context menu
+**Issue actions:**
+- **Quick Fix** — Marks the issue as Done and opens a dev session with the issue context (only available for Open issues)
+- **Promote to Story** — Convert an issue into a development story (disabled if already linked)
+- **Promote to Epic** — Elevate an issue into an epic (disabled if already linked)
+- **Edit** — Open the issue edit dialog
+- **Close** / **Reopen** — Toggle between Closed/Done/Promoted and Open
+- **Delete** — Permanently remove the issue
 
-### 10.9 Epic & Story Integration
+**Story actions:**
+- **Normalize Status** — Sync the story status with its source file
+- **Workflow actions** — Context-dependent: Draft → Validate, Approved → Start Dev, In Progress → Request QA, Review → Apply QA Fix
 
-For BMAD-METHOD projects:
+**Epic actions:**
+- **View Sub-Stories** — Open a dialog showing all stories under the epic
 
-- View **sub-stories** within an epic
-- **Validate** stories against PRD requirements
-- **Start Development** — Launch the dev workflow
-- **Request QA** — Initiate QA review
-- **Apply QA Fixes** — Address QA feedback
+The menu supports keyboard navigation (Arrow Up/Down, Enter, Escape).
 
-### 10.10 Board Configuration
+### 10.10 Card Behavior
 
-Customize the board layout:
+Cards display information based on their type:
 
-1. Click the **gear icon** on the board
-2. Configure:
-   - Column names and order
-   - Status-to-column mapping
-   - Column colors
-   - Visible columns toggle
-3. **Reset to defaults** if needed
+- **Type badge** — [I], [S], or [E] with color coding
+- **Severity badge** — For issues only, color-coded by level
+- **Status badge** — Color-coded status indicator
+- **Epic progress bar** — On epic cards, shows completion percentage with done/total count
+- **Story epic number** — Shows the parent epic reference
+- **Unmapped status warning** — ⚠ triangle icon when a card's status doesn't map to any column
 
-### 10.11 Mobile Kanban
+**Click behavior:** Clicking a card navigates to its associated file in the development session (issues, stories, and epics with a `filePath`).
 
-On small screens, the board adapts:
+### 10.11 Board Configuration
 
-- Column-by-column navigation (swipe or tap)
-- Touch-friendly card interactions
-- Simplified layout for small screens
+Customize the board layout via the gear icon:
+
+**Columns:**
+- Add, remove, and **reorder** columns (Arrow Up/Down buttons)
+- Maximum **10 columns** allowed
+- **Required columns** (mapped to essential statuses) cannot be deleted
+- Each column has a name and an optional color
+
+**Colors:**
+- Pick from a preset **color palette** (swatches) or leave as default
+- Colors appear as the column's top border
+
+**Status Mapping:**
+- Map each of the 9 statuses (Open, Draft, Approved, In Progress, Blocked, Review, Done, Closed, Promoted) to a column
+- **Custom status mapping** — Define up to 20 additional custom status strings and assign them to columns
+
+**Reset:**
+- **Reset to defaults** button restores the original column layout (with confirmation dialog)
+
+### 10.12 Mobile Kanban
+
+On small screens, the board uses a swipe carousel:
+
+- **Swipe left/right** to navigate between columns (threshold: 50px)
+- **Rubber-band resistance** at the first and last columns (cannot swipe past edges)
+- **Indicator dots** at the bottom show current position
+- Smooth **300ms transition** animation between columns
+- Touch-optimized card layout
 
 ---
 
@@ -749,69 +907,130 @@ BMad Studio provides first-class support for the [BMAD-METHOD](https://github.co
 
 BMAD-METHOD is an open-source framework that structures AI-driven software development. It defines:
 
-- **Agents** — Specialized AI roles (SM, PM, Architect, Developer, QA)
-- **Documents** — PRD, Architecture spec, Stories, Test plans
-- **Workflows** — Structured processes from requirements to deployment
+- **Agents** — Specialized AI roles organized by workflow phase
+- **Documents** — PRD, Architecture spec, Frontend spec, Stories, QA plans, and supplementary docs (brainstorming, market research, competitor analysis, project brief)
+- **Workflows** — Phase-based processes from research through implementation to completion
 
 ### 11.2 Setting Up BMad in a Project
 
-1. Navigate to your project's **Overview** page
-2. Click **"Setup BMad"**
-3. Select the BMAD-METHOD version to install
-4. The `.bmad-core` folder structure is created in your project
+BMad can be set up in two ways:
+
+**During project creation:**
+1. In the **New Project** dialog, the **"Setup BMad"** checkbox is enabled by default
+2. Select the BMAD-METHOD version from the dropdown (defaults to latest)
+3. The `.bmad-core` folder is automatically created when the project is registered
+
+**For existing projects:**
+1. Open the project card's **kebab menu** (⋮) on the project list page
+2. Click **"Setup BMad"** (only shown for non-BMad projects)
+3. Confirm the version to install
+4. The `.bmad-core` folder structure is copied from the bundled template
+
+The `.bmad-core` folder contains agents, tasks, templates, workflows, and configuration files including `core-config.yaml`.
 
 ### 11.3 BMad Agents
 
-Use the **Agent Button** (floating action button in chat) to switch agents:
+Click the **Agent Button** (Users icon, in the chat bottom bar left of the model selector) to open the agent dropdown:
+
+**Planning group:**
 
 | Agent | Role |
 |-------|------|
-| **SM** (Scrum Master) | Orchestrates the development process |
-| **PM** (Product Manager) | Defines requirements and priorities |
-| **Architect** | Designs system architecture |
-| **Developer** | Implements features and fixes |
-| **QA** | Tests and validates quality |
+| **Analyst** | Brainstorming, market research, competitor analysis, project brief |
+| **PM** (Product Manager) | Defines PRD with epics and stories |
+| **UX Expert** | Creates frontend specifications |
+| **Architect** | Designs system architecture (backend, frontend, full-stack) |
 
-Switching agents changes Claude's persona and available commands for that role.
+**Implementation group:**
+
+| Agent | Role |
+|-------|------|
+| **SM** (Scrum Master) | Drafts stories, orchestrates development |
+| **PO** (Product Owner) | Validates story drafts against PRD |
+| **Dev** (Developer) | Implements features, applies QA fixes |
+| **QA** | Reviews and validates implementation quality |
+
+**Agent dropdown features:**
+- **Categorized groups** — Planning, Implementation, Other (with section labels)
+- **Active agent checkmark** — Blue check icon next to the currently active agent
+- **Agent icon & description** — Emoji icon and hover tooltip with role description
+- **Keyboard navigation** — Arrow Up/Down to move, Enter to select, Escape to close
+- Selecting an agent sends the agent command (e.g., `/BMad:agents:pm`) as the first prompt in the session
 
 ### 11.4 Project Overview Dashboard
 
-The BMad project overview shows:
+For BMad projects, the overview page displays additional sections above the standard project overview:
 
-- **Document status** — PRD completion, architecture spec status
-- **Epic progress** — Visual indicators for each epic
-- **Story status** — Completion tracking per story
-- **Quick actions** — Jump to relevant workflows
+**BMad Summary Card:**
+- Overall **completion percentage** with a progress bar
+- **Done/total epics** and **done/total stories** counts
+- Background refresh indicator
 
-### 11.5 Recommended Workflow
+**Next Step Recommender:**
+- Detects the current **workflow phase** (Pre-PRD, Pre-Architecture, Implementation, Completed)
+- Shows context-aware **action buttons** (primary/secondary) that navigate to the right agent + task command
+- Quick links: New Session, Queue Runner, File Explorer
+- See §11.5 for phase details
 
-1. **Start with SM** — Set up the project structure
-2. **Switch to PM** — Define the PRD with epics and stories
-3. **Switch to Architect** — Design the technical architecture
-4. **Switch to Developer** — Implement stories one by one
-5. **Switch to QA** — Validate the implementation
-6. **Use Queue Runner** — Automate story implementation in batch
+**Document Status Card:**
+- Core documents: **PRD** and **Architecture** with exists/missing indicators
+- Supplementary documents: Brainstorming, Market Research, Competitor Analysis, Project Brief, Frontend Spec, UI Architecture
+- **"작성 필요"** (Required) badge for missing core documents; **"작성 권장"** (Recommended) for optional documents
+- **Agent shortcut buttons** (→) to create missing documents with the appropriate agent
+- **Sharded document support** — PRD and Architecture can be split into multiple files; expandable file tree view
+- **Auxiliary documents** section — Stories and QA files with counts and expandable file trees
+
+**Epic Progress Card:**
+- Each epic shows a **color-coded progress bar** (gray 0%, amber <50%, blue ≥50%, green 100%)
+- **Done/planned** story count per epic
+- Click to **expand** and see individual story statuses with color-coded badges
+- Story file links to navigate directly to the story file
+- Unwritten story count shown when planned > written
+
+**Recent Issues Card** (replaces Quick Start for BMad projects):
+- Last 5 issues with severity dot, title, and status badge
+- Click to navigate to the project board
+- Link to "View Board"
+
+### 11.5 Workflow Phases & Recommendations
+
+The Next Step Recommender analyzes the project state and suggests actions based on four phases:
+
+**Phase 1: Pre-PRD** (PRD does not exist)
+- **Primary:** Create PRD → PM agent
+- **Secondary:** Brainstorming, Market Research, Competitor Analysis, Project Brief → Analyst agent
+
+**Phase 2: Pre-Architecture** (PRD exists, Architecture does not)
+- **Primary:** Create Backend / Frontend / Full-stack Architecture → Architect agent
+- **Secondary:** Create Frontend Spec → UX Expert agent (if not exists)
+
+**Phase 3: Implementation** (both PRD and Architecture exist)
+- **Priority 1:** Continue developing In Progress stories → Dev agent
+- QA review for In Progress stories → QA agent
+- Apply QA fixes → Dev agent
+- **Priority 2:** Validate Draft stories → PO agent
+- **Priority 3:** Start developing Approved stories → Dev agent
+- **Priority 4:** Create next story → SM agent (when no actionable stories)
+
+**Phase 4: Completed** (all planned stories are Done)
+- Brainstorm new features → Analyst agent
+- Add new epic → PM agent
+- Add story to existing epic → SM agent
 
 ### 11.6 Queue Templates from PRD
 
-Automate development with generated queues:
-
-1. Open the **Queue Runner**
-2. Click **"Generate from PRD"**
-3. Select which epics/stories to include
-4. Optionally add pauses between epics
-5. Run the queue to automate the entire development sequence
+Queue templates automate story development in batch. For details, see §9.7 (Queue Templates).
 
 ---
 
 ## 12. Settings
 
-Access settings via the gear icon or the Settings page.
+Access settings via the gear icon or the Settings page. The page has **6 tabs**: Global, Project, Telegram, Advanced, Help, and About. On desktop, tabs appear as a sidebar; on mobile, they use an accordion layout.
 
 ### 12.1 Theme
 
+- **Dark** — Dark background, light text (default)
 - **Light** — White background, dark text
-- **Dark** — Dark background, light text
 - **System** — Follows your OS/browser preference
 
 ### 12.2 Language
@@ -819,7 +1038,7 @@ Access settings via the gear icon or the Settings page.
 BMad Studio supports 6 languages:
 
 - English
-- 中文 (Chinese Simplified)
+- 中文(简体) (Chinese Simplified)
 - 日本語 (Japanese)
 - 한국어 (Korean)
 - Español (Spanish)
@@ -831,22 +1050,25 @@ Language is auto-detected from your browser settings. Override it manually in se
 
 Choose the default Claude model:
 
+**Default:**
+- **Default** — Uses the SDK/system default model
+
 **Aliases (always latest version):**
-- **sonnet** — Fast, balanced
-- **opus** — Most capable
-- **haiku** — Fastest, lightweight
+- **Sonnet** — Latest Sonnet
+- **Opus** — Latest Opus
+- **Haiku** — Latest Haiku
 
 **Claude 4.x:**
-- Claude Opus 4.6, 4.5, 4.1
-- Claude Sonnet 4.5, 4
-- Claude Haiku 4.5
+- Opus 4.6, 4.5, 4.1, 4
+- Sonnet 4.5, 4
+- Haiku 4.5
 
 **Claude 3.x:**
-- Claude Sonnet 3.7, 3.5
-- Claude Haiku 3.5
-- Claude Opus 3, Sonnet 3, Haiku 3
+- Sonnet 3.7, 3.5
+- Haiku 3.5
+- Opus 3, Sonnet 3, Haiku 3
 
-Can be overridden per-project in project settings.
+Can be overridden per-project (see §12.8).
 
 ### 12.4 Default Permission Mode
 
@@ -854,15 +1076,13 @@ Set how Claude handles file modifications:
 
 | Mode | Behavior |
 |------|----------|
+| **Last Used** | Keeps the permission mode from the previous session |
 | **Plan** | Claude plans but doesn't make changes |
 | **Ask before edits** | Claude asks for approval before each change (default) |
 | **Edit automatically** | Claude edits files automatically |
-| **Don't ask** | Approves everything without prompting |
 | **Bypass permissions** | Full autonomy, no restrictions |
 
-You can also set the preference to **Latest** to keep the permission mode from the previous session.
-
-Can be overridden per-project. Quick-cycle with `Shift+Tab` when the chat input is focused.
+Can be overridden per-project (see §12.8). Quick-cycle with `Shift+Tab` when the chat input is focused.
 
 ### 12.5 Markdown File Open Mode
 
@@ -875,19 +1095,32 @@ Choose how `.md` files open by default:
 
 Default view for the file explorer:
 
-- **Grid** — Icon-based Finder-style layout
+- **Grid** — Icon-based Finder-style layout (default)
 - **List** — Traditional file list
 
 ### 12.7 Layout Mode
 
 Control the overall page width:
 
-- **Narrow** — Content capped at 1280px, centered (default)
+- **Narrow** — Content capped at 1280px, centered
 - **Wide** — Full-width layout using all available screen space
 
 Toggle via the layout button in the header.
 
-### 12.8 Chat Timeout
+### 12.8 Project Settings
+
+Override global settings on a per-project basis:
+
+1. Select a project from the **dropdown** (defaults to the currently active project)
+2. Configure overrides:
+   - **Model override** — Choose a specific model or "Use global default"
+   - **Permission mode override** — Plan, Ask before edits, or Edit automatically (or use global default). Note: Bypass permissions is not available at project level
+   - **Hide in sidebar** — Toggle to hide the project from the sidebar navigation
+3. **Reset to Global Defaults** — Clears all project-level overrides (with confirmation). Only enabled when overrides exist
+
+Active overrides are indicated with a blue "Project override" label next to each setting.
+
+### 12.9 Chat Timeout
 
 How long to wait for Claude's response:
 
@@ -897,16 +1130,19 @@ How long to wait for Claude's response:
 - 10 minutes
 - 30 minutes
 
-The timeout resets on every activity (messages, tool calls, heartbeats).
+The timeout resets on every activity (messages, tool calls, heartbeats). If overridden by an environment variable, the field is disabled with an amber warning.
 
-### 12.9 Telegram Notifications
+### 12.10 Telegram Notifications
 
 Get notified on your phone when Claude needs attention:
 
 **Setup:**
-1. Create a Telegram bot via [@BotFather](https://t.me/BotFather)
-2. Get your Chat ID
-3. Enter both in Settings > Telegram
+1. Create a Telegram bot via [@BotFather](https://t.me/BotFather) — enter the Bot Token
+2. Get your Chat ID via [@userinfobot](https://t.me/userinfobot) — enter the Chat ID
+3. Both fields support **change** and **delete** operations; bot tokens are shown **masked** for security
+
+**Enable/Disable:**
+- Master **enable checkbox** — requires both Bot Token and Chat ID to be configured before it can be toggled on
 
 **Chat Notification Types:**
 - **Permission requests** — Claude needs approval for file changes
@@ -922,39 +1158,62 @@ Get notified on your phone when Claude needs attention:
 **Other Options:**
 - **Always notify** — Get notified for every message (suppressed when the session is visible in the browser)
 
-**Test:** Click "Send Test" to verify your configuration.
+**Test:** Click "Send Test" to verify your configuration. There is a **5-second cooldown** between tests.
 
-**Access URL:** Set your BMad Studio URL so notification links open directly in your browser.
+**Access URL:** Set your BMad Studio base URL (e.g., `http://192.168.1.100:3000`) so notification links open directly in your browser.
 
-### 12.10 System Prompt
+**Environment Variables:** Bot Token and Chat ID can be set via environment variables, which take priority over saved values (shown with an amber "Env" indicator).
 
-Customize Claude's behavior:
+### 12.11 System Prompt
 
-- View the default system prompt
-- Edit to add custom instructions
-- Per-project overrides available
-- Restore to default at any time
-- Template variables are shown for reference
+Customize Claude's behavior with a fully editable system prompt template:
 
-### 12.11 Advanced Settings
+- **Warning banner** — Displayed at the top, cautioning about the impact of modifications
+- **Editable textarea** — Edit the system prompt with **auto-save** (1-second debounce)
+- **Character count** — Shown below the editor
+- **"Customized" indicator** — Blue banner when a custom prompt is active
+- **Restore to Default** button — Appears when the prompt has been modified
+- **Template variables** — Listed below the editor with descriptions (e.g., `{gitBranch}`, `{projectPath}`); variables are resolved at runtime by the server
+- **Resolved preview** — Toggle to see the fully rendered prompt with variables replaced for the current project
 
-- **Server Restart** — Rebuild and restart the server (production mode)
-- **Check for Updates** — See if a newer version is available
-- **Install Update** — Update to the latest version
-- **Terminal Toggle** — Enable/disable the terminal feature
-- **Reset All Settings** — Restore all preferences to defaults (with confirmation)
+### 12.12 Advanced Settings
 
-### 12.12 About
+**Server Management (mode-dependent):**
+
+- **Development mode:** "Server Rebuild" button — rebuilds and restarts the server. Shows elapsed time during the build process (polls every 3 seconds)
+- **Production mode:** Shows current version number, "Check for Updates" button, and "Install Update" button (appears only when an update is available). Includes build progress with elapsed timer
+
+**Terminal Toggle:**
+- Enable or disable the terminal feature via a switch toggle
+- If overridden by an environment variable, the toggle is disabled with an amber warning
+
+**SDK Parameters:**
+- **Max Thinking Tokens** — Limit Claude's extended thinking tokens (1,024–128,000, step: 1,024)
+- **Max Turns** — Limit conversation turns per query (1–100)
+- **Max Budget (USD)** — Set cost limit per query ($0.01–$100)
+
+### 12.13 Help
+
+In-app usage guide within the Settings page:
+
+- **Basic chat usage** — How to use the chat interface
+- **Slash commands** — Available command reference
+- **Permission mode guide** — Plan, Ask Before Edits, Edit Automatically explained
+- **BMad Method** — Quick guide to the BMad workflow
+- **Keyboard shortcuts** — Key bindings table (Enter, Shift+Enter, Escape, Ctrl+C, F7/Shift+F7, /)
+
+### 12.14 About
 
 Auto-populated from package metadata:
 
-- Version number
+- App name and version number
 - Project description
 - Author with link
-- License
-- Server status (healthy/unhealthy)
-- Server time
-- GitHub Issues link
+- License type
+- **GitHub Issues** link (derived from repository URL)
+- **Server status** — Healthy/unhealthy with color indicator dot
+- **Server version**
+- **Server time** — Localized timestamp
 
 ---
 
@@ -964,13 +1223,16 @@ Auto-populated from package metadata:
 
 | Shortcut | Action |
 |----------|--------|
-| `Enter` | Send message (desktop) |
+| `Enter` | Send message (desktop only) |
 | `Shift+Enter` | New line in message |
-| `ESC` | Abort generation |
-| `Ctrl+C` | Abort generation (when no text selected) |
-| `↑` / `↓` | Navigate prompt history |
-| `/` | Open command palette |
-| `Shift+Tab` | Cycle permission mode |
+| `ESC` | Abort generation / close command palette |
+| `Ctrl+C` | Abort generation (only when no text is selected; otherwise copies) |
+| `↑` / `↓` | Navigate prompt history (when cursor is at start/end of input) |
+| `/` | Open slash command palette (auto-triggered when input starts with `/`) |
+| `*` | Open star command palette (auto-triggered when input starts with `*`, requires active agent) |
+| `Tab` | Select highlighted command from palette |
+| `Shift+Tab` | Cycle permission mode (plan → default → acceptEdits → bypass) |
+| `Ctrl` (hold) | Temporary chain mode while held |
 
 ### Quick Panel
 
@@ -981,11 +1243,14 @@ Auto-populated from package metadata:
 | `Alt+3` | Toggle Git panel |
 | `Alt+4` | Toggle Terminal panel |
 
+Note: Quick panel shortcuts are disabled when an input or textarea is focused.
+
 ### Editor
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+S` | Save file |
+| `Ctrl+S` / `Cmd+S` | Save file |
+| `ESC` | Close editor |
 
 ### Diff Viewer
 
@@ -993,6 +1258,7 @@ Auto-populated from package metadata:
 |----------|--------|
 | `F7` | Next change |
 | `Shift+F7` | Previous change |
+| `ESC` | Close diff viewer (fullscreen mode) |
 
 ### Terminal
 
@@ -1001,30 +1267,43 @@ Auto-populated from package metadata:
 | `Ctrl++` or `Ctrl+=` | Increase font size |
 | `Ctrl+-` | Decrease font size |
 | `Ctrl+0` | Reset font size |
+| `←` / `→` | Switch between terminal tabs |
+| `Delete` | Close active terminal tab |
 
 ---
 
 ## 14. Environment Variables
 
+### Server
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | Server port |
-| `HOST` | `0.0.0.0` | Bind address |
+| `HOST` | `0.0.0.0` | Bind address (all interfaces) |
 | `NODE_ENV` | — | Set to `production` for optimized mode |
-| `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout in milliseconds (5 minutes) |
-| `CORS_ORIGIN` | `true` | CORS origin policy (`true` allows any origin) |
+| `ANTHROPIC_API_KEY` | — | Anthropic API key (required for Claude Code to function) |
+| `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout in milliseconds (5 minutes). Overrides the Settings UI value |
+| `CORS_ORIGIN` | `true` | CORS origin policy (`true` allows any origin, or set a specific URL) |
 | `LOG_LEVEL` | `INFO` (prod) / `DEBUG` (dev) | Logging level: ERROR, WARN, INFO, DEBUG, VERBOSE |
-| `TERMINAL_ENABLED` | `true` | Enable/disable terminal feature (set `false` to disable) |
+| `TERMINAL_ENABLED` | `true` | Enable/disable terminal feature (set `false` to disable). Overrides the Settings UI value |
 | `SHELL_TIMEOUT` | `30000` | Terminal idle timeout in milliseconds |
 | `MAX_TERMINAL_SESSIONS` | `10` | Maximum concurrent terminal sessions |
-| `TELEGRAM_BOT_TOKEN` | — | Telegram bot token for notifications |
-| `TELEGRAM_CHAT_ID` | — | Telegram chat ID for notifications |
+| `TELEGRAM_BOT_TOKEN` | — | Telegram bot token (takes priority over Settings UI value) |
+| `TELEGRAM_CHAT_ID` | — | Telegram chat ID (takes priority over Settings UI value) |
+| `BASE_URL` | — | Fallback base URL for Telegram notification links (e.g., `http://192.168.1.100:3000`) |
+
+### Client (Vite)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_SERVER_PORT` | `3000` | Server port the client connects to (useful for multi-instance setups) |
+| `VITE_LOG_LEVEL` | — | Client-side debug log level: ERROR, WARN, INFO, DEBUG, VERBOSE |
 
 ---
 
 ## 15. Troubleshooting
 
-### "Claude Code CLI not found"
+### 15.1 "Claude Code CLI not found"
 
 Claude Code CLI must be installed and in your PATH:
 
@@ -1032,17 +1311,43 @@ Claude Code CLI must be installed and in your PATH:
 claude --version
 ```
 
-If not installed, follow the [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code).
+If not installed, follow the [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code). The Onboarding page shows CLI installation, authentication, and API key status at a glance.
 
-### "Connection lost" / Reconnecting
+### 15.2 "Authentication required" / `claude login`
 
-BMad Studio automatically reconnects with exponential backoff (up to 5 attempts). If the connection doesn't recover:
+If the chat displays an authentication error, Claude Code CLI needs to be logged in:
+
+```bash
+claude login
+```
+
+The Onboarding page (shown when CLI is not authenticated) displays the current auth status and provides setup commands.
+
+### 15.3 API rate limit exceeded
+
+When Anthropic API rate limits are reached, the chat shows a rate limit error with a retry delay. Solutions:
+
+1. Wait for the indicated retry period and try again
+2. Reduce concurrent sessions or shorten prompts
+3. Check your API usage / plan limits on the Anthropic console
+4. The header status indicator shows API health (yellow triangle = API unavailable)
+
+### 15.4 "Connection lost" / Reconnecting
+
+BMad Studio automatically reconnects with exponential backoff (1 s → 5 s max delay, unlimited retries). The header shows a status indicator: green (connected), yellow spinning (reconnecting with attempt counter), or red (disconnected with manual Reconnect button).
+
+On mobile, the app automatically recovers when returning from background: if hidden for more than 3 seconds the socket is force-reconnected, and if hidden for more than 5 minutes authentication is re-validated.
+
+If the connection doesn't recover:
 
 1. Check that the server is still running
-2. Refresh the browser
-3. Restart the server: `bmad-studio` or `npm start`
+2. Click the Reconnect button in the header (appears when disconnected)
+3. Refresh the browser
+4. Restart the server: `bmad-studio` or `npm start`
 
-### Port already in use
+### 15.5 Port already in use
+
+The server automatically retries up to 5 times (1 s intervals) when the port is in use. If it still fails:
 
 ```bash
 bmad-studio --port 3001
@@ -1050,15 +1355,16 @@ bmad-studio --port 3001
 
 Or set the environment variable: `PORT=3001 bmad-studio`
 
-### Terminal not available
+### 15.6 Terminal not available
 
 Terminal may be disabled when:
 
-- Accessing from an external network (security restriction)
-- `TERMINAL_ENABLED=false` is set
-- Enable it in Settings > Advanced > Terminal
+- Accessing from an external network (security restriction — only local IPs are allowed)
+- `TERMINAL_ENABLED=false` is set in environment
+- The toggle in Settings > Advanced > Terminal is off
+- Maximum terminal sessions reached (default 10, configurable via `MAX_TERMINAL_SESSIONS`)
 
-### Reset password
+### 15.7 Reset password
 
 If you forgot your password:
 
@@ -1066,25 +1372,26 @@ If you forgot your password:
 bmad-studio --reset-password
 ```
 
-This prompts you to set a new password.
+This prompts you to set a new password. Alternatively, delete `~/.bmad-studio/config.json` and restart the server to re-trigger the password setup flow in the browser.
 
-### Chat timeout
+### 15.8 Chat timeout
 
 If Claude's responses are timing out:
 
-1. Go to Settings > Chat Timeout
-2. Increase the timeout (up to 30 minutes)
-3. Complex tasks may need longer timeouts
+1. Go to **Settings > Global** and adjust the **Chat Timeout** dropdown
+2. Available values: 2 min, 5 min (default), 10 min, 20 min, 30 min
+3. Complex tasks (large codebases, multi-file edits) may need longer timeouts
+4. If the `CHAT_TIMEOUT_MS` environment variable is set, it overrides the UI setting (shown with an indicator)
 
-### Large file warning
+### 15.9 Large file warning
 
-Files over 1MB display a truncation warning. Consider:
+Files over 1 MB display a truncation warning. Consider:
 
 - Using the terminal to view large files
 - Opening in an external editor
 - Breaking large files into smaller ones
 
-### Data locations
+### 15.10 Data locations
 
 If you need to find or back up your data:
 
@@ -1092,6 +1399,6 @@ If you need to find or back up your data:
 |------|------|
 | App config & password | `~/.bmad-studio/config.json` |
 | User preferences | `~/.bmad-studio/preferences.json` |
-| Queue templates | `~/.bmad-studio/queue-templates.json` |
+| Queue templates | `<project-root>/.bmad-studio/queue-templates.json` (per project) |
 | Session data | `~/.claude/projects/` |
-| Server logs | `./logs/` (relative to working directory) |
+| Server logs | `./logs/server-YYYY-MM-DD.log` (relative to working directory, date-partitioned) |
