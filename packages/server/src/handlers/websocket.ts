@@ -203,7 +203,8 @@ function cleanupStream(streamKey: string) {
  */
 export function createHeadlessStream(
   sessionId: string,
-  abortController: AbortController
+  abortController: AbortController,
+  projectSlug?: string
 ): {
   stream: ActiveStream;
   emit: (event: string, data: unknown) => void;
@@ -230,6 +231,9 @@ export function createHeadlessStream(
     startedAt: Date.now(),
   };
   activeStreams.set(sessionId, stream);
+  if (projectSlug) {
+    sessionProjectMap.set(sessionId, projectSlug);
+  }
   for (const sock of sockets) {
     socketToSession.set(sock.id, sessionId);
   }
@@ -246,9 +250,14 @@ export function createHeadlessStream(
 export function rekeyStream(stream: ActiveStream, newSessionId: string): void {
   if (stream.sessionId === newSessionId) return;
   const oldSessionId = stream.sessionId;
+  const projectSlug = sessionProjectMap.get(oldSessionId);
   activeStreams.delete(oldSessionId);
   stream.sessionId = newSessionId;
   activeStreams.set(newSessionId, stream);
+  if (projectSlug) {
+    sessionProjectMap.delete(oldSessionId);
+    sessionProjectMap.set(newSessionId, projectSlug);
+  }
   for (const sock of stream.sockets) {
     socketToSession.set(sock.id, newSessionId);
     sock.leave(`session:${oldSessionId}`);
@@ -1093,15 +1102,7 @@ async function handleChatSend(
         stream,
         isResuming: !!isResuming,
         initialSessionId: sessionId,
-        rekeyStream: (sid) => {
-          // Story 20.1: Update session→project mapping on rekey
-          const projectSlug = sessionProjectMap.get(stream.sessionId);
-          rekeyStream(stream, sid);
-          if (projectSlug) {
-            sessionProjectMap.delete(stream.sessionId);
-            sessionProjectMap.set(sid, projectSlug);
-          }
-        },
+        rekeyStream: (sid) => rekeyStream(stream, sid),
         broadcastStreamChange,
         notificationService,
       },
