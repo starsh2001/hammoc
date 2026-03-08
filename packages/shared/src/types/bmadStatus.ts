@@ -21,7 +21,7 @@ export interface DirEntry {
 }
 
 /** Document existence status */
-export interface BmadDocumentStatus {
+interface BmadDocumentStatus {
   exists: boolean;
   path: string;
   /** Whether this document is sharded into multiple files */
