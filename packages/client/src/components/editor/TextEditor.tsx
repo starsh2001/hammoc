@@ -216,11 +216,11 @@ export function TextEditor() {
               <span className="text-xs font-bold text-amber-500 shrink-0">M</span>
             )}
           </div>
-          <div className="flex items-center gap-2 ml-3">
+          <div className="flex items-center gap-2 ml-3 shrink-0">
             {isMarkdownFile && (
               <button
                 onClick={toggleMarkdownPreview}
-                className="flex items-center gap-1 px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                className="flex items-center gap-1 px-3 py-1 text-sm font-medium whitespace-nowrap text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
                 title={isMarkdownPreview ? t('editor.editMode') : t('editor.previewLabel')}
                 aria-label={isMarkdownPreview ? t('editor.editMode') : t('editor.previewLabel')}
               >
@@ -241,7 +241,7 @@ export function TextEditor() {
               onClick={handleSave}
               disabled={!isDirty || isSaving}
               title={t('editor.saveShortcut')}
-              className="px-3 py-1 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1 text-sm font-medium whitespace-nowrap text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {isSaving ? t('editor.saving') : t('editor.save')}
             </button>
