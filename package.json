@@ -4,6 +4,10 @@
   "description": "Web-based IDE for managing Claude Code sessions, projects, and workflows",
   "type": "module",
   "license": "MIT",
+  "author": {
+    "name": "BMad",
+    "url": "https://github.com/bmad-artifacts"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/bmad-studio/bmad-studio.git"

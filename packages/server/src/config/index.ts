@@ -3,7 +3,41 @@
  * Story 4.6: Environment-based configuration for chat settings
  */
 
+import { readFileSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { LogLevel, parseLogLevel } from '@bmad-studio/shared';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Read root package.json for metadata (works in dev and npm install)
+function readPackageMeta() {
+  const pkgPath = path.resolve(__dirname, '..', '..', '..', '..', 'package.json');
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+    return {
+      name: pkg.name ?? 'bmad-studio',
+      version: pkg.version ?? '0.0.0',
+      description: pkg.description ?? '',
+      license: pkg.license ?? '',
+      author: typeof pkg.author === 'string' ? { name: pkg.author } : (pkg.author ?? {}),
+      repository: typeof pkg.repository === 'string'
+        ? { url: pkg.repository }
+        : (pkg.repository ?? {}),
+      homepage: pkg.homepage ?? '',
+    };
+  } catch {
+    return {
+      name: 'bmad-studio',
+      version: process.env.npm_package_version || '0.0.0',
+      description: '',
+      license: '',
+      author: {},
+      repository: {},
+      homepage: '',
+    };
+  }
+}
 
 /**
  * Server configuration object
@@ -73,6 +107,10 @@ export const config = {
     shellTimeout: parseInt(process.env.SHELL_TIMEOUT || '30000', 10),
     maxSessions: parseInt(process.env.MAX_TERMINAL_SESSIONS || '10', 10),
   },
+  /**
+   * Package metadata from root package.json
+   */
+  pkg: readPackageMeta(),
 } as const;
 
 export type Config = typeof config;

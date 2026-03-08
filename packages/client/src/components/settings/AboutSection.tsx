@@ -8,12 +8,34 @@ import { useTranslation } from 'react-i18next';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api/client';
 
-const GITHUB_ISSUES_URL = 'https://github.com/bmad-artifacts/bmad-studio/issues';
+interface PackageAuthor {
+  name?: string;
+  url?: string;
+}
+
+interface PackageRepository {
+  type?: string;
+  url?: string;
+}
 
 interface HealthResponse {
   status: string;
   version: string;
+  description: string;
+  license: string;
+  author: PackageAuthor;
+  repository: PackageRepository;
+  homepage: string;
   timestamp: string;
+}
+
+function getGithubIssuesUrl(repository: PackageRepository): string | null {
+  const url = repository.url;
+  if (!url) return null;
+  // Convert git URL to GitHub issues URL
+  const match = url.match(/github\.com[/:](.+?)(?:\.git)?$/);
+  if (!match) return null;
+  return `https://github.com/${match[1]}/issues`;
 }
 
 export function AboutSection() {
@@ -39,31 +61,60 @@ export function AboutSection() {
     fetchHealth();
   }, [fetchHealth]);
 
+  const issuesUrl = health ? getGithubIssuesUrl(health.repository) : null;
+  const authorUrl = health?.author?.url;
+
   return (
     <div className="space-y-6">
       {/* App info */}
       <div className="text-center py-4">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white">BMad Studio</h3>
         {health && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">v{health.version}</p>
+          <>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">v{health.version}</p>
+            {health.description && (
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">{health.description}</p>
+            )}
+            {health.author?.name && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                Made by{' '}
+                {authorUrl ? (
+                  <a
+                    href={authorUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {health.author.name}
+                  </a>
+                ) : (
+                  health.author.name
+                )}
+              </p>
+            )}
+            {health.license && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{health.license} License</p>
+            )}
+          </>
         )}
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Made by BMad</p>
       </div>
 
       {/* Contact link */}
-      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('about.issuesAndSuggestions')}</h3>
-        <a
-          href={GITHUB_ISSUES_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={t('about.githubIssuesAriaLabel')}
-          className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          GitHub Issues
-          <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
-        </a>
-      </div>
+      {issuesUrl && (
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('about.issuesAndSuggestions')}</h3>
+          <a
+            href={issuesUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t('about.githubIssuesAriaLabel')}
+            className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            GitHub Issues
+            <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+          </a>
+        </div>
+      )}
 
       {/* Server status */}
       <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">

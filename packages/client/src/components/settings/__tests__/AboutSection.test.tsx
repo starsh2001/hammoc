@@ -18,6 +18,11 @@ vi.mock('../../../services/api/client', () => ({
 const mockHealthResponse = {
   status: 'healthy',
   version: '1.0.0',
+  description: 'Web-based IDE for managing Claude Code sessions',
+  license: 'MIT',
+  author: { name: 'BMad', url: 'https://github.com/bmad-artifacts' },
+  repository: { type: 'git', url: 'https://github.com/bmad-studio/bmad-studio.git' },
+  homepage: '',
   timestamp: '2026-02-17T12:00:00.000Z',
 };
 
@@ -57,18 +62,19 @@ describe('AboutSection', () => {
     expect(indicator.className).toContain('bg-green-500');
   });
 
-  it('TC-A4: GitHub Issues link has correct URL and target', async () => {
+  it('TC-A4: GitHub Issues link has correct URL derived from repository', async () => {
     mockGet.mockResolvedValueOnce(mockHealthResponse);
     render(<AboutSection />);
 
-    const link = screen.getByLabelText('GitHub Issues 페이지로 이동 (새 탭)') as HTMLAnchorElement;
-    expect(link.href).toBe('https://github.com/bmad-artifacts/bmad-studio/issues');
-    expect(link.target).toBe('_blank');
-    expect(link.rel).toContain('noopener');
-    expect(link.rel).toContain('noreferrer');
     await waitFor(() => {
       expect(screen.getByText('v1.0.0')).toBeInTheDocument();
     });
+
+    const link = screen.getByLabelText('GitHub Issues 페이지로 이동 (새 탭)') as HTMLAnchorElement;
+    expect(link.href).toBe('https://github.com/bmad-studio/bmad-studio/issues');
+    expect(link.target).toBe('_blank');
+    expect(link.rel).toContain('noopener');
+    expect(link.rel).toContain('noreferrer');
   });
 
   it('TC-A5: shows error message and retry button on fetch failure', async () => {
