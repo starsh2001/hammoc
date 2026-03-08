@@ -1,0 +1,59 @@
+#!/usr/bin/env node
+
+// BMad Studio CLI entry point
+// Usage: bmad-studio [options]
+//   --port <number>   Port to listen on (default: 3000)
+//   --host <string>   Host to bind to (default: 0.0.0.0)
+//   --reset-password  Reset the admin password
+//   --help            Show this help message
+
+import { fileURLToPath, pathToFileURL } from 'url';
+import { readFileSync } from 'fs';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Parse CLI arguments
+const args = process.argv.slice(2);
+
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(`
+  BMad Studio - Claude Code Session Manager
+
+  Usage: bmad-studio [options]
+
+  Options:
+    --port <number>   Port to listen on (default: 3000, env: PORT)
+    --host <string>   Host to bind to (default: 0.0.0.0, env: HOST)
+    --reset-password  Reset the admin password
+    -h, --help        Show this help message
+    -v, --version     Show version number
+  `);
+  process.exit(0);
+}
+
+if (args.includes('--version') || args.includes('-v')) {
+  const pkgPath = path.resolve(__dirname, '..', 'package.json');
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+  console.log(pkg.version);
+  process.exit(0);
+}
+
+// Map CLI args to environment variables (before importing server)
+const portIndex = args.indexOf('--port');
+if (portIndex !== -1 && args[portIndex + 1]) {
+  process.env.PORT = args[portIndex + 1];
+}
+
+const hostIndex = args.indexOf('--host');
+if (hostIndex !== -1 && args[hostIndex + 1]) {
+  process.env.HOST = args[hostIndex + 1];
+}
+
+// Always run in production mode
+process.env.NODE_ENV = 'production';
+
+// Start the server
+const serverEntry = path.resolve(__dirname, '..', 'packages', 'server', 'dist', 'index.js');
+await import(pathToFileURL(serverEntry).href);
