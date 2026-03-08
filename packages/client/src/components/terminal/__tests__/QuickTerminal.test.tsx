@@ -14,6 +14,7 @@ const mockCreate = vi.fn();
 const mockClose = vi.fn();
 const mockCloseById = vi.fn();
 const mockSwitchTerminal = vi.fn();
+const mockListTerminals = vi.fn();
 
 let mockUseTerminalReturn: UseTerminalReturn;
 
@@ -59,6 +60,7 @@ describe('QuickTerminal', () => {
       close: mockClose,
       closeById: mockCloseById,
       switchTerminal: mockSwitchTerminal,
+      listTerminals: mockListTerminals,
     };
   });
 

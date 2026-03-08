@@ -86,6 +86,15 @@ vi.mock('../../stores/sessionStore', () => ({
     fetchSessions: vi.fn(),
     clearSessions: vi.fn(),
     clearError: vi.fn(),
+    clearSearch: vi.fn(),
+    searchQuery: '',
+    isSearching: false,
+    searchContent: false,
+    hasMore: false,
+    isLoadingMore: false,
+    loadMoreSessions: vi.fn(),
+    searchSessions: vi.fn(),
+    resetSearchState: vi.fn(),
   })),
 }));
 
@@ -146,6 +155,15 @@ describe('ChatPage', () => {
       fetchSessions: vi.fn(),
       clearSessions: vi.fn(),
       clearError: vi.fn(),
+      clearSearch: vi.fn(),
+      searchQuery: '',
+      isSearching: false,
+      searchContent: false,
+      hasMore: false,
+      isLoadingMore: false,
+      loadMoreSessions: vi.fn(),
+      searchSessions: vi.fn(),
+      resetSearchState: vi.fn(),
     } as ReturnType<typeof useSessionStore>);
     useChatStore.setState({
       isStreaming: false,

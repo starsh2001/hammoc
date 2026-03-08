@@ -35,6 +35,12 @@ import yaml from 'js-yaml';
 
 const PROJECT_ROOT = '/test/project';
 
+function makeEnoent(message = 'ENOENT'): NodeJS.ErrnoException {
+  const err: NodeJS.ErrnoException = new Error(message);
+  err.code = 'ENOENT';
+  return err;
+}
+
 const VALID_CONFIG_YAML = `
 prd:
   prdFile: docs/prd.md
@@ -92,7 +98,7 @@ describe('bmadStatusService', () => {
 
   // TC-BS-1: BMad 프로젝트가 아니면 NOT_BMAD_PROJECT 에러를 throw한다
   it('throws NOT_BMAD_PROJECT when core-config.yaml not found', async () => {
-    mockReadFile.mockRejectedValue(new Error('ENOENT'));
+    mockReadFile.mockRejectedValue(makeEnoent());
 
     await expect(bmadStatusService.scanProject(PROJECT_ROOT)).rejects.toMatchObject({
       code: 'NOT_BMAD_PROJECT',
@@ -104,10 +110,10 @@ describe('bmadStatusService', () => {
     (yaml.load as ReturnType<typeof vi.fn>).mockReturnValue(VALID_CONFIG_PARSED);
     mockReadFile.mockImplementation(async (filePath: string) => {
       if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockStat.mockRejectedValue(new Error('ENOENT'));
-    mockReaddir.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
+    mockReaddir.mockRejectedValue(makeEnoent());
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
@@ -146,9 +152,9 @@ describe('bmadStatusService', () => {
     mockStat.mockImplementation(async (p: string) => {
       if (p === path.join(PROJECT_ROOT, 'docs/prd.md')) return { isFile: () => true };
       if (p === path.join(PROJECT_ROOT, 'docs/architecture.md')) return { isFile: () => true };
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockReaddir.mockRejectedValue(new Error('ENOENT'));
+    mockReaddir.mockRejectedValue(makeEnoent());
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
@@ -162,8 +168,8 @@ describe('bmadStatusService', () => {
       architecture: { architectureFile: 'docs/architecture.md', architectureSharded: false },
     });
     mockReadFile.mockResolvedValue(VALID_CONFIG_YAML);
-    mockStat.mockRejectedValue(new Error('ENOENT'));
-    mockReaddir.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
+    mockReaddir.mockRejectedValue(makeEnoent());
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
@@ -179,9 +185,9 @@ describe('bmadStatusService', () => {
     mockReadFile.mockResolvedValue(VALID_CONFIG_YAML);
     mockStat.mockImplementation(async (p: string) => {
       if (p === path.join(PROJECT_ROOT, 'docs/architecture.md')) return {};
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockReaddir.mockRejectedValue(new Error('ENOENT'));
+    mockReaddir.mockRejectedValue(makeEnoent());
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
@@ -198,9 +204,9 @@ describe('bmadStatusService', () => {
     mockStat.mockImplementation(async (p: string) => {
       if (p === path.join(PROJECT_ROOT, 'docs/prd')) return { isDirectory: () => true };
       if (p === path.join(PROJECT_ROOT, 'docs/architecture')) return { isDirectory: () => true };
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockReaddir.mockRejectedValue(new Error('ENOENT'));
+    mockReaddir.mockRejectedValue(makeEnoent());
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
@@ -229,12 +235,12 @@ describe('bmadStatusService', () => {
       if (p.startsWith(storyDir + path.sep) || p.startsWith(qaDir + path.sep)) {
         return { isDirectory: () => false };
       }
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
     mockReaddir.mockImplementation(async (dir: string) => {
       if (dir === storyDir) return ['1.1.story.md', '1.2.story.md', 'notes.txt'];
       if (dir === qaDir) return ['qa-report.md', 'qa-log.md'];
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
@@ -254,8 +260,8 @@ describe('bmadStatusService', () => {
       qa: { qaLocation: 'docs/qa' },
     });
     mockReadFile.mockResolvedValue(VALID_CONFIG_YAML);
-    mockStat.mockRejectedValue(new Error('ENOENT'));
-    mockReaddir.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
+    mockReaddir.mockRejectedValue(makeEnoent());
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
@@ -276,13 +282,13 @@ describe('bmadStatusService', () => {
       if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
       if (filePath.includes('prd.md'))
         return '## Epic 1: Foundation\n\n## Epic 2: Auth\n';
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockStat.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
     mockReaddir.mockImplementation(async (dir: string) => {
       if (dir === path.join(PROJECT_ROOT, 'docs/stories'))
         return ['1.1.story.md', '1.2.story.md', '2.1.story.md'];
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
 
     // Mock extractStoryStatus via open
@@ -309,12 +315,12 @@ describe('bmadStatusService', () => {
     mockReadFile.mockImplementation(async (filePath: string) => {
       if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
       if (filePath.includes('prd.md')) return '## Epic 1: Foundation\n';
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockStat.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
     mockReaddir.mockImplementation(async (dir: string) => {
       if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return ['1.1.story.md'];
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
 
     setupOpenMock('# Story 1.1\n\n## Status\n\nApproved\n');
@@ -334,12 +340,12 @@ describe('bmadStatusService', () => {
     mockReadFile.mockImplementation(async (filePath: string) => {
       if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
       if (filePath.includes('prd.md')) return '## Epic 1: Foundation\n';
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockStat.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
     mockReaddir.mockImplementation(async (dir: string) => {
       if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return ['1.1.story.md'];
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
 
     setupOpenMock('# Story 1.1\n\n## Status\n\nReady for Review\n');
@@ -359,12 +365,12 @@ describe('bmadStatusService', () => {
     mockReadFile.mockImplementation(async (filePath: string) => {
       if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
       if (filePath.includes('prd.md')) return '## Epic 1: Foundation\n';
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockStat.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
     mockReaddir.mockImplementation(async (dir: string) => {
       if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return ['1.1.story.md'];
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
 
     setupOpenMock('# Story without status section\nSome content\n');
@@ -385,20 +391,20 @@ describe('bmadStatusService', () => {
       if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
       if (filePath.includes('prd.md'))
         return '## Epic 1: Foundation\n\n### Epic 2: Authentication\n\n## Epic 3: Dashboard\n';
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockStat.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
     mockReaddir.mockImplementation(async (dir: string) => {
       if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return [];
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
     expect(result.epics).toEqual([
-      { number: 1, name: 'Foundation', stories: [] },
-      { number: 2, name: 'Authentication', stories: [] },
-      { number: 3, name: 'Dashboard', stories: [] },
+      { number: 1, name: 'Foundation', stories: [], filePath: 'docs/prd.md' },
+      { number: 2, name: 'Authentication', stories: [], filePath: 'docs/prd.md' },
+      { number: 3, name: 'Dashboard', stories: [], filePath: 'docs/prd.md' },
     ]);
   });
 
@@ -411,21 +417,21 @@ describe('bmadStatusService', () => {
         return '# Epic 1: Foundation & Core Infrastructure\n\nSome content';
       if (filePath.endsWith('epic-2-auth.md'))
         return '## Epic 2: Authentication\n\nAuth details';
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockStat.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
     mockReaddir.mockImplementation(async (dir: string) => {
       if (dir === path.join(PROJECT_ROOT, 'docs/prd'))
         return ['epic-1-foundation.md', 'epic-2-auth.md', 'index.md', 'overview.md'];
       if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return [];
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
     expect(result.epics.length).toBe(2);
-    expect(result.epics[0]).toEqual({ number: 1, name: 'Foundation & Core Infrastructure', stories: [] });
-    expect(result.epics[1]).toEqual({ number: 2, name: 'Authentication', stories: [] });
+    expect(result.epics[0]).toEqual({ number: 1, name: 'Foundation & Core Infrastructure', stories: [], filePath: 'docs/prd/epic-1-foundation.md' });
+    expect(result.epics[1]).toEqual({ number: 2, name: 'Authentication', stories: [], filePath: 'docs/prd/epic-2-auth.md' });
   });
 
   // TC-BS-16: Sharded PRD Step 2 — epicFilePattern 매칭 실패 시 전체 .md 스캔 폴백
@@ -447,21 +453,21 @@ describe('bmadStatusService', () => {
       if (filePath.endsWith('6-epic-details.md'))
         return '## Epic 1: Foundation\n\nContent\n\n## Epic 2: Authentication\n\nMore content\n';
       if (filePath.endsWith('index.md')) return '# PRD Index\nNo epic headers here\n';
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockStat.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
     mockReaddir.mockImplementation(async (dir: string) => {
       if (dir === path.join(PROJECT_ROOT, 'docs/prd'))
         return ['index.md', '6-epic-details.md'];
       if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return [];
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
     expect(result.epics.length).toBe(2);
-    expect(result.epics[0]).toEqual({ number: 1, name: 'Foundation', stories: [] });
-    expect(result.epics[1]).toEqual({ number: 2, name: 'Authentication', stories: [] });
+    expect(result.epics[0]).toEqual({ number: 1, name: 'Foundation', stories: [], filePath: 'docs/prd/6-epic-details.md' });
+    expect(result.epics[1]).toEqual({ number: 2, name: 'Authentication', stories: [], filePath: 'docs/prd/6-epic-details.md' });
   });
 
   // TC-BS-14: 스토리 파일이 없는 에픽도 빈 stories 배열로 반환한다
@@ -475,12 +481,12 @@ describe('bmadStatusService', () => {
       if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
       if (filePath.includes('prd.md'))
         return '## Epic 5: Future Feature\n## Epic 6: Another Feature\n';
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
-    mockStat.mockRejectedValue(new Error('ENOENT'));
+    mockStat.mockRejectedValue(makeEnoent());
     mockReaddir.mockImplementation(async (dir: string) => {
       if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return [];
-      throw new Error('ENOENT');
+      throw makeEnoent();
     });
 
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);

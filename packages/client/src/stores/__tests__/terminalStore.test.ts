@@ -260,8 +260,8 @@ describe('terminalStore', () => {
 
     useTerminalStore.getState().clearTerminalsForProjectChange('new-project');
 
-    expect(mockSocket.emit).toHaveBeenCalledWith('terminal:close', { terminalId: 'term-1' });
-    expect(mockSocket.emit).toHaveBeenCalledWith('terminal:close', { terminalId: 'term-2' });
+    // Client state cleared only — server terminals persist per project
+    expect(mockSocket.emit).not.toHaveBeenCalled();
     expect(useTerminalStore.getState().terminals.size).toBe(0);
     expect(useTerminalStore.getState().activeTerminalId).toBeNull();
     expect(useTerminalStore.getState().currentProjectSlug).toBe('new-project');
@@ -293,13 +293,14 @@ describe('terminalStore', () => {
   // TC-TERM-S11: cleanupTerminalListeners removes socket handlers
   it('cleanupTerminalListeners removes all socket event handlers', () => {
     useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
-    expect(mockSocket.on).toHaveBeenCalledTimes(5);
+    expect(mockSocket.on).toHaveBeenCalledTimes(6);
 
     // Clear mock counts from setup (which internally calls cleanup first)
     mockSocket.off.mockClear();
 
     useTerminalStore.getState().cleanupTerminalListeners(mockSocket as any);
-    expect(mockSocket.off).toHaveBeenCalledTimes(5);
+    expect(mockSocket.off).toHaveBeenCalledTimes(6);
+    expect(mockSocket.off).toHaveBeenCalledWith('terminal:list', expect.any(Function));
     expect(mockSocket.off).toHaveBeenCalledWith('terminal:access', expect.any(Function));
     expect(mockSocket.off).toHaveBeenCalledWith('terminal:created', expect.any(Function));
     expect(mockSocket.off).toHaveBeenCalledWith('terminal:data', expect.any(Function));

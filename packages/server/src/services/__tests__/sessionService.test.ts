@@ -45,9 +45,12 @@ const mockSessionsIndex = {
 describe('SessionService', () => {
   let service: SessionService;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     service = new SessionService();
     vi.clearAllMocks();
+    // Restore existsSync default (resetAllMocks in afterEach clears factory impl)
+    const { existsSync } = await import('fs');
+    vi.mocked(existsSync).mockReturnValue(true);
   });
 
   afterEach(() => {
