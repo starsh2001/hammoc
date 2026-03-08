@@ -28,6 +28,7 @@ import serverRoutes from './routes/server.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 import { i18nMiddleware } from './middleware/i18n.js';
+import { config } from './config/index.js';
 import { createLogger } from './utils/logger.js';
 
 // Initialize server i18n (Epic 22)
@@ -69,11 +70,17 @@ export async function createApp(): Promise<Express> {
     res.json({ status: 'ok' });
   });
 
-  // API health endpoint (for client)
+  // API health endpoint (for client) - includes package metadata
   app.get('/api/health', (_req: Request, res: Response) => {
+    const { pkg } = config;
     res.json({
       status: 'healthy',
-      version: process.env.npm_package_version || '1.0.0',
+      version: pkg.version,
+      description: pkg.description,
+      license: pkg.license,
+      author: pkg.author,
+      repository: pkg.repository,
+      homepage: pkg.homepage,
       timestamp: new Date().toISOString(),
     });
   });
