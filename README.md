@@ -4,6 +4,8 @@ A web-based IDE for managing [Claude Code](https://docs.anthropic.com/en/docs/cl
 
 > **BMad Studio** turns Claude Code into a full-featured development environment — accessible from any browser, including mobile devices.
 
+> **[Full User Manual](docs/MANUAL.md)** — Detailed A-to-Z guide for every feature.
+
 ## Quick Start
 
 ### Prerequisites
