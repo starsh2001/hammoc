@@ -311,10 +311,12 @@ BMad Studio stores data in the following locations:
 | `PORT` | `3000` | Server port |
 | `HOST` | `0.0.0.0` | Bind address |
 | `NODE_ENV` | — | Set to `production` for optimized mode |
-| `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout (ms) |
-| `TERMINAL_ENABLED` | `true` | Enable/disable terminal feature |
-| `MAX_TERMINAL_SESSIONS` | `10` | Maximum concurrent terminal sessions |
+| `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout in milliseconds |
+| `CORS_ORIGIN` | `true` | CORS origin policy |
 | `LOG_LEVEL` | `INFO`/`DEBUG` | Logging: ERROR, WARN, INFO, DEBUG, VERBOSE |
+| `TERMINAL_ENABLED` | `true` | Enable/disable terminal feature |
+| `SHELL_TIMEOUT` | `30000` | Terminal idle timeout in milliseconds |
+| `MAX_TERMINAL_SESSIONS` | `10` | Maximum concurrent terminal sessions |
 | `TELEGRAM_BOT_TOKEN` | — | Telegram bot token for notifications |
 | `TELEGRAM_CHAT_ID` | — | Telegram chat ID for notifications |
 
