@@ -5,12 +5,12 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock ChatService constructor
+// Mock ChatService constructor — must use regular function (not arrow) for `new`
 const mockSendMessageWithCallbacks = vi.fn();
 vi.mock('../chatService.js', () => ({
-  ChatService: vi.fn().mockImplementation(() => ({
-    sendMessageWithCallbacks: mockSendMessageWithCallbacks,
-  })),
+  ChatService: vi.fn().mockImplementation(function (this: any) {
+    this.sendMessageWithCallbacks = mockSendMessageWithCallbacks;
+  }),
 }));
 
 // Mock errors utility
@@ -19,6 +19,81 @@ vi.mock('../../utils/errors.js', () => ({
     if (error instanceof Error) return error;
     return new Error(String(error));
   },
+}));
+
+// Mock i18next — getFixedT returns a translator that maps keys to readable English
+vi.mock('../../i18n.js', () => ({
+  default: {
+    getFixedT: () => (key: string, opts?: Record<string, unknown>) => {
+      // Map known keys to English strings matching test assertions
+      const translations: Record<string, string> = {
+        'queue.pause.userPaused': 'User paused',
+        'queue.pause.waitingForPermission': `Waiting for ${opts?.value || 'input'} (${opts?.toolName || 'tool'})`,
+        'queue.pause.userAnswer': 'user answer',
+        'queue.pause.permissionApproval': 'permission approval',
+        'queue.error.sdkError': `SDK Error: ${opts?.value || 'unknown'}`,
+        'queue.error.queueStopDetected': 'QUEUE_STOP detected in response',
+        'queue.error.sessionNotFound': `Session not found: ${opts?.value || 'unknown'}`,
+        'queue.error.sessionBusy': 'Session is busy',
+      };
+      return translations[key] || (opts?.value ? `${key}: ${opts.value}` : key);
+    },
+  },
+}));
+
+// Mock logger to suppress output
+vi.mock('../../utils/logger.js', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    verbose: vi.fn(),
+  }),
+}));
+
+// Mock streamCallbacks — buildStreamCallbacks wires hooks so chunk collection works
+vi.mock('../../handlers/streamCallbacks.js', () => ({
+  buildStreamCallbacks: vi.fn().mockImplementation((_deps: any, hooks?: any) => {
+    const sessionIdRef = { current: undefined as string | undefined };
+    const callbacks = {
+      onSessionInit: vi.fn(),
+      // onTextChunk must invoke onTextChunkReceived hook for QUEUE_STOP/QUEUE_PASS marker detection
+      onTextChunk: vi.fn().mockImplementation((chunk: any) => {
+        hooks?.onTextChunkReceived?.(chunk);
+      }),
+      onThinking: vi.fn(),
+      onToolUse: vi.fn(),
+      onToolInputUpdate: vi.fn(),
+      onToolResult: vi.fn(),
+      onCompact: vi.fn(),
+      onToolProgress: vi.fn(),
+      onTaskNotification: vi.fn(),
+      onToolUseSummary: vi.fn(),
+      onAssistantUsage: vi.fn(),
+      onContextEstimate: vi.fn(),
+      onResultError: vi.fn(),
+      onComplete: vi.fn(),
+      onError: vi.fn(),
+    };
+    return { callbacks, sessionIdRef };
+  }),
+}));
+
+// Mock notificationService module import (for formatAskQuestionPrompt)
+vi.mock('../notificationService.js', () => ({
+  notificationService: {},
+  formatAskQuestionPrompt: vi.fn().mockReturnValue('mocked question prompt'),
+}));
+
+// Mock projectService module import
+vi.mock('../projectService.js', () => ({
+  projectService: {},
+}));
+
+// Mock preferencesService module import
+vi.mock('../preferencesService.js', () => ({
+  preferencesService: {},
 }));
 
 // Mock websocket exports used by QueueService (ActiveStream pattern)
@@ -36,6 +111,7 @@ vi.mock('../../handlers/websocket.js', () => ({
     };
     return { stream, emit: vi.fn() };
   }),
+  isSessionStreaming: vi.fn().mockReturnValue(false),
   rekeyStream: vi.fn(),
   finalizeStream: vi.fn(),
   broadcastStreamChange: vi.fn(),
@@ -57,6 +133,7 @@ const mockNotificationService = {
   notifyComplete: vi.fn(),
   notifyError: vi.fn(),
   notifyInputRequired: vi.fn(),
+  shouldNotify: vi.fn().mockReturnValue(false),
   reload: vi.fn().mockResolvedValue(undefined),
   getBaseUrl: vi.fn().mockReturnValue(''),
 };

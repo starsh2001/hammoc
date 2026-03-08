@@ -92,6 +92,7 @@ describe('CommandService', () => {
 
     it('should return BUILTIN_COMMANDS when .bmad-core directory does not exist', async () => {
       mockFs.stat.mockRejectedValue(new Error('ENOENT'));
+      mockFs.readdir.mockResolvedValue([] as any);
 
       const result = await commandService.getCommands('test-slug');
       expect(result).toHaveLength(1);

@@ -196,7 +196,7 @@ describe('TextEditor', () => {
 
     await renderAndWaitForEditor(<TextEditor />);
 
-    const panel = document.querySelector('.fixed.inset-0.z-50');
+    const panel = document.querySelector('.fixed.inset-0.z-\\[60\\]');
     expect(panel).not.toBeNull();
   });
 
