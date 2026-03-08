@@ -21,7 +21,7 @@ const mockHealthResponse = {
   description: 'Web-based IDE for managing Claude Code sessions',
   license: 'MIT',
   author: { name: 'BMad', url: 'https://github.com/bmad-artifacts' },
-  repository: { type: 'git', url: 'https://github.com/bmad-studio/bmad-studio.git' },
+  repository: { type: 'git', url: 'https://github.com/starsh2001/bmad-studio.git' },
   homepage: '',
   timestamp: '2026-02-17T12:00:00.000Z',
 };
@@ -71,7 +71,7 @@ describe('AboutSection', () => {
     });
 
     const link = screen.getByLabelText('GitHub Issues 페이지로 이동 (새 탭)') as HTMLAnchorElement;
-    expect(link.href).toBe('https://github.com/bmad-studio/bmad-studio/issues');
+    expect(link.href).toBe('https://github.com/starsh2001/bmad-studio/issues');
     expect(link.target).toBe('_blank');
     expect(link.rel).toContain('noopener');
     expect(link.rel).toContain('noreferrer');
