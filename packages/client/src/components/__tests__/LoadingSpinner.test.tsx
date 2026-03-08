@@ -46,10 +46,10 @@ describe('LoadingSpinner', () => {
       expect(screen.getByRole('status')).toBeInTheDocument();
     });
 
-    it('should have aria-label="Loading"', () => {
+    it('should have aria-label for loading', () => {
       render(<LoadingSpinner />);
 
-      expect(screen.getByLabelText('Loading')).toBeInTheDocument();
+      expect(screen.getByLabelText('로딩 중')).toBeInTheDocument();
     });
   });
 

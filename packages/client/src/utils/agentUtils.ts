@@ -50,9 +50,10 @@ export interface AgentGroup {
 const PLANNING_ORDER = ['analyst', 'pm', 'ux-expert', 'architect'];
 const IMPLEMENTATION_ORDER = ['sm', 'po', 'dev', 'qa'];
 
-// Description overrides per agent ID (null = suppress description)
-const DESCRIPTION_OVERRIDES: Record<string, string | null> = {
-  'qa': 'Quality Advisor',
+// Description override i18n keys per agent ID (null = suppress description)
+// Values are i18n keys resolved by the consumer component via t()
+const DESCRIPTION_OVERRIDE_KEYS: Record<string, string | null> = {
+  'qa': 'agent.qaDescription',
   'bmad-master': null,
   'bmad-orchestrator': null,
 };
@@ -60,17 +61,18 @@ const DESCRIPTION_OVERRIDES: Record<string, string | null> = {
 /**
  * Get the display description for an agent, applying overrides.
  * Returns null if the description should be hidden.
+ * When an i18n key is returned (starts with 'agent.'), the consumer should resolve via t().
  */
 export function getAgentDescription(agent: SlashCommand): string | null {
   const id = getAgentId(agent.command);
-  if (id in DESCRIPTION_OVERRIDES) return DESCRIPTION_OVERRIDES[id];
+  if (id in DESCRIPTION_OVERRIDE_KEYS) return DESCRIPTION_OVERRIDE_KEYS[id];
   return agent.description ?? null;
 }
 
 /**
  * Categorize agents into workflow-phase groups: Planning → Implementation → Other.
  * Within each group, agents follow a predefined order.
- * Unknown agents go to "기타" (Other).
+ * Unknown agents go to "Other".
  */
 export function categorizeAgents(agents: SlashCommand[]): AgentGroup[] {
   const planningAgents: SlashCommand[] = [];
@@ -96,9 +98,9 @@ export function categorizeAgents(agents: SlashCommand[]): AgentGroup[] {
   sortByOrder(implAgents, IMPLEMENTATION_ORDER);
 
   const groups: AgentGroup[] = [];
-  if (planningAgents.length > 0) groups.push({ label: 'Planning', testId: 'bmad-group-planning', agents: planningAgents });
-  if (implAgents.length > 0) groups.push({ label: 'Implementation', testId: 'bmad-group-implementation', agents: implAgents });
-  if (otherAgents.length > 0) groups.push({ label: 'Other', testId: 'bmad-group-other', agents: otherAgents });
+  if (planningAgents.length > 0) groups.push({ label: 'agent.groupPlanning', testId: 'bmad-group-planning', agents: planningAgents });
+  if (implAgents.length > 0) groups.push({ label: 'agent.groupImplementation', testId: 'bmad-group-implementation', agents: implAgents });
+  if (otherAgents.length > 0) groups.push({ label: 'agent.groupOther', testId: 'bmad-group-other', agents: otherAgents });
 
   return groups;
 }

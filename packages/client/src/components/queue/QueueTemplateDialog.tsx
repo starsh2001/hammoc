@@ -21,10 +21,10 @@ interface QueueTemplateDialogProps {
 
 type TemplateSource = 'input' | 'file' | 'saved';
 
-const sourceLabels: Record<TemplateSource, string> = {
-  input: '직접 입력',
-  file: '파일',
-  saved: '저장됨',
+const sourceKeys: Record<TemplateSource, string> = {
+  input: 'queue.sourceInput',
+  file: 'queue.sourceFile',
+  saved: 'queue.sourceSaved',
 };
 
 export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: QueueTemplateDialogProps) {
@@ -334,7 +334,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
                   >
-                    {sourceLabels[source]}
+                    {t(sourceKeys[source])}
                   </button>
                 ))}
               </div>

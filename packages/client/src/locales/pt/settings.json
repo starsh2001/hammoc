@@ -13,13 +13,15 @@
       "plan": "Planejar",
       "default": "Perguntar antes de editar",
       "acceptEdits": "Editar automaticamente",
-      "bypass": "Bypass"
+      "bypass": "Ignorar",
+      "latest": "Último usado"
     },
     "permissionDesc": {
       "plan": "Sugere um plano antes de alterar o código",
       "default": "Sempre pede confirmação antes de editar arquivos",
       "acceptEdits": "Realiza edições de arquivos automaticamente",
-      "bypass": "Ignora todas as verificações de permissão (incluindo Bash)"
+      "bypass": "Ignora todas as verificações de permissão (incluindo Bash)",
+      "latest": "Novas sessões mantêm o modo de permissão da sessão anterior"
     },
     "markdownMode": "Modo de abertura de arquivos Markdown",
     "markdownOption": {
@@ -184,7 +186,10 @@
     "statusHealthy": "Saudável",
     "statusUnhealthy": "Não saudável",
     "version": "Versão",
-    "serverTime": "Hora do servidor"
+    "serverTime": "Hora do servidor",
+    "madeBy": "Feito por",
+    "license": "Licença {{name}}",
+    "githubIssuesLink": "GitHub Issues"
   },
   "help": {
     "basicChat": "Uso básico do chat",

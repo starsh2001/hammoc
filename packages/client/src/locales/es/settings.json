@@ -13,13 +13,15 @@
       "plan": "Planificar",
       "default": "Preguntar antes de editar",
       "acceptEdits": "Editar automáticamente",
-      "bypass": "Omitir"
+      "bypass": "Omitir",
+      "latest": "Último usado"
     },
     "permissionDesc": {
       "plan": "Sugiere un plan antes de realizar cambios en el código",
       "default": "Siempre pide confirmación antes de editar archivos",
       "acceptEdits": "Realiza ediciones de archivos automáticamente",
-      "bypass": "Omite todas las verificaciones de permisos (incluyendo Bash)"
+      "bypass": "Omite todas las verificaciones de permisos (incluyendo Bash)",
+      "latest": "Las nuevas sesiones mantienen el modo de permiso de la sesión anterior"
     },
     "markdownMode": "Modo de apertura de archivos Markdown",
     "markdownOption": {
@@ -118,7 +120,7 @@
   "confirm": {
     "serverRestart": "Esto recompilará y reiniciará el servidor. ¿Continuar?",
     "updateVersion": "Esto actualizará a v{{version}} y reiniciará el servidor. ¿Continuar?",
-    "resetAllSettings": "Restablecer toda la configuración del proyecto.\n\n\u2022 Se eliminarán las anulaciones de modelo/modo de permisos\n\u2022 Se deshabilitará la ocultación del proyecto\n\n¿Continuar?"
+    "resetAllSettings": "Restablecer toda la configuración del proyecto.\n\n• Se eliminarán las anulaciones de modelo/modo de permisos\n• Se deshabilitará la ocultación del proyecto\n\n¿Continuar?"
   },
   "telegram": {
     "loadError": "Ocurrió un error al cargar la configuración de Telegram.",
@@ -184,7 +186,10 @@
     "statusHealthy": "Saludable",
     "statusUnhealthy": "No saludable",
     "version": "Versión",
-    "serverTime": "Hora del servidor"
+    "serverTime": "Hora del servidor",
+    "madeBy": "Creado por",
+    "license": "Licencia {{name}}",
+    "githubIssuesLink": "GitHub Issues"
   },
   "help": {
     "basicChat": "Uso básico del chat",

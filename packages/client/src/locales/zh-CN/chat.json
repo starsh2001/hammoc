@@ -24,7 +24,13 @@
     "sessionLocked": "会话已锁定",
     "abort": "中止",
     "addToChain": "添加到链",
-    "send": "发送"
+    "send": "发送",
+    "lockedOtherBrowser": "正在另一个浏览器中使用 — 刷新以使用",
+    "queueControlled": "队列运行器正在控制中",
+    "chainFull": "链最多 5 个",
+    "chainAdd": "添加到链...",
+    "ariaLabel": "消息输入",
+    "promptChainTitle": "提示链"
   },
   "chainMode": {
     "off": "关闭链式模式",
@@ -133,14 +139,16 @@
       "title": "删除空会话",
       "message": "删除 {{count}} 个空会话？会话文件将被永久删除。"
     },
-    "searchPlaceholder": "Search sessions...",
-    "searchContent": "Search conversation content",
-    "searchContentHint": "Searches message text (may be slower)",
-    "searchNoResults": "No sessions found",
-    "searching": "Searching...",
-    "searchError": "Search failed. Please try again.",
-    "searchContentCap": "Content search covers up to 100 sessions",
-    "clearSearch": "Clear search"
+    "searchPlaceholder": "搜索会话...",
+    "searchContent": "搜索对话内容",
+    "searchContentHint": "搜索消息文本（可能较慢）",
+    "searchNoResults": "未找到会话",
+    "searching": "搜索中...",
+    "searchError": "搜索失败。请重试。",
+    "searchContentCap": "内容搜索最多覆盖 100 个会话",
+    "clearSearch": "清除搜索",
+    "loadMore": "加载更多",
+    "loadingMore": "加载中..."
   },
   "messageBubble": {
     "ariaLabel": "{{role}} 的消息，{{time}}",
@@ -169,7 +177,8 @@
     "loading": "加载中",
     "empty": "没有会话",
     "streaming": "流式响应中",
-    "waiting": "等待中"
+    "waiting": "等待中",
+    "loadMore": "加载更多"
   },
   "favorites": {
     "maxReached": "最多可以添加 20 个收藏"
@@ -183,10 +192,12 @@
       "message": "当前有活跃的对话。是否在新会话中启动代理？"
     },
     "newSession": {
-      "message": "当前正在回复中。是否开始新会话？"
+      "message": "当前正在回复中。是否开始新会话？",
+      "title": "确认新建会话"
     },
     "switchSession": {
-      "message": "当前正在回复中。是否切换会话？"
+      "message": "当前正在回复中。是否切换会话？",
+      "title": "确认切换会话"
     }
   },
   "chatPage": {
@@ -259,7 +270,9 @@
   },
   "streaming": {
     "ariaLabel": "Claude 正在生成回复",
-    "srText": "Claude 正在思考..."
+    "srText": "Claude 正在思考...",
+    "waiting": "思考中...",
+    "generating": "生成中..."
   },
   "markdown": {
     "openFile": "打开文件：{{href}}"
@@ -275,5 +288,14 @@
     "mostCapable": "最强大",
     "selectorAria": "模型：{{label}}。点击更改模型",
     "selectAria": "选择模型"
+  },
+  "message": {
+    "taskStatus": "任务 {{status}}",
+    "taskStatusWithSummary": "任务 {{status}}: {{summary}}",
+    "toolSummary": "工具摘要",
+    "toolCount": "{{count}} 个工具",
+    "error": "错误: {{label}}",
+    "cost": "费用: ${{amount}}",
+    "turns": "轮次: {{count}}"
   }
 }

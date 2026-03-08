@@ -93,14 +93,14 @@ describe('FileExplorerTab', () => {
     renderWithRouter();
 
     await waitFor(() => {
-      expect(screen.getByText('Root')).toBeInTheDocument();
+      expect(screen.getByText('루트')).toBeInTheDocument();
     });
 
-    const breadcrumbNav = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    const breadcrumbNav = screen.getByRole('navigation', { name: '경로' });
     expect(breadcrumbNav).toBeInTheDocument();
 
     const currentPage = breadcrumbNav.querySelector('[aria-current="page"]');
-    expect(currentPage?.textContent).toBe('Root');
+    expect(currentPage?.textContent).toBe('루트');
   });
 
   // TC-FET-3: Search input exists with placeholder (AC4)
@@ -259,20 +259,20 @@ describe('FileExplorerTab', () => {
     });
 
     // Breadcrumb should now show "Root > src"
-    const breadcrumbNav = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    const breadcrumbNav = screen.getByRole('navigation', { name: '경로' });
     const currentPage = breadcrumbNav.querySelector('[aria-current="page"]');
     expect(currentPage?.textContent).toBe('src');
 
     // Root should be clickable (not aria-current)
     const rootButton = breadcrumbNav.querySelector('button');
-    expect(rootButton?.textContent).toBe('Root');
+    expect(rootButton?.textContent).toBe('루트');
 
     // Click Root to reset breadcrumb
     fireEvent.click(rootButton!);
 
     // Now Root should be aria-current again
     const updatedCurrent = breadcrumbNav.querySelector('[aria-current="page"]');
-    expect(updatedCurrent?.textContent).toBe('Root');
+    expect(updatedCurrent?.textContent).toBe('루트');
   });
 
   // --- Story 13.3: CRUD Integration Tests ---
@@ -418,7 +418,7 @@ describe('FileExplorerTab', () => {
       expect(screen.getByText('App.tsx')).toBeInTheDocument();
     });
 
-    const breadcrumbNav = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    const breadcrumbNav = screen.getByRole('navigation', { name: '경로' });
     const currentPage = breadcrumbNav.querySelector('[aria-current="page"]');
     expect(currentPage?.textContent).toBe('src');
   });

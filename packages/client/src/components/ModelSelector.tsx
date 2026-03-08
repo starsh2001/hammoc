@@ -30,18 +30,21 @@ interface ModelOption {
 
 interface ModelGroup {
   label: string;
+  labelKey?: string;
   models: ModelOption[];
 }
 
 export const MODEL_GROUPS: ModelGroup[] = [
   {
     label: 'Default',
+    labelKey: 'model.defaultLabel',
     models: [
       { value: '', label: 'Default', description: '' },
     ],
   },
   {
     label: 'Aliases (Latest)',
+    labelKey: 'model.aliases',
     models: [
       { value: 'sonnet', label: 'Sonnet', description: 'Latest Sonnet' },
       { value: 'opus', label: 'Opus', description: 'Latest Opus' },
@@ -50,6 +53,7 @@ export const MODEL_GROUPS: ModelGroup[] = [
   },
   {
     label: 'Claude 4.x',
+    labelKey: 'model.claude4x',
     models: [
       { value: 'claude-opus-4-6', label: 'Opus 4.6', description: 'Most capable' },
       { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5', description: '2025-11-01' },
@@ -62,6 +66,7 @@ export const MODEL_GROUPS: ModelGroup[] = [
   },
   {
     label: 'Claude 3.x',
+    labelKey: 'model.claude3x',
     models: [
       { value: 'claude-3-7-sonnet-20250219', label: 'Sonnet 3.7', description: '2025-02-19' },
       { value: 'claude-3-5-sonnet-20241022', label: 'Sonnet 3.5', description: '2024-10-22' },
@@ -187,14 +192,16 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
           aria-label={t('model.selectAria')}
           className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
         >
-          {MODEL_GROUPS.map((group, gi) => (
+          {MODEL_GROUPS.map((group, gi) => {
+            const groupLabel = group.labelKey ? t(group.labelKey) : group.label;
+            return (
             <div key={group.label}>
               {/* Group divider (not on first group) */}
               {gi > 0 && <div className="border-t border-gray-200 dark:border-gray-700" />}
 
               {/* Group header */}
               <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                {group.label}
+                {groupLabel}
               </div>
 
               {/* Model items */}
@@ -232,7 +239,8 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
                 );
               })}
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>

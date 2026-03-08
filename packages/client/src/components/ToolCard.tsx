@@ -343,7 +343,7 @@ export function ToolCard({
           {/* Error display */}
           {isError && (
             <div className="mt-2 text-xs text-red-500 border-t border-gray-200 dark:border-gray-600 pt-2 whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
-              {output ? output.slice(0, 500) : '알 수 없는 오류'}
+              {output ? output.slice(0, 500) : t('common:error.unknownError')}
             </div>
           )}
 

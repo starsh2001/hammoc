@@ -93,7 +93,7 @@ describe('StarCommandPalette', () => {
       />
     );
 
-    expect(screen.getByText('일치하는 명령어가 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('일치하는 커맨드가 없습니다')).toBeInTheDocument();
   });
 
   // TC5: calls onSelect with command name on click

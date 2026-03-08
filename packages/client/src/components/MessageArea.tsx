@@ -536,7 +536,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                   ) : (
                     <Bell className="w-4 h-4" aria-hidden="true" />
                   )}
-                  <span>Task {seg.status}{seg.summary ? `: ${seg.summary}` : ''}</span>
+                  <span>{seg.summary ? t('message.taskStatusWithSummary', { status: seg.status, summary: seg.summary }) : t('message.taskStatus', { status: seg.status })}</span>
                 </div>
               </div>
             );
@@ -549,10 +549,10 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-blue-500" aria-hidden="true" />
                     <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
-                      Tool Summary
+                      {t('message.toolSummary')}
                     </span>
                     <span className="text-xs text-blue-500 dark:text-blue-400">
-                      ({seg.precedingToolUseIds.length} tools)
+                      ({t('message.toolCount', { count: seg.precedingToolUseIds.length })})
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{seg.summary}</p>
@@ -569,7 +569,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                   <div className="flex items-center gap-2">
                     <XOctagon className="w-5 h-5 text-red-500" aria-hidden="true" />
                     <span className="text-sm font-bold text-red-700 dark:text-red-400">
-                      Error: {errorLabel}
+                      {t('message.error', { label: errorLabel })}
                     </span>
                   </div>
                   {seg.result && (
@@ -583,8 +583,8 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                     </ul>
                   )}
                   <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
-                    {seg.totalCostUSD != null && <span>Cost: ${seg.totalCostUSD.toFixed(4)}</span>}
-                    {seg.numTurns != null && <span>Turns: {seg.numTurns}</span>}
+                    {seg.totalCostUSD != null && <span>{t('message.cost', { amount: seg.totalCostUSD.toFixed(4) })}</span>}
+                    {seg.numTurns != null && <span>{t('message.turns', { count: seg.numTurns })}</span>}
                   </div>
                 </div>
               </div>
@@ -604,7 +604,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                 <div className="flex items-center gap-2">
                   <XOctagon className="w-5 h-5 text-red-500" aria-hidden="true" />
                   <span className="text-sm font-bold text-red-700 dark:text-red-400">
-                    Error: {errorLabel}
+                    {t('message.error', { label: errorLabel })}
                   </span>
                 </div>
                 {err.result && (
@@ -618,8 +618,8 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                   </ul>
                 )}
                 <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
-                  {err.totalCostUSD != null && <span>Cost: ${err.totalCostUSD.toFixed(4)}</span>}
-                  {err.numTurns != null && <span>Turns: {err.numTurns}</span>}
+                  {err.totalCostUSD != null && <span>{t('message.cost', { amount: err.totalCostUSD.toFixed(4) })}</span>}
+                  {err.numTurns != null && <span>{t('message.turns', { count: err.numTurns })}</span>}
                 </div>
               </div>
             </div>
@@ -634,7 +634,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
             : null;
           const hasResponse = streamingSegments.length > 0 && !streamingSegments.every(s => s.type === 'system');
           return (
-            <div className="flex justify-center">
+            <div className="flex justify-center animate-fadeInUp">
               <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
                 <Database className="w-4 h-4 animate-pulse" aria-hidden="true" />
                 <span>
@@ -644,7 +644,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                       ? t('compaction.inProgress', { percent: usagePct })
                       : t('compaction.inProgressNoPercent')}
                 </span>
-                <StreamingIndicator />
+                <StreamingIndicator variant="compact" />
               </div>
             </div>
           );
@@ -654,7 +654,10 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {isStreaming && !isCompacting && streamingSegments.length > 0 && (
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
-              <StreamingIndicator />
+              <div className="flex items-center gap-2">
+                <StreamingIndicator />
+                <span className="text-sm text-gray-500 dark:text-gray-400">{t('streaming.generating')}</span>
+              </div>
             </div>
           </div>
         )}
@@ -663,7 +666,10 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {isStreaming && !isCompacting && streamingSegments.length === 0 && (
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
-              <StreamingIndicator />
+              <div className="flex items-center gap-2">
+                <StreamingIndicator />
+                <span className="text-sm text-gray-500 dark:text-gray-400">{t('streaming.waiting')}</span>
+              </div>
             </div>
           </div>
         )}

@@ -120,7 +120,7 @@
   "confirm": {
     "serverRestart": "This will rebuild and restart the server. Continue?",
     "updateVersion": "This will update to v{{version}} and restart the server. Continue?",
-    "resetAllSettings": "Reset all project settings.\n\n\u2022 Model/Permission Mode overrides will be removed\n\u2022 Project hiding will be disabled\n\nContinue?"
+    "resetAllSettings": "Reset all project settings.\n\n• Model/Permission Mode overrides will be removed\n• Project hiding will be disabled\n\nContinue?"
   },
   "telegram": {
     "loadError": "An error occurred while loading Telegram settings.",
@@ -186,7 +186,10 @@
     "statusHealthy": "Healthy",
     "statusUnhealthy": "Unhealthy",
     "version": "Version",
-    "serverTime": "Server Time"
+    "serverTime": "Server Time",
+    "madeBy": "Made by",
+    "license": "{{name}} License",
+    "githubIssuesLink": "GitHub Issues"
   },
   "help": {
     "basicChat": "Basic Chat Usage",

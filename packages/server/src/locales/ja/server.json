@@ -69,14 +69,21 @@
     "error": {
       "projectNotFound": "プロジェクトが見つかりません: {{value}}",
       "internal": "内部サーバーエラー",
-      "issueNotFound": "課題が見つかりません: {{value}}"
+      "issueNotFound": "課題が見つかりません: {{value}}",
+      "storyNotFound": "Storyが見つかりません：{{value}}",
+      "statusNotFound": "Storyのステータスが見つかりません：{{value}}"
     },
     "validation": {
       "titleRequired": "タイトルは必須です",
       "invalidSeverity": "無効な重要度: {{value}}",
       "invalidIssueType": "無効な課題タイプ: {{value}}",
       "invalidStatus": "無効なステータス: {{value}}",
-      "invalidIssueId": "無効な課題IDです"
+      "invalidIssueId": "無効な課題IDです",
+      "fileRequired": "ファイルは必須です",
+      "invalidFileType": "サポートされていないファイル形式",
+      "fileTooLarge": "ファイルサイズが10MBの制限を超えています",
+      "maxAttachments": "添付ファイル数の上限に達しました",
+      "invalidFilename": "無効なファイル名"
     },
     "success": {
       "issueDeleted": "課題が削除されました"
@@ -151,7 +158,8 @@
   "queue": {
     "validation": {
       "slugRequired": "projectSlugが必要です",
-      "itemsRequired": "items配列は空であってはなりません"
+      "itemsRequired": "items配列は空であってはなりません",
+      "invalidInput": "無効なキュー入力：{{value}}"
     },
     "error": {
       "alreadyRunning": "このプロジェクトのキューは既に実行中です",
@@ -163,7 +171,9 @@
     },
     "pause": {
       "userPaused": "ユーザーが一時停止しました",
-      "waitingForPermission": "{{value}}を待機中: {{toolName}}"
+      "waitingForPermission": "{{value}}を待機中: {{toolName}}",
+      "userAnswer": "ユーザー回答",
+      "permissionApproval": "権限"
     }
   },
   "queueTemplate": {

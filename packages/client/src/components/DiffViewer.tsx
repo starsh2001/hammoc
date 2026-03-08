@@ -18,6 +18,7 @@ import { useDiffLayout } from '../hooks/useDiffLayout';
 import { useOverlayBackHandler } from '../hooks/useOverlayBackHandler';
 import { usePanelStore } from '../stores/panelStore';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useTranslation } from 'react-i18next';
 import { getLanguageExtension } from '../utils/languageDetect';
 
 export interface DiffViewerProps {
@@ -85,6 +86,7 @@ export function DiffViewer({
   onReopen,
   _testForceError = false,
 }: DiffViewerProps) {
+  const { t } = useTranslation('common');
   const { theme } = useTheme();
   const diffLayoutHook = useDiffLayout();
 
@@ -399,13 +401,13 @@ export function DiffViewer({
         aria-label={`Diff viewer for ${filePath}`}
       >
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" aria-hidden="true" />
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Failed to load diff viewer.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{t('diff.loadFailed')}</p>
         <button
           onClick={handleRetry}
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          aria-label="Retry loading diff viewer"
+          aria-label={t('diff.retryAria')}
         >
-          Retry
+          {t('diff.retry')}
         </button>
       </div>
     );
@@ -460,7 +462,7 @@ export function DiffViewer({
               onClick={() => goToChange('previous')}
               disabled={state.totalDiffs === 0}
               className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="Go to previous change"
+              aria-label={t('diff.prevChange')}
             >
               <ChevronUp className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
             </button>
@@ -477,7 +479,7 @@ export function DiffViewer({
               onClick={() => goToChange('next')}
               disabled={state.totalDiffs === 0}
               className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="Go to next change"
+              aria-label={t('diff.nextChange')}
             >
               <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
             </button>
@@ -492,13 +494,13 @@ export function DiffViewer({
                 className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label={
                   effectiveLayout === 'side-by-side'
-                    ? 'Switch to inline layout'
-                    : 'Switch to side-by-side layout'
+                    ? t('diff.switchToInline')
+                    : t('diff.switchToSideBySide')
                 }
                 title={
                   effectiveLayout === 'side-by-side'
-                    ? 'Switch to inline layout'
-                    : 'Switch to side-by-side layout'
+                    ? t('diff.switchToInline')
+                    : t('diff.switchToSideBySide')
                 }
               >
                 {effectiveLayout === 'side-by-side' ? (
@@ -513,7 +515,7 @@ export function DiffViewer({
               <button
                 onClick={onClose}
                 className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                aria-label="Close diff viewer"
+                aria-label={t('diff.closeDiffViewer')}
               >
                 <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
               </button>
@@ -528,7 +530,7 @@ export function DiffViewer({
             <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900 z-10">
               <Loader2 className="w-8 h-8 animate-spin text-gray-400" aria-hidden="true" />
               <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                Loading diff viewer...
+                {t('diff.loading')}
               </span>
             </div>
           )}
@@ -538,17 +540,17 @@ export function DiffViewer({
             <div className="flex flex-col items-center justify-center p-8 text-center" role="alert">
               <AlertTriangle className="w-12 h-12 text-amber-500 mb-4" aria-hidden="true" />
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                대용량 파일 ({maxLines.toLocaleString()}줄)
+                {t('diff.largeFileTitle', { lines: maxLines.toLocaleString() })}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                이 파일은 매우 큽니다. 로드 시 브라우저 성능에 영향을 줄 수 있습니다.
+                {t('diff.largeFileDesc')}
               </p>
               <button
                 onClick={() => setState(prev => ({ ...prev, largeFileAccepted: true }))}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                aria-label="대용량 파일 Diff 전체 로드"
+                aria-label={t('diff.largeFileLoadAllAria')}
               >
-                전체 로드
+                {t('diff.largeFileLoadAll')}
               </button>
             </div>
           ) : (

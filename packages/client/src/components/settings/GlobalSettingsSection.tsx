@@ -119,7 +119,7 @@ export function GlobalSettingsSection() {
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {MODEL_GROUPS.map((group) => (
-            <optgroup key={group.label} label={group.label}>
+            <optgroup key={group.label} label={group.labelKey ? t(group.labelKey) : group.label}>
               {group.models.map((model) => (
                 <option key={model.value} value={model.value}>
                   {model.label}{model.description ? ` — ${model.description}` : ''}

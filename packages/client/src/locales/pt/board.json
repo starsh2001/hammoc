@@ -41,7 +41,16 @@
     "cannotDeleteWhileWorking": "Não é possível excluir enquanto a IA está trabalhando",
     "reopen": "Reabrir",
     "closeConfirm": "Fechar esta issue?",
-    "deleteConfirm": "Excluir issue \"{{title}}\"?"
+    "deleteConfirm": "Excluir issue \"{{title}}\"?",
+    "attachments": "Anexos",
+    "addAttachment": "Anexar arquivo",
+    "removeAttachment": "Remover anexo",
+    "dropzone": "Arraste ou clique para anexar imagens",
+    "uploadFailed": "Falha ao enviar arquivo",
+    "fileTooLarge": "O arquivo excede 10MB",
+    "invalidFileType": "Tipo de arquivo não suportado (apenas PNG, JPG, GIF, WebP)",
+    "maxAttachments": "Quantidade máxima de anexos (10) atingida",
+    "uploading": "Enviando..."
   },
   "card": {
     "menu": "Menu do cartão",
@@ -60,7 +69,9 @@
     "validateStory": "Validar story",
     "startDevelopment": "Iniciar desenvolvimento",
     "requestQA": "Solicitar QA",
-    "applyQAFix": "Aplicar correção de QA"
+    "applyQAFix": "Aplicar correção de QA",
+    "quickFixIntro": "Por favor, corrija o seguinte problema:",
+    "issueFileLabel": "Arquivo do problema:"
   },
   "status": {
     "open": "Aberto",

@@ -41,7 +41,16 @@
     "cannotDeleteWhileWorking": "AI 正在处理时无法删除",
     "reopen": "重新打开",
     "closeConfirm": "关闭此问题？",
-    "deleteConfirm": "删除问题「{{title}}」？"
+    "deleteConfirm": "删除问题「{{title}}」？",
+    "attachments": "附件",
+    "addAttachment": "添加附件",
+    "removeAttachment": "移除附件",
+    "dropzone": "拖放或点击以附加图片",
+    "uploadFailed": "文件上传失败",
+    "fileTooLarge": "文件大小超过 10MB",
+    "invalidFileType": "不支持的文件类型（仅限 PNG、JPG、GIF、WebP）",
+    "maxAttachments": "已达到附件数量上限（10）",
+    "uploading": "正在上传..."
   },
   "card": {
     "menu": "卡片菜单",
@@ -60,7 +69,9 @@
     "validateStory": "验证 Story",
     "startDevelopment": "开始开发",
     "requestQA": "请求 QA",
-    "applyQAFix": "应用 QA 修复"
+    "applyQAFix": "应用 QA 修复",
+    "quickFixIntro": "请修复以下问题：",
+    "issueFileLabel": "问题文件："
   },
   "status": {
     "open": "打开",

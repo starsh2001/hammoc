@@ -29,7 +29,9 @@
     "reconnectingAttemptAria": "WebSocket接続状況：再接続試行 {{attempt}}回目",
     "apiCannotConnect": "Claude APIに接続できません",
     "reconnectButton": "再接続",
-    "reconnectButtonAria": "サーバーへの再接続を試みる"
+    "reconnectButtonAria": "サーバーへの再接続を試みる",
+    "reconnectFailed": "サーバーへの接続に失敗しました。ネットワーク接続を確認してください。",
+    "connectError": "接続エラー：{{message}}"
   },
   "error": {
     "title": "エラーが発生しました",
@@ -57,7 +59,8 @@
       "message": "セッション一覧の読み込み中に問題が発生しました。"
     },
     "goBackToProjects": "プロジェクト一覧に戻る",
-    "cliStatusFailed": "CLIステータスの確認に失敗しました"
+    "cliStatusFailed": "CLIステータスの確認に失敗しました",
+    "unknownError": "不明なエラー"
   },
   "toast": {
     "closeAria": "通知を閉じる",
@@ -99,6 +102,7 @@
     "menuLabel": "メニュー",
     "bmadSetupSuccess": "BMadセットアップが完了しました。",
     "bmadSetupFailed": "BMadセットアップに失敗しました。",
+    "missingClaudeCommands": "BMadエージェント設定ファイル（.bmad-agent）が見つかりません。エージェント機能を使用するには、リポジトリにエージェントファイルを作成してください。",
     "navigateToExisting": "既存のプロジェクトに移動します。",
     "createdButBmadFailed": "プロジェクトは作成されましたが、BMadセットアップに失敗しました：{{error}}",
     "newProjectCreated": "新規プロジェクトが作成されました。"
@@ -170,7 +174,8 @@
     "aiGenerating": "AIが現在レスポンスを生成中です",
     "recentIssues": "最近のイシュー",
     "viewBoard": "ボードを見る",
-    "noIssues": "登録されたイシューはありません"
+    "noIssues": "登録されたイシューはありません",
+    "messageCountFormat": "{{count}}"
   },
   "epic": {
     "progressTitle": "エピックの進捗",
@@ -339,11 +344,11 @@
   "git": {
     "initTitle": "Gitリポジトリを初期化",
     "initMessage": "このプロジェクトはまだGitリポジトリではありません。",
-    "initButton": "Git Init",
+    "initButton": "Git 初期化",
     "branchList": "ブランチ一覧",
     "newBranchPlaceholder": "新しいブランチ名...",
-    "pull": "Pull",
-    "push": "Push",
+    "pull": "プル",
+    "push": "プッシュ",
     "noChanges": "変更されたファイルはありません",
     "stagedChanges": "ステージ済みの変更",
     "changes": "変更",
@@ -474,7 +479,11 @@
       "resumeQueue": "キューを再開",
       "abortQueue": "キューを中止",
       "queueEditor": "キューエディタ"
-    }
+    },
+    "fileReadError": "ファイルの読み込みに失敗：{{name}}",
+    "sourceInput": "手動入力",
+    "sourceFile": "ファイル",
+    "sourceSaved": "保存済み"
   },
   "panel": {
     "sessions": "セッション一覧",
@@ -516,7 +525,11 @@
   "agent": {
     "listAria": "BMadエージェント一覧",
     "noAgents": "登録されたエージェントがありません",
-    "agentListAria": "エージェント一覧"
+    "agentListAria": "エージェント一覧",
+    "groupPlanning": "計画",
+    "groupImplementation": "実装",
+    "groupOther": "その他",
+    "qaDescription": "品質アドバイザー"
   },
   "favorites": {
     "toolbar": "お気に入りコマンドのクイック実行",
@@ -549,5 +562,60 @@
     "chat": "チャット",
     "preparingPage": "チャットページを準備中",
     "futureStory": "この機能は今後のストーリーで実装される予定です。"
+  },
+  "imageViewer": {
+    "close": "ビューアーを閉じる",
+    "zoomIn": "ズームイン",
+    "zoomOut": "ズームアウト",
+    "resetZoom": "表示をリセット",
+    "loadingImage": "画像を読み込み中...",
+    "loadFailed": "画像の読み込みに失敗しました。"
+  },
+  "command": {
+    "noMatch": "一致するコマンドがありません",
+    "slashListAria": "スラッシュコマンドリスト",
+    "starListAria": "スターコマンドリスト",
+    "removeFavorite": "お気に入りから削除",
+    "addFavorite": "お気に入りに追加"
+  },
+  "code": {
+    "copied": "コピー済み",
+    "copyFailed": "コピー失敗",
+    "copyCode": "コードをコピー",
+    "blockAria": "{{lang}} コードブロック"
+  },
+  "onboarding": {
+    "statusComplete": "完了",
+    "statusIncomplete": "未完了",
+    "statusOptional": "オプション",
+    "optionalTag": "オプション",
+    "optionalTagAria": "オプション項目",
+    "commandAria": "コマンド：{{command}}",
+    "copied": "コピー済み",
+    "copyCommand": "コマンドをコピー",
+    "copy": "コピー",
+    "loadingAria": "読み込み中",
+    "loadingText": "チェックリスト項目を読み込み中...",
+    "listLoadingAria": "チェックリスト読み込み中"
+  },
+  "diff": {
+    "loadFailed": "Diffビューアーの読み込みに失敗しました。",
+    "retryAria": "Diffビューアーの読み込みを再試行",
+    "retry": "再試行",
+    "loading": "Diffビューアーを読み込み中...",
+    "prevChange": "前の変更に移動",
+    "nextChange": "次の変更に移動",
+    "switchToInline": "インラインレイアウトに切替",
+    "switchToSideBySide": "サイドバイサイドレイアウトに切替",
+    "closeDiffViewer": "差分ビューアーを閉じる",
+    "largeFileTitle": "大きなファイル（{{lines}}行）",
+    "largeFileDesc": "このファイルは非常に大きいです。読み込み時にブラウザのパフォーマンスに影響する可能性があります。",
+    "largeFileLoadAll": "すべて読み込む",
+    "largeFileLoadAllAria": "大きなファイルの差分を全て読み込む"
+  },
+  "thinking": {
+    "thinking": "思考中",
+    "thinkingStreaming": "思考中...",
+    "contentAria": "思考内容"
   }
 }

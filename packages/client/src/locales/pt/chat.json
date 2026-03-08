@@ -24,7 +24,13 @@
     "sessionLocked": "Sessão bloqueada",
     "abort": "Abortar",
     "addToChain": "Adicionar à cadeia",
-    "send": "Enviar"
+    "send": "Enviar",
+    "lockedOtherBrowser": "Em uso em outro navegador — atualize para usar",
+    "queueControlled": "O executor de fila está no controle",
+    "chainFull": "Cadeia máx. 5",
+    "chainAdd": "Adicionar à cadeia...",
+    "ariaLabel": "Entrada de mensagem",
+    "promptChainTitle": "Cadeia de prompts"
   },
   "chainMode": {
     "off": "Desativar modo de cadeia",
@@ -133,14 +139,16 @@
       "title": "Excluir sessões vazias",
       "message": "Excluir {{count}} sessões vazias? Os arquivos das sessões serão excluídos permanentemente."
     },
-    "searchPlaceholder": "Search sessions...",
-    "searchContent": "Search conversation content",
-    "searchContentHint": "Searches message text (may be slower)",
-    "searchNoResults": "No sessions found",
-    "searching": "Searching...",
-    "searchError": "Search failed. Please try again.",
-    "searchContentCap": "Content search covers up to 100 sessions",
-    "clearSearch": "Clear search"
+    "searchPlaceholder": "Pesquisar sessões...",
+    "searchContent": "Pesquisar conteúdo",
+    "searchContentHint": "(incl. conteúdo)",
+    "searchNoResults": "Nenhum resultado encontrado",
+    "searching": "Pesquisando...",
+    "searchError": "Erro na pesquisa",
+    "searchContentCap": "Mostrando resultados de conteúdo limitados.",
+    "clearSearch": "Limpar pesquisa",
+    "loadMore": "Carregar mais",
+    "loadingMore": "Carregando..."
   },
   "messageBubble": {
     "ariaLabel": "Mensagem de {{role}}, {{time}}",
@@ -169,7 +177,8 @@
     "loading": "Carregando",
     "empty": "Nenhuma sessão",
     "streaming": "Transmitindo",
-    "waiting": "Aguardando"
+    "waiting": "Aguardando",
+    "loadMore": "Carregar mais"
   },
   "favorites": {
     "maxReached": "Você pode adicionar até 20 favoritos"
@@ -183,10 +192,12 @@
       "message": "Há uma conversa ativa. Iniciar o agente em uma nova sessão?"
     },
     "newSession": {
-      "message": "Há uma resposta em andamento. Iniciar uma nova sessão?"
+      "message": "Há uma resposta em andamento. Iniciar uma nova sessão?",
+      "title": "Confirmar nova sessão"
     },
     "switchSession": {
-      "message": "Há uma resposta em andamento. Trocar de sessão?"
+      "message": "Há uma resposta em andamento. Trocar de sessão?",
+      "title": "Confirmar troca de sessão"
     }
   },
   "chatPage": {
@@ -259,7 +270,9 @@
   },
   "streaming": {
     "ariaLabel": "Claude está gerando uma resposta",
-    "srText": "Claude está pensando..."
+    "srText": "Claude está pensando...",
+    "waiting": "Pensando...",
+    "generating": "Gerando..."
   },
   "markdown": {
     "openFile": "Abrir arquivo: {{href}}"
@@ -275,5 +288,14 @@
     "mostCapable": "Mais capaz",
     "selectorAria": "Modelo: {{label}}. Clique para alterar o modelo",
     "selectAria": "Selecionar modelo"
+  },
+  "message": {
+    "taskStatus": "Tarefa {{status}}",
+    "taskStatusWithSummary": "Tarefa {{status}}: {{summary}}",
+    "toolSummary": "Resumo de ferramentas",
+    "toolCount": "{{count}} ferramentas",
+    "error": "Erro: {{label}}",
+    "cost": "Custo: ${{amount}}",
+    "turns": "Turnos: {{count}}"
   }
 }
