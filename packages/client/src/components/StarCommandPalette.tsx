@@ -12,6 +12,7 @@
 
 import { useRef, useEffect, useMemo } from 'react';
 import { Star } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
 
 interface StarCommandPaletteProps {
@@ -52,6 +53,7 @@ export function StarCommandPalette({
   isStarFavorite,
   onToggleStarFavorite,
 }: StarCommandPaletteProps) {
+  const { t } = useTranslation('common');
   const listRef = useRef<HTMLUListElement>(null);
 
   const filtered = useMemo(() => filterStarCommands(commands, filter), [commands, filter]);
@@ -78,7 +80,7 @@ export function StarCommandPalette({
           <span>{agent.name}</span>
         </div>
         <p className="text-center text-gray-500 dark:text-gray-400 text-sm py-4">
-          일치하는 명령어가 없습니다
+          {t('command.noMatch')}
         </p>
       </div>
     );
@@ -89,7 +91,7 @@ export function StarCommandPalette({
       ref={listRef}
       role="listbox"
       id="star-command-palette"
-      aria-label="별표 명령어 목록"
+      aria-label={t('command.starListAria')}
       data-testid="star-command-palette"
       className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-gray-800
                  border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg
@@ -131,7 +133,7 @@ export function StarCommandPalette({
                       e.stopPropagation();
                       onToggleStarFavorite(cmd.command);
                     }}
-                    aria-label={isStarFavorite(cmd.command) ? '즐겨찾기 제거' : '즐겨찾기 추가'}
+                    aria-label={isStarFavorite(cmd.command) ? t('command.removeFavorite') : t('command.addFavorite')}
                     className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
                     <Star

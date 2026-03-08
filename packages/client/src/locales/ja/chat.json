@@ -24,7 +24,13 @@
     "sessionLocked": "セッションがロックされています",
     "abort": "中止",
     "addToChain": "チェーンに追加",
-    "send": "送信"
+    "send": "送信",
+    "lockedOtherBrowser": "別のブラウザで使用中 — 更新して使用",
+    "queueControlled": "キューランナーが制御中",
+    "chainFull": "チェーン最大5件",
+    "chainAdd": "チェーンに追加...",
+    "ariaLabel": "メッセージ入力",
+    "promptChainTitle": "プロンプトチェーン"
   },
   "chainMode": {
     "off": "チェーンモードをオフにする",
@@ -133,14 +139,16 @@
       "title": "空のセッションを削除",
       "message": "{{count}}件の空のセッションを削除しますか？セッションファイルは完全に削除されます。"
     },
-    "searchPlaceholder": "Search sessions...",
-    "searchContent": "Search conversation content",
-    "searchContentHint": "Searches message text (may be slower)",
-    "searchNoResults": "No sessions found",
-    "searching": "Searching...",
-    "searchError": "Search failed. Please try again.",
-    "searchContentCap": "Content search covers up to 100 sessions",
-    "clearSearch": "Clear search"
+    "searchPlaceholder": "セッションを検索...",
+    "searchContent": "会話内容を検索",
+    "searchContentHint": "メッセージテキストを検索（遅くなる場合があります）",
+    "searchNoResults": "セッションが見つかりません",
+    "searching": "検索中...",
+    "searchError": "検索に失敗しました。再試行してください。",
+    "searchContentCap": "コンテンツ検索は最大100セッションまで",
+    "clearSearch": "検索をクリア",
+    "loadMore": "もっと読み込む",
+    "loadingMore": "読み込み中..."
   },
   "messageBubble": {
     "ariaLabel": "{{role}}のメッセージ、{{time}}",
@@ -169,7 +177,8 @@
     "loading": "読み込み中",
     "empty": "セッションなし",
     "streaming": "ストリーミング中",
-    "waiting": "待機中"
+    "waiting": "待機中",
+    "loadMore": "もっと読み込む"
   },
   "favorites": {
     "maxReached": "お気に入りは最大20件まで追加できます"
@@ -183,10 +192,12 @@
       "message": "アクティブな会話があります。新しいセッションでエージェントを起動しますか？"
     },
     "newSession": {
-      "message": "応答が進行中です。新しいセッションを開始しますか？"
+      "message": "応答が進行中です。新しいセッションを開始しますか？",
+      "title": "新しいセッションの確認"
     },
     "switchSession": {
-      "message": "応答が進行中です。セッションを切り替えますか？"
+      "message": "応答が進行中です。セッションを切り替えますか？",
+      "title": "セッション切り替えの確認"
     }
   },
   "chatPage": {
@@ -259,7 +270,9 @@
   },
   "streaming": {
     "ariaLabel": "Claudeがレスポンスを生成中です",
-    "srText": "Claudeが考えています..."
+    "srText": "Claudeが考えています...",
+    "waiting": "考え中...",
+    "generating": "生成中..."
   },
   "markdown": {
     "openFile": "ファイルを開く：{{href}}"
@@ -275,5 +288,14 @@
     "mostCapable": "最高性能",
     "selectorAria": "モデル：{{label}}。クリックしてモデルを変更",
     "selectAria": "モデルを選択"
+  },
+  "message": {
+    "taskStatus": "タスク {{status}}",
+    "taskStatusWithSummary": "タスク {{status}}: {{summary}}",
+    "toolSummary": "ツールサマリー",
+    "toolCount": "{{count}} ツール",
+    "error": "エラー: {{label}}",
+    "cost": "コスト: ${{amount}}",
+    "turns": "ターン: {{count}}"
   }
 }

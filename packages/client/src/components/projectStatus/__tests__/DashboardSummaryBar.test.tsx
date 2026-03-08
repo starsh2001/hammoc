@@ -8,11 +8,11 @@ describe('DashboardSummaryBar', () => {
       <DashboardSummaryBar totals={{ totalSessions: 0, activeSessions: 0, queueRunning: 0, terminals: 0 }} projectCount={0} />
     );
     expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.getByText('Projects')).toBeInTheDocument();
-    expect(screen.getByText('Sessions')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('Queue')).toBeInTheDocument();
-    expect(screen.getByText('Terminals')).toBeInTheDocument();
+    expect(screen.getByText('프로젝트')).toBeInTheDocument();
+    expect(screen.getByText('세션')).toBeInTheDocument();
+    expect(screen.getByText('활성')).toBeInTheDocument();
+    expect(screen.getByText('큐')).toBeInTheDocument();
+    expect(screen.getByText('터미널')).toBeInTheDocument();
   });
 
   it('shows correct values for each category', () => {

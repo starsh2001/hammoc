@@ -29,7 +29,9 @@
     "reconnectingAttemptAria": "Status da conexão WebSocket: Tentativa de reconexão {{attempt}}",
     "apiCannotConnect": "Não é possível conectar à API do Claude",
     "reconnectButton": "Reconectar",
-    "reconnectButtonAria": "Tentar reconectar ao servidor"
+    "reconnectButtonAria": "Tentar reconectar ao servidor",
+    "reconnectFailed": "Falha ao conectar ao servidor. Verifique sua conexão de rede.",
+    "connectError": "Erro de conexão: {{message}}"
   },
   "error": {
     "title": "Ocorreu um erro",
@@ -57,7 +59,8 @@
       "message": "Ocorreu um problema ao carregar a lista de sessões."
     },
     "goBackToProjects": "Voltar para a lista de projetos",
-    "cliStatusFailed": "Falha na verificação do status do CLI"
+    "cliStatusFailed": "Falha na verificação do status do CLI",
+    "unknownError": "Erro desconhecido"
   },
   "toast": {
     "closeAria": "Fechar notificação",
@@ -99,6 +102,7 @@
     "menuLabel": "Menu",
     "bmadSetupSuccess": "Configuração do BMad concluída.",
     "bmadSetupFailed": "Falha na configuração do BMad.",
+    "missingClaudeCommands": "Nenhum arquivo de configuração de agente BMad (.bmad-agent) encontrado. Crie arquivos de agente no seu repositório para usar o recurso de agentes.",
     "navigateToExisting": "Navegando para o projeto existente.",
     "createdButBmadFailed": "Projeto criado, mas a configuração do BMad falhou: {{error}}",
     "newProjectCreated": "Novo projeto criado."
@@ -150,8 +154,8 @@
   "overview": {
     "bmadLabel": "BMad",
     "completedStatus": "Concluído",
-    "epicsLabel": "Epics",
-    "storiesLabel": "Stories",
+    "epicsLabel": "Épicos",
+    "storiesLabel": "Histórias",
     "bmadLoadFailed": "Falha ao carregar o status do BMad",
     "totalSessions": "Total de sessões",
     "totalMessages": "Total de mensagens",
@@ -170,7 +174,8 @@
     "aiGenerating": "A IA está gerando uma resposta no momento",
     "recentIssues": "Problemas recentes",
     "viewBoard": "Ver quadro",
-    "noIssues": "Nenhum problema registrado"
+    "noIssues": "Nenhum problema registrado",
+    "messageCountFormat": "{{count}}"
   },
   "epic": {
     "progressTitle": "Progresso do epic",
@@ -180,7 +185,7 @@
     "noEpics": "Nenhum epic."
   },
   "document": {
-    "stories": "Stories",
+    "stories": "Histórias",
     "qa": "QA",
     "sharded": "Fragmentado",
     "writeRequired": "Escrita obrigatória",
@@ -339,7 +344,7 @@
   "git": {
     "initTitle": "Inicializar repositório Git",
     "initMessage": "Este projeto ainda não é um repositório Git.",
-    "initButton": "Git Init",
+    "initButton": "Inicializar Git",
     "branchList": "Lista de branches",
     "newBranchPlaceholder": "Nome da nova branch...",
     "pull": "Pull",
@@ -349,7 +354,7 @@
     "changes": "Alterações",
     "untracked": "Não rastreados",
     "commitPlaceholder": "Digite a mensagem do commit...",
-    "commit": "Commit",
+    "commit": "Confirmar",
     "commitHistory": "Histórico de commits",
     "noCommitHistory": "Nenhum histórico de commits",
     "switchBranchTitle": "Trocar branch",
@@ -446,7 +451,7 @@
       "deselectAll": "Desmarcar todos",
       "selectAll": "Selecionar todos",
       "noStoriesFound": "Nenhuma story encontrada no PRD",
-      "epicHeader": "Epic {{num}}",
+      "epicHeader": "Épico {{num}}",
       "preview": "Pré-visualizar",
       "loadToEditor": "Carregar no editor",
       "storyLoadFailed": "Falha ao carregar stories",
@@ -474,7 +479,11 @@
       "resumeQueue": "Retomar fila",
       "abortQueue": "Abortar fila",
       "queueEditor": "Editor de fila"
-    }
+    },
+    "fileReadError": "Falha ao ler o arquivo: {{name}}",
+    "sourceInput": "Entrada manual",
+    "sourceFile": "Arquivo",
+    "sourceSaved": "Salvo"
   },
   "panel": {
     "sessions": "Lista de sessões",
@@ -516,10 +525,14 @@
   "agent": {
     "listAria": "Lista de agentes BMad",
     "noAgents": "Nenhum agente registrado",
-    "agentListAria": "Lista de agentes"
+    "agentListAria": "Lista de agentes",
+    "groupPlanning": "Planejamento",
+    "groupImplementation": "Implementação",
+    "groupOther": "Outro",
+    "qaDescription": "Consultor de qualidade"
   },
   "favorites": {
-    "toolbar": "Execu\u00e7\u00e3o r\u00e1pida de comandos favoritos",
+    "toolbar": "Execução rápida de comandos favoritos",
     "editButton": "Editar favoritos",
     "executeStarPrefix": "Executar *{{command}}",
     "executePrefix": "Executar {{label}}",
@@ -531,23 +544,78 @@
   },
   "contextUsage": {
     "ariaLabel": "Uso do contexto {{percent}}%",
-    "criticalWarning": "O contexto est\u00e1 quase cheio ({{percent}}%)",
-    "clickNewSession": "Clique para iniciar nova sess\u00e3o",
-    "clickCompaction": "Clique para executar Compacta\u00e7\u00e3o de Contexto",
+    "criticalWarning": "O contexto está quase cheio ({{percent}}%)",
+    "clickNewSession": "Clique para iniciar nova sessão",
+    "clickCompaction": "Clique para executar Compactação de Contexto",
     "contextTokens": "Contexto: {{used}} / {{limit}} tokens ({{percent}}%)",
-    "contextWindow": "  (Janela completa: {{window}} - Reserva de sa\u00edda: {{reserve}} - Buffer: {{buffer}})",
+    "contextWindow": "  (Janela completa: {{window}} - Reserva de saída: {{reserve}} - Buffer: {{buffer}})",
     "newTokens": "  - Novos: {{value}}",
-    "cacheCreation": "  - Cria\u00e7\u00e3o de cache: {{value}}",
+    "cacheCreation": "  - Criação de cache: {{value}}",
     "cacheRead": "  - Leitura de cache: {{value}}",
-    "outputTokens": "Tokens de sa\u00edda: {{value}}",
+    "outputTokens": "Tokens de saída: {{value}}",
     "cost": "Custo: ${{cost}}",
-    "estimateNote": "Durante a execu\u00e7\u00e3o de ferramentas, os valores s\u00e3o estimativas (podem diferir ligeiramente dos reais)"
+    "estimateNote": "Durante a execução de ferramentas, os valores são estimativas (podem diferir ligeiramente dos reais)"
   },
   "chatPlaceholder": {
-    "backToSessions": "Voltar para a lista de sess\u00f5es",
-    "newSession": "Nova sess\u00e3o",
+    "backToSessions": "Voltar para a lista de sessões",
+    "newSession": "Nova sessão",
     "chat": "Chat",
-    "preparingPage": "Preparando p\u00e1gina de chat",
-    "futureStory": "Esta funcionalidade ser\u00e1 implementada em uma story futura."
+    "preparingPage": "Preparando página de chat",
+    "futureStory": "Esta funcionalidade será implementada em uma story futura."
+  },
+  "imageViewer": {
+    "close": "Fechar visualizador",
+    "zoomIn": "Ampliar",
+    "zoomOut": "Reduzir",
+    "resetZoom": "Redefinir visualização",
+    "loadingImage": "Carregando imagem...",
+    "loadFailed": "Falha ao carregar imagem."
+  },
+  "command": {
+    "noMatch": "Nenhum comando encontrado",
+    "slashListAria": "Lista de comandos slash",
+    "starListAria": "Lista de comandos estrela",
+    "removeFavorite": "Remover dos favoritos",
+    "addFavorite": "Adicionar aos favoritos"
+  },
+  "code": {
+    "copied": "Copiado",
+    "copyFailed": "Falha ao copiar",
+    "copyCode": "Copiar código",
+    "blockAria": "Bloco de código {{lang}}"
+  },
+  "onboarding": {
+    "statusComplete": "Concluído",
+    "statusIncomplete": "Incompleto",
+    "statusOptional": "Opcional",
+    "optionalTag": "Opcional",
+    "optionalTagAria": "Item opcional",
+    "commandAria": "Comando: {{command}}",
+    "copied": "Copiado",
+    "copyCommand": "Copiar comando",
+    "copy": "Copiar",
+    "loadingAria": "Carregando",
+    "loadingText": "Carregando itens da lista...",
+    "listLoadingAria": "Carregando lista de verificação"
+  },
+  "diff": {
+    "loadFailed": "Falha ao carregar o visualizador de diferenças.",
+    "retryAria": "Tentar novamente carregar o visualizador de diferenças",
+    "retry": "Tentar novamente",
+    "loading": "Carregando visualizador de diferenças...",
+    "prevChange": "Ir para a alteração anterior",
+    "nextChange": "Ir para a próxima alteração",
+    "switchToInline": "Alternar para layout em linha",
+    "switchToSideBySide": "Alternar para layout lado a lado",
+    "closeDiffViewer": "Fechar visualizador de diferenças",
+    "largeFileTitle": "Arquivo grande ({{lines}} linhas)",
+    "largeFileDesc": "Este arquivo é muito grande. Carregá-lo pode afetar o desempenho do navegador.",
+    "largeFileLoadAll": "Carregar tudo",
+    "largeFileLoadAllAria": "Carregar diferença completa do arquivo grande"
+  },
+  "thinking": {
+    "thinking": "Pensando",
+    "thinkingStreaming": "Pensando...",
+    "contentAria": "Conteúdo de pensamento"
   }
 }

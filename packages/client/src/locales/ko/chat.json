@@ -216,7 +216,7 @@
   "tool": {
     "executionTime": "실행 시간: {{duration}}",
     "showResult": "결과 보기",
-    "plan": "Plan",
+    "plan": "계획",
     "planEmpty": "Plan 내용이 없습니다",
     "requestedPermissions": "요청된 권한:",
     "rejectedAria": "도구 거절됨: {{name}}",
@@ -230,16 +230,16 @@
     "showDiff": "Diff 보기",
     "clickToShowDiff": "클릭하여 Diff 보기",
     "approveBypass": "Bypass 모드로 승인",
-    "yesBypass": "Yes (Bypass)",
+    "yesBypass": "예 (우회)",
     "approveAuto": "Auto 모드로 승인",
-    "yesAuto": "Yes (Auto)",
+    "yesAuto": "예 (자동)",
     "approveAsk": "Ask 모드로 승인",
-    "yesAsk": "Yes (Ask)",
+    "yesAsk": "예 (확인)",
     "rejectContinuePlanning": "거절 (계속 플래닝)",
     "allowTool": "도구 실행 허용",
-    "allow": "Allow",
+    "allow": "허용",
     "denyTool": "도구 실행 거절",
-    "deny": "Deny",
+    "deny": "거부",
     "resultFailed": "도구 결과: 실패",
     "toolFailed": "도구 실패",
     "showMore": "더 보기 ({{count}}개)",
@@ -270,21 +270,32 @@
   },
   "streaming": {
     "ariaLabel": "Claude가 응답을 생성하고 있습니다",
-    "srText": "Claude is thinking..."
+    "srText": "Claude가 생각 중입니다...",
+    "waiting": "생각 중...",
+    "generating": "응답 생성 중..."
   },
   "markdown": {
     "openFile": "파일 열기: {{href}}"
   },
   "model": {
-    "defaultLabel": "Default",
-    "aliases": "Aliases (Latest)",
-    "latestSonnet": "Latest Sonnet",
-    "latestOpus": "Latest Opus",
-    "latestHaiku": "Latest Haiku",
+    "defaultLabel": "기본",
+    "aliases": "별칭 (최신)",
+    "latestSonnet": "최신 Sonnet",
+    "latestOpus": "최신 Opus",
+    "latestHaiku": "최신 Haiku",
     "claude4x": "Claude 4.x",
     "claude3x": "Claude 3.x",
-    "mostCapable": "Most capable",
+    "mostCapable": "최고 성능",
     "selectorAria": "모델: {{label}}. 클릭하여 모델 변경",
     "selectAria": "모델 선택"
+  },
+  "message": {
+    "taskStatus": "작업 {{status}}",
+    "taskStatusWithSummary": "작업 {{status}}: {{summary}}",
+    "toolSummary": "도구 요약",
+    "toolCount": "{{count}}개 도구",
+    "error": "오류: {{label}}",
+    "cost": "비용: ${{amount}}",
+    "turns": "턴: {{count}}"
   }
 }

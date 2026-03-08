@@ -25,8 +25,8 @@ describe('StreamingIndicator', () => {
   it('includes screen reader text', () => {
     render(<StreamingIndicator />);
 
-    expect(screen.getByText('Claude is thinking...')).toBeInTheDocument();
-    expect(screen.getByText('Claude is thinking...')).toHaveClass('sr-only');
+    expect(screen.getByText('Claude가 생각 중입니다...')).toBeInTheDocument();
+    expect(screen.getByText('Claude가 생각 중입니다...')).toHaveClass('sr-only');
   });
 
   it('hides dots from screen readers', () => {

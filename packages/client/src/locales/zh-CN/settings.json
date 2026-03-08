@@ -13,13 +13,15 @@
       "plan": "计划",
       "default": "编辑前询问",
       "acceptEdits": "自动编辑",
-      "bypass": "跳过"
+      "bypass": "跳过",
+      "latest": "上次使用"
     },
     "permissionDesc": {
       "plan": "在修改代码前先建议计划",
       "default": "编辑文件前始终请求确认",
       "acceptEdits": "自动执行文件编辑",
-      "bypass": "跳过所有权限检查（包括 Bash）"
+      "bypass": "跳过所有权限检查（包括 Bash）",
+      "latest": "新会话保持上一个会话的权限模式"
     },
     "markdownMode": "Markdown 文件打开模式",
     "markdownOption": {
@@ -118,7 +120,7 @@
   "confirm": {
     "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",
     "updateVersion": "这将更新到 v{{version}} 并重启服务器。确定要继续吗？",
-    "resetAllSettings": "重置所有项目设置。\n\n\u2022 模型/权限模式覆盖将被移除\n\u2022 项目隐藏将被禁用\n\n确定要继续吗？"
+    "resetAllSettings": "重置所有项目设置。\n\n• 模型/权限模式覆盖将被移除\n• 项目隐藏将被禁用\n\n确定要继续吗？"
   },
   "telegram": {
     "loadError": "加载 Telegram 设置时发生了错误。",
@@ -184,7 +186,10 @@
     "statusHealthy": "正常",
     "statusUnhealthy": "异常",
     "version": "版本",
-    "serverTime": "服务器时间"
+    "serverTime": "服务器时间",
+    "madeBy": "开发者：",
+    "license": "{{name}} 许可证",
+    "githubIssuesLink": "GitHub Issues"
   },
   "help": {
     "basicChat": "基本聊天用法",

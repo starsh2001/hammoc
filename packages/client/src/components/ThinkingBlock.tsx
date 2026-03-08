@@ -13,6 +13,7 @@
 
 import { useId, useRef, useCallback, useEffect } from 'react';
 import { Brain, ChevronRight, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatStore } from '../stores/chatStore';
 import { useScrollContext } from '../contexts/ScrollContext';
@@ -25,6 +26,7 @@ interface ThinkingBlockProps {
 }
 
 export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockProps) {
+  const { t } = useTranslation('common');
   const isExpanded = useChatStore((s) => s.thinkingExpanded);
   const toggleThinkingExpanded = useChatStore((s) => s.toggleThinkingExpanded);
   const scrollCtx = useScrollContext();
@@ -81,7 +83,7 @@ export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockPro
                    text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800`}
       >
         <Brain className={`w-4 h-4 ${isExpanded ? 'text-purple-500' : ''}`} aria-hidden="true" />
-        <span className={`text-xs ${isExpanded ? 'text-purple-600 dark:text-purple-400' : ''}`}>{isStreaming ? 'Thinking...' : 'Thinking'}</span>
+        <span className={`text-xs ${isExpanded ? 'text-purple-600 dark:text-purple-400' : ''}`}>{isStreaming ? t('thinking.thinkingStreaming') : t('thinking.thinking')}</span>
         {isExpanded
           ? <ChevronDown className="w-3 h-3" aria-hidden="true" />
           : <ChevronRight className="w-3 h-3" aria-hidden="true" />
@@ -91,7 +93,7 @@ export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockPro
         ref={contentRef}
         id={contentId}
         role={isExpanded ? 'region' : undefined}
-        aria-label={isExpanded ? 'Thinking content' : undefined}
+        aria-label={isExpanded ? t('thinking.contentAria') : undefined}
         className={`overflow-hidden ${
           isExpanded ? 'max-h-96 overflow-y-auto mt-2' : 'max-h-0'
         }`}

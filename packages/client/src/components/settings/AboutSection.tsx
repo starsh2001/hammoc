@@ -77,7 +77,7 @@ export function AboutSection() {
             )}
             {health.author?.name && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                Made by{' '}
+                {t('about.madeBy')}{' '}
                 {authorUrl ? (
                   <a
                     href={authorUrl}
@@ -93,7 +93,7 @@ export function AboutSection() {
               </p>
             )}
             {health.license && (
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{health.license} License</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('about.license', { name: health.license })}</p>
             )}
           </>
         )}
@@ -110,7 +110,7 @@ export function AboutSection() {
             aria-label={t('about.githubIssuesAriaLabel')}
             className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
-            GitHub Issues
+            {t('about.githubIssuesLink')}
             <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
           </a>
         </div>

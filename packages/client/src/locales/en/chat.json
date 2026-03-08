@@ -270,7 +270,9 @@
   },
   "streaming": {
     "ariaLabel": "Claude is generating a response",
-    "srText": "Claude is thinking..."
+    "srText": "Claude is thinking...",
+    "waiting": "Thinking...",
+    "generating": "Generating..."
   },
   "markdown": {
     "openFile": "Open file: {{href}}"
@@ -286,5 +288,14 @@
     "mostCapable": "Most capable",
     "selectorAria": "Model: {{label}}. Click to change model",
     "selectAria": "Select model"
+  },
+  "message": {
+    "taskStatus": "Task {{status}}",
+    "taskStatusWithSummary": "Task {{status}}: {{summary}}",
+    "toolSummary": "Tool Summary",
+    "toolCount": "{{count}} tools",
+    "error": "Error: {{label}}",
+    "cost": "Cost: ${{amount}}",
+    "turns": "Turns: {{count}}"
   }
 }

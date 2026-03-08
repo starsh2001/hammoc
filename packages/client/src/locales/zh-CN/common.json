@@ -29,7 +29,9 @@
     "reconnectingAttemptAria": "WebSocket 连接状态：第 {{attempt}} 次重新连接尝试",
     "apiCannotConnect": "无法连接到 Claude API",
     "reconnectButton": "重新连接",
-    "reconnectButtonAria": "尝试重新连接到服务器"
+    "reconnectButtonAria": "尝试重新连接到服务器",
+    "reconnectFailed": "服务器连接失败。请检查您的网络连接。",
+    "connectError": "连接错误：{{message}}"
   },
   "error": {
     "title": "发生了错误",
@@ -57,7 +59,8 @@
       "message": "加载会话列表时出现了问题。"
     },
     "goBackToProjects": "返回项目列表",
-    "cliStatusFailed": "CLI 状态检查失败"
+    "cliStatusFailed": "CLI 状态检查失败",
+    "unknownError": "未知错误"
   },
   "toast": {
     "closeAria": "关闭通知",
@@ -99,6 +102,7 @@
     "menuLabel": "菜单",
     "bmadSetupSuccess": "BMad 设置已完成。",
     "bmadSetupFailed": "BMad 设置失败。",
+    "missingClaudeCommands": "未找到BMad代理配置文件（.bmad-agent）。请在您的存储库中创建代理文件以使用代理功能。",
     "navigateToExisting": "正在导航到已有项目。",
     "createdButBmadFailed": "项目已创建，但 BMad 设置失败：{{error}}",
     "newProjectCreated": "新项目已创建。"
@@ -170,7 +174,8 @@
     "aiGenerating": "AI 正在生成回复",
     "recentIssues": "最近的问题",
     "viewBoard": "查看看板",
-    "noIssues": "暂无问题"
+    "noIssues": "暂无问题",
+    "messageCountFormat": "{{count}}"
   },
   "epic": {
     "progressTitle": "Epic 进度",
@@ -339,7 +344,7 @@
   "git": {
     "initTitle": "初始化 Git 仓库",
     "initMessage": "此项目尚未初始化 Git 仓库。",
-    "initButton": "Git Init",
+    "initButton": "Git 初始化",
     "branchList": "分支列表",
     "newBranchPlaceholder": "新分支名称...",
     "pull": "拉取",
@@ -446,7 +451,7 @@
       "deselectAll": "取消全选",
       "selectAll": "全选",
       "noStoriesFound": "PRD 中未找到 Story",
-      "epicHeader": "Epic {{num}}",
+      "epicHeader": "史诗 {{num}}",
       "preview": "预览",
       "loadToEditor": "加载到编辑器",
       "storyLoadFailed": "加载 Story 失败",
@@ -474,7 +479,11 @@
       "resumeQueue": "恢复队列",
       "abortQueue": "中止队列",
       "queueEditor": "队列编辑器"
-    }
+    },
+    "fileReadError": "文件读取失败：{{name}}",
+    "sourceInput": "手动输入",
+    "sourceFile": "文件",
+    "sourceSaved": "已保存"
   },
   "panel": {
     "sessions": "会话列表",
@@ -516,7 +525,11 @@
   "agent": {
     "listAria": "BMad 代理列表",
     "noAgents": "没有已注册的代理",
-    "agentListAria": "代理列表"
+    "agentListAria": "代理列表",
+    "groupPlanning": "规划",
+    "groupImplementation": "实现",
+    "groupOther": "其他",
+    "qaDescription": "质量顾问"
   },
   "chatPlaceholder": {
     "backToSessions": "返回会话列表",
@@ -549,5 +562,60 @@
     "reorderHandle": "调整顺序",
     "removeStarPrefix": "从星标收藏中移除：*{{command}}",
     "removePrefix": "从收藏中移除：{{command}}"
+  },
+  "imageViewer": {
+    "close": "关闭查看器",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "resetZoom": "重置视图",
+    "loadingImage": "正在加载图片...",
+    "loadFailed": "加载图片失败。"
+  },
+  "command": {
+    "noMatch": "没有匹配的命令",
+    "slashListAria": "斜杠命令列表",
+    "starListAria": "星号命令列表",
+    "removeFavorite": "从收藏中移除",
+    "addFavorite": "添加到收藏"
+  },
+  "code": {
+    "copied": "已复制",
+    "copyFailed": "复制失败",
+    "copyCode": "复制代码",
+    "blockAria": "{{lang}} 代码块"
+  },
+  "onboarding": {
+    "statusComplete": "已完成",
+    "statusIncomplete": "未完成",
+    "statusOptional": "可选",
+    "optionalTag": "可选",
+    "optionalTagAria": "可选项目",
+    "commandAria": "命令：{{command}}",
+    "copied": "已复制",
+    "copyCommand": "复制命令",
+    "copy": "复制",
+    "loadingAria": "加载中",
+    "loadingText": "正在加载检查列表...",
+    "listLoadingAria": "检查列表加载中"
+  },
+  "diff": {
+    "loadFailed": "加载差异查看器失败。",
+    "retryAria": "重试加载差异查看器",
+    "retry": "重试",
+    "loading": "正在加载差异查看器...",
+    "prevChange": "跳转到上一个更改",
+    "nextChange": "跳转到下一个更改",
+    "switchToInline": "切换到内联布局",
+    "switchToSideBySide": "切换到并排布局",
+    "closeDiffViewer": "关闭差异查看器",
+    "largeFileTitle": "大文件（{{lines}}行）",
+    "largeFileDesc": "该文件非常大。加载可能会影响浏览器性能。",
+    "largeFileLoadAll": "全部加载",
+    "largeFileLoadAllAria": "加载大文件的完整差异"
+  },
+  "thinking": {
+    "thinking": "思考中",
+    "thinkingStreaming": "思考中...",
+    "contentAria": "思考内容"
   }
 }

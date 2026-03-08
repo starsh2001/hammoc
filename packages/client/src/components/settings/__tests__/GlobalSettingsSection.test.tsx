@@ -50,7 +50,7 @@ describe('GlobalSettingsSection', () => {
     render(<GlobalSettingsSection />);
     expect(screen.getByText('테마')).toBeInTheDocument();
     expect(screen.getByText('기본 모델')).toBeInTheDocument();
-    expect(screen.getByText('Permission Mode')).toBeInTheDocument();
+    expect(screen.getByText('권한 모드')).toBeInTheDocument();
     expect(screen.getByText('채팅 타임아웃')).toBeInTheDocument();
     expect(screen.getByText('언어')).toBeInTheDocument();
   });
@@ -74,7 +74,7 @@ describe('GlobalSettingsSection', () => {
     const setPermSpy = vi.fn();
     useChatStore.setState({ setPermissionMode: setPermSpy });
     render(<GlobalSettingsSection />);
-    const planRadio = screen.getByRole('radio', { name: /Plan/ });
+    const planRadio = screen.getByRole('radio', { name: /계획/ });
     fireEvent.click(planRadio);
     expect(setPermSpy).toHaveBeenCalledWith('plan');
   });

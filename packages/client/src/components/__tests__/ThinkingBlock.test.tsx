@@ -27,7 +27,7 @@ describe('ThinkingBlock', () => {
     it('should render collapsed by default with "Thinking" text', () => {
       render(<ThinkingBlock content={thinkingContent} />);
 
-      expect(screen.getByText('Thinking')).toBeInTheDocument();
+      expect(screen.getByText('생각 중')).toBeInTheDocument();
     });
 
     it('should show Brain icon in collapsed state', () => {
@@ -105,7 +105,7 @@ describe('ThinkingBlock', () => {
 
       fireEvent.click(screen.getByRole('button'));
 
-      expect(screen.getByRole('region')).toHaveAttribute('aria-label', 'Thinking content');
+      expect(screen.getByRole('region')).toHaveAttribute('aria-label', '사고 과정 내용');
     });
   });
 

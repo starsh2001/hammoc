@@ -69,14 +69,21 @@
     "error": {
       "projectNotFound": "Projeto não encontrado: {{value}}",
       "internal": "Erro interno do servidor",
-      "issueNotFound": "Issue não encontrada: {{value}}"
+      "issueNotFound": "Issue não encontrada: {{value}}",
+      "storyNotFound": "Story não encontrada: {{value}}",
+      "statusNotFound": "Status não encontrado para story: {{value}}"
     },
     "validation": {
       "titleRequired": "O título é obrigatório",
       "invalidSeverity": "Severidade inválida: {{value}}",
       "invalidIssueType": "Tipo de issue inválido: {{value}}",
       "invalidStatus": "Status inválido: {{value}}",
-      "invalidIssueId": "ID de issue inválido"
+      "invalidIssueId": "ID de issue inválido",
+      "fileRequired": "O arquivo é obrigatório",
+      "invalidFileType": "Tipo de arquivo não suportado",
+      "fileTooLarge": "O arquivo excede o limite de 10MB",
+      "maxAttachments": "Quantidade máxima de anexos atingida",
+      "invalidFilename": "Nome de arquivo inválido"
     },
     "success": {
       "issueDeleted": "Issue excluída"
@@ -151,7 +158,8 @@
   "queue": {
     "validation": {
       "slugRequired": "projectSlug é obrigatório",
-      "itemsRequired": "O array items não pode estar vazio"
+      "itemsRequired": "O array items não pode estar vazio",
+      "invalidInput": "Entrada de fila inválida: {{value}}"
     },
     "error": {
       "alreadyRunning": "A fila já está em execução para este projeto",
@@ -163,7 +171,9 @@
     },
     "pause": {
       "userPaused": "Pausado pelo usuário",
-      "waitingForPermission": "Aguardando {{value}}: {{toolName}}"
+      "waitingForPermission": "Aguardando {{value}}: {{toolName}}",
+      "userAnswer": "resposta do usuário",
+      "permissionApproval": "permissão"
     }
   },
   "queueTemplate": {

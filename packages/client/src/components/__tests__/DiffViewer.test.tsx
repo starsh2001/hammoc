@@ -190,14 +190,14 @@ describe('DiffViewer', () => {
       await act(async () => {
         render(<DiffViewer {...defaultProps} fullscreen onClose={() => {}} />);
       });
-      expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Diff 뷰어 닫기' })).toBeInTheDocument();
     });
 
     it('does not show close button when not in fullscreen mode', async () => {
       await act(async () => {
         render(<DiffViewer {...defaultProps} onClose={() => {}} />);
       });
-      expect(screen.queryByRole('button', { name: /close/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Diff 뷰어 닫기' })).not.toBeInTheDocument();
     });
 
     it('calls onClose when close button clicked', async () => {
@@ -205,7 +205,7 @@ describe('DiffViewer', () => {
       await act(async () => {
         render(<DiffViewer {...defaultProps} fullscreen onClose={onClose} />);
       });
-      fireEvent.click(screen.getByRole('button', { name: /close/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Diff 뷰어 닫기' }));
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
@@ -242,8 +242,8 @@ describe('DiffViewer', () => {
       await act(async () => {
         render(<DiffViewer {...defaultProps} _testForceError />);
       });
-      expect(screen.getByText(/failed/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+      expect(screen.getByText('Diff 뷰어를 로드하지 못했습니다.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Diff 뷰어 로드 재시도' })).toBeInTheDocument();
     });
   });
 
@@ -262,16 +262,16 @@ describe('DiffViewer', () => {
       await act(async () => {
         render(<DiffViewer {...defaultProps} fullscreen onClose={() => {}} />);
       });
-      const closeButton = screen.getByRole('button', { name: /close/i });
-      expect(closeButton).toHaveAttribute('aria-label', 'Close diff viewer');
+      const closeButton = screen.getByRole('button', { name: 'Diff 뷰어 닫기' });
+      expect(closeButton).toHaveAttribute('aria-label', 'Diff 뷰어 닫기');
     });
 
     it('retry button has accessible label in error state', async () => {
       await act(async () => {
         render(<DiffViewer {...defaultProps} _testForceError />);
       });
-      const retryButton = screen.getByRole('button', { name: /retry/i });
-      expect(retryButton).toHaveAttribute('aria-label', 'Retry loading diff viewer');
+      const retryButton = screen.getByRole('button', { name: 'Diff 뷰어 로드 재시도' });
+      expect(retryButton).toHaveAttribute('aria-label', 'Diff 뷰어 로드 재시도');
     });
 
     it('header has correct role and aria-level', async () => {
@@ -304,7 +304,7 @@ describe('DiffViewer - Layout Toggle (Story 6.2)', () => {
     await act(async () => {
       render(<DiffViewer {...defaultProps} />);
     });
-    const toggleButton = screen.getByRole('button', { name: /switch to inline layout/i });
+    const toggleButton = screen.getByRole('button', { name: '인라인 레이아웃으로 전환' });
     expect(toggleButton).toBeInTheDocument();
   });
 
@@ -312,7 +312,7 @@ describe('DiffViewer - Layout Toggle (Story 6.2)', () => {
     await act(async () => {
       render(<DiffViewer {...defaultProps} />);
     });
-    const toggleButton = screen.getByRole('button', { name: /switch to inline layout/i });
+    const toggleButton = screen.getByRole('button', { name: '인라인 레이아웃으로 전환' });
     fireEvent.click(toggleButton);
     expect(mockSetLayout).toHaveBeenCalledWith('inline');
   });
@@ -322,7 +322,7 @@ describe('DiffViewer - Layout Toggle (Story 6.2)', () => {
     await act(async () => {
       render(<DiffViewer {...defaultProps} />);
     });
-    const toggleButton = screen.getByRole('button', { name: /switch to side-by-side layout/i });
+    const toggleButton = screen.getByRole('button', { name: '나란히 레이아웃으로 전환' });
     fireEvent.click(toggleButton);
     expect(mockSetLayout).toHaveBeenCalledWith('side-by-side');
   });
@@ -331,7 +331,7 @@ describe('DiffViewer - Layout Toggle (Story 6.2)', () => {
     await act(async () => {
       render(<DiffViewer {...defaultProps} responsiveLayout={false} />);
     });
-    expect(screen.queryByRole('button', { name: /switch to/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /레이아웃으로 전환/ })).not.toBeInTheDocument();
   });
 });
 
@@ -435,8 +435,8 @@ describe('DiffViewer - Navigation (Story 6.4)', () => {
     await act(async () => {
       render(<DiffViewer {...defaultProps} />);
     });
-    expect(screen.getByRole('button', { name: 'Go to previous change' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Go to next change' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '이전 변경으로 이동' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다음 변경으로 이동' })).toBeInTheDocument();
   });
 
   it('disables navigation buttons when no changes exist', async () => {
@@ -445,8 +445,8 @@ describe('DiffViewer - Navigation (Story 6.4)', () => {
       render(<DiffViewer {...defaultProps} />);
     });
 
-    const prevBtn = screen.getByRole('button', { name: 'Go to previous change' });
-    const nextBtn = screen.getByRole('button', { name: 'Go to next change' });
+    const prevBtn = screen.getByRole('button', { name: '이전 변경으로 이동' });
+    const nextBtn = screen.getByRole('button', { name: '다음 변경으로 이동' });
 
     expect(prevBtn).toBeDisabled();
     expect(nextBtn).toBeDisabled();
@@ -456,8 +456,8 @@ describe('DiffViewer - Navigation (Story 6.4)', () => {
     await act(async () => {
       render(<DiffViewer {...defaultProps} />);
     });
-    expect(screen.getByRole('button', { name: 'Go to previous change' })).toHaveAttribute('aria-label', 'Go to previous change');
-    expect(screen.getByRole('button', { name: 'Go to next change' })).toHaveAttribute('aria-label', 'Go to next change');
+    expect(screen.getByRole('button', { name: '이전 변경으로 이동' })).toHaveAttribute('aria-label', '이전 변경으로 이동');
+    expect(screen.getByRole('button', { name: '다음 변경으로 이동' })).toHaveAttribute('aria-label', '다음 변경으로 이동');
   });
 
   it('position indicator has aria-live attribute', async () => {

@@ -41,7 +41,16 @@
     "cannotDeleteWhileWorking": "AIが作業中は削除できません",
     "reopen": "再オープン",
     "closeConfirm": "この課題を閉じますか？",
-    "deleteConfirm": "課題「{{title}}」を削除しますか？"
+    "deleteConfirm": "課題「{{title}}」を削除しますか？",
+    "attachments": "添付ファイル",
+    "addAttachment": "ファイルを添付",
+    "removeAttachment": "添付を削除",
+    "dropzone": "ドラッグまたはクリックして画像を添付",
+    "uploadFailed": "ファイルのアップロードに失敗しました",
+    "fileTooLarge": "ファイルサイズが10MBを超えています",
+    "invalidFileType": "サポートされていないファイル形式（PNG、JPG、GIF、WebPのみ）",
+    "maxAttachments": "添付ファイル数の上限（10）に達しました",
+    "uploading": "アップロード中..."
   },
   "card": {
     "menu": "カードメニュー",
@@ -60,7 +69,9 @@
     "validateStory": "ストーリーを検証",
     "startDevelopment": "開発を開始",
     "requestQA": "QAをリクエスト",
-    "applyQAFix": "QA修正を適用"
+    "applyQAFix": "QA修正を適用",
+    "quickFixIntro": "以下の問題を修正してください：",
+    "issueFileLabel": "問題ファイル："
   },
   "status": {
     "open": "オープン",

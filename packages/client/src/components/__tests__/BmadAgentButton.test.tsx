@@ -69,7 +69,7 @@ describe('BmadAgentButton', () => {
 
     const item2 = screen.getByTestId('bmad-agent-item-2');
     expect(item2).toHaveTextContent('QA');
-    expect(item2).toHaveTextContent('Quality Advisor');
+    expect(item2).toHaveTextContent('품질 어드바이저');
   });
 
   // TC4: agent click calls onAgentSelect
@@ -232,20 +232,20 @@ describe('BmadAgentButton', () => {
 
   // ===== Category Group Tests =====
 
-  // Agents are grouped by workflow phase with English labels
+  // Agents are grouped by workflow phase with translated labels
   it('groups agents into Planning and Implementation categories', () => {
     render(<BmadAgentButton {...defaultProps} />);
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
     const planningGroup = screen.getByTestId('bmad-group-planning');
     expect(planningGroup).toHaveAttribute('role', 'group');
-    expect(planningGroup).toHaveAttribute('aria-label', 'Planning');
-    expect(screen.getByText('Planning')).toBeInTheDocument();
+    expect(planningGroup).toHaveAttribute('aria-label', '계획');
+    expect(screen.getByText('계획')).toBeInTheDocument();
 
     const implGroup = screen.getByTestId('bmad-group-implementation');
     expect(implGroup).toHaveAttribute('role', 'group');
-    expect(implGroup).toHaveAttribute('aria-label', 'Implementation');
-    expect(screen.getByText('Implementation')).toBeInTheDocument();
+    expect(implGroup).toHaveAttribute('aria-label', '구현');
+    expect(screen.getByText('구현')).toBeInTheDocument();
   });
 
   // Full agent set shows all three categories in correct order
@@ -351,7 +351,7 @@ describe('BmadAgentButton', () => {
     fireEvent.click(screen.getByTestId('bmad-agent-button'));
 
     const qaItem = screen.getByTestId('bmad-agent-item-2');
-    expect(qaItem).toHaveTextContent('Quality Advisor');
+    expect(qaItem).toHaveTextContent('품질 어드바이저');
     expect(qaItem).not.toHaveTextContent('Quality Assurance');
   });
 
@@ -389,10 +389,10 @@ describe('BmadAgentButton', () => {
 
     const planningGroup = screen.getByTestId('bmad-group-planning');
     expect(planningGroup).toHaveAttribute('role', 'group');
-    expect(planningGroup).toHaveAttribute('aria-label', 'Planning');
+    expect(planningGroup).toHaveAttribute('aria-label', '계획');
 
     const implGroup = screen.getByTestId('bmad-group-implementation');
     expect(implGroup).toHaveAttribute('role', 'group');
-    expect(implGroup).toHaveAttribute('aria-label', 'Implementation');
+    expect(implGroup).toHaveAttribute('aria-label', '구현');
   });
 });

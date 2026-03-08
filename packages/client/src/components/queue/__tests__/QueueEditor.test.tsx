@@ -192,7 +192,7 @@ describe('QueueEditor', () => {
 
     const textarea = screen.getByRole('textbox');
     const pre = document.querySelector('pre');
-    const toggle = screen.getByLabelText('Toggle wrap mode');
+    const toggle = screen.getByLabelText('줄 바꿈 토글');
 
     expect(textarea).toHaveAttribute('wrap', 'soft');
     expect(pre).toHaveStyle({ whiteSpace: 'pre-wrap' });

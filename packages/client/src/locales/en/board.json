@@ -69,7 +69,9 @@
     "validateStory": "Validate Story",
     "startDevelopment": "Start Development",
     "requestQA": "Request QA",
-    "applyQAFix": "Apply QA Fix"
+    "applyQAFix": "Apply QA Fix",
+    "quickFixIntro": "Please fix the following issue:",
+    "issueFileLabel": "Issue file:"
   },
   "status": {
     "open": "Open",

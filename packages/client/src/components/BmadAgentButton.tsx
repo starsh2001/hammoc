@@ -138,7 +138,8 @@ export function BmadAgentButton({
   // Render a single agent item (ModelSelector-matching format: checkmark + icon + role label + description)
   const renderAgentItem = (agent: SlashCommand, flatIndex: number) => {
     const roleLabel = formatAgentRoleLabel(agent.command);
-    const description = getAgentDescription(agent);
+    const rawDescription = getAgentDescription(agent);
+    const description = rawDescription?.startsWith('agent.') ? t(rawDescription) : rawDescription;
     const isActive = activeAgentCommand === agent.command;
     return (
       <button
@@ -180,15 +181,18 @@ export function BmadAgentButton({
   };
 
   // Render categorized group
-  const renderGroup = (group: AgentGroup, groupIndex: number, indexOffset: number) => (
-    <div key={group.testId} role="group" aria-label={group.label} data-testid={group.testId}>
+  const renderGroup = (group: AgentGroup, groupIndex: number, indexOffset: number) => {
+    const groupLabel = group.label.startsWith('agent.') ? t(group.label) : group.label;
+    return (
+    <div key={group.testId} role="group" aria-label={groupLabel} data-testid={group.testId}>
       {groupIndex > 0 && <div className="border-t border-gray-200 dark:border-gray-700" />}
       <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-        {group.label}
+        {groupLabel}
       </div>
       {group.agents.map((agent, i) => renderAgentItem(agent, indexOffset + i))}
     </div>
   );
+  };
 
   // Render categorized groups
   const renderAgentItems = () => {

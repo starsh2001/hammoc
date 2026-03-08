@@ -11,6 +11,7 @@
 
 import { memo, useState, useEffect, useCallback, useRef } from 'react';
 import { Copy, Check, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 import { getHighlighter, isSupportedLanguage } from '../utils/shiki';
 import { debugLogger } from '../utils/debugLogger';
@@ -32,6 +33,7 @@ export const CodeBlock = memo(function CodeBlock({
   onCopy,
 }: CodeBlockProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation('common');
   const isDark = theme === 'dark';
 
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
@@ -133,11 +135,11 @@ export const CodeBlock = memo(function CodeBlock({
   const getCopyAriaLabel = () => {
     switch (copyState) {
       case 'copied':
-        return '복사됨';
+        return t('code.copied');
       case 'error':
-        return '복사 실패';
+        return t('code.copyFailed');
       default:
-        return '코드 복사';
+        return t('code.copyCode');
     }
   };
 
@@ -168,7 +170,7 @@ export const CodeBlock = memo(function CodeBlock({
     <div
       data-testid="code-block"
       role="region"
-      aria-label={`${displayLang} 코드 블록`}
+      aria-label={t('code.blockAria', { lang: displayLang })}
       className="relative group my-4 mx-1"
     >
       {/* Header with language and copy button - transparent */}

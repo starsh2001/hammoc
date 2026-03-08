@@ -85,7 +85,7 @@ export function ProjectBoardPage() {
       const desc = item.description
         ? (item.description.length > 500 ? item.description.slice(0, 500) + t('truncated') : item.description)
         : t('noDescription');
-      const prompt = `다음 이슈를 해결해 주세요:\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n이슈 파일: ${issueFile}`;
+      const prompt = `${t('workflow.quickFixIntro')}\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n${t('workflow.issueFileLabel')} ${issueFile}`;
       const params = new URLSearchParams({ agent: '/BMad:agents:dev', task: prompt });
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
