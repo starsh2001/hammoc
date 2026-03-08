@@ -74,10 +74,10 @@ describe('IssueFormDialog', () => {
     await user.click(screen.getByRole('button', { name: '이슈 추가' }));
 
     await waitFor(() => {
-      expect(mockOnSubmit).toHaveBeenCalledWith({
-        title: 'New Bug',
-        description: 'Description text',
-      });
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        { title: 'New Bug', description: 'Description text' },
+        undefined,
+      );
     });
 
     expect(mockOnClose).toHaveBeenCalled();
@@ -147,11 +147,10 @@ describe('IssueFormDialog', () => {
     await user.click(screen.getByRole('button', { name: '이슈 추가' }));
 
     await waitFor(() => {
-      expect(mockOnSubmit).toHaveBeenCalledWith({
-        title: 'Critical Bug',
-        severity: 'critical',
-        issueType: 'bug',
-      });
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        { title: 'Critical Bug', severity: 'critical', issueType: 'bug' },
+        undefined,
+      );
     });
   });
 });

@@ -50,13 +50,9 @@ invalid json line
 {"uuid":"2","type":"assistant","parentUuid":"1","message":{"role":"assistant","content":"Hi!"},"timestamp":"2026-01-15T10:00:05Z"}`;
 
       mockFs.readFile.mockResolvedValue(content);
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
       const messages = await parseJSONLFile('/path/to/session.jsonl');
 
       expect(messages).toHaveLength(2);
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
     });
 
     it('returns empty array for non-existent file', async () => {

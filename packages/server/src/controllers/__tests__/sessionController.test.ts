@@ -42,6 +42,8 @@ describe('sessionController', () => {
   let mockRes: Partial<Response>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
+
     mockReq = {
       params: { projectSlug: 'test-project' },
       query: {},
@@ -54,11 +56,10 @@ describe('sessionController', () => {
       json: vi.fn().mockReturnThis(),
     };
 
-    // Default mocks for supporting services
+    // Default mocks for supporting services (after clearAllMocks)
+    mockIsValidPathParam.mockReturnValue(true);
     mockGetActiveStreamSessionIds.mockReturnValue([]);
     mockReadSessionNamesBySlug.mockResolvedValue({});
-
-    vi.clearAllMocks();
   });
 
   afterEach(() => {

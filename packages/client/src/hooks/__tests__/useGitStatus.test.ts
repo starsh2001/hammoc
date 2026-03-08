@@ -75,8 +75,9 @@ describe('useGitStatus', () => {
 
   // TC-GIT-H4: Computes changedFileCount correctly
   it('computes changedFileCount as staged + unstaged + untracked', () => {
-    useGitStore.setState({ status: mockStatus } as any);
     const { result } = renderHook(() => useGitStatus('test-project'));
+    // Set status after mount (which calls resetData)
+    act(() => { useGitStore.setState({ status: mockStatus } as any); });
     // 2 staged + 1 unstaged + 2 untracked = 5
     expect(result.current.changedFileCount).toBe(5);
   });
