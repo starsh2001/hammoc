@@ -17,7 +17,8 @@ Complete guide to every feature in BMad Studio.
 11. [BMAD-METHOD Integration](#11-bmad-method-integration)
 12. [Settings](#12-settings)
 13. [Keyboard Shortcuts](#13-keyboard-shortcuts)
-14. [Troubleshooting](#14-troubleshooting)
+14. [Environment Variables](#14-environment-variables)
+15. [Troubleshooting](#15-troubleshooting)
 
 ---
 
@@ -69,7 +70,8 @@ http://<your-computer-ip>:3000
 ```
 
 - Desktop: Enter sends message, Shift+Enter for new line
-- Mobile: Enter adds new line, tap the send button to send
+- Mobile (touch devices): Enter adds new line, tap the send button to send
+- **Pull-to-refresh**: Swipe down on the session list or project list to refresh (80px threshold)
 
 ### 1.5 CLI Options
 
@@ -145,9 +147,12 @@ When Claude uses tools (reading files, editing code, running commands), each too
 
 When Claude modifies files, a diff viewer shows the changes:
 
-- **Side-by-side view** — Before and after comparison
+- **Side-by-side mode** — Before and after comparison (wide screens)
+- **Inline mode** — Unified diff view (narrow screens or mobile)
 - **Syntax highlighting** — Language-aware coloring
-- **Responsive layout** — Automatically adjusts for narrow/wide screens
+- **Diff navigation** — `F7` next change, `Shift+F7` previous change
+- **Large file handling** — Files over 5,000 lines are handled with optimized rendering
+- **Responsive layout** — Automatically switches between side-by-side and inline modes
 - Powered by Monaco Editor (same engine as VS Code)
 
 ### 2.7 Permission Requests
@@ -173,10 +178,12 @@ Queue multiple prompts for sequential execution:
 
 Monitor token usage in real-time:
 
-- **Usage bar** — Shows used/limit tokens and percentage
+- **Usage donut** — Visual indicator showing used/limit tokens and percentage
 - **Cost display** — Estimated cost for the session
 - **Cache tokens** — Cache creation and read token counts
-- **Warning** — Visual alert when context reaches 90%+
+- **Rate limit dots** — 5h/7d utilization indicators in the input area
+- **Color thresholds** — Green (normal), Yellow (≥75%), Red (≥80%)
+- **Context compaction** — When usage exceeds 80%, click the usage donut to trigger compaction, which summarizes the conversation to free up context space
 
 ### 2.10 Aborting Responses
 
@@ -224,10 +231,10 @@ Access the session list via the sidebar or quick panel:
 
 ### 3.3 Session Search
 
-Search through your sessions:
+Two distinct search modes:
 
-- **By name/ID** — Quick filtering of the session list
-- **By content** — Server-side search through conversation content
+- **By name/ID** — Quick client-side filtering of the session list by name or session ID
+- **By content** — Toggle "Search content" to search through actual conversation messages (server-side, slower but thorough)
 - Results highlight matching sessions
 - "Load more" pagination for large result sets
 
@@ -502,6 +509,7 @@ Terminal access is restricted for safety:
 - **Localhost/private IP detection** — Automatically determines if the connection is local
 - **Configurable** — Enable/disable via Settings > Advanced or the `TERMINAL_ENABLED` environment variable
 - **Max sessions** — Configurable limit (default: 10) via `MAX_TERMINAL_SESSIONS`
+- **Shell timeout** — Configurable idle timeout (default: 30s) via `SHELL_TIMEOUT`
 
 ### 8.6 Quick Terminal
 
@@ -523,7 +531,7 @@ Write your prompt sequence in the editor:
 
 ```
 Create a new React component for user profile
-@newSession
+@new
 Write unit tests for the user profile component
 @pause
 Review and refactor the component
@@ -535,29 +543,37 @@ Each line is one prompt. Special commands start with `@`.
 
 | Command | Description |
 |---------|-------------|
-| `@newSession` | Start a new chat session before the next prompt |
+| `@new` | Start a new chat session before the next prompt |
 | `@save <name>` | Save the current session with a name |
 | `@load <name>` | Load a previously saved session |
 | `@pause` | Pause execution; resume manually |
 | `@model <name>` | Switch Claude model (e.g., `@model opus`) |
-| `@wait <seconds>` | Wait before the next prompt |
-| `@multiline` | Next lines until `@endmultiline` are treated as one prompt |
+| `@delay <ms>` | Wait before the next prompt (in milliseconds, e.g., `@delay 5000` for 5 seconds) |
+| `@(` | Start a multiline prompt (all lines until `@)` are treated as one prompt) |
+| `@)` | End a multiline prompt |
 | `@comment <text>` | Add a comment (not sent to Claude) |
 
 ### 9.3 Multiline Prompts
 
-For prompts that span multiple lines:
+For prompts that span multiple lines, use `@(` and `@)`:
 
 ```
-@multiline
+@(
 Please review this code and check for:
 1. Security vulnerabilities
 2. Performance issues
 3. Code style violations
-@endmultiline
+@)
 ```
 
-### 9.4 Running the Queue
+### 9.4 Response Markers
+
+Claude's responses can contain special markers to control queue execution:
+
+- **`QUEUE_STOP`** — If Claude's response contains this text, queue execution pauses automatically. Useful when Claude detects an issue that needs human review.
+- **`QUEUE_PASS`** — Advances the queue silently without waiting for user interaction.
+
+### 9.5 Running the Queue
 
 1. Write your prompts in the queue editor
 2. Click **"Run"** to start
@@ -566,7 +582,7 @@ Please review this code and check for:
 5. **Resume** — Continue from where you paused
 6. **Abort** — Stop completely (with confirmation)
 
-### 9.5 Session Locking
+### 9.6 Session Locking
 
 While the queue is running:
 
@@ -575,7 +591,7 @@ While the queue is running:
 - "Go to Queue Session" button lets you observe
 - Other sessions remain accessible
 
-### 9.6 Templates
+### 9.7 Templates
 
 Save and reuse queue scripts:
 
@@ -599,7 +615,7 @@ Write tests for {{name}}
 
 Variables are prompted when loading the template.
 
-### 9.7 Story-Based Generation
+### 9.8 Story-Based Generation
 
 For BMAD-METHOD projects:
 
@@ -608,7 +624,7 @@ For BMAD-METHOD projects:
 3. Optionally add `@pause` between epics
 4. The queue is auto-generated from your project's PRD structure
 
-### 9.8 Queue Status Badge
+### 9.9 Queue Status Badge
 
 A badge on the project card shows queue status:
 
@@ -815,10 +831,20 @@ Language is auto-detected from your browser settings. Override it manually in se
 
 Choose the default Claude model:
 
-- Claude Sonnet (fast, balanced)
-- Claude Opus (most capable)
-- Claude Haiku (fastest, lightweight)
-- Specific version variants (3.x, 4.x)
+**Aliases (always latest version):**
+- **sonnet** — Fast, balanced
+- **opus** — Most capable
+- **haiku** — Fastest, lightweight
+
+**Claude 4.x:**
+- Claude Opus 4.6, 4.5, 4.1
+- Claude Sonnet 4.5, 4
+- Claude Haiku 4.5
+
+**Claude 3.x:**
+- Claude Sonnet 3.7, 3.5
+- Claude Haiku 3.5
+- Claude Opus 3, Sonnet 3, Haiku 3
 
 Can be overridden per-project in project settings.
 
@@ -829,11 +855,14 @@ Set how Claude handles file modifications:
 | Mode | Behavior |
 |------|----------|
 | **Plan** | Claude plans but doesn't make changes |
-| **Ask** | Claude asks for approval before each change (default) |
-| **Auto** | Claude edits files automatically |
-| **Bypass** | Full autonomy, no restrictions |
+| **Ask before edits** | Claude asks for approval before each change (default) |
+| **Edit automatically** | Claude edits files automatically |
+| **Don't ask** | Approves everything without prompting |
+| **Bypass permissions** | Full autonomy, no restrictions |
 
-Can be overridden per-project.
+You can also set the preference to **Latest** to keep the permission mode from the previous session.
+
+Can be overridden per-project. Quick-cycle with `Shift+Tab` when the chat input is focused.
 
 ### 12.5 Markdown File Open Mode
 
@@ -849,7 +878,16 @@ Default view for the file explorer:
 - **Grid** — Icon-based Finder-style layout
 - **List** — Traditional file list
 
-### 12.7 Chat Timeout
+### 12.7 Layout Mode
+
+Control the overall page width:
+
+- **Narrow** — Content capped at 1280px, centered (default)
+- **Wide** — Full-width layout using all available screen space
+
+Toggle via the layout button in the header.
+
+### 12.8 Chat Timeout
 
 How long to wait for Claude's response:
 
@@ -861,7 +899,7 @@ How long to wait for Claude's response:
 
 The timeout resets on every activity (messages, tool calls, heartbeats).
 
-### 12.8 Telegram Notifications
+### 12.9 Telegram Notifications
 
 Get notified on your phone when Claude needs attention:
 
@@ -870,18 +908,25 @@ Get notified on your phone when Claude needs attention:
 2. Get your Chat ID
 3. Enter both in Settings > Telegram
 
-**Notification Types:**
-- **Permission requests** — Claude needs approval
-- **Completion** — Task finished
-- **Error** — Something went wrong
-- **Queue events** — Start, complete, error, input needed
-- **Always notify** — Get notified for every message
+**Chat Notification Types:**
+- **Permission requests** — Claude needs approval for file changes
+- **Completion** — Chat task finished
+- **Error** — Something went wrong during chat
+
+**Queue Notification Types:**
+- **Queue start** — Queue execution began
+- **Queue complete** — Queue finished all items
+- **Queue error** — Queue encountered an error
+- **Queue input needed** — Queue paused, waiting for user input
+
+**Other Options:**
+- **Always notify** — Get notified for every message (suppressed when the session is visible in the browser)
 
 **Test:** Click "Send Test" to verify your configuration.
 
 **Access URL:** Set your BMad Studio URL so notification links open directly in your browser.
 
-### 12.9 System Prompt
+### 12.10 System Prompt
 
 Customize Claude's behavior:
 
@@ -891,7 +936,7 @@ Customize Claude's behavior:
 - Restore to default at any time
 - Template variables are shown for reference
 
-### 12.10 Advanced Settings
+### 12.11 Advanced Settings
 
 - **Server Restart** — Rebuild and restart the server (production mode)
 - **Check for Updates** — See if a newer version is available
@@ -899,7 +944,7 @@ Customize Claude's behavior:
 - **Terminal Toggle** — Enable/disable the terminal feature
 - **Reset All Settings** — Restore all preferences to defaults (with confirmation)
 
-### 12.11 About
+### 12.12 About
 
 Auto-populated from package metadata:
 
@@ -925,12 +970,29 @@ Auto-populated from package metadata:
 | `Ctrl+C` | Abort generation (when no text selected) |
 | `↑` / `↓` | Navigate prompt history |
 | `/` | Open command palette |
+| `Shift+Tab` | Cycle permission mode |
+
+### Quick Panel
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt+1` | Toggle Sessions panel |
+| `Alt+2` | Toggle Files panel |
+| `Alt+3` | Toggle Git panel |
+| `Alt+4` | Toggle Terminal panel |
 
 ### Editor
 
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+S` | Save file |
+
+### Diff Viewer
+
+| Shortcut | Action |
+|----------|--------|
+| `F7` | Next change |
+| `Shift+F7` | Previous change |
 
 ### Terminal
 
@@ -942,7 +1004,25 @@ Auto-populated from package metadata:
 
 ---
 
-## 14. Troubleshooting
+## 14. Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | Server port |
+| `HOST` | `0.0.0.0` | Bind address |
+| `NODE_ENV` | — | Set to `production` for optimized mode |
+| `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout in milliseconds (5 minutes) |
+| `CORS_ORIGIN` | `true` | CORS origin policy (`true` allows any origin) |
+| `LOG_LEVEL` | `INFO` (prod) / `DEBUG` (dev) | Logging level: ERROR, WARN, INFO, DEBUG, VERBOSE |
+| `TERMINAL_ENABLED` | `true` | Enable/disable terminal feature (set `false` to disable) |
+| `SHELL_TIMEOUT` | `30000` | Terminal idle timeout in milliseconds |
+| `MAX_TERMINAL_SESSIONS` | `10` | Maximum concurrent terminal sessions |
+| `TELEGRAM_BOT_TOKEN` | — | Telegram bot token for notifications |
+| `TELEGRAM_CHAT_ID` | — | Telegram chat ID for notifications |
+
+---
+
+## 15. Troubleshooting
 
 ### "Claude Code CLI not found"
 
