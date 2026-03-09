@@ -6,8 +6,8 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { KanbanBoard } from '../KanbanBoard';
-import type { BoardItem } from '@bmad-studio/shared';
-import { DEFAULT_BOARD_CONFIG } from '@bmad-studio/shared';
+import type { BoardItem } from '@hammoc/shared';
+import { DEFAULT_BOARD_CONFIG } from '@hammoc/shared';
 
 function createEmptyItemsByColumn(): Record<string, BoardItem[]> {
   return Object.fromEntries(DEFAULT_BOARD_CONFIG.columns.map((c) => [c.id, []]));

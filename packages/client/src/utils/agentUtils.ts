@@ -1,4 +1,4 @@
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand } from '@hammoc/shared';
 
 /**
  * Detect agent from the first user prompt by exact-matching against agent commands.

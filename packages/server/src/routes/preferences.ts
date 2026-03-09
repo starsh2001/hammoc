@@ -8,7 +8,7 @@ import { preferencesService } from '../services/preferencesService.js';
 import { notificationService } from '../services/notificationService.js';
 import { invalidateI18nCache } from '../middleware/i18n.js';
 import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES } from '../services/chatService.js';
-import type { UpdateTelegramSettingsRequest } from '@bmad-studio/shared';
+import type { UpdateTelegramSettingsRequest } from '@hammoc/shared';
 
 const router = Router();
 

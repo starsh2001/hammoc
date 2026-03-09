@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { ProjectStatusIndicators } from '../ProjectStatusIndicators';
-import type { DashboardProjectStatus } from '@bmad-studio/shared';
+import type { DashboardProjectStatus } from '@hammoc/shared';
 
 const makeStatus = (overrides: Partial<DashboardProjectStatus> = {}): DashboardProjectStatus => ({
   projectSlug: 'test-project',

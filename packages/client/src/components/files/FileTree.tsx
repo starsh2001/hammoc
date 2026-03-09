@@ -19,7 +19,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import type { DirectoryEntry } from '@bmad-studio/shared';
+import type { DirectoryEntry } from '@hammoc/shared';
 
 import { fileSystemApi } from '../../services/api/fileSystem.js';
 import { useFileStore } from '../../stores/fileStore.js';

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { HistoryMessage, SlashCommand } from '@bmad-studio/shared';
+import type { HistoryMessage, SlashCommand } from '@hammoc/shared';
 import { detectAgentFromPrompt } from '../utils/agentUtils';
 
 /**

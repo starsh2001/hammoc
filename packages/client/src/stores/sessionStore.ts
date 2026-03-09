@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { SessionListItem } from '@bmad-studio/shared';
+import type { SessionListItem } from '@hammoc/shared';
 import { sessionsApi } from '../services/api/sessions';
 import { ApiError } from '../services/api/client';
 import { getSocket } from '../services/socket';

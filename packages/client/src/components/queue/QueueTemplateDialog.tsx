@@ -6,8 +6,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Save, Upload, Trash2, Pencil, RefreshCw, WrapText, ChevronRight, FileText } from 'lucide-react';
-import { generateQueueFromTemplate } from '@bmad-studio/shared';
-import type { QueueStoryInfo, QueueTemplate } from '@bmad-studio/shared';
+import { generateQueueFromTemplate } from '@hammoc/shared';
+import type { QueueStoryInfo, QueueTemplate } from '@hammoc/shared';
 import { queueApi } from '../../services/api/queue';
 import { highlightScript } from './queueHighlight';
 import { normalizeLineEndings, readQueueWrapMode, writeQueueWrapMode } from './wrapMode';

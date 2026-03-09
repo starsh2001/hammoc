@@ -10,7 +10,7 @@ export const SUPPORTED_LANGUAGES = ['en', 'ko', 'zh-CN', 'ja', 'es', 'pt'] as co
 export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 
 /**
- * Global user preferences stored at ~/.bmad-studio/preferences.json
+ * Global user preferences stored at ~/.hammoc/preferences.json
  */
 export interface UserPreferences {
   theme?: 'light' | 'dark' | 'system';
@@ -105,7 +105,7 @@ export interface UpdateTelegramSettingsRequest {
 }
 
 /**
- * Per-session prompt history stored at {projectPath}/.bmad-studio/prompt-history/{sessionId}.json
+ * Per-session prompt history stored at {projectPath}/.hammoc/prompt-history/{sessionId}.json
  */
 export interface PromptHistoryData {
   history: string[];

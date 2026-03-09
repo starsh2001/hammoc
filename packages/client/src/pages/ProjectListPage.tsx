@@ -8,7 +8,7 @@ import { useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { RefreshCw, FolderOpen, AlertCircle, Settings, Plus, Eye, EyeOff, MoreVertical, Moon, Sun, LogOut } from 'lucide-react';
+import { RefreshCw, FolderOpen, AlertCircle, Settings, Plus, Eye, EyeOff, MoreVertical, Moon, Sun } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
 import { generateUUID } from '../utils/uuid';
@@ -23,6 +23,7 @@ import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useTheme } from '../hooks/useTheme';
 import { useDashboard } from '../hooks/useDashboard';
+import { api } from '../services/api/client';
 
 function ProjectListPageSkeleton() {
   const { t } = useTranslation('common');
@@ -46,6 +47,9 @@ export function ProjectListPage() {
   const { logout } = useAuthStore();
   const { totals, getProjectStatus } = useDashboard();
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+  const [serverVersion, setServerVersion] = useState('');
+  const [serverHostname, setServerHostname] = useState('');
+  const [serverAddress, setServerAddress] = useState('');
 
   // Overflow menu state (narrow screens)
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
@@ -53,7 +57,7 @@ export function ProjectListPage() {
   const { theme, toggleTheme } = useTheme();
   useClickOutside(overflowMenuRef, () => setOverflowMenuOpen(false));
 
-  // Filter projects based on hidden state (server-based via .bmad-studio/settings.json)
+  // Filter projects based on hidden state (server-based via .hammoc/settings.json)
   const visibleProjects = useMemo(
     () => showHidden ? projects : projects.filter((p) => !p.hidden),
     [projects, showHidden]
@@ -63,6 +67,18 @@ export function ProjectListPage() {
     () => projects.filter((p) => p.hidden).length,
     [projects]
   );
+
+  // Fetch server info (version, hostname, IP/port)
+  useEffect(() => {
+    api.get<{ version: string; hostname: string; localIP: string | null; port: number }>('/server/info')
+      .then((data) => {
+        setServerVersion(data.version);
+        setServerHostname(data.hostname);
+        const ip = data.localIP || 'localhost';
+        setServerAddress(`${ip}:${data.port}`);
+      })
+      .catch(() => { /* ignore */ });
+  }, []);
 
   // Fetch projects and BMad versions on mount
   useEffect(() => {
@@ -160,13 +176,6 @@ export function ProjectListPage() {
               >
                 <Settings className="w-5 h-5" aria-hidden="true" />
               </button>
-              <button
-                onClick={handleLogout}
-                aria-label={t('project.logout')}
-                className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-colors"
-              >
-                <LogOut className="w-5 h-5" aria-hidden="true" />
-              </button>
               {/* Narrow screen: overflow menu */}
               <div className="relative sm:hidden" ref={overflowMenuRef}>
                 <button
@@ -188,11 +197,6 @@ export function ProjectListPage() {
                     <button role="menuitem" onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
                       <Settings className="w-4 h-4" />
                       {t('project.settings')}
-                    </button>
-                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                    <button role="menuitem" onClick={() => { handleLogout(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                      <LogOut className="w-4 h-4" />
-                      {t('project.logout')}
                     </button>
                   </div>
                 )}
@@ -226,11 +230,20 @@ export function ProjectListPage() {
       {/* Header */}
       <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
-          <div className="flex items-center min-w-0 flex-1">
+          <div className="flex items-stretch min-w-0 flex-1">
             <BrandLogo />
             <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
-            <h1 className="text-base font-semibold text-gray-900 dark:text-white">{t('project.title')}</h1>
-              <BackgroundRefreshIndicator isRefreshing={isRefreshing} className="ml-2" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center">
+                <h1 className="text-base font-semibold text-gray-900 dark:text-white">{t('project.title')}</h1>
+                <BackgroundRefreshIndicator isRefreshing={isRefreshing} className="ml-2" />
+              </div>
+              {(serverVersion || serverHostname) && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">
+                  {serverHostname}{serverAddress ? ` (${serverAddress})` : ''}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1 ml-4">
             {/* New Project Button - wide screen only */}
@@ -276,13 +289,6 @@ export function ProjectListPage() {
             >
               <Settings className="w-5 h-5" aria-hidden="true" />
             </button>
-            <button
-              onClick={handleLogout}
-              aria-label={t('project.logout')}
-              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-colors"
-            >
-              <LogOut className="w-5 h-5" aria-hidden="true" />
-            </button>
 
             {/* Narrow screen: overflow menu */}
             <div className="relative sm:hidden" ref={overflowMenuRef}>
@@ -320,11 +326,6 @@ export function ProjectListPage() {
                   <button role="menuitem" onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
                     <Settings className="w-4 h-4" />
                     {t('project.settings')}
-                  </button>
-                  <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                  <button role="menuitem" onClick={() => { handleLogout(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                    <LogOut className="w-4 h-4" />
-                    {t('project.logout')}
                   </button>
                 </div>
               )}
@@ -388,6 +389,19 @@ export function ProjectListPage() {
         )}
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-2">
+        <div className="content-container flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
+          <span>HAMMOC{serverVersion ? ` v${serverVersion}` : ''}</span>
+          <button
+            onClick={handleLogout}
+            className="hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          >
+            {t('project.logout')}
+          </button>
+        </div>
+      </footer>
 
       {/* New Project Dialog */}
       <NewProjectDialog

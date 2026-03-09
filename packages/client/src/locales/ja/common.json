@@ -71,7 +71,7 @@
   "cliStatusChecking": "CLIステータスを確認中...",
   "backgroundRefreshAria": "バックグラウンド更新中",
   "project": {
-    "title": "プロジェクト",
+    "title": "プロジェクト一覧",
     "ariaLabel": "プロジェクト：{{name}}、{{count}}件のセッション",
     "menu": "プロジェクトメニュー",
     "setupBmad": "BMadに変換",
@@ -97,6 +97,8 @@
     "hideHidden": "非表示項目を隠す",
     "settings": "設定",
     "logout": "ログアウト",
+    "wideView": "ワイドビュー",
+    "narrowView": "ナロービュー",
     "lightMode": "ライトモード",
     "darkMode": "ダークモード",
     "menuLabel": "メニュー",

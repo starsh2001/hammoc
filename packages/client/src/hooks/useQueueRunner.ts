@@ -5,7 +5,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from '@bmad-studio/shared';
+import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useQueueStore } from '../stores/queueStore';
 import { useChatStore } from '../stores/chatStore';

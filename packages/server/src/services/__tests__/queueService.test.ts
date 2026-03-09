@@ -151,7 +151,7 @@ const mockIo = {
 };
 
 import { QueueService } from '../queueService.js';
-import type { QueueItem, StreamCallbacks } from '@bmad-studio/shared';
+import type { QueueItem, StreamCallbacks } from '@hammoc/shared';
 
 function createPromptItem(prompt: string, overrides?: Partial<QueueItem>): QueueItem {
   return { prompt, isNewSession: false, ...overrides };

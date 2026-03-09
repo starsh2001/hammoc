@@ -6,9 +6,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'node:crypto';
-import type { QueueTemplate } from '@bmad-studio/shared';
+import type { QueueTemplate } from '@hammoc/shared';
 
-const TEMPLATES_DIR = '.bmad-studio';
+const TEMPLATES_DIR = '.hammoc';
 const TEMPLATES_FILE = 'queue-templates.json';
 
 function normalizeLineEndings(text: string): string {

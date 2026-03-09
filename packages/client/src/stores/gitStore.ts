@@ -8,7 +8,7 @@ import type {
   GitStatusResponse,
   GitCommitInfo,
   GitBranchesResponse,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import { gitApi } from '../services/api/git';
 import { ApiError } from '../services/api/client';
 import i18n from '../i18n';

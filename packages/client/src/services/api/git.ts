@@ -11,7 +11,7 @@ import type {
   GitBranchesResponse,
   GitDiffResponse,
   GitOperationResponse,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 export const gitApi = {
   // Read operations (Story 16.1)

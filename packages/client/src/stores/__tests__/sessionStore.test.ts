@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useSessionStore } from '../sessionStore';
 import { ApiError } from '../../services/api/client';
-import type { SessionListItem } from '@bmad-studio/shared';
+import type { SessionListItem } from '@hammoc/shared';
 
 // Mock the sessions API
 vi.mock('../../services/api/sessions', () => ({

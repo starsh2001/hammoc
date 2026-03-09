@@ -4,7 +4,7 @@
  */
 
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
-import type { ChatResponse } from '@bmad-studio/shared';
+import type { ChatResponse } from '@hammoc/shared';
 import { createLogger } from '../utils/logger.js';
 import {
   SDKMessageType,
@@ -28,7 +28,7 @@ import {
   type TrackedToolCall,
   type ToolResult,
   createInitialStreamingState,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 const log = createLogger('streamHandler');
 

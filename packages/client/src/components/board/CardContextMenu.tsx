@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { BoardItem } from '@bmad-studio/shared';
+import type { BoardItem } from '@hammoc/shared';
 
 export interface CardContextMenuProps {
   item: BoardItem;

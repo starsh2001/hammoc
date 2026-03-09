@@ -10,11 +10,11 @@
     "language": "Idioma",
     "permissionMode": "Modo de permissão",
     "permissionModeLabel": {
-      "plan": "Planejar",
-      "default": "Perguntar antes de editar",
-      "acceptEdits": "Editar automaticamente",
-      "bypass": "Ignorar",
-      "latest": "Último usado"
+      "plan": "Plan",
+      "default": "Ask before edits",
+      "acceptEdits": "Edit Automatically",
+      "bypass": "Bypass",
+      "latest": "Last Used"
     },
     "permissionDesc": {
       "plan": "Sugere um plano antes de alterar o código",
@@ -207,11 +207,11 @@
       "Favoritos aparecem como botões de acesso rápido acima da área de entrada"
     ],
     "permissionMode": "Modo de permissão",
-    "permissionPlanLabel": "Planejar",
+    "permissionPlanLabel": "Plan",
     "permissionPlanDesc": "Sugere um plano antes de alterar o código",
-    "permissionDefaultLabel": "Perguntar antes de editar (padrão)",
+    "permissionDefaultLabel": "Ask before edits (padrão)",
     "permissionDefaultDesc": "Sempre pede confirmação antes de editar arquivos",
-    "permissionAutoLabel": "Editar automaticamente",
+    "permissionAutoLabel": "Edit Automatically",
     "permissionAutoDesc": "Realiza edições de arquivos automaticamente",
     "permissionNote": "Você pode alterar o modo de permissão padrão em Configurações > Configurações globais ou Configurações do projeto.",
     "bmadMethod": "Integração com BMad Method",

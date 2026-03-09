@@ -6,7 +6,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useSlashCommands } from '../useSlashCommands';
-import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand } from '@hammoc/shared';
 
 const mockList = vi.fn();
 

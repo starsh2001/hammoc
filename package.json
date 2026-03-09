@@ -1,16 +1,16 @@
 {
-  "name": "bmad-studio",
+  "name": "hammoc",
   "version": "1.0.0",
   "description": "Web-based IDE for managing Claude Code sessions, projects, and workflows",
   "type": "module",
   "license": "AGPL-3.0-only",
   "author": {
-    "name": "BMad",
-    "url": "https://github.com/bmad-artifacts"
+    "name": "starsh2001",
+    "url": "https://github.com/starsh2001"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/starsh2001/bmad-studio.git"
+    "url": "https://github.com/starsh2001/hammoc.git"
   },
   "keywords": [
     "claude",
@@ -27,7 +27,7 @@
     "packages/*"
   ],
   "bin": {
-    "bmad-studio": "./bin/bmad-studio.js"
+    "hammoc": "./bin/hammoc.js"
   },
   "files": [
     "bin/",

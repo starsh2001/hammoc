@@ -7,7 +7,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { DocumentStatusCard } from '../DocumentStatusCard';
-import type { BmadDocuments, BmadAuxDocument } from '@bmad-studio/shared';
+import type { BmadDocuments, BmadAuxDocument } from '@hammoc/shared';
 
 // Mock react-router-dom navigate
 const mockNavigate = vi.fn();

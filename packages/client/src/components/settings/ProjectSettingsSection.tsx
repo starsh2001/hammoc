@@ -16,7 +16,7 @@ import type {
   PermissionMode,
   ProjectSettingsApiResponse,
   UpdateProjectSettingsRequest,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 const PERMISSION_OPTIONS: { value: PermissionMode; labelKey: string; descKey: string }[] = [
   { value: 'plan', labelKey: 'global.permissionModeLabel.plan', descKey: 'global.permissionDesc.plan' },

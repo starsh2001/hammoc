@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
-import type { ProjectInfo, ValidatePathResponse } from '@bmad-studio/shared';
+import type { ProjectInfo, ValidatePathResponse } from '@hammoc/shared';
 
 // Create hoisted mocks for projectService
 const {

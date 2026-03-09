@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { ExternalLink, RefreshCw, Send, Loader2 } from 'lucide-react';
 import { preferencesApi } from '../../services/api/preferences';
-import type { TelegramSettingsApiResponse, UpdateTelegramSettingsRequest } from '@bmad-studio/shared';
+import type { TelegramSettingsApiResponse, UpdateTelegramSettingsRequest } from '@hammoc/shared';
 
 type EditingField = 'botToken' | 'chatId' | null;
 

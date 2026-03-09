@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { TERMINAL_ERRORS } from '@bmad-studio/shared';
+import { TERMINAL_ERRORS } from '@hammoc/shared';
 
 // Mock node-pty
 const mockWrite = vi.fn();

@@ -13,7 +13,7 @@
 import { useRef, useEffect, useMemo } from 'react';
 import { Star } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand } from '@hammoc/shared';
 
 interface StarCommandPaletteProps {
   /** Current agent's star commands */

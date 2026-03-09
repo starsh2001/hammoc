@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { EpicStoriesDialog } from '../EpicStoriesDialog';
-import type { BoardItem } from '@bmad-studio/shared';
+import type { BoardItem } from '@hammoc/shared';
 
 const epicItem: BoardItem = {
   id: 'epic-21',

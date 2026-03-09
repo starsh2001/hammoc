@@ -71,7 +71,7 @@
   "cliStatusChecking": "Verificando status do CLI...",
   "backgroundRefreshAria": "Atualização em segundo plano em andamento",
   "project": {
-    "title": "Projetos",
+    "title": "Lista de Projetos",
     "ariaLabel": "Projeto: {{name}}, {{count}} sessões",
     "menu": "Menu do projeto",
     "setupBmad": "Converter para BMad",
@@ -97,6 +97,8 @@
     "hideHidden": "Ocultar itens ocultos",
     "settings": "Configurações",
     "logout": "Sair",
+    "wideView": "Visão ampla",
+    "narrowView": "Visão estreita",
     "lightMode": "Modo claro",
     "darkMode": "Modo escuro",
     "menuLabel": "Menu",

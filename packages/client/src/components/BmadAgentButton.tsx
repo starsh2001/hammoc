@@ -17,7 +17,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { Users, Check } from 'lucide-react';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand } from '@hammoc/shared';
 import { formatAgentRoleLabel, categorizeAgents, getAgentDescription } from '../utils/agentUtils';
 import type { AgentGroup } from '../utils/agentUtils';
 

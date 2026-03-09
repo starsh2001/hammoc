@@ -8,8 +8,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BmadOverview } from '../BmadOverview';
 import { useBmadStatus } from '../../hooks/useBmadStatus';
 import { useProjectStore } from '../../stores/projectStore';
-import type { BmadStatusResponse } from '@bmad-studio/shared';
-import type { ProjectInfo } from '@bmad-studio/shared';
+import type { BmadStatusResponse } from '@hammoc/shared';
+import type { ProjectInfo } from '@hammoc/shared';
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();

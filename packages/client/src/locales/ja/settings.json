@@ -10,11 +10,11 @@
     "language": "言語",
     "permissionMode": "権限モード",
     "permissionModeLabel": {
-      "plan": "プラン",
-      "default": "編集前に確認",
-      "acceptEdits": "自動編集",
-      "bypass": "バイパス",
-      "latest": "前回使用"
+      "plan": "Plan",
+      "default": "Ask before edits",
+      "acceptEdits": "Edit Automatically",
+      "bypass": "Bypass",
+      "latest": "Last Used"
     },
     "permissionDesc": {
       "plan": "コード変更前にプランを提案します",
@@ -207,11 +207,11 @@
       "お気に入りは入力エリアの上にクイックアクセスボタンとして表示されます"
     ],
     "permissionMode": "権限モード",
-    "permissionPlanLabel": "プラン",
+    "permissionPlanLabel": "Plan",
     "permissionPlanDesc": "コード変更前にプランを提案します",
-    "permissionDefaultLabel": "編集前に確認（デフォルト）",
+    "permissionDefaultLabel": "Ask before edits (デフォルト)",
     "permissionDefaultDesc": "ファイル編集前に必ず確認を求めます",
-    "permissionAutoLabel": "自動編集",
+    "permissionAutoLabel": "Edit Automatically",
     "permissionAutoDesc": "ファイル編集を自動的に実行します",
     "permissionNote": "デフォルトの権限モードは、設定 > グローバル設定またはプロジェクト設定で変更できます。",
     "bmadMethod": "BMad Method連携",

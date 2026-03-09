@@ -6,7 +6,7 @@
 
 import { Wifi, WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { ConnectionStatus } from '@bmad-studio/shared';
+import type { ConnectionStatus } from '@hammoc/shared';
 
 export interface ConnectionStatusIndicatorProps {
   status: ConnectionStatus;

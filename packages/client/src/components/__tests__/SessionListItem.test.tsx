@@ -6,7 +6,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SessionListItem } from '../SessionListItem';
-import type { SessionListItem as SessionListItemType } from '@bmad-studio/shared';
+import type { SessionListItem as SessionListItemType } from '@hammoc/shared';
 
 describe('SessionListItem', () => {
   beforeEach(() => {

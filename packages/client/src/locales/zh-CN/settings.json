@@ -10,11 +10,11 @@
     "language": "语言",
     "permissionMode": "权限模式",
     "permissionModeLabel": {
-      "plan": "计划",
-      "default": "编辑前询问",
-      "acceptEdits": "自动编辑",
-      "bypass": "跳过",
-      "latest": "上次使用"
+      "plan": "Plan",
+      "default": "Ask before edits",
+      "acceptEdits": "Edit Automatically",
+      "bypass": "Bypass",
+      "latest": "Last Used"
     },
     "permissionDesc": {
       "plan": "在修改代码前先建议计划",
@@ -207,11 +207,11 @@
       "收藏的命令将作为快捷按钮显示在输入区域上方"
     ],
     "permissionMode": "权限模式",
-    "permissionPlanLabel": "计划",
+    "permissionPlanLabel": "Plan",
     "permissionPlanDesc": "在修改代码前先建议计划",
-    "permissionDefaultLabel": "编辑前询问（默认）",
+    "permissionDefaultLabel": "Ask before edits (默认)",
     "permissionDefaultDesc": "编辑文件前始终请求确认",
-    "permissionAutoLabel": "自动编辑",
+    "permissionAutoLabel": "Edit Automatically",
     "permissionAutoDesc": "自动执行文件编辑",
     "permissionNote": "您可以在设置 > 全局设置或项目设置中更改默认权限模式。",
     "bmadMethod": "BMad Method 集成",

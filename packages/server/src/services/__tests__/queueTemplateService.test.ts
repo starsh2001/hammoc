@@ -73,14 +73,14 @@ describe('queueTemplateService', () => {
     });
 
     // TC-QT-14
-    it('creates .bmad-studio directory if missing', async () => {
+    it('creates .hammoc directory if missing', async () => {
       mockReadFile.mockRejectedValue(new Error('ENOENT'));
       mockMkdir.mockResolvedValue(undefined);
       mockWriteFile.mockResolvedValue(undefined);
 
       await queueTemplateService.saveTemplate('/project', 'Test', '/dev {story_num}');
       expect(mockMkdir).toHaveBeenCalledWith(
-        expect.stringContaining('.bmad-studio'),
+        expect.stringContaining('.hammoc'),
         { recursive: true },
       );
     });

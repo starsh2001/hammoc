@@ -4,10 +4,11 @@
  * [Source: Story 10.1 - Task 2]
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Settings, FolderCog, Bell, Wrench, HelpCircle, Info } from 'lucide-react';
+import { ArrowLeft, Settings, FolderCog, Bell, Wrench, HelpCircle, Info, LogOut } from 'lucide-react';
+import { useAuthStore } from '../stores/authStore';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { SettingsSection } from '../components/SettingsSection';
 import { GlobalSettingsSection } from '../components/settings/GlobalSettingsSection';
@@ -32,8 +33,10 @@ const validTabs = sectionDefs.map(s => s.id) as readonly string[];
 
 export function SettingsPage() {
   const { t } = useTranslation('settings');
+  const { t: tCommon } = useTranslation('common');
   const navigate = useNavigate();
   const { tab } = useParams<{ tab?: string }>();
+  const { logout } = useAuthStore();
   const activeSection: SectionId = (tab && validTabs.includes(tab)) ? tab as SectionId : 'global';
 
   // Mobile accordion state
@@ -42,6 +45,11 @@ export function SettingsPage() {
   const handleBack = () => {
     navigate('/');
   };
+
+  const handleLogout = useCallback(async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  }, [logout, navigate]);
 
   const toggleSection = (id: SectionId) => {
     setExpandedSection(prev => prev === id ? null : id);
@@ -80,6 +88,14 @@ export function SettingsPage() {
           </button>
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1">{t('page.title')}</h1>
           <LayoutToggleButton className="hidden sm:block" />
+          <button
+            onClick={handleLogout}
+            aria-label={tCommon('project.logout')}
+            title={tCommon('project.logout')}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-colors"
+          >
+            <LogOut className="w-5 h-5" aria-hidden="true" />
+          </button>
         </div>
       </header>
 

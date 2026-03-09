@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { CommandsResponse } from '@bmad-studio/shared';
+import type { CommandsResponse } from '@hammoc/shared';
 
 export const commandsApi = {
   /** List available slash commands for a project */

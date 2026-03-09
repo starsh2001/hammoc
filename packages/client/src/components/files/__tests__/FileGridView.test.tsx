@@ -6,7 +6,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FileGridView } from '../FileGridView.js';
-import type { DirectoryEntry } from '@bmad-studio/shared';
+import type { DirectoryEntry } from '@hammoc/shared';
 
 // Mock fileSystemApi
 vi.mock('../../../services/api/fileSystem.js', () => ({

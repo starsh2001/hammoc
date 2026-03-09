@@ -3,7 +3,7 @@ import request from 'supertest';
 import express from 'express';
 import cliRoutes from '../cli.js';
 import { cliService } from '../../services/cliService.js';
-import { DEFAULT_SETUP_COMMANDS } from '@bmad-studio/shared';
+import { DEFAULT_SETUP_COMMANDS } from '@hammoc/shared';
 
 // Mock cliService
 vi.mock('../../services/cliService.js', () => ({

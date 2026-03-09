@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueueRunnerPanel } from '../QueueRunnerPanel';
-import type { QueueItem } from '@bmad-studio/shared';
+import type { QueueItem } from '@hammoc/shared';
 
 const mockItems: QueueItem[] = [
   { prompt: 'Hello world', isNewSession: false },

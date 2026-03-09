@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Folder, File, Loader2, AlertCircle, MoreVertical } from 'lucide-react';
-import type { DirectoryEntry } from '@bmad-studio/shared';
+import type { DirectoryEntry } from '@hammoc/shared';
 
 import { fileSystemApi } from '../../services/api/fileSystem.js';
 import { useFileStore } from '../../stores/fileStore.js';

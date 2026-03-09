@@ -20,7 +20,7 @@
  *   VITE_LOG_LEVEL env var: ERROR | WARN | INFO | DEBUG | VERBOSE
  */
 
-import { LogLevel, parseLogLevel } from '@bmad-studio/shared';
+import { LogLevel, parseLogLevel } from '@hammoc/shared';
 
 const MAX_ENTRIES = 2000;
 const SERVER_FLUSH_INTERVAL = 500; // ms between server flushes

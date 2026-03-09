@@ -9,7 +9,7 @@ import {
   type ParsedUserMessage,
   type ParsedResultMessage,
   type ParsedStreamEventMessage,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 
 // ===== Mock Data =====

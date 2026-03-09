@@ -8,7 +8,7 @@
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Layers, BookOpen } from 'lucide-react';
-import type { BmadStatusResponse, BmadEpicStatus } from '@bmad-studio/shared';
+import type { BmadStatusResponse, BmadEpicStatus } from '@hammoc/shared';
 
 import { useProjectStore } from '../stores/projectStore.js';
 import { useBmadStatus } from '../hooks/useBmadStatus.js';

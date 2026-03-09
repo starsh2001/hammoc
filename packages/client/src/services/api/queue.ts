@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { QueueExecutionState, QueueStoryInfo, QueueTemplate } from '@bmad-studio/shared';
+import type { QueueExecutionState, QueueStoryInfo, QueueTemplate } from '@hammoc/shared';
 
 export const queueApi = {
   getStatus: (projectSlug: string) =>

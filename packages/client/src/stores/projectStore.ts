@@ -9,7 +9,7 @@ import type {
   ProjectInfo,
   CreateProjectResponse,
   ValidatePathResponse,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import { projectsApi } from '../services/api/projects';
 import { ApiError } from '../services/api/client';
 import i18n from '../i18n';
@@ -27,7 +27,7 @@ interface ProjectState {
   // BMad versions
   bmadVersions: string[];
   isFetchingVersions: boolean;
-  // Hidden projects (server-based via .bmad-studio/settings.json)
+  // Hidden projects (server-based via .hammoc/settings.json)
   showHidden: boolean;
 }
 

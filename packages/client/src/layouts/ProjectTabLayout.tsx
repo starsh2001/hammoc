@@ -7,9 +7,8 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, GitBranch, Terminal, Kanban, Settings, MoreVertical, Moon, Sun, LogOut } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, GitBranch, Terminal, Kanban, Settings, MoreVertical, Moon, Sun } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
-import { useAuthStore } from '../stores/authStore';
 import { useTerminalStore } from '../stores/terminalStore';
 import { BrandLogo } from '../components/BrandLogo';
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
@@ -35,7 +34,6 @@ export function ProjectTabLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { projects, fetchProjects } = useProjectStore();
-  const { logout } = useAuthStore();
   const { connectionStatus, reconnectAttempt, lastError, connect } = useWebSocket();
 
   // Story 17.5: Terminal access control
@@ -78,11 +76,6 @@ export function ProjectTabLayout() {
 
   const handleBack = () => navigate('/');
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login', { replace: true });
-  };
-
   const handleTabClick = (tabPath: string) => {
     navigate(`/project/${projectSlug}${tabPath}`);
   };
@@ -93,10 +86,10 @@ export function ProjectTabLayout() {
       <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         {/* Top row: project info + actions */}
         <div className="content-container flex items-center justify-between px-4 py-3 min-h-14">
-          <div className="flex items-center min-w-0 flex-1">
+          <div className="flex items-stretch min-w-0 flex-1">
             <button
               onClick={handleBack}
-              className="p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
+              className="self-center p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
               aria-label={t('layout.back')}
             >
               <ArrowLeft className="w-5 h-5" />
@@ -127,14 +120,6 @@ export function ProjectTabLayout() {
             >
               <Settings className="w-5 h-5" aria-hidden="true" />
             </button>
-            <button
-              onClick={handleLogout}
-              aria-label={t('project.logout')}
-              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-colors"
-            >
-              <LogOut className="w-5 h-5" aria-hidden="true" />
-            </button>
-
             {/* Narrow screen: overflow menu */}
             <div className="relative sm:hidden" ref={overflowMenuRef}>
               <button
@@ -167,15 +152,6 @@ export function ProjectTabLayout() {
                   >
                     <Settings className="w-4 h-4" />
                     {t('project.settings')}
-                  </button>
-                  <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                  <button
-                    role="menuitem"
-                    onClick={() => { handleLogout(); setOverflowMenuOpen(false); }}
-                    className="w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    {t('project.logout')}
                   </button>
                 </div>
               )}

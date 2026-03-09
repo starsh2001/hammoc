@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useMemo, useCallback } from 'react';
-import type { BoardItem, BoardConfig, CreateIssueRequest, UpdateIssueRequest } from '@bmad-studio/shared';
+import type { BoardItem, BoardConfig, CreateIssueRequest, UpdateIssueRequest } from '@hammoc/shared';
 import { useBoardStore } from '../stores/boardStore';
 import { projectsApi } from '../services/api/projects';
 

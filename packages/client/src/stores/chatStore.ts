@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { toast } from 'sonner';
-import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus } from '@bmad-studio/shared';
+import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { usePreferencesStore } from './preferencesStore';
@@ -329,9 +329,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
     // Set isStreaming true immediately (disables input), but delay the visual "waiting" UI.
     // If server responds (session:created/resumed) before the delay, startStreaming cancels it.
-    // Detect /compact command to show compaction-specific indicator early
+    // Detect /compact command to show compaction-specific indicator early.
+    // Also pre-emptively show compacting indicator when context usage is high (≥80%),
+    // because the SDK's compact_boundary event only arrives AFTER compaction completes.
     const isCompactCommand = content.trim() === '/compact';
-    set({ isStreaming: true, ...(isCompactCommand && { isCompacting: true }) });
+    const ctx = get().contextUsage;
+    const contextPct = ctx && ctx.contextWindow > 0
+      ? (ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens) / ctx.contextWindow
+      : 0;
+    const likelyCompacting = isCompactCommand || contextPct >= 0.8;
+    set({ isStreaming: true, ...(likelyCompacting && { isCompacting: true }) });
 
     // Show "waiting" UI after delay (optimistic — before server confirms)
     streamingDelayTimeoutId = setTimeout(() => {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
-import type { BoardItem } from '@bmad-studio/shared';
+import type { BoardItem } from '@hammoc/shared';
 
 // Mock bmadStatusService
 vi.mock('../bmadStatusService.js', () => ({

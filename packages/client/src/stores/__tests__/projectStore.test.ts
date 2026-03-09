@@ -183,7 +183,7 @@ describe('useProjectStore', () => {
 
     it('should set isCreating during creation', async () => {
       let resolvePromise: (
-        value: import('@bmad-studio/shared').CreateProjectResponse
+        value: import('@hammoc/shared').CreateProjectResponse
       ) => void;
       vi.mocked(projectsApi.create).mockImplementation(
         () =>
@@ -253,7 +253,7 @@ describe('useProjectStore', () => {
 
     it('should set isValidating during validation', async () => {
       let resolvePromise: (
-        value: import('@bmad-studio/shared').ValidatePathResponse
+        value: import('@hammoc/shared').ValidatePathResponse
       ) => void;
       vi.mocked(projectsApi.validatePath).mockImplementation(
         () =>

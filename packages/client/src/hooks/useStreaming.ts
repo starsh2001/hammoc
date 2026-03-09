@@ -18,7 +18,7 @@ import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
 import { debugLog } from '../utils/debugLogger';
-import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus } from '@bmad-studio/shared';
+import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus } from '@hammoc/shared';
 import type { InteractiveStatus } from '../stores/chatStore';
 
 export function useStreaming() {
@@ -523,6 +523,13 @@ export function useStreaming() {
     // Handle context compaction notification
     const handleCompact = (data: CompactMetadata) => {
       flushChunkQueue();
+      // Extend stale-data guard cooldown when compact arrives after streaming completed.
+      // Auto-compact rewrites the JSONL file — without this, the cooldown from the
+      // preceding message:complete could expire before the rewrite finishes, allowing
+      // fetchMessages to overwrite in-memory messages with stale/partial JSONL data.
+      if (!useChatStore.getState().isStreaming) {
+        useChatStore.setState({ streamCompletedAt: Date.now() });
+      }
       // Update context usage with actual pre-compact token count from SDK
       // This is the real context size when compact was triggered (more accurate than stale assistant:usage)
       if (data.preTokens > 0) {

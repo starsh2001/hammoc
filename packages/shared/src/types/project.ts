@@ -23,12 +23,12 @@ export interface ProjectInfo {
   lastModified: string;
   /** Whether this project has .bmad-core folder */
   isBmadProject: boolean;
-  /** Whether this project is hidden (from .bmad-studio/settings.json) */
+  /** Whether this project is hidden (from .hammoc/settings.json) */
   hidden?: boolean;
 }
 
 /**
- * Project-level settings stored in <project>/.bmad-studio/settings.json
+ * Project-level settings stored in <project>/.hammoc/settings.json
  */
 export interface ProjectSettings {
   hidden?: boolean;

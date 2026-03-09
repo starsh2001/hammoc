@@ -36,7 +36,7 @@ describe('preferencesStore.setLanguage', () => {
 
   it('persists language to localStorage cache', () => {
     usePreferencesStore.getState().setLanguage('es');
-    const cached = JSON.parse(localStorage.getItem('bmad-studio-preferences') || '{}');
+    const cached = JSON.parse(localStorage.getItem('hammoc-preferences') || '{}');
     expect(cached.language).toBe('es');
   });
 });

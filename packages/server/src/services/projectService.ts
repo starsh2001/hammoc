@@ -19,7 +19,7 @@ import type {
   CreateProjectRequest,
   CreateProjectResponse,
   ValidatePathResponse,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import { preferencesService } from './preferencesService.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -225,7 +225,7 @@ class ProjectService {
         .filter((e) => e.modified)
         .map((e) => new Date(e.modified!).getTime());
 
-      // Scan for .jsonl files not in index (BMad-Studio sessions, SDK not yet synced)
+      // Scan for .jsonl files not in index (Hammoc sessions, SDK not yet synced)
       // and collect their mtimes for lastModified calculation
       try {
         const files = await fs.readdir(projectPath);
@@ -252,7 +252,7 @@ class ProjectService {
       // Check if it's a BMad project (AC 4)
       const isBmadProject = await this.checkBmadProject(originalPath);
 
-      // Read project settings from .bmad-studio/settings.json
+      // Read project settings from .hammoc/settings.json
       const settings = await this.readProjectSettings(originalPath);
 
       return {
@@ -275,11 +275,11 @@ class ProjectService {
   }
 
   /**
-   * Read project settings from <originalPath>/.bmad-studio/settings.json
+   * Read project settings from <originalPath>/.hammoc/settings.json
    * Returns default values if file doesn't exist
    */
   async readProjectSettings(originalPath: string): Promise<ProjectSettings> {
-    const settingsPath = path.join(originalPath, '.bmad-studio', 'settings.json');
+    const settingsPath = path.join(originalPath, '.hammoc', 'settings.json');
     try {
       const content = await fs.readFile(settingsPath, 'utf-8');
       return JSON.parse(content) as ProjectSettings;
@@ -289,14 +289,14 @@ class ProjectService {
   }
 
   /**
-   * Write project settings to <originalPath>/.bmad-studio/settings.json
-   * Creates .bmad-studio directory if it doesn't exist
+   * Write project settings to <originalPath>/.hammoc/settings.json
+   * Creates .hammoc directory if it doesn't exist
    * Supports null values to delete overrides (null = remove field, undefined = no change)
    */
   async writeProjectSettings(originalPath: string, settings: UpdateProjectSettingsRequest): Promise<void> {
-    const bmadStudioDir = path.join(originalPath, '.bmad-studio');
-    await fs.mkdir(bmadStudioDir, { recursive: true });
-    const settingsPath = path.join(bmadStudioDir, 'settings.json');
+    const hammocDir = path.join(originalPath, '.hammoc');
+    await fs.mkdir(hammocDir, { recursive: true });
+    const settingsPath = path.join(hammocDir, 'settings.json');
 
     const existing = await this.readProjectSettings(originalPath);
     const merged = { ...existing };
@@ -368,11 +368,11 @@ class ProjectService {
   }
 
   /**
-   * Read session names from <originalPath>/.bmad-studio/session-names.json
+   * Read session names from <originalPath>/.hammoc/session-names.json
    * Returns empty object if file doesn't exist
    */
   async readSessionNames(originalPath: string): Promise<Record<string, string>> {
-    const namesPath = path.join(originalPath, '.bmad-studio', 'session-names.json');
+    const namesPath = path.join(originalPath, '.hammoc', 'session-names.json');
     try {
       const content = await fs.readFile(namesPath, 'utf-8');
       return JSON.parse(content) as Record<string, string>;
@@ -382,12 +382,12 @@ class ProjectService {
   }
 
   /**
-   * Write session names to <originalPath>/.bmad-studio/session-names.json
+   * Write session names to <originalPath>/.hammoc/session-names.json
    */
   private async writeSessionNames(originalPath: string, names: Record<string, string>): Promise<void> {
-    const bmadStudioDir = path.join(originalPath, '.bmad-studio');
-    await fs.mkdir(bmadStudioDir, { recursive: true });
-    const namesPath = path.join(bmadStudioDir, 'session-names.json');
+    const hammocDir = path.join(originalPath, '.hammoc');
+    await fs.mkdir(hammocDir, { recursive: true });
+    const namesPath = path.join(hammocDir, 'session-names.json');
     await fs.writeFile(namesPath, JSON.stringify(names, null, 2), 'utf-8');
   }
 
@@ -442,7 +442,7 @@ class ProjectService {
    * Read prompt history for a session within a project
    */
   async readPromptHistory(originalPath: string, sessionId: string): Promise<PromptHistoryData> {
-    const historyPath = path.join(originalPath, '.bmad-studio', 'prompt-history', `${sessionId}.json`);
+    const historyPath = path.join(originalPath, '.hammoc', 'prompt-history', `${sessionId}.json`);
     try {
       const content = await fs.readFile(historyPath, 'utf-8');
       return JSON.parse(content) as PromptHistoryData;
@@ -455,7 +455,7 @@ class ProjectService {
    * Write prompt history for a session within a project
    */
   async writePromptHistory(originalPath: string, sessionId: string, data: PromptHistoryData): Promise<void> {
-    const historyDir = path.join(originalPath, '.bmad-studio', 'prompt-history');
+    const historyDir = path.join(originalPath, '.hammoc', 'prompt-history');
     await fs.mkdir(historyDir, { recursive: true });
     const historyPath = path.join(historyDir, `${sessionId}.json`);
     await fs.writeFile(historyPath, JSON.stringify(data, null, 2), 'utf-8');
@@ -833,7 +833,7 @@ class ProjectService {
       const sessionsIndex = {
         originalPath: projectPath,
         entries: [],
-        _generatedBy: 'bmad-studio',
+        _generatedBy: 'hammoc',
         _warning: 'This project was created without Claude CLI and may not be fully compatible',
       };
       await fs.writeFile(sessionsIndexPath, JSON.stringify(sessionsIndex, null, 2));

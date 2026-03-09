@@ -8,29 +8,29 @@ import {
   AuthConfigError,
   MIN_PASSWORD_LENGTH,
   PasswordValidationResult,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
-const BMAD_STUDIO_DIR = '.bmad-studio';
+const HAMMOC_DIR = '.hammoc';
 const CONFIG_FILE = 'config.json';
 const BCRYPT_ROUNDS = 10;
 
 /**
  * 패스워드 설정 관리 서비스
- * @description ~/.bmad-studio/config.json 파일을 통해 패스워드를 관리
+ * @description ~/.hammoc/config.json 파일을 통해 패스워드를 관리
  */
 export class AuthConfigService {
   /**
    * 설정 파일 경로 반환
    */
   getConfigPath(): string {
-    return path.join(os.homedir(), BMAD_STUDIO_DIR, CONFIG_FILE);
+    return path.join(os.homedir(), HAMMOC_DIR, CONFIG_FILE);
   }
 
   /**
    * 설정 디렉토리가 없으면 생성
    */
   ensureConfigDirectory(): void {
-    const configDir = path.join(os.homedir(), BMAD_STUDIO_DIR);
+    const configDir = path.join(os.homedir(), HAMMOC_DIR);
     if (!fs.existsSync(configDir)) {
       fs.mkdirSync(configDir, { recursive: true });
     }

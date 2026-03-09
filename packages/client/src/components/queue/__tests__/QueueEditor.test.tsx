@@ -28,11 +28,11 @@ vi.mock('../../../hooks/useQueueRunner', () => ({
   useQueueRunner: () => mockRunner,
 }));
 
-vi.mock('@bmad-studio/shared', () => ({
+vi.mock('@hammoc/shared', () => ({
   parseQueueScript: vi.fn(),
 }));
 
-import { parseQueueScript } from '@bmad-studio/shared';
+import { parseQueueScript } from '@hammoc/shared';
 const mockedParse = vi.mocked(parseQueueScript);
 
 describe('QueueEditor', () => {

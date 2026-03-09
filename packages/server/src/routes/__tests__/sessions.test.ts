@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
-import type { SessionListItem, HistoryMessage, PaginationInfo } from '@bmad-studio/shared';
+import type { SessionListItem, HistoryMessage, PaginationInfo } from '@hammoc/shared';
 
 // Create hoisted mocks for sessionService
 const { mockListSessionsBySlug, mockGetSessionMessages, mockIsValidPathParam, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds } = vi.hoisted(() => ({

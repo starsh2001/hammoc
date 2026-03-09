@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Loader2, ImagePlus, Trash2 } from 'lucide-react';
-import type { BoardItem, UpdateIssueRequest, IssueAttachment } from '@bmad-studio/shared';
+import type { BoardItem, UpdateIssueRequest, IssueAttachment } from '@hammoc/shared';
 import { boardApi } from '../../services/api/board.js';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
