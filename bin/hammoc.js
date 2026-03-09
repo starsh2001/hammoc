@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-// BMad Studio CLI entry point
-// Usage: bmad-studio [options]
+// Hammoc CLI entry point
+// Usage: hammoc [options]
 //   --port <number>   Port to listen on (default: 3000)
 //   --host <string>   Host to bind to (default: 0.0.0.0)
 //   --reset-password  Reset the admin password
@@ -19,9 +19,9 @@ const args = process.argv.slice(2);
 
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`
-  BMad Studio - Claude Code Session Manager
+  Hammoc - Claude Code Session Manager
 
-  Usage: bmad-studio [options]
+  Usage: hammoc [options]
 
   Options:
     --port <number>   Port to listen on (default: 3000, env: PORT)

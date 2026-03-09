@@ -13,7 +13,7 @@ import {
   AUTH_ERROR_CODES,
   AuthConfigError,
   MIN_PASSWORD_LENGTH,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import { AuthConfigService } from '../services/authConfigService.js';
 import { rateLimiter } from '../services/rateLimiter.js';
 import { createLogger } from '../utils/logger.js';

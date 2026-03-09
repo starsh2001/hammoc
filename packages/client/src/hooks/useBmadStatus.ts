@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { BmadStatusResponse } from '@bmad-studio/shared';
+import type { BmadStatusResponse } from '@hammoc/shared';
 import i18n from '../i18n';
 import { bmadStatusApi } from '../services/api/bmadStatus.js';
 import { ApiError } from '../services/api/client.js';

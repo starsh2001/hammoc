@@ -1,7 +1,7 @@
 import { Terminal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import type { DashboardProjectStatus } from '@bmad-studio/shared';
+import type { DashboardProjectStatus } from '@hammoc/shared';
 import { QueueStatusBadge } from './QueueStatusBadge';
 
 interface ProjectStatusIndicatorsProps {

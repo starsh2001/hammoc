@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useActiveAgent } from '../useActiveAgent';
-import type { HistoryMessage, SlashCommand } from '@bmad-studio/shared';
+import type { HistoryMessage, SlashCommand } from '@hammoc/shared';
 
 const mockCommands: SlashCommand[] = [
   { command: '/BMad:agents:pm', name: 'PM (Product Manager)', category: 'agent', icon: '📋' },

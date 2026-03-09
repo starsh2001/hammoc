@@ -11,7 +11,7 @@ import type {
   BmadEpicStatus,
   BmadStoryStatus,
   DirEntry,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 /**
  * Matches epic headers in various Markdown formats:

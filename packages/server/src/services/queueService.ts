@@ -15,8 +15,8 @@ import type {
   ChatOptions,
   PermissionMode,
   PermissionRequest,
-} from '@bmad-studio/shared';
-import { ERROR_CODES, SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
+} from '@hammoc/shared';
+import { ERROR_CODES, SUPPORTED_LANGUAGES } from '@hammoc/shared';
 import { ChatService } from './chatService.js';
 import { parseSDKError } from '../utils/errors.js';
 import { createLogger } from '../utils/logger.js';

@@ -1,6 +1,6 @@
 import * as readline from 'node:readline';
 import { AuthConfigService } from '../services/authConfigService.js';
-import { AuthConfigError } from '@bmad-studio/shared';
+import { AuthConfigError } from '@hammoc/shared';
 
 /** 패스워드 확인 재시도 최대 횟수 */
 const MAX_PASSWORD_RETRY = 3;
@@ -60,7 +60,7 @@ export async function resetPassword(): Promise<void> {
     return;
   }
 
-  console.log('\nReset password for BMad Studio.\n');
+  console.log('\nReset password for Hammoc.\n');
 
   // Verify current password
   const currentPassword = await promptPassword('Enter current password: ');

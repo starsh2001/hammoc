@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { RateLimitInfo } from '@bmad-studio/shared';
+import type { RateLimitInfo } from '@hammoc/shared';
 import { authApi } from '../services/api/auth';
 import { ApiError } from '../services/api/client';
 import { disconnectSocket } from '../services/socket';

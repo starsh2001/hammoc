@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
-import type { ProjectInfo } from '@bmad-studio/shared';
+import type { ProjectInfo } from '@hammoc/shared';
 
 // Hoist mock to avoid initialization issues
 const { mockScanProjects } = vi.hoisted(() => ({

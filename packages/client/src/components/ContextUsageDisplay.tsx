@@ -5,8 +5,8 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { CONTEXT_USAGE_THRESHOLDS } from '@bmad-studio/shared';
-import type { ChatUsage } from '@bmad-studio/shared';
+import { CONTEXT_USAGE_THRESHOLDS } from '@hammoc/shared';
+import type { ChatUsage } from '@hammoc/shared';
 
 interface ContextUsageDisplayProps {
   contextUsage: ChatUsage | null;

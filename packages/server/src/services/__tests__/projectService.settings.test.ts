@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fs from 'node:fs/promises';
 import { projectService } from '../projectService.js';
 import { preferencesService } from '../preferencesService.js';
-import type { UserPreferences } from '@bmad-studio/shared';
+import type { UserPreferences } from '@hammoc/shared';
 
 // Spy on fs methods
 vi.spyOn(fs, 'readFile');

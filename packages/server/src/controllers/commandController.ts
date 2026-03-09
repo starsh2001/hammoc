@@ -5,7 +5,7 @@
  */
 
 import { Request, Response } from 'express';
-import type { CommandsResponse } from '@bmad-studio/shared';
+import type { CommandsResponse } from '@hammoc/shared';
 import { commandService } from '../services/commandService.js';
 import { createLogger } from '../utils/logger.js';
 

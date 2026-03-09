@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { OnboardingPage } from '../OnboardingPage';
 import { CliStatusProvider } from '../../contexts/CliStatusContext';
-import type { CLIStatusResponse } from '@bmad-studio/shared';
+import type { CLIStatusResponse } from '@hammoc/shared';
 
 // Mock react-router-dom navigation
 const mockNavigate = vi.fn();
@@ -94,14 +94,14 @@ describe('OnboardingPage', () => {
     render(<OnboardingPage />, { wrapper: Wrapper });
 
     expect(screen.getByText('시작하기')).toBeInTheDocument();
-    expect(screen.getByText('BMad Studio 설정')).toBeInTheDocument();
+    expect(screen.getByText('HAMMOC 설정')).toBeInTheDocument();
   });
 
   it('should render description text', () => {
     render(<OnboardingPage />, { wrapper: Wrapper });
 
     expect(
-      screen.getByText('아래 항목을 완료하면 BMad Studio를 사용할 수 있습니다.')
+      screen.getByText('아래 항목을 완료하면 HAMMOC를 사용할 수 있습니다.')
     ).toBeInTheDocument();
   });
 

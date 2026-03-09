@@ -7,7 +7,7 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import i18next from '../i18n.js';
-import { SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
+import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 import { preferencesService } from '../services/preferencesService.js';
 
 declare module 'express' {

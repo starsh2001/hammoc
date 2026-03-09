@@ -27,7 +27,7 @@ import {
   Plus,
   PartyPopper,
 } from 'lucide-react';
-import type { BmadStatusResponse } from '@bmad-studio/shared';
+import type { BmadStatusResponse } from '@hammoc/shared';
 
 import { computeNextSteps, type NextStepRecommendation } from '../../utils/bmadRecommendations.js';
 import { generateUUID } from '../../utils/uuid.js';

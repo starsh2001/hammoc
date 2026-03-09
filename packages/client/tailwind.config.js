@@ -38,6 +38,7 @@ export default {
         'error-pop': 'error-pop 0.3s ease-out forwards',
         bottomSheetUp: 'bottomSheetUp 0.3s ease-out forwards',
         bottomSheetDown: 'bottomSheetDown 0.2s ease-in forwards',
+        'bounce-dot': 'bounce-dot 1.2s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -70,6 +71,10 @@ export default {
         bottomSheetDown: {
           '0%': { transform: 'translateY(0)' },
           '100%': { transform: 'translateY(100%)' },
+        },
+        'bounce-dot': {
+          '0%, 80%, 100%': { transform: 'translateY(0)' },
+          '40%': { transform: 'translateY(-6px)' },
         },
       },
     },

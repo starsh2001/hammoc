@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, FolderRoot, Loader2, List, LayoutGrid } from 'lucide-react';
 
-import type { FileSearchResult } from '@bmad-studio/shared';
+import type { FileSearchResult } from '@hammoc/shared';
 import { useFileStore } from '../../stores/fileStore.js';
 import { useImageViewerStore } from '../../stores/imageViewerStore.js';
 import { usePreferencesStore } from '../../stores/preferencesStore.js';

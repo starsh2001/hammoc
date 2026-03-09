@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { Search, X, File, Folder, Loader2, Clock } from 'lucide-react';
-import type { FileSearchResult } from '@bmad-studio/shared';
+import type { FileSearchResult } from '@hammoc/shared';
 
 import { FileTree } from './FileTree.js';
 import { useFileStore } from '../../stores/fileStore.js';

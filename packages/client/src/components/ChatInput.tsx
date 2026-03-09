@@ -30,8 +30,8 @@ import { FavoritesPopup } from './FavoritesPopup';
 import { FavoritesChipBar } from './FavoritesChipBar';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
 import { UsageStatusBar } from './UsageStatusBar';
-import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage } from '@bmad-studio/shared';
-import { IMAGE_CONSTRAINTS } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage } from '@hammoc/shared';
+import { IMAGE_CONSTRAINTS } from '@hammoc/shared';
 import { generateUUID } from '../utils/uuid';
 import { debugLogger } from '../utils/debugLogger';
 

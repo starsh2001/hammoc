@@ -1,18 +1,18 @@
 /**
  * Preferences Service
- * Manages global user preferences stored at ~/.bmad-studio/preferences.json
+ * Manages global user preferences stored at ~/.hammoc/preferences.json
  */
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { DEFAULT_PREFERENCES } from '@bmad-studio/shared';
-import type { UserPreferences, TelegramSettings, TelegramSettingsApiResponse, UpdateTelegramSettingsRequest } from '@bmad-studio/shared';
+import { DEFAULT_PREFERENCES } from '@hammoc/shared';
+import type { UserPreferences, TelegramSettings, TelegramSettingsApiResponse, UpdateTelegramSettingsRequest } from '@hammoc/shared';
 import { config } from '../config/index.js';
 
 class PreferencesService {
   private getDataDir(): string {
-    return path.join(os.homedir(), '.bmad-studio');
+    return path.join(os.homedir(), '.hammoc');
   }
 
   private getPreferencesPath(): string {

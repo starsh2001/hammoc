@@ -6,7 +6,7 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { LogLevel, parseLogLevel } from '@bmad-studio/shared';
+import { LogLevel, parseLogLevel } from '@hammoc/shared';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,7 +16,7 @@ function readPackageMeta() {
   try {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
     return {
-      name: pkg.name ?? 'bmad-studio',
+      name: pkg.name ?? 'hammoc',
       version: pkg.version ?? '0.0.0',
       description: pkg.description ?? '',
       license: pkg.license ?? '',
@@ -28,7 +28,7 @@ function readPackageMeta() {
     };
   } catch {
     return {
-      name: 'bmad-studio',
+      name: 'hammoc',
       version: process.env.npm_package_version || '0.0.0',
       description: '',
       license: '',

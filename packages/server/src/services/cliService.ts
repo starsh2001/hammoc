@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { CLIStatusResponse, DEFAULT_SETUP_COMMANDS } from '@bmad-studio/shared';
+import { CLIStatusResponse, DEFAULT_SETUP_COMMANDS } from '@hammoc/shared';
 
 const execAsync = promisify(exec);
 

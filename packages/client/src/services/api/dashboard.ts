@@ -3,7 +3,7 @@
  * [Source: Story 20.3 - Task 1]
  */
 
-import type { DashboardStatusResponse } from '@bmad-studio/shared';
+import type { DashboardStatusResponse } from '@hammoc/shared';
 import { api } from './client';
 
 export const dashboardApi = {

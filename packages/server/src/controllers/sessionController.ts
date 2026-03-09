@@ -5,7 +5,7 @@
  */
 
 import { Request, Response } from 'express';
-import { SESSION_ERRORS, SessionListResponse, HistoryMessagesResponse, DeleteSessionsBatchRequest, UpdateSessionNameRequest } from '@bmad-studio/shared';
+import { SESSION_ERRORS, SessionListResponse, HistoryMessagesResponse, DeleteSessionsBatchRequest, UpdateSessionNameRequest } from '@hammoc/shared';
 import { sessionService } from '../services/sessionService.js';
 import { projectService } from '../services/projectService.js';
 import { getActiveStreamSessionIds } from '../handlers/websocket.js';

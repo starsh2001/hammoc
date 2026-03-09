@@ -4,7 +4,7 @@
  */
 
 import { useRef, useState, useEffect, useCallback } from 'react';
-import type { BoardItem, BoardConfig } from '@bmad-studio/shared';
+import type { BoardItem, BoardConfig } from '@hammoc/shared';
 import type { CardActionCallbacks } from './BoardCard';
 import { KanbanColumn } from './KanbanColumn';
 

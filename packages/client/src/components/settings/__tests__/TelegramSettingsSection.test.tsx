@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TelegramSettingsSection } from '../TelegramSettingsSection';
-import type { TelegramSettingsApiResponse } from '@bmad-studio/shared';
+import type { TelegramSettingsApiResponse } from '@hammoc/shared';
 
 // Mock sonner
 vi.mock('sonner', () => ({

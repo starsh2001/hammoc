@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useQueueStore } from '../queueStore';
 
-vi.mock('@bmad-studio/shared', () => ({
+vi.mock('@hammoc/shared', () => ({
   parseQueueScript: vi.fn().mockReturnValue({
     items: [
       { prompt: 'Hello', isNewSession: false },
@@ -16,7 +16,7 @@ vi.mock('@bmad-studio/shared', () => ({
   }),
 }));
 
-import { parseQueueScript } from '@bmad-studio/shared';
+import { parseQueueScript } from '@hammoc/shared';
 
 const mockedParse = vi.mocked(parseQueueScript);
 

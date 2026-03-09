@@ -7,7 +7,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import yaml from 'js-yaml';
-import type { SlashCommand, StarCommand, CommandsResponse } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand, CommandsResponse } from '@hammoc/shared';
 import { projectService } from './projectService.js';
 
 interface CoreConfig {
@@ -109,9 +109,13 @@ class CommandService {
       this.scanStarCommands(bmadCorePath),
     ]);
 
+    // Warn if BMad agents exist but .claude/commands/ is missing
+    const warnings = await this.checkClaudeCommandsDir(projectPath, agents, slashPrefix);
+
     return {
       commands: [...BUILTIN_COMMANDS, ...agents, ...tasks, ...skills],
       starCommands,
+      ...(warnings.length > 0 && { warnings }),
     };
   }
 
@@ -319,6 +323,29 @@ class CommandService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Check if .claude/commands/ directory exists for BMad agent slash commands.
+   * The SDK resolves slash commands from .claude/commands/ — if the directory
+   * is missing, commands shown in the palette will fail with "Unknown skill".
+   */
+  async checkClaudeCommandsDir(
+    projectPath: string,
+    agents: SlashCommand[],
+    slashPrefix: string
+  ): Promise<string[]> {
+    if (agents.length === 0) return [];
+
+    const commandsDir = path.join(projectPath, '.claude', 'commands', slashPrefix, 'agents');
+    try {
+      const stat = await fs.stat(commandsDir);
+      if (stat.isDirectory()) return [];
+    } catch {
+      // Directory doesn't exist
+    }
+
+    return ['MISSING_CLAUDE_COMMANDS'];
   }
 
   /**

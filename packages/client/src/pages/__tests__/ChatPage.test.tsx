@@ -11,7 +11,7 @@ import { useMessageStore } from '../../stores/messageStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSessionStore } from '../../stores/sessionStore';
-import type { HistoryMessage, PaginationInfo } from '@bmad-studio/shared';
+import type { HistoryMessage, PaginationInfo } from '@hammoc/shared';
 
 // Mock ResizeObserver (not available in jsdom)
 vi.stubGlobal('ResizeObserver', class {
@@ -56,8 +56,8 @@ vi.mock('../../hooks/useWebSocket', () => ({
 
 // Mock useSlashCommands to prevent URL parse and act() warnings (TEST-002 fix)
 const mockUseSlashCommands = vi.fn((_projectSlug?: string) => ({
-  commands: [] as import('@bmad-studio/shared').SlashCommand[],
-  starCommands: {} as Record<string, import('@bmad-studio/shared').StarCommand[]>,
+  commands: [] as import('@hammoc/shared').SlashCommand[],
+  starCommands: {} as Record<string, import('@hammoc/shared').StarCommand[]>,
   isLoading: false,
 }));
 vi.mock('../../hooks/useSlashCommands', () => ({

@@ -8,7 +8,7 @@ import {
   getIO,
   getConnectedClientsCount,
 } from '../websocket.js';
-import { ERROR_CODES } from '@bmad-studio/shared';
+import { ERROR_CODES } from '@hammoc/shared';
 
 // Shared mock state — accessible via vi.hoisted() for vi.mock factories
 const { mockState } = vi.hoisted(() => {

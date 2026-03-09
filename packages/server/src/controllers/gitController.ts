@@ -5,7 +5,7 @@
  */
 
 import { Request, Response } from 'express';
-import { GIT_ERRORS, FILE_SYSTEM_ERRORS } from '@bmad-studio/shared';
+import { GIT_ERRORS, FILE_SYSTEM_ERRORS } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
 import { gitService } from '../services/gitService.js';
 import { validateProjectPath } from '../middleware/pathGuard.js';

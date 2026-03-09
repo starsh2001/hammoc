@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useDashboardStore } from '../dashboardStore';
-import type { DashboardProjectStatus, DashboardStatusChangeEvent } from '@bmad-studio/shared';
+import type { DashboardProjectStatus, DashboardStatusChangeEvent } from '@hammoc/shared';
 
 // Mock the dashboard API
 vi.mock('../../services/api/dashboard', () => ({

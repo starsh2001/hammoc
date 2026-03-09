@@ -6,7 +6,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { EpicProgressCard } from '../EpicProgressCard';
-import type { BmadEpicStatus } from '@bmad-studio/shared';
+import type { BmadEpicStatus } from '@hammoc/shared';
 
 const mockEpics: BmadEpicStatus[] = [
   {

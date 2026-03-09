@@ -8,7 +8,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { FileExplorerTab } from '../FileExplorerTab.js';
-import type { DirectoryEntry } from '@bmad-studio/shared';
+import type { DirectoryEntry } from '@hammoc/shared';
 
 // Mock fileSystemApi
 vi.mock('../../../services/api/fileSystem.js', () => ({
@@ -93,14 +93,14 @@ describe('FileExplorerTab', () => {
     renderWithRouter();
 
     await waitFor(() => {
-      expect(screen.getByText('루트')).toBeInTheDocument();
+      expect(screen.getByText('Root')).toBeInTheDocument();
     });
 
     const breadcrumbNav = screen.getByRole('navigation', { name: '경로' });
     expect(breadcrumbNav).toBeInTheDocument();
 
     const currentPage = breadcrumbNav.querySelector('[aria-current="page"]');
-    expect(currentPage?.textContent).toBe('루트');
+    expect(currentPage?.textContent).toBe('Root');
   });
 
   // TC-FET-3: Search input exists with placeholder (AC4)
@@ -265,14 +265,14 @@ describe('FileExplorerTab', () => {
 
     // Root should be clickable (not aria-current)
     const rootButton = breadcrumbNav.querySelector('button');
-    expect(rootButton?.textContent).toBe('루트');
+    expect(rootButton?.textContent).toBe('Root');
 
     // Click Root to reset breadcrumb
     fireEvent.click(rootButton!);
 
     // Now Root should be aria-current again
     const updatedCurrent = breadcrumbNav.querySelector('[aria-current="page"]');
-    expect(updatedCurrent?.textContent).toBe('루트');
+    expect(updatedCurrent?.textContent).toBe('Root');
   });
 
   // --- Story 13.3: CRUD Integration Tests ---

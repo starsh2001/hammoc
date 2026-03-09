@@ -6,8 +6,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
-import type { BoardConfig, BoardColumnConfig, BoardItemStatus } from '@bmad-studio/shared';
-import { COLUMN_COLOR_PALETTE, DEFAULT_BOARD_CONFIG, REQUIRED_COLUMN_IDS, validateBoardConfig } from '@bmad-studio/shared';
+import type { BoardConfig, BoardColumnConfig, BoardItemStatus } from '@hammoc/shared';
+import { COLUMN_COLOR_PALETTE, DEFAULT_BOARD_CONFIG, REQUIRED_COLUMN_IDS, validateBoardConfig } from '@hammoc/shared';
 import { STATUS_LABEL } from './constants';
 import { generateUUID } from '../../utils/uuid';
 

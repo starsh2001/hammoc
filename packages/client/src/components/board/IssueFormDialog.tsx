@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Loader2, Paperclip, ImagePlus } from 'lucide-react';
-import type { CreateIssueRequest } from '@bmad-studio/shared';
+import type { CreateIssueRequest } from '@hammoc/shared';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 const ACCEPT_STRING = ACCEPTED_TYPES.join(',');

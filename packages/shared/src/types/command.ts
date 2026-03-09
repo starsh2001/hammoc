@@ -36,4 +36,6 @@ export interface StarCommand {
 export interface CommandsResponse {
   commands: SlashCommand[];
   starCommands: Record<string, StarCommand[]>;
+  /** Project-level warnings (e.g., missing .claude/commands/ directory) */
+  warnings?: string[];
 }

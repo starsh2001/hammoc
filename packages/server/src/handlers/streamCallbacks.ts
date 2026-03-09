@@ -15,7 +15,7 @@ import type {
   TaskNotificationData,
   SessionMetadata,
   ChatResponse,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('streamCallbacks');

@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { detectAgentFromPrompt } from '../agentUtils';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand } from '@hammoc/shared';
 
 const mockCommands: SlashCommand[] = [
   { command: '/BMad:agents:pm', name: 'PM (Product Manager)', category: 'agent', icon: '📋' },

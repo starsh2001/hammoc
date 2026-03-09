@@ -6,7 +6,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FavoritesChipBar } from '../FavoritesChipBar';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand } from '@hammoc/shared';
 
 const mockCommands: SlashCommand[] = [
   { command: '/BMad:agents:pm', name: 'PM', description: 'Product Manager', category: 'agent', icon: '📋' },

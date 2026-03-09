@@ -16,9 +16,9 @@ import {
   UpdateProjectSettingsRequest,
   SetupBmadRequest,
   SetupBmadResponse,
-} from '@bmad-studio/shared';
-import type { PermissionMode } from '@bmad-studio/shared';
-import { validateBoardConfig } from '@bmad-studio/shared';
+} from '@hammoc/shared';
+import type { PermissionMode } from '@hammoc/shared';
+import { validateBoardConfig } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
 import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES, resolveTemplateVariables } from '../services/chatService.js';
 import { createLogger } from '../utils/logger.js';
@@ -299,7 +299,7 @@ export const projectController = {
 
   /**
    * PATCH /api/projects/:projectSlug/settings
-   * Update project settings (.bmad-studio/settings.json)
+   * Update project settings (.hammoc/settings.json)
    */
   async updateSettings(req: Request, res: Response): Promise<void> {
     try {

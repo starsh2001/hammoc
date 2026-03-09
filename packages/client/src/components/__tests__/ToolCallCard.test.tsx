@@ -11,7 +11,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ToolCallCard } from '../ToolCallCard';
-import type { HistoryMessage } from '@bmad-studio/shared';
+import type { HistoryMessage } from '@hammoc/shared';
 
 // Mock DiffViewer
 vi.mock('../DiffViewer', () => ({

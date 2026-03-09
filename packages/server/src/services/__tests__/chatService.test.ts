@@ -237,8 +237,8 @@ describe('Cross-Platform Path Handling', () => {
 
   it('should use path.join for path concatenation', () => {
     const basePath = os.homedir();
-    const configPath = path.join(basePath, '.bmad-studio', 'config.json');
-    expect(configPath).toContain('.bmad-studio');
+    const configPath = path.join(basePath, '.hammoc', 'config.json');
+    expect(configPath).toContain('.hammoc');
     expect(configPath).toContain('config.json');
   });
 

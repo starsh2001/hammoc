@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueueTemplateDialog } from '../QueueTemplateDialog';
-import type { QueueStoryInfo, QueueTemplate } from '@bmad-studio/shared';
+import type { QueueStoryInfo, QueueTemplate } from '@hammoc/shared';
 
 // Mock queueApi
 const mockGetStories = vi.fn();
@@ -25,8 +25,8 @@ vi.mock('../../../services/api/queue', () => ({
   },
 }));
 
-vi.mock('@bmad-studio/shared', async () => {
-  const actual = await vi.importActual('@bmad-studio/shared');
+vi.mock('@hammoc/shared', async () => {
+  const actual = await vi.importActual('@hammoc/shared');
   return actual;
 });
 

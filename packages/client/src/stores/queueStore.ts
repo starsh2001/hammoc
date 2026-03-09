@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { parseQueueScript } from '@bmad-studio/shared';
+import { parseQueueScript } from '@hammoc/shared';
 import type {
   QueueItem,
   QueueParseWarning,
@@ -13,7 +13,7 @@ import type {
   QueueItemCompleteEvent,
   QueueErrorEvent,
   QueueItemsUpdatedEvent,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import { queueApi } from '../services/api/queue';
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;

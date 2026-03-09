@@ -5,7 +5,7 @@
 
 import { AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { BoardItem } from '@bmad-studio/shared';
+import type { BoardItem } from '@hammoc/shared';
 import { CardContextMenu } from './CardContextMenu';
 import { STATUS_LABEL, STATUS_BADGE_COLOR } from './constants';
 

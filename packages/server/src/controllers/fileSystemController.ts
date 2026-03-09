@@ -5,7 +5,7 @@
  */
 
 import { Request, Response } from 'express';
-import { FILE_SYSTEM_ERRORS } from '@bmad-studio/shared';
+import { FILE_SYSTEM_ERRORS } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
 import { fileSystemService } from '../services/fileSystemService.js';
 

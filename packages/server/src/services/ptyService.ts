@@ -6,7 +6,7 @@
 
 import * as pty from 'node-pty';
 import { randomUUID } from 'crypto';
-import { TERMINAL_ERRORS } from '@bmad-studio/shared';
+import { TERMINAL_ERRORS } from '@hammoc/shared';
 import { config } from '../config/index.js';
 import { createLogger } from '../utils/logger.js';
 

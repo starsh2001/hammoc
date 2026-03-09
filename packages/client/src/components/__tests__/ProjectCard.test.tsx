@@ -6,7 +6,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ProjectCard } from '../ProjectCard';
-import type { ProjectInfo } from '@bmad-studio/shared';
+import type { ProjectInfo } from '@hammoc/shared';
 
 describe('ProjectCard', () => {
   beforeEach(() => {

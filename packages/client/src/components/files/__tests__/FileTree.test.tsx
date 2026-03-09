@@ -7,7 +7,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FileTree } from '../FileTree.js';
-import type { DirectoryEntry, DirectoryListResponse } from '@bmad-studio/shared';
+import type { DirectoryEntry, DirectoryListResponse } from '@hammoc/shared';
 
 // Mock fileSystemApi
 vi.mock('../../../services/api/fileSystem.js', () => ({

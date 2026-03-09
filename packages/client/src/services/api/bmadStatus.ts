@@ -5,7 +5,7 @@
  */
 
 import { api } from './client.js';
-import type { BmadStatusResponse } from '@bmad-studio/shared';
+import type { BmadStatusResponse } from '@hammoc/shared';
 
 export const bmadStatusApi = {
   /** Fetch BMad project status (documents, epics, stories) */

@@ -5,7 +5,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import type { SubscriptionRateLimit } from '@bmad-studio/shared';
+import type { SubscriptionRateLimit } from '@hammoc/shared';
 
 interface UsageStatusBarProps {
   rateLimit?: SubscriptionRateLimit | null;

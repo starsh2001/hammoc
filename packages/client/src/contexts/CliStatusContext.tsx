@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode } from 'react';
-import type { CLIStatusResponse } from '@bmad-studio/shared';
+import type { CLIStatusResponse } from '@hammoc/shared';
 
 interface CliStatusContextValue {
   cliStatus: CLIStatusResponse | null;

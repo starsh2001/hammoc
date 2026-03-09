@@ -3,7 +3,7 @@ import {
   AuthConfig,
   AuthConfigError,
   MIN_PASSWORD_LENGTH,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 // Mutable mock state - must be a simple object without const values in vi.mock
 const mockState = {
@@ -68,7 +68,7 @@ describe('AuthConfigService', () => {
   describe('getConfigPath', () => {
     it('should return correct config path', () => {
       const result = service.getConfigPath();
-      expect(result).toContain('.bmad-studio');
+      expect(result).toContain('.hammoc');
       expect(result).toContain('config.json');
     });
   });

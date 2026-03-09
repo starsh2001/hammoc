@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import type { DashboardProjectStatus, DashboardStatusChangeEvent } from '@bmad-studio/shared';
+import type { DashboardProjectStatus, DashboardStatusChangeEvent } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useDashboardStore } from '../stores/dashboardStore';
 

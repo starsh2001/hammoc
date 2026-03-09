@@ -71,7 +71,7 @@
   "cliStatusChecking": "Checking CLI status...",
   "backgroundRefreshAria": "Background refresh in progress",
   "project": {
-    "title": "Projects",
+    "title": "Project List",
     "ariaLabel": "Project: {{name}}, {{count}} sessions",
     "menu": "Project menu",
     "setupBmad": "Convert to BMad",
@@ -97,6 +97,8 @@
     "hideHidden": "Hide hidden items",
     "settings": "Settings",
     "logout": "Logout",
+    "wideView": "Wide View",
+    "narrowView": "Narrow View",
     "lightMode": "Light mode",
     "darkMode": "Dark mode",
     "menuLabel": "Menu",

@@ -6,7 +6,7 @@ import type {
   PermissionMode,
   StreamCallbacks,
   ImageAttachment,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import path from 'path';
 import fs from 'fs/promises';
 import { execSync } from 'child_process';
@@ -22,9 +22,9 @@ const log = createLogger('chatService');
  */
 export const DEFAULT_WORKSPACE_TEMPLATE = [
   '',
-  '# BMad Studio Context',
+  '# Hammoc Context',
   '',
-  'You are running inside BMad Studio, a web-based IDE.',
+  'You are running inside Hammoc, a web-based IDE.',
   '',
   '## Code References in Text',
   'IMPORTANT: When referencing files or code locations, use markdown link syntax to make them clickable:',

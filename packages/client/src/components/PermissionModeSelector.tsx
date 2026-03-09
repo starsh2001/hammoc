@@ -11,7 +11,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { PermissionMode } from '@bmad-studio/shared';
+import type { PermissionMode } from '@hammoc/shared';
 
 interface PermissionModeSelectorProps {
   mode: PermissionMode;

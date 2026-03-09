@@ -15,7 +15,7 @@ import type {
   BmadVersionsResponse,
   UpdateProjectSettingsRequest,
   ProjectSettingsApiResponse,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 export const projectsApi = {
   /** List all projects */
@@ -44,7 +44,7 @@ export const projectsApi = {
   getSettings: (projectSlug: string) =>
     api.get<ProjectSettingsApiResponse>(`/projects/${projectSlug}/settings`),
 
-  /** Update project settings (.bmad-studio/settings.json) */
+  /** Update project settings (.hammoc/settings.json) */
   updateSettings: (projectSlug: string, settings: UpdateProjectSettingsRequest) =>
     api.patch<ProjectSettingsApiResponse>(`/projects/${projectSlug}/settings`, settings),
 

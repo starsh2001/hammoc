@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSocket } from '../services/socket';
-import type { ConnectionStatus } from '@bmad-studio/shared';
+import type { ConnectionStatus } from '@hammoc/shared';
 import { debugLogger } from '../utils/debugLogger';
 
 export interface UseWebSocketReturn {

@@ -7,7 +7,7 @@ import { notificationService } from './services/notificationService.js';
 import { resetPassword } from './cli/passwordSetup.js';
 import { createLogger, getEffectiveLogLevel } from './utils/logger.js';
 import { ptyService } from './services/ptyService.js';
-import { LogLevel } from '@bmad-studio/shared';
+import { LogLevel } from '@hammoc/shared';
 import { isExternalBinding } from './utils/networkUtils.js';
 import { config } from './config/index.js';
 import path from 'path';
@@ -94,7 +94,7 @@ async function main() {
     httpServer.listen(Number(PORT), HOST, () => {
       const isProduction = process.env.NODE_ENV === 'production';
       const localIP = getLocalIP();
-      log.info(`BMad Studio Server running on:`);
+      log.info(`Hammoc Server running on:`);
       log.info(`  Local:   http://localhost:${PORT}`);
       if (localIP) log.info(`  Network: http://${localIP}:${PORT}`);
       log.info(`  Mode:    ${isProduction ? 'production (serving static client files)' : 'development'}`);

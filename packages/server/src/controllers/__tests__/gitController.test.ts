@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
-import { GIT_ERRORS, FILE_SYSTEM_ERRORS } from '@bmad-studio/shared';
+import { GIT_ERRORS, FILE_SYSTEM_ERRORS } from '@hammoc/shared';
 
 // Mock services
 const mockResolveOriginalPath = vi.fn();

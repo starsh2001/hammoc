@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Request, Response } from 'express';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand } from '@hammoc/shared';
 
 const { mockGetCommandsWithStarCommands } = vi.hoisted(() => ({
   mockGetCommandsWithStarCommands: vi.fn(),

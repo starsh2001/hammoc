@@ -25,7 +25,7 @@ import {
 import { Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
-import type { QueueItem } from '@bmad-studio/shared';
+import type { QueueItem } from '@hammoc/shared';
 
 interface QueueRunnerPanelProps {
   items: QueueItem[];

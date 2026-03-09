@@ -11,7 +11,7 @@ import type {
   AuthStatus,
   SetupPasswordRequest,
   SetupPasswordResponse,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 export const authApi = {
   login: (data: LoginRequest) => api.post<LoginResponse>('/auth/login', data),

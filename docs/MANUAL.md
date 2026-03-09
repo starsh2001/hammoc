@@ -1,6 +1,6 @@
-# BMad Studio User Manual
+# Hammoc User Manual
 
-Complete guide to every feature in BMad Studio.
+Complete guide to every feature in Hammoc.
 
 **Table of Contents**
 
@@ -29,21 +29,21 @@ Complete guide to every feature in BMad Studio.
 **Option A: Run with npx (no install)**
 
 ```bash
-npx bmad-studio
+npx hammoc
 ```
 
 **Option B: Global install**
 
 ```bash
-npm install -g bmad-studio
-bmad-studio
+npm install -g hammoc
+hammoc
 ```
 
 **Option C: From source (development)**
 
 ```bash
-git clone https://github.com/starsh2001/bmad-studio.git
-cd bmad-studio
+git clone https://github.com/starsh2001/hammoc.git
+cd hammoc
 npm install
 npm run dev
 ```
@@ -64,7 +64,7 @@ npm run dev
 
 ### 1.4 Mobile Access
 
-BMad Studio is fully responsive. From any device on the same network:
+Hammoc is fully responsive. From any device on the same network:
 
 ```
 http://<your-computer-ip>:3000
@@ -77,20 +77,20 @@ http://<your-computer-ip>:3000
 ### 1.5 CLI Options
 
 ```bash
-bmad-studio --port 8080          # Custom port
-bmad-studio --host localhost     # Bind to localhost only
-bmad-studio --reset-password     # Reset admin password
-bmad-studio --version            # Show version
-bmad-studio --help               # Show help
+hammoc --port 8080          # Custom port
+hammoc --host localhost     # Bind to localhost only
+hammoc --reset-password     # Reset admin password
+hammoc --version            # Show version
+hammoc --help               # Show help
 ```
 
-Environment variables also work: `PORT=8080 bmad-studio`
+Environment variables also work: `PORT=8080 hammoc`
 
 ---
 
 ## 2. Chat
 
-The chat interface is the core of BMad Studio. It provides a rich, real-time conversation experience with Claude.
+The chat interface is the core of Hammoc. It provides a rich, real-time conversation experience with Claude.
 
 ### 2.1 Sending Messages
 
@@ -378,7 +378,7 @@ For BMad projects, additional sections appear above this standard overview (see 
 
 ### 5.6 Deleting Projects
 
-- Delete removes the project from BMad Studio's list
+- Delete removes the project from Hammoc's list
 - Optionally check **"Delete project files"** to also remove the directory on disk
 - Confirmation dialog prevents accidental deletion
 
@@ -915,7 +915,7 @@ On small screens, the board uses a swipe carousel:
 
 ## 11. BMAD-METHOD Integration
 
-BMad Studio provides first-class support for the [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) (Breakthrough Method for Agile AI-Driven Development).
+Hammoc provides first-class support for the [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) (Breakthrough Method for Agile AI-Driven Development).
 
 ### 11.1 What is BMAD-METHOD?
 
@@ -1049,7 +1049,7 @@ Access settings via the gear icon or the Settings page. The page has **6 tabs**:
 
 ### 12.2 Language
 
-BMad Studio supports 6 languages:
+Hammoc supports 6 languages:
 
 - English
 - 中文(简体) (Chinese Simplified)
@@ -1174,7 +1174,7 @@ Get notified on your phone when Claude needs attention:
 
 **Test:** Click "Send Test" to verify your configuration. There is a **5-second cooldown** between tests.
 
-**Access URL:** Set your BMad Studio base URL (e.g., `http://192.168.1.100:3000`) so notification links open directly in your browser.
+**Access URL:** Set your Hammoc base URL (e.g., `http://192.168.1.100:3000`) so notification links open directly in your browser.
 
 **Environment Variables:** Bot Token and Chat ID can be set via environment variables, which take priority over saved values (shown with an amber "Env" indicator).
 
@@ -1348,7 +1348,7 @@ When Anthropic API rate limits are reached, the chat shows a rate limit error wi
 
 ### 15.4 "Connection lost" / Reconnecting
 
-BMad Studio automatically reconnects with exponential backoff (1 s → 5 s max delay, unlimited retries). The header shows a status indicator: green (connected), yellow spinning (reconnecting with attempt counter), or red (disconnected with manual Reconnect button).
+Hammoc automatically reconnects with exponential backoff (1 s → 5 s max delay, unlimited retries). The header shows a status indicator: green (connected), yellow spinning (reconnecting with attempt counter), or red (disconnected with manual Reconnect button).
 
 On mobile, the app automatically recovers when returning from background: if hidden for more than 3 seconds the socket is force-reconnected, and if hidden for more than 5 minutes authentication is re-validated.
 
@@ -1357,17 +1357,17 @@ If the connection doesn't recover:
 1. Check that the server is still running
 2. Click the Reconnect button in the header (appears when disconnected)
 3. Refresh the browser
-4. Restart the server: `bmad-studio` or `npm start`
+4. Restart the server: `hammoc` or `npm start`
 
 ### 15.5 Port already in use
 
 The server automatically retries up to 5 times (1 s intervals) when the port is in use. If it still fails:
 
 ```bash
-bmad-studio --port 3001
+hammoc --port 3001
 ```
 
-Or set the environment variable: `PORT=3001 bmad-studio`
+Or set the environment variable: `PORT=3001 hammoc`
 
 ### 15.6 Terminal not available
 
@@ -1383,10 +1383,10 @@ Terminal may be disabled when:
 If you forgot your password:
 
 ```bash
-bmad-studio --reset-password
+hammoc --reset-password
 ```
 
-This prompts you to set a new password. Alternatively, delete `~/.bmad-studio/config.json` and restart the server to re-trigger the password setup flow in the browser.
+This prompts you to set a new password. Alternatively, delete `~/.hammoc/config.json` and restart the server to re-trigger the password setup flow in the browser.
 
 ### 15.8 Chat timeout
 
@@ -1411,8 +1411,8 @@ If you need to find or back up your data:
 
 | Data | Path |
 |------|------|
-| App config & password | `~/.bmad-studio/config.json` |
-| User preferences | `~/.bmad-studio/preferences.json` |
-| Queue templates | `<project-root>/.bmad-studio/queue-templates.json` (per project) |
+| App config & password | `~/.hammoc/config.json` |
+| User preferences | `~/.hammoc/preferences.json` |
+| Queue templates | `<project-root>/.hammoc/queue-templates.json` (per project) |
 | Session data | `~/.claude/projects/` |
 | Server logs | `./logs/server-YYYY-MM-DD.log` (relative to working directory, date-partitioned) |

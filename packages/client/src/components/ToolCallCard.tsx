@@ -4,7 +4,7 @@
  * [Source: Story 3.5 - Task 6, refactored to use ToolCard]
  */
 
-import type { HistoryMessage } from '@bmad-studio/shared';
+import type { HistoryMessage } from '@hammoc/shared';
 import { useTranslation } from 'react-i18next';
 import { XCircle } from 'lucide-react';
 import { ToolCard } from './ToolCard';

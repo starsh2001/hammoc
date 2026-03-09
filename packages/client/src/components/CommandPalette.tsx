@@ -14,7 +14,7 @@
 import { useRef, useEffect, useMemo } from 'react';
 import { Star } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand } from '@hammoc/shared';
 
 interface CommandPaletteProps {
   /** Available slash commands */

@@ -6,7 +6,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GitFileList } from '../GitFileList';
-import type { GitFileStatus } from '@bmad-studio/shared';
+import type { GitFileStatus } from '@hammoc/shared';
 
 const stagedFiles: GitFileStatus[] = [
   { path: 'src/index.ts', index: 'M', working_dir: ' ' },
@@ -49,7 +49,7 @@ describe('GitFileList', () => {
         onFileClick={vi.fn()}
       />,
     );
-    const stageAllBtn = screen.getByTitle('모두 스테이지');
+    const stageAllBtn = screen.getByTitle('Stage All');
     fireEvent.click(stageAllBtn);
     expect(onStageAll).toHaveBeenCalledTimes(1);
   });
@@ -66,7 +66,7 @@ describe('GitFileList', () => {
         onFileClick={vi.fn()}
       />,
     );
-    const unstageAllBtn = screen.getByTitle('모두 언스테이지');
+    const unstageAllBtn = screen.getByTitle('Unstage All');
     fireEvent.click(unstageAllBtn);
     expect(onUnstageAll).toHaveBeenCalledTimes(1);
   });
@@ -83,7 +83,7 @@ describe('GitFileList', () => {
         onFileClick={vi.fn()}
       />,
     );
-    const stageButtons = screen.getAllByTitle('스테이지');
+    const stageButtons = screen.getAllByTitle('Stage');
     fireEvent.click(stageButtons[0]);
     expect(onStageFile).toHaveBeenCalledWith('src/utils.ts');
   });
@@ -100,7 +100,7 @@ describe('GitFileList', () => {
         onFileClick={vi.fn()}
       />,
     );
-    const unstageButtons = screen.getAllByTitle('언스테이지');
+    const unstageButtons = screen.getAllByTitle('Unstage');
     fireEvent.click(unstageButtons[0]);
     expect(onUnstageFile).toHaveBeenCalledWith('src/index.ts');
   });

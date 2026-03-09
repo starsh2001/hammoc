@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type { SubscriptionRateLimit, ApiHealthStatus } from '@bmad-studio/shared';
+import type { SubscriptionRateLimit, ApiHealthStatus } from '@hammoc/shared';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('rateLimitProbe');
@@ -76,7 +76,7 @@ class RateLimitProbeService {
         headers: {
           'Authorization': `Bearer ${token}`,
           'anthropic-beta': 'oauth-2025-04-20',
-          'User-Agent': 'bmad-studio/1.0',
+          'User-Agent': 'hammoc/1.0',
         },
         signal: AbortSignal.timeout(5000),
       });

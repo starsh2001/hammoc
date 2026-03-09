@@ -6,7 +6,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { StarCommandPalette, filterStarCommands } from '../StarCommandPalette';
-import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand } from '@hammoc/shared';
 
 const mockStarCommands: StarCommand[] = [
   { agentId: 'sm', command: 'help', description: 'Show numbered list of the following commands to allow selection' },

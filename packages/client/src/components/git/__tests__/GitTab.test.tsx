@@ -7,7 +7,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { GitTab } from '../GitTab';
-import type { GitStatusResponse, GitBranchesResponse, GitCommitInfo } from '@bmad-studio/shared';
+import type { GitStatusResponse, GitBranchesResponse, GitCommitInfo } from '@hammoc/shared';
 
 // Mock DiffViewer
 vi.mock('../../DiffViewer', () => ({
@@ -137,8 +137,8 @@ describe('GitTab', () => {
   it('renders top bar with branch selector and pull/push buttons', () => {
     renderGitTab();
     expect(screen.getByText('main')).toBeInTheDocument();
-    expect(screen.getByTitle('풀')).toBeInTheDocument();
-    expect(screen.getByTitle('푸시')).toBeInTheDocument();
+    expect(screen.getByTitle('Pull')).toBeInTheDocument();
+    expect(screen.getByTitle('Push')).toBeInTheDocument();
   });
 
   // TC-GIT-T2: Shows current branch name in selector
@@ -150,8 +150,8 @@ describe('GitTab', () => {
   // TC-GIT-T3: Shows ahead/behind counts on pull/push buttons
   it('shows ahead/behind counts on pull/push buttons', () => {
     renderGitTab();
-    const pullButton = screen.getByTitle('풀');
-    const pushButton = screen.getByTitle('푸시');
+    const pullButton = screen.getByTitle('Pull');
+    const pushButton = screen.getByTitle('Push');
     expect(pullButton).toHaveTextContent('1'); // behind
     expect(pushButton).toHaveTextContent('2'); // ahead
   });
@@ -159,7 +159,7 @@ describe('GitTab', () => {
   // TC-GIT-T4: Shows file list groups
   it('shows file list groups (staged, unstaged, untracked)', () => {
     renderGitTab();
-    expect(screen.getByText('스테이지된 변경사항')).toBeInTheDocument();
+    expect(screen.getByText('Staged Changes')).toBeInTheDocument();
     expect(screen.getByText('변경사항')).toBeInTheDocument();
     expect(screen.getByText('추적되지 않음')).toBeInTheDocument();
   });
@@ -171,14 +171,14 @@ describe('GitTab', () => {
       staged: [],
     };
     renderGitTab();
-    const commitBtn = screen.getByRole('button', { name: '커밋' });
+    const commitBtn = screen.getByRole('button', { name: 'Commit' });
     expect(commitBtn).toBeDisabled();
   });
 
   // TC-GIT-T6: Commit button disabled when message is empty
   it('disables commit button when message is empty', () => {
     renderGitTab();
-    const commitBtn = screen.getByRole('button', { name: '커밋' });
+    const commitBtn = screen.getByRole('button', { name: 'Commit' });
     expect(commitBtn).toBeDisabled();
   });
 
@@ -194,7 +194,7 @@ describe('GitTab', () => {
   it('shows Git Init button when not initialized', () => {
     storeState.status = { initialized: false };
     renderGitTab();
-    expect(screen.getByText('Git 초기화')).toBeInTheDocument();
+    expect(screen.getByText('Git Init')).toBeInTheDocument();
     expect(screen.getByText('이 프로젝트는 아직 Git 저장소가 아닙니다.')).toBeInTheDocument();
   });
 
@@ -256,7 +256,7 @@ describe('GitTab', () => {
   it('triggers initRepo when Git Init button is clicked', () => {
     storeState.status = { initialized: false };
     renderGitTab();
-    fireEvent.click(screen.getByText('Git 초기화'));
+    fireEvent.click(screen.getByText('Git Init'));
     expect(mockInitRepo).toHaveBeenCalledWith('test-project');
   });
 
@@ -280,7 +280,7 @@ describe('GitTab', () => {
     const textarea = screen.getByPlaceholderText('커밋 메시지를 입력하세요...');
     fireEvent.change(textarea, { target: { value: 'test commit message' } });
 
-    const commitBtn = screen.getByRole('button', { name: '커밋' });
+    const commitBtn = screen.getByRole('button', { name: 'Commit' });
     expect(commitBtn).not.toBeDisabled();
     fireEvent.click(commitBtn);
 

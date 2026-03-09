@@ -10,7 +10,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ContextUsageDisplay } from '../ContextUsageDisplay';
-import type { ChatUsage } from '@bmad-studio/shared';
+import type { ChatUsage } from '@hammoc/shared';
 
 function createUsage(overrides: Partial<ChatUsage> = {}): ChatUsage {
   return {

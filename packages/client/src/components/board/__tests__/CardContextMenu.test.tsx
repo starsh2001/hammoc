@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CardContextMenu } from '../CardContextMenu';
-import type { BoardItem } from '@bmad-studio/shared';
+import type { BoardItem } from '@hammoc/shared';
 
 const issueItem: BoardItem = {
   id: 'issue-1',

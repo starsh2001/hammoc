@@ -6,7 +6,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QuickGitPanel } from '../QuickGitPanel';
-import type { GitStatusResponse, GitCommitInfo } from '@bmad-studio/shared';
+import type { GitStatusResponse, GitCommitInfo } from '@hammoc/shared';
 
 // Mock formatRelativeTime
 vi.mock('../../../utils/formatters', () => ({
@@ -129,7 +129,7 @@ describe('QuickGitPanel', () => {
     renderPanel();
     expect(screen.getByTestId('commit-message-input')).toBeInTheDocument();
     expect(screen.getByTestId('stage-commit-button')).toBeInTheDocument();
-    expect(screen.getByText('모두 스테이지 및 커밋')).toBeInTheDocument();
+    expect(screen.getByText('Stage All & Commit')).toBeInTheDocument();
   });
 
   it('disables commit button when message is empty', () => {
@@ -175,7 +175,7 @@ describe('QuickGitPanel', () => {
     storeState.status = mockUninitializedStatus;
     renderPanel();
     expect(screen.getByText('Git 저장소가 초기화되지 않았습니다')).toBeInTheDocument();
-    expect(screen.getByText('Git 초기화')).toBeInTheDocument();
+    expect(screen.getByText('Git Init')).toBeInTheDocument();
   });
 
   it('shows error banner when error is set', () => {

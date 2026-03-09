@@ -5,7 +5,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { BoardItem, BoardConfig } from '@bmad-studio/shared';
+import type { BoardItem, BoardConfig } from '@hammoc/shared';
 import { BoardCard } from './BoardCard';
 import type { CardActionCallbacks } from './BoardCard';
 

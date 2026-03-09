@@ -9,12 +9,12 @@
  */
 
 import { create } from 'zustand';
-import type { UserPreferences, SupportedLanguage } from '@bmad-studio/shared';
+import type { UserPreferences, SupportedLanguage } from '@hammoc/shared';
 import { preferencesApi } from '../services/api/preferences';
 import { debugLogger } from '../utils/debugLogger';
 import i18n from '../i18n';
 
-const CACHE_KEY = 'bmad-studio-preferences';
+const CACHE_KEY = 'hammoc-preferences';
 const DEBOUNCE_MS = 300;
 
 // localStorage helpers
@@ -37,9 +37,8 @@ function writeCache(prefs: UserPreferences): void {
 
 // Legacy localStorage keys for one-time migration
 const LEGACY_KEYS = {
-  theme: 'bmad-studio-theme',
-  layoutMode: 'bmad-studio-layout-mode',
-  diffLayout: 'bmad-studio-diff-layout',
+  theme: 'hammoc-theme',
+  diffLayout: 'hammoc-diff-layout',
 } as const;
 
 const LEGACY_FAVORITES_PREFIX = 'bmad-command-favorites';
@@ -51,9 +50,6 @@ function collectLegacyPreferences(): UserPreferences {
   // Simple global settings
   const theme = localStorage.getItem(LEGACY_KEYS.theme);
   if (theme === 'light' || theme === 'dark') prefs.theme = theme;
-
-  const layoutMode = localStorage.getItem(LEGACY_KEYS.layoutMode);
-  if (layoutMode === 'narrow' || layoutMode === 'wide') prefs.layoutMode = layoutMode;
 
   const diffLayout = localStorage.getItem(LEGACY_KEYS.diffLayout);
   if (diffLayout === 'side-by-side' || diffLayout === 'inline') prefs.diffLayout = diffLayout;
