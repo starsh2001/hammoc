@@ -3,7 +3,7 @@
  * [Source: Story 21.2 - Task 7, Story 21.3 - Task 6]
  */
 
-import type { BoardItem, BoardColumnConfig } from '@bmad-studio/shared';
+import type { BoardItem, BoardColumnConfig } from '@hammoc/shared';
 import { BoardCard } from './BoardCard';
 import type { CardActionCallbacks } from './BoardCard';
 

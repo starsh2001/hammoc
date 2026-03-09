@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Minus, ChevronDown, ChevronRight } from 'lucide-react';
-import type { GitFileStatus } from '@bmad-studio/shared';
+import type { GitFileStatus } from '@hammoc/shared';
 
 interface GitFileListProps {
   title: string;

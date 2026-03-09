@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Request, Response } from 'express';
-import { SESSION_ERRORS } from '@bmad-studio/shared';
+import { SESSION_ERRORS } from '@hammoc/shared';
 
 // Create hoisted mocks
 const { mockListSessionsBySlug, mockIsValidPathParam, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds } = vi.hoisted(() => ({

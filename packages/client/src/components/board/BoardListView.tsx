@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
-import type { BoardItem, BoardConfig } from '@bmad-studio/shared';
+import type { BoardItem, BoardConfig } from '@hammoc/shared';
 import { BoardCard } from './BoardCard';
 import type { CardActionCallbacks } from './BoardCard';
 

@@ -11,7 +11,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Plus, Settings, LogOut, PanelRight } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Plus, Settings, PanelRight } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { useChatStore } from '../stores/chatStore';
@@ -47,8 +47,6 @@ interface ChatHeaderProps {
   gitChangedCount?: number;
   /** Whether terminal is accessible (false = disabled button due to non-local IP) */
   terminalAccessible?: boolean;
-  /** Callback when logout is clicked */
-  onLogout?: () => void;
   /** Callback when session is renamed (null to remove name) */
   onRenameSession?: (name: string | null) => void;
   /** Active agent info (name, command, optional icon) */
@@ -72,7 +70,6 @@ export function ChatHeader({
   onTogglePanel,
   gitChangedCount,
   terminalAccessible = true,
-  onLogout,
   onRenameSession,
   activeAgent,
   onAgentIndicatorClick,
@@ -119,11 +116,11 @@ export function ChatHeader({
     >
       <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
         {/* Left side: Back button and project info */}
-        <div className="flex items-center min-w-0 flex-1">
+        <div className="flex items-stretch min-w-0 flex-1">
           {onBack && (
             <button
               onClick={onBack}
-              className="p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-700
+              className="self-center p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-700
                          rounded-lg text-gray-700 dark:text-gray-300
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label={t('header.backButton')}
@@ -270,7 +267,7 @@ export function ChatHeader({
             <ThemeToggleButton />
           </div>
 
-          {/* Desktop-only: settings + logout */}
+          {/* Desktop-only: settings */}
           <button
             onClick={() => navigate('/settings')}
             aria-label={t('header.settings')}
@@ -280,17 +277,6 @@ export function ChatHeader({
           >
             <Settings className="w-5 h-5" aria-hidden="true" />
           </button>
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              aria-label={t('header.logout')}
-              className="hidden md:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
-                         text-red-600 dark:text-red-400 transition-colors
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <LogOut className="w-5 h-5" aria-hidden="true" />
-            </button>
-          )}
 
           {/* Mobile-only: overflow menu */}
           <div className="md:hidden">
@@ -304,7 +290,6 @@ export function ChatHeader({
               onRefresh={onRefresh}
               isRefreshing={isRefreshing}
               onNavigateSettings={() => navigate('/settings')}
-              onLogout={onLogout}
             />
           </div>
         </div>

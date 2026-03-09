@@ -6,8 +6,8 @@
 
 import { config } from '../config/index.js';
 import { preferencesService } from './preferencesService.js';
-import { SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
-import type { TelegramSettings } from '@bmad-studio/shared';
+import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
+import type { TelegramSettings } from '@hammoc/shared';
 import i18next from '../i18n.js';
 
 class NotificationService {
@@ -222,7 +222,7 @@ class NotificationService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: testChatId,
-          text: `🔔 <b>BMad Studio</b>\n${t('notification.test.message')}`,
+          text: `🔔 <b>Hammoc</b>\n${t('notification.test.message')}`,
           parse_mode: 'HTML',
         }),
       });

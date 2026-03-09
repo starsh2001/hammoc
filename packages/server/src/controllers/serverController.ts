@@ -1,13 +1,25 @@
 import { Request, Response } from 'express';
 import { exec, execFile, spawn } from 'child_process';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { isLocalIP } from '../utils/networkUtils.js';
+import { config } from '../config/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Monorepo root: packages/server/src/controllers → ../../../..  (also works from dist/controllers)
 const MONOREPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
+
+function getLocalNetworkIP(): string | null {
+  const interfaces = os.networkInterfaces();
+  for (const addrs of Object.values(interfaces)) {
+    for (const addr of addrs || []) {
+      if (addr.family === 'IPv4' && !addr.internal) return addr.address;
+    }
+  }
+  return null;
+}
 
 // Detect dev mode: .git AND packages/server/src must both exist
 const isDevMode = fs.existsSync(path.join(MONOREPO_ROOT, '.git'))
@@ -17,9 +29,9 @@ const isDevMode = fs.existsSync(path.join(MONOREPO_ROOT, '.git'))
 function getPackageInfo(): { name: string; version: string } {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(MONOREPO_ROOT, 'package.json'), 'utf-8'));
-    return { name: pkg.name || 'bmad-studio', version: pkg.version || '0.0.0' };
+    return { name: pkg.name || 'hammoc', version: pkg.version || '0.0.0' };
   } catch {
-    return { name: 'bmad-studio', version: '0.0.0' };
+    return { name: 'hammoc', version: '0.0.0' };
   }
 }
 
@@ -65,7 +77,12 @@ export const serverController = {
   /** GET /api/server/info - server environment info */
   async info(_req: Request, res: Response): Promise<void> {
     const { name, version } = getPackageInfo();
-    res.json({ isDevMode, version, packageName: name });
+    const hostname = os.hostname();
+    const port = config.server.port;
+    const host = config.server.host;
+    // Detect LAN-accessible IPv4 address
+    const localIP = getLocalNetworkIP();
+    res.json({ isDevMode, version, packageName: name, hostname, host, port, localIP });
   },
 
   /** POST /api/server/restart - rebuild & restart (dev only, local only) */
@@ -87,7 +104,7 @@ export const serverController = {
     buildState = { status: 'building' };
     res.json({ message: req.t!('server.info.buildStarted') });
 
-    exec('npm run build', { cwd: MONOREPO_ROOT, timeout: 300_000 }, (err, _stdout, stderr) => {
+    exec('npm run build', { cwd: MONOREPO_ROOT, timeout: 300_000, env: { ...process.env, NODE_ENV: 'development' } }, (err, _stdout, stderr) => {
       if (err) {
         const errorMsg = stderr?.trim() || err.message;
         console.error('[restart] Build failed:', errorMsg);

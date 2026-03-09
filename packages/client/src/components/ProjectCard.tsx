@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageSquare, Clock, MoreVertical, Trash2, Wand2, EyeOff, Eye } from 'lucide-react';
-import type { ProjectInfo, DashboardProjectStatus } from '@bmad-studio/shared';
+import type { ProjectInfo, DashboardProjectStatus } from '@hammoc/shared';
 import { formatRelativeTime, formatProjectPath } from '../utils/formatters';
 import { ConfirmModal } from './ConfirmModal';
 import { ProjectStatusIndicators } from './projectStatus/ProjectStatusIndicators';

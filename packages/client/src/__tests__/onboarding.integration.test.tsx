@@ -5,7 +5,7 @@ import { AuthGuard } from '../components/AuthGuard';
 import { OnboardingPage } from '../pages/OnboardingPage';
 import { api } from '../services/api/client';
 import { useAuthStore } from '../stores/authStore';
-import type { CLIStatusResponse } from '@bmad-studio/shared';
+import type { CLIStatusResponse } from '@hammoc/shared';
 
 // Mock window.matchMedia for tests
 Object.defineProperty(window, 'matchMedia', {
@@ -156,7 +156,7 @@ describe('Onboarding Integration', () => {
       expect(screen.getByText('시작하기')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('BMad Studio 설정')).toBeInTheDocument();
+    expect(screen.getByText('HAMMOC 설정')).toBeInTheDocument();
   });
 
   it('should show main content when CLI is ready', async () => {

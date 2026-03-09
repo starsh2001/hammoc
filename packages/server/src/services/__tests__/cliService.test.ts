@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DEFAULT_SETUP_COMMANDS } from '@bmad-studio/shared';
+import { DEFAULT_SETUP_COMMANDS } from '@hammoc/shared';
 import * as path from 'path';
 import * as os from 'os';
 

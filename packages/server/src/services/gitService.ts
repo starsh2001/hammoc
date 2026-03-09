@@ -11,7 +11,7 @@ import type {
   GitBranchesResponse,
   GitDiffResponse,
   GitFileStatus,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 class GitService {
   private wrapError(operation: string, error: unknown): Error {

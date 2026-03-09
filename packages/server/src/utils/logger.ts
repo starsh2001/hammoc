@@ -14,7 +14,7 @@
 
 import { appendFileSync, mkdirSync, existsSync } from 'fs';
 import path from 'path';
-import { LogLevel, parseLogLevel } from '@bmad-studio/shared';
+import { LogLevel, parseLogLevel } from '@hammoc/shared';
 
 // Determine current log level from environment
 // Reads process.env directly (not from config/index.ts) to avoid circular dependency

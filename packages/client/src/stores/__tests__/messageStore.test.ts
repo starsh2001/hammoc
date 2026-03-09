@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { HistoryMessage } from '@bmad-studio/shared';
+import type { HistoryMessage } from '@hammoc/shared';
 import { useMessageStore } from '../messageStore';
 import { ApiError } from '../../services/api/client';
 

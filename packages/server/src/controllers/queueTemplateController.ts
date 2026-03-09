@@ -7,8 +7,8 @@ import type { Request, Response } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'js-yaml';
-import { extractStoryNumbers } from '@bmad-studio/shared';
-import type { BmadConfig, QueueStoryInfo } from '@bmad-studio/shared';
+import { extractStoryNumbers } from '@hammoc/shared';
+import type { BmadConfig, QueueStoryInfo } from '@hammoc/shared';
 import { queueTemplateService } from '../services/queueTemplateService.js';
 import { projectService } from '../services/projectService.js';
 

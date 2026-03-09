@@ -12,7 +12,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { Star } from 'lucide-react';
-import type { SlashCommand } from '@bmad-studio/shared';
+import type { SlashCommand } from '@hammoc/shared';
 
 interface FavoritesChipBarProps {
   /** Favorite command strings (ordered) */

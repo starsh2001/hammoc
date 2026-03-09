@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChatInput } from '../ChatInput';
-import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand } from '@hammoc/shared';
 
 // Mock useWebSocket hook
 vi.mock('../../hooks/useWebSocket', () => ({

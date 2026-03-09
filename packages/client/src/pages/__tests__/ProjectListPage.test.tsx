@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { ProjectListPage } from '../ProjectListPage';
 import { useProjectStore } from '../../stores/projectStore';
-import type { ProjectInfo, DashboardProjectStatus } from '@bmad-studio/shared';
+import type { ProjectInfo, DashboardProjectStatus } from '@hammoc/shared';
 
 // Mock useDashboard hook
 const mockGetProjectStatus = vi.fn();

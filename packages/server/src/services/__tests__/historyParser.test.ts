@@ -6,7 +6,7 @@ import {
 } from '../historyParser.js';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
-import type { RawJSONLMessage } from '@bmad-studio/shared';
+import type { RawJSONLMessage } from '@hammoc/shared';
 
 // Mock fs/promises and fs
 vi.mock('fs/promises');

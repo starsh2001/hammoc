@@ -11,7 +11,7 @@ import type {
   CreateIssueRequest,
   UpdateIssueRequest,
   UploadAttachmentResponse,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 export const boardApi = {
   getBoard: (projectSlug: string) =>

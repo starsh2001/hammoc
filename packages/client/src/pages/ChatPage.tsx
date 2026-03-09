@@ -21,8 +21,7 @@ import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
 import { useProjectStore } from '../stores/projectStore';
 import { useSessionStore } from '../stores/sessionStore';
-import { useAuthStore } from '../stores/authStore';
-import type { Attachment, HistoryMessage } from '@bmad-studio/shared';
+import type { Attachment, HistoryMessage } from '@hammoc/shared';
 import { projectsApi } from '../services/api/projects';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
@@ -160,18 +159,10 @@ export function ChatPage() {
   const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, streamCompleteCount } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
-  const { logout } = useAuthStore();
-
   // Get session name from sessionStore (populated when coming from session list)
   const sessionName = useMemo(() => {
     return sessions.find((s) => s.sessionId === sessionId)?.name;
   }, [sessions, sessionId]);
-
-  // Handle logout
-  const handleLogout = useCallback(async () => {
-    await logout();
-    navigate('/login', { replace: true });
-  }, [logout, navigate]);
 
   // Handle session rename
   const handleRenameSession = useCallback((name: string | null) => {
@@ -934,7 +925,7 @@ export function ChatPage() {
         className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -1002,7 +993,7 @@ export function ChatPage() {
         className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -1067,7 +1058,7 @@ export function ChatPage() {
         className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible} onLogout={handleLogout} onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -1156,7 +1147,6 @@ export function ChatPage() {
         gitChangedCount={changedFileCount}
         terminalAccessible={isTerminalAccessible}
         onRefresh={handleRetry}
-        onLogout={handleLogout}
         onRenameSession={handleRenameSession}
         activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null}
         onAgentIndicatorClick={handleAgentIndicatorClick}

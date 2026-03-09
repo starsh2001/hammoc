@@ -6,9 +6,11 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand } from '@hammoc/shared';
+import { toast } from 'sonner';
 import { commandsApi } from '../services/api/commands';
 import { debugLogger } from '../utils/debugLogger';
+import i18n from '../i18n';
 
 interface UseSlashCommandsResult {
   commands: SlashCommand[];
@@ -18,6 +20,8 @@ interface UseSlashCommandsResult {
 
 // Module-level cache survives HMR remounts.
 const cache = new Map<string, { commands: SlashCommand[]; starCommands: Record<string, StarCommand[]> }>();
+// Track which projects have already shown warnings (prevent duplicate toasts)
+const warnedProjects = new Set<string>();
 
 /**
  * Fetch slash commands for a project
@@ -41,6 +45,12 @@ export function useSlashCommands(projectSlug?: string): UseSlashCommandsResult {
       cache.set(slug, { commands: response.commands, starCommands: response.starCommands ?? {} });
       setCommands(response.commands);
       setStarCommands(response.starCommands ?? {});
+
+      // Show warning toast for missing .claude/commands/ (once per project)
+      if (response.warnings?.includes('MISSING_CLAUDE_COMMANDS') && !warnedProjects.has(slug)) {
+        warnedProjects.add(slug);
+        toast.warning(i18n.t('common:project.missingClaudeCommands'));
+      }
     } catch (error) {
       debugLogger.error('Failed to fetch slash commands', { error: error instanceof Error ? error.message : String(error) });
       setCommands([]);

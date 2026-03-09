@@ -63,7 +63,7 @@ vi.mock('../../services/projectService.js', async () => {
         throw error;
       }
 
-      const projects: import('@bmad-studio/shared').ProjectInfo[] = [];
+      const projects: import('@hammoc/shared').ProjectInfo[] = [];
 
       for (const entry of entries) {
         const projectPath = path.join(projectsDir, entry);
@@ -95,7 +95,7 @@ vi.mock('../../services/projectService.js', async () => {
     async parseSessionsIndex(
       projectPath: string,
       projectSlug: string
-    ): Promise<import('@bmad-studio/shared').ProjectInfo | null> {
+    ): Promise<import('@hammoc/shared').ProjectInfo | null> {
       const indexPath = path.join(projectPath, 'sessions-index.json');
 
       try {
@@ -159,7 +159,7 @@ vi.mock('../../services/projectService.js', async () => {
     // Story 3.6 - Project creation methods
     async validatePath(
       inputPath: string
-    ): Promise<import('@bmad-studio/shared').ValidatePathResponse> {
+    ): Promise<import('@hammoc/shared').ValidatePathResponse> {
       // Simple validation for integration tests
       if (!path.isAbsolute(inputPath) || inputPath.includes('..')) {
         return {
@@ -204,14 +204,14 @@ vi.mock('../../services/projectService.js', async () => {
 
     async findProjectByPath(
       originalPath: string
-    ): Promise<import('@bmad-studio/shared').ProjectInfo | null> {
+    ): Promise<import('@hammoc/shared').ProjectInfo | null> {
       const projects = await this.scanProjects();
       return projects.find((p) => p.originalPath === originalPath) || null;
     }
 
     async createProject(
-      request: import('@bmad-studio/shared').CreateProjectRequest
-    ): Promise<import('@bmad-studio/shared').CreateProjectResponse> {
+      request: import('@hammoc/shared').CreateProjectRequest
+    ): Promise<import('@hammoc/shared').CreateProjectResponse> {
       const { path: projectPath, setupBmad = true } = request;
 
       const validation = await this.validatePath(projectPath);

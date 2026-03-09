@@ -7,7 +7,7 @@
 import type {
   DashboardProjectStatus,
   DashboardStatusResponse,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import { ptyService } from './ptyService.js';
 import { projectService } from './projectService.js';
 import { getQueueInstances } from '../controllers/queueController.js';

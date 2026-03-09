@@ -3,7 +3,7 @@
  * [Source: Story 21.2 - QA recommendation]
  */
 
-import type { BoardItemStatus } from '@bmad-studio/shared';
+import type { BoardItemStatus } from '@hammoc/shared';
 
 export const STATUS_LABEL: Record<BoardItemStatus, string> = {
   Open: 'Open',

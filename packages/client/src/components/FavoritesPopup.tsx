@@ -13,7 +13,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GripVertical, X } from 'lucide-react';
-import type { SlashCommand, StarCommand } from '@bmad-studio/shared';
+import type { SlashCommand, StarCommand } from '@hammoc/shared';
 
 interface FavoritesPopupProps {
   /** Favorite command strings list */

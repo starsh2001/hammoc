@@ -15,7 +15,7 @@ import type {
   TerminalExitEvent,
   TerminalErrorEvent,
   TerminalAccessInfo,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;

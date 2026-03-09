@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Request, Response } from 'express';
-import type { ProjectInfo, ProjectSettingsApiResponse } from '@bmad-studio/shared';
+import type { ProjectInfo, ProjectSettingsApiResponse } from '@hammoc/shared';
 
 // Create hoisted mock for projectService
 const { mockScanProjects, mockUpdateProjectSettings } = vi.hoisted(() => ({

@@ -10,7 +10,7 @@
 import { useEffect, useCallback } from 'react';
 import { useTerminalStore } from '../stores/terminalStore';
 import type { TerminalSession } from '../stores/terminalStore';
-import type { TerminalAccessInfo } from '@bmad-studio/shared';
+import type { TerminalAccessInfo } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 
 export interface UseTerminalReturn {

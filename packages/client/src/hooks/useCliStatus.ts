@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api/client';
 import i18n from '../i18n';
-import type { CLIStatusResponse } from '@bmad-studio/shared';
+import type { CLIStatusResponse } from '@hammoc/shared';
 
 interface UseCliStatusOptions {
   skip?: boolean; // true일 경우 자동 fetch 건너뜀

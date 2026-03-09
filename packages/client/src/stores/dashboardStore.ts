@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { DashboardProjectStatus, DashboardStatusChangeEvent } from '@bmad-studio/shared';
+import type { DashboardProjectStatus, DashboardStatusChangeEvent } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { dashboardApi } from '../services/api/dashboard';
 

@@ -8,7 +8,7 @@ import type {
   PreferencesApiResponse,
   TelegramSettingsApiResponse,
   UpdateTelegramSettingsRequest,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 export const preferencesApi = {
   /** Get all preferences (includes _overrides metadata) */

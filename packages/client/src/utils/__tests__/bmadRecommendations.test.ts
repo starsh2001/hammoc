@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { BmadStatusResponse, BmadSupplementaryDoc, BmadEpicStatus } from '@bmad-studio/shared';
+import type { BmadStatusResponse, BmadSupplementaryDoc, BmadEpicStatus } from '@hammoc/shared';
 import { detectPhase, computeNextSteps } from '../bmadRecommendations';
 
 // ---------------------------------------------------------------------------

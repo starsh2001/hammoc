@@ -55,7 +55,7 @@ export interface SessionListItem {
   created: string; // ISO 8601 format
   modified: string; // ISO 8601 format
   isStreaming?: boolean; // true if an active stream is running for this session
-  name?: string; // User-assigned session name (from .bmad-studio/session-names.json)
+  name?: string; // User-assigned session name (from .hammoc/session-names.json)
 }
 
 /**

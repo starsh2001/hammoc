@@ -19,7 +19,7 @@ import type {
   HistoryMessage,
   PaginationInfo,
   PaginationOptions,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import {
   parseJSONLFile,
   sortMessagesByParentUuid,

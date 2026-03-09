@@ -9,7 +9,7 @@ import type {
   CreateIssueRequest,
   UpdateIssueRequest,
   IssueAttachment,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 import { bmadStatusService } from './bmadStatusService.js';
 
 const VALID_SEVERITIES = new Set(['low', 'medium', 'high', 'critical']);

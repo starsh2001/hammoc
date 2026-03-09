@@ -4,7 +4,7 @@
  */
 
 import { io, Socket } from 'socket.io-client';
-import type { ClientToServerEvents, ServerToClientEvents } from '@bmad-studio/shared';
+import type { ClientToServerEvents, ServerToClientEvents } from '@hammoc/shared';
 
 let socketInstance: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
 

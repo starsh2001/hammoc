@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart3, ChevronDown, FileText } from 'lucide-react';
-import type { BmadEpicStatus } from '@bmad-studio/shared';
+import type { BmadEpicStatus } from '@hammoc/shared';
 
 import { useFileStore } from '../../stores/fileStore.js';
 

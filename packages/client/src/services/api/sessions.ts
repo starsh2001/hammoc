@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { SessionListResponse, SessionListParams, HistoryMessagesResponse, DeleteSessionResponse, DeleteSessionsBatchResponse, UpdateSessionNameResponse, PromptHistoryData } from '@bmad-studio/shared';
+import type { SessionListResponse, SessionListParams, HistoryMessagesResponse, DeleteSessionResponse, DeleteSessionsBatchResponse, UpdateSessionNameResponse, PromptHistoryData } from '@hammoc/shared';
 
 export const sessionsApi = {
   /**

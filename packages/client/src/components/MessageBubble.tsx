@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { HistoryMessage } from '@bmad-studio/shared';
+import type { HistoryMessage } from '@hammoc/shared';
 import { formatRelativeTime } from '../utils/formatters';
 import { Bot, Copy, Check } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';

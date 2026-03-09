@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../services/api/client';
-import type { CLIStatusResponse } from '@bmad-studio/shared';
+import type { CLIStatusResponse } from '@hammoc/shared';
 import { CliStatusProvider } from '../contexts/CliStatusContext';
 import { LoadingSpinner } from './LoadingSpinner';
 

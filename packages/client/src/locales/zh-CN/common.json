@@ -71,7 +71,7 @@
   "cliStatusChecking": "正在检查 CLI 状态...",
   "backgroundRefreshAria": "正在后台刷新",
   "project": {
-    "title": "项目",
+    "title": "项目列表",
     "ariaLabel": "项目：{{name}}，{{count}} 个会话",
     "menu": "项目菜单",
     "setupBmad": "转换为 BMad",
@@ -97,6 +97,8 @@
     "hideHidden": "隐藏已隐藏项目",
     "settings": "设置",
     "logout": "退出登录",
+    "wideView": "宽屏视图",
+    "narrowView": "窄屏视图",
     "lightMode": "浅色模式",
     "darkMode": "深色模式",
     "menuLabel": "菜单",

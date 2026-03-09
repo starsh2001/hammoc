@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { DEFAULT_BOARD_CONFIG, validateBoardConfig } from '@bmad-studio/shared';
+import { DEFAULT_BOARD_CONFIG, validateBoardConfig } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
 import { issueService } from '../services/issueService.js';
 

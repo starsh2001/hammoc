@@ -10,8 +10,8 @@ import type {
   BoardConfig,
   CreateIssueRequest,
   UpdateIssueRequest,
-} from '@bmad-studio/shared';
-import { DEFAULT_BOARD_CONFIG } from '@bmad-studio/shared';
+} from '@hammoc/shared';
+import { DEFAULT_BOARD_CONFIG } from '@hammoc/shared';
 import { boardApi } from '../services/api/board';
 import { ApiError } from '../services/api/client';
 import i18n from '../i18n';

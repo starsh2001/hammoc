@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDashboard } from '../useDashboard';
 import { useDashboardStore } from '../../stores/dashboardStore';
-import type { DashboardProjectStatus, DashboardStatusChangeEvent } from '@bmad-studio/shared';
+import type { DashboardProjectStatus, DashboardStatusChangeEvent } from '@hammoc/shared';
 
 // Mock socket
 const mockSocket = {

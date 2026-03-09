@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import type { GitFileStatus } from '@bmad-studio/shared';
+import type { GitFileStatus } from '@hammoc/shared';
 import {
   GitBranch,
   ArrowUp,

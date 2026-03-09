@@ -66,7 +66,7 @@ vi.mock('../../services/sessionService.js', async () => {
     async listSessionsBySlug(
       projectSlug: string,
       _params: Record<string, unknown> = {}
-    ): Promise<{ sessions: import('@bmad-studio/shared').SessionListItem[]; total: number } | null> {
+    ): Promise<{ sessions: import('@hammoc/shared').SessionListItem[]; total: number } | null> {
       const projectDir = path.join(this.claudeProjectsDir, projectSlug);
       const indexPath = path.join(projectDir, 'sessions-index.json');
 

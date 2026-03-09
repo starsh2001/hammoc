@@ -8,7 +8,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useBmadStatus } from '../useBmadStatus';
 import { bmadStatusApi } from '../../services/api/bmadStatus';
 import { ApiError } from '../../services/api/client';
-import type { BmadStatusResponse } from '@bmad-studio/shared';
+import type { BmadStatusResponse } from '@hammoc/shared';
 
 vi.mock('../../services/api/bmadStatus.js', () => ({
   bmadStatusApi: {

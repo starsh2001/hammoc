@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Request, Response } from 'express';
-import type { BmadStatusResponse } from '@bmad-studio/shared';
+import type { BmadStatusResponse } from '@hammoc/shared';
 
 const { mockScanProject } = vi.hoisted(() => ({
   mockScanProject: vi.fn(),

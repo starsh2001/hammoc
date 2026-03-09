@@ -9,7 +9,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { ChatPage } from '../ChatPage';
 import { useMessageStore } from '../../stores/messageStore';
-import type { HistoryMessage, PaginationInfo } from '@bmad-studio/shared';
+import type { HistoryMessage, PaginationInfo } from '@hammoc/shared';
 
 expect.extend(toHaveNoViolations);
 

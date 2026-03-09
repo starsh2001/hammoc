@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useBoardStore } from '../boardStore';
-import { DEFAULT_BOARD_CONFIG } from '@bmad-studio/shared';
+import { DEFAULT_BOARD_CONFIG } from '@hammoc/shared';
 
 vi.mock('../../services/api/board', () => ({
   boardApi: {

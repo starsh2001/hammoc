@@ -7,7 +7,7 @@ import { readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import i18next from 'i18next';
-import { SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
+import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

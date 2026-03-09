@@ -1,5 +1,5 @@
 {
-  "name": "@bmad-studio/shared",
+  "name": "@hammoc/shared",
   "version": "1.0.0",
   "type": "module",
   "main": "dist/index.js",

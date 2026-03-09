@@ -16,11 +16,11 @@ import type {
   PermissionMode,
   ImageAttachment,
   PermissionRequest,
-} from '@bmad-studio/shared';
-import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS } from '@bmad-studio/shared';
-import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@bmad-studio/shared';
+} from '@hammoc/shared';
+import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS } from '@hammoc/shared';
+import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@hammoc/shared';
 import i18next from '../i18n.js';
-import { SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
+import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 import { isLocalIP, extractClientIP } from '../utils/networkUtils.js';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import { ChatService } from '../services/chatService.js';

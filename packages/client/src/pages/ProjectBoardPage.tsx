@@ -7,7 +7,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LayoutList, Kanban, Plus, RefreshCw, AlertCircle, Settings, Minus } from 'lucide-react';
-import type { BoardItem, CreateIssueRequest, UpdateIssueRequest } from '@bmad-studio/shared';
+import type { BoardItem, CreateIssueRequest, UpdateIssueRequest } from '@hammoc/shared';
 import { useBoard } from '../hooks/useBoard';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useFileStore } from '../stores/fileStore';

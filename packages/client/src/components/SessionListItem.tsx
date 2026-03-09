@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageSquare, MoreVertical, Trash2, Pencil, X, ListOrdered } from 'lucide-react';
-import type { SessionListItem as SessionListItemType } from '@bmad-studio/shared';
+import type { SessionListItem as SessionListItemType } from '@hammoc/shared';
 import { formatRelativeTime } from '../utils/formatters';
 
 interface SessionListItemProps {

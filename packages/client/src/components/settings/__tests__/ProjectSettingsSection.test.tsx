@@ -9,7 +9,7 @@ import { ProjectSettingsSection } from '../ProjectSettingsSection';
 import { useProjectStore } from '../../../stores/projectStore';
 import { useSessionStore } from '../../../stores/sessionStore';
 import { usePreferencesStore } from '../../../stores/preferencesStore';
-import type { ProjectInfo, ProjectSettingsApiResponse } from '@bmad-studio/shared';
+import type { ProjectInfo, ProjectSettingsApiResponse } from '@hammoc/shared';
 
 // Mock sonner
 vi.mock('sonner', () => ({

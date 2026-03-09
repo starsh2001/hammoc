@@ -13,7 +13,7 @@ import type {
   FileDeleteResponse,
   FileRenameResponse,
   FileSearchResponse,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 export const fileSystemApi = {
   readFile: (projectSlug: string, path: string) =>

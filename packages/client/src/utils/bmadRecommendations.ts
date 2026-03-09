@@ -11,7 +11,7 @@
  *  3. implementation  — Both gates (PRD + Architecture) exist; story-level cycle
  */
 
-import type { BmadStatusResponse, BmadSupplementaryDoc, BmadStoryStatus } from '@bmad-studio/shared';
+import type { BmadStatusResponse, BmadSupplementaryDoc, BmadStoryStatus } from '@hammoc/shared';
 import i18n from '../i18n';
 
 // ---------------------------------------------------------------------------

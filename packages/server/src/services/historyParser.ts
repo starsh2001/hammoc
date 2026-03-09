@@ -21,7 +21,7 @@ import type {
   ToolUseContentBlock,
   ToolResultContentBlock,
   ImageContentBlock,
-} from '@bmad-studio/shared';
+} from '@hammoc/shared';
 
 /**
  * Parse a JSONL file and return raw messages

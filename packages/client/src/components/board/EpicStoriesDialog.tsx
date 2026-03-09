@@ -6,7 +6,7 @@
 import { useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
-import type { BoardItem } from '@bmad-studio/shared';
+import type { BoardItem } from '@hammoc/shared';
 import { STATUS_LABEL, STATUS_BADGE_COLOR } from './constants';
 
 interface EpicStoriesDialogProps {

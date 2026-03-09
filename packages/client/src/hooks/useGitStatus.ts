@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useCallback, useMemo } from 'react';
-import type { GitStatusResponse } from '@bmad-studio/shared';
+import type { GitStatusResponse } from '@hammoc/shared';
 import { useGitStore } from '../stores/gitStore';
 
 const POLL_INTERVAL = 30_000; // 30 seconds

@@ -11,8 +11,8 @@ import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useTheme, type Theme } from '../../hooks/useTheme';
 import { MODEL_GROUPS } from '../ModelSelector';
-import type { PermissionMode, SupportedLanguage } from '@bmad-studio/shared';
-import { SUPPORTED_LANGUAGES } from '@bmad-studio/shared';
+import type { PermissionMode, SupportedLanguage } from '@hammoc/shared';
+import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   en: 'English',
@@ -333,6 +333,7 @@ export function GlobalSettingsSection() {
           {t('global.chatTimeoutDesc')}
         </p>
       </div>
+
     </div>
   );
 }

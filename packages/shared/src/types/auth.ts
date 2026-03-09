@@ -1,6 +1,6 @@
 /**
- * BMad Studio 인증 설정
- * @description ~/.bmad-studio/config.json에 저장되는 설정
+ * Hammoc 인증 설정
+ * @description ~/.hammoc/config.json에 저장되는 설정
  */
 export interface AuthConfig {
   /** bcrypt로 해싱된 패스워드 */

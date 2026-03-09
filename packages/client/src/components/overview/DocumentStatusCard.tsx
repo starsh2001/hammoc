@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FileText, CheckCircle, XCircle, Circle, FolderOpen, ArrowUpRight, ChevronDown } from 'lucide-react';
-import type { BmadDocuments, BmadAuxDocument, BmadSupplementaryDoc, DirEntry } from '@bmad-studio/shared';
+import type { BmadDocuments, BmadAuxDocument, BmadSupplementaryDoc, DirEntry } from '@hammoc/shared';
 import type { TFunction } from 'i18next';
 
 import { useFileStore } from '../../stores/fileStore.js';

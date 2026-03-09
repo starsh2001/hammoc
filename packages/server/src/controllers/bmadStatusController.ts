@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { BMAD_STATUS_ERRORS } from '@bmad-studio/shared';
+import { BMAD_STATUS_ERRORS } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
 import { bmadStatusService } from '../services/bmadStatusService.js';
 

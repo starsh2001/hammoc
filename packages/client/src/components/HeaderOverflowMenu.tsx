@@ -8,7 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MoreVertical, Moon, Sun, History, Plus, FolderOpen, GitBranch, Terminal, RefreshCw, Settings, LogOut } from 'lucide-react';
+import { MoreVertical, Moon, Sun, History, Plus, FolderOpen, GitBranch, Terminal, RefreshCw, Settings } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 interface HeaderOverflowMenuProps {
@@ -21,7 +21,6 @@ interface HeaderOverflowMenuProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   onNavigateSettings?: () => void;
-  onLogout?: () => void;
 }
 
 export function HeaderOverflowMenu({
@@ -34,7 +33,6 @@ export function HeaderOverflowMenu({
   onRefresh,
   isRefreshing = false,
   onNavigateSettings,
-  onLogout,
 }: HeaderOverflowMenuProps) {
   const { t } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(false);
@@ -113,11 +111,6 @@ export function HeaderOverflowMenu({
     onNavigateSettings?.();
     setIsOpen(false);
   }, [onNavigateSettings]);
-
-  const handleLogout = useCallback(() => {
-    onLogout?.();
-    setIsOpen(false);
-  }, [onLogout]);
 
   const itemClass =
     'w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
@@ -262,21 +255,6 @@ export function HeaderOverflowMenu({
             </>
           )}
 
-          {/* Logout */}
-          {onLogout && (
-            <>
-              <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-              <button
-                type="button"
-                role="menuitem"
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <LogOut className="w-4 h-4" aria-hidden="true" />
-                {t('project.logout')}
-              </button>
-            </>
-          )}
         </div>
       )}
     </div>

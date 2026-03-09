@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { authMiddleware, authMiddlewareWithExclusions } from '../auth.js';
-import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES } from '@bmad-studio/shared';
+import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES } from '@hammoc/shared';
 
 // Mock request factory
 function mockReq(

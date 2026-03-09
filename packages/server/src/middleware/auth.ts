@@ -5,7 +5,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES } from '@bmad-studio/shared';
+import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGES } from '@hammoc/shared';
 
 /**
  * Public routes that don't require authentication (AC4)
