@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>Kick Back. Tap. Ship.</strong><br>
-  An agentic IDE that lets AI handle the heavy lifting — while you stay in control.
+  The web IDE built for AI-driven development workflows — starting with BMAD-METHOD.
 </p>
 
 <p align="center">
@@ -23,9 +23,11 @@
 
 ## What is Hammoc?
 
-Hammoc turns [Claude Code](https://docs.anthropic.com/en/docs/claude-code) into a full-featured development environment — accessible from any browser, any device.
+Hammoc is a web IDE optimized for structured AI-driven development methodologies. It currently provides first-class support for the [BMAD-METHOD V4](https://github.com/bmad-code-org/BMAD-METHOD) workflow — with plans to support additional methodologies in the future.
 
-The best code starts away from the keyboard. Inspired by Rich Hickey's *Hammock Driven Development* — the idea that real breakthroughs come when you step back, not when you're grinding at the terminal — Hammoc is built around a simple workflow: kick back in your hammock, tap a command on your phone, and let the AI ship it.
+Built on top of [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Hammoc provides everything you need to run a full BMAD workflow from your browser: agent switching, PRD-to-queue automation, epic/story tracking, and a Kanban board — all in one place. No terminal hopping, no context switching.
+
+Fully responsive and mobile-first. Kick back in your hammock, tap a command on your phone, and let the AI ship it. Inspired by Rich Hickey's *Hammock Driven Development* — the idea that real breakthroughs come when you step back, not when you're grinding at the terminal.
 
 ---
 
@@ -69,6 +71,16 @@ Fully responsive. Access from your phone or tablet at `http://<your-ip>:3000` on
 ---
 
 ## Features
+
+### Why Hammoc?
+
+| | Hammoc | Terminal-based IDE | Generic Web IDE |
+|---|:---:|:---:|:---:|
+| BMAD-METHOD workflow | **Built-in** | Manual | N/A |
+| Agent switching (SM, PM, Dev, QA...) | **One tap** | CLI commands | N/A |
+| PRD → Queue automation | **Auto-generate** | Copy-paste | N/A |
+| Mobile development | **Full support** | Limited | Partial |
+| Kanban + Epic tracking | **Integrated** | Separate tool | Separate tool |
 
 ### Chat Interface
 
@@ -169,16 +181,19 @@ Automate repetitive prompt sequences.
 
 ---
 
-## BMAD-METHOD Integration
+## BMAD-METHOD V4 Integration
 
-Hammoc provides first-class support for the [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) (Breakthrough Method for Agile AI-Driven Development) workflow.
+Hammoc is the most convenient way to run a full [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) (Breakthrough Method for Agile AI-Driven Development) workflow. Every step — from project inception to QA — is built into the IDE.
 
 - **One-click BMad setup** — Initialize `.bmad-core` in any project with version selection
-- **BMad Agent button** — Quick-switch between agents (SM, PM, Dev, QA, etc.) in chat
-- **Project overview** — Visual dashboard showing PRD completion, epic progress, and story status
-- **Queue templates from PRD** — Auto-generate prompt queues from your epics and stories
-- **Board integration** — Track epics and stories on the Kanban board with promote/validate workflows
-- **Story workflows** — Start development, request QA, and apply fixes through the board UI
+- **BMad Agent switching** — Instantly switch between agents (SM, PM, Architect, Dev, QA, PO, etc.) in chat with a single tap
+- **Slash commands per agent** — Context-aware `/commands` that change based on the active BMad agent
+- **PRD → Queue automation** — Auto-generate prompt queues directly from your PRD epics and stories
+- **Project overview dashboard** — Visual status showing PRD completion, epic progress, and story status
+- **Kanban board integration** — Track epics and stories with drag-and-drop, promote/validate workflows
+- **Story workflows** — Start development, request QA, and apply fixes — all through the board UI
+
+> **Methodology support roadmap:** Hammoc is designed to be methodology-agnostic. BMAD-METHOD V4 is the first supported workflow, with more development methodologies planned for future releases.
 
 For detailed BMAD-METHOD documentation, visit the [official repository](https://github.com/bmad-code-org/BMAD-METHOD).
 
