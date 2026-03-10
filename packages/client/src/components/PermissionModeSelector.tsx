@@ -42,7 +42,7 @@ const PERMISSION_MODE_BASE: Array<{
     value: 'acceptEdits',
     label: 'Auto',
     descriptionKey: 'permissionMode.autoDescription',
-    colorClass: 'bg-gray-50 border-gray-400 text-gray-700 dark:bg-gray-800 dark:border-gray-400 dark:text-gray-300',
+    colorClass: 'bg-gray-50 border-gray-400 text-gray-700 dark:bg-[#263240] dark:border-gray-400 dark:text-gray-200',
   },
   {
     value: 'bypassPermissions',

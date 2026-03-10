@@ -13,7 +13,7 @@ interface EpicProgressCardProps {
 
 const STATUS_STYLES: Record<string, string> = {
   Done: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-  Draft: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
+  Draft: 'bg-gray-100 dark:bg-[#253040] text-gray-600 dark:text-gray-200',
   Approved: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
   'In Progress': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
   Blocked: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
@@ -28,7 +28,7 @@ function getBarColor(pct: number): string {
 }
 
 function getStatusStyle(status: string): string {
-  return STATUS_STYLES[status] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
+  return STATUS_STYLES[status] ?? 'bg-gray-100 dark:bg-[#253040] text-gray-600 dark:text-gray-200';
 }
 
 export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProgressCardProps) {
@@ -57,10 +57,10 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
     <div
       role="region"
       aria-label={t('epic.progressTitle')}
-      className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5"
+      className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5"
     >
       <div className="flex items-center gap-2 mb-4">
-        <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+        <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         <h2 className="font-semibold text-gray-900 dark:text-white">{t('epic.progressTitle')}</h2>
       </div>
       <div className="space-y-3 text-sm">
@@ -79,36 +79,36 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
               {hasContent ? (
                 <div
                   onClick={() => toggleEpic(epic.number)}
-                  className="flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-md transition-colors cursor-pointer px-2 py-1.5 -mx-2"
+                  className="flex items-center justify-between hover:bg-gray-100 dark:hover:bg-[#253040]/50 rounded-md transition-colors cursor-pointer px-2 py-1.5 -mx-2"
                 >
-                  <span className="text-gray-700 dark:text-gray-300 truncate mr-2">
+                  <span className="text-gray-700 dark:text-gray-200 truncate mr-2">
                     {epic.number}. {epic.name}
                   </span>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className={`text-xs font-medium ${
                       pct >= 100
                         ? 'text-green-600 dark:text-green-400'
-                        : 'text-gray-500 dark:text-gray-400'
+                        : 'text-gray-500 dark:text-gray-300'
                     }`}>
                       {doneCount}/{planned}
                     </span>
                     <ChevronDown
-                      className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-gray-400 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                     />
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-between px-2 py-1.5 -mx-2">
-                  <span className="text-gray-700 dark:text-gray-300 truncate mr-2">
+                  <span className="text-gray-700 dark:text-gray-200 truncate mr-2">
                     {epic.number}. {epic.name}
                   </span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">{t('epic.storiesUndefined')}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-400">{t('epic.storiesUndefined')}</span>
                 </div>
               )}
 
               {/* Progress bar - thicker with color coding */}
               {barTotal > 0 && (
-                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-1 mx-0">
+                <div className="h-2 bg-gray-200 dark:bg-[#253040] rounded-full overflow-hidden mt-1 mx-0">
                   <div
                     className={`h-full rounded-full transition-all ${getBarColor(pct)}`}
                     style={{ width: `${pct}%` }}
@@ -126,11 +126,11 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                       return (
                       <div key={story.file} className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{displayName}</span>
+                          <span className="text-xs text-gray-600 dark:text-gray-300 truncate">{displayName}</span>
                           {projectSlug && storyBasePath && (
                             <button
                               onClick={() => handleOpenStory(story.file)}
-                              className="flex-shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                              className="flex-shrink-0 text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
                               title={story.file}
                             >
                               <FileText className="w-3.5 h-3.5" />
@@ -144,12 +144,12 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                       );
                     })
                   ) : (
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                    <p className="text-xs text-gray-400 dark:text-gray-400">
                       {t('epic.plannedStoriesNoFiles', { count: planned })}
                     </p>
                   )}
                   {writtenCount > 0 && planned > writtenCount && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">
                       {t('epic.unwrittenStories', { count: planned - writtenCount })}
                     </p>
                   )}
@@ -159,7 +159,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
           );
         })}
         {epics.length === 0 && (
-          <p className="text-gray-500 dark:text-gray-400">{t('epic.noEpics')}</p>
+          <p className="text-gray-500 dark:text-gray-300">{t('epic.noEpics')}</p>
         )}
       </div>
     </div>

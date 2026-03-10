@@ -187,10 +187,10 @@ export function QueueRunnerPanel({
   const canDrag = !!onReorderItems && (isRunning || isPaused) && !isReordering;
 
   return (
-    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden
+    <div className={`border border-gray-200 dark:border-[#253040] rounded-lg bg-white dark:bg-[#263240] overflow-hidden
       ${fullHeight ? 'flex flex-col flex-1 min-h-0' : ''}`}>
       {/* Header with status and controls */}
-      <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 border-b border-gray-200 dark:border-[#253040] flex-shrink-0">
         <div className="flex items-center gap-2 text-sm font-medium min-w-0">
           {isRunning && !isPaused && (
             <>
@@ -277,8 +277,8 @@ export function QueueRunnerPanel({
               onClick={onDismiss}
               aria-label={t('queue.backToEditor')}
               className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
-                bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
-                hover:bg-gray-200 dark:hover:bg-gray-600
+                bg-gray-100 dark:bg-[#253040] text-gray-700 dark:text-gray-200
+                hover:bg-gray-200 dark:hover:bg-[#2d3a4a]
                 min-w-[44px] min-h-[44px]"
             >
               <RotateCcw className="w-3 h-3" />
@@ -289,12 +289,12 @@ export function QueueRunnerPanel({
       </div>
 
       {/* Progress bar */}
-      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-[#253040] flex-shrink-0">
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-300 mb-1">
           <span>{t('queue.progress', { current: completedCount, total })}</span>
           <span>{percentage}%</span>
         </div>
-        <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-gray-200 dark:bg-[#253040] rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-300 ${barColor}`}
             style={{ width: `${percentage}%` }}
@@ -328,7 +328,7 @@ export function QueueRunnerPanel({
             <div
               key={index}
               ref={isCurrent ? currentItemRef : undefined}
-              className={`flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-gray-700/50
+              className={`flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-[#253040]/50
                 ${isCurrent ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
                 ${status === 'error' ? 'bg-red-50 dark:bg-red-900/10' : ''}
               `}
@@ -336,7 +336,7 @@ export function QueueRunnerPanel({
               <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{index + 1}</span>
               <ItemStatusIcon status={status} />
               <span
-                className={`truncate flex-1 ${status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}
+                className={`truncate flex-1 ${status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}
               >
                 {getItemSummary(item, t)}
               </span>
@@ -370,7 +370,7 @@ export function QueueRunnerPanel({
                           <div
                             ref={dragProvided.innerRef}
                             {...dragProvided.draggableProps}
-                            className={`flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-gray-700/50
+                            className={`flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-[#253040]/50
                               ${snapshot.isDragging ? 'bg-blue-50 dark:bg-blue-900/20 shadow-md rounded' : ''}
                             `}
                           >
@@ -380,7 +380,7 @@ export function QueueRunnerPanel({
                             </span>
                             <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{globalIndex + 1}</span>
                             <ItemStatusIcon status={status} />
-                            <span className="truncate flex-1 text-gray-700 dark:text-gray-300">
+                            <span className="truncate flex-1 text-gray-700 dark:text-gray-200">
                               {getItemSummary(item, t)}
                             </span>
                             {/* Delete button for pending items */}
@@ -413,11 +413,11 @@ export function QueueRunnerPanel({
             return (
               <div
                 key={globalIndex}
-                className="flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-gray-700/50 last:border-b-0"
+                className="flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-[#253040]/50 last:border-b-0"
               >
                 <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{globalIndex + 1}</span>
                 <ItemStatusIcon status={status} />
-                <span className="truncate flex-1 text-gray-700 dark:text-gray-300">
+                <span className="truncate flex-1 text-gray-700 dark:text-gray-200">
                   {getItemSummary(item, t)}
                 </span>
               </div>
@@ -427,7 +427,7 @@ export function QueueRunnerPanel({
 
         {/* Add new item form */}
         {onAddItem && (isRunning || isPaused) && (
-          <div className="flex items-center gap-2 px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 px-4 py-2 border-t border-gray-200 dark:border-[#253040]">
             <input
               type="text"
               value={newItemText}
@@ -439,8 +439,8 @@ export function QueueRunnerPanel({
                 }
               }}
               placeholder={t('queue.addItemPlaceholder')}
-              className="flex-1 text-sm px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600
-                bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300
+              className="flex-1 text-sm px-2 py-1.5 rounded border border-gray-300 dark:border-[#2d3a4a]
+                bg-white dark:bg-[#253040] text-gray-700 dark:text-gray-200
                 placeholder:text-gray-400 dark:placeholder:text-gray-500
                 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />

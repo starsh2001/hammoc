@@ -400,7 +400,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         aria-label={t('messageArea.ariaLabel')}
         aria-live="polite"
         data-testid="message-area"
-        className="flex-1 flex items-center justify-center overflow-y-auto bg-white dark:bg-gray-900"
+        className="flex-1 flex items-center justify-center overflow-y-auto bg-white dark:bg-[#1c2129]"
       >
         {emptyState}
       </section>
@@ -416,7 +416,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
       aria-label={t('messageArea.ariaLabel')}
       aria-live="polite"
       data-testid="message-area"
-      className="flex-1 overflow-hidden bg-white dark:bg-gray-900 relative"
+      className="flex-1 overflow-hidden bg-white dark:bg-[#1c2129] relative"
     >
       <div
         ref={containerRef}
@@ -555,7 +555,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                       ({t('message.toolCount', { count: seg.precedingToolUseIds.length })})
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{seg.summary}</p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{seg.summary}</p>
                 </div>
               </div>
             );
@@ -582,7 +582,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                       ))}
                     </ul>
                   )}
-                  <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-300">
                     {seg.totalCostUSD != null && <span>{t('message.cost', { amount: seg.totalCostUSD.toFixed(4) })}</span>}
                     {seg.numTurns != null && <span>{t('message.turns', { count: seg.numTurns })}</span>}
                   </div>
@@ -617,7 +617,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                     ))}
                   </ul>
                 )}
-                <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+                <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-300">
                   {err.totalCostUSD != null && <span>{t('message.cost', { amount: err.totalCostUSD.toFixed(4) })}</span>}
                   {err.numTurns != null && <span>{t('message.turns', { count: err.numTurns })}</span>}
                 </div>
@@ -653,10 +653,10 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {/* Normal streaming indicator: text is being generated (not compacting) */}
         {isStreaming && !isCompacting && streamingSegments.length > 0 && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] bg-gray-50 dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
+            <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-[#253040] p-3 shadow-sm">
               <div className="flex items-center gap-2">
                 <StreamingIndicator />
-                <span className="text-sm text-gray-500 dark:text-gray-400">{t('streaming.generating')}</span>
+                <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.generating')}</span>
               </div>
             </div>
           </div>
@@ -665,10 +665,10 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {/* Waiting indicator: streaming started but no content yet (not compacting) */}
         {isStreaming && !isCompacting && streamingSegments.length === 0 && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] bg-gray-50 dark:bg-gray-800 rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
+            <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-[#253040] p-3 shadow-sm">
               <div className="flex items-center gap-2">
                 <StreamingIndicator />
-                <span className="text-sm text-gray-500 dark:text-gray-400">{t('streaming.waiting')}</span>
+                <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.waiting')}</span>
               </div>
             </div>
           </div>

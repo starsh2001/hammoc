@@ -27,7 +27,7 @@ function SkeletonMessage({ isUser }: { isUser: boolean }) {
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`max-w-[80%] rounded-lg p-3 ${
-          isUser ? 'bg-blue-200 dark:bg-blue-900' : 'bg-gray-200 dark:bg-gray-700'
+          isUser ? 'bg-blue-200 dark:bg-blue-900' : 'bg-gray-200 dark:bg-[#253040]'
         }`}
       >
         {/* Avatar placeholder for assistant */}

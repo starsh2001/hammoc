@@ -179,9 +179,9 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
       />
 
       {/* Dialog */}
-      <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl max-h-[90vh] flex flex-col">
+      <div className="relative w-full max-w-md bg-white dark:bg-[#263240] rounded-lg shadow-xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-[#253040] flex-shrink-0">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">
             {t('issue.edit')}
           </h2>
@@ -200,7 +200,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
           <div>
             <label
               htmlFor="edit-issue-title"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
             >
               {t('issue.title')}
             </label>
@@ -213,7 +213,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('issue.titlePlaceholder')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-[#2d3a4a] rounded-lg bg-white dark:bg-[#253040] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
           </div>
 
@@ -221,7 +221,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
           <div>
             <label
               htmlFor="edit-issue-description"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
             >
               {t('issue.description')}
             </label>
@@ -231,7 +231,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('issue.descriptionPlaceholder')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-[#2d3a4a] rounded-lg bg-white dark:bg-[#253040] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
             />
           </div>
 
@@ -240,7 +240,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
             <div className="flex-1">
               <label
                 htmlFor="edit-issue-severity"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
               >
                 {t('issue.severity')}
               </label>
@@ -248,7 +248,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
                 id="edit-issue-severity"
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-[#2d3a4a] rounded-lg bg-white dark:bg-[#253040] text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">{t('common:notSelected')}</option>
                 <option value="low">{t('issue.severityLow')}</option>
@@ -261,7 +261,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
             <div className="flex-1">
               <label
                 htmlFor="edit-issue-type"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
               >
                 {t('issue.type')}
               </label>
@@ -269,7 +269,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
                 id="edit-issue-type"
                 value={issueType}
                 onChange={(e) => setIssueType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-[#2d3a4a] rounded-lg bg-white dark:bg-[#253040] text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">{t('common:notSelected')}</option>
                 <option value="bug">{t('issue.typeBug')}</option>
@@ -281,7 +281,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
           {/* Attachments */}
           {projectSlug && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 {t('issue.attachments')}
               </label>
 
@@ -293,7 +293,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
                       <img
                         src={boardApi.getAttachmentUrl(projectSlug, issue.id, att.filename)}
                         alt={att.originalName}
-                        className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                        className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-[#2d3a4a]"
                       />
                       <button
                         type="button"
@@ -339,10 +339,10 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-2 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                  className="border-2 border-dashed border-gray-300 dark:border-[#2d3a4a] rounded-lg p-2 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
                 >
-                  <ImagePlus className="w-4 h-4 mx-auto text-gray-400 dark:text-gray-500 mb-0.5" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('issue.addAttachment')}</p>
+                  <ImagePlus className="w-4 h-4 mx-auto text-gray-400 dark:text-gray-400 mb-0.5" />
+                  <p className="text-xs text-gray-500 dark:text-gray-300">{t('issue.addAttachment')}</p>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -369,7 +369,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
               type="button"
               onClick={handleClose}
               disabled={isSubmitting || isUploading}
-              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg transition-colors disabled:opacity-50"
             >
               {t('common:button.cancel')}
             </button>

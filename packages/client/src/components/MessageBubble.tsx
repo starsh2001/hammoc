@@ -73,12 +73,12 @@ export function MessageBubble({
         className={`relative group max-w-[90%] md:max-w-[80%] ${
           isUser
             ? 'bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-l-lg rounded-tr-lg'
-            : 'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700'
+            : 'bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-[#253040]'
         } p-3 shadow-sm`}
       >
         {/* Icon for assistant */}
         {!isUser && (
-          <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 dark:text-gray-300">
             <Bot className="w-4 h-4" aria-hidden="true" />
             <span>{t('messageBubble.assistantName')}</span>
           </div>
@@ -109,7 +109,7 @@ export function MessageBubble({
         {/* Timestamp */}
         <div
           className={`mt-2 text-xs transition-opacity duration-200 ${
-            isUser ? 'text-gray-600 dark:text-blue-200' : 'text-gray-400 dark:text-gray-500'
+            isUser ? 'text-gray-600 dark:text-blue-200' : 'text-gray-400 dark:text-gray-400'
           } ${timestampMode === 'hover' ? (isHovered ? 'opacity-100' : 'opacity-0') : 'opacity-100'}`}
         >
           {formattedTime}
@@ -125,7 +125,7 @@ export function MessageBubble({
           } ${
             isUser
               ? 'bg-blue-200 hover:bg-blue-300 text-gray-700 dark:bg-blue-500 dark:hover:bg-blue-400 dark:text-white'
-              : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300'
+              : 'bg-gray-100 dark:bg-[#253040] hover:bg-gray-200 dark:hover:bg-[#2d3a4a] text-gray-600 dark:text-gray-200'
           }`}
         >
           {isCopied ? (

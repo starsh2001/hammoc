@@ -245,8 +245,8 @@ export function QueueLockedBanner({
                 onClick={onPause}
                 aria-label={t('queue.locked.pauseQueue')}
                 className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 text-xs font-medium rounded-md
-                           bg-white/80 dark:bg-gray-800/80 text-indigo-700 dark:text-indigo-300
-                           hover:bg-white dark:hover:bg-gray-800
+                           bg-white/80 dark:bg-[#263240]/80 text-indigo-700 dark:text-indigo-300
+                           hover:bg-white dark:hover:bg-[#263240]
                            transition-colors"
               >
                 <Pause size={14} className="sm:w-3 sm:h-3" aria-hidden="true" />
@@ -260,11 +260,11 @@ export function QueueLockedBanner({
                 onClick={onResume}
                 aria-label={t('queue.locked.resumeQueue')}
                 className={`flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 text-xs font-medium rounded-md
-                           bg-white/80 dark:bg-gray-800/80
+                           bg-white/80 dark:bg-[#263240]/80
                            transition-colors ${
                              isPausedWithError
-                               ? 'text-red-700 dark:text-red-300 hover:bg-white dark:hover:bg-gray-800'
-                               : 'text-amber-700 dark:text-amber-300 hover:bg-white dark:hover:bg-gray-800'
+                               ? 'text-red-700 dark:text-red-300 hover:bg-white dark:hover:bg-[#263240]'
+                               : 'text-amber-700 dark:text-amber-300 hover:bg-white dark:hover:bg-[#263240]'
                            }`}
               >
                 <Play size={14} className="sm:w-3 sm:h-3" aria-hidden="true" />
@@ -277,13 +277,13 @@ export function QueueLockedBanner({
               onClick={handleAbort}
               aria-label={t('queue.locked.abortQueue')}
               className={`flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 text-xs font-medium rounded-md
-                         bg-white/80 dark:bg-gray-800/80
+                         bg-white/80 dark:bg-[#263240]/80
                          transition-colors ${
                            isPausedWithError
-                             ? 'text-red-700 dark:text-red-300 hover:bg-white dark:hover:bg-gray-800'
+                             ? 'text-red-700 dark:text-red-300 hover:bg-white dark:hover:bg-[#263240]'
                              : isPaused
-                               ? 'text-amber-700 dark:text-amber-300 hover:bg-white dark:hover:bg-gray-800'
-                               : 'text-indigo-700 dark:text-indigo-300 hover:bg-white dark:hover:bg-gray-800'
+                               ? 'text-amber-700 dark:text-amber-300 hover:bg-white dark:hover:bg-[#263240]'
+                               : 'text-indigo-700 dark:text-indigo-300 hover:bg-white dark:hover:bg-[#263240]'
                          }`}
             >
               <Square size={14} className="sm:w-3 sm:h-3" aria-hidden="true" />

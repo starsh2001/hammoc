@@ -8,23 +8,23 @@ export function ChecklistSkeleton() {
   const { t } = useTranslation('common');
   return (
     <div
-      className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 animate-pulse"
+      className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 dark:border-[#253040] bg-white dark:bg-[#263240] animate-pulse"
       role="status"
       aria-label={t('onboarding.loadingAria')}
     >
       {/* Icon skeleton */}
       <div className="flex-shrink-0 mt-0.5">
-        <div className="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded-full" />
+        <div className="w-5 h-5 bg-gray-200 dark:bg-[#253040] rounded-full" />
       </div>
       <div className="flex-grow space-y-2">
         {/* Title skeleton */}
-        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+        <div className="h-5 bg-gray-200 dark:bg-[#253040] rounded w-1/3" />
         {/* Description skeleton */}
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+        <div className="h-4 bg-gray-200 dark:bg-[#253040] rounded w-2/3" />
         {/* Command skeleton */}
         <div className="flex items-center gap-2 mt-2">
-          <div className="flex-grow h-10 bg-gray-200 dark:bg-gray-700 rounded" />
-          <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="flex-grow h-10 bg-gray-200 dark:bg-[#253040] rounded" />
+          <div className="w-10 h-10 bg-gray-200 dark:bg-[#253040] rounded" />
         </div>
       </div>
       <span className="sr-only">{t('onboarding.loadingText')}</span>

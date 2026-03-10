@@ -85,7 +85,7 @@ export function QuickGitPanel({
         {/* Git not initialized */}
         {status?.initialized === false ? (
           <div className="text-center py-8 space-y-4">
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-gray-500 dark:text-gray-300">
               {t('git.notInitialized')}
             </p>
             <button
@@ -105,7 +105,7 @@ export function QuickGitPanel({
             {/* Status summary */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
-                <GitBranch className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                <GitBranch className="w-4 h-4 text-gray-500 dark:text-gray-300" aria-hidden="true" />
                 <span className="font-medium text-gray-900 dark:text-white" data-testid="current-branch">
                   {status?.branch ?? '—'}
                 </span>
@@ -128,8 +128,8 @@ export function QuickGitPanel({
                 onChange={(e) => setCommitMessage(e.target.value)}
                 placeholder={t('git.commitMessagePlaceholder')}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                className="w-full px-3 py-2 border border-gray-300 dark:border-[#2d3a4a]
+                           bg-white dark:bg-[#253040] text-gray-900 dark:text-white
                            rounded-lg text-sm resize-none
                            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -158,11 +158,11 @@ export function QuickGitPanel({
 
             {/* Recent commits */}
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 {t('git.recentCommits')}
               </h3>
               {recentCommits.length === 0 ? (
-                <p className="text-sm text-gray-400 dark:text-gray-500">
+                <p className="text-sm text-gray-400 dark:text-gray-400">
                   {t('git.noCommitHistory')}
                 </p>
               ) : (
@@ -170,13 +170,13 @@ export function QuickGitPanel({
                   {recentCommits.map((c) => (
                     <div
                       key={c.hash}
-                      className="text-sm border border-gray-100 dark:border-gray-700 rounded-lg p-2"
+                      className="text-sm border border-gray-100 dark:border-[#253040] rounded-lg p-2"
                     >
                       <div className="flex items-center gap-2">
-                        <code className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                        <code className="text-xs text-gray-500 dark:text-gray-300 font-mono">
                           {c.hash.slice(0, 7)}
                         </code>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                        <span className="text-xs text-gray-400 dark:text-gray-400">
                           {formatRelativeTime(c.date)}
                         </span>
                       </div>
@@ -193,7 +193,7 @@ export function QuickGitPanel({
       </div>
 
       {/* Footer link */}
-      <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+      <div className="px-4 py-3 border-t border-gray-200 dark:border-[#253040]">
         <button
           onClick={onNavigateToGitTab}
           className="w-full flex items-center justify-center gap-1.5 text-sm text-blue-600 dark:text-blue-400

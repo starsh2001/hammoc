@@ -36,25 +36,30 @@ import { generateUUID } from '../utils/uuid';
 import { debugLogger } from '../utils/debugLogger';
 
 // Permission mode color mapping for focus ring and send button
-const MODE_COLORS: Record<PermissionMode, { ring: string; button: string }> = {
+const MODE_COLORS: Record<PermissionMode, { ring: string; border: string; button: string }> = {
   plan: {
-    ring: 'focus:ring-blue-500 dark:focus:ring-blue-400',
+    ring: 'focus-within:ring-blue-500/40 dark:focus-within:ring-blue-400/40',
+    border: 'focus-within:border-blue-500 dark:focus-within:border-blue-400',
     button: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
   },
   default: {
-    ring: 'focus:ring-orange-500 dark:focus:ring-orange-400',
+    ring: 'focus-within:ring-orange-500/40 dark:focus-within:ring-orange-400/40',
+    border: 'focus-within:border-orange-500 dark:focus-within:border-orange-400',
     button: 'bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600',
   },
   acceptEdits: {
-    ring: 'focus:ring-gray-500 dark:focus:ring-gray-400',
-    button: 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600',
+    ring: 'focus-within:ring-gray-500/40 dark:focus-within:ring-gray-400/40',
+    border: 'focus-within:border-gray-500 dark:focus-within:border-gray-400',
+    button: 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-[#2d3a4a]',
   },
   bypassPermissions: {
-    ring: 'focus:ring-red-500 dark:focus:ring-red-400',
+    ring: 'focus-within:ring-red-500/40 dark:focus-within:ring-red-400/40',
+    border: 'focus-within:border-red-500 dark:focus-within:border-red-400',
     button: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600',
   },
   dontAsk: {
-    ring: 'focus:ring-yellow-500 dark:focus:ring-yellow-400',
+    ring: 'focus-within:ring-yellow-500/40 dark:focus-within:ring-yellow-400/40',
+    border: 'focus-within:border-yellow-500 dark:focus-within:border-yellow-400',
     button: 'bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600',
   },
 };
@@ -795,7 +800,7 @@ export function ChatInput({
                 <img
                   src={attachment.preview}
                   alt={attachment.name}
-                  className="w-16 h-16 object-cover rounded border border-gray-300 dark:border-gray-600"
+                  className="w-16 h-16 object-cover rounded border border-gray-300 dark:border-[#2d3a4a]"
                   onError={(e) => {
                     const target = e.currentTarget;
                     target.style.display = 'none';
@@ -804,7 +809,7 @@ export function ChatInput({
                   }}
                 />
                 <div
-                  className="w-16 h-16 rounded border border-gray-300 dark:border-gray-600 items-center justify-center text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 p-1 text-center break-all"
+                  className="w-16 h-16 rounded border border-gray-300 dark:border-[#2d3a4a] items-center justify-center text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-[#253040] p-1 text-center break-all"
                   style={{ display: 'none' }}
                 >
                   {attachment.name}
@@ -828,7 +833,7 @@ export function ChatInput({
                   <X size={12} aria-hidden="true" />
                 </button>
               </div>
-              <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[64px]">
+              <span className="text-xs text-gray-500 dark:text-gray-300 truncate max-w-[64px]">
                 {attachment.name}
               </span>
             </div>
@@ -940,7 +945,7 @@ export function ChatInput({
           className={`flex items-center rounded-lg transition-colors duration-150
                      ${chainMode
                        ? 'bg-violet-50 dark:bg-violet-950/30 border border-violet-300 dark:border-violet-700 focus-within:ring-2 focus-within:ring-violet-500 dark:focus-within:ring-violet-400'
-                       : `bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 focus-within:ring-2 ${modeColors.ring}`}`}
+                       : `bg-white dark:bg-[#263240] border border-gray-300 dark:border-[#2d3a4a] focus-within:ring-2 ${modeColors.ring} ${modeColors.border}`}`}
           onClick={() => { if (!isTouchDevice) textareaRef.current?.focus(); }}
         >
           <textarea
@@ -1037,7 +1042,7 @@ export function ChatInput({
             className={`relative p-1 rounded-md flex-shrink-0 flex items-center justify-center transition-all duration-150 cursor-pointer
                        ${chainMode
                          ? 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 text-white'
-                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}
+                         : 'text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040]'}
                        disabled:opacity-50 disabled:cursor-not-allowed
                        focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2`}
             style={{ height: '28px', width: '28px' }}
@@ -1075,9 +1080,9 @@ export function ChatInput({
           disabled={isAttachDisabled || queueLocked}
           aria-label={t('input.attachImage')}
           className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
-                     text-gray-500 dark:text-gray-400
+                     text-gray-500 dark:text-gray-300
                      hover:text-gray-700 dark:hover:text-gray-200
-                     hover:bg-gray-100 dark:hover:bg-gray-700
+                     hover:bg-gray-100 dark:hover:bg-[#253040]
                      disabled:opacity-50 disabled:cursor-not-allowed
                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                      transition-all duration-150"

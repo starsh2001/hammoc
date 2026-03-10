@@ -91,8 +91,8 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
       {/* Quick actions + Recent sessions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent sessions */}
-        <div className="lg:col-span-2 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="lg:col-span-2 bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-[#253040]">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-gray-900 dark:text-white">{t('overview.recentSessions')}</h2>
               <BackgroundRefreshIndicator isRefreshing={isRefreshing} />
@@ -109,18 +109,18 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
             <div className="p-5 space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="animate-pulse flex items-center gap-3">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+                  <div className="h-4 bg-gray-200 dark:bg-[#253040] rounded w-3/4" />
+                  <div className="h-4 bg-gray-200 dark:bg-[#253040] rounded w-1/4" />
                 </div>
               ))}
             </div>
           ) : recentSessions.length === 0 ? (
             <div className="py-12 px-8 text-center">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700/50 mb-4">
-                <MessageCircle className="w-7 h-7 text-gray-400 dark:text-gray-500" />
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 dark:bg-[#253040]/50 mb-4">
+                <MessageCircle className="w-7 h-7 text-gray-400 dark:text-gray-400" />
               </div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">{t('overview.sessionsEmpty')}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">{t('overview.sessionsEmptySubtext')}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-200 mb-1">{t('overview.sessionsEmpty')}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-400 mb-4">{t('overview.sessionsEmptySubtext')}</p>
               <button
                 onClick={handleNewSession}
                 className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -135,7 +135,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
                 <button
                   key={session.sessionId}
                   onClick={() => navigate(`/project/${projectSlug}/session/${session.sessionId}`)}
-                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-100/50 dark:hover:bg-[#253040]/50 transition-colors text-left"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -155,7 +155,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 ml-4 text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+                  <div className="flex items-center gap-3 ml-4 text-xs text-gray-400 dark:text-gray-400 flex-shrink-0">
                     <span>{t('overview.messageCountFormat', { count: session.messageCount })}</span>
                     <span>{formatRelativeTime(session.modified)}</span>
                   </div>
@@ -168,7 +168,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
         {/* Quick actions — replaced by slot when provided (e.g. BMad recommendations) */}
         <div className="space-y-4">
           {quickActionsSlot ?? (
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5">
               <h2 className="font-semibold text-gray-900 dark:text-white mb-4">{t('overview.quickStartTitle')}</h2>
               <div className="space-y-2">
                 <button
@@ -180,14 +180,14 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
                 </button>
                 <button
                   onClick={() => navigate(`/project/${projectSlug}/queue`)}
-                  className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-[#253040]/50 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors text-sm font-medium"
                 >
                   <ListOrdered className="w-4 h-4" />
                   {t('overview.queueRunner')}
                 </button>
                 <button
                   onClick={() => navigate(`/project/${projectSlug}/files`)}
-                  className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100/80 dark:bg-[#253040]/50 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors text-sm font-medium"
                 >
                   <FolderOpen className="w-4 h-4" />
                   {t('overview.fileExplore')}

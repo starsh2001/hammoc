@@ -91,7 +91,7 @@ export function ConnectionStatusIndicator({
         {status === 'disconnected' && lastError && (
           <button
             onClick={onReconnect}
-            className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+            className="p-0.5 hover:bg-gray-200 dark:hover:bg-[#253040] rounded-full transition-colors"
             aria-label={t('connection.reconnectButtonAria')}
             title={t('connection.reconnectButton')}
           >

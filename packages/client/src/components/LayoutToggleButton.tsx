@@ -18,8 +18,8 @@ export function LayoutToggleButton({ className = '' }: LayoutToggleButtonProps) 
   return (
     <button
       onClick={toggleLayoutMode}
-      className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                 text-gray-600 dark:text-gray-400 transition-colors
+      className={`p-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg
+                 text-gray-600 dark:text-gray-300 transition-colors
                  focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
       aria-label={isWide ? t('layout.narrowAria') : t('layout.wideAria')}
       title={isWide ? t('layout.narrowTitle') : t('layout.wideTitle')}

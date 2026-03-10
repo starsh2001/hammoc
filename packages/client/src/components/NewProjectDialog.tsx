@@ -184,7 +184,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
       {/* Responsive dialog container */}
       <div
         ref={dialogRef}
-        className="w-full bg-white dark:bg-gray-800 shadow-xl
+        className="w-full bg-white dark:bg-[#263240] shadow-xl
                    rounded-t-2xl max-h-[90vh] overflow-y-auto
                    sm:rounded-lg sm:max-w-md sm:mx-4
                    animate-slide-up sm:animate-none"
@@ -192,7 +192,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
         tabIndex={-1}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[#253040]">
           <h2
             id="new-project-title"
             className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2"
@@ -202,7 +202,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
           </h2>
           <button
             onClick={handleCancel}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label={t('newProjectDialog.closeAria')}
           >
             <X className="w-5 h-5 text-gray-500" />
@@ -215,7 +215,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
           <div>
             <label
               htmlFor="project-path"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
             >
               {t('newProjectDialog.pathLabel')}
             </label>
@@ -231,8 +231,8 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                   ? 'C:\\Users\\user\\my-project'
                   : '/Users/user/my-project'
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+              className="w-full px-3 py-2 border border-gray-300 dark:border-[#2d3a4a] rounded-lg
+                         bg-white dark:bg-[#253040] text-gray-900 dark:text-white
                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
                          min-h-[44px]"
               disabled={isCreating}
@@ -292,7 +292,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                 className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 disabled={isCreating}
               />
-              <label htmlFor="setup-bmad" className="text-sm text-gray-700 dark:text-gray-300">
+              <label htmlFor="setup-bmad" className="text-sm text-gray-700 dark:text-gray-200">
                 {t('newProjectDialog.bmadInit')}
               </label>
             </div>
@@ -302,7 +302,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
               <div className="ml-7">
                 <label
                   htmlFor="bmad-version"
-                  className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                  className="block text-xs text-gray-500 dark:text-gray-300 mb-1"
                 >
                   {t('newProjectDialog.versionLabel')}
                 </label>
@@ -316,8 +316,8 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                     id="bmad-version"
                     value={selectedVersion}
                     onChange={(e) => setSelectedVersion(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-                               bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-[#2d3a4a] rounded-lg
+                               bg-white dark:bg-[#253040] text-gray-900 dark:text-white
                                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={isCreating}
                   >
@@ -338,10 +338,10 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-[#253040]">
           <button
             onClick={handleCancel}
-            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
+            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg
                        min-h-[44px] min-w-[80px]"
             disabled={isCreating}
           >

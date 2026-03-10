@@ -157,7 +157,7 @@ export function FileExplorerTab() {
 
   if (!projectSlug) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+      <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-300">
         {t('files.projectNotFound')}
       </div>
     );
@@ -168,7 +168,7 @@ export function FileExplorerTab() {
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar — matches sessions / queue runner style */}
-      <div className="sticky top-0 z-[5] bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+      <div className="sticky top-0 z-[5] bg-white dark:bg-[#1c2129] border-b border-gray-200 dark:border-[#253040]">
         <div className="flex items-center justify-between px-4 py-2 gap-3">
           {/* Breadcrumb — left side */}
           {!isSearching ? (
@@ -181,13 +181,13 @@ export function FileExplorerTab() {
                     )}
                     {i === segments.length - 1 ? (
                       <span className="inline-flex items-center gap-1 font-medium text-gray-800 dark:text-gray-200 truncate" aria-current="page">
-                        {i === 0 && <FolderRoot className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />}
+                        {i === 0 && <FolderRoot className="w-3.5 h-3.5 text-gray-400 dark:text-gray-400 flex-shrink-0" />}
                         {seg.name}
                       </span>
                     ) : (
                       <button
                         onClick={() => setCurrentPath(seg.path)}
-                        className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400
+                        className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-300
                           hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
                       >
                         {i === 0 && <FolderRoot className="w-3.5 h-3.5 flex-shrink-0" />}
@@ -212,8 +212,8 @@ export function FileExplorerTab() {
                 value={filterText}
                 onChange={(e) => setFilterText(e.target.value)}
                 placeholder={t('files.searchPlaceholder')}
-                className="w-36 sm:w-44 pl-8 pr-7 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 dark:text-white
-                  border border-gray-200 dark:border-gray-700 rounded-lg
+                className="w-36 sm:w-44 pl-8 pr-7 py-1.5 text-xs bg-gray-100 dark:bg-[#263240] dark:text-white
+                  border border-gray-200 dark:border-[#253040] rounded-lg
                   focus:outline-none focus:ring-1 focus:ring-blue-500 focus:w-56
                   dark:placeholder-gray-400 transition-all"
               />
@@ -228,7 +228,7 @@ export function FileExplorerTab() {
               )}
             </div>
 
-            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+            <div className="w-px h-5 bg-gray-200 dark:bg-[#253040] mx-1" />
 
             {/* Hidden files toggle */}
             <button
@@ -237,7 +237,7 @@ export function FileExplorerTab() {
               className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${
                 showHidden
                   ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  : 'text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#253040]'
               }`}
               aria-label={showHidden ? t('files.hideHidden') : t('files.showHidden')}
             >
@@ -249,7 +249,7 @@ export function FileExplorerTab() {
               onClick={() => setViewMode((prev) => (prev === 'list' ? 'grid' : 'list'))}
               title={viewMode === 'list' ? t('files.gridView') : t('files.listView')}
               className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors
-                text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#253040]"
               aria-label={viewMode === 'list' ? t('files.gridView') : t('files.listView')}
             >
               {viewMode === 'list' ? <LayoutGrid className="w-3.5 h-3.5" /> : <List className="w-3.5 h-3.5" />}
@@ -263,30 +263,30 @@ export function FileExplorerTab() {
         {isSearching ? (
           <div className="px-2">
             {searchLoading ? (
-              <div className="flex items-center gap-2 px-2 py-4 text-sm text-gray-500 dark:text-gray-400 justify-center">
+              <div className="flex items-center gap-2 px-2 py-4 text-sm text-gray-500 dark:text-gray-300 justify-center">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>{t('files.searching')}</span>
               </div>
             ) : searchResults && searchResults.length === 0 ? (
-              <div className="px-2 py-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+              <div className="px-2 py-4 text-sm text-gray-500 dark:text-gray-300 text-center">
                 {t('files.noResults')}
               </div>
             ) : (
               searchResults?.map((result) => (
                 <button
                   key={result.path}
-                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50 text-left"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 text-left"
                   onClick={() => handleSearchResultClick(result)}
                 >
                   {result.type === 'directory' ? (
                     <Folder className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                   ) : (
-                    <File className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                    <File className="w-4 h-4 text-gray-500 dark:text-gray-300 flex-shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
                     <span className="text-sm text-gray-900 dark:text-white">{result.name}</span>
                     {result.path !== result.name && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 truncate">
+                      <span className="text-xs text-gray-400 dark:text-gray-400 ml-2 truncate">
                         {result.path.substring(0, result.path.length - result.name.length - 1)}
                       </span>
                     )}

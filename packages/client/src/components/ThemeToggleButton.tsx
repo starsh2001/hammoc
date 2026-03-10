@@ -20,8 +20,8 @@ export function ThemeToggleButton({ className = '' }: ThemeToggleButtonProps) {
   return (
     <button
       onClick={toggleTheme}
-      className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                 text-gray-600 dark:text-gray-400 transition-colors
+      className={`p-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg
+                 text-gray-600 dark:text-gray-300 transition-colors
                  focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
       aria-label={isDark ? t('theme.lightAria') : t('theme.darkAria')}
     >

@@ -157,14 +157,14 @@ export function ProjectListPage() {
   // Error state
   if (error) {
     return (
-      <div className="h-dvh flex flex-col bg-white dark:bg-gray-900 transition-colors duration-200">
+      <div className="h-dvh flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
         {/* Header */}
-        <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <header className="flex-shrink-0 sticky top-0 z-10 bg-slate-50 dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
           <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
             <div className="flex items-center min-w-0 flex-1">
               <BrandLogo />
-              <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
-              <h1 className="text-base font-semibold text-gray-900 dark:text-white">{t('project.title')}</h1>
+              <div className="w-px self-stretch bg-gray-200 dark:bg-[#253040] mx-3" />
+              <h1 className="text-base font-semibold text-gray-900 dark:text-white">{serverHostname || t('project.title')}</h1>
             </div>
             <div className="flex items-center gap-1 ml-4">
               <LayoutToggleButton className="hidden sm:block" />
@@ -172,7 +172,7 @@ export function ProjectListPage() {
               <button
                 onClick={() => navigate('/settings')}
                 aria-label={t('project.settings')}
-                className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+                className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#253040] text-gray-700 dark:text-gray-200 transition-colors"
               >
                 <Settings className="w-5 h-5" aria-hidden="true" />
               </button>
@@ -180,7 +180,7 @@ export function ProjectListPage() {
               <div className="relative sm:hidden" ref={overflowMenuRef}>
                 <button
                   onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg text-gray-700 dark:text-gray-200"
                   aria-label={t('project.menuLabel')}
                   aria-expanded={overflowMenuOpen}
                   aria-haspopup="menu"
@@ -188,13 +188,13 @@ export function ProjectListPage() {
                   <MoreVertical className="w-5 h-5" />
                 </button>
                 {overflowMenuOpen && (
-                  <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1">
-                    <button role="menuitem" onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                  <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#263240] rounded-lg shadow-lg border border-gray-200 dark:border-[#253040] z-50 py-1">
+                    <button role="menuitem" onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                       {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                       {theme === 'dark' ? t('project.lightMode') : t('project.darkMode')}
                     </button>
-                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                    <button role="menuitem" onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                    <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
+                    <button role="menuitem" onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                       <Settings className="w-4 h-4" />
                       {t('project.settings')}
                     </button>
@@ -211,12 +211,12 @@ export function ProjectListPage() {
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
             {t('error.errorOccurred')}
           </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4 text-center">
+          <p className="text-gray-500 dark:text-gray-300 mb-4 text-center">
             {error}
           </p>
           <button
             onClick={handleRetry}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129]"
           >
             {t('button.retry')}
           </button>
@@ -226,21 +226,21 @@ export function ProjectListPage() {
   }
 
   return (
-    <div className="h-dvh flex flex-col bg-white dark:bg-gray-900 transition-colors duration-200">
+    <div className="h-dvh flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
       {/* Header */}
-      <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <header className="flex-shrink-0 sticky top-0 z-10 bg-slate-50 dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
         <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
           <div className="flex items-stretch min-w-0 flex-1">
             <BrandLogo />
-            <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
+            <div className="w-px self-stretch bg-gray-200 dark:bg-[#253040] mx-3" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center">
-                <h1 className="text-base font-semibold text-gray-900 dark:text-white">{t('project.title')}</h1>
+                <h1 className="text-base font-semibold text-gray-900 dark:text-white">{serverHostname || t('project.title')}</h1>
                 <BackgroundRefreshIndicator isRefreshing={isRefreshing} className="ml-2" />
               </div>
-              {(serverVersion || serverHostname) && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">
-                  {serverHostname}{serverAddress ? ` (${serverAddress})` : ''}
+              {serverAddress && (
+                <p className="text-xs text-gray-500 dark:text-gray-300 font-mono truncate">
+                  {serverAddress}
                 </p>
               )}
             </div>
@@ -254,14 +254,14 @@ export function ProjectListPage() {
               <Plus className="w-4 h-4" aria-hidden="true" />
               {t('project.newProject')}
             </button>
-            <div className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700 ml-2" />
+            <div className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-[#253040] ml-2" />
             {hiddenCount > 0 && (
               <button
                 onClick={() => setShowHidden(!showHidden)}
                 className={`hidden sm:block p-2 rounded-lg transition-colors ${
                   showHidden
                     ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    : 'hover:bg-gray-100 dark:hover:bg-[#253040] text-gray-700 dark:text-gray-200'
                 }`}
                 aria-label={showHidden ? t('project.hideHidden') : t('project.showHidden', { count: hiddenCount })}
                 title={showHidden ? t('project.hideHidden') : t('project.showHidden', { count: hiddenCount })}
@@ -272,7 +272,7 @@ export function ProjectListPage() {
             <button
               onClick={handleRefresh}
               disabled={isLoading || isRefreshing}
-              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 text-gray-700 dark:text-gray-300"
+              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#253040] disabled:opacity-50 text-gray-700 dark:text-gray-200"
               aria-label={isLoading || isRefreshing ? t('project.refreshing') : t('project.refresh')}
             >
               <RefreshCw
@@ -285,7 +285,7 @@ export function ProjectListPage() {
             <button
               onClick={() => navigate('/settings')}
               aria-label={t('project.settings')}
-              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#253040] text-gray-700 dark:text-gray-200 transition-colors"
             >
               <Settings className="w-5 h-5" aria-hidden="true" />
             </button>
@@ -294,7 +294,7 @@ export function ProjectListPage() {
             <div className="relative sm:hidden" ref={overflowMenuRef}>
               <button
                 onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg text-gray-700 dark:text-gray-200"
                 aria-label={t('project.menuLabel')}
                 aria-expanded={overflowMenuOpen}
                 aria-haspopup="menu"
@@ -302,28 +302,28 @@ export function ProjectListPage() {
                 <MoreVertical className="w-5 h-5" />
               </button>
               {overflowMenuOpen && (
-                <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1">
-                  <button role="menuitem" onClick={() => { setIsNewProjectDialogOpen(true); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#263240] rounded-lg shadow-lg border border-gray-200 dark:border-[#253040] z-50 py-1">
+                  <button role="menuitem" onClick={() => { setIsNewProjectDialogOpen(true); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                     <Plus className="w-4 h-4" />
                     {t('project.newProject')}
                   </button>
-                  <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                  <button role="menuitem" onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                  <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
+                  <button role="menuitem" onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                     {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                     {theme === 'dark' ? t('project.lightMode') : t('project.darkMode')}
                   </button>
                   {hiddenCount > 0 && (
-                    <button role="menuitem" onClick={() => { setShowHidden(!showHidden); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                    <button role="menuitem" onClick={() => { setShowHidden(!showHidden); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                       {showHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                       {showHidden ? t('project.hideHidden') : t('project.showHidden', { count: hiddenCount })}
                     </button>
                   )}
-                  <button role="menuitem" onClick={() => { handleRefresh(); setOverflowMenuOpen(false); }} disabled={isLoading || isRefreshing} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 flex items-center gap-2">
+                  <button role="menuitem" onClick={() => { handleRefresh(); setOverflowMenuOpen(false); }} disabled={isLoading || isRefreshing} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] disabled:opacity-50 flex items-center gap-2">
                     <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
                     {t('project.refresh')}
                   </button>
-                  <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                  <button role="menuitem" onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                  <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
+                  <button role="menuitem" onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                     <Settings className="w-4 h-4" />
                     {t('project.settings')}
                   </button>
@@ -350,12 +350,12 @@ export function ProjectListPage() {
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               {t('project.empty.title')}
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
+            <p className="text-gray-500 dark:text-gray-300 mb-6">
               {t('project.empty.description')}
             </p>
             <button
               onClick={() => setIsNewProjectDialogOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129]"
             >
               <Plus className="w-5 h-5" aria-hidden="true" />
               {t('project.createNewProject')}
@@ -391,8 +391,8 @@ export function ProjectListPage() {
       </main>
 
       {/* Footer */}
-      <footer className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-2">
-        <div className="content-container flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
+      <footer className="flex-shrink-0 border-t border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#263240] px-4 py-2">
+        <div className="content-container flex items-center justify-between text-xs text-gray-400 dark:text-gray-400">
           <span>Hammoc{serverVersion ? ` v${serverVersion}` : ''}</span>
           <button
             onClick={handleLogout}

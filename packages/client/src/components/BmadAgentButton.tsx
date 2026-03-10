@@ -155,8 +155,8 @@ export function BmadAgentButton({
           transition-colors
           ${isActive ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
           ${flatIndex === selectedIndex
-            ? 'bg-gray-100 dark:bg-gray-700'
-            : isActive ? '' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+            ? 'bg-gray-100 dark:bg-[#253040]'
+            : isActive ? '' : 'hover:bg-gray-100 dark:hover:bg-[#253040]'
           }
         `}
         data-testid={`bmad-agent-item-${flatIndex}`}
@@ -171,7 +171,7 @@ export function BmadAgentButton({
             {roleLabel || agent.name}
           </span>
           {description && (
-            <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
+            <span className="ml-2 text-xs text-gray-400 dark:text-gray-400">
               {description}
             </span>
           )}
@@ -185,8 +185,8 @@ export function BmadAgentButton({
     const groupLabel = group.label.startsWith('agent.') ? t(group.label) : group.label;
     return (
     <div key={group.testId} role="group" aria-label={groupLabel} data-testid={group.testId}>
-      {groupIndex > 0 && <div className="border-t border-gray-200 dark:border-gray-700" />}
-      <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+      {groupIndex > 0 && <div className="border-t border-gray-200 dark:border-[#253040]" />}
+      <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400">
         {groupLabel}
       </div>
       {group.agents.map((agent, i) => renderAgentItem(agent, indexOffset + i))}
@@ -220,15 +220,15 @@ export function BmadAgentButton({
         className={`
           w-[28px] h-[28px] ml-0.4 rounded-md transition-all
           flex items-center justify-center
-          border border-gray-300 dark:border-gray-600
-          bg-white dark:bg-gray-800
-          text-gray-600 dark:text-gray-300
+          border border-gray-300 dark:border-[#2d3a4a]
+          bg-white dark:bg-[#263240]
+          text-gray-600 dark:text-gray-200
           focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-400
           disabled:opacity-50 disabled:cursor-not-allowed
-          hover:bg-gray-100 dark:hover:bg-gray-700
+          hover:bg-gray-100 dark:hover:bg-[#253040]
           active:bg-gray-200 dark:active:bg-gray-600
           select-none
-          ${isOpen ? 'bg-gray-100 dark:bg-gray-700 ring-2 ring-gray-400 ring-offset-1' : ''}
+          ${isOpen ? 'bg-gray-100 dark:bg-[#253040] ring-2 ring-gray-400 ring-offset-1' : ''}
         `}
       >
         <Users className="w-4 h-4" aria-hidden="true" />
@@ -237,11 +237,11 @@ export function BmadAgentButton({
       {/* Dropdown menu (matches ModelSelector style, same on all screen sizes) */}
       {isOpen && (
         <div
-          className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
+          className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50"
           data-testid="bmad-agent-popup"
         >
           {agents.length === 0 ? (
-            <div className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400">
+            <div className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-300">
               {t('agent.noAgents')}
             </div>
           ) : (

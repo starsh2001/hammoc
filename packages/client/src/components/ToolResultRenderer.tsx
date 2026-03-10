@@ -122,10 +122,10 @@ function GlobResult({ result }: { result: string }) {
 
   return (
     <div data-testid="tool-result-glob">
-      <ul className="mt-2 space-y-0.5 text-xs text-gray-600 dark:text-gray-400">
+      <ul className="mt-2 space-y-0.5 text-xs text-gray-600 dark:text-gray-300">
         {displayFiles.map((file, i) => (
           <li key={i} className="flex items-center gap-1.5">
-            <FileText className="w-3 h-3 flex-shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+            <FileText className="w-3 h-3 flex-shrink-0 text-gray-400 dark:text-gray-400" aria-hidden="true" />
             <span className="truncate font-mono">{file}</span>
           </li>
         ))}
@@ -165,7 +165,7 @@ function DefaultResult({ result }: { result: string }) {
 
   return (
     <div data-testid="tool-result-default">
-      <pre className="mt-2 text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words font-mono">
+      <pre className="mt-2 text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-words font-mono">
         {displayContent}
       </pre>
       {truncated && (

@@ -35,8 +35,8 @@ export function RecentIssuesCard() {
     .reverse();
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+    <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040]">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-[#253040]">
         <h2 className="font-semibold text-gray-900 dark:text-white">{t('overview.recentIssues')}</h2>
         <button
           onClick={() => navigate(`/project/${projectSlug}/board`)}
@@ -48,10 +48,10 @@ export function RecentIssuesCard() {
       </div>
       {recentIssues.length === 0 ? (
         <div className="py-8 px-5 text-center">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700/50 mb-3">
-            <AlertCircle className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 dark:bg-[#253040]/50 mb-3">
+            <AlertCircle className="w-5 h-5 text-gray-400 dark:text-gray-400" />
           </div>
-          <p className="text-sm text-gray-400 dark:text-gray-500">{t('overview.noIssues')}</p>
+          <p className="text-sm text-gray-400 dark:text-gray-400">{t('overview.noIssues')}</p>
         </div>
       ) : (
         <div className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -59,7 +59,7 @@ export function RecentIssuesCard() {
             <button
               key={issue.id}
               onClick={() => navigate(`/project/${projectSlug}/board`)}
-              className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-100/50 dark:hover:bg-[#253040]/50 transition-colors text-left"
             >
               {issue.severity && (
                 <span className={`w-2 h-2 rounded-full flex-shrink-0 ${SEVERITY_DOT[issue.severity] ?? SEVERITY_DOT.low}`} />

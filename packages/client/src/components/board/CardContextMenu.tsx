@@ -229,7 +229,7 @@ export function CardContextMenu({
           ref={menuRef}
           role="menu"
           style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
-          className="w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1"
+          className="w-48 bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50 py-1"
         >
           {menuItems.map((mi, idx) => (
             <button
@@ -239,10 +239,10 @@ export function CardContextMenu({
               title={mi.title}
               className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                 mi.disabled
-                  ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                  ? 'text-gray-400 dark:text-gray-400 cursor-not-allowed'
                   : idx === focusIndex
-                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-gray-100 dark:bg-[#253040] text-gray-900 dark:text-white'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040]'
               }`}
               onClick={(e) => {
                 e.stopPropagation();

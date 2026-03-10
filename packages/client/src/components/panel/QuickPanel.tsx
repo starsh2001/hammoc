@@ -219,9 +219,9 @@ export function QuickPanel({
         aria-label={t(config.titleKey)}
         className={`fixed z-50 flex flex-col ${
           isMobile
-            ? 'inset-0 bg-white dark:bg-gray-900'
-            : `inset-y-0 right-0 bg-white dark:bg-gray-800
-               border-l border-gray-200 dark:border-gray-700 shadow-xl
+            ? 'inset-0 bg-white dark:bg-[#1c2129]'
+            : `inset-y-0 right-0 bg-white dark:bg-[#263240]
+               border-l border-gray-200 dark:border-[#253040] shadow-xl
                transition-transform duration-300 ease-in-out
                ${isAnimating ? 'translate-x-0' : 'translate-x-full'}`
         }`}
@@ -239,7 +239,7 @@ export function QuickPanel({
         )}
         {/* Common header */}
         <div className="flex items-center justify-between px-4 py-3
-                        border-b border-gray-200 dark:border-gray-700">
+                        border-b border-gray-200 dark:border-[#253040]">
           <PanelTabSwitcher
             activePanel={activePanel}
             onSwitchPanel={onSwitchPanel}
@@ -249,8 +249,8 @@ export function QuickPanel({
           <button
             ref={closeButtonRef}
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded
-                       text-gray-700 dark:text-gray-300
+            className="p-1 hover:bg-gray-100 dark:hover:bg-[#253040] rounded
+                       text-gray-700 dark:text-gray-200
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-label={t('panel.close')}
           >

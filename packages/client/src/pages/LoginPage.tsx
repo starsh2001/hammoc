@@ -76,21 +76,21 @@ export function LoginPage() {
   // Show nothing while checking initial auth status
   if (isPasswordConfigured === null && isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#1c2129]">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#1c2129] px-4">
       <div className="max-w-md w-full space-y-8">
         {/* Logo/Title */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {t('login.title')}
           </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
+          <p className="mt-2 text-gray-600 dark:text-gray-300">
             {isSetupMode
               ? t('login.setupSubtitle')
               : t('login.loginSubtitle')}
@@ -100,13 +100,13 @@ export function LoginPage() {
         {/* Form */}
         <form
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-8 space-y-6"
+          className="bg-white dark:bg-[#1c2632] shadow-md rounded-lg p-8 space-y-6"
         >
           {/* Password Input */}
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2"
             >
               {t('login.passwordLabel')}
             </label>
@@ -117,8 +117,8 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               disabled={isDisabled}
               autoFocus
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+              className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d3a4a] rounded-md
+                         bg-white dark:bg-[#253040] text-gray-900 dark:text-white
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent
                          disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder={isSetupMode ? t('login.setupPlaceholder') : t('login.loginPlaceholder')}
@@ -130,7 +130,7 @@ export function LoginPage() {
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2"
               >
                 {t('login.confirmLabel')}
               </label>
@@ -140,8 +140,8 @@ export function LoginPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isDisabled}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d3a4a] rounded-md
+                           bg-white dark:bg-[#253040] text-gray-900 dark:text-white
                            focus:ring-2 focus:ring-blue-500 focus:border-transparent
                            disabled:opacity-50 disabled:cursor-not-allowed"
                 placeholder={t('login.confirmPlaceholder')}
@@ -154,7 +154,7 @@ export function LoginPage() {
             <div>
               <label
                 htmlFor="rememberMe"
-                className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer"
+                className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer"
               >
                 <input
                   id="rememberMe"
@@ -166,8 +166,8 @@ export function LoginPage() {
                   aria-describedby="rememberMe-description"
                   className="w-4 h-4 text-blue-500 border-gray-300 rounded
                              focus:ring-blue-500 focus:ring-2 focus:ring-offset-2
-                             dark:border-gray-600 dark:bg-gray-700
-                             dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800
+                             dark:border-[#2d3a4a] dark:bg-[#253040]
+                             dark:focus:ring-blue-600 dark:focus:ring-offset-[#263240]
                              disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 {t('login.rememberMe')}
