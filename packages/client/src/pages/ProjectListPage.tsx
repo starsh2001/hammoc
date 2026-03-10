@@ -159,12 +159,12 @@ export function ProjectListPage() {
     return (
       <div className="h-dvh flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
         {/* Header */}
-        <header className="flex-shrink-0 sticky top-0 z-10 bg-slate-50 dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
+        <header className="flex-shrink-0 sticky top-0 z-10 bg-[#243648] dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
           <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
             <div className="flex items-center min-w-0 flex-1">
               <BrandLogo />
               <div className="w-px self-stretch bg-gray-200 dark:bg-[#253040] mx-3" />
-              <h1 className="text-base font-semibold text-gray-900 dark:text-white">{serverHostname || t('project.title')}</h1>
+              <h1 className="text-base font-semibold text-white dark:text-white">{serverHostname || t('project.title')}</h1>
             </div>
             <div className="flex items-center gap-1 ml-4">
               <LayoutToggleButton className="hidden sm:block" />
@@ -172,7 +172,7 @@ export function ProjectListPage() {
               <button
                 onClick={() => navigate('/settings')}
                 aria-label={t('project.settings')}
-                className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#253040] text-gray-700 dark:text-gray-200 transition-colors"
+                className="hidden sm:block p-2 rounded-lg hover:bg-white/10 dark:hover:bg-[#253040] text-white/80 dark:text-gray-200 transition-colors"
               >
                 <Settings className="w-5 h-5" aria-hidden="true" />
               </button>
@@ -180,7 +180,7 @@ export function ProjectListPage() {
               <div className="relative sm:hidden" ref={overflowMenuRef}>
                 <button
                   onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg text-gray-700 dark:text-gray-200"
+                  className="p-2 hover:bg-white/10 dark:hover:bg-[#253040] rounded-lg text-white/80 dark:text-gray-200"
                   aria-label={t('project.menuLabel')}
                   aria-expanded={overflowMenuOpen}
                   aria-haspopup="menu"
@@ -228,18 +228,18 @@ export function ProjectListPage() {
   return (
     <div className="h-dvh flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
       {/* Header */}
-      <header className="flex-shrink-0 sticky top-0 z-10 bg-slate-50 dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
+      <header className="flex-shrink-0 sticky top-0 z-10 bg-[#243648] dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
         <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
           <div className="flex items-stretch min-w-0 flex-1">
             <BrandLogo />
             <div className="w-px self-stretch bg-gray-200 dark:bg-[#253040] mx-3" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center">
-                <h1 className="text-base font-semibold text-gray-900 dark:text-white">{serverHostname || t('project.title')}</h1>
+                <h1 className="text-base font-semibold text-white dark:text-white">{serverHostname || t('project.title')}</h1>
                 <BackgroundRefreshIndicator isRefreshing={isRefreshing} className="ml-2" />
               </div>
               {serverAddress && (
-                <p className="text-xs text-gray-500 dark:text-gray-300 font-mono truncate">
+                <p className="text-xs text-white/60 dark:text-gray-300 font-mono truncate">
                   {serverAddress}
                 </p>
               )}
@@ -272,7 +272,7 @@ export function ProjectListPage() {
             <button
               onClick={handleRefresh}
               disabled={isLoading || isRefreshing}
-              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#253040] disabled:opacity-50 text-gray-700 dark:text-gray-200"
+              className="hidden sm:block p-2 rounded-lg hover:bg-white/10 dark:hover:bg-[#253040] disabled:opacity-50 text-white/80 dark:text-gray-200"
               aria-label={isLoading || isRefreshing ? t('project.refreshing') : t('project.refresh')}
             >
               <RefreshCw
@@ -285,7 +285,7 @@ export function ProjectListPage() {
             <button
               onClick={() => navigate('/settings')}
               aria-label={t('project.settings')}
-              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#253040] text-gray-700 dark:text-gray-200 transition-colors"
+              className="hidden sm:block p-2 rounded-lg hover:bg-white/10 dark:hover:bg-[#253040] text-white/80 dark:text-gray-200 transition-colors"
             >
               <Settings className="w-5 h-5" aria-hidden="true" />
             </button>
@@ -294,7 +294,7 @@ export function ProjectListPage() {
             <div className="relative sm:hidden" ref={overflowMenuRef}>
               <button
                 onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg text-gray-700 dark:text-gray-200"
+                className="p-2 hover:bg-white/10 dark:hover:bg-[#253040] rounded-lg text-white/80 dark:text-gray-200"
                 aria-label={t('project.menuLabel')}
                 aria-expanded={overflowMenuOpen}
                 aria-haspopup="menu"

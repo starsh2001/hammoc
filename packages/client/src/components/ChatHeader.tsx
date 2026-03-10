@@ -111,7 +111,7 @@ export function ChatHeader({
     <header
       aria-label={t('header.ariaLabel')}
       data-testid="chat-header"
-      className="flex-shrink-0 sticky top-0 z-10 bg-slate-50 dark:bg-[#171e24]
+      className="flex-shrink-0 sticky top-0 z-10 bg-[#243648] dark:bg-[#171e24]
                  border-b border-slate-200 dark:border-slate-700/50"
     >
       <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
@@ -120,8 +120,8 @@ export function ChatHeader({
           {onBack && (
             <button
               onClick={onBack}
-              className="self-center p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-700
-                         rounded-lg text-gray-700 dark:text-gray-200
+              className="self-center p-2 -ml-2 mr-2 hover:bg-white/10 dark:hover:bg-gray-700
+                         rounded-lg text-white/80 dark:text-gray-200
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label={t('header.backButton')}
             >
@@ -133,7 +133,7 @@ export function ChatHeader({
           <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 mx-3" />
           <div className="min-w-0 flex-1">
             <h1
-              className="text-base font-semibold truncate text-gray-900 dark:text-white"
+              className="text-base font-semibold truncate text-white dark:text-white"
               title={projectSlug}
             >
               {projectSlug ? projectSlug.replace(/[\\/]+$/, '').split(/[\\/]/).pop() : t('header.defaultTitle')}
@@ -164,7 +164,7 @@ export function ChatHeader({
                       {sessionName}
                     </span>
                   )}
-                  <span className={`text-xs text-gray-500 dark:text-gray-300 truncate font-mono ${onRenameSession ? 'group-hover:text-blue-500 dark:group-hover:text-blue-400' : ''}`}>
+                  <span className={`text-xs text-white/60 dark:text-gray-300 truncate font-mono ${onRenameSession ? 'group-hover:text-blue-200 dark:group-hover:text-blue-400' : ''}`}>
                     {sessionTitle}
                   </span>
                   {isBmadProject && (
