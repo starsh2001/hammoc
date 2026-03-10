@@ -110,7 +110,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   // 1. 인증 로딩 중
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#1c2129]">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -125,7 +125,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   if (cliLoading && location.pathname !== '/onboarding') {
     return (
       <div
-        className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900"
+        className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1c2129]"
         role="status"
         aria-label={t('loading')}
       >
@@ -134,7 +134,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
             className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"
             aria-hidden="true"
           />
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 dark:text-gray-300">
             {t('cliStatusChecking')}
           </p>
         </div>

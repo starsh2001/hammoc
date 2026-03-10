@@ -169,9 +169,9 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} aria-hidden="true" />
 
       {/* Dialog */}
-      <div className="relative w-full max-w-xl bg-white dark:bg-gray-800 rounded-lg shadow-xl max-h-[90vh] flex flex-col">
+      <div className="relative w-full max-w-xl bg-white dark:bg-[#263240] rounded-lg shadow-xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-[#253040] flex-shrink-0">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">{t('config.title')}</h2>
           <button
             onClick={handleClose}
@@ -196,7 +196,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
           {/* Columns section */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('config.columnDefinition')}</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('config.columnDefinition')}</h3>
               <button
                 onClick={handleAddColumn}
                 disabled={columns.length >= 10}
@@ -209,16 +209,16 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
 
             <div className="space-y-2">
               {columns.map((col, index) => (
-                <div key={col.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                <div key={col.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#1c2129] rounded-lg">
                   {/* Color swatch selector */}
                   <div className="relative">
                     <button
                       onClick={() => setOpenColorPicker(openColorPicker === index ? null : index)}
-                      className={`w-6 h-6 rounded border-2 border-gray-300 dark:border-gray-600 ${colorSwatchClass(col.colorClass)}`}
+                      className={`w-6 h-6 rounded border-2 border-gray-300 dark:border-[#2d3a4a] ${colorSwatchClass(col.colorClass)}`}
                       aria-label={t('config.selectColor')}
                     />
                     {openColorPicker === index && (
-                      <div className="absolute left-0 top-8 flex flex-wrap gap-1 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 w-32">
+                      <div className="absolute left-0 top-8 flex flex-wrap gap-1 p-2 bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-10 w-32">
                         {COLUMN_COLOR_PALETTE.map((color) => (
                           <button
                             key={color}
@@ -242,7 +242,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
                     value={col.label}
                     onChange={(e) => handleLabelChange(index, e.target.value)}
                     placeholder={t('config.columnNamePlaceholder')}
-                    className="flex-1 px-2 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    className="flex-1 px-2 py-1 text-sm bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
                   />
 
                   {/* ID display */}
@@ -286,17 +286,17 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
 
           {/* Status mapping section */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t('config.statusMapping')}</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">{t('config.statusMapping')}</h3>
             <div className="space-y-2">
               {ALL_STATUSES.map((status) => (
                 <div key={status} className="flex items-center justify-between gap-3 px-2">
-                  <span className="text-sm text-gray-700 dark:text-gray-300 w-24 flex-shrink-0">
+                  <span className="text-sm text-gray-700 dark:text-gray-200 w-24 flex-shrink-0">
                     {STATUS_LABEL[status]}
                   </span>
                   <select
                     value={statusMap[status] || ''}
                     onChange={(e) => handleStatusMapChange(status, e.target.value)}
-                    className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
                   >
                     {columns.map((col) => (
                       <option key={col.id} value={col.id}>
@@ -313,8 +313,8 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('config.customStatusMapping')}</h3>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t('config.customStatusMappingHint')}</p>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('config.customStatusMapping')}</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-400 mt-0.5">{t('config.customStatusMappingHint')}</p>
               </div>
               <button
                 onClick={() => setCustomMappings([...customMappings, { key: '', value: 'Open' }])}
@@ -339,7 +339,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
                         setCustomMappings(updated);
                       }}
                       placeholder={t('config.customStatusKeyPlaceholder')}
-                      className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                      className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
                     />
                     <span className="text-gray-400 text-sm flex-shrink-0">&rarr;</span>
                     <select
@@ -349,7 +349,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
                         updated[index] = { ...entry, value: e.target.value as BoardItemStatus };
                         setCustomMappings(updated);
                       }}
-                      className="w-32 px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                      className="w-32 px-2 py-1.5 text-sm bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
                     >
                       {ALL_STATUSES.map((s) => (
                         <option key={s} value={s}>{STATUS_LABEL[s]}</option>
@@ -370,11 +370,11 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-[#253040] flex-shrink-0">
           <button
             onClick={handleReset}
             disabled={saving}
-            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-50 transition-colors"
           >
             {t('config.resetDefaults')}
           </button>
@@ -382,7 +382,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
             <button
               onClick={handleClose}
               disabled={saving}
-              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040] rounded transition-colors disabled:opacity-50"
             >
               {t('common:button.cancel')}
             </button>

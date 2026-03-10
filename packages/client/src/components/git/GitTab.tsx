@@ -185,7 +185,7 @@ export function GitTab() {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           {t('git.initTitle')}
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">
           {t('git.initMessage')}
         </p>
         <button
@@ -224,26 +224,26 @@ export function GitTab() {
       )}
 
       {/* Top Bar: Branch selector + Pull/Push */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-[#253040]">
         {/* Branch selector */}
         <div className="relative flex-1" ref={branchDropdownRef}>
           <button
             type="button"
             onClick={() => { setBranchDropdownOpen((o) => !o); setActiveBranchIndex(-1); }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm w-full max-w-xs"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240] text-sm w-full max-w-xs"
             role="combobox"
             aria-expanded={branchDropdownOpen}
             aria-haspopup="listbox"
             disabled={isLoading}
           >
             <GitBranch className="w-4 h-4 text-gray-500" />
-            <span className="truncate text-gray-700 dark:text-gray-300">
+            <span className="truncate text-gray-700 dark:text-gray-200">
               {status?.branch ?? 'main'}
             </span>
           </button>
 
           {branchDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-40 max-h-64 overflow-y-auto">
+            <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-[#1c2129] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-40 max-h-64 overflow-y-auto">
               <ul role="listbox" aria-label={t('git.branchList')}>
                 {(branches?.local ?? []).map((branch, index) => (
                   <li
@@ -255,9 +255,9 @@ export function GitTab() {
                       branch === status?.branch
                         ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                         : activeBranchIndex === index
-                          ? 'bg-gray-100 dark:bg-gray-800'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                    } text-gray-700 dark:text-gray-300`}
+                          ? 'bg-gray-100 dark:bg-[#263240]'
+                          : 'hover:bg-gray-50 dark:hover:bg-[#263240]'
+                    } text-gray-700 dark:text-gray-200`}
                     onClick={() => handleBranchSelect(branch)}
                   >
                     {branch === status?.branch && <Check className="w-4 h-4 text-blue-500 flex-shrink-0" />}
@@ -266,7 +266,7 @@ export function GitTab() {
                 ))}
               </ul>
               {/* New branch input */}
-              <div className="border-t border-gray-200 dark:border-gray-700 px-3 py-2">
+              <div className="border-t border-gray-200 dark:border-[#253040] px-3 py-2">
                 <div className="flex items-center gap-1">
                   <Plus className="w-4 h-4 text-gray-400 flex-shrink-0" />
                   <input
@@ -280,7 +280,7 @@ export function GitTab() {
                       }
                     }}
                     placeholder={t('git.newBranchPlaceholder')}
-                    className="flex-1 text-sm bg-transparent border-none outline-none text-gray-700 dark:text-gray-300 placeholder-gray-400"
+                    className="flex-1 text-sm bg-transparent border-none outline-none text-gray-700 dark:text-gray-200 placeholder-gray-400"
                   />
                 </div>
               </div>
@@ -293,24 +293,24 @@ export function GitTab() {
           type="button"
           onClick={() => pullAction(projectSlug)}
           disabled={isLoading}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240] text-sm disabled:opacity-50"
           title={t('git.pull')}
         >
-          <ArrowDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          <ArrowDown className="w-4 h-4 text-gray-600 dark:text-gray-300" />
           {status?.behind !== undefined && (
-            <span className="text-xs font-mono text-gray-600 dark:text-gray-400">{status.behind}</span>
+            <span className="text-xs font-mono text-gray-600 dark:text-gray-300">{status.behind}</span>
           )}
         </button>
         <button
           type="button"
           onClick={() => pushAction(projectSlug)}
           disabled={isLoading}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240] text-sm disabled:opacity-50"
           title={t('git.push')}
         >
-          <ArrowUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          <ArrowUp className="w-4 h-4 text-gray-600 dark:text-gray-300" />
           {status?.ahead !== undefined && (
-            <span className="text-xs font-mono text-gray-600 dark:text-gray-400">{status.ahead}</span>
+            <span className="text-xs font-mono text-gray-600 dark:text-gray-300">{status.ahead}</span>
           )}
         </button>
 
@@ -323,7 +323,7 @@ export function GitTab() {
           {allEmpty && status?.initialized !== false ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <CheckCircle className="w-10 h-10 text-green-400 mb-3" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t('git.noChanges')}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-300">{t('git.noChanges')}</p>
             </div>
           ) : (
             <>
@@ -358,13 +358,13 @@ export function GitTab() {
           )}
 
           {/* Commit area */}
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2">
+          <div className="border border-gray-200 dark:border-[#253040] rounded-lg p-3 space-y-2">
             <textarea
               value={commitMessage}
               onChange={(e) => setCommitMessage(e.target.value)}
               placeholder={t('git.commitPlaceholder')}
               rows={3}
-              className="w-full text-sm bg-transparent border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-300 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full text-sm bg-transparent border border-gray-200 dark:border-[#253040] rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               type="button"
@@ -379,22 +379,22 @@ export function GitTab() {
 
           {/* History section */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('git.commitHistory')}</h3>
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{t('git.commitHistory')}</h3>
             {commits.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500">{t('git.noCommitHistory')}</p>
+              <p className="text-sm text-gray-400 dark:text-gray-400">{t('git.noCommitHistory')}</p>
             ) : (
               <ul className="space-y-1">
                 {commits.map((c) => (
                   <li
                     key={c.hash}
-                    className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/30"
+                    className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-[#263240]/30"
                   >
                     <span className="text-xs font-mono text-blue-500 dark:text-blue-400 pt-0.5 flex-shrink-0">
                       {c.hash.slice(0, 7)}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{c.message}</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                      <p className="text-sm text-gray-700 dark:text-gray-200 truncate">{c.message}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-400">
                         {c.author} · {formatRelativeDate(c.date, t)}
                       </p>
                     </div>
@@ -435,19 +435,19 @@ export function GitTab() {
           />
           {/* Panel */}
           <div
-            className={`fixed top-0 right-0 h-full w-[600px] max-w-[80vw] bg-white dark:bg-gray-900 shadow-xl z-50 transition-transform duration-300 ease-in-out flex flex-col ${
+            className={`fixed top-0 right-0 h-full w-[600px] max-w-[80vw] bg-white dark:bg-[#1c2129] shadow-xl z-50 transition-transform duration-300 ease-in-out flex flex-col ${
               panelAnimating ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
             {/* Panel header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-              <span className="text-sm font-mono text-gray-700 dark:text-gray-300 truncate">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-[#253040]">
+              <span className="text-sm font-mono text-gray-700 dark:text-gray-200 truncate">
                 {selectedFile?.path}
               </span>
               <button
                 type="button"
                 onClick={closeDiffPanel}
-                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040]"
               >
                 <X className="w-5 h-5 text-gray-500" />
               </button>

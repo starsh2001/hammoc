@@ -29,10 +29,10 @@ function GlowDot({ utilization, label, reset }: { utilization: number; label: st
     <span className="inline-flex items-center gap-1" title={tooltip}>
       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClasses}`} />
       {/* Desktop: single line "5h 89%" / Mobile: stacked label over percentage */}
-      <span className="hidden sm:inline text-[11px] text-gray-500 dark:text-gray-400">{label} {pct}%</span>
+      <span className="hidden sm:inline text-[11px] text-gray-500 dark:text-gray-300">{label} {pct}%</span>
       <span className="flex flex-col leading-none sm:hidden">
-        <span className="text-[9px] font-medium text-gray-500 dark:text-gray-400">{label}</span>
-        <span className="text-[9px] text-gray-400 dark:text-gray-500">{pct}%</span>
+        <span className="text-[9px] font-medium text-gray-500 dark:text-gray-300">{label}</span>
+        <span className="text-[9px] text-gray-400 dark:text-gray-400">{pct}%</span>
       </span>
     </span>
   );

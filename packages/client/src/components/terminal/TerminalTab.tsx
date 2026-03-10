@@ -55,7 +55,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
           <ShieldAlert className="w-10 h-10 text-amber-600 dark:text-amber-400" aria-hidden="true" />
         </div>
         <p className="text-base font-medium text-gray-900 dark:text-white mb-2">{message}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">{description}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-300 max-w-sm">{description}</p>
       </div>
     );
   }
@@ -140,21 +140,21 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
     switch (activeSession.status) {
       case 'connected':
         return (
-          <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-300">
             <span className="w-2 h-2 rounded-full bg-green-500" />
             {t('terminal.connected')}
           </span>
         );
       case 'disconnected':
         return (
-          <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-300">
             <span className="w-2 h-2 rounded-full bg-red-500" />
             {t('terminal.disconnectedBadge')}
           </span>
         );
       case 'exited':
         return (
-          <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-300">
             <span className="w-2 h-2 rounded-full bg-gray-400" />
             {t('terminal.exitedBadge', { exitCode: activeSession.exitCode ?? '?' })}
           </span>
@@ -167,11 +167,11 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-[#253040] flex-shrink-0">
         <div className="flex items-center gap-3">
           {/* Shell info */}
           {activeSession && (
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
               {getShellName(activeSession.shell)}
             </span>
           )}
@@ -184,7 +184,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
           <div className="flex items-center gap-0.5 mr-2">
             <button
               onClick={decreaseFontSize}
-              className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040] rounded transition-colors"
               aria-label={t('terminal.fontDecrease')}
               title={t('terminal.fontDecreaseTooltip')}
             >
@@ -192,7 +192,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
             </button>
             <button
               onClick={resetFontSize}
-              className="px-1 py-0.5 text-xs tabular-nums text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors min-w-[2rem] text-center"
+              className="px-1 py-0.5 text-xs tabular-nums text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040] rounded transition-colors min-w-[2rem] text-center"
               aria-label={t('terminal.fontReset')}
               title={t('terminal.fontResetTooltip')}
             >
@@ -200,7 +200,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
             </button>
             <button
               onClick={increaseFontSize}
-              className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040] rounded transition-colors"
               aria-label={t('terminal.fontIncrease')}
               title={t('terminal.fontIncreaseTooltip')}
             >
@@ -214,8 +214,8 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
             disabled={terminals.size >= MAX_TERMINALS}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
               terminals.size >= MAX_TERMINALS
-                ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-500'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400'
+                : 'text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040]'
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -229,7 +229,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
         <div
           ref={tabsRef}
           role="tablist"
-          className="flex items-center gap-1 px-2 py-1 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 overflow-x-auto"
+          className="flex items-center gap-1 px-2 py-1 border-b border-gray-200 dark:border-[#253040] flex-shrink-0 overflow-x-auto"
           onKeyDown={handleTabKeyDown}
         >
           {terminalEntries.map(([id, session]) => {
@@ -250,7 +250,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
                 className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded cursor-pointer transition-colors ${
                   isActive
                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-b-2 border-blue-500'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    : 'text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040]'
                 }`}
               >
                 <Terminal className="w-3 h-3" />
@@ -260,7 +260,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
                     e.stopPropagation();
                     closeById(id);
                   }}
-                  className="ml-1 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                  className="ml-1 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-[#2d3a4a]"
                   aria-label={`Close ${getTerminalLabel(id, session.shell)}`}
                 >
                   <X className="w-3 h-3" />
@@ -277,13 +277,13 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
           <TerminalEmulator terminalId={activeTerminalId} autoFocus />
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4">
-              <Terminal className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+            <div className="p-4 bg-gray-100 dark:bg-[#263240] rounded-2xl mb-4">
+              <Terminal className="w-10 h-10 text-gray-400 dark:text-gray-400" />
             </div>
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               {t('terminal.emptyMessage')}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-gray-500 dark:text-gray-300 mb-4">
               {t('terminal.emptyHelpText')}
             </p>
             <button

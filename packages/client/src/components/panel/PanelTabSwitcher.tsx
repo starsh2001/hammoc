@@ -76,7 +76,7 @@ export function PanelTabSwitcher({
             className={`p-2 rounded-lg transition-colors
               ${isActive
                 ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300'}
+                : 'text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040] hover:text-gray-700 dark:hover:text-gray-300'}
               ${isDisabled ? 'opacity-50 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent' : ''}
             `}
             title={isDisabled ? `${t(config.titleKey)} ${t('panel.disabledSuffix')}` : t(config.titleKey)}

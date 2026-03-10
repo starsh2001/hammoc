@@ -1,17 +1,21 @@
 /**
- * BrandLogo - Single-word brand mark: "Hammoc"
+ * BrandLogo - Brand mark using logo-header.png image
  * Used in page headers across the app
  */
 
-export function BrandLogo() {
+interface BrandLogoProps {
+  /** Image height in pixels (default: 28) */
+  size?: number;
+}
+
+export function BrandLogo({ size = 40 }: BrandLogoProps) {
   return (
-    <div className="flex flex-col items-center gap-2 select-none">
-      <span className="text-base font-bold leading-snug tracking-wider bg-gradient-to-r from-blue-600 to-violet-600 dark:from-blue-400 dark:to-violet-400 bg-clip-text text-transparent">
-        Hammoc
-      </span>
-      <span className="text-[0.55rem] font-medium leading-none tracking-widest uppercase text-gray-400 dark:text-gray-500 -mt-0.5">
-        AGENTIC IDE
-      </span>
-    </div>
+    <img
+      src="/logo-header.png"
+      alt="Hammoc"
+      className="select-none"
+      style={{ height: `${size}px`, width: 'auto' }}
+      draggable={false}
+    />
   );
 }

@@ -27,7 +27,7 @@ export function SettingsSection({
   const isAccordion = onToggle !== undefined;
 
   return (
-    <div className="border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+    <div className="border-b border-gray-200 dark:border-[#253040] last:border-b-0">
       {isAccordion ? (
         <button
           type="button"
@@ -35,15 +35,15 @@ export function SettingsSection({
           aria-expanded={isExpanded}
           aria-controls={`section-content-${sectionId}`}
           className="w-full flex items-center justify-between px-4 py-3
-                     text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800
+                     text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#263240]
                      transition-colors"
         >
           <div className="flex items-center gap-3">
-            <Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <Icon className="w-5 h-5 text-gray-500 dark:text-gray-300" aria-hidden="true" />
             <span className="text-sm font-medium">{title}</span>
           </div>
           <ChevronDown
-            className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${
+            className={`w-4 h-4 text-gray-400 dark:text-gray-400 transition-transform duration-200 ${
               isExpanded ? 'rotate-180' : ''
             }`}
             aria-hidden="true"
@@ -51,7 +51,7 @@ export function SettingsSection({
         </button>
       ) : (
         <div className="flex items-center gap-3 px-4 py-3">
-          <Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+          <Icon className="w-5 h-5 text-gray-500 dark:text-gray-300" aria-hidden="true" />
           <span className="text-sm font-medium text-gray-900 dark:text-white">{title}</span>
         </div>
       )}

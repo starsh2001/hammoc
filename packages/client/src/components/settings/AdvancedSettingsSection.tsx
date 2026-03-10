@@ -240,14 +240,14 @@ export function AdvancedSettingsSection() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             {isDevMode
-              ? <RefreshCw className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-              : <Download className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              ? <RefreshCw className="w-5 h-5 text-gray-500 dark:text-gray-300" aria-hidden="true" />
+              : <Download className="w-5 h-5 text-gray-500 dark:text-gray-300" aria-hidden="true" />
             }
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">
                 {t(isDevMode ? 'advanced.serverRestart' : 'advanced.softwareUpdate')}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-500 dark:text-gray-300">
                 {t(isDevMode ? 'advanced.serverRestartDesc' : 'advanced.currentVersion', isDevMode ? undefined : { version: serverVersion })}
               </p>
             </div>
@@ -261,7 +261,7 @@ export function AdvancedSettingsSection() {
               disabled={isProcessing}
               className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
                 ${isProcessing
-                  ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                  ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-300 cursor-not-allowed'
                   : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/40'
                 }`}
             >
@@ -276,10 +276,10 @@ export function AdvancedSettingsSection() {
                 onClick={handleCheckUpdate}
                 disabled={isProcessing || isCheckingUpdate}
                 className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
-                  border border-gray-300 dark:border-gray-600
+                  border border-gray-300 dark:border-[#2d3a4a]
                   ${isCheckingUpdate
-                    ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-300 cursor-not-allowed'
+                    : 'bg-white dark:bg-[#263240] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#253040]'
                   }`}
               >
                 <RefreshCw className={`w-4 h-4 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
@@ -293,7 +293,7 @@ export function AdvancedSettingsSection() {
                   disabled={isProcessing}
                   className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
                     ${isProcessing
-                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-300 cursor-not-allowed'
                       : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40'
                     }`}
                 >
@@ -319,7 +319,7 @@ export function AdvancedSettingsSection() {
       <div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <Terminal className="w-5 h-5 text-gray-500 dark:text-gray-300" aria-hidden="true" />
             <div>
               <label
                 htmlFor="terminal-enabled"
@@ -327,7 +327,7 @@ export function AdvancedSettingsSection() {
               >
                 {t('advanced.terminalFeature')}
               </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-500 dark:text-gray-300">
                 {t('advanced.terminalDesc')}
               </p>
             </div>
@@ -395,7 +395,7 @@ export function AdvancedSettingsSection() {
         )}
 
         {isLoadingPrompt ? (
-          <div className="w-full h-[260px] rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+          <div className="w-full h-[260px] rounded-lg border border-gray-300 dark:border-[#2d3a4a] bg-gray-50 dark:bg-[#263240] flex items-center justify-center">
             <span className="text-sm text-gray-400">{t('advanced.promptLoading')}</span>
           </div>
         ) : (
@@ -404,37 +404,37 @@ export function AdvancedSettingsSection() {
             value={promptText}
             onChange={(e) => handlePromptChange(e.target.value)}
             rows={16}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                       bg-white dark:bg-[#263240] text-gray-900 dark:text-white font-mono text-sm
                        focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
           />
         )}
         <div className="mt-1 flex items-center justify-between">
           {!currentProjectSlug ? (
-            <p className="text-xs text-gray-400 dark:text-gray-500">
+            <p className="text-xs text-gray-400 dark:text-gray-400">
               {t('advanced.promptNoProject')}
             </p>
           ) : (
             <span />
           )}
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500 dark:text-gray-300">
             {t('advanced.charCount', { count: promptText.length })}
           </p>
         </div>
 
         {/* Available template variables */}
         {variables.length > 0 && (
-          <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div className="mt-3 p-3 bg-gray-50 dark:bg-[#263240]/50 border border-gray-200 dark:border-[#253040] rounded-lg">
+            <p className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">
               {t('advanced.templateVariables')}
             </p>
             <div className="space-y-1">
               {variables.map((v) => (
                 <div key={v.name} className="flex items-start gap-2 text-xs">
-                  <code className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-blue-600 dark:text-blue-400 font-mono shrink-0">
+                  <code className="px-1.5 py-0.5 bg-gray-200 dark:bg-[#253040] rounded text-blue-600 dark:text-blue-400 font-mono shrink-0">
                     {`{${v.name}}`}
                   </code>
-                  <span className="text-gray-500 dark:text-gray-400">{v.description}</span>
+                  <span className="text-gray-500 dark:text-gray-300">{v.description}</span>
                 </div>
               ))}
             </div>
@@ -447,12 +447,12 @@ export function AdvancedSettingsSection() {
             <button
               type="button"
               onClick={() => setShowPreview(!showPreview)}
-              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 underline"
+              className="text-xs text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-300 underline"
             >
               {t(showPreview ? 'advanced.previewClose' : 'advanced.previewOpen')}
             </button>
             {showPreview && (
-              <pre className="mt-2 p-3 text-xs font-mono bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto whitespace-pre-wrap text-gray-600 dark:text-gray-400 max-h-60 overflow-y-auto">
+              <pre className="mt-2 p-3 text-xs font-mono bg-gray-100 dark:bg-[#1c2129] border border-gray-200 dark:border-[#253040] rounded-lg overflow-x-auto whitespace-pre-wrap text-gray-600 dark:text-gray-300 max-h-60 overflow-y-auto">
                 {resolvedPreview}
               </pre>
             )}
@@ -477,11 +477,11 @@ export function AdvancedSettingsSection() {
           value={preferences.maxThinkingTokens ?? ''}
           onChange={(e) => handleNumberChange('maxThinkingTokens', e.target.value, t('advanced.maxThinkingTokens'))}
           placeholder={t('advanced.sdkDefault')}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
           {t('advanced.maxThinkingTokensDesc')}
         </p>
       </div>
@@ -503,11 +503,11 @@ export function AdvancedSettingsSection() {
           value={preferences.maxTurns ?? ''}
           onChange={(e) => handleNumberChange('maxTurns', e.target.value, t('advanced.maxTurns'))}
           placeholder={t('advanced.unlimited')}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
           {t('advanced.maxTurnsDesc')}
         </p>
       </div>
@@ -529,11 +529,11 @@ export function AdvancedSettingsSection() {
           value={preferences.maxBudgetUsd ?? ''}
           onChange={(e) => handleNumberChange('maxBudgetUsd', e.target.value, t('advanced.maxBudget'))}
           placeholder={t('advanced.unlimited')}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
           {t('advanced.maxBudgetDesc')}
         </p>
       </div>

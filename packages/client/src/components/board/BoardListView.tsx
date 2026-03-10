@@ -80,13 +80,13 @@ export function BoardListView({
         return (
           <div
             key={col.id}
-            className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+            className="border border-gray-200 dark:border-[#253040] rounded-lg overflow-hidden"
           >
             {/* Accordion header */}
             <button
               onClick={() => toggleGroup(col.id)}
               aria-expanded={isExpanded}
-              className="w-full px-4 py-2.5 flex items-center justify-between bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors"
+              className="w-full px-4 py-2.5 flex items-center justify-between bg-gray-50 dark:bg-[#263240] hover:bg-gray-100 dark:hover:bg-[#202a38] transition-colors"
             >
               <div className="flex items-center gap-2">
                 <ChevronDown
@@ -94,10 +94,10 @@ export function BoardListView({
                     isExpanded ? '' : '-rotate-90'
                   }`}
                 />
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                   {col.label}
                 </span>
-                <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full" data-testid={`column-count-${col.id}`}>
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-400 bg-gray-200 dark:bg-[#253040] px-1.5 py-0.5 rounded-full" data-testid={`column-count-${col.id}`}>
                   {items.length}
                 </span>
               </div>

@@ -41,7 +41,7 @@ export function ProjectStatusIndicators({ status }: ProjectStatusIndicatorsProps
 
   return (
     <div
-      className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1"
+      className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-300 mt-1"
       aria-label={buildAriaLabel(status, t)}
     >
       {/* Active sessions */}

@@ -20,7 +20,7 @@ const SHORTCUTS_KEYS = [
 
 function Kbd({ children }: { children: string }) {
   return (
-    <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200">
+    <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-200 dark:bg-[#253040] rounded border border-gray-300 dark:border-[#2d3a4a] text-gray-800 dark:text-gray-200">
       {children}
     </kbd>
   );
@@ -28,7 +28,7 @@ function Kbd({ children }: { children: string }) {
 
 function GuideCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+    <div className="bg-gray-50 dark:bg-[#263240] rounded-lg p-4">
       <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{title}</h3>
       {children}
     </div>
@@ -37,7 +37,7 @@ function GuideCard({ title, children }: { title: string; children: ReactNode }) 
 
 function GuideList({ items }: { items: string[] }) {
   return (
-    <ul className="list-disc list-inside space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
+    <ul className="list-disc list-inside space-y-1.5 text-sm text-gray-600 dark:text-gray-300">
       {items.map((item, i) => (
         <li key={i}>{item}</li>
       ))}
@@ -66,12 +66,12 @@ export function HelpSection() {
 
       {/* Permission Mode */}
       <GuideCard title={t('help.permissionMode')}>
-        <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+        <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
           <li><strong className="text-gray-900 dark:text-white">{t('help.permissionPlanLabel')}</strong>: {t('help.permissionPlanDesc')}</li>
           <li><strong className="text-gray-900 dark:text-white">{t('help.permissionDefaultLabel')}</strong>: {t('help.permissionDefaultDesc')}</li>
           <li><strong className="text-gray-900 dark:text-white">{t('help.permissionAutoLabel')}</strong>: {t('help.permissionAutoDesc')}</li>
         </ul>
-        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-300">
           {t('help.permissionNote')}
         </p>
       </GuideCard>
@@ -88,14 +88,14 @@ export function HelpSection() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700">
+              <tr className="border-b border-gray-200 dark:border-[#253040]">
                 <th className="text-left py-2 pr-4 text-gray-900 dark:text-white font-medium">{t('help.shortcutKey')}</th>
                 <th className="text-left py-2 text-gray-900 dark:text-white font-medium">{t('help.shortcutAction')}</th>
               </tr>
             </thead>
-            <tbody className="text-gray-600 dark:text-gray-400">
+            <tbody className="text-gray-600 dark:text-gray-300">
               {SHORTCUTS_KEYS.map((s, i) => (
-                <tr key={i} className="border-b border-gray-100 dark:border-gray-700/50">
+                <tr key={i} className="border-b border-gray-100 dark:border-[#253040]/50">
                   <td className="py-2 pr-4">
                     <Kbd>{s.key}</Kbd>
                   </td>

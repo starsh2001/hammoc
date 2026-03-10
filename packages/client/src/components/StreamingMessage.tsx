@@ -68,9 +68,9 @@ export function StreamingMessage({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative group max-w-[90%] md:max-w-[80%] bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
+      <div className="relative group max-w-[90%] md:max-w-[80%] bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-[#253040] p-3 shadow-sm">
         {/* Claude icon and name */}
-        <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 dark:text-gray-300">
           <Bot className="w-4 h-4" aria-hidden="true" />
           <span>{t('streamingMessage.assistantName')}</span>
         </div>
@@ -86,7 +86,7 @@ export function StreamingMessage({
             title={isCopied ? t('streamingMessage.copiedTitle') : t('streamingMessage.copyTitle')}
             className={`absolute top-2 right-2 z-10 p-1.5 flex items-center justify-center rounded transition-opacity duration-200 ${
               isHovered ? 'opacity-100' : 'opacity-0'
-            } bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300`}
+            } bg-gray-100 dark:bg-[#253040] hover:bg-gray-200 dark:hover:bg-[#2d3a4a] text-gray-600 dark:text-gray-200`}
           >
             {isCopied ? (
               <Check className="w-4 h-4" aria-hidden="true" />

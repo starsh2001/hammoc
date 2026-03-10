@@ -202,14 +202,14 @@ export function TextEditor() {
 
       {/* Editor Panel */}
       <div
-        className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-gray-900 transition-[right] duration-300 ease-in-out"
+        className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-[#1c2129] transition-[right] duration-300 ease-in-out"
         style={{ right: editorRight }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#263240]">
           <div className="flex items-center gap-2 min-w-0">
-            <FileText className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" />
-            <span className="truncate text-sm font-mono text-gray-700 dark:text-gray-300">
+            <FileText className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-300" />
+            <span className="truncate text-sm font-mono text-gray-700 dark:text-gray-200">
               {filePath}
             </span>
             {isDirty && (
@@ -220,7 +220,7 @@ export function TextEditor() {
             {isMarkdownFile && (
               <button
                 onClick={toggleMarkdownPreview}
-                className="flex items-center gap-1 px-3 py-1 text-sm font-medium whitespace-nowrap text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                className="flex items-center gap-1 px-3 py-1 text-sm font-medium whitespace-nowrap text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#253040] hover:bg-gray-200 dark:hover:bg-[#2d3a4a] rounded transition-colors"
                 title={isMarkdownPreview ? t('editor.editMode') : t('editor.previewLabel')}
                 aria-label={isMarkdownPreview ? t('editor.editMode') : t('editor.previewLabel')}
               >
@@ -247,7 +247,7 @@ export function TextEditor() {
             </button>
             <button
               onClick={handleClose}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300"
               aria-label={t('editor.close')}
             >
               <X className="w-5 h-5" />
@@ -259,7 +259,7 @@ export function TextEditor() {
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-300">
               {t('editor.loadingFile')}
             </span>
           </div>
@@ -293,7 +293,7 @@ export function TextEditor() {
                 <Suspense fallback={
                   <div className="h-full flex items-center justify-center">
                     <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-300">
                       {t('editor.loadingEditor')}
                     </span>
                   </div>

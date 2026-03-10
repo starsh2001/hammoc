@@ -71,12 +71,12 @@ export function AboutSection() {
         <h3 className="text-xl font-bold text-gray-900 dark:text-white">Hammoc</h3>
         {health && (
           <>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">v{health.version}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-300 mt-1">v{health.version}</p>
             {health.description && (
-              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">{health.description}</p>
+              <p className="text-sm text-gray-400 dark:text-gray-400 mt-1">{health.description}</p>
             )}
             {health.author?.name && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              <p className="text-sm text-gray-500 dark:text-gray-300 mt-2">
                 {t('about.madeBy')}{' '}
                 {authorUrl ? (
                   <a
@@ -93,7 +93,7 @@ export function AboutSection() {
               </p>
             )}
             {health.license && (
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('about.license', { name: health.license })}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">{t('about.license', { name: health.license })}</p>
             )}
           </>
         )}
@@ -101,7 +101,7 @@ export function AboutSection() {
 
       {/* Contact link */}
       {issuesUrl && (
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+        <div className="bg-gray-50 dark:bg-[#263240] rounded-lg p-4">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('about.issuesAndSuggestions')}</h3>
           <a
             href={issuesUrl}
@@ -117,11 +117,11 @@ export function AboutSection() {
       )}
 
       {/* Server status */}
-      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+      <div className="bg-gray-50 dark:bg-[#263240] rounded-lg p-4">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('about.serverStatus')}</h3>
 
         {loading && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('about.checking')}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300">{t('about.checking')}</p>
         )}
 
         {error && !loading && (
@@ -131,9 +131,9 @@ export function AboutSection() {
               onClick={fetchHealth}
               aria-label={t('about.retryCheckAriaLabel')}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
-                         text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700
-                         border border-gray-300 dark:border-gray-600 rounded-lg
-                         hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                         text-gray-700 dark:text-gray-200 bg-white dark:bg-[#253040]
+                         border border-gray-300 dark:border-[#2d3a4a] rounded-lg
+                         hover:bg-gray-50 dark:hover:bg-[#2d3a4a] transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
               {t('about.retry')}
@@ -144,7 +144,7 @@ export function AboutSection() {
         {health && !loading && !error && (
           <div className="space-y-2">
             <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('about.status')}</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">{t('about.status')}</span>
               <span className="inline-flex items-center gap-1.5 text-sm text-gray-900 dark:text-white">
                 <span
                   className={`inline-block w-2 h-2 rounded-full ${
@@ -155,12 +155,12 @@ export function AboutSection() {
                 {health.status}
               </span>
             </div>
-            <div className="flex justify-between items-center py-2 border-t border-gray-200 dark:border-gray-700">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('about.version')}</span>
+            <div className="flex justify-between items-center py-2 border-t border-gray-200 dark:border-[#253040]">
+              <span className="text-sm text-gray-600 dark:text-gray-300">{t('about.version')}</span>
               <span className="text-sm text-gray-900 dark:text-white">{health.version}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-t border-gray-200 dark:border-gray-700">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('about.serverTime')}</span>
+            <div className="flex justify-between items-center py-2 border-t border-gray-200 dark:border-[#253040]">
+              <span className="text-sm text-gray-600 dark:text-gray-300">{t('about.serverTime')}</span>
               <span className="text-sm text-gray-900 dark:text-white">
                 {new Date(health.timestamp).toLocaleString()}
               </span>

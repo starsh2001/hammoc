@@ -73,13 +73,13 @@ function RecommendationButton({
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left cursor-pointer ${
         isPrimary
           ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-          : 'bg-gray-100/80 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+          : 'bg-gray-100/80 dark:bg-[#253040]/50 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040]'
       }`}
     >
-      <Icon className={`w-4 h-4 flex-shrink-0 ${isPrimary ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+      <Icon className={`w-4 h-4 flex-shrink-0 ${isPrimary ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-400'}`} />
       <div className="min-w-0 flex-1">
         <span className="text-sm font-medium block">{rec.title}</span>
-        <span className={`text-xs block truncate ${isPrimary ? 'text-blue-600/70 dark:text-blue-400/70' : 'text-gray-500 dark:text-gray-400'}`}>
+        <span className={`text-xs block truncate ${isPrimary ? 'text-blue-600/70 dark:text-blue-400/70' : 'text-gray-500 dark:text-gray-300'}`}>
           {rec.description}
         </span>
       </div>
@@ -119,7 +119,7 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
   const isCompleted = phase.phase === 'completed';
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+    <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-white">
           {isCompleted ? t('nextSteps.title') : t('nextSteps.tasks')}
@@ -146,10 +146,10 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
       </div>
 
       {/* Quick links */}
-      <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
+      <div className="mt-4 pt-3 border-t border-gray-200 dark:border-[#253040] flex items-center gap-3">
         <button
           onClick={handleNewSession}
-          className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 cursor-pointer"
+          className="text-xs text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 cursor-pointer"
         >
           <Plus className="w-3 h-3" />
           {t('nextSteps.newSession')}
@@ -157,7 +157,7 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
         <span className="text-gray-200 dark:text-gray-700">|</span>
         <button
           onClick={() => navigate(`/project/${projectSlug}/queue`)}
-          className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 cursor-pointer"
+          className="text-xs text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 cursor-pointer"
         >
           <ListOrdered className="w-3 h-3" />
           {t('nextSteps.queueTask')}
@@ -165,7 +165,7 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
         <span className="text-gray-200 dark:text-gray-700">|</span>
         <button
           onClick={() => navigate(`/project/${projectSlug}/files`)}
-          className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 cursor-pointer"
+          className="text-xs text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 cursor-pointer"
         >
           <FolderOpen className="w-3 h-3" />
           {t('nextSteps.fileExplore')}

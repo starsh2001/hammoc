@@ -43,7 +43,7 @@ export class OnboardingErrorBoundary extends Component<Props, State> {
 
       return (
         <div
-          className="min-h-screen flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-900"
+          className="min-h-screen flex flex-col items-center justify-center p-6 bg-white dark:bg-[#1c2129]"
           role="alert"
           aria-live="assertive"
         >
@@ -55,11 +55,11 @@ export class OnboardingErrorBoundary extends Component<Props, State> {
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {i18n.t('common:error.problemOccurred')}
             </h2>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-gray-600 dark:text-gray-300">
               {i18n.t('common:error.loadingError')}
             </p>
             {this.state.error && (
-              <p className="text-sm text-gray-500 dark:text-gray-500 font-mono">
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
                 {this.state.error.message}
               </p>
             )}

@@ -145,7 +145,7 @@ export function ProjectSettingsSection() {
   // No projects state
   if (projects.length === 0) {
     return (
-      <div className="text-gray-500 dark:text-gray-400 text-sm">
+      <div className="text-gray-500 dark:text-gray-300 text-sm">
         {t('project.noProjects')}
       </div>
     );
@@ -181,8 +181,8 @@ export function ProjectSettingsSection() {
           value={selectedProjectSlug}
           onChange={(e) => setSelectedProjectSlug(e.target.value)}
           disabled={updating}
-          className="w-full max-w-md px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+          className="w-full max-w-md px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500
                      disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -196,7 +196,7 @@ export function ProjectSettingsSection() {
 
       {/* Loading State */}
       {loading && (
-        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-300">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span className="text-sm">{t('project.loading')}</span>
         </div>
@@ -237,8 +237,8 @@ export function ProjectSettingsSection() {
               value={modelSelectValue}
               onChange={(e) => handleModelChange(e.target.value)}
               disabled={updating}
-              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                         bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                          focus:outline-none focus:ring-2 focus:ring-blue-500
                          disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -274,7 +274,7 @@ export function ProjectSettingsSection() {
                   flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                   ${permissionValue === GLOBAL_SENTINEL
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    : 'border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240]'
                   }
                 `}
               >
@@ -311,7 +311,7 @@ export function ProjectSettingsSection() {
                     flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                     ${permissionValue === opt.value
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      : 'border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240]'
                     }
                   `}
                 >
@@ -340,7 +340,7 @@ export function ProjectSettingsSection() {
                     </span>
                     <p
                       id={`project-perm-desc-${opt.value}`}
-                      className="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
+                      className="text-xs text-gray-500 dark:text-gray-300 mt-0.5"
                     >
                       {t(opt.descKey)}
                     </p>
@@ -360,7 +360,7 @@ export function ProjectSettingsSection() {
                 checked={settings.hidden ?? false}
                 onChange={handleHiddenChange}
                 disabled={updating}
-                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600
+                className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
                            text-blue-600 focus:ring-blue-500"
               />
               <span className="text-sm text-gray-900 dark:text-white">
@@ -370,7 +370,7 @@ export function ProjectSettingsSection() {
           </div>
 
           {/* Reset to Global Defaults */}
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="pt-4 border-t border-gray-200 dark:border-[#253040]">
             <button
               type="button"
               onClick={handleResetAll}
@@ -384,7 +384,7 @@ export function ProjectSettingsSection() {
               {t('project.resetToGlobal')}
             </button>
             {!hasOverrides && (
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
                 {t('project.noOverrides')}
               </p>
             )}

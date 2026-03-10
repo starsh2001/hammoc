@@ -217,7 +217,7 @@ export function TerminalEmulator({
   if (status === 'connecting' || !status) {
     return (
       <div
-        className="flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400"
+        className="flex items-center justify-center bg-gray-100 dark:bg-[#1c2129] text-gray-500 dark:text-gray-300"
         style={{ height }}
       >
         <div className="flex items-center gap-2">

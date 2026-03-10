@@ -47,7 +47,7 @@ export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
         role="listitem"
         aria-label={t('tool.resultFailed')}
       >
-        <div className="max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-red-200 dark:border-red-700">
+        <div className="max-w-[80%] bg-gray-100 dark:bg-[#263240] rounded-lg p-3 border border-red-200 dark:border-red-700">
           <div className="flex items-center gap-2">
             <XCircle className="w-4 h-4 text-red-500" aria-hidden="true" />
             <span className="text-sm font-medium text-red-600 dark:text-red-400">

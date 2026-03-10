@@ -273,12 +273,12 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
         role="dialog"
         aria-modal="true"
         aria-labelledby="template-dialog-title"
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col mx-4
+        className="bg-white dark:bg-[#263240] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col mx-4
           ring-1 ring-gray-200 dark:ring-gray-700"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/50 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#253040]/50 flex-shrink-0">
           <h2 id="template-dialog-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
             {t('queue.template.title')}
           </h2>
@@ -286,7 +286,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
             onClick={onClose}
             aria-label={t('queue.template.close')}
             className="p-1.5 -mr-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-              hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors"
           >
             <X className="w-4.5 h-4.5" />
           </button>
@@ -299,7 +299,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
             {/* ── Template section ── */}
             <section>
               <div className="flex items-center justify-between mb-2.5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400">
                   {t('queue.template.templateSection')}
                 </h3>
                 {templateText && !saveDialogOpen && (
@@ -318,7 +318,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
               </div>
 
               {/* Source tabs — pill style */}
-              <div className="inline-flex p-0.5 bg-gray-100 dark:bg-gray-700/50 rounded-lg mb-3">
+              <div className="inline-flex p-0.5 bg-gray-100 dark:bg-[#253040]/50 rounded-lg mb-3">
                 {(['input', 'file', 'saved'] as TemplateSource[]).map((source) => (
                   <button
                     key={source}
@@ -331,7 +331,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                       templateSource === source
                         ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                        : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
                   >
                     {t(sourceKeys[source])}
@@ -341,10 +341,10 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
 
               {/* Input tab */}
               {templateSource === 'input' && (
-                <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="rounded-lg border border-gray-200 dark:border-[#253040] overflow-hidden">
                   {/* Textarea mini-toolbar */}
-                  <div className="flex items-center justify-between px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
-                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                  <div className="flex items-center justify-between px-2.5 py-1.5 bg-gray-50 dark:bg-[#263240]/80 border-b border-gray-200 dark:border-[#253040]">
+                    <span className="text-[11px] text-gray-400 dark:text-gray-400">
                       {t('queue.template.variablesHint', { variables: '{story_num}, {epic_num}, {story_title}' })}
                     </span>
                     <button
@@ -355,7 +355,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                       className={`inline-flex items-center justify-center w-6 h-6 rounded transition-colors ${
                         isAutoWrap
                           ? 'bg-blue-100 dark:bg-blue-600/30 text-blue-600 dark:text-blue-400'
-                          : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                          : 'text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                       }`}
                     >
                       <WrapText className="w-3.5 h-3.5" />
@@ -369,7 +369,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                     }}
                     wrap={isAutoWrap ? 'soft' : 'off'}
                     placeholder={t('queue.template.placeholder')}
-                    className="w-full h-28 px-3 py-2.5 text-sm font-mono bg-white dark:bg-gray-900
+                    className="w-full h-28 px-3 py-2.5 text-sm font-mono bg-white dark:bg-[#1c2129]
                       text-gray-900 dark:text-gray-100 resize-y border-0 focus:ring-0 focus:outline-none
                       placeholder:text-gray-300 dark:placeholder:text-gray-600"
                     style={{ whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre' }}
@@ -381,16 +381,16 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
               {templateSource === 'file' && (
                 <div
                   className="flex flex-col items-center gap-2.5 py-6 border-2 border-dashed border-gray-200
-                    dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 cursor-pointer
+                    dark:border-[#253040] rounded-lg bg-gray-50/50 dark:bg-[#1c2129]/30 cursor-pointer
                     hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-[#253040] flex items-center justify-center">
                     <Upload className="w-5 h-5 text-gray-400" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('queue.template.clickToSelectFile')}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t('queue.template.fileTypes')}</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-200">{t('queue.template.clickToSelectFile')}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-400 mt-0.5">{t('queue.template.fileTypes')}</p>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -429,7 +429,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                       className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
                         selectedTemplateId === tmpl.id
                           ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-200 dark:ring-blue-700'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                          : 'hover:bg-gray-50 dark:hover:bg-[#253040]/50'
                       }`}
                       onClick={() => handleSelectSavedTemplate(tmpl)}
                     >
@@ -444,7 +444,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                           onClick={(e) => { e.stopPropagation(); handleEditTemplate(tmpl); }}
                           aria-label={t('queue.template.editTemplate', { name: tmpl.name })}
                           className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-                            hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            hover:bg-gray-200 dark:hover:bg-[#2d3a4a] transition-colors"
                         >
                           <Pencil className="w-3 h-3" />
                         </button>
@@ -464,14 +464,14 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
 
               {/* Save template inline form */}
               {saveDialogOpen && (
-                <div className="flex items-center gap-2 mt-2.5 p-2 bg-gray-50 dark:bg-gray-800/80 rounded-lg">
+                <div className="flex items-center gap-2 mt-2.5 p-2 bg-gray-50 dark:bg-[#263240]/80 rounded-lg">
                   <input
                     type="text"
                     value={templateName}
                     onChange={(e) => setTemplateName(e.target.value)}
                     placeholder={t('queue.template.templateName')}
-                    className="flex-1 px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md
-                      bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-400
+                    className="flex-1 px-2.5 py-1.5 text-sm border border-gray-200 dark:border-[#2d3a4a] rounded-md
+                      bg-white dark:bg-[#263240] text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-400
                       focus:border-blue-400 outline-none"
                     autoFocus
                     onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTemplate(); if (e.key === 'Escape') setSaveDialogOpen(false); }}
@@ -497,7 +497,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
             {/* ── Story selection section ── */}
             <section>
               <div className="flex items-center justify-between mb-2.5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400">
                   {t('queue.template.storySection')}
                   {!isLoadingStories && !storiesError && stories.length > 0 && (
                     <span className="ml-1.5 font-normal normal-case tracking-normal text-gray-300 dark:text-gray-600">
@@ -514,9 +514,9 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                         onChange={(e) => setInsertPause(e.target.checked)}
                         className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                       />
-                      <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('queue.template.pauseBetweenEpics')}</span>
+                      <span className="text-[11px] text-gray-500 dark:text-gray-300">{t('queue.template.pauseBetweenEpics')}</span>
                     </label>
-                    <div className="w-px h-3.5 bg-gray-200 dark:bg-gray-700" />
+                    <div className="w-px h-3.5 bg-gray-200 dark:bg-[#253040]" />
                     <button
                       onClick={selectedStories.size === stories.length ? handleDeselectAll : handleSelectAll}
                       className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
@@ -529,7 +529,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
 
               {isLoadingStories && (
                 <div className="flex items-center justify-center py-6">
-                  <div className="w-5 h-5 border-2 border-gray-200 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-gray-200 dark:border-[#2d3a4a] border-t-blue-500 rounded-full animate-spin" />
                 </div>
               )}
 
@@ -539,7 +539,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                   <button
                     onClick={retryLoadStories}
                     className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
-                      text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors"
                   >
                     <RefreshCw className="w-3 h-3" />
                     {t('button.retry')}
@@ -552,8 +552,8 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
               )}
 
               {!isLoadingStories && !storiesError && stories.length > 0 && (
-                <div className="max-h-44 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700
-                  bg-gray-50/50 dark:bg-gray-900/30 divide-y divide-gray-100 dark:divide-gray-700/50">
+                <div className="max-h-44 overflow-y-auto rounded-lg border border-gray-200 dark:border-[#253040]
+                  bg-gray-50/50 dark:bg-[#1c2129]/30 divide-y divide-gray-100 dark:divide-gray-700/50">
                   {epicGroups.map(([epicNum, epicStories]) => {
                     const allSelected = epicStories.every((s) => selectedStories.has(s.storyNum));
                     const someSelected = epicStories.some((s) => selectedStories.has(s.storyNum));
@@ -563,8 +563,8 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                         <button
                           onClick={() => toggleEpic(epicStories)}
                           className="flex items-center gap-2 w-full px-3 py-1.5 text-left
-                            hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors sticky top-0
-                            bg-gray-50 dark:bg-gray-800 z-[1]"
+                            hover:bg-gray-100 dark:hover:bg-[#263240] transition-colors sticky top-0
+                            bg-gray-50 dark:bg-[#263240] z-[1]"
                         >
                           <input
                             type="checkbox"
@@ -574,7 +574,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                             onClick={(e) => e.stopPropagation()}
                             className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                           />
-                          <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             {t('queue.template.epicHeader', { num: epicNum })}
                           </span>
                           <span className="text-[10px] text-gray-300 dark:text-gray-600">
@@ -587,7 +587,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                           <label
                             key={story.storyNum}
                             className="flex items-center gap-2.5 px-3 py-1.5 pl-7 cursor-pointer
-                              hover:bg-gray-100/70 dark:hover:bg-gray-800/50 transition-colors"
+                              hover:bg-gray-100/70 dark:hover:bg-[#263240]/50 transition-colors"
                           >
                             <input
                               type="checkbox"
@@ -595,10 +595,10 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                               onChange={() => toggleStory(story.storyNum)}
                               className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                             />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 truncate">
-                              <span className="font-mono text-gray-500 dark:text-gray-400">{story.storyNum}</span>
+                            <span className="text-xs text-gray-700 dark:text-gray-200 truncate">
+                              <span className="font-mono text-gray-500 dark:text-gray-300">{story.storyNum}</span>
                               {story.title && (
-                                <span className="text-gray-400 dark:text-gray-500 ml-1.5">
+                                <span className="text-gray-400 dark:text-gray-400 ml-1.5">
                                   {story.title}
                                 </span>
                               )}
@@ -615,11 +615,11 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
             {/* ── Preview section ── */}
             {preview && (
               <section>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2.5">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400 mb-2.5">
                   {t('queue.template.preview')}
                 </h3>
                 <pre
-                  className="max-h-44 overflow-auto rounded-lg bg-gray-50 dark:bg-gray-900 p-3 text-xs ring-1 ring-gray-200 dark:ring-gray-800"
+                  className="max-h-44 overflow-auto rounded-lg bg-gray-50 dark:bg-[#1c2129] p-3 text-xs ring-1 ring-gray-200 dark:ring-gray-800"
                   style={{
                     fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
                     lineHeight: '1.6',
@@ -634,11 +634,11 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100 dark:border-gray-700/50 flex-shrink-0">
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100 dark:border-[#253040]/50 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-3.5 py-1.5 text-sm rounded-lg text-gray-600 dark:text-gray-400
-              hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="px-3.5 py-1.5 text-sm rounded-lg text-gray-600 dark:text-gray-300
+              hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors"
           >
             {t('queue.template.cancel')}
           </button>

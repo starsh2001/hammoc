@@ -92,7 +92,7 @@ function GridInlineRename({ entryType, initialValue, onConfirm, onCancel }: Grid
       {entryType === 'directory' ? (
         <Folder className="w-8 h-8 text-blue-500 dark:text-blue-400" />
       ) : (
-        <File className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+        <File className="w-8 h-8 text-gray-400 dark:text-gray-400" />
       )}
       <input
         ref={inputRef}
@@ -101,7 +101,7 @@ function GridInlineRename({ entryType, initialValue, onConfirm, onCancel }: Grid
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
-        className="text-xs text-center w-full bg-white dark:bg-gray-900 dark:text-white border border-blue-500 rounded px-1 py-0 outline-none h-4 leading-4"
+        className="text-xs text-center w-full bg-white dark:bg-[#1c2129] dark:text-white border border-blue-500 rounded px-1 py-0 outline-none h-4 leading-4"
         aria-label={t('files.renameAria')}
       />
     </div>
@@ -291,7 +291,7 @@ export function FileGridView({
   if (loading && entries.length === 0) {
     if (!showSpinner) return null;
     return (
-      <div className="flex items-center gap-2 p-4 text-sm text-gray-500 dark:text-gray-400 justify-center">
+      <div className="flex items-center gap-2 p-4 text-sm text-gray-500 dark:text-gray-300 justify-center">
         <Loader2 className="w-4 h-4 animate-spin" />
         <span>{t('loadingStatus')}</span>
       </div>
@@ -334,7 +334,7 @@ export function FileGridView({
       )}
 
       {filteredEntries.length === 0 && !inlineInput ? (
-        <div className="text-sm text-gray-400 dark:text-gray-500 italic text-center py-8">
+        <div className="text-sm text-gray-400 dark:text-gray-400 italic text-center py-8">
           {t('files.emptyFolder')}
         </div>
       ) : (
@@ -345,7 +345,7 @@ export function FileGridView({
               data-grid-item
               role="button"
               tabIndex={0}
-              className="group relative flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50"
+              className="group relative flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50"
               onClick={() => {
                 const parentPath = currentPath.includes('/') ? currentPath.substring(0, currentPath.lastIndexOf('/')) : '.';
                 onNavigate(parentPath);
@@ -358,7 +358,7 @@ export function FileGridView({
               }}
             >
               <Folder className="w-8 h-8 text-blue-500 dark:text-blue-400" />
-              <span className="text-xs text-center w-full truncate text-gray-500 dark:text-gray-400">{t('files.parentDir')}</span>
+              <span className="text-xs text-center w-full truncate text-gray-500 dark:text-gray-300">{t('files.parentDir')}</span>
             </div>
           )}
           {filteredEntries.map((entry) => {
@@ -384,7 +384,7 @@ export function FileGridView({
                 data-grid-item
                 role="button"
                 tabIndex={0}
-                className={`group relative flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50 ${
+                className={`group relative flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 ${
                   isCurrentOpen ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-300 dark:ring-blue-700' : ''
                 }`}
                 onClick={() => handleItemClick(entry)}
@@ -394,17 +394,17 @@ export function FileGridView({
                 {entry.type === 'directory' ? (
                   <Folder className="w-8 h-8 text-blue-500 dark:text-blue-400" />
                 ) : (
-                  <File className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                  <File className="w-8 h-8 text-gray-400 dark:text-gray-400" />
                 )}
                 <span className={`text-xs text-center w-full truncate ${
-                  isCurrentOpen ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+                  isCurrentOpen ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'
                 }`}>
                   {entry.name}
                 </span>
 
                 {enableContextMenu && (
                   <button
-                    className="absolute top-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity"
+                    className="absolute top-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-[#2d3a4a] transition-opacity"
                     onClick={(e) => handleMenuButtonClick(e, entry)}
                     aria-label={t('files.moreMenu')}
                   >

@@ -77,7 +77,7 @@ export function FavoritesChipBar({
         aria-label={t('favorites.editButton')}
         data-testid="chip-bar-star-button"
         className={`flex-shrink-0 w-7 h-7 flex items-center justify-center rounded
-                   transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                   transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-[#253040]'}`}
       >
         <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" aria-hidden="true" />
       </button>
@@ -132,11 +132,11 @@ export function FavoritesChipBar({
               aria-label={t('favorites.executePrefix', { label })}
               onClick={() => onExecute(commandStr)}
               className={`px-2 py-1 rounded-full text-xs
-                         bg-gray-100 dark:bg-gray-700
-                         text-gray-700 dark:text-gray-300
+                         bg-gray-100 dark:bg-[#253040]
+                         text-gray-700 dark:text-gray-200
                          whitespace-nowrap flex-shrink-0
                          transition-colors min-h-[28px]
-                         flex items-center gap-1 ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer'}`}
+                         flex items-center gap-1 ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-[#2d3a4a] cursor-pointer'}`}
               data-testid={`favorite-chip-${commandStr}`}
             >
               {cmd?.icon && <span className="text-sm">{cmd.icon}</span>}

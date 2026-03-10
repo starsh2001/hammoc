@@ -36,7 +36,7 @@ export function Toast({ toast, onClose }: ToastProps) {
       </span>
       <button
         onClick={() => onClose(toast.id)}
-        className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+        className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] transition-colors"
         aria-label={t('toast.closeAria')}
       >
         <X className="w-4 h-4 text-gray-500" aria-hidden="true" />

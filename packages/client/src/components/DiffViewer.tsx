@@ -401,7 +401,7 @@ export function DiffViewer({
         aria-label={`Diff viewer for ${filePath}`}
       >
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" aria-hidden="true" />
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{t('diff.loadFailed')}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{t('diff.loadFailed')}</p>
         <button
           onClick={handleRetry}
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -415,7 +415,7 @@ export function DiffViewer({
 
   // Wrapper classes for fullscreen mode
   const wrapperClasses = fullscreen
-    ? 'fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900 transition-[right] duration-300 ease-in-out'
+    ? 'fixed inset-0 z-50 flex flex-col bg-white dark:bg-[#1c2129] transition-[right] duration-300 ease-in-out'
     : 'flex flex-col h-full';
   const wrapperStyle = fullscreen && editorRight ? { right: editorRight } : undefined;
 
@@ -440,14 +440,14 @@ export function DiffViewer({
       >
         {/* File Header */}
         <header
-          className="flex flex-wrap items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+          className="flex flex-wrap items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-[#263240] border-b border-gray-200 dark:border-[#253040]"
           role="heading"
           aria-level={3}
         >
           {/* File path - shrinks on mobile */}
           <div className="flex items-center gap-2 min-w-0 flex-shrink">
-            <FileText className="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-            <span className="text-sm font-mono text-gray-700 dark:text-gray-300 truncate">{filePath}</span>
+            <FileText className="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-300" aria-hidden="true" />
+            <span className="text-sm font-mono text-gray-700 dark:text-gray-200 truncate">{filePath}</span>
           </div>
           {/* Controls - always visible */}
           <div className="flex items-center gap-2 ml-auto flex-shrink-0">
@@ -461,13 +461,13 @@ export function DiffViewer({
             <button
               onClick={() => goToChange('previous')}
               disabled={state.totalDiffs === 0}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label={t('diff.prevChange')}
             >
-              <ChevronUp className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              <ChevronUp className="w-4 h-4 text-gray-500 dark:text-gray-300" aria-hidden="true" />
             </button>
             <span
-              className="text-xs font-mono text-gray-600 dark:text-gray-400 min-w-[2.5rem] text-center"
+              className="text-xs font-mono text-gray-600 dark:text-gray-300 min-w-[2.5rem] text-center"
               aria-live="polite"
               data-testid="position-indicator"
             >
@@ -478,10 +478,10 @@ export function DiffViewer({
             <button
               onClick={() => goToChange('next')}
               disabled={state.totalDiffs === 0}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label={t('diff.nextChange')}
             >
-              <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-300" aria-hidden="true" />
             </button>
             {/* Layout Toggle */}
             {responsiveLayout && (
@@ -491,7 +491,7 @@ export function DiffViewer({
                     effectiveLayout === 'side-by-side' ? 'inline' : 'side-by-side'
                   )
                 }
-                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label={
                   effectiveLayout === 'side-by-side'
                     ? t('diff.switchToInline')
@@ -504,9 +504,9 @@ export function DiffViewer({
                 }
               >
                 {effectiveLayout === 'side-by-side' ? (
-                  <Columns2 className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                  <Columns2 className="w-4 h-4 text-gray-500 dark:text-gray-300" aria-hidden="true" />
                 ) : (
-                  <Rows2 className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                  <Rows2 className="w-4 h-4 text-gray-500 dark:text-gray-300" aria-hidden="true" />
                 )}
               </button>
             )}
@@ -514,10 +514,10 @@ export function DiffViewer({
             {fullscreen && onClose && (
               <button
                 onClick={onClose}
-                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label={t('diff.closeDiffViewer')}
               >
-                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                <X className="w-5 h-5 text-gray-500 dark:text-gray-300" aria-hidden="true" />
               </button>
             )}
           </div>
@@ -527,9 +527,9 @@ export function DiffViewer({
         <div className="flex-1 relative min-h-0 overflow-hidden" tabIndex={-1}>
           {/* Loading Spinner */}
           {state.isLoading && (!isLargeFile || state.largeFileAccepted) && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-[#1c2129] z-10">
               <Loader2 className="w-8 h-8 animate-spin text-gray-400" aria-hidden="true" />
-              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+              <span className="ml-2 text-sm text-gray-500 dark:text-gray-300">
                 {t('diff.loading')}
               </span>
             </div>
@@ -539,10 +539,10 @@ export function DiffViewer({
           {isLargeFile && !state.largeFileAccepted ? (
             <div className="flex flex-col items-center justify-center p-8 text-center" role="alert">
               <AlertTriangle className="w-12 h-12 text-amber-500 mb-4" aria-hidden="true" />
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 {t('diff.largeFileTitle', { lines: maxLines.toLocaleString() })}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-300 mb-4">
                 {t('diff.largeFileDesc')}
               </p>
               <button

@@ -92,7 +92,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
           // Inline code
           return (
             <code
-              className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-sm font-mono"
+              className="bg-gray-100 dark:bg-[#253040] px-1.5 py-0.5 rounded text-sm font-mono"
               {...props}
             >
               {children}
@@ -163,7 +163,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       table({ children }) {
         return (
           <div className="overflow-x-auto my-4">
-            <table className="min-w-full border-collapse border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full border-collapse border border-gray-200 dark:border-[#253040]">
               {children}
             </table>
           </div>
@@ -172,7 +172,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
       th({ children }) {
         return (
-          <th className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-2 text-left font-semibold">
+          <th className="border border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#263240] px-4 py-2 text-left font-semibold">
             {children}
           </th>
         );
@@ -180,7 +180,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
       td({ children }) {
         return (
-          <td className="border border-gray-200 dark:border-gray-700 px-4 py-2">
+          <td className="border border-gray-200 dark:border-[#253040] px-4 py-2">
             {children}
           </td>
         );
@@ -244,7 +244,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       // Blockquote
       blockquote({ children }) {
         return (
-          <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 my-4 italic text-gray-700 dark:text-gray-300">
+          <blockquote className="border-l-4 border-gray-300 dark:border-[#2d3a4a] pl-4 my-4 italic text-gray-700 dark:text-gray-200">
             {children}
           </blockquote>
         );
@@ -252,7 +252,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
       // Horizontal rule
       hr() {
-        return <hr className="my-2 border-gray-200 dark:border-gray-700" />;
+        return <hr className="my-2 border-gray-200 dark:border-[#253040]" />;
       },
 
       // Strong (bold)

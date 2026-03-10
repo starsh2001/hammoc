@@ -61,11 +61,11 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
       />
 
       {/* Dialog */}
-      <div className="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-lg shadow-xl">
+      <div className="relative w-full max-w-lg bg-white dark:bg-[#263240] rounded-lg shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-[#253040]">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white truncate pr-2">
-            <span className="text-gray-500 dark:text-gray-400 font-mono mr-1.5">
+            <span className="text-gray-500 dark:text-gray-300 font-mono mr-1.5">
               Epic {epic.epicNumber ?? epic.id.replace(/^epic-/, '')}
             </span>
             {!/^Epic\s+\d+$/.test(epic.title) && epic.title}
@@ -80,14 +80,14 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
         </div>
 
         {/* Progress bar */}
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-[#253040]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs text-gray-500 dark:text-gray-400">{t('epic.progress')}</span>
-            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <span className="text-xs text-gray-500 dark:text-gray-300">{t('epic.progress')}</span>
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
               {doneCount}/{totalCount} ({Math.round(progressPercent)}%)
             </span>
           </div>
-          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-2 bg-gray-200 dark:bg-[#253040] rounded-full overflow-hidden">
             <div
               className="h-full bg-blue-500 rounded-full transition-all"
               style={{ width: `${progressPercent}%` }}
@@ -98,7 +98,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
         {/* Stories list */}
         <div className="p-4 max-h-80 overflow-y-auto">
           {stories.length === 0 ? (
-            <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-4">
+            <p className="text-center text-sm text-gray-400 dark:text-gray-400 py-4">
               {t('epic.noSubStories')}
             </p>
           ) : (
@@ -106,10 +106,10 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
               {stories.map((story) => (
                 <li
                   key={story.id}
-                  className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-gray-900 rounded-lg"
+                  className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-[#1c2129] rounded-lg"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs font-mono text-gray-400 dark:text-gray-500 flex-shrink-0">
+                    <span className="text-xs font-mono text-gray-400 dark:text-gray-400 flex-shrink-0">
                       {story.id.replace(/^story-/, '')}
                     </span>
                     <span className="text-sm text-gray-900 dark:text-white truncate">

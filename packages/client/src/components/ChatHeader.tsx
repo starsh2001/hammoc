@@ -111,8 +111,8 @@ export function ChatHeader({
     <header
       aria-label={t('header.ariaLabel')}
       data-testid="chat-header"
-      className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800
-                 border-b border-gray-200 dark:border-gray-700"
+      className="flex-shrink-0 sticky top-0 z-10 bg-slate-50 dark:bg-[#171e24]
+                 border-b border-slate-200 dark:border-slate-700/50"
     >
       <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
         {/* Left side: Back button and project info */}
@@ -121,7 +121,7 @@ export function ChatHeader({
             <button
               onClick={onBack}
               className="self-center p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-700
-                         rounded-lg text-gray-700 dark:text-gray-300
+                         rounded-lg text-gray-700 dark:text-gray-200
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label={t('header.backButton')}
             >
@@ -164,7 +164,7 @@ export function ChatHeader({
                       {sessionName}
                     </span>
                   )}
-                  <span className={`text-xs text-gray-500 dark:text-gray-400 truncate font-mono ${onRenameSession ? 'group-hover:text-blue-500 dark:group-hover:text-blue-400' : ''}`}>
+                  <span className={`text-xs text-gray-500 dark:text-gray-300 truncate font-mono ${onRenameSession ? 'group-hover:text-blue-500 dark:group-hover:text-blue-400' : ''}`}>
                     {sessionTitle}
                   </span>
                   {isBmadProject && (
@@ -186,7 +186,7 @@ export function ChatHeader({
                         className={`flex-shrink-0 text-xs cursor-pointer ${
                           activeAgent
                             ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 rounded px-2 py-0.5'
-                            : 'text-gray-500 dark:text-gray-400'
+                            : 'text-gray-500 dark:text-gray-300'
                         }`}
                       >
                         {activeAgent ? (
@@ -220,7 +220,7 @@ export function ChatHeader({
             <button
               onClick={onNewSession}
               className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                         text-gray-700 dark:text-gray-300
+                         text-gray-700 dark:text-gray-200
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label={t('header.newSession')}
             >
@@ -235,7 +235,7 @@ export function ChatHeader({
                 transition-colors relative
                 ${activePanel
                   ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
                 }`}
               aria-label={t('header.panelToggle')}
               aria-pressed={!!activePanel}
@@ -251,7 +251,7 @@ export function ChatHeader({
               onClick={onRefresh}
               disabled={isRefreshing}
               className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                         text-gray-700 dark:text-gray-300 disabled:opacity-50
+                         text-gray-700 dark:text-gray-200 disabled:opacity-50
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label={isRefreshing ? t('header.refreshing') : t('header.refresh')}
             >
@@ -272,7 +272,7 @@ export function ChatHeader({
             onClick={() => navigate('/settings')}
             aria-label={t('header.settings')}
             className="hidden md:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
-                       text-gray-700 dark:text-gray-300 transition-colors
+                       text-gray-700 dark:text-gray-200 transition-colors
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <Settings className="w-5 h-5" aria-hidden="true" />

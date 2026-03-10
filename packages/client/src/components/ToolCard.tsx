@@ -4,14 +4,38 @@
  * [Source: Story 3.5/4.8 refactor - Unified tool card]
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle, XCircle, AlertCircle, ChevronRight, ChevronDown, Loader2, Files, ShieldCheck, ShieldX } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { CheckCircle, XCircle, AlertCircle, ChevronRight, ChevronDown, Loader2, Files, ExternalLink, ShieldCheck, ShieldX } from 'lucide-react';
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { DiffViewer } from './DiffViewer';
 import { ToolResultRenderer } from './ToolResultRenderer';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } from '../utils/toolUtils';
+import { useFileStore } from '../stores/fileStore';
+import { usePanelStore } from '../stores/panelStore';
+import { useProjectStore } from '../stores/projectStore';
+
+/**
+ * Convert an absolute file path to a project-relative path.
+ * Tool calls return absolute paths (e.g. d:\repo\project\src\file.tsx),
+ * but the server pathGuard requires relative paths.
+ */
+function toRelativePath(absolutePath: string, projectRoot: string): string {
+  if (!projectRoot) return absolutePath;
+  // Normalize separators to forward slash for comparison
+  const normAbs = absolutePath.replace(/\\/g, '/');
+  const normRoot = projectRoot.replace(/\\/g, '/').replace(/\/+$/, '');
+  if (normAbs.startsWith(normRoot + '/')) {
+    return normAbs.slice(normRoot.length + 1);
+  }
+  if (normAbs.startsWith(normRoot + '\\')) {
+    return normAbs.slice(normRoot.length + 1);
+  }
+  // Already relative or different root — return as-is
+  return absolutePath;
+}
 
 export interface ToolCardProps {
   toolName: string;
@@ -48,7 +72,7 @@ function ToolTimer({ startedAt }: { startedAt: number }) {
   }, [startedAt]);
 
   return (
-    <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(elapsed) })}>
+    <span className="text-xs text-gray-400 dark:text-gray-400 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(elapsed) })}>
       {formatDuration(elapsed)}
     </span>
   );
@@ -60,11 +84,11 @@ function CollapsibleResult({ toolName, toolInput, result }: { toolName: string; 
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+    <div className="mt-2 border-t border-gray-200 dark:border-[#2d3a4a] pt-2">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         aria-expanded={expanded}
       >
         {expanded ? <ChevronDown className="w-3 h-3" aria-hidden="true" /> : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
@@ -121,24 +145,24 @@ function ExitPlanModeContent({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="mt-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+    <div className="mt-2 border-t border-gray-200 dark:border-[#2d3a4a] pt-2">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         aria-expanded={expanded}
       >
         {expanded ? <ChevronDown className="w-3 h-3" aria-hidden="true" /> : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
         <span>{t('tool.plan')}</span>
       </button>
       {expanded && (
-        <div className="mt-1 max-h-64 overflow-y-auto rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 p-2">
+        <div className="mt-1 max-h-64 overflow-y-auto rounded border border-gray-200 dark:border-[#2d3a4a] bg-white dark:bg-[#1c2129] p-2">
           {planContent ? (
             <div className="text-xs">
               <MarkdownRenderer content={planContent} />
             </div>
           ) : (
-            <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+            <p className="text-xs text-gray-400 dark:text-gray-400 italic">
               {t('tool.planEmpty')}
             </p>
           )}
@@ -147,10 +171,10 @@ function ExitPlanModeContent({
 
       {allowedPrompts && allowedPrompts.length > 0 && (
         <div className="mt-2">
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+          <p className="text-xs text-gray-500 dark:text-gray-300 font-medium mb-1">
             {t('tool.requestedPermissions')}
           </p>
-          <ul className="space-y-0.5 text-xs text-gray-600 dark:text-gray-400">
+          <ul className="space-y-0.5 text-xs text-gray-600 dark:text-gray-300">
             {allowedPrompts.map((ap, i) => (
               <li key={i} className="flex items-start gap-1.5">
                 <span className="flex-shrink-0 mt-0.5">·</span>
@@ -181,6 +205,7 @@ export function ToolCard({
   onPlanModeExit,
 }: ToolCardProps) {
   const { t } = useTranslation('chat');
+  const { projectSlug } = useParams<{ projectSlug: string }>();
   const output = stripXmlWrapperTags(rawOutput);
   const resultOutput = stripXmlWrapperTags(rawResultOutput);
   const [showDiffViewer, setShowDiffViewer] = useState(false);
@@ -193,6 +218,20 @@ export function ToolCard({
   const isEditWrite = toolName === 'Edit' || toolName === 'Write';
   const diffData = isEditWrite ? extractDiffData(toolName, toolInput) : null;
   const lineChanges = diffData ? computeLineChanges(diffData.original, diffData.modified) : null;
+
+  // Open file in editor panel
+  const projectRoot = useProjectStore((s) => {
+    const proj = s.projects.find((p) => p.projectSlug === projectSlug);
+    return proj?.originalPath || '';
+  });
+
+  const handleOpenFile = useCallback(() => {
+    const filePath = diffData?.filePath;
+    if (!filePath || !projectSlug) return;
+    const relativePath = toRelativePath(filePath, projectRoot);
+    useFileStore.getState().openFileInEditor(projectSlug, relativePath);
+    usePanelStore.getState().openPanel('files');
+  }, [diffData?.filePath, projectSlug, projectRoot]);
 
   const isDenied = status === 'denied';
   const isError = status === 'error';
@@ -237,13 +276,13 @@ export function ToolCard({
                 : t('tool.completedAria', { name: toolDisplayName })
         }
       >
-        <div className={`max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border ${
-          isDenied || isError ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-gray-700'
+        <div className={`max-w-[80%] bg-gray-100 dark:bg-[#263240] rounded-lg p-3 border ${
+          isDenied || isError ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-[#253040]'
         }`}>
           {/* Header: icon + name + status + duration */}
           <div className="flex items-center gap-2">
             <ToolIcon className="w-4 h-4 text-blue-500" aria-hidden="true" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
               {toolDisplayName}
             </span>
             {isDenied ? (
@@ -262,7 +301,7 @@ export function ToolCard({
             )}
             {/* Duration display */}
             {!isPending && duration != null && (
-              <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(duration) })}>
+              <span className="text-xs text-gray-400 dark:text-gray-400 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(duration) })}>
                 {formatDuration(duration)}
               </span>
             )}
@@ -281,13 +320,13 @@ export function ToolCard({
             />
           )}
 
-          {/* Edit/Write: collapsible file path + diff button */}
+          {/* Edit/Write: collapsible file path + open in editor + diff button */}
           {isEditWrite && diffData && lineChanges && (
-            <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+            <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-300 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsPathExpanded(!isPathExpanded)}
-                className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 transition-colors text-left"
+                className="flex items-center gap-0.5 hover:text-gray-700 dark:hover:text-gray-200 transition-colors text-left flex-shrink-0"
                 aria-expanded={isPathExpanded}
                 aria-label={isPathExpanded ? t('tool.collapse') : t('tool.showFullPath')}
               >
@@ -296,9 +335,14 @@ export function ToolCard({
                 ) : (
                   <ChevronRight className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
                 )}
-                <span className={isPathExpanded ? 'break-all' : 'truncate'}>
-                  {isPathExpanded ? diffData.filePath : diffData.filePath.split(/[/\\]/).pop() || diffData.filePath}
-                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenFile}
+                className={`hover:text-blue-500 dark:hover:text-blue-400 hover:underline transition-colors text-left min-w-0 ${isPathExpanded ? 'break-all' : 'truncate'}`}
+                title={t('tool.openInEditor', { defaultValue: 'Open in editor' })}
+              >
+                {isPathExpanded ? diffData.filePath : diffData.filePath.split(/[/\\]/).pop() || diffData.filePath}
               </button>
               <button
                 onClick={() => setShowDiffViewer(true)}
@@ -316,7 +360,7 @@ export function ToolCard({
 
           {/* TodoWrite checklist */}
           {todos && todos.length > 0 && (
-            <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+            <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">
               {todos.map((todo, i) => (
                 <li key={i} className="flex items-start gap-1.5">
                   <span className="flex-shrink-0 mt-0.5">
@@ -342,7 +386,7 @@ export function ToolCard({
 
           {/* Error display */}
           {isError && (
-            <div className="mt-2 text-xs text-red-500 border-t border-gray-200 dark:border-gray-600 pt-2 whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
+            <div className="mt-2 text-xs text-red-500 border-t border-gray-200 dark:border-[#2d3a4a] pt-2 whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
               {output ? output.slice(0, 500) : t('common:error.unknownError')}
             </div>
           )}
@@ -358,7 +402,7 @@ export function ToolCard({
 
           {/* ExitPlanMode: mode selection buttons */}
           {permissionStatus === 'waiting' && isExitPlanMode && onPlanModeExit && onPermissionRespond && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-200 dark:border-[#2d3a4a] pt-2">
               <button
                 type="button"
                 onClick={() => onPlanModeExit('bypassPermissions')}
@@ -380,7 +424,7 @@ export function ToolCard({
               <button
                 type="button"
                 onClick={() => onPlanModeExit('default')}
-                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 transition-colors"
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#263240] hover:bg-gray-100 dark:hover:bg-[#253040] rounded border border-gray-300 dark:border-[#2d3a4a] transition-colors"
                 aria-label={t('tool.approveAsk')}
               >
                 <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
@@ -400,7 +444,7 @@ export function ToolCard({
 
           {/* Permission approve/deny buttons (non-ExitPlanMode tools) */}
           {permissionStatus === 'waiting' && !isExitPlanMode && onPermissionRespond && (
-            <div className="mt-2 flex items-center gap-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+            <div className="mt-2 flex items-center gap-2 border-t border-gray-200 dark:border-[#2d3a4a] pt-2">
               <button
                 type="button"
                 onClick={() => onPermissionRespond(true)}

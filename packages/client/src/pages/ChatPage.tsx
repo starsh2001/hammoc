@@ -922,7 +922,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
@@ -990,7 +990,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
@@ -1055,7 +1055,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
@@ -1133,7 +1133,7 @@ export function ChatPage() {
     <ScrollProvider value={scrollContextValue}>
     <div
       data-testid="chat-page"
-      className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-gray-900 ${chatAreaTransition}`}
+      className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
       style={chatAreaStyle}
     >
       <ChatHeader
