@@ -83,13 +83,13 @@ export function ProjectTabLayout() {
   return (
     <div className="h-dvh flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
       {/* Header */}
-      <header className="flex-shrink-0 sticky top-0 z-10 bg-slate-50 dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
+      <header className="flex-shrink-0 sticky top-0 z-10 bg-[#243648] dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
         {/* Top row: project info + actions */}
         <div className="content-container flex items-center justify-between px-4 py-3 min-h-14">
           <div className="flex items-stretch min-w-0 flex-1">
             <button
               onClick={handleBack}
-              className="self-center p-2 -ml-2 mr-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg text-gray-700 dark:text-gray-200"
+              className="self-center p-2 -ml-2 mr-2 hover:bg-white/10 dark:hover:bg-[#253040] rounded-lg text-white/80 dark:text-gray-200"
               aria-label={t('layout.back')}
             >
               <ArrowLeft className="w-5 h-5" />
@@ -97,8 +97,8 @@ export function ProjectTabLayout() {
             <BrandLogo />
             <div className="w-px self-stretch bg-gray-200 dark:bg-[#253040] mx-3" />
             <div className="min-w-0 flex-1">
-              <h1 className="text-base font-semibold truncate text-gray-900 dark:text-white">{projectDirName}</h1>
-              <p className="text-xs text-gray-400 dark:text-gray-400 truncate">{projectFullPath}</p>
+              <h1 className="text-base font-semibold truncate text-white dark:text-white">{projectDirName}</h1>
+              <p className="text-xs text-white/60 dark:text-gray-400 truncate">{projectFullPath}</p>
             </div>
           </div>
 
@@ -116,7 +116,7 @@ export function ProjectTabLayout() {
             <button
               onClick={() => navigate('/settings')}
               aria-label={t('project.settings')}
-              className="hidden sm:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#253040] text-gray-700 dark:text-gray-200 transition-colors"
+              className="hidden sm:block p-2 rounded-lg hover:bg-white/10 dark:hover:bg-[#253040] text-white/80 dark:text-gray-200 transition-colors"
             >
               <Settings className="w-5 h-5" aria-hidden="true" />
             </button>
@@ -124,7 +124,7 @@ export function ProjectTabLayout() {
             <div className="relative sm:hidden" ref={overflowMenuRef}>
               <button
                 onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg text-gray-700 dark:text-gray-200"
+                className="p-2 hover:bg-white/10 dark:hover:bg-[#253040] rounded-lg text-white/80 dark:text-gray-200"
                 aria-label={t('project.menuLabel')}
                 aria-expanded={overflowMenuOpen}
                 aria-haspopup="menu"
@@ -180,8 +180,8 @@ export function ProjectTabLayout() {
                   isDisabled
                     ? 'border-transparent opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400'
                     : isActive
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-[#2d3a4a]'
+                    ? 'border-blue-300 text-blue-200 dark:text-blue-400'
+                    : 'border-transparent text-white/50 dark:text-gray-300 hover:text-white/80 dark:hover:text-gray-300 hover:border-white/30 dark:hover:border-[#2d3a4a]'
                 }`}
                 aria-current={isActive ? 'page' : undefined}
                 aria-disabled={isDisabled || undefined}

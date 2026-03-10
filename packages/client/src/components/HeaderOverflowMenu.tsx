@@ -120,8 +120,8 @@ export function HeaderOverflowMenu({
       <button
         type="button"
         onClick={handleToggle}
-        className="p-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg
-                   text-gray-700 dark:text-gray-200
+        className="p-2 hover:bg-white/10 dark:hover:bg-[#253040] rounded-lg
+                   text-white/80 dark:text-gray-200
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
         aria-label={t('headerMenu.moreMenu')}
         aria-haspopup="menu"
