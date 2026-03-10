@@ -21,24 +21,24 @@ interface StatCardProps {
 
 const cardStyles = {
   default: {
-    border: 'border-gray-700/50 bg-gray-800/40',
-    icon: 'text-gray-500',
-    value: 'text-gray-200',
+    border: 'border-gray-200 bg-white dark:border-gray-600/50 dark:bg-gray-700/40',
+    icon: 'text-gray-400 dark:text-gray-400',
+    value: 'text-gray-700 dark:text-gray-200',
   },
   green: {
-    border: 'border-green-500/30 bg-green-500/10',
-    icon: 'text-green-400',
-    value: 'text-green-400',
+    border: 'border-green-200 bg-green-50 dark:border-green-500/30 dark:bg-green-500/15',
+    icon: 'text-green-500 dark:text-green-400',
+    value: 'text-green-600 dark:text-green-400',
   },
   blue: {
-    border: 'border-blue-500/30 bg-blue-500/10',
-    icon: 'text-blue-400',
-    value: 'text-blue-400',
+    border: 'border-blue-200 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/15',
+    icon: 'text-blue-500 dark:text-blue-400',
+    value: 'text-blue-600 dark:text-blue-400',
   },
   yellow: {
-    border: 'border-yellow-500/30 bg-yellow-500/10',
-    icon: 'text-yellow-400',
-    value: 'text-yellow-400',
+    border: 'border-yellow-200 bg-yellow-50 dark:border-yellow-500/30 dark:bg-yellow-500/15',
+    icon: 'text-yellow-500 dark:text-yellow-400',
+    value: 'text-yellow-600 dark:text-yellow-400',
   },
 };
 
