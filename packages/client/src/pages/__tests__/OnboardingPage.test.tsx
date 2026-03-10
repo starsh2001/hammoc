@@ -94,14 +94,14 @@ describe('OnboardingPage', () => {
     render(<OnboardingPage />, { wrapper: Wrapper });
 
     expect(screen.getByText('시작하기')).toBeInTheDocument();
-    expect(screen.getByText('HAMMOC 설정')).toBeInTheDocument();
+    expect(screen.getByText('Hammoc 설정')).toBeInTheDocument();
   });
 
   it('should render description text', () => {
     render(<OnboardingPage />, { wrapper: Wrapper });
 
     expect(
-      screen.getByText('아래 항목을 완료하면 HAMMOC를 사용할 수 있습니다.')
+      screen.getByText('아래 항목을 완료하면 Hammoc를 사용할 수 있습니다.')
     ).toBeInTheDocument();
   });
 
