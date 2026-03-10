@@ -393,7 +393,7 @@ export function ProjectListPage() {
       {/* Footer */}
       <footer className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-2">
         <div className="content-container flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
-          <span>HAMMOC{serverVersion ? ` v${serverVersion}` : ''}</span>
+          <span>Hammoc{serverVersion ? ` v${serverVersion}` : ''}</span>
           <button
             onClick={handleLogout}
             className="hover:text-red-500 dark:hover:text-red-400 transition-colors"

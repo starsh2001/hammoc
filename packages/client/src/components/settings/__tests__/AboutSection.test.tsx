@@ -31,11 +31,11 @@ describe('AboutSection', () => {
     vi.clearAllMocks();
   });
 
-  it('TC-A1: renders app name "HAMMOC"', async () => {
+  it('TC-A1: renders app name "Hammoc"', async () => {
     mockGet.mockResolvedValueOnce(mockHealthResponse);
     render(<AboutSection />);
 
-    expect(screen.getByText('HAMMOC')).toBeInTheDocument();
+    expect(screen.getByText('Hammoc')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText('v1.0.0')).toBeInTheDocument();
     });

@@ -64,14 +64,14 @@ describe('LoginPage', () => {
     it('should render Hammoc title', () => {
       renderLoginPage();
 
-      expect(screen.getByText('HAMMOC')).toBeInTheDocument();
+      expect(screen.getByText('Hammoc')).toBeInTheDocument();
     });
 
     it('should apply dark mode classes', () => {
       renderLoginPage();
 
       // Find the outermost container with min-h-screen class
-      const container = screen.getByText('HAMMOC').closest('.min-h-screen');
+      const container = screen.getByText('Hammoc').closest('.min-h-screen');
       expect(container?.className).toContain('dark:bg-gray-900');
     });
 

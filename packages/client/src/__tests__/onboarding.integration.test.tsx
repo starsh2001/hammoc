@@ -156,7 +156,7 @@ describe('Onboarding Integration', () => {
       expect(screen.getByText('시작하기')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('HAMMOC 설정')).toBeInTheDocument();
+    expect(screen.getByText('Hammoc 설정')).toBeInTheDocument();
   });
 
   it('should show main content when CLI is ready', async () => {

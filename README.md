@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">HAMMOC</h1>
+  <h1 align="center">Hammoc</h1>
   <p align="center"><strong>Kick Back. Think. Tap. Ship.</strong></p>
   <p align="center">
     An agentic IDE that lets AI handle the heavy lifting — while you stay in control.
