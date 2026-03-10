@@ -15,6 +15,17 @@ nul
 
 # Claude Code
 .claude/
+.qlaude/
+
+# AI tools
+.codex-*
+.gemini/
+.hammoc/
+.hammok/
+.plan
+.tmp-codex-*
+cookies.txt
+query
 
 # IDE
 .idea/
