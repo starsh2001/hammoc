@@ -1,9 +1,16 @@
 <p align="center">
-  <h1 align="center">Hammoc</h1>
-  <p align="center"><strong>Kick Back. Think. Tap. Ship.</strong></p>
-  <p align="center">
-    An agentic IDE that lets AI handle the heavy lifting — while you stay in control.
-  </p>
+  <img src="logo/Hammoc-Header.png" alt="Hammoc" width="480">
+</p>
+
+<p align="center">
+  <strong>Kick Back. Tap. Ship.</strong><br>
+  An agentic IDE that lets AI handle the heavy lifting — while you stay in control.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/hammoc"><img src="https://img.shields.io/npm/v/hammoc" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/hammoc"><img src="https://img.shields.io/npm/dm/hammoc" alt="npm downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/starsh2001/hammoc" alt="license"></a>
 </p>
 
 <p align="center">
@@ -18,7 +25,7 @@
 
 Hammoc turns [Claude Code](https://docs.anthropic.com/en/docs/claude-code) into a full-featured development environment — accessible from any browser, any device.
 
-The best code starts away from the keyboard. Inspired by Rich Hickey's *Hammock Driven Development* — the idea that real breakthroughs come when you step back and think, not when you're grinding at the terminal — Hammoc is built around a simple workflow: kick back in your hammock, think about the architecture, tap a command on your phone, and let the AI ship it.
+The best code starts away from the keyboard. Inspired by Rich Hickey's *Hammock Driven Development* — the idea that real breakthroughs come when you step back, not when you're grinding at the terminal — Hammoc is built around a simple workflow: kick back in your hammock, tap a command on your phone, and let the AI ship it.
 
 ---
 
