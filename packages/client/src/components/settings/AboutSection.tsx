@@ -68,7 +68,7 @@ export function AboutSection() {
     <div className="space-y-6">
       {/* App info */}
       <div className="text-center py-4">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">HAMMOC</h3>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Hammoc</h3>
         {health && (
           <>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">v{health.version}</p>
