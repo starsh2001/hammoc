@@ -175,13 +175,13 @@ export function FileTreeContextMenu({
     <div
       ref={menuRef}
       role="menu"
-      className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[160px]"
+      className="fixed z-50 bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg py-1 min-w-[160px]"
       style={{ left: adjustedPos.x, top: adjustedPos.y }}
       onKeyDown={handleKeyDown}
     >
       {menuItems.map((item, i) => {
         if ('type' in item) {
-          return <hr key={`sep-${i}`} className="border-t border-gray-200 dark:border-gray-700 my-1" />;
+          return <hr key={`sep-${i}`} className="border-t border-gray-200 dark:border-[#253040] my-1" />;
         }
         const Icon = item.icon;
         return (
@@ -192,8 +192,8 @@ export function FileTreeContextMenu({
             autoFocus={i === 0}
             className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer w-full ${
               item.danger
-                ? 'text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? 'text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-[#253040]'
+                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040]'
             }`}
             onClick={(e) => {
               e.stopPropagation();
@@ -260,7 +260,7 @@ export function InlineInput({ initialValue, entryType, depth, onConfirm, onCance
       {entryType === 'directory' ? (
         <Folder className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
       ) : (
-        <File className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+        <File className="w-4 h-4 text-gray-500 dark:text-gray-300 flex-shrink-0" />
       )}
       <input
         ref={inputRef}
@@ -269,7 +269,7 @@ export function InlineInput({ initialValue, entryType, depth, onConfirm, onCance
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
-        className="text-sm bg-white dark:bg-gray-900 dark:text-white border border-blue-500 rounded px-1 py-0 outline-none flex-1 h-5 leading-5"
+        className="text-sm bg-white dark:bg-[#1c2129] dark:text-white border border-blue-500 rounded px-1 py-0 outline-none flex-1 h-5 leading-5"
         aria-label={initialValue ? t('files.renameAria') : t('files.newItemAria')}
       />
     </div>
@@ -301,24 +301,24 @@ export function DeleteConfirmDialog({ name, type, onConfirm, onCancel }: DeleteC
       onClick={onCancel}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm mx-4"
+        className="bg-white dark:bg-[#263240] rounded-lg shadow-xl p-6 max-w-sm mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 mb-4">
           <Trash2 className="w-5 h-5 text-red-500" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('files.deleteConfirmTitle')}</h3>
         </div>
-        <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
+        <p className="text-sm text-gray-700 dark:text-gray-200 mb-1">
           {t('files.deleteConfirmMessage', { name, type: t(type === 'directory' ? 'files.folder' : 'files.file') })}
         </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+        <p className="text-sm text-gray-500 dark:text-gray-300 mb-6">
           {t('files.cannotUndo')}
         </p>
         <div className="flex justify-end gap-3">
           <button
             autoFocus
             onClick={onCancel}
-            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#253040] rounded-lg hover:bg-gray-200 dark:hover:bg-[#2d3a4a]"
           >
             {t('button.cancel')}
           </button>
@@ -634,7 +634,7 @@ export function FileTree({
 
   if (loadingDirs.has(basePath) && !rootEntries) {
     return (
-      <div className="flex items-center gap-2 p-3 text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex items-center gap-2 p-3 text-sm text-gray-500 dark:text-gray-300">
         <Loader2 className="w-4 h-4 animate-spin" />
         <span>{t('loadingStatus')}</span>
       </div>
@@ -862,7 +862,7 @@ function FileTreeNode({
         role="treeitem"
         aria-expanded={isDirectory ? isExpanded : undefined}
         aria-selected={!isDirectory ? isCurrentOpen : undefined}
-        className={`group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50 ${highlightClass} ${focusClass}`}
+        className={`group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 ${highlightClass} ${focusClass}`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={handleClick}
         onContextMenu={(e) => onContextMenu(e, path, entry.type)}
@@ -872,7 +872,7 @@ function FileTreeNode({
             <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin flex-shrink-0" />
           ) : (
             <ChevronRight
-              className={`w-3.5 h-3.5 text-gray-400 dark:text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
+              className={`w-3.5 h-3.5 text-gray-400 dark:text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
             />
           )
         )}
@@ -885,18 +885,18 @@ function FileTreeNode({
             <Folder className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
           )
         ) : (
-          <File className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+          <File className="w-4 h-4 text-gray-500 dark:text-gray-300 flex-shrink-0" />
         )}
 
         <span
-          className={`text-sm truncate ${isCurrentOpen ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}
+          className={`text-sm truncate ${isCurrentOpen ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'}`}
         >
           {entry.name}
         </span>
 
         {enableContextMenu && (
           <button
-            className="ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity"
+            className="ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-[#2d3a4a] transition-opacity"
             onClick={(e) => onMenuButtonClick(e, path, entry.type)}
             aria-label={t('files.moreMenu')}
           >
@@ -938,7 +938,7 @@ function FileTreeNode({
 
           {childEntries && filteredChildren.length === 0 && !error && (
             <div
-              className="text-xs text-gray-400 dark:text-gray-500 italic py-1"
+              className="text-xs text-gray-400 dark:text-gray-400 italic py-1"
               style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
             >
               {t('files.emptyFolder')}

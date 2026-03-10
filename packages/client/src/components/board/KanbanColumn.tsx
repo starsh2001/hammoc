@@ -30,15 +30,15 @@ export function KanbanColumn({
 }: KanbanColumnProps) {
   return (
     <div
-      className={`flex flex-col h-full min-h-0 bg-gray-50 dark:bg-gray-900 rounded-lg border-t-2 ${columnConfig.colorClass}`}
+      className={`flex flex-col h-full min-h-0 bg-gray-50 dark:bg-[#1c2129] rounded-lg border-t-2 ${columnConfig.colorClass}`}
       style={style}
     >
       {/* Column header */}
       <div className="px-3 py-2 flex items-center justify-between">
-        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
           {columnConfig.label}
         </span>
-        <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full" data-testid={`column-count-${columnConfig.id}`}>
+        <span className="text-xs font-medium text-gray-400 dark:text-gray-400 bg-gray-200 dark:bg-[#253040] px-1.5 py-0.5 rounded-full" data-testid={`column-count-${columnConfig.id}`}>
           {items.length}
         </span>
       </div>

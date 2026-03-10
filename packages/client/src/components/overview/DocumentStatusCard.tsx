@@ -127,12 +127,12 @@ function EntryTree({
             <div key={entry.name}>
               <button
                 onClick={() => toggleDoc(entryKey)}
-                className="text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+                className="text-xs text-gray-600 dark:text-gray-300 hover:underline cursor-pointer inline-flex items-center gap-1"
               >
                 {entry.name}/
-                <span className="text-gray-400 dark:text-gray-500">{entry.children.length}개</span>
+                <span className="text-gray-400 dark:text-gray-400">{entry.children.length}개</span>
                 <ChevronDown
-                  className={`w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  className={`w-3 h-3 text-gray-400 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                 />
               </button>
               {isExpanded && (
@@ -154,7 +154,7 @@ function EntryTree({
           <button
             key={entry.name}
             onClick={() => onOpenFile(basePath ? `${basePath}/${entry.name}` : entry.name)}
-            className="block text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer"
+            className="block text-xs text-gray-600 dark:text-gray-300 hover:underline cursor-pointer"
           >
             {entry.name}
           </button>
@@ -188,7 +188,7 @@ function DocRow({
     <div>
       {/* Document row */}
       <div className={`flex items-center gap-2 py-1 px-2 -mx-2 rounded-md transition-colors ${
-        isCore ? 'bg-gray-100/50 dark:bg-gray-700/30' : ''
+        isCore ? 'bg-gray-100/50 dark:bg-[#253040]/30' : ''
       }`}>
         {doc.exists ? (
           <CheckCircle className={`w-4 h-4 flex-shrink-0 ${doc.optional ? 'text-green-400 dark:text-green-600' : 'text-green-600 dark:text-green-400'}`} />
@@ -206,14 +206,14 @@ function DocRow({
           >
             {doc.label}
             <ChevronDown
-              className={`w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform ${isDocExpanded ? 'rotate-180' : ''}`}
+              className={`w-3 h-3 text-gray-400 dark:text-gray-400 transition-transform ${isDocExpanded ? 'rotate-180' : ''}`}
             />
           </button>
         ) : (
           <span className={
             doc.exists
-              ? (doc.optional ? 'text-gray-700 dark:text-gray-300' : 'font-semibold text-gray-900 dark:text-white')
-              : (doc.optional ? 'text-gray-400 dark:text-gray-500' : 'font-semibold text-gray-900 dark:text-gray-100')
+              ? (doc.optional ? 'text-gray-700 dark:text-gray-200' : 'font-semibold text-gray-900 dark:text-white')
+              : (doc.optional ? 'text-gray-400 dark:text-gray-400' : 'font-semibold text-gray-900 dark:text-gray-100')
           }>{doc.label}</span>
         )}
 
@@ -231,7 +231,7 @@ function DocRow({
         {!hasShardedFiles && doc.exists && (
           <button
             onClick={() => handleOpenDoc(doc.path)}
-            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:underline cursor-pointer truncate max-w-[50%]"
+            className="text-xs text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:underline cursor-pointer truncate max-w-[50%]"
           >
             {doc.path}
           </button>
@@ -249,7 +249,7 @@ function DocRow({
         {!doc.exists && doc.agentCommand && (
           <button
             onClick={() => handleCreateDoc(doc.agentCommand!)}
-            className={`p-0.5 rounded transition-colors cursor-pointer ${!doc.optional || doc.recommended ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50' : 'bg-gray-100 dark:bg-gray-700/50 text-gray-300 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-500 dark:hover:text-gray-400'}`}
+            className={`p-0.5 rounded transition-colors cursor-pointer ${!doc.optional || doc.recommended ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50' : 'bg-gray-100 dark:bg-[#253040]/50 text-gray-300 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-[#253040] hover:text-gray-500 dark:hover:text-gray-400'}`}
             title={t('document.writeGo')}
           >
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -262,7 +262,7 @@ function DocRow({
         <div className="mt-1 ml-6 space-y-1">
           <button
             onClick={() => handleOpenDoc(doc.path)}
-            className="block text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer"
+            className="block text-xs text-gray-600 dark:text-gray-300 hover:underline cursor-pointer"
           >
             {doc.path}
           </button>
@@ -316,15 +316,15 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
     <div
       role="region"
       aria-label={t('document.statusTitle')}
-      className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5"
+      className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5"
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <FileText className="w-5 h-5 text-gray-600 dark:text-gray-300" />
           <h2 className="font-semibold text-gray-900 dark:text-white">{t('document.statusTitle')}</h2>
         </div>
         {totalRequired > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#253040] text-gray-500 dark:text-gray-300">
             {t('document.requiredCount', { done: doneRequired, total: totalRequired })}
           </span>
         )}
@@ -347,8 +347,8 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
 
         {/* Auxiliary Documents (stories, QA, etc.) */}
         {auxiliaryDocuments.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2 space-y-1">
-            <p className="text-[11px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 mb-1">{t('document.deliverables')}</p>
+          <div className="border-t border-gray-200 dark:border-[#253040] mt-2 pt-2 space-y-1">
+            <p className="text-[11px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-400 mb-1">{t('document.deliverables')}</p>
             {auxiliaryDocuments.map((doc) => {
               const hasFiles = doc.files && doc.files.length > 0;
               const isExpanded = expandedDocs.has(`aux-${doc.type}`);
@@ -356,21 +356,21 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
               return (
                 <div key={doc.type}>
                   <div className="flex items-center gap-2 py-1 px-2 -mx-2 rounded-md">
-                    <FolderOpen className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                    <FolderOpen className="w-4 h-4 text-gray-400 dark:text-gray-400 flex-shrink-0" />
                     {hasFiles ? (
                       <button
                         onClick={() => toggleDoc(`aux-${doc.type}`)}
-                        className="text-gray-700 dark:text-gray-300 hover:underline cursor-pointer inline-flex items-center gap-1"
+                        className="text-gray-700 dark:text-gray-200 hover:underline cursor-pointer inline-flex items-center gap-1"
                       >
                         {getAuxDocLabel(doc.type, t)}
                         <ChevronDown
-                          className={`w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          className={`w-3 h-3 text-gray-400 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         />
                       </button>
                     ) : (
-                      <span className="text-gray-700 dark:text-gray-300">{getAuxDocLabel(doc.type, t)}</span>
+                      <span className="text-gray-700 dark:text-gray-200">{getAuxDocLabel(doc.type, t)}</span>
                     )}
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{t('document.count', { count: doc.fileCount })}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-400">{t('document.count', { count: doc.fileCount })}</span>
                   </div>
 
                   {/* Expanded auxiliary file tree */}

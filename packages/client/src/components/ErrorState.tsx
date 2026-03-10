@@ -59,14 +59,14 @@ export function ErrorState({ errorType, onRetry, onNavigateBack }: ErrorStatePro
       <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
         {config.title}
       </h3>
-      <p className="text-gray-500 dark:text-gray-400 mb-4">
+      <p className="text-gray-500 dark:text-gray-300 mb-4">
         {config.message}
       </p>
       <div className="flex justify-center gap-3">
         {config.showRetry && onRetry && (
           <button
             onClick={onRetry}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129]"
           >
             <RefreshCw className="w-4 h-4" aria-hidden="true" />
             {t('button.retry')}
@@ -75,7 +75,7 @@ export function ErrorState({ errorType, onRetry, onNavigateBack }: ErrorStatePro
         {config.showBack && onNavigateBack && (
           <button
             onClick={onNavigateBack}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129]"
           >
             {t('error.goBackToProjects')}
           </button>

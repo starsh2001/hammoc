@@ -80,7 +80,7 @@ export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockPro
         aria-expanded={isExpanded}
         aria-controls={contentId}
         className={`flex items-center gap-2 cursor-pointer rounded py-1 px-2
-                   text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800`}
+                   text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#263240]`}
       >
         <Brain className={`w-4 h-4 ${isExpanded ? 'text-purple-500' : ''}`} aria-hidden="true" />
         <span className={`text-xs ${isExpanded ? 'text-purple-600 dark:text-purple-400' : ''}`}>{isStreaming ? t('thinking.thinkingStreaming') : t('thinking.thinking')}</span>
@@ -99,7 +99,7 @@ export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockPro
         }`}
       >
         {isExpanded && (
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="text-sm text-gray-600 dark:text-gray-300">
             <MarkdownRenderer content={content} />
           </div>
         )}

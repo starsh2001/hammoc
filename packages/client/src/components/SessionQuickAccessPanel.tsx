@@ -96,7 +96,7 @@ export function SessionQuickAccessPanel({
             onChange={(e) => handleSearchChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t('session.searchPlaceholder')}
-            className="w-full pl-8 pr-7 py-1.5 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-8 pr-7 py-1.5 text-sm bg-gray-100 dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             aria-label={t('session.searchPlaceholder')}
             autoFocus={autoFocusSearch}
             data-testid="search-input"
@@ -124,11 +124,11 @@ export function SessionQuickAccessPanel({
             </span>
           </div>
         ) : sessions.length === 0 && searchQuery ? (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-8" data-testid="search-no-results">
+          <p className="text-center text-gray-500 dark:text-gray-300 py-8" data-testid="search-no-results">
             {t('session.searchNoResults')}
           </p>
         ) : sessions.length === 0 ? (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-8" data-testid="empty-state">
+          <p className="text-center text-gray-500 dark:text-gray-300 py-8" data-testid="empty-state">
             {t('sessionQuickAccess.empty')}
           </p>
         ) : (
@@ -142,8 +142,8 @@ export function SessionQuickAccessPanel({
                   className={`w-full text-left p-3 rounded-lg border transition-colors
                     focus:outline-none focus:ring-2 focus:ring-blue-500
                     ${isCurrent
-                      ? 'border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20 border-gray-200 dark:border-gray-700'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400'
+                      ? 'border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20 border-gray-200 dark:border-[#253040]'
+                      : 'border-gray-200 dark:border-[#253040] hover:border-blue-500 dark:hover:border-blue-400'
                     }`}
                   data-testid={`session-item-${session.sessionId}`}
                   aria-current={isCurrent ? 'true' : undefined}
@@ -158,7 +158,7 @@ export function SessionQuickAccessPanel({
                       {session.firstPrompt || t('sessionListItem.emptySession')}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-300">
                     <span className="relative flex h-2 w-2" title={session.isStreaming ? t('sessionQuickAccess.streaming') : t('sessionQuickAccess.waiting')}>
                       {session.isStreaming && (
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
@@ -178,7 +178,7 @@ export function SessionQuickAccessPanel({
               <button
                 onClick={() => loadMoreSessions(projectSlug)}
                 disabled={isLoadingMore}
-                className="w-full py-2.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-2.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-gray-50 dark:hover:bg-[#263240]/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 data-testid="load-more-sessions"
               >
                 {isLoadingMore ? (

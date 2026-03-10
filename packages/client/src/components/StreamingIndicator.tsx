@@ -24,7 +24,7 @@ export function StreamingIndicator({ visible = true, variant = 'default' }: Stre
   const isCompact = variant === 'compact';
   const colorClass = isCompact
     ? 'text-amber-500 dark:text-amber-400'
-    : 'text-gray-500 dark:text-gray-400';
+    : 'text-gray-500 dark:text-gray-300';
   const animClass = isCompact ? 'animate-bounce-dot' : 'animate-pulse';
 
   return (

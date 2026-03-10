@@ -83,7 +83,7 @@ export function GlobalSettingsSection() {
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${theme === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -114,8 +114,8 @@ export function GlobalSettingsSection() {
           id="default-model"
           value={preferences.defaultModel ?? ''}
           onChange={(e) => handleModelChange(e.target.value)}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {MODEL_GROUPS.map((group) => (
@@ -142,8 +142,8 @@ export function GlobalSettingsSection() {
           id="language"
           value={preferences.language ?? i18n.language ?? 'en'}
           onChange={(e) => handleLanguageChange(e.target.value)}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {SUPPORTED_LANGUAGES.map((lang) => (
@@ -173,7 +173,7 @@ export function GlobalSettingsSection() {
                 flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                 ${permissionModePref === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  : 'border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -201,7 +201,7 @@ export function GlobalSettingsSection() {
                 </span>
                 <p
                   id={`permission-desc-${opt.value}`}
-                  className="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
+                  className="text-xs text-gray-500 dark:text-gray-300 mt-0.5"
                 >
                   {t(opt.descKey)}
                 </p>
@@ -227,7 +227,7 @@ export function GlobalSettingsSection() {
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.markdownDefaultMode ?? 'edit') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -247,7 +247,7 @@ export function GlobalSettingsSection() {
             </label>
           ))}
         </div>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
           {t('global.markdownDesc')}
         </p>
       </fieldset>
@@ -268,7 +268,7 @@ export function GlobalSettingsSection() {
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.fileExplorerViewMode ?? 'grid') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -288,7 +288,7 @@ export function GlobalSettingsSection() {
             </label>
           ))}
         </div>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
           {t('global.fileExplorerDesc')}
         </p>
       </fieldset>
@@ -312,8 +312,8 @@ export function GlobalSettingsSection() {
           onChange={(e) => handleTimeoutChange(Number(e.target.value))}
           disabled={isOverridden('chatTimeoutMs')}
           aria-disabled={isOverridden('chatTimeoutMs')}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500
                      disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -329,7 +329,7 @@ export function GlobalSettingsSection() {
             </option>
           ))}
         </select>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
           {t('global.chatTimeoutDesc')}
         </p>
       </div>

@@ -45,7 +45,7 @@ const SEVERITY_BADGE: Record<string, string> = {
   critical: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
   high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
   medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  low: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+  low: 'bg-gray-100 text-gray-800 dark:bg-[#253040] dark:text-gray-200',
 };
 
 export function BoardCard({
@@ -67,7 +67,7 @@ export function BoardCard({
 
   return (
     <div
-      className={`p-3 min-w-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm relative ${
+      className={`p-3 min-w-0 bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-sm relative ${
         isClickable
           ? 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all'
           : 'cursor-default'
@@ -85,7 +85,7 @@ export function BoardCard({
         )}
         <span className="text-sm font-medium text-gray-900 dark:text-white leading-tight flex-1">
           {(item.type === 'story' || item.type === 'epic') && (
-            <span className="text-gray-500 dark:text-gray-400 mr-1.5 font-mono">
+            <span className="text-gray-500 dark:text-gray-300 mr-1.5 font-mono">
               {item.type === 'epic'
                 ? `Epic ${item.epicNumber ?? item.id.replace(/^epic-/, '')}`
                 : item.id.replace(/^story-/, '')}
@@ -113,7 +113,7 @@ export function BoardCard({
       {item.type === 'issue' && (
         <div className="mt-2 space-y-1.5">
           {item.description && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+            <p className="text-xs text-gray-500 dark:text-gray-300 truncate">
               {item.description}
             </p>
           )}
@@ -126,7 +126,7 @@ export function BoardCard({
               </span>
             )}
             {item.issueType && (
-              <span className="text-xs text-gray-400 dark:text-gray-500">
+              <span className="text-xs text-gray-400 dark:text-gray-400">
                 {item.issueType}
               </span>
             )}
@@ -136,7 +136,7 @@ export function BoardCard({
 
       {/* Story: epic number */}
       {item.type === 'story' && item.epicNumber != null && (
-        <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-300">
           Epic #{item.epicNumber}
         </p>
       )}
@@ -145,7 +145,7 @@ export function BoardCard({
       {item.type === 'epic' && item.storyProgress && (
         <div className="mt-2">
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className="flex-1 h-1.5 bg-gray-200 dark:bg-[#253040] rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500 rounded-full transition-all"
                 style={{
@@ -155,7 +155,7 @@ export function BoardCard({
                 }}
               />
             </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+            <span className="text-xs text-gray-500 dark:text-gray-300 whitespace-nowrap">
               {item.storyProgress.done}/{item.storyProgress.total}
             </span>
           </div>

@@ -126,7 +126,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar — matches sessions page style */}
-      <div className="sticky top-0 z-[5] bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+      <div className="sticky top-0 z-[5] bg-white dark:bg-[#1c2129] border-b border-gray-200 dark:border-[#253040]">
         <div className="flex items-center justify-between px-4 py-2">
           <div />
 
@@ -162,7 +162,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
               )}
             </button>
 
-            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+            <div className="w-px h-5 bg-gray-200 dark:bg-[#253040] mx-1" />
 
             <button
               onClick={handleFileLoad}
@@ -170,7 +170,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
               aria-label={t('queue.loadFile')}
               title={t('queue.loadFile')}
               className="inline-flex items-center justify-center w-7 h-7 rounded-lg
-                hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400
+                hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Upload className="w-3.5 h-3.5" />
@@ -182,13 +182,13 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
               aria-label={t('queue.createFromTemplate')}
               title={t('queue.createFromTemplate')}
               className="inline-flex items-center justify-center w-7 h-7 rounded-lg
-                hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400
+                hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <FileText className="w-3.5 h-3.5" />
             </button>
 
-            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+            <div className="w-px h-5 bg-gray-200 dark:bg-[#253040] mx-1" />
 
             <button
               onClick={() => setIsAutoWrap((prev) => !prev)}
@@ -198,7 +198,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
               className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors
                 ${isAutoWrap
                   ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
-                  : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'}`}
+                  : 'hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300'}`}
             >
               <WrapText className="w-3.5 h-3.5" />
             </button>
@@ -211,7 +211,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
       {/* Editor area — hidden during execution */}
       {!isExecutionActive && (
       <div
-        className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-1 min-h-[200px]"
+        className="rounded-lg border border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#1c2129] flex-1 min-h-[200px]"
         style={{ overflow: 'auto', position: 'relative' }}
       >
         {/* Empty state overlay */}
@@ -221,25 +221,25 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           >
             <FileText className="w-10 h-10 text-gray-400 dark:text-gray-600" />
             <div className="text-center px-4">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">{t('queue.emptyTitle')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">{t('queue.emptyDescription')}</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-300 mb-3">{t('queue.emptyTitle')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{t('queue.emptyDescription')}</p>
               <div className="inline-grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-left text-xs font-mono">
                 <span className="text-purple-600 dark:text-purple-400">@new</span>
-                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdNewSession')}</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('queue.cmdNewSession')}</span>
                 <span className="text-purple-600 dark:text-purple-400">@save <span className="text-teal-600 dark:text-emerald-400">name</span></span>
-                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdSave')}</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('queue.cmdSave')}</span>
                 <span className="text-purple-600 dark:text-purple-400">@load <span className="text-teal-600 dark:text-emerald-400">name</span></span>
-                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdLoad')}</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('queue.cmdLoad')}</span>
                 <span className="text-purple-600 dark:text-purple-400">@pause <span className="text-teal-600 dark:text-emerald-400">[reason]</span></span>
-                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdPause')}</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('queue.cmdPause')}</span>
                 <span className="text-purple-600 dark:text-purple-400">@model <span className="text-teal-600 dark:text-emerald-400">name</span></span>
-                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdModel')}</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('queue.cmdModel')}</span>
                 <span className="text-purple-600 dark:text-purple-400">@delay <span className="text-teal-600 dark:text-emerald-400">ms</span></span>
-                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdWait')}</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('queue.cmdWait')}</span>
                 <span><span className="text-blue-700 dark:text-blue-400">@(</span> <span className="text-gray-400 dark:text-gray-600">…</span> <span className="text-blue-700 dark:text-blue-400">@)</span></span>
-                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdMultiline')}</span>
-                <span className="text-gray-500 dark:text-gray-500">#</span>
-                <span className="text-gray-500 dark:text-gray-500">{t('queue.cmdComment')}</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('queue.cmdMultiline')}</span>
+                <span className="text-gray-500 dark:text-gray-400">#</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('queue.cmdComment')}</span>
               </div>
             </div>
             <p className="text-[11px] text-gray-500 dark:text-gray-600 mt-1">{t('queue.emptyHint')}</p>

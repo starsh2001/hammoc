@@ -215,26 +215,26 @@ export function ProjectSessionsPage() {
   return (
     <>
       {/* Session toolbar */}
-      <div className="sticky top-0 z-[5] bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+      <div className="sticky top-0 z-[5] bg-white dark:bg-[#1c2129] border-b border-gray-200 dark:border-[#253040]">
         <div className="flex items-center justify-between px-4 py-2">
           {selectionMode ? (
             <>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-400"
+                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-[#253040] rounded-lg text-gray-600 dark:text-gray-300"
                   aria-label={t('session.exitSelection')}
                 >
                   <X className="w-4 h-4" />
                 </button>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                   {t('session.selectedCount', { count: selectedIds.size })}
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={selectedIds.size < sessions.length ? handleSelectAll : () => setSelectedIds(new Set())}
-                  className="px-3 py-1.5 text-xs rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
+                  className="px-3 py-1.5 text-xs rounded-lg hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-600 dark:text-gray-300"
                 >
                   {selectedIds.size < sessions.length ? t('session.selectAll') : t('session.deselectAll')}
                 </button>
@@ -259,13 +259,13 @@ export function ProjectSessionsPage() {
                 <Plus className="w-3.5 h-3.5" />
                 {t('session.newSession')}
               </button>
-              <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 ml-2" />
+              <div className="w-px h-5 bg-gray-200 dark:bg-[#253040] ml-2" />
               <button
                 onClick={() => setIncludeEmpty(!includeEmpty)}
                 className={`p-1.5 rounded-lg transition-colors ${
                   includeEmpty
                     ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
-                    : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
+                    : 'hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300'
                 }`}
                 aria-label={includeEmpty ? t('session.hideEmpty') : t('session.showEmpty')}
                 title={includeEmpty ? t('session.hideEmpty') : t('session.showEmpty')}
@@ -284,7 +284,7 @@ export function ProjectSessionsPage() {
               {sessions.length > 0 && (
                 <button
                   onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400"
+                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-[#253040] rounded-lg text-gray-500 dark:text-gray-300"
                   aria-label={t('session.selectionMode')}
                 >
                   <CheckSquare className="w-4 h-4" />
@@ -293,7 +293,7 @@ export function ProjectSessionsPage() {
               <button
                 onClick={handleRefresh}
                 disabled={isLoading || isRefreshing}
-                className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 text-gray-500 dark:text-gray-400"
+                className="p-1.5 hover:bg-gray-200 dark:hover:bg-[#253040] rounded-lg disabled:opacity-50 text-gray-500 dark:text-gray-300"
                 aria-label={t('session.refresh')}
               >
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -306,16 +306,16 @@ export function ProjectSessionsPage() {
 
       {/* Search bar */}
       {!selectionMode && (
-        <div className="px-4 pt-3 pb-1 bg-white dark:bg-gray-900">
+        <div className="px-4 pt-3 pb-1 bg-white dark:bg-[#1c2129]">
           <div role="search" className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" aria-hidden="true" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-400 pointer-events-none" aria-hidden="true" />
             <input
               type="text"
               value={localSearchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder={t('session.searchPlaceholder')}
               aria-label={t('session.searchPlaceholder')}
-              className="w-full pl-10 pr-9 py-2 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-9 py-2 text-sm bg-gray-100 dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             {localSearchQuery && (
               <button
@@ -329,16 +329,16 @@ export function ProjectSessionsPage() {
           </div>
           {localSearchQuery.trim() && (
             <div className="mt-2 flex items-center gap-2">
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 dark:text-gray-400">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 dark:text-gray-300">
                 <input
                   type="checkbox"
                   checked={searchContent}
                   onChange={handleSearchContentToggle}
-                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 dark:border-[#2d3a4a] text-blue-600 focus:ring-blue-500"
                 />
                 {t('session.searchContent')}
               </label>
-              <span className="text-xs text-gray-400 dark:text-gray-500">
+              <span className="text-xs text-gray-400 dark:text-gray-400">
                 {searchContent ? t('session.searchContentCap') : t('session.searchContentHint')}
               </span>
             </div>
@@ -357,7 +357,7 @@ export function ProjectSessionsPage() {
       <div ref={containerRef} className="flex-1 overflow-auto" aria-live="polite">
         {/* Search loading state */}
         {isSearching && (
-          <div className="flex items-center justify-center py-12 gap-2 text-gray-500 dark:text-gray-400" role="status">
+          <div className="flex items-center justify-center py-12 gap-2 text-gray-500 dark:text-gray-300" role="status">
             <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
             <span>{t('session.searching')}</span>
           </div>
@@ -365,7 +365,7 @@ export function ProjectSessionsPage() {
 
         {/* Search error state */}
         {!isSearching && error && searchQuery && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-500 dark:text-gray-400">
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-500 dark:text-gray-300">
             <p className="text-sm">{t('session.searchError')}</p>
             <button
               onClick={handleRetrySearch}
@@ -386,7 +386,7 @@ export function ProjectSessionsPage() {
 
         {/* Search no results */}
         {!isSearching && !isLoading && sessions.length === 0 && searchQuery && !error && (
-          <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-300">
             <p className="text-sm">{t('session.searchNoResults')}</p>
           </div>
         )}
@@ -424,7 +424,7 @@ export function ProjectSessionsPage() {
               <button
                 onClick={() => loadMoreSessions(projectSlug, { limit: 20 })}
                 disabled={isLoadingMore}
-                className="w-full py-3 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-gray-50 dark:hover:bg-[#263240]/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 data-testid="load-more-sessions"
               >
                 {isLoadingMore ? (

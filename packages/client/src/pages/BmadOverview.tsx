@@ -26,13 +26,13 @@ function BmadSkeleton() {
       {Array.from({ length: 2 }).map((_, i) => (
         <div
           key={i}
-          className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4"
+          className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5 space-y-4"
         >
-          <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-5 w-32 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
           <div className="space-y-2">
-            <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-            <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-            <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-4 w-full bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
+            <div className="h-4 w-3/4 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
+            <div className="h-4 w-1/2 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
           </div>
         </div>
       ))}
@@ -67,7 +67,7 @@ function BmadSummaryCard({ epics, isRefreshing }: { epics: BmadEpicStatus[]; isR
           <BackgroundRefreshIndicator isRefreshing={isRefreshing} />
           <div className="flex items-center gap-1 min-w-0">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">{pct}%</span>
-            <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">{t('overview.completedStatus')}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-300 ml-1">{t('overview.completedStatus')}</span>
           </div>
         </div>
 
@@ -75,13 +75,13 @@ function BmadSummaryCard({ epics, isRefreshing }: { epics: BmadEpicStatus[]; isR
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-1.5">
             <Layers className="w-4 h-4 text-blue-500 dark:text-blue-400" />
-            <span className="text-sm text-gray-600 dark:text-gray-300">
+            <span className="text-sm text-gray-600 dark:text-gray-200">
               <span className="font-semibold text-gray-900 dark:text-white">{doneEpics}/{totalEpics}</span> {t('overview.epicsLabel')}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <BookOpen className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-            <span className="text-sm text-gray-600 dark:text-gray-300">
+            <span className="text-sm text-gray-600 dark:text-gray-200">
               <span className="font-semibold text-gray-900 dark:text-white">{doneStories}/{totalStories}</span> {t('overview.storiesLabel')}
             </span>
           </div>
@@ -198,7 +198,7 @@ export function BmadOverview() {
             projectSlug={projectSlug}
           />
           {/* Visual separator between BMad and general sections */}
-          <div className="mx-6 border-t border-gray-200 dark:border-gray-700" />
+          <div className="mx-6 border-t border-gray-200 dark:border-[#253040]" />
         </>
       )}
       <ProjectOverviewPage quickActionsSlot={quickActionsSlot} />

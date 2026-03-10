@@ -36,7 +36,7 @@ export function PublicRoute({ children }: PublicRouteProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#1c2129]">
         <LoadingSpinner size="lg" />
       </div>
     );

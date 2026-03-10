@@ -102,7 +102,7 @@ export function QuickFileExplorer({
   return (
     <div className="flex flex-col h-full">
       {/* Search input */}
-      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-[#253040]">
         <div className="relative flex items-center">
           <Search className="absolute left-3 w-4 h-4 text-gray-400" aria-hidden="true" />
           <input
@@ -111,8 +111,8 @@ export function QuickFileExplorer({
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             placeholder={t('files.fileSearchPlaceholder')}
-            className="w-full pl-9 pr-8 py-1.5 text-sm bg-gray-100 dark:bg-gray-800
-                       dark:text-white border border-gray-200 dark:border-gray-700
+            className="w-full pl-9 pr-8 py-1.5 text-sm bg-gray-100 dark:bg-[#263240]
+                       dark:text-white border border-gray-200 dark:border-[#253040]
                        rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
                        dark:placeholder-gray-400"
           />
@@ -134,12 +134,12 @@ export function QuickFileExplorer({
         {isSearching ? (
           <div className="px-2">
             {searchLoading ? (
-              <div className="flex items-center gap-2 px-2 py-4 text-sm text-gray-500 dark:text-gray-400 justify-center">
+              <div className="flex items-center gap-2 px-2 py-4 text-sm text-gray-500 dark:text-gray-300 justify-center">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>{t('files.searching')}</span>
               </div>
             ) : searchResults && searchResults.length === 0 ? (
-              <div className="px-2 py-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+              <div className="px-2 py-4 text-sm text-gray-500 dark:text-gray-300 text-center">
                 {t('files.noResults')}
               </div>
             ) : (
@@ -154,7 +154,7 @@ export function QuickFileExplorer({
                                transition-colors ${
                                  isDir
                                    ? 'opacity-50 cursor-default'
-                                   : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                                   : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-[#253040]/50'
                                }`}
                     onClick={() => !isDir && handleSearchResultClick(result)}
                     onKeyDown={(e) => {
@@ -167,12 +167,12 @@ export function QuickFileExplorer({
                     {isDir ? (
                       <Folder className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                     ) : (
-                      <File className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                      <File className="w-4 h-4 text-gray-500 dark:text-gray-300 flex-shrink-0" />
                     )}
                     <div className="min-w-0 flex-1 overflow-hidden">
                       <span className="text-sm text-gray-900 dark:text-white">{result.name}</span>
                       {result.path !== result.name && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 truncate block">
+                        <span className="text-xs text-gray-400 dark:text-gray-400 ml-2 truncate block">
                           {result.path.substring(0, result.path.length - result.name.length - 1)}
                         </span>
                       )}
@@ -186,9 +186,9 @@ export function QuickFileExplorer({
           <>
             {/* Recent files section */}
             {recentFiles.length > 0 && (
-              <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-700">
+              <div className="px-2 py-2 border-b border-gray-200 dark:border-[#253040]">
                 <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium
-                                text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   <Clock className="w-3.5 h-3.5" aria-hidden="true" />
                   {t('files.recentlyOpened')}
                 </div>
@@ -201,14 +201,14 @@ export function QuickFileExplorer({
                     <button
                       key={filePath}
                       className="flex items-center gap-2 w-full px-2 py-1.5 rounded cursor-pointer
-                                 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50 text-left"
+                                 transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 text-left"
                       onClick={() => handleFileSelect(filePath)}
                     >
-                      <File className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                      <File className="w-4 h-4 text-gray-500 dark:text-gray-300 flex-shrink-0" />
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <span className="text-sm text-gray-900 dark:text-white">{fileName}</span>
                         {dirPath && (
-                          <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 truncate block">
+                          <span className="text-xs text-gray-400 dark:text-gray-400 ml-2 truncate block">
                             {dirPath}
                           </span>
                         )}

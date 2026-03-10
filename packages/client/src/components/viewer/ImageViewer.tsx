@@ -156,14 +156,14 @@ export function ImageViewer() {
 
       {/* Viewer Panel */}
       <div
-        className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-gray-900 transition-[right] duration-300 ease-in-out"
+        className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-[#1c2129] transition-[right] duration-300 ease-in-out"
         style={{ right: viewerRight }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#263240]">
           <div className="flex items-center gap-2 min-w-0">
-            <ImageIcon className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" />
-            <span className="truncate text-sm font-mono text-gray-700 dark:text-gray-300">
+            <ImageIcon className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-300" />
+            <span className="truncate text-sm font-mono text-gray-700 dark:text-gray-200">
               {filePath}
             </span>
           </div>
@@ -172,33 +172,33 @@ export function ImageViewer() {
             <button
               onClick={() => setZoom(zoomLevel - ZOOM_STEP)}
               disabled={zoomLevel <= MIN_ZOOM}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-40"
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300 disabled:opacity-40"
               title={t('imageViewer.zoomOut')}
             >
               <ZoomOut className="w-4 h-4" />
             </button>
-            <span className="text-xs text-gray-500 dark:text-gray-400 w-12 text-center tabular-nums">
+            <span className="text-xs text-gray-500 dark:text-gray-300 w-12 text-center tabular-nums">
               {zoomPercent}%
             </span>
             <button
               onClick={() => setZoom(zoomLevel + ZOOM_STEP)}
               disabled={zoomLevel >= MAX_ZOOM}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-40"
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300 disabled:opacity-40"
               title={t('imageViewer.zoomIn')}
             >
               <ZoomIn className="w-4 h-4" />
             </button>
             <button
               onClick={handleResetView}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300"
               title={t('imageViewer.resetZoom')}
             >
               <RotateCcw className="w-4 h-4" />
             </button>
-            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+            <div className="w-px h-5 bg-gray-200 dark:bg-[#253040] mx-1" />
             <button
               onClick={handleClose}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300"
               aria-label={t('imageViewer.close')}
             >
               <X className="w-5 h-5" />
@@ -220,7 +220,7 @@ export function ImageViewer() {
           {isLoading && !hasError && (
             <div className="absolute flex items-center gap-2">
               <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-gray-500 dark:text-gray-300">
                 {t('imageViewer.loadingImage')}
               </span>
             </div>

@@ -35,13 +35,13 @@ export function EmptyState({
       <p className="text-base md:text-lg font-medium text-gray-900 dark:text-white mb-1 md:mb-2">
         {title}
       </p>
-      <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mb-3 md:mb-4">
+      <p className="text-sm md:text-base text-gray-500 dark:text-gray-300 mb-3 md:mb-4">
         {description}
       </p>
       {actionLabel && onAction && (
         <button
           onClick={onAction}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129]"
         >
           <Plus className="w-5 h-5" aria-hidden="true" />
           {actionLabel}

@@ -114,7 +114,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
             handleClick();
           }
         }}
-        className={`relative w-full text-left bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer ${isHidden ? 'opacity-50' : ''}`}
+        className={`relative w-full text-left bg-gray-50 dark:bg-[#2a3545] rounded-lg border border-gray-200 dark:border-[#354050] p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-[#405060] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129] cursor-pointer ${isHidden ? 'opacity-50' : ''}`}
         aria-label={t('project.ariaLabel', { name: project.originalPath.split(/[/\\]/).filter(Boolean).pop() || project.originalPath, count: project.sessionCount })}
       >
         {/* Kebab menu */}
@@ -125,14 +125,14 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
               onClick={handleMenuToggle}
               aria-label={t('project.menu')}
               aria-expanded={menuOpen}
-              className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             >
               <MoreVertical className="w-4 h-4" aria-hidden="true" />
             </button>
 
             {menuOpen && (
               <div
-                className="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1"
+                className="absolute right-0 mt-1 w-40 bg-white dark:bg-[#263240] rounded-md shadow-lg border border-gray-200 dark:border-[#253040] py-1"
                 role="menu"
               >
                 {onSetupBmad && !project.isBmadProject && (
@@ -151,7 +151,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
                     type="button"
                     onClick={handleHideClick}
                     role="menuitem"
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#253040] transition-colors"
                   >
                     {isHidden ? (
                       <><Eye className="w-4 h-4" aria-hidden="true" />{t('project.unhide')}</>
@@ -183,7 +183,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
               BMad
             </span>
           )}
-          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+          <p className="text-xs text-gray-400 dark:text-gray-400 truncate">
             {formatProjectPath(project.originalPath)}
           </p>
         </div>
@@ -197,7 +197,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
         <ProjectStatusIndicators status={dashboardStatus} />
 
         {/* Meta Information */}
-        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-300 mt-2">
           {/* Session Count */}
           <div className="flex items-center gap-1.5">
             <MessageSquare className="w-4 h-4" aria-hidden="true" />
@@ -228,9 +228,9 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
             type="checkbox"
             checked={deleteFiles}
             onChange={(e) => setDeleteFiles(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500 dark:bg-gray-700"
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a] text-red-600 focus:ring-red-500 dark:bg-[#253040]"
           />
-          <span className="text-sm text-gray-700 dark:text-gray-300">
+          <span className="text-sm text-gray-700 dark:text-gray-200">
             {t('project.deleteFiles')}
           </span>
         </label>
@@ -253,14 +253,14 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
       >
         {bmadVersions.length > 0 && (
           <div className="flex items-center gap-2">
-            <label htmlFor="bmad-version-select" className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+            <label htmlFor="bmad-version-select" className="text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap">
               {t('project.version')}
             </label>
             <select
               id="bmad-version-select"
               value={selectedBmadVersion}
               onChange={(e) => setSelectedBmadVersion(e.target.value)}
-              className="flex-1 px-2 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-2 py-1.5 text-sm rounded-md border border-gray-300 dark:border-[#2d3a4a] bg-white dark:bg-[#253040] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {bmadVersions.map((v) => (
                 <option key={v} value={v}>{v}</option>

@@ -249,18 +249,18 @@ export function ProjectBoardPage() {
     return (
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
-          <div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-8 w-32 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
           <div className="flex gap-2">
-            <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-            <div className="h-8 w-28 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-8 w-20 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
+            <div className="h-8 w-28 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
           </div>
         </div>
         <div className="flex gap-4 overflow-hidden">
           {Array.from({ length: isMobile ? 1 : 4 }).map((_, i) => (
             <div key={i} className="flex-shrink-0 w-72 space-y-3">
-              <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-              <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-              <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-10 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
+              <div className="h-24 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
+              <div className="h-24 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
             </div>
           ))}
         </div>
@@ -290,7 +290,7 @@ export function ProjectBoardPage() {
     return (
       <div className="p-4 flex flex-col items-center justify-center min-h-[300px] text-center">
         <Kanban className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
-        <p className="text-gray-500 dark:text-gray-400 mb-4">
+        <p className="text-gray-500 dark:text-gray-300 mb-4">
           {t('empty.message')}
         </p>
         <button
@@ -319,7 +319,7 @@ export function ProjectBoardPage() {
             className={`p-2 rounded-lg transition-colors ${
               viewMode === 'kanban'
                 ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
+                : 'text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#253040]'
             }`}
             aria-label={t('view.kanban')}
             aria-pressed={viewMode === 'kanban'}
@@ -331,7 +331,7 @@ export function ProjectBoardPage() {
             className={`p-2 rounded-lg transition-colors ${
               viewMode === 'list'
                 ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
+                : 'text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#253040]'
             }`}
             aria-label={t('view.list')}
             aria-pressed={viewMode === 'list'}
@@ -341,22 +341,22 @@ export function ProjectBoardPage() {
 
           {/* Visible columns stepper (kanban mode only) */}
           {viewMode === 'kanban' && !isMobile && (
-            <div className="flex items-center gap-1 ml-2 border-l border-gray-200 dark:border-gray-700 pl-2">
+            <div className="flex items-center gap-1 ml-2 border-l border-gray-200 dark:border-[#253040] pl-2">
               <button
                 onClick={() => setVisibleColumns(visibleColumns - 1)}
                 disabled={visibleColumns <= 2}
-                className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#253040] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 aria-label={t('view.lessColumns')}
               >
                 <Minus className="w-4 h-4" />
               </button>
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400 min-w-[1.5rem] text-center tabular-nums">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300 min-w-[1.5rem] text-center tabular-nums">
                 {visibleColumns}
               </span>
               <button
                 onClick={() => setVisibleColumns(visibleColumns + 1)}
                 disabled={visibleColumns >= boardConfig.columns.length}
-                className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#253040] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 aria-label={t('view.moreColumns')}
               >
                 <Plus className="w-4 h-4" />
@@ -368,7 +368,7 @@ export function ProjectBoardPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsConfigOpen(true)}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#253040] transition-colors"
             aria-label={t('config.title')}
           >
             <Settings className="w-5 h-5" />

@@ -113,15 +113,15 @@ export function HeaderOverflowMenu({
   }, [onNavigateSettings]);
 
   const itemClass =
-    'w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
+    'w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors';
 
   return (
     <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={handleToggle}
-        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                   text-gray-700 dark:text-gray-300
+        className="p-2 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg
+                   text-gray-700 dark:text-gray-200
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
         aria-label={t('headerMenu.moreMenu')}
         aria-haspopup="menu"
@@ -133,8 +133,8 @@ export function HeaderOverflowMenu({
       {isOpen && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800
-                     border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50
+          className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#263240]
+                     border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50
                      py-1 overflow-hidden"
         >
           {/* Theme toggle */}
@@ -153,7 +153,7 @@ export function HeaderOverflowMenu({
           </button>
 
           {/* Divider */}
-          <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+          <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
 
           {/* New session */}
           {onNewSession && (
@@ -242,7 +242,7 @@ export function HeaderOverflowMenu({
           {/* Settings */}
           {onNavigateSettings && (
             <>
-              <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+              <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
               <button
                 type="button"
                 role="menuitem"

@@ -88,10 +88,10 @@ export function ConfirmModal({
     >
       <div
         ref={modalRef}
-        className="relative w-full max-w-sm mx-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl"
+        className="relative w-full max-w-sm mx-4 bg-white dark:bg-[#263240] rounded-lg shadow-xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[#253040]">
           <h2
             id="confirm-modal-title"
             className="text-lg font-semibold text-gray-900 dark:text-gray-100"
@@ -101,7 +101,7 @@ export function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="p-1 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            className="p-1 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] focus:outline-none focus:ring-2 focus:ring-gray-500"
             aria-label={t('button.close')}
           >
             <X size={20} />
@@ -112,7 +112,7 @@ export function ConfirmModal({
         <div className="p-4">
           <p
             id="confirm-modal-message"
-            className="text-gray-700 dark:text-gray-300"
+            className="text-gray-700 dark:text-gray-200"
           >
             {message}
           </p>
@@ -120,11 +120,11 @@ export function ConfirmModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-[#253040]">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#253040] hover:bg-gray-200 dark:hover:bg-[#2d3a4a] rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
           >
             {resolvedCancelText}
           </button>

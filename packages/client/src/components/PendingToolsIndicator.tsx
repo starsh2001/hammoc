@@ -32,7 +32,7 @@ function ElapsedTime({ startedAt }: { startedAt: number }) {
   }, [startedAt]);
 
   return (
-    <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums whitespace-nowrap">
+    <span className="text-xs text-gray-400 dark:text-gray-400 tabular-nums whitespace-nowrap">
       {formatDuration(elapsed)}
     </span>
   );
@@ -66,7 +66,7 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
   };
 
   return (
-    <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm">
+    <div className="flex-shrink-0 border-t border-gray-200 dark:border-[#253040] bg-gray-50/80 dark:bg-[#1e2a35]/90 backdrop-blur-sm">
       <div className="content-container px-4 py-1.5 flex flex-col gap-1">
         {visible.map((tool) => {
           const Icon = getToolIcon(tool.name);
@@ -77,8 +77,8 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
               key={tool.id}
               onClick={() => handleClick(tool.id)}
               className="flex items-center gap-2 text-left w-full px-2 py-1 rounded
-                         hover:bg-gray-200/60 dark:hover:bg-gray-700/60 transition-colors
-                         text-sm text-gray-600 dark:text-gray-400 group"
+                         hover:bg-gray-200/60 dark:hover:bg-[#253040]/60 transition-colors
+                         text-sm text-gray-600 dark:text-gray-300 group"
               title={t('pendingTools.clickToScroll')}
             >
               <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500 flex-shrink-0" />
@@ -98,7 +98,7 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
           );
         })}
         {remaining > 0 && (
-          <span className="text-xs text-gray-400 dark:text-gray-500 px-2">
+          <span className="text-xs text-gray-400 dark:text-gray-400 px-2">
             {t('pendingTools.moreCount', { count: remaining })}
           </span>
         )}

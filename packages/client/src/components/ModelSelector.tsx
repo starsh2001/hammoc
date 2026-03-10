@@ -171,15 +171,15 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
         className={`
           w-[28px] h-[28px] rounded-md transition-all
           flex items-center justify-center
-          border border-gray-300 dark:border-gray-600
-          bg-white dark:bg-gray-800
-          text-gray-600 dark:text-gray-300
+          border border-gray-300 dark:border-[#2d3a4a]
+          bg-white dark:bg-[#263240]
+          text-gray-600 dark:text-gray-200
           focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-400
           disabled:opacity-50 disabled:cursor-not-allowed
-          hover:bg-gray-100 dark:hover:bg-gray-700
+          hover:bg-gray-100 dark:hover:bg-[#253040]
           active:bg-gray-200 dark:active:bg-gray-600
           select-none
-          ${isOpen ? 'bg-gray-100 dark:bg-gray-700 ring-2 ring-gray-400 ring-offset-1' : ''}
+          ${isOpen ? 'bg-gray-100 dark:bg-[#253040] ring-2 ring-gray-400 ring-offset-1' : ''}
         `}
       >
         <Cpu className="w-4 h-4" aria-hidden="true" />
@@ -190,17 +190,17 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
         <div
           role="listbox"
           aria-label={t('model.selectAria')}
-          className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
+          className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50"
         >
           {MODEL_GROUPS.map((group, gi) => {
             const groupLabel = group.labelKey ? t(group.labelKey) : group.label;
             return (
             <div key={group.label}>
               {/* Group divider (not on first group) */}
-              {gi > 0 && <div className="border-t border-gray-200 dark:border-gray-700" />}
+              {gi > 0 && <div className="border-t border-gray-200 dark:border-[#253040]" />}
 
               {/* Group header */}
-              <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400">
                 {groupLabel}
               </div>
 
@@ -215,7 +215,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
                     aria-selected={isSelected}
                     onClick={() => handleSelect(opt.value)}
                     className={`w-full text-left px-3 py-1.5 flex items-center gap-2 transition-colors
-                      hover:bg-gray-100 dark:hover:bg-gray-700
+                      hover:bg-gray-100 dark:hover:bg-[#253040]
                       ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
                     `}
                   >
@@ -229,7 +229,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
                       <span className={`text-sm ${isSelected ? 'font-semibold text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
                         {opt.label}
                       </span>
-                      <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
+                      <span className="ml-2 text-xs text-gray-400 dark:text-gray-400">
                         {opt.value === '' && activeModel
                           ? formatModelId(activeModel)
                           : opt.description}

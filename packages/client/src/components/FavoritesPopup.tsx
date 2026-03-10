@@ -160,14 +160,14 @@ export function FavoritesPopup({
     return (
       <div
         className="absolute bottom-full left-0 mb-1 min-w-[280px] w-full sm:w-auto
-                   bg-white dark:bg-gray-800
-                   border border-gray-200 dark:border-gray-700
+                   bg-white dark:bg-[#263240]
+                   border border-gray-200 dark:border-[#253040]
                    shadow-lg rounded-lg z-50 p-4"
         role="listbox"
         aria-label={t('favorites.listAria')}
         data-testid="favorites-popup"
       >
-        <p className="text-sm text-gray-500 dark:text-gray-400" data-testid="favorites-empty-message">
+        <p className="text-sm text-gray-500 dark:text-gray-300" data-testid="favorites-empty-message">
           {t('favorites.emptyMessage')}
         </p>
       </div>
@@ -177,8 +177,8 @@ export function FavoritesPopup({
   return (
     <div
       className="absolute bottom-full left-0 mb-1 min-w-[280px] w-full sm:w-auto
-                 bg-white dark:bg-gray-800
-                 border border-gray-200 dark:border-gray-700
+                 bg-white dark:bg-[#263240]
+                 border border-gray-200 dark:border-[#253040]
                  shadow-lg rounded-lg z-50
                  max-h-[300px] overflow-y-auto"
       role="listbox"
@@ -189,7 +189,7 @@ export function FavoritesPopup({
       {hasStarFavorites && (
         <>
           {/* Section header */}
-          <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400"
+          <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-300"
                data-testid="star-section-header">
             {activeAgent!.icon} Agent Command
           </div>
@@ -243,7 +243,7 @@ export function FavoritesPopup({
                     {commandStr}
                   </span>
                   {starCmd?.description && (
-                    <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
+                    <span className="ml-2 text-xs text-gray-400 dark:text-gray-400">
                       {starCmd.description}
                     </span>
                   )}
@@ -261,7 +261,7 @@ export function FavoritesPopup({
                     }
                   }}
                   aria-label={t('favorites.removeStarPrefix', { command: commandStr })}
-                  className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600
+                  className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-[#2d3a4a]
                              text-gray-400 hover:text-red-500 dark:hover:text-red-400
                              transition-colors"
                   data-testid={`star-favorite-remove-${index}`}
@@ -276,13 +276,13 @@ export function FavoritesPopup({
 
       {/* Divider between star and slash sections */}
       {hasStarFavorites && hasSlashFavorites && (
-        <div className="border-t border-gray-200 dark:border-gray-700 my-1"
+        <div className="border-t border-gray-200 dark:border-[#253040] my-1"
              data-testid="popup-star-divider" aria-hidden="true" />
       )}
 
       {/* Slash favorites section */}
       {hasSlashFavorites && (
-        <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400"
+        <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-300"
              data-testid="slash-section-header">
           Slash Command
         </div>
@@ -311,7 +311,7 @@ export function FavoritesPopup({
               }
             }}
             className={`flex items-center gap-2 px-3 py-2 cursor-pointer
-                       hover:bg-gray-100 dark:hover:bg-gray-700
+                       hover:bg-gray-100 dark:hover:bg-[#253040]
                        transition-colors
                        ${isDragging ? 'opacity-50' : ''}
                        ${isDragOver ? 'border-t-2 border-blue-500' : ''}`}
@@ -336,7 +336,7 @@ export function FavoritesPopup({
                 {cmd?.name || commandStr}
               </span>
               {cmd?.description && (
-                <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
+                <span className="ml-2 text-xs text-gray-400 dark:text-gray-400">
                   {cmd.description}
                 </span>
               )}
@@ -354,7 +354,7 @@ export function FavoritesPopup({
                 }
               }}
               aria-label={t('favorites.removePrefix', { command: commandStr })}
-              className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600
+              className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-[#2d3a4a]
                          text-gray-400 hover:text-red-500 dark:hover:text-red-400
                          transition-colors"
               data-testid={`favorite-remove-${index}`}

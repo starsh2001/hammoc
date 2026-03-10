@@ -82,16 +82,16 @@ function OnboardingContent() {
   }, [refetch]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
       {/* Header */}
-      <header className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-700">
+      <header className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-[#253040]">
         <button
           onClick={handleBack}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#263240] transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129]"
           aria-label={t('onboarding.backButton')}
         >
           <ArrowLeft
-            className="w-5 h-5 text-gray-600 dark:text-gray-400"
+            className="w-5 h-5 text-gray-600 dark:text-gray-300"
             aria-hidden="true"
           />
         </button>
@@ -114,7 +114,7 @@ function OnboardingContent() {
             >
               {t('onboarding.title')}
             </h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
+            <p className="mt-2 text-gray-600 dark:text-gray-300">
               {t('onboarding.subtitle')}
             </p>
           </div>
@@ -160,7 +160,7 @@ function OnboardingContent() {
           <button
             onClick={handleRefresh}
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129]"
             aria-label={isLoading ? t('onboarding.refreshLoadingAria') : t('onboarding.refreshAria')}
             aria-busy={isLoading}
           >
@@ -174,7 +174,7 @@ function OnboardingContent() {
           {/* CLI Error Message */}
           {cliStatus?.error && (
             <p
-              className="text-sm text-center text-gray-500 dark:text-gray-400"
+              className="text-sm text-center text-gray-500 dark:text-gray-300"
               role="status"
             >
               {cliStatus.error}

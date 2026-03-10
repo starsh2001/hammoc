@@ -98,11 +98,11 @@ export function CommandPalette({
     return (
       <div
         data-testid="command-palette"
-        className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-gray-800
-                   border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg
+        className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-[#263240]
+                   border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg
                    max-h-[300px] overflow-y-auto z-50"
       >
-        <p className="text-center text-gray-500 dark:text-gray-400 text-sm py-4">
+        <p className="text-center text-gray-500 dark:text-gray-300 text-sm py-4">
           {t('command.noMatch')}
         </p>
       </div>
@@ -116,13 +116,13 @@ export function CommandPalette({
       id="command-palette"
       aria-label={t('command.slashListAria')}
       data-testid="command-palette"
-      className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-gray-800
-                 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg
+      className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-[#263240]
+                 border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg
                  max-h-[300px] overflow-y-auto z-50 py-1"
     >
       {Array.from(grouped.entries()).map(([category, cmds]) => (
         <li key={category} role="presentation">
-          <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
             {category}
           </div>
           <ul role="group" aria-label={category}>
@@ -140,7 +140,7 @@ export function CommandPalette({
                   className={`px-3 py-2 cursor-pointer flex items-start gap-2
                     ${isSelected
                       ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-100'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100'
+                      : 'hover:bg-gray-100 dark:hover:bg-[#253040] text-gray-900 dark:text-gray-100'
                     }`}
                 >
                   {cmd.icon && (
@@ -151,7 +151,7 @@ export function CommandPalette({
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium truncate">{cmd.command}</div>
                     {cmd.description && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <div className="text-xs text-gray-500 dark:text-gray-300 truncate">
                         {cmd.description}
                       </div>
                     )}
@@ -164,7 +164,7 @@ export function CommandPalette({
                         onToggleFavorite(cmd.command);
                       }}
                       aria-label={isFavorite(cmd.command) ? t('command.removeFavorite') : t('command.addFavorite')}
-                      className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                      className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-[#2d3a4a] transition-colors"
                     >
                       <Star
                         className={`w-4 h-4 ${isFavorite(cmd.command) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
