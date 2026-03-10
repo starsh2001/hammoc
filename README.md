@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center">HAMMOC</h1>
-  <p align="center"><strong>Command. Kick Back. Ship.</strong></p>
+  <p align="center"><strong>Kick Back. Think. Tap. Ship.</strong></p>
   <p align="center">
     An agentic IDE that lets AI handle the heavy lifting — while you stay in control.
   </p>
@@ -18,7 +18,7 @@
 
 Hammoc turns [Claude Code](https://docs.anthropic.com/en/docs/claude-code) into a full-featured development environment — accessible from any browser, any device.
 
-Like a hammock — you kick back and relax while the AI does the heavy lifting.
+The best code starts away from the keyboard. Inspired by Rich Hickey's *Hammock Driven Development* — the idea that real breakthroughs come when you step back and think, not when you're grinding at the terminal — Hammoc is built around a simple workflow: kick back in your hammock, think about the architecture, tap a command on your phone, and let the AI ship it.
 
 ---
 
