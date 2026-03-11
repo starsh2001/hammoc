@@ -97,6 +97,7 @@ export interface HistoryMessage {
   // Task notification fields (task_notification type only)
   taskStatus?: 'completed' | 'failed' | 'stopped';
   taskSummary?: string;
+  taskToolUseId?: string;
 }
 
 /**

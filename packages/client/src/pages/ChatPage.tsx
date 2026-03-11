@@ -67,7 +67,7 @@ const COMPACT_MESSAGE_PREFIX = 'This session is being continued from a previous 
 function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[]) {
   // Render task notification as notification card (not user bubble)
   if (message.type === 'task_notification' && message.taskStatus) {
-    return <TaskNotificationCard key={message.id} status={message.taskStatus} summary={message.taskSummary} />;
+    return <TaskNotificationCard key={message.id} status={message.taskStatus} summary={message.taskSummary} toolUseId={message.taskToolUseId} />;
   }
 
   // Render context compaction as a simple assistant "Compacted" bubble
@@ -109,7 +109,7 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
   }
   // tool_use: result already merged by parser — pass as resultOutput
   if (message.type === 'tool_use') {
-    return <ToolCallCard key={message.id} message={message} resultOutput={message.toolResult?.output} />;
+    return <div key={message.id} id={`tool-${message.id}`}><ToolCallCard message={message} resultOutput={message.toolResult?.output} /></div>;
   }
   // Skip successful tool_result — already merged into tool_use by parser
   if (message.type === 'tool_result' && message.toolResult?.success !== false) {

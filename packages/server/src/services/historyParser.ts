@@ -144,7 +144,7 @@ function extractImages(content: ContentBlock[] | undefined): Array<{ mimeType: s
  * @param content The raw message content
  * @returns Parsed task notification data, or null if not a task notification
  */
-function parseTaskNotification(content: string): { status: 'completed' | 'failed' | 'stopped'; summary: string } | null {
+function parseTaskNotification(content: string): { status: 'completed' | 'failed' | 'stopped'; summary: string; toolUseId?: string } | null {
   const trimmed = content.trim();
   if (!trimmed.startsWith('<task-notification>')) return null;
 
@@ -154,12 +154,14 @@ function parseTaskNotification(content: string): { status: 'completed' | 'failed
 
   const statusMatch = trimmed.match(/<status>(completed|failed|stopped)<\/status>/);
   const summaryMatch = trimmed.match(/<summary>([\s\S]*?)<\/summary>/);
+  const toolUseIdMatch = trimmed.match(/<tool-use-id>([\s\S]*?)<\/tool-use-id>/);
 
   if (!statusMatch) return null;
 
   return {
     status: statusMatch[1] as 'completed' | 'failed' | 'stopped',
     summary: summaryMatch?.[1] ?? '',
+    toolUseId: toolUseIdMatch?.[1],
   };
 }
 
@@ -305,6 +307,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
               timestamp: m.timestamp,
               taskStatus: taskNotif.status,
               taskSummary: taskNotif.summary,
+              taskToolUseId: taskNotif.toolUseId,
             });
           } else {
             const cleaned = cleanCommandTags(textContent);
@@ -333,6 +336,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
             timestamp: m.timestamp,
             taskStatus: taskNotif.status,
             taskSummary: taskNotif.summary,
+            taskToolUseId: taskNotif.toolUseId,
           });
         } else {
           const cleaned = cleanCommandTags(text);
