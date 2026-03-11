@@ -4,7 +4,7 @@
  * Clicking scrolls to the associated Agent tool card when toolUseId is present.
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle, AlertCircle, Bell } from 'lucide-react';
 
@@ -17,6 +17,12 @@ interface TaskNotificationCardProps {
 export function TaskNotificationCard({ status, summary, toolUseId }: TaskNotificationCardProps) {
   const { t } = useTranslation('chat');
   const highlightTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    };
+  }, []);
 
   const isSuccess = status === 'completed';
   const isFailed = status === 'failed';
