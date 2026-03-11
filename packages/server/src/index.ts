@@ -1,4 +1,6 @@
 import { createServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
+import fs from 'fs';
 import os from 'os';
 import { createApp } from './app.js';
 import { initializeWebSocket } from './handlers/websocket.js';
@@ -29,6 +31,20 @@ process.on('unhandledRejection', (reason) => {
 
 const PORT = config.server.port;
 const HOST = config.server.host;
+
+function loadTlsCerts(): { key: Buffer; cert: Buffer } | null {
+  const homeDir = os.homedir();
+  const keyPath = path.join(homeDir, '.hammoc', 'key.pem');
+  const certPath = path.join(homeDir, '.hammoc', 'cert.pem');
+  try {
+    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+      return { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
+    }
+  } catch {
+    // fall through to HTTP
+  }
+  return null;
+}
 
 function getLocalIP(): string | null {
   const interfaces = os.networkInterfaces();
@@ -65,8 +81,10 @@ async function main() {
   // Create Express app (async for session secret loading)
   const app = await createApp();
 
-  // Create HTTP server from Express app
-  const httpServer = createServer(app);
+  // Create HTTP or HTTPS server based on TLS cert availability
+  const tlsCerts = loadTlsCerts();
+  const isHttps = !!tlsCerts;
+  const httpServer = tlsCerts ? createHttpsServer(tlsCerts, app) : createServer(app);
 
   // Initialize WebSocket (async for session middleware - Story 2.5)
   await initializeWebSocket(httpServer);
@@ -94,9 +112,11 @@ async function main() {
     httpServer.listen(Number(PORT), HOST, () => {
       const isProduction = process.env.NODE_ENV === 'production';
       const localIP = getLocalIP();
+      const protocol = isHttps ? 'https' : 'http';
       log.info(`Hammoc Server running on:`);
-      log.info(`  Local:   http://localhost:${PORT}`);
-      if (localIP) log.info(`  Network: http://${localIP}:${PORT}`);
+      log.info(`  Local:   ${protocol}://localhost:${PORT}`);
+      if (localIP) log.info(`  Network: ${protocol}://${localIP}:${PORT}`);
+      if (isHttps) log.info(`  TLS:     enabled (certs from ~/.hammoc/)`);
       log.info(`  Mode:    ${isProduction ? 'production (serving static client files)' : 'development'}`);
       log.info(`  Log:     ${LogLevel[getEffectiveLogLevel()]} → ${path.resolve(process.cwd(), 'logs')}`);
 
