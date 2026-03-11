@@ -11,7 +11,7 @@ import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useTheme, type Theme } from '../../hooks/useTheme';
 import { MODEL_GROUPS } from '../ModelSelector';
-import type { PermissionMode, SupportedLanguage } from '@hammoc/shared';
+import type { PermissionMode, PermissionSyncPolicy, SupportedLanguage } from '@hammoc/shared';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
@@ -206,6 +206,45 @@ export function GlobalSettingsSection() {
                   {t(opt.descKey)}
                 </p>
               </div>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {/* Permission Sync Policy */}
+      <fieldset>
+        <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          {t('global.permissionSync')}
+        </legend>
+        <div className="flex flex-wrap gap-3">
+          {([
+            { value: 'never' as const, labelKey: 'global.permissionSyncOption.never', descKey: 'global.permissionSyncDesc.never' },
+            { value: 'streaming' as const, labelKey: 'global.permissionSyncOption.streaming', descKey: 'global.permissionSyncDesc.streaming' },
+            { value: 'always' as const, labelKey: 'global.permissionSyncOption.always', descKey: 'global.permissionSyncDesc.always' },
+          ]).map((opt) => (
+            <label
+              key={opt.value}
+              title={t(opt.descKey)}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                ${(preferences.permissionSyncPolicy ?? 'streaming') === opt.value
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
+                }
+              `}
+            >
+              <input
+                type="radio"
+                name="permissionSyncPolicy"
+                value={opt.value}
+                checked={(preferences.permissionSyncPolicy ?? 'streaming') === opt.value}
+                onChange={() => {
+                  updatePreference('permissionSyncPolicy', opt.value as PermissionSyncPolicy);
+                  toast.success(t('toast.settingSaved'));
+                }}
+                className="sr-only"
+              />
+              {t(opt.labelKey)}
             </label>
           ))}
         </div>

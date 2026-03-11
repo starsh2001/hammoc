@@ -23,6 +23,17 @@
       "bypass": "すべての権限チェックをスキップします（Bashを含む）",
       "latest": "新しいセッションは前回のセッションの権限モードを引き継ぎます"
     },
+    "permissionSync": "権限モード同期",
+    "permissionSyncOption": {
+      "never": "同期しない",
+      "streaming": "ストリーミング中のみ",
+      "always": "常に同期"
+    },
+    "permissionSyncDesc": {
+      "never": "権限モードの変更は他のブラウザに同期されません",
+      "streaming": "ストリーミング中のみ他のブラウザに同期します（デフォルト）",
+      "always": "同じセッションを見ている他のブラウザに常に同期します"
+    },
     "markdownMode": "Markdownファイルの表示モード",
     "markdownOption": {
       "edit": "編集",

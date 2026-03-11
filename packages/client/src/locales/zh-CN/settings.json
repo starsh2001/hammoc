@@ -23,6 +23,17 @@
       "bypass": "跳过所有权限检查（包括 Bash）",
       "latest": "新会话保持上一个会话的权限模式"
     },
+    "permissionSync": "权限模式同步",
+    "permissionSyncOption": {
+      "never": "不同步",
+      "streaming": "仅在流式传输期间",
+      "always": "始终同步"
+    },
+    "permissionSyncDesc": {
+      "never": "权限模式更改不会同步到其他浏览器",
+      "streaming": "仅在流式传输时同步到其他浏览器（默认）",
+      "always": "始终同步到查看同一会话的其他浏览器"
+    },
     "markdownMode": "Markdown 文件打开模式",
     "markdownOption": {
       "edit": "编辑",

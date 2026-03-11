@@ -550,24 +550,30 @@ export async function initializeWebSocket(
       }
     });
 
-    // Handle permission:mode-change — update SDK permission mode during active stream
+    // Handle permission:mode-change — update SDK permission mode and broadcast to viewers
     socket.on('permission:mode-change', async (data) => {
       const sessionId = socketToSession.get(socket.id);
       if (!sessionId) return;
+
+      const { mode, syncPolicy = 'streaming' } = data;
       const stream = activeStreams.get(sessionId);
-      if (!stream?.chatService || stream.status !== 'running') return;
-      try {
-        await stream.chatService.setPermissionMode(data.mode);
-        log.debug(`Permission mode changed to "${data.mode}" for session ${sessionId}`);
-        // Broadcast to other viewers so their UI stays in sync
-        for (const sock of stream.sockets) {
-          if (sock.id !== socket.id) {
-            sock.emit('permission:mode-change', { mode: data.mode });
-          }
+
+      // 1) Update SDK permission mode — only when stream is actively running
+      if (stream?.chatService && stream.status === 'running') {
+        try {
+          await stream.chatService.setPermissionMode(mode);
+          log.debug(`Permission mode changed to "${mode}" for session ${sessionId}`);
+        } catch (err) {
+          log.error('Failed to change permission mode:', err);
         }
-      } catch (err) {
-        log.error('Failed to change permission mode:', err);
       }
+
+      // 2) Broadcast to other viewers based on sync policy
+      if (syncPolicy === 'never') return;
+      if (syncPolicy === 'streaming' && stream?.status !== 'running') return;
+
+      // 'always' or ('streaming' + running) → broadcast via Socket.io room
+      socket.to(`session:${sessionId}`).emit('permission:mode-change', { mode });
     });
 
     // Handle session:join event — attach socket to active running stream (broadcast)

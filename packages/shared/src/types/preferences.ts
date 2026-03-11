@@ -35,7 +35,12 @@ export interface UserPreferences {
   terminalEnabled?: boolean;        // Enable/disable terminal feature (default: true)
   // i18n settings (Epic 22)
   language?: SupportedLanguage;     // User's preferred language
+  // Permission sync policy across browsers
+  permissionSyncPolicy?: PermissionSyncPolicy;
 }
+
+/** Controls when permission mode changes are broadcast to other browsers viewing the same session */
+export type PermissionSyncPolicy = 'never' | 'streaming' | 'always';
 
 /** Default values for global settings */
 export const DEFAULT_PREFERENCES: Required<Pick<UserPreferences, 'theme' | 'defaultModel' | 'permissionMode' | 'chatTimeoutMs' | 'fileExplorerViewMode'>> = {
