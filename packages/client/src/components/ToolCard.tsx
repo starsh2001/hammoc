@@ -399,17 +399,17 @@ export function ToolCard({
             <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-200 dark:border-[#2d3a4a] pt-2">
               <button
                 type="button"
-                onClick={() => onPlanModeExit('bypassPermissions')}
+                onClick={() => onPlanModeExit('default')}
                 className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 rounded border border-green-200 dark:border-green-800 transition-colors"
-                aria-label={t('tool.approveBypass')}
+                aria-label={t('tool.approveAsk')}
               >
                 <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-                {t('tool.yesBypass')}
+                {t('tool.yesAsk')}
               </button>
               <button
                 type="button"
                 onClick={() => onPlanModeExit('acceptEdits')}
-                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded border border-blue-200 dark:border-blue-800 transition-colors"
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 rounded border border-green-200 dark:border-green-800 transition-colors"
                 aria-label={t('tool.approveAuto')}
               >
                 <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
@@ -417,12 +417,12 @@ export function ToolCard({
               </button>
               <button
                 type="button"
-                onClick={() => onPlanModeExit('default')}
-                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#263240] hover:bg-gray-100 dark:hover:bg-[#253040] rounded border border-gray-300 dark:border-[#2d3a4a] transition-colors"
-                aria-label={t('tool.approveAsk')}
+                onClick={() => onPlanModeExit('bypassPermissions')}
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 rounded border border-green-200 dark:border-green-800 transition-colors"
+                aria-label={t('tool.approveBypass')}
               >
                 <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-                {t('tool.yesAsk')}
+                {t('tool.yesBypass')}
               </button>
               <button
                 type="button"
