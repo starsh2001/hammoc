@@ -66,8 +66,8 @@ const COMPACT_MESSAGE_PREFIX = 'This session is being continued from a previous 
 
 function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[]) {
   // Render task notification as notification card (not user bubble)
-  if (message.type === 'task_notification') {
-    return <TaskNotificationCard key={message.id} status={message.taskStatus!} summary={message.taskSummary} />;
+  if (message.type === 'task_notification' && message.taskStatus) {
+    return <TaskNotificationCard key={message.id} status={message.taskStatus} summary={message.taskSummary} />;
   }
 
   // Render context compaction as a simple assistant "Compacted" bubble
