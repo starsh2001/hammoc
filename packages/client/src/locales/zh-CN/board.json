@@ -31,7 +31,7 @@
     "severityCritical": "严重",
     "type": "类型",
     "typeLabel": "类型：",
-    "typeBug": "Bug",
+    "typeBug": "缺陷",
     "typeImprovement": "改进",
     "quickFix": "快速操作",
     "promoteToStory": "提升为 Story",
