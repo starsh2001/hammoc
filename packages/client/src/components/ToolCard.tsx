@@ -14,7 +14,6 @@ import { ToolResultRenderer } from './ToolResultRenderer';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } from '../utils/toolUtils';
 import { useFileStore } from '../stores/fileStore';
-import { usePanelStore } from '../stores/panelStore';
 import { useProjectStore } from '../stores/projectStore';
 
 /**
@@ -230,7 +229,6 @@ export function ToolCard({
     if (!filePath || !projectSlug) return;
     const relativePath = toRelativePath(filePath, projectRoot);
     useFileStore.getState().openFileInEditor(projectSlug, relativePath);
-    usePanelStore.getState().openPanel('files');
   }, [diffData?.filePath, projectSlug, projectRoot]);
 
   const isDenied = status === 'denied';
