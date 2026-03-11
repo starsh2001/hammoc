@@ -142,6 +142,12 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
         if (prefs.language) {
           i18n.changeLanguage(prefs.language);
         }
+        // Sync permission mode from server preferences to chat store
+        // (handles origin change where localStorage cache is empty)
+        try {
+          const { useChatStore } = await import('./chatStore');
+          useChatStore.getState().resetPermissionMode();
+        } catch { /* chatStore may not be initialized yet */ }
       } else {
         // Server empty — migrate from localStorage
         const legacy = collectLegacyPreferences();

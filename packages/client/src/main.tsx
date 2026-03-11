@@ -1,8 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { registerSW } from 'virtual:pwa-register';
 import './i18n'; // i18n initialization (Epic 22) — must be before App
 import App from './App';
 import './index.css';
+
+// Auto-update PWA: reload page when a new service worker is available
+registerSW({
+  onNeedRefresh() {
+    window.location.reload();
+  },
+});
 
 // Auto-reload once on stale chunk errors (e.g. after server rebuild).
 // Uses sessionStorage guard to prevent infinite reload loops.
