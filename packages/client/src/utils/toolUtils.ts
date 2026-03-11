@@ -13,6 +13,9 @@ import {
   ListChecks,
   GitBranch,
   Wrench,
+  Globe,
+  ClipboardList,
+  SearchCode,
 } from 'lucide-react';
 
 /** Tool name → lucide-react icon component mapping */
@@ -24,7 +27,12 @@ const TOOL_ICONS: Record<string, typeof Wrench> = {
   Glob: FolderSearch,
   Grep: Search,
   TodoWrite: ListChecks,
+  Agent: GitBranch,
   Task: GitBranch,
+  TaskOutput: ClipboardList,
+  ToolSearch: SearchCode,
+  WebSearch: Globe,
+  WebFetch: Globe,
 };
 
 /**
@@ -80,9 +88,29 @@ export function getToolDisplayInfo(toolName: string, input?: Record<string, unkn
     if (typeof input.command === 'string') return input.command;
   }
 
-  // Task: show short description
-  if (toolName === 'Task') {
+  // Agent/Task: show short description
+  if (toolName === 'Agent' || toolName === 'Task') {
     if (typeof input.description === 'string') return input.description;
+  }
+
+  // TaskOutput: show task_id
+  if (toolName === 'TaskOutput') {
+    if (typeof input.task_id === 'string') return input.task_id;
+  }
+
+  // ToolSearch: show query
+  if (toolName === 'ToolSearch') {
+    if (typeof input.query === 'string') return input.query;
+  }
+
+  // WebSearch: show query
+  if (toolName === 'WebSearch') {
+    if (typeof input.query === 'string') return input.query;
+  }
+
+  // WebFetch: show URL
+  if (toolName === 'WebFetch') {
+    if (typeof input.url === 'string') return input.url;
   }
 
   const rawInfo = input.file_path || input.path || input.pattern || input.command;
@@ -113,7 +141,7 @@ export function getToolExtraParams(
     }
   }
 
-  if (toolName === 'Task') {
+  if (toolName === 'Agent' || toolName === 'Task') {
     if (typeof input.subagent_type === 'string') {
       params.push({ label: 'agent', value: input.subagent_type });
     }

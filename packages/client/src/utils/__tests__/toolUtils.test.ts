@@ -15,6 +15,9 @@ import {
   ListChecks,
   GitBranch,
   Wrench,
+  Globe,
+  ClipboardList,
+  SearchCode,
 } from 'lucide-react';
 
 describe('getToolIcon', () => {
@@ -46,8 +49,28 @@ describe('getToolIcon', () => {
     expect(getToolIcon('TodoWrite')).toBe(ListChecks);
   });
 
-  it('returns GitBranch for Task', () => {
+  it('returns GitBranch for Agent', () => {
+    expect(getToolIcon('Agent')).toBe(GitBranch);
+  });
+
+  it('returns GitBranch for Task (legacy)', () => {
     expect(getToolIcon('Task')).toBe(GitBranch);
+  });
+
+  it('returns ClipboardList for TaskOutput', () => {
+    expect(getToolIcon('TaskOutput')).toBe(ClipboardList);
+  });
+
+  it('returns SearchCode for ToolSearch', () => {
+    expect(getToolIcon('ToolSearch')).toBe(SearchCode);
+  });
+
+  it('returns Globe for WebSearch', () => {
+    expect(getToolIcon('WebSearch')).toBe(Globe);
+  });
+
+  it('returns Globe for WebFetch', () => {
+    expect(getToolIcon('WebFetch')).toBe(Globe);
   });
 
   it('returns Wrench for unknown tools (fallback)', () => {
@@ -97,8 +120,28 @@ describe('getToolDisplayInfo', () => {
     expect(getToolDisplayInfo('Grep', { pattern: 'import.*from', path: '/src' })).toBe('import.*from');
   });
 
-  it('returns description for Task tool', () => {
+  it('returns description for Agent tool', () => {
+    expect(getToolDisplayInfo('Agent', { description: 'Search codebase', prompt: 'Find all usages', subagent_type: 'Explore' })).toBe('Search codebase');
+  });
+
+  it('returns description for Task tool (legacy)', () => {
     expect(getToolDisplayInfo('Task', { description: 'Search codebase', prompt: 'Find all usages', subagent_type: 'Explore' })).toBe('Search codebase');
+  });
+
+  it('returns task_id for TaskOutput tool', () => {
+    expect(getToolDisplayInfo('TaskOutput', { task_id: 'abc123', block: true, timeout: 30000 })).toBe('abc123');
+  });
+
+  it('returns query for ToolSearch tool', () => {
+    expect(getToolDisplayInfo('ToolSearch', { query: 'select:NotebookEdit', max_results: 5 })).toBe('select:NotebookEdit');
+  });
+
+  it('returns query for WebSearch tool', () => {
+    expect(getToolDisplayInfo('WebSearch', { query: 'React hooks best practices' })).toBe('React hooks best practices');
+  });
+
+  it('returns url for WebFetch tool', () => {
+    expect(getToolDisplayInfo('WebFetch', { url: 'https://example.com/api' })).toBe('https://example.com/api');
   });
 
   it('returns null when input is undefined', () => {
@@ -123,7 +166,15 @@ describe('getToolExtraParams', () => {
     ]);
   });
 
-  it('returns agent, model, and prompt for Task tool', () => {
+  it('returns agent, model, and prompt for Agent tool', () => {
+    expect(getToolExtraParams('Agent', { description: 'Search', subagent_type: 'Explore', model: 'haiku', prompt: 'Find usages' })).toEqual([
+      { label: 'agent', value: 'Explore' },
+      { label: 'model', value: 'haiku' },
+      { label: 'prompt', value: 'Find usages' },
+    ]);
+  });
+
+  it('returns agent, model, and prompt for Task tool (legacy)', () => {
     expect(getToolExtraParams('Task', { description: 'Search', subagent_type: 'Explore', model: 'haiku', prompt: 'Find usages' })).toEqual([
       { label: 'agent', value: 'Explore' },
       { label: 'model', value: 'haiku' },
@@ -131,15 +182,15 @@ describe('getToolExtraParams', () => {
     ]);
   });
 
-  it('returns only agent for Task tool without model/prompt', () => {
-    expect(getToolExtraParams('Task', { description: 'Search', subagent_type: 'Bash' })).toEqual([
+  it('returns only agent for Agent tool without model/prompt', () => {
+    expect(getToolExtraParams('Agent', { description: 'Search', subagent_type: 'Bash' })).toEqual([
       { label: 'agent', value: 'Bash' },
     ]);
   });
 
-  it('returns full prompt without truncation for Task tool', () => {
+  it('returns full prompt without truncation for Agent tool', () => {
     const longPrompt = 'A'.repeat(500);
-    const result = getToolExtraParams('Task', { description: 'Search', subagent_type: 'Explore', prompt: longPrompt });
+    const result = getToolExtraParams('Agent', { description: 'Search', subagent_type: 'Explore', prompt: longPrompt });
     const promptParam = result?.find(p => p.label === 'prompt');
     expect(promptParam?.value).toBe(longPrompt);
   });
@@ -158,7 +209,7 @@ describe('getToolExtraParams', () => {
     expect(getToolExtraParams('Glob', { pattern: '**/*.ts' })).toBeNull();
   });
 
-  it('returns null for non-Glob/Grep/Task/Bash tools', () => {
+  it('returns null for non-Glob/Grep/Agent/Bash tools', () => {
     expect(getToolExtraParams('Read', { file_path: '/foo', path: '/bar' })).toBeNull();
   });
 
