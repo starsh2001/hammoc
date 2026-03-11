@@ -4,7 +4,7 @@
  * [Source: Story 3.5/4.8 refactor - Unified tool card]
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { CheckCircle, XCircle, AlertCircle, ChevronRight, ChevronDown, Loader2, Files, ExternalLink, ShieldCheck, ShieldX } from 'lucide-react';
@@ -40,16 +40,30 @@ export interface ToolCardProps {
 }
 
 /** Real-time elapsed timer for pending tool calls */
-function ToolTimer({ startedAt }: { startedAt: number }) {
+function ToolTimer({ startedAt, hidden }: { startedAt: number; hidden?: boolean }) {
   const { t } = useTranslation('chat');
   const [elapsed, setElapsed] = useState(() => Date.now() - startedAt);
+  const pausedAtRef = useRef<number | null>(null);
+  const offsetRef = useRef(0);
 
   useEffect(() => {
+    if (hidden) {
+      // Pause: remember when we paused
+      pausedAtRef.current = Date.now();
+      return;
+    }
+    // Resume: accumulate paused duration
+    if (pausedAtRef.current != null) {
+      offsetRef.current += Date.now() - pausedAtRef.current;
+      pausedAtRef.current = null;
+    }
     const interval = setInterval(() => {
-      setElapsed(Date.now() - startedAt);
+      setElapsed(Date.now() - startedAt - offsetRef.current);
     }, 1000);
     return () => clearInterval(interval);
-  }, [startedAt]);
+  }, [startedAt, hidden]);
+
+  if (hidden) return null;
 
   return (
     <span className="text-xs text-gray-400 dark:text-gray-400 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(elapsed) })}>
@@ -283,8 +297,8 @@ export function ToolCard({
                 {formatDuration(duration)}
               </span>
             )}
-            {isPending && startedAt != null && permissionStatus !== 'waiting' && (
-              <ToolTimer startedAt={startedAt} />
+            {isPending && startedAt != null && (
+              <ToolTimer startedAt={startedAt} hidden={permissionStatus !== undefined && permissionStatus !== 'approved'} />
             )}
           </div>
 
