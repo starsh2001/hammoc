@@ -619,6 +619,25 @@ invalid json line
       expect(result[0].type).toBe('user');
     });
 
+    it('should convert queue-operation task-notification to task_notification type', () => {
+      const raw: RawJSONLMessage[] = [
+        {
+          type: 'queue-operation',
+          operation: 'enqueue',
+          timestamp: '2026-03-10T10:00:00Z',
+          content: '<task-notification>\n<task-id>b81fb64</task-id>\n<tool-use-id>toolu_01J8XtUkjm59mdWQun3p5ojo</tool-use-id>\n<output-file>/tmp/tasks/b81fb64.output</output-file>\n<status>completed</status>\n<summary>Background command "npm test" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/tasks/b81fb64.output',
+        } as unknown as RawJSONLMessage,
+      ];
+
+      const result = transformToHistoryMessages(raw);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('task_notification');
+      expect(result[0].taskStatus).toBe('completed');
+      expect(result[0].taskSummary).toBe('Background command "npm test" completed (exit code 0)');
+      expect(result[0].taskToolUseId).toBe('toolu_01J8XtUkjm59mdWQun3p5ojo');
+    });
+
     it('should handle stopped status', () => {
       const raw: RawJSONLMessage[] = [
         {
