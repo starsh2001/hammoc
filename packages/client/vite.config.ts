@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.png', 'logo-header.png', 'logo-splash.png'],
+        includeAssets: ['favicon.png', 'favicon-192.png', 'favicon-512.png', 'logo-header.png', 'logo-splash.png'],
         manifest: {
           name: 'Hammoc',
           short_name: 'Hammoc',
@@ -25,17 +25,17 @@ export default defineConfig(({ mode }) => {
           start_url: '/',
           icons: [
             {
-              src: '/favicon.png',
+              src: '/favicon-192.png',
               sizes: '192x192',
               type: 'image/png',
             },
             {
-              src: '/favicon.png',
+              src: '/favicon-512.png',
               sizes: '512x512',
               type: 'image/png',
             },
             {
-              src: '/favicon.png',
+              src: '/favicon-512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
