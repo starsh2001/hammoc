@@ -4,7 +4,7 @@
  * Clicking scrolls to the associated Agent tool card when toolUseId is present.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle, AlertCircle, Bell } from 'lucide-react';
 
@@ -16,6 +16,7 @@ interface TaskNotificationCardProps {
 
 export function TaskNotificationCard({ status, summary, toolUseId }: TaskNotificationCardProps) {
   const { t } = useTranslation('chat');
+  const highlightTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const isSuccess = status === 'completed';
   const isFailed = status === 'failed';
@@ -23,13 +24,13 @@ export function TaskNotificationCard({ status, summary, toolUseId }: TaskNotific
 
   const handleClick = useCallback(() => {
     if (!toolUseId) return;
-    // Find the tool card element by partial id match (history ids contain the toolUseId)
-    const el = document.querySelector(`[id*="${toolUseId}"]`) as HTMLElement | null;
+    const el = document.getElementById(`tool-${toolUseId}`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Brief highlight flash
+      // Clear previous highlight timer to avoid overlap
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
       el.classList.add('ring-2', 'ring-blue-400', 'rounded-lg');
-      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'rounded-lg'), 1500);
+      highlightTimer.current = setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'rounded-lg'), 1500);
     }
   }, [toolUseId]);
 
