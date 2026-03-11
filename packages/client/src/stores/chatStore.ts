@@ -79,7 +79,7 @@ export type StreamingSegment =
       response?: string | string[] | Record<string, string | string[]>;
       errorMessage?: string;
     }
-  | { type: 'task_notification'; taskId: string; status: 'completed' | 'failed' | 'stopped'; outputFile?: string; summary?: string }
+  | { type: 'task_notification'; taskId: string; status: 'completed' | 'failed' | 'stopped'; outputFile?: string; summary?: string; toolUseId?: string }
   | { type: 'tool_summary'; summary: string; precedingToolUseIds: string[] }
   | { type: 'result_error'; subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string };
 
@@ -248,7 +248,7 @@ interface ChatActions {
   /** Update a tool call's elapsed time from tool_progress event */
   updateToolProgress: (toolUseId: string, elapsedTimeSeconds: number) => void;
   /** Add a task notification segment */
-  addTaskNotification: (data: { taskId: string; status: 'completed' | 'failed' | 'stopped'; outputFile?: string; summary?: string }) => void;
+  addTaskNotification: (data: { taskId: string; status: 'completed' | 'failed' | 'stopped'; outputFile?: string; summary?: string; toolUseId?: string }) => void;
   /** Add a tool summary segment */
   addToolSummary: (summary: string, precedingToolUseIds: string[]) => void;
   /** Add a result error segment and persist it */
@@ -1027,6 +1027,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           status: data.status,
           outputFile: data.outputFile,
           summary: data.summary,
+          toolUseId: data.toolUseId,
         },
       ],
     });

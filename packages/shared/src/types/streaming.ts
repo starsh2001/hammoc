@@ -157,6 +157,7 @@ export interface TaskNotificationData {
   status: 'completed' | 'failed' | 'stopped';
   outputFile?: string;
   summary?: string;
+  toolUseId?: string;
 }
 
 export interface ParsedSystemMessage extends ParsedSDKMessageBase {
