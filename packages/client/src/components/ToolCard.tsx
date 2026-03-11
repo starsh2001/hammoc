@@ -13,28 +13,8 @@ import { DiffViewer } from './DiffViewer';
 import { ToolResultRenderer } from './ToolResultRenderer';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } from '../utils/toolUtils';
-import { useFileStore } from '../stores/fileStore';
+import { openProjectFile } from '../utils/fileOpenUtils';
 import { useProjectStore } from '../stores/projectStore';
-
-/**
- * Convert an absolute file path to a project-relative path.
- * Tool calls return absolute paths (e.g. d:\repo\project\src\file.tsx),
- * but the server pathGuard requires relative paths.
- */
-function toRelativePath(absolutePath: string, projectRoot: string): string {
-  if (!projectRoot) return absolutePath;
-  // Normalize separators to forward slash for comparison
-  const normAbs = absolutePath.replace(/\\/g, '/');
-  const normRoot = projectRoot.replace(/\\/g, '/').replace(/\/+$/, '');
-  if (normAbs.startsWith(normRoot + '/')) {
-    return normAbs.slice(normRoot.length + 1);
-  }
-  if (normAbs.startsWith(normRoot + '\\')) {
-    return normAbs.slice(normRoot.length + 1);
-  }
-  // Already relative or different root — return as-is
-  return absolutePath;
-}
 
 export interface ToolCardProps {
   toolName: string;
@@ -227,8 +207,7 @@ export function ToolCard({
   const handleOpenFile = useCallback(() => {
     const filePath = diffData?.filePath;
     if (!filePath || !projectSlug) return;
-    const relativePath = toRelativePath(filePath, projectRoot);
-    useFileStore.getState().openFileInEditor(projectSlug, relativePath);
+    openProjectFile(projectSlug, filePath, projectRoot);
   }, [diffData?.filePath, projectSlug, projectRoot]);
 
   const isDenied = status === 'denied';

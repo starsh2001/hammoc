@@ -11,21 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { getToolExtraParams } from '../utils/toolUtils';
-import { useFileStore } from '../stores/fileStore';
+import { openProjectFile } from '../utils/fileOpenUtils';
 import { useProjectStore } from '../stores/projectStore';
-
-/**
- * Convert an absolute file path to a project-relative path.
- */
-function toRelativePath(absolutePath: string, projectRoot: string): string {
-  if (!projectRoot) return absolutePath;
-  const normAbs = absolutePath.replace(/\\/g, '/');
-  const normRoot = projectRoot.replace(/\\/g, '/').replace(/\/+$/, '');
-  if (normAbs.startsWith(normRoot + '/')) {
-    return normAbs.slice(normRoot.length + 1);
-  }
-  return absolutePath;
-}
 
 interface ToolPathDisplayProps {
   /** Full path or command string */
@@ -83,8 +70,7 @@ export function ToolPathDisplay({ displayInfo, toolName, toolInput, additionalPa
 
   const handleOpenFile = useCallback(() => {
     if (!filePath || !projectSlug) return;
-    const relativePath = toRelativePath(filePath, projectRoot);
-    useFileStore.getState().openFileInEditor(projectSlug, relativePath);
+    openProjectFile(projectSlug, filePath, projectRoot);
   }, [filePath, projectSlug, projectRoot]);
 
   // Extra params for Glob/Grep/Bash/Task (e.g., path, command, agent)
