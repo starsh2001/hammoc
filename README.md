@@ -68,6 +68,17 @@ Options:
 
 Fully responsive. Access from your phone or tablet at `http://<your-ip>:3000` on the same network.
 
+### PWA (Progressive Web App)
+
+Hammoc can be installed as a standalone app on your PC or mobile device.
+
+- **PC (localhost):** Open `http://localhost:3000` in Chrome → click the install icon in the address bar. No extra setup needed.
+- **Mobile (local network):** Requires HTTPS. See the [HTTPS Setup](#https-setup-for-mobile-pwa) section below.
+
+> ⚠️ **Security Notice**
+>
+> Hammoc has not undergone a formal security audit. Always run it on a **trusted local network** or behind a **trusted VPN** (e.g., Tailscale, WireGuard). Do **not** expose Hammoc to the public internet.
+
 ---
 
 ## Features
@@ -262,7 +273,64 @@ npm run dev
 | App config & password | `~/.hammoc/config.json` |
 | User preferences | `~/.hammoc/preferences.json` |
 | Queue templates | `~/.hammoc/queue-templates.json` |
+| TLS certificates | `~/.hammoc/cert.pem`, `~/.hammoc/key.pem` |
 | Session data | `~/.claude/projects/` (managed by Claude Code CLI) |
+
+---
+
+## HTTPS Setup (for Mobile PWA)
+
+PWA installation on mobile devices requires HTTPS. Hammoc automatically starts in HTTPS mode when TLS certificates are found at `~/.hammoc/cert.pem` and `~/.hammoc/key.pem`. If no certificates are found, it falls back to HTTP.
+
+### Option 1: mkcert (Recommended)
+
+1. **Install mkcert:**
+
+   ```bash
+   # Windows
+   winget install FiloSottile.mkcert
+
+   # macOS
+   brew install mkcert
+
+   # Linux
+   # See https://github.com/FiloSottile/mkcert#installation
+   ```
+
+2. **Create a local CA and generate certificates:**
+
+   ```bash
+   mkcert -install
+   mkcert -key-file ~/.hammoc/key.pem -cert-file ~/.hammoc/cert.pem localhost 127.0.0.1 YOUR_LOCAL_IP
+   ```
+
+   Replace `YOUR_LOCAL_IP` with your PC's IP address (e.g., `192.168.0.10`).
+
+3. **Install the root CA on your mobile device:**
+
+   Find the CA certificate location:
+   ```bash
+   mkcert -CAROOT
+   ```
+
+   Transfer `rootCA.pem` to your mobile device, then:
+   - **Android:** Settings → Security → Install certificate
+   - **iOS:** Open the file → Install Profile → Settings → General → About → Certificate Trust Settings → Enable
+
+4. **Start Hammoc** — it will automatically detect the certificates and start in HTTPS mode:
+
+   ```
+   Hammoc Server running on:
+     Local:   https://localhost:3000
+     Network: https://192.168.0.10:3000
+     TLS:     enabled (certs from ~/.hammoc/)
+   ```
+
+5. **Open on mobile:** Navigate to `https://YOUR_LOCAL_IP:3000` and install the PWA.
+
+### Option 2: Reverse Proxy
+
+If you already have a reverse proxy (Nginx, Caddy, etc.) handling HTTPS, simply keep Hammoc running in HTTP mode (no certificates needed) and point your proxy to `http://localhost:3000`.
 
 ---
 
