@@ -379,6 +379,7 @@ export class StreamHandler {
     if (msg.subtype === 'task_notification') {
       const taskMsg = message as unknown as {
         task_id: string;
+        tool_use_id?: string;
         status: 'completed' | 'failed' | 'stopped';
         output_file?: string;
         summary?: string;
@@ -389,6 +390,7 @@ export class StreamHandler {
         status: taskMsg.status ?? 'completed',
         outputFile: taskMsg.output_file,
         summary: taskMsg.summary,
+        toolUseId: taskMsg.tool_use_id,
       };
     }
 
