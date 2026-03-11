@@ -407,7 +407,17 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
     );
   }
 
-  const isLastSegmentIndex = (index: number) => index === streamingSegments.length - 1;
+  // Hide segments after a pending permission/interactive to prevent content
+  // from appearing below unanswered approval buttons (parallel tool execution).
+  const visibleSegments = (() => {
+    const blockIdx = streamingSegments.findIndex((seg) =>
+      (seg.type === 'tool' && seg.permissionStatus === 'waiting') ||
+      (seg.type === 'interactive' && seg.status === 'waiting')
+    );
+    return blockIdx === -1 ? streamingSegments : streamingSegments.slice(0, blockIdx + 1);
+  })();
+
+  const isLastSegmentIndex = (index: number) => index === visibleSegments.length - 1;
 
   return (
     <ScrollProvider value={scrollContextValue}>
@@ -428,8 +438,8 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {/* History messages - always show (segments append to history) */}
         {children}
 
-        {/* Streaming segments - rendered in order */}
-        {shouldRenderSegments && streamingSegments.map((seg, index) => {
+        {/* Streaming segments - rendered in order (hidden after pending permission) */}
+        {shouldRenderSegments && visibleSegments.map((seg, index) => {
           if (isThinkingSegment(seg)) {
             // Thinking is still streaming only if it's the last segment and overall streaming is active
             const isThinkingStillStreaming = isStreaming && isLastSegmentIndex(index);
