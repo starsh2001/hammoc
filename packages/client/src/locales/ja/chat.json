@@ -290,8 +290,8 @@
     "selectAria": "モデルを選択"
   },
   "message": {
-    "taskStatus": "タスク {{status}}",
-    "taskStatusWithSummary": "タスク {{status}}: {{summary}}",
+    "taskStatus": "Agentタスク {{status}}",
+    "taskStatusWithSummary": "Agentタスク {{status}}: {{summary}}",
     "toolSummary": "ツールサマリー",
     "toolCount": "{{count}} ツール",
     "error": "エラー: {{label}}",

@@ -290,8 +290,8 @@
     "selectAria": "모델 선택"
   },
   "message": {
-    "taskStatus": "작업 {{status}}",
-    "taskStatusWithSummary": "작업 {{status}}: {{summary}}",
+    "taskStatus": "Agent 작업 {{status}}",
+    "taskStatusWithSummary": "Agent 작업 {{status}}: {{summary}}",
     "toolSummary": "도구 요약",
     "toolCount": "{{count}}개 도구",
     "error": "오류: {{label}}",

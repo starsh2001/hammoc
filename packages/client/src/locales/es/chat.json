@@ -290,8 +290,8 @@
     "selectAria": "Seleccionar modelo"
   },
   "message": {
-    "taskStatus": "Tarea {{status}}",
-    "taskStatusWithSummary": "Tarea {{status}}: {{summary}}",
+    "taskStatus": "Tarea de Agent {{status}}",
+    "taskStatusWithSummary": "Tarea de Agent {{status}}: {{summary}}",
     "toolSummary": "Resumen de herramientas",
     "toolCount": "{{count}} herramientas",
     "error": "Error: {{label}}",
