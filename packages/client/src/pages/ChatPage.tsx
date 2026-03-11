@@ -807,6 +807,10 @@ export function ChatPage() {
     }
   }, [projectSlug, sessionId, fetchMessages]);
 
+  const handleRefresh = useCallback(() => {
+    window.location.reload();
+  }, []);
+
   // During active streaming (non-compaction), hide history messages after
   // the last user message to prevent duplication with streaming segments.
   // This render-level filter avoids timing races between fetchMessages (HTTP)
@@ -1154,7 +1158,7 @@ export function ChatPage() {
         onTogglePanel={togglePanel}
         gitChangedCount={changedFileCount}
         terminalAccessible={isTerminalAccessible}
-        onRefresh={handleRetry}
+        onRefresh={handleRefresh}
         onRenameSession={handleRenameSession}
         activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null}
         onAgentIndicatorClick={handleAgentIndicatorClick}
