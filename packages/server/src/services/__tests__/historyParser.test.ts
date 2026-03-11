@@ -551,4 +551,92 @@ invalid json line
       expect(isValidRawJSONLMessage(123)).toBe(false);
     });
   });
+
+  describe('task notification parsing', () => {
+    it('should convert task-notification user message (string content) to task_notification type', () => {
+      const raw: RawJSONLMessage[] = [
+        {
+          uuid: 'task-notif-1',
+          type: 'user',
+          timestamp: '2026-03-10T10:00:00Z',
+          message: {
+            role: 'user',
+            content: '<task-notification>\n<task-id>abc123</task-id>\n<status>completed</status>\n<summary>Background command "npm test" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/abc123.output',
+          },
+        },
+      ];
+
+      const result = transformToHistoryMessages(raw);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('task_notification');
+      expect(result[0].taskStatus).toBe('completed');
+      expect(result[0].taskSummary).toBe('Background command "npm test" completed (exit code 0)');
+    });
+
+    it('should convert task-notification user message (array content) to task_notification type', () => {
+      const raw: RawJSONLMessage[] = [
+        {
+          uuid: 'task-notif-2',
+          type: 'user',
+          timestamp: '2026-03-10T10:00:00Z',
+          message: {
+            role: 'user',
+            content: [
+              {
+                type: 'text' as const,
+                text: '<task-notification>\n<task-id>def456</task-id>\n<status>failed</status>\n<summary>Agent "run tests" failed</summary>\n</task-notification>',
+              },
+            ],
+          },
+        },
+      ];
+
+      const result = transformToHistoryMessages(raw);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('task_notification');
+      expect(result[0].taskStatus).toBe('failed');
+      expect(result[0].taskSummary).toBe('Agent "run tests" failed');
+    });
+
+    it('should not convert regular user message containing task-notification text mid-content', () => {
+      const raw: RawJSONLMessage[] = [
+        {
+          uuid: 'not-notif',
+          type: 'user',
+          timestamp: '2026-03-10T10:00:00Z',
+          message: {
+            role: 'user',
+            content: 'Please fix the <task-notification> rendering issue',
+          },
+        },
+      ];
+
+      const result = transformToHistoryMessages(raw);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('user');
+    });
+
+    it('should handle stopped status', () => {
+      const raw: RawJSONLMessage[] = [
+        {
+          uuid: 'task-stopped',
+          type: 'user',
+          timestamp: '2026-03-10T10:00:00Z',
+          message: {
+            role: 'user',
+            content: '<task-notification>\n<task-id>ghi789</task-id>\n<status>stopped</status>\n<summary>Task was stopped by user</summary>\n</task-notification>',
+          },
+        },
+      ];
+
+      const result = transformToHistoryMessages(raw);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('task_notification');
+      expect(result[0].taskStatus).toBe('stopped');
+    });
+  });
 });
