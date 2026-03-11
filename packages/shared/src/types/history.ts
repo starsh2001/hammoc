@@ -52,7 +52,7 @@ export type ContentBlock =
  */
 export interface RawJSONLMessage {
   uuid: string;
-  type: 'user' | 'assistant' | 'tool_use' | 'tool_result' | 'init' | 'system' | 'progress';
+  type: 'user' | 'assistant' | 'tool_use' | 'tool_result' | 'init' | 'system' | 'progress' | 'queue-operation';
   parentUuid?: string | null;
   timestamp: string;
   // For user/assistant messages
@@ -60,6 +60,9 @@ export interface RawJSONLMessage {
     role: 'user' | 'assistant';
     content: string | ContentBlock[];
   };
+  // For queue-operation messages (task notifications)
+  operation?: string;
+  content?: string;
   // For tool_use (inline format)
   toolName?: string;
   toolInput?: Record<string, unknown>;

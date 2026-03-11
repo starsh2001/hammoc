@@ -38,9 +38,13 @@ export async function parseJSONLFile(filePath: string): Promise<RawJSONLMessage[
 
   const messages: RawJSONLMessage[] = [];
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
     try {
-      const parsed = JSON.parse(line) as RawJSONLMessage;
+      const parsed = JSON.parse(lines[i]) as RawJSONLMessage;
+      // queue-operation messages lack uuid — assign a synthetic one
+      if (!parsed.uuid) {
+        parsed.uuid = `__line-${i}`;
+      }
       messages.push(parsed);
     } catch {
       // Skip invalid JSON lines (e.g. trailing newlines, partial writes)
@@ -204,8 +208,25 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
 
   for (const m of raw) {
     // Skip non-display types and meta messages
-    if (!['user', 'assistant', 'tool_use', 'tool_result'].includes(m.type)) continue;
+    if (!['user', 'assistant', 'tool_use', 'tool_result', 'queue-operation'].includes(m.type)) continue;
     if (m.isMeta) continue;
+
+    // Handle queue-operation task notifications
+    if (m.type === 'queue-operation' && m.content) {
+      const taskNotif = parseTaskNotification(m.content);
+      if (taskNotif) {
+        results.push({
+          id: m.uuid || `task-notif-${results.length}`,
+          type: 'task_notification',
+          content: taskNotif.summary,
+          timestamp: m.timestamp,
+          taskStatus: taskNotif.status,
+          taskSummary: taskNotif.summary,
+          taskToolUseId: taskNotif.toolUseId,
+        });
+      }
+      continue;
+    }
 
     if (m.type === 'assistant') {
       const messageContent = m.message?.content;
