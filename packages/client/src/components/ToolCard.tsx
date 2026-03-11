@@ -283,7 +283,7 @@ export function ToolCard({
                 {formatDuration(duration)}
               </span>
             )}
-            {isPending && startedAt != null && (
+            {isPending && startedAt != null && permissionStatus !== 'waiting' && (
               <ToolTimer startedAt={startedAt} />
             )}
           </div>
