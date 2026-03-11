@@ -837,11 +837,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Always persist the actual mode as lastPermissionMode so that switching
     // to 'latest' in the future correctly restores the most recently used mode.
     usePreferencesStore.getState().updatePreference('lastPermissionMode', mode);
-    // If streaming, notify server to update SDK's permission mode in real-time
-    if (get().isStreaming) {
-      const socket = getSocket();
-      socket.emit('permission:mode-change', { mode });
-    }
+    // Notify server based on sync policy
+    const syncPolicy = usePreferencesStore.getState().preferences.permissionSyncPolicy ?? 'streaming';
+    if (syncPolicy === 'never' && !get().isStreaming) return;
+    if (syncPolicy === 'streaming' && !get().isStreaming) return;
+    // 'always' → always emit; 'streaming'/'never' + isStreaming → emit for SDK update
+    const socket = getSocket();
+    socket.emit('permission:mode-change', { mode, syncPolicy });
   },
 
   setContextUsage: (usage: ChatUsage) => set({ contextUsage: usage }),

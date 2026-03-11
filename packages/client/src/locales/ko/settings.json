@@ -23,6 +23,17 @@
       "acceptEdits": "파일 수정을 자동으로 수행합니다",
       "bypass": "모든 권한 확인을 건너뜁니다 (Bash 포함)"
     },
+    "permissionSync": "권한 모드 동기화",
+    "permissionSyncOption": {
+      "never": "동기화 안 함",
+      "streaming": "스트리밍 중에만",
+      "always": "항상 동기화"
+    },
+    "permissionSyncDesc": {
+      "never": "권한 모드 변경이 다른 브라우저에 동기화되지 않습니다",
+      "streaming": "스트리밍 중일 때만 다른 브라우저에 동기화합니다 (기본값)",
+      "always": "같은 세션을 보고 있는 다른 브라우저에 항상 동기화합니다"
+    },
     "markdownMode": "마크다운 파일 열기 모드",
     "markdownOption": {
       "edit": "편집",

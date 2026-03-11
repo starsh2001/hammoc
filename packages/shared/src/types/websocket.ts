@@ -5,6 +5,7 @@
  */
 
 import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage, SubscriptionRateLimit, ApiHealthStatus } from './sdk.js';
+import type { PermissionSyncPolicy } from './preferences.js';
 import type { ToolResult, CompactMetadata, TaskNotificationData } from './streaming.js';
 import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
@@ -41,7 +42,7 @@ export interface ClientToServerEvents {
     interactionType: 'permission' | 'question';
     response?: string | string[] | Record<string, string | string[]>;
   }) => void;
-  'permission:mode-change': (data: { mode: PermissionMode }) => void;
+  'permission:mode-change': (data: { mode: PermissionMode; syncPolicy?: PermissionSyncPolicy }) => void;
   'session:join': (sessionId: string) => void;
   'session:leave': (sessionId: string) => void;
   // Story 15.2: Queue runner events
