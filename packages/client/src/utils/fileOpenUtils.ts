@@ -17,7 +17,8 @@ export function toRelativePath(absolutePath: string, projectRoot: string): strin
   // Normalize separators to forward slash for comparison
   const normAbs = absolutePath.replace(/\\/g, '/');
   const normRoot = projectRoot.replace(/\\/g, '/').replace(/\/+$/, '');
-  if (normAbs.startsWith(normRoot + '/')) {
+  // Case-insensitive prefix check for Windows (D:\ vs d:\)
+  if (normAbs.toLowerCase().startsWith(normRoot.toLowerCase() + '/')) {
     return normAbs.slice(normRoot.length + 1);
   }
   // Already relative or different root — return as-is

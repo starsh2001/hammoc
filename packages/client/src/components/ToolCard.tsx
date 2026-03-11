@@ -14,6 +14,7 @@ import { ToolResultRenderer } from './ToolResultRenderer';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } from '../utils/toolUtils';
 import { openProjectFile } from '../utils/fileOpenUtils';
+import { isImagePath } from '../utils/languageDetect';
 import { useProjectStore } from '../stores/projectStore';
 
 export interface ToolCardProps {
@@ -317,7 +318,9 @@ export function ToolCard({
                 type="button"
                 onClick={handleOpenFile}
                 className={`hover:text-blue-500 dark:hover:text-blue-400 hover:underline transition-colors text-left min-w-0 ${isPathExpanded ? 'break-all' : 'truncate'}`}
-                title={t('tool.openInEditor', { defaultValue: 'Open in editor' })}
+                title={diffData.filePath && isImagePath(diffData.filePath)
+                  ? t('tool.openImage', { defaultValue: 'Open image' })
+                  : t('tool.openInEditor', { defaultValue: 'Open in editor' })}
               >
                 {isPathExpanded ? diffData.filePath : diffData.filePath.split(/[/\\]/).pop() || diffData.filePath}
               </button>
