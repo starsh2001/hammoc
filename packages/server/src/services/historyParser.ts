@@ -148,6 +148,10 @@ function parseTaskNotification(content: string): { status: 'completed' | 'failed
   const trimmed = content.trim();
   if (!trimmed.startsWith('<task-notification>')) return null;
 
+  // Require both <task-id> and <status> to distinguish SDK-generated notifications
+  // from user messages that happen to start with the tag text
+  if (!/<task-id>/.test(trimmed)) return null;
+
   const statusMatch = trimmed.match(/<status>(completed|failed|stopped)<\/status>/);
   const summaryMatch = trimmed.match(/<summary>([\s\S]*?)<\/summary>/);
 
