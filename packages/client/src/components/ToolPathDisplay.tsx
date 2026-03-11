@@ -12,6 +12,7 @@ import { ChevronRight, ChevronDown } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { getToolExtraParams } from '../utils/toolUtils';
 import { openProjectFile } from '../utils/fileOpenUtils';
+import { isImagePath } from '../utils/languageDetect';
 import { useProjectStore } from '../stores/projectStore';
 
 interface ToolPathDisplayProps {
@@ -47,7 +48,7 @@ const FILE_PATH_TOOLS = ['Read', 'Edit', 'Write'];
 /**
  * Tools that should show full content by default (truncated if needed)
  */
-const SHOW_FULL_BY_DEFAULT = ['Glob', 'Grep', 'Bash'];
+const SHOW_FULL_BY_DEFAULT = ['Glob', 'Grep', 'Bash', 'WebFetch', 'WebSearch', 'ToolSearch', 'TaskOutput', 'Agent', 'Task'];
 
 export function ToolPathDisplay({ displayInfo, toolName, toolInput, additionalParams }: ToolPathDisplayProps) {
   const { t } = useTranslation('chat');
@@ -129,7 +130,11 @@ export function ToolPathDisplay({ displayInfo, toolName, toolInput, additionalPa
               ? 'hover:text-blue-500 dark:hover:text-blue-400 hover:underline'
               : 'hover:text-gray-700 dark:hover:text-gray-200'
           }`}
-          title={canOpenFile ? t('tool.openInEditor', { defaultValue: 'Open in editor' }) : undefined}
+          title={canOpenFile
+            ? (filePath && isImagePath(filePath)
+              ? t('tool.openImage', { defaultValue: 'Open image' })
+              : t('tool.openInEditor', { defaultValue: 'Open in editor' }))
+            : undefined}
         >
           <span
             ref={!showFullByDefault || isExpanded ? undefined : textRef}
