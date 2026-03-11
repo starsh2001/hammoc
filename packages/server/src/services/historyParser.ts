@@ -161,7 +161,7 @@ function parseTaskNotification(content: string): { status: 'completed' | 'failed
   return {
     status: statusMatch[1] as 'completed' | 'failed' | 'stopped',
     summary: summaryMatch?.[1] ?? '',
-    toolUseId: toolUseIdMatch?.[1],
+    toolUseId: toolUseIdMatch?.[1]?.trim() || undefined,
   };
 }
 
