@@ -6,13 +6,14 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo, forwardRef, useImperativeHandle, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronRight, CheckCircle, AlertCircle, RefreshCw, Bell, FileText, XOctagon, Database, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, RefreshCw, FileText, XOctagon, Database, Info } from 'lucide-react';
 import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { StreamingIndicator } from './StreamingIndicator';
 import { ToolCard } from './ToolCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
 import { ThinkingBlock } from './ThinkingBlock';
+import { TaskNotificationCard } from './TaskNotificationCard';
 import type { StreamingSegment } from '../stores/chatStore';
 import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, isSystemSegment, isTaskNotificationSegment, isToolSummarySegment, isResultErrorSegment, useChatStore } from '../stores/chatStore';
 import { debugLogger } from '../utils/debugLogger';
@@ -528,27 +529,13 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           }
 
           if (isTaskNotificationSegment(seg)) {
-            const isSuccess = seg.status === 'completed';
-            const isFailed = seg.status === 'failed';
             return (
-              <div key={`seg-task-${seg.taskId}-${index}`} className="flex justify-center">
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border ${
-                  isSuccess
-                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
-                    : isFailed
-                      ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
-                      : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800'
-                }`}>
-                  {isSuccess ? (
-                    <CheckCircle className="w-4 h-4" aria-hidden="true" />
-                  ) : isFailed ? (
-                    <AlertCircle className="w-4 h-4" aria-hidden="true" />
-                  ) : (
-                    <Bell className="w-4 h-4" aria-hidden="true" />
-                  )}
-                  <span>{seg.summary ? t('message.taskStatusWithSummary', { status: seg.status, summary: seg.summary }) : t('message.taskStatus', { status: seg.status })}</span>
-                </div>
-              </div>
+              <TaskNotificationCard
+                key={`seg-task-${seg.taskId}-${index}`}
+                status={seg.status}
+                summary={seg.summary}
+                toolUseId={seg.toolUseId}
+              />
             );
           }
 
