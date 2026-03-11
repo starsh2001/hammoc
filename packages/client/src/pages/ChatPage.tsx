@@ -772,7 +772,7 @@ export function ChatPage() {
   }, [confirmModal.action, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
 
   const handleSessionSelect = useCallback((selectedSessionId: string) => {
-    closePanel();
+    if (panelOverlay) closePanel();
     if (!projectSlug) return;
     // Don't navigate if selecting the current session
     if (selectedSessionId === sessionId) return;
@@ -783,7 +783,7 @@ export function ChatPage() {
     resetSelectedModel();
     resetPermissionMode();
     navigate(`/project/${projectSlug}/session/${selectedSessionId}`, { replace: true });
-  }, [closePanel, sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
+  }, [panelOverlay, closePanel, sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
 
   const handleNewSession = useCallback(() => {
     if (!projectSlug) return;
