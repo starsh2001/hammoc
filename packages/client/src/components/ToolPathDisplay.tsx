@@ -8,11 +8,10 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, ChevronDown, ExternalLink } from 'lucide-react';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { getToolExtraParams } from '../utils/toolUtils';
 import { useFileStore } from '../stores/fileStore';
-import { usePanelStore } from '../stores/panelStore';
 import { useProjectStore } from '../stores/projectStore';
 
 /**
@@ -86,7 +85,6 @@ export function ToolPathDisplay({ displayInfo, toolName, toolInput, additionalPa
     if (!filePath || !projectSlug) return;
     const relativePath = toRelativePath(filePath, projectRoot);
     useFileStore.getState().openFileInEditor(projectSlug, relativePath);
-    usePanelStore.getState().openPanel('files');
   }, [filePath, projectSlug, projectRoot]);
 
   // Extra params for Glob/Grep/Bash/Task (e.g., path, command, agent)
@@ -123,37 +121,37 @@ export function ToolPathDisplay({ displayInfo, toolName, toolInput, additionalPa
 
   return (
     <div className="mt-1">
-      <div className="flex items-start gap-1 max-w-full">
+      <div className="flex items-start gap-1 max-w-full text-xs text-gray-500 dark:text-gray-300">
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-start gap-1 text-xs text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 transition-colors text-left min-w-0"
+          className="flex-shrink-0 mt-0.5 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           aria-expanded={isExpanded}
           aria-label={isExpanded ? t('tool.collapseContent') : t('tool.expandContent')}
         >
           {isExpanded ? (
-            <ChevronDown className="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <ChevronDown className="w-3 h-3" aria-hidden="true" />
           ) : (
-            <ChevronRight className="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <ChevronRight className="w-3 h-3" aria-hidden="true" />
           )}
+        </button>
+        <button
+          type="button"
+          onClick={canOpenFile ? handleOpenFile : () => setIsExpanded(!isExpanded)}
+          className={`text-left min-w-0 transition-colors ${
+            canOpenFile
+              ? 'hover:text-blue-500 dark:hover:text-blue-400 hover:underline'
+              : 'hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
+          title={canOpenFile ? t('tool.openInEditor', { defaultValue: 'Open in editor' }) : undefined}
+        >
           <span
             ref={!showFullByDefault || isExpanded ? undefined : textRef}
-            className={isExpanded ? 'break-all whitespace-pre-wrap' : 'truncate'}
+            className={isExpanded ? 'break-all whitespace-pre-wrap' : 'truncate block'}
           >
             {isExpanded ? displayInfo : collapsedText}
           </span>
         </button>
-        {canOpenFile && (
-          <button
-            type="button"
-            onClick={handleOpenFile}
-            className="flex-shrink-0 mt-0.5 p-0.5 text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors rounded hover:bg-gray-100 dark:hover:bg-[#253040]"
-            aria-label={t('tool.openInEditor', { defaultValue: 'Open in editor' })}
-            title={t('tool.openInEditor', { defaultValue: 'Open in editor' })}
-          >
-            <ExternalLink className="w-3 h-3" aria-hidden="true" />
-          </button>
-        )}
       </div>
       {isExpanded && extraParams && (
         <div className="mt-1 text-xs text-gray-500 dark:text-gray-300 pl-4">
