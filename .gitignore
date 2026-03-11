@@ -56,3 +56,7 @@ out/
 # BMAD (local only)
 .bmad-core/
 .bmad-*/
+
+# Docs (except MANUAL)
+docs/*
+!docs/MANUAL.md
