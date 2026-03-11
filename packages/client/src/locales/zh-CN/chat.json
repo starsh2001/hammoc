@@ -290,8 +290,8 @@
     "selectAria": "选择模型"
   },
   "message": {
-    "taskStatus": "任务 {{status}}",
-    "taskStatusWithSummary": "任务 {{status}}: {{summary}}",
+    "taskStatus": "Agent任务 {{status}}",
+    "taskStatusWithSummary": "Agent任务 {{status}}: {{summary}}",
     "toolSummary": "工具摘要",
     "toolCount": "{{count}} 个工具",
     "error": "错误: {{label}}",
