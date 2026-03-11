@@ -747,4 +747,144 @@ describe('MessageArea', () => {
       expect(screen.queryByTestId('mock-tool-result-renderer')).not.toBeInTheDocument();
     });
   });
+
+  // visibleSegments cutoff - hide segments after pending permission/interactive
+  describe('visibleSegments cutoff (pending permission/interactive)', () => {
+    const textBefore: StreamingSegment = { type: 'text', content: 'Before permission' };
+    const textAfter: StreamingSegment = { type: 'text', content: 'After permission' };
+
+    const waitingPermissionTool: StreamingSegment = {
+      type: 'tool',
+      toolCall: { id: 'tool-perm', name: 'Bash' },
+      status: 'pending',
+      permissionId: 'perm-1',
+      permissionStatus: 'waiting',
+    };
+
+    const approvedPermissionTool: StreamingSegment = {
+      type: 'tool',
+      toolCall: { id: 'tool-perm', name: 'Bash' },
+      status: 'pending',
+      permissionId: 'perm-1',
+      permissionStatus: 'approved',
+    };
+
+    const waitingInteractive: StreamingSegment = {
+      type: 'interactive',
+      id: 'int-1',
+      interactionType: 'question',
+      choices: [{ label: 'A', value: 'a' }, { label: 'B', value: 'b' }],
+      questions: [{ text: 'Choose one', choices: [{ label: 'A', value: 'a' }, { label: 'B', value: 'b' }] }],
+      status: 'waiting',
+    };
+
+    const respondedInteractive: StreamingSegment = {
+      type: 'interactive',
+      id: 'int-1',
+      interactionType: 'question',
+      choices: [{ label: 'A', value: 'a' }, { label: 'B', value: 'b' }],
+      questions: [{ text: 'Choose one', choices: [{ label: 'A', value: 'a' }, { label: 'B', value: 'b' }] }],
+      status: 'responded',
+    };
+
+    it('hides segments after a waiting tool permission', () => {
+      render(
+        <MessageArea
+          streamingSegments={[textBefore, waitingPermissionTool, textAfter]}
+          isStreaming={true}
+        >
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByText('Before permission')).toBeInTheDocument();
+      expect(screen.queryByText('After permission')).not.toBeInTheDocument();
+    });
+
+    it('hides segments after a waiting interactive card', () => {
+      render(
+        <MessageArea
+          streamingSegments={[textBefore, waitingInteractive, textAfter]}
+          isStreaming={true}
+        >
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByText('Before permission')).toBeInTheDocument();
+      expect(screen.queryByText('After permission')).not.toBeInTheDocument();
+    });
+
+    it('reveals segments once permission is approved', () => {
+      render(
+        <MessageArea
+          streamingSegments={[textBefore, approvedPermissionTool, textAfter]}
+          isStreaming={true}
+        >
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByText('Before permission')).toBeInTheDocument();
+      expect(screen.getByText('After permission')).toBeInTheDocument();
+    });
+
+    it('reveals segments once interactive is responded', () => {
+      render(
+        <MessageArea
+          streamingSegments={[textBefore, respondedInteractive, textAfter]}
+          isStreaming={true}
+        >
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByText('Before permission')).toBeInTheDocument();
+      expect(screen.getByText('After permission')).toBeInTheDocument();
+    });
+
+    it('shows all segments when no blocker exists', () => {
+      const normalTool: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-1', name: 'Read' },
+        status: 'pending',
+      };
+
+      render(
+        <MessageArea
+          streamingSegments={[textBefore, normalTool, textAfter]}
+          isStreaming={true}
+        >
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByText('Before permission')).toBeInTheDocument();
+      expect(screen.getByText('After permission')).toBeInTheDocument();
+    });
+
+    it('blocks at the first waiting segment when multiple blockers exist', () => {
+      const secondWaiting: StreamingSegment = {
+        type: 'tool',
+        toolCall: { id: 'tool-perm-2', name: 'Edit' },
+        status: 'pending',
+        permissionId: 'perm-2',
+        permissionStatus: 'waiting',
+      };
+      const textBetween: StreamingSegment = { type: 'text', content: 'Between blockers' };
+
+      render(
+        <MessageArea
+          streamingSegments={[textBefore, waitingPermissionTool, textBetween, secondWaiting, textAfter]}
+          isStreaming={true}
+        >
+          {null}
+        </MessageArea>
+      );
+
+      expect(screen.getByText('Before permission')).toBeInTheDocument();
+      expect(screen.queryByText('Between blockers')).not.toBeInTheDocument();
+      expect(screen.queryByText('After permission')).not.toBeInTheDocument();
+    });
+  });
 });
