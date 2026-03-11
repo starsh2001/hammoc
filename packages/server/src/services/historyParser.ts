@@ -140,6 +140,26 @@ function extractImages(content: ContentBlock[] | undefined): Array<{ mimeType: s
 }
 
 /**
+ * Check if content is a task-notification message inserted by the SDK
+ * @param content The raw message content
+ * @returns Parsed task notification data, or null if not a task notification
+ */
+function parseTaskNotification(content: string): { status: 'completed' | 'failed' | 'stopped'; summary: string } | null {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith('<task-notification>')) return null;
+
+  const statusMatch = trimmed.match(/<status>(completed|failed|stopped)<\/status>/);
+  const summaryMatch = trimmed.match(/<summary>([\s\S]*?)<\/summary>/);
+
+  if (!statusMatch) return null;
+
+  return {
+    status: statusMatch[1] as 'completed' | 'failed' | 'stopped',
+    summary: summaryMatch?.[1] ?? '',
+  };
+}
+
+/**
  * Clean up command tags from user messages
  * Converts "<command-message>X</command-message>\n<command-name>/Y</command-name>" to "/Y"
  * @param content The raw message content
@@ -271,29 +291,55 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
         // If user message has text content (not just tool_results), create user message
         if (toolResultBlocks.length === 0) {
           const textContent = extractTextContent(messageContent);
-          const cleaned = cleanCommandTags(textContent);
-          if (cleaned.trim()) {
-            const images = extractImages(messageContent);
+          // Check for SDK-inserted task notification
+          const taskNotif = parseTaskNotification(textContent);
+          if (taskNotif) {
             results.push({
               id: m.uuid,
-              type: 'user',
-              content: cleaned,
+              type: 'task_notification',
+              content: taskNotif.summary,
               timestamp: m.timestamp,
-              ...(images && { images }),
+              taskStatus: taskNotif.status,
+              taskSummary: taskNotif.summary,
             });
+          } else {
+            const cleaned = cleanCommandTags(textContent);
+            if (cleaned.trim()) {
+              const images = extractImages(messageContent);
+              results.push({
+                id: m.uuid,
+                type: 'user',
+                content: cleaned,
+                timestamp: m.timestamp,
+                ...(images && { images }),
+              });
+            }
           }
         }
       } else {
         // Simple string content
         const text = extractTextContent(messageContent);
-        const cleaned = cleanCommandTags(text);
-        if (cleaned.trim()) {
+        // Check for SDK-inserted task notification
+        const taskNotif = parseTaskNotification(text);
+        if (taskNotif) {
           results.push({
             id: m.uuid,
-            type: 'user',
-            content: cleaned,
+            type: 'task_notification',
+            content: taskNotif.summary,
             timestamp: m.timestamp,
+            taskStatus: taskNotif.status,
+            taskSummary: taskNotif.summary,
           });
+        } else {
+          const cleaned = cleanCommandTags(text);
+          if (cleaned.trim()) {
+            results.push({
+              id: m.uuid,
+              type: 'user',
+              content: cleaned,
+              timestamp: m.timestamp,
+            });
+          }
         }
       }
     } else if (m.type === 'tool_use') {

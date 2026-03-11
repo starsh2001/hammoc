@@ -75,7 +75,7 @@ export interface RawJSONLMessage {
  */
 export interface HistoryMessage {
   id: string;
-  type: 'user' | 'assistant' | 'tool_use' | 'tool_result';
+  type: 'user' | 'assistant' | 'tool_use' | 'tool_result' | 'task_notification';
   content: string;
   timestamp: string; // ISO 8601 format
   // Thinking content (assistant messages only)
@@ -94,6 +94,9 @@ export interface HistoryMessage {
     output?: string;
     error?: string;
   };
+  // Task notification fields (task_notification type only)
+  taskStatus?: 'completed' | 'failed' | 'stopped';
+  taskSummary?: string;
 }
 
 /**

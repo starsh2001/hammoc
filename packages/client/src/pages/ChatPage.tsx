@@ -41,6 +41,7 @@ import { ChatInput } from '../components/ChatInput';
 import { QueueLockedBanner } from '../components/queue/QueueLockedBanner';
 import { useQueueSession } from '../hooks/useQueueSession';
 import { MessageBubble } from '../components/MessageBubble';
+import { TaskNotificationCard } from '../components/TaskNotificationCard';
 import { ToolCallCard } from '../components/ToolCallCard';
 import { InteractiveResponseCard } from '../components/InteractiveResponseCard';
 import { MessageListSkeleton } from '../components/MessageListSkeleton';
@@ -64,6 +65,11 @@ import { PromptChainBanner } from '../components/PromptChainBanner';
 const COMPACT_MESSAGE_PREFIX = 'This session is being continued from a previous conversation';
 
 function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[]) {
+  // Render task notification as notification card (not user bubble)
+  if (message.type === 'task_notification') {
+    return <TaskNotificationCard key={message.id} status={message.taskStatus!} summary={message.taskSummary} />;
+  }
+
   // Render context compaction as a simple assistant "Compacted" bubble
   if (message.type === 'user' && typeof message.content === 'string' && message.content.startsWith(COMPACT_MESSAGE_PREFIX)) {
     return <MessageBubble key={message.id} message={{ ...message, type: 'assistant', content: 'Compacted' }} />;
