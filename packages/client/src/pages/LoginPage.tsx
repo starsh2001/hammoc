@@ -87,9 +87,11 @@ export function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         {/* Logo/Title */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {t('login.title')}
-          </h1>
+          <img
+            src="/logo-splash.png"
+            alt="Hammoc"
+            className="mx-auto w-40 h-auto mb-2"
+          />
           <p className="mt-2 text-gray-600 dark:text-gray-300">
             {isSetupMode
               ? t('login.setupSubtitle')
