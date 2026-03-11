@@ -109,7 +109,9 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
   }
   // tool_use: result already merged by parser — pass as resultOutput
   if (message.type === 'tool_use') {
-    return <div key={message.id} id={`tool-${message.id}`}><ToolCallCard message={message} resultOutput={message.toolResult?.output} /></div>;
+    // Extract toolBlockId from message.id pattern: "${uuid}-tool-${toolBlockId}"
+    const toolBlockId = message.id.includes('-tool-') ? message.id.split('-tool-').pop() : message.id;
+    return <div key={message.id} id={`tool-${toolBlockId}`}><ToolCallCard message={message} resultOutput={message.toolResult?.output} /></div>;
   }
   // Skip successful tool_result — already merged into tool_use by parser
   if (message.type === 'tool_result' && message.toolResult?.success !== false) {
