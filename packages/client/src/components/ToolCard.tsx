@@ -268,7 +268,7 @@ export function ToolCard({
                 : t('tool.completedAria', { name: toolDisplayName })
         }
       >
-        <div className={`max-w-[80%] bg-gray-100 dark:bg-[#263240] rounded-lg p-3 border ${
+        <div data-tool-card className={`max-w-[80%] bg-gray-100 dark:bg-[#263240] rounded-lg p-3 border ${
           isDenied || isError ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-[#253040]'
         }`}>
           {/* Header: icon + name + status + duration */}

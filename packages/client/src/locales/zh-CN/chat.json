@@ -272,7 +272,8 @@
     "ariaLabel": "Claude 正在生成回复",
     "srText": "Claude 正在思考...",
     "waiting": "思考中...",
-    "generating": "生成中..."
+    "generating": "生成中...",
+    "compactionHint": "可能正在进行上下文压缩"
   },
   "markdown": {
     "openFile": "打开文件：{{href}}"

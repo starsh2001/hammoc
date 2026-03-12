@@ -383,6 +383,23 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
     adjustScrollBy,
   }), [scrollToElement, scrollToBottom, adjustScrollBy]);
 
+  // Show compaction hint when waiting too long with high context usage
+  const isWaitingWithNoContent = isStreaming && !isCompacting && streamingSegments.length === 0;
+  const [showCompactionHint, setShowCompactionHint] = useState(false);
+  useEffect(() => {
+    if (!isWaitingWithNoContent) {
+      setShowCompactionHint(false);
+      return;
+    }
+    const ctx = useChatStore.getState().contextUsage;
+    const usagePct = ctx && ctx.contextWindow > 0
+      ? getContextUsagePercent(ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens, ctx.contextWindow)
+      : 0;
+    if (usagePct < 95) return;
+    const timer = setTimeout(() => setShowCompactionHint(true), 10000);
+    return () => clearTimeout(timer);
+  }, [isWaitingWithNoContent]);
+
   // Determine whether to render streaming segments:
   // - Always render during active streaming
   // - Render while pending clear (post-streaming fallback until history loads)
@@ -661,12 +678,17 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         )}
 
         {/* Waiting indicator: streaming started but no content yet (not compacting) */}
-        {isStreaming && !isCompacting && streamingSegments.length === 0 && (
+        {isWaitingWithNoContent && (
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-[#253040] p-3 shadow-sm">
               <div className="flex items-center gap-2">
                 <StreamingIndicator />
-                <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.waiting')}</span>
+                <span className="text-sm text-gray-500 dark:text-gray-300">
+                  {t('streaming.waiting')}
+                  {showCompactionHint && (
+                    <span className="text-amber-600 dark:text-amber-400"> ({t('streaming.compactionHint')})</span>
+                  )}
+                </span>
               </div>
             </div>
           </div>
