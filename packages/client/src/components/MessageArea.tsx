@@ -14,6 +14,7 @@ import { ToolCard } from './ToolCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
 import { ThinkingBlock } from './ThinkingBlock';
 import { TaskNotificationCard } from './TaskNotificationCard';
+import { getContextUsagePercent } from '@hammoc/shared';
 import type { StreamingSegment } from '../stores/chatStore';
 import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, isSystemSegment, isTaskNotificationSegment, isToolSummarySegment, isResultErrorSegment, useChatStore } from '../stores/chatStore';
 import { debugLogger } from '../utils/debugLogger';
@@ -627,7 +628,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {isStreaming && isCompacting && (() => {
           const ctx = useChatStore.getState().contextUsage;
           const usagePct = ctx && ctx.contextWindow > 0
-            ? Math.round(((ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens) / ctx.contextWindow) * 100)
+            ? getContextUsagePercent(ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens, ctx.contextWindow)
             : null;
           const hasResponse = streamingSegments.length > 0 && !streamingSegments.every(s => s.type === 'system');
           return (
