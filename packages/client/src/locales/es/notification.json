@@ -41,7 +41,10 @@
     "abortedInOtherBrowser": "La respuesta fue cancelada en otro navegador.",
     "sessionInUseWarning": "Esta sesión se está usando en otro navegador. Actualiza e inténtalo de nuevo.",
     "respondedInOtherBrowser": "(Respondido en otro navegador)",
-    "disconnectedRetry": "Conexión perdida. Por favor, inténtalo de nuevo después de reconectar."
+    "disconnectedRetry": "Conexión perdida. Por favor, inténtalo de nuevo después de reconectar.",
+    "syncing": "Sincronizando mensajes...",
+    "syncComplete": "Sincronización completa",
+    "syncFailed": "Sincronización fallida. Intenta actualizar la página."
   },
   "bmadStatus": {
     "loadError": "Ocurrió un error al cargar el estado del proyecto BMad."

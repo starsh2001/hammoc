@@ -493,7 +493,7 @@ describe('useStreaming', () => {
 
       // fetchMessages should be called with silent: true when hadSegments=false
       await vi.waitFor(() => {
-        expect(fetchMessagesSpy).toHaveBeenCalledWith('test-project', 'session-1', { silent: true, minMessageCount: 0 });
+        expect(fetchMessagesSpy).toHaveBeenCalledWith('test-project', 'session-1', { silent: true });
       });
     });
 

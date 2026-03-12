@@ -41,7 +41,10 @@
     "abortedInOtherBrowser": "다른 브라우저에서 응답이 중단되었습니다.",
     "sessionInUseWarning": "다른 브라우저에서 이 세션을 사용 중입니다. 새로고침 후 다시 사용할 수 있습니다.",
     "respondedInOtherBrowser": "(다른 브라우저에서 응답됨)",
-    "disconnectedRetry": "연결이 끊어졌습니다. 재연결 후 다시 시도하세요"
+    "disconnectedRetry": "연결이 끊어졌습니다. 재연결 후 다시 시도하세요",
+    "syncing": "메시지 동기화 중...",
+    "syncComplete": "동기화 완료",
+    "syncFailed": "동기화 실패. 새로고침을 시도하세요."
   },
   "bmadStatus": {
     "loadError": "BMad 프로젝트 현황을 불러오는 중 오류가 발생했습니다."
