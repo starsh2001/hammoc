@@ -307,7 +307,8 @@
       "parentNotFound": "Parent directory does not exist.",
       "protectedPath": "Protected paths cannot be deleted.",
       "targetExists": "A file already exists at the target path.",
-      "outsideRoot": "Cannot access paths outside the project root."
+      "outsideRoot": "Cannot access paths outside the project root.",
+      "copyTooLarge": "Directory is too large to copy (max 1000 entries)."
     },
     "toast": {
       "folderCreated": "'{{name}}' folder created.",

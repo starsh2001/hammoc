@@ -38,6 +38,7 @@ export function FileExplorerTab() {
     PROTECTED_PATH: 'files.crudErrors.protectedPath',
     RENAME_TARGET_EXISTS: 'files.crudErrors.targetExists',
     COPY_TARGET_EXISTS: 'files.crudErrors.targetExists',
+    COPY_TOO_LARGE: 'files.crudErrors.copyTooLarge',
     PATH_TRAVERSAL: 'files.crudErrors.outsideRoot',
   };
 
@@ -173,82 +174,81 @@ export function FileExplorerTab() {
 
   const handlePaste = useCallback(async (targetDir: string): Promise<{ sourceDir?: string }> => {
     if (!clipboard || !projectSlug) return {};
-    const sourceName = clipboard.path.includes('/') ? clipboard.path.split('/').pop()! : clipboard.path;
-    const sourceParent = clipboard.path.includes('/')
-      ? clipboard.path.substring(0, clipboard.path.lastIndexOf('/'))
+    // Capture clipboard state at invocation to avoid stale closure on async completion
+    const currentClipboard = clipboard;
+    const sourceName = currentClipboard.path.includes('/') ? currentClipboard.path.split('/').pop()! : currentClipboard.path;
+    const sourceParent = currentClipboard.path.includes('/')
+      ? currentClipboard.path.substring(0, currentClipboard.path.lastIndexOf('/'))
       : '.';
 
     // Skip if cutting to the same directory
-    if (clipboard.operation === 'cut' && sourceParent === targetDir) return {};
+    if (currentClipboard.operation === 'cut' && sourceParent === targetDir) return {};
 
-    // Auto-generate unique name when copying to the same directory
-    let destName = sourceName;
-    if (clipboard.operation === 'copy' && sourceParent === targetDir) {
-      // Handle compound extensions like .tar.gz, .tar.bz2, etc.
-      const compoundExtMatch = sourceName.match(/^(.+?)(\.tar\.\w+)$/);
-      let baseName: string;
-      let ext: string;
-      if (compoundExtMatch) {
-        baseName = compoundExtMatch[1];
-        ext = compoundExtMatch[2];
-      } else {
-        const dotIdx = sourceName.lastIndexOf('.');
-        baseName = dotIdx > 0 ? sourceName.substring(0, dotIdx) : sourceName;
-        ext = dotIdx > 0 ? sourceName.substring(dotIdx) : '';
-      }
-
-      // Find a unique name by checking existing entries
-      const listing = await fileSystemApi.listDirectory(projectSlug, targetDir);
-      const existingNames = new Set(listing.entries.map(e => e.name));
-      destName = `${baseName} - Copy${ext}`;
-      let counter = 2;
-      while (existingNames.has(destName)) {
-        destName = `${baseName} - Copy (${counter})${ext}`;
-        counter++;
-      }
-    }
-
-    const destinationPath = targetDir === '.' ? destName : `${targetDir}/${destName}`;
-    const isCut = clipboard.operation === 'cut';
+    const isCut = currentClipboard.operation === 'cut';
 
     try {
+      // Auto-generate unique name when copying to the same directory
+      let destName = sourceName;
+      if (!isCut && sourceParent === targetDir) {
+        // Handle compound extensions like .tar.gz, .tar.bz2, etc.
+        const compoundExtMatch = sourceName.match(/^(.+?)(\.tar\.\w+)$/);
+        let baseName: string;
+        let ext: string;
+        if (compoundExtMatch) {
+          baseName = compoundExtMatch[1];
+          ext = compoundExtMatch[2];
+        } else {
+          const dotIdx = sourceName.lastIndexOf('.');
+          baseName = dotIdx > 0 ? sourceName.substring(0, dotIdx) : sourceName;
+          ext = dotIdx > 0 ? sourceName.substring(dotIdx) : '';
+        }
+
+        // Find a unique name by checking existing entries
+        const listing = await fileSystemApi.listDirectory(projectSlug, targetDir);
+        const existingNames = new Set(listing.entries.map(e => e.name));
+        destName = `${baseName} - Copy${ext}`;
+        let counter = 2;
+        while (existingNames.has(destName)) {
+          destName = `${baseName} - Copy (${counter})${ext}`;
+          counter++;
+        }
+      }
+
+      const destinationPath = targetDir === '.' ? destName : `${targetDir}/${destName}`;
+
       if (!isCut) {
-        await fileSystemApi.copyEntry(projectSlug, clipboard.path, destinationPath);
+        await fileSystemApi.copyEntry(projectSlug, currentClipboard.path, destinationPath);
         showToast({ message: t('files.toast.pasted', { name: destName }), type: 'success' });
       } else {
         // Cut = move (rename to new location)
-        await fileSystemApi.renameEntry(projectSlug, clipboard.path, destinationPath);
+        await fileSystemApi.renameEntry(projectSlug, currentClipboard.path, destinationPath);
         showToast({ message: t('files.toast.moved', { name: destName }), type: 'success' });
-        setClipboard(null);
+        // Only clear clipboard if it still matches the original cut item
+        setClipboard((prev) =>
+          prev?.path === currentClipboard.path && prev?.operation === 'cut' ? null : prev
+        );
       }
       return isCut && sourceParent !== targetDir ? { sourceDir: sourceParent } : {};
     } catch (err) {
       showToast({ message: getCrudErrorMessage(err, t('files.toast.pasteFailed')), type: 'error' });
       throw err;
     }
-  }, [clipboard, projectSlug, showToast, t]);
+  }, [clipboard, projectSlug, showToast, t, getCrudErrorMessage]);
 
   // --- Download handler ---
 
-  const handleDownload = useCallback(async (path: string) => {
+  const handleDownload = useCallback((path: string) => {
     if (!projectSlug) return;
-    try {
-      const url = fileSystemApi.getDownloadUrl(projectSlug, path);
-      const response = await fetch(url, { credentials: 'include' });
-      if (!response.ok) throw new Error('Download failed');
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = path.includes('/') ? path.split('/').pop()! : path;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      showToast({ message: t('files.toast.downloadFailed'), type: 'error' });
-    }
-  }, [projectSlug, showToast, t]);
+    // Use <a> tag for streaming download (no memory buffering)
+    // Same-origin requests automatically include cookies for auth
+    const url = fileSystemApi.getDownloadUrl(projectSlug, path);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = path.includes('/') ? path.split('/').pop()! : path;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [projectSlug]);
 
   // --- Upload handler ---
 
