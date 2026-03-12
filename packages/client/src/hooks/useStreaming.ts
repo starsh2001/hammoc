@@ -540,7 +540,6 @@ export function useStreaming() {
           outputTokens: existing?.outputTokens ?? 0,
           cacheCreationInputTokens: 0,
           cacheReadInputTokens: 0,
-          contextTokens: data.preTokens,
           totalCostUSD: existing?.totalCostUSD ?? 0,
           contextWindow,
           model: existing?.model,
@@ -645,13 +644,11 @@ export function useStreaming() {
       });
       // Build ChatUsage from assistant message data + existing context usage for cost/model
       const existing = useChatStore.getState().contextUsage;
-      const contextTokens = data.inputTokens + data.cacheCreationInputTokens + data.cacheReadInputTokens + data.outputTokens;
       setContextUsage({
         inputTokens: data.inputTokens,
         outputTokens: data.outputTokens,
         cacheCreationInputTokens: data.cacheCreationInputTokens,
         cacheReadInputTokens: data.cacheReadInputTokens,
-        contextTokens,
         totalCostUSD: existing?.totalCostUSD ?? 0,
         contextWindow: existing?.contextWindow ?? 200000,
         model: existing?.model,
@@ -672,7 +669,6 @@ export function useStreaming() {
           outputTokens: existing?.outputTokens ?? 0,
           cacheCreationInputTokens: 0,
           cacheReadInputTokens: 0,
-          contextTokens: data.estimatedTokens,
           totalCostUSD: existing?.totalCostUSD ?? 0,
           contextWindow: data.contextWindow,
           model: existing?.model,
