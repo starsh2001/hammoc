@@ -32,22 +32,22 @@ export function FileExplorerTab() {
   const { t } = useTranslation('common');
   const { projectSlug } = useParams<{ projectSlug: string }>();
 
-  const CRUD_ERROR_MESSAGES: Record<string, string> = {
-    FILE_ALREADY_EXISTS: t('files.crudErrors.alreadyExists'),
-    PARENT_NOT_FOUND: t('files.crudErrors.parentNotFound'),
-    PROTECTED_PATH: t('files.crudErrors.protectedPath'),
-    RENAME_TARGET_EXISTS: t('files.crudErrors.targetExists'),
-    COPY_TARGET_EXISTS: t('files.crudErrors.targetExists'),
-    PATH_TRAVERSAL: t('files.crudErrors.outsideRoot'),
+  const CRUD_ERROR_I18N_KEYS: Record<string, string> = {
+    FILE_ALREADY_EXISTS: 'files.crudErrors.alreadyExists',
+    PARENT_NOT_FOUND: 'files.crudErrors.parentNotFound',
+    PROTECTED_PATH: 'files.crudErrors.protectedPath',
+    RENAME_TARGET_EXISTS: 'files.crudErrors.targetExists',
+    COPY_TARGET_EXISTS: 'files.crudErrors.targetExists',
+    PATH_TRAVERSAL: 'files.crudErrors.outsideRoot',
   };
 
-  function getCrudErrorMessage(err: unknown, fallbackPrefix: string): string {
+  const getCrudErrorMessage = useCallback((err: unknown, fallbackPrefix: string): string => {
     const apiErr = err as { code?: string; message?: string };
-    if (apiErr.code && CRUD_ERROR_MESSAGES[apiErr.code]) {
-      return `${fallbackPrefix}: ${CRUD_ERROR_MESSAGES[apiErr.code]}`;
+    if (apiErr.code && CRUD_ERROR_I18N_KEYS[apiErr.code]) {
+      return `${fallbackPrefix}: ${t(CRUD_ERROR_I18N_KEYS[apiErr.code])}`;
     }
     return `${fallbackPrefix}: ${(err as Error).message}`;
-  }
+  }, [t]);
   const [filterText, setFilterText] = useState('');
   const [showHidden, setShowHidden] = useState(false);
   const defaultViewMode = usePreferencesStore((s) => s.preferences.fileExplorerViewMode ?? 'grid');
@@ -171,29 +171,48 @@ export function FileExplorerTab() {
     showToast({ message: t('files.toast.cut', { name }), type: 'success' });
   }, [showToast, t]);
 
-  const handlePaste = useCallback(async (targetDir: string) => {
-    if (!clipboard || !projectSlug) return;
+  const handlePaste = useCallback(async (targetDir: string): Promise<{ sourceDir?: string }> => {
+    if (!clipboard || !projectSlug) return {};
     const sourceName = clipboard.path.includes('/') ? clipboard.path.split('/').pop()! : clipboard.path;
     const sourceParent = clipboard.path.includes('/')
       ? clipboard.path.substring(0, clipboard.path.lastIndexOf('/'))
       : '.';
 
     // Skip if cutting to the same directory
-    if (clipboard.operation === 'cut' && sourceParent === targetDir) return;
+    if (clipboard.operation === 'cut' && sourceParent === targetDir) return {};
 
     // Auto-generate unique name when copying to the same directory
     let destName = sourceName;
     if (clipboard.operation === 'copy' && sourceParent === targetDir) {
-      const dotIdx = sourceName.lastIndexOf('.');
-      const baseName = dotIdx > 0 ? sourceName.substring(0, dotIdx) : sourceName;
-      const ext = dotIdx > 0 ? sourceName.substring(dotIdx) : '';
+      // Handle compound extensions like .tar.gz, .tar.bz2, etc.
+      const compoundExtMatch = sourceName.match(/^(.+?)(\.tar\.\w+)$/);
+      let baseName: string;
+      let ext: string;
+      if (compoundExtMatch) {
+        baseName = compoundExtMatch[1];
+        ext = compoundExtMatch[2];
+      } else {
+        const dotIdx = sourceName.lastIndexOf('.');
+        baseName = dotIdx > 0 ? sourceName.substring(0, dotIdx) : sourceName;
+        ext = dotIdx > 0 ? sourceName.substring(dotIdx) : '';
+      }
+
+      // Find a unique name by checking existing entries
+      const listing = await fileSystemApi.listDirectory(projectSlug, targetDir);
+      const existingNames = new Set(listing.entries.map(e => e.name));
       destName = `${baseName} - Copy${ext}`;
+      let counter = 2;
+      while (existingNames.has(destName)) {
+        destName = `${baseName} - Copy (${counter})${ext}`;
+        counter++;
+      }
     }
 
     const destinationPath = targetDir === '.' ? destName : `${targetDir}/${destName}`;
+    const isCut = clipboard.operation === 'cut';
 
     try {
-      if (clipboard.operation === 'copy') {
+      if (!isCut) {
         await fileSystemApi.copyEntry(projectSlug, clipboard.path, destinationPath);
         showToast({ message: t('files.toast.pasted', { name: destName }), type: 'success' });
       } else {
@@ -202,6 +221,7 @@ export function FileExplorerTab() {
         showToast({ message: t('files.toast.moved', { name: destName }), type: 'success' });
         setClipboard(null);
       }
+      return isCut && sourceParent !== targetDir ? { sourceDir: sourceParent } : {};
     } catch (err) {
       showToast({ message: getCrudErrorMessage(err, t('files.toast.pasteFailed')), type: 'error' });
       throw err;
@@ -210,16 +230,25 @@ export function FileExplorerTab() {
 
   // --- Download handler ---
 
-  const handleDownload = useCallback((path: string) => {
+  const handleDownload = useCallback(async (path: string) => {
     if (!projectSlug) return;
-    const url = fileSystemApi.getDownloadUrl(projectSlug, path);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = path.includes('/') ? path.split('/').pop()! : path;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, [projectSlug]);
+    try {
+      const url = fileSystemApi.getDownloadUrl(projectSlug, path);
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = path.includes('/') ? path.split('/').pop()! : path;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      showToast({ message: t('files.toast.downloadFailed'), type: 'error' });
+    }
+  }, [projectSlug, showToast, t]);
 
   // --- Upload handler ---
 
@@ -430,7 +459,6 @@ export function FileExplorerTab() {
           </div>
         ) : viewMode === 'grid' ? (
           <FileGridView
-            key={refreshKey}
             projectSlug={projectSlug}
             currentPath={currentPath}
             showHidden={showHidden}
@@ -445,10 +473,11 @@ export function FileExplorerTab() {
             onPaste={handlePaste}
             onDownload={handleDownload}
             hasClipboard={clipboard !== null}
+            cutPath={clipboard?.operation === 'cut' ? clipboard.path : undefined}
+            refreshTrigger={refreshKey}
           />
         ) : (
           <FileTree
-            key={refreshKey}
             projectSlug={projectSlug}
             basePath="."
             onFileSelect={handleFileSelect}
@@ -463,6 +492,8 @@ export function FileExplorerTab() {
             onPaste={handlePaste}
             onDownload={handleDownload}
             hasClipboard={clipboard !== null}
+            cutPath={clipboard?.operation === 'cut' ? clipboard.path : undefined}
+            refreshTrigger={refreshKey}
           />
         )}
       </div>

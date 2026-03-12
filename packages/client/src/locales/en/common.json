@@ -324,7 +324,8 @@
       "pasteFailed": "Paste failed",
       "uploaded": "'{{name}}' uploaded.",
       "uploadedMultiple": "{{count}} files uploaded.",
-      "uploadFailed": "Upload failed"
+      "uploadFailed": "Upload failed",
+      "downloadFailed": "Download failed"
     }
   },
   "headerMenu": {

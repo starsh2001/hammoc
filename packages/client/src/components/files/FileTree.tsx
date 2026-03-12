@@ -374,9 +374,11 @@ interface FileTreeProps {
   onRenameEntry?: (path: string, newName: string) => Promise<void>;
   onCopy?: (path: string) => void;
   onCut?: (path: string) => void;
-  onPaste?: (targetDir: string) => Promise<void>;
+  onPaste?: (targetDir: string) => Promise<{ sourceDir?: string }>;
   onDownload?: (path: string) => void;
   hasClipboard?: boolean;
+  cutPath?: string;
+  refreshTrigger?: number;
 }
 
 export function FileTree({
@@ -394,6 +396,8 @@ export function FileTree({
   onPaste,
   onDownload,
   hasClipboard = false,
+  cutPath,
+  refreshTrigger,
 }: FileTreeProps) {
   const { t } = useTranslation('common');
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
@@ -434,6 +438,14 @@ export function FileTree({
   useEffect(() => {
     loadDirectory(basePath);
   }, [basePath, loadDirectory]);
+
+  // Reload all cached directories when refreshTrigger changes (e.g. after upload)
+  useEffect(() => {
+    if (refreshTrigger === undefined || refreshTrigger === 0) return;
+    loadDirectory(basePath);
+    expandedDirs.forEach((dir) => loadDirectory(dir));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
 
   const toggleDir = useCallback(
     (path: string) => {
@@ -738,6 +750,7 @@ export function FileTree({
             inlineInput={inlineInput}
             onInlineConfirm={handleInlineInputConfirm}
             onInlineCancel={handleInlineInputCancel}
+            cutPath={cutPath}
           />
         );
       })}
@@ -757,7 +770,9 @@ export function FileTree({
           onCut={onCut ? () => { onCut(contextMenu.targetPath); setContextMenu(null); } : undefined}
           onPaste={onPaste ? () => {
             const pasteDir = contextMenu.targetType === 'directory' ? contextMenu.targetPath : contextMenu.parentPath;
-            onPaste(pasteDir).then(() => loadDirectory(pasteDir)).catch(() => {});
+            onPaste(pasteDir).then((result) => {
+              if (result?.sourceDir) loadDirectory(result.sourceDir);
+            }).catch(() => {}).finally(() => loadDirectory(pasteDir));
             setContextMenu(null);
           } : undefined}
           onDownload={onDownload ? () => { onDownload(contextMenu.targetPath); setContextMenu(null); } : undefined}
@@ -801,6 +816,7 @@ interface FileTreeNodeProps {
   inlineInput: InlineInputState | null;
   onInlineConfirm: (value: string) => void;
   onInlineCancel: () => void;
+  cutPath?: string;
 }
 
 function FileTreeNode({
@@ -824,6 +840,7 @@ function FileTreeNode({
   inlineInput,
   onInlineConfirm,
   onInlineCancel,
+  cutPath,
 }: FileTreeNodeProps) {
   const { t } = useTranslation('common');
   const isDirectory = entry.type === 'directory';
@@ -850,10 +867,12 @@ function FileTreeNode({
     }
   };
 
+  const isCut = cutPath === path;
   const highlightClass = isCurrentOpen
     ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
     : '';
   const focusClass = isFocused ? 'ring-2 ring-blue-500 ring-inset' : '';
+  const cutClass = isCut ? 'opacity-50' : '';
 
   if (isRenaming) {
     return (
@@ -892,6 +911,7 @@ function FileTreeNode({
                   inlineInput={inlineInput}
                   onInlineConfirm={onInlineConfirm}
                   onInlineCancel={onInlineCancel}
+                  cutPath={cutPath}
                 />
               );
             })}
@@ -907,7 +927,7 @@ function FileTreeNode({
         role="treeitem"
         aria-expanded={isDirectory ? isExpanded : undefined}
         aria-selected={!isDirectory ? isCurrentOpen : undefined}
-        className={`group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 ${highlightClass} ${focusClass}`}
+        className={`group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 ${highlightClass} ${focusClass} ${cutClass}`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={handleClick}
         onContextMenu={(e) => onContextMenu(e, path, entry.type)}
@@ -1026,6 +1046,7 @@ function FileTreeNode({
                 inlineInput={inlineInput}
                 onInlineConfirm={onInlineConfirm}
                 onInlineCancel={onInlineCancel}
+                cutPath={cutPath}
               />
             );
           })}

@@ -7,6 +7,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import express from 'express';
 import multer from 'multer';
+import i18next from '../i18n.js';
 import { fileSystemController } from '../controllers/fileSystemController.js';
 
 const router = Router();
@@ -14,9 +15,10 @@ const router = Router();
 // Write body size limit: 5MB (default 100KB is too small for file editing)
 const largeBodyParser = express.json({ limit: '5mb' });
 
-// File upload middleware: 10MB per file, max 10 files (100MB total max)
+// File upload middleware: 10MB per file, max 10 files
+// Uses disk storage to avoid holding large buffers in memory
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({}),
   limits: { fileSize: 10 * 1024 * 1024, files: 10 },
 });
 
@@ -25,21 +27,23 @@ function handleUpload(req: Request, res: Response, next: NextFunction) {
   upload.array('files')(req, res, (err: unknown) => {
     if (err && err instanceof Error && 'code' in err) {
       const code = (err as Error & { code: string }).code;
-      const multerMessages: Record<string, string> = {
-        LIMIT_FILE_SIZE: 'File size exceeds the 10MB limit',
-        LIMIT_FILE_COUNT: 'Too many files (max 10)',
-        LIMIT_UNEXPECTED_FILE: 'Unexpected file field',
+      const t = i18next.getFixedT(req.language || 'en');
+      const multerI18nKeys: Record<string, string> = {
+        LIMIT_FILE_SIZE: 'fs.error.uploadLimitFileSize',
+        LIMIT_FILE_COUNT: 'fs.error.uploadLimitFileCount',
+        LIMIT_UNEXPECTED_FILE: 'fs.error.uploadLimitUnexpectedFile',
       };
-      if (multerMessages[code]) {
+      if (multerI18nKeys[code]) {
         res.status(400).json({
-          error: { code: 'UPLOAD_ERROR', message: multerMessages[code] },
+          error: { code: 'UPLOAD_ERROR', message: t(multerI18nKeys[code]) },
         });
         return;
       }
     }
     if (err) {
+      const t = i18next.getFixedT(req.language || 'en');
       res.status(500).json({
-        error: { code: 'UPLOAD_ERROR', message: (err as Error).message },
+        error: { code: 'UPLOAD_ERROR', message: t('fs.error.uploadError') },
       });
       return;
     }

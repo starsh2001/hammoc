@@ -122,9 +122,11 @@ interface FileGridViewProps {
   onRenameEntry?: (path: string, newName: string) => Promise<void>;
   onCopy?: (path: string) => void;
   onCut?: (path: string) => void;
-  onPaste?: (targetDir: string) => Promise<void>;
+  onPaste?: (targetDir: string) => Promise<{ sourceDir?: string }>;
   onDownload?: (path: string) => void;
   hasClipboard?: boolean;
+  cutPath?: string;
+  refreshTrigger?: number;
 }
 
 export function FileGridView({
@@ -142,6 +144,8 @@ export function FileGridView({
   onPaste,
   onDownload,
   hasClipboard = false,
+  cutPath,
+  refreshTrigger,
 }: FileGridViewProps) {
   const { t } = useTranslation('common');
   const [entries, setEntries] = useState<DirectoryEntry[]>([]);
@@ -171,6 +175,13 @@ export function FileGridView({
   useEffect(() => {
     loadDirectory();
   }, [loadDirectory]);
+
+  // Reload directory when refreshTrigger changes (e.g. after upload)
+  useEffect(() => {
+    if (refreshTrigger === undefined || refreshTrigger === 0) return;
+    loadDirectory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
 
   // Delay spinner to avoid flash on fast loads
   useEffect(() => {
@@ -396,7 +407,7 @@ export function FileGridView({
                 tabIndex={0}
                 className={`group relative flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 ${
                   isCurrentOpen ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-300 dark:ring-blue-700' : ''
-                }`}
+                } ${cutPath === fullPath ? 'opacity-50' : ''}`}
                 onClick={() => handleItemClick(entry)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleItemClick(entry); }}
                 onContextMenu={(e) => handleContextMenu(e, entry)}
@@ -442,7 +453,7 @@ export function FileGridView({
           onCut={onCut ? () => { onCut(contextMenu.targetPath); setContextMenu(null); } : undefined}
           onPaste={onPaste ? () => {
             const pasteDir = contextMenu.targetType === 'directory' ? contextMenu.targetPath : currentPath;
-            onPaste(pasteDir).then(() => loadDirectory()).catch(() => {});
+            onPaste(pasteDir).catch(() => {}).finally(() => loadDirectory());
             setContextMenu(null);
           } : undefined}
           onDownload={onDownload ? () => { onDownload(contextMenu.targetPath); setContextMenu(null); } : undefined}

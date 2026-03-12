@@ -88,7 +88,7 @@ export interface FileRenameResponse {
  * Response for POST /api/projects/:projectSlug/fs/copy
  */
 export interface FileCopyResponse {
-  success: boolean;
+  success: true;
   /** Source path */
   sourcePath: string;
   /** Destination path */
@@ -99,7 +99,7 @@ export interface FileCopyResponse {
  * Response for POST /api/projects/:projectSlug/fs/upload
  */
 export interface FileUploadResponse {
-  success: boolean;
+  success: true;
   /** Uploaded files info */
   files: Array<{
     path: string;
