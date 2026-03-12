@@ -30,7 +30,11 @@
     "chainFull": "체인 최대 5개",
     "chainAdd": "체인에 추가...",
     "ariaLabel": "메시지 입력",
-    "promptChainTitle": "프롬프트 체인"
+    "promptChainTitle": "프롬프트 체인",
+    "startVoice": "음성 입력 시작",
+    "stopVoice": "음성 입력 중지",
+    "voiceDenied": "마이크 접근이 거부되었습니다. 마이크 권한을 허용해주세요.",
+    "voiceError": "음성 입력에 실패했습니다. 다시 시도해주세요."
   },
   "chainMode": {
     "off": "체인 모드 끄기",
