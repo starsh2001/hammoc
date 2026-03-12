@@ -298,9 +298,17 @@ class IssueService {
     const results = await Promise.all(
       mdFiles.map(async (file) => {
         try {
-          const content = await fs.readFile(path.join(issuesDir, file), 'utf-8');
+          const filePath = path.join(issuesDir, file);
+          const [content, stat] = await Promise.all([
+            fs.readFile(filePath, 'utf-8'),
+            fs.stat(filePath),
+          ]);
           const issueId = file.replace(/\.md$/, '');
-          return parseIssueMarkdown(content, issueId);
+          const item = parseIssueMarkdown(content, issueId);
+          if (item) {
+            item.updatedAt = stat.mtimeMs;
+          }
+          return item;
         } catch {
           // Skip files that can't be read (deleted, permissions, etc.)
           return null;
@@ -463,25 +471,34 @@ class IssueService {
     const storyLocation = statusResponse.config.devStoryLocation || 'docs/stories';
 
     for (const epic of statusResponse.epics) {
-      // Convert stories to BoardItems
-      const storyItems: BoardItem[] = epic.stories.map((story) => {
-        const fileMatch = story.file.match(/^(\d+\.\d+)/);
-        const storyId = fileMatch ? fileMatch[1] : story.file.replace(/\.md$/, '');
-        const epicMatch = story.file.match(/^(\d+)\./);
-        const epicNumber = epicMatch ? parseInt(epicMatch[1], 10) : undefined;
+      // Convert stories to BoardItems (with file mtime for sorting)
+      const storyItems: BoardItem[] = await Promise.all(
+        epic.stories.map(async (story) => {
+          const fileMatch = story.file.match(/^(\d+\.\d+)/);
+          const storyId = fileMatch ? fileMatch[1] : story.file.replace(/\.md$/, '');
+          const epicMatch = story.file.match(/^(\d+)\./);
+          const epicNumber = epicMatch ? parseInt(epicMatch[1], 10) : undefined;
 
-        const mapped = mapStoryStatus(story.status, customStatusMappings);
-        return {
-          id: `story-${storyId}`,
-          type: 'story' as const,
-          title: story.title ?? story.file,
-          status: mapped,
-          // Include rawStatus when it differs from the standard mapped value
-          ...(story.status !== mapped && { rawStatus: story.status }),
-          ...(epicNumber !== undefined && { epicNumber }),
-          filePath: `${storyLocation}/${story.file}`,
-        };
-      });
+          const mapped = mapStoryStatus(story.status, customStatusMappings);
+          let updatedAt: number | undefined;
+          try {
+            const stat = await fs.stat(path.join(projectPath, storyLocation, story.file));
+            updatedAt = stat.mtimeMs;
+          } catch { /* file may not exist */ }
+
+          return {
+            id: `story-${storyId}`,
+            type: 'story' as const,
+            title: story.title ?? story.file,
+            status: mapped,
+            // Include rawStatus when it differs from the standard mapped value
+            ...(story.status !== mapped && { rawStatus: story.status }),
+            ...(epicNumber !== undefined && { epicNumber }),
+            filePath: `${storyLocation}/${story.file}`,
+            ...(updatedAt !== undefined && { updatedAt }),
+          };
+        })
+      );
 
       items.push(...storyItems);
 
@@ -510,6 +527,10 @@ class IssueService {
       const total = Math.max(planned, mappedStatuses.length);
       const done = mappedStatuses.filter((s) => s === 'Done').length;
 
+      // Epic updatedAt: use the most recent story mtime
+      const epicUpdatedAt = storyItems.reduce((max, s) =>
+        s.updatedAt && s.updatedAt > max ? s.updatedAt : max, 0) || undefined;
+
       items.push({
         id: `epic-${epic.number}`,
         type: 'epic',
@@ -518,6 +539,7 @@ class IssueService {
         epicNumber: epic.number,
         storyProgress: { total, done },
         ...(epic.filePath && { filePath: epic.filePath }),
+        ...(epicUpdatedAt && { updatedAt: epicUpdatedAt }),
       });
     }
 
