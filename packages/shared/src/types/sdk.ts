@@ -143,6 +143,26 @@ export function getContextUsagePercent(totalInputTokens: number, contextWindow: 
 
 
 /**
+ * Estimate token count from text content.
+ * Uses ~4 chars/token for ASCII and ~2 chars/token for non-ASCII (CJK, etc.)
+ */
+export function estimateTokenCount(text: string): number {
+  let asciiChars = 0;
+  let nonAsciiChars = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) <= 127) {
+      asciiChars++;
+    } else {
+      nonAsciiChars++;
+    }
+  }
+  return Math.ceil(asciiChars / 4) + Math.ceil(nonAsciiChars / 2);
+}
+
+/** Approximate token cost per image attachment (~1600 tokens for typical image) */
+export const IMAGE_TOKEN_ESTIMATE = 1600;
+
+/**
  * Permission modes for tool usage
  */
 export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan' | 'dontAsk';
