@@ -168,6 +168,8 @@ export interface BoardItem {
   /** Project-relative path to the source file (story/epic markdown) */
   filePath?: string;
   attachments?: IssueAttachment[];
+  /** File modification time (epoch ms) — used for sorting recently updated items */
+  updatedAt?: number;
 }
 
 export interface BoardResponse {
