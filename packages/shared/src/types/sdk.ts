@@ -149,8 +149,9 @@ export function getContextUsagePercent(totalInputTokens: number, contextWindow: 
 export function estimateTokenCount(text: string): number {
   let asciiChars = 0;
   let nonAsciiChars = 0;
-  for (let i = 0; i < text.length; i++) {
-    if (text.charCodeAt(i) <= 127) {
+  for (const ch of text) {
+    const cp = ch.codePointAt(0)!;
+    if (cp <= 127) {
       asciiChars++;
     } else {
       nonAsciiChars++;
