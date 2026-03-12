@@ -973,7 +973,7 @@ export function ChatInput({
         )}
 
         <div
-          className={`flex items-center rounded-lg transition-colors duration-150
+          className={`relative flex items-center rounded-lg transition-colors duration-150
                      ${chainMode
                        ? 'bg-violet-50 dark:bg-violet-950/30 border border-violet-300 dark:border-violet-700 focus-within:ring-2 focus-within:ring-violet-500 dark:focus-within:ring-violet-400'
                        : `bg-white dark:bg-[#263240] border border-gray-300 dark:border-[#2d3a4a] focus-within:ring-2 ${modeColors.ring} ${modeColors.border}`}`}
@@ -1009,15 +1009,39 @@ export function ChatInput({
             }
             aria-autocomplete={showCommands || showStarCommands ? 'list' : undefined}
             rows={1}
-            className={`w-full resize-none px-2 py-1
-                       bg-transparent
+            className={`w-full resize-none py-1 pl-2 bg-transparent
                        text-gray-900 dark:text-gray-100
                        placeholder-gray-500 dark:placeholder-gray-400
                        focus:outline-none
                        disabled:cursor-not-allowed
-                       overflow-y-auto overscroll-contain`}
+                       overflow-y-auto overscroll-contain
+                       ${speechRecognition.isSupported ? 'pr-8' : 'pr-2'}`}
             style={{ minHeight: '22px', maxHeight: '120px' }}
           />
+          {/* Voice input button inside textarea area */}
+          {speechRecognition.isSupported && (
+            <button
+              type="button"
+              onClick={speechRecognition.toggle}
+              onPointerDown={preventFocusLoss}
+              disabled={queueLocked || isSessionLocked}
+              aria-label={speechRecognition.isListening ? t('input.stopVoice') : t('input.startVoice')}
+              className={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-md
+                         ${speechRecognition.isListening
+                           ? 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 animate-pulse'
+                           : content.trim()
+                             ? 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'
+                             : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1
+                         transition-all duration-150`}
+              style={{ height: '44px', width: '36px' }}
+            >
+              {speechRecognition.isListening
+                ? <MicOff size={14} aria-hidden="true" />
+                : <Mic size={14} aria-hidden="true" />}
+            </button>
+          )}
         </div>
         <span id="input-hint" className="sr-only">
           {t('input.hint')}
@@ -1121,29 +1145,6 @@ export function ChatInput({
         >
           <Paperclip size={16} aria-hidden="true" />
         </button>
-
-        {/* Voice input button (Speech Recognition) */}
-        {speechRecognition.isSupported && (
-          <button
-            type="button"
-            onClick={speechRecognition.toggle}
-            onPointerDown={preventFocusLoss}
-            disabled={queueLocked || isSessionLocked}
-            aria-label={speechRecognition.isListening ? t('input.stopVoice') : t('input.startVoice')}
-            className={`p-1 rounded-md flex-shrink-0 flex items-center justify-center
-                       ${speechRecognition.isListening
-                         ? 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 animate-pulse'
-                         : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040]'}
-                       disabled:opacity-50 disabled:cursor-not-allowed
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                       transition-all duration-150`}
-            style={{ height: '28px', width: '28px' }}
-          >
-            {speechRecognition.isListening
-              ? <MicOff size={16} aria-hidden="true" />
-              : <Mic size={16} aria-hidden="true" />}
-          </button>
-        )}
 
         {isSessionLocked ? (
           <button
