@@ -545,14 +545,7 @@ export function useStreaming() {
           model: existing?.model,
         });
       }
-      // Only show compacting indicator if no real content has arrived yet.
-      // If response content is already flowing (non-system segments exist),
-      // the compaction happened mid-stream and we should not re-show the orange indicator.
-      const segments = useChatStore.getState().streamingSegments;
-      const hasRealContent = segments.some(s => s.type !== 'system');
-      if (!hasRealContent) {
-        useChatStore.setState({ isCompacting: true });
-      }
+      useChatStore.setState({ isCompacting: true });
       addSystemSegment(`Context compaction (${data.trigger})...`, 'compact');
     };
 
