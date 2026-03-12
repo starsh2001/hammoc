@@ -64,6 +64,10 @@ export function useBoard(projectSlug: string | undefined): UseBoardReturn {
         }
       }
     }
+    // Sort all columns by updatedAt descending (most recently updated first)
+    for (const colId of Object.keys(grouped)) {
+      grouped[colId].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+    }
     return grouped;
   }, [items, boardConfig]);
 
