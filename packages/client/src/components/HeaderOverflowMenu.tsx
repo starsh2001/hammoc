@@ -8,8 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MoreVertical, Moon, Sun, History, Plus, FolderOpen, GitBranch, Terminal, RefreshCw, Settings } from 'lucide-react';
-import { useTheme } from '../hooks/useTheme';
+import { MoreVertical, History, Plus, FolderOpen, GitBranch, Terminal, RefreshCw, Settings } from 'lucide-react';
 
 interface HeaderOverflowMenuProps {
   onShowSessions?: () => void;
@@ -37,9 +36,6 @@ export function HeaderOverflowMenu({
   const { t } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'dark';
-
   // Close on outside click
   useEffect(() => {
     if (!isOpen) return;
@@ -71,11 +67,6 @@ export function HeaderOverflowMenu({
   const handleToggle = useCallback(() => {
     setIsOpen((prev) => !prev);
   }, []);
-
-  const handleThemeToggle = useCallback(() => {
-    toggleTheme();
-    setIsOpen(false);
-  }, [toggleTheme]);
 
   const handleShowSessions = useCallback(() => {
     onShowSessions?.();
@@ -137,24 +128,6 @@ export function HeaderOverflowMenu({
                      border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50
                      py-1 overflow-hidden"
         >
-          {/* Theme toggle */}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={handleThemeToggle}
-            className={itemClass}
-          >
-            {isDark ? (
-              <Sun className="w-4 h-4" aria-hidden="true" />
-            ) : (
-              <Moon className="w-4 h-4" aria-hidden="true" />
-            )}
-            {isDark ? t('project.lightMode') : t('project.darkMode')}
-          </button>
-
-          {/* Divider */}
-          <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
-
           {/* New session */}
           {onNewSession && (
             <button
