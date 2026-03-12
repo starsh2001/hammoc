@@ -100,6 +100,11 @@ export function GlobalSettingsSection() {
             </label>
           ))}
         </div>
+        {theme === 'system' && /SamsungBrowser/i.test(navigator.userAgent) && (
+          <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+            {t('global.themeSystemUnsupported')}
+          </p>
+        )}
       </fieldset>
 
       {/* Default Model Setting */}

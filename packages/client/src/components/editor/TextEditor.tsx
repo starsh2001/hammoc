@@ -49,7 +49,7 @@ export function TextEditor() {
   const editorRef = useRef<EditorView | null>(null);
   const lastFileRef = useRef<{ projectSlug: string; path: string } | null>(null);
 
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   // Adjust editor position when quick panel is open as sidebar
   const isMobile = useIsMobile();
@@ -301,7 +301,7 @@ export function TextEditor() {
                   <LazyCodeMirror
                     value={content}
                     extensions={extensions}
-                    theme={theme === 'dark' ? oneDark : 'light'}
+                    theme={resolvedTheme === 'dark' ? oneDark : 'light'}
                     onChange={(value: string) => setContent(value)}
                     onCreateEditor={handleEditorCreated}
                     height="100%"

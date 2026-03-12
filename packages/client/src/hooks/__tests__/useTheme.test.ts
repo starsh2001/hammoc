@@ -237,6 +237,7 @@ describe('useTheme', () => {
 
       // Simulate OS switching to dark mode
       act(() => {
+        mediaQueryMatches = true;
         mockChangeListeners.forEach(handler =>
           handler({ matches: true } as MediaQueryListEvent)
         );

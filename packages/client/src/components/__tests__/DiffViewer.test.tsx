@@ -124,6 +124,7 @@ let mockTheme = 'dark';
 vi.mock('../../hooks/useTheme', () => ({
   useTheme: () => ({
     theme: mockTheme,
+    resolvedTheme: mockTheme,
     toggleTheme: vi.fn(),
     setTheme: vi.fn(),
   }),
