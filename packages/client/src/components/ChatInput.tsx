@@ -15,7 +15,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Send, Square, Paperclip, X, Lock, Link2, Plus } from 'lucide-react';
+import { Send, Square, Paperclip, X, Lock, Link2, Plus, Mic, MicOff } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useChatStore } from '../stores/chatStore';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -30,6 +30,7 @@ import { FavoritesPopup } from './FavoritesPopup';
 import { FavoritesChipBar } from './FavoritesChipBar';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
 import { UsageStatusBar } from './UsageStatusBar';
+import { useSpeechRecognition, getSpeechLang } from '../hooks/useSpeechRecognition';
 import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage } from '@hammoc/shared';
 import { IMAGE_CONSTRAINTS } from '@hammoc/shared';
 import { generateUUID } from '../utils/uuid';
@@ -206,7 +207,7 @@ export function ChatInput({
   chainMax = 5,
   getChainLength,
 }: ChatInputProps) {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
   // Session lock state (another browser took over this session)
   const isSessionLocked = useChatStore((s) => s.isSessionLocked);
   const subscriptionRateLimit = useChatStore((s) => s.subscriptionRateLimit);
@@ -234,6 +235,33 @@ export function ChatInput({
 
   // WebSocket connection status
   const { isConnected } = useWebSocket();
+
+  // Speech recognition (voice-to-text)
+  const handleSpeechTranscript = useCallback((text: string) => {
+    setContent((prev) => (prev ? prev + ' ' + text : text));
+    // adjustHeight runs via useEffect on content change — no manual resize needed
+  }, []);
+  const speechRecognition = useSpeechRecognition({
+    lang: getSpeechLang(i18n.language),
+    onTranscript: handleSpeechTranscript,
+  });
+
+  // Show toast when speech recognition encounters an error
+  useEffect(() => {
+    if (speechRecognition.error) {
+      const msg = speechRecognition.error === 'not-allowed'
+        ? t('input.voiceDenied')
+        : t('input.voiceError');
+      toast.error(msg);
+    }
+  }, [speechRecognition.error, t]);
+
+  // Stop speech recognition when input becomes locked
+  useEffect(() => {
+    if ((queueLocked || isSessionLocked) && speechRecognition.isListening) {
+      speechRecognition.stop();
+    }
+  }, [queueLocked, isSessionLocked, speechRecognition.isListening, speechRecognition.stop]);
 
   // Detect touch device (mobile) - Enter becomes newline, send via button only
   const isTouchDevice = useMemo(() => window.matchMedia('(pointer: coarse)').matches, []);
@@ -1090,6 +1118,29 @@ export function ChatInput({
         >
           <Paperclip size={16} aria-hidden="true" />
         </button>
+
+        {/* Voice input button (Speech Recognition) */}
+        {speechRecognition.isSupported && (
+          <button
+            type="button"
+            onClick={speechRecognition.toggle}
+            onPointerDown={preventFocusLoss}
+            disabled={queueLocked || isSessionLocked}
+            aria-label={speechRecognition.isListening ? t('input.stopVoice') : t('input.startVoice')}
+            className={`p-1 rounded-md flex-shrink-0 flex items-center justify-center
+                       ${speechRecognition.isListening
+                         ? 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 animate-pulse'
+                         : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040]'}
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                       transition-all duration-150`}
+            style={{ height: '28px', width: '28px' }}
+          >
+            {speechRecognition.isListening
+              ? <MicOff size={16} aria-hidden="true" />
+              : <Mic size={16} aria-hidden="true" />}
+          </button>
+        )}
 
         {isSessionLocked ? (
           <button

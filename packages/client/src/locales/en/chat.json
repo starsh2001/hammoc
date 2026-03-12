@@ -30,7 +30,11 @@
     "chainFull": "Chain max 5",
     "chainAdd": "Add to chain...",
     "ariaLabel": "Message input",
-    "promptChainTitle": "Prompt chain"
+    "promptChainTitle": "Prompt chain",
+    "startVoice": "Start voice input",
+    "stopVoice": "Stop voice input",
+    "voiceDenied": "Microphone access denied. Please allow microphone permission.",
+    "voiceError": "Voice input failed. Please try again."
   },
   "chainMode": {
     "off": "Turn off chain mode",
