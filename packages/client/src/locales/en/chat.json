@@ -276,7 +276,8 @@
     "ariaLabel": "Claude is generating a response",
     "srText": "Claude is thinking...",
     "waiting": "Thinking...",
-    "generating": "Generating..."
+    "generating": "Generating...",
+    "compactionHint": "context compaction may be in progress"
   },
   "markdown": {
     "openFile": "Open file: {{href}}"

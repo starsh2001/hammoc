@@ -272,7 +272,8 @@
     "ariaLabel": "Claudeがレスポンスを生成中です",
     "srText": "Claudeが考えています...",
     "waiting": "考え中...",
-    "generating": "生成中..."
+    "generating": "生成中...",
+    "compactionHint": "コンテキスト圧縮中の可能性があります"
   },
   "markdown": {
     "openFile": "ファイルを開く：{{href}}"

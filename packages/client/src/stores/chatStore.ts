@@ -6,7 +6,6 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus } from '@hammoc/shared';
-import { getEffectiveContextLimit, estimateTokenCount, IMAGE_TOKEN_ESTIMATE } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { usePreferencesStore } from './preferencesStore';
@@ -330,23 +329,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
     // Set isStreaming true immediately (disables input), but delay the visual "waiting" UI.
     // If server responds (session:created/resumed) before the delay, startStreaming cancels it.
-    // Predict whether sending this message will trigger SDK auto-compaction.
-    // compact_boundary event only arrives AFTER compaction completes, so we predict
-    // by adding estimated message tokens (text + images) to current context usage.
+    // For /compact command, set isCompacting immediately. For auto-compaction,
+    // the compact_boundary event will set isCompacting when it actually occurs.
     const isCompactCommand = content.trim() === '/compact';
-    const ctx = get().contextUsage;
-    // Include outputTokens: the previous response becomes part of the conversation
-    // history in the next API call, so it contributes to the next turn's context size.
-    // The ring indicator omits outputTokens (shows current turn's input usage),
-    // but compaction prediction must estimate the NEXT turn's total context.
-    const currentContextTokens = ctx
-      ? ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens + ctx.outputTokens
-      : 0;
-    const messageTokens = estimateTokenCount(content) + (attachments?.length ?? 0) * IMAGE_TOKEN_ESTIMATE;
-    const projectedTokens = currentContextTokens + messageTokens;
-    const effectiveLimit = ctx && ctx.contextWindow > 0 ? getEffectiveContextLimit(ctx.contextWindow) : 0;
-    const likelyCompacting = isCompactCommand || (effectiveLimit > 0 && projectedTokens >= effectiveLimit);
-    set({ isStreaming: true, isCompacting: likelyCompacting });
+    set({ isStreaming: true, isCompacting: isCompactCommand });
 
     // Show "waiting" UI after delay (optimistic — before server confirms)
     streamingDelayTimeoutId = setTimeout(() => {

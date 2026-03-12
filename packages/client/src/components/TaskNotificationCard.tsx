@@ -17,12 +17,19 @@ interface TaskNotificationCardProps {
 export function TaskNotificationCard({ status, summary, toolUseId }: TaskNotificationCardProps) {
   const { t } = useTranslation('chat');
   const highlightTimer = useRef<ReturnType<typeof setTimeout>>();
+  const highlightedEl = useRef<HTMLElement | null>(null);
+
+  const clearHighlight = useCallback(() => {
+    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    if (highlightedEl.current) {
+      highlightedEl.current.classList.remove('ring-2', 'ring-blue-400');
+      highlightedEl.current = null;
+    }
+  }, []);
 
   useEffect(() => {
-    return () => {
-      if (highlightTimer.current) clearTimeout(highlightTimer.current);
-    };
-  }, []);
+    return clearHighlight;
+  }, [clearHighlight]);
 
   const isSuccess = status === 'completed';
   const isFailed = status === 'failed';
@@ -33,12 +40,16 @@ export function TaskNotificationCard({ status, summary, toolUseId }: TaskNotific
     const el = document.getElementById(`tool-${toolUseId}`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Clear previous highlight timer to avoid overlap
-      if (highlightTimer.current) clearTimeout(highlightTimer.current);
-      el.classList.add('ring-2', 'ring-blue-400', 'rounded-lg');
-      highlightTimer.current = setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'rounded-lg'), 1500);
+      // Clear previous highlight before applying new one
+      clearHighlight();
+      // Target the inner card element via data attribute rather than the full-width wrapper
+      const card = el.querySelector('[data-tool-card]') as HTMLElement | null;
+      const target = card || el;
+      target.classList.add('ring-2', 'ring-blue-400');
+      highlightedEl.current = target;
+      highlightTimer.current = setTimeout(clearHighlight, 1500);
     }
-  }, [toolUseId]);
+  }, [toolUseId, clearHighlight]);
 
   return (
     <div className="flex justify-center">
