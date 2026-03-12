@@ -11,6 +11,7 @@ import { HeaderOverflowMenu } from '../HeaderOverflowMenu';
 vi.mock('../../hooks/useTheme', () => ({
   useTheme: () => ({
     theme: 'light',
+    resolvedTheme: 'light',
     toggleTheme: vi.fn(),
   }),
 }));
