@@ -11,13 +11,12 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { toast } from 'sonner';
 import { getSocket, forceReconnect } from '../services/socket';
 import { useAuthStore } from '../stores/authStore';
 import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
 import { debugLog } from '../utils/debugLogger';
-import i18n from '../i18n';
+
 
 /** Re-check auth if page was hidden for more than 5 minutes */
 const AUTH_RECHECK_THRESHOLD_MS = 5 * 60 * 1000;
@@ -26,7 +25,7 @@ const AUTH_RECHECK_THRESHOLD_MS = 5 * 60 * 1000;
 const FORCE_RECONNECT_THRESHOLD_MS = 3 * 1000;
 
 /** Delay before retry fetch after resume (gives JSONL time to flush) */
-const RESUME_FETCH_DELAY_MS = 5 * 1000;
+const RESUME_FETCH_DELAY_MS = 1000;
 
 export function useAppResumeRecovery(): void {
   const hiddenAtRef = useRef<number | null>(null);
@@ -64,14 +63,7 @@ export function useAppResumeRecovery(): void {
             projectSlug: currentProjectSlug,
             sessionId: currentSessionId,
           });
-          toast.loading(i18n.t('notification:streaming.syncing'), { id: 'resume-sync' });
-          msgState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true })
-            .then(() => {
-              toast.success(i18n.t('notification:streaming.syncComplete'), { id: 'resume-sync', duration: 1500 });
-            })
-            .catch(() => {
-              toast.error(i18n.t('notification:streaming.syncFailed'), { id: 'resume-sync', duration: 3000 });
-            });
+          msgState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true });
         }
       }, RESUME_FETCH_DELAY_MS);
     };
