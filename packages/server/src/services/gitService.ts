@@ -76,7 +76,7 @@ class GitService {
 
       const commits = log.all.map((entry) => ({
         hash: entry.hash,
-        message: entry.body || entry.message,
+        message: entry.message,
         author: entry.author_name,
         date: entry.date,
       }));
