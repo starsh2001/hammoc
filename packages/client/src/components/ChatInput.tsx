@@ -625,6 +625,9 @@ export function ChatInput({
       });
     }
 
+    // Stop voice recognition before sending
+    speechRecognition.stop();
+
     addToHistory(trimmedContent);
     onSend(trimmedContent, attachments.length > 0 ? attachments : undefined);
     setContent('');
@@ -634,7 +637,7 @@ export function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = '0px';
     }
-  }, [content, isConnected, isSessionLocked, isStreaming, queueLocked, onSend, attachments, chainMode, chainMax, getChainLength, chainCount]);
+  }, [content, isConnected, isSessionLocked, isStreaming, queueLocked, onSend, attachments, chainMode, chainMax, getChainLength, chainCount, speechRecognition.stop]);
 
   // Keyboard handler
   const handleKeyDown = useCallback(
