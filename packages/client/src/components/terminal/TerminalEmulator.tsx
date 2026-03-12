@@ -14,7 +14,6 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { useTerminalStore } from '../../stores/terminalStore';
 import { useTheme } from '../../hooks/useTheme';
-import type { Theme } from '../../hooks/useTheme';
 
 // ===== Theme Definitions =====
 
@@ -66,15 +65,8 @@ const lightTheme = {
   brightWhite: '#343b58',
 };
 
-function resolveTheme(theme: Theme): 'dark' | 'light' {
-  if (theme === 'system') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  return theme;
-}
-
-function getXtermTheme(theme: Theme) {
-  return resolveTheme(theme) === 'dark' ? darkTheme : lightTheme;
+function getXtermTheme(resolved: 'dark' | 'light') {
+  return resolved === 'dark' ? darkTheme : lightTheme;
 }
 
 // ===== Component =====
@@ -97,7 +89,7 @@ export function TerminalEmulator({
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
 
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const sendInput = useTerminalStore((s) => s.sendInput);
   const resize = useTerminalStore((s) => s.resize);
   const registerDataCallback = useTerminalStore((s) => s.registerDataCallback);
@@ -118,7 +110,7 @@ export function TerminalEmulator({
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
       scrollback: 1000,
       allowProposedApi: false,
-      theme: getXtermTheme(theme),
+      theme: getXtermTheme(resolvedTheme),
     });
 
     const fitAddon = new FitAddon();
@@ -198,9 +190,9 @@ export function TerminalEmulator({
   // Dynamic theme update
   useEffect(() => {
     if (terminalRef.current) {
-      terminalRef.current.options.theme = getXtermTheme(theme);
+      terminalRef.current.options.theme = getXtermTheme(resolvedTheme);
     }
-  }, [theme]);
+  }, [resolvedTheme]);
 
   // Dynamic font size update
   useEffect(() => {

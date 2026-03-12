@@ -6,6 +6,7 @@
       "light": "라이트",
       "system": "시스템"
     },
+    "themeSystemUnsupported": "삼성 인터넷은 시스템 테마 감지를 지원하지 않습니다. 다크 또는 라이트를 직접 선택해 주세요.",
     "defaultModel": "기본 모델",
     "language": "언어",
     "permissionMode": "권한 모드",

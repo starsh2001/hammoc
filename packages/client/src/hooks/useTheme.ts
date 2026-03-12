@@ -7,13 +7,16 @@
  * and localStorage write-through cache (via preferencesStore)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { usePreferencesStore } from '../stores/preferencesStore';
 
 export type Theme = 'light' | 'dark' | 'system';
 
 export interface UseThemeReturn {
+  /** Raw theme preference ('light' | 'dark' | 'system') */
   theme: Theme;
+  /** Resolved effective theme ('light' | 'dark'), accounts for OS preference when 'system' */
+  resolvedTheme: 'dark' | 'light';
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
 }
@@ -24,12 +27,30 @@ function getInitialTheme(): Theme {
   return 'dark';
 }
 
+// Samsung Internet doesn't support prefers-color-scheme; fall back to dark
+const isSamsungBrowser = typeof navigator !== 'undefined' && /SamsungBrowser/i.test(navigator.userAgent);
+
 /** Resolve a theme value to the effective 'dark' or 'light' */
 function resolveTheme(theme: Theme): 'dark' | 'light' {
   if (theme === 'system') {
+    if (isSamsungBrowser) return 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   return theme;
+}
+
+// Subscribe to OS color scheme changes for useSyncExternalStore
+function subscribeToMediaQuery(callback: () => void) {
+  if (typeof window === 'undefined' || !window.matchMedia || isSamsungBrowser) return () => {};
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener('change', callback);
+  return () => mq.removeEventListener('change', callback);
+}
+
+function getOsPrefersDark() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  if (isSamsungBrowser) return true;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
 /**
@@ -38,6 +59,12 @@ function resolveTheme(theme: Theme): 'dark' | 'light' {
  */
 export function useTheme(): UseThemeReturn {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+
+  // Re-render when OS color scheme changes (needed for 'system' mode)
+  const osPrefersDark = useSyncExternalStore(subscribeToMediaQuery, getOsPrefersDark);
+
+  const resolvedTheme: 'dark' | 'light' =
+    theme === 'system' ? (osPrefersDark ? 'dark' : 'light') : theme;
 
   // Sync with preferencesStore when server data arrives
   const storeTheme = usePreferencesStore((s) => s.preferences.theme);
@@ -81,24 +108,18 @@ export function useTheme(): UseThemeReturn {
     applyTheme(theme);
   }, []);
 
-  // Listen for OS theme changes when in 'system' mode
+  // Apply theme whenever resolvedTheme changes (covers OS preference change in system mode)
   useEffect(() => {
-    if (theme !== 'system') return;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = (e: MediaQueryListEvent) => {
-      // Only update DOM, keep store theme as 'system'
-      if (e.matches) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, [theme]);
+    if (resolvedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [resolvedTheme]);
 
   return {
     theme,
+    resolvedTheme,
     toggleTheme,
     setTheme,
   };

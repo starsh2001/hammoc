@@ -32,9 +32,9 @@ export const CodeBlock = memo(function CodeBlock({
   language,
   onCopy,
 }: CodeBlockProps) {
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const { t } = useTranslation('common');
-  const isDark = theme === 'dark';
+  const isDark = resolvedTheme === 'dark';
 
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);

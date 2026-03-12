@@ -10,7 +10,7 @@ import { CodeBlock } from '../CodeBlock';
 
 // Mock useTheme hook
 vi.mock('../../hooks/useTheme', () => ({
-  useTheme: () => ({ theme: 'light', toggleTheme: vi.fn(), setTheme: vi.fn() }),
+  useTheme: () => ({ theme: 'light', resolvedTheme: 'light', toggleTheme: vi.fn(), setTheme: vi.fn() }),
 }));
 
 // Mock Shiki
