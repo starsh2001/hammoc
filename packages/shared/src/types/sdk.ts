@@ -101,6 +101,9 @@ export interface ChatUsage {
   cacheCreationInputTokens: number;
   totalCostUSD: number;
   contextWindow: number;
+  /** Normalized total context tokens (input + cache + output), consistent across
+   *  assistant:usage and context:estimate paths. Use this for compaction prediction. */
+  contextTokens: number;
   /** Primary model used (extracted from result modelUsage) */
   model?: string;
   /** Subscription rate limit info (optional, only available with OAuth) */
