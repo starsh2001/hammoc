@@ -120,6 +120,11 @@ interface FileGridViewProps {
   onCreateEntry?: (parentPath: string, type: 'file' | 'directory', name: string) => Promise<void>;
   onDeleteEntry?: (path: string) => Promise<void>;
   onRenameEntry?: (path: string, newName: string) => Promise<void>;
+  onCopy?: (path: string) => void;
+  onCut?: (path: string) => void;
+  onPaste?: (targetDir: string) => Promise<void>;
+  onDownload?: (path: string) => void;
+  hasClipboard?: boolean;
 }
 
 export function FileGridView({
@@ -132,6 +137,11 @@ export function FileGridView({
   onCreateEntry,
   onDeleteEntry,
   onRenameEntry,
+  onCopy,
+  onCut,
+  onPaste,
+  onDownload,
+  hasClipboard = false,
 }: FileGridViewProps) {
   const { t } = useTranslation('common');
   const [entries, setEntries] = useState<DirectoryEntry[]>([]);
@@ -428,6 +438,15 @@ export function FileGridView({
           onRename={() => handleStartRename()}
           onDelete={() => handleStartDelete()}
           onClose={() => setContextMenu(null)}
+          onCopy={onCopy ? () => { onCopy(contextMenu.targetPath); setContextMenu(null); } : undefined}
+          onCut={onCut ? () => { onCut(contextMenu.targetPath); setContextMenu(null); } : undefined}
+          onPaste={onPaste ? () => {
+            const pasteDir = contextMenu.targetType === 'directory' ? contextMenu.targetPath : currentPath;
+            onPaste(pasteDir).then(() => loadDirectory()).catch(() => {});
+            setContextMenu(null);
+          } : undefined}
+          onDownload={onDownload ? () => { onDownload(contextMenu.targetPath); setContextMenu(null); } : undefined}
+          hasClipboard={hasClipboard}
         />
       )}
 

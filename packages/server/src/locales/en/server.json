@@ -110,7 +110,8 @@
       "contentRequired": "content must be a string in request body",
       "typeRequired": "type must be \"file\" or \"directory\"",
       "newPathRequired": "newPath query parameter is required",
-      "queryRequired": "query parameter is required"
+      "queryRequired": "query parameter is required",
+      "filesRequired": "Files are required for upload"
     },
     "error": {
       "pathTraversal": "Path traversal detected.",
@@ -122,7 +123,9 @@
       "fileAlreadyExists": "File already exists.",
       "protectedPath": "Protected path.",
       "renameTargetExists": "Rename target already exists.",
-      "parentNotFound": "Parent directory not found."
+      "parentNotFound": "Parent directory not found.",
+      "copyTargetExists": "Copy destination already exists.",
+      "uploadError": "File upload error."
     }
   },
   "git": {
