@@ -125,6 +125,7 @@
       "renameTargetExists": "Rename target already exists.",
       "parentNotFound": "Parent directory not found.",
       "copyTargetExists": "Copy destination already exists.",
+      "copyTooLarge": "Directory is too large to copy (max 1000 entries).",
       "uploadError": "File upload error.",
       "uploadLimitFileSize": "File size exceeds the 10MB limit.",
       "uploadLimitFileCount": "Too many files (max 10).",

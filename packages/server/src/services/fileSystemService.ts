@@ -4,7 +4,7 @@
  * [Source: Story 11.1 - Task 4]
  */
 
-import fs from 'fs/promises';
+import fs, { constants as fsConstants } from 'fs/promises';
 import { createReadStream } from 'fs';
 import type { ReadStream } from 'fs';
 import path from 'path';
@@ -521,15 +521,6 @@ class FileSystemService {
     const sourceAbsolute = validateProjectPath(projectRoot, sourcePath);
     const destAbsolute = validateProjectPath(projectRoot, destinationPath);
 
-    // Prevent copying a directory into itself or its subdirectory (infinite recursion)
-    const normalizedSrc = sourceAbsolute.replace(/\\/g, '/').replace(/\/$/, '');
-    const normalizedDest = destAbsolute.replace(/\\/g, '/').replace(/\/$/, '');
-    if (normalizedDest.startsWith(normalizedSrc + '/')) {
-      const err = new Error('Cannot copy a directory into itself');
-      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
-      throw err;
-    }
-
     // Check source exists
     let sourceStat;
     try {
@@ -545,8 +536,18 @@ class FileSystemService {
       throw err;
     }
 
-    // Limit directory copy size to prevent HTTP timeout on large trees
+    // Directory-specific checks
     if (sourceStat.isDirectory()) {
+      // Prevent copying a directory into itself or its subdirectory (infinite recursion)
+      const normalizedSrc = sourceAbsolute.replace(/\\/g, '/').replace(/\/$/, '');
+      const normalizedDest = destAbsolute.replace(/\\/g, '/').replace(/\/$/, '');
+      if (normalizedDest.startsWith(normalizedSrc + '/')) {
+        const err = new Error('Cannot copy a directory into itself');
+        (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+        throw err;
+      }
+
+      // Limit directory copy size to prevent HTTP timeout on large trees
       const MAX_COPY_ENTRIES = 1000;
       let count = 0;
       const countEntries = async (dir: string): Promise<void> => {
@@ -555,7 +556,7 @@ class FileSystemService {
           count++;
           if (count > MAX_COPY_ENTRIES) {
             const err = new Error('Directory too large to copy (max 1000 entries)');
-            (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+            (err as NodeJS.ErrnoException).code = 'COPY_TOO_LARGE';
             throw err;
           }
           if (entry.isDirectory()) {
@@ -656,61 +657,66 @@ class FileSystemService {
       throw err;
     }
 
-    // Pass 1: Validate all files and check destinations don't exist
-    const filesToMove: Array<{ relativePath: string; destPath: string; tempPath: string; size: number }> = [];
-
-    for (const file of files) {
-      // Sanitize filename: strip directory components to prevent path traversal
-      const safeName = path.basename(file.originalname);
-      const relativePath = targetDir === '.' ? safeName : `${targetDir}/${safeName}`;
-      // Validate each file path stays within project root and use the validated absolute path
-      const destPath = validateProjectPath(projectRoot, relativePath);
-
-      // Check destination doesn't already exist
-      try {
-        await fs.stat(destPath);
-        const err = new Error('File already exists');
-        (err as NodeJS.ErrnoException).code = 'FILE_ALREADY_EXISTS';
-        throw err;
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'FILE_ALREADY_EXISTS') {
-          throw error;
-        }
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-          const err = new Error('File upload error');
-          (err as NodeJS.ErrnoException).code = 'UPLOAD_ERROR';
-          throw err;
-        }
-      }
-
-      filesToMove.push({ relativePath, destPath, tempPath: file.path, size: file.size });
-    }
-
-    // Pass 2: Move temp files to destination, rollback on failure
-    const uploadedFiles: Array<{ path: string; size: number }> = [];
-    const movedPaths: string[] = [];
+    // Collect all temp paths for cleanup in finally block
+    const tempPaths = files.map(f => f.path);
 
     try {
-      for (const file of filesToMove) {
-        await fs.rename(file.tempPath, file.destPath);
-        movedPaths.push(file.destPath);
-        uploadedFiles.push({ path: file.relativePath, size: file.size });
-      }
-    } catch {
-      // Rollback: remove files that were already moved
-      for (const movedPath of movedPaths) {
-        try {
-          await fs.unlink(movedPath);
-        } catch {
-          // Best-effort cleanup
-        }
-      }
-      const err = new Error('File upload error');
-      (err as NodeJS.ErrnoException).code = 'UPLOAD_ERROR';
-      throw err;
-    }
+      // Pass 1: Validate all files before writing any
+      const filesToMove: Array<{ relativePath: string; destPath: string; tempPath: string; size: number }> = [];
+      const destPathSet = new Set<string>();
 
-    return { success: true, files: uploadedFiles };
+      for (const file of files) {
+        // Sanitize filename: strip directory components to prevent path traversal
+        const safeName = path.basename(file.originalname);
+        const relativePath = targetDir === '.' ? safeName : `${targetDir}/${safeName}`;
+        // Validate each file path stays within project root and use the validated absolute path
+        const destPath = validateProjectPath(projectRoot, relativePath);
+
+        // Reject duplicate destinations within the same batch
+        if (destPathSet.has(destPath)) {
+          const err = new Error('File already exists');
+          (err as NodeJS.ErrnoException).code = 'FILE_ALREADY_EXISTS';
+          throw err;
+        }
+        destPathSet.add(destPath);
+
+        filesToMove.push({ relativePath, destPath, tempPath: file.path, size: file.size });
+      }
+
+      // Pass 2: Copy temp files to destination atomically (COPYFILE_EXCL prevents overwrite)
+      const uploadedFiles: Array<{ path: string; size: number }> = [];
+      const copiedPaths: string[] = [];
+
+      try {
+        for (const file of filesToMove) {
+          // COPYFILE_EXCL fails if dest exists (atomic, no TOCTOU race)
+          // copyFile works across filesystems unlike rename (avoids EXDEV)
+          await fs.copyFile(file.tempPath, file.destPath, fsConstants.COPYFILE_EXCL);
+          copiedPaths.push(file.destPath);
+          uploadedFiles.push({ path: file.relativePath, size: file.size });
+        }
+      } catch (error) {
+        // Rollback: remove files that were already copied
+        for (const copiedPath of copiedPaths) {
+          try { await fs.unlink(copiedPath); } catch { /* best-effort */ }
+        }
+        if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+          const err = new Error('File already exists');
+          (err as NodeJS.ErrnoException).code = 'FILE_ALREADY_EXISTS';
+          throw err;
+        }
+        const err = new Error('File upload error');
+        (err as NodeJS.ErrnoException).code = 'UPLOAD_ERROR';
+        throw err;
+      }
+
+      return { success: true, files: uploadedFiles };
+    } finally {
+      // Always clean up multer temp files
+      for (const tempPath of tempPaths) {
+        try { await fs.unlink(tempPath); } catch { /* already moved or doesn't exist */ }
+      }
+    }
   }
 
   /**

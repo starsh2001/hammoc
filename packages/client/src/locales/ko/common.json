@@ -312,7 +312,8 @@
       "parentNotFound": "상위 디렉토리가 존재하지 않습니다.",
       "protectedPath": "보호된 경로는 삭제할 수 없습니다.",
       "targetExists": "대상 경로에 파일이 이미 존재합니다.",
-      "outsideRoot": "프로젝트 루트 외부 경로에 접근할 수 없습니다."
+      "outsideRoot": "프로젝트 루트 외부 경로에 접근할 수 없습니다.",
+      "copyTooLarge": "디렉토리가 너무 커서 복사할 수 없습니다 (최대 1000개 항목)."
     },
     "toast": {
       "folderCreated": "'{{name}}' 폴더가 생성되었습니다.",
