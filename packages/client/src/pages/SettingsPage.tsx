@@ -4,7 +4,7 @@
  * [Source: Story 10.1 - Task 2]
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Settings, FolderCog, Bell, Wrench, HelpCircle, Info, LogOut } from 'lucide-react';
@@ -41,6 +41,7 @@ export function SettingsPage() {
 
   // Mobile accordion state
   const [expandedSection, setExpandedSection] = useState<SectionId | null>(activeSection);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleBack = () => {
     navigate('/');
@@ -51,9 +52,31 @@ export function SettingsPage() {
     navigate('/login', { replace: true });
   }, [logout, navigate]);
 
+  const pendingScrollRef = useRef<SectionId | null>(null);
+
   const toggleSection = (id: SectionId) => {
+    const isOpening = expandedSection !== id;
     setExpandedSection(prev => prev === id ? null : id);
+    pendingScrollRef.current = isOpening ? id : null;
   };
+
+  // Scroll after React has rendered the expanded content
+  useEffect(() => {
+    const targetId = pendingScrollRef.current;
+    if (!targetId) return;
+    pendingScrollRef.current = null;
+
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`settings-section-${targetId}`);
+      const container = scrollContainerRef.current;
+      if (el && container) {
+        const elRect = el.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const scrollTarget = container.scrollTop + (elRect.top - containerRect.top);
+        container.scrollTop = scrollTarget;
+      }
+    });
+  }, [expandedSection]);
 
   const renderSectionContent = (sectionId: SectionId) => {
     switch (sectionId) {
@@ -126,10 +149,11 @@ export function SettingsPage() {
       </div>
 
       {/* Mobile layout: accordion */}
-      <div className="content-container md:hidden flex-1 overflow-y-auto w-full">
+      <div ref={scrollContainerRef} className="content-container md:hidden flex-1 overflow-y-auto w-full" style={{ scrollBehavior: 'auto' }}>
         {sectionDefs.map(section => (
           <SettingsSection
             key={section.id}
+            sectionId={section.id}
             title={t(section.titleKey)}
             icon={section.icon}
             isExpanded={expandedSection === section.id}
