@@ -151,7 +151,8 @@
   "layout": {
     "back": "뒤로 가기",
     "projectTabs": "프로젝트 탭",
-    "terminalDisabled": "터미널 비활성화됨: 로컬 네트워크 외부 접근"
+    "terminalDisabled": "터미널 비활성화됨: 로컬 네트워크 외부 접근",
+    "refresh": "새로고침"
   },
   "overview": {
     "bmadLabel": "BMad",

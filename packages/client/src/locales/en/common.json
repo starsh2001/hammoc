@@ -151,7 +151,8 @@
   "layout": {
     "back": "Go back",
     "projectTabs": "Project tabs",
-    "terminalDisabled": "Terminal disabled: External network access"
+    "terminalDisabled": "Terminal disabled: External network access",
+    "refresh": "Refresh"
   },
   "overview": {
     "bmadLabel": "BMad",
