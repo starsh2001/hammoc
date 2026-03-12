@@ -283,7 +283,6 @@ export class ChatService {
               outputTokens: msg.usage.output_tokens,
               cacheReadInputTokens: msg.usage.cache_read_input_tokens ?? 0,
               cacheCreationInputTokens: msg.usage.cache_creation_input_tokens ?? 0,
-              contextTokens: msg.usage.input_tokens + (msg.usage.cache_read_input_tokens ?? 0) + (msg.usage.cache_creation_input_tokens ?? 0) + msg.usage.output_tokens,
               totalCostUSD: msg.total_cost_usd,
               contextWindow: extractContextWindow(msg.modelUsage),
             },
