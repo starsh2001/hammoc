@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { exec, execFile, spawn } from 'child_process';
+import { exec, execFile, execSync, spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -10,6 +10,15 @@ import { config } from '../config/index.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Monorepo root: packages/server/src/controllers → ../../../..  (also works from dist/controllers)
 const MONOREPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
+
+// Resolve npm absolute path once at startup to avoid intermittent PATH issues on Windows
+let npmPath = 'npm';
+try {
+  const cmd = process.platform === 'win32' ? 'where npm' : 'which npm';
+  npmPath = execSync(cmd, { encoding: 'utf-8', timeout: 5000 }).trim().split(/\r?\n/)[0];
+} catch {
+  // Fallback to bare 'npm' and rely on shell PATH
+}
 
 function getLocalNetworkIP(): string | null {
   const interfaces = os.networkInterfaces();
@@ -39,38 +48,54 @@ function getPackageInfo(): { name: string; version: string } {
 let buildState: { status: 'idle' | 'building' | 'updating' | 'failed'; error?: string } = { status: 'idle' };
 
 function spawnAndExit(): void {
-  let exitCancelled = false;
+  // Write a temp script and launch it in its own console/shell.
+  // Direct detached spawn with stdio:'ignore' causes the inner npm process
+  // to inherit NUL handles, which can silently fail on both Windows and Unix.
+  const isWin = process.platform === 'win32';
+  const ext = isWin ? '.bat' : '.sh';
+  const scriptPath = path.join(os.tmpdir(), `hammoc-restart${ext}`);
 
-  const child = spawn('npm', ['run', 'start'], {
-    cwd: MONOREPO_ROOT,
-    detached: true,
-    stdio: 'ignore',
-    shell: true,
-  });
+  if (isWin) {
+    fs.writeFileSync(scriptPath, [
+      '@echo off',
+      'timeout /t 2 /nobreak >nul',
+      `cd /d "${MONOREPO_ROOT}"`,
+      `"${npmPath}" run start`,
+    ].join('\r\n'));
 
-  child.on('error', (err) => {
-    exitCancelled = true;
-    console.error('[server] Failed to spawn new process:', err.message);
-    buildState = { status: 'failed', error: `Spawn failed: ${err.message}` };
-  });
+    const child = spawn('cmd.exe', ['/c', 'start', '""', scriptPath], {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.on('error', (err) => {
+      console.error('[server] Failed to spawn restart process:', err.message);
+      buildState = { status: 'failed', error: `Spawn failed: ${err.message}` };
+    });
+    child.unref();
+  } else {
+    fs.writeFileSync(scriptPath, [
+      '#!/bin/sh',
+      'sleep 2',
+      `cd "${MONOREPO_ROOT}"`,
+      `"${npmPath}" run start`,
+    ].join('\n'));
+    fs.chmodSync(scriptPath, '755');
 
-  child.on('exit', (code) => {
-    if (code !== null && code !== 0) {
-      exitCancelled = true;
-      console.error(`[server] New process exited immediately with code ${code}`);
-      buildState = { status: 'failed', error: `New process exited with code ${code}` };
-    }
-  });
+    const child = spawn(scriptPath, [], {
+      cwd: MONOREPO_ROOT,
+      detached: true,
+      stdio: 'ignore',
+      shell: true,
+    });
+    child.on('error', (err) => {
+      console.error('[server] Failed to spawn restart process:', err.message);
+      buildState = { status: 'failed', error: `Spawn failed: ${err.message}` };
+    });
+    child.unref();
+  }
 
-  child.unref();
-  setTimeout(() => {
-    if (exitCancelled) {
-      console.log('[server] Not exiting — new process failed to start.');
-      return;
-    }
-    console.log('[server] Exiting old server process.');
-    process.exit(0);
-  }, 3000);
+  console.log('[server] Exiting old server process. New server will start in ~2s.');
+  setTimeout(() => process.exit(0), 500);
 }
 
 export const serverController = {
@@ -104,7 +129,7 @@ export const serverController = {
     buildState = { status: 'building' };
     res.json({ message: req.t!('server.info.buildStarted') });
 
-    exec('npm run build', { cwd: MONOREPO_ROOT, timeout: 300_000, env: { ...process.env, NODE_ENV: 'development' } }, (err, _stdout, stderr) => {
+    exec(`"${npmPath}" run build`, { cwd: MONOREPO_ROOT, timeout: 300_000, env: { ...process.env, NODE_ENV: 'development' } }, (err, _stdout, stderr) => {
       if (err) {
         const errorMsg = stderr?.trim() || err.message;
         console.error('[restart] Build failed:', errorMsg);
@@ -129,7 +154,7 @@ export const serverController = {
     }
 
     const { name, version: currentVersion } = getPackageInfo();
-    execFile('npm', ['view', name, 'version'], { timeout: 30_000, shell: true }, (err, stdout) => {
+    execFile(npmPath, ['view', name, 'version'], { timeout: 30_000, shell: true }, (err, stdout) => {
       if (err) {
         res.status(502).json({ error: { code: 'REGISTRY_ERROR', message: req.t!('server.error.npmCheckFailed') } });
         return;
@@ -163,7 +188,7 @@ export const serverController = {
     buildState = { status: 'updating' };
     res.json({ message: req.t!('server.info.updateStarted') });
 
-    execFile('npm', ['install', '-g', `${name}@latest`], { timeout: 300_000, shell: true }, (err, _stdout, stderr) => {
+    execFile(npmPath, ['install', '-g', `${name}@latest`], { timeout: 300_000, shell: true }, (err, _stdout, stderr) => {
       if (err) {
         const errorMsg = stderr?.trim() || err.message;
         console.error('[update] npm install failed:', errorMsg);
