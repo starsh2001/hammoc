@@ -148,6 +148,7 @@ export function useSpeechRecognition({
     try {
       recognition.start();
     } catch {
+      recognitionRef.current = null;
       setError('start-failed');
       setIsListening(false);
     }
