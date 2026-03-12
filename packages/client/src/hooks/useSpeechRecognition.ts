@@ -77,6 +77,8 @@ export function useSpeechRecognition({
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const onTranscriptRef = useRef(onTranscript);
+  const cooldownRef = useRef(false);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSupported = getSpeechRecognition() !== null;
 
   // Keep callback ref up to date to avoid stale closures
@@ -88,6 +90,7 @@ export function useSpeechRecognition({
   useEffect(() => {
     return () => {
       recognitionRef.current?.abort();
+      if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
     };
   }, []);
 
@@ -101,6 +104,9 @@ export function useSpeechRecognition({
       stop();
       return;
     }
+
+    // Prevent accidental restart right after auto-stop
+    if (cooldownRef.current) return;
 
     const SR = getSpeechRecognition();
     if (!SR) {
@@ -143,6 +149,13 @@ export function useSpeechRecognition({
     recognition.onend = () => {
       setIsListening(false);
       recognitionRef.current = null;
+      // Brief cooldown to prevent accidental restart when user taps
+      // "stop" right after browser auto-stops recognition
+      cooldownRef.current = true;
+      cooldownTimerRef.current = setTimeout(() => {
+        cooldownRef.current = false;
+        cooldownTimerRef.current = null;
+      }, 500);
     };
 
     try {
