@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus } from '@hammoc/shared';
-import { getContextUsagePercent, getEffectiveContextLimit, estimateTokenCount, IMAGE_TOKEN_ESTIMATE } from '@hammoc/shared';
+import { getEffectiveContextLimit, estimateTokenCount, IMAGE_TOKEN_ESTIMATE } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { usePreferencesStore } from './preferencesStore';
@@ -335,11 +335,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // by adding estimated message tokens (text + images) to current context usage.
     const isCompactCommand = content.trim() === '/compact';
     const ctx = get().contextUsage;
-    const totalInputTokens = ctx
-      ? ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens
+    const currentContextTokens = ctx
+      ? ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens + ctx.outputTokens
       : 0;
     const messageTokens = estimateTokenCount(content) + (attachments?.length ?? 0) * IMAGE_TOKEN_ESTIMATE;
-    const projectedTokens = totalInputTokens + messageTokens;
+    const projectedTokens = currentContextTokens + messageTokens;
     const effectiveLimit = ctx && ctx.contextWindow > 0 ? getEffectiveContextLimit(ctx.contextWindow) : 0;
     const likelyCompacting = isCompactCommand || (effectiveLimit > 0 && projectedTokens >= effectiveLimit);
     set({ isStreaming: true, isCompacting: likelyCompacting });
