@@ -335,8 +335,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // by adding estimated message tokens (text + images) to current context usage.
     const isCompactCommand = content.trim() === '/compact';
     const ctx = get().contextUsage;
+    // Include outputTokens: the previous response becomes part of the conversation
+    // history in the next API call, so it contributes to the next turn's context size.
+    // The ring indicator omits outputTokens (shows current turn's input usage),
+    // but compaction prediction must estimate the NEXT turn's total context.
     const currentContextTokens = ctx
-      ? ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens
+      ? ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens + ctx.outputTokens
       : 0;
     const messageTokens = estimateTokenCount(content) + (attachments?.length ?? 0) * IMAGE_TOKEN_ESTIMATE;
     const projectedTokens = currentContextTokens + messageTokens;
