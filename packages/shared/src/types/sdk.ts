@@ -154,7 +154,8 @@ export function estimateTokenCount(text: string): number {
     if (cp <= 127) {
       asciiChars++;
     } else {
-      nonAsciiChars++;
+      // Astral code points (emoji, etc.) use more bytes → weight as 2 non-ASCII units
+      nonAsciiChars += cp > 0xFFFF ? 2 : 1;
     }
   }
   return Math.ceil(asciiChars / 4) + Math.ceil(nonAsciiChars / 2);

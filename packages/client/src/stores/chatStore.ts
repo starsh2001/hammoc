@@ -335,8 +335,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // by adding estimated message tokens (text + images) to current context usage.
     const isCompactCommand = content.trim() === '/compact';
     const ctx = get().contextUsage;
+    // Note: after context:estimate, inputTokens already includes outputTokens
+    // (server sets estimatedContextTokens = input + cache + output), so we must
+    // NOT add outputTokens again here to avoid double-counting.
     const currentContextTokens = ctx
-      ? ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens + ctx.outputTokens
+      ? ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens
       : 0;
     const messageTokens = estimateTokenCount(content) + (attachments?.length ?? 0) * IMAGE_TOKEN_ESTIMATE;
     const projectedTokens = currentContextTokens + messageTokens;
