@@ -110,7 +110,8 @@
       "contentRequired": "요청 본문에 content 문자열이 필요합니다",
       "typeRequired": "type은 \"file\" 또는 \"directory\"이어야 합니다",
       "newPathRequired": "newPath 쿼리 파라미터가 필요합니다",
-      "queryRequired": "query 파라미터가 필요합니다"
+      "queryRequired": "query 파라미터가 필요합니다",
+      "filesRequired": "업로드할 파일이 필요합니다"
     },
     "error": {
       "pathTraversal": "경로 탐색이 감지되었습니다.",
@@ -122,7 +123,9 @@
       "fileAlreadyExists": "파일이 이미 존재합니다.",
       "protectedPath": "보호된 경로입니다.",
       "renameTargetExists": "이름 변경 대상이 이미 존재합니다.",
-      "parentNotFound": "상위 디렉토리를 찾을 수 없습니다."
+      "parentNotFound": "상위 디렉토리를 찾을 수 없습니다.",
+      "copyTargetExists": "복사 대상 경로에 파일이 이미 존재합니다.",
+      "uploadError": "파일 업로드 중 오류가 발생했습니다."
     }
   },
   "git": {

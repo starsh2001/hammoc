@@ -18,6 +18,10 @@ import {
   FolderPlus,
   Pencil,
   Trash2,
+  Copy,
+  Scissors,
+  ClipboardPaste,
+  Download,
 } from 'lucide-react';
 import type { DirectoryEntry } from '@hammoc/shared';
 
@@ -97,17 +101,27 @@ export interface FileTreeContextMenuProps {
   onRename: () => void;
   onDelete: () => void;
   onClose: () => void;
+  onCopy?: () => void;
+  onCut?: () => void;
+  onPaste?: () => void;
+  onDownload?: () => void;
+  hasClipboard?: boolean;
 }
 
 export function FileTreeContextMenu({
   x,
   y,
-  targetType: _targetType,
+  targetType,
   onNewFile,
   onNewFolder,
   onRename,
   onDelete,
   onClose,
+  onCopy,
+  onCut,
+  onPaste,
+  onDownload,
+  hasClipboard = false,
 }: FileTreeContextMenuProps) {
   const { t } = useTranslation('common');
   const menuRef = useRef<HTMLDivElement>(null);
@@ -141,10 +155,18 @@ export function FileTreeContextMenu({
     };
   }, [onClose]);
 
-  const menuItems = [
+  type MenuItem = { icon: typeof FilePlus; label: string; action: () => void; danger: boolean; disabled?: boolean } | { type: 'separator' };
+
+  const menuItems: MenuItem[] = [
     { icon: FilePlus, label: t('files.newFile'), action: onNewFile, danger: false },
     { icon: FolderPlus, label: t('files.newFolder'), action: onNewFolder, danger: false },
     { type: 'separator' as const },
+    ...(onCopy ? [{ icon: Copy, label: t('files.copy'), action: onCopy, danger: false }] : []),
+    ...(onCut ? [{ icon: Scissors, label: t('files.cut'), action: onCut, danger: false }] : []),
+    ...(onPaste ? [{ icon: ClipboardPaste, label: t('files.paste'), action: onPaste, danger: false, disabled: !hasClipboard }] : []),
+    ...((onCopy || onCut || onPaste) ? [{ type: 'separator' as const }] : []),
+    ...(onDownload && targetType === 'file' ? [{ icon: Download, label: t('files.download'), action: onDownload, danger: false }] : []),
+    ...(onDownload && targetType === 'file' ? [{ type: 'separator' as const }] : []),
     { icon: Pencil, label: t('files.rename'), action: onRename, danger: false },
     { icon: Trash2, label: t('button.delete'), action: onDelete, danger: true },
   ];
@@ -184,20 +206,24 @@ export function FileTreeContextMenu({
           return <hr key={`sep-${i}`} className="border-t border-gray-200 dark:border-[#253040] my-1" />;
         }
         const Icon = item.icon;
+        const isDisabled = 'disabled' in item && item.disabled;
         return (
           <button
             key={item.label}
             role="menuitem"
-            tabIndex={0}
+            tabIndex={isDisabled ? -1 : 0}
             autoFocus={i === 0}
-            className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer w-full ${
-              item.danger
-                ? 'text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-[#253040]'
-                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040]'
+            disabled={isDisabled}
+            className={`flex items-center gap-2 px-3 py-1.5 text-sm w-full ${
+              isDisabled
+                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                : item.danger
+                  ? 'text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-[#253040] cursor-pointer'
+                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] cursor-pointer'
             }`}
             onClick={(e) => {
               e.stopPropagation();
-              item.action();
+              if (!isDisabled) item.action();
             }}
           >
             <Icon className="w-4 h-4" />
@@ -346,6 +372,11 @@ interface FileTreeProps {
   onCreateEntry?: (parentPath: string, type: 'file' | 'directory', name: string) => Promise<void>;
   onDeleteEntry?: (path: string) => Promise<void>;
   onRenameEntry?: (path: string, newName: string) => Promise<void>;
+  onCopy?: (path: string) => void;
+  onCut?: (path: string) => void;
+  onPaste?: (targetDir: string) => Promise<void>;
+  onDownload?: (path: string) => void;
+  hasClipboard?: boolean;
 }
 
 export function FileTree({
@@ -358,6 +389,11 @@ export function FileTree({
   onCreateEntry,
   onDeleteEntry,
   onRenameEntry,
+  onCopy,
+  onCut,
+  onPaste,
+  onDownload,
+  hasClipboard = false,
 }: FileTreeProps) {
   const { t } = useTranslation('common');
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
@@ -717,6 +753,15 @@ export function FileTree({
           onRename={() => handleStartRename()}
           onDelete={() => handleStartDelete()}
           onClose={() => setContextMenu(null)}
+          onCopy={onCopy ? () => { onCopy(contextMenu.targetPath); setContextMenu(null); } : undefined}
+          onCut={onCut ? () => { onCut(contextMenu.targetPath); setContextMenu(null); } : undefined}
+          onPaste={onPaste ? () => {
+            const pasteDir = contextMenu.targetType === 'directory' ? contextMenu.targetPath : contextMenu.parentPath;
+            onPaste(pasteDir).then(() => loadDirectory(pasteDir)).catch(() => {});
+            setContextMenu(null);
+          } : undefined}
+          onDownload={onDownload ? () => { onDownload(contextMenu.targetPath); setContextMenu(null); } : undefined}
+          hasClipboard={hasClipboard}
         />
       )}
 

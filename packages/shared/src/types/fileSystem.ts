@@ -85,6 +85,29 @@ export interface FileRenameResponse {
 }
 
 /**
+ * Response for POST /api/projects/:projectSlug/fs/copy
+ */
+export interface FileCopyResponse {
+  success: boolean;
+  /** Source path */
+  sourcePath: string;
+  /** Destination path */
+  destinationPath: string;
+}
+
+/**
+ * Response for POST /api/projects/:projectSlug/fs/upload
+ */
+export interface FileUploadResponse {
+  success: boolean;
+  /** Uploaded files info */
+  files: Array<{
+    path: string;
+    size: number;
+  }>;
+}
+
+/**
  * File System error codes and messages
  * Pattern: PROJECT_ERRORS (packages/shared/src/types/project.ts)
  */
@@ -138,6 +161,16 @@ export const FILE_SYSTEM_ERRORS = {
     code: 'PARENT_NOT_FOUND',
     message: '상위 디렉토리가 존재하지 않습니다.',
     httpStatus: 404,
+  },
+  COPY_TARGET_EXISTS: {
+    code: 'COPY_TARGET_EXISTS',
+    message: '복사 대상 경로에 파일이 이미 존재합니다.',
+    httpStatus: 409,
+  },
+  UPLOAD_ERROR: {
+    code: 'UPLOAD_ERROR',
+    message: '파일 업로드 중 오류가 발생했습니다.',
+    httpStatus: 500,
   },
 } as const;
 

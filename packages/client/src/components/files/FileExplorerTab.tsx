@@ -2,12 +2,13 @@
  * FileExplorerTab - File explorer tab for project view
  * [Source: Story 13.2 - Task 2]
  * [Extended: Story 13.3 - Task 5 — CRUD callbacks and toast integration]
+ * [Extended: Copy/Cut/Paste, Download, Upload support]
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, FolderRoot, Loader2, List, LayoutGrid } from 'lucide-react';
+import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, FolderRoot, Loader2, List, LayoutGrid, Upload } from 'lucide-react';
 
 import type { FileSearchResult } from '@hammoc/shared';
 import { useFileStore } from '../../stores/fileStore.js';
@@ -22,6 +23,11 @@ import { fileSystemApi } from '../../services/api/fileSystem.js';
 import { FileTree } from './FileTree.js';
 import { FileGridView } from './FileGridView.js';
 
+interface ClipboardState {
+  path: string;
+  operation: 'copy' | 'cut';
+}
+
 export function FileExplorerTab() {
   const { t } = useTranslation('common');
   const { projectSlug } = useParams<{ projectSlug: string }>();
@@ -31,6 +37,7 @@ export function FileExplorerTab() {
     PARENT_NOT_FOUND: t('files.crudErrors.parentNotFound'),
     PROTECTED_PATH: t('files.crudErrors.protectedPath'),
     RENAME_TARGET_EXISTS: t('files.crudErrors.targetExists'),
+    COPY_TARGET_EXISTS: t('files.crudErrors.targetExists'),
     PATH_TRAVERSAL: t('files.crudErrors.outsideRoot'),
   };
 
@@ -47,6 +54,16 @@ export function FileExplorerTab() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(defaultViewMode);
   const [currentPath, setCurrentPath] = useState('.');
   const { toasts, showToast, removeToast } = useToast();
+
+  // Clipboard state for copy/cut/paste
+  const [clipboard, setClipboard] = useState<ClipboardState | null>(null);
+
+  // Upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Refresh key to force child component remount after upload
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Server search state
   const [searchResults, setSearchResults] = useState<FileSearchResult[] | null>(null);
@@ -140,6 +157,101 @@ export function FileExplorerTab() {
     }
   }, [projectSlug, showToast]);
 
+  // --- Copy / Cut / Paste handlers ---
+
+  const handleCopy = useCallback((path: string) => {
+    setClipboard({ path, operation: 'copy' });
+    const name = path.includes('/') ? path.split('/').pop()! : path;
+    showToast({ message: t('files.toast.copied', { name }), type: 'success' });
+  }, [showToast, t]);
+
+  const handleCut = useCallback((path: string) => {
+    setClipboard({ path, operation: 'cut' });
+    const name = path.includes('/') ? path.split('/').pop()! : path;
+    showToast({ message: t('files.toast.cut', { name }), type: 'success' });
+  }, [showToast, t]);
+
+  const handlePaste = useCallback(async (targetDir: string) => {
+    if (!clipboard || !projectSlug) return;
+    const sourceName = clipboard.path.includes('/') ? clipboard.path.split('/').pop()! : clipboard.path;
+    const sourceParent = clipboard.path.includes('/')
+      ? clipboard.path.substring(0, clipboard.path.lastIndexOf('/'))
+      : '.';
+
+    // Skip if cutting to the same directory
+    if (clipboard.operation === 'cut' && sourceParent === targetDir) return;
+
+    // Auto-generate unique name when copying to the same directory
+    let destName = sourceName;
+    if (clipboard.operation === 'copy' && sourceParent === targetDir) {
+      const dotIdx = sourceName.lastIndexOf('.');
+      const baseName = dotIdx > 0 ? sourceName.substring(0, dotIdx) : sourceName;
+      const ext = dotIdx > 0 ? sourceName.substring(dotIdx) : '';
+      destName = `${baseName} - Copy${ext}`;
+    }
+
+    const destinationPath = targetDir === '.' ? destName : `${targetDir}/${destName}`;
+
+    try {
+      if (clipboard.operation === 'copy') {
+        await fileSystemApi.copyEntry(projectSlug, clipboard.path, destinationPath);
+        showToast({ message: t('files.toast.pasted', { name: destName }), type: 'success' });
+      } else {
+        // Cut = move (rename to new location)
+        await fileSystemApi.renameEntry(projectSlug, clipboard.path, destinationPath);
+        showToast({ message: t('files.toast.moved', { name: destName }), type: 'success' });
+        setClipboard(null);
+      }
+    } catch (err) {
+      showToast({ message: getCrudErrorMessage(err, t('files.toast.pasteFailed')), type: 'error' });
+      throw err;
+    }
+  }, [clipboard, projectSlug, showToast, t]);
+
+  // --- Download handler ---
+
+  const handleDownload = useCallback((path: string) => {
+    if (!projectSlug) return;
+    const url = fileSystemApi.getDownloadUrl(projectSlug, path);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = path.includes('/') ? path.split('/').pop()! : path;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [projectSlug]);
+
+  // --- Upload handler ---
+
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !projectSlug) return;
+
+    setIsUploading(true);
+    try {
+      const result = await fileSystemApi.uploadFiles(projectSlug, currentPath, Array.from(files));
+      const count = result.files.length;
+      showToast({
+        message: count === 1
+          ? t('files.toast.uploaded', { name: result.files[0].path.split('/').pop()! })
+          : t('files.toast.uploadedMultiple', { count }),
+        type: 'success',
+      });
+      // Force child components to refresh directory listing
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      showToast({ message: getCrudErrorMessage(err, t('files.toast.uploadFailed')), type: 'error' });
+    } finally {
+      setIsUploading(false);
+      // Reset file input so the same file can be uploaded again
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [projectSlug, currentPath, showToast, t]);
+
   const segments = (() => {
     if (currentPath === '.') {
       return [{ name: t('files.root'), path: '.' }];
@@ -167,6 +279,15 @@ export function FileExplorerTab() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Hidden file input for upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={handleFileInputChange}
+      />
+
       {/* Toolbar — matches sessions / queue runner style */}
       <div className="sticky top-0 z-[5] bg-white dark:bg-[#1c2129] border-b border-gray-200 dark:border-[#253040]">
         <div className="flex items-center justify-between px-4 py-2 gap-3">
@@ -229,6 +350,18 @@ export function FileExplorerTab() {
             </div>
 
             <div className="w-px h-5 bg-gray-200 dark:bg-[#253040] mx-1" />
+
+            {/* Upload button */}
+            <button
+              onClick={handleUploadClick}
+              disabled={isUploading}
+              title={t('files.upload')}
+              className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors
+                text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#253040] disabled:opacity-50"
+              aria-label={t('files.upload')}
+            >
+              {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            </button>
 
             {/* Hidden files toggle */}
             <button
@@ -297,6 +430,7 @@ export function FileExplorerTab() {
           </div>
         ) : viewMode === 'grid' ? (
           <FileGridView
+            key={refreshKey}
             projectSlug={projectSlug}
             currentPath={currentPath}
             showHidden={showHidden}
@@ -306,9 +440,15 @@ export function FileExplorerTab() {
             onCreateEntry={handleCreateEntry}
             onDeleteEntry={handleDeleteEntry}
             onRenameEntry={handleRenameEntry}
+            onCopy={handleCopy}
+            onCut={handleCut}
+            onPaste={handlePaste}
+            onDownload={handleDownload}
+            hasClipboard={clipboard !== null}
           />
         ) : (
           <FileTree
+            key={refreshKey}
             projectSlug={projectSlug}
             basePath="."
             onFileSelect={handleFileSelect}
@@ -318,6 +458,11 @@ export function FileExplorerTab() {
             onCreateEntry={handleCreateEntry}
             onDeleteEntry={handleDeleteEntry}
             onRenameEntry={handleRenameEntry}
+            onCopy={handleCopy}
+            onCut={handleCut}
+            onPaste={handlePaste}
+            onDownload={handleDownload}
+            hasClipboard={clipboard !== null}
           />
         )}
       </div>

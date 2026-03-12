@@ -21,6 +21,8 @@ import type {
   FileRenameResponse,
   FileSearchResult,
   FileSearchResponse,
+  FileCopyResponse,
+  FileUploadResponse,
 } from '@hammoc/shared';
 
 
@@ -506,6 +508,158 @@ class FileSystemService {
       (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
       throw err;
     }
+  }
+
+  /**
+   * Copy a file or directory within a project root.
+   * @param projectRoot Absolute path to the project root
+   * @param sourcePath Source relative path
+   * @param destinationPath Destination relative path
+   * @returns FileCopyResponse
+   */
+  async copyEntry(projectRoot: string, sourcePath: string, destinationPath: string): Promise<FileCopyResponse> {
+    const sourceAbsolute = validateProjectPath(projectRoot, sourcePath);
+    const destAbsolute = validateProjectPath(projectRoot, destinationPath);
+
+    // Check source exists
+    try {
+      await fs.stat(sourceAbsolute);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('Source not found');
+        (err as NodeJS.ErrnoException).code = 'FILE_NOT_FOUND';
+        throw err;
+      }
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+
+    // Check destination doesn't exist
+    try {
+      await fs.stat(destAbsolute);
+      const err = new Error('Destination already exists');
+      (err as NodeJS.ErrnoException).code = 'COPY_TARGET_EXISTS';
+      throw err;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'COPY_TARGET_EXISTS') {
+        throw error;
+      }
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        const err = new Error('File system write error');
+        (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+        throw err;
+      }
+    }
+
+    // Check destination parent directory exists
+    const destParentDir = path.dirname(destAbsolute);
+    try {
+      const parentStat = await fs.stat(destParentDir);
+      if (!parentStat.isDirectory()) {
+        const err = new Error('Destination parent path is not a directory');
+        (err as NodeJS.ErrnoException).code = 'PARENT_NOT_FOUND';
+        throw err;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('Destination parent directory not found');
+        (err as NodeJS.ErrnoException).code = 'PARENT_NOT_FOUND';
+        throw err;
+      }
+      if ((error as NodeJS.ErrnoException).code === 'PARENT_NOT_FOUND') {
+        throw error;
+      }
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+
+    try {
+      await fs.cp(sourceAbsolute, destAbsolute, { recursive: true });
+      return { success: true, sourcePath, destinationPath };
+    } catch {
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+  }
+
+  /**
+   * Save uploaded files to a directory within a project root.
+   * @param projectRoot Absolute path to the project root
+   * @param targetDir Target directory relative path
+   * @param files Array of multer-uploaded files
+   * @returns FileUploadResponse
+   */
+  async uploadFiles(
+    projectRoot: string,
+    targetDir: string,
+    files: Array<{ originalname: string; buffer: Buffer }>,
+  ): Promise<FileUploadResponse> {
+    const targetAbsolute = validateProjectPath(projectRoot, targetDir);
+
+    // Check target directory exists
+    try {
+      const stat = await fs.stat(targetAbsolute);
+      if (!stat.isDirectory()) {
+        const err = new Error('Target is not a directory');
+        (err as NodeJS.ErrnoException).code = 'NOT_A_DIRECTORY';
+        throw err;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const err = new Error('Directory not found');
+        (err as NodeJS.ErrnoException).code = 'DIRECTORY_NOT_FOUND';
+        throw err;
+      }
+      if ((error as NodeJS.ErrnoException).code === 'NOT_A_DIRECTORY' ||
+          (error as NodeJS.ErrnoException).code === 'DIRECTORY_NOT_FOUND') {
+        throw error;
+      }
+      const err = new Error('File system write error');
+      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+      throw err;
+    }
+
+    const uploadedFiles: Array<{ path: string; size: number }> = [];
+
+    for (const file of files) {
+      const relativePath = targetDir === '.' ? file.originalname : `${targetDir}/${file.originalname}`;
+      const filePath = path.join(targetAbsolute, file.originalname);
+      // Validate each file path stays within project root
+      validateProjectPath(projectRoot, relativePath);
+
+      // Check if file already exists to prevent silent overwrite
+      try {
+        await fs.stat(filePath);
+        const err = new Error('File already exists');
+        (err as NodeJS.ErrnoException).code = 'FILE_ALREADY_EXISTS';
+        throw err;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'FILE_ALREADY_EXISTS') {
+          throw error;
+        }
+        // ENOENT is expected — file doesn't exist yet
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          const err = new Error('File upload error');
+          (err as NodeJS.ErrnoException).code = 'UPLOAD_ERROR';
+          throw err;
+        }
+      }
+
+      try {
+        await fs.writeFile(filePath, file.buffer);
+        const stat = await fs.stat(filePath);
+        uploadedFiles.push({ path: relativePath, size: stat.size });
+      } catch {
+        const err = new Error('File upload error');
+        (err as NodeJS.ErrnoException).code = 'UPLOAD_ERROR';
+        throw err;
+      }
+    }
+
+    return { success: true, files: uploadedFiles };
   }
 
   /**

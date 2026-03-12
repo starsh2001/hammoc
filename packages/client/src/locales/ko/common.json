@@ -302,6 +302,11 @@
     "recentlyOpened": "최근 열기",
     "fileSearchPlaceholder": "파일 검색...",
     "parentDir": "..",
+    "copy": "복사",
+    "cut": "잘라내기",
+    "paste": "붙여넣기",
+    "download": "다운로드",
+    "upload": "업로드",
     "crudErrors": {
       "alreadyExists": "파일 또는 디렉토리가 이미 존재합니다.",
       "parentNotFound": "상위 디렉토리가 존재하지 않습니다.",
@@ -316,7 +321,15 @@
       "deleted": "'{{name}}'이(가) 삭제되었습니다.",
       "deleteFailed": "삭제 실패",
       "renamed": "'{{name}}'(으)로 이름이 변경되었습니다.",
-      "renameFailed": "이름 변경 실패"
+      "renameFailed": "이름 변경 실패",
+      "copied": "'{{name}}'이(가) 복사되었습니다.",
+      "cut": "'{{name}}'이(가) 잘라내기되었습니다.",
+      "pasted": "'{{name}}'이(가) 붙여넣기되었습니다.",
+      "moved": "'{{name}}'이(가) 이동되었습니다.",
+      "pasteFailed": "붙여넣기 실패",
+      "uploaded": "'{{name}}' 파일이 업로드되었습니다.",
+      "uploadedMultiple": "{{count}}개 파일이 업로드되었습니다.",
+      "uploadFailed": "업로드 실패"
     }
   },
   "headerMenu": {

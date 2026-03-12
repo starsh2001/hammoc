@@ -297,6 +297,11 @@
     "recentlyOpened": "Recently opened",
     "fileSearchPlaceholder": "Search files...",
     "parentDir": "..",
+    "copy": "Copy",
+    "cut": "Cut",
+    "paste": "Paste",
+    "download": "Download",
+    "upload": "Upload",
     "crudErrors": {
       "alreadyExists": "File or directory already exists.",
       "parentNotFound": "Parent directory does not exist.",
@@ -311,7 +316,15 @@
       "deleted": "'{{name}}' deleted.",
       "deleteFailed": "Delete failed",
       "renamed": "Renamed to '{{name}}'.",
-      "renameFailed": "Rename failed"
+      "renameFailed": "Rename failed",
+      "copied": "'{{name}}' copied.",
+      "cut": "'{{name}}' cut.",
+      "pasted": "'{{name}}' pasted.",
+      "moved": "'{{name}}' moved.",
+      "pasteFailed": "Paste failed",
+      "uploaded": "'{{name}}' uploaded.",
+      "uploadedMultiple": "{{count}} files uploaded.",
+      "uploadFailed": "Upload failed"
     }
   },
   "headerMenu": {

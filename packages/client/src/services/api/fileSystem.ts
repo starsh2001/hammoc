@@ -13,6 +13,8 @@ import type {
   FileDeleteResponse,
   FileRenameResponse,
   FileSearchResponse,
+  FileCopyResponse,
+  FileUploadResponse,
 } from '@hammoc/shared';
 
 export const fileSystemApi = {
@@ -43,4 +45,23 @@ export const fileSystemApi = {
 
   searchFiles: (projectSlug: string, query: string, includeHidden: boolean = false) =>
     api.get<FileSearchResponse>(`/projects/${projectSlug}/fs/search?query=${encodeURIComponent(query)}${includeHidden ? '&includeHidden=true' : ''}`),
+
+  copyEntry: (projectSlug: string, sourcePath: string, destinationPath: string) =>
+    api.post<FileCopyResponse>(
+      `/projects/${projectSlug}/fs/copy?sourcePath=${encodeURIComponent(sourcePath)}&destinationPath=${encodeURIComponent(destinationPath)}`,
+    ),
+
+  uploadFiles: (projectSlug: string, targetDir: string, files: File[]) => {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    return api.upload<FileUploadResponse>(
+      `/projects/${projectSlug}/fs/upload?path=${encodeURIComponent(targetDir)}`,
+      formData,
+    );
+  },
+
+  getDownloadUrl: (projectSlug: string, path: string) =>
+    `/api/projects/${projectSlug}/fs/raw?path=${encodeURIComponent(path)}&download=true`,
 };
