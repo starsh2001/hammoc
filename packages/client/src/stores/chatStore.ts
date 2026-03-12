@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus } from '@hammoc/shared';
+import { getContextUsagePercent, CONTEXT_USAGE_THRESHOLDS } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { usePreferencesStore } from './preferencesStore';
@@ -330,15 +331,19 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Set isStreaming true immediately (disables input), but delay the visual "waiting" UI.
     // If server responds (session:created/resumed) before the delay, startStreaming cancels it.
     // Detect /compact command to show compaction-specific indicator early.
-    // Also pre-emptively show compacting indicator when context usage is high (≥80%),
+    // Also pre-emptively show compacting indicator when context usage is high,
     // because the SDK's compact_boundary event only arrives AFTER compaction completes.
+    // Use effectiveLimit (contextWindow minus reserves) to match donut display percentage.
     const isCompactCommand = content.trim() === '/compact';
     const ctx = get().contextUsage;
-    const contextPct = ctx && ctx.contextWindow > 0
-      ? (ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens) / ctx.contextWindow
+    const totalInputTokens = ctx
+      ? ctx.inputTokens + ctx.cacheCreationInputTokens + ctx.cacheReadInputTokens
       : 0;
-    const likelyCompacting = isCompactCommand || contextPct >= 0.8;
-    set({ isStreaming: true, ...(likelyCompacting && { isCompacting: true }) });
+    const contextPct = ctx && ctx.contextWindow > 0
+      ? getContextUsagePercent(totalInputTokens, ctx.contextWindow)
+      : 0;
+    const likelyCompacting = isCompactCommand || contextPct >= CONTEXT_USAGE_THRESHOLDS.DANGER;
+    set({ isStreaming: true, isCompacting: likelyCompacting });
 
     // Show "waiting" UI after delay (optimistic — before server confirms)
     streamingDelayTimeoutId = setTimeout(() => {
@@ -470,7 +475,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Add tool segment with startedAt timestamp (previous text segment is automatically "closed")
     // If a buffered permission exists, attach it immediately
     // If a buffered input exists, merge it (enriched input takes precedence)
+    // Clear isCompacting — tool call arrival means real response content is flowing
     set({
+      ...(get().isCompacting && { isCompacting: false }),
       streamingSegments: [
         ...segments,
         {
@@ -872,8 +879,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   addSystemSegment: (message: string, subtype: 'compact' | 'info' = 'compact') => {
     const segments = get().streamingSegments;
+    // Don't auto-set isCompacting here — callers (handleCompact) manage it
+    // conditionally based on whether real content has already arrived
     set({
-      ...(subtype === 'compact' && { isCompacting: true }),
       streamingSegments: [...segments, { type: 'system', subtype, message }],
     });
   },

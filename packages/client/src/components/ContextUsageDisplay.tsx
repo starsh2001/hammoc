@@ -5,7 +5,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { CONTEXT_USAGE_THRESHOLDS } from '@hammoc/shared';
+import { CONTEXT_USAGE_THRESHOLDS, CONTEXT_TOKEN_RESERVES, getEffectiveContextLimit, getContextUsagePercent } from '@hammoc/shared';
 import type { ChatUsage } from '@hammoc/shared';
 
 interface ContextUsageDisplayProps {
@@ -42,10 +42,8 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact, dis
   const totalInputTokens = contextUsage.inputTokens + contextUsage.cacheCreationInputTokens + contextUsage.cacheReadInputTokens;
   // Match Claude Code's used_percentage: divide by effective available space
   // (context window minus output token reserve and safety buffer)
-  const OUTPUT_TOKEN_RESERVE = 20000;
-  const SAFETY_BUFFER = 13000;
-  const effectiveLimit = contextUsage.contextWindow - OUTPUT_TOKEN_RESERVE - SAFETY_BUFFER;
-  const usagePercent = Math.min(100, Math.round((totalInputTokens / effectiveLimit) * 100));
+  const effectiveLimit = getEffectiveContextLimit(contextUsage.contextWindow);
+  const usagePercent = getContextUsagePercent(totalInputTokens, contextUsage.contextWindow);
 
   const isCritical = usagePercent > CONTEXT_USAGE_THRESHOLDS.CRITICAL;
   const strokeColor = getStrokeColor(usagePercent);
@@ -64,7 +62,7 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact, dis
       ? [t('contextUsage.criticalWarning', { percent: usagePercent }), t('contextUsage.clickNewSession'), '---']
       : [t('contextUsage.clickCompaction')]),
     t('contextUsage.contextTokens', { used: totalInputTokens.toLocaleString(), limit: effectiveLimit.toLocaleString(), percent: usagePercent }),
-    t('contextUsage.contextWindow', { window: contextUsage.contextWindow.toLocaleString(), reserve: OUTPUT_TOKEN_RESERVE.toLocaleString(), buffer: SAFETY_BUFFER.toLocaleString() }),
+    t('contextUsage.contextWindow', { window: contextUsage.contextWindow.toLocaleString(), reserve: CONTEXT_TOKEN_RESERVES.OUTPUT_TOKEN_RESERVE.toLocaleString(), buffer: CONTEXT_TOKEN_RESERVES.SAFETY_BUFFER.toLocaleString() }),
     t('contextUsage.newTokens', { value: contextUsage.inputTokens.toLocaleString() }),
     t('contextUsage.cacheCreation', { value: contextUsage.cacheCreationInputTokens.toLocaleString() }),
     t('contextUsage.cacheRead', { value: contextUsage.cacheReadInputTokens.toLocaleString() }),
