@@ -15,7 +15,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Send, Square, Paperclip, X, Lock, Link2, Plus, Mic, MicOff } from 'lucide-react';
+import { Send, Square, Paperclip, X, Lock, Link2, Plus, Mic } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useChatStore } from '../stores/chatStore';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -1026,9 +1026,9 @@ export function ChatInput({
               onPointerDown={preventFocusLoss}
               disabled={queueLocked || isSessionLocked}
               aria-label={speechRecognition.isListening ? t('input.stopVoice') : t('input.startVoice')}
-              className={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-md
+              className={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full
                          ${speechRecognition.isListening
-                           ? 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 animate-pulse'
+                           ? 'text-emerald-600 dark:text-emerald-400'
                            : content.trim()
                              ? 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'
                              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}
@@ -1037,9 +1037,15 @@ export function ChatInput({
                          transition-all duration-150`}
               style={{ height: '44px', width: '36px' }}
             >
-              {speechRecognition.isListening
-                ? <MicOff size={14} aria-hidden="true" />
-                : <Mic size={14} aria-hidden="true" />}
+              <span className="relative flex items-center justify-center">
+                {speechRecognition.isListening && (
+                  <span className="absolute inline-flex h-5 w-5 rounded-full bg-emerald-400/30 dark:bg-emerald-400/20 animate-ping" />
+                )}
+                <span className={`relative flex items-center justify-center h-5 w-5 rounded-full
+                  ${speechRecognition.isListening ? 'bg-emerald-100 dark:bg-emerald-900/40' : ''}`}>
+                  <Mic size={14} aria-hidden="true" />
+                </span>
+              </span>
             </button>
           )}
         </div>
