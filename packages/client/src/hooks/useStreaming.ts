@@ -739,7 +739,7 @@ export function useStreaming() {
               sessionId: currentSessionId,
               hadSegments,
             });
-            msgState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true });
+            msgState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true });
           }
         } else {
           debugLog.stream('stream:status → inactive, no-op (not streaming)');

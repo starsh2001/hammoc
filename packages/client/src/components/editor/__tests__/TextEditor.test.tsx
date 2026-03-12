@@ -54,6 +54,7 @@ vi.mock('../MarkdownPreview', () => ({
 vi.mock('../../../hooks/useTheme', () => ({
   useTheme: () => ({
     theme: 'dark',
+    resolvedTheme: 'dark',
     toggleTheme: vi.fn(),
     setTheme: vi.fn(),
   }),

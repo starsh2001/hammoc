@@ -6,6 +6,7 @@
       "light": "Light",
       "system": "System"
     },
+    "themeSystemUnsupported": "Samsung Internet does not support system theme detection. Please select Dark or Light manually.",
     "defaultModel": "Default Model",
     "language": "Language",
     "permissionMode": "Permission Mode",

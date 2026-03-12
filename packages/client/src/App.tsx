@@ -46,17 +46,8 @@ function AppContent() {
   // Recover socket + auth state when browser resumes from background
   useAppResumeRecovery();
 
-  // Initialize theme on app mount
-  const { theme } = useTheme();
-
-  useEffect(() => {
-    // Ensure theme class is applied on initial render
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [theme]);
+  // Initialize theme on app mount (useTheme handles DOM class updates internally)
+  useTheme();
 
   return (
     <Routes>

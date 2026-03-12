@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* Enable system theme detection (required for Android PWA prefers-color-scheme) */
+:root {
+  color-scheme: dark light;
+}
+
 /* Prevent browser native pull-to-refresh and body scrolling on mobile */
 html, body {
   overscroll-behavior-y: none;

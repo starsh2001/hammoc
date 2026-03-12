@@ -87,7 +87,7 @@ export function DiffViewer({
   _testForceError = false,
 }: DiffViewerProps) {
   const { t } = useTranslation('common');
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const diffLayoutHook = useDiffLayout();
 
   // Adjust fullscreen position when quick panel is open as sidebar
@@ -147,7 +147,7 @@ export function DiffViewer({
     // Clear previous content
     containerRef.current.innerHTML = '';
 
-    const isDark = theme === 'dark';
+    const isDark = resolvedTheme === 'dark';
     const baseExts = buildBaseExtensions(isDark);
 
     // Diff highlight color themes
@@ -310,7 +310,7 @@ export function DiffViewer({
     } catch (err) {
       setState(prev => ({ ...prev, isLoading: false, error: err as Error }));
     }
-  }, [original, modified, theme, effectiveLayout, buildBaseExtensions, state.largeFileAccepted, state.error, _testForceError]);
+  }, [original, modified, resolvedTheme, effectiveLayout, buildBaseExtensions, state.largeFileAccepted, state.error, _testForceError]);
 
   // Navigate to next/previous change
   const goToChange = useCallback(
@@ -558,11 +558,11 @@ export function DiffViewer({
               <style>{`
                 .cm-merge-b .cm-changedLine,
                 .cm-inlineChangedLine {
-                  background-color: ${theme === 'dark' ? '#1a4d2e' : '#86efac'} !important;
+                  background-color: ${resolvedTheme === 'dark' ? '#1a4d2e' : '#86efac'} !important;
                 }
                 .cm-merge-a .cm-changedLine,
                 .cm-deletedChunk {
-                  background-color: ${theme === 'dark' ? '#3f1d1d' : '#fecaca'} !important;
+                  background-color: ${resolvedTheme === 'dark' ? '#3f1d1d' : '#fecaca'} !important;
                 }
               `}</style>
               <div

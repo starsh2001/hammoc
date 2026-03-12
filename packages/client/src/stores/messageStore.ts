@@ -28,7 +28,7 @@ interface MessageState {
 }
 
 interface MessageActions {
-  fetchMessages: (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number }) => Promise<void>;
+  fetchMessages: (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number; force?: boolean }) => Promise<void>;
   fetchMoreMessages: () => Promise<void>;
   clearMessages: () => void;
   /** Add user message optimistically (before server confirmation) */
@@ -133,7 +133,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
   lastAgentCommand: null,
 
   // Actions
-  fetchMessages: async (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number }) => {
+  fetchMessages: async (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number; force?: boolean }) => {
     const state = get();
     const isSameSession = state.currentSessionId === sessionId;
     debugLog.message('fetchMessages called', {
@@ -198,10 +198,13 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       // update through. ChatPage's fetchMessages().then() callback handles
       // trimming the current streaming turn to prevent duplication with buffer replay.
       const isRestoring = chatState.streamingMessageId === 'restoring';
+      // force: bypass cooldown guard (used by resume recovery where JSONL is
+      // already flushed but completeStreaming inflated local message count)
+      const effectiveCooldown = options?.force ? false : isInCooldown;
       const shouldGuard = !isPaginationFetch &&
                           ((isRestoring && response.messages.length <= currentMessages.length) ||
                            (!isRestoring && response.messages.length < currentMessages.length &&
-                            (chatState.isStreaming || chatState.segmentsPendingClear || isInCooldown || chatState.isCompacting)));
+                            (chatState.isStreaming || chatState.segmentsPendingClear || effectiveCooldown || chatState.isCompacting)));
 
       // DETAILED GUARD DEBUG: Track why messages might disappear
       debugLog.message('fetchMessages → guard check', {

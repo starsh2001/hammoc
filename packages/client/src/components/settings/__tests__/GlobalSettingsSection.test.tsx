@@ -23,6 +23,7 @@ const mockSetTheme = vi.fn();
 vi.mock('../../../hooks/useTheme', () => ({
   useTheme: () => ({
     theme: usePreferencesStore.getState().preferences.theme ?? 'dark',
+    resolvedTheme: usePreferencesStore.getState().preferences.theme ?? 'dark',
     setTheme: mockSetTheme,
     toggleTheme: vi.fn(),
   }),
