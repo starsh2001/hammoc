@@ -73,8 +73,6 @@ export function useStreaming() {
   useEffect(() => {
     const socket = getSocket();
     let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
-    let staleStreamRetryId: ReturnType<typeof setTimeout> | null = null;
-    let staleRecoveryEpoch = 0; // Incremented on stream reactivation/unmount to cancel pending .then() retries
     const RECONNECT_TIMEOUT = 10000; // 10 seconds
 
     // --- Frame-based chunk coalescing ---
@@ -692,12 +690,6 @@ export function useStreaming() {
       }
 
       if (data.active) {
-        // Cancel any pending stale-stream retry (stream is active again)
-        staleRecoveryEpoch++;
-        if (staleStreamRetryId) {
-          clearTimeout(staleStreamRetryId);
-          staleStreamRetryId = null;
-        }
         // Clear seen permissions so replayed permission:request events are processed
         seenPermissionIds.current.clear();
         // Clear any pending text chunks from a previous buffer replay to prevent
@@ -733,45 +725,21 @@ export function useStreaming() {
           // Complete streaming: converts segments to messages and clears them
           completeStreaming();
 
-          // Fetch authoritative history from JSONL. completeStreaming() converted
-          // partial segments to messages — but these may be incomplete (stream
-          // continued after disconnect, e.g. mobile sleep). JSONL has the full
-          // completed response. Use minMessageCount so the update is skipped if
-          // the server returns fewer messages (JSONL not yet flushed), preserving
-          // partial data. If the first fetch was skipped (message count unchanged),
-          // a single retry after 3s gives JSONL time to flush.
+          // Always fetch authoritative history from JSONL when stream completed during
+          // disconnect. When hadSegments is true, completeStreaming() converted partial
+          // segments to messages — but these may be incomplete (stream continued after
+          // disconnect, e.g. mobile sleep). JSONL has the full completed response.
+          // The stale-data guard in fetchMessages will correctly allow updates when
+          // the server returns more messages than we have locally.
           const msgState = useMessageStore.getState();
           const { currentProjectSlug, currentSessionId } = msgState;
-          const localMsgCount = msgState.messages.length;
           if (currentProjectSlug && currentSessionId) {
             debugLog.stream('stream:status → fetching messages after stale stream completion', {
               projectSlug: currentProjectSlug,
               sessionId: currentSessionId,
               hadSegments,
-              localMsgCount,
             });
-            const epoch = staleRecoveryEpoch;
-            msgState.fetchMessages(currentProjectSlug, currentSessionId, {
-              silent: true,
-              minMessageCount: localMsgCount,
-            }).then(() => {
-              // Bail if hook was unmounted, stream reactivated, or session changed
-              if (epoch !== staleRecoveryEpoch) return;
-              const fresh = useMessageStore.getState();
-              if (fresh.currentSessionId !== currentSessionId ||
-                  fresh.currentProjectSlug !== currentProjectSlug) return;
-              // If message count didn't increase, JSONL likely wasn't flushed yet.
-              // Schedule a single retry after 3s (without minMessageCount).
-              if (fresh.messages.length <= localMsgCount) {
-                staleStreamRetryId = setTimeout(() => {
-                  staleStreamRetryId = null;
-                  const retryState = useMessageStore.getState();
-                  if (retryState.currentSessionId !== currentSessionId ||
-                      retryState.currentProjectSlug !== currentProjectSlug) return;
-                  retryState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true });
-                }, 3000);
-              }
-            });
+            msgState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true });
           }
         } else {
           debugLog.stream('stream:status → inactive, no-op (not streaming)');
@@ -965,11 +933,6 @@ export function useStreaming() {
         clearTimeout(reconnectTimeoutId);
         reconnectTimeoutId = null;
       }
-      if (staleStreamRetryId) {
-        clearTimeout(staleStreamRetryId);
-        staleStreamRetryId = null;
-      }
-      staleRecoveryEpoch++; // Invalidate any in-flight .then() callbacks
       socket.off('user:message', handleUserMessage);
       socket.off('session:created', handleSessionInit);
       socket.off('session:resumed', handleSessionInit);

@@ -41,7 +41,10 @@
     "abortedInOtherBrowser": "回复已在其他浏览器中中止。",
     "sessionInUseWarning": "此会话正在其他浏览器中使用。请刷新后重试。",
     "respondedInOtherBrowser": "（已在其他浏览器中回复）",
-    "disconnectedRetry": "连接已断开。请在重新连接后重试。"
+    "disconnectedRetry": "连接已断开。请在重新连接后重试。",
+    "syncing": "正在同步消息...",
+    "syncComplete": "同步完成",
+    "syncFailed": "同步失败。请尝试刷新页面。"
   },
   "bmadStatus": {
     "loadError": "加载 BMad 项目状态时发生了错误。"
