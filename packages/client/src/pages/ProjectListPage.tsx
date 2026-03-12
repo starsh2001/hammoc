@@ -8,7 +8,7 @@ import { useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { RefreshCw, FolderOpen, AlertCircle, Settings, Plus, Eye, EyeOff, MoreVertical, Moon, Sun } from 'lucide-react';
+import { RefreshCw, FolderOpen, AlertCircle, Settings, Plus, Eye, EyeOff, MoreVertical } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
 import { generateUUID } from '../utils/uuid';
@@ -18,10 +18,8 @@ import { ProjectCardSkeleton } from '../components/ProjectCardSkeleton';
 import { DashboardSummaryBar } from '../components/projectStatus/DashboardSummaryBar';
 import { NewProjectDialog } from '../components/NewProjectDialog';
 import { BrandLogo } from '../components/BrandLogo';
-import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { useClickOutside } from '../hooks/useClickOutside';
-import { useTheme } from '../hooks/useTheme';
 import { useDashboard } from '../hooks/useDashboard';
 import { api } from '../services/api/client';
 
@@ -54,7 +52,6 @@ export function ProjectListPage() {
   // Overflow menu state (narrow screens)
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
-  const { theme, toggleTheme } = useTheme();
   useClickOutside(overflowMenuRef, () => setOverflowMenuOpen(false));
 
   // Filter projects based on hidden state (server-based via .hammoc/settings.json)
@@ -100,10 +97,10 @@ export function ProjectListPage() {
     [navigate]
   );
 
-  // Handle refresh (force reload from server)
-  const handleRefresh = useCallback(async () => {
-    await fetchProjects();
-  }, [fetchProjects]);
+  // Handle refresh (full page reload)
+  const handleRefresh = useCallback(() => {
+    window.location.reload();
+  }, []);
 
   // Handle retry after error (force reload from server)
   const handleRetry = useCallback(() => {
@@ -168,7 +165,7 @@ export function ProjectListPage() {
             </div>
             <div className="flex items-center gap-1 ml-4">
               <LayoutToggleButton className="hidden sm:block" />
-              <ThemeToggleButton className="hidden sm:block" />
+
               <button
                 onClick={() => navigate('/settings')}
                 aria-label={t('project.settings')}
@@ -189,11 +186,6 @@ export function ProjectListPage() {
                 </button>
                 {overflowMenuOpen && (
                   <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#263240] rounded-lg shadow-lg border border-gray-200 dark:border-[#253040] z-50 py-1">
-                    <button role="menuitem" onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
-                      {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                      {theme === 'dark' ? t('project.lightMode') : t('project.darkMode')}
-                    </button>
-                    <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
                     <button role="menuitem" onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                       <Settings className="w-4 h-4" />
                       {t('project.settings')}
@@ -281,7 +273,6 @@ export function ProjectListPage() {
               />
             </button>
             <LayoutToggleButton className="hidden sm:block" />
-            <ThemeToggleButton className="hidden sm:block" />
             <button
               onClick={() => navigate('/settings')}
               aria-label={t('project.settings')}
@@ -306,11 +297,6 @@ export function ProjectListPage() {
                   <button role="menuitem" onClick={() => { setIsNewProjectDialogOpen(true); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                     <Plus className="w-4 h-4" />
                     {t('project.newProject')}
-                  </button>
-                  <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
-                  <button role="menuitem" onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
-                    {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    {theme === 'dark' ? t('project.lightMode') : t('project.darkMode')}
                   </button>
                   {hiddenCount > 0 && (
                     <button role="menuitem" onClick={() => { setShowHidden(!showHidden); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">

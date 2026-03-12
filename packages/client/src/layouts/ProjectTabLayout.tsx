@@ -7,15 +7,13 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, GitBranch, Terminal, Kanban, Settings, MoreVertical, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, GitBranch, Terminal, Kanban, Settings, MoreVertical, RefreshCw } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useTerminalStore } from '../stores/terminalStore';
 import { BrandLogo } from '../components/BrandLogo';
-import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { ConnectionStatusIndicator } from '../components/ConnectionStatusIndicator';
 import { useClickOutside } from '../hooks/useClickOutside';
-import { useTheme } from '../hooks/useTheme';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 const tabs: Array<{ id: string; labelKey: string; icon: typeof LayoutDashboard; path: string }> = [
@@ -47,8 +45,6 @@ export function ProjectTabLayout() {
       fetchProjects();
     }
   }, [projects.length, fetchProjects]);
-  const { theme, toggleTheme } = useTheme();
-
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   useClickOutside(overflowMenuRef, () => setOverflowMenuOpen(false));
@@ -112,7 +108,13 @@ export function ProjectTabLayout() {
               compact
             />
             <LayoutToggleButton className="hidden sm:block" />
-            <ThemeToggleButton className="hidden sm:block" />
+            <button
+              onClick={() => window.location.reload()}
+              aria-label={t('layout.refresh')}
+              className="hidden sm:block p-2 rounded-lg hover:bg-white/10 dark:hover:bg-[#253040] text-white/80 dark:text-gray-200 transition-colors"
+            >
+              <RefreshCw className="w-5 h-5" aria-hidden="true" />
+            </button>
             <button
               onClick={() => navigate('/settings')}
               aria-label={t('project.settings')}
@@ -138,11 +140,11 @@ export function ProjectTabLayout() {
                 >
                   <button
                     role="menuitem"
-                    onClick={() => { toggleTheme(); setOverflowMenuOpen(false); }}
+                    onClick={() => window.location.reload()}
                     className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2"
                   >
-                    {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    {theme === 'dark' ? t('project.lightMode') : t('project.darkMode')}
+                    <RefreshCw className="w-4 h-4" />
+                    {t('layout.refresh')}
                   </button>
                   <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
                   <button
