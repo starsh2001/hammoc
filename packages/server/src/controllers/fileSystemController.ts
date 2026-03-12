@@ -83,8 +83,10 @@ export const fileSystemController = {
       // Support download mode with Content-Disposition header (RFC 5987)
       if (req.query.download === 'true') {
         const fileName = filePath.split('/').pop() || 'download';
+        // Escape backslashes and quotes for the ASCII fallback filename
+        const asciiName = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/[\\"]/g, '_');
         const encodedName = encodeURIComponent(fileName).replace(/['()]/g, escape);
-        res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/[^\x20-\x7E]/g, '_')}"; filename*=UTF-8''${encodedName}`);
+        res.setHeader('Content-Disposition', `attachment; filename="${asciiName}"; filename*=UTF-8''${encodedName}`);
       }
 
       stream.pipe(res);

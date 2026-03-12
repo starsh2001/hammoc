@@ -125,7 +125,10 @@
       "renameTargetExists": "Rename target already exists.",
       "parentNotFound": "Parent directory not found.",
       "copyTargetExists": "Copy destination already exists.",
-      "uploadError": "File upload error."
+      "uploadError": "File upload error.",
+      "uploadLimitFileSize": "File size exceeds the 10MB limit.",
+      "uploadLimitFileCount": "Too many files (max 10).",
+      "uploadLimitUnexpectedFile": "Unexpected file field."
     }
   },
   "git": {

@@ -125,7 +125,10 @@
       "renameTargetExists": "이름 변경 대상이 이미 존재합니다.",
       "parentNotFound": "상위 디렉토리를 찾을 수 없습니다.",
       "copyTargetExists": "복사 대상 경로에 파일이 이미 존재합니다.",
-      "uploadError": "파일 업로드 중 오류가 발생했습니다."
+      "uploadError": "파일 업로드 중 오류가 발생했습니다.",
+      "uploadLimitFileSize": "파일 크기가 10MB 제한을 초과합니다.",
+      "uploadLimitFileCount": "파일이 너무 많습니다 (최대 10개).",
+      "uploadLimitUnexpectedFile": "예상하지 못한 파일 필드입니다."
     }
   },
   "git": {

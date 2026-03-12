@@ -329,7 +329,8 @@
       "pasteFailed": "붙여넣기 실패",
       "uploaded": "'{{name}}' 파일이 업로드되었습니다.",
       "uploadedMultiple": "{{count}}개 파일이 업로드되었습니다.",
-      "uploadFailed": "업로드 실패"
+      "uploadFailed": "업로드 실패",
+      "downloadFailed": "다운로드 실패"
     }
   },
   "headerMenu": {
