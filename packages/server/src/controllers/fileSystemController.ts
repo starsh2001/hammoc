@@ -451,9 +451,9 @@ export const fileSystemController = {
         });
         return;
       }
-      if (nodeError.code === 'COPY_TOO_LARGE') {
-        res.status(413).json({
-          error: { code: 'COPY_TOO_LARGE', message: req.t!('fs.error.copyTooLarge') },
+      if (nodeError.code === FILE_SYSTEM_ERRORS.COPY_TOO_LARGE.code) {
+        res.status(FILE_SYSTEM_ERRORS.COPY_TOO_LARGE.httpStatus).json({
+          error: { code: FILE_SYSTEM_ERRORS.COPY_TOO_LARGE.code, message: req.t!('fs.error.copyTooLarge') },
         });
         return;
       }
