@@ -632,35 +632,35 @@ class FileSystemService {
     targetDir: string,
     files: Array<{ originalname: string; path: string; size: number }>,
   ): Promise<FileUploadResponse> {
-    const targetAbsolute = validateProjectPath(projectRoot, targetDir);
-
-    // Check target directory exists
-    try {
-      const stat = await fs.stat(targetAbsolute);
-      if (!stat.isDirectory()) {
-        const err = new Error('Target is not a directory');
-        (err as NodeJS.ErrnoException).code = 'NOT_A_DIRECTORY';
-        throw err;
-      }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        const err = new Error('Directory not found');
-        (err as NodeJS.ErrnoException).code = 'DIRECTORY_NOT_FOUND';
-        throw err;
-      }
-      if ((error as NodeJS.ErrnoException).code === 'NOT_A_DIRECTORY' ||
-          (error as NodeJS.ErrnoException).code === 'DIRECTORY_NOT_FOUND') {
-        throw error;
-      }
-      const err = new Error('File system write error');
-      (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
-      throw err;
-    }
-
-    // Collect all temp paths for cleanup in finally block
+    // Collect temp paths upfront so finally always cleans up, even on early validation throws
     const tempPaths = files.map(f => f.path);
 
     try {
+      const targetAbsolute = validateProjectPath(projectRoot, targetDir);
+
+      // Check target directory exists
+      try {
+        const stat = await fs.stat(targetAbsolute);
+        if (!stat.isDirectory()) {
+          const err = new Error('Target is not a directory');
+          (err as NodeJS.ErrnoException).code = 'NOT_A_DIRECTORY';
+          throw err;
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          const err = new Error('Directory not found');
+          (err as NodeJS.ErrnoException).code = 'DIRECTORY_NOT_FOUND';
+          throw err;
+        }
+        if ((error as NodeJS.ErrnoException).code === 'NOT_A_DIRECTORY' ||
+            (error as NodeJS.ErrnoException).code === 'DIRECTORY_NOT_FOUND') {
+          throw error;
+        }
+        const err = new Error('File system write error');
+        (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';
+        throw err;
+      }
+
       // Pass 1: Validate all files before writing any
       const filesToMove: Array<{ relativePath: string; destPath: string; tempPath: string; size: number }> = [];
       const destPathSet = new Set<string>();
@@ -689,8 +689,10 @@ class FileSystemService {
 
       try {
         for (const file of filesToMove) {
-          // COPYFILE_EXCL fails if dest exists (atomic, no TOCTOU race)
+          // COPYFILE_EXCL fails if dest exists (atomic create-or-fail, no TOCTOU race)
           // copyFile works across filesystems unlike rename (avoids EXDEV)
+          // Note: concurrent readers may see partial content during write; full atomicity
+          // would require write-to-temp + link(), but cross-platform cost outweighs the risk.
           await fs.copyFile(file.tempPath, file.destPath, fsConstants.COPYFILE_EXCL);
           copiedPaths.push(file.destPath);
           uploadedFiles.push({ path: file.relativePath, size: file.size });

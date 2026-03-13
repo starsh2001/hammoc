@@ -172,6 +172,11 @@ export const FILE_SYSTEM_ERRORS = {
     message: '파일 업로드 중 오류가 발생했습니다.',
     httpStatus: 500,
   },
+  COPY_TOO_LARGE: {
+    code: 'COPY_TOO_LARGE',
+    message: '복사할 디렉토리가 너무 큽니다.',
+    httpStatus: 413,
+  },
 } as const;
 
 /**

@@ -237,18 +237,27 @@ export function FileExplorerTab() {
 
   // --- Download handler ---
 
-  const handleDownload = useCallback((path: string) => {
+  const handleDownload = useCallback(async (path: string) => {
     if (!projectSlug) return;
-    // Use <a> tag for streaming download (no memory buffering)
-    // Same-origin requests automatically include cookies for auth
     const url = fileSystemApi.getDownloadUrl(projectSlug, path);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = path.includes('/') ? path.split('/').pop()! : path;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, [projectSlug]);
+    try {
+      // Verify file is accessible before triggering browser download
+      const res = await fetch(url, { method: 'HEAD' });
+      if (!res.ok) {
+        showToast({ message: t('files.toast.downloadFailed'), type: 'error' });
+        return;
+      }
+      // Use <a> tag for streaming download (no memory buffering)
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = path.includes('/') ? path.split('/').pop()! : path;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      showToast({ message: t('files.toast.downloadFailed'), type: 'error' });
+    }
+  }, [projectSlug, showToast, t]);
 
   // --- Upload handler ---
 
