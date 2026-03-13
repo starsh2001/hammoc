@@ -79,9 +79,16 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   fetchSessions: async (projectSlug: string, options?: { limit?: number }) => {
     const state = get();
 
-    // Clear sessions if switching projects
+    // Clear sessions and search state if switching projects
     if (state.currentProjectSlug !== projectSlug) {
-      set({ sessions: [], currentProjectSlug: projectSlug });
+      set({
+        sessions: [],
+        currentProjectSlug: projectSlug,
+        isSearching: false,
+        searchQuery: '',
+        searchContent: false,
+        _searchVersion: state._searchVersion + 1,
+      });
     }
 
     // Only show loading skeleton when there are no cached sessions.
@@ -104,8 +111,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         apiOptions.searchContent = searchContent;
       }
       const response = await sessionsApi.list(projectSlug, apiOptions);
+      // Discard stale response if user switched projects during the API call
+      if (get().currentProjectSlug !== projectSlug) return;
       set({ sessions: response.sessions, hasMore: response.hasMore, total: response.total, isLoading: false, isRefreshing: false });
     } catch (err) {
+      // Discard stale error if user switched projects during the API call
+      if (get().currentProjectSlug !== projectSlug) return;
       if (err instanceof ApiError) {
         if (err.status === 404) {
           set({
@@ -194,13 +205,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   updateSessionStreaming: (sessionId: string, active: boolean) => {
     const { sessions } = get();
+    const idx = sessions.findIndex((s) => s.sessionId === sessionId);
+    if (idx === -1) return;
     const updated = sessions.map((s) =>
       s.sessionId === sessionId ? { ...s, isStreaming: active || undefined } : s,
     );
-    // Only update if a matching session was found
-    if (updated !== sessions) {
-      set({ sessions: updated });
-    }
+    set({ sessions: updated });
   },
 
   deleteSession: async (projectSlug: string, sessionId: string) => {
@@ -233,8 +243,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         limit: 20,
         offset: 0,
       });
-      // Discard stale response if a newer search or clearSearch was issued
-      if (get()._searchVersion !== version) return;
+      // Discard stale response if a newer search or clearSearch was issued, or project changed
+      if (get()._searchVersion !== version || get().currentProjectSlug !== projectSlug) return;
       set({
         sessions: response.sessions,
         hasMore: response.hasMore,
@@ -242,7 +252,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         isSearching: false,
       });
     } catch (err) {
-      if (get()._searchVersion !== version) return;
+      if (get()._searchVersion !== version || get().currentProjectSlug !== projectSlug) return;
       const message = err instanceof ApiError ? err.message : i18n.t('chat:session.searchError');
       set({ error: message, errorType: 'unknown', isSearching: false });
     }
