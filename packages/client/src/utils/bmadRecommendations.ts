@@ -266,6 +266,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
   const recs: NextStepRecommendation[] = [];
 
   const inProgressStory = firstStoryByStatus(data, 'In Progress');
+  const reviewStory = firstStoryByStatus(data, 'Review');
   const draftStory = firstStoryByStatus(data, 'Draft');
   const approvedStory = firstStoryByStatus(data, 'Approved');
   const stories = allStories(data);
@@ -314,7 +315,26 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     });
   }
 
-  // Priority 2: Draft story (needs validation)
+  // Priority 2: Review story (QA feedback needs to be applied)
+  if (reviewStory) {
+    const num = storyNum(reviewStory.file);
+    const label = reviewStory.title
+      ? `${num}. ${reviewStory.title}`
+      : reviewStory.file;
+
+    recs.push({
+      id: 'apply-review-fixes',
+      title: i18n.t('common:rec.applyQaFixes'),
+      description: label,
+      agentCommand: '/BMad:agents:dev',
+      taskCommand: `*review-qa ${num}`,
+      variant: inProgressStory ? 'secondary' : 'primary',
+      iconKey: 'wrench',
+      storyFile: reviewStory.file,
+    });
+  }
+
+  // Priority 3: Draft story (needs validation)
   if (draftStory) {
     const num = storyNum(draftStory.file);
     const label = draftStory.title
@@ -327,13 +347,13 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       description: `${label}`,
       agentCommand: '/BMad:agents:po',
       taskCommand: `*validate-story-draft ${num}`,
-      variant: inProgressStory ? 'secondary' : 'primary',
+      variant: (inProgressStory || reviewStory) ? 'secondary' : 'primary',
       iconKey: 'shield-check',
       storyFile: draftStory.file,
     });
   }
 
-  // Priority 3: Approved story (ready for development)
+  // Priority 4: Approved story (ready for development)
   if (approvedStory) {
     const num = storyNum(approvedStory.file);
     const label = approvedStory.title
@@ -346,16 +366,16 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       description: `${label}`,
       agentCommand: '/BMad:agents:dev',
       taskCommand: `*develop-story ${num}`,
-      variant: inProgressStory ? 'secondary' : 'primary',
+      variant: (inProgressStory || reviewStory) ? 'secondary' : 'primary',
       iconKey: 'play',
       storyFile: approvedStory.file,
     });
   }
 
-  // Priority 4: Create next story
+  // Priority 5: Create next story
   // - Primary when no actionable stories exist
   // - Secondary when there are Draft/Approved stories (user might still want to queue up more)
-  const hasActionable = !!(inProgressStory || draftStory || approvedStory);
+  const hasActionable = !!(inProgressStory || reviewStory || draftStory || approvedStory);
   const hasMorePlanned = totalPlanned > stories.length;
   const allDone = stories.length > 0 && nonDoneStories.length === 0;
 
