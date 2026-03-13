@@ -28,19 +28,19 @@ interface ClipboardState {
   operation: 'copy' | 'cut';
 }
 
+const CRUD_ERROR_I18N_KEYS: Record<string, string> = {
+  FILE_ALREADY_EXISTS: 'files.crudErrors.alreadyExists',
+  PARENT_NOT_FOUND: 'files.crudErrors.parentNotFound',
+  PROTECTED_PATH: 'files.crudErrors.protectedPath',
+  RENAME_TARGET_EXISTS: 'files.crudErrors.targetExists',
+  COPY_TARGET_EXISTS: 'files.crudErrors.targetExists',
+  COPY_TOO_LARGE: 'files.crudErrors.copyTooLarge',
+  PATH_TRAVERSAL: 'files.crudErrors.outsideRoot',
+};
+
 export function FileExplorerTab() {
   const { t } = useTranslation('common');
   const { projectSlug } = useParams<{ projectSlug: string }>();
-
-  const CRUD_ERROR_I18N_KEYS: Record<string, string> = {
-    FILE_ALREADY_EXISTS: 'files.crudErrors.alreadyExists',
-    PARENT_NOT_FOUND: 'files.crudErrors.parentNotFound',
-    PROTECTED_PATH: 'files.crudErrors.protectedPath',
-    RENAME_TARGET_EXISTS: 'files.crudErrors.targetExists',
-    COPY_TARGET_EXISTS: 'files.crudErrors.targetExists',
-    COPY_TOO_LARGE: 'files.crudErrors.copyTooLarge',
-    PATH_TRAVERSAL: 'files.crudErrors.outsideRoot',
-  };
 
   const getCrudErrorMessage = useCallback((err: unknown, fallbackPrefix: string): string => {
     const apiErr = err as { code?: string; message?: string };
@@ -133,7 +133,7 @@ export function FileExplorerTab() {
       showToast({ message: getCrudErrorMessage(err, t('files.toast.createFailed')), type: 'error' });
       throw err;
     }
-  }, [projectSlug, showToast]);
+  }, [projectSlug, showToast, t, getCrudErrorMessage]);
 
   const handleDeleteEntry = useCallback(async (path: string) => {
     try {
@@ -144,7 +144,7 @@ export function FileExplorerTab() {
       showToast({ message: getCrudErrorMessage(err, t('files.toast.deleteFailed')), type: 'error' });
       throw err;
     }
-  }, [projectSlug, showToast]);
+  }, [projectSlug, showToast, t, getCrudErrorMessage]);
 
   const handleRenameEntry = useCallback(async (path: string, newName: string) => {
     try {
@@ -156,7 +156,7 @@ export function FileExplorerTab() {
       showToast({ message: getCrudErrorMessage(err, t('files.toast.renameFailed')), type: 'error' });
       throw err;
     }
-  }, [projectSlug, showToast]);
+  }, [projectSlug, showToast, t, getCrudErrorMessage]);
 
   // --- Copy / Cut / Paste handlers ---
 
@@ -288,7 +288,7 @@ export function FileExplorerTab() {
       // Reset file input so the same file can be uploaded again
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [projectSlug, currentPath, showToast, t]);
+  }, [projectSlug, currentPath, showToast, t, getCrudErrorMessage]);
 
   const segments = (() => {
     if (currentPath === '.') {
