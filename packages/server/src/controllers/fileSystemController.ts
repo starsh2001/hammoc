@@ -85,18 +85,23 @@ export const fileSystemController = {
         const fileName = filePath.split('/').pop() || 'download';
         // Escape backslashes and quotes for the ASCII fallback filename
         const asciiName = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/[\\"]/g, '_');
-        const encodedName = encodeURIComponent(fileName).replace(/['()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+        const encodedName = encodeURIComponent(fileName).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
         res.setHeader('Content-Disposition', `attachment; filename="${asciiName}"; filename*=UTF-8''${encodedName}`);
       }
 
-      stream.on('error', () => {
-        // If headers already sent, we can only terminate the response
+      stream.on('error', (err) => {
+        stream.destroy();
         if (!res.headersSent) {
+          // Clear file-specific headers before sending JSON error
+          res.removeHeader('Content-Disposition');
+          res.removeHeader('Content-Length');
+          res.setHeader('Content-Type', 'application/json');
           res.status(FILE_SYSTEM_ERRORS.FS_READ_ERROR.httpStatus).json({
             error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: req.t!('fs.error.readError') },
           });
         } else {
-          res.end();
+          // Headers already sent — force-close the socket so client sees a network error
+          res.destroy(err);
         }
       });
       stream.pipe(res);
