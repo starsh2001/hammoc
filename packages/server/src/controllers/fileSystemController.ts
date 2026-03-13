@@ -91,7 +91,7 @@ export const fileSystemController = {
 
       stream.on('error', (err) => {
         stream.destroy();
-        if (!res.headersSent) {
+        if (!res.headersSent && !res.destroyed) {
           // Clear file-specific headers before sending JSON error
           res.removeHeader('Content-Disposition');
           res.removeHeader('Content-Length');
@@ -99,11 +99,14 @@ export const fileSystemController = {
           res.status(FILE_SYSTEM_ERRORS.FS_READ_ERROR.httpStatus).json({
             error: { code: FILE_SYSTEM_ERRORS.FS_READ_ERROR.code, message: req.t!('fs.error.readError') },
           });
-        } else {
+        } else if (!res.destroyed) {
           // Headers already sent — force-close the socket so client sees a network error
           res.destroy(err);
         }
+        // If res is already destroyed (client disconnected), do nothing
       });
+      // Clean up the file stream if the client disconnects mid-download
+      res.on('close', () => { if (!stream.destroyed) stream.destroy(); });
       stream.pipe(res);
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
