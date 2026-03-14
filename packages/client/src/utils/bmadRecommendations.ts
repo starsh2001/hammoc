@@ -262,138 +262,174 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
   return recs;
 }
 
+/** Find the first review-status story matching specific gate results */
+function firstReviewStoryByGate(data: BmadStatusResponse, ...gates: (string | undefined)[]): BmadStoryStatus | undefined {
+  const reviewStatuses = ['Review', 'Ready for Review', 'Ready for Done'];
+  for (const epic of data.epics) {
+    const found = epic.stories.find(
+      (s) => reviewStatuses.includes(s.status) && gates.includes(s.gateResult),
+    );
+    if (found) return found;
+  }
+  return undefined;
+}
+
 function buildImplementationRecommendations(data: BmadStatusResponse): NextStepRecommendation[] {
   const recs: NextStepRecommendation[] = [];
 
+  // Discover stories at each workflow stage
+  const qaDoneStory = firstReviewStoryByGate(data, 'PASS', 'WAIVED');
+  const qaFixedStory = firstReviewStoryByGate(data, 'FIXED');
+  const qaFailedStory = firstReviewStoryByGate(data, 'FAIL', 'CONCERNS');
+  const reviewStory = firstReviewStoryByGate(data, undefined);
   const inProgressStory = firstStoryByStatus(data, 'In Progress', 'InProgress');
-  const reviewStory = firstStoryByStatus(data, 'Review', 'Ready for Review', 'Ready for Done');
-  const draftStory = firstStoryByStatus(data, 'Draft');
   const approvedStory = firstStoryByStatus(data, 'Approved');
+  const draftStory = firstStoryByStatus(data, 'Draft');
+
   const stories = allStories(data);
   const totalPlanned = data.epics.reduce((s, e) => s + (e.plannedStories ?? e.stories.length), 0);
   const doneCount = countByStatus(data, 'Done');
   const nonDoneStories = stories.filter((s) => s.status !== 'Done');
 
-  // Priority 1: In Progress story
+  // Recommendations follow reverse workflow order (finish what's closest to done first)
+
+  // Priority 1: QA passed/waived — mark Done
+  if (qaDoneStory) {
+    const num = storyNum(qaDoneStory.file);
+    const label = qaDoneStory.title ? `${num}. ${qaDoneStory.title}` : qaDoneStory.file;
+
+    recs.push({
+      id: 'mark-done',
+      title: i18n.t('common:rec.markDone'),
+      description: i18n.t('common:rec.markDoneDesc'),
+      agentCommand: '/BMad:agents:dev',
+      taskCommand: `Update story ${num} status to Done. The QA gate has passed.`,
+      variant: 'primary',
+      iconKey: 'check-circle',
+      storyFile: qaDoneStory.file,
+    });
+    recs.push({
+      id: 'request-qa-review',
+      title: i18n.t('common:rec.requestQAReview'),
+      description: label,
+      agentCommand: '/BMad:agents:qa',
+      taskCommand: `*review ${num}`,
+      variant: 'secondary',
+      iconKey: 'rotate-ccw',
+      storyFile: qaDoneStory.file,
+    });
+  }
+
+  // Priority 2: QA fixed — re-review
+  if (qaFixedStory) {
+    const num = storyNum(qaFixedStory.file);
+    const label = qaFixedStory.title ? `${num}. ${qaFixedStory.title}` : qaFixedStory.file;
+    const hasPrior = recs.length > 0;
+
+    recs.push({
+      id: 'review-fixed',
+      title: i18n.t('common:rec.qaReview'),
+      description: i18n.t('common:rec.qaReviewDesc', { label }),
+      agentCommand: '/BMad:agents:qa',
+      taskCommand: `*review ${num}`,
+      variant: hasPrior ? 'secondary' : 'primary',
+      iconKey: 'check-circle',
+      storyFile: qaFixedStory.file,
+    });
+  }
+
+  // Priority 3: QA failed/concerns — apply fixes
+  if (qaFailedStory) {
+    const num = storyNum(qaFailedStory.file);
+    const label = qaFailedStory.title ? `${num}. ${qaFailedStory.title}` : qaFailedStory.file;
+    const hasPrior = recs.length > 0;
+
+    recs.push({
+      id: 'review-apply-fixes',
+      title: i18n.t('common:rec.applyQaFixes'),
+      description: label,
+      agentCommand: '/BMad:agents:dev',
+      taskCommand: `*review-qa ${num}\n\n${i18n.t('board:workflow.resolveGateOutro')}`,
+      variant: hasPrior ? 'secondary' : 'primary',
+      iconKey: 'wrench',
+      storyFile: qaFailedStory.file,
+    });
+  }
+
+  // Priority 4: Ready for Review (no gate) — request QA
+  if (reviewStory) {
+    const num = storyNum(reviewStory.file);
+    const label = reviewStory.title ? `${num}. ${reviewStory.title}` : reviewStory.file;
+    const hasPrior = recs.length > 0;
+
+    recs.push({
+      id: 'review-story',
+      title: i18n.t('common:rec.qaReview'),
+      description: i18n.t('common:rec.qaReviewDesc', { label }),
+      agentCommand: '/BMad:agents:qa',
+      taskCommand: `*review ${num}`,
+      variant: hasPrior ? 'secondary' : 'primary',
+      iconKey: 'check-circle',
+      storyFile: reviewStory.file,
+    });
+  }
+
+  // Priority 5: In Progress — continue development
   if (inProgressStory) {
     const num = storyNum(inProgressStory.file);
-    const label = inProgressStory.title
-      ? `${num}. ${inProgressStory.title}`
-      : inProgressStory.file;
+    const label = inProgressStory.title ? `${num}. ${inProgressStory.title}` : inProgressStory.file;
+    const hasPrior = recs.length > 0;
 
-    // In-progress — primary action is continuing development
     recs.push({
       id: 'continue-dev',
       title: i18n.t('common:rec.continueDev'),
       description: label,
       agentCommand: '/BMad:agents:dev',
       taskCommand: `*develop-story ${num}`,
-      variant: 'primary',
+      variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'code',
       storyFile: inProgressStory.file,
     });
   }
 
-  // Priority 2: Review story — branch on gate result
-  if (reviewStory) {
-    const num = storyNum(reviewStory.file);
-    const label = reviewStory.title
-      ? `${num}. ${reviewStory.title}`
-      : reviewStory.file;
-    const gate = reviewStory.gateResult;
-
-    if (gate === 'PASS' || gate === 'WAIVED') {
-      // QA passed — recommend marking the story as Done
-      recs.push({
-        id: 'mark-done',
-        title: i18n.t('common:rec.markDone'),
-        description: i18n.t('common:rec.markDoneDesc'),
-        agentCommand: '/BMad:agents:dev',
-        taskCommand: `Update story ${num} status to Done. The QA gate has passed.`,
-        variant: inProgressStory ? 'secondary' : 'primary',
-        iconKey: 'check-circle',
-        storyFile: reviewStory.file,
-      });
-      // Secondary: re-request QA review
-      recs.push({
-        id: 'request-qa-review',
-        title: i18n.t('common:rec.requestQAReview'),
-        description: label,
-        agentCommand: '/BMad:agents:qa',
-        taskCommand: `*review ${num}`,
-        variant: 'secondary',
-        iconKey: 'rotate-ccw',
-        storyFile: reviewStory.file,
-      });
-    } else if (gate === 'FAIL' || gate === 'CONCERNS') {
-      // QA failed — recommend applying fixes
-      recs.push({
-        id: 'review-apply-fixes',
-        title: i18n.t('common:rec.applyQaFixes'),
-        description: label,
-        agentCommand: '/BMad:agents:dev',
-        taskCommand: `*review-qa ${num}`,
-        variant: inProgressStory ? 'secondary' : 'primary',
-        iconKey: 'wrench',
-        storyFile: reviewStory.file,
-      });
-    } else {
-      // No gate yet — recommend QA review
-      recs.push({
-        id: 'review-story',
-        title: i18n.t('common:rec.qaReview'),
-        description: i18n.t('common:rec.qaReviewDesc', { label }),
-        agentCommand: '/BMad:agents:qa',
-        taskCommand: `*review ${num}`,
-        variant: inProgressStory ? 'secondary' : 'primary',
-        iconKey: 'check-circle',
-        storyFile: reviewStory.file,
-      });
-    }
-  }
-
-  // Priority 3: Draft story (needs validation)
-  if (draftStory) {
-    const num = storyNum(draftStory.file);
-    const label = draftStory.title
-      ? `${num}. ${draftStory.title}`
-      : draftStory.file;
-
-    recs.push({
-      id: 'validate-story',
-      title: i18n.t('common:rec.validateStory'),
-      description: `${label}`,
-      agentCommand: '/BMad:agents:po',
-      taskCommand: `*validate-story-draft ${num}`,
-      variant: (inProgressStory || reviewStory) ? 'secondary' : 'primary',
-      iconKey: 'shield-check',
-      storyFile: draftStory.file,
-    });
-  }
-
-  // Priority 4: Approved story (ready for development)
+  // Priority 6: Approved — start development
   if (approvedStory) {
     const num = storyNum(approvedStory.file);
-    const label = approvedStory.title
-      ? `${num}. ${approvedStory.title}`
-      : approvedStory.file;
+    const label = approvedStory.title ? `${num}. ${approvedStory.title}` : approvedStory.file;
+    const hasPrior = recs.length > 0;
 
     recs.push({
       id: 'start-dev',
       title: i18n.t('common:rec.startDev'),
-      description: `${label}`,
+      description: label,
       agentCommand: '/BMad:agents:dev',
       taskCommand: `*develop-story ${num}`,
-      variant: (inProgressStory || reviewStory) ? 'secondary' : 'primary',
+      variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'play',
       storyFile: approvedStory.file,
     });
   }
 
-  // Priority 5: Create next story
-  // - Primary when no actionable stories exist
-  // - Secondary when there are Draft/Approved stories (user might still want to queue up more)
-  const hasActionable = !!(inProgressStory || reviewStory || draftStory || approvedStory);
+  // Priority 7: Draft — validate story
+  if (draftStory) {
+    const num = storyNum(draftStory.file);
+    const label = draftStory.title ? `${num}. ${draftStory.title}` : draftStory.file;
+    const hasPrior = recs.length > 0;
+
+    recs.push({
+      id: 'validate-story',
+      title: i18n.t('common:rec.validateStory'),
+      description: label,
+      agentCommand: '/BMad:agents:po',
+      taskCommand: `*validate-story-draft ${num}`,
+      variant: hasPrior ? 'secondary' : 'primary',
+      iconKey: 'shield-check',
+      storyFile: draftStory.file,
+    });
+  }
+
+  // Priority 8: Create next story
+  const hasActionable = recs.length > 0;
   const hasMorePlanned = totalPlanned > stories.length;
   const allDone = stories.length > 0 && nonDoneStories.length === 0;
 
@@ -401,7 +437,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     const nextNum = nextStoryNum(data);
     recs.push({
       id: 'create-story',
-      title: allDone || stories.length === 0 ? (stories.length === 0 ? i18n.t('common:rec.createFirstStory') : i18n.t('common:rec.createNextStory')) : i18n.t('common:rec.createNextStory'),
+      title: stories.length === 0 ? i18n.t('common:rec.createFirstStory') : i18n.t('common:rec.createNextStory'),
       description: hasMorePlanned
         ? i18n.t('common:rec.storiesRemaining', { count: totalPlanned - doneCount })
         : i18n.t('common:rec.createStoryDesc'),
