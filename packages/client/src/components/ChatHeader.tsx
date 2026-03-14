@@ -16,7 +16,6 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { useChatStore } from '../stores/chatStore';
 import { formatAgentRoleLabel } from '../utils/agentUtils';
-import { ThemeToggleButton } from './ThemeToggleButton';
 import { LayoutToggleButton } from './LayoutToggleButton';
 import { HeaderOverflowMenu } from './HeaderOverflowMenu';
 import type { QuickPanelType } from '../stores/panelStore';
@@ -264,7 +263,6 @@ export function ChatHeader({
 
           <div className="hidden md:flex items-center">
             <LayoutToggleButton />
-            <ThemeToggleButton />
           </div>
 
           {/* Desktop-only: settings */}

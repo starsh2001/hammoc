@@ -7,7 +7,7 @@ import { useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import type { BoardItem } from '@hammoc/shared';
-import { STATUS_LABEL, STATUS_BADGE_COLOR } from './constants';
+import { resolveBadge } from './constants';
 
 interface EpicStoriesDialogProps {
   open: boolean;
@@ -103,7 +103,9 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
             </p>
           ) : (
             <ul className="space-y-2">
-              {stories.map((story) => (
+              {stories.map((story) => {
+                const badge = resolveBadge(story);
+                return (
                 <li
                   key={story.id}
                   className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-[#1c2129] rounded-lg"
@@ -117,12 +119,13 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
                     </span>
                   </div>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${STATUS_BADGE_COLOR[story.status] || ''}`}
+                    className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${badge.colorClass}`}
                   >
-                    {STATUS_LABEL[story.status] || story.status}
+                    {badge.label}
                   </span>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </div>

@@ -139,11 +139,11 @@ describe('Board Routes', () => {
 
       const response = await request(app)
         .patch(`/api/projects/test-project/board/issues/${issueId}`)
-        .send({ title: 'Updated title', status: 'InProgress' });
+        .send({ title: 'Updated title', status: 'In Progress' });
 
       expect(response.status).toBe(200);
       expect(response.body.title).toBe('Updated title');
-      expect(response.body.status).toBe('InProgress');
+      expect(response.body.status).toBe('In Progress');
     });
 
     it('should return 404 for non-existent issue', async () => {

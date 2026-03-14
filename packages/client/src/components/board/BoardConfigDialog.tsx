@@ -1,15 +1,15 @@
 /**
- * BoardConfigDialog - Configure board columns and status-to-column mapping
- * [Source: Custom board config feature]
+ * BoardConfigDialog - Configure board columns and badge-to-column mapping
+ * [Source: Custom board config feature, Badge-based column mapping]
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
-import type { BoardConfig, BoardColumnConfig, BoardItemStatus } from '@hammoc/shared';
+import type { BoardConfig, BoardColumnConfig } from '@hammoc/shared';
 import { COLUMN_COLOR_PALETTE, DEFAULT_BOARD_CONFIG, REQUIRED_COLUMN_IDS, validateBoardConfig } from '@hammoc/shared';
-import { STATUS_LABEL } from './constants';
 import { generateUUID } from '../../utils/uuid';
+import { ALL_BADGE_IDS, getBadgeById } from './constants';
 
 interface BoardConfigDialogProps {
   open: boolean;
@@ -18,10 +18,6 @@ interface BoardConfigDialogProps {
   onSave: (config: BoardConfig) => Promise<void>;
   onReset: () => Promise<void>;
 }
-
-const ALL_STATUSES: BoardItemStatus[] = [
-  'Open', 'Draft', 'Approved', 'InProgress', 'Blocked', 'Review', 'Done', 'Closed', 'Promoted',
-];
 
 const REQUIRED_IDS = new Set<string>(REQUIRED_COLUMN_IDS);
 
@@ -33,8 +29,7 @@ function colorSwatchClass(colorClass: string): string {
 export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: BoardConfigDialogProps) {
   const { t } = useTranslation('board');
   const [columns, setColumns] = useState<BoardColumnConfig[]>([]);
-  const [statusMap, setStatusMap] = useState<Record<BoardItemStatus, string>>({} as Record<BoardItemStatus, string>);
-  const [customMappings, setCustomMappings] = useState<{ key: string; value: BoardItemStatus }[]>([]);
+  const [badgeMap, setBadgeMap] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [openColorPicker, setOpenColorPicker] = useState<number | null>(null);
@@ -43,12 +38,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
   useEffect(() => {
     if (open) {
       setColumns(config.columns.map((c) => ({ ...c })));
-      setStatusMap({ ...config.statusToColumn });
-      setCustomMappings(
-        config.customStatusMappings
-          ? Object.entries(config.customStatusMappings).map(([key, value]) => ({ key, value }))
-          : [],
-      );
+      setBadgeMap({ ...config.badgeToColumn });
       setErrors([]);
       setOpenColorPicker(null);
     }
@@ -84,14 +74,14 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
     if (REQUIRED_IDS.has(removed.id)) return;
     const newColumns = columns.filter((_, i) => i !== index);
     setColumns(newColumns);
-    // Re-map any statuses pointing to removed column to first column
-    const newMap = { ...statusMap };
-    for (const status of ALL_STATUSES) {
-      if (newMap[status] === removed.id) {
-        newMap[status] = newColumns[0].id;
+    // Re-map any badges pointing to removed column to first column
+    const newMap = { ...badgeMap };
+    for (const [badge, target] of Object.entries(newMap)) {
+      if (target === removed.id) {
+        newMap[badge] = newColumns[0].id;
       }
     }
-    setStatusMap(newMap);
+    setBadgeMap(newMap);
   };
 
   const handleMoveColumn = (index: number, direction: -1 | 1) => {
@@ -114,21 +104,22 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
     setColumns(newColumns);
   };
 
-  const handleStatusMapChange = (status: BoardItemStatus, columnId: string) => {
-    setStatusMap({ ...statusMap, [status]: columnId });
+  const handleBadgeMapChange = (badgeId: string, columnId: string) => {
+    setBadgeMap({ ...badgeMap, [badgeId]: columnId });
   };
 
   const handleSave = async () => {
-    // Build customStatusMappings from entries with non-empty keys
-    const csm: Record<string, BoardItemStatus> = {};
-    for (const entry of customMappings) {
-      const trimmed = entry.key.trim();
-      if (trimmed) csm[trimmed] = entry.value;
+    // Ensure all badge IDs have a column mapping (fill missing with first column)
+    const completeBadgeMap = { ...badgeMap };
+    const firstColId = columns[0]?.id ?? '';
+    for (const badgeId of ALL_BADGE_IDS) {
+      if (!(badgeId in completeBadgeMap)) {
+        completeBadgeMap[badgeId] = firstColId;
+      }
     }
     const newConfig: BoardConfig = {
       columns,
-      statusToColumn: statusMap,
-      ...(Object.keys(csm).length > 0 && { customStatusMappings: csm }),
+      badgeToColumn: completeBadgeMap,
     };
     const validationErrors = validateBoardConfig(newConfig);
     if (validationErrors.length > 0) {
@@ -284,88 +275,38 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
             </div>
           </div>
 
-          {/* Status mapping section */}
+          {/* Badge-to-Column mapping section */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">{t('config.statusMapping')}</h3>
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('config.badgeMapping')}</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-400 mt-0.5">{t('config.badgeMappingHint')}</p>
+            </div>
             <div className="space-y-2">
-              {ALL_STATUSES.map((status) => (
-                <div key={status} className="flex items-center justify-between gap-3 px-2">
-                  <span className="text-sm text-gray-700 dark:text-gray-200 w-24 flex-shrink-0">
-                    {STATUS_LABEL[status]}
-                  </span>
-                  <select
-                    value={statusMap[status] || ''}
-                    onChange={(e) => handleStatusMapChange(status, e.target.value)}
-                    className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
-                  >
-                    {columns.map((col) => (
-                      <option key={col.id} value={col.id}>
-                        {col.label || col.id}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Custom status mapping section */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('config.customStatusMapping')}</h3>
-                <p className="text-xs text-gray-400 dark:text-gray-400 mt-0.5">{t('config.customStatusMappingHint')}</p>
-              </div>
-              <button
-                onClick={() => setCustomMappings([...customMappings, { key: '', value: 'Open' }])}
-                disabled={customMappings.length >= 20}
-                className="px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded flex items-center gap-1 transition-colors"
-              >
-                <Plus className="w-3 h-3" />
-                {t('common:button.add')}
-              </button>
-            </div>
-
-            {customMappings.length > 0 && (
-              <div className="space-y-2">
-                {customMappings.map((entry, index) => (
-                  <div key={index} className="flex items-center gap-2 px-2">
-                    <input
-                      type="text"
-                      value={entry.key}
-                      onChange={(e) => {
-                        const updated = [...customMappings];
-                        updated[index] = { ...entry, key: e.target.value };
-                        setCustomMappings(updated);
-                      }}
-                      placeholder={t('config.customStatusKeyPlaceholder')}
-                      className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
-                    />
+              {ALL_BADGE_IDS.map((badgeId) => {
+                const badgeDef = getBadgeById(badgeId);
+                if (!badgeDef) return null;
+                const currentColumn = badgeMap[badgeId] ?? columns[0]?.id ?? '';
+                return (
+                  <div key={badgeId} className="flex items-center gap-2 px-2">
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${badgeDef.colorClass}`}>
+                      {badgeDef.label}
+                    </span>
                     <span className="text-gray-400 text-sm flex-shrink-0">&rarr;</span>
                     <select
-                      value={entry.value}
-                      onChange={(e) => {
-                        const updated = [...customMappings];
-                        updated[index] = { ...entry, value: e.target.value as BoardItemStatus };
-                        setCustomMappings(updated);
-                      }}
-                      className="w-32 px-2 py-1.5 text-sm bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                      value={currentColumn}
+                      onChange={(e) => handleBadgeMapChange(badgeId, e.target.value)}
+                      className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
                     >
-                      {ALL_STATUSES.map((s) => (
-                        <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                      {columns.map((col) => (
+                        <option key={col.id} value={col.id}>
+                          {col.label || col.id}
+                        </option>
                       ))}
                     </select>
-                    <button
-                      onClick={() => setCustomMappings(customMappings.filter((_, i) => i !== index))}
-                      className="p-1 text-red-400 hover:text-red-600 transition-colors"
-                      aria-label={t('config.delete')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
         </div>
 

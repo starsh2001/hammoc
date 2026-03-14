@@ -2,7 +2,8 @@
   "config": {
     "title": "Configurações do quadro",
     "columnDefinition": "Definições de colunas",
-    "statusMapping": "Status → Mapeamento de colunas",
+    "badgeMapping": "Distintivo → Mapeamento de colunas",
+    "badgeMappingHint": "Mapeia estados de distintivo para colunas do quadro",
     "selectColor": "Selecionar cor",
     "columnNamePlaceholder": "Nome da coluna",
     "moveUp": "Mover para cima",
@@ -10,10 +11,7 @@
     "delete": "Excluir",
     "resetDefaults": "Restaurar padrões",
     "resetConfirm": "Restaurar configurações padrão?",
-    "saving": "Salvando...",
-    "customStatusMapping": "Mapeamento de status personalizado",
-    "customStatusMappingHint": "Mapeia status não padrão de stories para status do quadro",
-    "customStatusKeyPlaceholder": "ex. Complete"
+    "saving": "Salvando..."
   },
   "issue": {
     "add": "Adicionar issue",
@@ -40,6 +38,13 @@
     "alreadyPromotedToEpic": "Já promovido a epic",
     "cannotDeleteWhileWorking": "Não é possível excluir enquanto a IA está trabalhando",
     "reopen": "Reabrir",
+    "resumeDev": "Retomar desenvolvimento",
+    "markReview": "Solicitar revisão",
+    "markDone": "Concluir issue",
+    "rework": "Retrabalhar",
+    "requestQA": "Solicitar revisão QA",
+    "requestQAAgain": "Ressolicitar revisão QA",
+    "applyFix": "Aplicar correção QA",
     "closeConfirm": "Fechar esta issue?",
     "deleteConfirm": "Excluir issue \"{{title}}\"?",
     "attachments": "Anexos",
@@ -54,7 +59,13 @@
   },
   "card": {
     "menu": "Menu do cartão",
-    "unmappedStatus": "Status não padrão \"{{rawStatus}}\" mapeado para {{status}}. Use o menu de contexto para normalizar."
+    "rejected": "Rejeitado pelo QA — correções necessárias",
+    "gate": {
+      "PASS": "QA Aprovado",
+      "WAIVED": "QA Dispensado",
+      "FAIL": "QA Reprovado",
+      "CONCERNS": "QA Ressalvas"
+    }
   },
   "epic": {
     "subStories": "Sub-stories do epic",
@@ -62,16 +73,24 @@
     "noSubStories": "Nenhuma sub-story",
     "viewSubStories": "Ver sub-stories"
   },
-  "story": {
-    "normalizeStatus": "Normalizar status ({{rawStatus}} → {{status}})"
-  },
+  "story": {},
   "workflow": {
     "validateStory": "Validar story",
     "startDevelopment": "Iniciar desenvolvimento",
+    "resumeDevelopment": "Retomar desenvolvimento",
     "requestQA": "Solicitar QA",
     "applyQAFix": "Aplicar correção de QA",
+    "reviewStory": "Revisar story",
+    "completeStory": "Concluir story",
+    "requestQAReview": "Ressolicitar revisão QA",
+    "resolveGateOutro": "Após concluir as correções de QA, altere o campo gate do arquivo YAML de gate para 'FIXED'.",
     "quickFixIntro": "Por favor, corrija o seguinte problema:",
-    "issueFileLabel": "Arquivo do problema:"
+    "issueFileLabel": "Arquivo do problema:",
+    "reviewFileLabel": "Arquivo de revisão:",
+    "quickFixOutro": "Quando a correção estiver concluída, altere o status da issue para Ready for Review.",
+    "issueFixIntro": "A seguinte issue foi rejeitada pelo QA. Revise o feedback de QA no campo status_reason do arquivo YAML de revisão e aplique as correções necessárias. Após aplicar as correções, altere o campo gate do arquivo YAML de revisão para 'FIXED':",
+    "issueQAIntro": "Revise a correção da seguinte issue e verifique se ela resolve adequadamente o problema:",
+    "issueQAOutro": "Se a correção for satisfatória, atualize o status para 'Ready for Done' e crie/atualize o arquivo YAML de revisão com gate: PASS.\nSe precisar de mais trabalho, mantenha o status como 'Ready for Review' e crie/atualize o arquivo de revisão com gate: FAIL e status_reason explicando o que precisa ser corrigido.\n\nFormato YAML do arquivo de revisão:\n```yaml\nschema: 1\nissue: '{issueId}'\ngate: PASS\nstatus_reason: 'explicação'\nreviewer: 'QA'\nupdated: '{ISO-8601}'\n```"
   },
   "status": {
     "open": "Aberto",
@@ -92,8 +111,7 @@
     "editFailed": "Falha ao editar issue.",
     "closeFailed": "Falha ao fechar issue.",
     "reopenFailed": "Falha ao reabrir issue.",
-    "deleteFailed": "Falha ao excluir issue.",
-    "normalizeStatusFailed": "Falha ao normalizar status."
+    "deleteFailed": "Falha ao excluir issue."
   },
   "empty": {
     "message": "Nenhum item no quadro. Tente adicionar uma issue.",

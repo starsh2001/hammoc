@@ -4,7 +4,6 @@ import path from 'path';
 import yaml from 'js-yaml';
 import type {
   BoardItem,
-  BoardItemStatus,
   BoardResponse,
   CreateIssueRequest,
   UpdateIssueRequest,
@@ -14,64 +13,13 @@ import { bmadStatusService } from './bmadStatusService.js';
 
 const VALID_SEVERITIES = new Set(['low', 'medium', 'high', 'critical']);
 const VALID_ISSUE_TYPES = new Set(['bug', 'improvement']);
-const VALID_STATUSES = new Set(['Open', 'InProgress', 'Done', 'Closed', 'Promoted']);
+const VALID_STATUSES = new Set(['Open', 'In Progress', 'InProgress', 'Ready for Review', 'Ready for Done', 'Done', 'Closed', 'Promoted']);
 
 const ATTACHMENT_ACCEPTED_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
 const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024; // 10MB
 const ATTACHMENT_MAX_COUNT = 10;
 const ATTACHMENTS_DIR_NAME = 'attachments';
-
-/**
- * Map BmadStoryStatus.status (may include spaces) to BoardItemStatus.
- * Uses case-insensitive matching for common variations.
- * Custom mappings (from board config) take priority over built-in ones.
- */
-function mapStoryStatus(status: string, customMappings?: Record<string, BoardItemStatus>): BoardItemStatus {
-  // Custom mappings take highest priority (case-insensitive)
-  if (customMappings) {
-    const lower = status.toLowerCase().trim();
-    for (const [key, value] of Object.entries(customMappings)) {
-      if (key.toLowerCase().trim() === lower) return value;
-    }
-  }
-
-  // Exact matches first (most common)
-  switch (status) {
-    case 'Draft':
-      return 'Draft';
-    case 'Approved':
-      return 'Approved';
-    case 'In Progress':
-      return 'InProgress';
-    case 'Review':
-    case 'Ready for Review':
-      return 'Review';
-    case 'Blocked':
-      return 'Blocked';
-    case 'Done':
-    case 'Ready for Done':
-      return 'Done';
-    case 'Open':
-    case 'Closed':
-    case 'InProgress':
-      return status;
-    default:
-      break;
-  }
-
-  // Case-insensitive fuzzy matching for non-standard values
-  const lower = status.toLowerCase().trim();
-  if (lower === 'complete' || lower === 'completed') return 'Done';
-  if (lower === 'wip' || lower === 'in development' || lower === 'developing') return 'InProgress';
-  if (lower === 'todo' || lower === 'to do' || lower === 'to-do') return 'Draft';
-  if (lower === 'pending' || lower === 'new') return 'Open';
-  if (lower === 'in review' || lower === 'reviewing' || lower === 'under review') return 'Review';
-  if (lower === 'on hold' || lower === 'hold') return 'Blocked';
-  if (lower === 'closed' || lower === 'archived' || lower === 'cancelled') return 'Closed';
-
-  // Truly unknown status — fallback to Open
-  return 'Open';
-}
+const REVIEWS_DIR_NAME = 'reviews';
 
 /**
  * Generate a URL-safe slug from a title.
@@ -145,13 +93,58 @@ function extractAttachments(content: string): IssueAttachment[] {
 }
 
 /**
+ * Scan the reviews/ directory under issuesDir for issue review YAML files.
+ * Groups by issueId, keeps newest by mtime. Returns a map of issueId → gate token.
+ */
+async function scanIssueReviews(issuesDir: string): Promise<Map<string, string>> {
+  const reviewsDir = path.join(issuesDir, REVIEWS_DIR_NAME);
+  const gateResults = new Map<string, string>();
+
+  let files: string[];
+  try {
+    files = await fs.readdir(reviewsDir);
+  } catch {
+    return gateResults; // reviews dir doesn't exist yet
+  }
+
+  // Group by issueId, keep newest by mtime
+  const latestPerIssue = new Map<string, { file: string; mtime: number }>();
+  for (const f of files) {
+    const match = f.match(/^(.+)-review\.yml$/);
+    if (!match) continue;
+    const issueId = match[1];
+    try {
+      const stat = await fs.stat(path.join(reviewsDir, f));
+      const existing = latestPerIssue.get(issueId);
+      if (!existing || stat.mtimeMs > existing.mtime) {
+        latestPerIssue.set(issueId, { file: f, mtime: stat.mtimeMs });
+      }
+    } catch { /* skip unreadable files */ }
+  }
+
+  // Parse each latest review file
+  for (const [issueId, { file }] of latestPerIssue) {
+    try {
+      const content = await fs.readFile(path.join(reviewsDir, file), 'utf-8');
+      const parsed = yaml.load(content) as Record<string, unknown> | null;
+      const gate = (typeof parsed?.gate === 'string') ? parsed.gate.trim().toUpperCase() : '';
+      if (gate) gateResults.set(issueId, gate);
+    } catch { /* skip unparseable files */ }
+  }
+
+  return gateResults;
+}
+
+/**
  * Parse an issue markdown file into a BoardItem.
  */
 function parseIssueMarkdown(content: string, issueId: string): BoardItem {
   const titleMatch = content.match(/^#\s+(.+)/m);
   const title = titleMatch ? titleMatch[1].trim() : issueId;
 
-  const status = (extractSection(content, 'Status') || 'Open') as BoardItemStatus;
+  const rawStatus = extractSection(content, 'Status') || 'Open';
+  // Normalize legacy 'Review' → 'Ready for Review'
+  const status = rawStatus === 'Review' ? 'Ready for Review' : rawStatus;
   const description = extractSection(content, 'Description');
   const severity = extractSection(content, 'Severity') as BoardItem['severity'];
   const issueType = extractSection(content, 'Type') as BoardItem['issueType'];
@@ -173,9 +166,6 @@ function parseIssueMarkdown(content: string, issueId: string): BoardItem {
   };
 }
 
-/**
- * Generate issue markdown content from data.
- */
 /**
  * Sanitize a string to prevent markdown header injection.
  * Strips newlines and leading '#' characters.
@@ -242,6 +232,17 @@ function withIssueLock<T>(issueId: string, fn: () => Promise<T>): Promise<T> {
     }
   });
   return next;
+}
+
+/**
+ * Determine the canonical column-level status for epic aggregation.
+ * Maps common raw status strings to a simplified set for epic status calculation.
+ */
+function toEpicAggregationStatus(rawStatus: string): 'done' | 'open' | 'other' {
+  const lower = rawStatus.toLowerCase().trim();
+  if (lower === 'done' || lower === 'complete' || lower === 'completed') return 'done';
+  if (lower === 'draft' || lower === 'open' || lower === 'new' || lower === 'pending' || lower === 'approved') return 'open';
+  return 'other';
 }
 
 class IssueService {
@@ -447,31 +448,46 @@ class IssueService {
     } catch {
       // Best-effort cleanup — don't fail the delete
     }
+
+    // Clean up review file if it exists
+    const reviewFile = path.join(issuesDir, REVIEWS_DIR_NAME, `${issueId}-review.yml`);
+    try {
+      await fs.unlink(reviewFile);
+    } catch {
+      // Best-effort cleanup
+    }
   }
 
   /**
    * Get unified board data: issues + epics + stories from bmadStatusService.
+   * Raw status strings are preserved as-is — no normalization layer.
    */
-  async getBoard(projectPath: string, customStatusMappings?: Record<string, BoardItemStatus>): Promise<Pick<BoardResponse, 'items'>> {
-    const [issues, statusResponse, issuesDir] = await Promise.all([
+  async getBoard(projectPath: string): Promise<Pick<BoardResponse, 'items'>> {
+    const issuesDir = await this.resolveIssuesDir(projectPath);
+    const [issues, statusResponse, reviewResults] = await Promise.all([
       this.listIssues(projectPath),
       bmadStatusService.scanProject(projectPath),
-      this.resolveIssuesDir(projectPath),
+      scanIssueReviews(issuesDir),
     ]);
 
     // Compute project-relative issues path for externalRef
     const relativeIssuesDir = path.relative(projectPath, issuesDir).replace(/\\/g, '/');
 
-    const items: BoardItem[] = issues.map((issue) => ({
-      ...issue,
-      externalRef: `${relativeIssuesDir}/${issue.id}.md`,
-    }));
+    // Issues keep their raw status as-is
+    const items: BoardItem[] = issues.map((issue) => {
+      const gateResult = reviewResults.get(issue.id);
+      return {
+        ...issue,
+        ...(gateResult && { gateResult }),
+        externalRef: `${relativeIssuesDir}/${issue.id}.md`,
+      };
+    });
 
     // Resolve story directory (project-relative) for filePath
     const storyLocation = statusResponse.config.devStoryLocation || 'docs/stories';
 
     for (const epic of statusResponse.epics) {
-      // Convert stories to BoardItems (with file mtime for sorting)
+      // Convert stories to BoardItems — raw status preserved directly
       const storyItems: BoardItem[] = await Promise.all(
         epic.stories.map(async (story) => {
           const fileMatch = story.file.match(/^(\d+\.\d+)/);
@@ -479,7 +495,6 @@ class IssueService {
           const epicMatch = story.file.match(/^(\d+)\./);
           const epicNumber = epicMatch ? parseInt(epicMatch[1], 10) : undefined;
 
-          const mapped = mapStoryStatus(story.status, customStatusMappings);
           let updatedAt: number | undefined;
           try {
             const stat = await fs.stat(path.join(projectPath, storyLocation, story.file));
@@ -490,10 +505,9 @@ class IssueService {
             id: `story-${storyId}`,
             type: 'story' as const,
             title: story.title ?? story.file,
-            status: mapped,
-            // Include rawStatus when it differs from the standard mapped value
-            ...(story.status !== mapped && { rawStatus: story.status }),
+            status: story.status === 'Review' ? 'Ready for Review' : story.status,
             ...(epicNumber !== undefined && { epicNumber }),
+            ...(story.gateResult && { gateResult: story.gateResult }),
             filePath: `${storyLocation}/${story.file}`,
             ...(updatedAt !== undefined && { updatedAt }),
           };
@@ -502,30 +516,28 @@ class IssueService {
 
       items.push(...storyItems);
 
-      // Calculate epic status from mapped story statuses
-      const mappedStatuses = epic.stories.map((s) => mapStoryStatus(s.status, customStatusMappings));
-      let epicStatus: BoardItemStatus;
-      if (mappedStatuses.length === 0) {
+      // Calculate epic status from story statuses
+      const aggregated = epic.stories.map((s) => toEpicAggregationStatus(s.status));
+      let epicStatus: string;
+      if (aggregated.length === 0) {
         epicStatus = 'Open';
       } else {
-        const allDone = mappedStatuses.every((s) => s === 'Done');
-        const allDraftOrEmpty = mappedStatuses.every(
-          (s) => s === 'Draft' || s === 'Open'
-        );
+        const allDone = aggregated.every((s) => s === 'done');
+        const allOpen = aggregated.every((s) => s === 'open');
 
         if (allDone) {
           epicStatus = 'Done';
-        } else if (allDraftOrEmpty) {
+        } else if (allOpen) {
           epicStatus = 'Open';
         } else {
-          epicStatus = 'InProgress';
+          epicStatus = 'In Progress';
         }
       }
 
       // Calculate story progress: use planned count from PRD as denominator when available
-      const planned = epic.plannedStories ?? mappedStatuses.length;
-      const total = Math.max(planned, mappedStatuses.length);
-      const done = mappedStatuses.filter((s) => s === 'Done').length;
+      const planned = epic.plannedStories ?? aggregated.length;
+      const total = Math.max(planned, aggregated.length);
+      const done = aggregated.filter((s) => s === 'done').length;
 
       // Epic updatedAt: use the most recent story mtime
       const epicUpdatedAt = storyItems.reduce((max, s) =>
@@ -544,58 +556,6 @@ class IssueService {
     }
 
     return { items };
-  }
-
-  /**
-   * Normalize a story file's status from a non-standard value (e.g. "Ready for Done")
-   * to the standard mapped value (e.g. "Done") in the actual markdown file.
-   * @param projectPath Absolute path to the project root
-   * @param storyNum Story number like "1.1"
-   * @returns The normalized status string
-   */
-  async normalizeStoryStatus(projectPath: string, storyNum: string): Promise<string> {
-    const config = await bmadStatusService.scanProject(projectPath).then((r) => r.config);
-    const storiesDir = config.devStoryLocation
-      ? path.join(projectPath, config.devStoryLocation)
-      : path.join(projectPath, 'docs', 'stories');
-
-    // Find the story file matching the number
-    const files = await fs.readdir(storiesDir);
-    const storyFile = files.find((f) => f.startsWith(`${storyNum}.`));
-    if (!storyFile) {
-      const err = new Error(`Story file not found: ${storyNum}`);
-      (err as NodeJS.ErrnoException).code = 'STORY_NOT_FOUND';
-      throw err;
-    }
-
-    const filePath = path.join(storiesDir, storyFile);
-    const content = await fs.readFile(filePath, 'utf-8');
-
-    // Extract current status
-    const statusMatch = content.match(/^(## Status\s*\n\s*\n\s*)(.+)/m);
-    if (!statusMatch) {
-      const err = new Error('Status section not found in story file');
-      (err as NodeJS.ErrnoException).code = 'STATUS_NOT_FOUND';
-      throw err;
-    }
-
-    const rawStatus = statusMatch[2].trim();
-    const mapped = mapStoryStatus(rawStatus);
-
-    if (rawStatus === mapped) {
-      return mapped; // Already standard, no change needed
-    }
-
-    // Replace the status in the file (atomic write: temp + rename)
-    const updated = content.replace(
-      /^(## Status\s*\n\s*\n\s*).+/m,
-      `$1${mapped}`,
-    );
-    const tmpPath = `${filePath}.${crypto.randomBytes(4).toString('hex')}.tmp`;
-    await fs.writeFile(tmpPath, updated, 'utf-8');
-    await fs.rename(tmpPath, filePath);
-
-    return mapped;
   }
 
   /**
@@ -780,15 +740,15 @@ class IssueService {
 }
 
 /**
- * Update or create the ## Attachments section in issue markdown.
- */
-/**
  * Escape markdown link-breaking characters in display text.
  */
 function escapeMarkdownLinkText(text: string): string {
   return text.replace(/[\[\]\\]/g, (ch) => `\\${ch}`);
 }
 
+/**
+ * Update or create the ## Attachments section in issue markdown.
+ */
 function updateAttachmentsSection(content: string, attachments: IssueAttachment[], issueId: string): string {
   const attachmentLines = attachments.map(
     (a) => `- [${escapeMarkdownLinkText(a.originalName)}](${ATTACHMENTS_DIR_NAME}/${issueId}/${a.filename}) <!-- size:${a.size} type:${a.mimeType} -->`

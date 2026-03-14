@@ -261,17 +261,18 @@ export function FileExplorerTab() {
 
   // --- Upload handler ---
 
-  const handleUploadClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
+  const isUploadingRef = useRef(false);
+  const handleFilesUpload = useCallback(async (files: File[]) => {
+    if (files.length === 0 || !projectSlug) return;
+    if (isUploadingRef.current) {
+      showToast({ message: t('files.toast.uploadInProgress'), type: 'info' });
+      return;
+    }
 
-  const handleFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || !projectSlug) return;
-
+    isUploadingRef.current = true;
     setIsUploading(true);
     try {
-      const result = await fileSystemApi.uploadFiles(projectSlug, currentPath, Array.from(files));
+      const result = await fileSystemApi.uploadFiles(projectSlug, currentPath, files);
       const count = result.files.length;
       showToast({
         message: count === 1
@@ -284,11 +285,39 @@ export function FileExplorerTab() {
     } catch (err) {
       showToast({ message: getCrudErrorMessage(err, t('files.toast.uploadFailed')), type: 'error' });
     } finally {
+      isUploadingRef.current = false;
       setIsUploading(false);
       // Reset file input so the same file can be uploaded again
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, [projectSlug, currentPath, showToast, t, getCrudErrorMessage]);
+
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    await handleFilesUpload(Array.from(files));
+  }, [handleFilesUpload]);
+
+  // --- Ctrl+V paste file handler ---
+  const handlePasteFiles = useCallback((e: ClipboardEvent) => {
+    const items = e.clipboardData?.files;
+    if (!items || items.length === 0) return;
+    e.preventDefault();
+    handleFilesUpload(Array.from(items));
+  }, [handleFilesUpload]);
+
+  // Register Ctrl+V paste listener on the explorer container
+  const explorerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = explorerRef.current;
+    if (!el) return;
+    el.addEventListener('paste', handlePasteFiles);
+    return () => el.removeEventListener('paste', handlePasteFiles);
+  }, [handlePasteFiles]);
 
   const segments = (() => {
     if (currentPath === '.') {
@@ -316,7 +345,7 @@ export function FileExplorerTab() {
   const isSearching = searchResults !== null || searchLoading;
 
   return (
-    <div className="flex flex-col h-full">
+    <div ref={explorerRef} className="flex flex-col h-full" tabIndex={-1}>
       {/* Hidden file input for upload */}
       <input
         ref={fileInputRef}
@@ -429,8 +458,9 @@ export function FileExplorerTab() {
         </div>
       </div>
 
-      {/* Content: Search results or FileTree */}
-      <div className="flex-1 overflow-auto min-h-0">
+      {/* Content: Search results or FileTree — click focuses container for Ctrl+V paste */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div className="flex-1 overflow-auto min-h-0 grid" onClick={() => explorerRef.current?.focus()}>
         {isSearching ? (
           <div className="px-2">
             {searchLoading ? (
@@ -484,6 +514,8 @@ export function FileExplorerTab() {
             hasClipboard={clipboard !== null}
             cutPath={clipboard?.operation === 'cut' ? clipboard.path : undefined}
             refreshTrigger={refreshKey}
+            onFileDrop={handleFilesUpload}
+            isUploading={isUploading}
           />
         ) : (
           <FileTree

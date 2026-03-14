@@ -305,6 +305,61 @@ class BmadStatusService {
       }
     }
 
+    // Scan QA gate files to determine gate decisions per story
+    // Gate files: qaLocation/gates/{epic}.{story}-{slug}.yml
+    // Parse YAML to read the `gate` field (PASS|CONCERNS|FAIL|WAIVED)
+    // When multiple gate files exist for the same story, use the newest one (by file mtime)
+    const gateResults = new Map<string, string>();
+    if (config.qaLocation) {
+      const gatesDir = path.join(projectRoot, config.qaLocation, 'gates');
+      try {
+        const gateFiles = await fs.readdir(gatesDir);
+        // Group gate files by story number, keeping the newest
+        const latestGatePerStory = new Map<string, { file: string; mtime: number }>();
+        for (const gf of gateFiles) {
+          const gateMatch = gf.match(/^(\d+\.\d+)-.*\.yml$/);
+          if (!gateMatch) continue;
+          const storyId = gateMatch[1];
+          try {
+            const stat = await fs.stat(path.join(gatesDir, gf));
+            const existing = latestGatePerStory.get(storyId);
+            if (!existing || stat.mtimeMs > existing.mtime) {
+              latestGatePerStory.set(storyId, { file: gf, mtime: stat.mtimeMs });
+            }
+          } catch {
+            // Skip unreadable gate files
+          }
+        }
+        // Read each latest gate file and store decision
+        for (const [storyId, { file }] of latestGatePerStory) {
+          try {
+            const content = await fs.readFile(path.join(gatesDir, file), 'utf-8');
+            const parsed = yaml.load(content) as Record<string, unknown> | null;
+            const gate = (typeof parsed?.gate === 'string') ? parsed.gate.trim().toUpperCase() : '';
+            if (gate) {
+              gateResults.set(storyId, gate);
+            }
+          } catch {
+            // Skip unparseable gate files
+          }
+        }
+      } catch (err: unknown) {
+        // Only suppress ENOENT (directory not found); propagate other errors
+        if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') throw err;
+      }
+    }
+
+    // Apply gate results to stories
+    for (const stories of storyMap.values()) {
+      for (const story of stories) {
+        const num = story.file.match(/^(\d+\.\d+)/)?.[1];
+        if (!num) continue;
+        const gate = gateResults.get(num);
+        if (!gate) continue;
+        story.gateResult = gate;
+      }
+    }
+
     // Merge: ensure epics from storyMap appear even if not in epicMap
     for (const epicNum of storyMap.keys()) {
       if (!epicMap.has(epicNum)) {

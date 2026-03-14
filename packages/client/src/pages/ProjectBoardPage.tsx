@@ -20,6 +20,7 @@ import { EpicStoriesDialog } from '../components/board/EpicStoriesDialog';
 import { BoardConfigDialog } from '../components/board/BoardConfigDialog';
 import { boardApi } from '../services/api/board.js';
 import { generateUUID } from '../utils/uuid.js';
+import { resolveBadge } from '../components/board/constants';
 
 export function ProjectBoardPage() {
   const { t } = useTranslation('board');
@@ -79,13 +80,13 @@ export function ProjectBoardPage() {
   const handleQuickFix = useCallback(async (item: BoardItem) => {
     if (!projectSlug) return;
     try {
-      await boardApi.updateIssue(projectSlug, item.id, { status: 'Done' });
+      await boardApi.updateIssue(projectSlug, item.id, { status: 'In Progress' });
       const sessionId = generateUUID();
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
       const desc = item.description
         ? (item.description.length > 500 ? item.description.slice(0, 500) + t('truncated') : item.description)
         : t('noDescription');
-      const prompt = `${t('workflow.quickFixIntro')}\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n${t('workflow.issueFileLabel')} ${issueFile}`;
+      const prompt = `${t('workflow.quickFixIntro')}\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n${t('workflow.issueFileLabel')} ${issueFile}\n\n${t('workflow.quickFixOutro')}`;
       const params = new URLSearchParams({ agent: '/BMad:agents:dev', task: prompt });
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
@@ -150,6 +151,17 @@ export function ProjectBoardPage() {
     }
   }, [projectSlug, refresh, setActionErrorWithClear]);
 
+  // Change issue status (In Progress → Ready for Review, Ready for Done → Done, etc.)
+  const handleIssueStatusChange = useCallback(async (item: BoardItem, status: string) => {
+    if (!projectSlug) return;
+    try {
+      await boardApi.updateIssue(projectSlug, item.id, { status });
+      await refresh();
+    } catch {
+      setActionErrorWithClear(t('errors.updateStatusFailed'));
+    }
+  }, [projectSlug, refresh, setActionErrorWithClear]);
+
   // Delete issue
   const handleDeleteIssue = useCallback(async (item: BoardItem) => {
     if (!projectSlug) return;
@@ -162,38 +174,101 @@ export function ProjectBoardPage() {
     }
   }, [projectSlug, refresh, setActionErrorWithClear]);
 
-  // Story workflow action
-  const handleWorkflowAction = useCallback((item: BoardItem) => {
+  // Workflow action — uses resolved badge ID for branching
+  const handleWorkflowAction = useCallback(async (item: BoardItem) => {
     if (!projectSlug) return;
-    const storyNum = item.id.replace(/^story-/, '');
     const sessionId = generateUUID();
+    const badge = resolveBadge(item);
     let agent = '';
     let task = '';
 
-    switch (item.status) {
-      case 'Draft':
-        agent = '/BMad:agents:sm';
-        task = `*story-checklist ${storyNum}`;
-        break;
-      case 'Approved':
+    // Issue workflow actions
+    if (item.type === 'issue') {
+      const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
+      const desc = item.description
+        ? (item.description.length > 500 ? item.description.slice(0, 500) + t('truncated') : item.description)
+        : t('noDescription');
+
+      if (badge.id === 'in-progress') {
+        // Resume development — same prompt as quick fix
         agent = '/BMad:agents:dev';
-        task = `*develop-story ${storyNum}`;
-        break;
-      case 'InProgress':
-        agent = '/BMad:agents:qa';
-        task = `*qa-gate ${storyNum}`;
-        break;
-      case 'Review':
+        task = `${t('workflow.quickFixIntro')}\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n${t('workflow.issueFileLabel')} ${issueFile}\n\n${t('workflow.quickFixOutro')}`;
+      } else if (badge.id === 'qa-failed' || badge.id === 'qa-concerns') {
+        // QA fix for rejected Ready for Review issues
+        const normalizedFile = issueFile.replace(/\\/g, '/');
+        const lastSlash = normalizedFile.lastIndexOf('/');
+        const issueDir = lastSlash >= 0 ? normalizedFile.substring(0, lastSlash) : 'docs/issues';
+        const reviewFile = `${issueDir}/reviews/${item.id}-review.yml`;
         agent = '/BMad:agents:dev';
-        task = `*review-qa ${storyNum}`;
-        break;
-      default:
+        task = `${t('workflow.issueFixIntro')}\n\n# ${item.title}\n\n${desc}\n\n${t('workflow.issueFileLabel')} ${issueFile}\n${t('workflow.reviewFileLabel')} ${reviewFile}\n\n${t('workflow.quickFixOutro')}`;
+      } else {
         return;
+      }
+
+      const params = new URLSearchParams({ agent, task });
+      navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+      return;
+    }
+
+    // Story workflow actions
+    if (item.type !== 'story') return;
+    const storyNum = item.id.replace(/^story-/, '');
+
+    if (badge.id === 'draft') {
+      agent = '/BMad:agents:po';
+      task = `*validate-story-draft ${storyNum}`;
+    } else if (badge.id === 'approved') {
+      try {
+        await boardApi.updateIssue(projectSlug, item.id, { status: 'In Progress' });
+      } catch {
+        setActionErrorWithClear(t('errors.updateStatusFailed'));
+        return;
+      }
+      agent = '/BMad:agents:dev';
+      task = `*develop-story ${storyNum}`;
+    } else if (badge.id === 'in-progress') {
+      agent = '/BMad:agents:dev';
+      task = `*develop-story ${storyNum}`;
+    } else if (badge.id === 'qa-passed' || badge.id === 'qa-waived') {
+      agent = '/BMad:agents:dev';
+      task = `Update story ${storyNum} status to Done. The QA gate has passed.`;
+    } else if (badge.id === 'qa-failed' || badge.id === 'qa-concerns') {
+      agent = '/BMad:agents:dev';
+      task = `*review-qa ${storyNum}\n\n${t('workflow.resolveGateOutro')}`;
+    } else if (badge.id === 'qa-fixed' || badge.id === 'ready-for-review' || badge.id === 'ready-for-done') {
+      agent = '/BMad:agents:qa';
+      task = `*review ${storyNum}`;
+    } else {
+      return;
     }
 
     const params = new URLSearchParams({ agent, task });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
-  }, [projectSlug, navigate]);
+  }, [projectSlug, navigate, t, setActionErrorWithClear]);
+
+  // QA review for stories (re-request) and issues (Ready for Review)
+  const handleRequestQAReview = useCallback((item: BoardItem) => {
+    if (!projectSlug) return;
+    const sessionId = generateUUID();
+    const agent = '/BMad:agents:qa';
+    let task: string;
+
+    if (item.type === 'issue') {
+      const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
+      const issueDir = issueFile.substring(0, issueFile.lastIndexOf('/'));
+      const reviewFile = `${issueDir}/reviews/${item.id}-review.yml`;
+      const desc = item.description
+        ? (item.description.length > 500 ? item.description.slice(0, 500) + t('truncated') : item.description)
+        : t('noDescription');
+      task = `${t('workflow.issueQAIntro')}\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n${t('workflow.issueFileLabel')} ${issueFile}\n${t('workflow.reviewFileLabel')} ${reviewFile}\n\n${t('workflow.issueQAOutro')}`;
+    } else {
+      const storyNum = item.id.replace(/^story-/, '');
+      task = `*review ${storyNum}`;
+    }
+
+    const params = new URLSearchParams({ agent, task });
+    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+  }, [projectSlug, navigate, t]);
 
   // View epic stories
   const handleViewEpicStories = useCallback((item: BoardItem) => {
@@ -218,18 +293,6 @@ export function ProjectBoardPage() {
     useFileStore.getState().openFileInEditor(projectSlug, item.filePath);
   }, [projectSlug, handleViewEpicStories]);
 
-  // Normalize story status (fix non-standard statuses like "Ready for Done")
-  const handleNormalizeStatus = useCallback(async (item: BoardItem) => {
-    if (!projectSlug) return;
-    const storyNum = item.id.replace(/^story-/, '');
-    try {
-      await boardApi.normalizeStoryStatus(projectSlug, storyNum);
-      await refresh();
-    } catch {
-      setActionErrorWithClear(t('errors.normalizeStatusFailed'));
-    }
-  }, [projectSlug, refresh, setActionErrorWithClear]);
-
   // Card action callbacks
   const cardCallbacks = {
     onQuickFix: handleQuickFix,
@@ -240,7 +303,8 @@ export function ProjectBoardPage() {
     onDelete: handleDeleteIssue,
     onWorkflowAction: handleWorkflowAction,
     onViewEpicStories: handleViewEpicStories,
-    onNormalizeStatus: handleNormalizeStatus,
+    onRequestQAReview: handleRequestQAReview,
+    onIssueStatusChange: handleIssueStatusChange,
     onCardClick: handleCardClick,
   };
 

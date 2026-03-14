@@ -20,7 +20,7 @@ import { boardApi } from '../../services/api/board';
 
 const mockItems = [
   { id: 'issue-1', type: 'issue' as const, title: 'Bug fix', status: 'Open' as const },
-  { id: 'story-1', type: 'story' as const, title: 'Feature A', status: 'InProgress' as const },
+  { id: 'story-1', type: 'story' as const, title: 'Feature A', status: 'In Progress' as const },
   { id: 'epic-1', type: 'epic' as const, title: 'Epic 1', status: 'Open' as const },
 ];
 

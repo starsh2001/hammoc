@@ -201,7 +201,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     expect(devRec!.agentCommand).toBe('/BMad:agents:dev');
   });
 
-  it('recommends continuing dev and QA review when In Progress stories exist', () => {
+  it('recommends continuing dev when In Progress stories exist (not rejected)', () => {
     const { recommendations } = computeNextSteps(
       makeData({
         ...baseOpts,
@@ -211,18 +211,126 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const continueRec = recommendations.find((r) => r.id === 'continue-dev');
     expect(continueRec).toBeDefined();
     expect(continueRec!.variant).toBe('primary');
+    expect(continueRec!.agentCommand).toBe('/BMad:agents:dev');
+    expect(continueRec!.taskCommand).toBe('*develop-story 1.1');
 
-    const qaRec = recommendations.find((r) => r.id === 'qa-review');
+    // qa-review and apply-qa-fixes should NOT be shown for non-rejected stories
+    expect(recommendations.find((r) => r.id === 'qa-review')).toBeUndefined();
+    expect(recommendations.find((r) => r.id === 'apply-qa-fixes')).toBeUndefined();
+  });
+
+  it('recommends applying QA fixes when Review story has FAIL gate', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'FAIL' }] }],
+      }),
+    );
+    const fixRec = recommendations.find((r) => r.id === 'review-apply-fixes');
+    expect(fixRec).toBeDefined();
+    expect(fixRec!.variant).toBe('primary');
+    expect(fixRec!.agentCommand).toBe('/BMad:agents:dev');
+    expect(fixRec!.taskCommand).toBe('*review-qa 1.1');
+  });
+
+  it('recommends QA review when story is in Review status (no gate)', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review' }] }],
+      }),
+    );
+    const reviewRec = recommendations.find((r) => r.id === 'review-story');
+    expect(reviewRec).toBeDefined();
+    expect(reviewRec!.variant).toBe('primary');
+    expect(reviewRec!.agentCommand).toBe('/BMad:agents:qa');
+    expect(reviewRec!.taskCommand).toBe('*review 1.1');
+  });
+
+  it('recommends completing story when Review + PASS gate', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'PASS' }] }],
+      }),
+    );
+    const doneRec = recommendations.find((r) => r.id === 'mark-done');
+    expect(doneRec).toBeDefined();
+    expect(doneRec!.variant).toBe('primary');
+    expect(doneRec!.agentCommand).toBe('/BMad:agents:dev');
+    expect(doneRec!.taskCommand).toContain('Done');
+    // Should also include re-request QA as secondary
+    const qaRec = recommendations.find((r) => r.id === 'request-qa-review');
     expect(qaRec).toBeDefined();
     expect(qaRec!.variant).toBe('secondary');
     expect(qaRec!.agentCommand).toBe('/BMad:agents:qa');
-    expect(qaRec!.taskCommand).toBe('*review 1.1');
+    // Should not show review-story
+    expect(recommendations.find((r) => r.id === 'review-story')).toBeUndefined();
+  });
 
-    const fixRec = recommendations.find((r) => r.id === 'apply-qa-fixes');
+  it('recommends completing story when Review + WAIVED gate', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'WAIVED' }] }],
+      }),
+    );
+    const doneRec = recommendations.find((r) => r.id === 'mark-done');
+    expect(doneRec).toBeDefined();
+    expect(doneRec!.variant).toBe('primary');
+  });
+
+  it('recommends applying QA fixes when Review + FAIL gate', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'FAIL' }] }],
+      }),
+    );
+    const fixRec = recommendations.find((r) => r.id === 'review-apply-fixes');
     expect(fixRec).toBeDefined();
-    expect(fixRec!.variant).toBe('secondary');
+    expect(fixRec!.variant).toBe('primary');
     expect(fixRec!.agentCommand).toBe('/BMad:agents:dev');
     expect(fixRec!.taskCommand).toBe('*review-qa 1.1');
+  });
+
+  it('recommends QA review for Ready for Review raw status (no gate)', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Ready for Review' }] }],
+      }),
+    );
+    const reviewRec = recommendations.find((r) => r.id === 'review-story');
+    expect(reviewRec).toBeDefined();
+    expect(reviewRec!.agentCommand).toBe('/BMad:agents:qa');
+    expect(reviewRec!.taskCommand).toBe('*review 1.1');
+  });
+
+  it('recommends completing story for Ready for Done raw status with PASS gate', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Ready for Done', gateResult: 'PASS' }] }],
+      }),
+    );
+    const doneRec = recommendations.find((r) => r.id === 'mark-done');
+    expect(doneRec).toBeDefined();
+    expect(doneRec!.agentCommand).toBe('/BMad:agents:dev');
+    const qaRec = recommendations.find((r) => r.id === 'request-qa-review');
+    expect(qaRec).toBeDefined();
+  });
+
+  it('recommends applying QA fixes when Review + CONCERNS gate', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'CONCERNS' }] }],
+      }),
+    );
+    const fixRec = recommendations.find((r) => r.id === 'review-apply-fixes');
+    expect(fixRec).toBeDefined();
+    expect(fixRec!.variant).toBe('primary');
   });
 
   it('recommends creating next story when stories are Done but more are planned', () => {

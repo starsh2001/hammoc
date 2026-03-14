@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { DEFAULT_BOARD_CONFIG, validateBoardConfig } from '@hammoc/shared';
+import { DEFAULT_BOARD_CONFIG, validateBoardConfig, type BoardConfig, type BoardColumnConfig } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
 import { issueService } from '../services/issueService.js';
 
@@ -24,9 +24,68 @@ export function attachmentUpload(req: Request, res: Response, next: NextFunction
   });
 }
 
+// Map legacy status strings to badge IDs for migration
+const STATUS_TO_BADGE_ID: Record<string, string> = {
+  'Open': 'open',
+  'Draft': 'draft',
+  'Approved': 'approved',
+  'In Progress': 'in-progress',
+  'InProgress': 'in-progress',
+  'Blocked': 'blocked',
+  'Review': 'ready-for-review', // legacy alias
+  'Ready for Review': 'ready-for-review',
+  'Ready for Done': 'ready-for-done',
+  'Done': 'done',
+  'Closed': 'closed',
+  'Promoted': 'promoted',
+};
+
+/**
+ * Migrate legacy statusToColumn config to badge-based config.
+ * Preserves user's custom columns where valid; maps known statuses to badge IDs.
+ */
+function migrateStatusToColumn(raw: Record<string, unknown>): BoardConfig {
+  const defaultCfg = DEFAULT_BOARD_CONFIG;
+
+  // Try to preserve user's custom columns
+  let columns: BoardColumnConfig[] = defaultCfg.columns;
+  if (Array.isArray(raw.columns) && raw.columns.length > 0) {
+    const validCols = (raw.columns as BoardColumnConfig[]).filter(
+      (c) => c && typeof c.id === 'string' && c.id.trim() && typeof c.label === 'string' && c.label.trim(),
+    );
+    if (validCols.length > 0) {
+      columns = validCols;
+    }
+  }
+
+  const columnIds = new Set(columns.map((c) => c.id));
+
+  // Build badgeToColumn from legacy statusToColumn
+  const badgeToColumn: Record<string, string> = { ...defaultCfg.badgeToColumn };
+  const statusToColumn = raw.statusToColumn as Record<string, string> | undefined;
+  if (statusToColumn && typeof statusToColumn === 'object') {
+    for (const [status, colId] of Object.entries(statusToColumn)) {
+      const badgeId = STATUS_TO_BADGE_ID[status];
+      if (badgeId && columnIds.has(colId)) {
+        badgeToColumn[badgeId] = colId;
+      }
+    }
+  }
+
+  // Ensure all badge targets point to valid columns, fall back to first column
+  const firstColId = columns[0]?.id ?? 'Open';
+  for (const [badge, target] of Object.entries(badgeToColumn)) {
+    if (!columnIds.has(target)) {
+      badgeToColumn[badge] = firstColId;
+    }
+  }
+
+  return { columns, badgeToColumn };
+}
+
 const VALID_SEVERITIES = ['low', 'medium', 'high', 'critical'];
 const VALID_ISSUE_TYPES = ['bug', 'improvement'];
-const VALID_STATUSES = ['Open', 'InProgress', 'Done', 'Closed', 'Promoted'];
+const VALID_STATUSES = ['Open', 'In Progress', 'InProgress', 'Ready for Review', 'Ready for Done', 'Done', 'Closed', 'Promoted'];
 
 export const boardController = {
   async getBoard(req: Request, res: Response): Promise<void> {
@@ -37,10 +96,16 @@ export const boardController = {
       // Validate persisted config; fall back to default if malformed
       let config = DEFAULT_BOARD_CONFIG;
       if (settings.boardConfig) {
-        const configErrors = validateBoardConfig(settings.boardConfig);
-        config = configErrors.length === 0 ? settings.boardConfig : DEFAULT_BOARD_CONFIG;
+        // Migrate legacy statusToColumn → badgeToColumn
+        const raw = settings.boardConfig as Record<string, unknown>;
+        if (raw.statusToColumn && !raw.badgeToColumn) {
+          config = migrateStatusToColumn(raw);
+        } else {
+          const configErrors = validateBoardConfig(settings.boardConfig);
+          config = configErrors.length === 0 ? settings.boardConfig : DEFAULT_BOARD_CONFIG;
+        }
       }
-      const result = await issueService.getBoard(projectRoot, config.customStatusMappings);
+      const result = await issueService.getBoard(projectRoot);
       res.json({ ...result, config });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;
@@ -141,30 +206,6 @@ export const boardController = {
       }
       if (nodeError.code === 'INVALID_ISSUE_ID') {
         res.status(400).json({ error: { code: 'INVALID_ISSUE_ID', message: req.t!('board.validation.invalidIssueId') } });
-        return;
-      }
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
-    }
-  },
-
-  async normalizeStoryStatus(req: Request, res: Response): Promise<void> {
-    try {
-      const { projectSlug, storyNum } = req.params;
-      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
-      const normalizedStatus = await issueService.normalizeStoryStatus(projectRoot, storyNum);
-      res.json({ status: normalizedStatus });
-    } catch (error) {
-      const nodeError = error as NodeJS.ErrnoException;
-      if (nodeError.code === 'PROJECT_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
-        return;
-      }
-      if (nodeError.code === 'STORY_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'STORY_NOT_FOUND', message: req.t!('board.error.storyNotFound', { value: req.params.storyNum }) } });
-        return;
-      }
-      if (nodeError.code === 'STATUS_NOT_FOUND') {
-        res.status(404).json({ error: { code: 'STATUS_NOT_FOUND', message: req.t!('board.error.statusNotFound', { value: req.params.storyNum }) } });
         return;
       }
       res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });

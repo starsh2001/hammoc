@@ -236,6 +236,9 @@
     "qaReviewDesc": "Review implementation results of {{label}}",
     "applyQaFixes": "Apply QA fixes",
     "applyQaFixesDesc": "Apply QA feedback to code",
+    "markDone": "Complete story",
+    "markDoneDesc": "QA passed — mark as Done",
+    "requestQAReview": "Re-request QA review",
     "validateStory": "Validate story",
     "startDev": "Start development",
     "createFirstStory": "Create first story",
@@ -302,6 +305,8 @@
     "paste": "Paste",
     "download": "Download",
     "upload": "Upload",
+    "dropHere": "Drop files here to upload",
+    "uploading": "Uploading…",
     "crudErrors": {
       "alreadyExists": "File or directory already exists.",
       "parentNotFound": "Parent directory does not exist.",
@@ -326,6 +331,7 @@
       "uploaded": "'{{name}}' uploaded.",
       "uploadedMultiple": "{{count}} files uploaded.",
       "uploadFailed": "Upload failed",
+      "uploadInProgress": "Upload already in progress, please wait.",
       "downloadFailed": "Download failed"
     }
   },

@@ -12,7 +12,7 @@ const epicItem: BoardItem = {
   id: 'epic-21',
   type: 'epic',
   title: 'Project Board',
-  status: 'InProgress',
+  status: 'In Progress',
   epicNumber: 21,
   storyProgress: { total: 3, done: 1 },
 };
@@ -29,7 +29,7 @@ const stories: BoardItem[] = [
     id: 'story-21.2',
     type: 'story',
     title: 'Board UI Implementation',
-    status: 'InProgress',
+    status: 'In Progress',
     epicNumber: 21,
   },
   {

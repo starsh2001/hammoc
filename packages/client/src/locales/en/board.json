@@ -2,7 +2,8 @@
   "config": {
     "title": "Board Settings",
     "columnDefinition": "Column Definitions",
-    "statusMapping": "Status → Column Mapping",
+    "badgeMapping": "Badge → Column Mapping",
+    "badgeMappingHint": "Map resolved badge states to board columns",
     "selectColor": "Select color",
     "columnNamePlaceholder": "Column name",
     "moveUp": "Move up",
@@ -10,10 +11,7 @@
     "delete": "Delete",
     "resetDefaults": "Restore Defaults",
     "resetConfirm": "Restore default settings?",
-    "saving": "Saving...",
-    "customStatusMapping": "Custom Status Mapping",
-    "customStatusMappingHint": "Map non-standard story statuses to board statuses",
-    "customStatusKeyPlaceholder": "e.g. Complete"
+    "saving": "Saving..."
   },
   "issue": {
     "add": "Add Issue",
@@ -40,6 +38,13 @@
     "alreadyPromotedToEpic": "Already promoted to Epic",
     "cannotDeleteWhileWorking": "Cannot delete while AI is working",
     "reopen": "Re-Open",
+    "resumeDev": "Resume Development",
+    "markReview": "Request Review",
+    "markDone": "Complete Issue",
+    "rework": "Rework",
+    "requestQA": "Request QA Review",
+    "requestQAAgain": "Re-request QA Review",
+    "applyFix": "Apply QA Fix",
     "closeConfirm": "Close this issue?",
     "deleteConfirm": "Delete issue \"{{title}}\"?",
     "attachments": "Attachments",
@@ -54,7 +59,13 @@
   },
   "card": {
     "menu": "Card menu",
-    "unmappedStatus": "Non-standard status \"{{rawStatus}}\" mapped to {{status}}. Use context menu to normalize."
+    "rejected": "Rejected by QA — fixes required",
+    "gate": {
+      "PASS": "QA Pass",
+      "WAIVED": "QA Waived",
+      "FAIL": "QA Fail",
+      "CONCERNS": "QA Concerns"
+    }
   },
   "epic": {
     "subStories": "Epic Sub-Stories",
@@ -62,16 +73,24 @@
     "noSubStories": "No sub-stories",
     "viewSubStories": "View Sub-Stories"
   },
-  "story": {
-    "normalizeStatus": "Normalize status ({{rawStatus}} → {{status}})"
-  },
+  "story": {},
   "workflow": {
     "validateStory": "Validate Story",
     "startDevelopment": "Start Development",
+    "resumeDevelopment": "Resume Development",
     "requestQA": "Request QA",
     "applyQAFix": "Apply QA Fix",
+    "reviewStory": "Review Story",
+    "completeStory": "Complete Story",
+    "requestQAReview": "Re-request QA Review",
+    "resolveGateOutro": "After completing QA fixes, update the gate YAML file's gate field to 'FIXED'.",
     "quickFixIntro": "Please fix the following issue:",
-    "issueFileLabel": "Issue file:"
+    "issueFileLabel": "Issue file:",
+    "reviewFileLabel": "Review file:",
+    "quickFixOutro": "When the fix is complete, update the issue status to 'Ready for Review'.",
+    "issueFixIntro": "The following issue was rejected by QA. Please review the QA feedback in the review YAML file (check the status_reason field) and apply the necessary fixes. After applying fixes, update the review YAML file's gate field to 'FIXED':",
+    "issueQAIntro": "Review the fix for the following issue and verify it properly addresses the problem:",
+    "issueQAOutro": "If the fix is satisfactory, update the issue status to 'Ready for Done' and create/update the review YAML file with gate: PASS.\nIf the fix needs more work, keep the issue status as 'Ready for Review' and create/update the review file with gate: FAIL and status_reason explaining what needs to be fixed.\n\nReview file YAML format:\n```yaml\nschema: 1\nissue: '{issueId}'\ngate: PASS\nstatus_reason: 'explanation'\nreviewer: 'QA'\nupdated: '{ISO-8601}'\n```"
   },
   "status": {
     "open": "Open",

@@ -28,6 +28,27 @@ const issueWithLinkedEpic: BoardItem = {
   linkedEpic: 'epic-21',
 };
 
+const issueInProgress: BoardItem = {
+  ...issueItem,
+  status: 'In Progress',
+};
+
+const issueReadyForReviewFail: BoardItem = {
+  ...issueItem,
+  status: 'Ready for Review',
+  gateResult: 'FAIL',
+};
+
+const issueReadyForReview: BoardItem = {
+  ...issueItem,
+  status: 'Ready for Review',
+};
+
+const issueReadyForDone: BoardItem = {
+  ...issueItem,
+  status: 'Ready for Done',
+};
+
 const storyDraft: BoardItem = {
   id: 'story-21.1',
   type: 'story',
@@ -41,14 +62,21 @@ const storyApproved: BoardItem = {
   status: 'Approved',
 };
 
-const storyInProgress: BoardItem = {
+const storyReadyForReview: BoardItem = {
   ...storyDraft,
-  status: 'InProgress',
+  status: 'Ready for Review',
 };
 
-const storyReview: BoardItem = {
+const storyReadyForReviewPass: BoardItem = {
   ...storyDraft,
-  status: 'Review',
+  status: 'Ready for Review',
+  gateResult: 'PASS',
+};
+
+const storyReadyForReviewFail: BoardItem = {
+  ...storyDraft,
+  status: 'Ready for Review',
+  gateResult: 'FAIL',
 };
 
 const storyDone: BoardItem = {
@@ -65,7 +93,7 @@ const epicItem: BoardItem = {
   id: 'epic-21',
   type: 'epic',
   title: 'Project Board',
-  status: 'InProgress',
+  status: 'In Progress',
   epicNumber: 21,
   storyProgress: { total: 3, done: 1 },
 };
@@ -77,6 +105,8 @@ describe('CardContextMenu', () => {
   const mockClose = vi.fn();
   const mockWorkflowAction = vi.fn();
   const mockViewEpicStories = vi.fn();
+  const mockIssueStatusChange = vi.fn();
+  const mockRequestQAReview = vi.fn();
 
   const allCallbacks = {
     onQuickFix: mockQuickFix,
@@ -85,6 +115,8 @@ describe('CardContextMenu', () => {
     onClose: mockClose,
     onWorkflowAction: mockWorkflowAction,
     onViewEpicStories: mockViewEpicStories,
+    onIssueStatusChange: mockIssueStatusChange,
+    onRequestQAReview: mockRequestQAReview,
   };
 
   beforeEach(() => {
@@ -160,6 +192,54 @@ describe('CardContextMenu', () => {
 
       expect(mockClose).toHaveBeenCalledWith(issueItem);
     });
+
+    it('should render "개발 이어하기" for In Progress issue', () => {
+      render(<CardContextMenu item={issueInProgress} {...allCallbacks} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      expect(screen.getByText('개발 이어하기')).toBeInTheDocument();
+    });
+
+    it('should call onWorkflowAction when "개발 이어하기" is clicked', () => {
+      render(<CardContextMenu item={issueInProgress} {...allCallbacks} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      fireEvent.click(screen.getByText('개발 이어하기'));
+      expect(mockWorkflowAction).toHaveBeenCalledWith(issueInProgress);
+    });
+
+    it('should render "QA 리뷰 요청" for Ready for Review issue', () => {
+      render(<CardContextMenu item={issueReadyForReview} {...allCallbacks} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      expect(screen.getByText('QA 리뷰 요청')).toBeInTheDocument();
+    });
+
+    it('should call onRequestQAReview when "QA 리뷰 요청" is clicked', () => {
+      render(<CardContextMenu item={issueReadyForReview} {...allCallbacks} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      fireEvent.click(screen.getByText('QA 리뷰 요청'));
+      expect(mockRequestQAReview).toHaveBeenCalledWith(issueReadyForReview);
+    });
+
+    it('should render "이슈 완료" and "QA 재요청" for Ready for Done issue', () => {
+      render(<CardContextMenu item={issueReadyForDone} {...allCallbacks} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      expect(screen.getByText('이슈 완료')).toBeInTheDocument();
+      expect(screen.getByText('QA 재요청')).toBeInTheDocument();
+    });
+
+    it('should call onIssueStatusChange with Done when "이슈 완료" is clicked for Ready for Done issue', () => {
+      render(<CardContextMenu item={issueReadyForDone} {...allCallbacks} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      fireEvent.click(screen.getByText('이슈 완료'));
+      expect(mockIssueStatusChange).toHaveBeenCalledWith(issueReadyForDone, 'Done');
+    });
+
+    it('should render only "QA 수정 적용" for Ready for Review with FAIL gate', () => {
+      render(<CardContextMenu item={issueReadyForReviewFail} {...allCallbacks} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      expect(screen.getByText('QA 수정 적용')).toBeInTheDocument();
+      expect(screen.queryByText('QA 리뷰 요청')).not.toBeInTheDocument();
+    });
+
   });
 
   describe('Story card menu', () => {
@@ -175,16 +255,45 @@ describe('CardContextMenu', () => {
       expect(screen.getByText('개발 시작')).toBeInTheDocument();
     });
 
-    it('should render "QA 요청" for InProgress status', () => {
-      render(<CardContextMenu item={storyInProgress} {...allCallbacks} />);
+    it('should render "스토리 리뷰" for Ready for Review status (no gate)', () => {
+      render(<CardContextMenu item={storyReadyForReview} {...allCallbacks} />);
       fireEvent.click(screen.getByLabelText('카드 메뉴'));
-      expect(screen.getByText('QA 요청')).toBeInTheDocument();
+      expect(screen.getByText('스토리 리뷰')).toBeInTheDocument();
     });
 
-    it('should render "QA 수정 적용" for Review status', () => {
-      render(<CardContextMenu item={storyReview} {...allCallbacks} />);
+    it('should render "스토리 완료" for Ready for Review status with PASS gate', () => {
+      render(<CardContextMenu item={storyReadyForReviewPass} {...allCallbacks} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      expect(screen.getByText('스토리 완료')).toBeInTheDocument();
+    });
+
+    it('should render "QA 수정 적용" for Ready for Review status with FAIL gate', () => {
+      render(<CardContextMenu item={storyReadyForReviewFail} {...allCallbacks} />);
       fireEvent.click(screen.getByLabelText('카드 메뉴'));
       expect(screen.getByText('QA 수정 적용')).toBeInTheDocument();
+    });
+
+    it('should render "QA 재요청" for Ready for Review status with PASS gate when onRequestQAReview provided', () => {
+      const mockRequestQA = vi.fn();
+      render(<CardContextMenu item={storyReadyForReviewPass} {...allCallbacks} onRequestQAReview={mockRequestQA} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      expect(screen.getByText('스토리 완료')).toBeInTheDocument();
+      expect(screen.getByText('QA 재요청')).toBeInTheDocument();
+    });
+
+    it('should call onRequestQAReview when "QA 재요청" is clicked', () => {
+      const mockRequestQA = vi.fn();
+      render(<CardContextMenu item={storyReadyForReviewPass} {...allCallbacks} onRequestQAReview={mockRequestQA} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      fireEvent.click(screen.getByText('QA 재요청'));
+      expect(mockRequestQA).toHaveBeenCalledWith(storyReadyForReviewPass);
+    });
+
+    it('should not render "QA 재요청" for Ready for Review status without gate result', () => {
+      const mockRequestQA = vi.fn();
+      render(<CardContextMenu item={storyReadyForReview} {...allCallbacks} onRequestQAReview={mockRequestQA} />);
+      fireEvent.click(screen.getByLabelText('카드 메뉴'));
+      expect(screen.queryByText('QA 재요청')).not.toBeInTheDocument();
     });
 
     it('should call onWorkflowAction when workflow action is clicked', () => {

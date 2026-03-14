@@ -19,7 +19,7 @@ function createMockItemsByColumn(): Record<string, BoardItem[]> {
     { id: 'issue-1', type: 'issue', title: 'Open Bug', status: 'Open' },
   ];
   result.Doing = [
-    { id: 'story-1', type: 'story', title: 'WIP Feature', status: 'InProgress' },
+    { id: 'story-1', type: 'story', title: 'WIP Feature', status: 'In Progress' },
   ];
   return result;
 }
