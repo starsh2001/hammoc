@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import type { BoardItem, BoardConfig, CreateIssueRequest, UpdateIssueRequest } from '@hammoc/shared';
 import { useBoardStore } from '../stores/boardStore';
+import { resolveBadge } from '../components/board/constants';
 import { projectsApi } from '../services/api/projects';
 
 interface UseBoardReturn {
@@ -53,7 +54,8 @@ export function useBoard(projectSlug: string | undefined): UseBoardReturn {
       grouped[col.id] = [];
     }
     for (const item of items) {
-      const columnId = boardConfig.statusToColumn[item.status] ?? boardConfig.columns[0]?.id;
+      const badge = resolveBadge(item);
+      const columnId = boardConfig.badgeToColumn[badge.id] ?? boardConfig.columns[0]?.id;
       if (columnId && grouped[columnId]) {
         grouped[columnId].push(item);
       } else {

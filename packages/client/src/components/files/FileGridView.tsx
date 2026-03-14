@@ -4,9 +4,9 @@
  * Folder click navigates into the folder (updates breadcrumb).
  */
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Folder, File, Loader2, AlertCircle, MoreVertical } from 'lucide-react';
+import { Folder, File, Loader2, AlertCircle, MoreVertical, Upload } from 'lucide-react';
 import type { DirectoryEntry } from '@hammoc/shared';
 
 import { fileSystemApi } from '../../services/api/fileSystem.js';
@@ -127,6 +127,8 @@ interface FileGridViewProps {
   hasClipboard?: boolean;
   cutPath?: string;
   refreshTrigger?: number;
+  onFileDrop?: (files: File[]) => void;
+  isUploading?: boolean;
 }
 
 export function FileGridView({
@@ -146,6 +148,8 @@ export function FileGridView({
   hasClipboard = false,
   cutPath,
   refreshTrigger,
+  onFileDrop,
+  isUploading = false,
 }: FileGridViewProps) {
   const { t } = useTranslation('common');
   const [entries, setEntries] = useState<DirectoryEntry[]>([]);
@@ -219,6 +223,9 @@ export function FileGridView({
       if (!enableContextMenu) return;
       e.preventDefault();
       e.stopPropagation();
+      // Prevent document-level contextmenu listener (from a previously-open
+      // FileTreeContextMenu) from immediately closing the menu we are about to open.
+      e.nativeEvent.stopImmediatePropagation();
       const fullPath = currentPath === '.' ? entry.name : `${currentPath}/${entry.name}`;
       const parentPath = entry.type === 'directory' ? fullPath : currentPath;
       setContextMenu({ x: e.clientX, y: e.clientY, targetPath: fullPath, targetType: entry.type, parentPath });
@@ -244,8 +251,13 @@ export function FileGridView({
     (e: React.MouseEvent) => {
       if (!enableContextMenu) return;
       // Only trigger if clicking on the grid background, not on items
-      if ((e.target as HTMLElement).closest('[data-grid-item]')) return;
+      const target = e.target;
+      if (target instanceof Element && target.closest('[data-grid-item]')) return;
       e.preventDefault();
+      e.stopPropagation();
+      // Prevent document-level contextmenu listener (from a previously-open
+      // FileTreeContextMenu) from immediately closing the menu we are about to open.
+      e.nativeEvent.stopImmediatePropagation();
       setContextMenu({ x: e.clientX, y: e.clientY, targetPath: currentPath, targetType: 'directory', parentPath: currentPath });
     },
     [enableContextMenu, currentPath],
@@ -307,6 +319,66 @@ export function FileGridView({
     setDeleteConfirm(null);
   }, [deleteConfirm, onDeleteEntry, loadDirectory]);
 
+  // --- Drag-and-drop ---
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (!onFileDrop) return;
+    // Only handle file drops from OS, not internal drag
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragCounterRef.current++;
+    if (dragCounterRef.current === 1) {
+      setIsDragOver(true);
+    }
+  }, [onFileDrop]);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (!onFileDrop) return;
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, [onFileDrop]);
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (!onFileDrop) return;
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+    if (dragCounterRef.current === 0) {
+      setIsDragOver(false);
+    }
+  }, [onFileDrop]);
+
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (!onFileDrop) return;
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      onFileDrop(files);
+    }
+  }, [onFileDrop]);
+
+  // Reset drag state if drag ends outside the component (e.g. dropped on another
+  // window or cancelled with Esc). Without this, dragCounterRef can stay non-zero
+  // and the overlay gets stuck.
+  useEffect(() => {
+    const resetDrag = () => {
+      dragCounterRef.current = 0;
+      setIsDragOver(false);
+    };
+    window.addEventListener('dragend', resetDrag);
+    window.addEventListener('drop', resetDrag);
+    return () => {
+      window.removeEventListener('dragend', resetDrag);
+      window.removeEventListener('drop', resetDrag);
+    };
+  }, []);
+
   // --- Render ---
 
   if (loading && entries.length === 0) {
@@ -338,9 +410,31 @@ export function FileGridView({
 
   return (
     <div
-      className="p-2 min-h-0"
+      className="p-2 relative"
       onContextMenu={handleBackgroundContextMenu}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
+      {/* Drag-and-drop overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-blue-50/80 dark:bg-blue-900/30 border-2 border-dashed border-blue-400 dark:border-blue-500 rounded-lg pointer-events-none">
+          <div className="flex flex-col items-center gap-2 text-blue-600 dark:text-blue-400">
+            <Upload className="w-8 h-8" />
+            <span className="text-sm font-medium">{t('files.dropHere')}</span>
+          </div>
+        </div>
+      )}
+      {/* Upload progress overlay */}
+      {isUploading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 dark:bg-[#1c2129]/60 rounded-lg pointer-events-none">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-sm">{t('files.uploading')}</span>
+          </div>
+        </div>
+      )}
       {/* Inline input for create at top */}
       {inlineInput?.mode === 'create' && (
         <div className="mb-2">

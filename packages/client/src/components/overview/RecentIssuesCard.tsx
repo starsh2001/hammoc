@@ -7,7 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, ArrowRight } from 'lucide-react';
 import { useBoardStore } from '../../stores/boardStore';
-import { STATUS_BADGE_COLOR, STATUS_LABEL } from '../board/constants';
+import { resolveBadge } from '../board/constants';
 
 const SEVERITY_DOT: Record<string, string> = {
   critical: 'bg-red-500',
@@ -55,7 +55,9 @@ export function RecentIssuesCard() {
         </div>
       ) : (
         <div className="divide-y divide-gray-100 dark:divide-gray-700">
-          {recentIssues.map((issue) => (
+          {recentIssues.map((issue) => {
+            const badge = resolveBadge(issue);
+            return (
             <button
               key={issue.id}
               onClick={() => navigate(`/project/${projectSlug}/board`)}
@@ -67,11 +69,12 @@ export function RecentIssuesCard() {
               <span className="text-sm text-gray-900 dark:text-white truncate flex-1">
                 {issue.title}
               </span>
-              <span className={`text-[11px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${STATUS_BADGE_COLOR[issue.status]}`}>
-                {STATUS_LABEL[issue.status]}
+              <span className={`text-[11px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${badge.colorClass}`}>
+                {badge.label}
               </span>
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

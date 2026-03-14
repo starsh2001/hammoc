@@ -27,7 +27,7 @@ export function MobileKanbanBoard({
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
-  onNormalizeStatus,
+
   onCardClick,
 }: MobileKanbanBoardProps) {
   const { t } = useTranslation('board');
@@ -166,7 +166,7 @@ export function MobileKanbanBoard({
                       onDelete={onDelete}
                       onWorkflowAction={onWorkflowAction}
                       onViewEpicStories={onViewEpicStories}
-                      onNormalizeStatus={onNormalizeStatus}
+
                       onCardClick={onCardClick}
                     />
                   ))}

@@ -67,10 +67,10 @@ function allStories(data: BmadStatusResponse): BmadStoryStatus[] {
   return data.epics.flatMap((e) => e.stories);
 }
 
-/** Find the first story matching a status */
-function firstStoryByStatus(data: BmadStatusResponse, status: string): BmadStoryStatus | undefined {
+/** Find the first story matching a status (or any of multiple statuses) */
+function firstStoryByStatus(data: BmadStatusResponse, ...statuses: string[]): BmadStoryStatus | undefined {
   for (const epic of data.epics) {
-    const found = epic.stories.find((s) => s.status === status);
+    const found = epic.stories.find((s) => statuses.includes(s.status));
     if (found) return found;
   }
   return undefined;
@@ -265,8 +265,8 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
 function buildImplementationRecommendations(data: BmadStatusResponse): NextStepRecommendation[] {
   const recs: NextStepRecommendation[] = [];
 
-  const inProgressStory = firstStoryByStatus(data, 'In Progress');
-  const reviewStory = firstStoryByStatus(data, 'Review');
+  const inProgressStory = firstStoryByStatus(data, 'In Progress', 'InProgress');
+  const reviewStory = firstStoryByStatus(data, 'Review', 'Ready for Review', 'Ready for Done');
   const draftStory = firstStoryByStatus(data, 'Draft');
   const approvedStory = firstStoryByStatus(data, 'Approved');
   const stories = allStories(data);
@@ -281,6 +281,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       ? `${num}. ${inProgressStory.title}`
       : inProgressStory.file;
 
+    // In-progress — primary action is continuing development
     recs.push({
       id: 'continue-dev',
       title: i18n.t('common:rec.continueDev'),
@@ -291,47 +292,64 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       iconKey: 'code',
       storyFile: inProgressStory.file,
     });
-
-    recs.push({
-      id: 'qa-review',
-      title: i18n.t('common:rec.qaReview'),
-      description: i18n.t('common:rec.qaReviewDesc', { label }),
-      agentCommand: '/BMad:agents:qa',
-      taskCommand: `*review ${num}`,
-      variant: 'secondary',
-      iconKey: 'check-circle',
-      storyFile: inProgressStory.file,
-    });
-
-    recs.push({
-      id: 'apply-qa-fixes',
-      title: i18n.t('common:rec.applyQaFixes'),
-      description: i18n.t('common:rec.applyQaFixesDesc'),
-      agentCommand: '/BMad:agents:dev',
-      taskCommand: `*review-qa ${num}`,
-      variant: 'secondary',
-      iconKey: 'wrench',
-      storyFile: inProgressStory.file,
-    });
   }
 
-  // Priority 2: Review story (QA feedback needs to be applied)
+  // Priority 2: Review story — branch on gate result
   if (reviewStory) {
     const num = storyNum(reviewStory.file);
     const label = reviewStory.title
       ? `${num}. ${reviewStory.title}`
       : reviewStory.file;
+    const gate = reviewStory.gateResult;
 
-    recs.push({
-      id: 'apply-review-fixes',
-      title: i18n.t('common:rec.applyQaFixes'),
-      description: label,
-      agentCommand: '/BMad:agents:dev',
-      taskCommand: `*review-qa ${num}`,
-      variant: inProgressStory ? 'secondary' : 'primary',
-      iconKey: 'wrench',
-      storyFile: reviewStory.file,
-    });
+    if (gate === 'PASS' || gate === 'WAIVED') {
+      // QA passed — recommend marking the story as Done
+      recs.push({
+        id: 'mark-done',
+        title: i18n.t('common:rec.markDone'),
+        description: i18n.t('common:rec.markDoneDesc'),
+        agentCommand: '/BMad:agents:dev',
+        taskCommand: `Update story ${num} status to Done. The QA gate has passed.`,
+        variant: inProgressStory ? 'secondary' : 'primary',
+        iconKey: 'check-circle',
+        storyFile: reviewStory.file,
+      });
+      // Secondary: re-request QA review
+      recs.push({
+        id: 'request-qa-review',
+        title: i18n.t('common:rec.requestQAReview'),
+        description: label,
+        agentCommand: '/BMad:agents:qa',
+        taskCommand: `*review ${num}`,
+        variant: 'secondary',
+        iconKey: 'rotate-ccw',
+        storyFile: reviewStory.file,
+      });
+    } else if (gate === 'FAIL' || gate === 'CONCERNS') {
+      // QA failed — recommend applying fixes
+      recs.push({
+        id: 'review-apply-fixes',
+        title: i18n.t('common:rec.applyQaFixes'),
+        description: label,
+        agentCommand: '/BMad:agents:dev',
+        taskCommand: `*review-qa ${num}`,
+        variant: inProgressStory ? 'secondary' : 'primary',
+        iconKey: 'wrench',
+        storyFile: reviewStory.file,
+      });
+    } else {
+      // No gate yet — recommend QA review
+      recs.push({
+        id: 'review-story',
+        title: i18n.t('common:rec.qaReview'),
+        description: i18n.t('common:rec.qaReviewDesc', { label }),
+        agentCommand: '/BMad:agents:qa',
+        taskCommand: `*review ${num}`,
+        variant: inProgressStory ? 'secondary' : 'primary',
+        iconKey: 'check-circle',
+        storyFile: reviewStory.file,
+      });
+    }
   }
 
   // Priority 3: Draft story (needs validation)

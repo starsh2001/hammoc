@@ -38,7 +38,7 @@ describe('KanbanBoard', () => {
       { id: 'issue-2', type: 'issue', title: 'Bug 2', status: 'Open' },
     ];
     itemsByColumn.Doing = [
-      { id: 'story-1', type: 'story', title: 'Feature', status: 'InProgress' },
+      { id: 'story-1', type: 'story', title: 'Feature', status: 'In Progress' },
     ];
 
     render(<KanbanBoard itemsByColumn={itemsByColumn} boardConfig={DEFAULT_BOARD_CONFIG} />);

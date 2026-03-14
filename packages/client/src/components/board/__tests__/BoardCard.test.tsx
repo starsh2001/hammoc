@@ -30,7 +30,7 @@ const epicItem: BoardItem = {
   id: 'epic-21',
   type: 'epic',
   title: 'Project Board',
-  status: 'InProgress',
+  status: 'In Progress',
   epicNumber: 21,
   storyProgress: { total: 3, done: 1 },
 };

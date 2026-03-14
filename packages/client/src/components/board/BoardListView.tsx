@@ -37,7 +37,7 @@ export function BoardListView({
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
-  onNormalizeStatus,
+
   onCardClick,
 }: BoardListViewProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
@@ -118,7 +118,7 @@ export function BoardListView({
                     onDelete={onDelete}
                     onWorkflowAction={onWorkflowAction}
                     onViewEpicStories={onViewEpicStories}
-                    onNormalizeStatus={onNormalizeStatus}
+
                     onCardClick={onCardClick}
                   />
                 ))}

@@ -2,7 +2,8 @@
   "config": {
     "title": "ボード設定",
     "columnDefinition": "カラム定義",
-    "statusMapping": "ステータス → カラムマッピング",
+    "badgeMapping": "バッジ → カラムマッピング",
+    "badgeMappingHint": "バッジ状態をボードカラムにマッピングします",
     "selectColor": "色を選択",
     "columnNamePlaceholder": "カラム名",
     "moveUp": "上に移動",
@@ -10,10 +11,7 @@
     "delete": "削除",
     "resetDefaults": "デフォルトに戻す",
     "resetConfirm": "デフォルト設定に戻しますか？",
-    "saving": "保存中...",
-    "customStatusMapping": "カスタムステータスマッピング",
-    "customStatusMappingHint": "非標準のストーリーステータスをボードステータスにマッピング",
-    "customStatusKeyPlaceholder": "例: Complete"
+    "saving": "保存中..."
   },
   "issue": {
     "add": "課題を追加",
@@ -40,6 +38,13 @@
     "alreadyPromotedToEpic": "既にエピックに昇格済み",
     "cannotDeleteWhileWorking": "AIが作業中は削除できません",
     "reopen": "再オープン",
+    "resumeDev": "開発を再開",
+    "markReview": "レビューをリクエスト",
+    "markDone": "課題を完了",
+    "rework": "再作業",
+    "requestQA": "QAレビューをリクエスト",
+    "requestQAAgain": "QAレビューを再リクエスト",
+    "applyFix": "QA修正を適用",
     "closeConfirm": "この課題を閉じますか？",
     "deleteConfirm": "課題「{{title}}」を削除しますか？",
     "attachments": "添付ファイル",
@@ -54,7 +59,13 @@
   },
   "card": {
     "menu": "カードメニュー",
-    "unmappedStatus": "非標準ステータス「{{rawStatus}}」が{{status}}にマッピングされました。コンテキストメニューで正規化してください。"
+    "rejected": "QAにより差し戻し — 修正が必要",
+    "gate": {
+      "PASS": "QA 合格",
+      "WAIVED": "QA 免除",
+      "FAIL": "QA 不合格",
+      "CONCERNS": "QA 懸念あり"
+    }
   },
   "epic": {
     "subStories": "エピックのサブストーリー",
@@ -62,16 +73,24 @@
     "noSubStories": "サブストーリーがありません",
     "viewSubStories": "サブストーリーを表示"
   },
-  "story": {
-    "normalizeStatus": "ステータスを正規化 ({{rawStatus}} → {{status}})"
-  },
+  "story": {},
   "workflow": {
     "validateStory": "ストーリーを検証",
     "startDevelopment": "開発を開始",
+    "resumeDevelopment": "開発を再開",
     "requestQA": "QAをリクエスト",
     "applyQAFix": "QA修正を適用",
+    "reviewStory": "ストーリーをレビュー",
+    "completeStory": "ストーリーを完了",
+    "requestQAReview": "QA再レビューをリクエスト",
+    "resolveGateOutro": "QA修正完了後、gate YAMLファイルのgateフィールドを'FIXED'に変更してください。",
     "quickFixIntro": "以下の問題を修正してください：",
-    "issueFileLabel": "問題ファイル："
+    "issueFileLabel": "問題ファイル：",
+    "reviewFileLabel": "レビューファイル：",
+    "quickFixOutro": "修正が完了したら、課題のステータスをReady for Reviewに変更してください。",
+    "issueFixIntro": "以下の課題はQAにより差し戻されました。レビューYAMLファイルのstatus_reasonフィールドでQAフィードバックを確認し、必要な修正を適用してください。修正完了後、レビューYAMLファイルのgateフィールドを'FIXED'に変更してください：",
+    "issueQAIntro": "以下の課題の修正をレビューし、問題が適切に対処されているか検証してください：",
+    "issueQAOutro": "修正が適切であれば、課題のステータスを「Ready for Done」に更新し、レビューYAMLファイルをgate: PASSで作成/更新してください。\n修正にさらなる作業が必要な場合は、課題のステータスを「Ready for Review」のまま維持し、レビューファイルをgate: FAILとstatus_reasonで作成/更新してください。\n\nレビューファイルYAML形式：\n```yaml\nschema: 1\nissue: '{issueId}'\ngate: PASS\nstatus_reason: '説明'\nreviewer: 'QA'\nupdated: '{ISO-8601}'\n```"
   },
   "status": {
     "open": "オープン",
@@ -92,8 +111,7 @@
     "editFailed": "課題の編集に失敗しました。",
     "closeFailed": "課題のクローズに失敗しました。",
     "reopenFailed": "課題の再オープンに失敗しました。",
-    "deleteFailed": "課題の削除に失敗しました。",
-    "normalizeStatusFailed": "ステータスの正規化に失敗しました。"
+    "deleteFailed": "課題の削除に失敗しました。"
   },
   "empty": {
     "message": "ボードにアイテムがありません。課題を追加してみてください。",

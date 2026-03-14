@@ -2,7 +2,8 @@
   "config": {
     "title": "看板设置",
     "columnDefinition": "列定义",
-    "statusMapping": "状态 → 列映射",
+    "badgeMapping": "徽章 → 列映射",
+    "badgeMappingHint": "将徽章状态映射到看板列",
     "selectColor": "选择颜色",
     "columnNamePlaceholder": "列名称",
     "moveUp": "上移",
@@ -10,10 +11,7 @@
     "delete": "删除",
     "resetDefaults": "恢复默认",
     "resetConfirm": "恢复默认设置？",
-    "saving": "正在保存...",
-    "customStatusMapping": "自定义状态映射",
-    "customStatusMappingHint": "将非标准 Story 状态映射为看板状态",
-    "customStatusKeyPlaceholder": "例如 Complete"
+    "saving": "正在保存..."
   },
   "issue": {
     "add": "添加问题",
@@ -40,6 +38,13 @@
     "alreadyPromotedToEpic": "已提升为 Epic",
     "cannotDeleteWhileWorking": "AI 正在处理时无法删除",
     "reopen": "重新打开",
+    "resumeDev": "继续开发",
+    "markReview": "请求审查",
+    "markDone": "完成问题",
+    "rework": "返工",
+    "requestQA": "请求QA审查",
+    "requestQAAgain": "重新请求QA审查",
+    "applyFix": "应用QA修复",
     "closeConfirm": "关闭此问题？",
     "deleteConfirm": "删除问题「{{title}}」？",
     "attachments": "附件",
@@ -54,7 +59,13 @@
   },
   "card": {
     "menu": "卡片菜单",
-    "unmappedStatus": "非标准状态「{{rawStatus}}」已映射为 {{status}}。请使用右键菜单进行规范化。"
+    "rejected": "QA 驳回 — 需要修复",
+    "gate": {
+      "PASS": "QA 通过",
+      "WAIVED": "QA 豁免",
+      "FAIL": "QA 失败",
+      "CONCERNS": "QA 关注"
+    }
   },
   "epic": {
     "subStories": "Epic 子 Story",
@@ -62,16 +73,24 @@
     "noSubStories": "没有子 Story",
     "viewSubStories": "查看子 Story"
   },
-  "story": {
-    "normalizeStatus": "规范化状态（{{rawStatus}} → {{status}}）"
-  },
+  "story": {},
   "workflow": {
     "validateStory": "验证 Story",
     "startDevelopment": "开始开发",
+    "resumeDevelopment": "继续开发",
     "requestQA": "请求 QA",
     "applyQAFix": "应用 QA 修复",
+    "reviewStory": "审查 Story",
+    "completeStory": "完成 Story",
+    "requestQAReview": "重新请求 QA 审查",
+    "resolveGateOutro": "完成QA修复后，请将gate YAML文件的gate字段更改为'FIXED'。",
     "quickFixIntro": "请修复以下问题：",
-    "issueFileLabel": "问题文件："
+    "issueFileLabel": "问题文件：",
+    "reviewFileLabel": "审查文件：",
+    "quickFixOutro": "修复完成后，请将问题状态更改为 Ready for Review。",
+    "issueFixIntro": "以下问题已被QA驳回。请查看审查YAML文件的status_reason字段中的QA反馈，并应用必要的修复。修复完成后，请将审查YAML文件的gate字段更改为'FIXED'：",
+    "issueQAIntro": "审查以下问题的修复，并验证其是否正确解决了该问题：",
+    "issueQAOutro": "如果修复满意，请将问题状态更新为「Ready for Done」，并创建/更新审查YAML文件，设置gate: PASS。\n如果修复需要更多工作，请保持问题状态为「Ready for Review」，并创建/更新审查文件，设置gate: FAIL和status_reason说明需要修复的内容。\n\n审查文件YAML格式：\n```yaml\nschema: 1\nissue: '{issueId}'\ngate: PASS\nstatus_reason: '说明'\nreviewer: 'QA'\nupdated: '{ISO-8601}'\n```"
   },
   "status": {
     "open": "打开",
@@ -92,8 +111,7 @@
     "editFailed": "编辑问题失败。",
     "closeFailed": "关闭问题失败。",
     "reopenFailed": "重新打开问题失败。",
-    "deleteFailed": "删除问题失败。",
-    "normalizeStatusFailed": "规范化状态失败。"
+    "deleteFailed": "删除问题失败。"
   },
   "empty": {
     "message": "看板上没有项目。试试添加一个问题。",

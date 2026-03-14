@@ -236,6 +236,9 @@
     "qaReviewDesc": "{{label}} 구현 결과를 검토합니다",
     "applyQaFixes": "QA 반영",
     "applyQaFixesDesc": "QA 피드백을 코드에 반영합니다",
+    "markDone": "스토리 완료",
+    "markDoneDesc": "QA 통과 — Done으로 완료",
+    "requestQAReview": "QA 재요청",
     "validateStory": "스토리 검증",
     "startDev": "개발 시작",
     "createFirstStory": "첫 스토리 생성",
@@ -307,6 +310,8 @@
     "paste": "붙여넣기",
     "download": "다운로드",
     "upload": "업로드",
+    "dropHere": "파일을 여기에 놓아 업로드",
+    "uploading": "업로드 중…",
     "crudErrors": {
       "alreadyExists": "파일 또는 디렉토리가 이미 존재합니다.",
       "parentNotFound": "상위 디렉토리가 존재하지 않습니다.",
@@ -331,6 +336,7 @@
       "uploaded": "'{{name}}' 파일이 업로드되었습니다.",
       "uploadedMultiple": "{{count}}개 파일이 업로드되었습니다.",
       "uploadFailed": "업로드 실패",
+      "uploadInProgress": "업로드가 진행 중입니다. 잠시 후 다시 시도해주세요.",
       "downloadFailed": "다운로드 실패"
     }
   },

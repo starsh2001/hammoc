@@ -29,7 +29,7 @@ export function KanbanBoard({
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
-  onNormalizeStatus,
+
   onCardClick,
 }: KanbanBoardProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -89,7 +89,7 @@ export function KanbanBoard({
             onDelete={onDelete}
             onWorkflowAction={onWorkflowAction}
             onViewEpicStories={onViewEpicStories}
-            onNormalizeStatus={onNormalizeStatus}
+
             onCardClick={onCardClick}
           />
         ))}

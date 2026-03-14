@@ -8,8 +8,6 @@ router.get('/:projectSlug/board/issues', boardController.listIssues);
 router.post('/:projectSlug/board/issues', boardController.createIssue);
 router.patch('/:projectSlug/board/issues/:issueId', boardController.updateIssue);
 router.delete('/:projectSlug/board/issues/:issueId', boardController.deleteIssue);
-router.post('/:projectSlug/board/stories/:storyNum/normalize-status', boardController.normalizeStoryStatus);
-
 // Issue attachments
 router.post('/:projectSlug/board/issues/:issueId/attachments', attachmentUpload, boardController.uploadAttachment);
 router.get('/:projectSlug/board/issues/:issueId/attachments', boardController.listAttachments);

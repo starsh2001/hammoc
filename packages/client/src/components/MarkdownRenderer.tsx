@@ -163,7 +163,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       table({ children }) {
         return (
           <div className="overflow-x-auto my-4">
-            <table className="min-w-full border-collapse border border-gray-200 dark:border-[#253040]">
+            <table className="min-w-full border-collapse border border-gray-200 dark:border-gray-600">
               {children}
             </table>
           </div>
@@ -172,7 +172,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
       th({ children }) {
         return (
-          <th className="border border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#263240] px-4 py-2 text-left font-semibold">
+          <th className="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#263240] px-4 py-2 text-left font-semibold">
             {children}
           </th>
         );
@@ -180,7 +180,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
       td({ children }) {
         return (
-          <td className="border border-gray-200 dark:border-[#253040] px-4 py-2">
+          <td className="border border-gray-200 dark:border-gray-600 px-4 py-2">
             {children}
           </td>
         );
@@ -252,7 +252,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
       // Horizontal rule
       hr() {
-        return <hr className="my-2 border-gray-200 dark:border-[#253040]" />;
+        return <hr className="my-2 border-gray-200 dark:border-gray-600" />;
       },
 
       // Strong (bold)

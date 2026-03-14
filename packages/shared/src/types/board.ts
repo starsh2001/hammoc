@@ -1,7 +1,6 @@
 // Epic 21: Project Board types (Story 21.1)
 
 export type BoardItemType = 'issue' | 'story' | 'epic';
-export type BoardItemStatus = 'Open' | 'Draft' | 'Approved' | 'InProgress' | 'Blocked' | 'Review' | 'Done' | 'Closed' | 'Promoted';
 
 // Column definition for dynamic board configuration
 export interface BoardColumnConfig {
@@ -10,12 +9,11 @@ export interface BoardColumnConfig {
   colorClass: string;
 }
 
-// Full board configuration (columns + status mapping)
+// Full board configuration (columns + badge-to-column mapping)
+// badgeToColumn maps resolved badge IDs to column IDs (N:1)
 export interface BoardConfig {
   columns: BoardColumnConfig[];
-  statusToColumn: Record<BoardItemStatus, string>;
-  /** Custom raw-status → BoardItemStatus mappings (e.g. "Complete" → "Done") */
-  customStatusMappings?: Record<string, BoardItemStatus>;
+  badgeToColumn: Record<string, string>;
 }
 
 // Available colors for column customization
@@ -41,27 +39,29 @@ const DEFAULT_BOARD_COLUMNS: BoardColumnConfig[] = [
   { id: 'Close', label: 'Close', colorClass: 'border-t-emerald-500' },
 ];
 
-const DEFAULT_STATUS_TO_COLUMN: Record<BoardItemStatus, string> = {
-  Open: 'Open',
-  Draft: 'ToDo',
-  Approved: 'ToDo',
-  InProgress: 'Doing',
-  Blocked: 'ToDo',
-  Review: 'Review',
-  Done: 'Close',
-  Closed: 'Close',
-  Promoted: 'Close',
+// Maps badge IDs to column IDs
+const DEFAULT_BADGE_TO_COLUMN: Record<string, string> = {
+  'open': 'Open',
+  'draft': 'ToDo',
+  'approved': 'ToDo',
+  'in-progress': 'Doing',
+  'blocked': 'ToDo',
+  'ready-for-review': 'Review',
+  'qa-failed': 'Doing',
+  'qa-concerns': 'Doing',
+  'qa-passed': 'Review',
+  'qa-waived': 'Review',
+  'qa-fixed': 'Review',
+  'ready-for-done': 'Review',
+  'done': 'Close',
+  'closed': 'Close',
+  'promoted': 'Close',
 };
 
 export const DEFAULT_BOARD_CONFIG: BoardConfig = {
   columns: DEFAULT_BOARD_COLUMNS,
-  statusToColumn: DEFAULT_STATUS_TO_COLUMN,
+  badgeToColumn: DEFAULT_BADGE_TO_COLUMN,
 };
-
-// All possible statuses (used for validation)
-const ALL_STATUSES: BoardItemStatus[] = [
-  'Open', 'Draft', 'Approved', 'InProgress', 'Blocked', 'Review', 'Done', 'Closed', 'Promoted',
-];
 
 // Required column IDs that cannot be removed
 export const REQUIRED_COLUMN_IDS = ['Open', 'Close'] as const;
@@ -78,12 +78,12 @@ export function validateBoardConfig(config: unknown): string[] {
   if (!Array.isArray(cfg.columns)) {
     return ['Board config must have a columns array'];
   }
-  if (typeof cfg.statusToColumn !== 'object' || cfg.statusToColumn === null || Array.isArray(cfg.statusToColumn)) {
-    return ['Board config must have a statusToColumn object'];
+  if (typeof cfg.badgeToColumn !== 'object' || cfg.badgeToColumn === null || Array.isArray(cfg.badgeToColumn)) {
+    return ['Board config must have a badgeToColumn object'];
   }
 
   const columns = cfg.columns as BoardColumnConfig[];
-  const statusToColumn = cfg.statusToColumn as Record<string, string>;
+  const badgeToColumn = cfg.badgeToColumn as Record<string, string>;
 
   if (columns.length === 0) {
     errors.push('At least one column is required');
@@ -108,28 +108,10 @@ export function validateBoardConfig(config: unknown): string[] {
       errors.push('Column label cannot be empty');
     }
   }
-  for (const status of ALL_STATUSES) {
-    const target = statusToColumn[status];
+  // Validate that all badgeToColumn targets point to existing columns
+  for (const [badge, target] of Object.entries(badgeToColumn)) {
     if (!target || !columnIds.has(target)) {
-      errors.push(`Status "${status}" maps to non-existent column "${target}"`);
-    }
-  }
-
-  // Validate customStatusMappings if present
-  const allStatusSet = new Set<string>(ALL_STATUSES);
-  if (cfg.customStatusMappings != null) {
-    if (typeof cfg.customStatusMappings !== 'object' || Array.isArray(cfg.customStatusMappings)) {
-      errors.push('customStatusMappings must be an object');
-    } else {
-      const csm = cfg.customStatusMappings as Record<string, string>;
-      for (const [rawKey, target] of Object.entries(csm)) {
-        if (!rawKey.trim()) {
-          errors.push('Custom status mapping key cannot be empty');
-        }
-        if (!allStatusSet.has(target)) {
-          errors.push(`Custom status mapping "${rawKey}" targets invalid status "${target}"`);
-        }
-      }
+      errors.push(`Badge "${badge}" maps to non-existent column "${target}"`);
     }
   }
 
@@ -151,9 +133,8 @@ export interface BoardItem {
   id: string;
   type: BoardItemType;
   title: string;
-  status: BoardItemStatus;
-  /** Original status from story file when it differs from the mapped status */
-  rawStatus?: string;
+  /** Raw status string from the source file (e.g. 'Ready for Review', 'Draft', etc.) */
+  status: string;
   description?: string;
   severity?: 'low' | 'medium' | 'high' | 'critical';
   issueType?: 'bug' | 'improvement';
@@ -165,6 +146,8 @@ export interface BoardItem {
   linkedStory?: string;
   linkedEpic?: string;
   externalRef?: string;
+  /** Latest QA gate decision: 'PASS' | 'CONCERNS' | 'FAIL' | 'WAIVED' */
+  gateResult?: string;
   /** Project-relative path to the source file (story/epic markdown) */
   filePath?: string;
   attachments?: IssueAttachment[];
@@ -187,7 +170,7 @@ export interface CreateIssueRequest {
 export interface UpdateIssueRequest {
   title?: string;
   description?: string;
-  status?: 'Open' | 'InProgress' | 'Done' | 'Closed' | 'Promoted';
+  status?: string;
   severity?: 'low' | 'medium' | 'high' | 'critical';
   issueType?: 'bug' | 'improvement';
   linkedStory?: string;

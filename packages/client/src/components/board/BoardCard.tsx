@@ -3,11 +3,10 @@
  * [Source: Story 21.2 - Task 6, Story 21.3 - Task 2]
  */
 
-import { AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { BoardItem } from '@hammoc/shared';
 import { CardContextMenu } from './CardContextMenu';
-import { STATUS_LABEL, STATUS_BADGE_COLOR } from './constants';
+import { resolveBadge } from './constants';
 
 export interface CardActionCallbacks {
   onQuickFix?: (item: BoardItem) => void;
@@ -18,7 +17,8 @@ export interface CardActionCallbacks {
   onDelete?: (item: BoardItem) => void;
   onWorkflowAction?: (item: BoardItem) => void;
   onViewEpicStories?: (item: BoardItem) => void;
-  onNormalizeStatus?: (item: BoardItem) => void;
+  onRequestQAReview?: (item: BoardItem) => void;
+  onIssueStatusChange?: (item: BoardItem, status: string) => void;
   onCardClick?: (item: BoardItem) => void;
 }
 
@@ -41,6 +41,7 @@ const TYPE_BADGE: Record<string, { label: string; className: string }> = {
   },
 };
 
+
 const SEVERITY_BADGE: Record<string, string> = {
   critical: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
   high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
@@ -58,11 +59,13 @@ export function BoardCard({
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
-  onNormalizeStatus,
+  onRequestQAReview,
+  onIssueStatusChange,
   onCardClick,
 }: BoardCardProps) {
   const { t } = useTranslation('board');
   const typeBadge = TYPE_BADGE[item.type];
+  const badge = resolveBadge(item);
   const isClickable = item.type === 'issue' || item.type === 'epic' || (item.type === 'story' && !!item.filePath);
 
   return (
@@ -105,7 +108,8 @@ export function BoardCard({
           onDelete={onDelete}
           onWorkflowAction={onWorkflowAction}
           onViewEpicStories={onViewEpicStories}
-          onNormalizeStatus={onNormalizeStatus}
+          onRequestQAReview={onRequestQAReview}
+          onIssueStatusChange={onIssueStatusChange}
         />
       </div>
 
@@ -162,19 +166,11 @@ export function BoardCard({
         </div>
       )}
 
-      {/* Status badge */}
+      {/* Resolved badge */}
       <div className="mt-2 flex items-center gap-1.5">
-        <span className={`text-xs px-1.5 py-0.5 rounded-full ${STATUS_BADGE_COLOR[item.status]}`}>
-          {STATUS_LABEL[item.status]}
+        <span className={`text-xs px-1.5 py-0.5 rounded-full ${badge.colorClass}`}>
+          {badge.label}
         </span>
-        {item.rawStatus && (
-          <span
-            title={t('card.unmappedStatus', { rawStatus: item.rawStatus, status: item.status })}
-            className="text-amber-500 dark:text-amber-400 flex-shrink-0"
-          >
-            <AlertTriangle className="w-3.5 h-3.5" />
-          </span>
-        )}
       </div>
     </div>
   );

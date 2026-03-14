@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { MoreVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { BoardItem } from '@hammoc/shared';
+import { resolveBadge } from './constants';
 
 export interface CardContextMenuProps {
   item: BoardItem;
@@ -19,7 +20,8 @@ export interface CardContextMenuProps {
   onDelete?: (item: BoardItem) => void;
   onWorkflowAction?: (item: BoardItem) => void;
   onViewEpicStories?: (item: BoardItem) => void;
-  onNormalizeStatus?: (item: BoardItem) => void;
+  onRequestQAReview?: (item: BoardItem) => void;
+  onIssueStatusChange?: (item: BoardItem, status: string) => void;
   onMenuClose?: () => void;
 }
 
@@ -32,17 +34,35 @@ interface MenuItem {
 
 function getStoryWorkflowAction(
   item: BoardItem,
+  badgeId: string,
   onWorkflowAction: ((item: BoardItem) => void) | undefined,
   t: (key: string) => string,
 ): MenuItem | null {
   if (!onWorkflowAction) return null;
-  const map: Record<string, string> = {
-    Draft: t('workflow.validateStory'),
-    Approved: t('workflow.startDevelopment'),
-    InProgress: t('workflow.requestQA'),
-    Review: t('workflow.applyQAFix'),
+
+  // QA gate compound badges
+  if (badgeId === 'qa-passed' || badgeId === 'qa-waived') {
+    return { label: t('workflow.completeStory'), action: () => onWorkflowAction(item) };
+  }
+  if (badgeId === 'qa-failed' || badgeId === 'qa-concerns') {
+    return { label: t('workflow.applyQAFix'), action: () => onWorkflowAction(item) };
+  }
+  if (badgeId === 'qa-fixed') {
+    return { label: t('workflow.reviewStory'), action: () => onWorkflowAction(item) };
+  }
+
+  // No gate — request QA review
+  if (badgeId === 'ready-for-review' || badgeId === 'ready-for-done') {
+    return { label: t('workflow.reviewStory'), action: () => onWorkflowAction(item) };
+  }
+
+  const labelMap: Record<string, string> = {
+    'draft': t('workflow.validateStory'),
+    'approved': t('workflow.startDevelopment'),
+    'in-progress': t('workflow.resumeDevelopment'),
   };
-  const label = map[item.status];
+
+  const label = labelMap[badgeId];
   if (!label) return null;
   return { label, action: () => onWorkflowAction(item) };
 }
@@ -57,7 +77,8 @@ export function CardContextMenu({
   onDelete,
   onWorkflowAction,
   onViewEpicStories,
-  onNormalizeStatus,
+  onRequestQAReview,
+  onIssueStatusChange,
   onMenuClose,
 }: CardContextMenuProps) {
   const { t } = useTranslation('board');
@@ -69,9 +90,10 @@ export function CardContextMenu({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const menuItems: MenuItem[] = [];
+  const badge = resolveBadge(item);
 
   if (item.type === 'issue') {
-    if (item.status === 'Open') {
+    if (badge.id === 'open') {
       if (onQuickFix) {
         menuItems.push({ label: t('issue.quickFix'), action: () => onQuickFix(item) });
       }
@@ -95,7 +117,27 @@ export function CardContextMenu({
       if (onClose) {
         menuItems.push({ label: t('common:button.close'), action: () => onClose(item) });
       }
-    } else if ((item.status === 'Closed' || item.status === 'Done' || item.status === 'Promoted') && onReopen) {
+    } else if (badge.id === 'in-progress' && onWorkflowAction) {
+      menuItems.push({ label: t('issue.resumeDev'), action: () => onWorkflowAction(item) });
+    } else if ((badge.id === 'qa-failed' || badge.id === 'qa-concerns') && onWorkflowAction) {
+      // QA failed/concerns → apply fixes first (dev agent), then re-request via qa-fixed
+      menuItems.push({ label: t('issue.applyFix'), action: () => onWorkflowAction(item) });
+    } else if ((badge.id === 'qa-passed' || badge.id === 'qa-waived') && onIssueStatusChange) {
+      // QA passed/waived → mark done or re-request QA
+      menuItems.push({ label: t('issue.markDone'), action: () => onIssueStatusChange(item, 'Done') });
+      if (onRequestQAReview) {
+        menuItems.push({ label: t('issue.requestQAAgain'), action: () => onRequestQAReview(item) });
+      }
+    } else if ((badge.id === 'qa-fixed' || badge.id === 'ready-for-review') && onRequestQAReview) {
+      // Fixed or no gate → request QA review
+      menuItems.push({ label: t('issue.requestQA'), action: () => onRequestQAReview(item) });
+    } else if (badge.id === 'ready-for-done' && onIssueStatusChange) {
+      // Ready for Done → complete or re-request QA
+      menuItems.push({ label: t('issue.markDone'), action: () => onIssueStatusChange(item, 'Done') });
+      if (onRequestQAReview) {
+        menuItems.push({ label: t('issue.requestQAAgain'), action: () => onRequestQAReview(item) });
+      }
+    } else if ((badge.id === 'closed' || badge.id === 'done' || badge.id === 'promoted') && onReopen) {
       menuItems.push({ label: t('issue.reopen'), action: () => onReopen(item) });
     }
     if (onDelete) {
@@ -105,15 +147,19 @@ export function CardContextMenu({
       });
     }
   } else if (item.type === 'story') {
-    if (item.rawStatus && onNormalizeStatus) {
-      menuItems.push({
-        label: t('story.normalizeStatus', { rawStatus: item.rawStatus, status: item.status }),
-        action: () => onNormalizeStatus(item),
-      });
-    }
-    const workflowItem = getStoryWorkflowAction(item, onWorkflowAction, t);
+    const workflowItem = getStoryWorkflowAction(item, badge.id, onWorkflowAction, t);
     if (workflowItem) {
       menuItems.push(workflowItem);
+    }
+    // QA re-request: stories that passed/waived QA can re-request
+    if (
+      onRequestQAReview &&
+      (badge.id === 'qa-passed' || badge.id === 'qa-waived')
+    ) {
+      menuItems.push({
+        label: t('workflow.requestQAReview'),
+        action: () => onRequestQAReview(item),
+      });
     }
   } else if (item.type === 'epic') {
     if (onViewEpicStories) {

@@ -143,13 +143,29 @@ describe('IssueService', () => {
       const created = await issueService.createIssue(PROJECT_ROOT, { title: 'Original' });
       const updated = await issueService.updateIssue(PROJECT_ROOT, created.id, {
         title: 'Updated',
-        status: 'InProgress',
+        status: 'In Progress',
         severity: 'critical',
       });
 
       expect(updated.title).toBe('Updated');
-      expect(updated.status).toBe('InProgress');
+      expect(updated.status).toBe('In Progress');
       expect(updated.severity).toBe('critical');
+    });
+
+    it('should accept Ready for Review as a valid issue status', async () => {
+      const created = await issueService.createIssue(PROJECT_ROOT, { title: 'RfR test' });
+      const updated = await issueService.updateIssue(PROJECT_ROOT, created.id, {
+        status: 'Ready for Review',
+      });
+      expect(updated.status).toBe('Ready for Review');
+    });
+
+    it('should accept Ready for Done as a valid issue status', async () => {
+      const created = await issueService.createIssue(PROJECT_ROOT, { title: 'RfD test' });
+      const updated = await issueService.updateIssue(PROJECT_ROOT, created.id, {
+        status: 'Ready for Done',
+      });
+      expect(updated.status).toBe('Ready for Done');
     });
 
     it('should throw ISSUE_NOT_FOUND for non-existent issue', async () => {
@@ -208,7 +224,7 @@ describe('IssueService', () => {
       const markdown = `# Test Bug
 
 ## Status
-InProgress
+In Progress
 
 ## Description
 Something is broken
@@ -230,7 +246,7 @@ bug
 
       expect(item).not.toBeNull();
       expect(item!.title).toBe('Test Bug');
-      expect(item!.status).toBe('InProgress');
+      expect(item!.status).toBe('In Progress');
       expect(item!.description).toBe('Something is broken');
       expect(item!.severity).toBe('critical');
       expect(item!.issueType).toBe('bug');
@@ -284,7 +300,7 @@ Open
             name: 'Core Setup',
             stories: [
               { file: '1.1.story.md', status: 'Done', title: 'Init project' },
-              { file: '1.2.story.md', status: 'In Progress', title: 'Add auth' },
+              { file: '1.2.story.md', status: 'Approved', title: 'Add auth' },
             ],
           },
         ],
@@ -303,11 +319,11 @@ Open
       expect(stories[0].id).toBe('story-1.1');
       expect(stories[0].status).toBe('Done');
       expect(stories[1].id).toBe('story-1.2');
-      expect(stories[1].status).toBe('InProgress');
+      expect(stories[1].status).toBe('Approved');
 
       expect(epics).toHaveLength(1);
       expect(epics[0].id).toBe('epic-1');
-      expect(epics[0].status).toBe('InProgress');
+      expect(epics[0].status).toBe('In Progress');
       expect(epics[0].storyProgress).toEqual({ total: 2, done: 1 });
     });
 
@@ -395,7 +411,7 @@ Open
 
       const result = await issueService.getBoard(PROJECT_ROOT);
       const epic = result.items.find((i: BoardItem) => i.id === 'epic-5');
-      expect(epic!.status).toBe('InProgress');
+      expect(epic!.status).toBe('In Progress');
 
       const blockedStory = result.items.find((i: BoardItem) => i.id === 'story-5.1');
       expect(blockedStory!.status).toBe('Blocked');
@@ -435,6 +451,8 @@ Open
               { file: '7.1.story.md', status: 'Approved', title: 'Approved story' },
               { file: '7.2.story.md', status: 'Review', title: 'Review story' },
               { file: '7.3.story.md', status: 'Unknown Status', title: 'Unknown story' },
+              { file: '7.4.story.md', status: 'Ready for Review', title: 'Ready for Review story' },
+              { file: '7.5.story.md', status: 'Ready for Done', title: 'Ready for Done story' },
             ],
           },
         ],
@@ -444,8 +462,111 @@ Open
       const stories = result.items.filter((i: BoardItem) => i.type === 'story');
 
       expect(stories.find((s: BoardItem) => s.id === 'story-7.1')!.status).toBe('Approved');
-      expect(stories.find((s: BoardItem) => s.id === 'story-7.2')!.status).toBe('Review');
-      expect(stories.find((s: BoardItem) => s.id === 'story-7.3')!.status).toBe('Open');
+      expect(stories.find((s: BoardItem) => s.id === 'story-7.2')!.status).toBe('Ready for Review');
+      expect(stories.find((s: BoardItem) => s.id === 'story-7.3')!.status).toBe('Unknown Status');
+      // Raw status preserved directly
+      expect(stories.find((s: BoardItem) => s.id === 'story-7.4')!.status).toBe('Ready for Review');
+      expect(stories.find((s: BoardItem) => s.id === 'story-7.5')!.status).toBe('Ready for Done');
+    });
+
+    it('should read gate result from review YAML file', async () => {
+      const issue = await issueService.createIssue(PROJECT_ROOT, { title: 'Rejected issue' });
+      await issueService.updateIssue(PROJECT_ROOT, issue.id, { status: 'Ready for Review' });
+
+      // Create review file
+      const reviewsDir = path.join(ISSUES_DIR, 'reviews');
+      await fs.mkdir(reviewsDir, { recursive: true });
+      await fs.writeFile(
+        path.join(reviewsDir, `${issue.id}-review.yml`),
+        `schema: 1\nissue: '${issue.id}'\ngate: FAIL\nstatus_reason: 'Missing error handling'\n`,
+      );
+
+      mockScanProject.mockResolvedValueOnce({
+        config: {} as never,
+        documents: {} as never,
+        auxiliaryDocuments: [],
+        epics: [],
+      });
+
+      const result = await issueService.getBoard(PROJECT_ROOT);
+      const item = result.items.find((i: BoardItem) => i.id === issue.id)!;
+      expect(item.status).toBe('Ready for Review');
+      expect(item.gateResult).toBe('FAIL');
+    });
+
+    it('should read PASS from review YAML file', async () => {
+      const issue = await issueService.createIssue(PROJECT_ROOT, { title: 'Pass issue' });
+      await issueService.updateIssue(PROJECT_ROOT, issue.id, { status: 'Ready for Done' });
+
+      const reviewsDir = path.join(ISSUES_DIR, 'reviews');
+      await fs.mkdir(reviewsDir, { recursive: true });
+      await fs.writeFile(
+        path.join(reviewsDir, `${issue.id}-review.yml`),
+        `schema: 1\nissue: '${issue.id}'\ngate: PASS\nstatus_reason: 'All issues resolved'\n`,
+      );
+
+      mockScanProject.mockResolvedValueOnce({
+        config: {} as never,
+        documents: {} as never,
+        auxiliaryDocuments: [],
+        epics: [],
+      });
+
+      const result = await issueService.getBoard(PROJECT_ROOT);
+      const item = result.items.find((i: BoardItem) => i.id === issue.id)!;
+      expect(item.status).toBe('Ready for Done');
+      expect(item.gateResult).toBe('PASS');
+    });
+
+    it('should handle missing reviews directory gracefully', async () => {
+      const issue = await issueService.createIssue(PROJECT_ROOT, { title: 'No review' });
+
+      mockScanProject.mockResolvedValueOnce({
+        config: {} as never,
+        documents: {} as never,
+        auxiliaryDocuments: [],
+        epics: [],
+      });
+
+      const result = await issueService.getBoard(PROJECT_ROOT);
+      const item = result.items.find((i: BoardItem) => i.id === issue.id)!;
+      expect(item.gateResult).toBeUndefined();
+    });
+
+    it('should clean up review file on deleteIssue', async () => {
+      const issue = await issueService.createIssue(PROJECT_ROOT, { title: 'Delete review test' });
+
+      const reviewsDir = path.join(ISSUES_DIR, 'reviews');
+      await fs.mkdir(reviewsDir, { recursive: true });
+      const reviewFile = path.join(reviewsDir, `${issue.id}-review.yml`);
+      await fs.writeFile(reviewFile, `schema: 1\ngate: FAIL\n`);
+
+      await issueService.deleteIssue(PROJECT_ROOT, issue.id);
+
+      // Review file should be cleaned up
+      await expect(fs.access(reviewFile)).rejects.toThrow();
+    });
+
+    it('should preserve raw status for issue Ready for Review/Ready for Done', async () => {
+      // Create issues with Ready for Review and Ready for Done statuses
+      const issue1 = await issueService.createIssue(PROJECT_ROOT, { title: 'RfR issue' });
+      await issueService.updateIssue(PROJECT_ROOT, issue1.id, { status: 'Ready for Review' });
+      const issue2 = await issueService.createIssue(PROJECT_ROOT, { title: 'RfD issue' });
+      await issueService.updateIssue(PROJECT_ROOT, issue2.id, { status: 'Ready for Done' });
+
+      mockScanProject.mockResolvedValueOnce({
+        config: {} as never,
+        documents: {} as never,
+        auxiliaryDocuments: [],
+        epics: [],
+      });
+
+      const result = await issueService.getBoard(PROJECT_ROOT);
+      const rfrItem = result.items.find((i: BoardItem) => i.id === issue1.id)!;
+      expect(rfrItem.status).toBe('Ready for Review');
+
+      const rfdItem = result.items.find((i: BoardItem) => i.id === issue2.id)!;
+      expect(rfdItem.status).toBe('Ready for Done');
     });
   });
 });

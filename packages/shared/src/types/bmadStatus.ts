@@ -55,6 +55,8 @@ export interface BmadStoryStatus {
   file: string;
   status: string; // 'Draft' | 'Approved' | 'In Progress' | 'Done' | 'Blocked' | etc.
   title?: string; // Story title extracted from the file header
+  /** Latest QA gate decision: 'PASS' | 'CONCERNS' | 'FAIL' | 'WAIVED' */
+  gateResult?: string;
 }
 
 /** Epic with its stories */

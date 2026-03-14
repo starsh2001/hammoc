@@ -6,7 +6,6 @@
 import { create } from 'zustand';
 import type {
   BoardItem,
-  BoardItemStatus,
   BoardConfig,
   CreateIssueRequest,
   UpdateIssueRequest,
