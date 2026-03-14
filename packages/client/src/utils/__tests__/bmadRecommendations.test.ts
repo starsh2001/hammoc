@@ -230,7 +230,8 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     expect(fixRec).toBeDefined();
     expect(fixRec!.variant).toBe('primary');
     expect(fixRec!.agentCommand).toBe('/BMad:agents:dev');
-    expect(fixRec!.taskCommand).toBe('*review-qa 1.1');
+    expect(fixRec!.taskCommand).toContain('*review-qa 1.1');
+    expect(fixRec!.taskCommand).toContain('FIXED');
   });
 
   it('recommends QA review when story is in Review status (no gate)', () => {
@@ -291,7 +292,8 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     expect(fixRec).toBeDefined();
     expect(fixRec!.variant).toBe('primary');
     expect(fixRec!.agentCommand).toBe('/BMad:agents:dev');
-    expect(fixRec!.taskCommand).toBe('*review-qa 1.1');
+    expect(fixRec!.taskCommand).toContain('*review-qa 1.1');
+    expect(fixRec!.taskCommand).toContain('FIXED');
   });
 
   it('recommends QA review for Ready for Review raw status (no gate)', () => {

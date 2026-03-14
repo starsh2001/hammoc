@@ -31,6 +31,7 @@ import type { BmadStatusResponse } from '@hammoc/shared';
 
 import { computeNextSteps, type NextStepRecommendation } from '../../utils/bmadRecommendations.js';
 import { generateUUID } from '../../utils/uuid.js';
+import { boardApi } from '../../services/api/board.js';
 
 // ---------------------------------------------------------------------------
 // Icon mapping
@@ -102,7 +103,17 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
   const navigate = useNavigate();
   const { phase, recommendations } = computeNextSteps(data);
 
-  const handleAction = (rec: NextStepRecommendation) => {
+  const handleAction = async (rec: NextStepRecommendation) => {
+    // Approved story → transition to In Progress before starting dev session
+    if (rec.id === 'start-dev' && rec.storyFile) {
+      try {
+        const storyId = `story-${rec.storyFile.match(/^(\d+\.\d+)/)?.[1] ?? rec.storyFile}`;
+        await boardApi.updateIssue(projectSlug, storyId, { status: 'In Progress' });
+      } catch (err) {
+        console.warn('Failed to transition story to In Progress:', err);
+      }
+    }
+
     const sessionId = generateUUID();
     const params = new URLSearchParams({ agent: rec.agentCommand });
     if (rec.taskCommand) {
