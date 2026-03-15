@@ -546,4 +546,39 @@ describe('WebSocket Chain Handler (Story 24.1)', () => {
       // Test passes if no uncaught errors
     });
   });
+
+  describe('session room membership validation', () => {
+    it('should reject chain:add when socket has not joined session room', async () => {
+      clientSocket = await connectClient();
+      // Do NOT join session room — chain:add should be silently rejected
+
+      const errorPromise = new Promise<boolean>((resolve) => {
+        clientSocket.on('chain:update', () => resolve(false));
+        setTimeout(() => resolve(true), 200);
+      });
+
+      clientSocket.emit('chain:add', {
+        sessionId: SESSION_ID,
+        content: 'Should be rejected',
+        workingDirectory: '/test/path',
+      });
+
+      const wasRejected = await errorPromise;
+      expect(wasRejected).toBe(true);
+    });
+  });
+
+  describe('PromptChainItem failed status', () => {
+    it('should accept failed as a valid status', () => {
+      const item: PromptChainItem = {
+        id: 'chain-fail-1',
+        content: 'failed prompt',
+        status: 'failed',
+        createdAt: Date.now(),
+        retryCount: 3,
+      };
+      expect(item.status).toBe('failed');
+      expect(item.retryCount).toBe(3);
+    });
+  });
 });

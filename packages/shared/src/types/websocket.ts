@@ -21,8 +21,9 @@ import type { DashboardStatusChangeEvent } from './dashboard.js';
 export interface PromptChainItem {
   id: string;
   content: string;
-  status: 'pending' | 'sending' | 'sent';
+  status: 'pending' | 'sending' | 'sent' | 'failed';
   createdAt: number;
+  retryCount?: number;
 }
 
 // ===== Connection Status =====

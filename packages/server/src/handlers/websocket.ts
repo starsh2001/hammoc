@@ -149,26 +149,50 @@ const activeStreams = new Map<string, ActiveStream>();
 const socketToSession = new Map<string, string>();
 
 // Story 24.1: Per-session prompt chain state
-const chainState = new Map<string, PromptChainItem[]>();
-const chainContext = new Map<string, { workingDirectory: string; permissionMode?: PermissionMode; model?: string }>();
+// Internal chain item with per-item execution context (not sent to clients)
+interface InternalChainItem extends PromptChainItem {
+  workingDirectory: string;
+  permissionMode?: PermissionMode;
+  model?: string;
+}
+const chainState = new Map<string, InternalChainItem[]>();
+// Per-session drain generation counter for race guard
+const chainDrainGeneration = new Map<string, number>();
 let chainItemCounter = 0;
+const CHAIN_MAX_RETRIES = 3;
 
 /** Generate a unique chain item ID */
 function generateChainItemId(): string {
   return `chain-${Date.now()}-${++chainItemCounter}`;
 }
 
-/** Broadcast current chain state to all sockets in the session room */
+/** Broadcast current chain state to all sockets in the session room (strips internal fields) */
 function broadcastChainUpdate(sessionId: string): void {
   if (!io) return;
-  const items = chainState.get(sessionId) || [];
+  const internalItems = chainState.get(sessionId) || [];
+  const items: PromptChainItem[] = internalItems.map(({ workingDirectory: _wd, permissionMode: _pm, model: _m, ...rest }) => rest);
   io.to(`session:${sessionId}`).emit('chain:update', { sessionId, items });
+}
+
+/** Clean up chain state if session room is empty */
+function cleanupChainIfRoomEmpty(sessionId: string): void {
+  const roomSockets = io?.sockets.adapter.rooms.get(`session:${sessionId}`);
+  if ((!roomSockets || roomSockets.size === 0) && !activeStreams.has(sessionId)) {
+    chainState.delete(sessionId);
+    chainDrainGeneration.delete(sessionId);
+  }
 }
 
 /** Schedule chain drain after stream completion (1s delay) */
 function scheduleChainDrain(sessionId: string, lang: string): void {
+  // Increment generation counter to detect stale drains
+  const gen = (chainDrainGeneration.get(sessionId) || 0) + 1;
+  chainDrainGeneration.set(sessionId, gen);
+
   setTimeout(async () => {
-    // Race guard: if another stream started during the delay, abort drain
+    // Race guard: if generation changed (manual chat:send started/finished), abort
+    if (chainDrainGeneration.get(sessionId) !== gen) return;
+    // Race guard: if another stream is currently active, abort drain
     if (activeStreams.has(sessionId)) return;
 
     const items = chainState.get(sessionId);
@@ -181,8 +205,8 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
     const roomSockets = io?.sockets.adapter.rooms.get(`session:${sessionId}`);
     if (!roomSockets || roomSockets.size === 0) return;
 
-    const ctx = chainContext.get(sessionId);
-    if (!ctx) return;
+    // Use per-item execution context
+    const { workingDirectory, permissionMode, model } = nextItem;
 
     // Mark item as 'sending' and broadcast
     nextItem.status = 'sending';
@@ -215,7 +239,7 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
     try {
       await handleChatSend(
         stream,
-        { content: nextItem.content, workingDirectory: ctx.workingDirectory, sessionId, permissionMode: ctx.permissionMode, model: ctx.model },
+        { content: nextItem.content, workingDirectory, sessionId, permissionMode, model },
         abortController,
         lang
       );
@@ -227,12 +251,17 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
       }
       broadcastChainUpdate(sessionId);
     } catch (err) {
-      // On error (including AbortedError): revert to 'pending', keep item in queue
-      if (nextItem.status === 'sending') {
+      // On error: increment retry count and mark as failed if max retries exceeded
+      const retries = (nextItem.retryCount || 0) + 1;
+      nextItem.retryCount = retries;
+      if (retries >= CHAIN_MAX_RETRIES) {
+        nextItem.status = 'failed';
+        log.error(`Chain item ${nextItem.id} failed after ${CHAIN_MAX_RETRIES} retries for session ${sessionId}:`, err);
+      } else if (nextItem.status === 'sending') {
         nextItem.status = 'pending';
       }
       broadcastChainUpdate(sessionId);
-      log.error(`Chain drain error for session ${sessionId}:`, err);
+      log.error(`Chain drain error for session ${sessionId} (attempt ${retries}):`, err);
     } finally {
       // Safety net: ensure item is never left stuck in 'sending'
       if (nextItem.status === 'sending') {
@@ -255,6 +284,9 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
           triggerDashboardStatusChange(endProjectSlug);
           sessionProjectMap.delete(sessionId);
         }
+
+        // Fix #4: Clean up chain state if room became empty during stream
+        cleanupChainIfRoomEmpty(sessionId);
       }
     }
   }, 1000);
@@ -586,6 +618,8 @@ export async function initializeWebSocket(
         startedAt: Date.now(),
       };
       activeStreams.set(streamKey, stream);
+      // Bump drain generation so any pending scheduled drain is invalidated
+      chainDrainGeneration.set(streamKey, (chainDrainGeneration.get(streamKey) || 0) + 1);
       for (const sock of initialSockets) {
         socketToSession.set(sock.id, streamKey);
       }
@@ -623,6 +657,9 @@ export async function initializeWebSocket(
             triggerDashboardStatusChange(endProjectSlug);
             sessionProjectMap.delete(endedSessionId);
           }
+
+          // Story 24.1: Clean up chain state if room became empty during stream
+          cleanupChainIfRoomEmpty(endedSessionId);
         }
       }
     });
@@ -761,6 +798,9 @@ export async function initializeWebSocket(
       const lang = socket.data.language || 'en';
       const t = i18next.getFixedT(lang);
 
+      // Validate socket is a member of the session room
+      if (!socket.rooms.has(`session:${sessionId}`)) return;
+
       const items = chainState.get(sessionId) || [];
       if (items.length >= 5) {
         socket.emit('error', {
@@ -770,20 +810,24 @@ export async function initializeWebSocket(
         return;
       }
 
-      const item: PromptChainItem = {
+      const item: InternalChainItem = {
         id: generateChainItemId(),
         content,
         status: 'pending',
         createdAt: Date.now(),
+        workingDirectory,
+        permissionMode,
+        model,
       };
       items.push(item);
       chainState.set(sessionId, items);
-      chainContext.set(sessionId, { workingDirectory, permissionMode, model });
       broadcastChainUpdate(sessionId);
     });
 
     socket.on('chain:remove', (data) => {
       const { sessionId, id } = data;
+      // Validate socket is a member of the session room
+      if (!socket.rooms.has(`session:${sessionId}`)) return;
       const items = chainState.get(sessionId);
       if (items) {
         chainState.set(sessionId, items.filter(item => item.id !== id));
@@ -793,8 +837,10 @@ export async function initializeWebSocket(
 
     socket.on('chain:clear', (data) => {
       const { sessionId } = data;
+      // Validate socket is a member of the session room
+      if (!socket.rooms.has(`session:${sessionId}`)) return;
       chainState.set(sessionId, []);
-      chainContext.delete(sessionId);
+      chainDrainGeneration.delete(sessionId);
       broadcastChainUpdate(sessionId);
     });
 
@@ -1040,11 +1086,7 @@ export async function initializeWebSocket(
         socketToSession.delete(socket.id);
 
         // Story 24.1: Clean up chain state when session room is empty and no active stream
-        const roomSockets = io.sockets.adapter.rooms.get(`session:${sessionId}`);
-        if ((!roomSockets || roomSockets.size === 0) && !activeStreams.has(sessionId)) {
-          chainState.delete(sessionId);
-          chainContext.delete(sessionId);
-        }
+        cleanupChainIfRoomEmpty(sessionId);
       }
 
       // PTY sessions are NOT cleaned up on socket disconnect.
