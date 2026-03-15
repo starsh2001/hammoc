@@ -147,6 +147,8 @@ interface ActiveStream {
 // Primary maps: sessionId → ActiveStream, socketId → sessionId
 const activeStreams = new Map<string, ActiveStream>();
 const socketToSession = new Map<string, string>();
+// Story 24.3: Track which session room each socket joined (for chain cleanup on disconnect)
+const socketSessionRoom = new Map<string, string>();
 
 // Story 24.1: Per-session prompt chain state
 // Internal chain item with per-item execution context (not sent to clients)
@@ -749,11 +751,16 @@ export async function initializeWebSocket(
 
       // Join persistent session room (survives beyond ActiveStream lifecycle)
       socket.join(`session:${sessionId}`);
+      // Story 24.3: Track session room membership for chain cleanup on disconnect
+      socketSessionRoom.set(socket.id, sessionId);
 
       const stream = activeStreams.get(sessionId);
 
-      // Story 24.1: Send current chain state on join
-      const joinChainItems = chainState.get(sessionId) || [];
+      // Story 24.1: Send current chain state on join (strip internal fields)
+      const joinInternalItems = chainState.get(sessionId) || [];
+      const joinChainItems: PromptChainItem[] = joinInternalItems.map(
+        ({ workingDirectory: _wd, permissionMode: _pm, model: _m, ...rest }) => rest
+      );
       socket.emit('chain:update', { sessionId, items: joinChainItems });
 
       if (!stream || stream.status !== 'running') {
@@ -790,6 +797,8 @@ export async function initializeWebSocket(
       if (roomSessionId) {
         socket.leave(`session:${roomSessionId}`);
       }
+      // Story 24.3: Clean up session room tracking on leave
+      socketSessionRoom.delete(socket.id);
     });
 
     // Story 24.1: Prompt chain event handlers
@@ -1088,6 +1097,14 @@ export async function initializeWebSocket(
         // Story 24.1: Clean up chain state when session room is empty and no active stream
         cleanupChainIfRoomEmpty(sessionId);
       }
+
+      // Story 24.3: Also clean up chain state for session rooms this socket was in
+      // but not tracked by socketToSession (e.g., joined session without active stream).
+      const roomSessionId = socketSessionRoom.get(socket.id);
+      if (roomSessionId && roomSessionId !== sessionId) {
+        cleanupChainIfRoomEmpty(roomSessionId);
+      }
+      socketSessionRoom.delete(socket.id);
 
       // PTY sessions are NOT cleaned up on socket disconnect.
       // They persist until explicitly closed by the user, the PTY process exits,
