@@ -183,26 +183,45 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
   let SESSION_ID: string;
   const clients: ClientSocket[] = [];
 
-  function connectClient(): Promise<ClientSocket> {
-    return new Promise((resolve) => {
+  function connectClient(timeoutMs = 5000): Promise<ClientSocket> {
+    return new Promise((resolve, reject) => {
       const socket = ioc(`http://localhost:${TEST_PORT}`, { transports: ['websocket'] });
       clients.push(socket);
-      socket.on('connect', () => resolve(socket));
+      const timer = setTimeout(() => {
+        socket.off('connect', onConnect);
+        socket.off('connect_error', onError);
+        reject(new Error(`connectClient timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+      const onConnect = () => {
+        clearTimeout(timer);
+        socket.off('connect_error', onError);
+        resolve(socket);
+      };
+      const onError = (err: Error) => {
+        clearTimeout(timer);
+        socket.off('connect', onConnect);
+        reject(new Error(`connectClient failed: ${err.message}`));
+      };
+      socket.once('connect', onConnect);
+      socket.once('connect_error', onError);
     });
   }
 
-  /** Wait for a specific chain:update matching a predicate */
+  /** Wait for a specific chain:update matching a predicate (scoped to SESSION_ID) */
   function waitForChainUpdate(
     socket: ClientSocket,
     predicate: (items: PromptChainItem[]) => boolean,
     timeoutMs = 2000,
+    expectedSessionId?: string,
   ): Promise<PromptChainItem[]> {
     return new Promise((resolve, reject) => {
+      const targetSession = expectedSessionId ?? SESSION_ID;
       const timer = setTimeout(() => {
         socket.off('chain:update', handler);
         reject(new Error(`waitForChainUpdate timed out after ${timeoutMs}ms`));
       }, timeoutMs);
       const handler = (data: { sessionId: string; items: PromptChainItem[] }) => {
+        if (data.sessionId !== targetSession) return;
         if (predicate(data.items)) {
           clearTimeout(timer);
           socket.off('chain:update', handler);
@@ -213,14 +232,20 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
     });
   }
 
-  /** Wait for next chain:update event */
-  function waitForNextChainUpdate(socket: ClientSocket, timeoutMs = 2000): Promise<PromptChainItem[]> {
+  /** Wait for next chain:update event (scoped to SESSION_ID) */
+  function waitForNextChainUpdate(
+    socket: ClientSocket,
+    timeoutMs = 2000,
+    expectedSessionId?: string,
+  ): Promise<PromptChainItem[]> {
     return new Promise((resolve, reject) => {
+      const targetSession = expectedSessionId ?? SESSION_ID;
       const timer = setTimeout(() => {
         socket.off('chain:update', handler);
         reject(new Error(`waitForNextChainUpdate timed out after ${timeoutMs}ms`));
       }, timeoutMs);
       const handler = (data: { sessionId: string; items: PromptChainItem[] }) => {
+        if (data.sessionId !== targetSession) return;
         clearTimeout(timer);
         socket.off('chain:update', handler);
         resolve(data.items);
@@ -426,13 +451,17 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
       mockState.sendImpl = vi.fn().mockRejectedValue(new Error('Aborted'));
       await new Promise((r) => setTimeout(r, 1500));
 
-      // Remaining items should still be in chain with pending/failed status (not cleared)
-      await waitForNextChainUpdate(clientA).catch(() => {
-        // May have already received updates — check last known state
-        return null;
-      });
-      // The chain should still have items (not cleared)
-      // The key assertion is that no crash occurred and items were preserved
+      // Verify chain items are preserved (not cleared) by re-joining
+      const clientVerify = await connectClient();
+      const verifyPromise = waitForNextChainUpdate(clientVerify);
+      clientVerify.emit('session:join', SESSION_ID);
+      const items = await verifyPromise;
+      // Items must still exist — drain failure should not clear the chain
+      expect(items.length).toBeGreaterThan(0);
+      // All items should be pending or failed, never stuck in 'sending'
+      for (const item of items) {
+        expect(item.status).not.toBe('sending');
+      }
     });
 
     it('3.3 — abort during drain preserves remaining chain items', async () => {
@@ -565,7 +594,7 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
       clientA.emit('session:leave', SESSION_ID);
       await new Promise((r) => setTimeout(r, 50));
 
-      const joinPromise = waitForNextChainUpdate(clientA);
+      const joinPromise = waitForNextChainUpdate(clientA, 2000, SESSION_B);
       clientA.emit('session:join', SESSION_B);
       const items = await joinPromise;
       expect(items).toHaveLength(0); // New session has no chain items
