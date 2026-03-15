@@ -13,6 +13,18 @@ import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorE
 import type { TerminalCreateRequest, TerminalListRequest, TerminalListResponse, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent, TerminalAccessInfo } from './terminal.js';
 import type { DashboardStatusChangeEvent } from './dashboard.js';
 
+// ===== Prompt Chain =====
+
+/**
+ * Story 24.1: Prompt chain item for server-side chain state management
+ */
+export interface PromptChainItem {
+  id: string;
+  content: string;
+  status: 'pending' | 'sending' | 'sent';
+  createdAt: number;
+}
+
 // ===== Connection Status =====
 
 /**
@@ -64,6 +76,10 @@ export interface ClientToServerEvents {
   // Story 20.1: Dashboard subscription events
   'dashboard:subscribe': () => void;
   'dashboard:unsubscribe': () => void;
+  // Story 24.1: Prompt chain events
+  'chain:add': (data: { sessionId: string; content: string; workingDirectory: string; permissionMode?: PermissionMode; model?: string }) => void;
+  'chain:remove': (data: { sessionId: string; id: string }) => void;
+  'chain:clear': (data: { sessionId: string }) => void;
 }
 
 // ===== Server to Client Events =====
@@ -114,6 +130,8 @@ export interface ServerToClientEvents {
   'terminal:access': (data: TerminalAccessInfo) => void;
   // Story 20.1: Dashboard status change event
   'dashboard:status-change': (data: DashboardStatusChangeEvent) => void;
+  // Story 24.1: Prompt chain update
+  'chain:update': (data: { sessionId: string; items: PromptChainItem[] }) => void;
 }
 
 // ===== Inter-server Events =====

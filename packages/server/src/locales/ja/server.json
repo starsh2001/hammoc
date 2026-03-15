@@ -241,7 +241,8 @@
       "terminalProjectNotFound": "ターミナルのプロジェクトパスが見つかりません",
       "terminalAccessDenied": "セキュリティ上の理由により、ローカルネットワーク外からのターミナルアクセスはできません",
       "terminalNotFound": "ターミナルが見つかりません",
-      "ptySpawnError": "ターミナルプロセスの起動に失敗しました"
+      "ptySpawnError": "ターミナルプロセスの起動に失敗しました",
+      "chainMaxExceeded": "チェーンアイテムは最大5個までです。"
     }
   },
   "pathGuard": {
