@@ -18,7 +18,8 @@ import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
 import { debugLog } from '../utils/debugLogger';
-import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus } from '@hammoc/shared';
+import { useChainStore } from '../stores/chainStore';
+import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus, PromptChainItem } from '@hammoc/shared';
 import type { InteractiveStatus } from '../stores/chatStore';
 
 export function useStreaming() {
@@ -916,6 +917,15 @@ export function useStreaming() {
     socket.on('disconnect', handleDisconnect);
     socket.on('connect', handleReconnect);
     socket.on('error', handleError);
+
+    // Handle chain:update — server-synced prompt chain state (Story 24.2)
+    const handleChainUpdate = (data: { sessionId: string; items: PromptChainItem[] }) => {
+      const viewingSessionId = useMessageStore.getState().currentSessionId;
+      if (viewingSessionId && viewingSessionId !== data.sessionId) return;
+      useChainStore.getState().setChainItems(data.items);
+    };
+    socket.on('chain:update', handleChainUpdate);
+
     socket.io.on('reconnect_failed', handleReconnectFailed);
 
     // Register keyboard event listener
@@ -960,6 +970,7 @@ export function useStreaming() {
       socket.off('disconnect', handleDisconnect);
       socket.off('connect', handleReconnect);
       socket.off('error', handleError);
+      socket.off('chain:update', handleChainUpdate);
       socket.io.off('reconnect_failed', handleReconnectFailed);
       document.removeEventListener('keydown', handleKeyDown);
     };
