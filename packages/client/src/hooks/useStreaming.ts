@@ -921,7 +921,7 @@ export function useStreaming() {
     // Handle chain:update — server-synced prompt chain state (Story 24.2)
     const handleChainUpdate = (data: { sessionId: string; items: PromptChainItem[] }) => {
       const viewingSessionId = useMessageStore.getState().currentSessionId;
-      if (viewingSessionId && viewingSessionId !== data.sessionId) return;
+      if (!viewingSessionId || viewingSessionId !== data.sessionId) return;
       useChainStore.getState().setChainItems(data.items);
     };
     socket.on('chain:update', handleChainUpdate);

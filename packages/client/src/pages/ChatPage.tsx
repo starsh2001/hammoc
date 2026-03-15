@@ -358,8 +358,8 @@ export function ChatPage() {
   // Handle message send
   const handleSendMessage = useCallback(
     (content: string, attachments?: Attachment[]) => {
-      if (!workingDirectory) {
-        debugLogger.error('Cannot send message: workingDirectory not found');
+      if (!workingDirectory || !sessionId) {
+        debugLogger.error('Cannot send message: workingDirectory or sessionId not found');
         return;
       }
 
@@ -369,9 +369,9 @@ export function ChatPage() {
           return;
         }
         getSocket()?.emit('chain:add', {
-          sessionId: sessionId!,
+          sessionId,
           content,
-          workingDirectory: workingDirectory!,
+          workingDirectory,
           permissionMode,
           model: selectedModel,
         });
@@ -488,11 +488,12 @@ export function ChatPage() {
           if (agentParam && useMessageStore.getState().messages.length === 0) {
             window.history.replaceState(null, '', window.location.pathname);
             // Queue task command for prompt chain via server (sent after agent response completes)
-            if (taskParam) {
+            const wd = currentProject?.originalPath;
+            if (taskParam && sessionId && wd) {
               getSocket()?.emit('chain:add', {
-                sessionId: sessionId!,
+                sessionId,
                 content: taskParam,
-                workingDirectory: currentProject?.originalPath || '',
+                workingDirectory: wd,
                 permissionMode: useChatStore.getState().permissionMode,
                 model: useChatStore.getState().selectedModel,
               });
@@ -697,6 +698,7 @@ export function ChatPage() {
   // Execute confirmed action (after user confirms in modal)
   const executeConfirmedAction = useCallback(() => {
     setConfirmModal({ isOpen: false, action: 'agentLaunch' });
+    useChainStore.getState().clearChainItems();
     abortResponse();
 
     if (confirmModal.action === 'agentLaunch') {
@@ -715,6 +717,7 @@ export function ChatPage() {
     if (!projectSlug) return;
     // Don't navigate if selecting the current session
     if (selectedSessionId === sessionId) return;
+    useChainStore.getState().clearChainItems();
     clearMessages();
     clearStreamingSegments();
     resetSelectedModel();
@@ -724,6 +727,7 @@ export function ChatPage() {
 
   const handleNewSession = useCallback(() => {
     if (!projectSlug) return;
+    useChainStore.getState().clearChainItems();
     clearMessages();
     clearStreamingSegments();
     resetSelectedModel();
@@ -842,10 +846,10 @@ export function ChatPage() {
     <PromptChainBanner
       pendingPrompts={chainItems}
       onCancel={() => {
-        getSocket()?.emit('chain:clear', { sessionId: sessionId! });
+        if (sessionId) getSocket()?.emit('chain:clear', { sessionId });
       }}
       onRemove={(id) => {
-        getSocket()?.emit('chain:remove', { sessionId: sessionId!, id });
+        if (sessionId) getSocket()?.emit('chain:remove', { sessionId, id });
       }}
     />
   ) : null;
