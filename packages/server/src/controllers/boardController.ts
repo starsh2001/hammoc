@@ -97,7 +97,7 @@ export const boardController = {
       let config = DEFAULT_BOARD_CONFIG;
       if (settings.boardConfig) {
         // Migrate legacy statusToColumn → badgeToColumn
-        const raw = settings.boardConfig as Record<string, unknown>;
+        const raw = settings.boardConfig as unknown as Record<string, unknown>;
         if (raw.statusToColumn && !raw.badgeToColumn) {
           config = migrateStatusToColumn(raw);
         } else {

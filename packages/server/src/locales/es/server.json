@@ -241,7 +241,8 @@
       "terminalProjectNotFound": "No se encontró la ruta del proyecto para el terminal",
       "terminalAccessDenied": "El acceso al terminal no está disponible fuera de la red local por razones de seguridad",
       "terminalNotFound": "Terminal no encontrado",
-      "ptySpawnError": "Error al iniciar el proceso del terminal"
+      "ptySpawnError": "Error al iniciar el proceso del terminal",
+      "chainMaxExceeded": "Se permiten un máximo de 5 elementos en la cadena."
     }
   },
   "pathGuard": {

@@ -248,7 +248,8 @@
       "terminalProjectNotFound": "Project path not found for terminal",
       "terminalAccessDenied": "Terminal access is not available from outside the local network for security reasons",
       "terminalNotFound": "Terminal not found",
-      "ptySpawnError": "Failed to spawn terminal process"
+      "ptySpawnError": "Failed to spawn terminal process",
+      "chainMaxExceeded": "Maximum 5 chain items allowed."
     }
   },
   "pathGuard": {

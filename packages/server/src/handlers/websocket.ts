@@ -16,6 +16,7 @@ import type {
   PermissionMode,
   ImageAttachment,
   PermissionRequest,
+  PromptChainItem,
 } from '@hammoc/shared';
 import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS } from '@hammoc/shared';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@hammoc/shared';
@@ -146,6 +147,118 @@ interface ActiveStream {
 // Primary maps: sessionId → ActiveStream, socketId → sessionId
 const activeStreams = new Map<string, ActiveStream>();
 const socketToSession = new Map<string, string>();
+
+// Story 24.1: Per-session prompt chain state
+const chainState = new Map<string, PromptChainItem[]>();
+const chainContext = new Map<string, { workingDirectory: string; permissionMode?: PermissionMode; model?: string }>();
+let chainItemCounter = 0;
+
+/** Generate a unique chain item ID */
+function generateChainItemId(): string {
+  return `chain-${Date.now()}-${++chainItemCounter}`;
+}
+
+/** Broadcast current chain state to all sockets in the session room */
+function broadcastChainUpdate(sessionId: string): void {
+  if (!io) return;
+  const items = chainState.get(sessionId) || [];
+  io.to(`session:${sessionId}`).emit('chain:update', { sessionId, items });
+}
+
+/** Schedule chain drain after stream completion (1s delay) */
+function scheduleChainDrain(sessionId: string, lang: string): void {
+  setTimeout(async () => {
+    // Race guard: if another stream started during the delay, abort drain
+    if (activeStreams.has(sessionId)) return;
+
+    const items = chainState.get(sessionId);
+    if (!items || items.length === 0) return;
+
+    const nextItem = items.find(item => item.status === 'pending');
+    if (!nextItem) return;
+
+    // Check if any sockets remain in the session room
+    const roomSockets = io?.sockets.adapter.rooms.get(`session:${sessionId}`);
+    if (!roomSockets || roomSockets.size === 0) return;
+
+    const ctx = chainContext.get(sessionId);
+    if (!ctx) return;
+
+    // Mark item as 'sending' and broadcast
+    nextItem.status = 'sending';
+    broadcastChainUpdate(sessionId);
+
+    // Collect sockets from session room
+    const sockets = new Set<SocketType>();
+    for (const socketId of roomSockets) {
+      const sock = io!.sockets.sockets.get(socketId) as SocketType | undefined;
+      if (sock) sockets.add(sock);
+    }
+
+    const abortController = new AbortController();
+    const stream: ActiveStream = {
+      sessionId,
+      sockets,
+      abortController,
+      buffer: [],
+      pendingPermissions: new Map(),
+      status: 'running',
+      startedAt: Date.now(),
+    };
+    activeStreams.set(sessionId, stream);
+    for (const sock of sockets) {
+      socketToSession.set(sock.id, sessionId);
+    }
+
+    io!.emit('session:stream-change', { sessionId, active: true });
+
+    try {
+      await handleChatSend(
+        stream,
+        { content: nextItem.content, workingDirectory: ctx.workingDirectory, sessionId, permissionMode: ctx.permissionMode, model: ctx.model },
+        abortController,
+        lang
+      );
+      // Success: mark as 'sent' and remove from chain
+      nextItem.status = 'sent';
+      const currentItems = chainState.get(sessionId);
+      if (currentItems) {
+        chainState.set(sessionId, currentItems.filter(item => item.id !== nextItem.id));
+      }
+      broadcastChainUpdate(sessionId);
+    } catch (err) {
+      // On error (including AbortedError): revert to 'pending', keep item in queue
+      if (nextItem.status === 'sending') {
+        nextItem.status = 'pending';
+      }
+      broadcastChainUpdate(sessionId);
+      log.error(`Chain drain error for session ${sessionId}:`, err);
+    } finally {
+      // Safety net: ensure item is never left stuck in 'sending'
+      if (nextItem.status === 'sending') {
+        nextItem.status = 'pending';
+        broadcastChainUpdate(sessionId);
+      }
+
+      stream.status = 'completed';
+      if (activeStreams.get(sessionId) === stream) {
+        // Schedule next drain if more pending items exist
+        const remaining = chainState.get(sessionId);
+        if (remaining && remaining.some(item => item.status === 'pending')) {
+          scheduleChainDrain(sessionId, lang);
+        }
+
+        cleanupStream(sessionId);
+        io!.emit('session:stream-change', { sessionId, active: false });
+        const endProjectSlug = sessionProjectMap.get(sessionId);
+        if (endProjectSlug) {
+          triggerDashboardStatusChange(endProjectSlug);
+          sessionProjectMap.delete(sessionId);
+        }
+      }
+    }
+  }, 1000);
+}
 
 let permissionRequestCounter = 0;
 
@@ -496,6 +609,12 @@ export async function initializeWebSocket(
         // A replacement stream (from another chat:send) may have already taken over
         // the same key — deleting it would be a race condition.
         if (activeStreams.get(endedSessionId) === stream) {
+          // Story 24.1: Schedule chain drain before cleanup if pending items exist
+          const pendingChain = chainState.get(endedSessionId);
+          if (pendingChain && pendingChain.some(item => item.status === 'pending')) {
+            scheduleChainDrain(endedSessionId, lang);
+          }
+
           cleanupStream(endedSessionId);
           io.emit('session:stream-change', { sessionId: endedSessionId, active: false });
           // Story 20.1: Trigger dashboard status change on stream end
@@ -596,6 +715,10 @@ export async function initializeWebSocket(
 
       const stream = activeStreams.get(sessionId);
 
+      // Story 24.1: Send current chain state on join
+      const joinChainItems = chainState.get(sessionId) || [];
+      socket.emit('chain:update', { sessionId, items: joinChainItems });
+
       if (!stream || stream.status !== 'running') {
         socket.emit('stream:status', { active: false, sessionId });
         return;
@@ -630,6 +753,49 @@ export async function initializeWebSocket(
       if (roomSessionId) {
         socket.leave(`session:${roomSessionId}`);
       }
+    });
+
+    // Story 24.1: Prompt chain event handlers
+    socket.on('chain:add', (data) => {
+      const { sessionId, content, workingDirectory, permissionMode, model } = data;
+      const lang = socket.data.language || 'en';
+      const t = i18next.getFixedT(lang);
+
+      const items = chainState.get(sessionId) || [];
+      if (items.length >= 5) {
+        socket.emit('error', {
+          code: ERROR_CODES.CHAIN_MAX_EXCEEDED,
+          message: t('ws.error.chainMaxExceeded'),
+        });
+        return;
+      }
+
+      const item: PromptChainItem = {
+        id: generateChainItemId(),
+        content,
+        status: 'pending',
+        createdAt: Date.now(),
+      };
+      items.push(item);
+      chainState.set(sessionId, items);
+      chainContext.set(sessionId, { workingDirectory, permissionMode, model });
+      broadcastChainUpdate(sessionId);
+    });
+
+    socket.on('chain:remove', (data) => {
+      const { sessionId, id } = data;
+      const items = chainState.get(sessionId);
+      if (items) {
+        chainState.set(sessionId, items.filter(item => item.id !== id));
+        broadcastChainUpdate(sessionId);
+      }
+    });
+
+    socket.on('chain:clear', (data) => {
+      const { sessionId } = data;
+      chainState.set(sessionId, []);
+      chainContext.delete(sessionId);
+      broadcastChainUpdate(sessionId);
     });
 
     // Story 20.1: Dashboard subscribe/unsubscribe
@@ -872,6 +1038,13 @@ export async function initializeWebSocket(
           stream.sockets.delete(socket);
         }
         socketToSession.delete(socket.id);
+
+        // Story 24.1: Clean up chain state when session room is empty and no active stream
+        const roomSockets = io.sockets.adapter.rooms.get(`session:${sessionId}`);
+        if ((!roomSockets || roomSockets.size === 0) && !activeStreams.has(sessionId)) {
+          chainState.delete(sessionId);
+          chainContext.delete(sessionId);
+        }
       }
 
       // PTY sessions are NOT cleaned up on socket disconnect.

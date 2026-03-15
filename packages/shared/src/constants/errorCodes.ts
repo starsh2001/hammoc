@@ -30,6 +30,8 @@ export const ERROR_CODES = {
   // Story 5.5: Image Attachment validation
   /** Input validation error (e.g., invalid image) */
   VALIDATION_ERROR: 'VALIDATION_ERROR',
+  // Story 24.1: Prompt chain max items exceeded
+  CHAIN_MAX_EXCEEDED: 'CHAIN_MAX_EXCEEDED',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
