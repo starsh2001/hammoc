@@ -168,11 +168,18 @@ function generateChainItemId(): string {
   return `chain-${Date.now()}-${++chainItemCounter}`;
 }
 
+/** Map internal chain item to public PromptChainItem (allow-list of fields) */
+function toPublicChainItem(item: InternalChainItem): PromptChainItem {
+  const pub: PromptChainItem = { id: item.id, content: item.content, status: item.status, createdAt: item.createdAt };
+  if (item.retryCount !== undefined) pub.retryCount = item.retryCount;
+  return pub;
+}
+
 /** Broadcast current chain state to all sockets in the session room (strips internal fields) */
 function broadcastChainUpdate(sessionId: string): void {
   if (!io) return;
   const internalItems = chainState.get(sessionId) || [];
-  const items: PromptChainItem[] = internalItems.map(({ workingDirectory: _wd, permissionMode: _pm, model: _m, ...rest }) => rest);
+  const items: PromptChainItem[] = internalItems.map(toPublicChainItem);
   io.to(`session:${sessionId}`).emit('chain:update', { sessionId, items });
 }
 
@@ -756,11 +763,9 @@ export async function initializeWebSocket(
 
       const stream = activeStreams.get(sessionId);
 
-      // Story 24.1: Send current chain state on join (strip internal fields)
+      // Story 24.1: Send current chain state on join (strip internal fields via allow-list)
       const joinInternalItems = chainState.get(sessionId) || [];
-      const joinChainItems: PromptChainItem[] = joinInternalItems.map(
-        ({ workingDirectory: _wd, permissionMode: _pm, model: _m, ...rest }) => rest
-      );
+      const joinChainItems: PromptChainItem[] = joinInternalItems.map(toPublicChainItem);
       socket.emit('chain:update', { sessionId, items: joinChainItems });
 
       if (!stream || stream.status !== 'running') {
