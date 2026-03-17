@@ -63,6 +63,16 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
     // This prevents: (1) mobile page-level scroll from scrollIntoView, and
     // (2) auto-scroll state corruption (isUserScrolledUp false positive).
     scrollCtx?.scrollToElement(`tool-${toolId}`, { block: 'center', smooth: true });
+
+    // Flash highlight on the target card so the user can spot it after scroll
+    const el = document.getElementById(`tool-${toolId}`);
+    if (el) {
+      el.classList.remove('scroll-highlight');
+      // Force reflow so re-adding the class restarts the animation
+      void el.offsetWidth;
+      el.classList.add('scroll-highlight');
+      el.addEventListener('animationend', () => el.classList.remove('scroll-highlight'), { once: true });
+    }
   };
 
   return (

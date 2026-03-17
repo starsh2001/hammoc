@@ -46,7 +46,8 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
       aria-label={t('chain.waitingAria', { prompt: nextItem.content })}
       data-testid="prompt-chain-banner"
       className="content-container banner-full-mobile sticky top-0 z-[9] transition-all duration-300
-                 bg-violet-50 dark:bg-violet-950/30 border-b border-violet-200 dark:border-violet-800/50"
+                 bg-violet-50 dark:bg-violet-950/30 border-b border-violet-200 dark:border-violet-800/50
+                 overflow-x-hidden"
     >
       {/* Collapsed header row */}
       <div className="px-4 py-2 flex items-center gap-2">
@@ -66,7 +67,7 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
         )}
 
         {/* Label */}
-        <span className="text-xs font-medium text-violet-700 dark:text-violet-300 flex items-center gap-1.5 min-w-0">
+        <span className="text-xs font-medium text-violet-700 dark:text-violet-300 flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
           <span className="flex-shrink-0">{t('chain.next')}</span>
           <span className="truncate text-violet-600/70 dark:text-violet-400/70 font-mono">
             {shortLabel(nextItem.content)}
@@ -77,9 +78,6 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
             </span>
           )}
         </span>
-
-        {/* Spacer */}
-        <div className="flex-1" />
 
         {/* Expand/Collapse toggle — only when 2+ prompts */}
         {hasMultiple && (
@@ -133,12 +131,9 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
               )}
 
               {/* Prompt text */}
-              <span className="text-xs text-violet-700 dark:text-violet-300 font-mono truncate min-w-0">
+              <span className="text-xs text-violet-700 dark:text-violet-300 font-mono truncate min-w-0 flex-1">
                 {shortLabel(item.content)}
               </span>
-
-              {/* Spacer */}
-              <div className="flex-1" />
 
               {/* Individual remove — visible on hover */}
               {onRemove && (
