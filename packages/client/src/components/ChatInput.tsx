@@ -163,7 +163,7 @@ interface ChatInputProps {
   onChainModeToggle?: () => void;
   /** Number of prompts currently in the chain (for UI display, may be stale) */
   chainCount?: number;
-  /** Maximum chain size (default 5) */
+  /** Maximum chain size (default 10) */
   chainMax?: number;
   /** Returns fresh chain length from ref (bypasses React render cycle staleness) */
   getChainLength?: () => number;
@@ -204,7 +204,7 @@ export function ChatInput({
   chainMode = false,
   onChainModeToggle,
   chainCount = 0,
-  chainMax = 5,
+  chainMax = 10,
   getChainLength,
 }: ChatInputProps) {
   const { t, i18n } = useTranslation('chat');

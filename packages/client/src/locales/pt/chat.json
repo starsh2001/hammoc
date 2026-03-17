@@ -27,7 +27,7 @@
     "send": "Enviar",
     "lockedOtherBrowser": "Em uso em outro navegador — atualize para usar",
     "queueControlled": "O executor de fila está no controle",
-    "chainFull": "Cadeia máx. 5",
+    "chainFull": "Cadeia máx. 10",
     "chainAdd": "Adicionar à cadeia...",
     "ariaLabel": "Entrada de mensagem",
     "promptChainTitle": "Cadeia de prompts"

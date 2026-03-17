@@ -27,7 +27,7 @@
     "send": "Send",
     "lockedOtherBrowser": "In use from another browser — refresh to use",
     "queueControlled": "Queue runner is in control",
-    "chainFull": "Chain max 5",
+    "chainFull": "Chain max 10",
     "chainAdd": "Add to chain...",
     "ariaLabel": "Message input",
     "promptChainTitle": "Prompt chain",

@@ -27,7 +27,7 @@
     "send": "전송",
     "lockedOtherBrowser": "다른 브라우저에서 사용 중 — 새로고침 후 사용 가능",
     "queueControlled": "큐 러너가 제어 중",
-    "chainFull": "체인 최대 5개",
+    "chainFull": "체인 최대 10개",
     "chainAdd": "체인에 추가...",
     "ariaLabel": "메시지 입력",
     "promptChainTitle": "프롬프트 체인",

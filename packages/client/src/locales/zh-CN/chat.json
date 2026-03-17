@@ -27,7 +27,7 @@
     "send": "发送",
     "lockedOtherBrowser": "正在另一个浏览器中使用 — 刷新以使用",
     "queueControlled": "队列运行器正在控制中",
-    "chainFull": "链最多 5 个",
+    "chainFull": "链最多 10 个",
     "chainAdd": "添加到链...",
     "ariaLabel": "消息输入",
     "promptChainTitle": "提示链"

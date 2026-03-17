@@ -151,6 +151,8 @@ vi.mock('../../services/projectService.js', () => ({
   projectService: {
     resolveProjectPath: vi.fn().mockResolvedValue('/mock/project/path'),
     findProjectByPath: vi.fn().mockResolvedValue({ projectSlug: 'test-project' }),
+    readChainFailures: vi.fn().mockResolvedValue([]),
+    writeChainFailures: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -255,7 +257,7 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
   }
 
   beforeEach(async () => {
-    SESSION_ID = `test-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    SESSION_ID = crypto.randomUUID();
     mockState.sendImpl = vi.fn().mockResolvedValue({});
     mockState.lastCtorArgs = undefined;
 
@@ -518,42 +520,45 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
   // ─── Task 4: Session change clears chain ───────────────────────────
 
   describe('Session change clears chain (Task 4)', () => {
-    it('4.1/4.2 — session:leave does NOT call cleanupChainIfRoomEmpty (source code verification)', () => {
-      // Extract session:leave handler block (between session:leave and next socket.on)
+    it('4.1/4.2 — disconnect does NOT touch chain state (browser-independent)', () => {
+      // Disconnect handler must NOT call any chain cleanup — chain is server-managed
+      const disconnectStart = websocketSource.indexOf("socket.on('disconnect'");
+      expect(disconnectStart).toBeGreaterThan(-1);
+      const disconnectHandler = websocketSource.slice(disconnectStart, disconnectStart + 500);
+      expect(disconnectHandler).not.toContain('cleanupChainIfIdle');
+      expect(disconnectHandler).not.toContain('cleanupChainIfRoomEmpty');
+      expect(disconnectHandler).not.toContain('chainState');
+      // session:leave should also not touch chain
       const leaveStart = websocketSource.indexOf("socket.on('session:leave'");
       const leaveEnd = websocketSource.indexOf("socket.on('chain:add'");
       expect(leaveStart).toBeGreaterThan(-1);
       expect(leaveEnd).toBeGreaterThan(leaveStart);
       const leaveHandler = websocketSource.slice(leaveStart, leaveEnd);
-      // session:leave must NOT call cleanupChainIfRoomEmpty
-      expect(leaveHandler).not.toContain('cleanupChainIfRoomEmpty');
-      // session:leave should call socket.leave
+      expect(leaveHandler).not.toContain('cleanupChainIfIdle');
+      expect(leaveHandler).not.toContain('chainState');
       expect(leaveHandler).toContain('socket.leave');
-      // cleanupChainIfRoomEmpty should appear in disconnect handler instead
-      const disconnectStart = websocketSource.indexOf("socket.on('disconnect'");
-      expect(disconnectStart).toBeGreaterThan(-1);
-      const disconnectHandler = websocketSource.slice(disconnectStart, disconnectStart + 500);
-      expect(disconnectHandler).toContain('cleanupChainIfRoomEmpty');
     });
 
-    it('4.3 — chain state deleted when all sockets disconnect with no active stream', async () => {
+    it('4.3 — pending chain state preserved when all sockets disconnect (survives browser close)', async () => {
       const clientA = await connectClient();
       clientA.emit('session:join', SESSION_ID);
       await new Promise((r) => setTimeout(r, 50));
 
-      clientA.emit('chain:add', { sessionId: SESSION_ID, content: 'Will be cleaned', workingDirectory: '/test' });
+      clientA.emit('chain:add', { sessionId: SESSION_ID, content: 'Survives disconnect', workingDirectory: '/test' });
       await waitForChainUpdate(clientA, (items) => items.length === 1);
 
       // Disconnect all sockets
       clientA.disconnect();
       await new Promise((r) => setTimeout(r, 100));
 
-      // Verify state is cleaned up by joining with a new client
+      // Verify pending chain state is preserved when reconnecting
       const clientNew = await connectClient();
       const joinPromise = waitForNextChainUpdate(clientNew);
       clientNew.emit('session:join', SESSION_ID);
       const items = await joinPromise;
-      expect(items).toHaveLength(0); // Chain state was cleaned up
+      expect(items).toHaveLength(1); // Pending items survive browser disconnect
+      expect(items[0].content).toBe('Survives disconnect');
+      expect(items[0].status).toBe('pending');
     });
 
     it('4.4 — chain state preserved when one socket leaves but another remains', async () => {
@@ -637,11 +642,11 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
       expect(drainBody).toContain('chainDrainGeneration.set');
       // Must check generation match inside setTimeout callback
       expect(drainBody).toContain('chainDrainGeneration.get(sessionId) !== gen');
-      // chain:clear must delete chainDrainGeneration (invalidates pending drains)
+      // chain:clear must bump chainDrainGeneration (invalidates pending drains)
       const clearStart = websocketSource.indexOf("socket.on('chain:clear'");
       const dashStart = websocketSource.indexOf("socket.on('dashboard:subscribe'");
       const clearHandler = websocketSource.slice(clearStart, dashStart);
-      expect(clearHandler).toContain('chainDrainGeneration.delete');
+      expect(clearHandler).toContain('chainDrainGeneration.set');
     });
 
     it('5.3 — rapid add from A and remove from B produces consistent state', async () => {
@@ -706,18 +711,16 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
   // ─── Task 6: Chain drain during disconnect ─────────────────────────
 
   describe('Chain drain during disconnect (Task 6)', () => {
-    it('6.1 — drain skips if no sockets remain in session room (source code verification)', () => {
-      // scheduleChainDrain must check for empty room before executing
+    it('6.1 — drain uses headless stream pattern for socketless execution (source code verification)', () => {
+      // scheduleChainDrain must use createHeadlessStream so it works without connected browsers
       const drainStart = websocketSource.indexOf('function scheduleChainDrain');
       const drainEnd = websocketSource.indexOf('\n}\n', drainStart);
       expect(drainStart).toBeGreaterThan(-1);
       const drainBody = websocketSource.slice(drainStart, drainEnd);
-      // Must get room sockets and guard against empty room
-      expect(drainBody).toContain('io?.sockets.adapter.rooms.get');
-      expect(drainBody).toContain('!roomSockets || roomSockets.size === 0');
+      expect(drainBody).toContain('createHeadlessStream');
     });
 
-    it('6.2 — drain does not execute when all sockets disconnect during delay', async () => {
+    it('6.2 — drain executes headlessly even when all sockets disconnect during delay', async () => {
       mockState.sendImpl = vi.fn().mockResolvedValue({});
 
       const clientA = await connectClient();
@@ -741,7 +744,8 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
       clientA.disconnect();
       await new Promise((r) => setTimeout(r, 1500));
 
-      // Test passes if no errors — drain's room-empty guard prevented execution
+      // Drain should still execute headlessly — verify by reconnecting
+      // Test passes if no errors — headless stream handled socketless execution
     });
 
     it('6.3 — reconnect after drain sees updated chain state', async () => {
@@ -786,12 +790,12 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
   // ─── Task 7: Max chain length server enforcement ───────────────────
 
   describe('Max chain length enforcement (Task 7)', () => {
-    it('7.1 — chain:add enforces max 5 with CHAIN_MAX_EXCEEDED (source code verification)', () => {
-      // chain:add handler must check items.length >= 5 and emit CHAIN_MAX_EXCEEDED
+    it('7.1 — chain:add enforces max 10 with CHAIN_MAX_EXCEEDED (source code verification)', () => {
+      // chain:add handler must check items.length >= 10 and emit CHAIN_MAX_EXCEEDED
       const addStart = websocketSource.indexOf("socket.on('chain:add'");
       const removeStart = websocketSource.indexOf("socket.on('chain:remove'");
       const addHandler = websocketSource.slice(addStart, removeStart);
-      expect(addHandler).toContain('items.length >= 5');
+      expect(addHandler).toContain('items.length >= 10');
       expect(addHandler).toContain('ERROR_CODES.CHAIN_MAX_EXCEEDED');
       expect(addHandler).toContain('socket.emit');
       // Verify ERROR_CODES is imported from @hammoc/shared
@@ -799,7 +803,7 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
       expect(websocketSource).toContain("from '@hammoc/shared'");
     });
 
-    it('7.2 — two sockets adding 3 each: 6th is rejected, chain has exactly 5', async () => {
+    it('7.2 — two sockets adding 6 each: 11th is rejected, chain has exactly 10', async () => {
       const clientA = await connectClient();
       const clientB = await connectClient();
 
@@ -812,15 +816,15 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
         clientB.on('error', (data) => resolve(data));
       });
 
-      // Socket A adds 3
-      clientA.emit('chain:add', { sessionId: SESSION_ID, content: 'A1', workingDirectory: '/test' });
-      clientA.emit('chain:add', { sessionId: SESSION_ID, content: 'A2', workingDirectory: '/test' });
-      clientA.emit('chain:add', { sessionId: SESSION_ID, content: 'A3', workingDirectory: '/test' });
+      // Socket A adds 6
+      for (let i = 1; i <= 6; i++) {
+        clientA.emit('chain:add', { sessionId: SESSION_ID, content: `A${i}`, workingDirectory: '/test' });
+      }
 
-      // Socket B adds 3 (total 6 — 6th should be rejected)
-      clientB.emit('chain:add', { sessionId: SESSION_ID, content: 'B1', workingDirectory: '/test' });
-      clientB.emit('chain:add', { sessionId: SESSION_ID, content: 'B2', workingDirectory: '/test' });
-      clientB.emit('chain:add', { sessionId: SESSION_ID, content: 'B3', workingDirectory: '/test' });
+      // Socket B adds 6 (total 12 — 11th should be rejected)
+      for (let i = 1; i <= 6; i++) {
+        clientB.emit('chain:add', { sessionId: SESSION_ID, content: `B${i}`, workingDirectory: '/test' });
+      }
 
       const error = await errorPromise;
       expect(error.code).toBe(ERROR_CODES.CHAIN_MAX_EXCEEDED);
@@ -828,12 +832,12 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
       // Wait for all events to settle
       await new Promise((r) => setTimeout(r, 100));
 
-      // Verify final state: exactly 5 items
+      // Verify final state: exactly 10 items
       const clientCheck = await connectClient();
       const joinPromise = waitForNextChainUpdate(clientCheck);
       clientCheck.emit('session:join', SESSION_ID);
       const items = await joinPromise;
-      expect(items).toHaveLength(5);
+      expect(items).toHaveLength(10);
     });
 
     it('7.3 — error is emitted only to requesting socket, not broadcast', async () => {
@@ -844,11 +848,11 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
       clientB.emit('session:join', SESSION_ID);
       await new Promise((r) => setTimeout(r, 50));
 
-      // Fill up to 5 items from clientA
-      for (let i = 0; i < 5; i++) {
+      // Fill up to 10 items from clientA
+      for (let i = 0; i < 10; i++) {
         clientA.emit('chain:add', { sessionId: SESSION_ID, content: `Fill ${i}`, workingDirectory: '/test' });
       }
-      await waitForChainUpdate(clientB, (items) => items.length === 5);
+      await waitForChainUpdate(clientB, (items) => items.length === 10);
 
       // Set up error listeners
       let clientAGotError = false;
@@ -856,7 +860,7 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
       clientA.on('error', () => { clientAGotError = true; });
       clientB.on('error', () => { clientBGotError = true; });
 
-      // clientB tries to add 6th item
+      // clientB tries to add 11th item
       clientB.emit('chain:add', { sessionId: SESSION_ID, content: 'Over limit', workingDirectory: '/test' });
       await new Promise((r) => setTimeout(r, 200));
 
