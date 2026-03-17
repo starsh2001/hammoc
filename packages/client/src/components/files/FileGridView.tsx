@@ -499,7 +499,7 @@ export function FileGridView({
                 data-grid-item
                 role="button"
                 tabIndex={0}
-                className={`group relative flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 ${
+                className={`group relative flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer select-none transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 ${
                   isCurrentOpen ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-300 dark:ring-blue-700' : ''
                 } ${cutPath === fullPath ? 'opacity-50' : ''}`}
                 onClick={() => handleItemClick(entry)}

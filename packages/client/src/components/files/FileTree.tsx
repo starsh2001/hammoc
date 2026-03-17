@@ -927,7 +927,7 @@ function FileTreeNode({
         role="treeitem"
         aria-expanded={isDirectory ? isExpanded : undefined}
         aria-selected={!isDirectory ? isCurrentOpen : undefined}
-        className={`group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 ${highlightClass} ${focusClass} ${cutClass}`}
+        className={`group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer select-none transition-colors hover:bg-gray-100 dark:hover:bg-[#253040]/50 ${highlightClass} ${focusClass} ${cutClass}`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={handleClick}
         onContextMenu={(e) => onContextMenu(e, path, entry.type)}
