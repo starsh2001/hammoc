@@ -238,7 +238,9 @@
     "markDone": "ストーリーを完了",
     "markDoneDesc": "QA合格 — Doneにする",
     "requestQAReview": "QA再レビューをリクエスト",
-    "validateStory": "ストーリーを検証",
+    "validateStoryOnly": "ストーリー検証（修正なし）",
+    "validateAndFixStory": "ストーリー検証＆修正",
+    "validateFixPrompt": "上記の検証結果で発見されたすべてのCritical Issues、Should-Fix Issues、Nice-to-Have Issuesを修正してください。",
     "startDev": "開発を開始",
     "createFirstStory": "最初のストーリーを作成",
     "createNextStory": "次のストーリーを作成",
@@ -525,7 +527,8 @@
     "emptyHelpText": "新しいターミナルボタンを押してターミナルを起動してください",
     "openInTab": "ターミナルタブで開く",
     "disabledDescriptionShort": "設定でターミナルを有効にしてください。",
-    "securityDescriptionShort": "ローカルネットワークから接続してください。"
+    "securityDescriptionShort": "ローカルネットワークから接続してください。",
+    "imeInputPlaceholder": "非英語文字はここで入力して送信"
   },
   "agent": {
     "listAria": "BMadエージェント一覧",
