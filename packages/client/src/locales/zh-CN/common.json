@@ -241,6 +241,7 @@
     "validateStoryOnly": "验证 Story（不修正）",
     "validateAndFixStory": "验证并修正 Story",
     "validateFixPrompt": "请修正以上验证结果中发现的所有 Critical Issues、Should-Fix Issues 和 Nice-to-Have Issues。",
+    "approveAfterFixPrompt": "如果Story的Status不是Approved，请将其更改为Approved。",
     "startDev": "开始开发",
     "createFirstStory": "创建第一个 Story",
     "createNextStory": "创建下一个 Story",

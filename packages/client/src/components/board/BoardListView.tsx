@@ -36,6 +36,8 @@ export function BoardListView({
   onReopen,
   onDelete,
   onWorkflowAction,
+  onValidateAndFixAction,
+  onValidateOnlyAction,
   onViewEpicStories,
 
   onCardClick,
@@ -117,6 +119,8 @@ export function BoardListView({
                     onReopen={onReopen}
                     onDelete={onDelete}
                     onWorkflowAction={onWorkflowAction}
+                    onValidateAndFixAction={onValidateAndFixAction}
+                    onValidateOnlyAction={onValidateOnlyAction}
                     onViewEpicStories={onViewEpicStories}
 
                     onCardClick={onCardClick}

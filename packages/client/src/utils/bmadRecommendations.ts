@@ -394,12 +394,13 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     });
   }
 
-  // Priority 6: Approved — start development
+  // Priority 6: Approved — validate (two variants) then start development
   if (approvedStory) {
     const num = storyNum(approvedStory.file);
     const label = approvedStory.title ? `${num}. ${approvedStory.title}` : approvedStory.file;
     const hasPrior = recs.length > 0;
 
+    // 6a: Start development (primary action)
     recs.push({
       id: 'start-dev',
       title: i18n.t('common:rec.startDev'),
@@ -408,6 +409,31 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       taskCommand: `*develop-story ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'play',
+      storyFile: approvedStory.file,
+    });
+
+    // 6b: Validate and fix — validate then auto-fix all issues
+    recs.push({
+      id: 'validate-fix-approved-story',
+      title: i18n.t('common:rec.validateAndFixStory'),
+      description: label,
+      agentCommand: '/BMad:agents:po',
+      taskCommand: `*validate-story-draft ${num}`,
+      variant: 'secondary',
+      iconKey: 'shield-check',
+      storyFile: approvedStory.file,
+      chainPrompts: [i18n.t('common:rec.validateFixPrompt'), i18n.t('common:rec.approveAfterFixPrompt')],
+    });
+
+    // 6c: Validate only — no auto-fix
+    recs.push({
+      id: 'validate-approved-story',
+      title: i18n.t('common:rec.validateStoryOnly'),
+      description: label,
+      agentCommand: '/BMad:agents:po',
+      taskCommand: `*validate-story-draft ${num}`,
+      variant: 'secondary',
+      iconKey: 'shield-check',
       storyFile: approvedStory.file,
     });
   }
@@ -428,7 +454,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'shield-check',
       storyFile: draftStory.file,
-      chainPrompts: [i18n.t('common:rec.validateFixPrompt')],
+      chainPrompts: [i18n.t('common:rec.validateFixPrompt'), i18n.t('common:rec.approveAfterFixPrompt')],
     });
 
     // 7b: Validate only — no auto-fix
@@ -444,12 +470,12 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     });
   }
 
-  // Priority 8: Create next story
+  // Priority 8: Create next story — only when no in-progress stories exist
   const hasActionable = recs.length > 0;
   const hasMorePlanned = totalPlanned > stories.length;
   const allDone = stories.length > 0 && nonDoneStories.length === 0;
 
-  if (!hasActionable || hasMorePlanned) {
+  if (nonDoneStories.length === 0 && (!hasActionable || hasMorePlanned)) {
     const nextNum = nextStoryNum(data);
     recs.push({
       id: 'create-story',

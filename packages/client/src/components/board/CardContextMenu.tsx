@@ -20,6 +20,7 @@ export interface CardContextMenuProps {
   onDelete?: (item: BoardItem) => void;
   onWorkflowAction?: (item: BoardItem) => void;
   onValidateAndFixAction?: (item: BoardItem) => void;
+  onValidateOnlyAction?: (item: BoardItem) => void;
   onViewEpicStories?: (item: BoardItem) => void;
   onRequestQAReview?: (item: BoardItem) => void;
   onIssueStatusChange?: (item: BoardItem, status: string) => void;
@@ -38,6 +39,7 @@ function getStoryWorkflowActions(
   badgeId: string,
   onWorkflowAction: ((item: BoardItem) => void) | undefined,
   onValidateAndFixAction: ((item: BoardItem) => void) | undefined,
+  onValidateOnlyAction: ((item: BoardItem) => void) | undefined,
   t: (key: string) => string,
 ): MenuItem[] {
   // Draft — two options: validate+fix and validate-only (independent of each other)
@@ -46,8 +48,24 @@ function getStoryWorkflowActions(
     if (onValidateAndFixAction) {
       items.push({ label: t('workflow.validateAndFixStory'), action: () => onValidateAndFixAction(item) });
     }
+    const validateOnly = onValidateOnlyAction ?? onWorkflowAction;
+    if (validateOnly) {
+      items.push({ label: t('workflow.validateStoryOnly'), action: () => validateOnly(item) });
+    }
+    return items;
+  }
+
+  // Approved — start dev first, then validate options
+  if (badgeId === 'approved') {
+    const items: MenuItem[] = [];
     if (onWorkflowAction) {
-      items.push({ label: t('workflow.validateStoryOnly'), action: () => onWorkflowAction(item) });
+      items.push({ label: t('workflow.startDevelopment'), action: () => onWorkflowAction(item) });
+    }
+    if (onValidateAndFixAction) {
+      items.push({ label: t('workflow.validateAndFixStory'), action: () => onValidateAndFixAction(item) });
+    }
+    if (onValidateOnlyAction) {
+      items.push({ label: t('workflow.validateStoryOnly'), action: () => onValidateOnlyAction(item) });
     }
     return items;
   }
@@ -71,7 +89,6 @@ function getStoryWorkflowActions(
   }
 
   const labelMap: Record<string, string> = {
-    'approved': t('workflow.startDevelopment'),
     'in-progress': t('workflow.resumeDevelopment'),
   };
 
@@ -90,6 +107,7 @@ export function CardContextMenu({
   onDelete,
   onWorkflowAction,
   onValidateAndFixAction,
+  onValidateOnlyAction,
   onViewEpicStories,
   onRequestQAReview,
   onIssueStatusChange,
@@ -161,7 +179,7 @@ export function CardContextMenu({
       });
     }
   } else if (item.type === 'story') {
-    const workflowItems = getStoryWorkflowActions(item, badge.id, onWorkflowAction, onValidateAndFixAction, t);
+    const workflowItems = getStoryWorkflowActions(item, badge.id, onWorkflowAction, onValidateAndFixAction, onValidateOnlyAction, t);
     for (const wi of workflowItems) {
       menuItems.push(wi);
     }

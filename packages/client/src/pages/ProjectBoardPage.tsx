@@ -246,6 +246,18 @@ export function ProjectBoardPage() {
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t, setActionErrorWithClear]);
 
+  // Validate only — validate story without auto-fix
+  const handleValidateOnly = useCallback((item: BoardItem) => {
+    if (!projectSlug || item.type !== 'story') return;
+    const sessionId = generateUUID();
+    const storyNum = item.id.replace(/^story-/, '');
+    const params = new URLSearchParams({
+      agent: '/BMad:agents:po',
+      task: `*validate-story-draft ${storyNum}`,
+    });
+    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+  }, [projectSlug, navigate]);
+
   // Validate and fix — validate draft story then auto-fix all issues
   const handleValidateAndFix = useCallback((item: BoardItem) => {
     if (!projectSlug || item.type !== 'story') return;
@@ -256,6 +268,7 @@ export function ProjectBoardPage() {
       task: `*validate-story-draft ${storyNum}`,
     });
     params.append('chain', t('workflow.validateFixPrompt'));
+    params.append('chain', t('workflow.approveAfterFixPrompt'));
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t]);
 
@@ -316,6 +329,7 @@ export function ProjectBoardPage() {
     onDelete: handleDeleteIssue,
     onWorkflowAction: handleWorkflowAction,
     onValidateAndFixAction: handleValidateAndFix,
+    onValidateOnlyAction: handleValidateOnly,
     onViewEpicStories: handleViewEpicStories,
     onRequestQAReview: handleRequestQAReview,
     onIssueStatusChange: handleIssueStatusChange,
