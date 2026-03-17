@@ -87,6 +87,58 @@ function useAutoScroll(
   // Track guard-reset timers for cleanup on unmount
   const guardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Track whether the user is physically touching/dragging the scroll area.
+  // Used to distinguish genuine user scroll from trackpad inertia events.
+  const userTouchActiveRef = useRef(false);
+
+  // Detect genuine user scroll interaction (wheel with meaningful delta, or
+  // active touch) to immediately override the programmatic scroll guard.
+  // Without this, user scroll attempts during the guard window (up to 600ms
+  // for smooth scroll) are silently ignored, making scroll seem "stuck".
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const cancelGuardOnUserInput = () => {
+      if (isProgrammaticScrollRef.current) {
+        isProgrammaticScrollRef.current = false;
+        // Bump epoch so any pending guard-reset callbacks become no-ops
+        scrollEpochRef.current++;
+      }
+    };
+
+    // For wheel: require meaningful deltaY to filter out trackpad inertia.
+    // Normalize deltaMode: 0=pixels, 1=lines (~16px), 2=pages (~800px)
+    const handleWheel = (e: WheelEvent) => {
+      const multiplier = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 800 : 1;
+      if (Math.abs(e.deltaY) * multiplier > 2) {
+        cancelGuardOnUserInput();
+      }
+    };
+
+    // For touch: only cancel guard while finger is actively on screen
+    const handleTouchStart = () => { userTouchActiveRef.current = true; };
+    const handleTouchEnd = () => { userTouchActiveRef.current = false; };
+    const handleTouchMove = () => {
+      if (userTouchActiveRef.current) {
+        cancelGuardOnUserInput();
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: true });
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+    container.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+      container.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, []);
+
   // Helper: schedule guard reset after a programmatic scroll completes.
   // Uses epoch counter so that overlapping scrolls don't clear each other's guard.
   // Also tries `scrollend` event for accurate timing, with setTimeout fallback.
@@ -111,11 +163,13 @@ function useAutoScroll(
     // with a 600ms fallback for browsers that don't support it.
     const container = containerRef.current;
     let settled = false;
+    const localTimer = { id: null as ReturnType<typeof setTimeout> | null };
 
     const settle = () => {
       if (settled) return;
       settled = true;
-      if (guardTimerRef.current) { clearTimeout(guardTimerRef.current); guardTimerRef.current = null; }
+      // Only clear this call's own timer — avoid clearing a newer call's timer
+      if (localTimer.id !== null) { clearTimeout(localTimer.id); localTimer.id = null; }
       container?.removeEventListener('scrollend', onScrollEnd);
       doReset();
     };
@@ -125,7 +179,9 @@ function useAutoScroll(
     if (container) {
       container.addEventListener('scrollend', onScrollEnd, { once: true });
     }
-    guardTimerRef.current = setTimeout(settle, 600);
+    localTimer.id = setTimeout(settle, 600);
+    // Store latest timer for cleanup on unmount
+    guardTimerRef.current = localTimer.id;
   }, []);
 
   // Cleanup guard timer on unmount
