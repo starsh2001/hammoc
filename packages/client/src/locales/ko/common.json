@@ -242,6 +242,7 @@
     "validateStoryOnly": "스토리 검증 (미수정)",
     "validateAndFixStory": "스토리 검증 및 수정",
     "validateFixPrompt": "위 검증 결과에서 발견된 모든 Critical Issues, Should-Fix Issues, Nice-to-Have Issues를 전부 수정해주세요.",
+    "approveAfterFixPrompt": "스토리 Status가 Approved가 아니면 Approved로 변경해주세요.",
     "startDev": "개발 시작",
     "createFirstStory": "첫 스토리 생성",
     "createNextStory": "다음 스토리 생성",

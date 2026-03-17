@@ -241,6 +241,7 @@
     "validateStoryOnly": "ストーリー検証（修正なし）",
     "validateAndFixStory": "ストーリー検証＆修正",
     "validateFixPrompt": "上記の検証結果で発見されたすべてのCritical Issues、Should-Fix Issues、Nice-to-Have Issuesを修正してください。",
+    "approveAfterFixPrompt": "ストーリーのStatusがApprovedでない場合、Approvedに変更してください。",
     "startDev": "開発を開始",
     "createFirstStory": "最初のストーリーを作成",
     "createNextStory": "次のストーリーを作成",

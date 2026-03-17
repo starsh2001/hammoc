@@ -241,6 +241,7 @@
     "validateStoryOnly": "Validar historia (sin corrección)",
     "validateAndFixStory": "Validar y corregir historia",
     "validateFixPrompt": "Por favor, corrija todos los Critical Issues, Should-Fix Issues y Nice-to-Have Issues identificados en los resultados de validación anteriores.",
+    "approveAfterFixPrompt": "Si el Status del story no es Approved, por favor cámbielo a Approved.",
     "startDev": "Iniciar desarrollo",
     "createFirstStory": "Crear primera historia",
     "createNextStory": "Crear siguiente historia",

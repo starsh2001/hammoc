@@ -24,6 +24,8 @@ export function KanbanColumn({
   onReopen,
   onDelete,
   onWorkflowAction,
+  onValidateAndFixAction,
+  onValidateOnlyAction,
   onViewEpicStories,
 
   onCardClick,
@@ -56,6 +58,8 @@ export function KanbanColumn({
             onReopen={onReopen}
             onDelete={onDelete}
             onWorkflowAction={onWorkflowAction}
+            onValidateAndFixAction={onValidateAndFixAction}
+            onValidateOnlyAction={onValidateOnlyAction}
             onViewEpicStories={onViewEpicStories}
 
             onCardClick={onCardClick}
