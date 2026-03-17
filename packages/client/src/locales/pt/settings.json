@@ -243,6 +243,7 @@
     "global": "Configurações globais",
     "project": "Configurações do projeto",
     "telegram": "Notificações do Telegram",
+    "notifications": "Notificações",
     "advanced": "Configurações avançadas",
     "help": "Ajuda",
     "about": "Sobre"
@@ -263,6 +264,32 @@
   "theme": {
     "lightAria": "Alternar para modo claro",
     "darkAria": "Alternar para modo escuro"
+  },
+  "webPush": {
+    "title": "Notificações Web Push",
+    "description": "Receba notificações push do navegador neste dispositivo. Funciona no Android, navegadores desktop e iOS PWA (16.4+).",
+    "iosHint": "No iOS, Web Push só funciona quando o Hammoc está instalado como PWA (Adicionar à Tela Inicial).",
+    "notSupported": "Web Push não é suportado neste navegador.",
+    "permissionDenied": "A permissão de notificações foi negada. Habilite nas configurações do navegador.",
+    "enableNotifications": "Habilitar notificações Web Push",
+    "enableHint": "Quando habilitado, notificações push são enviadas junto com Telegram (se configurado).",
+    "subscribed": "Este navegador está inscrito",
+    "notSubscribed": "Este navegador não está inscrito",
+    "subscribe": "Inscrever este navegador",
+    "unsubscribe": "Cancelar inscrição",
+    "subscribedDevices": "{{count}} dispositivo(s) inscrito(s)",
+    "testSend": "Enviar push de teste",
+    "testSending": "Enviando...",
+    "testSuccess": "Notificação push de teste enviada!",
+    "testFailure": "Falha ao enviar: {{error}}",
+    "subscribeSuccess": "Notificações push habilitadas para este navegador.",
+    "subscribeError": "Falha ao inscrever. Tente novamente.",
+    "unsubscribeSuccess": "Notificações push desabilitadas para este navegador.",
+    "unsubscribeError": "Falha ao cancelar inscrição. Tente novamente.",
+    "enabled": "Notificações Web Push habilitadas",
+    "disabled": "Notificações Web Push desabilitadas",
+    "loadError": "Falha ao carregar configurações de Web Push.",
+    "retry": "Tentar novamente"
   },
   "page": {
     "title": "Configurações",

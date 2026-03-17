@@ -243,6 +243,7 @@
     "global": "グローバル設定",
     "project": "プロジェクト設定",
     "telegram": "Telegram通知",
+    "notifications": "通知",
     "advanced": "詳細設定",
     "help": "ヘルプ",
     "about": "バージョン情報"
@@ -263,6 +264,32 @@
   "theme": {
     "lightAria": "ライトモードに切り替え",
     "darkAria": "ダークモードに切り替え"
+  },
+  "webPush": {
+    "title": "Webプッシュ通知",
+    "description": "このデバイスでブラウザプッシュ通知を受信します。Android、デスクトップブラウザ、iOS PWA（16.4+）で動作します。",
+    "iosHint": "iOSでは、HammocをPWAとしてインストール（ホーム画面に追加）する必要があります。",
+    "notSupported": "このブラウザはWebプッシュをサポートしていません。",
+    "permissionDenied": "通知の許可が拒否されました。ブラウザの設定で許可してください。",
+    "enableNotifications": "Webプッシュ通知を有効にする",
+    "enableHint": "有効にすると、Telegramと併せてプッシュ通知が送信されます。",
+    "subscribed": "このブラウザは購読中です",
+    "notSubscribed": "このブラウザは購読されていません",
+    "subscribe": "このブラウザを購読",
+    "unsubscribe": "購読解除",
+    "subscribedDevices": "{{count}}台のデバイスが購読中",
+    "testSend": "テストプッシュを送信",
+    "testSending": "送信中...",
+    "testSuccess": "テストプッシュ通知が送信されました！",
+    "testFailure": "送信失敗: {{error}}",
+    "subscribeSuccess": "このブラウザでプッシュ通知が有効になりました。",
+    "subscribeError": "購読に失敗しました。もう一度お試しください。",
+    "unsubscribeSuccess": "このブラウザでプッシュ通知が無効になりました。",
+    "unsubscribeError": "購読解除に失敗しました。もう一度お試しください。",
+    "enabled": "Webプッシュ通知が有効になりました",
+    "disabled": "Webプッシュ通知が無効になりました",
+    "loadError": "Webプッシュ設定の読み込みに失敗しました。",
+    "retry": "再試行"
   },
   "page": {
     "title": "設定",

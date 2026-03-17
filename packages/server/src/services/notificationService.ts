@@ -1,19 +1,26 @@
 /**
- * Notification Service — Telegram alerts for background streaming events
- * Sends notifications only when the client socket is disconnected.
+ * Notification Service — orchestrates Telegram and Web Push alerts
+ * Sends notifications only when the client socket is disconnected (or alwaysNotify is on).
  * Supports dynamic reconfiguration via reload() for UI-driven settings changes.
  */
 
 import { config } from '../config/index.js';
 import { preferencesService } from './preferencesService.js';
+import { webPushService } from './webPushService.js';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 import type { TelegramSettings } from '@hammoc/shared';
 import i18next from '../i18n.js';
 
 class NotificationService {
+  // Telegram settings
   private effectiveBotToken: string;
   private effectiveChatId: string;
-  private enabled: boolean;
+  private telegramEnabled: boolean;
+
+  // Web Push settings
+  private webPushEnabled: boolean;
+
+  // Shared settings
   private baseUrl: string;
   private shouldNotifyPermission: boolean;
   private shouldNotifyComplete: boolean;
@@ -28,7 +35,8 @@ class NotificationService {
     // Initial config from env vars (preferences not yet loaded at startup)
     this.effectiveBotToken = config.telegram.botToken;
     this.effectiveChatId = config.telegram.chatId;
-    this.enabled = config.telegram.enabled;
+    this.telegramEnabled = config.telegram.enabled;
+    this.webPushEnabled = false;
     this.baseUrl = '';
     this.shouldNotifyPermission = true;
     this.shouldNotifyComplete = true;
@@ -42,7 +50,7 @@ class NotificationService {
 
   /**
    * Reload configuration from preferences + env vars.
-   * Called after Telegram settings are updated via UI,
+   * Called after settings are updated via UI,
    * and once during server startup to load preferences.
    */
   async reload(): Promise<void> {
@@ -50,10 +58,16 @@ class NotificationService {
       const prefs = await preferencesService.readPreferences();
       const telegram: TelegramSettings = prefs.telegram ?? {};
 
+      // Telegram
       this.effectiveBotToken = telegram.botToken ?? config.telegram.botToken;
       this.effectiveChatId = telegram.chatId ?? config.telegram.chatId;
-      this.enabled = (telegram.enabled ?? false) && !!this.effectiveBotToken && !!this.effectiveChatId;
+      this.telegramEnabled = (telegram.enabled ?? false) && !!this.effectiveBotToken && !!this.effectiveChatId;
       this.baseUrl = telegram.baseUrl ?? process.env.BASE_URL ?? '';
+
+      // Web Push
+      this.webPushEnabled = prefs.webPush?.enabled ?? false;
+
+      // Shared notification type toggles
       this.shouldNotifyPermission = telegram.notifyPermission ?? true;
       this.shouldNotifyComplete = telegram.notifyComplete ?? true;
       this.shouldNotifyError = telegram.notifyError ?? true;
@@ -80,9 +94,11 @@ class NotificationService {
     return socketCount === 0 || this.alwaysNotify;
   }
 
+  // ── Telegram delivery ──────────────────────────────────────────────
+
   /** Send a Telegram message (best-effort, silent fail) */
-  private async send(message: string): Promise<void> {
-    if (!this.enabled || !this.effectiveBotToken || !this.effectiveChatId) return;
+  private async sendTelegram(message: string): Promise<void> {
+    if (!this.telegramEnabled || !this.effectiveBotToken || !this.effectiveChatId) return;
     try {
       const apiUrl = `https://api.telegram.org/bot${this.effectiveBotToken}/sendMessage`;
       await fetch(apiUrl, {
@@ -99,7 +115,21 @@ class NotificationService {
     }
   }
 
-  /** Resolve the user's preferred language for Telegram messages */
+  // ── Web Push delivery ──────────────────────────────────────────────
+
+  /** Send a Web Push notification (best-effort, silent fail) */
+  private async sendPush(title: string, body: string, url?: string, tag?: string): Promise<void> {
+    if (!this.webPushEnabled) return;
+    try {
+      await webPushService.sendPush({ title, body, url, tag });
+    } catch {
+      // Silent fail — notifications are best-effort
+    }
+  }
+
+  // ── Shared helpers ─────────────────────────────────────────────────
+
+  /** Resolve the user's preferred language for notification messages */
   private async resolveLanguage(): Promise<string> {
     try {
       const prefs = await preferencesService.readPreferences();
@@ -123,6 +153,13 @@ class NotificationService {
       .replace(/>/g, '&gt;');
   }
 
+  /** Strip HTML tags for plain-text push body */
+  private stripHtml(text: string): string {
+    return text.replace(/<[^>]+>/g, '');
+  }
+
+  // ── Notification methods ───────────────────────────────────────────
+
   /** Notify that user input is needed (permission or AskUserQuestion) */
   async notifyInputRequired(sessionId: string, toolName: string, prompt?: string): Promise<void> {
     if (!this.shouldNotifyPermission) return;
@@ -131,7 +168,16 @@ class NotificationService {
     const emoji = toolName === 'AskUserQuestion' ? '❓' : '🔐';
     const label = toolName === 'AskUserQuestion' ? t('notification.question.title') : t('notification.permission.title');
     const detail = prompt ? `\n${prompt}` : '';
-    await this.send(`${emoji} <b>${label}</b>\nSession: <code>${sessionId}</code>${detail}${this.buildLink()}`);
+
+    await Promise.allSettled([
+      this.sendTelegram(`${emoji} <b>${label}</b>\nSession: <code>${sessionId}</code>${detail}${this.buildLink()}`),
+      this.sendPush(
+        `${emoji} ${label}`,
+        prompt ? prompt.slice(0, 200) : `Session: ${sessionId}`,
+        this.baseUrl || '/',
+        `input-${sessionId}`,
+      ),
+    ]);
   }
 
   /** Notify that streaming completed successfully, optionally including last assistant message */
@@ -139,20 +185,36 @@ class NotificationService {
     if (!this.shouldNotifyComplete) return;
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
-    let message = `✅ <b>${t('notification.complete.title')}</b>\nSession: <code>${sessionId}</code>`;
+
+    // Telegram (HTML)
+    let telegramMsg = `✅ <b>${t('notification.complete.title')}</b>\nSession: <code>${sessionId}</code>`;
     if (queueProgress && queueProgress.total > 0) {
       const current = Math.max(0, Math.min(queueProgress.current, queueProgress.total));
       const pct = Math.round((current / queueProgress.total) * 100);
-      message += `\n📊 ${t('notification.complete.queueProgress', { current, total: queueProgress.total, pct })}`;
+      telegramMsg += `\n📊 ${t('notification.complete.queueProgress', { current, total: queueProgress.total, pct })}`;
     }
     if (lastContent) {
       const MAX_LEN = 500;
       const escaped = this.escapeHtml(lastContent);
       const truncated = escaped.length > MAX_LEN ? escaped.slice(0, MAX_LEN) + '…' : escaped;
-      message += `\n\n<b>${t('notification.complete.lastMessage')}</b>\n<pre>${truncated}</pre>`;
+      telegramMsg += `\n\n<b>${t('notification.complete.lastMessage')}</b>\n<pre>${truncated}</pre>`;
     }
-    message += this.buildLink();
-    await this.send(message);
+    telegramMsg += this.buildLink();
+
+    // Push (plain text)
+    const pushBody = lastContent
+      ? lastContent.slice(0, 200)
+      : `Session: ${sessionId}`;
+
+    await Promise.allSettled([
+      this.sendTelegram(telegramMsg),
+      this.sendPush(
+        `✅ ${t('notification.complete.title')}`,
+        pushBody,
+        this.baseUrl || '/',
+        `complete-${sessionId}`,
+      ),
+    ]);
   }
 
   /** Notify that an error occurred during streaming */
@@ -160,7 +222,16 @@ class NotificationService {
     if (!this.shouldNotifyError) return;
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
-    await this.send(`❌ <b>${t('notification.error.title')}</b>\nSession: <code>${sessionId}</code>\n${error}${this.buildLink()}`);
+
+    await Promise.allSettled([
+      this.sendTelegram(`❌ <b>${t('notification.error.title')}</b>\nSession: <code>${sessionId}</code>\n${error}${this.buildLink()}`),
+      this.sendPush(
+        `❌ ${t('notification.error.title')}`,
+        error.slice(0, 200),
+        this.baseUrl || '/',
+        `error-${sessionId}`,
+      ),
+    ]);
   }
 
   /** Notify that queue execution has started */
@@ -168,7 +239,16 @@ class NotificationService {
     if (!this.shouldNotifyQueueStart) return;
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
-    await this.send(`🚀 <b>${t('notification.queueStart.title')}</b>\n${t('notification.queueStart.body', { value: totalItems })}\n\n${sessionUrl}`);
+
+    await Promise.allSettled([
+      this.sendTelegram(`🚀 <b>${t('notification.queueStart.title')}</b>\n${t('notification.queueStart.body', { value: totalItems })}\n\n${sessionUrl}`),
+      this.sendPush(
+        `🚀 ${t('notification.queueStart.title')}`,
+        t('notification.queueStart.body', { value: totalItems }),
+        sessionUrl || '/',
+        'queue-start',
+      ),
+    ]);
   }
 
   /** Notify that queue execution completed all items */
@@ -176,7 +256,16 @@ class NotificationService {
     if (!this.shouldNotifyQueueComplete) return;
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
-    await this.send(`✅ <b>${t('notification.queueComplete.title')}</b>\n${t('notification.queueComplete.body')}\n\n${sessionUrl}`);
+
+    await Promise.allSettled([
+      this.sendTelegram(`✅ <b>${t('notification.queueComplete.title')}</b>\n${t('notification.queueComplete.body')}\n\n${sessionUrl}`),
+      this.sendPush(
+        `✅ ${t('notification.queueComplete.title')}`,
+        t('notification.queueComplete.body'),
+        sessionUrl || '/',
+        'queue-complete',
+      ),
+    ]);
   }
 
   /** Notify that queue paused due to error (QUEUE_STOP, SDK error, etc.) */
@@ -184,7 +273,16 @@ class NotificationService {
     if (!this.shouldNotifyQueueError) return;
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
-    await this.send(`⚠️ <b>${t('notification.queuePaused.title')}</b>\n${reason}\n\n${sessionUrl}`);
+
+    await Promise.allSettled([
+      this.sendTelegram(`⚠️ <b>${t('notification.queuePaused.title')}</b>\n${reason}\n\n${sessionUrl}`),
+      this.sendPush(
+        `⚠️ ${t('notification.queuePaused.title')}`,
+        reason.slice(0, 200),
+        sessionUrl || '/',
+        'queue-error',
+      ),
+    ]);
   }
 
   /** Notify that queue is waiting for user input (permission or AskUserQuestion) */
@@ -192,7 +290,16 @@ class NotificationService {
     if (!this.shouldNotifyQueueInputRequired) return;
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
-    await this.send(`❓ <b>${t('notification.inputRequired.title')}</b>\n${t('notification.inputRequired.body')}\n\n${sessionUrl}`);
+
+    await Promise.allSettled([
+      this.sendTelegram(`❓ <b>${t('notification.inputRequired.title')}</b>\n${t('notification.inputRequired.body')}\n\n${sessionUrl}`),
+      this.sendPush(
+        `❓ ${t('notification.inputRequired.title')}`,
+        t('notification.inputRequired.body'),
+        sessionUrl || '/',
+        'queue-input',
+      ),
+    ]);
   }
 
   /**

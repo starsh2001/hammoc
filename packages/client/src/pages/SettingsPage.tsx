@@ -7,13 +7,14 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Settings, FolderCog, Bell, Wrench, HelpCircle, Info, LogOut } from 'lucide-react';
+import { ArrowLeft, Settings, FolderCog, Bell, Send, Wrench, HelpCircle, Info, LogOut } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { SettingsSection } from '../components/SettingsSection';
 import { GlobalSettingsSection } from '../components/settings/GlobalSettingsSection';
 import { ProjectSettingsSection } from '../components/settings/ProjectSettingsSection';
 import { TelegramSettingsSection } from '../components/settings/TelegramSettingsSection';
+import { WebPushSettingsSection } from '../components/settings/WebPushSettingsSection';
 import { HelpSection } from '../components/settings/HelpSection';
 import { AboutSection } from '../components/settings/AboutSection';
 import { AdvancedSettingsSection } from '../components/settings/AdvancedSettingsSection';
@@ -21,7 +22,7 @@ import { AdvancedSettingsSection } from '../components/settings/AdvancedSettings
 const sectionDefs = [
   { id: 'global', titleKey: 'tabs.global', icon: Settings },
   { id: 'project', titleKey: 'tabs.project', icon: FolderCog },
-  { id: 'telegram', titleKey: 'tabs.telegram', icon: Bell },
+  { id: 'notifications', titleKey: 'tabs.notifications', icon: Bell },
   { id: 'advanced', titleKey: 'tabs.advanced', icon: Wrench },
   { id: 'help', titleKey: 'tabs.help', icon: HelpCircle },
   { id: 'about', titleKey: 'tabs.about', icon: Info },
@@ -84,8 +85,22 @@ export function SettingsPage() {
         return <GlobalSettingsSection />;
       case 'project':
         return <ProjectSettingsSection />;
-      case 'telegram':
-        return <TelegramSettingsSection />;
+      case 'notifications':
+        return (
+          <>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <Bell className="w-4 h-4" />
+              Web Push
+            </h3>
+            <WebPushSettingsSection />
+            <hr className="my-8 border-gray-200 dark:border-[#2d3a4a]" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <Send className="w-4 h-4" />
+              Telegram
+            </h3>
+            <TelegramSettingsSection />
+          </>
+        );
       case 'advanced':
         return <AdvancedSettingsSection />;
       case 'help':

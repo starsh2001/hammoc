@@ -26,6 +26,7 @@ export interface UserPreferences {
   markdownDefaultMode?: 'edit' | 'preview'; // default editor mode for markdown files
   fileExplorerViewMode?: 'list' | 'grid'; // default file explorer view mode
   telegram?: TelegramSettings;
+  webPush?: WebPushSettings;
   // Advanced settings
   customSystemPrompt?: string;      // replaces default Claude Code system prompt
   maxThinkingTokens?: number;       // SDK maxThinkingTokens
@@ -105,6 +106,30 @@ export interface UpdateTelegramSettingsRequest {
   notifyQueueError?: boolean;
   notifyQueueInputRequired?: boolean;
   alwaysNotify?: boolean;
+}
+
+/** Web Push notification settings stored in preferences */
+export interface WebPushSettings {
+  enabled?: boolean;
+}
+
+/** GET /api/preferences/webpush response type */
+export interface WebPushSettingsApiResponse {
+  enabled: boolean;
+  vapidPublicKey: string;
+  subscriptionCount: number;
+}
+
+/** POST /api/preferences/webpush/subscribe request body */
+export interface WebPushSubscribeRequest {
+  subscription: {
+    endpoint: string;
+    keys: {
+      p256dh: string;
+      auth: string;
+    };
+  };
+  userAgent?: string;
 }
 
 /**
