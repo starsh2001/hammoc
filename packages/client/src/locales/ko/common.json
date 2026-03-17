@@ -239,7 +239,9 @@
     "markDone": "스토리 완료",
     "markDoneDesc": "QA 통과 — Done으로 완료",
     "requestQAReview": "QA 재요청",
-    "validateStory": "스토리 검증",
+    "validateStoryOnly": "스토리 검증 (미수정)",
+    "validateAndFixStory": "스토리 검증 및 수정",
+    "validateFixPrompt": "위 검증 결과에서 발견된 모든 Critical Issues, Should-Fix Issues, Nice-to-Have Issues를 전부 수정해주세요.",
     "startDev": "개발 시작",
     "createFirstStory": "첫 스토리 생성",
     "createNextStory": "다음 스토리 생성",
@@ -561,7 +563,8 @@
     "emptyHelpText": "새 터미널 버튼을 눌러 터미널을 시작하세요",
     "openInTab": "터미널 탭에서 열기",
     "disabledDescriptionShort": "설정에서 터미널을 활성화하세요.",
-    "securityDescriptionShort": "로컬 네트워크에서 접속해 주세요."
+    "securityDescriptionShort": "로컬 네트워크에서 접속해 주세요.",
+    "imeInputPlaceholder": "비영어권 문자는 여기서 조합하여 전송"
   },
   "agent": {
     "listAria": "BMad 에이전트 목록",

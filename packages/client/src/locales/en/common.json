@@ -239,7 +239,9 @@
     "markDone": "Complete story",
     "markDoneDesc": "QA passed — mark as Done",
     "requestQAReview": "Re-request QA review",
-    "validateStory": "Validate story",
+    "validateStoryOnly": "Validate Story (No Fix)",
+    "validateAndFixStory": "Validate & Fix Story",
+    "validateFixPrompt": "Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.",
     "startDev": "Start development",
     "createFirstStory": "Create first story",
     "createNextStory": "Create next story",
@@ -552,7 +554,8 @@
     "emptyHelpText": "Press the New terminal button to start a terminal",
     "openInTab": "Open in terminal tab",
     "disabledDescriptionShort": "Enable terminal in settings.",
-    "securityDescriptionShort": "Please connect from a local network."
+    "securityDescriptionShort": "Please connect from a local network.",
+    "imeInputPlaceholder": "Type non-ASCII text here, then send"
   },
   "agent": {
     "listAria": "BMad agent list",
