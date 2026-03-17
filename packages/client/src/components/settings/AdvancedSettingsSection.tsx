@@ -7,7 +7,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { RotateCcw, Terminal, RefreshCw, Download } from 'lucide-react';
+import { RotateCcw, RefreshCw, Download } from 'lucide-react';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { preferencesApi } from '../../services/api/preferences';
@@ -21,7 +21,7 @@ interface TemplateVariable {
 
 export function AdvancedSettingsSection() {
   const { t } = useTranslation('settings');
-  const { preferences, overrides, updatePreference } = usePreferencesStore();
+  const { preferences, updatePreference } = usePreferencesStore();
   const currentProjectSlug = useSessionStore((s) => s.currentProjectSlug);
 
   // Default template and variables fetched from server
@@ -113,16 +113,6 @@ export function AdvancedSettingsSection() {
     updatePreference(key, num);
     toast.success(t('toast.settingChanged', { label }));
   }, [updatePreference]);
-
-  const isTerminalOverridden = overrides.includes('terminalEnabled');
-  const terminalEnabled = preferences.terminalEnabled !== false;
-
-  const handleTerminalToggle = useCallback(() => {
-    if (isTerminalOverridden) return;
-    const newValue = !terminalEnabled;
-    updatePreference('terminalEnabled', newValue);
-    toast.success(t(newValue ? 'toast.terminalEnabled' : 'toast.terminalDisabled'));
-  }, [terminalEnabled, isTerminalOverridden, updatePreference]);
 
   // Server info
   const [isDevMode, setIsDevMode] = useState<boolean | null>(null);
@@ -314,47 +304,6 @@ export function AdvancedSettingsSection() {
           )}
         </div>
       )}
-
-      {/* Terminal Enable/Disable Toggle (Story 17.5) */}
-      <div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Terminal className="w-5 h-5 text-gray-500 dark:text-gray-300" aria-hidden="true" />
-            <div>
-              <label
-                htmlFor="terminal-enabled"
-                className="block text-sm font-medium text-gray-900 dark:text-white"
-              >
-                {t('advanced.terminalFeature')}
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-300">
-                {t('advanced.terminalDesc')}
-              </p>
-            </div>
-          </div>
-          <button
-            id="terminal-enabled"
-            type="button"
-            role="switch"
-            aria-checked={terminalEnabled}
-            disabled={isTerminalOverridden}
-            onClick={handleTerminalToggle}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-              ${terminalEnabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}
-              ${isTerminalOverridden ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                ${terminalEnabled ? 'translate-x-6' : 'translate-x-1'}`}
-            />
-          </button>
-        </div>
-        {isTerminalOverridden && (
-          <p className="mt-1.5 ml-8 text-xs text-amber-600 dark:text-amber-400">
-            {t('advanced.terminalOverrideWarning')}
-          </p>
-        )}
-      </div>
 
       {/* System Prompt Template */}
       <div>

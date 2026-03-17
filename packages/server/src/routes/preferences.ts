@@ -92,7 +92,6 @@ router.get('/', async (req: Request, res: Response) => {
     const preferences = await preferencesService.getEffectivePreferences();
     const overrides: string[] = [];
     if (process.env.CHAT_TIMEOUT_MS) overrides.push('chatTimeoutMs');
-    if (process.env.TERMINAL_ENABLED) overrides.push('terminalEnabled');
     res.json({ ...preferences, _overrides: overrides });
   } catch {
     res.status(500).json({ error: { code: 'PREFERENCES_READ_ERROR', message: req.t!('preferences.readError') } });
