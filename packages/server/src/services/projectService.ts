@@ -12,6 +12,7 @@ import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import type {
   PromptHistoryData,
+  PromptChainItem,
   ProjectInfo,
   ProjectSettings,
   UpdateProjectSettingsRequest,
@@ -483,6 +484,62 @@ class ProjectService {
       throw err;
     }
     await this.writePromptHistory(info.originalPath, sessionId, data);
+  }
+
+  /** Validate sessionId and resolve safe file path within chain-failures directory */
+  private resolveChainFailurePath(sessionId: string): string {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+      throw new Error(`Invalid sessionId format: ${sessionId}`);
+    }
+    const dir = path.join(os.homedir(), '.hammoc', 'chain-failures');
+    const filePath = path.resolve(dir, `${sessionId}.json`);
+    if (!filePath.startsWith(path.resolve(dir))) {
+      throw new Error(`Path traversal detected for sessionId: ${sessionId}`);
+    }
+    return filePath;
+  }
+
+  /**
+   * Read chain failure records for a session from ~/.hammoc/chain-failures/
+   */
+  async readChainFailures(sessionId: string): Promise<PromptChainItem[]> {
+    try {
+      const filePath = this.resolveChainFailurePath(sessionId);
+      const content = await fs.readFile(filePath, 'utf-8');
+      const data = JSON.parse(content);
+      if (!data || !Array.isArray(data.failures)) {
+        throw new Error(`Invalid chain-failures format for session ${sessionId}`);
+      }
+      return data.failures as PromptChainItem[];
+    } catch (err: unknown) {
+      // File not found is expected (no failures recorded yet)
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
+        return [];
+      }
+      // Propagate corruption / permission errors so callers can handle them
+      throw err;
+    }
+  }
+
+  /**
+   * Write chain failure records for a session to ~/.hammoc/chain-failures/
+   */
+  async writeChainFailures(sessionId: string, failures: PromptChainItem[]): Promise<void> {
+    const filePath = this.resolveChainFailurePath(sessionId);
+    const dir = path.dirname(filePath);
+    if (failures.length === 0) {
+      try {
+        await fs.unlink(filePath);
+      } catch (err: unknown) {
+        // File not found is expected; rethrow other errors (permissions, etc.)
+        if (err && typeof err === 'object' && 'code' in err && err.code !== 'ENOENT') {
+          throw err;
+        }
+      }
+      return;
+    }
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify({ failures }, null, 2), 'utf-8');
   }
 
   /**

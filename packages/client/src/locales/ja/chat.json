@@ -27,7 +27,7 @@
     "send": "送信",
     "lockedOtherBrowser": "別のブラウザで使用中 — 更新して使用",
     "queueControlled": "キューランナーが制御中",
-    "chainFull": "チェーン最大5件",
+    "chainFull": "チェーン最大10件",
     "chainAdd": "チェーンに追加...",
     "ariaLabel": "メッセージ入力",
     "promptChainTitle": "プロンプトチェーン"

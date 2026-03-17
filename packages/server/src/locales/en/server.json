@@ -249,7 +249,8 @@
       "terminalAccessDenied": "Terminal access is not available from outside the local network for security reasons",
       "terminalNotFound": "Terminal not found",
       "ptySpawnError": "Failed to spawn terminal process",
-      "chainMaxExceeded": "Maximum 5 chain items allowed."
+      "chainContentTooLong": "Chain prompt content exceeds maximum length.",
+      "chainMaxExceeded": "Maximum 10 chain items allowed."
     }
   },
   "pathGuard": {

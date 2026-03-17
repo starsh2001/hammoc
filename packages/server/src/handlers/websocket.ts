@@ -72,27 +72,14 @@ function triggerDashboardStatusChange(projectSlug: string): void {
 
 /**
  * Check terminal access for a socket connection.
- * Fail-closed: denies access on any error (e.g., preferences file read failure).
+ * Checks server config (TERMINAL_ENABLED env var) and local IP.
  * Story 17.5: Terminal Security
  */
-async function checkTerminalAccess(
+function checkTerminalAccess(
   socket: Socket, lang: string
-): Promise<{ allowed: boolean; error?: TerminalErrorEvent }> {
+): { allowed: boolean; error?: TerminalErrorEvent } {
   const t = i18next.getFixedT(lang);
-  try {
-    const terminalEnabled = await preferencesService.getTerminalEnabled();
-    if (!terminalEnabled) {
-      return {
-        allowed: false,
-        error: {
-          code: TERMINAL_ERRORS.TERMINAL_DISABLED.code,
-          message: t('ws.error.terminalDisabled'),
-        },
-      };
-    }
-  } catch (err) {
-    // Fail-closed: deny access if preferences read fails
-    log.error('Failed to check terminal enabled state, denying access:', err);
+  if (!preferencesService.getTerminalEnabled()) {
     return {
       allowed: false,
       error: {
@@ -147,7 +134,7 @@ interface ActiveStream {
 // Primary maps: sessionId → ActiveStream, socketId → sessionId
 const activeStreams = new Map<string, ActiveStream>();
 const socketToSession = new Map<string, string>();
-// Story 24.3: Track which session room each socket joined (for chain cleanup on disconnect)
+// Story 24.3: Track which session room each socket joined (for session:leave room management)
 const socketSessionRoom = new Map<string, string>();
 
 // Story 24.1: Per-session prompt chain state
@@ -160,8 +147,11 @@ interface InternalChainItem extends PromptChainItem {
 const chainState = new Map<string, InternalChainItem[]>();
 // Per-session drain generation counter for race guard
 const chainDrainGeneration = new Map<string, number>();
+// Sessions that have completed at least one handleChatSend — safe to resume
+const chainResumableSessions = new Set<string>();
 let chainItemCounter = 0;
 const CHAIN_MAX_RETRIES = 3;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Generate a unique chain item ID */
 function generateChainItemId(): string {
@@ -183,13 +173,75 @@ function broadcastChainUpdate(sessionId: string): void {
   io.to(`session:${sessionId}`).emit('chain:update', { sessionId, items });
 }
 
-/** Clean up chain state if session room is empty */
-function cleanupChainIfRoomEmpty(sessionId: string): void {
-  const roomSockets = io?.sockets.adapter.rooms.get(`session:${sessionId}`);
-  if ((!roomSockets || roomSockets.size === 0) && !activeStreams.has(sessionId)) {
-    chainState.delete(sessionId);
-    chainDrainGeneration.delete(sessionId);
+/** Broadcast chain state including persisted failures from disk */
+function broadcastChainUpdateWithFailures(sessionId: string): void {
+  if (!io) return;
+  withChainFailureLock(sessionId, () => projectService.readChainFailures(sessionId))
+    .then(failures => {
+      // Re-read in-memory state now (may have changed during async disk read)
+      const freshItems = (chainState.get(sessionId) || []).map(toPublicChainItem);
+      io!.to(`session:${sessionId}`).emit('chain:update', { sessionId, items: [...freshItems, ...failures] });
+    })
+    .catch((err) => {
+      log.error(`Failed to read chain failures for broadcast (session ${sessionId}):`, err);
+      const freshItems = (chainState.get(sessionId) || []).map(toPublicChainItem);
+      io!.to(`session:${sessionId}`).emit('chain:update', { sessionId, items: freshItems });
+    });
+}
+
+/** Clean up chain state when no active work remains */
+function cleanupChainIfIdle(sessionId: string): void {
+  if (activeStreams.has(sessionId)) return;
+  const items = chainState.get(sessionId);
+  // Preserve if pending/sending items remain (drain will handle them)
+  // or failed items remain (disk persistence may have failed — keep in memory until dismissed)
+  if (items && items.some(item => item.status === 'pending' || item.status === 'sending' || item.status === 'failed')) {
+    return;
   }
+  chainState.delete(sessionId);
+  chainResumableSessions.delete(sessionId);
+  // NOTE: chainDrainGeneration is intentionally NOT deleted here.
+  // Deleting would reset the counter to 0, allowing stale timers from before
+  // cleanup to match a new gen=1 value (ABA problem).
+}
+
+// Per-session mutex for failure file I/O to prevent read-modify-write races
+const chainFailureLocks = new Map<string, Promise<void>>();
+
+/** Execute a failure file operation under per-session lock */
+function withChainFailureLock<T>(sessionId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = chainFailureLocks.get(sessionId) || Promise.resolve();
+  const next = prev.then(fn, fn); // run even if previous rejected
+  chainFailureLocks.set(sessionId, next.then(() => {}, () => {}));
+  return next;
+}
+
+/** Persist a failed chain item to disk so it survives server restarts */
+async function persistChainFailure(sessionId: string, item: InternalChainItem): Promise<void> {
+  return withChainFailureLock(sessionId, async () => {
+    const existing = await projectService.readChainFailures(sessionId);
+    existing.push(toPublicChainItem(item));
+    await projectService.writeChainFailures(sessionId, existing);
+  });
+}
+
+/** Remove a specific failure from disk */
+async function removePersistedFailure(sessionId: string, itemId: string): Promise<void> {
+  return withChainFailureLock(sessionId, async () => {
+    const failures = await projectService.readChainFailures(sessionId);
+    if (failures.length === 0) return;
+    const remaining = failures.filter(f => f.id !== itemId);
+    if (remaining.length !== failures.length) {
+      await projectService.writeChainFailures(sessionId, remaining);
+    }
+  });
+}
+
+/** Clear all persisted failures for a session */
+async function clearPersistedFailures(sessionId: string): Promise<void> {
+  return withChainFailureLock(sessionId, async () => {
+    await projectService.writeChainFailures(sessionId, []);
+  });
 }
 
 /** Schedule chain drain after stream completion (1s delay) */
@@ -197,105 +249,142 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
   // Increment generation counter to detect stale drains
   const gen = (chainDrainGeneration.get(sessionId) || 0) + 1;
   chainDrainGeneration.set(sessionId, gen);
+  log.info(`[CHAIN-DRAIN] scheduleChainDrain called: sessionId=${sessionId}, gen=${gen}, chainItems=${chainState.get(sessionId)?.length ?? 0}, activeStream=${activeStreams.has(sessionId)}`);
 
   setTimeout(async () => {
     // Race guard: if generation changed (manual chat:send started/finished), abort
-    if (chainDrainGeneration.get(sessionId) !== gen) return;
+    if (chainDrainGeneration.get(sessionId) !== gen) {
+      log.info(`[CHAIN-DRAIN] timer aborted (generation mismatch): sessionId=${sessionId}, expected=${gen}, actual=${chainDrainGeneration.get(sessionId)}`);
+      return;
+    }
     // Race guard: if another stream is currently active, abort drain
-    if (activeStreams.has(sessionId)) return;
+    if (activeStreams.has(sessionId)) {
+      log.info(`[CHAIN-DRAIN] timer aborted (active stream exists): sessionId=${sessionId}, gen=${gen}`);
+      return;
+    }
 
     const items = chainState.get(sessionId);
-    if (!items || items.length === 0) return;
+    log.info(`[CHAIN-DRAIN] timer fired: sessionId=${sessionId}, gen=${gen}, items=${items?.length ?? 0}, statuses=${JSON.stringify(items?.map(i => ({ id: i.id.slice(0, 8), status: i.status })) ?? [])}`);
+    if (!items || items.length === 0) { cleanupChainIfIdle(sessionId); return; }
 
     const nextItem = items.find(item => item.status === 'pending');
-    if (!nextItem) return;
-
-    // Check if any sockets remain in the session room
-    const roomSockets = io?.sockets.adapter.rooms.get(`session:${sessionId}`);
-    if (!roomSockets || roomSockets.size === 0) return;
+    if (!nextItem) { log.info(`[CHAIN-DRAIN] no pending item found, cleaning up: sessionId=${sessionId}`); cleanupChainIfIdle(sessionId); return; }
 
     // Use per-item execution context
     const { workingDirectory, permissionMode, model } = nextItem;
 
     // Mark item as 'sending' and broadcast
     nextItem.status = 'sending';
+    log.info(`[CHAIN-DRAIN] executing item: sessionId=${sessionId}, itemId=${nextItem.id.slice(0, 8)}, content="${nextItem.content.slice(0, 80)}"`);
     broadcastChainUpdate(sessionId);
 
-    // Collect sockets from session room
-    const sockets = new Set<SocketType>();
-    for (const socketId of roomSockets) {
-      const sock = io!.sockets.sockets.get(socketId) as SocketType | undefined;
-      if (sock) sockets.add(sock);
-    }
-
     const abortController = new AbortController();
-    const stream: ActiveStream = {
-      sessionId,
-      sockets,
-      abortController,
-      buffer: [],
-      pendingPermissions: new Map(),
-      status: 'running',
-      startedAt: Date.now(),
-    };
-    activeStreams.set(sessionId, stream);
-    for (const sock of sockets) {
-      socketToSession.set(sock.id, sessionId);
-    }
-
-    io!.emit('session:stream-change', { sessionId, active: true });
-
+    let stream: ActiveStream | undefined;
     try {
-      await handleChatSend(
+      // Create headless stream inside try — if this throws, sending status is recovered below
+      const headless = createHeadlessStream(sessionId, abortController);
+      stream = headless.stream;
+      log.info(`[CHAIN-DRAIN] headless stream created: sessionId=${sessionId}, socketsInRoom=${stream.sockets.size}`);
+
+      io?.emit('session:stream-change', { sessionId, active: true });
+      const drainSuccess = await handleChatSend(
         stream,
-        { content: nextItem.content, workingDirectory, sessionId, permissionMode, model },
+        { content: nextItem.content, workingDirectory, sessionId, resume: chainResumableSessions.has(sessionId) || undefined, permissionMode, model },
         abortController,
         lang
       );
+      if (!drainSuccess) throw new Error('handleChatSend returned false');
       // Success: mark as 'sent' and remove from chain
       nextItem.status = 'sent';
+      chainResumableSessions.add(sessionId);
+      log.info(`[CHAIN-DRAIN] item completed successfully: sessionId=${sessionId}, itemId=${nextItem.id.slice(0, 8)}`);
       const currentItems = chainState.get(sessionId);
       if (currentItems) {
         chainState.set(sessionId, currentItems.filter(item => item.id !== nextItem.id));
       }
       broadcastChainUpdate(sessionId);
     } catch (err) {
-      // On error: increment retry count and mark as failed if max retries exceeded
-      const retries = (nextItem.retryCount || 0) + 1;
-      nextItem.retryCount = retries;
-      if (retries >= CHAIN_MAX_RETRIES) {
-        nextItem.status = 'failed';
-        log.error(`Chain item ${nextItem.id} failed after ${CHAIN_MAX_RETRIES} retries for session ${sessionId}:`, err);
-      } else if (nextItem.status === 'sending') {
-        nextItem.status = 'pending';
+      // Check if this was an intentional abort (chain:remove or chain:clear)
+      const isAborted = abortController.signal.aborted;
+      const abortReason = abortController.signal.reason;
+      const isChainCanceled = isAborted && (abortReason === 'chain-item-removed' || abortReason === 'chain-cleared');
+
+      if (isChainCanceled) {
+        // User-initiated cancel — remove from chain, no disk record needed
+        const cancelItems = chainState.get(sessionId);
+        if (cancelItems) {
+          chainState.set(sessionId, cancelItems.filter(item => item.id !== nextItem.id));
+        }
+        log.info(`Chain item ${nextItem.id} canceled (${abortReason}) for session ${sessionId}`);
+      } else {
+        // On error: increment retry count and persist failure if max retries exceeded
+        const retries = (nextItem.retryCount || 0) + 1;
+        nextItem.retryCount = retries;
+        if (retries >= CHAIN_MAX_RETRIES) {
+          nextItem.status = 'failed';
+          // Persist to disk, then remove from memory only on success
+          try {
+            await persistChainFailure(sessionId, nextItem);
+            const failItems = chainState.get(sessionId);
+            if (failItems) {
+              chainState.set(sessionId, failItems.filter(item => item.id !== nextItem.id));
+            }
+          } catch (persistErr) {
+            // Disk write failed — keep in memory so it's not lost
+            log.error(`Failed to persist chain failure for session ${sessionId}:`, persistErr);
+          }
+          log.error(`Chain item ${nextItem.id} failed after ${CHAIN_MAX_RETRIES} retries for session ${sessionId}:`, err);
+        } else if (nextItem.status === 'sending') {
+          nextItem.status = 'pending';
+        }
+        log.error(`Chain drain error for session ${sessionId} (attempt ${retries}):`, err);
       }
-      broadcastChainUpdate(sessionId);
-      log.error(`Chain drain error for session ${sessionId} (attempt ${retries}):`, err);
+      // Use disk-aware broadcast since failures may have been persisted above
+      broadcastChainUpdateWithFailures(sessionId);
     } finally {
       // Safety net: ensure item is never left stuck in 'sending'
       if (nextItem.status === 'sending') {
+        log.warn(`[CHAIN-DRAIN] finally: item still in 'sending', resetting to 'pending': sessionId=${sessionId}, itemId=${nextItem.id.slice(0, 8)}`);
         nextItem.status = 'pending';
         broadcastChainUpdate(sessionId);
       }
 
-      stream.status = 'completed';
-      if (activeStreams.get(sessionId) === stream) {
-        // Schedule next drain if more pending items exist
+      if (stream) {
+        stream.status = 'completed';
+        const isCurrentStream = activeStreams.get(sessionId) === stream;
+        log.info(`[CHAIN-DRAIN] finally: sessionId=${sessionId}, streamCompleted=true, isCurrentStream=${isCurrentStream}`);
+        if (isCurrentStream) {
+          const remaining = chainState.get(sessionId);
+          const remainingPending = remaining?.filter(item => item.status === 'pending').length ?? 0;
+          log.info(`[CHAIN-DRAIN] finally: cleaning up stream, remainingItems=${remaining?.length ?? 0}, remainingPending=${remainingPending}`);
+          cleanupStream(sessionId);
+          io?.emit('session:stream-change', { sessionId, active: false });
+          const endProjectSlug = sessionProjectMap.get(sessionId);
+          if (endProjectSlug) {
+            triggerDashboardStatusChange(endProjectSlug);
+            sessionProjectMap.delete(sessionId);
+          }
+
+          // Continue draining or clean up — browser state is irrelevant
+          if (remaining && remaining.some(item => item.status === 'pending')) {
+            log.info(`[CHAIN-DRAIN] finally: scheduling next drain for sessionId=${sessionId}`);
+            scheduleChainDrain(sessionId, lang);
+          } else {
+            log.info(`[CHAIN-DRAIN] finally: no more pending items, cleaning up chain for sessionId=${sessionId}`);
+            cleanupChainIfIdle(sessionId);
+          }
+        } else {
+          log.warn(`[CHAIN-DRAIN] finally: stream is NOT the current active stream (replaced?): sessionId=${sessionId}`);
+        }
+      } else {
+        // Stream creation failed — schedule retry or cleanup
+        log.warn(`[CHAIN-DRAIN] finally: no stream was created, scheduling retry: sessionId=${sessionId}`);
         const remaining = chainState.get(sessionId);
         if (remaining && remaining.some(item => item.status === 'pending')) {
           scheduleChainDrain(sessionId, lang);
+        } else {
+          cleanupChainIfIdle(sessionId);
         }
-
-        cleanupStream(sessionId);
-        io!.emit('session:stream-change', { sessionId, active: false });
-        const endProjectSlug = sessionProjectMap.get(sessionId);
-        if (endProjectSlug) {
-          triggerDashboardStatusChange(endProjectSlug);
-          sessionProjectMap.delete(sessionId);
-        }
-
-        // Fix #4: Clean up chain state if room became empty during stream
-        cleanupChainIfRoomEmpty(sessionId);
       }
     }
   }, 1000);
@@ -479,7 +568,7 @@ export async function initializeWebSocket(
   httpServer: HttpServer
 ): Promise<SocketIOServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>> {
   io = new SocketIOServer(httpServer, {
-    cors: config.websocket.cors,
+    cors: config.cors,
     maxHttpBufferSize: 100 * 1024 * 1024, // 100MB for base64 image payloads
   });
 
@@ -533,7 +622,7 @@ export async function initializeWebSocket(
       try {
         const clientIP = extractClientIP(socket);
         const isLocal = isLocalIP(clientIP);
-        const terminalEnabled = await preferencesService.getTerminalEnabled();
+        const terminalEnabled = preferencesService.getTerminalEnabled();
         socket.emit('terminal:access', {
           allowed: terminalEnabled && isLocal,
           enabled: terminalEnabled,
@@ -644,20 +733,17 @@ export async function initializeWebSocket(
       }).catch(() => {});
 
       try {
-        await handleChatSend(stream, data, abortController, lang);
+        const sendSuccess = await handleChatSend(stream, data, abortController, lang);
+        if (sendSuccess) chainResumableSessions.add(stream.sessionId);
       } finally {
         stream.status = 'completed';
         const endedSessionId = stream.sessionId;
+        const isCurrentStream = activeStreams.get(endedSessionId) === stream;
+        log.info(`[CHAIN-DRAIN] chat:send finally: endedSessionId=${endedSessionId}, isCurrentStream=${isCurrentStream}, socketsOnStream=${stream.sockets.size}`);
         // Only cleanup if this stream is still the active one for this session.
         // A replacement stream (from another chat:send) may have already taken over
         // the same key — deleting it would be a race condition.
-        if (activeStreams.get(endedSessionId) === stream) {
-          // Story 24.1: Schedule chain drain before cleanup if pending items exist
-          const pendingChain = chainState.get(endedSessionId);
-          if (pendingChain && pendingChain.some(item => item.status === 'pending')) {
-            scheduleChainDrain(endedSessionId, lang);
-          }
-
+        if (isCurrentStream) {
           cleanupStream(endedSessionId);
           io.emit('session:stream-change', { sessionId: endedSessionId, active: false });
           // Story 20.1: Trigger dashboard status change on stream end
@@ -667,8 +753,18 @@ export async function initializeWebSocket(
             sessionProjectMap.delete(endedSessionId);
           }
 
-          // Story 24.1: Clean up chain state if room became empty during stream
-          cleanupChainIfRoomEmpty(endedSessionId);
+          // Story 24.1: Schedule chain drain if pending items exist (browser-independent)
+          const pendingChain = chainState.get(endedSessionId);
+          const pendingCount = pendingChain?.filter(item => item.status === 'pending').length ?? 0;
+          log.info(`[CHAIN-DRAIN] chat:send finally: chainItems=${pendingChain?.length ?? 0}, pendingCount=${pendingCount}, statuses=${JSON.stringify(pendingChain?.map(i => ({ id: i.id.slice(0, 8), status: i.status })) ?? [])}`);
+          if (pendingChain && pendingChain.some(item => item.status === 'pending')) {
+            scheduleChainDrain(endedSessionId, lang);
+          } else {
+            log.info(`[CHAIN-DRAIN] chat:send finally: no pending chain items, calling cleanupChainIfIdle for ${endedSessionId}`);
+            cleanupChainIfIdle(endedSessionId);
+          }
+        } else {
+          log.warn(`[CHAIN-DRAIN] chat:send finally: stream is NOT current active stream (replaced?): endedSessionId=${endedSessionId}`);
         }
       }
     });
@@ -755,18 +851,40 @@ export async function initializeWebSocket(
         socketToSession.delete(socket.id);
         socket.leave(`session:${prevSessionId}`);
       }
+      // Also leave previous session room even when no active stream existed
+      // (socketToSession is only set when a stream is running)
+      const prevRoomSessionId = socketSessionRoom.get(socket.id);
+      if (prevRoomSessionId && prevRoomSessionId !== sessionId && prevRoomSessionId !== prevSessionId) {
+        socket.leave(`session:${prevRoomSessionId}`);
+      }
 
       // Join persistent session room (survives beyond ActiveStream lifecycle)
       socket.join(`session:${sessionId}`);
-      // Story 24.3: Track session room membership for chain cleanup on disconnect
+      // Story 24.3: Track session room membership for session:leave room management
       socketSessionRoom.set(socket.id, sessionId);
 
       const stream = activeStreams.get(sessionId);
 
-      // Story 24.1: Send current chain state on join (strip internal fields via allow-list)
-      const joinInternalItems = chainState.get(sessionId) || [];
-      const joinChainItems: PromptChainItem[] = joinInternalItems.map(toPublicChainItem);
-      socket.emit('chain:update', { sessionId, items: joinChainItems });
+      // Story 24.1: Send current chain state on join (in-memory + persisted failures)
+      // Only attempt disk read for valid UUID sessionIds to avoid unbounded lock map growth
+      if (UUID_RE.test(sessionId)) {
+        withChainFailureLock(sessionId, async () => {
+          return projectService.readChainFailures(sessionId);
+        }).then(failures => {
+          // Re-read in-memory state now (may have changed during async disk read)
+          const freshItems = (chainState.get(sessionId) || []).map(toPublicChainItem);
+          const allItems = [...freshItems, ...failures];
+          socket.emit('chain:update', { sessionId, items: allItems });
+        }).catch((err) => {
+          log.error(`Failed to read chain failures on join (session ${sessionId}):`, err);
+          const freshItems = (chainState.get(sessionId) || []).map(toPublicChainItem);
+          socket.emit('chain:update', { sessionId, items: freshItems });
+        });
+      } else {
+        // Non-UUID session: only send in-memory chain state (no disk persistence)
+        const freshItems = (chainState.get(sessionId) || []).map(toPublicChainItem);
+        socket.emit('chain:update', { sessionId, items: freshItems });
+      }
 
       if (!stream || stream.status !== 'running') {
         socket.emit('stream:status', { active: false, sessionId });
@@ -796,9 +914,9 @@ export async function initializeWebSocket(
         }
         socketToSession.delete(socket.id);
       }
-      // Use prevSessionId as fallback — client may send empty string when
-      // the sessionId is not available at unmount time (e.g., ChatPage cleanup)
-      const roomSessionId = sessionId || prevSessionId;
+      // Use prevSessionId / socketSessionRoom as fallback — client may send empty
+      // string when the sessionId is not available at unmount time (e.g., ChatPage cleanup)
+      const roomSessionId = sessionId || prevSessionId || socketSessionRoom.get(socket.id);
       if (roomSessionId) {
         socket.leave(`session:${roomSessionId}`);
       }
@@ -808,15 +926,25 @@ export async function initializeWebSocket(
 
     // Story 24.1: Prompt chain event handlers
     socket.on('chain:add', (data) => {
+      if (!data || typeof data !== 'object') return;
       const { sessionId, content, workingDirectory, permissionMode, model } = data;
       const lang = socket.data.language || 'en';
       const t = i18next.getFixedT(lang);
+
+      // Input validation (UUID required for disk persistence compatibility)
+      if (!sessionId || typeof sessionId !== 'string' || !UUID_RE.test(sessionId)) return;
+      if (!content || typeof content !== 'string' || !content.trim()) return;
+      if (!workingDirectory || typeof workingDirectory !== 'string') return;
+      if (content.length > 100_000) {
+        socket.emit('error', { code: ERROR_CODES.CHAT_ERROR, message: t('ws.error.chainContentTooLong') });
+        return;
+      }
 
       // Validate socket is a member of the session room
       if (!socket.rooms.has(`session:${sessionId}`)) return;
 
       const items = chainState.get(sessionId) || [];
-      if (items.length >= 5) {
+      if (items.length >= 10) {
         socket.emit('error', {
           code: ERROR_CODES.CHAIN_MAX_EXCEEDED,
           message: t('ws.error.chainMaxExceeded'),
@@ -836,26 +964,69 @@ export async function initializeWebSocket(
       items.push(item);
       chainState.set(sessionId, items);
       broadcastChainUpdate(sessionId);
-    });
 
-    socket.on('chain:remove', (data) => {
-      const { sessionId, id } = data;
-      // Validate socket is a member of the session room
-      if (!socket.rooms.has(`session:${sessionId}`)) return;
-      const items = chainState.get(sessionId);
-      if (items) {
-        chainState.set(sessionId, items.filter(item => item.id !== id));
-        broadcastChainUpdate(sessionId);
+      // If no active stream, trigger drain so items don't stay pending indefinitely
+      if (!activeStreams.has(sessionId)) {
+        scheduleChainDrain(sessionId, lang);
       }
     });
 
+    socket.on('chain:remove', (data) => {
+      if (!data || typeof data !== 'object') return;
+      const { sessionId, id } = data;
+      if (!sessionId || typeof sessionId !== 'string' || !UUID_RE.test(sessionId)) return;
+      if (!id || typeof id !== 'string') return;
+      if (!socket.rooms.has(`session:${sessionId}`)) return;
+      const items = chainState.get(sessionId);
+      if (items) {
+        // If the removed item is currently sending, abort its active stream
+        const removedItem = items.find(item => item.id === id);
+        if (removedItem?.status === 'sending') {
+          const stream = activeStreams.get(sessionId);
+          if (stream && stream.status === 'running') {
+            stream.abortController.abort('chain-item-removed');
+          }
+        }
+        const filtered = items.filter(item => item.id !== id);
+        chainState.set(sessionId, filtered);
+        broadcastChainUpdate(sessionId);
+        if (filtered.length === 0) {
+          cleanupChainIfIdle(sessionId);
+        }
+      }
+      // Also remove from persisted failures (dismiss)
+      removePersistedFailure(sessionId, id).catch((err) => {
+        log.error(`Failed to remove persisted failure ${id} for session ${sessionId}:`, err);
+      });
+    });
+
     socket.on('chain:clear', (data) => {
+      if (!data || typeof data !== 'object') return;
       const { sessionId } = data;
+      if (!sessionId || typeof sessionId !== 'string' || !UUID_RE.test(sessionId)) return;
       // Validate socket is a member of the session room
       if (!socket.rooms.has(`session:${sessionId}`)) return;
+      // If any item is currently sending, abort its active stream
+      const items = chainState.get(sessionId);
+      if (items?.some(item => item.status === 'sending')) {
+        const stream = activeStreams.get(sessionId);
+        if (stream && stream.status === 'running') {
+          stream.abortController.abort('chain-cleared');
+        }
+      }
       chainState.set(sessionId, []);
-      chainDrainGeneration.delete(sessionId);
+      // Bump generation instead of deleting — prevents stale timers from matching
+      // a reset counter value after clear + re-add sequence
+      chainDrainGeneration.set(sessionId, (chainDrainGeneration.get(sessionId) || 0) + 1);
       broadcastChainUpdate(sessionId);
+      cleanupChainIfIdle(sessionId);
+      // Clear persisted failures from disk, then broadcast final consistent state
+      // (prevents stale failures from reappearing via concurrent broadcastChainUpdateWithFailures)
+      clearPersistedFailures(sessionId)
+        .then(() => broadcastChainUpdate(sessionId))
+        .catch((err) => {
+          log.error(`Failed to clear persisted failures for session ${sessionId}:`, err);
+        });
     });
 
     // Story 20.1: Dashboard subscribe/unsubscribe
@@ -932,7 +1103,7 @@ export async function initializeWebSocket(
       const lang = socket.data.language || 'en';
       const t = i18next.getFixedT(lang);
       // Story 17.5: Security guard
-      const access = await checkTerminalAccess(socket, lang);
+      const access = checkTerminalAccess(socket, lang);
       if (!access.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:create`);
         socket.emit('terminal:error', access.error!);
@@ -1000,7 +1171,7 @@ export async function initializeWebSocket(
 
     socket.on('terminal:input', async (data: TerminalInputEvent) => {
       // Story 17.5: Security guard
-      const inputAccess = await checkTerminalAccess(socket, socket.data.language || 'en');
+      const inputAccess = checkTerminalAccess(socket, socket.data.language || 'en');
       if (!inputAccess.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:input`);
         socket.emit('terminal:error', { ...inputAccess.error!, terminalId: data.terminalId });
@@ -1017,7 +1188,7 @@ export async function initializeWebSocket(
 
     socket.on('terminal:resize', async (data: TerminalResizeEvent) => {
       // Story 17.5: Security guard
-      const resizeAccess = await checkTerminalAccess(socket, socket.data.language || 'en');
+      const resizeAccess = checkTerminalAccess(socket, socket.data.language || 'en');
       if (!resizeAccess.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:resize`);
         socket.emit('terminal:error', { ...resizeAccess.error!, terminalId: data.terminalId });
@@ -1034,7 +1205,7 @@ export async function initializeWebSocket(
 
     socket.on('terminal:list', async (data: TerminalListRequest) => {
       const lang = socket.data.language || 'en';
-      const access = await checkTerminalAccess(socket, lang);
+      const access = checkTerminalAccess(socket, lang);
       if (!access.allowed) {
         socket.emit('terminal:list', { projectSlug: data.projectSlug, terminals: [] });
         return;
@@ -1068,7 +1239,7 @@ export async function initializeWebSocket(
 
     socket.on('terminal:close', async (data: { terminalId: string }) => {
       // Story 17.5: Security guard
-      const closeAccess = await checkTerminalAccess(socket, socket.data.language || 'en');
+      const closeAccess = checkTerminalAccess(socket, socket.data.language || 'en');
       if (!closeAccess.allowed) {
         log.warn(`Terminal access denied for ${extractClientIP(socket)} on terminal:close`);
         socket.emit('terminal:error', { ...closeAccess.error!, terminalId: data.terminalId });
@@ -1098,17 +1269,8 @@ export async function initializeWebSocket(
           stream.sockets.delete(socket);
         }
         socketToSession.delete(socket.id);
-
-        // Story 24.1: Clean up chain state when session room is empty and no active stream
-        cleanupChainIfRoomEmpty(sessionId);
       }
 
-      // Story 24.3: Also clean up chain state for session rooms this socket was in
-      // but not tracked by socketToSession (e.g., joined session without active stream).
-      const roomSessionId = socketSessionRoom.get(socket.id);
-      if (roomSessionId && roomSessionId !== sessionId) {
-        cleanupChainIfRoomEmpty(roomSessionId);
-      }
       socketSessionRoom.delete(socket.id);
 
       // PTY sessions are NOT cleaned up on socket disconnect.
@@ -1191,7 +1353,8 @@ function isSessionNotFoundError(error: Error): boolean {
     message.includes('session not found') ||
     message.includes('session does not exist') ||
     message.includes('invalid session') ||
-    message.includes('no such session')
+    message.includes('no such session') ||
+    message.includes('no conversation found')
   );
 }
 
@@ -1205,7 +1368,7 @@ async function handleChatSend(
   data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[] },
   abortController: AbortController,
   lang: string
-): Promise<void> {
+): Promise<boolean> {
   const emit = createStreamEmit(stream);
   const t = i18next.getFixedT(lang);
   const { content, workingDirectory, sessionId, resume, permissionMode, model, images } = data;
@@ -1218,7 +1381,7 @@ async function handleChatSend(
         code: ERROR_CODES.VALIDATION_ERROR,
         message: validation.error!,
       });
-      return;
+      return false;
     }
   }
 
@@ -1228,7 +1391,7 @@ async function handleChatSend(
       code: ERROR_CODES.INVALID_WORKING_DIR,
       message: t('ws.error.projectPathNotFound'),
     });
-    return;
+    return false;
   }
 
   // Buffer the user's message so reconnecting clients can display it
@@ -1380,14 +1543,6 @@ async function handleChatSend(
 
       const sdkError = parseSDKError(error, lang);
 
-      if (isResuming && isSessionNotFoundError(error)) {
-        emit('error', {
-          code: ERROR_CODES.SESSION_NOT_FOUND,
-          message: t('ws.error.sessionNotFound'),
-        });
-        return;
-      }
-
       emit('error', {
         code: ERROR_CODES.CHAT_ERROR,
         message: sdkError.message,
@@ -1399,35 +1554,47 @@ async function handleChatSend(
       }
     };
 
-    await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
-      resetTimeout(`raw:${messageType}`);
-    });
+    // Attempt to send — if resume fails with session-not-found, retry without resume
+    try {
+      await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
+        resetTimeout(`raw:${messageType}`);
+      });
+    } catch (sendError) {
+      // Resume failed because session doesn't exist (e.g., first send was aborted before SDK created it).
+      // Retry once without resume so SDK creates a fresh session.
+      if (isResuming && sendError instanceof Error && isSessionNotFoundError(sendError)) {
+        log.info(`[CHAIN-DRAIN] resume failed (session not found), retrying without resume: sessionId=${sessionId}`);
+        const retryOptions = { ...chatOptions, resume: undefined, sessionId };
+        delete retryOptions.resume;
+        resetTimeout('resume-retry');
+        await chatService.sendMessageWithCallbacks(content, callbacks, retryOptions, canUseTool, (messageType: string) => {
+          resetTimeout(`raw:${messageType}`);
+        });
+      } else {
+        throw sendError;
+      }
+    }
+    return true;
   } catch (error) {
     const sdkError = parseSDKError(error, lang);
+    log.info(`[CHAIN-DRAIN] handleChatSend catch: sessionId=${stream.sessionId}, aborted=${abortController.signal.aborted}, reason=${abortController.signal.reason}, error=${sdkError.message.slice(0, 120)}`);
 
     if (sdkError instanceof AbortedError || abortController.signal.aborted) {
       if (abortController.signal.reason === 'user-abort' || abortController.signal.reason === 'another-client') {
-        return;
+        return false;
       }
       emit('error', {
         code: ERROR_CODES.TIMEOUT_ERROR,
         message: t('ws.error.timeout'),
       });
-      return;
-    }
-
-    if (isResuming && error instanceof Error && isSessionNotFoundError(error)) {
-      emit('error', {
-        code: ERROR_CODES.SESSION_NOT_FOUND,
-        message: t('ws.error.sessionNotFound'),
-      });
-      return;
+      return false;
     }
 
     emit('error', {
       code: ERROR_CODES.CHAT_ERROR,
       message: sdkError.message,
     });
+    return false;
   } finally {
     if (timeoutId) {
       clearTimeout(timeoutId);

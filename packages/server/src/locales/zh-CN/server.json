@@ -242,7 +242,8 @@
       "terminalAccessDenied": "出于安全考虑，不支持从本地网络外部访问终端",
       "terminalNotFound": "未找到终端",
       "ptySpawnError": "终端进程启动失败",
-      "chainMaxExceeded": "最多允许5个链项目。"
+      "chainContentTooLong": "链提示内容超过最大长度。",
+      "chainMaxExceeded": "最多允许10个链项目。"
     }
   },
   "pathGuard": {

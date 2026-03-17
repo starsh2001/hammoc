@@ -272,6 +272,23 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         paginationHasMore: response.pagination?.hasMore,
       });
 
+      // Silent fetch optimization: skip store update if messages haven't actually
+      // changed. Prevents new array reference → auto-scroll trigger on mobile
+      // resume where the same messages are re-fetched.
+      if (options?.silent && reconciledMessages.length === currentMessages.length) {
+        const isSame = reconciledMessages.every((msg, i) => {
+          const cur = currentMessages[i];
+          return cur && msg.type === cur.type && msg.timestamp === cur.timestamp && msg.content === cur.content;
+        });
+        if (isSame) {
+          debugLog.message('fetchMessages → silent skip (no change)', {
+            count: reconciledMessages.length,
+          });
+          set({ isLoading: false });
+          return;
+        }
+      }
+
       debugLog.message('DEDUP fetchMessages → setting messages', {
         serverCount: response.messages.length,
         reconciledCount: reconciledMessages.length,

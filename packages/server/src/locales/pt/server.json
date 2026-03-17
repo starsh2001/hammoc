@@ -242,7 +242,8 @@
       "terminalAccessDenied": "O acesso ao terminal não está disponível fora da rede local por motivos de segurança",
       "terminalNotFound": "Terminal não encontrado",
       "ptySpawnError": "Falha ao iniciar o processo do terminal",
-      "chainMaxExceeded": "Máximo de 5 itens na cadeia permitidos."
+      "chainContentTooLong": "O conteúdo do prompt da cadeia excede o comprimento máximo.",
+      "chainMaxExceeded": "Máximo de 10 itens na cadeia permitidos."
     }
   },
   "pathGuard": {

@@ -140,6 +140,8 @@ vi.mock('../../services/projectService.js', () => ({
   projectService: {
     resolveProjectPath: vi.fn().mockResolvedValue('/mock/project/path'),
     findProjectByPath: vi.fn().mockResolvedValue({ projectSlug: 'test-project' }),
+    readChainFailures: vi.fn().mockResolvedValue([]),
+    writeChainFailures: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -180,7 +182,7 @@ describe('WebSocket Chain Handler (Story 24.1)', () => {
   }
 
   beforeEach(async () => {
-    SESSION_ID = `test-chain-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    SESSION_ID = crypto.randomUUID();
     mockState.sendImpl = vi.fn().mockResolvedValue({});
     mockState.lastCtorArgs = undefined;
 
@@ -240,13 +242,13 @@ describe('WebSocket Chain Handler (Story 24.1)', () => {
       expect(update.items[0].status).toBe('pending');
     });
 
-    it('should reject when exceeding max 5 items', async () => {
+    it('should reject when exceeding max 10 items', async () => {
       clientSocket = await connectClient();
       clientSocket.emit('session:join', SESSION_ID);
       await new Promise((r) => setTimeout(r, 50));
 
-      // Add 5 items
-      for (let i = 0; i < 5; i++) {
+      // Add 10 items
+      for (let i = 0; i < 10; i++) {
         clientSocket.emit('chain:add', {
           sessionId: SESSION_ID,
           content: `Prompt ${i}`,
@@ -255,7 +257,7 @@ describe('WebSocket Chain Handler (Story 24.1)', () => {
       }
       await new Promise((r) => setTimeout(r, 100));
 
-      // 6th should trigger error
+      // 11th should trigger error
       const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
         clientSocket.on('error', (data) => resolve(data));
       });

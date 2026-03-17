@@ -365,7 +365,7 @@ export function ChatPage() {
 
       // Chain mode: send to server buffer. Server handles drain.
       if (chainMode) {
-        if (useChainStore.getState().chainItems.length >= 5) {
+        if (useChainStore.getState().chainItems.length >= 10) {
           return;
         }
         getSocket()?.emit('chain:add', {
@@ -485,18 +485,24 @@ export function ChatPage() {
           const searchParams = new URLSearchParams(window.location.search);
           const agentParam = searchParams.get('agent');
           const taskParam = searchParams.get('task');
+          const chainPrompts = searchParams.getAll('chain');
           if (agentParam && useMessageStore.getState().messages.length === 0) {
             window.history.replaceState(null, '', window.location.pathname);
             // Queue task command for prompt chain via server (sent after agent response completes)
             const wd = currentProject?.originalPath;
-            if (taskParam && sessionId && wd) {
-              getSocket()?.emit('chain:add', {
-                sessionId,
-                content: taskParam,
+            if (sessionId && wd) {
+              const chatState = useChatStore.getState();
+              const chainOpts = {
                 workingDirectory: wd,
-                permissionMode: useChatStore.getState().permissionMode,
-                model: useChatStore.getState().selectedModel,
-              });
+                permissionMode: chatState.permissionMode,
+                model: chatState.selectedModel,
+              };
+              if (taskParam) {
+                getSocket()?.emit('chain:add', { sessionId, content: taskParam, ...chainOpts });
+              }
+              for (const prompt of chainPrompts) {
+                getSocket()?.emit('chain:add', { sessionId, content: prompt, ...chainOpts });
+              }
             }
             handleSendMessageRef.current(agentParam);
           }
@@ -518,6 +524,7 @@ export function ChatPage() {
         msgCount: useMessageStore.getState().messages.length,
       });
       clearMessages();
+      useChainStore.getState().clearChainItems();
       const socket = getSocket();
       socket.emit('session:leave', sessionIdRef.current || '');
       if (useChatStore.getState().isStreaming) {
@@ -535,11 +542,15 @@ export function ChatPage() {
       // Leave the session room on the server so stale stream events stop arriving
       const socket = getSocket();
       socket.emit('session:leave', sessionId || '');
+      // Clear chain store immediately to avoid stale data during session switch
+      useChainStore.getState().clearChainItems();
       // Clear client-side streaming state (don't abort server stream — it continues in background)
       if (useChatStore.getState().isStreaming) {
         debugLog.chatpage('sessionId change cleanup → abortStreaming', { oldSessionId: sessionId });
         useChatStore.getState().abortStreaming();
       }
+      // Clear stale result error AFTER abort to prevent late events from re-setting it
+      useChatStore.setState({ lastResultError: null });
     };
   }, [sessionId]);
 
@@ -1068,7 +1079,7 @@ export function ChatPage() {
             chainMode={chainMode}
             onChainModeToggle={() => { if (!ctrlChainRef.current) setChainMode((prev) => !prev); }}
             chainCount={chainItems.length}
-            chainMax={5}
+            chainMax={10}
             getChainLength={getChainLength}
           />
         </InputArea>
@@ -1170,7 +1181,7 @@ export function ChatPage() {
           chainMode={chainMode}
           onChainModeToggle={() => { if (!ctrlChainRef.current) setChainMode((prev) => !prev); }}
           chainCount={chainItems.length}
-          chainMax={5}
+          chainMax={10}
           getChainLength={getChainLength}
         />
       </InputArea>
