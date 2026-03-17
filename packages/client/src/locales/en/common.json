@@ -502,7 +502,18 @@
       "scopeProject": "Project",
       "scopeGlobal": "Global",
       "noProjectTemplates": "No project templates",
-      "noGlobalTemplates": "No global templates"
+      "noGlobalTemplates": "No global templates",
+      "loadFromFile": "Load from file",
+      "savedTemplates": "Saved templates",
+      "saveAs": "Save as",
+      "tabLoad": "Load",
+      "tabEditor": "Editor",
+      "editBtn": "Edit",
+      "applyBtn": "Apply",
+      "chooseFile": "Choose file",
+      "overwriteConfirm": "A template with this name already exists. Overwrite?",
+      "saveSuccess": "Saved successfully",
+      "unsavedChanges": "You have unsaved changes. Discard them?"
     },
     "locked": {
       "confirmAbort": "Abort queue execution? Remaining items will be preserved in the queue.",
@@ -520,10 +531,7 @@
       "resumeQueue": "Resume queue",
       "abortQueue": "Abort queue",
       "queueEditor": "Queue editor"
-    },
-    "sourceInput": "Manual input",
-    "sourceFile": "File",
-    "sourceSaved": "Saved"
+    }
   },
   "panel": {
     "sessions": "Session list",

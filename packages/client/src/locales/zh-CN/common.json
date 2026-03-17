@@ -474,7 +474,18 @@
       "scopeProject": "项目",
       "scopeGlobal": "全局",
       "noProjectTemplates": "没有项目模板",
-      "noGlobalTemplates": "没有全局模板"
+      "noGlobalTemplates": "没有全局模板",
+      "loadFromFile": "从文件加载",
+      "savedTemplates": "已保存模板",
+      "saveAs": "另存为",
+      "tabLoad": "加载",
+      "tabEditor": "编辑器",
+      "editBtn": "编辑",
+      "applyBtn": "应用",
+      "chooseFile": "选择文件",
+      "overwriteConfirm": "已存在同名模板。是否覆盖？",
+      "saveSuccess": "保存成功",
+      "unsavedChanges": "有未保存的更改。是否放弃？"
     },
     "locked": {
       "confirmAbort": "中止队列执行？剩余项目将保留在队列中。",
@@ -493,10 +504,7 @@
       "abortQueue": "中止队列",
       "queueEditor": "队列编辑器"
     },
-    "fileReadError": "文件读取失败：{{name}}",
-    "sourceInput": "手动输入",
-    "sourceFile": "文件",
-    "sourceSaved": "已保存"
+    "fileReadError": "文件读取失败：{{name}}"
   },
   "panel": {
     "sessions": "会话列表",

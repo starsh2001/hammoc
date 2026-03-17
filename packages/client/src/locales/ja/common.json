@@ -474,7 +474,18 @@
       "scopeProject": "プロジェクト",
       "scopeGlobal": "グローバル",
       "noProjectTemplates": "プロジェクトテンプレートがありません",
-      "noGlobalTemplates": "グローバルテンプレートがありません"
+      "noGlobalTemplates": "グローバルテンプレートがありません",
+      "loadFromFile": "ファイルから読み込む",
+      "savedTemplates": "保存済みテンプレート",
+      "saveAs": "名前を付けて保存",
+      "tabLoad": "読み込み",
+      "tabEditor": "エディター",
+      "editBtn": "編集",
+      "applyBtn": "適用",
+      "chooseFile": "ファイルを選択",
+      "overwriteConfirm": "同じ名前のテンプレートが既に存在します。上書きしますか？",
+      "saveSuccess": "保存しました",
+      "unsavedChanges": "保存されていない変更があります。破棄しますか？"
     },
     "locked": {
       "confirmAbort": "キューの実行を中止しますか？残りのアイテムはキューに保持されます。",
@@ -493,10 +504,7 @@
       "abortQueue": "キューを中止",
       "queueEditor": "キューエディタ"
     },
-    "fileReadError": "ファイルの読み込みに失敗：{{name}}",
-    "sourceInput": "手動入力",
-    "sourceFile": "ファイル",
-    "sourceSaved": "保存済み"
+    "fileReadError": "ファイルの読み込みに失敗：{{name}}"
   },
   "panel": {
     "sessions": "セッション一覧",
