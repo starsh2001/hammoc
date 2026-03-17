@@ -119,6 +119,11 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
     if (rec.taskCommand) {
       params.set('task', rec.taskCommand);
     }
+    if (rec.chainPrompts) {
+      for (const prompt of rec.chainPrompts) {
+        params.append('chain', prompt);
+      }
+    }
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   };
 

@@ -75,7 +75,9 @@
   },
   "story": {},
   "workflow": {
-    "validateStory": "Validar story",
+    "validateStoryOnly": "Validar story (sem correção)",
+    "validateAndFixStory": "Validar e corrigir story",
+    "validateFixPrompt": "Por favor, corrija todos os Critical Issues, Should-Fix Issues e Nice-to-Have Issues identificados nos resultados de validação acima.",
     "startDevelopment": "Iniciar desenvolvimento",
     "resumeDevelopment": "Retomar desenvolvimento",
     "requestQA": "Solicitar QA",
