@@ -468,7 +468,13 @@
       "templateSaveFailed": "保存模板失败",
       "templateUpdateFailed": "更新模板失败",
       "templateDeleteConfirm": "确定要删除此模板吗？",
-      "templateDeleteFailed": "删除模板失败"
+      "templateDeleteFailed": "删除模板失败",
+      "projectTemplates": "项目",
+      "globalTemplates": "全局",
+      "scopeProject": "项目",
+      "scopeGlobal": "全局",
+      "noProjectTemplates": "没有项目模板",
+      "noGlobalTemplates": "没有全局模板"
     },
     "locked": {
       "confirmAbort": "中止队列执行？剩余项目将保留在队列中。",

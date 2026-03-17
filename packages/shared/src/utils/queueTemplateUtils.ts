@@ -66,7 +66,7 @@ export function generateQueueFromTemplate(
 
   for (const story of stories) {
     if (insertPauseBetweenEpics && story.epicNum !== prevEpicNum) {
-      blocks.push(`@pause Epic ${prevEpicNum} 완료`);
+      blocks.push(`@pause Epic ${prevEpicNum} completed`);
       prevEpicNum = story.epicNum;
     }
 

@@ -468,7 +468,13 @@
       "templateSaveFailed": "Error al guardar la plantilla",
       "templateUpdateFailed": "Error al actualizar la plantilla",
       "templateDeleteConfirm": "¿Eliminar esta plantilla?",
-      "templateDeleteFailed": "Error al eliminar la plantilla"
+      "templateDeleteFailed": "Error al eliminar la plantilla",
+      "projectTemplates": "Proyecto",
+      "globalTemplates": "Global",
+      "scopeProject": "Proyecto",
+      "scopeGlobal": "Global",
+      "noProjectTemplates": "No hay plantillas de proyecto",
+      "noGlobalTemplates": "No hay plantillas globales"
     },
     "locked": {
       "confirmAbort": "¿Cancelar la ejecución de la cola? Los elementos restantes se conservarán en la cola.",

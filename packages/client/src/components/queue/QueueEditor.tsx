@@ -325,6 +325,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           onReorderItems={runner.reorderItems}
           onDismiss={runner.dismiss}
           isReordering={isReordering}
+          isCompleted={runner.isCompleted}
         />
       )}
 

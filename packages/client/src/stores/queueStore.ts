@@ -132,6 +132,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
         update.isRunning = false;
         update.isPaused = false;
         update.isCompleted = true;
+        update.lockedSessionId = null;
         break;
       case 'aborted':
         update.isRunning = false;
@@ -140,11 +141,13 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
         update.isErrored = false;
         update.errorItem = null;
         update.pauseReason = undefined;
+        update.lockedSessionId = null;
         break;
       case 'error':
         update.isRunning = false;
         update.isPaused = false;
         update.isErrored = true;
+        update.lockedSessionId = null;
         break;
     }
 

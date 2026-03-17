@@ -157,13 +157,17 @@ export class QueueService {
     this.emitProgress('aborted');
   }
 
-  /** Dismiss the completed/errored terminal state banner */
+  /** Dismiss the completed/errored terminal state banner and release held data */
   dismiss(): void {
     log.info(`DISMISS: wasCompleted=${this._isCompleted}, wasErrored=${this._isErrored}`);
     this._isCompleted = false;
     this._isErrored = false;
     this.lastError = null;
     this._finalTotalItems = 0;
+    // Release memory held by completed run data
+    this.items = [];
+    this.completedSessionIds = new Map();
+    this.chatService = null;
   }
 
   getState() {

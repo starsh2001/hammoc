@@ -4,15 +4,11 @@
  */
 
 import type { Request, Response } from 'express';
-import { z } from 'zod';
 import { QueueService } from '../services/queueService.js';
 import { projectService } from '../services/projectService.js';
 import { notificationService } from '../services/notificationService.js';
 import { preferencesService } from '../services/preferencesService.js';
 import { getIO } from '../handlers/websocket.js';
-import { createLogger } from '../utils/logger.js';
-
-const log = createLogger('queueController');
 
 // Per-project QueueService registry — only one queue per project
 const queueInstances = new Map<string, QueueService>();
@@ -31,107 +27,6 @@ export function getOrCreateQueueService(projectSlug: string): QueueService {
     queueInstances.set(projectSlug, instance);
   }
   return instance;
-}
-
-// Zod validation schemas
-const startQueueSchema = z.object({
-  items: z.array(z.object({
-    prompt: z.string(),
-    isNewSession: z.boolean(),
-    isBreakpoint: z.boolean().optional(),
-    saveSessionName: z.string().optional(),
-    loadSessionName: z.string().optional(),
-    isMultiline: z.boolean().optional(),
-    modelName: z.string().optional(),
-    delayMs: z.number().optional(),
-  })).min(1),
-  sessionId: z.string().optional(),
-});
-
-export async function startQueue(req: Request, res: Response): Promise<void> {
-  const projectSlug = req.params.projectSlug;
-  if (!projectSlug) {
-    res.status(400).json({ error: req.t!('queue.validation.slugRequired') });
-    return;
-  }
-
-  const parseResult = startQueueSchema.safeParse(req.body);
-  if (!parseResult.success) {
-    const firstIssue = parseResult.error.issues[0];
-    const isItemsEmpty = firstIssue?.code === 'too_small' && firstIssue?.path?.[0] === 'items';
-    const errorKey = isItemsEmpty ? 'queue.validation.itemsRequired' : 'queue.validation.invalidInput';
-    res.status(400).json({ error: req.t!(errorKey, { value: firstIssue?.message }) });
-    return;
-  }
-
-  const queueService = getOrCreateQueueService(projectSlug);
-  if (queueService.isRunning) {
-    res.status(409).json({ error: req.t!('queue.error.alreadyRunning') });
-    return;
-  }
-
-  const { items, sessionId } = parseResult.data;
-  // Start async, don't await — execution is long-running
-  queueService.start(items, projectSlug, sessionId).catch((err) => {
-    log.error('Queue execution error:', err);
-  });
-
-  res.status(200).json({ status: 'started', totalItems: items.length });
-}
-
-export async function pauseQueue(req: Request, res: Response): Promise<void> {
-  const projectSlug = req.params.projectSlug;
-  if (!projectSlug) {
-    res.status(400).json({ error: req.t!('queue.validation.slugRequired') });
-    return;
-  }
-
-  const queueService = queueInstances.get(projectSlug);
-  if (!queueService || !queueService.isRunning) {
-    res.status(404).json({ error: req.t!('queue.error.noRunningQueue') });
-    return;
-  }
-
-  await queueService.pause();
-  res.status(200).json({ status: 'paused' });
-}
-
-export async function resumeQueue(req: Request, res: Response): Promise<void> {
-  const projectSlug = req.params.projectSlug;
-  if (!projectSlug) {
-    res.status(400).json({ error: req.t!('queue.validation.slugRequired') });
-    return;
-  }
-
-  const queueService = queueInstances.get(projectSlug);
-  if (!queueService || !queueService.isRunning) {
-    res.status(404).json({ error: req.t!('queue.error.noRunningQueue') });
-    return;
-  }
-
-  // Resume async — execution continues in background
-  queueService.resume().catch((err) => {
-    log.error('Queue resume error:', err);
-  });
-
-  res.status(200).json({ status: 'resumed' });
-}
-
-export async function abortQueue(req: Request, res: Response): Promise<void> {
-  const projectSlug = req.params.projectSlug;
-  if (!projectSlug) {
-    res.status(400).json({ error: req.t!('queue.validation.slugRequired') });
-    return;
-  }
-
-  const queueService = queueInstances.get(projectSlug);
-  if (!queueService || !queueService.isRunning) {
-    res.status(404).json({ error: req.t!('queue.error.noRunningQueue') });
-    return;
-  }
-
-  await queueService.abort();
-  res.status(200).json({ status: 'aborted' });
 }
 
 export async function getQueueStatus(req: Request, res: Response): Promise<void> {

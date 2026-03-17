@@ -106,7 +106,7 @@ describe('generateQueueFromTemplate', () => {
     expect(lines).toEqual([
       '/dev 1.1',
       '/dev 1.2',
-      '@pause Epic 1 완료',
+      '@pause Epic 1 completed',
       '/dev 2.1',
     ]);
   });

@@ -468,7 +468,13 @@
       "templateSaveFailed": "テンプレートの保存に失敗しました",
       "templateUpdateFailed": "テンプレートの更新に失敗しました",
       "templateDeleteConfirm": "このテンプレートを削除しますか？",
-      "templateDeleteFailed": "テンプレートの削除に失敗しました"
+      "templateDeleteFailed": "テンプレートの削除に失敗しました",
+      "projectTemplates": "プロジェクト",
+      "globalTemplates": "グローバル",
+      "scopeProject": "プロジェクト",
+      "scopeGlobal": "グローバル",
+      "noProjectTemplates": "プロジェクトテンプレートがありません",
+      "noGlobalTemplates": "グローバルテンプレートがありません"
     },
     "locked": {
       "confirmAbort": "キューの実行を中止しますか？残りのアイテムはキューに保持されます。",

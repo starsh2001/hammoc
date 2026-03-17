@@ -4,23 +4,28 @@
  */
 
 import { Router } from 'express';
-import { startQueue, pauseQueue, resumeQueue, abortQueue, getQueueStatus } from '../controllers/queueController.js';
-import { listTemplates, createTemplate, updateTemplate, deleteTemplate, extractStories } from '../controllers/queueTemplateController.js';
+import { getQueueStatus } from '../controllers/queueController.js';
+import {
+  listTemplates, createTemplate, updateTemplate, deleteTemplate, extractStories,
+  listGlobalTemplates, createGlobalTemplate, updateGlobalTemplate, deleteGlobalTemplate,
+} from '../controllers/queueTemplateController.js';
 
 const router = Router();
 
-// Queue execution routes (Story 15.2)
-router.post('/:projectSlug/queue/start', startQueue);
-router.post('/:projectSlug/queue/pause', pauseQueue);
-router.post('/:projectSlug/queue/resume', resumeQueue);
-router.post('/:projectSlug/queue/abort', abortQueue);
+// Queue status route (execution control is handled via WebSocket)
 router.get('/:projectSlug/queue/status', getQueueStatus);
 
-// Queue template routes (Story 15.5)
+// Project-level template routes (Story 15.5)
 router.get('/:projectSlug/queue/stories', extractStories);
 router.get('/:projectSlug/queue/templates', listTemplates);
 router.post('/:projectSlug/queue/templates', createTemplate);
 router.put('/:projectSlug/queue/templates/:id', updateTemplate);
 router.delete('/:projectSlug/queue/templates/:id', deleteTemplate);
+
+// Global template routes
+router.get('/:projectSlug/queue/global-templates', listGlobalTemplates);
+router.post('/:projectSlug/queue/global-templates', createGlobalTemplate);
+router.put('/:projectSlug/queue/global-templates/:id', updateGlobalTemplate);
+router.delete('/:projectSlug/queue/global-templates/:id', deleteGlobalTemplate);
 
 export default router;

@@ -16,6 +16,8 @@ export interface UseQueueRunnerReturn {
   isRunning: boolean;
   isPaused: boolean;
   isStarting: boolean;
+  /** Server-persisted: queue finished successfully */
+  isCompleted: boolean;
   progress: { current: number; total: number };
   lockedSessionId: string | null;
   pauseReason: string | undefined;
@@ -40,6 +42,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     isRunning,
     isPaused,
     isStarting,
+    isCompleted,
     currentIndex,
     totalItems,
     lockedSessionId,
@@ -51,6 +54,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     isRunning: s.isRunning,
     isPaused: s.isPaused,
     isStarting: s.isStarting,
+    isCompleted: s.isCompleted,
     currentIndex: s.currentIndex,
     totalItems: s.totalItems,
     lockedSessionId: s.lockedSessionId,
@@ -126,8 +130,11 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
   }, [projectSlug]);
 
   const dismiss = useCallback(() => {
+    const socket = getSocket();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (socket as any).emit('queue:dismiss', { projectSlug });
     useQueueStore.getState().reset();
-  }, []);
+  }, [projectSlug]);
 
   const removeItem = useCallback((itemIndex: number) => {
     const socket = getSocket();
@@ -153,6 +160,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     isRunning,
     isPaused,
     isStarting,
+    isCompleted,
     progress: { current: currentIndex, total: totalItems },
     lockedSessionId,
     pauseReason,
