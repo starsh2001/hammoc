@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
 import { cliService } from '../services/cliService.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('cliController');
 
 /**
  * Get CLI status including installation, authentication, and API key status
@@ -11,6 +14,12 @@ export async function getCliStatus(
 ): Promise<void> {
   try {
     const status = await cliService.getStatus();
+    log.info('CLI status check result:', {
+      cliInstalled: status.cliInstalled,
+      authenticated: status.authenticated,
+      apiKeySet: status.apiKeySet,
+      error: status.error,
+    });
 
     if (status.error) {
       // Return status with error info (still 200, as this is informational)

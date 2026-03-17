@@ -12,7 +12,7 @@ import { useEffect, useState, useCallback, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { api } from '../services/api/client';
+import { api, ApiError } from '../services/api/client';
 import type { CLIStatusResponse } from '@hammoc/shared';
 import { CliStatusProvider } from '../contexts/CliStatusContext';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -76,19 +76,45 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
     setCLILoading(true);
     setCLIError(null);
-    try {
-      const status = await api.get<CLIStatusResponse>('/cli-status');
-      setCliStatus(status);
-      cachedCliStatus = status;
-      hasFetchedCliStatus = true;
-      saveCachedCliStatus(status);
-      const needsSetup = !status.cliInstalled || !status.authenticated;
-      setNeedsOnboarding(needsSetup);
-    } catch (err) {
-      setCLIError(err instanceof Error ? err.message : t('error.cliStatusFailed'));
-      setNeedsOnboarding(true); // 에러 시 안전하게 Onboarding으로
-    } finally {
-      setCLILoading(false);
+
+    // Retry up to 2 times on network errors (server may not be ready yet)
+    const MAX_RETRIES = 2;
+    const RETRY_DELAY_MS = 1500;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const status = await api.get<CLIStatusResponse>('/cli-status');
+        console.log('[AuthGuard] CLI status response:', status);
+        setCliStatus(status);
+        cachedCliStatus = status;
+        hasFetchedCliStatus = true;
+        saveCachedCliStatus(status);
+        const needsSetup = !status.cliInstalled || !status.authenticated;
+        setNeedsOnboarding(needsSetup);
+        setCLILoading(false);
+        return;
+      } catch (err) {
+        console.error('[AuthGuard] CLI status fetch failed (attempt', attempt + 1, '):', err);
+
+        // 401 = session expired → force re-check auth (will redirect to login)
+        if (err instanceof ApiError && err.status === 401) {
+          console.warn('[AuthGuard] Session expired during CLI status check, re-checking auth');
+          setCLILoading(false);
+          useAuthStore.getState().recheckAuth();
+          return;
+        }
+
+        if (attempt < MAX_RETRIES) {
+          // Wait before retrying
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+          continue;
+        }
+        // All retries exhausted — show error but don't redirect to onboarding
+        // for transient network failures
+        setCLIError(err instanceof Error ? err.message : t('error.cliStatusFailed'));
+        setNeedsOnboarding(true);
+        setCLILoading(false);
+      }
     }
   }, []);
 

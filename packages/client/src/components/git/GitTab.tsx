@@ -202,7 +202,7 @@ export function GitTab() {
   }
 
   // Loading state before first status
-  if (!status && statusLoading) {
+  if (!status) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
