@@ -62,21 +62,30 @@ function spawnAndExit(): void {
   // Direct detached spawn with stdio:'ignore' causes the inner npm process
   // to inherit NUL handles, which can silently fail on both Windows and Unix.
   const isWin = process.platform === 'win32';
-  const ext = isWin ? '.bat' : '.sh';
-  const scriptPath = path.join(os.tmpdir(), `hammoc-restart${ext}`);
+  const nodeDir = path.dirname(process.execPath);
 
   if (isWin) {
-    // Prepend node/npm directory to PATH so the new cmd window can find them
-    const nodeDir = path.dirname(process.execPath);
+    const scriptPath = path.join(os.tmpdir(), 'hammoc-restart.bat');
+    // Build a robust PATH: include node dir + full Windows system paths
+    // so the script works regardless of the parent shell (cmd, Git Bash, etc.)
+    const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+    const robustPath = [
+      nodeDir,
+      `${systemRoot}\\System32`,
+      `${systemRoot}`,
+    ].join(';');
+
     fs.writeFileSync(scriptPath, [
       '@echo off',
-      `set "PATH=${nodeDir};%PATH%"`,
+      `set "PATH=${robustPath};%PATH%"`,
       'timeout /t 2 /nobreak >nul',
       `cd /d "${MONOREPO_ROOT}"`,
       `"${npmPath}" run start`,
     ].join('\r\n'));
 
-    const child = spawn('cmd.exe', ['/c', 'start', '""', scriptPath], {
+    // Use COMSPEC (full path to cmd.exe) so spawn works from any shell env
+    const comspec = process.env.COMSPEC || path.join(systemRoot, 'System32', 'cmd.exe');
+    const child = spawn(comspec, ['/c', 'start', '""', scriptPath], {
       detached: true,
       stdio: 'ignore',
     });
@@ -86,8 +95,10 @@ function spawnAndExit(): void {
     });
     child.unref();
   } else {
+    const scriptPath = path.join(os.tmpdir(), 'hammoc-restart.sh');
     fs.writeFileSync(scriptPath, [
       '#!/bin/sh',
+      `export PATH="${nodeDir}:$PATH"`,
       'sleep 2',
       `cd "${MONOREPO_ROOT}"`,
       `"${npmPath}" run start`,
