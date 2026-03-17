@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { execSync, exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -10,6 +10,65 @@ const execAsync = promisify(exec);
 // Timeout setting (5 seconds)
 const CLI_TIMEOUT = 5000;
 
+// Resolve a known-good shell on Windows (full path, works from any parent shell)
+function getWin32Shell(): string {
+  if (process.env.COMSPEC) return process.env.COMSPEC;
+  const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+  return path.join(systemRoot, 'System32', 'cmd.exe');
+}
+
+/**
+ * Resolve the absolute path of the `claude` executable once at startup.
+ * Caches the result so subsequent checks don't depend on PATH at all.
+ */
+let resolvedClaudePath: string | null = null;
+
+function resolveClaudePath(): string | null {
+  if (resolvedClaudePath !== null) return resolvedClaudePath;
+
+  const isWin = process.platform === 'win32';
+
+  // 1) Try `where` (Windows) / `which` (Unix) via a known-good shell
+  try {
+    const cmd = isWin ? 'where claude' : 'which claude';
+    const shell = isWin ? getWin32Shell() : undefined;
+    const result = execSync(cmd, { timeout: CLI_TIMEOUT, ...(shell && { shell }), encoding: 'utf-8' });
+    const firstLine = result.trim().split(/\r?\n/)[0];
+    if (firstLine && fs.existsSync(firstLine)) {
+      resolvedClaudePath = firstLine;
+      console.log('[cliService] Resolved claude path:', resolvedClaudePath);
+      return resolvedClaudePath;
+    }
+  } catch { /* not in PATH */ }
+
+  // 2) Check common npm global locations
+  const candidates: string[] = [];
+  if (isWin) {
+    const appData = process.env.APPDATA;
+    if (appData) candidates.push(path.join(appData, 'npm', 'claude.cmd'));
+    // npm prefix based on current node location
+    const nodeDir = path.dirname(process.execPath);
+    candidates.push(path.join(nodeDir, 'claude.cmd'));
+  } else {
+    candidates.push('/usr/local/bin/claude', '/usr/bin/claude');
+    // npm global bin from node location
+    const nodeDir = path.dirname(process.execPath);
+    candidates.push(path.join(nodeDir, 'claude'));
+  }
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      resolvedClaudePath = candidate;
+      console.log('[cliService] Resolved claude path (candidate):', resolvedClaudePath);
+      return resolvedClaudePath;
+    }
+  }
+
+  console.warn('[cliService] Could not resolve claude executable path');
+  resolvedClaudePath = ''; // empty = not found, but don't retry every time
+  return null;
+}
+
 /**
  * Service for checking Claude CLI installation and authentication status
  */
@@ -19,20 +78,14 @@ export class CliService {
    * @returns true if CLI is installed, false otherwise
    */
   async checkCliInstalled(): Promise<boolean> {
+    const claudePath = resolveClaudePath();
+    if (!claudePath) return false;
+
     try {
-      await execAsync('claude --version', { timeout: CLI_TIMEOUT });
+      const shell = process.platform === 'win32' ? getWin32Shell() : undefined;
+      await execAsync(`"${claudePath}" --version`, { timeout: CLI_TIMEOUT, ...(shell && { shell }) });
       return true;
-    } catch (error: unknown) {
-      // ENOENT means CLI is not found in PATH
-      if (
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'ENOENT'
-      ) {
-        return false;
-      }
-      // Command execution failed (e.g., timeout, other errors)
-      // Treat as not installed if we can't verify
+    } catch {
       return false;
     }
   }
@@ -79,10 +132,9 @@ export class CliService {
     try {
       response.cliInstalled = await this.checkCliInstalled();
 
-      // Only check authentication if CLI is installed
-      if (response.cliInstalled) {
-        response.authenticated = await this.checkAuthentication();
-      }
+      // Always check authentication (filesystem check) independently of CLI PATH status.
+      // CLI may not be in PATH but credentials can still exist.
+      response.authenticated = await this.checkAuthentication();
 
       // API key can be checked regardless of CLI installation
       response.apiKeySet = await this.checkApiKey();

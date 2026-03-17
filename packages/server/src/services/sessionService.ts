@@ -741,11 +741,12 @@ export class SessionService {
     const endIndex = Math.max(0, total - offset);
     const paginated = transformed.slice(startIndex, endIndex);
 
-    // Scan full message list (reverse) for last slash command in user messages
-    // Used by client to detect active agent even when first message is not loaded
+    // Scan full message list (reverse) for last agent command in user messages.
+    // Must match agent command pattern (:agents:), not any slash command —
+    // otherwise non-agent commands like /commit would shadow the real agent.
     let lastAgentCommand: string | null = null;
     for (let i = transformed.length - 1; i >= 0; i--) {
-      if (transformed[i].type === 'user' && transformed[i].content.startsWith('/')) {
+      if (transformed[i].type === 'user' && transformed[i].content.includes(':agents:')) {
         lastAgentCommand = transformed[i].content;
         break;
       }

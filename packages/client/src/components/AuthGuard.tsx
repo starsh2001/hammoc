@@ -36,7 +36,7 @@ function loadCachedCliStatus(): CLIStatusResponse | null {
     const { status, timestamp } = JSON.parse(raw);
     if (Date.now() - timestamp > SESSION_CACHE_MAX_AGE_MS) return null;
     // Only trust cache if CLI was ready (don't cache failure states)
-    if (status?.cliInstalled && status?.authenticated) return status;
+    if (status?.authenticated || status?.apiKeySet) return status;
     return null;
   } catch {
     return null;
@@ -89,7 +89,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
         cachedCliStatus = status;
         hasFetchedCliStatus = true;
         saveCachedCliStatus(status);
-        const needsSetup = !status.cliInstalled || !status.authenticated;
+        // Only require onboarding if neither authenticated nor API key is set.
+        // cliInstalled can be false due to PATH issues even when CLI is actually present.
+        const needsSetup = !status.authenticated && !status.apiKeySet;
         setNeedsOnboarding(needsSetup);
         setCLILoading(false);
         return;
@@ -110,9 +112,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
           continue;
         }
         // All retries exhausted — show error but don't redirect to onboarding
-        // for transient network failures
+        // for transient network failures (e.g. server just restarted)
         setCLIError(err instanceof Error ? err.message : t('error.cliStatusFailed'));
-        setNeedsOnboarding(true);
+        setNeedsOnboarding(false);
         setCLILoading(false);
       }
     }
@@ -179,7 +181,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     isLoading: cliLoading,
     error: cliError,
     refetch: fetchCliStatus,
-    isReady: cliStatus?.cliInstalled === true && cliStatus?.authenticated === true,
+    isReady: cliStatus?.authenticated === true || cliStatus?.apiKeySet === true,
   };
 
   return (
