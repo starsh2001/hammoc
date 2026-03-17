@@ -7,6 +7,7 @@
 import cookieSession from 'cookie-session';
 import { RequestHandler } from 'express';
 import { AuthConfigService } from '../services/authConfigService.js';
+import { config } from '../config/index.js';
 
 export const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -35,6 +36,7 @@ export async function createSessionMiddleware(): Promise<RequestHandler> {
     maxAge: THIRTY_DAYS_MS,
     httpOnly: true,
     sameSite: 'lax',
-    secure: false, // localhost only
+    // Enable secure cookies when behind a TLS-terminating proxy (Cloudflare, nginx, etc.)
+    secure: config.server.trustProxy,
   }) as unknown as RequestHandler;
 }

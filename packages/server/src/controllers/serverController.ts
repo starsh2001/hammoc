@@ -4,20 +4,30 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { isLocalIP } from '../utils/networkUtils.js';
+import { isLocalIP, extractRequestIP } from '../utils/networkUtils.js';
 import { config } from '../config/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Monorepo root: packages/server/src/controllers → ../../../..  (also works from dist/controllers)
 const MONOREPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
-// Resolve npm absolute path once at startup to avoid intermittent PATH issues on Windows
+// Resolve npm absolute path once at startup.
+// Prefer deterministic process.execPath-based resolution (node and npm are co-located)
+// over shell-based 'where' which can fail in MINGW64 or return non-.cmd entries.
 let npmPath = 'npm';
-try {
-  const cmd = process.platform === 'win32' ? 'where npm' : 'which npm';
-  npmPath = execSync(cmd, { encoding: 'utf-8', timeout: 5000 }).trim().split(/\r?\n/)[0];
-} catch {
-  // Fallback to bare 'npm' and rely on shell PATH
+if (process.platform === 'win32') {
+  const candidate = path.join(path.dirname(process.execPath), 'npm.cmd');
+  if (fs.existsSync(candidate)) {
+    npmPath = candidate;
+  } else {
+    try {
+      npmPath = execSync('where npm.cmd', { encoding: 'utf-8', timeout: 5000 }).trim().split(/\r?\n/)[0];
+    } catch { /* keep bare 'npm' fallback */ }
+  }
+} else {
+  try {
+    npmPath = execSync('which npm', { encoding: 'utf-8', timeout: 5000 }).trim().split(/\r?\n/)[0];
+  } catch { /* keep bare 'npm' fallback */ }
 }
 
 function getLocalNetworkIP(): string | null {
@@ -56,8 +66,11 @@ function spawnAndExit(): void {
   const scriptPath = path.join(os.tmpdir(), `hammoc-restart${ext}`);
 
   if (isWin) {
+    // Prepend node/npm directory to PATH so the new cmd window can find them
+    const nodeDir = path.dirname(process.execPath);
     fs.writeFileSync(scriptPath, [
       '@echo off',
+      `set "PATH=${nodeDir};%PATH%"`,
       'timeout /t 2 /nobreak >nul',
       `cd /d "${MONOREPO_ROOT}"`,
       `"${npmPath}" run start`,
@@ -110,9 +123,9 @@ export const serverController = {
     res.json({ isDevMode, version, packageName: name, hostname, host, port, localIP });
   },
 
-  /** POST /api/server/restart - rebuild & restart (dev only, local only) */
+  /** POST /api/server/restart - rebuild & restart (dev only, local network only) */
   async restart(req: Request, res: Response): Promise<void> {
-    const clientIP = req.socket.remoteAddress || '';
+    const clientIP = extractRequestIP(req);
     if (!isLocalIP(clientIP)) {
       res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Local access only' } });
       return;
@@ -141,9 +154,9 @@ export const serverController = {
     });
   },
 
-  /** GET /api/server/check-update - check npm registry for newer version (local only) */
+  /** GET /api/server/check-update - check npm registry for newer version (local network only) */
   async checkUpdate(req: Request, res: Response): Promise<void> {
-    const clientIP = req.socket.remoteAddress || '';
+    const clientIP = extractRequestIP(req);
     if (!isLocalIP(clientIP)) {
       res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Local access only' } });
       return;
@@ -168,9 +181,9 @@ export const serverController = {
     });
   },
 
-  /** POST /api/server/update - npm update & restart (non-dev only, local only) */
+  /** POST /api/server/update - npm update & restart (non-dev only, local network only) */
   async update(req: Request, res: Response): Promise<void> {
-    const clientIP = req.socket.remoteAddress || '';
+    const clientIP = extractRequestIP(req);
     if (!isLocalIP(clientIP)) {
       res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Local access only' } });
       return;

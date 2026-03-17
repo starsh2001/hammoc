@@ -24,11 +24,14 @@ if (args.includes('--help') || args.includes('-h')) {
   Usage: hammoc [options]
 
   Options:
-    --port <number>   Port to listen on (default: 3000, env: PORT)
-    --host <string>   Host to bind to (default: 0.0.0.0, env: HOST)
-    --reset-password  Reset the admin password
-    -h, --help        Show this help message
-    -v, --version     Show version number
+    --port <number>        Port to listen on (default: 3000, env: PORT)
+    --host <string>        Host to bind to (default: 0.0.0.0, env: HOST)
+    --trust-proxy          Enable reverse proxy support (env: TRUST_PROXY)
+    --cors-origin <url>    Restrict CORS to specific origin (env: CORS_ORIGIN)
+    --rate-limit <number>  Requests per minute per IP (default: 200, env: RATE_LIMIT)
+    --reset-password       Reset the admin password
+    -h, --help             Show this help message
+    -v, --version          Show version number
   `);
   process.exit(0);
 }
@@ -49,6 +52,20 @@ if (portIndex !== -1 && args[portIndex + 1]) {
 const hostIndex = args.indexOf('--host');
 if (hostIndex !== -1 && args[hostIndex + 1]) {
   process.env.HOST = args[hostIndex + 1];
+}
+
+if (args.includes('--trust-proxy')) {
+  process.env.TRUST_PROXY = 'true';
+}
+
+const corsIndex = args.indexOf('--cors-origin');
+if (corsIndex !== -1 && args[corsIndex + 1]) {
+  process.env.CORS_ORIGIN = args[corsIndex + 1];
+}
+
+const rateLimitIndex = args.indexOf('--rate-limit');
+if (rateLimitIndex !== -1 && args[rateLimitIndex + 1]) {
+  process.env.RATE_LIMIT = args[rateLimitIndex + 1];
 }
 
 // Always run in production mode

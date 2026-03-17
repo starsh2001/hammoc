@@ -57,11 +57,14 @@ Open http://localhost:3000 in your browser. First launch guides you through pass
 hammoc [options]
 
 Options:
-  --port <number>   Port to listen on (default: 3000, env: PORT)
-  --host <string>   Host to bind to (default: 0.0.0.0, env: HOST)
-  --reset-password  Reset the admin password
-  -h, --help        Show this help message
-  -v, --version     Show version number
+  --port <number>        Port to listen on (default: 3000, env: PORT)
+  --host <string>        Host to bind to (default: 0.0.0.0, env: HOST)
+  --trust-proxy          Enable reverse proxy support (env: TRUST_PROXY)
+  --cors-origin <url>    Restrict CORS to specific origin (env: CORS_ORIGIN)
+  --rate-limit <number>  Requests per minute per IP (default: 200, env: RATE_LIMIT)
+  --reset-password       Reset the admin password
+  -h, --help             Show this help message
+  -v, --version          Show version number
 ```
 
 ### Mobile Access
@@ -77,7 +80,29 @@ Hammoc can be installed as a standalone app on your PC or mobile device.
 
 > ⚠️ **Security Notice**
 >
-> Hammoc has not undergone a formal security audit. Always run it on a **trusted local network** or behind a **trusted VPN** (e.g., Tailscale, WireGuard). Do **not** expose Hammoc to the public internet.
+> Hammoc is designed for **local network / VPN use**. While it includes security hardening for external exposure (see [Remote Access](#remote-access) below), it has not undergone a formal security audit. For maximum safety, run behind a **trusted VPN** (e.g., Tailscale, WireGuard).
+
+### Remote Access
+
+If you need to expose Hammoc through a reverse proxy (Cloudflare Tunnel, nginx, etc.):
+
+```bash
+npx hammoc --trust-proxy --cors-origin https://hammoc.yourdomain.com
+```
+
+This enables:
+- **Proxy header support** — Correctly identifies client IPs behind the proxy (CF-Connecting-IP, X-Forwarded-For, X-Real-IP)
+- **Secure cookies** — Session cookies are set with `Secure` flag for HTTPS
+- **CORS restriction** — Only the specified origin can make authenticated requests
+- **Rate limiting** — 200 requests/min per IP (adjust with `--rate-limit`)
+
+**Security features (always active):**
+- Helmet.js security headers (CSP, X-Frame-Options, HSTS, X-Content-Type-Options)
+- Server management APIs restricted to loopback only (127.0.0.1)
+- Terminal access restricted to local network IPs
+- IP validation with strict format checking and `net.isIP()` verification
+- XFF spoofing protection (rightmost IP parsing)
+- Debug endpoints disabled in production
 
 ---
 
@@ -104,7 +129,8 @@ Real-time conversations with Claude through a rich web UI.
 - **Diff viewer** — Side-by-side file diff display for code changes
 - **Extended thinking** — View Claude's reasoning process in collapsible blocks
 - **Prompt history** — Navigate previous inputs with arrow keys
-- **Prompt chaining** — Queue up to 5 prompts for sequential execution
+- **Prompt chaining** — Queue up to 10 prompts for sequential execution (server-synced, multi-browser)
+- **Voice input** — Dictate messages using browser speech recognition (Chrome, Edge, Safari)
 - **Context usage monitor** — Track token usage and cost in real-time
 - **Abort generation** — Stop responses with the abort button or ESC key
 
@@ -170,13 +196,13 @@ Automate repetitive prompt sequences.
 - **Execution control** — Start, pause, resume, and abort queue runs
 - **Templates** — Save and load reusable queue scripts
 - **Story-based generation** — Auto-generate queue from PRD epics and stories
-- **Variable substitution** — Use `{{variables}}` in templates
+- **Variable substitution** — Use `{story_num}`, `{epic_num}`, `{story_title}` in templates
 
 ### Project Board (Issue Tracking)
 
-- **Kanban board** — Drag-and-drop cards across customizable columns
+- **Kanban board** — Visual cards across customizable status columns
 - **List view** — Tabular alternative with sorting and filtering
-- **Issue types** — Bug, Improvement, Quick Action
+- **Issue types** — Bug, Improvement
 - **Severity levels** — Low, Medium, High, Critical
 - **Status workflow** — Open → Draft → Approved → In Progress → Blocked → Review → Done → Closed
 - **Mobile Kanban** — Touch-optimized board for small screens
@@ -218,7 +244,7 @@ For detailed BMAD-METHOD documentation, visit the [official repository](https://
 | `Shift+Enter` | New line in message |
 | `ESC` | Abort generation |
 | `Ctrl+S` | Save file in editor |
-| `Ctrl+/` `Ctrl+-` | Terminal font size |
+| `Ctrl+=` `Ctrl+-` | Terminal font size |
 | `Ctrl+0` | Reset terminal font size |
 | `↑` / `↓` | Navigate prompt history |
 
@@ -272,7 +298,8 @@ npm run dev
 |------|----------|
 | App config & password | `~/.hammoc/config.json` |
 | User preferences | `~/.hammoc/preferences.json` |
-| Queue templates | `~/.hammoc/queue-templates.json` |
+| Queue templates | `<project-root>/.hammoc/queue-templates.json` (per project) |
+| Chain failures | `~/.hammoc/chain-failures/<sessionId>.json` (per session) |
 | TLS certificates | `~/.hammoc/cert.pem`, `~/.hammoc/key.pem` |
 | Session data | `~/.claude/projects/` (managed by Claude Code CLI) |
 
@@ -341,8 +368,10 @@ If you already have a reverse proxy (Nginx, Caddy, etc.) handling HTTPS, simply 
 | `PORT` | `3000` | Server port |
 | `HOST` | `0.0.0.0` | Bind address |
 | `NODE_ENV` | — | Set to `production` for optimized mode |
+| `TRUST_PROXY` | `false` | Enable reverse proxy support (Cloudflare Tunnel, nginx, etc.) |
+| `CORS_ORIGIN` | `true` | CORS origin (`true` allows any; set a URL to restrict) |
+| `RATE_LIMIT` | `200` | Max requests per minute per IP |
 | `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout (ms) |
-| `CORS_ORIGIN` | `true` | CORS origin policy |
 | `LOG_LEVEL` | `INFO`/`DEBUG` | ERROR, WARN, INFO, DEBUG, VERBOSE |
 | `TERMINAL_ENABLED` | `true` | Enable/disable terminal feature |
 | `TELEGRAM_BOT_TOKEN` | — | Telegram bot token for notifications |
