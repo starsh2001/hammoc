@@ -5,12 +5,14 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Save, Upload, Trash2, Pencil, RefreshCw, WrapText, ChevronRight, FileText } from 'lucide-react';
+import { X, Save, Upload, Trash2, Pencil, RefreshCw, WrapText, ChevronRight, FileText, Globe, FolderOpen } from 'lucide-react';
 import { generateQueueFromTemplate } from '@hammoc/shared';
 import type { QueueStoryInfo, QueueTemplate } from '@hammoc/shared';
 import { queueApi } from '../../services/api/queue';
 import { highlightScript } from './queueHighlight';
 import { normalizeLineEndings, readQueueWrapMode, writeQueueWrapMode } from './wrapMode';
+
+type TemplateScope = 'project' | 'global';
 
 interface QueueTemplateDialogProps {
   projectSlug: string;
@@ -33,7 +35,10 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
   const [templateSource, setTemplateSource] = useState<TemplateSource>('input');
   const [templateText, setTemplateText] = useState('');
   const [savedTemplates, setSavedTemplates] = useState<QueueTemplate[]>([]);
+  const [globalTemplates, setGlobalTemplates] = useState<QueueTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedTemplateScope, setSelectedTemplateScope] = useState<TemplateScope>('project');
+  const [saveScope, setSaveScope] = useState<TemplateScope>('project');
 
   // Story selection state
   const [stories, setStories] = useState<QueueStoryInfo[]>([]);
@@ -68,9 +73,17 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
 
     setIsLoadingTemplates(true);
     setTemplatesError(null);
-    queueApi.getTemplates(projectSlug)
-      .then((data) => setSavedTemplates(data))
-      .catch(() => setTemplatesError(t('queue.template.templateLoadFailed')))
+    Promise.allSettled([
+      queueApi.getTemplates(projectSlug),
+      queueApi.getGlobalTemplates(projectSlug),
+    ])
+      .then(([projectResult, globalResult]) => {
+        if (projectResult.status === 'fulfilled') setSavedTemplates(projectResult.value);
+        if (globalResult.status === 'fulfilled') setGlobalTemplates(globalResult.value);
+        if (projectResult.status === 'rejected' && globalResult.status === 'rejected') {
+          setTemplatesError(t('queue.template.templateLoadFailed'));
+        }
+      })
       .finally(() => setIsLoadingTemplates(false));
   }, [open, projectSlug]);
 
@@ -200,50 +213,72 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
     e.target.value = '';
   }, [t]);
 
+  const refreshTemplates = useCallback(async () => {
+    const results = await Promise.allSettled([
+      queueApi.getTemplates(projectSlug),
+      queueApi.getGlobalTemplates(projectSlug),
+    ]);
+    if (results[0].status === 'fulfilled') setSavedTemplates(results[0].value);
+    if (results[1].status === 'fulfilled') setGlobalTemplates(results[1].value);
+  }, [projectSlug]);
+
   const handleSaveTemplate = useCallback(async () => {
     const normalizedTemplate = normalizeLineEndings(templateText);
     if (!templateName.trim() || !normalizedTemplate.trim()) return;
+    const isGlobal = selectedTemplateId ? selectedTemplateScope === 'global' : saveScope === 'global';
     try {
       if (selectedTemplateId) {
-        await queueApi.updateTemplate(projectSlug, selectedTemplateId, templateName.trim(), normalizedTemplate);
+        if (isGlobal) {
+          await queueApi.updateGlobalTemplate(projectSlug, selectedTemplateId, templateName.trim(), normalizedTemplate);
+        } else {
+          await queueApi.updateTemplate(projectSlug, selectedTemplateId, templateName.trim(), normalizedTemplate);
+        }
       } else {
-        await queueApi.saveTemplate(projectSlug, templateName.trim(), normalizedTemplate);
+        if (isGlobal) {
+          await queueApi.saveGlobalTemplate(projectSlug, templateName.trim(), normalizedTemplate);
+        } else {
+          await queueApi.saveTemplate(projectSlug, templateName.trim(), normalizedTemplate);
+        }
       }
-      const updated = await queueApi.getTemplates(projectSlug);
-      setSavedTemplates(updated);
       setSaveDialogOpen(false);
       setTemplateName('');
       setSelectedTemplateId(null);
+      await refreshTemplates();
     } catch {
       alert(selectedTemplateId ? t('queue.template.templateUpdateFailed') : t('queue.template.templateSaveFailed'));
     }
-  }, [projectSlug, templateName, templateText, selectedTemplateId]);
+  }, [projectSlug, templateName, templateText, selectedTemplateId, selectedTemplateScope, saveScope, refreshTemplates]);
 
-  const handleDeleteTemplate = useCallback(async (id: string) => {
+  const handleDeleteTemplate = useCallback(async (id: string, scope: TemplateScope) => {
     if (!window.confirm(t('queue.template.templateDeleteConfirm'))) return;
     try {
-      await queueApi.deleteTemplate(projectSlug, id);
-      const updated = await queueApi.getTemplates(projectSlug);
-      setSavedTemplates(updated);
+      if (scope === 'global') {
+        await queueApi.deleteGlobalTemplate(projectSlug, id);
+      } else {
+        await queueApi.deleteTemplate(projectSlug, id);
+      }
       if (selectedTemplateId === id) {
         setSelectedTemplateId(null);
         setTemplateText('');
       }
+      await refreshTemplates();
     } catch {
       alert(t('queue.template.templateDeleteFailed'));
     }
-  }, [projectSlug, selectedTemplateId]);
+  }, [projectSlug, selectedTemplateId, refreshTemplates]);
 
-  const handleEditTemplate = useCallback((tmpl: QueueTemplate) => {
+  const handleEditTemplate = useCallback((tmpl: QueueTemplate, scope: TemplateScope) => {
     setTemplateText(normalizeLineEndings(tmpl.template));
     setSelectedTemplateId(tmpl.id);
+    setSelectedTemplateScope(scope);
     setTemplateName(tmpl.name);
     setTemplateSource('input');
   }, []);
 
-  const handleSelectSavedTemplate = useCallback((tmpl: QueueTemplate) => {
+  const handleSelectSavedTemplate = useCallback((tmpl: QueueTemplate, scope: TemplateScope) => {
     setTemplateText(normalizeLineEndings(tmpl.template));
     setSelectedTemplateId(tmpl.id);
+    setSelectedTemplateScope(scope);
     setTemplateName(tmpl.name);
   }, []);
 
@@ -410,55 +445,120 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
 
               {/* Saved templates tab */}
               {templateSource === 'saved' && (
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {isLoadingTemplates && (
                     <p className="text-sm text-gray-400 py-3 text-center">{t('queue.template.loading')}</p>
                   )}
                   {templatesError && (
                     <p className="text-sm text-red-500 py-3 text-center">{templatesError}</p>
                   )}
-                  {!isLoadingTemplates && !templatesError && savedTemplates.length === 0 && (
+                  {!isLoadingTemplates && !templatesError && savedTemplates.length === 0 && globalTemplates.length === 0 && (
                     <div className="flex flex-col items-center gap-1.5 py-6 text-gray-400">
                       <FileText className="w-8 h-8 text-gray-300 dark:text-gray-600" />
                       <p className="text-sm">{t('queue.template.noSavedTemplates')}</p>
                     </div>
                   )}
-                  {savedTemplates.map((tmpl) => (
-                    <div
-                      key={tmpl.id}
-                      className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                        selectedTemplateId === tmpl.id
-                          ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-200 dark:ring-blue-700'
-                          : 'hover:bg-gray-50 dark:hover:bg-[#253040]/50'
-                      }`}
-                      onClick={() => handleSelectSavedTemplate(tmpl)}
-                    >
-                      <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${
-                        selectedTemplateId === tmpl.id
-                          ? 'text-blue-500'
-                          : 'text-gray-300 dark:text-gray-600'
-                      }`} />
-                      <span className="text-sm text-gray-800 dark:text-gray-200 truncate flex-1">{tmpl.name}</span>
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleEditTemplate(tmpl); }}
-                          aria-label={t('queue.template.editTemplate', { name: tmpl.name })}
-                          className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-                            hover:bg-gray-200 dark:hover:bg-[#2d3a4a] transition-colors"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(tmpl.id); }}
-                          aria-label={t('queue.template.deleteTemplate', { name: tmpl.name })}
-                          className="p-1.5 rounded-md text-gray-400 hover:text-red-500
-                            hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                  {!isLoadingTemplates && !templatesError && (savedTemplates.length > 0 || globalTemplates.length > 0) && (
+                    <>
+                      {/* Project templates section */}
+                      <div className="flex items-center gap-1.5 px-2 pt-1 pb-0.5">
+                        <FolderOpen className="w-3 h-3 text-gray-400" />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                          {t('queue.template.projectTemplates')}
+                        </span>
+                        <span className="text-[10px] text-gray-300 dark:text-gray-600">({savedTemplates.length})</span>
                       </div>
-                    </div>
-                  ))}
+                      {savedTemplates.length === 0 ? (
+                        <p className="text-xs text-gray-400 py-2 px-3 text-center">{t('queue.template.noProjectTemplates')}</p>
+                      ) : (
+                        savedTemplates.map((tmpl) => (
+                          <div
+                            key={tmpl.id}
+                            className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                              selectedTemplateId === tmpl.id
+                                ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-200 dark:ring-blue-700'
+                                : 'hover:bg-gray-50 dark:hover:bg-[#253040]/50'
+                            }`}
+                            onClick={() => handleSelectSavedTemplate(tmpl, 'project')}
+                          >
+                            <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${
+                              selectedTemplateId === tmpl.id
+                                ? 'text-blue-500'
+                                : 'text-gray-300 dark:text-gray-600'
+                            }`} />
+                            <span className="text-sm text-gray-800 dark:text-gray-200 truncate flex-1">{tmpl.name}</span>
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEditTemplate(tmpl, 'project'); }}
+                                aria-label={t('queue.template.editTemplate', { name: tmpl.name })}
+                                className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+                                  hover:bg-gray-200 dark:hover:bg-[#2d3a4a] transition-colors"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(tmpl.id, 'project'); }}
+                                aria-label={t('queue.template.deleteTemplate', { name: tmpl.name })}
+                                className="p-1.5 rounded-md text-gray-400 hover:text-red-500
+                                  hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+
+                      {/* Global templates section */}
+                      <div className="flex items-center gap-1.5 px-2 pt-2.5 pb-0.5">
+                        <Globe className="w-3 h-3 text-gray-400" />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                          {t('queue.template.globalTemplates')}
+                        </span>
+                        <span className="text-[10px] text-gray-300 dark:text-gray-600">({globalTemplates.length})</span>
+                      </div>
+                      {globalTemplates.length === 0 ? (
+                        <p className="text-xs text-gray-400 py-2 px-3 text-center">{t('queue.template.noGlobalTemplates')}</p>
+                      ) : (
+                        globalTemplates.map((tmpl) => (
+                          <div
+                            key={tmpl.id}
+                            className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                              selectedTemplateId === tmpl.id
+                                ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-200 dark:ring-blue-700'
+                                : 'hover:bg-gray-50 dark:hover:bg-[#253040]/50'
+                            }`}
+                            onClick={() => handleSelectSavedTemplate(tmpl, 'global')}
+                          >
+                            <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${
+                              selectedTemplateId === tmpl.id
+                                ? 'text-blue-500'
+                                : 'text-gray-300 dark:text-gray-600'
+                            }`} />
+                            <span className="text-sm text-gray-800 dark:text-gray-200 truncate flex-1">{tmpl.name}</span>
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEditTemplate(tmpl, 'global'); }}
+                                aria-label={t('queue.template.editTemplate', { name: tmpl.name })}
+                                className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+                                  hover:bg-gray-200 dark:hover:bg-[#2d3a4a] transition-colors"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(tmpl.id, 'global'); }}
+                                aria-label={t('queue.template.deleteTemplate', { name: tmpl.name })}
+                                className="p-1.5 rounded-md text-gray-400 hover:text-red-500
+                                  hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 
@@ -476,6 +576,33 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                     autoFocus
                     onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTemplate(); if (e.key === 'Escape') setSaveDialogOpen(false); }}
                   />
+                  {/* Scope toggle — only show for new templates (updates keep original scope) */}
+                  {!selectedTemplateId && (
+                    <div className="inline-flex p-0.5 bg-gray-200 dark:bg-[#253040] rounded-md flex-shrink-0">
+                      <button
+                        onClick={() => setSaveScope('project')}
+                        className={`px-2 py-1 text-[11px] font-medium rounded transition-all ${
+                          saveScope === 'project'
+                            ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        <FolderOpen className="w-3 h-3 inline -mt-0.5 mr-0.5" />
+                        {t('queue.template.scopeProject')}
+                      </button>
+                      <button
+                        onClick={() => setSaveScope('global')}
+                        className={`px-2 py-1 text-[11px] font-medium rounded transition-all ${
+                          saveScope === 'global'
+                            ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        <Globe className="w-3 h-3 inline -mt-0.5 mr-0.5" />
+                        {t('queue.template.scopeGlobal')}
+                      </button>
+                    </div>
+                  )}
                   <button
                     onClick={handleSaveTemplate}
                     disabled={!templateName.trim()}

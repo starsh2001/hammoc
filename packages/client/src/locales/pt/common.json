@@ -468,7 +468,13 @@
       "templateSaveFailed": "Falha ao salvar modelo",
       "templateUpdateFailed": "Falha ao atualizar modelo",
       "templateDeleteConfirm": "Excluir este modelo?",
-      "templateDeleteFailed": "Falha ao excluir modelo"
+      "templateDeleteFailed": "Falha ao excluir modelo",
+      "projectTemplates": "Projeto",
+      "globalTemplates": "Global",
+      "scopeProject": "Projeto",
+      "scopeGlobal": "Global",
+      "noProjectTemplates": "Nenhum modelo de projeto",
+      "noGlobalTemplates": "Nenhum modelo global"
     },
     "locked": {
       "confirmAbort": "Abortar execução da fila? Os itens restantes serão preservados na fila.",

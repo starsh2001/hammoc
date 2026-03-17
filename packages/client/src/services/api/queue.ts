@@ -14,6 +14,7 @@ export const queueApi = {
   getStories: (projectSlug: string) =>
     api.get<{ stories: QueueStoryInfo[] }>(`/projects/${projectSlug}/queue/stories`),
 
+  // Project-level templates
   getTemplates: (projectSlug: string) =>
     api.get<QueueTemplate[]>(`/projects/${projectSlug}/queue/templates`),
 
@@ -25,4 +26,17 @@ export const queueApi = {
 
   deleteTemplate: (projectSlug: string, id: string) =>
     api.delete<void>(`/projects/${projectSlug}/queue/templates/${id}`),
+
+  // Global templates
+  getGlobalTemplates: (projectSlug: string) =>
+    api.get<QueueTemplate[]>(`/projects/${projectSlug}/queue/global-templates`),
+
+  saveGlobalTemplate: (projectSlug: string, name: string, template: string) =>
+    api.post<QueueTemplate>(`/projects/${projectSlug}/queue/global-templates`, { name, template }),
+
+  updateGlobalTemplate: (projectSlug: string, id: string, name: string, template: string) =>
+    api.put<QueueTemplate>(`/projects/${projectSlug}/queue/global-templates/${id}`, { name, template }),
+
+  deleteGlobalTemplate: (projectSlug: string, id: string) =>
+    api.delete<void>(`/projects/${projectSlug}/queue/global-templates/${id}`),
 };

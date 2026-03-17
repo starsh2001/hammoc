@@ -56,6 +56,8 @@ interface QueueRunnerPanelProps {
   onDismiss?: () => void;
   /** True while waiting for server to confirm a reorder (disables drag) */
   isReordering?: boolean;
+  /** Server-persisted completed flag (from queueStore) */
+  isCompleted?: boolean;
 }
 
 function getItemSummary(item: QueueItem, t: (key: string, opts?: Record<string, unknown>) => string): string {
@@ -122,6 +124,7 @@ export function QueueRunnerPanel({
   onReorderItems,
   onDismiss,
   isReordering = false,
+  isCompleted: isCompletedProp,
 }: QueueRunnerPanelProps) {
   const { t } = useTranslation('common');
   const currentItemRef = useRef<HTMLDivElement>(null);
@@ -136,8 +139,8 @@ export function QueueRunnerPanel({
   const total = items.length;
   const percentage = total > 0 ? Math.round((completedCount / total) * 100) : 0;
 
-  // Determine overall status
-  const isCompleted = !isRunning && !isPaused && completedCount > 0 && !errorItem;
+  // Determine overall status — prefer server-persisted flag when available
+  const isCompleted = isCompletedProp ?? (!isRunning && !isPaused && completedCount > 0 && !errorItem);
   const hasError = !!errorItem;
 
   // Progress bar color

@@ -496,7 +496,13 @@
       "templateSaveFailed": "Failed to save template",
       "templateUpdateFailed": "Failed to update template",
       "templateDeleteConfirm": "Delete this template?",
-      "templateDeleteFailed": "Failed to delete template"
+      "templateDeleteFailed": "Failed to delete template",
+      "projectTemplates": "Project",
+      "globalTemplates": "Global",
+      "scopeProject": "Project",
+      "scopeGlobal": "Global",
+      "noProjectTemplates": "No project templates",
+      "noGlobalTemplates": "No global templates"
     },
     "locked": {
       "confirmAbort": "Abort queue execution? Remaining items will be preserved in the queue.",

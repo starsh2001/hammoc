@@ -28,13 +28,13 @@ export async function listTemplates(req: Request, res: Response): Promise<void> 
 
 export async function createTemplate(req: Request, res: Response): Promise<void> {
   const { name, template } = req.body;
-  if (!name || typeof name !== 'string' || !template || typeof template !== 'string') {
+  if (!name || typeof name !== 'string' || !name.trim() || !template || typeof template !== 'string' || !template.trim()) {
     res.status(400).json({ error: req.t!('queueTemplate.validation.nameTemplateRequired') });
     return;
   }
   try {
     const projectRoot = await getProjectRoot(req.params.projectSlug);
-    const created = await queueTemplateService.saveTemplate(projectRoot, name, template);
+    const created = await queueTemplateService.saveTemplate(projectRoot, name.trim(), template);
     res.status(201).json(created);
   } catch (error) {
     res.status(500).json({ error: req.t!('queueTemplate.error.createFailed') });
@@ -44,13 +44,13 @@ export async function createTemplate(req: Request, res: Response): Promise<void>
 export async function updateTemplate(req: Request, res: Response): Promise<void> {
   const { name, template } = req.body;
   const { id } = req.params;
-  if (!name || typeof name !== 'string' || !template || typeof template !== 'string') {
+  if (!name || typeof name !== 'string' || !name.trim() || !template || typeof template !== 'string' || !template.trim()) {
     res.status(400).json({ error: req.t!('queueTemplate.validation.nameTemplateRequired') });
     return;
   }
   try {
     const projectRoot = await getProjectRoot(req.params.projectSlug);
-    const updated = await queueTemplateService.updateTemplate(projectRoot, id, name, template);
+    const updated = await queueTemplateService.updateTemplate(projectRoot, id, name.trim(), template);
     res.status(200).json(updated);
   } catch (error) {
     if ((error as Error).message?.includes('not found')) {
@@ -66,6 +66,64 @@ export async function deleteTemplate(req: Request, res: Response): Promise<void>
   try {
     const projectRoot = await getProjectRoot(req.params.projectSlug);
     await queueTemplateService.deleteTemplate(projectRoot, id);
+    res.status(204).send();
+  } catch (error) {
+    if ((error as Error).message?.includes('not found')) {
+      res.status(404).json({ error: req.t!('queueTemplate.error.notFound') });
+      return;
+    }
+    res.status(500).json({ error: req.t!('queueTemplate.error.deleteFailed') });
+  }
+}
+
+// --- Global template handlers ---
+
+export async function listGlobalTemplates(req: Request, res: Response): Promise<void> {
+  try {
+    const templates = await queueTemplateService.getGlobalTemplates();
+    res.status(200).json(templates);
+  } catch {
+    res.status(500).json({ error: req.t!('queueTemplate.error.listFailed') });
+  }
+}
+
+export async function createGlobalTemplate(req: Request, res: Response): Promise<void> {
+  const { name, template } = req.body;
+  if (!name || typeof name !== 'string' || !name.trim() || !template || typeof template !== 'string' || !template.trim()) {
+    res.status(400).json({ error: req.t!('queueTemplate.validation.nameTemplateRequired') });
+    return;
+  }
+  try {
+    const created = await queueTemplateService.saveGlobalTemplate(name.trim(), template);
+    res.status(201).json(created);
+  } catch {
+    res.status(500).json({ error: req.t!('queueTemplate.error.createFailed') });
+  }
+}
+
+export async function updateGlobalTemplate(req: Request, res: Response): Promise<void> {
+  const { name, template } = req.body;
+  const { id } = req.params;
+  if (!name || typeof name !== 'string' || !name.trim() || !template || typeof template !== 'string' || !template.trim()) {
+    res.status(400).json({ error: req.t!('queueTemplate.validation.nameTemplateRequired') });
+    return;
+  }
+  try {
+    const updated = await queueTemplateService.updateGlobalTemplate(id, name.trim(), template);
+    res.status(200).json(updated);
+  } catch (error) {
+    if ((error as Error).message?.includes('not found')) {
+      res.status(404).json({ error: req.t!('queueTemplate.error.notFound') });
+      return;
+    }
+    res.status(500).json({ error: req.t!('queueTemplate.error.updateFailed') });
+  }
+}
+
+export async function deleteGlobalTemplate(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  try {
+    await queueTemplateService.deleteGlobalTemplate(id);
     res.status(204).send();
   } catch (error) {
     if ((error as Error).message?.includes('not found')) {
