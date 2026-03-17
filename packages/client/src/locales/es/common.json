@@ -474,7 +474,18 @@
       "scopeProject": "Proyecto",
       "scopeGlobal": "Global",
       "noProjectTemplates": "No hay plantillas de proyecto",
-      "noGlobalTemplates": "No hay plantillas globales"
+      "noGlobalTemplates": "No hay plantillas globales",
+      "loadFromFile": "Cargar desde archivo",
+      "savedTemplates": "Plantillas guardadas",
+      "saveAs": "Guardar como",
+      "tabLoad": "Cargar",
+      "tabEditor": "Editor",
+      "editBtn": "Editar",
+      "applyBtn": "Aplicar",
+      "chooseFile": "Elegir archivo",
+      "overwriteConfirm": "Ya existe una plantilla con este nombre. ¿Sobrescribir?",
+      "saveSuccess": "Guardado correctamente",
+      "unsavedChanges": "Tiene cambios sin guardar. ¿Descartarlos?"
     },
     "locked": {
       "confirmAbort": "¿Cancelar la ejecución de la cola? Los elementos restantes se conservarán en la cola.",
@@ -493,10 +504,7 @@
       "abortQueue": "Cancelar cola",
       "queueEditor": "Editor de cola"
     },
-    "fileReadError": "Error al leer el archivo: {{name}}",
-    "sourceInput": "Entrada manual",
-    "sourceFile": "Archivo",
-    "sourceSaved": "Guardado"
+    "fileReadError": "Error al leer el archivo: {{name}}"
   },
   "panel": {
     "sessions": "Lista de sesiones",

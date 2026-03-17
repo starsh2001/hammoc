@@ -474,7 +474,18 @@
       "scopeProject": "Projeto",
       "scopeGlobal": "Global",
       "noProjectTemplates": "Nenhum modelo de projeto",
-      "noGlobalTemplates": "Nenhum modelo global"
+      "noGlobalTemplates": "Nenhum modelo global",
+      "loadFromFile": "Carregar do arquivo",
+      "savedTemplates": "Modelos salvos",
+      "saveAs": "Salvar como",
+      "tabLoad": "Carregar",
+      "tabEditor": "Editor",
+      "editBtn": "Editar",
+      "applyBtn": "Aplicar",
+      "chooseFile": "Escolher arquivo",
+      "overwriteConfirm": "Já existe um modelo com este nome. Sobrescrever?",
+      "saveSuccess": "Salvo com sucesso",
+      "unsavedChanges": "Você tem alterações não salvas. Descartá-las?"
     },
     "locked": {
       "confirmAbort": "Abortar execução da fila? Os itens restantes serão preservados na fila.",
@@ -493,10 +504,7 @@
       "abortQueue": "Abortar fila",
       "queueEditor": "Editor de fila"
     },
-    "fileReadError": "Falha ao ler o arquivo: {{name}}",
-    "sourceInput": "Entrada manual",
-    "sourceFile": "Arquivo",
-    "sourceSaved": "Salvo"
+    "fileReadError": "Falha ao ler o arquivo: {{name}}"
   },
   "panel": {
     "sessions": "Lista de sessões",
