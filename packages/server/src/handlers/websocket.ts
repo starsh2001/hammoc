@@ -273,7 +273,7 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
     // Use per-item execution context
     const { workingDirectory, permissionMode, model } = nextItem;
 
-    // Mark item as 'sending' and broadcast
+    // Mark item as 'sending' and broadcast (must happen before any await to prevent duplicate execution)
     nextItem.status = 'sending';
     log.info(`[CHAIN-DRAIN] executing item: sessionId=${sessionId}, itemId=${nextItem.id.slice(0, 8)}, content="${nextItem.content.slice(0, 80)}"`);
     broadcastChainUpdate(sessionId);
@@ -285,6 +285,16 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
       const headless = createHeadlessStream(sessionId, abortController);
       stream = headless.stream;
       log.info(`[CHAIN-DRAIN] headless stream created: sessionId=${sessionId}, socketsInRoom=${stream.sockets.size}`);
+
+      // Resolve projectSlug async (fire-and-forget) — same pattern as chat:send
+      projectService.findProjectByPath(workingDirectory).then((project) => {
+        if (project && stream!.status === 'running' && activeStreams.get(stream!.sessionId) === stream) {
+          sessionProjectMap.set(stream!.sessionId, project.projectSlug);
+          triggerDashboardStatusChange(project.projectSlug);
+        }
+      }).catch((err) => {
+        log.warn(`[CHAIN-DRAIN] failed to resolve projectSlug for dashboard: sessionId=${sessionId}, dir=${workingDirectory}`, err);
+      });
 
       io?.emit('session:stream-change', { sessionId, active: true });
       const drainSuccess = await handleChatSend(
@@ -359,6 +369,9 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
           log.info(`[CHAIN-DRAIN] finally: cleaning up stream, remainingItems=${remaining?.length ?? 0}, remainingPending=${remainingPending}`);
           cleanupStream(sessionId);
           io?.emit('session:stream-change', { sessionId, active: false });
+          // Persist per-session permission mode before cleanup
+          const chainFinalMode = stream.chatService?.getPermissionMode();
+          if (chainFinalMode) await persistSessionPermissionMode(sessionId, chainFinalMode);
           const endProjectSlug = sessionProjectMap.get(sessionId);
           if (endProjectSlug) {
             triggerDashboardStatusChange(endProjectSlug);
@@ -439,6 +452,29 @@ function cleanupStream(streamKey: string) {
   }
 }
 
+/** Normalize legacy 'never' sync policy to 'streaming' */
+function normalizeSyncPolicy(policy: string | undefined): 'streaming' | 'always' {
+  return policy === 'always' ? 'always' : 'streaming';
+}
+
+/**
+ * Persist the stream's final permission mode to .hammoc/session-permissions.json.
+ * Returns a promise that resolves when persistence is complete (or fails silently).
+ * Must be called before sessionProjectMap.delete() for the given sessionId.
+ */
+async function persistSessionPermissionMode(sessionId: string, mode: PermissionMode, fallbackSlug?: string): Promise<void> {
+  const slug = sessionProjectMap.get(sessionId) || fallbackSlug;
+  if (!slug) return;
+  try {
+    const projectPath = await projectService.resolveProjectPath(slug);
+    if (projectPath) {
+      await projectService.updateSessionPermission(projectPath, sessionId, mode);
+    }
+  } catch (err) {
+    log.error('Failed to persist session permission mode:', err);
+  }
+}
+
 /**
  * Create a headless ActiveStream (no attached socket) for queue execution.
  * Returns a buffered emit function and a broadcast function for project room delivery.
@@ -512,9 +548,11 @@ export function rekeyStream(stream: ActiveStream, newSessionId: string): void {
  * Mark a stream as completed and broadcast stream-change.
  * Cleans up from activeStreams map.
  */
-export function finalizeStream(sessionId: string): void {
+export async function finalizeStream(sessionId: string): Promise<void> {
   const stream = activeStreams.get(sessionId);
   if (stream) {
+    const finalMode = stream.chatService?.getPermissionMode();
+    if (finalMode) await persistSessionPermissionMode(sessionId, finalMode);
     stream.status = 'completed';
     cleanupStream(sessionId);
   }
@@ -746,6 +784,10 @@ export async function initializeWebSocket(
         if (isCurrentStream) {
           cleanupStream(endedSessionId);
           io.emit('session:stream-change', { sessionId: endedSessionId, active: false });
+          // Persist per-session permission mode before cleanup
+          const sendFinalMode = stream.chatService?.getPermissionMode();
+          if (sendFinalMode) await persistSessionPermissionMode(endedSessionId, sendFinalMode);
+
           // Story 20.1: Trigger dashboard status change on stream end
           const endProjectSlug = sessionProjectMap.get(endedSessionId);
           if (endProjectSlug) {
@@ -813,10 +855,10 @@ export async function initializeWebSocket(
 
     // Handle permission:mode-change — update SDK permission mode and broadcast to viewers
     socket.on('permission:mode-change', async (data) => {
-      const sessionId = socketToSession.get(socket.id);
+      const sessionId = socketToSession.get(socket.id) || socketSessionRoom.get(socket.id);
       if (!sessionId) return;
 
-      const { mode, syncPolicy = 'streaming' } = data;
+      const { mode, projectSlug } = data;
       const stream = activeStreams.get(sessionId);
 
       // 1) Update SDK permission mode — only when stream is actively running
@@ -826,11 +868,22 @@ export async function initializeWebSocket(
           log.debug(`Permission mode changed to "${mode}" for session ${sessionId}`);
         } catch (err) {
           log.error('Failed to change permission mode:', err);
+          return; // Don't persist or broadcast a mode that failed to apply
         }
       }
 
-      // 2) Broadcast to other viewers based on sync policy
-      if (syncPolicy === 'never') return;
+      // 2) Always persist per-session permission mode (read only when policy is 'always')
+      // Use projectSlug from client as fallback when sessionProjectMap entry is gone (stream ended)
+      await persistSessionPermissionMode(sessionId, mode, projectSlug);
+
+      // 3) Broadcast to other viewers based on sync policy
+      let syncPolicy: 'streaming' | 'always' = 'streaming';
+      try {
+        const prefs = await preferencesService.readPreferences();
+        syncPolicy = normalizeSyncPolicy(prefs.permissionSyncPolicy);
+      } catch (err) {
+        log.error('Failed to read preferences for sync policy:', err);
+      }
       if (syncPolicy === 'streaming' && stream?.status !== 'running') return;
 
       // 'always' or ('streaming' + running) → broadcast via Socket.io room
@@ -839,7 +892,7 @@ export async function initializeWebSocket(
 
     // Handle session:join event — attach socket to active running stream (broadcast)
     // Also joins a persistent Socket.io room so future streams auto-include this socket.
-    socket.on('session:join', (sessionId: string) => {
+    socket.on('session:join', (sessionId: string, projectSlug?: string) => {
       // Detach this socket from any previously-attached stream to prevent
       // events from the old stream leaking to a different session's listeners
       const prevSessionId = socketToSession.get(socket.id);
@@ -887,20 +940,41 @@ export async function initializeWebSocket(
       }
 
       if (!stream || stream.status !== 'running') {
-        socket.emit('stream:status', { active: false, sessionId });
+        // For 'always' sync policy, restore per-session permission mode from disk
+        const resolvedSlug = projectSlug || sessionProjectMap.get(sessionId);
+        if (resolvedSlug && UUID_RE.test(sessionId)) {
+          preferencesService.readPreferences().then(async (prefs) => {
+            if (normalizeSyncPolicy(prefs.permissionSyncPolicy) === 'always') {
+              const projectPath = await projectService.resolveProjectPath(resolvedSlug);
+              if (projectPath) {
+                const perms = await projectService.readSessionPermissions(projectPath);
+                const savedMode = perms[sessionId] as PermissionMode | undefined;
+                socket.emit('stream:status', { active: false, sessionId, permissionMode: savedMode });
+                return;
+              }
+            }
+            socket.emit('stream:status', { active: false, sessionId });
+          }).catch(() => {
+            socket.emit('stream:status', { active: false, sessionId });
+          });
+        } else {
+          socket.emit('stream:status', { active: false, sessionId });
+        }
         return;
       }
 
-      // Add socket to broadcast set (multiple browsers can watch simultaneously)
-      stream.sockets.add(socket);
       socketToSession.set(socket.id, sessionId);
 
-      // Notify this client that stream is active, then replay entire buffer
-      socket.emit('stream:status', { active: true, sessionId });
-      for (const entry of stream.buffer) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (socket.emit as any)(entry.event, entry.data);
-      }
+      // Notify this client that stream is active, then replay entire buffer as batch.
+      // Snapshot buffer BEFORE adding socket to broadcast set to prevent race:
+      // no live events can reach this socket until sockets.add() below.
+      const bufferSnapshot = [...stream.buffer];
+      const permissionMode = stream.chatService?.getPermissionMode();
+      socket.emit('stream:status', { active: true, sessionId, permissionMode });
+      socket.emit('stream:buffer-replay', { events: bufferSnapshot });
+
+      // NOW add to broadcast set — live events flow from here
+      stream.sockets.add(socket);
     });
 
     // Handle session:leave event — detach socket from current stream and session room

@@ -328,6 +328,13 @@ export class ChatService {
   }
 
   /**
+   * Get the current permission mode
+   */
+  getPermissionMode(): PermissionMode {
+    return this.permissionMode;
+  }
+
+  /**
    * Set the permission mode for the current session
    */
   async setPermissionMode(mode: PermissionMode): Promise<void> {

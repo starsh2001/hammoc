@@ -39,7 +39,7 @@ export interface UserPreferences {
 }
 
 /** Controls when permission mode changes are broadcast to other browsers viewing the same session */
-export type PermissionSyncPolicy = 'never' | 'streaming' | 'always';
+export type PermissionSyncPolicy = 'streaming' | 'always';
 
 /** Default values for global settings */
 export const DEFAULT_PREFERENCES: Required<Pick<UserPreferences, 'theme' | 'defaultModel' | 'permissionMode' | 'chatTimeoutMs' | 'fileExplorerViewMode'>> = {

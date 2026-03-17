@@ -25,14 +25,12 @@
     },
     "permissionSync": "Sincronização do modo de permissão",
     "permissionSyncOption": {
-      "never": "Não sincronizar",
       "streaming": "Apenas durante streaming",
       "always": "Sempre sincronizar"
     },
     "permissionSyncDesc": {
-      "never": "Alterações no modo de permissão não são sincronizadas com outros navegadores",
       "streaming": "Sincroniza apenas durante streaming ativo (padrão)",
-      "always": "Sempre sincroniza com outros navegadores visualizando a mesma sessão"
+      "always": "Sempre sincroniza e lembra o modo de permissão por sessão"
     },
     "markdownMode": "Modo de abertura de arquivos Markdown",
     "markdownOption": {
