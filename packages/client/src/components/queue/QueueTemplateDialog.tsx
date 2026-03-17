@@ -226,6 +226,8 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
     if (activeTab === 'load') {
       if (!selectedContent) return;
       setTemplateText(normalizeLineEndings(selectedContent.content));
+      setEditorDirty(false);
+      setSaveStatus(null);
     }
     setShowApplySection(true);
   }, [activeTab, selectedContent]);
@@ -308,16 +310,22 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
     onClose();
   }, [confirmUnsaved, onClose]);
 
-  // Close on Escape
+  // Close on Escape — apply modal takes priority
   useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showApplySection) { setShowApplySection(false); }
+        else { handleClose(); }
+      }
+    };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [open, handleClose]);
+  }, [open, handleClose, showApplySection]);
 
   const switchTab = useCallback((tab: ActiveTab) => {
     if (activeTab === 'editor' && tab !== 'editor' && !confirmUnsaved()) return;
+    if (activeTab === 'editor' && tab !== 'editor') setEditorDirty(false);
     setActiveTab(tab);
     setShowApplySection(false);
   }, [activeTab, confirmUnsaved]);
@@ -587,136 +595,6 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
               </section>
             )}
 
-            {/* ════ APPLY SECTION (story selection + preview) ════ */}
-            {showApplySection && (
-              <>
-                <section>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400">
-                      {t('queue.template.storySection')}
-                      {!isLoadingStories && !storiesError && stories.length > 0 && (
-                        <span className="ml-1.5 font-normal normal-case tracking-normal text-gray-300 dark:text-gray-600">
-                          {selectedStories.size}/{stories.length}
-                        </span>
-                      )}
-                    </h3>
-                    {!isLoadingStories && !storiesError && stories.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={insertPause}
-                            onChange={(e) => setInsertPause(e.target.checked)}
-                            className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
-                          />
-                          <span className="text-[11px] text-gray-500 dark:text-gray-300">{t('queue.template.pauseBetweenEpics')}</span>
-                        </label>
-                        <div className="w-px h-3.5 bg-gray-200 dark:bg-[#253040]" />
-                        <button
-                          onClick={selectedStories.size === stories.length ? handleDeselectAll : handleSelectAll}
-                          className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-                        >
-                          {selectedStories.size === stories.length ? t('queue.template.deselectAll') : t('queue.template.selectAll')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {isLoadingStories && (
-                    <div className="flex items-center justify-center py-6">
-                      <div className="w-5 h-5 border-2 border-gray-200 dark:border-[#2d3a4a] border-t-blue-500 rounded-full animate-spin" />
-                    </div>
-                  )}
-                  {storiesError && (
-                    <div className="flex items-center justify-center gap-2 py-4">
-                      <p className="text-sm text-red-500">{storiesError}</p>
-                      <button
-                        onClick={retryLoadStories}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
-                          text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        {t('button.retry')}
-                      </button>
-                    </div>
-                  )}
-                  {!isLoadingStories && !storiesError && stories.length === 0 && (
-                    <p className="text-sm text-gray-400 py-4 text-center">{t('queue.template.noStoriesFound')}</p>
-                  )}
-                  {!isLoadingStories && !storiesError && stories.length > 0 && (
-                    <div className="max-h-44 overflow-y-auto rounded-lg border border-gray-200 dark:border-[#253040]
-                      bg-gray-50/50 dark:bg-[#1c2129]/30 divide-y divide-gray-100 dark:divide-gray-700/50">
-                      {epicGroups.map(([epicNum, epicStories]) => {
-                        const allSelected = epicStories.every((s) => selectedStories.has(s.storyNum));
-                        const someSelected = epicStories.some((s) => selectedStories.has(s.storyNum));
-                        return (
-                          <div key={epicNum}>
-                            <button
-                              onClick={() => toggleEpic(epicStories)}
-                              className="flex items-center gap-2 w-full px-3 py-1.5 text-left
-                                hover:bg-gray-100 dark:hover:bg-[#263240] transition-colors sticky top-0
-                                bg-gray-50 dark:bg-[#263240] z-[1]"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={allSelected}
-                                ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
-                                onChange={() => toggleEpic(epicStories)}
-                                onClick={(e) => e.stopPropagation()}
-                                className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
-                              />
-                              <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                {t('queue.template.epicHeader', { num: epicNum })}
-                              </span>
-                              <span className="text-[10px] text-gray-300 dark:text-gray-600">
-                                ({epicStories.filter((s) => selectedStories.has(s.storyNum)).length}/{epicStories.length})
-                              </span>
-                            </button>
-                            {epicStories.map((story) => (
-                              <label
-                                key={story.storyNum}
-                                className="flex items-center gap-2.5 px-3 py-1.5 pl-7 cursor-pointer
-                                  hover:bg-gray-100/70 dark:hover:bg-[#263240]/50 transition-colors"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={selectedStories.has(story.storyNum)}
-                                  onChange={() => toggleStory(story.storyNum)}
-                                  className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
-                                />
-                                <span className="text-xs text-gray-700 dark:text-gray-200 truncate">
-                                  <span className="font-mono text-gray-500 dark:text-gray-300">{story.storyNum}</span>
-                                  {story.title && <span className="text-gray-400 ml-1.5">{story.title}</span>}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-
-                {/* Preview */}
-                {preview && (
-                  <section>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400 mb-2.5">
-                      {t('queue.template.preview')}
-                    </h3>
-                    <pre
-                      className="max-h-44 overflow-auto rounded-lg bg-gray-50 dark:bg-[#1c2129] p-3 text-xs ring-1 ring-gray-200 dark:ring-gray-800"
-                      style={{
-                        fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
-                        lineHeight: '1.6',
-                        whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
-                        overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
-                      }}
-                      dangerouslySetInnerHTML={{ __html: previewHtml + '\n' }}
-                    />
-                  </section>
-                )}
-              </>
-            )}
           </div>
         </div>
 
@@ -730,8 +608,8 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
             {t('queue.template.cancel')}
           </button>
 
-          {/* Load tab actions (no apply section) */}
-          {activeTab === 'load' && !showApplySection && selectedContent && (
+          {/* Load tab actions */}
+          {activeTab === 'load' && selectedContent && (
             <>
               <button
                 onClick={handleEditClick}
@@ -750,8 +628,8 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
             </>
           )}
 
-          {/* Editor tab action (no apply section) */}
-          {activeTab === 'editor' && !showApplySection && (
+          {/* Editor tab action */}
+          {activeTab === 'editor' && (
             <button
               onClick={handleApplyClick}
               disabled={!templateText.trim()}
@@ -762,21 +640,183 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
               {t('queue.template.applyBtn')}
             </button>
           )}
-
-          {/* Apply section — final load to editor */}
-          {showApplySection && (
-            <button
-              onClick={handleGenerate}
-              disabled={!preview}
-              className="px-4 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white
-                hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
-                shadow-sm shadow-blue-600/20"
-            >
-              {t('queue.template.loadToEditor')}
-            </button>
-          )}
         </div>
       </div>
+
+      {/* ════ APPLY MODAL (stacked on top) ════ */}
+      {showApplySection && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-[2px]"
+          onClick={() => setShowApplySection(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="apply-dialog-title"
+            className="bg-white dark:bg-[#263240] rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col mx-4
+              ring-1 ring-gray-200 dark:ring-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#253040]/50 flex-shrink-0">
+              <h2 id="apply-dialog-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                {t('queue.template.storySection')}
+              </h2>
+              <button
+                onClick={() => setShowApplySection(false)}
+                aria-label={t('queue.template.close')}
+                className="p-1.5 -mr-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+                  hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 min-h-0 px-5 py-4 space-y-4">
+              {/* Controls bar */}
+              {!isLoadingStories && !storiesError && stories.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={insertPause}
+                      onChange={(e) => setInsertPause(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                    />
+                    <span className="text-[11px] text-gray-500 dark:text-gray-300">{t('queue.template.pauseBetweenEpics')}</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-400">
+                      {selectedStories.size}/{stories.length}
+                    </span>
+                    <button
+                      onClick={selectedStories.size === stories.length ? handleDeselectAll : handleSelectAll}
+                      className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                    >
+                      {selectedStories.size === stories.length ? t('queue.template.deselectAll') : t('queue.template.selectAll')}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Story list */}
+              {isLoadingStories && (
+                <div className="flex items-center justify-center py-6">
+                  <div className="w-5 h-5 border-2 border-gray-200 dark:border-[#2d3a4a] border-t-blue-500 rounded-full animate-spin" />
+                </div>
+              )}
+              {storiesError && (
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <p className="text-sm text-red-500">{storiesError}</p>
+                  <button
+                    onClick={retryLoadStories}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                      text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    {t('button.retry')}
+                  </button>
+                </div>
+              )}
+              {!isLoadingStories && !storiesError && stories.length === 0 && (
+                <p className="text-sm text-gray-400 py-4 text-center">{t('queue.template.noStoriesFound')}</p>
+              )}
+              {!isLoadingStories && !storiesError && stories.length > 0 && (
+                <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 dark:border-[#253040]
+                  bg-gray-50/50 dark:bg-[#1c2129]/30 divide-y divide-gray-100 dark:divide-gray-700/50">
+                  {epicGroups.map(([epicNum, epicStories]) => {
+                    const allSelected = epicStories.every((s) => selectedStories.has(s.storyNum));
+                    const someSelected = epicStories.some((s) => selectedStories.has(s.storyNum));
+                    return (
+                      <div key={epicNum}>
+                        <button
+                          onClick={() => toggleEpic(epicStories)}
+                          className="flex items-center gap-2 w-full px-3 py-1.5 text-left
+                            hover:bg-gray-100 dark:hover:bg-[#263240] transition-colors sticky top-0
+                            bg-gray-50 dark:bg-[#263240] z-[1]"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                            onChange={() => toggleEpic(epicStories)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                          />
+                          <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {t('queue.template.epicHeader', { num: epicNum })}
+                          </span>
+                          <span className="text-[10px] text-gray-300 dark:text-gray-600">
+                            ({epicStories.filter((s) => selectedStories.has(s.storyNum)).length}/{epicStories.length})
+                          </span>
+                        </button>
+                        {epicStories.map((story) => (
+                          <label
+                            key={story.storyNum}
+                            className="flex items-center gap-2.5 px-3 py-1.5 pl-7 cursor-pointer
+                              hover:bg-gray-100/70 dark:hover:bg-[#263240]/50 transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedStories.has(story.storyNum)}
+                              onChange={() => toggleStory(story.storyNum)}
+                              className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                            />
+                            <span className="text-xs text-gray-700 dark:text-gray-200 truncate">
+                              <span className="font-mono text-gray-500 dark:text-gray-300">{story.storyNum}</span>
+                              {story.title && <span className="text-gray-400 ml-1.5">{story.title}</span>}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Preview */}
+              {preview && (
+                <section>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400 mb-2.5">
+                    {t('queue.template.preview')}
+                  </h3>
+                  <pre
+                    className="max-h-44 overflow-auto rounded-lg bg-gray-50 dark:bg-[#1c2129] p-3 text-xs ring-1 ring-gray-200 dark:ring-gray-800"
+                    style={{
+                      fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
+                      lineHeight: '1.6',
+                      whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
+                      overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
+                    }}
+                    dangerouslySetInnerHTML={{ __html: previewHtml + '\n' }}
+                  />
+                </section>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100 dark:border-[#253040]/50 flex-shrink-0">
+              <button
+                onClick={() => setShowApplySection(false)}
+                className="px-3.5 py-1.5 text-sm rounded-lg text-gray-600 dark:text-gray-300
+                  hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors"
+              >
+                {t('queue.template.cancel')}
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={!preview}
+                className="px-4 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white
+                  hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
+                  shadow-sm shadow-blue-600/20"
+              >
+                {t('queue.template.loadToEditor')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
