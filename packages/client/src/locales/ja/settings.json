@@ -25,14 +25,12 @@
     },
     "permissionSync": "権限モード同期",
     "permissionSyncOption": {
-      "never": "同期しない",
       "streaming": "ストリーミング中のみ",
       "always": "常に同期"
     },
     "permissionSyncDesc": {
-      "never": "権限モードの変更は他のブラウザに同期されません",
       "streaming": "ストリーミング中のみ他のブラウザに同期します（デフォルト）",
-      "always": "同じセッションを見ている他のブラウザに常に同期します"
+      "always": "常に同期し、セッションごとの権限モードを記憶します"
     },
     "markdownMode": "Markdownファイルの表示モード",
     "markdownOption": {

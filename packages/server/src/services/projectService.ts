@@ -392,6 +392,64 @@ class ProjectService {
     await fs.writeFile(namesPath, JSON.stringify(names, null, 2), 'utf-8');
   }
 
+  // Per-path mutex for session-permissions.json read-modify-write
+  private sessionPermissionLocks = new Map<string, Promise<void>>();
+
+  /**
+   * Read per-session permission modes from <originalPath>/.hammoc/session-permissions.json
+   * Returns empty object if file doesn't exist
+   */
+  async readSessionPermissions(originalPath: string): Promise<Record<string, string>> {
+    const filePath = path.join(originalPath, '.hammoc', 'session-permissions.json');
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      return JSON.parse(content) as Record<string, string>;
+    } catch (err: unknown) {
+      // Only treat missing file as empty; re-throw parse/other errors to prevent data loss
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {};
+      throw err;
+    }
+  }
+
+  /**
+   * Write per-session permission modes to <originalPath>/.hammoc/session-permissions.json
+   */
+  private async writeSessionPermissions(originalPath: string, permissions: Record<string, string>): Promise<void> {
+    const hammocDir = path.join(originalPath, '.hammoc');
+    await fs.mkdir(hammocDir, { recursive: true });
+    const filePath = path.join(hammocDir, 'session-permissions.json');
+    await fs.writeFile(filePath, JSON.stringify(permissions, null, 2), 'utf-8');
+  }
+
+  /**
+   * Update per-session permission mode for a specific session.
+   * Uses per-path mutex to prevent read-modify-write races.
+   */
+  async updateSessionPermission(originalPath: string, sessionId: string, mode: string): Promise<void> {
+    // Shield chain from previous failures, then run current operation
+    const prev = this.sessionPermissionLocks.get(originalPath) ?? Promise.resolve();
+    let resolve!: () => void;
+    let reject!: (err: unknown) => void;
+    const next = new Promise<void>((res, rej) => { resolve = res; reject = rej; });
+    const shielded = next.catch(() => { /* shield chain */ });
+    this.sessionPermissionLocks.set(originalPath, shielded);
+    try {
+      await prev.catch(() => { /* ignore previous failures */ });
+      const permissions = await this.readSessionPermissions(originalPath);
+      permissions[sessionId] = mode;
+      await this.writeSessionPermissions(originalPath, permissions);
+      resolve();
+    } catch (err) {
+      reject(err);
+      throw err;
+    } finally {
+      // Clean up lock entry if no other operation has queued behind this one
+      if (this.sessionPermissionLocks.get(originalPath) === shielded) {
+        this.sessionPermissionLocks.delete(originalPath);
+      }
+    }
+  }
+
   /**
    * Update a session name for a project identified by slug
    * @param name null to remove the name

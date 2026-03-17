@@ -19,8 +19,8 @@ import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
 import { debugLog } from '../utils/debugLogger';
 import { useChainStore } from '../stores/chainStore';
-import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus, PromptChainItem } from '@hammoc/shared';
-import type { InteractiveStatus } from '../stores/chatStore';
+import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus, PromptChainItem, PermissionMode, HistoryMessage } from '@hammoc/shared';
+import type { InteractiveStatus, StreamingSegment, StreamingToolCall, ResultErrorData } from '../stores/chatStore';
 
 export function useStreaming() {
   const {
@@ -157,7 +157,7 @@ export function useStreaming() {
         });
       }
       // Detect /compact command and restore compacting indicator
-      if (incomingTrimmed.startsWith('/compact')) {
+      if (incomingTrimmed === '/compact') {
         useChatStore.setState({ isCompacting: true });
       }
 
@@ -671,7 +671,7 @@ export function useStreaming() {
     };
 
     // Handle stream:status — server tells us if a background stream exists
-    const handleStreamStatus = (data: { active: boolean; sessionId: string }) => {
+    const handleStreamStatus = (data: { active: boolean; sessionId: string; permissionMode?: PermissionMode }) => {
       const chatState = useChatStore.getState();
       debugLog.stream('stream:status', {
         active: data.active,
@@ -704,6 +704,10 @@ export function useStreaming() {
           prevSegCount: chatState.streamingSegments.length,
         });
         restoreStreaming(data.sessionId);
+        // Apply the stream's actual permission mode (overrides local preference)
+        if (data.permissionMode) {
+          useChatStore.setState({ permissionMode: data.permissionMode });
+        }
         // Trim all messages after the last user message to avoid duplication
         // with buffer replay (which replays the entire assistant turn)
         trimMessagesAfterLastUser();
@@ -713,6 +717,10 @@ export function useStreaming() {
         });
         debugLog.stream('stream:status → restored', { sessionId: data.sessionId });
       } else {
+        // Apply per-session permission mode if provided (always policy — restores saved mode)
+        if (data.permissionMode) {
+          useChatStore.setState({ permissionMode: data.permissionMode });
+        }
         // Stream not active — if we were streaming, the stream completed during disconnect.
         // Clean up stale streaming state and fetch authoritative history.
         if (chatState.isStreaming) {
@@ -832,8 +840,9 @@ export function useStreaming() {
       const sessionId = state.streamingSessionId
         || useMessageStore.getState().currentSessionId;
       if (sessionId && sessionId !== 'pending') {
-        debugLog.reconnect('session:join emitted', { sessionId });
-        socket.emit('session:join', sessionId);
+        const currentProjectSlug = useMessageStore.getState().currentProjectSlug;
+        debugLog.reconnect('session:join emitted', { sessionId, projectSlug: currentProjectSlug });
+        socket.emit('session:join', sessionId, currentProjectSlug ?? undefined);
 
         // Set timeout — if no stream:status received, assume stream completed
         reconnectTimeoutId = setTimeout(() => {
@@ -867,6 +876,442 @@ export function useStreaming() {
       debugLog.socket('error', { isStreaming: currentIsStreaming, data });
       clearChunkQueue();
       abortStreaming();
+    };
+
+    // Handle stream:buffer-replay — process entire buffer as a single batch
+    // instead of receiving individual events one by one. This dramatically reduces
+    // the number of React re-renders when joining an active streaming session.
+    const handleBufferReplay = (data: { events: Array<{ event: string; data: unknown }> }) => {
+      if (!data.events || data.events.length === 0) return;
+
+      debugLog.stream('stream:buffer-replay received', { eventCount: data.events.length });
+
+      // Local accumulators — avoid setState per event
+      const segments: StreamingSegment[] = [];
+      let sessionId: string | null = null;
+      let messageId: string | null = null;
+      const defaultUsage: ChatUsage = { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, totalCostUSD: 0, contextWindow: 200000 };
+      let contextUsage: ChatUsage | null = null;
+      let activeModel: string | null = null;
+      let isCompacting = false;
+      let pendingTextBuffer = '';
+      const localSeenPermissionIds = new Set<string>();
+      // Track completed turns — when message:complete arrives, convert segments to messages
+      const completedMessages: HistoryMessage[] = [];
+      let completedStreamCompleteCount = 0;
+      let lastResultError: ResultErrorData | null = null;
+
+      /** Flush accumulated text into a text segment */
+      const flushText = () => {
+        if (pendingTextBuffer.length > 0) {
+          // Merge into last text segment if possible
+          const lastSeg = segments[segments.length - 1];
+          if (lastSeg && lastSeg.type === 'text') {
+            (lastSeg as { type: 'text'; content: string }).content += pendingTextBuffer;
+          } else {
+            segments.push({ type: 'text', content: pendingTextBuffer });
+          }
+          pendingTextBuffer = '';
+        }
+      };
+
+      /** Find a tool segment by toolCallId */
+      const findToolSegment = (toolCallId: string) => {
+        for (let i = segments.length - 1; i >= 0; i--) {
+          const s = segments[i];
+          if (s.type === 'tool' && s.toolCall.id === toolCallId) return { seg: s, idx: i };
+        }
+        return null;
+      };
+
+      /** Convert current segments to HistoryMessages (mirrors completeStreaming logic) */
+      const convertSegmentsToMessages = () => {
+        flushText();
+        let pendingThinking: string | undefined;
+        const baseTs = Date.now();
+        let tsCounter = completedMessages.length;
+
+        for (const seg of segments) {
+          const ts = new Date(baseTs + tsCounter++).toISOString();
+          if (seg.type === 'thinking') {
+            if (pendingThinking && messageId) {
+              completedMessages.push({
+                id: `${messageId}-thinking-${completedMessages.length}`,
+                type: 'assistant',
+                content: '',
+                timestamp: ts,
+                thinking: pendingThinking,
+              });
+            }
+            pendingThinking = seg.content;
+          } else if (seg.type === 'text') {
+            completedMessages.push({
+              id: `${messageId}-text-${completedMessages.length}`,
+              type: 'assistant',
+              content: seg.content,
+              timestamp: ts,
+              thinking: pendingThinking,
+            });
+            pendingThinking = undefined;
+          } else if (seg.type === 'tool') {
+            completedMessages.push({
+              id: `${messageId}-tool-${seg.toolCall.id}`,
+              type: 'tool_use',
+              content: `Calling ${seg.toolCall.name}`,
+              timestamp: ts,
+              toolName: seg.toolCall.name,
+              toolInput: seg.toolCall.input,
+              thinking: pendingThinking,
+              ...(seg.status !== 'pending' && seg.toolCall.output !== undefined && {
+                toolResult: {
+                  success: seg.status === 'completed',
+                  output: seg.status === 'completed' ? seg.toolCall.output : undefined,
+                  error: seg.status === 'error' ? seg.toolCall.output : undefined,
+                },
+              }),
+            });
+            pendingThinking = undefined;
+          } else if (seg.type === 'interactive') {
+            const toolCallId = seg.toolCall?.id || seg.id;
+            let responseStr: string | undefined;
+            if (seg.status === 'responded' && seg.response) {
+              if (typeof seg.response === 'string') {
+                responseStr = seg.response;
+              } else if (Array.isArray(seg.response)) {
+                responseStr = seg.response.join(', ');
+              } else if (typeof seg.response === 'object') {
+                responseStr = Object.values(seg.response).flat().join(', ');
+              }
+            }
+            completedMessages.push({
+              id: `${messageId}-tool-${toolCallId}`,
+              type: 'tool_use',
+              content: `Calling ${seg.toolCall?.name || 'AskUserQuestion'}`,
+              timestamp: ts,
+              toolName: seg.toolCall?.name || 'AskUserQuestion',
+              toolInput: seg.toolCall?.input,
+              thinking: pendingThinking,
+              ...(responseStr && { toolResult: { success: true, output: responseStr } }),
+            });
+            pendingThinking = undefined;
+          }
+        }
+        if (pendingThinking && messageId) {
+          completedMessages.push({
+            id: `${messageId}-thinking`,
+            type: 'assistant',
+            content: '',
+            timestamp: new Date(baseTs + tsCounter++).toISOString(),
+            thinking: pendingThinking,
+          });
+        }
+        // Clear segments for next turn
+        segments.length = 0;
+      };
+
+      // Process each event in the buffer
+      for (const entry of data.events) {
+        const { event, data: eventData } = entry;
+
+        switch (event) {
+          case 'user:message': {
+            const d = eventData as { content: string; sessionId: string };
+            if (!d.content) break;
+            const msgs = useMessageStore.getState().messages;
+            const incomingTrimmed = d.content.trim();
+            const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
+            if (!lastUserMsg || lastUserMsg.content.trim() !== incomingTrimmed) {
+              useMessageStore.getState().addOptimisticMessage(d.content);
+            }
+            if (incomingTrimmed === '/compact') isCompacting = true;
+            break;
+          }
+          case 'session:created':
+          case 'session:resumed': {
+            const d = eventData as { sessionId: string; model?: string };
+            sessionId = d.sessionId;
+            if (d.model) activeModel = d.model;
+            break;
+          }
+          case 'message:chunk': {
+            const d = eventData as StreamChunk;
+            if (!sessionId && d.sessionId) sessionId = d.sessionId;
+            if (!messageId && d.messageId) messageId = d.messageId;
+            isCompacting = false;
+            pendingTextBuffer += d.content;
+            break;
+          }
+          case 'thinking:chunk': {
+            const d = eventData as { content: string };
+            flushText();
+            isCompacting = false;
+            // Merge into last thinking segment
+            const lastSeg = segments[segments.length - 1];
+            if (lastSeg && lastSeg.type === 'thinking') {
+              (lastSeg as { type: 'thinking'; content: string }).content += d.content;
+            } else {
+              segments.push({ type: 'thinking', content: d.content });
+            }
+            break;
+          }
+          case 'tool:call': {
+            const d = eventData as { id: string; name: string; input?: Record<string, unknown>; startedAt?: number };
+            if (d.name === 'AskUserQuestion') break;
+            flushText();
+            segments.push({
+              type: 'tool',
+              toolCall: { id: d.id, name: d.name, input: d.input, startedAt: d.startedAt },
+              status: 'pending',
+            });
+            break;
+          }
+          case 'tool:input-update': {
+            const d = eventData as { toolCallId: string; input: Record<string, unknown> };
+            const found = findToolSegment(d.toolCallId);
+            if (found) {
+              found.seg.toolCall.input = { ...found.seg.toolCall.input, ...d.input };
+            }
+            break;
+          }
+          case 'tool:result': {
+            const d = eventData as { toolCallId: string; result: ToolResult };
+            const found = findToolSegment(d.toolCallId);
+            if (found) {
+              const toolSeg = found.seg as { type: 'tool'; toolCall: StreamingToolCall; status: string };
+              toolSeg.toolCall.output = d.result.output ?? d.result.error ?? '';
+              toolSeg.status = d.result.success ? 'completed' : 'error';
+            }
+            // Auto-resolve interactive segments for this tool call
+            for (const seg of segments) {
+              if (seg.type === 'interactive' && seg.status === 'waiting' && seg.toolCall?.id === d.toolCallId) {
+                (seg as { status: string }).status = 'responded';
+                (seg as { response?: string }).response = i18n.t('notification:streaming.respondedBeforeReconnect');
+              }
+            }
+            break;
+          }
+          case 'permission:request': {
+            const d = eventData as PermissionRequest;
+            if (localSeenPermissionIds.has(d.id)) break;
+            localSeenPermissionIds.add(d.id);
+            flushText();
+
+            if (d.toolCall.name === 'AskUserQuestion' && d.toolCall.input?.questions) {
+              const rawQuestions = d.toolCall.input.questions as Array<{
+                question: string; header: string;
+                options: Array<{ label: string; description?: string }>;
+                multiSelect?: boolean;
+              }>;
+              if (rawQuestions.length > 0) {
+                const mappedQuestions = rawQuestions.map((q) => ({
+                  question: q.question, header: q.header,
+                  choices: q.options.map((opt) => ({ label: opt.label, description: opt.description, value: opt.label })),
+                  multiSelect: q.multiSelect,
+                }));
+                segments.push({
+                  type: 'interactive', id: d.id, interactionType: 'question',
+                  toolCall: { id: d.toolCall.id, name: d.toolCall.name, input: d.toolCall.input },
+                  choices: mappedQuestions[0].choices, questions: mappedQuestions,
+                  multiSelect: mappedQuestions[0].multiSelect, status: 'waiting',
+                });
+                break;
+              }
+            }
+            // Default: attach permission to existing tool segment
+            if (d.toolCall.input) {
+              const found = findToolSegment(d.toolCall.id);
+              if (found) {
+                found.seg.toolCall.input = { ...found.seg.toolCall.input, ...d.toolCall.input };
+              }
+            }
+            const toolFound = findToolSegment(d.toolCall.id);
+            if (toolFound) {
+              (toolFound.seg as { permissionId?: string; permissionStatus?: string }).permissionId = d.id;
+              (toolFound.seg as { permissionId?: string; permissionStatus?: string }).permissionStatus = 'waiting';
+            }
+            break;
+          }
+          case 'permission:resolved': {
+            const d = eventData as { requestId: string; approved: boolean; interactionType: string; response?: string | string[] | Record<string, string | string[]> };
+            for (const seg of segments) {
+              if (d.interactionType === 'question' && seg.type === 'interactive' && seg.id === d.requestId) {
+                let displayResponse: string;
+                if (typeof d.response === 'string') displayResponse = d.response;
+                else if (Array.isArray(d.response)) displayResponse = d.response.join(', ');
+                else if (d.response && typeof d.response === 'object') displayResponse = Object.values(d.response).flat().join(', ');
+                else displayResponse = i18n.t('notification:streaming.respondedInOtherBrowser');
+                (seg as { status: string }).status = 'responded';
+                (seg as { response?: string }).response = displayResponse;
+              } else if (seg.type === 'tool' && seg.permissionId === d.requestId) {
+                (seg as { permissionStatus?: string }).permissionStatus = d.approved ? 'approved' : 'denied';
+              }
+            }
+            break;
+          }
+          case 'system:compact': {
+            const d = eventData as CompactMetadata;
+            flushText();
+            isCompacting = true;
+            segments.push({ type: 'system', subtype: 'compact', message: `Context compaction (${d.trigger})...` });
+            break;
+          }
+          case 'tool:summary': {
+            const d = eventData as { summary: string; precedingToolUseIds: string[] };
+            flushText();
+            segments.push({ type: 'tool_summary', summary: d.summary, precedingToolUseIds: d.precedingToolUseIds });
+            break;
+          }
+          case 'system:task-notification': {
+            const d = eventData as TaskNotificationData;
+            flushText();
+            segments.push({ type: 'task_notification', ...d });
+            break;
+          }
+          case 'result:error': {
+            const d = eventData as ResultErrorData;
+            flushText();
+            lastResultError = d;
+            segments.push({ type: 'result_error', ...d });
+            break;
+          }
+          case 'message:complete': {
+            const d = eventData as Message;
+            if (d.sessionId) sessionId = d.sessionId;
+            if (d.id) messageId = d.id;
+            if (d.usage) {
+              const prev: ChatUsage = contextUsage ?? defaultUsage;
+              contextUsage = {
+                ...prev,
+                contextWindow: d.usage.contextWindow,
+                totalCostUSD: d.usage.totalCostUSD,
+                model: d.usage.model ?? prev.model,
+                inputTokens: d.usage.inputTokens ?? prev.inputTokens ?? 0,
+                outputTokens: d.usage.outputTokens ?? prev.outputTokens ?? 0,
+              };
+              if (d.usage.model) activeModel = d.usage.model;
+            }
+            // Convert accumulated segments to messages (turn completed)
+            convertSegmentsToMessages();
+            completedStreamCompleteCount++;
+            // Reset per-turn identity so next turn doesn't inherit stale ID
+            messageId = null;
+            break;
+          }
+          case 'context:usage': {
+            const d = eventData as ChatUsage;
+            if (d.model) activeModel = d.model;
+            const prevCtx: ChatUsage = contextUsage ?? defaultUsage;
+            contextUsage = {
+              ...prevCtx,
+              totalCostUSD: d.totalCostUSD,
+              model: d.model ?? prevCtx.model,
+              rateLimit: d.rateLimit ?? prevCtx.rateLimit,
+            };
+            break;
+          }
+          case 'assistant:usage': {
+            const d = eventData as { inputTokens: number; outputTokens: number; cacheCreationInputTokens: number; cacheReadInputTokens: number };
+            const prevAu: ChatUsage = contextUsage ?? defaultUsage;
+            contextUsage = {
+              inputTokens: d.inputTokens,
+              outputTokens: d.outputTokens,
+              cacheCreationInputTokens: d.cacheCreationInputTokens,
+              cacheReadInputTokens: d.cacheReadInputTokens,
+              totalCostUSD: prevAu.totalCostUSD,
+              contextWindow: prevAu.contextWindow,
+              model: prevAu.model,
+            };
+            break;
+          }
+          case 'context:estimate': {
+            const d = eventData as { estimatedTokens: number; contextWindow: number };
+            const prevCe: ChatUsage = contextUsage ?? defaultUsage;
+            const currentTotal = prevCe.inputTokens + prevCe.cacheCreationInputTokens + prevCe.cacheReadInputTokens;
+            if (d.estimatedTokens > currentTotal) {
+              contextUsage = {
+                inputTokens: d.estimatedTokens,
+                outputTokens: prevCe.outputTokens,
+                cacheCreationInputTokens: 0,
+                cacheReadInputTokens: 0,
+                totalCostUSD: prevCe.totalCostUSD,
+                contextWindow: d.contextWindow,
+                model: prevCe.model,
+              };
+            }
+            break;
+          }
+          case 'chain:update': {
+            const d = eventData as { sessionId: string; items: PromptChainItem[] };
+            const viewingSessionId = useMessageStore.getState().currentSessionId;
+            if (viewingSessionId && viewingSessionId === d.sessionId) {
+              useChainStore.getState().setChainItems(d.items);
+            }
+            break;
+          }
+          // Skip tool:progress during replay (only elapsed times, final state is in tool:result)
+          // Skip permission:already-resolved (no toast during replay)
+          default:
+            break;
+        }
+      }
+
+      // Flush any remaining text
+      flushText();
+
+      // Apply accumulated state in a single batch
+      const hasCompletedTurns = completedMessages.length > 0;
+      const hasActiveSegments = segments.length > 0;
+
+      // Add completed turn messages to message store
+      if (hasCompletedTurns) {
+        useMessageStore.getState().addMessages(completedMessages);
+      }
+
+      // Update chat store — single setState call
+      const chatStateUpdate: Record<string, unknown> = {};
+      // Always increment streamCompleteCount for completed turns (even if stream is still active)
+      if (completedStreamCompleteCount > 0) {
+        chatStateUpdate.streamCompleteCount = useChatStore.getState().streamCompleteCount + completedStreamCompleteCount;
+      }
+      if (hasActiveSegments) {
+        // Stream is still active with in-progress segments
+        chatStateUpdate.isStreaming = true;
+        chatStateUpdate.streamingSessionId = sessionId;
+        chatStateUpdate.streamingMessageId = messageId;
+        chatStateUpdate.streamingSegments = segments;
+        chatStateUpdate.streamingStartedAt = new Date();
+      } else if (hasCompletedTurns) {
+        // All turns completed but stream may still be active (e.g. waiting for next
+        // user input in a multi-turn session, or SDK processing between turns).
+        // Since stream:status { active: true } was already received, keep streaming
+        // state active — live events or a subsequent stream:status will finalize.
+        chatStateUpdate.isStreaming = true;
+        chatStateUpdate.streamingSessionId = sessionId;
+        chatStateUpdate.streamingMessageId = null;
+        chatStateUpdate.streamingSegments = [];
+        chatStateUpdate.streamingStartedAt = new Date();
+        chatStateUpdate.streamCompletedAt = Date.now();
+      }
+      if (contextUsage) chatStateUpdate.contextUsage = contextUsage;
+      if (activeModel) chatStateUpdate.activeModel = activeModel;
+      if (isCompacting) chatStateUpdate.isCompacting = true;
+      if (lastResultError) chatStateUpdate.lastResultError = lastResultError;
+
+      // Update seen permission IDs for live event dedup
+      for (const id of localSeenPermissionIds) {
+        seenPermissionIds.current.add(id);
+      }
+
+      if (Object.keys(chatStateUpdate).length > 0) {
+        useChatStore.setState(chatStateUpdate);
+      }
+
+      debugLog.stream('stream:buffer-replay processed', {
+        eventCount: data.events.length,
+        completedTurns: completedMessages.length,
+        activeSegments: segments.length,
+        sessionId,
+      });
     };
 
     // Register socket event listeners
@@ -913,6 +1358,7 @@ export function useStreaming() {
     socket.on('rateLimit:update', handleRateLimitUpdate);
     socket.on('apiHealth:update', handleApiHealthUpdate);
     socket.on('stream:status', handleStreamStatus);
+    socket.on('stream:buffer-replay', handleBufferReplay);
     socket.on('stream:detached', handleStreamDetached);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect', handleReconnect);
@@ -966,6 +1412,7 @@ export function useStreaming() {
       socket.off('rateLimit:update', handleRateLimitUpdate);
       socket.off('apiHealth:update', handleApiHealthUpdate);
       socket.off('stream:status', handleStreamStatus);
+      socket.off('stream:buffer-replay', handleBufferReplay);
       socket.off('stream:detached', handleStreamDetached);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect', handleReconnect);

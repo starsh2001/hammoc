@@ -5,7 +5,6 @@
  */
 
 import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage, SubscriptionRateLimit, ApiHealthStatus } from './sdk.js';
-import type { PermissionSyncPolicy } from './preferences.js';
 import type { ToolResult, CompactMetadata, TaskNotificationData } from './streaming.js';
 import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
@@ -55,8 +54,8 @@ export interface ClientToServerEvents {
     interactionType: 'permission' | 'question';
     response?: string | string[] | Record<string, string | string[]>;
   }) => void;
-  'permission:mode-change': (data: { mode: PermissionMode; syncPolicy?: PermissionSyncPolicy }) => void;
-  'session:join': (sessionId: string) => void;
+  'permission:mode-change': (data: { mode: PermissionMode; projectSlug?: string }) => void;
+  'session:join': (sessionId: string, projectSlug?: string) => void;
   'session:leave': (sessionId: string) => void;
   // Story 15.2: Queue runner events
   'queue:start': (data: { items: QueueItem[]; sessionId?: string; projectSlug: string; permissionMode?: PermissionMode }) => void;
@@ -107,7 +106,7 @@ export interface ServerToClientEvents {
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
-  'stream:status': (data: { active: boolean; sessionId: string }) => void;
+  'stream:status': (data: { active: boolean; sessionId: string; permissionMode?: PermissionMode }) => void;
   'stream:detached': (data: { sessionId: string; reason: string }) => void;
   'permission:already-resolved': (data: { requestId: string }) => void;
   'permission:resolved': (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question'; response?: string | string[] | Record<string, string | string[]> }) => void;
@@ -133,6 +132,8 @@ export interface ServerToClientEvents {
   'dashboard:status-change': (data: DashboardStatusChangeEvent) => void;
   // Story 24.1: Prompt chain update
   'chain:update': (data: { sessionId: string; items: PromptChainItem[] }) => void;
+  // Buffer replay: send entire buffer as a single batch for fast session join
+  'stream:buffer-replay': (data: { events: Array<{ event: string; data: unknown }> }) => void;
 }
 
 // ===== Inter-server Events =====

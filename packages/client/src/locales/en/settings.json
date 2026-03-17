@@ -26,14 +26,12 @@
     },
     "permissionSync": "Permission Mode Sync",
     "permissionSyncOption": {
-      "never": "Never sync",
       "streaming": "During streaming only",
       "always": "Always sync"
     },
     "permissionSyncDesc": {
-      "never": "Permission mode changes are not synced to other browsers",
       "streaming": "Syncs only while actively streaming (default)",
-      "always": "Always syncs to other browsers viewing the same session"
+      "always": "Always syncs and remembers per-session permission mode"
     },
     "markdownMode": "Markdown File Open Mode",
     "markdownOption": {

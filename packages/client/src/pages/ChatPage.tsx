@@ -579,7 +579,7 @@ export function ChatPage() {
       // Prevent duplicate join for the same effect lifecycle
       if (hasJoined) return;
       hasJoined = true;
-      socket.emit('session:join', sessionId);
+      socket.emit('session:join', sessionId, projectSlug);
     };
 
     const handleConnect = () => {
