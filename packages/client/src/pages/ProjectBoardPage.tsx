@@ -246,6 +246,19 @@ export function ProjectBoardPage() {
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t, setActionErrorWithClear]);
 
+  // Validate and fix — validate draft story then auto-fix all issues
+  const handleValidateAndFix = useCallback((item: BoardItem) => {
+    if (!projectSlug || item.type !== 'story') return;
+    const sessionId = generateUUID();
+    const storyNum = item.id.replace(/^story-/, '');
+    const params = new URLSearchParams({
+      agent: '/BMad:agents:po',
+      task: `*validate-story-draft ${storyNum}`,
+    });
+    params.append('chain', t('workflow.validateFixPrompt'));
+    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+  }, [projectSlug, navigate, t]);
+
   // QA review for stories (re-request) and issues (Ready for Review)
   const handleRequestQAReview = useCallback((item: BoardItem) => {
     if (!projectSlug) return;
@@ -302,6 +315,7 @@ export function ProjectBoardPage() {
     onReopen: handleReopenIssue,
     onDelete: handleDeleteIssue,
     onWorkflowAction: handleWorkflowAction,
+    onValidateAndFixAction: handleValidateAndFix,
     onViewEpicStories: handleViewEpicStories,
     onRequestQAReview: handleRequestQAReview,
     onIssueStatusChange: handleIssueStatusChange,

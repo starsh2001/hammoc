@@ -75,7 +75,9 @@
   },
   "story": {},
   "workflow": {
-    "validateStory": "스토리 검증",
+    "validateStoryOnly": "스토리 검증 (미수정)",
+    "validateAndFixStory": "스토리 검증 및 수정",
+    "validateFixPrompt": "위 검증 결과에서 발견된 모든 Critical Issues, Should-Fix Issues, Nice-to-Have Issues를 전부 수정해주세요.",
     "startDevelopment": "개발 시작",
     "resumeDevelopment": "개발 이어하기",
     "requestQA": "QA 요청",

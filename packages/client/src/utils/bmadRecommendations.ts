@@ -37,6 +37,8 @@ export interface NextStepRecommendation {
   iconKey: string;
   /** Related story file name (implementation phase only) */
   storyFile?: string;
+  /** Additional prompts to queue in the prompt chain after the task command */
+  chainPrompts?: string[];
 }
 
 export interface PhaseInfo {
@@ -410,19 +412,33 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     });
   }
 
-  // Priority 7: Draft — validate story
+  // Priority 7: Draft — validate story (two variants)
   if (draftStory) {
     const num = storyNum(draftStory.file);
     const label = draftStory.title ? `${num}. ${draftStory.title}` : draftStory.file;
     const hasPrior = recs.length > 0;
 
+    // 7a: Validate and fix — validate then auto-fix all issues
     recs.push({
-      id: 'validate-story',
-      title: i18n.t('common:rec.validateStory'),
+      id: 'validate-fix-story',
+      title: i18n.t('common:rec.validateAndFixStory'),
       description: label,
       agentCommand: '/BMad:agents:po',
       taskCommand: `*validate-story-draft ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
+      iconKey: 'shield-check',
+      storyFile: draftStory.file,
+      chainPrompts: [i18n.t('common:rec.validateFixPrompt')],
+    });
+
+    // 7b: Validate only — no auto-fix
+    recs.push({
+      id: 'validate-story',
+      title: i18n.t('common:rec.validateStoryOnly'),
+      description: label,
+      agentCommand: '/BMad:agents:po',
+      taskCommand: `*validate-story-draft ${num}`,
+      variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: draftStory.file,
     });

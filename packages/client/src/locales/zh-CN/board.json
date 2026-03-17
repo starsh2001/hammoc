@@ -75,7 +75,9 @@
   },
   "story": {},
   "workflow": {
-    "validateStory": "验证 Story",
+    "validateStoryOnly": "验证 Story（不修正）",
+    "validateAndFixStory": "验证并修正 Story",
+    "validateFixPrompt": "请修正以上验证结果中发现的所有 Critical Issues、Should-Fix Issues 和 Nice-to-Have Issues。",
     "startDevelopment": "开始开发",
     "resumeDevelopment": "继续开发",
     "requestQA": "请求 QA",
