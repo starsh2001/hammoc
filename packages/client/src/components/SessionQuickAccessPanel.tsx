@@ -34,6 +34,7 @@ export function SessionQuickAccessPanel({
     loadMoreSessions,
     searchSessions,
     clearSearch,
+    fetchSessions,
     resetSearchState,
     searchQuery,
     isSearching,
@@ -44,12 +45,20 @@ export function SessionQuickAccessPanel({
   const projectSlugRef = useRef(projectSlug);
   projectSlugRef.current = projectSlug;
 
-  // On mount / projectSlug change: reset local input and clear stale search
+  // On mount / projectSlug change: reset local input and refresh sessions.
+  // Uses skipIfFresh to avoid redundant fetches when panel is reopened quickly.
   useEffect(() => {
     setInputValue('');
     clearTimeout(debounceRef.current);
-    clearSearch(projectSlug);
-  }, [projectSlug, clearSearch]);
+    const { searchQuery: sq } = useSessionStore.getState();
+    if (sq) {
+      // Active search exists — clear it and re-fetch
+      clearSearch(projectSlug);
+    } else {
+      // No search — just refresh, skip if data is fresh
+      fetchSessions(projectSlug, { limit: 20, skipIfFresh: true });
+    }
+  }, [projectSlug, clearSearch, fetchSessions]);
 
   // On unmount: reset search state without triggering a fetch
   useEffect(() => {
@@ -117,11 +126,9 @@ export function SessionQuickAccessPanel({
       {/* Session list */}
       <div className="flex-1 overflow-y-auto p-4 pt-2 space-y-2" aria-live="polite">
         {isLoading || isSearching ? (
-          <div className="flex items-center justify-center py-8" data-testid="loading-indicator">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" aria-hidden="true" />
-            <span className="sr-only">
-              {isSearching ? t('session.searching') : t('sessionQuickAccess.loading')}
-            </span>
+          <div className="flex items-center gap-2 justify-center py-8 text-sm text-gray-500 dark:text-gray-300" data-testid="loading-indicator">
+            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            <span>{isSearching ? t('session.searching') : t('loadingStatus')}</span>
           </div>
         ) : sessions.length === 0 && searchQuery ? (
           <p className="text-center text-gray-500 dark:text-gray-300 py-8" data-testid="search-no-results">

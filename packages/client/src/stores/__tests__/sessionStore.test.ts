@@ -35,6 +35,8 @@ describe('useSessionStore', () => {
       searchContent: false,
       isSearching: false,
       _searchVersion: 0,
+      _fetchVersion: 0,
+      _lastFetchedAt: 0,
     });
     vi.clearAllMocks();
   });
@@ -287,6 +289,11 @@ describe('useSessionStore', () => {
       },
     ];
 
+    beforeEach(() => {
+      // searchSessions checks currentProjectSlug to discard stale responses
+      useSessionStore.setState({ currentProjectSlug: 'my-project' });
+    });
+
     it('should call API with correct params and replace sessions', async () => {
       vi.mocked(sessionsApi.list).mockResolvedValue({
         sessions: mockSearchResults,
@@ -365,6 +372,10 @@ describe('useSessionStore', () => {
   });
 
   describe('searchSessions race conditions', () => {
+    beforeEach(() => {
+      useSessionStore.setState({ currentProjectSlug: 'my-project' });
+    });
+
     it('should discard stale search response when a newer search is issued', async () => {
       let resolveFirst: (value: { sessions: SessionListItem[]; total: number; hasMore: boolean }) => void;
       let resolveSecond: (value: { sessions: SessionListItem[]; total: number; hasMore: boolean }) => void;

@@ -22,20 +22,48 @@ import { RecentIssuesCard } from '../components/overview/RecentIssuesCard.js';
 
 function BmadSkeleton() {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {Array.from({ length: 2 }).map((_, i) => (
-        <div
-          key={i}
-          className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5 space-y-4"
-        >
-          <div className="h-5 w-32 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
-          <div className="space-y-2">
-            <div className="h-4 w-full bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
-            <div className="h-4 w-3/4 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
-            <div className="h-4 w-1/2 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
+    <div className="space-y-4 animate-pulse">
+      {/* SummaryCard skeleton: badge + percentage + stats + progress bar */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200 dark:border-blue-800/50 p-5">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div className="h-7 w-14 bg-blue-200 dark:bg-blue-800 rounded-md" />
+            <div className="flex items-center gap-1">
+              <div className="h-8 w-12 bg-gray-200 dark:bg-[#253040] rounded" />
+              <div className="h-4 w-16 bg-gray-200 dark:bg-[#253040] rounded ml-1" />
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="h-4 w-24 bg-gray-200 dark:bg-[#253040] rounded" />
+            <div className="h-4 w-24 bg-gray-200 dark:bg-[#253040] rounded" />
           </div>
         </div>
-      ))}
+        <div className="mt-3 h-2.5 bg-blue-100 dark:bg-blue-900/40 rounded-full" />
+      </div>
+
+      {/* NextStepRecommender skeleton */}
+      <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5 space-y-3">
+        <div className="h-5 w-36 bg-gray-200 dark:bg-[#253040] rounded" />
+        <div className="h-4 w-full bg-gray-200 dark:bg-[#253040] rounded" />
+        <div className="h-4 w-2/3 bg-gray-200 dark:bg-[#253040] rounded" />
+      </div>
+
+      {/* 2-column grid: DocumentStatusCard + EpicProgressCard */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5 space-y-4"
+          >
+            <div className="h-5 w-32 bg-gray-200 dark:bg-[#253040] rounded" />
+            <div className="space-y-2">
+              <div className="h-4 w-full bg-gray-200 dark:bg-[#253040] rounded" />
+              <div className="h-4 w-3/4 bg-gray-200 dark:bg-[#253040] rounded" />
+              <div className="h-4 w-1/2 bg-gray-200 dark:bg-[#253040] rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -117,17 +145,8 @@ function BmadSection({
   const { t } = useTranslation('common');
   return (
     <div className="px-6 pt-6 space-y-4">
-      {/* Loading: show badge + skeleton */}
-      {isLoading && (
-        <>
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200 dark:border-blue-800/50 p-5">
-            <span className="text-sm font-semibold px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded-md">
-              {t('overview.bmadLabel')}
-            </span>
-          </div>
-          <BmadSkeleton />
-        </>
-      )}
+      {/* Loading: show skeleton matching actual layout */}
+      {isLoading && <BmadSkeleton />}
 
       {/* Error */}
       {error && (
