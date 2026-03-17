@@ -325,20 +325,42 @@ export function ProjectBoardPage() {
   // Loading skeleton
   if (isLoading && items.length === 0) {
     return (
-      <div className="p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="h-8 w-32 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
-          <div className="flex gap-2">
-            <div className="h-8 w-20 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
-            <div className="h-8 w-28 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
+      <div className="p-4 h-full flex flex-col animate-pulse">
+        {/* Toolbar skeleton: view toggle buttons + settings + add button */}
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 bg-gray-200 dark:bg-[#253040] rounded-lg" />
+            <div className="w-9 h-9 bg-gray-200 dark:bg-[#253040] rounded-lg" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 bg-gray-200 dark:bg-[#253040] rounded-lg" />
+            <div className="h-8 w-20 bg-blue-200 dark:bg-blue-900/30 rounded-lg" />
           </div>
         </div>
-        <div className="flex gap-4 overflow-hidden">
+
+        {/* Kanban columns skeleton */}
+        <div className="flex-1 flex gap-4 overflow-hidden">
           {Array.from({ length: isMobile ? 1 : 4 }).map((_, i) => (
             <div key={i} className="flex-shrink-0 w-72 space-y-3">
-              <div className="h-10 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
-              <div className="h-24 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
-              <div className="h-24 bg-gray-200 dark:bg-[#253040] rounded animate-pulse" />
+              {/* Column header */}
+              <div className="flex items-center gap-2 p-2">
+                <div className="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600" />
+                <div className="h-4 w-20 bg-gray-200 dark:bg-[#253040] rounded" />
+                <div className="h-4 w-6 bg-gray-200 dark:bg-[#253040] rounded-full" />
+              </div>
+              {/* Cards */}
+              {Array.from({ length: 2 }).map((_, j) => (
+                <div
+                  key={j}
+                  className="p-3 bg-gray-50 dark:bg-[#263240] rounded-lg border border-gray-200 dark:border-[#253040] space-y-2"
+                >
+                  <div className="h-4 w-3/4 bg-gray-200 dark:bg-[#253040] rounded" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-12 bg-gray-200 dark:bg-[#253040] rounded-full" />
+                    <div className="h-3 w-16 bg-gray-200 dark:bg-[#253040] rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
         </div>

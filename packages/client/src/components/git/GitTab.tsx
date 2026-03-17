@@ -204,8 +204,9 @@ export function GitTab() {
   // Loading state before first status
   if (!status) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      <div className="flex items-center gap-2 justify-center h-full text-sm text-gray-500 dark:text-gray-300">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span>{t('loadingStatus')}</span>
       </div>
     );
   }
@@ -455,8 +456,9 @@ export function GitTab() {
             {/* Panel content */}
             <div className="flex-1 min-h-0 overflow-hidden">
               {diffLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                <div className="flex items-center gap-2 justify-center h-full text-sm text-gray-500 dark:text-gray-300">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{t('loadingStatus')}</span>
                 </div>
               ) : (
                 <DiffViewer

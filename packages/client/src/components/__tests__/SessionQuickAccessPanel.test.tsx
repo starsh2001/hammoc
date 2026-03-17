@@ -7,28 +7,41 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { SessionQuickAccessPanel } from '../SessionQuickAccessPanel';
 
-// Mock store actions
-const mockFetchSessions = vi.fn().mockResolvedValue(undefined);
-const mockLoadMoreSessions = vi.fn().mockResolvedValue(undefined);
-const mockSearchSessions = vi.fn().mockResolvedValue(undefined);
-const mockClearSearch = vi.fn().mockResolvedValue(undefined);
-const mockResetSearchState = vi.fn();
+// vi.hoisted runs before vi.mock hoisting, so these are safe to reference in factories
+const {
+  mockFetchSessions,
+  mockLoadMoreSessions,
+  mockSearchSessions,
+  mockClearSearch,
+  mockResetSearchState,
+  mockGetState,
+} = vi.hoisted(() => ({
+  mockFetchSessions: vi.fn().mockResolvedValue(undefined),
+  mockLoadMoreSessions: vi.fn().mockResolvedValue(undefined),
+  mockSearchSessions: vi.fn().mockResolvedValue(undefined),
+  mockClearSearch: vi.fn().mockResolvedValue(undefined),
+  mockResetSearchState: vi.fn(),
+  mockGetState: vi.fn(() => ({ searchQuery: '' })),
+}));
 
 vi.mock('../../stores/sessionStore', () => ({
-  useSessionStore: vi.fn(() => ({
-    sessions: [],
-    isLoading: false,
-    isLoadingMore: false,
-    hasMore: false,
-    error: null,
-    fetchSessions: mockFetchSessions,
-    loadMoreSessions: mockLoadMoreSessions,
-    searchSessions: mockSearchSessions,
-    clearSearch: mockClearSearch,
-    resetSearchState: mockResetSearchState,
-    searchQuery: '',
-    isSearching: false,
-  })),
+  useSessionStore: Object.assign(
+    vi.fn(() => ({
+      sessions: [],
+      isLoading: false,
+      isLoadingMore: false,
+      hasMore: false,
+      error: null,
+      fetchSessions: mockFetchSessions,
+      loadMoreSessions: mockLoadMoreSessions,
+      searchSessions: mockSearchSessions,
+      clearSearch: mockClearSearch,
+      resetSearchState: mockResetSearchState,
+      searchQuery: '',
+      isSearching: false,
+    })),
+    { getState: mockGetState },
+  ),
 }));
 
 // Import after mock
@@ -89,6 +102,7 @@ describe('SessionQuickAccessPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    mockGetState.mockReturnValue({ searchQuery: '' });
     mockStore();
   });
 
@@ -147,7 +161,16 @@ describe('SessionQuickAccessPanel', () => {
     expect(screen.getByTestId('empty-state')).toBeInTheDocument();
   });
 
-  it('should call clearSearch on mount instead of fetchSessions', () => {
+  it('should call fetchSessions with skipIfFresh on mount when no active search', () => {
+    mockGetState.mockReturnValue({ searchQuery: '' });
+    render(<SessionQuickAccessPanel {...defaultProps} />);
+
+    expect(mockFetchSessions).toHaveBeenCalledWith('test-project', { limit: 20, skipIfFresh: true });
+    expect(mockClearSearch).not.toHaveBeenCalled();
+  });
+
+  it('should call clearSearch on mount when active search exists', () => {
+    mockGetState.mockReturnValue({ searchQuery: 'old query' });
     render(<SessionQuickAccessPanel {...defaultProps} />);
 
     expect(mockClearSearch).toHaveBeenCalledWith('test-project');

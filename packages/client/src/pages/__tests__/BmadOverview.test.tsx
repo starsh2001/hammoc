@@ -205,12 +205,13 @@ describe('BmadOverview', () => {
     expect(screen.queryByText('에픽 진행률')).not.toBeInTheDocument();
   });
 
-  // TC-BD-8: BMad badge visible during all BMad states (loading, error, success)
-  it('shows BMad badge during loading state', () => {
+  // TC-BD-8: BMad skeleton visible during loading state
+  it('shows skeleton during loading state', () => {
     setupMocks({ project: bmadProject, isLoading: true });
 
-    render(<BmadOverview />);
+    const { container } = render(<BmadOverview />);
 
-    expect(screen.getByText('BMad')).toBeInTheDocument();
+    // Skeleton should render with animate-pulse
+    expect(container.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 });

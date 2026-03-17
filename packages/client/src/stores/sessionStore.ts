@@ -28,10 +28,14 @@ interface SessionState {
   isSearching: boolean;
   /** @internal monotonic counter to discard stale search responses */
   _searchVersion: number;
+  /** @internal monotonic counter to discard stale fetchSessions responses */
+  _fetchVersion: number;
+  /** @internal timestamp of last successful fetch */
+  _lastFetchedAt: number;
 }
 
 interface SessionActions {
-  fetchSessions: (projectSlug: string, options?: { limit?: number }) => Promise<void>;
+  fetchSessions: (projectSlug: string, options?: { limit?: number; skipIfFresh?: boolean }) => Promise<void>;
   /** Load more sessions (append to existing list) */
   loadMoreSessions: (projectSlug: string, options?: { limit?: number }) => Promise<void>;
   clearSessions: () => void;
@@ -74,10 +78,24 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   searchContent: false,
   isSearching: false,
   _searchVersion: 0,
+  _fetchVersion: 0,
+  _lastFetchedAt: 0,
 
   // Actions
-  fetchSessions: async (projectSlug: string, options?: { limit?: number }) => {
+  fetchSessions: async (projectSlug: string, options?: { limit?: number; skipIfFresh?: boolean }) => {
     const state = get();
+
+    // Skip fetch if data is fresh enough (same project, no error, fetched within 2 seconds)
+    const FRESH_THRESHOLD_MS = 2000;
+    if (
+      options?.skipIfFresh &&
+      state.currentProjectSlug === projectSlug &&
+      state.sessions.length > 0 &&
+      !state.error &&
+      Date.now() - state._lastFetchedAt < FRESH_THRESHOLD_MS
+    ) {
+      return;
+    }
 
     // Clear sessions and search state if switching projects
     if (state.currentProjectSlug !== projectSlug) {
@@ -91,6 +109,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       });
     }
 
+    // Bump fetch version to discard any in-flight responses from previous calls
+    const fetchVersion = get()._fetchVersion + 1;
+
     // Only show loading skeleton when there are no cached sessions.
     // Otherwise keep stale data visible while revalidating.
     const hasCachedData = get().sessions.length > 0;
@@ -99,6 +120,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       isRefreshing: hasCachedData,
       error: null,
       errorType: 'none',
+      _fetchVersion: fetchVersion,
     });
     try {
       const { includeEmpty, searchQuery, searchContent } = get();
@@ -111,50 +133,27 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         apiOptions.searchContent = searchContent;
       }
       const response = await sessionsApi.list(projectSlug, apiOptions);
-      // Discard stale response if user switched projects during the API call
-      if (get().currentProjectSlug !== projectSlug) return;
-      set({ sessions: response.sessions, hasMore: response.hasMore, total: response.total, isLoading: false, isRefreshing: false });
+      // Discard stale response if a newer fetch was issued or project changed
+      if (get()._fetchVersion !== fetchVersion || get().currentProjectSlug !== projectSlug) return;
+      set({ sessions: response.sessions, hasMore: response.hasMore, total: response.total, isLoading: false, isRefreshing: false, _lastFetchedAt: Date.now() });
     } catch (err) {
-      // Discard stale error if user switched projects during the API call
-      if (get().currentProjectSlug !== projectSlug) return;
+      // Discard stale error if a newer fetch was issued or project changed
+      if (get()._fetchVersion !== fetchVersion || get().currentProjectSlug !== projectSlug) return;
+      const setError = (error: string, errorType: ErrorType) =>
+        set({ error, errorType, isLoading: false, isRefreshing: false });
+
       if (err instanceof ApiError) {
         if (err.status === 404) {
-          set({
-            error: i18n.t('notification:session.notFound'),
-            errorType: 'not_found',
-            isLoading: false,
-            isRefreshing: false,
-          });
+          setError(i18n.t('notification:session.notFound'), 'not_found');
         } else if (err.status >= 500) {
-          set({
-            error: i18n.t('notification:session.serverError'),
-            errorType: 'server',
-            isLoading: false,
-            isRefreshing: false,
-          });
+          setError(i18n.t('notification:session.serverError'), 'server');
         } else {
-          set({
-            error: err.message,
-            errorType: 'unknown',
-            isLoading: false,
-            isRefreshing: false,
-          });
+          setError(err.message, 'unknown');
         }
       } else if (err instanceof TypeError && err.message.includes('fetch')) {
-        // Network error (fetch failed)
-        set({
-          error: i18n.t('notification:session.networkError'),
-          errorType: 'network',
-          isLoading: false,
-          isRefreshing: false,
-        });
+        setError(i18n.t('notification:session.networkError'), 'network');
       } else {
-        set({
-          error: i18n.t('notification:session.loadError'),
-          errorType: 'unknown',
-          isLoading: false,
-          isRefreshing: false,
-        });
+        setError(i18n.t('notification:session.loadError'), 'unknown');
       }
     }
   },
@@ -199,7 +198,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   clearSessions: () =>
-    set({ sessions: [], currentProjectSlug: null, hasMore: false, error: null, errorType: 'none' }),
+    set((prev) => ({
+      sessions: [],
+      currentProjectSlug: null,
+      hasMore: false,
+      error: null,
+      errorType: 'none',
+      _lastFetchedAt: 0,
+      _fetchVersion: prev._fetchVersion + 1,
+    })),
 
   clearError: () => set({ error: null, errorType: 'none' }),
 
@@ -207,9 +214,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const { sessions } = get();
     const idx = sessions.findIndex((s) => s.sessionId === sessionId);
     if (idx === -1) return;
-    const updated = sessions.map((s) =>
-      s.sessionId === sessionId ? { ...s, isStreaming: active || undefined } : s,
-    );
+    const updated = [...sessions];
+    updated[idx] = { ...updated[idx], isStreaming: active || undefined };
     set({ sessions: updated });
   },
 
@@ -317,6 +323,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 // Module-level listener: subscribes once when this module is first imported.
 // Uses lazy initialization to avoid issues with socket not being ready at import time.
 let listenerRegistered = false;
+let streamEndRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 
 function registerStreamChangeListener() {
   if (listenerRegistered) return;
@@ -325,6 +332,18 @@ function registerStreamChangeListener() {
   const socket = getSocket();
   socket.on('session:stream-change', (data: { sessionId: string; active: boolean }) => {
     useSessionStore.getState().updateSessionStreaming(data.sessionId, data.active);
+
+    // When streaming ends, debounce-refresh session list to update messageCount and modified time.
+    // Multiple streams ending in quick succession will coalesce into a single fetch.
+    if (!data.active) {
+      clearTimeout(streamEndRefreshTimer);
+      streamEndRefreshTimer = setTimeout(() => {
+        const { currentProjectSlug } = useSessionStore.getState();
+        if (currentProjectSlug) {
+          useSessionStore.getState().fetchSessions(currentProjectSlug, { skipIfFresh: true });
+        }
+      }, 500);
+    }
   });
 }
 
