@@ -11,6 +11,9 @@ import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { extractRequestIP } from './utils/networkUtils.js';
 import cliRoutes from './routes/cli.js';
 import authRoutes from './routes/auth.js';
 import projectsRoutes from './routes/projects.js';
@@ -43,14 +46,56 @@ const log = createLogger('app');
 export async function createApp(): Promise<Express> {
   const app = express();
 
-  // CORS configuration (for local development)
-  // Allow any origin in development for mobile/remote access
+  // Trust proxy headers (X-Forwarded-Proto, etc.) so secure cookies work behind TLS proxies
+  if (config.server.trustProxy) {
+    app.set('trust proxy', 1);
+  }
+
+  // Security headers (X-Frame-Options, X-Content-Type-Options, CSP, etc.)
+  // HSTS and crossOriginOpenerPolicy are only useful behind a TLS-terminating proxy.
+  // Sending them over plain HTTP causes browsers to force-upgrade to HTTPS,
+  // breaking direct HTTP access (e.g. VPN/LAN at http://192.168.x.x:3000).
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        connectSrc: ["'self'", 'ws:', 'wss:'],
+        fontSrc: ["'self'", 'data:'],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        frameAncestors: ["'none'"],
+        // Helmet defaults include upgrade-insecure-requests, which forces
+        // browsers to upgrade all HTTP sub-resources to HTTPS — breaking
+        // direct HTTP access. Only enable behind a TLS proxy.
+        ...(config.server.trustProxy ? {} : { upgradeInsecureRequests: null }),
+      },
+    },
+    hsts: config.server.trustProxy,
+    crossOriginOpenerPolicy: config.server.trustProxy,
+  }));
+
+  // CORS configuration — uses CORS_ORIGIN env var when set, otherwise reflects request origin
   app.use(
     cors({
-      origin: true, // Reflects the request origin for development
-      credentials: true,
+      origin: config.cors.origin,
+      credentials: config.cors.credentials,
     })
   );
+
+  // General rate limiting per IP (skip health endpoints)
+  // Default 200/min — increase via RATE_LIMIT env var for multi-hop proxy setups
+  // where multiple users share the same proxy IP
+  app.use(rateLimit({
+    windowMs: 60_000,
+    limit: parseInt(process.env.RATE_LIMIT || '200', 10),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    keyGenerator: (req) => extractRequestIP(req),
+    skip: (req) => req.path === '/health' || req.path === '/api/health',
+  }));
 
   app.use(express.json());
 
@@ -124,8 +169,10 @@ export async function createApp(): Promise<Express> {
   // Server management routes (restart)
   app.use('/api/server', serverRoutes);
 
-  // Debug routes (server-side logging for client debugging)
-  app.use('/api/debug', debugRoutes);
+  // Debug routes (server-side logging for client debugging) — only in development
+  if (process.env.NODE_ENV === 'development') {
+    app.use('/api/debug', debugRoutes);
+  }
 
   // Production: serve built client static files
   if (process.env.NODE_ENV === 'production') {

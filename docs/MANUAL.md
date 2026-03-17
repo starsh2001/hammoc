@@ -79,12 +79,42 @@ http://<your-computer-ip>:3000
 ```bash
 hammoc --port 8080          # Custom port
 hammoc --host localhost     # Bind to localhost only
+hammoc --trust-proxy        # Enable reverse proxy support
+hammoc --cors-origin <url>  # Restrict CORS to specific origin
+hammoc --rate-limit 1000    # Requests per minute per IP
 hammoc --reset-password     # Reset admin password
 hammoc --version            # Show version
 hammoc --help               # Show help
 ```
 
-Environment variables also work: `PORT=8080 hammoc`
+All options are also available as environment variables (see [Environment Variables](#14-environment-variables)).
+
+### 1.6 Remote Access (Reverse Proxy)
+
+If you need to expose Hammoc through a reverse proxy (Cloudflare Tunnel, nginx, etc.), use `--trust-proxy` and `--cors-origin`:
+
+```bash
+npx hammoc --trust-proxy --cors-origin https://hammoc.yourdomain.com
+```
+
+**What `--trust-proxy` enables:**
+- Reads real client IP from proxy headers (`CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`)
+- Sets session cookies with `Secure` flag (HTTPS-only)
+- Enables Express `trust proxy` for correct protocol detection
+
+**What `--cors-origin` does:**
+- Restricts cross-origin requests to the specified URL only
+- Without it, any website can make authenticated requests to your Hammoc instance
+
+**Security features (always active, no configuration needed):**
+- Helmet.js security headers (CSP, X-Frame-Options, HSTS, X-Content-Type-Options)
+- Server management APIs (restart, update) restricted to loopback only (127.0.0.1)
+- Terminal access restricted to local network IPs
+- Rate limiting (200 req/min/IP by default, adjustable via `--rate-limit`)
+- Strict IP validation with spoofing protection (rightmost XFF parsing)
+- Debug endpoints disabled in production
+
+> **Note:** For multi-hop proxy setups (CDN → Load Balancer → nginx → Hammoc), increase the rate limit with `--rate-limit 1000` since multiple users may share the same proxy IP.
 
 ---
 
@@ -147,7 +177,15 @@ When Claude uses tools (reading files, editing code, running commands), each too
 - **Result** — Expandable section showing tool output
 - **File paths** — Toggle between short and full path display
 
-### 2.6 Diff Viewer
+### 2.6 Task Notifications
+
+When Claude runs background tasks (e.g., Agent sub-tasks), a notification card appears in the message stream upon completion:
+
+- **Status indicators** — Completed (green checkmark), Failed (red alert), Stopped (bell icon)
+- **Summary text** — Brief description of the task outcome
+- **Clickable** — When linked to a tool call, clicking the card scrolls to the associated Agent tool card and highlights it briefly
+
+### 2.7 Diff Viewer
 
 When Claude modifies files, a diff viewer shows the changes:
 
@@ -159,7 +197,7 @@ When Claude modifies files, a diff viewer shows the changes:
 - **Responsive layout** — Automatically switches between side-by-side and inline modes
 - Powered by CodeMirror 6 merge view
 
-### 2.7 Permission Requests
+### 2.8 Permission Requests
 
 Depending on your permission mode, Claude may ask for approval before modifying files:
 
@@ -168,18 +206,28 @@ Depending on your permission mode, Claude may ask for approval before modifying 
 - View the diff before deciding
 - See the list of requested permissions
 
-### 2.8 Prompt Chaining
+### 2.9 Prompt Chaining
 
-Queue multiple prompts for sequential execution:
+Queue multiple prompts for sequential execution. Chain state is managed **server-side**, enabling multi-browser sync and background execution.
 
 1. Toggle **chain mode** ON via the chain button (link icon next to send) or hold `Ctrl`
-2. Type your first prompt and send it
+2. Type your first prompt and send it — the send button label changes to **"Add to chain"**
 3. While Claude is responding, type the next prompt and send — it enters the chain
-4. Up to 5 prompts can be queued
-5. A banner shows the chain status with Next/Remove/Cancel controls
-6. Each prompt auto-executes when the previous one completes
+4. Up to **10** prompts can be queued
+5. A **violet banner** shows the chain status:
+   - **Collapsed mode** — First prompt preview + "+N" count indicator
+   - **Expanded mode** — Full list with individual **Remove** buttons (click to expand when 2+ items)
+   - **Cancel all** — Clear the entire chain
+6. Each prompt auto-executes when the previous one completes (1-second delay between items)
 
-### 2.9 Context Usage
+**Server-side features:**
+- **Multi-browser sync** — Chain state is synchronized across all browser tabs/windows via WebSocket
+- **Background execution** — Chain continues running even if all browsers are closed
+- **Auto-retry** — Failed items are retried up to 3 times before being marked as failed
+- **Failure persistence** — Failed chain items are saved to disk and survive server restarts
+- **Per-item context** — Each chain item preserves its own working directory, permission mode, and model selection
+
+### 2.10 Context Usage
 
 Monitor token usage in real-time:
 
@@ -190,7 +238,7 @@ Monitor token usage in real-time:
 - **Color thresholds** — Green (normal), Yellow (≥50%), Red (≥80%)
 - **Context compaction** — Click the usage donut to trigger compaction, which summarizes the conversation to free up context space. When usage exceeds 90% (critical), clicking instead creates a new session
 
-### 2.10 Aborting Responses
+### 2.11 Aborting Responses
 
 Stop Claude mid-response:
 
@@ -198,7 +246,7 @@ Stop Claude mid-response:
 - Press `ESC` key
 - Press `Ctrl+C` (when no text is selected in the input)
 
-### 2.11 Prompt History
+### 2.12 Prompt History
 
 Navigate through your previous inputs:
 
@@ -206,7 +254,19 @@ Navigate through your previous inputs:
 - Press `↓` (Down arrow) to go forward
 - History is per-session
 
-### 2.12 Extended Thinking
+### 2.13 Voice Input (Speech Recognition)
+
+Dictate messages using your browser's built-in speech recognition:
+
+- **Microphone button** — Located inside the chat input area (right side). Only shown when the browser supports the Web Speech API (Chrome, Edge, Safari)
+- **Toggle** — Click the mic button to start/stop listening
+- **Visual indicator** — Green pulsing ring animation while actively listening
+- **Language-aware** — Automatically matches the app's language setting (English, Korean, Chinese, Japanese, Spanish, Portuguese)
+- **Transcript appending** — Recognized text is appended to the current input (does not replace existing text)
+- **Auto-stop** — Voice recognition stops automatically when sending a message or when the session becomes locked
+- **Error handling** — Toast notification shown if microphone access is denied or recognition fails
+
+### 2.14 Extended Thinking
 
 When Claude uses extended thinking, the reasoning is shown in a collapsible block:
 
@@ -584,7 +644,8 @@ The header shows the current terminal status:
 
 Terminal access is restricted for safety:
 
-- **Local network only** — Blocked when accessed from outside the local network (private IP detection)
+- **Local network only** — Blocked when accessed from outside the local/private network (RFC1918 IP detection). When behind a reverse proxy with `TRUST_PROXY=true`, real client IPs are extracted from proxy headers
+- **Server management restricted to loopback** — Server restart/update APIs only accept connections from `127.0.0.1` / `::1` (stricter than terminal access)
 - **Shield warning** — When access is denied, a ShieldAlert icon with explanation is shown (both in full tab and quick panel)
 - **Configurable** — Enable/disable via Settings > Advanced toggle or the `TERMINAL_ENABLED` environment variable (`false` overrides preferences)
 - **Max sessions** — Server-side limit (default: 10) via `MAX_TERMINAL_SESSIONS`; client limits to 5 per project
@@ -1295,9 +1356,11 @@ Note: Quick panel shortcuts are disabled when an input or textarea is focused.
 | `PORT` | `3000` | Server port |
 | `HOST` | `0.0.0.0` | Bind address (all interfaces) |
 | `NODE_ENV` | — | Set to `production` for optimized mode |
+| `TRUST_PROXY` | `false` | Enable reverse proxy support. Set to `true` when behind Cloudflare Tunnel, nginx, etc. Enables proxy header reading, secure cookies, and Express trust proxy |
+| `CORS_ORIGIN` | `true` | CORS origin policy. `true` allows any origin (local/VPN use). Set a specific URL (e.g., `https://hammoc.example.com`) to restrict |
+| `RATE_LIMIT` | `200` | Max requests per minute per IP. Increase for multi-hop proxy setups where users share a proxy IP |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key (required for Claude Code to function) |
 | `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout in milliseconds (5 minutes). Overrides the Settings UI value |
-| `CORS_ORIGIN` | `true` | CORS origin policy (`true` allows any origin, or set a specific URL) |
 | `LOG_LEVEL` | `INFO` (prod) / `DEBUG` (dev) | Logging level: ERROR, WARN, INFO, DEBUG, VERBOSE |
 | `TERMINAL_ENABLED` | `true` | Enable/disable terminal feature (set `false` to disable). Overrides the Settings UI value |
 | `SHELL_TIMEOUT` | `30000` | Terminal session cleanup grace period in milliseconds |
@@ -1414,5 +1477,6 @@ If you need to find or back up your data:
 | App config & password | `~/.hammoc/config.json` |
 | User preferences | `~/.hammoc/preferences.json` |
 | Queue templates | `<project-root>/.hammoc/queue-templates.json` (per project) |
+| Chain failures | `~/.hammoc/chain-failures/<sessionId>.json` (per session) |
 | Session data | `~/.claude/projects/` |
 | Server logs | `./logs/server-YYYY-MM-DD.log` (relative to working directory, date-partitioned) |

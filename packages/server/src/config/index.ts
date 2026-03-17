@@ -64,18 +64,25 @@ export const config = {
   server: {
     port: parseInt(process.env.PORT || '3000', 10),
     host: process.env.HOST || '0.0.0.0',
+    /**
+     * Enable trust for reverse proxy headers (X-Forwarded-For, CF-Connecting-IP).
+     * MUST be set to 'true' when running behind Cloudflare Tunnel, nginx, etc.
+     * Without this, isLocalIP() checks are bypassed because all requests
+     * appear to come from 127.0.0.1 through the proxy.
+     * Default: false (direct connections only)
+     */
+    trustProxy: process.env.TRUST_PROXY === 'true',
   },
 
   /**
-   * WebSocket settings
+   * CORS settings (shared by Express and WebSocket)
+   * Set CORS_ORIGIN to restrict allowed origins (e.g. 'https://hammoc.example.com').
+   * Default: true (reflects request origin — suitable for local/VPN use only)
    */
-  websocket: {
-    cors: {
-      // Allow any origin in development for mobile/remote access
-      origin: process.env.CORS_ORIGIN || true,
-      methods: ['GET', 'POST'] as string[],
-      credentials: true as const,
-    },
+  cors: {
+    origin: (process.env.CORS_ORIGIN as string) || true,
+    methods: ['GET', 'POST'] as string[],
+    credentials: true as const,
   },
 
   /**
@@ -99,8 +106,8 @@ export const config = {
 
   /**
    * Terminal PTY settings (Story 17.1)
-   * Guard logic implemented in Story 17.5 via checkTerminalAccess()
-   * Runtime: preferencesService.getTerminalEnabled() for dynamic preference support
+   * Guard logic: checkTerminalAccess() in websocket handler
+   * Controlled only by TERMINAL_ENABLED env var (default: true)
    */
   terminal: {
     enabled: process.env.TERMINAL_ENABLED !== 'false',
