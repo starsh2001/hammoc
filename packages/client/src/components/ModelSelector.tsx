@@ -55,7 +55,7 @@ export const MODEL_GROUPS: ModelGroup[] = [
     label: 'Claude 4.x',
     labelKey: 'model.claude4x',
     models: [
-      { value: 'claude-opus-4-6', label: 'Opus 4.6', description: 'Most capable' },
+      { value: 'claude-opus-4-6', label: 'Opus 4.6', description: 'Most capable · 1M ctx' },
       { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5', description: '2025-11-01' },
       { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1', description: '2025-08-05' },
       { value: 'claude-opus-4-20250514', label: 'Opus 4', description: '2025-05-14' },

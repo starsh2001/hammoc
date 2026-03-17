@@ -185,6 +185,8 @@ export function cleanCommandTags(content: string): string {
   cleaned = cleaned.replace(/<ide_opened_file>[\s\S]*?<\/ide_opened_file>/g, '');
   // Remove <command-message> blocks entirely (content included)
   cleaned = cleaned.replace(/<command-message>[\s\S]*?<\/command-message>/g, '');
+  // Remove <command-args> blocks entirely (content included)
+  cleaned = cleaned.replace(/<command-args>[\s\S]*?<\/command-args>/g, '');
   // Strip <command-name> tags but keep inner text
   cleaned = cleaned.replace(/<\/?command-name>/g, '');
   return cleaned.trim();
