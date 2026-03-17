@@ -6,9 +6,10 @@
 import { Router, Request, Response } from 'express';
 import { preferencesService } from '../services/preferencesService.js';
 import { notificationService } from '../services/notificationService.js';
+import { webPushService } from '../services/webPushService.js';
 import { invalidateI18nCache } from '../middleware/i18n.js';
 import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES } from '../services/chatService.js';
-import type { UpdateTelegramSettingsRequest } from '@hammoc/shared';
+import type { UpdateTelegramSettingsRequest, WebPushSubscribeRequest } from '@hammoc/shared';
 
 const router = Router();
 
@@ -75,6 +76,86 @@ router.post('/telegram/test', async (req: Request, res: Response) => {
       success: false,
       error: req.t!('preferences.telegram.testError'),
     });
+  }
+});
+
+// ── Web Push endpoints ───────────────────────────────────────────────
+
+// GET /api/preferences/webpush — Get Web Push settings + VAPID public key
+router.get('/webpush', async (_req: Request, res: Response) => {
+  try {
+    const prefs = await preferencesService.readPreferences();
+    const vapidPublicKey = await webPushService.getVapidPublicKey();
+    res.json({
+      enabled: prefs.webPush?.enabled ?? false,
+      vapidPublicKey,
+      subscriptionCount: webPushService.getSubscriptionCount(),
+    });
+  } catch {
+    res.status(500).json({ error: { code: 'WEBPUSH_SETTINGS_READ_ERROR', message: 'Failed to read Web Push settings' } });
+  }
+});
+
+// PATCH /api/preferences/webpush — Toggle Web Push enabled
+router.patch('/webpush', async (req: Request, res: Response) => {
+  try {
+    const { enabled } = req.body as { enabled?: boolean };
+    const prefs = await preferencesService.readPreferences();
+    const webPush = { ...prefs.webPush, enabled: enabled ?? false };
+    await preferencesService.writePreferences({ webPush });
+    await notificationService.reload();
+    const vapidPublicKey = await webPushService.getVapidPublicKey();
+    res.json({
+      enabled: webPush.enabled,
+      vapidPublicKey,
+      subscriptionCount: webPushService.getSubscriptionCount(),
+    });
+  } catch {
+    res.status(500).json({ error: { code: 'WEBPUSH_SETTINGS_WRITE_ERROR', message: 'Failed to update Web Push settings' } });
+  }
+});
+
+// POST /api/preferences/webpush/subscribe — Register a push subscription
+router.post('/webpush/subscribe', async (req: Request, res: Response) => {
+  try {
+    const { subscription, userAgent } = req.body as WebPushSubscribeRequest;
+    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+      res.status(400).json({ error: { code: 'INVALID_SUBSCRIPTION', message: 'Invalid push subscription' } });
+      return;
+    }
+    await webPushService.subscribe(subscription, userAgent);
+    res.json({ success: true, subscriptionCount: webPushService.getSubscriptionCount() });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to save push subscription';
+    const isValidation = message.includes('Invalid push endpoint');
+    res.status(isValidation ? 400 : 500).json({
+      error: { code: isValidation ? 'INVALID_ENDPOINT' : 'WEBPUSH_SUBSCRIBE_ERROR', message },
+    });
+  }
+});
+
+// DELETE /api/preferences/webpush/subscribe — Remove a push subscription
+router.delete('/webpush/subscribe', async (req: Request, res: Response) => {
+  try {
+    const { endpoint } = req.body as { endpoint: string };
+    if (!endpoint) {
+      res.status(400).json({ error: { code: 'INVALID_ENDPOINT', message: 'Endpoint is required' } });
+      return;
+    }
+    const removed = await webPushService.unsubscribe(endpoint);
+    res.json({ success: removed, subscriptionCount: webPushService.getSubscriptionCount() });
+  } catch {
+    res.status(500).json({ error: { code: 'WEBPUSH_UNSUBSCRIBE_ERROR', message: 'Failed to remove push subscription' } });
+  }
+});
+
+// POST /api/preferences/webpush/test — Send test push notification
+router.post('/webpush/test', async (_req: Request, res: Response) => {
+  try {
+    const result = await webPushService.sendTest();
+    res.json(result);
+  } catch {
+    res.status(500).json({ success: false, error: 'Failed to send test push notification' });
   }
 });
 

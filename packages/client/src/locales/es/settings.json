@@ -243,6 +243,7 @@
     "global": "Configuración global",
     "project": "Configuración del proyecto",
     "telegram": "Notificaciones de Telegram",
+    "notifications": "Notificaciones",
     "advanced": "Configuración avanzada",
     "help": "Ayuda",
     "about": "Acerca de"
@@ -263,6 +264,32 @@
   "theme": {
     "lightAria": "Cambiar a modo claro",
     "darkAria": "Cambiar a modo oscuro"
+  },
+  "webPush": {
+    "title": "Notificaciones Web Push",
+    "description": "Recibe notificaciones push del navegador en este dispositivo. Funciona en Android, navegadores de escritorio e iOS PWA (16.4+).",
+    "iosHint": "En iOS, Web Push solo funciona cuando Hammoc está instalado como PWA (Añadir a pantalla de inicio).",
+    "notSupported": "Web Push no es compatible con este navegador.",
+    "permissionDenied": "El permiso de notificaciones fue denegado. Habilítalo en la configuración del navegador.",
+    "enableNotifications": "Habilitar notificaciones Web Push",
+    "enableHint": "Cuando está habilitado, las notificaciones push se envían junto con Telegram (si está configurado).",
+    "subscribed": "Este navegador está suscrito",
+    "notSubscribed": "Este navegador no está suscrito",
+    "subscribe": "Suscribir este navegador",
+    "unsubscribe": "Cancelar suscripción",
+    "subscribedDevices": "{{count}} dispositivo(s) suscrito(s)",
+    "testSend": "Enviar push de prueba",
+    "testSending": "Enviando...",
+    "testSuccess": "¡Notificación push de prueba enviada!",
+    "testFailure": "Error al enviar: {{error}}",
+    "subscribeSuccess": "Notificaciones push habilitadas para este navegador.",
+    "subscribeError": "Error al suscribir. Inténtalo de nuevo.",
+    "unsubscribeSuccess": "Notificaciones push deshabilitadas para este navegador.",
+    "unsubscribeError": "Error al cancelar suscripción. Inténtalo de nuevo.",
+    "enabled": "Notificaciones Web Push habilitadas",
+    "disabled": "Notificaciones Web Push deshabilitadas",
+    "loadError": "Error al cargar la configuración de Web Push.",
+    "retry": "Reintentar"
   },
   "page": {
     "title": "Configuración",

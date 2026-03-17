@@ -244,6 +244,7 @@
     "global": "Global Settings",
     "project": "Project Settings",
     "telegram": "Telegram Notifications",
+    "notifications": "Notifications",
     "advanced": "Advanced Settings",
     "help": "Help",
     "about": "About"
@@ -264,6 +265,32 @@
   "theme": {
     "lightAria": "Switch to light mode",
     "darkAria": "Switch to dark mode"
+  },
+  "webPush": {
+    "title": "Web Push Notifications",
+    "description": "Receive browser push notifications on this device. Works on Android, desktop browsers, and iOS PWA (16.4+).",
+    "iosHint": "On iOS, Web Push only works when Hammoc is installed as a PWA (Add to Home Screen).",
+    "notSupported": "Web Push is not supported on this browser.",
+    "permissionDenied": "Notification permission was denied. Please enable it in your browser settings.",
+    "enableNotifications": "Enable Web Push notifications",
+    "enableHint": "When enabled, push notifications are sent alongside Telegram (if configured).",
+    "subscribed": "This browser is subscribed",
+    "notSubscribed": "This browser is not subscribed",
+    "subscribe": "Subscribe this browser",
+    "unsubscribe": "Unsubscribe",
+    "subscribedDevices": "{{count}} device(s) subscribed",
+    "testSend": "Send Test Push",
+    "testSending": "Sending...",
+    "testSuccess": "Test push notification sent!",
+    "testFailure": "Failed to send: {{error}}",
+    "subscribeSuccess": "Push notifications enabled for this browser.",
+    "subscribeError": "Failed to subscribe. Please try again.",
+    "unsubscribeSuccess": "Push notifications disabled for this browser.",
+    "unsubscribeError": "Failed to unsubscribe. Please try again.",
+    "enabled": "Web Push notifications enabled",
+    "disabled": "Web Push notifications disabled",
+    "loadError": "Failed to load Web Push settings.",
+    "retry": "Retry"
   },
   "page": {
     "title": "Settings",

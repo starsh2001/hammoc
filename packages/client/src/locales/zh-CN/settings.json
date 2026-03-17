@@ -243,6 +243,7 @@
     "global": "全局设置",
     "project": "项目设置",
     "telegram": "Telegram 通知",
+    "notifications": "通知",
     "advanced": "高级设置",
     "help": "帮助",
     "about": "关于"
@@ -263,6 +264,32 @@
   "theme": {
     "lightAria": "切换到浅色模式",
     "darkAria": "切换到深色模式"
+  },
+  "webPush": {
+    "title": "Web推送通知",
+    "description": "在此设备上接收浏览器推送通知。支持Android、桌面浏览器和iOS PWA（16.4+）。",
+    "iosHint": "在iOS上，需要将Hammoc安装为PWA（添加到主屏幕）才能使用Web推送。",
+    "notSupported": "此浏览器不支持Web推送。",
+    "permissionDenied": "通知权限被拒绝。请在浏览器设置中允许。",
+    "enableNotifications": "启用Web推送通知",
+    "enableHint": "启用后，推送通知将与Telegram一起发送。",
+    "subscribed": "此浏览器已订阅",
+    "notSubscribed": "此浏览器未订阅",
+    "subscribe": "订阅此浏览器",
+    "unsubscribe": "取消订阅",
+    "subscribedDevices": "{{count}}个设备已订阅",
+    "testSend": "发送测试推送",
+    "testSending": "发送中...",
+    "testSuccess": "测试推送通知已发送！",
+    "testFailure": "发送失败：{{error}}",
+    "subscribeSuccess": "此浏览器已启用推送通知。",
+    "subscribeError": "订阅失败，请重试。",
+    "unsubscribeSuccess": "此浏览器已禁用推送通知。",
+    "unsubscribeError": "取消订阅失败，请重试。",
+    "enabled": "Web推送通知已启用",
+    "disabled": "Web推送通知已禁用",
+    "loadError": "加载Web推送设置失败。",
+    "retry": "重试"
   },
   "page": {
     "title": "设置",

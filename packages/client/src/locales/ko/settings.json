@@ -244,6 +244,7 @@
     "global": "전역 설정",
     "project": "프로젝트 설정",
     "telegram": "Telegram 알림",
+    "notifications": "알림",
     "advanced": "고급 설정",
     "help": "도움말",
     "about": "만든이"
@@ -264,6 +265,32 @@
   "theme": {
     "lightAria": "라이트 모드로 전환",
     "darkAria": "다크 모드로 전환"
+  },
+  "webPush": {
+    "title": "웹 푸시 알림",
+    "description": "이 기기에서 브라우저 푸시 알림을 받습니다. Android, 데스크톱 브라우저, iOS PWA(16.4+)에서 동작합니다.",
+    "iosHint": "iOS에서는 Hammoc을 PWA로 설치(홈 화면에 추가)해야 웹 푸시가 동작합니다.",
+    "notSupported": "이 브라우저는 웹 푸시를 지원하지 않습니다.",
+    "permissionDenied": "알림 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.",
+    "enableNotifications": "웹 푸시 알림 활성화",
+    "enableHint": "활성화하면 Telegram과 함께 푸시 알림이 발송됩니다.",
+    "subscribed": "이 브라우저가 구독 중입니다",
+    "notSubscribed": "이 브라우저가 구독되지 않았습니다",
+    "subscribe": "이 브라우저 구독",
+    "unsubscribe": "구독 해제",
+    "subscribedDevices": "{{count}}개 기기 구독 중",
+    "testSend": "테스트 푸시 보내기",
+    "testSending": "전송 중...",
+    "testSuccess": "테스트 푸시 알림이 전송되었습니다!",
+    "testFailure": "전송 실패: {{error}}",
+    "subscribeSuccess": "이 브라우저에서 푸시 알림이 활성화되었습니다.",
+    "subscribeError": "구독에 실패했습니다. 다시 시도해주세요.",
+    "unsubscribeSuccess": "이 브라우저에서 푸시 알림이 비활성화되었습니다.",
+    "unsubscribeError": "구독 해제에 실패했습니다. 다시 시도해주세요.",
+    "enabled": "웹 푸시 알림이 활성화되었습니다",
+    "disabled": "웹 푸시 알림이 비활성화되었습니다",
+    "loadError": "웹 푸시 설정을 불러오는데 실패했습니다.",
+    "retry": "다시 시도"
   },
   "page": {
     "title": "설정",
