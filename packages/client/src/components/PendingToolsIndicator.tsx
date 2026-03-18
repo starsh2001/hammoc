@@ -64,8 +64,9 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
     // (2) auto-scroll state corruption (isUserScrolledUp false positive).
     scrollCtx?.scrollToElement(`tool-${toolId}`, { block: 'center', smooth: true });
 
-    // Flash highlight on the target card so the user can spot it after scroll
-    const el = document.getElementById(`tool-${toolId}`);
+    // Flash highlight on the actual tool card (not the full-width wrapper div)
+    const wrapper = document.getElementById(`tool-${toolId}`);
+    const el = wrapper?.querySelector<HTMLElement>('[data-tool-card]') ?? wrapper;
     if (el) {
       el.classList.remove('scroll-highlight');
       // Force reflow so re-adding the class restarts the animation
