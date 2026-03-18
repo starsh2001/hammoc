@@ -268,7 +268,7 @@
     "title": "Web Push Notifications",
     "description": "Receive browser push notifications on this device. Works on Android, desktop browsers, and iOS PWA (16.4+).",
     "iosHint": "On iOS, Web Push only works when Hammoc is installed as a PWA (Add to Home Screen).",
-    "notSupported": "Web Push is not supported on this browser.",
+    "notSupported": "Web Push is not available. A secure connection (HTTPS) is required and your browser must support Web Push.",
     "permissionDenied": "Notification permission was denied. Please enable it in your browser settings.",
     "enableNotifications": "Enable Web Push notifications",
     "enableHint": "When enabled, push notifications are sent alongside Telegram (if configured).",

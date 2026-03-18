@@ -268,7 +268,7 @@
     "title": "웹 푸시 알림",
     "description": "이 기기에서 브라우저 푸시 알림을 받습니다. Android, 데스크톱 브라우저, iOS PWA(16.4+)에서 동작합니다.",
     "iosHint": "iOS에서는 Hammoc을 PWA로 설치(홈 화면에 추가)해야 웹 푸시가 동작합니다.",
-    "notSupported": "이 브라우저는 웹 푸시를 지원하지 않습니다.",
+    "notSupported": "웹 푸시를 사용할 수 없습니다. 보안 접속(HTTPS)이 필요하며 브라우저가 웹 푸시를 지원해야 합니다.",
     "permissionDenied": "알림 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.",
     "enableNotifications": "웹 푸시 알림 활성화",
     "enableHint": "활성화하면 Telegram과 함께 푸시 알림이 발송됩니다.",
