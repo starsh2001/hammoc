@@ -59,8 +59,8 @@ export class StreamHandler {
 
   /** Running estimate of context window token consumption (updated from assistant usage + tool results) */
   private estimatedContextTokens = 0;
-  /** Known context window size from modelUsage (defaults to 200K) */
-  private contextWindowSize = 200000;
+  /** Known context window size from modelUsage (0 until first result arrives) */
+  private contextWindowSize = 0;
 
   constructor() {
     this.state = createInitialStreamingState();
@@ -141,7 +141,7 @@ export class StreamHandler {
     this.receivedStreamTextDelta = false;
     this.receivedStreamThinkingDelta = false;
     this.estimatedContextTokens = 0;
-    // Keep contextWindowSize across resets (learned from previous result)
+    this.contextWindowSize = 0;
   }
 
   /**
@@ -659,6 +659,10 @@ export class StreamHandler {
       cwd: message.cwd,
     };
 
+    // Reset context window so stale value from a prior session doesn't leak.
+    // Stays 0 until the first result message provides the real value from modelUsage.
+    this.contextWindowSize = 0;
+
     callbacks.onSessionInit?.(message.sessionId, this.state.metadata);
 
     // If there's buffered text from before init, send it now
@@ -739,12 +743,25 @@ export class StreamHandler {
   }
 
   /**
-   * Handle tool_use content block
+   * Handle tool_use content block.
+   * Skip if stream_event content_block_start already emitted this tool
+   * (avoids double emission — same pattern as text/thinking dedup).
    */
   private handleToolUseBlock(
     block: ParsedToolUseBlock,
     callbacks: StreamCallbacks
   ): void {
+    // If content_block_start already registered this tool, update input but skip re-emit
+    if (this.state.pendingToolCalls.has(block.id)) {
+      const existing = this.state.pendingToolCalls.get(block.id)!;
+      // Assistant message block may carry the full input (content_block_start had empty {})
+      if (block.input && Object.keys(block.input).length > 0) {
+        existing.input = block.input;
+        callbacks.onToolInputUpdate?.(block.id, block.input);
+      }
+      return;
+    }
+
     const toolCall: TrackedToolCall = {
       id: block.id,
       name: block.name,
