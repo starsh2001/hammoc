@@ -267,7 +267,7 @@
     "title": "Notificaciones Web Push",
     "description": "Recibe notificaciones push del navegador en este dispositivo. Funciona en Android, navegadores de escritorio e iOS PWA (16.4+).",
     "iosHint": "En iOS, Web Push solo funciona cuando Hammoc está instalado como PWA (Añadir a pantalla de inicio).",
-    "notSupported": "Web Push no es compatible con este navegador.",
+    "notSupported": "Web Push no está disponible. Se requiere una conexión segura (HTTPS) y el navegador debe soportar Web Push.",
     "permissionDenied": "El permiso de notificaciones fue denegado. Habilítalo en la configuración del navegador.",
     "enableNotifications": "Habilitar notificaciones Web Push",
     "enableHint": "Cuando está habilitado, las notificaciones push se envían junto con Telegram (si está configurado).",
