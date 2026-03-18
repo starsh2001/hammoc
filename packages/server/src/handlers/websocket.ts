@@ -898,6 +898,10 @@ export async function initializeWebSocket(
           // Story 20.1: Trigger dashboard status change on stream end
           const endProjectSlug = sessionProjectMap.get(endedSessionId);
           if (endProjectSlug) {
+            // Update sessions-index.json so future list queries hit cache
+            new SessionService().updateSessionIndex(endProjectSlug, endedSessionId).catch((err) => {
+              log.warn(`Failed to update session index: project=${endProjectSlug} session=${endedSessionId}`, err);
+            });
             triggerDashboardStatusChange(endProjectSlug);
             sessionProjectMap.delete(endedSessionId);
           }
@@ -1667,8 +1671,9 @@ async function handleChatSend(
   }
 
   // Buffer the user's message so reconnecting clients can display it
-  // (SDK may not have written the JSONL file yet at reconnect time)
-  emit('user:message', { content, sessionId: sessionId || '' });
+  // (SDK may not have written the JSONL file yet at reconnect time).
+  // Include timestamp so buffer replay can preserve correct message ordering.
+  emit('user:message', { content, sessionId: sessionId || '', timestamp: new Date().toISOString() });
 
   const isResuming = resume && sessionId;
   const sessionService = new SessionService();

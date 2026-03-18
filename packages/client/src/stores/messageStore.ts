@@ -32,7 +32,7 @@ interface MessageActions {
   fetchMoreMessages: () => Promise<void>;
   clearMessages: () => void;
   /** Add user message optimistically (before server confirmation) */
-  addOptimisticMessage: (content: string, images?: ImageAttachment[]) => void;
+  addOptimisticMessage: (content: string, images?: ImageAttachment[], timestamp?: string) => void;
   /** Add multiple messages in batch (used by completeStreaming) */
   addMessages: (newMessages: HistoryMessage[]) => void;
 }
@@ -358,7 +358,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       error: null,
     }),
 
-  addOptimisticMessage: (content: string, images?: ImageAttachment[]) => {
+  addOptimisticMessage: (content: string, images?: ImageAttachment[], timestamp?: string) => {
     const state = get();
     const { messages } = state;
 
@@ -377,7 +377,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       id: `optimistic-${generateUUID()}`,
       type: 'user',
       content: content.trim(),
-      timestamp: new Date().toISOString(),
+      timestamp: timestamp ?? new Date().toISOString(),
       _optimistic: true,
       ...(images && images.length > 0 ? { images } : {}),
     };
