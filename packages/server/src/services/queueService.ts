@@ -495,7 +495,7 @@ export class QueueService {
 
     try {
       // Emit user message to streaming buffer (identical to handleChatSend in websocket.ts)
-      emit('user:message', { content: item.prompt, sessionId: streamKey });
+      emit('user:message', { content: item.prompt, sessionId: streamKey, timestamp: new Date().toISOString() });
 
       // Build shared callbacks (common logic for browser & queue paths)
       const { callbacks, sessionIdRef } = buildStreamCallbacks(

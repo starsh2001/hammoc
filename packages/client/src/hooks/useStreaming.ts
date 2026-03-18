@@ -126,7 +126,7 @@ export function useStreaming() {
 
     // Handle user:message from buffer replay (restores the user's sent message
     // when reconnecting before SDK has flushed the JSONL file)
-    const handleUserMessage = (data: { content: string; sessionId: string }) => {
+    const handleUserMessage = (data: { content: string; sessionId: string; timestamp?: string }) => {
       if (!data.content) return;
       const msgs = useMessageStore.getState().messages;
       const incomingTrimmed = data.content.trim();
@@ -151,7 +151,7 @@ export function useStreaming() {
         lastUserMsgId: lastUserMsg?.id,
       });
       if (!isDuplicate) {
-        useMessageStore.getState().addOptimisticMessage(data.content);
+        useMessageStore.getState().addOptimisticMessage(data.content, undefined, data.timestamp);
         debugLog.stream('DEDUP user:message → added optimistic', {
           newMsgCount: useMessageStore.getState().messages.length,
         });
@@ -1038,13 +1038,14 @@ export function useStreaming() {
 
         switch (event) {
           case 'user:message': {
-            const d = eventData as { content: string; sessionId: string };
+            const d = eventData as { content: string; sessionId: string; timestamp?: string };
             if (!d.content) break;
             const msgs = useMessageStore.getState().messages;
             const incomingTrimmed = d.content.trim();
             const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
             if (!lastUserMsg || lastUserMsg.content.trim() !== incomingTrimmed) {
-              useMessageStore.getState().addOptimisticMessage(d.content);
+              // Pass original timestamp from buffer to preserve correct ordering
+              useMessageStore.getState().addOptimisticMessage(d.content, undefined, d.timestamp);
             }
             if (incomingTrimmed === '/compact') isCompacting = true;
             break;
