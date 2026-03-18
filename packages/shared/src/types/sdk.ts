@@ -129,6 +129,7 @@ export const CONTEXT_TOKEN_RESERVES = {
  * Calculate effective context limit (usable input tokens after reserves)
  */
 export function getEffectiveContextLimit(contextWindow: number): number {
+  if (contextWindow <= 0) return 0;
   return Math.max(1, contextWindow - CONTEXT_TOKEN_RESERVES.OUTPUT_TOKEN_RESERVE - CONTEXT_TOKEN_RESERVES.SAFETY_BUFFER);
 }
 
@@ -136,6 +137,7 @@ export function getEffectiveContextLimit(contextWindow: number): number {
  * Calculate context usage percentage based on effective limit
  */
 export function getContextUsagePercent(totalInputTokens: number, contextWindow: number): number {
+  if (contextWindow <= 0) return 0;
   const effectiveLimit = getEffectiveContextLimit(contextWindow);
   if (effectiveLimit <= 0) return 0;
   return Math.min(100, Math.round((totalInputTokens / effectiveLimit) * 100));
