@@ -323,28 +323,43 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 // Module-level listener: subscribes once when this module is first imported.
 // Uses lazy initialization to avoid issues with socket not being ready at import time.
 let listenerRegistered = false;
-let streamEndRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let listenerRetryCount = 0;
+const MAX_LISTENER_RETRIES = 20;
+const streamEndRefreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function registerStreamChangeListener() {
   if (listenerRegistered) return;
-  listenerRegistered = true;
 
-  const socket = getSocket();
-  socket.on('session:stream-change', (data: { sessionId: string; active: boolean }) => {
-    useSessionStore.getState().updateSessionStreaming(data.sessionId, data.active);
+  try {
+    const socket = getSocket();
 
-    // When streaming ends, debounce-refresh session list to update messageCount and modified time.
-    // Multiple streams ending in quick succession will coalesce into a single fetch.
-    if (!data.active) {
-      clearTimeout(streamEndRefreshTimer);
-      streamEndRefreshTimer = setTimeout(() => {
-        const { currentProjectSlug } = useSessionStore.getState();
-        if (currentProjectSlug) {
-          useSessionStore.getState().fetchSessions(currentProjectSlug, { skipIfFresh: true });
+    socket.on('session:stream-change', (data: { sessionId: string; active: boolean; projectSlug?: string | null }) => {
+      useSessionStore.getState().updateSessionStreaming(data.sessionId, data.active);
+
+      // When streaming ends, debounce-refresh session list to update messageCount and modified time.
+      // Debounce per project so concurrent multi-project streams each get their own refresh.
+      // Use server-provided projectSlug (authoritative); fall back to currentProjectSlug
+      // only when server didn't resolve the project (e.g., very short-lived session).
+      if (!data.active) {
+        const slug = data.projectSlug ?? useSessionStore.getState().currentProjectSlug;
+        if (slug) {
+          const prev = streamEndRefreshTimers.get(slug);
+          if (prev) clearTimeout(prev);
+          streamEndRefreshTimers.set(slug, setTimeout(() => {
+            streamEndRefreshTimers.delete(slug);
+            useSessionStore.getState().fetchSessions(slug);
+          }, 500));
         }
-      }, 500);
+      }
+    });
+
+    listenerRegistered = true;
+  } catch {
+    // Socket not ready yet; retry with bounded attempts
+    if (++listenerRetryCount < MAX_LISTENER_RETRIES) {
+      setTimeout(registerStreamChangeListener, 100);
     }
-  });
+  }
 }
 
 // Register on next tick to ensure socket is initialized

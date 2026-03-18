@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
+import { useChainStore } from './chainStore';
 import { usePreferencesStore } from './preferencesStore';
 import { debugLog } from '../utils/debugLogger';
 import i18n from '../i18n';
@@ -733,9 +734,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingDelayTimeoutId = null;
     }
 
-    // Notify server to abort SDK request
+    // Notify server to abort SDK request (server also clears prompt chain)
     const socket = getSocket();
     socket.emit('chat:abort');
+
+    // Immediately clear local chain state so UI reflects the stop
+    useChainStore.getState().clearChainItems();
 
     // Mark pending tool segments as aborted (stop spinners/timers)
     const finalSegments = state.streamingSegments.map((seg) => {
