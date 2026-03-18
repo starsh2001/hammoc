@@ -273,6 +273,7 @@
     "srText": "Claude está pensando...",
     "waiting": "Pensando...",
     "generating": "Gerando...",
+    "restoring": "Restaurando conversa...",
     "compactionHint": "a compactação de contexto pode estar em andamento"
   },
   "markdown": {

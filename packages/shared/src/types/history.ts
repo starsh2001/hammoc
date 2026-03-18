@@ -129,4 +129,7 @@ export interface HistoryMessagesResponse {
 export interface PaginationOptions {
   limit?: number;
   offset?: number;
+  /** Exclude messages at or after this timestamp (ms). Used to filter out
+   *  messages from an active stream period (covered by buffer replay). */
+  streamStartedAt?: number | null;
 }

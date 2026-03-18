@@ -136,6 +136,8 @@ const activeStreams = new Map<string, ActiveStream>();
 const socketToSession = new Map<string, string>();
 // Story 24.3: Track which session room each socket joined (for session:leave room management)
 const socketSessionRoom = new Map<string, string>();
+// Track which project room each socket joined (for leave on session switch)
+const socketProjectRoom = new Map<string, string>();
 
 // Story 24.1: Per-session prompt chain state
 // Internal chain item with per-item execution context (not sent to clients)
@@ -296,7 +298,7 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
         log.warn(`[CHAIN-DRAIN] failed to resolve projectSlug for dashboard: sessionId=${sessionId}, dir=${workingDirectory}`, err);
       });
 
-      io?.emit('session:stream-change', { sessionId, active: true });
+      emitStreamChange(sessionId, true, sessionProjectMap.get(sessionId) ?? null);
       const drainSuccess = await handleChatSend(
         stream,
         { content: nextItem.content, workingDirectory, sessionId, resume: chainResumableSessions.has(sessionId) || undefined, permissionMode, model },
@@ -317,10 +319,12 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
       // Check if this was an intentional abort (chain:remove or chain:clear)
       const isAborted = abortController.signal.aborted;
       const abortReason = abortController.signal.reason;
-      const isChainCanceled = isAborted && (abortReason === 'chain-item-removed' || abortReason === 'chain-cleared');
+      const isChainCanceled = isAborted && (abortReason === 'chain-item-removed' || abortReason === 'chain-cleared' || abortReason === 'user-abort');
 
       if (isChainCanceled) {
-        // User-initiated cancel — remove from chain, no disk record needed
+        // User-initiated cancel — remove from chain, no disk record needed.
+        // Mark as 'sent' so the finally safety-net doesn't reset it to 'pending'.
+        nextItem.status = 'sent';
         const cancelItems = chainState.get(sessionId);
         if (cancelItems) {
           chainState.set(sessionId, cancelItems.filter(item => item.id !== nextItem.id));
@@ -367,8 +371,9 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
           const remaining = chainState.get(sessionId);
           const remainingPending = remaining?.filter(item => item.status === 'pending').length ?? 0;
           log.info(`[CHAIN-DRAIN] finally: cleaning up stream, remainingItems=${remaining?.length ?? 0}, remainingPending=${remainingPending}`);
+          const chainEndSlug = sessionProjectMap.get(sessionId) ?? null;
           cleanupStream(sessionId);
-          io?.emit('session:stream-change', { sessionId, active: false });
+          emitStreamChange(sessionId, false, chainEndSlug);
           // Persist per-session permission mode before cleanup
           const chainFinalMode = stream.chatService?.getPermissionMode();
           if (chainFinalMode) await persistSessionPermissionMode(sessionId, chainFinalMode);
@@ -444,11 +449,90 @@ export function isSessionStreaming(sessionId: string): boolean {
   return !!stream && stream.status === 'running';
 }
 
-/** Clean up a stream from all maps */
-function cleanupStream(streamKey: string) {
-  activeStreams.delete(streamKey);
-  for (const [sockId, sessId] of socketToSession.entries()) {
-    if (sessId === streamKey) socketToSession.delete(sockId);
+/** Completed stream buffers kept independently of activeStreams.
+ *  When a stream completes, its buffer is saved here for 5 seconds so clients
+ *  joining during the JSONL flush window can still receive the completed turn.
+ *  This is separate from activeStreams so new streams can be created immediately
+ *  without losing the completed buffer. */
+const completedBuffers = new Map<string, {
+  events: Array<{ event: string; data: unknown }>;
+  startedAt: number;
+}>();
+
+/** Timer handles for completedBuffer expiry, keyed by sessionId.
+ *  Tracked so we can cancel the previous timer when a new buffer replaces it,
+ *  allowing the old buffer to be GC'd immediately instead of waiting for expiry. */
+const completedBufferTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/** How long to keep completed buffers (ms). Allows JSONL to flush before
+ *  fetchMessages becomes the sole source for this turn's data. */
+const COMPLETED_BUFFER_TTL_MS = 5000;
+
+/** Get the earliest stream start timestamp (active OR recently completed).
+ *  When both exist (e.g., chain: previous turn completed + new turn running),
+ *  returns the earlier one so fetchMessages excludes ALL stream-period messages.
+ *  Both the completed turn and active turn are provided via buffer replay. */
+export function getStreamStartedAt(sessionId: string): number | null {
+  const stream = activeStreams.get(sessionId);
+  const runningStart = stream && stream.status === 'running' ? stream.startedAt : null;
+  const completedStart = completedBuffers.get(sessionId)?.startedAt ?? null;
+  if (runningStart && completedStart) return Math.min(runningStart, completedStart);
+  return runningStart ?? completedStart;
+}
+
+/** Get the completed buffer for a session (null if none or expired). */
+export function getCompletedBuffer(sessionId: string): Array<{ event: string; data: unknown }> | null {
+  const completed = completedBuffers.get(sessionId);
+  return completed ? completed.events : null;
+}
+
+/** Clean up a stream from activeStreams immediately. Saves the buffer to
+ *  completedBuffers for 5 seconds so it remains available independently
+ *  of any new stream that may be created for the same session. */
+function cleanupStream(streamKey: string, expectedStream?: ActiveStream) {
+  const current = activeStreams.get(streamKey);
+
+  // Identity guard: if caller specifies the expected stream but a replacement has
+  // taken over, don't delete activeStreams (would remove the new stream). However,
+  // still save the completed buffer so clients can replay the finished turn.
+  const replaced = expectedStream && current !== expectedStream;
+  const stream = expectedStream ?? current;
+
+  // Keep a reference to the completed buffer independently of activeStreams.
+  // No copy needed — the buffer is immutable after completion (createStreamEmit
+  // only pushes to running streams). Only the buffer array is retained; the rest
+  // of the stream object (sockets, chatService, etc.) is released for GC.
+  if (stream && stream.buffer.length > 0) {
+    // Only write if this stream is newer than (or same as) any existing entry.
+    // An older stream's delayed finalizeStream must not overwrite a newer buffer.
+    const existing = completedBuffers.get(streamKey);
+    if (!existing || stream.startedAt >= existing.startedAt) {
+      // Cancel previous expiry timer so the old buffer can be GC'd immediately
+      const prevTimer = completedBufferTimers.get(streamKey);
+      if (prevTimer) clearTimeout(prevTimer);
+
+      completedBuffers.set(streamKey, {
+        events: stream.buffer,
+        startedAt: stream.startedAt,
+      });
+      const timer = setTimeout(() => {
+        // Guard: only delete if this timer is still the current one for this key.
+        if (completedBufferTimers.get(streamKey) === timer) {
+          completedBuffers.delete(streamKey);
+          completedBufferTimers.delete(streamKey);
+        }
+      }, COMPLETED_BUFFER_TTL_MS);
+      completedBufferTimers.set(streamKey, timer);
+    }
+  }
+
+  // Only delete from activeStreams and clean up socket mappings if the stream
+  // hasn't been replaced. When replaced, the new stream owns those resources.
+  if (!replaced) {
+    activeStreams.delete(streamKey);
+    for (const [sockId, sessId] of socketToSession.entries()) {
+      if (sessId === streamKey) socketToSession.delete(sockId);
+    }
   }
 }
 
@@ -554,24 +638,46 @@ export async function finalizeStream(sessionId: string): Promise<void> {
     const finalMode = stream.chatService?.getPermissionMode();
     if (finalMode) await persistSessionPermissionMode(sessionId, finalMode);
     stream.status = 'completed';
-    cleanupStream(sessionId);
+    // Pass stream reference so cleanupStream won't accidentally clean up a
+    // replacement stream that started during the async persistence above.
+    cleanupStream(sessionId, stream);
   }
-  io.emit('session:stream-change', { sessionId, active: false });
-  const slug = sessionProjectMap.get(sessionId);
-  if (slug) {
-    sessionProjectMap.delete(sessionId);
-    triggerDashboardStatusChange(slug);
+  // Only emit inactive status and clear project mapping if a replacement stream
+  // hasn't taken over during the async persistence above. Without this guard,
+  // a new running stream would be falsely reported as inactive.
+  // Re-read slug at use time to avoid ABA race with stale capture.
+  const currentStream = activeStreams.get(sessionId);
+  if (!currentStream || currentStream.status !== 'running') {
+    const freshSlug = sessionProjectMap.get(sessionId);
+    emitStreamChange(sessionId, false, freshSlug ?? null);
+    if (freshSlug) {
+      sessionProjectMap.delete(sessionId);
+      triggerDashboardStatusChange(freshSlug);
+    }
   }
 }
 
 /**
- * Broadcast session:stream-change to all connected clients.
+ * Emit session:stream-change scoped to the project room when projectSlug is known,
+ * falling back to global broadcast otherwise.
+ */
+function emitStreamChange(sessionId: string, active: boolean, projectSlug: string | null): void {
+  const payload = { sessionId, active, projectSlug };
+  if (projectSlug) {
+    io.to(`project:${projectSlug}`).emit('session:stream-change', payload);
+  } else {
+    io.emit('session:stream-change', payload);
+  }
+}
+
+/**
+ * Broadcast session:stream-change to project room (or all clients as fallback).
  * Used by queue service to signal stream start/end.
  * Story 20.1: Also triggers dashboard status change when projectSlug is known.
  */
 export function broadcastStreamChange(sessionId: string, active: boolean): void {
-  io.emit('session:stream-change', { sessionId, active });
   const slug = sessionProjectMap.get(sessionId);
+  emitStreamChange(sessionId, active, slug ?? null);
   if (slug) {
     triggerDashboardStatusChange(slug);
     if (!active) sessionProjectMap.delete(sessionId);
@@ -782,8 +888,9 @@ export async function initializeWebSocket(
         // A replacement stream (from another chat:send) may have already taken over
         // the same key — deleting it would be a race condition.
         if (isCurrentStream) {
+          const sendEndSlug = sessionProjectMap.get(endedSessionId) ?? null;
           cleanupStream(endedSessionId);
-          io.emit('session:stream-change', { sessionId: endedSessionId, active: false });
+          emitStreamChange(endedSessionId, false, sendEndSlug);
           // Persist per-session permission mode before cleanup
           const sendFinalMode = stream.chatService?.getPermissionMode();
           if (sendFinalMode) await persistSessionPermissionMode(endedSessionId, sendFinalMode);
@@ -851,6 +958,29 @@ export async function initializeWebSocket(
         }
         stream.abortController.abort('user-abort');
       }
+
+      // Also clear any pending prompt chain — user expects everything to stop.
+      // Always bump generation to invalidate any in-flight drain timers,
+      // even if chainState is already empty (stale timer edge case).
+      const gen = (chainDrainGeneration.get(sessionId) || 0) + 1;
+      chainDrainGeneration.set(sessionId, gen);
+      const chainItems = chainState.get(sessionId);
+      if (chainItems && chainItems.length > 0) {
+        chainState.set(sessionId, []);
+        broadcastChainUpdate(sessionId);
+        // Do NOT call cleanupChainIfIdle here — the active stream still exists
+        // and scheduleChainDrain's finally block will handle cleanup after it completes.
+        clearPersistedFailures(sessionId)
+          .then(() => {
+            // Guard: only broadcast if no new chain was started since this abort
+            if (chainDrainGeneration.get(sessionId) === gen) {
+              broadcastChainUpdate(sessionId);
+            }
+          })
+          .catch((err) => {
+            log.error(`Failed to clear persisted failures for session ${sessionId}:`, err);
+          });
+      }
     });
 
     // Handle permission:mode-change — update SDK permission mode and broadcast to viewers
@@ -913,6 +1043,17 @@ export async function initializeWebSocket(
 
       // Join persistent session room (survives beyond ActiveStream lifecycle)
       socket.join(`session:${sessionId}`);
+      // Leave previous project room if switching projects (or if new join has no projectSlug)
+      const prevProjectRoom = socketProjectRoom.get(socket.id);
+      if (prevProjectRoom && prevProjectRoom !== projectSlug) {
+        socket.leave(`project:${prevProjectRoom}`);
+        socketProjectRoom.delete(socket.id);
+      }
+      // Join project room so scoped events (e.g., session:stream-change) are received
+      if (projectSlug) {
+        socket.join(`project:${projectSlug}`);
+        socketProjectRoom.set(socket.id, projectSlug);
+      }
       // Story 24.3: Track session room membership for session:leave room management
       socketSessionRoom.set(socket.id, sessionId);
 
@@ -940,6 +1081,41 @@ export async function initializeWebSocket(
       }
 
       if (!stream || stream.status !== 'running') {
+        // Emit inactive status + completed buffer replay.
+        // Wrapped in a helper that re-checks activeStreams because the async
+        // preference-read path can yield, and a new stream may start in between.
+        const emitInactiveWithReplay = (permissionMode?: PermissionMode) => {
+          // Stale callback guard: if the socket has left this session (moved to
+          // another session or disconnected), don't emit anything for the old session.
+          if (socketSessionRoom.get(socket.id) !== sessionId || !socket.connected) {
+            return;
+          }
+
+          // Re-check: if a running stream appeared during async wait, emit active
+          // state instead of stale inactive. Without this, the client would miss
+          // the initial stream:status/buffer-replay for the new stream.
+          const freshStream = activeStreams.get(sessionId);
+          if (freshStream && freshStream.status === 'running') {
+            socketToSession.set(socket.id, sessionId);
+            const bufSnapshot = [...freshStream.buffer];
+            const freshMode = freshStream.chatService?.getPermissionMode();
+            socket.emit('stream:status', { active: true, sessionId, permissionMode: freshMode });
+            const completedBuf = getCompletedBuffer(sessionId);
+            if (completedBuf) {
+              socket.emit('stream:buffer-replay', { sessionId, events: completedBuf });
+            }
+            socket.emit('stream:buffer-replay', { sessionId, events: bufSnapshot });
+            freshStream.sockets.add(socket);
+            return;
+          }
+          socket.emit('stream:status', { active: false, sessionId, permissionMode });
+          // Replay recently completed stream buffer so the client has the finished turn
+          const completed = getCompletedBuffer(sessionId);
+          if (completed) {
+            socket.emit('stream:buffer-replay', { sessionId, events: completed });
+          }
+        };
+
         // For 'always' sync policy, restore per-session permission mode from disk
         const resolvedSlug = projectSlug || sessionProjectMap.get(sessionId);
         if (resolvedSlug && UUID_RE.test(sessionId)) {
@@ -949,29 +1125,40 @@ export async function initializeWebSocket(
               if (projectPath) {
                 const perms = await projectService.readSessionPermissions(projectPath);
                 const savedMode = perms[sessionId] as PermissionMode | undefined;
-                socket.emit('stream:status', { active: false, sessionId, permissionMode: savedMode });
+                emitInactiveWithReplay(savedMode);
                 return;
               }
             }
-            socket.emit('stream:status', { active: false, sessionId });
+            emitInactiveWithReplay();
           }).catch(() => {
-            socket.emit('stream:status', { active: false, sessionId });
+            emitInactiveWithReplay();
           });
         } else {
-          socket.emit('stream:status', { active: false, sessionId });
+          emitInactiveWithReplay();
         }
         return;
       }
 
       socketToSession.set(socket.id, sessionId);
 
-      // Notify this client that stream is active, then replay entire buffer as batch.
-      // Snapshot buffer BEFORE adding socket to broadcast set to prevent race:
-      // no live events can reach this socket until sockets.add() below.
+      // Snapshot BEFORE adding socket to broadcast set to prevent race.
       const bufferSnapshot = [...stream.buffer];
       const permissionMode = stream.chatService?.getPermissionMode();
+
+      // Emit order matters for the client:
+      // 1. stream:status { active: true } → client calls restoreStreaming + trimMessagesAfterLastUser
+      // 2. completed buffer replay → client calls addMessages (trim already ran, won't remove these)
+      // 3. active buffer replay → client sets streaming segments for the current turn
       socket.emit('stream:status', { active: true, sessionId, permissionMode });
-      socket.emit('stream:buffer-replay', { events: bufferSnapshot });
+
+      // Replay recently completed stream buffer (e.g., previous chain turn) AFTER
+      // stream:status so the client has already trimmed stale messages.
+      const completedBuf = getCompletedBuffer(sessionId);
+      if (completedBuf) {
+        socket.emit('stream:buffer-replay', { sessionId, events: completedBuf });
+      }
+
+      socket.emit('stream:buffer-replay', { sessionId, events: bufferSnapshot });
 
       // NOW add to broadcast set — live events flow from here
       stream.sockets.add(socket);
@@ -995,7 +1182,17 @@ export async function initializeWebSocket(
         socket.leave(`session:${roomSessionId}`);
       }
       // Story 24.3: Clean up session room tracking on leave
-      socketSessionRoom.delete(socket.id);
+      // Only clear project room if the leaving session matches current tracking.
+      // Prevents race where a new session:join overwrites tracking before old leave arrives.
+      const trackedSession = socketSessionRoom.get(socket.id);
+      if (!trackedSession || trackedSession === roomSessionId) {
+        socketSessionRoom.delete(socket.id);
+        const prevProjectSlug = socketProjectRoom.get(socket.id);
+        if (prevProjectSlug) {
+          socket.leave(`project:${prevProjectSlug}`);
+        }
+        socketProjectRoom.delete(socket.id);
+      }
     });
 
     // Story 24.1: Prompt chain event handlers
@@ -1346,6 +1543,7 @@ export async function initializeWebSocket(
       }
 
       socketSessionRoom.delete(socket.id);
+      socketProjectRoom.delete(socket.id);
 
       // PTY sessions are NOT cleaned up on socket disconnect.
       // They persist until explicitly closed by the user, the PTY process exits,

@@ -273,6 +273,7 @@
     "srText": "Claude 正在思考...",
     "waiting": "思考中...",
     "generating": "生成中...",
+    "restoring": "正在恢复对话...",
     "compactionHint": "可能正在进行上下文压缩"
   },
   "markdown": {
