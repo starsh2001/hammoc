@@ -50,7 +50,7 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
                  overflow-x-hidden"
     >
       {/* Collapsed header row */}
-      <div className="px-4 py-2 flex items-center gap-2">
+      <div className="px-4 py-2 flex items-center gap-2 min-w-0">
         {/* Icon — spinner when sending */}
         {nextItem.status === 'sending' ? (
           <Loader2
@@ -110,11 +110,11 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
 
       {/* Expanded list */}
       {expanded && hasMultiple && (
-        <ul className="px-4 pb-2 flex flex-col gap-1">
+        <ul className="px-4 pb-2 flex flex-col gap-1 min-w-0">
           {activeItems.map((item, index) => (
             <li
               key={item.id}
-              className="group flex items-center gap-2 px-2 py-1 rounded
+              className="group flex items-center gap-2 px-2 py-1 rounded min-w-0
                          hover:bg-violet-100/60 dark:hover:bg-violet-900/30 transition-colors"
             >
               {/* Status indicator */}
