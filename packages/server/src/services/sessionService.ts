@@ -720,7 +720,7 @@ export class SessionService {
     sessionId: string,
     options: PaginationOptions = {}
   ): Promise<{ messages: HistoryMessage[]; pagination: PaginationInfo; lastAgentCommand: string | null } | null> {
-    const { limit = 50, offset = 0 } = options;
+    const { limit = 50, offset = 0, streamStartedAt } = options;
 
     const filePath = this.getSessionFilePath(projectSlug, sessionId);
 
@@ -730,7 +730,17 @@ export class SessionService {
 
     const rawMessages = await parseJSONLFile(filePath);
     const sorted = sortMessagesByParentUuid(rawMessages);
-    const transformed = transformToHistoryMessages(sorted);
+    let transformed = transformToHistoryMessages(sorted);
+
+    // If session has an active stream, exclude messages from the stream period.
+    // Those messages are covered by WebSocket buffer replay (stream:buffer-replay).
+    // This prevents duplicate tool/message cards when the client loads both
+    // JSONL history and buffer replay simultaneously.
+    if (streamStartedAt) {
+      transformed = transformed.filter(
+        (m) => new Date(m.timestamp).getTime() < streamStartedAt
+      );
+    }
 
     const total = transformed.length;
 

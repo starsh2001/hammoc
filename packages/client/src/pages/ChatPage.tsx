@@ -384,12 +384,17 @@ export function ChatPage() {
     [chainMode, internalSend, workingDirectory, sessionId, permissionMode, selectedModel]
   );
 
-  // Handle abort — chain items preserved server-side (Story 24.2)
+  // Handle abort — stops streaming and clears any pending chain items
   const handleAbort = useCallback(() => {
     if (useChatStore.getState().isStreaming) {
       abortResponse();
+    } else if (useChainStore.getState().chainItems.length > 0 && sessionId) {
+      // Not streaming but chain is pending (gap between chain items) —
+      // emit chain:clear so the server cancels the next scheduled drain.
+      getSocket()?.emit('chain:clear', { sessionId });
+      useChainStore.getState().clearChainItems();
     }
-  }, [abortResponse]);
+  }, [abortResponse, sessionId]);
 
   // Handle BMad agent selection (Story 8.3) - Quick Launch
   const handleAgentSelect = useCallback((agentCommand: string) => {

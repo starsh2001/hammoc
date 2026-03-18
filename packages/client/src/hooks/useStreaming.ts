@@ -535,7 +535,7 @@ export function useStreaming() {
       // This is the real context size when compact was triggered (more accurate than stale assistant:usage)
       if (data.preTokens > 0) {
         const existing = useChatStore.getState().contextUsage;
-        const contextWindow = existing?.contextWindow ?? 200000;
+        const contextWindow = existing?.contextWindow ?? 0;
         setContextUsage({
           inputTokens: data.preTokens,
           outputTokens: existing?.outputTokens ?? 0,
@@ -644,7 +644,7 @@ export function useStreaming() {
         cacheCreationInputTokens: data.cacheCreationInputTokens,
         cacheReadInputTokens: data.cacheReadInputTokens,
         totalCostUSD: existing?.totalCostUSD ?? 0,
-        contextWindow: existing?.contextWindow ?? 200000,
+        contextWindow: existing?.contextWindow ?? 0,
         model: existing?.model,
       });
     };
@@ -881,16 +881,39 @@ export function useStreaming() {
     // Handle stream:buffer-replay — process entire buffer as a single batch
     // instead of receiving individual events one by one. This dramatically reduces
     // the number of React re-renders when joining an active streaming session.
-    const handleBufferReplay = (data: { events: Array<{ event: string; data: unknown }> }) => {
-      if (!data.events || data.events.length === 0) return;
+    const handleBufferReplay = (data: { sessionId?: string; events: Array<{ event: string; data: unknown }> }) => {
+      // Drop replay from a different session (rapid session switch guard)
+      if (data.sessionId) {
+        const currentSessionId = useChatStore.getState().streamingSessionId
+          || useMessageStore.getState().currentSessionId;
+        if (currentSessionId && currentSessionId !== data.sessionId) {
+          debugLog.stream('stream:buffer-replay dropped: session mismatch', {
+            replay: data.sessionId, current: currentSessionId,
+          });
+          // Clear 'restoring' sentinel to prevent stuck spinner
+          if (useChatStore.getState().streamingMessageId === 'restoring') {
+            useChatStore.setState({ streamingMessageId: null });
+          }
+          return;
+        }
+      }
 
-      debugLog.stream('stream:buffer-replay received', { eventCount: data.events.length });
+      if (!data.events || data.events.length === 0) {
+        // Clear 'restoring' sentinel even for empty buffer so spinner disappears
+        if (useChatStore.getState().streamingMessageId === 'restoring') {
+          useChatStore.setState({ streamingMessageId: null });
+        }
+        return;
+      }
+
+      debugLog.stream('stream:buffer-replay received', { eventCount: data.events.length, sessionId: data.sessionId });
 
       // Local accumulators — avoid setState per event
       const segments: StreamingSegment[] = [];
-      let sessionId: string | null = null;
+      // Initialize sessionId from payload (fallback to store value for robustness)
+      let sessionId: string | null = data.sessionId ?? useChatStore.getState().streamingSessionId ?? null;
       let messageId: string | null = null;
-      const defaultUsage: ChatUsage = { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, totalCostUSD: 0, contextWindow: 200000 };
+      const defaultUsage: ChatUsage = { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, totalCostUSD: 0, contextWindow: 0 };
       let contextUsage: ChatUsage | null = null;
       let activeModel: string | null = null;
       let isCompacting = false;
@@ -1281,16 +1304,16 @@ export function useStreaming() {
         chatStateUpdate.streamingSegments = segments;
         chatStateUpdate.streamingStartedAt = new Date();
       } else if (hasCompletedTurns) {
-        // All turns completed but stream may still be active (e.g. waiting for next
-        // user input in a multi-turn session, or SDK processing between turns).
-        // Since stream:status { active: true } was already received, keep streaming
-        // state active — live events or a subsequent stream:status will finalize.
-        chatStateUpdate.isStreaming = true;
-        chatStateUpdate.streamingSessionId = sessionId;
+        // Buffer only had completed turns (all converted to messages via addMessages).
+        // Don't set isStreaming — the stream may have already completed (server sent
+        // active: false). Completed turn messages are now in messageStore and should
+        // be visible without displayMessages filtering them.
         chatStateUpdate.streamingMessageId = null;
         chatStateUpdate.streamingSegments = [];
-        chatStateUpdate.streamingStartedAt = new Date();
         chatStateUpdate.streamCompletedAt = Date.now();
+      } else {
+        // Empty/metadata-only buffer — clear 'restoring' sentinel so spinner disappears.
+        chatStateUpdate.streamingMessageId = null;
       }
       if (contextUsage) chatStateUpdate.contextUsage = contextUsage;
       if (activeModel) chatStateUpdate.activeModel = activeModel;

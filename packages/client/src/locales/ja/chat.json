@@ -273,6 +273,7 @@
     "srText": "Claudeが考えています...",
     "waiting": "考え中...",
     "generating": "生成中...",
+    "restoring": "会話を復元中...",
     "compactionHint": "コンテキスト圧縮中の可能性があります"
   },
   "markdown": {

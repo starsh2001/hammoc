@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, RefreshCw, FileText, XOctagon, Database, Info } from 'lucide-react';
 import { StreamingMessage } from './StreamingMessage';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
+import { LoadingSpinner } from './LoadingSpinner';
 import { StreamingIndicator } from './StreamingIndicator';
 import { ToolCard } from './ToolCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
@@ -439,8 +440,12 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
     adjustScrollBy,
   }), [scrollToElement, scrollToBottom, adjustScrollBy]);
 
+  // Detect buffer replay restoration (stream:status received but buffer not yet processed)
+  const streamingMessageId = useChatStore((s) => s.streamingMessageId);
+  const isRestoringStream = isStreaming && streamingMessageId === 'restoring';
+
   // Show compaction hint when waiting too long with high context usage
-  const isWaitingWithNoContent = isStreaming && !isCompacting && streamingSegments.length === 0;
+  const isWaitingWithNoContent = isStreaming && !isCompacting && !isRestoringStream && streamingSegments.length === 0;
   const [showCompactionHint, setShowCompactionHint] = useState(false);
   useEffect(() => {
     if (!isWaitingWithNoContent) {
@@ -510,11 +515,23 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         tabIndex={0}
       >
       <div className="content-container px-4 pt-4 pb-4 space-y-4">
-        {/* History messages - always show (segments append to history) */}
-        {children}
+        {/* History messages - kept mounted to preserve scroll/local state */}
+        <div className={`space-y-4${isRestoringStream ? ' invisible' : ''}`}>
+          {children}
+        </div>
 
-        {/* Streaming segments - rendered in order (hidden after pending permission) */}
-        {shouldRenderSegments && visibleSegments.map((seg, index) => {
+        {/* Stream restoring overlay — shown briefly while buffer replay is being processed */}
+        {isRestoringStream && (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 dark:bg-[#263240] rounded-lg border border-gray-200 dark:border-[#253040] shadow-sm">
+              <LoadingSpinner size="sm" />
+              <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.restoring')}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Streaming segments - rendered in order (hidden after pending permission, hidden during restore) */}
+        {!isRestoringStream && shouldRenderSegments && visibleSegments.map((seg, index) => {
           if (isThinkingSegment(seg)) {
             // Thinking is still streaming only if it's the last segment and overall streaming is active
             const isThinkingStillStreaming = isStreaming && isLastSegmentIndex(index);

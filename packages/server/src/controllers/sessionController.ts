@@ -8,7 +8,7 @@ import { Request, Response } from 'express';
 import { SESSION_ERRORS, SessionListResponse, HistoryMessagesResponse, DeleteSessionsBatchRequest, UpdateSessionNameRequest } from '@hammoc/shared';
 import { sessionService } from '../services/sessionService.js';
 import { projectService } from '../services/projectService.js';
-import { getActiveStreamSessionIds } from '../handlers/websocket.js';
+import { getActiveStreamSessionIds, getStreamStartedAt } from '../handlers/websocket.js';
 
 export const sessionController = {
   /**
@@ -119,6 +119,7 @@ export const sessionController = {
       const result = await sessionService.getSessionMessages(projectSlug, sessionId, {
         limit,
         offset,
+        streamStartedAt: getStreamStartedAt(sessionId),
       });
 
       // Return empty messages for non-existent sessions (e.g., pre-allocated UUID with no messages yet)

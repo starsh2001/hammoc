@@ -110,7 +110,7 @@ export interface ServerToClientEvents {
   'stream:detached': (data: { sessionId: string; reason: string }) => void;
   'permission:already-resolved': (data: { requestId: string }) => void;
   'permission:resolved': (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question'; response?: string | string[] | Record<string, string | string[]> }) => void;
-  'session:stream-change': (data: { sessionId: string; active: boolean }) => void;
+  'session:stream-change': (data: { sessionId: string; active: boolean; projectSlug?: string | null }) => void;
   'user:message': (data: { content: string; sessionId: string }) => void;
   // Story 15.2: Queue runner events
   'queue:progress': (data: QueueProgressEvent) => void;
@@ -133,7 +133,7 @@ export interface ServerToClientEvents {
   // Story 24.1: Prompt chain update
   'chain:update': (data: { sessionId: string; items: PromptChainItem[] }) => void;
   // Buffer replay: send entire buffer as a single batch for fast session join
-  'stream:buffer-replay': (data: { events: Array<{ event: string; data: unknown }> }) => void;
+  'stream:buffer-replay': (data: { sessionId: string; events: Array<{ event: string; data: unknown }> }) => void;
 }
 
 // ===== Inter-server Events =====
