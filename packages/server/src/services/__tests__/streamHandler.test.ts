@@ -790,6 +790,93 @@ describe('StreamHandler', () => {
 
         expect(callbacks.onComplete).toHaveBeenCalled();
       });
+
+      it('should use contextWindow=0 before first result (indicator hidden until accurate)', async () => {
+        const callbacks: StreamCallbacks = {
+          onSessionInit: vi.fn(),
+          onContextEstimate: vi.fn(),
+          onAssistantUsage: vi.fn(),
+          onToolUse: vi.fn(),
+          onToolResult: vi.fn(),
+          onComplete: vi.fn(),
+        };
+
+        // Assistant message with usage so estimatedContextTokens > 0
+        // parent_tool_use_id: null marks this as main-chain (required for usage tracking)
+        const assistantWithUsage = {
+          type: 'assistant',
+          parent_tool_use_id: null,
+          message: {
+            content: [
+              { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file_path: '/path/to/file.ts' } },
+            ],
+            usage: { input_tokens: 5000, output_tokens: 200, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+          },
+        } as unknown as SDKMessage;
+
+        const messages = [
+          mockInitMessage,
+          assistantWithUsage,
+          // Tool result triggers onContextEstimate (requires estimatedContextTokens > 0)
+          mockToolResultMessage,
+          mockResultSuccessMessage,
+        ];
+
+        await handler.processStream(createMockGenerator(messages), callbacks);
+
+        // Before result, contextWindow should be 0 (indicator won't render)
+        expect((callbacks.onContextEstimate as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
+        const [, contextWindow] = (callbacks.onContextEstimate as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(contextWindow).toBe(0);
+      });
+
+      it('should reset contextWindow to 0 on new init after prior session had non-zero value', async () => {
+        const callbacks: StreamCallbacks = {
+          onSessionInit: vi.fn(),
+          onContextEstimate: vi.fn(),
+          onToolUse: vi.fn(),
+          onToolResult: vi.fn(),
+          onAssistantUsage: vi.fn(),
+          onComplete: vi.fn(),
+        };
+
+        const assistantWithUsage = {
+          type: 'assistant',
+          parent_tool_use_id: null,
+          message: {
+            content: [
+              { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file_path: '/path/to/file.ts' } },
+            ],
+            usage: { input_tokens: 5000, output_tokens: 200, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+          },
+        } as unknown as SDKMessage;
+
+        // First session — result sets contextWindow to 200000
+        const firstSession = [
+          mockInitMessage,
+          assistantWithUsage,
+          mockToolResultMessage,
+          mockResultSuccessMessage, // modelUsage has contextWindow: 200000
+        ];
+        await handler.processStream(createMockGenerator(firstSession), callbacks);
+
+        // Reset handler for second session (simulates new query)
+        handler.reset();
+        (callbacks.onContextEstimate as ReturnType<typeof vi.fn>).mockClear();
+
+        // Second session — context estimate before result should be 0 (not leaked 200000)
+        const secondSession = [
+          mockInitMessage,
+          assistantWithUsage,
+          mockToolResultMessage,
+          mockResultSuccessMessage,
+        ];
+        await handler.processStream(createMockGenerator(secondSession), callbacks);
+
+        expect((callbacks.onContextEstimate as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
+        const [, contextWindow] = (callbacks.onContextEstimate as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(contextWindow).toBe(0);
+      });
     });
   });
 });

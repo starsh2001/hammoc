@@ -200,7 +200,7 @@ export class ChatService {
       disallowedTools: resolvedDisallowed.length > 0 ? resolvedDisallowed : undefined,
       maxTurns: options.maxTurns,
       abortController: options.abortController,
-      model: options.model,
+      model: options.model || undefined,
       resume: options.resume,
       sessionId: options.sessionId,
       includePartialMessages: true, // Enable real-time streaming
