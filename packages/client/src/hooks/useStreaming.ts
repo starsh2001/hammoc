@@ -1296,13 +1296,30 @@ export function useStreaming() {
       if (completedStreamCompleteCount > 0) {
         chatStateUpdate.streamCompleteCount = useChatStore.getState().streamCompleteCount + completedStreamCompleteCount;
       }
-      if (hasActiveSegments) {
-        // Stream is still active with in-progress segments
+      if (hasActiveSegments && useChatStore.getState().isStreaming) {
+        // Stream is actively running (server sent active: true) with in-progress segments
         chatStateUpdate.isStreaming = true;
         chatStateUpdate.streamingSessionId = sessionId;
         chatStateUpdate.streamingMessageId = messageId;
         chatStateUpdate.streamingSegments = segments;
         chatStateUpdate.streamingStartedAt = new Date();
+      } else if (hasActiveSegments && !useChatStore.getState().isStreaming) {
+        // Buffer has segments but server said active: false (e.g., abort, completed
+        // stream without message:complete). Convert remaining segments to messages
+        // instead of entering streaming mode.
+        // Ensure messageId exists for ID generation (may be null if no chunks arrived).
+        // Use event count as fingerprint so replays of the same buffer produce
+        // identical IDs (prevents addMessages dedup failure on session rejoin).
+        if (!messageId) {
+          messageId = `replay-${sessionId ?? 'unknown'}-${data.events.length}`;
+        }
+        convertSegmentsToMessages();
+        if (completedMessages.length > 0) {
+          useMessageStore.getState().addMessages(completedMessages);
+        }
+        chatStateUpdate.streamingMessageId = null;
+        chatStateUpdate.streamingSegments = [];
+        chatStateUpdate.streamCompletedAt = Date.now();
       } else if (hasCompletedTurns) {
         // Buffer only had completed turns (all converted to messages via addMessages).
         // Don't set isStreaming — the stream may have already completed (server sent
