@@ -1672,8 +1672,14 @@ async function handleChatSend(
 
   // Buffer the user's message so reconnecting clients can display it
   // (SDK may not have written the JSONL file yet at reconnect time).
-  // Include timestamp so buffer replay can preserve correct message ordering.
-  emit('user:message', { content, sessionId: sessionId || '', timestamp: new Date().toISOString() });
+  // Include timestamp for correct ordering. For images, only send count
+  // (not full base64 data) to avoid bloating the buffer.
+  emit('user:message', {
+    content,
+    sessionId: sessionId || '',
+    timestamp: new Date().toISOString(),
+    ...(images && images.length > 0 ? { imageCount: images.length } : {}),
+  });
 
   const isResuming = resume && sessionId;
   const sessionService = new SessionService();

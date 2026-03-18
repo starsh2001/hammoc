@@ -121,6 +121,23 @@ function reconcileOptimisticMessages(
   return result;
 }
 
+/**
+ * Client-side image cache: preserves user-attached images across session
+ * re-entry during active streaming.
+ * - Keyed by sessionId + trimmed content to prevent cross-session collisions
+ * - Populated when sendMessage includes real image data
+ * - Read during buffer replay to restore images (server only sends imageCount)
+ * - NOT cleared on session change (must survive re-entry); bounded by entry count
+ * - Survives ChatPage unmount (module-level) but not page refresh
+ */
+const userImageCache = new Map<string, ImageAttachment[]>();
+const MAX_IMAGE_CACHE_ENTRIES = 5;
+
+/** Clear image cache (called on session change) */
+export function clearUserImageCache() {
+  userImageCache.clear();
+}
+
 export const useMessageStore = create<MessageStore>((set, get) => ({
   // State
   messages: [],
@@ -348,7 +365,10 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     }
   },
 
-  clearMessages: () =>
+  clearMessages: () => {
+    // Don't clear userImageCache here — it needs to survive ChatPage
+    // unmount/remount so buffer replay can restore images on re-entry.
+    // Cache is bounded by MAX_IMAGE_CACHE_ENTRIES and keyed by sessionId.
     set({
       messages: [],
       currentProjectSlug: null,
@@ -356,7 +376,8 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       pagination: null,
       lastAgentCommand: null,
       error: null,
-    }),
+    });
+  },
 
   addOptimisticMessage: (content: string, images?: ImageAttachment[], timestamp?: string) => {
     const state = get();
@@ -373,13 +394,36 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       return;
     }
 
+    const trimmed = content.trim();
+    const ts = timestamp ?? new Date().toISOString();
+    const cacheKey = `${state.currentSessionId ?? ''}:${ts}:${trimmed}`;
+
+    // Image cache: store real images, restore from cache for placeholders
+    let resolvedImages = images;
+    if (images && images.length > 0 && images.every(i => i.data)) {
+      // All images have real data — cache for buffer replay restoration
+      userImageCache.set(cacheKey, images);
+      // Evict oldest entries if cache exceeds limit
+      if (userImageCache.size > MAX_IMAGE_CACHE_ENTRIES) {
+        const firstKey = userImageCache.keys().next().value;
+        if (firstKey) userImageCache.delete(firstKey);
+      }
+    } else if (images && images.length > 0 && images.every(i => !i.data)) {
+      // All placeholder images (from buffer replay imageCount) — try cache
+      const cached = userImageCache.get(cacheKey);
+      if (cached) {
+        resolvedImages = cached;
+      }
+      // else keep placeholders — UI will show "image attached" indicator
+    }
+
     const optimisticMessage: OptimisticHistoryMessage = {
       id: `optimistic-${generateUUID()}`,
       type: 'user',
-      content: content.trim(),
+      content: trimmed,
       timestamp: timestamp ?? new Date().toISOString(),
       _optimistic: true,
-      ...(images && images.length > 0 ? { images } : {}),
+      ...(resolvedImages && resolvedImages.length > 0 ? { images: resolvedImages } : {}),
     };
     set({ messages: [...messages, optimisticMessage] });
   },

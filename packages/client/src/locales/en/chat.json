@@ -160,6 +160,7 @@
     "assistantRole": "Claude",
     "assistantName": "Claude",
     "image": "Attached image {{index}}",
+    "imageAttached": "Image attached",
     "copiedLabel": "Copied",
     "copyLabel": "Copy message",
     "copiedTitle": "Copied!",

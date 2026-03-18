@@ -19,7 +19,7 @@ import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
 import { debugLog } from '../utils/debugLogger';
 import { useChainStore } from '../stores/chainStore';
-import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus, PromptChainItem, PermissionMode, HistoryMessage } from '@hammoc/shared';
+import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus, PromptChainItem, PermissionMode, HistoryMessage, ImageAttachment } from '@hammoc/shared';
 import type { InteractiveStatus, StreamingSegment, StreamingToolCall, ResultErrorData } from '../stores/chatStore';
 
 export function useStreaming() {
@@ -126,7 +126,7 @@ export function useStreaming() {
 
     // Handle user:message from buffer replay (restores the user's sent message
     // when reconnecting before SDK has flushed the JSONL file)
-    const handleUserMessage = (data: { content: string; sessionId: string; timestamp?: string }) => {
+    const handleUserMessage = (data: { content: string; sessionId: string; timestamp?: string; imageCount?: number }) => {
       if (!data.content) return;
       const msgs = useMessageStore.getState().messages;
       const incomingTrimmed = data.content.trim();
@@ -151,7 +151,10 @@ export function useStreaming() {
         lastUserMsgId: lastUserMsg?.id,
       });
       if (!isDuplicate) {
-        useMessageStore.getState().addOptimisticMessage(data.content, undefined, data.timestamp);
+        const placeholderImages: ImageAttachment[] | undefined = data.imageCount
+          ? Array.from({ length: data.imageCount }, (_, i) => ({ mimeType: 'image/jpeg', data: '', name: `image-${i + 1}` }))
+          : undefined;
+        useMessageStore.getState().addOptimisticMessage(data.content, placeholderImages, data.timestamp);
         debugLog.stream('DEDUP user:message → added optimistic', {
           newMsgCount: useMessageStore.getState().messages.length,
         });
@@ -1038,14 +1041,19 @@ export function useStreaming() {
 
         switch (event) {
           case 'user:message': {
-            const d = eventData as { content: string; sessionId: string; timestamp?: string };
+            const d = eventData as { content: string; sessionId: string; timestamp?: string; imageCount?: number };
             if (!d.content) break;
             const msgs = useMessageStore.getState().messages;
             const incomingTrimmed = d.content.trim();
             const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
             if (!lastUserMsg || lastUserMsg.content.trim() !== incomingTrimmed) {
-              // Pass original timestamp from buffer to preserve correct ordering
-              useMessageStore.getState().addOptimisticMessage(d.content, undefined, d.timestamp);
+              // Create placeholder images for buffer replay (full data not stored in buffer).
+              // addOptimisticMessage will try to restore from client-side cache first;
+              // if not cached, these placeholders render as "[image attached]" in the UI.
+              const placeholderImages: ImageAttachment[] | undefined = d.imageCount
+                ? Array.from({ length: d.imageCount }, (_, i) => ({ mimeType: 'image/jpeg', data: '', name: `image-${i + 1}` }))
+                : undefined;
+              useMessageStore.getState().addOptimisticMessage(d.content, placeholderImages, d.timestamp);
             }
             if (incomingTrimmed === '/compact') isCompacting = true;
             break;

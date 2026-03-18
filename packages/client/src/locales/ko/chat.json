@@ -160,6 +160,7 @@
     "assistantRole": "Claude",
     "assistantName": "Claude",
     "image": "첨부 이미지 {{index}}",
+    "imageAttached": "이미지 첨부됨",
     "copiedLabel": "복사됨",
     "copyLabel": "메시지 복사",
     "copiedTitle": "복사됨!",
