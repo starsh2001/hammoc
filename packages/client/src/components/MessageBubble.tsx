@@ -87,15 +87,25 @@ export function MessageBubble({
         {/* Attached images (user messages only) */}
         {isUser && message.images && message.images.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
-            {message.images.map((img, idx) => (
-              <img
-                key={`${message.id}-img-${idx}`}
-                src={`data:${img.mimeType};base64,${img.data}`}
-                alt={img.name || t('messageBubble.image', { index: idx + 1 })}
-                className="max-w-[200px] max-h-[150px] rounded object-cover cursor-pointer hover:opacity-90"
-                onClick={() => window.open(`data:${img.mimeType};base64,${img.data}`, '_blank')}
-              />
-            ))}
+            {message.images.map((img, idx) =>
+              img.data ? (
+                <img
+                  key={`${message.id}-img-${idx}`}
+                  src={`data:${img.mimeType};base64,${img.data}`}
+                  alt={img.name || t('messageBubble.image', { index: idx + 1 })}
+                  className="max-w-[200px] max-h-[150px] rounded object-cover cursor-pointer hover:opacity-90"
+                  onClick={() => window.open(`data:${img.mimeType};base64,${img.data}`, '_blank')}
+                />
+              ) : (
+                <div
+                  key={`${message.id}-img-${idx}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 dark:bg-gray-600 rounded text-xs text-gray-500 dark:text-gray-300"
+                >
+                  <span>📎</span>
+                  <span>{t('messageBubble.imageAttached')}</span>
+                </div>
+              )
+            )}
           </div>
         )}
 
