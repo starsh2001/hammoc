@@ -1311,7 +1311,12 @@ export function useStreaming() {
         // Use event count as fingerprint so replays of the same buffer produce
         // identical IDs (prevents addMessages dedup failure on session rejoin).
         if (!messageId) {
-          messageId = `replay-${sessionId ?? 'unknown'}-${data.events.length}`;
+          // Deterministic fallback: use event count + first/last event types
+          // so replays of the same buffer produce identical IDs (dedup safe)
+          // while different turns are unlikely to collide.
+          const first = data.events[0]?.event ?? '';
+          const last = data.events[data.events.length - 1]?.event ?? '';
+          messageId = `replay-${sessionId ?? 'unknown'}-${data.events.length}-${first}-${last}`;
         }
         convertSegmentsToMessages();
         if (completedMessages.length > 0) {

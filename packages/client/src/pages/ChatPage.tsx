@@ -451,26 +451,10 @@ export function ChatPage() {
           msgTypes: msgState.messages.map(m => m.type),
         });
         if (chat.isStreaming) {
-          // During active streaming, trim all messages after the last user message
-          // to avoid duplication with buffer replay. The entire assistant turn
-          // will be recreated from streaming segments via completeStreaming.
-          // Exception: during compaction, don't trim — there's no assistant turn
-          // being replayed, trimming would remove legitimate history.
-          if (!chat.isCompacting) {
-            const msgs = useMessageStore.getState().messages;
-            let lastUserIdx = -1;
-            for (let i = msgs.length - 1; i >= 0; i--) {
-              if (msgs[i].type === 'user') {
-                lastUserIdx = i;
-                break;
-              }
-            }
-            if (lastUserIdx >= 0 && lastUserIdx < msgs.length - 1) {
-              useMessageStore.setState({ messages: msgs.slice(0, lastUserIdx + 1) });
-            }
-          }
+          // Server-side streamStartedAt filtering already excludes stream-period
+          // messages from fetchMessages response. No client-side trim needed.
           // If messages are empty during active streaming (SDK may be rewriting
-          // JSONL during compaction), schedule a retry to pick up flushed history
+          // JSONL during compaction), schedule a retry to pick up flushed history.
           if (useMessageStore.getState().messages.length === 0) {
             setTimeout(() => {
               useMessageStore.getState().fetchMessages(projectSlug, sessionId, { silent: true });
@@ -766,46 +750,10 @@ export function ChatPage() {
     window.location.reload();
   }, []);
 
-  // During active streaming (non-compaction), hide history messages after
-  // the last user message to prevent duplication with streaming segments.
-  // This render-level filter avoids timing races between fetchMessages (HTTP)
-  // and buffer replay (WebSocket) that state-based trims can't handle.
-  const displayMessages = useMemo(() => {
-    const segCount = useChatStore.getState().streamingSegments.length;
-    if (!isStreaming || isCompacting) {
-      debugLog.chatpage('DEDUP displayMessages: NO FILTER', {
-        isStreaming, isCompacting, msgCount: messages.length,
-        msgTypes: messages.map(m => m.type),
-        segCount,
-      });
-      return messages;
-    }
-    let lastUserIdx = -1;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].type === 'user') {
-        lastUserIdx = i;
-        break;
-      }
-    }
-    if (lastUserIdx >= 0 && lastUserIdx < messages.length - 1) {
-      const filtered = messages.slice(0, lastUserIdx + 1);
-      debugLog.chatpage('DEDUP displayMessages: FILTERED', {
-        isStreaming, isCompacting,
-        totalMsgCount: messages.length,
-        filteredMsgCount: filtered.length,
-        removedCount: messages.length - filtered.length,
-        removedTypes: messages.slice(lastUserIdx + 1).map(m => m.type),
-        segCount,
-      });
-      return filtered;
-    }
-    debugLog.chatpage('DEDUP displayMessages: NO TRIM NEEDED (user is last)', {
-      isStreaming, msgCount: messages.length,
-      msgTypes: messages.map(m => m.type),
-      segCount,
-    });
-    return messages;
-  }, [messages, isStreaming, isCompacting]);
+  // Server-side streamStartedAt filtering ensures fetchMessages only returns
+  // pre-stream history. Stream-period content comes exclusively from buffer
+  // replay (streaming segments). No client-side dedup filtering needed.
+  const displayMessages = messages;
 
   const handleLoadMore = useCallback(() => {
     fetchMoreMessages();
