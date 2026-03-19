@@ -188,11 +188,11 @@ class BmadStatusService {
     projectRoot: string,
     config: BmadConfig
   ): Promise<BmadEpicStatus[]> {
-    const epicMap = new Map<number, string>();
+    const epicMap = new Map<number | string, string>();
     // Planned story count from PRD epic headers (## Story N.N / ### Story N.N)
-    const plannedMap = new Map<number, Set<string>>();
+    const plannedMap = new Map<number | string, Set<string>>();
     // Track which file each epic was found in (project-relative path)
-    const epicFileMap = new Map<number, string>();
+    const epicFileMap = new Map<number | string, string>();
 
     // 3-step fallback strategy for epic discovery
     if (config.prdSharded && config.prdShardedLocation) {
@@ -281,7 +281,7 @@ class BmadStatusService {
     }
 
     // Scan story files
-    const storyMap = new Map<number, BmadStoryStatus[]>();
+    const storyMap = new Map<number | string, BmadStoryStatus[]>();
     if (config.devStoryLocation) {
       const storiesDir = path.join(projectRoot, config.devStoryLocation);
       try {
@@ -289,16 +289,27 @@ class BmadStatusService {
         // Match story files: "1.1.story.md", "1.1.some-name.story.md",
         // or "2.1.kis-api-auth.md" (no ".story" suffix)
         const storyFileRegex = /^(\d+)\.(\d+)\..+\.md$/;
+        // Brownfield epic stories: "BE-1.1.some-name.md"
+        const bfEpicStoryRegex = /^BE-(\d+)\.(\d+)\..+\.md$/;
+        // Brownfield standalone stories: "BS-1.some-name.md"
+        const bfStandaloneRegex = /^BS-(\d+)\..+\.md$/;
 
         for (const file of files) {
-          const match = file.match(storyFileRegex);
+          let epicKey: number | string;
+          let match = file.match(storyFileRegex);
           if (match) {
-            const epicNum = parseInt(match[1], 10);
-            const meta = await this.extractStoryMeta(path.join(storiesDir, file));
-            const stories = storyMap.get(epicNum) || [];
-            stories.push({ file, status: meta.status, ...(meta.title && { title: meta.title }) });
-            storyMap.set(epicNum, stories);
+            epicKey = parseInt(match[1], 10);
+          } else if ((match = file.match(bfEpicStoryRegex))) {
+            epicKey = `BE-${match[1]}`;
+          } else if ((match = file.match(bfStandaloneRegex))) {
+            epicKey = 'BS';
+          } else {
+            continue;
           }
+          const meta = await this.extractStoryMeta(path.join(storiesDir, file));
+          const stories = storyMap.get(epicKey) || [];
+          stories.push({ file, status: meta.status, ...(meta.title && { title: meta.title }) });
+          storyMap.set(epicKey, stories);
         }
       } catch {
         // Directory not found
@@ -361,15 +372,32 @@ class BmadStatusService {
     }
 
     // Merge: ensure epics from storyMap appear even if not in epicMap
-    for (const epicNum of storyMap.keys()) {
-      if (!epicMap.has(epicNum)) {
-        epicMap.set(epicNum, `Epic ${epicNum}`);
+    for (const epicKey of storyMap.keys()) {
+      if (!epicMap.has(epicKey)) {
+        if (epicKey === 'BS') {
+          epicMap.set(epicKey, 'Standalone Stories');
+        } else if (typeof epicKey === 'string' && epicKey.startsWith('BE-')) {
+          epicMap.set(epicKey, `Brownfield Epic ${epicKey}`);
+        } else {
+          epicMap.set(epicKey, `Epic ${epicKey}`);
+        }
       }
     }
 
-    // Build sorted result
+    // Build sorted result: regular epics first (numeric sort), then BE-*, then BS
     const epics: BmadEpicStatus[] = Array.from(epicMap.entries())
-      .sort((a, b) => a[0] - b[0])
+      .sort((a, b) => {
+        const aIsNum = typeof a[0] === 'number';
+        const bIsNum = typeof b[0] === 'number';
+        if (aIsNum && bIsNum) return (a[0] as number) - (b[0] as number);
+        if (aIsNum) return -1;
+        if (bIsNum) return 1;
+        // Both strings: BE-* before BS
+        if (a[0] === b[0]) return 0;
+        if (a[0] === 'BS') return 1;
+        if (b[0] === 'BS') return -1;
+        return String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true });
+      })
       .map(([number, name]) => ({
         number,
         name,
@@ -387,7 +415,7 @@ class BmadStatusService {
    * Also matches standalone format: "### Story 1: ..." when epicContext is provided.
    * Uses a Set per epic to deduplicate stories that appear in multiple files.
    */
-  private countPlannedStories(content: string, plannedMap: Map<number, Set<string>>, epicContext?: number): void {
+  private countPlannedStories(content: string, plannedMap: Map<number | string, Set<string>>, epicContext?: number): void {
     const regex = /^#{2,3}\s+Story\s+(\d+(?:\.\d+)?)/gm;
     let match;
     while ((match = regex.exec(content)) !== null) {

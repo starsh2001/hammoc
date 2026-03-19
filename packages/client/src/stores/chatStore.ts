@@ -25,6 +25,31 @@ const pendingPermissionBuffer = new Map<string, string>();
 /** Buffer for tool input updates that arrive before their tool:call segment */
 const pendingInputBuffer = new Map<string, Record<string, unknown>>();
 
+/**
+ * Create a sequential timestamp generator anchored to the last user message
+ * before streamingStartedAt. Used by both completeStreaming and abortResponse
+ * to ensure addMessages' timestamp sort keeps messages in correct order.
+ */
+function createTimestampGenerator(streamingStartedAt: string | null): () => string {
+  const existingMsgs = useMessageStore.getState().messages;
+  const streamStartMs = streamingStartedAt
+    ? new Date(streamingStartedAt).getTime()
+    : Date.now();
+  let baseTs = Number.isFinite(streamStartMs) ? streamStartMs : Date.now();
+  for (let i = existingMsgs.length - 1; i >= 0; i--) {
+    if (existingMsgs[i].type === 'user') {
+      const ts = new Date(existingMsgs[i].timestamp).getTime();
+      if (Number.isFinite(ts) && ts <= baseTs) {
+        baseTs = ts;
+        break;
+      }
+    }
+  }
+  if (!Number.isFinite(baseTs)) baseTs = Date.now();
+  let counter = 1;
+  return () => new Date(baseTs + counter++).toISOString();
+}
+
 /** Streaming tool call state */
 export interface StreamingToolCall {
   id: string;
@@ -522,6 +547,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   completeStreaming: () => {
     const prev = get();
+    // Guard: skip if already stopped (e.g. abortResponse ran first)
+    if (!prev.isStreaming) return;
     debugLog.state('completeStreaming', {
       sessionId: prev.streamingSessionId,
       messageId: prev.streamingMessageId,
@@ -541,21 +568,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const messages: HistoryMessage[] = [];
     let pendingThinking: string | undefined;
 
-    // Generate sequential timestamps starting 1ms after the last user message
-    // to ensure addMessages' timestamp sort keeps them in correct order
-    // (right after user message, not at end of history).
-    const existingMsgs = useMessageStore.getState().messages;
-    let lastUserTs = prev.streamingStartedAt
-      ? new Date(prev.streamingStartedAt).getTime()
-      : Date.now();
-    for (let i = existingMsgs.length - 1; i >= 0; i--) {
-      if (existingMsgs[i].type === 'user') {
-        lastUserTs = new Date(existingMsgs[i].timestamp).getTime();
-        break;
-      }
-    }
-    let tsCounter = 1;
-    const nextTimestamp = () => new Date(lastUserTs + tsCounter++).toISOString();
+    const nextTimestamp = createTimestampGenerator(prev.streamingStartedAt);
 
     for (const seg of prev.streamingSegments) {
       if (seg.type === 'thinking') {
@@ -590,7 +603,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           toolInput: seg.toolCall.input,
           thinking: pendingThinking,
           // Include tool result if completed or errored
-          ...(seg.status !== 'pending' && seg.toolCall.output && {
+          ...(seg.status !== 'pending' && seg.toolCall.output !== undefined && {
             toolResult: {
               success: seg.status === 'completed',
               output: seg.status === 'completed' ? seg.toolCall.output : undefined,
@@ -757,6 +770,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const messages: HistoryMessage[] = [];
     let pendingThinking: string | undefined;
 
+    const nextTimestamp = createTimestampGenerator(state.streamingStartedAt);
+
     for (const seg of finalSegments) {
       if (seg.type === 'thinking') {
         // If there's already pending thinking, flush it as thinking-only message
@@ -765,7 +780,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             id: `${state.streamingMessageId}-thinking-${messages.length}`,
             type: 'assistant' as const,
             content: '',
-            timestamp: new Date().toISOString(),
+            timestamp: nextTimestamp(),
             thinking: pendingThinking,
           });
         }
@@ -775,7 +790,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           id: `${state.streamingMessageId}-text-${messages.length}`,
           type: 'assistant' as const,
           content: seg.content,
-          timestamp: new Date().toISOString(),
+          timestamp: nextTimestamp(),
           thinking: pendingThinking,
         });
         pendingThinking = undefined;
@@ -784,12 +799,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           id: `${state.streamingMessageId}-tool-${seg.toolCall.id}`,
           type: 'tool_use' as const,
           content: `Calling ${seg.toolCall.name}`,
-          timestamp: new Date().toISOString(),
+          timestamp: nextTimestamp(),
           toolName: seg.toolCall.name,
           toolInput: seg.toolCall.input,
           thinking: pendingThinking,
           // Include tool result if completed or errored (including abort error)
-          ...(seg.status !== 'pending' && seg.toolCall.output && {
+          ...(seg.status !== 'pending' && seg.toolCall.output !== undefined && {
             toolResult: {
               success: seg.status === 'completed',
               output: seg.status === 'completed' ? seg.toolCall.output : undefined,
@@ -807,7 +822,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         id: `${state.streamingMessageId}-thinking`,
         type: 'assistant' as const,
         content: '',
-        timestamp: new Date().toISOString(),
+        timestamp: nextTimestamp(),
         thinking: pendingThinking,
       });
     }
