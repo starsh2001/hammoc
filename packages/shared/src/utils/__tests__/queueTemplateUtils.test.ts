@@ -150,4 +150,45 @@ describe('generateQueueFromTemplate', () => {
     const result = generateQueueFromTemplate('/dev {story_num}', [], true);
     expect(result).toBe('');
   });
+
+  // TC-QT-11
+  it('replaces {epic_num} with epic number', () => {
+    const template = '@load epic-{epic_num}\n/dev {story_num}';
+    const single: QueueStoryInfo[] = [{ storyNum: '3.1', epicNum: 3, storyIndex: 1 }];
+    const result = generateQueueFromTemplate(template, single, false);
+    expect(result).toBe('@load epic-3\n/dev 3.1');
+  });
+
+  // TC-QT-12
+  it('replaces {story_title} with title or empty string', () => {
+    const template = '/dev {story_num}: {story_title}';
+    const withTitle: QueueStoryInfo[] = [
+      { storyNum: '1.1', epicNum: 1, storyIndex: 1, title: 'Login Page' },
+    ];
+    const withoutTitle: QueueStoryInfo[] = [
+      { storyNum: '1.2', epicNum: 1, storyIndex: 2 },
+    ];
+    expect(generateQueueFromTemplate(template, withTitle, false)).toBe('/dev 1.1: Login Page');
+    expect(generateQueueFromTemplate(template, withoutTitle, false)).toBe('/dev 1.2: ');
+  });
+
+  // TC-QT-13
+  it('replaces {story_index} with story index within epic', () => {
+    const template = 'story-{story_index} of epic-{epic_num}';
+    const multi: QueueStoryInfo[] = [
+      { storyNum: '3.2', epicNum: 3, storyIndex: 2 },
+      { storyNum: '5.4', epicNum: 5, storyIndex: 4 },
+    ];
+    const result = generateQueueFromTemplate(template, multi, false);
+    expect(result).toBe('story-2 of epic-3\nstory-4 of epic-5');
+  });
+
+  // TC-QT-14
+  it('replaces {date} with YYYY-MM-DD format', () => {
+    const template = '@save {date}/story-{story_num}';
+    const single: QueueStoryInfo[] = [{ storyNum: '2.1', epicNum: 2, storyIndex: 1 }];
+    const result = generateQueueFromTemplate(template, single, false);
+    // Verify date format matches YYYY-MM-DD
+    expect(result).toMatch(/^@save \d{4}-\d{2}-\d{2}\/story-2\.1$/);
+  });
 });

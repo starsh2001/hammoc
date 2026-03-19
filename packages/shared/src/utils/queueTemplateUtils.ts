@@ -49,7 +49,8 @@ export function extractStoryNumbers(prdContent: string, epicContext?: number): Q
 }
 
 /**
- * Generate a queue script by replacing {story_num} in template for each selected story.
+ * Generate a queue script by replacing template variables for each selected story.
+ * Supported variables: {story_num}, {epic_num}, {story_index}, {story_title}, {date}
  * Optionally inserts @pause between different epic groups.
  */
 export function generateQueueFromTemplate(
@@ -63,6 +64,7 @@ export function generateQueueFromTemplate(
   const trimmed = template.replace(/\r\n/g, '\n').replace(/^\n+|\n+$/g, '');
   const blocks: string[] = [];
   let prevEpicNum = stories[0].epicNum;
+  const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
   for (const story of stories) {
     if (insertPauseBetweenEpics && story.epicNum !== prevEpicNum) {
@@ -70,7 +72,12 @@ export function generateQueueFromTemplate(
       prevEpicNum = story.epicNum;
     }
 
-    const replaced = trimmed.replace(/\{story_num\}/g, story.storyNum);
+    const replaced = trimmed
+      .replace(/\{story_num\}/g, story.storyNum)
+      .replace(/\{epic_num\}/g, String(story.epicNum))
+      .replace(/\{story_index\}/g, String(story.storyIndex))
+      .replace(/\{story_title\}/g, story.title ?? '')
+      .replace(/\{date\}/g, dateStr);
     blocks.push(replaced);
   }
 
