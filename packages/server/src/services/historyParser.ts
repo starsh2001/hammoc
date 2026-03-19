@@ -11,7 +11,8 @@
  */
 
 import fs from 'fs/promises';
-import { existsSync } from 'fs';
+import { createReadStream, existsSync } from 'fs';
+import * as readline from 'node:readline';
 import type {
   RawJSONLMessage,
   HistoryMessage,
@@ -52,6 +53,85 @@ export async function parseJSONLFile(filePath: string): Promise<RawJSONLMessage[
   }
 
   return messages;
+}
+
+/**
+ * Lightweight stream-based JSONL parser for session metadata extraction.
+ * Reads line-by-line using readline streams instead of loading the entire
+ * file into memory. Extracts firstPrompt and messageCount without building
+ * a full message array.
+ *
+ * @param filePath Path to the JSONL session file
+ * @returns Session metadata (firstPrompt, messageCount) or null if file missing/unparseable
+ */
+export async function parseJSONLSessionMeta(
+  filePath: string
+): Promise<{ firstPrompt: string; messageCount: number } | null> {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    let firstPrompt = '';
+    let messageCount = 0;
+    let firstPromptFound = false;
+    let settled = false;
+
+    const settle = (value: { firstPrompt: string; messageCount: number } | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    const stream = createReadStream(filePath, { encoding: 'utf-8' });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+    rl.on('line', (line) => {
+      if (!line.trim()) return;
+      try {
+        const parsed = JSON.parse(line);
+        const type = parsed.type;
+
+        if (type === 'user' || type === 'assistant') {
+          messageCount++;
+        }
+
+        // Extract firstPrompt from the first user message
+        if (!firstPromptFound && type === 'user') {
+          firstPromptFound = true;
+          const content = parsed.message?.content;
+          if (typeof content === 'string') {
+            firstPrompt = content;
+          } else if (Array.isArray(content)) {
+            const textBlock = content
+              .filter((b: { type: string }) => b.type === 'text')
+              .find(
+                (b: { text?: string }) =>
+                  typeof b.text === 'string' && cleanCommandTags(b.text).trim()
+              );
+            if (textBlock && typeof textBlock.text === 'string') {
+              firstPrompt = textBlock.text;
+            }
+          }
+        }
+      } catch {
+        // Skip invalid JSON lines
+      }
+    });
+
+    rl.on('close', () => {
+      settle({ firstPrompt, messageCount });
+    });
+
+    rl.on('error', () => {
+      settle(null);
+    });
+
+    stream.on('error', () => {
+      rl.close();
+      settle(null);
+    });
+  });
 }
 
 /**

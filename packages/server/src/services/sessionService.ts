@@ -22,6 +22,7 @@ import type {
 } from '@hammoc/shared';
 import {
   parseJSONLFile,
+  parseJSONLSessionMeta,
   sortMessagesByParentUuid,
   transformToHistoryMessages,
   cleanCommandTags,
@@ -33,8 +34,29 @@ import {
 export class SessionService {
   private readonly claudeProjectsDir: string;
 
+  // Per-project mutex for sessions-index.json writes to prevent concurrent read-modify-write races
+  private static indexWriteLocks = new Map<string, Promise<void>>();
+
   constructor() {
     this.claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
+  }
+
+  /**
+   * Serialize async operations per project slug to prevent concurrent
+   * read-modify-write on sessions-index.json.
+   */
+  private async withIndexLock(projectSlug: string, fn: () => Promise<void>): Promise<void> {
+    const prev = SessionService.indexWriteLocks.get(projectSlug) ?? Promise.resolve();
+    const next = prev.then(fn, fn);
+    SessionService.indexWriteLocks.set(projectSlug, next);
+    try {
+      await next;
+    } finally {
+      // Clean up if this is still the latest queued operation
+      if (SessionService.indexWriteLocks.get(projectSlug) === next) {
+        SessionService.indexWriteLocks.delete(projectSlug);
+      }
+    }
   }
 
   /**
@@ -328,30 +350,15 @@ export class SessionService {
           const cacheMisses = candidates.filter(({ sessionId }) => !indexMap.has(sessionId));
           if (cacheMisses.length > 0) {
             await this.pMapWithLimit(cacheMisses, async ({ file, sessionId }) => {
-              try {
-                const rawMessages = await parseJSONLFile(path.join(projectDir, file));
-                const userMessage = rawMessages.find(m => m.type === 'user');
-                const content = userMessage?.message?.content;
-                let rawText = '';
-                if (typeof content === 'string') {
-                  rawText = content;
-                } else if (Array.isArray(content)) {
-                  const textBlock = content
-                    .filter((b: { type: string }) => b.type === 'text')
-                    .find((b) => 'text' in b && typeof b.text === 'string' && cleanCommandTags(b.text).trim());
-                  if (textBlock && 'text' in textBlock) {
-                    rawText = textBlock.text as string;
-                  }
-                }
+              const meta = await parseJSONLSessionMeta(path.join(projectDir, file));
+              if (meta) {
                 indexMap.set(sessionId, {
                   sessionId,
-                  firstPrompt: rawText,
-                  messageCount: rawMessages.filter(m => m.type === 'user' || m.type === 'assistant').length,
+                  firstPrompt: meta.firstPrompt,
+                  messageCount: meta.messageCount,
                   created: '',
                   modified: '',
                 });
-              } catch {
-                // Skip unparseable files — treated as empty firstPrompt
               }
             }, 8);
           }
@@ -411,37 +418,20 @@ export class SessionService {
                 modified: stat.mtime.toISOString(),
               };
             }
-            // Cache miss — parse JSONL
-            try {
-              const rawMessages = await parseJSONLFile(path.join(projectDir, file));
-              const userMessage = rawMessages.find(m => m.type === 'user');
-              const content = userMessage?.message?.content;
-              let rawText: string | null = null;
+            // Cache miss — use lightweight stream parser
+            const meta = await parseJSONLSessionMeta(path.join(projectDir, file));
+            if (!meta) return null;
 
-              if (typeof content === 'string') {
-                rawText = content;
-              } else if (Array.isArray(content)) {
-                const textBlock = content
-                  .filter((b: { type: string }) => b.type === 'text')
-                  .find((b) => 'text' in b && cleanCommandTags(b.text as string).trim());
-                if (textBlock && 'text' in textBlock) {
-                  rawText = textBlock.text as string;
-                }
-              }
+            // Filter empty sessions for cache misses when !includeEmpty
+            if (!includeEmpty && !meta.firstPrompt) return null;
 
-              // Filter empty sessions for cache misses when !includeEmpty
-              if (!includeEmpty && !rawText) return null;
-
-              return {
-                sessionId,
-                firstPrompt: rawText ? this.truncateFirstPrompt(rawText) : '',
-                messageCount: rawMessages.filter(m => m.type === 'user' || m.type === 'assistant').length,
-                created: stat.birthtime.toISOString(),
-                modified: stat.mtime.toISOString(),
-              };
-            } catch {
-              return null; // Skip unparseable files
-            }
+            return {
+              sessionId,
+              firstPrompt: meta.firstPrompt ? this.truncateFirstPrompt(meta.firstPrompt) : '',
+              messageCount: meta.messageCount,
+              created: stat.birthtime.toISOString(),
+              modified: stat.mtime.toISOString(),
+            };
           })
         )).filter((s): s is SessionListItem => s !== null);
 
@@ -487,55 +477,24 @@ export class SessionService {
           const filePath = path.join(projectDir, file);
           const stat = await fs.stat(filePath);
 
-          try {
-            const rawMessages = await parseJSONLFile(filePath);
-            const userMessage = rawMessages.find(m => m.type === 'user');
-            if (userMessage) {
-              const content = userMessage.message?.content;
-              let rawText: string | null = null;
-
-              if (typeof content === 'string') {
-                rawText = content;
-              } else if (Array.isArray(content)) {
-                const textBlock = content
-                  .filter((b: { type: string }) => b.type === 'text')
-                  .find((b) => 'text' in b && cleanCommandTags(b.text as string).trim());
-                if (textBlock && 'text' in textBlock) {
-                  rawText = textBlock.text as string;
-                }
-              }
-
-              const firstPrompt = rawText ? this.truncateFirstPrompt(rawText) : null;
-
-              if (rawText || includeEmpty) {
-                if (rawText) rawFirstPromptMap.set(sessionId, rawText);
-                sessionMap.set(sessionId, {
-                  sessionId,
-                  firstPrompt: firstPrompt || '',
-                  messageCount: rawMessages.filter(m => m.type === 'user' || m.type === 'assistant').length,
-                  created: stat.birthtime.toISOString(),
-                  modified: stat.mtime.toISOString(),
-                });
-              }
-            } else if (includeEmpty) {
-              sessionMap.set(sessionId, {
-                sessionId,
-                firstPrompt: '',
-                messageCount: 0,
-                created: stat.birthtime.toISOString(),
-                modified: stat.mtime.toISOString(),
-              });
-            }
-          } catch {
-            if (includeEmpty) {
-              sessionMap.set(sessionId, {
-                sessionId,
-                firstPrompt: '',
-                messageCount: 0,
-                created: stat.birthtime.toISOString(),
-                modified: stat.mtime.toISOString(),
-              });
-            }
+          const meta = await parseJSONLSessionMeta(filePath);
+          if (meta && (meta.firstPrompt || includeEmpty)) {
+            if (meta.firstPrompt) rawFirstPromptMap.set(sessionId, meta.firstPrompt);
+            sessionMap.set(sessionId, {
+              sessionId,
+              firstPrompt: meta.firstPrompt ? this.truncateFirstPrompt(meta.firstPrompt) : '',
+              messageCount: meta.messageCount,
+              created: stat.birthtime.toISOString(),
+              modified: stat.mtime.toISOString(),
+            });
+          } else if (includeEmpty) {
+            sessionMap.set(sessionId, {
+              sessionId,
+              firstPrompt: '',
+              messageCount: 0,
+              created: stat.birthtime.toISOString(),
+              modified: stat.mtime.toISOString(),
+            });
           }
         }
       }
@@ -664,6 +623,59 @@ export class SessionService {
     }
 
     return { deleted, failed };
+  }
+
+  /**
+   * Update or insert a session entry in sessions-index.json.
+   * Called after a stream completes so the index stays fresh and
+   * future list queries avoid expensive JSONL re-parsing.
+   */
+  async updateSessionIndex(projectSlug: string, sessionId: string): Promise<void> {
+    await this.withIndexLock(projectSlug, async () => {
+      const projectDir = path.join(this.claudeProjectsDir, projectSlug);
+      const indexPath = path.join(projectDir, 'sessions-index.json');
+      const sessionFile = path.join(projectDir, `${sessionId}.jsonl`);
+
+      const meta = await parseJSONLSessionMeta(sessionFile);
+      if (!meta) return;
+
+      const stat = await fs.stat(sessionFile);
+
+      const entry: SessionIndexEntry = {
+        sessionId,
+        firstPrompt: meta.firstPrompt,
+        messageCount: meta.messageCount,
+        created: stat.birthtime.toISOString(),
+        modified: stat.mtime.toISOString(),
+      };
+
+      // Read existing index — skip update entirely if file exists but is unparseable
+      let index: SessionsIndex;
+      try {
+        const content = await fs.readFile(indexPath, 'utf-8');
+        index = JSON.parse(content);
+        if (!index.entries || !Array.isArray(index.entries)) {
+          index.entries = [];
+        }
+      } catch (err: unknown) {
+        // If index file exists but is corrupt, skip to avoid overwriting valid data
+        if (existsSync(indexPath)) return;
+        index = { version: 1, entries: [] };
+      }
+
+      // Upsert: replace existing entry or append
+      const existingIdx = index.entries.findIndex(e => e.sessionId === sessionId);
+      if (existingIdx >= 0) {
+        index.entries[existingIdx] = entry;
+      } else {
+        index.entries.push(entry);
+      }
+
+      // Atomic write: write to temp file then rename
+      const tmpPath = `${indexPath}.tmp.${Date.now()}`;
+      await fs.writeFile(tmpPath, JSON.stringify(index, null, 2), 'utf-8');
+      await fs.rename(tmpPath, indexPath);
+    });
   }
 
   // Story 3.5: Session History Loading methods
