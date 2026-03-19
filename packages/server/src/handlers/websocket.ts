@@ -931,17 +931,16 @@ export async function initializeWebSocket(
         stream.pendingPermissions.get(data.requestId)!.resolve({ approved: data.approved, response: data.response });
         stream.pendingPermissions.delete(data.requestId);
         // Broadcast the actual resolution to all OTHER viewers so their
-        // tool/interactive cards can show the correct approve/deny state
-        for (const sock of stream.sockets) {
-          if (sock.id !== socket.id) {
-            sock.emit('permission:resolved', {
-              requestId: data.requestId,
-              approved: data.approved,
-              interactionType: data.interactionType,
-              response: data.response,
-            });
-          }
-        }
+        // tool/interactive cards can show the correct approve/deny state.
+        // Also buffer via createStreamEmit so reconnecting clients see the
+        // resolved state instead of a stale 'waiting' permission card.
+        const emit = createStreamEmit(stream);
+        emit('permission:resolved', {
+          requestId: data.requestId,
+          approved: data.approved,
+          interactionType: data.interactionType,
+          response: data.response,
+        });
       } else {
         // Permission already resolved by another viewer — notify sender
         socket.emit('permission:already-resolved', { requestId: data.requestId });
