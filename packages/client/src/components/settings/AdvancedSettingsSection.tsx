@@ -360,7 +360,7 @@ export function AdvancedSettingsSection() {
         )}
         <div className="mt-1 flex items-center justify-between">
           {!currentProjectSlug ? (
-            <p className="text-xs text-gray-400 dark:text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               {t('advanced.promptNoProject')}
             </p>
           ) : (

@@ -308,7 +308,7 @@ export function ProjectSessionsPage() {
       {!selectionMode && (
         <div className="px-4 pt-3 pb-1 bg-white dark:bg-[#1c2129]">
           <div role="search" className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-400 pointer-events-none" aria-hidden="true" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400 pointer-events-none" aria-hidden="true" />
             <input
               type="text"
               value={localSearchQuery}
@@ -338,7 +338,7 @@ export function ProjectSessionsPage() {
                 />
                 {t('session.searchContent')}
               </label>
-              <span className="text-xs text-gray-400 dark:text-gray-400">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 {searchContent ? t('session.searchContentCap') : t('session.searchContentHint')}
               </span>
             </div>

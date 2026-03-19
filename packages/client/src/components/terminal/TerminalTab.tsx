@@ -214,7 +214,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
             disabled={terminals.size >= MAX_TERMINALS}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
               terminals.size >= MAX_TERMINALS
-                ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400'
+                ? 'opacity-50 cursor-not-allowed text-gray-500 dark:text-gray-400'
                 : 'text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040]'
             }`}
           >
@@ -278,7 +278,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
             <div className="p-4 bg-gray-100 dark:bg-[#263240] rounded-2xl mb-4">
-              <Terminal className="w-10 h-10 text-gray-400 dark:text-gray-400" />
+              <Terminal className="w-10 h-10 text-gray-500 dark:text-gray-400" />
             </div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               {t('terminal.emptyMessage')}

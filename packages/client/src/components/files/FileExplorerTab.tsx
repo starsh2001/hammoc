@@ -365,11 +365,11 @@ export function FileExplorerTab() {
                 {segments.map((seg, i) => (
                   <li key={seg.path} className="flex items-center gap-0.5 min-w-0">
                     {i > 0 && (
-                      <ChevronRight className="w-3 h-3 text-gray-300 dark:text-gray-600 flex-shrink-0" aria-hidden="true" />
+                      <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500 flex-shrink-0" aria-hidden="true" />
                     )}
                     {i === segments.length - 1 ? (
                       <span className="inline-flex items-center gap-1 font-medium text-gray-800 dark:text-gray-200 truncate" aria-current="page">
-                        {i === 0 && <FolderRoot className="w-3.5 h-3.5 text-gray-400 dark:text-gray-400 flex-shrink-0" />}
+                        {i === 0 && <FolderRoot className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 flex-shrink-0" />}
                         {seg.name}
                       </span>
                     ) : (
@@ -487,7 +487,7 @@ export function FileExplorerTab() {
                   <div className="min-w-0 flex-1">
                     <span className="text-sm text-gray-900 dark:text-white">{result.name}</span>
                     {result.path !== result.name && (
-                      <span className="text-xs text-gray-400 dark:text-gray-400 ml-2 truncate">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 truncate">
                         {result.path.substring(0, result.path.length - result.name.length - 1)}
                       </span>
                     )}

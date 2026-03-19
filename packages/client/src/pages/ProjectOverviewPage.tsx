@@ -117,10 +117,10 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
           ) : recentSessions.length === 0 ? (
             <div className="py-12 px-8 text-center">
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 dark:bg-[#253040]/50 mb-4">
-                <MessageCircle className="w-7 h-7 text-gray-400 dark:text-gray-400" />
+                <MessageCircle className="w-7 h-7 text-gray-500 dark:text-gray-400" />
               </div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-200 mb-1">{t('overview.sessionsEmpty')}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-400 mb-4">{t('overview.sessionsEmptySubtext')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('overview.sessionsEmptySubtext')}</p>
               <button
                 onClick={handleNewSession}
                 className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -155,7 +155,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 ml-4 text-xs text-gray-400 dark:text-gray-400 flex-shrink-0">
+                  <div className="flex items-center gap-3 ml-4 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
                     <span>{t('overview.messageCountFormat', { count: session.messageCount })}</span>
                     <span>{formatRelativeTime(session.modified)}</span>
                   </div>

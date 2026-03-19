@@ -276,7 +276,7 @@ export function IssueFormDialog({ open, onClose, onSubmit }: IssueFormDialogProp
               onClick={() => fileInputRef.current?.click()}
               className="border-2 border-dashed border-gray-300 dark:border-[#2d3a4a] rounded-lg p-3 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
             >
-              <ImagePlus className="w-5 h-5 mx-auto text-gray-400 dark:text-gray-400 mb-1" />
+              <ImagePlus className="w-5 h-5 mx-auto text-gray-500 dark:text-gray-400 mb-1" />
               <p className="text-xs text-gray-500 dark:text-gray-300">{t('issue.dropzone')}</p>
               <input
                 ref={fileInputRef}

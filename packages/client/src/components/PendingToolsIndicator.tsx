@@ -32,7 +32,7 @@ function ElapsedTime({ startedAt }: { startedAt: number }) {
   }, [startedAt]);
 
   return (
-    <span className="text-xs text-gray-400 dark:text-gray-400 tabular-nums whitespace-nowrap">
+    <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums whitespace-nowrap">
       {formatDuration(elapsed)}
     </span>
   );
@@ -109,7 +109,7 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
           );
         })}
         {remaining > 0 && (
-          <span className="text-xs text-gray-400 dark:text-gray-400 px-2">
+          <span className="text-xs text-gray-500 dark:text-gray-400 px-2">
             {t('pendingTools.moreCount', { count: remaining })}
           </span>
         )}

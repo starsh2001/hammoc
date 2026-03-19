@@ -155,7 +155,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
                 {agentInfo.icon && <span>{agentInfo.icon}</span>} {agentInfo.name}
               </span>
             )}
-            <span className="text-xs text-gray-400 dark:text-gray-400 truncate font-mono">
+            <span className="text-xs text-gray-500 dark:text-gray-400 truncate font-mono">
               {session.sessionId}
             </span>
           </div>

@@ -119,7 +119,7 @@ export function MessageBubble({
         {/* Timestamp */}
         <div
           className={`mt-2 text-xs transition-opacity duration-200 ${
-            isUser ? 'text-gray-600 dark:text-blue-200' : 'text-gray-400 dark:text-gray-400'
+            isUser ? 'text-gray-600 dark:text-blue-200' : 'text-gray-500 dark:text-gray-400'
           } ${timestampMode === 'hover' ? (isHovered ? 'opacity-100' : 'opacity-0') : 'opacity-100'}`}
         >
           {formattedTime}

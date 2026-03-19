@@ -72,7 +72,6 @@ export const CodeBlock = memo(function CodeBlock({
         const html = highlighter.codeToHtml(code, {
           lang,
           theme: shikiTheme,
-          defaultColor: false,
         });
 
         if (mountedRef.current) {

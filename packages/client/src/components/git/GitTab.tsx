@@ -382,7 +382,7 @@ export function GitTab() {
           <div>
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{t('git.commitHistory')}</h3>
             {commits.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-400">{t('git.noCommitHistory')}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('git.noCommitHistory')}</p>
             ) : (
               <ul className="space-y-1">
                 {commits.map((c) => (
@@ -395,7 +395,7 @@ export function GitTab() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-700 dark:text-gray-200 truncate">{c.message}</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-400">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {c.author} · {formatRelativeDate(c.date, t)}
                       </p>
                     </div>

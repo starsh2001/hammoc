@@ -403,7 +403,7 @@ export function ProjectBoardPage() {
   if (items.length === 0) {
     return (
       <div className="p-4 flex flex-col items-center justify-center min-h-[300px] text-center">
-        <Kanban className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
+        <Kanban className="w-12 h-12 text-gray-400 dark:text-gray-500 mb-4" />
         <p className="text-gray-500 dark:text-gray-300 mb-4">
           {t('empty.message')}
         </p>

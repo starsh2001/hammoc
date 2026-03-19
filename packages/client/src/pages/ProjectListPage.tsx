@@ -252,8 +252,8 @@ export function ProjectListPage() {
                 onClick={() => setShowHidden(!showHidden)}
                 className={`hidden sm:block p-2 rounded-lg transition-colors ${
                   showHidden
-                    ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
-                    : 'hover:bg-gray-100 dark:hover:bg-[#253040] text-gray-700 dark:text-gray-200'
+                    ? 'bg-blue-500/20 dark:bg-blue-600 text-blue-300 dark:text-white'
+                    : 'hover:bg-white/10 dark:hover:bg-[#253040] text-white/80 dark:text-gray-200'
                 }`}
                 aria-label={showHidden ? t('project.hideHidden') : t('project.showHidden', { count: hiddenCount })}
                 title={showHidden ? t('project.hideHidden') : t('project.showHidden', { count: hiddenCount })}
@@ -330,7 +330,7 @@ export function ProjectListPage() {
         {!isLoading && visibleProjects.length === 0 && (
           <div className="text-center py-12">
             <FolderOpen
-              className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4"
+              className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-500 mb-4"
               aria-hidden="true"
             />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
@@ -378,7 +378,7 @@ export function ProjectListPage() {
 
       {/* Footer */}
       <footer className="flex-shrink-0 border-t border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#263240] px-4 py-2">
-        <div className="content-container flex items-center justify-between text-xs text-gray-400 dark:text-gray-400">
+        <div className="content-container flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
           <span>Hammoc{serverVersion ? ` v${serverVersion}` : ''}</span>
           <button
             onClick={handleLogout}

@@ -1030,7 +1030,7 @@ export function ChatInput({
                          ${speechRecognition.isListening
                            ? 'text-emerald-600 dark:text-emerald-400'
                            : content.trim()
-                             ? 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'
+                             ? 'text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400'
                              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}
                          disabled:opacity-50 disabled:cursor-not-allowed
                          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1
@@ -1103,7 +1103,7 @@ export function ChatInput({
             className={`relative p-1 rounded-md flex-shrink-0 flex items-center justify-center transition-all duration-150 cursor-pointer
                        ${chainMode
                          ? 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 text-white'
-                         : 'text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040]'}
+                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040]'}
                        disabled:opacity-50 disabled:cursor-not-allowed
                        focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2`}
             style={{ height: '28px', width: '28px' }}

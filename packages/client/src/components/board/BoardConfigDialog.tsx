@@ -279,7 +279,7 @@ export function BoardConfigDialog({ open, config, onClose, onSave, onReset }: Bo
           <div>
             <div className="mb-3">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('config.badgeMapping')}</h3>
-              <p className="text-xs text-gray-400 dark:text-gray-400 mt-0.5">{t('config.badgeMappingHint')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('config.badgeMappingHint')}</p>
             </div>
             <div className="space-y-2">
               {ALL_BADGE_IDS.map((badgeId) => {

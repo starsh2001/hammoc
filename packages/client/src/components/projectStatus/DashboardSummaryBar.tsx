@@ -22,7 +22,7 @@ interface StatCardProps {
 const cardStyles = {
   default: {
     border: 'border-gray-200 bg-white dark:border-gray-600/50 dark:bg-gray-700/40',
-    icon: 'text-gray-400 dark:text-gray-400',
+    icon: 'text-gray-500 dark:text-gray-400',
     value: 'text-gray-700 dark:text-gray-200',
   },
   green: {

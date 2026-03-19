@@ -47,7 +47,7 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
       data-testid="prompt-chain-banner"
       className="content-container banner-full-mobile sticky top-0 z-[9] transition-all duration-300
                  bg-violet-50 dark:bg-violet-950/30 border-b border-violet-200 dark:border-violet-800/50
-                 overflow-x-hidden"
+                 w-full overflow-hidden"
     >
       {/* Collapsed header row */}
       <div className="px-4 py-2 flex items-center gap-2 min-w-0">

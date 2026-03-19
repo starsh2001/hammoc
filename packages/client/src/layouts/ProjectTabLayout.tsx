@@ -180,7 +180,7 @@ export function ProjectTabLayout() {
                 disabled={isDisabled}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isDisabled
-                    ? 'border-transparent opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400'
+                    ? 'border-transparent opacity-50 cursor-not-allowed text-gray-500 dark:text-gray-400'
                     : isActive
                     ? 'border-blue-300 text-blue-200 dark:text-blue-400'
                     : 'border-transparent text-white/50 dark:text-gray-300 hover:text-white/80 dark:hover:text-gray-300 hover:border-white/30 dark:hover:border-[#2d3a4a]'

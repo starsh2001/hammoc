@@ -201,7 +201,7 @@ export function QuickTerminal({
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-6 text-center">
             <div className="p-3 bg-gray-100 dark:bg-[#263240] rounded-2xl mb-3">
-              <Terminal className="w-8 h-8 text-gray-400 dark:text-gray-400" />
+              <Terminal className="w-8 h-8 text-gray-500 dark:text-gray-400" />
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">
               {t('terminal.emptyMessage')}

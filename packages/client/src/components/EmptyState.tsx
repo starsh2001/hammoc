@@ -29,7 +29,7 @@ export function EmptyState({
   return (
     <div className="text-center py-6 md:py-12 px-4" role="status" aria-label={title}>
       <Icon
-        className="w-10 h-10 md:w-16 md:h-16 mx-auto text-gray-300 dark:text-gray-600 mb-3 md:mb-4"
+        className="w-10 h-10 md:w-16 md:h-16 mx-auto text-gray-400 dark:text-gray-500 mb-3 md:mb-4"
         aria-hidden="true"
       />
       <p className="text-base md:text-lg font-medium text-gray-900 dark:text-white mb-1 md:mb-2">

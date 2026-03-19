@@ -168,7 +168,7 @@ export function ChatHeader({
                   </span>
                   {isBmadProject && (
                     <>
-                      <span className="text-xs text-gray-300 dark:text-gray-600 mx-1">|</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 mx-1">|</span>
                       <span
                         role="button"
                         tabIndex={0}
@@ -218,8 +218,8 @@ export function ChatHeader({
           {onNewSession && (
             <button
               onClick={onNewSession}
-              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                         text-gray-700 dark:text-gray-200
+              className="hidden md:block p-2 hover:bg-white/10 dark:hover:bg-gray-700 rounded-lg
+                         text-white/80 dark:text-gray-200
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label={t('header.newSession')}
             >
@@ -233,8 +233,8 @@ export function ChatHeader({
               className={`hidden md:block p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
                 transition-colors relative
                 ${activePanel
-                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
+                  ? 'bg-blue-500/20 dark:bg-blue-900/50 text-blue-300 dark:text-blue-400'
+                  : 'hover:bg-white/10 dark:hover:bg-gray-700 text-white/80 dark:text-gray-200'
                 }`}
               aria-label={t('header.panelToggle')}
               aria-pressed={!!activePanel}
@@ -249,8 +249,8 @@ export function ChatHeader({
             <button
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg
-                         text-gray-700 dark:text-gray-200 disabled:opacity-50
+              className="hidden md:block p-2 hover:bg-white/10 dark:hover:bg-gray-700 rounded-lg
+                         text-white/80 dark:text-gray-200 disabled:opacity-50
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label={isRefreshing ? t('header.refreshing') : t('header.refresh')}
             >
@@ -269,8 +269,8 @@ export function ChatHeader({
           <button
             onClick={() => navigate('/settings')}
             aria-label={t('header.settings')}
-            className="hidden md:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
-                       text-gray-700 dark:text-gray-200 transition-colors
+            className="hidden md:block p-2 rounded-lg hover:bg-white/10 dark:hover:bg-gray-700
+                       text-white/80 dark:text-gray-200 transition-colors
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <Settings className="w-5 h-5" aria-hidden="true" />

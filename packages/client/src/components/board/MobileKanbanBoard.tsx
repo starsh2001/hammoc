@@ -149,7 +149,7 @@ export function MobileKanbanBoard({
                   <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                     {col.label}
                   </span>
-                  <span className="text-xs font-medium text-gray-400 dark:text-gray-400 bg-gray-200 dark:bg-[#253040] px-1.5 py-0.5 rounded-full">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-[#253040] px-1.5 py-0.5 rounded-full">
                     {items.length}
                   </span>
                 </div>
@@ -175,7 +175,7 @@ export function MobileKanbanBoard({
                     />
                   ))}
                   {items.length === 0 && (
-                    <p className="text-center text-sm text-gray-400 dark:text-gray-400 py-8">
+                    <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
                       {t('empty.items')}
                     </p>
                   )}

@@ -341,7 +341,7 @@ export function IssueEditDialog({ open, issue, projectSlug, onClose, onSubmit }:
                   onClick={() => fileInputRef.current?.click()}
                   className="border-2 border-dashed border-gray-300 dark:border-[#2d3a4a] rounded-lg p-2 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
                 >
-                  <ImagePlus className="w-4 h-4 mx-auto text-gray-400 dark:text-gray-400 mb-0.5" />
+                  <ImagePlus className="w-4 h-4 mx-auto text-gray-500 dark:text-gray-400 mb-0.5" />
                   <p className="text-xs text-gray-500 dark:text-gray-300">{t('issue.addAttachment')}</p>
                   <input
                     ref={fileInputRef}

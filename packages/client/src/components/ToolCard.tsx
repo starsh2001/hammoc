@@ -66,7 +66,7 @@ function ToolTimer({ startedAt, hidden }: { startedAt: number; hidden?: boolean 
   if (hidden) return null;
 
   return (
-    <span className="text-xs text-gray-400 dark:text-gray-400 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(elapsed) })}>
+    <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(elapsed) })}>
       {formatDuration(elapsed)}
     </span>
   );
@@ -156,7 +156,7 @@ function ExitPlanModeContent({
               <MarkdownRenderer content={planContent} />
             </div>
           ) : (
-            <p className="text-xs text-gray-400 dark:text-gray-400 italic">
+            <p className="text-xs text-gray-500 dark:text-gray-400 italic">
               {t('tool.planEmpty')}
             </p>
           )}
@@ -293,7 +293,7 @@ export function ToolCard({
             )}
             {/* Duration display */}
             {!isPending && duration != null && (
-              <span className="text-xs text-gray-400 dark:text-gray-400 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(duration) })}>
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto" aria-label={t('tool.executionTime', { duration: formatDuration(duration) })}>
                 {formatDuration(duration)}
               </span>
             )}
