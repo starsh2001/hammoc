@@ -10,6 +10,7 @@ import { Plus, CheckSquare, Trash2, X, Eye, EyeOff, RefreshCw, Loader2, Search }
 import { useSessionStore } from '../stores/sessionStore';
 import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
 import { useQueueStore } from '../stores/queueStore';
+import { getSocket } from '../services/socket';
 import { SessionListItem } from '../components/SessionListItem';
 import { SessionListItemSkeleton } from '../components/SessionListItemSkeleton';
 import { EmptyState } from '../components/EmptyState';
@@ -71,6 +72,20 @@ export function ProjectSessionsPage() {
     () => sessions.filter((s) => !s.firstPrompt || s.messageCount === 0).map((s) => s.sessionId),
     [sessions]
   );
+
+  // Join project room so session:stream-change events are received in real-time
+  useEffect(() => {
+    if (!projectSlug) return;
+    try {
+      const socket = getSocket();
+      socket.emit('project:join', projectSlug);
+      return () => {
+        socket.emit('project:leave', projectSlug);
+      };
+    } catch {
+      // Socket not ready yet — stream-change events will be missed until next fetch
+    }
+  }, [projectSlug]);
 
   // Clear search and fetch sessions on mount/navigation/projectSlug change
   const includeEmptyInitialRef = useRef(true);
