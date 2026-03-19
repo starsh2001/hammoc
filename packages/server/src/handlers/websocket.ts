@@ -1638,20 +1638,6 @@ function validateImages(images: ImageAttachment[], lang: string): { valid: boole
 }
 
 /**
- * Check if error message indicates a session not found error
- */
-function isSessionNotFoundError(error: Error): boolean {
-  const message = error.message.toLowerCase();
-  return (
-    message.includes('session not found') ||
-    message.includes('session does not exist') ||
-    message.includes('invalid session') ||
-    message.includes('no such session') ||
-    message.includes('no conversation found')
-  );
-}
-
-/**
  * Handle chat:send event from client
  * Processes user message through ChatService and streams response back
  * All emit calls are buffered via createStreamEmit for reconnect support.
@@ -1854,16 +1840,32 @@ async function handleChatSend(
       }
     };
 
-    // Attempt to send — if resume fails with session-not-found, retry without resume
+    // Attempt to send — if resume fails, retry without resume (create fresh session).
+    // This handles cases where the first send was aborted before SDK created the session file,
+    // leaving the client with messages (from partial response) but no actual SDK session on disk.
     try {
       await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
         resetTimeout(`raw:${messageType}`);
       });
     } catch (sendError) {
-      // Resume failed because session doesn't exist (e.g., first send was aborted before SDK created it).
-      // Retry once without resume so SDK creates a fresh session.
-      if (isResuming && sendError instanceof Error && isSessionNotFoundError(sendError)) {
-        log.info(`[CHAIN-DRAIN] resume failed (session not found), retrying without resume: sessionId=${sessionId}`);
+      // Resume failed — retry once without resume so SDK creates a fresh session.
+      // Guards:
+      //  1. Only when resuming (not a fresh session send)
+      //  2. Skip if intentionally aborted (user-abort / another-client / timeout)
+      //  3. Skip if SDK already started streaming output — retrying would duplicate side-effects
+      //  4. Skip for rate-limit / auth / network errors — these aren't session-related
+      const errMsg = (sendError instanceof Error ? sendError.message : String(sendError)).toLowerCase();
+      const responseAlreadyStarted = lastResetSource !== 'initial';
+      const isNonSessionError = errMsg.includes('rate limit') || errMsg.includes('too many requests')
+        || errMsg.includes('authentication') || errMsg.includes('unauthorized') || errMsg.includes('login')
+        || errMsg.includes('network') || errMsg.includes('econnrefused') || errMsg.includes('etimedout');
+      if (
+        isResuming
+        && !abortController.signal.aborted
+        && !responseAlreadyStarted
+        && !isNonSessionError
+      ) {
+        log.info(`[CHAIN-DRAIN] resume failed, retrying without resume: sessionId=${sessionId}, error=${errMsg.slice(0, 120)}`);
         const retryOptions = { ...chatOptions, resume: undefined, sessionId };
         delete retryOptions.resume;
         resetTimeout('resume-retry');
