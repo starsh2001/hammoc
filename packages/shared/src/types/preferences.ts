@@ -36,6 +36,9 @@ export interface UserPreferences {
   language?: SupportedLanguage;     // User's preferred language
   // Permission sync policy across browsers
   permissionSyncPolicy?: PermissionSyncPolicy;
+  // Allowed read paths outside project root (absolute paths only)
+  // Default: [~/.claude] — set broader paths (e.g. home dir) to expand access
+  allowedReadPaths?: string[];
 }
 
 /** Controls when permission mode changes are broadcast to other browsers viewing the same session */

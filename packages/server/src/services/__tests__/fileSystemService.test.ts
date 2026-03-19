@@ -4,11 +4,17 @@
  * [Source: Story 11.1 - Task 7.3]
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
 import { fileSystemService } from '../fileSystemService.js';
+import { preferencesService } from '../preferencesService.js';
+
+// Mock preferencesService to return home dir as allowed root (default behavior)
+vi.spyOn(preferencesService, 'readPreferences').mockResolvedValue({
+  allowedReadPaths: [os.homedir()],
+} as any);
 
 let tmpDir: string;
 
@@ -22,6 +28,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  // Reset allowed roots cache between tests
+  (fileSystemService as any)._cachedAllowedRoots = null;
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
@@ -92,9 +100,9 @@ describe('fileSystemService.readFile', () => {
     }
   });
 
-  it('throws PATH_TRAVERSAL for path traversal attempt', async () => {
+  it('throws PATH_TRAVERSAL for paths outside allowed roots', async () => {
     try {
-      await fileSystemService.readFile(tmpDir, '../../../etc/passwd');
+      await fileSystemService.readFile(tmpDir, '/etc/passwd');
       expect.fail('Should have thrown');
     } catch (error) {
       expect((error as NodeJS.ErrnoException).code).toBe('PATH_TRAVERSAL');
