@@ -51,6 +51,7 @@ dist/
 build/
 .next/
 out/
+coverage/
 
 # Debug
 .ai/debug-log.md
