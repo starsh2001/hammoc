@@ -135,7 +135,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       const response = await sessionsApi.list(projectSlug, apiOptions);
       // Discard stale response if a newer fetch was issued or project changed
       if (get()._fetchVersion !== fetchVersion || get().currentProjectSlug !== projectSlug) return;
-      set({ sessions: response.sessions, hasMore: response.hasMore, total: response.total, isLoading: false, isRefreshing: false, _lastFetchedAt: Date.now() });
+      // Prevent API response from re-introducing stale isStreaming for sessions
+      // whose stream-end was already confirmed via socket event during the fetch.
+      const sessions = recentStreamEnds.size > 0
+        ? response.sessions.map(s => recentStreamEnds.has(s.sessionId) && s.isStreaming ? { ...s, isStreaming: undefined } : s)
+        : response.sessions;
+      set({ sessions, hasMore: response.hasMore, total: response.total, isLoading: false, isRefreshing: false, _lastFetchedAt: Date.now() });
     } catch (err) {
       // Discard stale error if a newer fetch was issued or project changed
       if (get()._fetchVersion !== fetchVersion || get().currentProjectSlug !== projectSlug) return;
@@ -326,6 +331,9 @@ let listenerRegistered = false;
 let listenerRetryCount = 0;
 const MAX_LISTENER_RETRIES = 20;
 const streamEndRefreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// Track sessions whose streaming state was recently updated via socket event.
+// Prevents fetchSessions API response from overwriting fresher local state.
+const recentStreamEnds = new Map<string, ReturnType<typeof setTimeout>>();
 
 function registerStreamChangeListener() {
   if (listenerRegistered) return;
@@ -335,6 +343,20 @@ function registerStreamChangeListener() {
 
     socket.on('session:stream-change', (data: { sessionId: string; active: boolean; projectSlug?: string | null }) => {
       useSessionStore.getState().updateSessionStreaming(data.sessionId, data.active);
+
+      // Track recently-ended streams so fetchSessions response doesn't overwrite
+      // the locally-corrected streaming state (race condition prevention).
+      if (!data.active) {
+        const prevTimer = recentStreamEnds.get(data.sessionId);
+        if (prevTimer) clearTimeout(prevTimer);
+        recentStreamEnds.set(data.sessionId, setTimeout(() => {
+          recentStreamEnds.delete(data.sessionId);
+        }, 5000));
+      } else {
+        // Stream started — clear from recent ends so API can set isStreaming: true
+        const prevTimer = recentStreamEnds.get(data.sessionId);
+        if (prevTimer) { clearTimeout(prevTimer); recentStreamEnds.delete(data.sessionId); }
+      }
 
       // When streaming ends, debounce-refresh session list to update messageCount and modified time.
       // Debounce per project so concurrent multi-project streams each get their own refresh.
