@@ -8,7 +8,9 @@ import fs, { constants as fsConstants } from 'fs/promises';
 import { createReadStream } from 'fs';
 import type { ReadStream } from 'fs';
 import path from 'path';
-import { validateProjectPath } from '../middleware/pathGuard.js';
+import os from 'os';
+import { validateProjectPath, validateReadPath } from '../middleware/pathGuard.js';
+import { preferencesService } from './preferencesService.js';
 import { isBinaryFile, getMimeType, MAX_FILE_SIZE, isProtectedPath } from '../utils/pathUtils.js';
 import type {
   FileReadResponse,
@@ -30,6 +32,37 @@ import type {
  * FileSystemService - Read files and list directories within project roots
  */
 class FileSystemService {
+  private _cachedAllowedRoots: string[] | null = null;
+  private _cachedAllowedRootsExpiry = 0;
+  private static readonly CACHE_TTL_MS = 30_000; // 30 seconds
+
+  /**
+   * Get allowed read roots from preferences with caching.
+   * Default: ~/.claude (least-privilege; user can expand via preferences).
+   */
+  private async getAllowedReadRoots(): Promise<string[]> {
+    const now = Date.now();
+    if (this._cachedAllowedRoots && now < this._cachedAllowedRootsExpiry) {
+      return this._cachedAllowedRoots;
+    }
+
+    let roots: string[];
+    try {
+      const prefs = await preferencesService.readPreferences();
+      if (prefs.allowedReadPaths && prefs.allowedReadPaths.length > 0) {
+        roots = prefs.allowedReadPaths;
+      } else {
+        roots = [path.join(os.homedir(), '.claude')];
+      }
+    } catch {
+      roots = [path.join(os.homedir(), '.claude')];
+    }
+
+    this._cachedAllowedRoots = roots;
+    this._cachedAllowedRootsExpiry = now + FileSystemService.CACHE_TTL_MS;
+    return roots;
+  }
+
   /**
    * Read a file's content within a project root.
    * Binary files return metadata only (content: null).
@@ -39,8 +72,9 @@ class FileSystemService {
    * @returns FileReadResponse
    */
   async readFile(projectRoot: string, relativePath: string): Promise<FileReadResponse> {
-    // 1. Validate path stays within project root
-    const absolutePath = validateProjectPath(projectRoot, relativePath);
+    // 1. Validate path (allows read access to whitelisted directories)
+    const allowedRoots = await this.getAllowedReadRoots();
+    const absolutePath = validateReadPath(projectRoot, relativePath, allowedRoots);
 
     // 2. Check file exists and get stats
     let stat;
@@ -729,7 +763,8 @@ class FileSystemService {
    * @returns Object with stream, size, and mimeType
    */
   async readFileRaw(projectRoot: string, relativePath: string): Promise<{ stream: ReadStream; size: number; mimeType: string }> {
-    const absolutePath = validateProjectPath(projectRoot, relativePath);
+    const allowedRoots = await this.getAllowedReadRoots();
+    const absolutePath = validateReadPath(projectRoot, relativePath, allowedRoots);
 
     let stat;
     try {
