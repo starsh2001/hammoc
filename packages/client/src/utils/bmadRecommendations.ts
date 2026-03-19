@@ -144,30 +144,49 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
   const supp = data.documents.supplementary;
   const recs: NextStepRecommendation[] = [];
 
-  // Primary: PRD creation (always present as the gate)
-  recs.push({
-    id: 'create-prd',
-    title: i18n.t('common:rec.createPrd'),
-    description: i18n.t('common:rec.createPrdDesc'),
-    agentCommand: '/BMad:agents:pm',
-    taskCommand: '*create-prd',
-    variant: 'primary',
-    iconKey: 'file-text',
-  });
+  const hasBrainstorming = suppExists(supp, 'brainstorming');
+  const hasBrief = suppExists(supp, 'brief');
 
-  // Secondary: optional supplementary docs that don't exist yet
-  if (!suppExists(supp, 'brainstorming')) {
+  // PRD is promoted to primary only after project brief exists
+  const prdVariant: ActionVariant = hasBrief ? 'primary' : 'secondary';
+
+  // Brainstorming & Brief are primary until their prerequisites are met
+  if (!hasBrainstorming) {
     recs.push({
       id: 'brainstorming',
       title: i18n.t('common:rec.brainstorming'),
       description: i18n.t('common:rec.brainstormingDesc'),
       agentCommand: '/BMad:agents:analyst',
       taskCommand: '*brainstorm',
-      variant: 'secondary',
+      variant: 'primary',
       iconKey: 'lightbulb',
     });
   }
 
+  if (!hasBrief) {
+    recs.push({
+      id: 'brief',
+      title: i18n.t('common:rec.projectBrief'),
+      description: i18n.t('common:rec.projectBriefDesc'),
+      agentCommand: '/BMad:agents:analyst',
+      taskCommand: '*create-project-brief',
+      variant: 'primary',
+      iconKey: 'clipboard',
+    });
+  }
+
+  // PRD creation (gate document)
+  recs.push({
+    id: 'create-prd',
+    title: i18n.t('common:rec.createPrd'),
+    description: i18n.t('common:rec.createPrdDesc'),
+    agentCommand: '/BMad:agents:pm',
+    taskCommand: '*create-prd',
+    variant: prdVariant,
+    iconKey: 'file-text',
+  });
+
+  // Secondary: other optional supplementary docs
   if (!suppExists(supp, 'market-research')) {
     recs.push({
       id: 'market-research',
@@ -189,18 +208,6 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
       taskCommand: '*create-competitor-analysis',
       variant: 'secondary',
       iconKey: 'users',
-    });
-  }
-
-  if (!suppExists(supp, 'brief')) {
-    recs.push({
-      id: 'brief',
-      title: i18n.t('common:rec.projectBrief'),
-      description: i18n.t('common:rec.projectBriefDesc'),
-      agentCommand: '/BMad:agents:analyst',
-      taskCommand: '*create-project-brief',
-      variant: 'secondary',
-      iconKey: 'clipboard',
     });
   }
 
