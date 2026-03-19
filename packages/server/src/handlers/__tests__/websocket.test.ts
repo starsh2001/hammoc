@@ -135,10 +135,43 @@ vi.mock('../../utils/networkUtils.js', () => ({
   extractClientIP: vi.fn().mockReturnValue('127.0.0.1'),
 }));
 
-// Mock utils/errors — parseSDKError passes through the original error
-// so that `instanceof` checks (e.g. AbortedError) still work in the handler
+// Mock utils/errors — parseSDKError classifies errors by message substring
+// so that retry-guard logic (isNonSessionError) works correctly in tests.
+const { MockSDKErrorCode } = vi.hoisted(() => {
+  const MockSDKErrorCode = {
+    UNKNOWN: 'UNKNOWN',
+    RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
+    AUTHENTICATION_ERROR: 'AUTHENTICATION_ERROR',
+    NETWORK_ERROR: 'NETWORK_ERROR',
+    ABORTED: 'ABORTED',
+    SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+    INVALID_REQUEST: 'INVALID_REQUEST',
+    INVALID_PATH: 'INVALID_PATH',
+    PERMISSION_DENIED: 'PERMISSION_DENIED',
+  } as const;
+  return { MockSDKErrorCode };
+});
+
 vi.mock('../../utils/errors.js', () => ({
-  parseSDKError: vi.fn().mockImplementation((err: unknown) => err),
+  SDKErrorCode: MockSDKErrorCode,
+  parseSDKError: vi.fn().mockImplementation((err: unknown) => {
+    if (err instanceof Error) {
+      const msg = err.message.toLowerCase();
+      if (msg.includes('rate limit') || msg.includes('too many requests'))
+        return Object.assign(err, { code: MockSDKErrorCode.RATE_LIMIT_EXCEEDED });
+      if (msg.includes('authentication') || msg.includes('unauthorized') || msg.includes('login'))
+        return Object.assign(err, { code: MockSDKErrorCode.AUTHENTICATION_ERROR });
+      if (msg.includes('network') || msg.includes('econnrefused') || msg.includes('etimedout') || msg.includes('enotfound'))
+        return Object.assign(err, { code: MockSDKErrorCode.NETWORK_ERROR });
+      if (msg.includes('abort') || err.name === 'AbortError')
+        return Object.assign(err, { code: MockSDKErrorCode.ABORTED });
+      if (msg.includes('service unavailable') || msg.includes('503'))
+        return Object.assign(err, { code: MockSDKErrorCode.SERVICE_UNAVAILABLE });
+    }
+    // Default: return SDKError-like object with UNKNOWN code (matches production behavior)
+    if (err instanceof Error) return Object.assign(err, { code: MockSDKErrorCode.UNKNOWN });
+    return { message: String(err), code: MockSDKErrorCode.UNKNOWN };
+  }),
   AbortedError: class AbortedError extends Error {
     constructor(message?: string) { super(message ?? 'Aborted'); this.name = 'AbortedError'; }
   },
@@ -734,11 +767,10 @@ describe('WebSocket Handler', () => {
       );
     });
 
-    it('should emit SESSION_NOT_FOUND error when session resume fails with session not found message', async () => {
+    it('should retry without resume when resume fails, then emit CHAT_ERROR if retry also fails', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-
-      mockState.sendImpl =vi.fn().mockRejectedValue(
+      mockState.sendImpl = vi.fn().mockRejectedValue(
         new Error('Session not found: invalid-session-id')
       );
 
@@ -763,15 +795,22 @@ describe('WebSocket Handler', () => {
 
       const error = await errorPromise;
 
-      expect(error.code).toBe(ERROR_CODES.SESSION_NOT_FOUND);
-      expect(error.message).toBe('ws.error.sessionNotFound');
+      // Resume fails → retries without resume → also fails → CHAT_ERROR
+      expect(error.code).toBe(ERROR_CODES.CHAT_ERROR);
+      // sendImpl should be called twice: once with resume, once without
+      expect(mockState.sendImpl).toHaveBeenCalledTimes(2);
+      // First call should have resume option, second should have sessionId without resume
+      const firstCallOptions = mockState.sendImpl.mock.calls[0][2];
+      const secondCallOptions = mockState.sendImpl.mock.calls[1][2];
+      expect(firstCallOptions).toHaveProperty('resume', 'invalid-session-id');
+      expect(secondCallOptions).not.toHaveProperty('resume');
+      expect(secondCallOptions).toHaveProperty('sessionId', 'invalid-session-id');
     });
 
-    it('should emit CHAT_ERROR for non-session errors during resume', async () => {
+    it('should NOT retry for rate-limit/auth/network errors during resume', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
-
-      mockState.sendImpl =vi.fn().mockRejectedValue(
+      mockState.sendImpl = vi.fn().mockRejectedValue(
         new Error('Network connection failed')
       );
 
@@ -797,6 +836,111 @@ describe('WebSocket Handler', () => {
       const error = await errorPromise;
 
       expect(error.code).toBe(ERROR_CODES.CHAT_ERROR);
+      // Network errors should NOT trigger retry — only called once
+      expect(mockState.sendImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT retry for rate-limit errors during resume', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      mockState.sendImpl = vi.fn().mockRejectedValue(
+        new Error('Rate limit exceeded, too many requests')
+      );
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Continue our work',
+        workingDirectory: '/valid/path',
+        sessionId: 'valid-session-id',
+        resume: true,
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.CHAT_ERROR);
+      // Rate limit errors should NOT trigger retry
+      expect(mockState.sendImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT retry for authentication errors during resume', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      mockState.sendImpl = vi.fn().mockRejectedValue(
+        new Error('Authentication failed: unauthorized')
+      );
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Continue our work',
+        workingDirectory: '/valid/path',
+        sessionId: 'valid-session-id',
+        resume: true,
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.CHAT_ERROR);
+      expect(mockState.sendImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT retry when onSessionInit has already fired (hasEmittedOutput guard)', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      // First call: invoke onSessionInit callback (simulating output started), then reject
+      mockState.sendImpl = vi.fn().mockImplementation(
+        (_content: string, callbacks: { onSessionInit?: (sid: string, meta: unknown) => void }) => {
+          // Simulate SDK firing onSessionInit before the error
+          callbacks.onSessionInit?.('test-session-id', { model: 'test' });
+          return Promise.reject(new Error('Some session error after output started'));
+        }
+      );
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Continue our work',
+        workingDirectory: '/valid/path',
+        sessionId: 'valid-session-id',
+        resume: true,
+      });
+
+      const error = await errorPromise;
+
+      expect(error.code).toBe(ERROR_CODES.CHAT_ERROR);
+      // Should NOT retry because output was already emitted
+      expect(mockState.sendImpl).toHaveBeenCalledTimes(1);
     });
 
     it('should emit CHAT_ERROR when SDK throws error', async () => {
