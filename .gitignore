@@ -19,6 +19,7 @@ nul
 # Claude Code
 .claude/
 .qlaude/
+CLAUDE.md
 
 # AI tools
 .codex-*
