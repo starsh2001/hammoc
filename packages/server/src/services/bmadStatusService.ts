@@ -328,7 +328,8 @@ class BmadStatusService {
         // Group gate files by story number, keeping the newest
         const latestGatePerStory = new Map<string, { file: string; mtime: number }>();
         for (const gf of gateFiles) {
-          const gateMatch = gf.match(/^(\d+\.\d+)-.*\.yml$/);
+          // Match regular (1.1-slug.yml), brownfield epic (BE-1.1-slug.yml), standalone (BS-1-slug.yml)
+          const gateMatch = gf.match(/^(\d+\.\d+|BE-\d+\.\d+|BS-\d+)-.*\.yml$/);
           if (!gateMatch) continue;
           const storyId = gateMatch[1];
           try {
@@ -363,7 +364,10 @@ class BmadStatusService {
     // Apply gate results to stories
     for (const stories of storyMap.values()) {
       for (const story of stories) {
-        const num = story.file.match(/^(\d+\.\d+)/)?.[1];
+        // Match regular (1.1), brownfield epic (BE-1.1), or standalone (BS-1) story IDs
+        const num = story.file.match(/^(\d+\.\d+)/)?.[1]
+          ?? story.file.match(/^(BE-\d+\.\d+)/)?.[1]
+          ?? story.file.match(/^(BS-\d+)/)?.[1];
         if (!num) continue;
         const gate = gateResults.get(num);
         if (!gate) continue;

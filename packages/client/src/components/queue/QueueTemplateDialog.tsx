@@ -160,13 +160,23 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
   );
 
   const epicGroups = useMemo(() => {
-    const groups = new Map<number, QueueStoryInfo[]>();
+    const groups = new Map<number | string, QueueStoryInfo[]>();
     for (const story of stories) {
       const group = groups.get(story.epicNum) || [];
       group.push(story);
       groups.set(story.epicNum, group);
     }
-    return Array.from(groups.entries()).sort((a, b) => a[0] - b[0]);
+    return Array.from(groups.entries()).sort((a, b) => {
+      if (a[0] === b[0]) return 0;
+      const aIsNum = typeof a[0] === 'number';
+      const bIsNum = typeof b[0] === 'number';
+      if (aIsNum && bIsNum) return (a[0] as number) - (b[0] as number);
+      if (aIsNum) return -1;
+      if (bIsNum) return 1;
+      if (a[0] === 'BS') return 1;
+      if (b[0] === 'BS') return -1;
+      return String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true });
+    });
   }, [stories]);
 
   // ── Handlers ──
@@ -745,7 +755,11 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                             className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                           />
                           <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            {t('queue.template.epicHeader', { num: epicNum })}
+                            {epicNum === 'BS'
+                              ? t('queue.template.standaloneHeader')
+                              : typeof epicNum === 'string'
+                                ? epicNum
+                                : t('queue.template.epicHeader', { num: epicNum })}
                           </span>
                           <span className="text-[10px] text-gray-400 dark:text-gray-500">
                             ({epicStories.filter((s) => selectedStories.has(s.storyNum)).length}/{epicStories.length})

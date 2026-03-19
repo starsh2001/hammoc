@@ -135,7 +135,7 @@ export async function deleteGlobalTemplate(req: Request, res: Response): Promise
 }
 
 /**
- * Extract story numbers from PRD content.
+ * Extract story numbers from PRD content and brownfield story files.
  * Follows bmadStatusService's 3-step PRD reading pattern (L191-246).
  */
 export async function extractStories(req: Request, res: Response): Promise<void> {
@@ -148,7 +148,7 @@ export async function extractStories(req: Request, res: Response): Promise<void>
   }
 
   // Parse bmad config
-  let config: BmadConfig;
+  let config: BmadConfig & { devStoryLocation?: string };
   try {
     const configPath = path.join(projectRoot, '.bmad-core', 'core-config.yaml');
     const configContent = await fs.readFile(configPath, 'utf-8');
@@ -159,6 +159,7 @@ export async function extractStories(req: Request, res: Response): Promise<void>
       prdSharded: prd?.prdSharded as boolean | undefined,
       prdShardedLocation: prd?.prdShardedLocation as string | undefined,
       epicFilePattern: prd?.epicFilePattern as string | undefined,
+      devStoryLocation: parsed.devStoryLocation as string | undefined,
     };
   } catch {
     res.status(404).json({ error: req.t!('queueTemplate.error.bmadConfigNotFound') });
@@ -227,17 +228,83 @@ export async function extractStories(req: Request, res: Response): Promise<void>
     }
   }
 
+  // Step 4: Scan story files directory for BE-/BS- brownfield stories
+  const storyLocation = config.devStoryLocation || 'docs/stories';
+  try {
+    const storiesDir = path.join(projectRoot, storyLocation);
+    const storyFiles = await fs.readdir(storiesDir);
+
+    const bfEpicStoryRegex = /^BE-(\d+)\.(\d+)\..+\.md$/;
+    const bfStandaloneRegex = /^BS-(\d+)\..+\.md$/;
+
+    for (const file of storyFiles) {
+      let storyInfo: QueueStoryInfo | null = null;
+      const beMatch = file.match(bfEpicStoryRegex);
+      const bsMatch = file.match(bfStandaloneRegex);
+
+      if (beMatch) {
+        const epicKey = `BE-${beMatch[1]}`;
+        const storyIndex = parseInt(beMatch[2], 10);
+        // Extract title from file header
+        const title = await extractTitleFromStoryFile(path.join(storiesDir, file));
+        storyInfo = {
+          storyNum: `BE-${beMatch[1]}.${beMatch[2]}`,
+          epicNum: epicKey,
+          storyIndex,
+          title,
+        };
+      } else if (bsMatch) {
+        const storyIndex = parseInt(bsMatch[1], 10);
+        const title = await extractTitleFromStoryFile(path.join(storiesDir, file));
+        storyInfo = {
+          storyNum: `BS-${bsMatch[1]}`,
+          epicNum: 'BS',
+          storyIndex,
+          title,
+        };
+      }
+
+      if (storyInfo) {
+        hasPrdContent = true;
+        allStories.push(storyInfo);
+      }
+    }
+  } catch {
+    // Story directory not found
+  }
+
   if (!hasPrdContent) {
     res.status(200).json({ stories: [], error: req.t!('queueTemplate.error.prdNotFound') });
     return;
   }
 
-  // Deduplicate and sort
+  // Deduplicate and sort: numbers first, then BE-*, then BS
   const seen = new Set<string>();
   const stories = allStories
-    .sort((a, b) => a.epicNum - b.epicNum || a.storyIndex - b.storyIndex)
+    .sort((a, b) => {
+      const aIsNum = typeof a.epicNum === 'number';
+      const bIsNum = typeof b.epicNum === 'number';
+      if (aIsNum && bIsNum) return (a.epicNum as number) - (b.epicNum as number) || a.storyIndex - b.storyIndex;
+      if (aIsNum) return -1;
+      if (bIsNum) return 1;
+      if (a.epicNum === 'BS' && b.epicNum !== 'BS') return 1;
+      if (b.epicNum === 'BS' && a.epicNum !== 'BS') return -1;
+      const cmp = String(a.epicNum).localeCompare(String(b.epicNum), undefined, { numeric: true });
+      return cmp !== 0 ? cmp : a.storyIndex - b.storyIndex;
+    })
     .filter((s) => { if (seen.has(s.storyNum)) return false; seen.add(s.storyNum); return true; });
   res.status(200).json({ stories });
+}
+
+/** Extract story title from the first markdown heading in a story file */
+async function extractTitleFromStoryFile(filePath: string): Promise<string | undefined> {
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    const match = content.match(/^#\s+(?:Story[:\s]*)?(.+)/m);
+    return match ? match[1].trim() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Convert epicFilePattern like "epic-{n}*.md" to a regex (same as bmadStatusService) */

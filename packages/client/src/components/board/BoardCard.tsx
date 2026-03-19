@@ -100,7 +100,9 @@ export function BoardCard({
           )}
           {item.type === 'epic' && /^Epic\s+\d+$/.test(item.title)
             ? null
-            : item.title}
+            : item.type === 'epic' && /^Brownfield Epic\s+BE-\d+$/.test(item.title)
+              ? null
+              : item.title}
         </span>
         <CardContextMenu
           item={item}

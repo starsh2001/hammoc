@@ -129,7 +129,9 @@
   },
   "promote": {
     "originalIssueHeader": "Original Issue (ID: {{id}})",
-    "none": "None"
+    "none": "None",
+    "docOutStoryChain": "*doc-out\n\nIMPORTANT: The output file MUST be saved to `docs/stories/` with the filename prefix `BS-{{nextNum}}.` followed by a kebab-case slug. Example: `docs/stories/BS-{{nextNum}}.my-feature-name.story.md`",
+    "docOutEpicChain": "*doc-out\n\nIMPORTANT: The output file MUST be saved to `docs/stories/` with the filename prefix `BE-{{nextNum}}.1.` followed by a kebab-case slug. Example: `docs/stories/BE-{{nextNum}}.1.my-feature-name.story.md`\nAlso create the epic definition file if needed."
   },
   "truncated": "...(truncated)",
   "noDescription": "(No description)",

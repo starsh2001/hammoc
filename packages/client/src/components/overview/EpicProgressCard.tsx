@@ -33,7 +33,7 @@ function getStatusStyle(status: string): string {
 
 export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProgressCardProps) {
   const { t } = useTranslation('common');
-  const [expandedEpics, setExpandedEpics] = useState<Set<number>>(new Set());
+  const [expandedEpics, setExpandedEpics] = useState<Set<number | string>>(new Set());
   const openFile = useFileStore((s) => s.requestFileNavigation);
 
   const handleOpenStory = (fileName: string) => {
@@ -41,7 +41,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
     openFile(projectSlug, `${storyBasePath}/${fileName}`);
   };
 
-  const toggleEpic = (epicNumber: number) => {
+  const toggleEpic = (epicNumber: number | string) => {
     setExpandedEpics((prev) => {
       const next = new Set(prev);
       if (next.has(epicNumber)) {
@@ -82,7 +82,9 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                   className="flex items-center justify-between hover:bg-gray-100 dark:hover:bg-[#253040]/50 rounded-md transition-colors cursor-pointer px-2 py-1.5 -mx-2"
                 >
                   <span className="text-gray-700 dark:text-gray-200 truncate mr-2">
-                    {epic.number}. {epic.name}
+                    {typeof epic.number === 'string'
+                      ? epic.name
+                      : <>{epic.number}. {epic.name}</>}
                   </span>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className={`text-xs font-medium ${
@@ -100,7 +102,9 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
               ) : (
                 <div className="flex items-center justify-between px-2 py-1.5 -mx-2">
                   <span className="text-gray-700 dark:text-gray-200 truncate mr-2">
-                    {epic.number}. {epic.name}
+                    {typeof epic.number === 'string'
+                      ? epic.name
+                      : <>{epic.number}. {epic.name}</>}
                   </span>
                   <span className="text-xs text-gray-500 dark:text-gray-400">{t('epic.storiesUndefined')}</span>
                 </div>
@@ -121,8 +125,13 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                 <div className="mt-2 ml-4 space-y-1">
                   {writtenCount > 0 ? (
                     epic.stories.map((story) => {
-                      const storyNum = story.file.match(/^(\d+\.\d+)/)?.[1];
-                      const displayName = story.title ? `${storyNum}. ${story.title}` : story.file;
+                      const storyNum = story.file.match(/^(?:BE-)?(\d+\.\d+)/)?.[1]
+                        ?? story.file.match(/^BS-(\d+)/)?.[1]
+                        ?? null;
+                      const storyPrefix = story.file.startsWith('BE-') ? 'BE-' : story.file.startsWith('BS-') ? 'BS-' : '';
+                      const displayName = story.title
+                        ? `${storyPrefix}${storyNum ?? ''}${storyNum ? '. ' : ''}${story.title}`
+                        : story.file;
                       return (
                       <div key={story.file} className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">

@@ -5,6 +5,19 @@
 
 import type { QueueStoryInfo } from '../types/queue.js';
 
+/** Compare epic numbers for sorting: numbers first, then strings (BE-* before BS) */
+function compareEpicNum(a: number | string, b: number | string): number {
+  if (a === b) return 0;
+  const aIsNum = typeof a === 'number';
+  const bIsNum = typeof b === 'number';
+  if (aIsNum && bIsNum) return (a as number) - (b as number);
+  if (aIsNum) return -1;
+  if (bIsNum) return 1;
+  if (a === 'BS') return 1;
+  if (b === 'BS') return -1;
+  return String(a).localeCompare(String(b), undefined, { numeric: true });
+}
+
 /**
  * Extract story numbers from PRD content by matching "## Story N.N" / "### Story N.N" headers.
  * Also matches standalone "## Story N" / "### Story N" when epicContext is provided.
@@ -43,7 +56,7 @@ export function extractStoryNumbers(prdContent: string, epicContext?: number): Q
     });
   }
 
-  stories.sort((a, b) => a.epicNum - b.epicNum || a.storyIndex - b.storyIndex);
+  stories.sort((a, b) => compareEpicNum(a.epicNum, b.epicNum) || a.storyIndex - b.storyIndex);
 
   return stories;
 }

@@ -122,6 +122,27 @@ export const boardController = {
     }
   },
 
+  async getNextBrownfieldNum(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      const type = req.query.type as string;
+      if (type !== 'BS' && type !== 'BE') {
+        res.status(400).json({ error: { code: 'INVALID_TYPE', message: 'type must be BS or BE' } });
+        return;
+      }
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      const nextNum = await issueService.getNextBrownfieldNum(projectRoot, type);
+      res.json({ nextNum });
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
+        return;
+      }
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
+    }
+  },
+
   async listIssues(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
