@@ -1719,11 +1719,11 @@ async function handleChatSend(
     // Create canUseTool callback for permission & AskUserQuestion handling
     // Promise stays pending if socket disconnected — SDK naturally waits
     const canUseTool: CanUseTool = async (toolName, input, options): Promise<PermissionResult> => {
-      // Auto-approve ExitPlanMode when the user originally chose Bypass mode.
-      // The SDK internally switches to 'plan' after EnterPlanMode, which causes
-      // ExitPlanMode to request approval even though the user intended full bypass.
-      if (toolName === 'ExitPlanMode' && permissionMode === 'bypassPermissions') {
-        log.debug('Auto-approving ExitPlanMode: original permissionMode is bypassPermissions');
+      // Auto-approve ExitPlanMode when the current permission mode is Bypass.
+      // Use chatService.getPermissionMode() instead of the closure-captured variable
+      // so that mid-stream permission mode changes (e.g. Plan → Bypass) are reflected.
+      if (toolName === 'ExitPlanMode' && chatService.getPermissionMode() === 'bypassPermissions') {
+        log.debug('Auto-approving ExitPlanMode: current permissionMode is bypassPermissions');
         return { behavior: 'allow', updatedInput: input };
       }
 
