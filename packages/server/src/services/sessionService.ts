@@ -732,7 +732,7 @@ export class SessionService {
     sessionId: string,
     options: PaginationOptions = {}
   ): Promise<{ messages: HistoryMessage[]; pagination: PaginationInfo; lastAgentCommand: string | null } | null> {
-    const { limit = 50, offset = 0, streamStartedAt } = options;
+    const { limit = 50, offset = 0, streamStartedAt, runningStreamStartedAt } = options;
 
     const filePath = this.getSessionFilePath(projectSlug, sessionId);
 
@@ -748,9 +748,28 @@ export class SessionService {
     // Those messages are covered by WebSocket buffer replay (stream:buffer-replay).
     // This prevents duplicate tool/message cards when the client loads both
     // JSONL history and buffer replay simultaneously.
+    //
+    // IMPORTANT: User messages from the *running* stream's period are preserved
+    // so that trimMessagesAfterLastUser() on the client correctly identifies the
+    // triggering user message as the "last" user message. Without this, the client
+    // trims the previous assistant reply because the SDK writes the user message
+    // to JSONL after the stream starts (timestamp >= streamStartedAt).
+    //
+    // Only runningStreamStartedAt is used for user preservation (not the combined
+    // streamStartedAt which may include a completed buffer's earlier start time).
+    // This avoids duplicating user messages from a completed turn that are already
+    // provided via completedBuffer replay.
     if (streamStartedAt) {
       transformed = transformed.filter(
-        (m) => new Date(m.timestamp).getTime() < streamStartedAt
+        (m) => {
+          const ts = new Date(m.timestamp).getTime();
+          if (ts < streamStartedAt) return true;
+          // When a stream is actively running, preserve user messages from
+          // that stream's period so trimMessagesAfterLastUser() works correctly.
+          // Not needed for completed-buffer-only (no trimming runs on inactive streams).
+          if (runningStreamStartedAt && m.type === 'user' && ts >= runningStreamStartedAt) return true;
+          return false;
+        }
       );
     }
 

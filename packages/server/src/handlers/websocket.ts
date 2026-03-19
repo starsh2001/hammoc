@@ -480,6 +480,12 @@ export function getStreamStartedAt(sessionId: string): number | null {
   return runningStart ?? completedStart;
 }
 
+/** Get start timestamp of the currently running stream only (ignores completed buffers). */
+export function getRunningStreamStartedAt(sessionId: string): number | null {
+  const stream = activeStreams.get(sessionId);
+  return stream && stream.status === 'running' ? stream.startedAt : null;
+}
+
 /** Get the completed buffer for a session (null if none or expired). */
 export function getCompletedBuffer(sessionId: string): Array<{ event: string; data: unknown }> | null {
   const completed = completedBuffers.get(sessionId);

@@ -132,4 +132,8 @@ export interface PaginationOptions {
   /** Exclude messages at or after this timestamp (ms). Used to filter out
    *  messages from an active stream period (covered by buffer replay). */
   streamStartedAt?: number | null;
+  /** Start timestamp of the currently running stream only (excludes completed
+   *  buffer start). Used to preserve user messages from the active turn so
+   *  trimMessagesAfterLastUser() on the client works correctly. */
+  runningStreamStartedAt?: number | null;
 }
