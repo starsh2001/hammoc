@@ -138,17 +138,23 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       if (get()._fetchVersion !== fetchVersion || get().currentProjectSlug !== projectSlug) return;
       // Prevent API response from overwriting fresher socket-based streaming state.
       // If a socket event arrived after this fetch started, the socket value is authoritative.
+      // Reconcile first, then prune — so entries valid for this fetch aren't deleted prematurely.
       const sessions = recentStreamChanges.size > 0
         ? response.sessions.map(s => {
           const change = recentStreamChanges.get(s.sessionId);
           if (change && change.at >= fetchStartedAt && (!!s.isStreaming) !== change.active) {
             return { ...s, isStreaming: change.active || undefined };
           }
-          // Clean up stale entries older than 10 seconds
-          if (change && Date.now() - change.at > 10_000) recentStreamChanges.delete(s.sessionId);
           return s;
         })
         : response.sessions;
+      // Prune all stale entries from recentStreamChanges after reconciliation
+      if (recentStreamChanges.size > 0) {
+        const now = Date.now();
+        for (const [id, entry] of recentStreamChanges) {
+          if (now - entry.at > 10_000) recentStreamChanges.delete(id);
+        }
+      }
       set({ sessions, hasMore: response.hasMore, total: response.total, isLoading: false, isRefreshing: false, _lastFetchedAt: Date.now() });
     } catch (err) {
       // Discard stale error if a newer fetch was issued or project changed
