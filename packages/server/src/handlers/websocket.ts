@@ -1005,6 +1005,18 @@ export async function initializeWebSocket(
         }
       }
 
+      // Update pending chain items so the next drain uses the new mode.
+      // Outside the running-stream block because mode can change between turns
+      // (e.g., during the 1s chain drain delay when no stream is active).
+      const chainItems = chainState.get(sessionId);
+      if (chainItems) {
+        for (const item of chainItems) {
+          if (item.status === 'pending' || item.status === 'sending') {
+            item.permissionMode = mode as PermissionMode;
+          }
+        }
+      }
+
       // 2) Always persist per-session permission mode (read only when policy is 'always')
       // Use projectSlug from client as fallback when sessionProjectMap entry is gone (stream ended)
       await persistSessionPermissionMode(sessionId, mode, projectSlug);
