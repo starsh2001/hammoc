@@ -131,9 +131,11 @@ export function useStreaming() {
       const msgs = useMessageStore.getState().messages;
       const incomingTrimmed = data.content.trim();
       // Check against the last user message with trimmed comparison
-      // (addOptimisticMessage stores content.trim(), so comparison must also trim)
+      // (addOptimisticMessage stores content.trim(), so comparison must also trim).
+      // Note: JSONL timestamps and buffer timestamps differ (different sources), so
+      // timestamp-based dedup is unreliable here — content match is more robust.
       const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
-      const isDuplicate = lastUserMsg && lastUserMsg.content.trim() === incomingTrimmed;
+      const isDuplicate = !!lastUserMsg && lastUserMsg.content.trim() === incomingTrimmed;
       debugLog.stream('DEDUP user:message received', {
         sessionId: data.sessionId,
         contentPreview: data.content.slice(0, 50),
