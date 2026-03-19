@@ -488,6 +488,7 @@
       "selectAll": "Select all",
       "noStoriesFound": "No stories found in PRD",
       "epicHeader": "Epic {{num}}",
+      "standaloneHeader": "Standalone Stories",
       "preview": "Preview",
       "loadToEditor": "Load to editor",
       "storyLoadFailed": "Failed to load stories",

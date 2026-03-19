@@ -487,13 +487,35 @@ class IssueService {
     const storyLocation = statusResponse.config.devStoryLocation || 'docs/stories';
 
     for (const epic of statusResponse.epics) {
+      // Determine epic key prefix for ID extraction
+      const epicKey = epic.number;
+      const isBfEpic = typeof epicKey === 'string' && epicKey.startsWith('BE-');
+      const isBfStandalone = epicKey === 'BS';
+
       // Convert stories to BoardItems — raw status preserved directly
       const storyItems: BoardItem[] = await Promise.all(
         epic.stories.map(async (story) => {
-          const fileMatch = story.file.match(/^(\d+\.\d+)/);
-          const storyId = fileMatch ? fileMatch[1] : story.file.replace(/\.md$/, '');
-          const epicMatch = story.file.match(/^(\d+)\./);
-          const epicNumber = epicMatch ? parseInt(epicMatch[1], 10) : undefined;
+          // Extract story ID from filename based on prefix type
+          let storyId: string;
+          let epicNumber: number | string | undefined;
+
+          const bfEpicMatch = story.file.match(/^BE-(\d+)\.(\d+)/);
+          const bfStandaloneMatch = story.file.match(/^BS-(\d+)/);
+          const regularMatch = story.file.match(/^(\d+\.\d+)/);
+
+          if (bfEpicMatch) {
+            storyId = `BE-${bfEpicMatch[1]}.${bfEpicMatch[2]}`;
+            epicNumber = `BE-${bfEpicMatch[1]}`;
+          } else if (bfStandaloneMatch) {
+            storyId = `BS-${bfStandaloneMatch[1]}`;
+            epicNumber = 'BS';
+          } else if (regularMatch) {
+            storyId = regularMatch[1];
+            const epicMatch = story.file.match(/^(\d+)\./);
+            epicNumber = epicMatch ? parseInt(epicMatch[1], 10) : undefined;
+          } else {
+            storyId = story.file.replace(/\.md$/, '');
+          }
 
           let updatedAt: number | undefined;
           try {
@@ -515,6 +537,9 @@ class IssueService {
       );
 
       items.push(...storyItems);
+
+      // Skip epic card for standalone brownfield stories (BS) — they have no parent epic
+      if (isBfStandalone) continue;
 
       // Calculate epic status from story statuses
       const aggregated = epic.stories.map((s) => toEpicAggregationStatus(s.status));
@@ -556,6 +581,37 @@ class IssueService {
     }
 
     return { items };
+  }
+
+  /**
+   * Get the next available BS/BE number by scanning the story files directory.
+   */
+  async getNextBrownfieldNum(projectPath: string, type: 'BS' | 'BE'): Promise<number> {
+    let storyLocation = 'docs/stories';
+    try {
+      const configPath = path.join(projectPath, '.bmad-core', 'core-config.yaml');
+      const content = await fs.readFile(configPath, 'utf-8');
+      const parsed = yaml.load(content) as Record<string, unknown>;
+      if (parsed && typeof parsed.devStoryLocation === 'string') {
+        storyLocation = parsed.devStoryLocation;
+      }
+    } catch { /* use default */ }
+
+    const storiesDir = path.join(projectPath, storyLocation);
+    const regex = type === 'BS'
+      ? /^BS-(\d+)\./
+      : /^BE-(\d+)\./;
+
+    const nums: number[] = [];
+    try {
+      const files = await fs.readdir(storiesDir);
+      for (const file of files) {
+        const match = file.match(regex);
+        if (match) nums.push(parseInt(match[1], 10));
+      }
+    } catch { /* directory not found */ }
+
+    return nums.length > 0 ? Math.max(...nums) + 1 : 1;
   }
 
   /**

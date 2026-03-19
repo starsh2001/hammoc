@@ -106,6 +106,13 @@ export function ProjectBoardPage() {
       const taskName = targetType === 'story' ? '*create-brownfield-story' : '*create-brownfield-epic';
       const taskWithContext = `${taskName}\n\n## ${t('promote.originalIssueHeader', { id: item.id })}\n**${t('issue.titlePlain')}**: ${item.title}\n**${t('issue.description')}**: ${desc}\n**${t('issue.severity')}**: ${item.severity || t('promote.none')}\n**${t('issue.type')}**: ${item.issueType || t('promote.none')}`;
       const params = new URLSearchParams({ agent: '/BMad:agents:pm', task: taskWithContext });
+
+      // Get next BS/BE number from server (authoritative filesystem scan) and append doc-out chain
+      const bfType = targetType === 'story' ? 'BS' : 'BE';
+      const { nextNum } = await boardApi.getNextBrownfieldNum(projectSlug, bfType);
+      const chainKey = targetType === 'story' ? 'promote.docOutStoryChain' : 'promote.docOutEpicChain';
+      params.append('chain', t(chainKey, { nextNum }));
+
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
       setActionErrorWithClear(t('errors.promoteFailed'));

@@ -138,7 +138,7 @@ export interface BoardItem {
   description?: string;
   severity?: 'low' | 'medium' | 'high' | 'critical';
   issueType?: 'bug' | 'improvement';
-  epicNumber?: number;
+  epicNumber?: number | string;
   storyProgress?: {
     total: number;
     done: number;

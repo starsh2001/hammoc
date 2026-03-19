@@ -128,7 +128,9 @@
   },
   "promote": {
     "originalIssueHeader": "원본 이슈 (ID: {{id}})",
-    "none": "없음"
+    "none": "없음",
+    "docOutStoryChain": "*doc-out\n\nIMPORTANT: The output file MUST be saved to `docs/stories/` with the filename prefix `BS-{{nextNum}}.` followed by a kebab-case slug. Example: `docs/stories/BS-{{nextNum}}.my-feature-name.story.md`",
+    "docOutEpicChain": "*doc-out\n\nIMPORTANT: The output file MUST be saved to `docs/stories/` with the filename prefix `BE-{{nextNum}}.1.` followed by a kebab-case slug. Example: `docs/stories/BE-{{nextNum}}.1.my-feature-name.story.md`\nAlso create the epic definition file if needed."
   },
   "truncated": "...(잘림)",
   "noDescription": "(설명 없음)",

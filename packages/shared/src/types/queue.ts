@@ -81,12 +81,12 @@ export interface QueueErrorEvent {
 
 // Story 15.5: Queue template types
 
-/** A story number extracted from PRD (e.g. "1.1", "2.3") */
+/** A story number extracted from PRD or story files (e.g. "1.1", "BE-1.1", "BS-1") */
 export interface QueueStoryInfo {
-  /** Full story number string, e.g. "1.1" */
+  /** Full story number string, e.g. "1.1", "BE-1.1", "BS-1" */
   storyNum: string;
-  /** Epic number, e.g. 1 */
-  epicNum: number;
+  /** Epic number/key, e.g. 1, "BE-1", "BS" */
+  epicNum: number | string;
   /** Story number within epic, e.g. 1 */
   storyIndex: number;
   /** Optional story title if extracted */
