@@ -122,6 +122,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       errorType: 'none',
       _fetchVersion: fetchVersion,
     });
+    const fetchStartedAt = Date.now();
     try {
       const { includeEmpty, searchQuery, searchContent } = get();
       const apiOptions: { includeEmpty?: boolean; limit?: number; query?: string; searchContent?: boolean } = {
@@ -135,10 +136,18 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       const response = await sessionsApi.list(projectSlug, apiOptions);
       // Discard stale response if a newer fetch was issued or project changed
       if (get()._fetchVersion !== fetchVersion || get().currentProjectSlug !== projectSlug) return;
-      // Prevent API response from re-introducing stale isStreaming for sessions
-      // whose stream-end was already confirmed via socket event during the fetch.
-      const sessions = recentStreamEnds.size > 0
-        ? response.sessions.map(s => recentStreamEnds.has(s.sessionId) && s.isStreaming ? { ...s, isStreaming: undefined } : s)
+      // Prevent API response from overwriting fresher socket-based streaming state.
+      // If a socket event arrived after this fetch started, the socket value is authoritative.
+      const sessions = recentStreamChanges.size > 0
+        ? response.sessions.map(s => {
+          const change = recentStreamChanges.get(s.sessionId);
+          if (change && change.at >= fetchStartedAt && (!!s.isStreaming) !== change.active) {
+            return { ...s, isStreaming: change.active || undefined };
+          }
+          // Clean up stale entries older than 10 seconds
+          if (change && Date.now() - change.at > 10_000) recentStreamChanges.delete(s.sessionId);
+          return s;
+        })
         : response.sessions;
       set({ sessions, hasMore: response.hasMore, total: response.total, isLoading: false, isRefreshing: false, _lastFetchedAt: Date.now() });
     } catch (err) {
@@ -332,8 +341,9 @@ let listenerRetryCount = 0;
 const MAX_LISTENER_RETRIES = 20;
 const streamEndRefreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
 // Track sessions whose streaming state was recently updated via socket event.
-// Prevents fetchSessions API response from overwriting fresher local state.
-const recentStreamEnds = new Map<string, ReturnType<typeof setTimeout>>();
+// Stores the timestamp of the most recent socket-based streaming state change
+// so fetchSessions can detect and discard stale API values.
+const recentStreamChanges = new Map<string, { active: boolean; at: number }>();
 
 function registerStreamChangeListener() {
   if (listenerRegistered) return;
@@ -344,19 +354,9 @@ function registerStreamChangeListener() {
     socket.on('session:stream-change', (data: { sessionId: string; active: boolean; projectSlug?: string | null }) => {
       useSessionStore.getState().updateSessionStreaming(data.sessionId, data.active);
 
-      // Track recently-ended streams so fetchSessions response doesn't overwrite
-      // the locally-corrected streaming state (race condition prevention).
-      if (!data.active) {
-        const prevTimer = recentStreamEnds.get(data.sessionId);
-        if (prevTimer) clearTimeout(prevTimer);
-        recentStreamEnds.set(data.sessionId, setTimeout(() => {
-          recentStreamEnds.delete(data.sessionId);
-        }, 5000));
-      } else {
-        // Stream started — clear from recent ends so API can set isStreaming: true
-        const prevTimer = recentStreamEnds.get(data.sessionId);
-        if (prevTimer) { clearTimeout(prevTimer); recentStreamEnds.delete(data.sessionId); }
-      }
+      // Track socket-based streaming state changes (both start and end) with timestamp.
+      // fetchSessions uses this to avoid overwriting fresher local state with stale API data.
+      recentStreamChanges.set(data.sessionId, { active: data.active, at: Date.now() });
 
       // When streaming ends, debounce-refresh session list to update messageCount and modified time.
       // Debounce per project so concurrent multi-project streams each get their own refresh.

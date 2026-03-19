@@ -73,18 +73,37 @@ export function ProjectSessionsPage() {
     [sessions]
   );
 
-  // Join project room so session:stream-change events are received in real-time
+  // Join project room so session:stream-change events are received in real-time.
+  // Handles initial connection failure with retry and auto-rejoin on reconnect.
   useEffect(() => {
     if (!projectSlug) return;
-    try {
-      const socket = getSocket();
-      socket.emit('project:join', projectSlug);
-      return () => {
-        socket.emit('project:leave', projectSlug);
-      };
-    } catch {
-      // Socket not ready yet — stream-change events will be missed until next fetch
+    let socket: ReturnType<typeof getSocket> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let retryCount = 0;
+    const MAX_RETRIES = 10;
+
+    const joinRoom = () => { socket?.emit('project:join', projectSlug); };
+
+    function tryConnect() {
+      try {
+        socket = getSocket();
+        joinRoom();
+        socket.on('connect', joinRoom);
+      } catch {
+        if (++retryCount < MAX_RETRIES) {
+          retryTimer = setTimeout(tryConnect, 200);
+        }
+      }
     }
+    tryConnect();
+
+    return () => {
+      clearTimeout(retryTimer);
+      if (socket) {
+        socket.off('connect', joinRoom);
+        socket.emit('project:leave', projectSlug);
+      }
+    };
   }, [projectSlug]);
 
   // Clear search and fetch sessions on mount/navigation/projectSlug change
