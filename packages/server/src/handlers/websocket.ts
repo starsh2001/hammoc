@@ -26,7 +26,7 @@ import { isLocalIP, extractClientIP } from '../utils/networkUtils.js';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import { ChatService } from '../services/chatService.js';
 import { SessionService } from '../services/sessionService.js';
-import { parseSDKError, AbortedError } from '../utils/errors.js';
+import { parseSDKError, AbortedError, SDKErrorCode } from '../utils/errors.js';
 import { createSessionMiddleware } from '../middleware/session.js';
 import { config } from '../config/index.js';
 import { notificationService, formatAskQuestionPrompt } from '../services/notificationService.js';
@@ -1813,6 +1813,16 @@ async function handleChatSend(
       },
     );
 
+    // Track whether SDK has started producing user-visible output.
+    // Used to guard resume-retry: if output was already emitted, retrying
+    // would cause duplicate content / tool side-effects.
+    let hasEmittedOutput = false;
+    const origOnSessionInit = callbacks.onSessionInit;
+    callbacks.onSessionInit = (sid, metadata) => {
+      hasEmittedOutput = true;
+      origOnSessionInit?.(sid, metadata);
+    };
+
     // Browser-only callbacks
     callbacks.onActivity = (messageType: string) => {
       resetTimeout(`onActivity:${messageType}`);
@@ -1852,20 +1862,17 @@ async function handleChatSend(
       // Guards:
       //  1. Only when resuming (not a fresh session send)
       //  2. Skip if intentionally aborted (user-abort / another-client / timeout)
-      //  3. Skip if SDK already started streaming output — retrying would duplicate side-effects
-      //  4. Skip for rate-limit / auth / network errors — these aren't session-related
-      const errMsg = (sendError instanceof Error ? sendError.message : String(sendError)).toLowerCase();
-      const responseAlreadyStarted = lastResetSource !== 'initial';
-      const isNonSessionError = errMsg.includes('rate limit') || errMsg.includes('too many requests')
-        || errMsg.includes('authentication') || errMsg.includes('unauthorized') || errMsg.includes('login')
-        || errMsg.includes('network') || errMsg.includes('econnrefused') || errMsg.includes('etimedout');
+      //  3. Skip if SDK already emitted output (onSessionInit fired) — retrying would duplicate side-effects
+      //  4. Skip for non-session errors (rate-limit / auth / network / service-unavailable)
+      const parsedError = parseSDKError(sendError, lang);
+      const isNonSessionError = !!parsedError.code && parsedError.code !== SDKErrorCode.UNKNOWN;
       if (
         isResuming
         && !abortController.signal.aborted
-        && !responseAlreadyStarted
+        && !hasEmittedOutput
         && !isNonSessionError
       ) {
-        log.info(`[CHAIN-DRAIN] resume failed, retrying without resume: sessionId=${sessionId}, error=${errMsg.slice(0, 120)}`);
+        log.info(`[CHAIN-DRAIN] resume failed, retrying without resume: sessionId=${sessionId}, error=${parsedError.message.slice(0, 120)}`);
         const retryOptions = { ...chatOptions, resume: undefined, sessionId };
         delete retryOptions.resume;
         resetTimeout('resume-retry');
