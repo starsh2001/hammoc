@@ -97,6 +97,8 @@ export interface HistoryMessage {
     output?: string;
     error?: string;
   };
+  /** Tool execution duration in ms (computed from tool_use → tool_result timestamp diff) */
+  toolDuration?: number;
   // Task notification fields (task_notification type only)
   taskStatus?: 'completed' | 'failed' | 'stopped';
   taskSummary?: string;
