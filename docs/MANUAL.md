@@ -647,7 +647,7 @@ Terminal access is restricted for safety:
 - **Local network only** — Blocked when accessed from outside the local/private network (RFC1918 IP detection). When behind a reverse proxy with `TRUST_PROXY=true`, real client IPs are extracted from proxy headers
 - **Server management restricted to loopback** — Server restart/update APIs only accept connections from `127.0.0.1` / `::1` (stricter than terminal access)
 - **Shield warning** — When access is denied, a ShieldAlert icon with explanation is shown (both in full tab and quick panel)
-- **Configurable** — Enable/disable via Settings > Advanced toggle or the `TERMINAL_ENABLED` environment variable (`false` overrides preferences)
+- **Configurable** — Enable/disable via the `TERMINAL_ENABLED` environment variable (set `false` to disable)
 - **Max sessions** — Server-side limit (default: 10) via `MAX_TERMINAL_SESSIONS`; client limits to 5 per project
 - **Session persistence** — Terminal sessions survive browser refreshes and temporary network interruptions. Sessions persist until explicitly closed by the user, the PTY process exits, or the server shuts down
 
@@ -786,7 +786,7 @@ Templates generate queue scripts by combining a template pattern with story sele
 The dialog has two main sections:
 
 **1. Template Source** — Three tabs:
-- **Input** — Type template text directly in a monospace textarea with word wrap toggle; variable hint shown: `{story_num}, {epic_num}, {story_title}`
+- **Input** — Type template text directly in a monospace textarea with word wrap toggle; variable hint shown: `{story_num}, {epic_num}, {story_index}, {story_title}, {date}`
 - **File** — Upload a `.txt` or `.qlaude-queue` file (max 100KB) via drag area
 - **Saved** — Browse, select, edit, or delete previously saved templates
 
@@ -797,12 +797,19 @@ The dialog has two main sections:
 - Each epic header shows selected/total count with indeterminate checkbox state
 
 **Template Variables:**
-Use `{story_num}` in your template. It will be replaced with each selected story number:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{story_num}` | Full story number | `3.1` |
+| `{epic_num}` | Epic number | `3` |
+| `{story_index}` | Story index within epic | `1` |
+| `{story_title}` | Story title (empty if not found) | `Login Page UI` |
+| `{date}` | Execution date (YYYY-MM-DD) | `2026-03-18` |
 
 ```
-@load base-session
-Implement Story {story_num} following the PRD exactly
-@save story-{story_num}-done
+@load epic-{epic_num}-base
+Implement Story {story_num}: {story_title}
+@save {date}/epic-{epic_num}/story-{story_index}-done
 ```
 
 **Live Preview** — Shows the generated script with syntax highlighting below the template and story selection.
@@ -957,7 +964,7 @@ Customize the board layout via the gear icon:
 
 **Status Mapping:**
 - Map each of the 9 statuses (Open, Draft, Approved, In Progress, Blocked, Review, Done, Closed, Promoted) to a column
-- **Custom status mapping** — Define up to 20 additional custom status strings and assign them to columns
+- **Custom status mapping** — Define additional custom status strings and assign them to columns
 
 **Reset:**
 - **Reset to defaults** button restores the original column layout (with confirmation dialog)
@@ -1100,7 +1107,7 @@ Queue templates automate story development in batch. For details, see §9.7 (Que
 
 ## 12. Settings
 
-Access settings via the gear icon or the Settings page. The page has **6 tabs**: Global, Project, Telegram, Advanced, Help, and About. On desktop, tabs appear as a sidebar; on mobile, they use an accordion layout.
+Access settings via the gear icon or the Settings page. The page has **6 tabs**: Global, Project, Notifications, Advanced, Help, and About. On desktop, tabs appear as a sidebar; on mobile, they use an accordion layout.
 
 ### 12.1 Theme
 
@@ -1207,7 +1214,23 @@ How long to wait for Claude's response:
 
 The timeout resets on every activity (messages, tool calls, heartbeats). If overridden by an environment variable, the field is disabled with an amber warning.
 
-### 12.10 Telegram Notifications
+### 12.10 Notifications
+
+The Notifications tab contains two sections: Web Push and Telegram.
+
+#### 12.10.1 Web Push Notifications
+
+Receive browser push notifications when Claude needs attention. Requires HTTPS and a browser that supports the Push API (Chrome, Firefox, Edge, Safari 16+).
+
+- **Subscribe** — Register the current browser to receive push notifications (requests browser notification permission)
+- **Unsubscribe** — Remove the current browser's push subscription
+- **Enable toggle** — Master switch to enable or disable web push delivery
+- **Subscribed devices** — Shows the number of browsers currently registered
+- **Test** — Send a test push notification (5-second cooldown between tests)
+
+> iOS: Add Hammoc to Home Screen first, then subscribe from within the PWA.
+
+#### 12.10.2 Telegram Notifications
 
 Get notified on your phone when Claude needs attention:
 
@@ -1257,10 +1280,6 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 - **Development mode:** "Server Rebuild" button — rebuilds and restarts the server. Shows elapsed time during the build process (polls every 3 seconds)
 - **Production mode:** Shows current version number, "Check for Updates" button, and "Install Update" button (appears only when an update is available). Includes build progress with elapsed timer
-
-**Terminal Toggle:**
-- Enable or disable the terminal feature via a switch toggle
-- If overridden by an environment variable, the toggle is disabled with an amber warning
 
 **SDK Parameters:**
 - **Max Thinking Tokens** — Limit Claude's extended thinking tokens (1,024–128,000, step: 1,024)
@@ -1438,7 +1457,6 @@ Terminal may be disabled when:
 
 - Accessing from an external network (security restriction — only local IPs are allowed)
 - `TERMINAL_ENABLED=false` is set in environment
-- The toggle in Settings > Advanced > Terminal is off
 - Maximum terminal sessions reached (default 10, configurable via `MAX_TERMINAL_SESSIONS`)
 
 ### 15.7 Reset password
