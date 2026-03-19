@@ -67,21 +67,58 @@ describe('detectPhase', () => {
 // ---------------------------------------------------------------------------
 
 describe('computeNextSteps — Phase 1 (pre-prd)', () => {
-  it('always includes PRD creation as primary', () => {
+  it('recommends brainstorming and brief as primary when neither exists', () => {
     const { recommendations } = computeNextSteps(makeData({}));
+    const brainstormRec = recommendations.find((r) => r.id === 'brainstorming');
+    expect(brainstormRec).toBeDefined();
+    expect(brainstormRec!.variant).toBe('primary');
+
+    const briefRec = recommendations.find((r) => r.id === 'brief');
+    expect(briefRec).toBeDefined();
+    expect(briefRec!.variant).toBe('primary');
+
+    // PRD should be secondary (gray) until brief exists
     const prdRec = recommendations.find((r) => r.id === 'create-prd');
     expect(prdRec).toBeDefined();
-    expect(prdRec!.variant).toBe('primary');
+    expect(prdRec!.variant).toBe('secondary');
     expect(prdRec!.agentCommand).toBe('/BMad:agents:pm');
   });
 
-  it('recommends all missing supplementary docs as secondary', () => {
+  it('recommends only brief as primary when brainstorming exists', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({ suppExisting: ['brainstorming'] }),
+    );
+    const ids = recommendations.map((r) => r.id);
+    expect(ids).not.toContain('brainstorming');
+
+    const briefRec = recommendations.find((r) => r.id === 'brief');
+    expect(briefRec).toBeDefined();
+    expect(briefRec!.variant).toBe('primary');
+
+    const prdRec = recommendations.find((r) => r.id === 'create-prd');
+    expect(prdRec!.variant).toBe('secondary');
+  });
+
+  it('promotes PRD to primary when brief exists', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({ suppExisting: ['brief'] }),
+    );
+    const prdRec = recommendations.find((r) => r.id === 'create-prd');
+    expect(prdRec).toBeDefined();
+    expect(prdRec!.variant).toBe('primary');
+
+    // brainstorming still primary (not yet done)
+    const brainstormRec = recommendations.find((r) => r.id === 'brainstorming');
+    expect(brainstormRec).toBeDefined();
+    expect(brainstormRec!.variant).toBe('primary');
+  });
+
+  it('recommends market-research and competitor-analysis as secondary', () => {
     const { recommendations } = computeNextSteps(makeData({}));
     const secondaryIds = recommendations.filter((r) => r.variant === 'secondary').map((r) => r.id);
-    expect(secondaryIds).toContain('brainstorming');
     expect(secondaryIds).toContain('market-research');
     expect(secondaryIds).toContain('competitor-analysis');
-    expect(secondaryIds).toContain('brief');
+    expect(secondaryIds).toContain('create-prd');
   });
 
   it('omits supplementary docs that already exist', () => {
@@ -96,15 +133,35 @@ describe('computeNextSteps — Phase 1 (pre-prd)', () => {
     expect(ids).toContain('competitor-analysis');
   });
 
-  it('only returns PRD when all supplementary docs exist', () => {
+  it('only returns PRD as primary when all supplementary docs exist', () => {
     const { recommendations } = computeNextSteps(
       makeData({ suppExisting: ['brainstorming', 'market-research', 'competitor-analysis', 'brief'] }),
     );
-    // Only PRD is expected (no secondary docs for pre-prd supplementary)
-    // front-end-spec and ui-architecture are Phase 2 docs, not shown in Phase 1
     const primaryRecs = recommendations.filter((r) => r.variant === 'primary');
     expect(primaryRecs).toHaveLength(1);
     expect(primaryRecs[0].id).toBe('create-prd');
+  });
+
+  it('orders recommendations: brainstorming → brief → PRD → secondary docs', () => {
+    const { recommendations } = computeNextSteps(makeData({}));
+    const ids = recommendations.map((r) => r.id);
+    expect(ids).toEqual(['brainstorming', 'brief', 'create-prd', 'market-research', 'competitor-analysis']);
+  });
+
+  it('orders recommendations: brief → PRD when only brainstorming exists', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({ suppExisting: ['brainstorming'] }),
+    );
+    const ids = recommendations.map((r) => r.id);
+    expect(ids).toEqual(['brief', 'create-prd', 'market-research', 'competitor-analysis']);
+  });
+
+  it('orders recommendations: brainstorming → PRD when brief exists', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({ suppExisting: ['brief'] }),
+    );
+    const ids = recommendations.map((r) => r.id);
+    expect(ids).toEqual(['brainstorming', 'create-prd', 'market-research', 'competitor-analysis']);
   });
 });
 
