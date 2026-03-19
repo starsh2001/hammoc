@@ -47,21 +47,50 @@ const categoryColors: Record<string, string> = {
 class DebugLogger {
   private buffer: LogEntry[] = [];
   private enabled = true;
-  private serverLoggingEnabled = true;
+  private serverLoggingEnabled = false; // disabled until confirmed dev mode
   private serverQueue: LogEntry[] = [];
-  private serverFlushTimer: ReturnType<typeof setInterval> | null = null;
+  private serverFlushTimer: ReturnType<typeof setTimeout> | null = null;
   private currentLevel: LogLevel;
+  private consecutiveFailures = 0;
+  private static readonly MAX_FAILURES = 3;
 
   constructor() {
     const envLevel = parseLogLevel(import.meta.env.VITE_LOG_LEVEL);
     const isDev = import.meta.env.DEV;
     this.currentLevel = envLevel ?? (isDev ? LogLevel.DEBUG : LogLevel.INFO);
-    this.startServerFlush();
+    this.probeDevMode();
+  }
+
+  /**
+   * Check server dev mode and only enable server logging + flush timer if confirmed.
+   */
+  private async probeDevMode() {
+    try {
+      const res = await fetch('/api/server/info', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.isDevMode) {
+          this.serverLoggingEnabled = true;
+          this.startServerFlush();
+        }
+      }
+    } catch {
+      // Not in dev mode or server unreachable — keep server logging disabled
+    }
   }
 
   private startServerFlush() {
     if (this.serverFlushTimer) return;
-    this.serverFlushTimer = setInterval(() => this.flushToServer(), SERVER_FLUSH_INTERVAL);
+    this.scheduleFlush();
+  }
+
+  private scheduleFlush() {
+    this.serverFlushTimer = setTimeout(async () => {
+      await this.flushToServer();
+      if (this.serverLoggingEnabled) {
+        this.scheduleFlush();
+      }
+    }, SERVER_FLUSH_INTERVAL);
   }
 
   private async flushToServer() {
@@ -69,14 +98,27 @@ class DebugLogger {
 
     const batch = this.serverQueue.splice(0, this.serverQueue.length);
     try {
-      await fetch('/api/debug/log', {
+      const res = await fetch('/api/debug/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batch }),
         credentials: 'include',
       });
+      if (res.ok) {
+        this.consecutiveFailures = 0;
+      } else {
+        this.consecutiveFailures++;
+        if (this.consecutiveFailures >= DebugLogger.MAX_FAILURES) {
+          this.serverLoggingEnabled = false;
+          console.warn('[DebugLogger] Server logging disabled after repeated failures');
+        }
+      }
     } catch {
-      // Silently ignore — debug logging should never break the app
+      this.consecutiveFailures++;
+      if (this.consecutiveFailures >= DebugLogger.MAX_FAILURES) {
+        this.serverLoggingEnabled = false;
+        console.warn('[DebugLogger] Server logging disabled after repeated failures');
+      }
     }
   }
 

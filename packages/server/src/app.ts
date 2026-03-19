@@ -94,7 +94,16 @@ export async function createApp(): Promise<Express> {
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     keyGenerator: (req) => extractRequestIP(req),
-    skip: (req) => req.path === '/health' || req.path === '/api/health',
+    skip: (req) => req.path === '/health' || req.path === '/api/health' || req.path === '/api/debug/log',
+  }));
+
+  // Dedicated rate limiter for debug log endpoint (more permissive, prevents abuse)
+  app.use('/api/debug/log', rateLimit({
+    windowMs: 60_000,
+    limit: 600,
+    standardHeaders: false,
+    legacyHeaders: false,
+    keyGenerator: (req) => extractRequestIP(req),
   }));
 
   app.use(express.json());
