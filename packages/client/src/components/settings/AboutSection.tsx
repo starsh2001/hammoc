@@ -73,7 +73,7 @@ export function AboutSection() {
           <>
             <p className="text-sm text-gray-500 dark:text-gray-300 mt-1">v{health.version}</p>
             {health.description && (
-              <p className="text-sm text-gray-400 dark:text-gray-400 mt-1">{health.description}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{health.description}</p>
             )}
             {health.author?.name && (
               <p className="text-sm text-gray-500 dark:text-gray-300 mt-2">
@@ -93,7 +93,7 @@ export function AboutSection() {
               </p>
             )}
             {health.license && (
-              <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">{t('about.license', { name: health.license })}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('about.license', { name: health.license })}</p>
             )}
           </>
         )}

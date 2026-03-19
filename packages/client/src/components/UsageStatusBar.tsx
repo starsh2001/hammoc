@@ -32,7 +32,7 @@ function GlowDot({ utilization, label, reset }: { utilization: number; label: st
       <span className="hidden sm:inline text-[11px] text-gray-500 dark:text-gray-300">{label} {pct}%</span>
       <span className="flex flex-col leading-none sm:hidden">
         <span className="text-[9px] font-medium text-gray-500 dark:text-gray-300">{label}</span>
-        <span className="text-[9px] text-gray-400 dark:text-gray-400">{pct}%</span>
+        <span className="text-[9px] text-gray-500 dark:text-gray-400">{pct}%</span>
       </span>
     </span>
   );

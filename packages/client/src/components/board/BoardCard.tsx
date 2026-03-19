@@ -136,7 +136,7 @@ export function BoardCard({
               </span>
             )}
             {item.issueType && (
-              <span className="text-xs text-gray-400 dark:text-gray-400">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 {item.issueType}
               </span>
             )}

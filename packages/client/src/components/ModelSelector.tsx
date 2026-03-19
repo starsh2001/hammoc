@@ -200,7 +200,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
               {gi > 0 && <div className="border-t border-gray-200 dark:border-[#253040]" />}
 
               {/* Group header */}
-              <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400">
+              <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 {groupLabel}
               </div>
 
@@ -229,7 +229,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
                       <span className={`text-sm ${isSelected ? 'font-semibold text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
                         {opt.label}
                       </span>
-                      <span className="ml-2 text-xs text-gray-400 dark:text-gray-400">
+                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                         {opt.value === '' && activeModel
                           ? formatModelId(activeModel)
                           : opt.description}

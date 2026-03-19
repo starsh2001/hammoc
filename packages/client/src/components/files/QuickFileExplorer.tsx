@@ -172,7 +172,7 @@ export function QuickFileExplorer({
                     <div className="min-w-0 flex-1 overflow-hidden">
                       <span className="text-sm text-gray-900 dark:text-white">{result.name}</span>
                       {result.path !== result.name && (
-                        <span className="text-xs text-gray-400 dark:text-gray-400 ml-2 truncate block">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 truncate block">
                           {result.path.substring(0, result.path.length - result.name.length - 1)}
                         </span>
                       )}
@@ -208,7 +208,7 @@ export function QuickFileExplorer({
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <span className="text-sm text-gray-900 dark:text-white">{fileName}</span>
                         {dirPath && (
-                          <span className="text-xs text-gray-400 dark:text-gray-400 ml-2 truncate block">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 truncate block">
                             {dirPath}
                           </span>
                         )}

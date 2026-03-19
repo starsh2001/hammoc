@@ -317,7 +317,7 @@ export function CardContextMenu({
               title={mi.title}
               className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                 mi.disabled
-                  ? 'text-gray-400 dark:text-gray-400 cursor-not-allowed'
+                  ? 'text-gray-500 dark:text-gray-400 cursor-not-allowed'
                   : idx === focusIndex
                     ? 'bg-gray-100 dark:bg-[#253040] text-gray-900 dark:text-white'
                     : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040]'

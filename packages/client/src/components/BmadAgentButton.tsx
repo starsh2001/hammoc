@@ -171,7 +171,7 @@ export function BmadAgentButton({
             {roleLabel || agent.name}
           </span>
           {description && (
-            <span className="ml-2 text-xs text-gray-400 dark:text-gray-400">
+            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
               {description}
             </span>
           )}
@@ -186,7 +186,7 @@ export function BmadAgentButton({
     return (
     <div key={group.testId} role="group" aria-label={groupLabel} data-testid={group.testId}>
       {groupIndex > 0 && <div className="border-t border-gray-200 dark:border-[#253040]" />}
-      <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400">
+      <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
         {groupLabel}
       </div>
       {group.agents.map((agent, i) => renderAgentItem(agent, indexOffset + i))}

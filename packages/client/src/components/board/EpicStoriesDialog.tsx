@@ -98,7 +98,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
         {/* Stories list */}
         <div className="p-4 max-h-80 overflow-y-auto">
           {stories.length === 0 ? (
-            <p className="text-center text-sm text-gray-400 dark:text-gray-400 py-4">
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
               {t('epic.noSubStories')}
             </p>
           ) : (
@@ -111,7 +111,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
                   className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-[#1c2129] rounded-lg"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs font-mono text-gray-400 dark:text-gray-400 flex-shrink-0">
+                    <span className="text-xs font-mono text-gray-500 dark:text-gray-400 flex-shrink-0">
                       {story.id.replace(/^story-/, '')}
                     </span>
                     <span className="text-sm text-gray-900 dark:text-white truncate">

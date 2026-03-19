@@ -93,7 +93,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                       {doneCount}/{planned}
                     </span>
                     <ChevronDown
-                      className={`w-4 h-4 text-gray-400 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                     />
                   </div>
                 </div>
@@ -102,7 +102,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                   <span className="text-gray-700 dark:text-gray-200 truncate mr-2">
                     {epic.number}. {epic.name}
                   </span>
-                  <span className="text-xs text-gray-400 dark:text-gray-400">{t('epic.storiesUndefined')}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{t('epic.storiesUndefined')}</span>
                 </div>
               )}
 
@@ -130,7 +130,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                           {projectSlug && storyBasePath && (
                             <button
                               onClick={() => handleOpenStory(story.file)}
-                              className="flex-shrink-0 text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                              className="flex-shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
                               title={story.file}
                             >
                               <FileText className="w-3.5 h-3.5" />
@@ -144,12 +144,12 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                       );
                     })
                   ) : (
-                    <p className="text-xs text-gray-400 dark:text-gray-400">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {t('epic.plannedStoriesNoFiles', { count: planned })}
                     </p>
                   )}
                   {writtenCount > 0 && planned > writtenCount && (
-                    <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {t('epic.unwrittenStories', { count: planned - writtenCount })}
                     </p>
                   )}

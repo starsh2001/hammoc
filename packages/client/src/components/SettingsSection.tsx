@@ -47,7 +47,7 @@ export function SettingsSection({
             <span className="text-sm font-medium">{title}</span>
           </div>
           <ChevronDown
-            className={`w-4 h-4 text-gray-400 dark:text-gray-400 transition-transform duration-200 ${
+            className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
               isExpanded ? 'rotate-180' : ''
             }`}
             aria-hidden="true"

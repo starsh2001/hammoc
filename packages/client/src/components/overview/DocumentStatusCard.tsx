@@ -130,9 +130,9 @@ function EntryTree({
                 className="text-xs text-gray-600 dark:text-gray-300 hover:underline cursor-pointer inline-flex items-center gap-1"
               >
                 {entry.name}/
-                <span className="text-gray-400 dark:text-gray-400">{entry.children.length}개</span>
+                <span className="text-gray-500 dark:text-gray-400">{entry.children.length}개</span>
                 <ChevronDown
-                  className={`w-3 h-3 text-gray-400 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  className={`w-3 h-3 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                 />
               </button>
               {isExpanded && (
@@ -193,7 +193,7 @@ function DocRow({
         {doc.exists ? (
           <CheckCircle className={`w-4 h-4 flex-shrink-0 ${doc.optional ? 'text-green-400 dark:text-green-600' : 'text-green-600 dark:text-green-400'}`} />
         ) : doc.optional ? (
-          <Circle className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+          <Circle className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
         ) : (
           <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
         )}
@@ -206,14 +206,14 @@ function DocRow({
           >
             {doc.label}
             <ChevronDown
-              className={`w-3 h-3 text-gray-400 dark:text-gray-400 transition-transform ${isDocExpanded ? 'rotate-180' : ''}`}
+              className={`w-3 h-3 text-gray-500 dark:text-gray-400 transition-transform ${isDocExpanded ? 'rotate-180' : ''}`}
             />
           </button>
         ) : (
           <span className={
             doc.exists
               ? (doc.optional ? 'text-gray-700 dark:text-gray-200' : 'font-semibold text-gray-900 dark:text-white')
-              : (doc.optional ? 'text-gray-400 dark:text-gray-400' : 'font-semibold text-gray-900 dark:text-gray-100')
+              : (doc.optional ? 'text-gray-500 dark:text-gray-400' : 'font-semibold text-gray-900 dark:text-gray-100')
           }>{doc.label}</span>
         )}
 
@@ -231,7 +231,7 @@ function DocRow({
         {!hasShardedFiles && doc.exists && (
           <button
             onClick={() => handleOpenDoc(doc.path)}
-            className="text-xs text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:underline cursor-pointer truncate max-w-[50%]"
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:underline cursor-pointer truncate max-w-[50%]"
           >
             {doc.path}
           </button>
@@ -249,7 +249,7 @@ function DocRow({
         {!doc.exists && doc.agentCommand && (
           <button
             onClick={() => handleCreateDoc(doc.agentCommand!)}
-            className={`p-0.5 rounded transition-colors cursor-pointer ${!doc.optional || doc.recommended ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50' : 'bg-gray-100 dark:bg-[#253040]/50 text-gray-300 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-[#253040] hover:text-gray-500 dark:hover:text-gray-400'}`}
+            className={`p-0.5 rounded transition-colors cursor-pointer ${!doc.optional || doc.recommended ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50' : 'bg-gray-100 dark:bg-[#253040]/50 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-[#253040] hover:text-gray-500 dark:hover:text-gray-400'}`}
             title={t('document.writeGo')}
           >
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -348,7 +348,7 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
         {/* Auxiliary Documents (stories, QA, etc.) */}
         {auxiliaryDocuments.length > 0 && (
           <div className="border-t border-gray-200 dark:border-[#253040] mt-2 pt-2 space-y-1">
-            <p className="text-[11px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-400 mb-1">{t('document.deliverables')}</p>
+            <p className="text-[11px] uppercase tracking-wider font-medium text-gray-500 dark:text-gray-400 mb-1">{t('document.deliverables')}</p>
             {auxiliaryDocuments.map((doc) => {
               const hasFiles = doc.files && doc.files.length > 0;
               const isExpanded = expandedDocs.has(`aux-${doc.type}`);
@@ -356,7 +356,7 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
               return (
                 <div key={doc.type}>
                   <div className="flex items-center gap-2 py-1 px-2 -mx-2 rounded-md">
-                    <FolderOpen className="w-4 h-4 text-gray-400 dark:text-gray-400 flex-shrink-0" />
+                    <FolderOpen className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                     {hasFiles ? (
                       <button
                         onClick={() => toggleDoc(`aux-${doc.type}`)}
@@ -364,13 +364,13 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
                       >
                         {getAuxDocLabel(doc.type, t)}
                         <ChevronDown
-                          className={`w-3 h-3 text-gray-400 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          className={`w-3 h-3 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         />
                       </button>
                     ) : (
                       <span className="text-gray-700 dark:text-gray-200">{getAuxDocLabel(doc.type, t)}</span>
                     )}
-                    <span className="text-xs text-gray-400 dark:text-gray-400">{t('document.count', { count: doc.fileCount })}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{t('document.count', { count: doc.fileCount })}</span>
                   </div>
 
                   {/* Expanded auxiliary file tree */}

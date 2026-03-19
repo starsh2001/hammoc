@@ -435,7 +435,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                         {t('queue.template.projectTemplates')}
                       </span>
-                      <span className="text-[10px] text-gray-300 dark:text-gray-600">({savedTemplates.length})</span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">({savedTemplates.length})</span>
                     </div>
                     {savedTemplates.length === 0 ? (
                       <p className="text-xs text-gray-400 py-1.5 px-3 text-center">{t('queue.template.noProjectTemplates')}</p>
@@ -468,7 +468,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                         {t('queue.template.globalTemplates')}
                       </span>
-                      <span className="text-[10px] text-gray-300 dark:text-gray-600">({globalTemplates.length})</span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">({globalTemplates.length})</span>
                     </div>
                     {globalTemplates.length === 0 ? (
                       <p className="text-xs text-gray-400 py-1.5 px-3 text-center">{t('queue.template.noGlobalTemplates')}</p>
@@ -506,7 +506,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                   {/* Toolbar */}
                   <div className="flex items-center justify-between px-2.5 py-1.5 bg-gray-50 dark:bg-[#263240]/80 border-b border-gray-200 dark:border-[#253040]">
                     <span className="text-[11px] text-gray-400 dark:text-gray-500 truncate select-none">
-                      {t('queue.template.variablesHint', { variables: '{story_num}, {epic_num}, {story_title}' })}
+                      {t('queue.template.variablesHint', { variables: '{story_num}, {epic_num}, {story_index}, {story_title}, {date}' })}
                     </span>
                     <button
                       onClick={() => setIsAutoWrap((prev) => !prev)}
@@ -747,7 +747,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                           <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             {t('queue.template.epicHeader', { num: epicNum })}
                           </span>
-                          <span className="text-[10px] text-gray-300 dark:text-gray-600">
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500">
                             ({epicStories.filter((s) => selectedStories.has(s.storyNum)).length}/{epicStories.length})
                           </span>
                         </button>
@@ -778,7 +778,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
               {/* Preview */}
               {preview && (
                 <section>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-400 mb-2.5">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2.5">
                     {t('queue.template.preview')}
                   </h3>
                   <pre

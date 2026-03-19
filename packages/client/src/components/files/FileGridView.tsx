@@ -92,7 +92,7 @@ function GridInlineRename({ entryType, initialValue, onConfirm, onCancel }: Grid
       {entryType === 'directory' ? (
         <Folder className="w-8 h-8 text-blue-500 dark:text-blue-400" />
       ) : (
-        <File className="w-8 h-8 text-gray-400 dark:text-gray-400" />
+        <File className="w-8 h-8 text-gray-500 dark:text-gray-400" />
       )}
       <input
         ref={inputRef}
@@ -449,7 +449,7 @@ export function FileGridView({
       )}
 
       {filteredEntries.length === 0 && !inlineInput ? (
-        <div className="text-sm text-gray-400 dark:text-gray-400 italic text-center py-8">
+        <div className="text-sm text-gray-500 dark:text-gray-400 italic text-center py-8">
           {t('files.emptyFolder')}
         </div>
       ) : (
@@ -509,7 +509,7 @@ export function FileGridView({
                 {entry.type === 'directory' ? (
                   <Folder className="w-8 h-8 text-blue-500 dark:text-blue-400" />
                 ) : (
-                  <File className="w-8 h-8 text-gray-400 dark:text-gray-400" />
+                  <File className="w-8 h-8 text-gray-500 dark:text-gray-400" />
                 )}
                 <span className={`text-xs text-center w-full truncate ${
                   isCurrentOpen ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'

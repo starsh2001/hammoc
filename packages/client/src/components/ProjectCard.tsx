@@ -183,7 +183,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
               BMad
             </span>
           )}
-          <p className="text-xs text-gray-400 dark:text-gray-400 truncate">
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
             {formatProjectPath(project.originalPath)}
           </p>
         </div>

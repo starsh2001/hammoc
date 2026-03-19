@@ -49,9 +49,9 @@ export function RecentIssuesCard() {
       {recentIssues.length === 0 ? (
         <div className="py-8 px-5 text-center">
           <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 dark:bg-[#253040]/50 mb-3">
-            <AlertCircle className="w-5 h-5 text-gray-400 dark:text-gray-400" />
+            <AlertCircle className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </div>
-          <p className="text-sm text-gray-400 dark:text-gray-400">{t('overview.noIssues')}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('overview.noIssues')}</p>
         </div>
       ) : (
         <div className="divide-y divide-gray-100 dark:divide-gray-700">

@@ -216,7 +216,7 @@ export function FileTreeContextMenu({
             disabled={isDisabled}
             className={`flex items-center gap-2 px-3 py-1.5 text-sm w-full ${
               isDisabled
-                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
                 : item.danger
                   ? 'text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-[#253040] cursor-pointer'
                   : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] cursor-pointer'
@@ -937,7 +937,7 @@ function FileTreeNode({
             <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin flex-shrink-0" />
           ) : (
             <ChevronRight
-              className={`w-3.5 h-3.5 text-gray-400 dark:text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
+              className={`w-3.5 h-3.5 text-gray-500 dark:text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
             />
           )
         )}
@@ -1003,7 +1003,7 @@ function FileTreeNode({
 
           {childEntries && filteredChildren.length === 0 && !error && (
             <div
-              className="text-xs text-gray-400 dark:text-gray-400 italic py-1"
+              className="text-xs text-gray-500 dark:text-gray-400 italic py-1"
               style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
             >
               {t('files.emptyFolder')}

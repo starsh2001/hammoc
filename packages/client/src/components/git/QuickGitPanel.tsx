@@ -162,7 +162,7 @@ export function QuickGitPanel({
                 {t('git.recentCommits')}
               </h3>
               {recentCommits.length === 0 ? (
-                <p className="text-sm text-gray-400 dark:text-gray-400">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {t('git.noCommitHistory')}
                 </p>
               ) : (
@@ -176,7 +176,7 @@ export function QuickGitPanel({
                         <code className="text-xs text-gray-500 dark:text-gray-300 font-mono">
                           {c.hash.slice(0, 7)}
                         </code>
-                        <span className="text-xs text-gray-400 dark:text-gray-400">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {formatRelativeTime(c.date)}
                         </span>
                       </div>
