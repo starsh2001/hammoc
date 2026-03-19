@@ -7,7 +7,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo, forwardRef, useImperativeHandle, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, RefreshCw, FileText, XOctagon, Database, Info } from 'lucide-react';
-import { StreamingMessage } from './StreamingMessage';
+import { MessageBubble } from './MessageBubble';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { LoadingSpinner } from './LoadingSpinner';
 import { StreamingIndicator } from './StreamingIndicator';
@@ -563,13 +563,18 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           if (isTextSegment(seg)) {
             // Skip empty/whitespace-only text segments (e.g., before thinking blocks)
             if (!seg.content.trim()) return null;
-            // A text segment is still being streamed only if it's the last segment AND actively streaming
             const isStillStreaming = isStreaming && isLastSegmentIndex(index);
+            const startedAt = useChatStore.getState().streamingStartedAt;
             return (
               <StreamingErrorBoundary key={`seg-text-${index}`}>
-                <StreamingMessage
-                  content={seg.content}
-                  isComplete={!isStillStreaming}
+                <MessageBubble
+                  message={{
+                    id: `streaming-text-${index}`,
+                    type: 'assistant',
+                    content: seg.content,
+                    timestamp: startedAt?.toISOString() ?? new Date().toISOString(),
+                  }}
+                  isStreaming={isStillStreaming}
                 />
               </StreamingErrorBoundary>
             );

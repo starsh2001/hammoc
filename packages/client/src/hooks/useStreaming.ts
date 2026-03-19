@@ -347,21 +347,16 @@ export function useStreaming() {
         }
       }
 
-      // Complete streaming: converts segments to messages and clears them
-      // No need to fetch from JSONL - data is already in memory
-      debugLog.stream('DEDUP message:complete → before completeStreaming', {
-        segCount: useChatStore.getState().streamingSegments.length,
-        segTypes: useChatStore.getState().streamingSegments.map(s => s.type),
-        msgCount: useMessageStore.getState().messages.length,
-        msgTypes: useMessageStore.getState().messages.map(m => m.type),
-      });
+      // Freeze segments and fetch authoritative history from server.
+      // Server API merges JSONL + completedBuffer so data is available
+      // even before SDK flushes to disk.
       completeStreaming();
-      debugLog.stream('DEDUP message:complete → after completeStreaming', {
-        msgCount: useMessageStore.getState().messages.length,
-        msgTypes: useMessageStore.getState().messages.map(m => m.type),
-        isStreaming: useChatStore.getState().isStreaming,
-        segCount: useChatStore.getState().streamingSegments.length,
-      });
+      const { currentProjectSlug, currentSessionId } = useMessageStore.getState();
+      if (currentProjectSlug && currentSessionId) {
+        useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
+          useChatStore.getState().clearStreamingSegments();
+        });
+      }
     };
 
     // Handle tool call start - add tool segment (skip AskUserQuestion — handled via permission:request)
@@ -735,24 +730,13 @@ export function useStreaming() {
             sessionId: data.sessionId,
             hadSegments,
           });
-          // Complete streaming: converts segments to messages and clears them
+          // Freeze segments and fetch authoritative history from server
           completeStreaming();
-
-          // Always fetch authoritative history from JSONL when stream completed during
-          // disconnect. When hadSegments is true, completeStreaming() converted partial
-          // segments to messages — but these may be incomplete (stream continued after
-          // disconnect, e.g. mobile sleep). JSONL has the full completed response.
-          // The stale-data guard in fetchMessages will correctly allow updates when
-          // the server returns more messages than we have locally.
-          const msgState = useMessageStore.getState();
-          const { currentProjectSlug, currentSessionId } = msgState;
+          const { currentProjectSlug, currentSessionId } = useMessageStore.getState();
           if (currentProjectSlug && currentSessionId) {
-            debugLog.stream('stream:status → fetching messages after stale stream completion', {
-              projectSlug: currentProjectSlug,
-              sessionId: currentSessionId,
-              hadSegments,
+            useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
+              useChatStore.getState().clearStreamingSegments();
             });
-            msgState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true });
           }
         } else {
           debugLog.stream('stream:status → inactive, no-op (not streaming)');
@@ -789,6 +773,12 @@ export function useStreaming() {
       if (wasStreaming) {
         flushChunkQueue();
         completeStreaming();
+        const { currentProjectSlug, currentSessionId } = useMessageStore.getState();
+        if (currentProjectSlug && currentSessionId) {
+          useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
+            useChatStore.getState().clearStreamingSegments();
+          });
+        }
       }
 
       if (data.reason === 'user-abort') {
