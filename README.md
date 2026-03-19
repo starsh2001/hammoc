@@ -196,7 +196,7 @@ Automate repetitive prompt sequences.
 - **Execution control** — Start, pause, resume, and abort queue runs
 - **Templates** — Save and load reusable queue scripts
 - **Story-based generation** — Auto-generate queue from PRD epics and stories
-- **Variable substitution** — Use `{story_num}`, `{epic_num}`, `{story_title}` in templates
+- **Variable substitution** — Use `{story_num}`, `{epic_num}`, `{story_index}`, `{story_title}`, `{date}` in templates
 
 ### Project Board (Issue Tracking)
 
@@ -212,9 +212,9 @@ Automate repetitive prompt sequences.
 - **Theme** — Dark, Light, or System
 - **Language** — English, 中文, 日本語, 한국어, Español, Português
 - **Chat timeout** — 1m, 3m, 5m (default), 10m, 30m
-- **Telegram notifications** — Get notified on permission requests, completions, and errors
+- **Web Push & Telegram notifications** — Get notified on permission requests, completions, and errors
 - **System prompt editing** — Customize Claude's behavior per project
-- **Advanced** — Server restart, software updates, terminal toggle, reset all settings
+- **Advanced** — Server restart, software updates, SDK parameters (thinking tokens, turns, budget)
 
 ---
 
@@ -227,7 +227,7 @@ Hammoc is the most convenient way to run a full [BMAD-METHOD](https://github.com
 - **Slash commands per agent** — Context-aware `/commands` that change based on the active BMad agent
 - **PRD → Queue automation** — Auto-generate prompt queues directly from your PRD epics and stories
 - **Project overview dashboard** — Visual status showing PRD completion, epic progress, and story status
-- **Kanban board integration** — Track epics and stories with drag-and-drop, promote/validate workflows
+- **Kanban board integration** — Track epics and stories with status workflow, promote/validate actions
 - **Story workflows** — Start development, request QA, and apply fixes — all through the board UI
 
 > **Methodology support roadmap:** Hammoc is designed to be methodology-agnostic. BMAD-METHOD V4 is the first supported workflow, with more development methodologies planned for future releases.
@@ -247,6 +247,7 @@ For detailed BMAD-METHOD documentation, visit the [official repository](https://
 | `Ctrl+=` `Ctrl+-` | Terminal font size |
 | `Ctrl+0` | Reset terminal font size |
 | `↑` / `↓` | Navigate prompt history |
+| `Alt+1/2/3/4` | Toggle quick panel (Sessions/Files/Git/Terminal) |
 
 ---
 
