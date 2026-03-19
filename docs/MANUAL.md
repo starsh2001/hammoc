@@ -116,6 +116,20 @@ npx hammoc --trust-proxy --cors-origin https://hammoc.yourdomain.com
 
 > **Note:** For multi-hop proxy setups (CDN → Load Balancer → nginx → Hammoc), increase the rate limit with `--rate-limit 1000` since multiple users may share the same proxy IP.
 
+### 1.7 HTTPS / TLS
+
+Hammoc automatically enables HTTPS when TLS certificates are found:
+
+1. Place your certificate files in the `~/.hammoc/` directory:
+   - `~/.hammoc/key.pem` — Private key
+   - `~/.hammoc/cert.pem` — Certificate (or full chain)
+2. Restart Hammoc — it will detect the files and start an HTTPS server
+3. The startup log will show `TLS: enabled (certs from ~/.hammoc/)`
+
+If no certificates are found, the server runs over HTTP as usual.
+
+> **Tip:** For local development, you can generate self-signed certificates with `mkcert` or `openssl`. For production, use certificates from Let's Encrypt or your domain provider.
+
 ---
 
 ## 2. Chat
@@ -161,7 +175,8 @@ Messages support full GitHub-flavored markdown:
 Attach images to your messages for Claude to analyze:
 
 - Click the attachment button (paperclip icon) in the input area
-- Or drag and drop images directly
+- Drag and drop images directly onto the input area
+- Paste from clipboard (`Ctrl+V` / `Cmd+V`)
 - Supported formats: PNG, JPEG, GIF, WebP
 - Maximum: 5 images per message, 10MB per image
 - Images preview in the input area before sending
@@ -464,8 +479,14 @@ Access the file explorer from the sidebar tab. Toggle between views with the too
 
 **Context Menu** (right-click or ⋮ button on hover)
 - **New File** / **New Folder** — Creates via inline input
+- **Copy** / **Cut** / **Paste** — Copy or move files and folders within the project
+- **Download** — Download individual files (files only)
 - **Rename** — Inline renaming
 - **Delete** — With confirmation dialog
+
+**File Upload**
+- Drag and drop files from your OS into the Grid view to upload them
+- Paste files from clipboard (`Ctrl+V`) while the file explorer is focused
 
 **Toolbar**
 - **Search** — Server-side file search with debounce (300ms)
@@ -1271,7 +1292,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 - **Character count** — Shown below the editor
 - **"Customized" indicator** — Blue banner when a custom prompt is active
 - **Restore to Default** button — Appears when the prompt has been modified
-- **Template variables** — Listed below the editor with descriptions (e.g., `{gitBranch}`, `{projectPath}`); variables are resolved at runtime by the server
+- **Template variables** — Listed below the editor with descriptions (e.g., `{gitBranch}`, `{gitMainBranch}`, `{gitStatus}`); variables are resolved at runtime by the server
 - **Resolved preview** — Toggle to see the fully rendered prompt with variables replaced for the current project
 
 ### 12.12 Advanced Settings
@@ -1497,4 +1518,7 @@ If you need to find or back up your data:
 | Queue templates | `<project-root>/.hammoc/queue-templates.json` (per project) |
 | Chain failures | `~/.hammoc/chain-failures/<sessionId>.json` (per session) |
 | Session data | `~/.claude/projects/` |
+| Web Push VAPID keys | `~/.hammoc/vapid-keys.json` |
+| Web Push subscriptions | `~/.hammoc/push-subscriptions.json` |
+| TLS certificates | `~/.hammoc/key.pem`, `~/.hammoc/cert.pem` |
 | Server logs | `./logs/server-YYYY-MM-DD.log` (relative to working directory, date-partitioned) |
