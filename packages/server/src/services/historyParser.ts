@@ -394,6 +394,12 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
               output: isError ? undefined : resultContent,
               error: isError ? resultContent : undefined,
             };
+            // Compute tool execution duration from timestamp diff
+            const toolUseTs = new Date(results[idx].timestamp).getTime();
+            const toolResultTs = new Date(m.timestamp).getTime();
+            if (toolUseTs && toolResultTs && toolResultTs > toolUseTs) {
+              results[idx].toolDuration = toolResultTs - toolUseTs;
+            }
           }
         }
 
@@ -476,6 +482,12 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
             output: m.result,
             error: m.error,
           };
+          // Compute tool execution duration from timestamp diff
+          const toolUseTs = new Date(results[i].timestamp).getTime();
+          const toolResultTs = new Date(m.timestamp).getTime();
+          if (toolUseTs && toolResultTs && toolResultTs > toolUseTs) {
+            results[i].toolDuration = toolResultTs - toolUseTs;
+          }
           merged = true;
           break;
         }
