@@ -564,9 +564,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
             // Skip empty/whitespace-only text segments (e.g., before thinking blocks)
             if (!seg.content.trim()) return null;
             const isStillStreaming = isStreaming && isLastSegmentIndex(index);
-            const chatState = useChatStore.getState();
-            const ts = chatState.streamingStartedAt?.toISOString()
-              ?? (chatState.streamCompletedAt ? new Date(chatState.streamCompletedAt).toISOString() : new Date().toISOString());
+            const startedAt = useChatStore.getState().streamingStartedAt;
             return (
               <StreamingErrorBoundary key={`seg-text-${index}`}>
                 <MessageBubble
@@ -574,7 +572,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                     id: `streaming-text-${index}`,
                     type: 'assistant',
                     content: seg.content,
-                    timestamp: ts,
+                    timestamp: startedAt?.toISOString() ?? new Date().toISOString(),
                   }}
                   isStreaming={isStillStreaming}
                 />

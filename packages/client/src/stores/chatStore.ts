@@ -554,7 +554,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       isCompacting: false,
       streamingSessionId: null,
       streamingMessageId: null,
-      streamingStartedAt: null,
       segmentsPendingClear: true,
       segmentClearGeneration: get().segmentClearGeneration + 1,
       streamCompletedAt: Date.now(),
@@ -626,7 +625,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSessionId: null,
       streamingMessageId: null,
       streamingSegments: finalSegments,
-      streamingStartedAt: null,
       segmentsPendingClear: true,
       segmentClearGeneration: get().segmentClearGeneration + 1,
       streamCompletedAt: Date.now(),
@@ -685,7 +683,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
     pendingPermissionBuffer.clear();
     pendingInputBuffer.clear();
-    set({ streamingSegments: [], segmentsPendingClear: false });
+    set({ streamingSegments: [], segmentsPendingClear: false, streamingStartedAt: null });
   },
 
   updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),
