@@ -67,11 +67,11 @@ export function useStreaming() {
     pendingFetchGenRef.current = gen;
     useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
       useChatStore.getState().clearStreamingSegments(gen);
-      pendingFetchGenRef.current = null;
+      if (pendingFetchGenRef.current === gen) pendingFetchGenRef.current = null;
     }).catch(() => {
       // On fetch failure, keep segments visible (don't lose user's data).
       // Segments will be cleared naturally on next send, session switch, or refresh.
-      pendingFetchGenRef.current = null;
+      if (pendingFetchGenRef.current === gen) pendingFetchGenRef.current = null;
     });
   }, []);
 
