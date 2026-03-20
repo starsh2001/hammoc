@@ -124,6 +124,8 @@ export const sessionController = {
         runningStreamStartedAt: getRunningStreamStartedAt(sessionId),
       });
 
+      const completedBuffer = getCompletedBuffer(sessionId);
+
       // Return empty messages for non-existent sessions (e.g., pre-allocated UUID with no messages yet)
       const response: HistoryMessagesResponse = result ?? {
         messages: [],
@@ -133,7 +135,6 @@ export const sessionController = {
 
       // Merge completed buffer messages when available (stream finished but
       // JSONL may not yet be flushed). Only for the latest page (offset 0).
-      const completedBuffer = getCompletedBuffer(sessionId);
       if (completedBuffer && offset === 0) {
         const bufferMessages = transformBufferToHistoryMessages(completedBuffer);
         if (bufferMessages.length > 0) {

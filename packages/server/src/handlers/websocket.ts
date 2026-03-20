@@ -7,7 +7,7 @@
 
 import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
-import { existsSync } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -1853,10 +1853,62 @@ async function handleChatSend(
     // Attempt to send — if resume fails, retry without resume (create fresh session).
     // This handles cases where the first send was aborted before SDK created the session file,
     // leaving the client with messages (from partial response) but no actual SDK session on disk.
+    //
+    // When resuming, gate error-related emissions so the client never sees a flash of error
+    // if the retry succeeds. The gate is released (flushed or discarded) after the decision.
+    const isResumeAttempt = !!isResuming;
+    const origOnResultError = callbacks.onResultError;
+    const origOnComplete = callbacks.onComplete;
+    const origOnError = callbacks.onError;
+    let gatedResultError: unknown = null;
+    let gatedComplete: unknown = null;
+
+    /** Restore all callbacks to their original (ungated) versions */
+    const ungateCallbacks = () => {
+      callbacks.onResultError = origOnResultError;
+      callbacks.onComplete = origOnComplete;
+      callbacks.onError = origOnError;
+    };
+
+    if (isResumeAttempt) {
+      callbacks.onResultError = (data) => {
+        if (!hasEmittedOutput) {
+          gatedResultError = data;
+        } else {
+          origOnResultError?.(data);
+        }
+      };
+      callbacks.onComplete = (response) => {
+        if (!hasEmittedOutput && gatedResultError) {
+          gatedComplete = response;
+        } else {
+          origOnComplete?.(response);
+        }
+      };
+      // Also gate onError (thrown errors call onError before re-throwing)
+      callbacks.onError = (error) => {
+        if (!hasEmittedOutput) {
+          // Swallow — the catch block below handles retry or re-throws
+          return;
+        }
+        origOnError?.(error);
+      };
+    }
+
     try {
-      await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
+      const sendResult = await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
         resetTimeout(`raw:${messageType}`);
       });
+      // SDK may return "No conversation found" as an error result (not a thrown exception).
+      // Convert to a thrown error so the retry logic below can handle it.
+      if (sendResult.isError && isResumeAttempt && !abortController.signal.aborted && !hasEmittedOutput) {
+        log.info(`[RESUME-RETRY] SDK returned error result while resuming, converting to thrown error for retry`);
+        throw new Error(sendResult.content || 'Resume returned error result');
+      }
+      // Resume succeeded or non-resume — flush any gated events
+      ungateCallbacks();
+      if (gatedResultError) origOnResultError?.(gatedResultError as never);
+      if (gatedComplete) origOnComplete?.(gatedComplete as never);
     } catch (sendError) {
       // Resume failed — retry once without resume so SDK creates a fresh session.
       // Guards:
@@ -1867,12 +1919,30 @@ async function handleChatSend(
       const parsedError = parseSDKError(sendError, lang);
       const isNonSessionError = !!parsedError.code && parsedError.code !== SDKErrorCode.UNKNOWN;
       if (
-        isResuming
+        isResumeAttempt
         && !abortController.signal.aborted
         && !hasEmittedOutput
         && !isNonSessionError
       ) {
-        log.info(`[CHAIN-DRAIN] resume failed, retrying without resume: sessionId=${sessionId}, error=${parsedError.message.slice(0, 120)}`);
+        log.info(`[RESUME-RETRY] resume failed, retrying without resume: sessionId=${sessionId}, error=${parsedError.message.slice(0, 120)}`);
+        // Discard gated events and restore original callbacks for the retry
+        gatedResultError = null;
+        gatedComplete = null;
+        ungateCallbacks();
+        // Delete stale session file from the aborted first send so the SDK
+        // can create a fresh session with the same ID (avoids "Session ID already in use").
+        if (sessionId) {
+          const encoded = sessionService.encodeProjectPath(workingDirectory);
+          const staleFile = sessionService.getSessionFilePath(encoded, sessionId);
+          try {
+            if (existsSync(staleFile)) {
+              unlinkSync(staleFile);
+              log.info(`[RESUME-RETRY] deleted stale session file: ${staleFile}`);
+            }
+          } catch (e) {
+            log.warn(`[RESUME-RETRY] failed to delete stale session file: ${staleFile}`, e);
+          }
+        }
         const retryOptions = { ...chatOptions, resume: undefined, sessionId };
         delete retryOptions.resume;
         resetTimeout('resume-retry');
@@ -1880,6 +1950,10 @@ async function handleChatSend(
           resetTimeout(`raw:${messageType}`);
         });
       } else {
+        // Not retrying — flush gated error events before re-throwing
+        ungateCallbacks();
+        if (gatedResultError) origOnResultError?.(gatedResultError as never);
+        if (gatedComplete) origOnComplete?.(gatedComplete as never);
         throw sendError;
       }
     }
