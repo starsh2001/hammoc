@@ -389,10 +389,16 @@ export function ChatPage() {
   const handleAbort = useCallback(() => {
     if (useChatStore.getState().isStreaming) {
       abortResponse();
+      const gen = useChatStore.getState().segmentClearGeneration;
       if (projectSlug && sessionId) {
         fetchMessages(projectSlug, sessionId, { silent: true, force: true }).then(() => {
-          clearStreamingSegments();
+          clearStreamingSegments(gen);
         });
+        // On fetch failure, keep segments visible (don't lose data).
+        // Cleared naturally on next send, session switch, or refresh.
+      } else {
+        // No session context — clear segments to avoid permanent freeze
+        clearStreamingSegments(gen);
       }
     } else if (useChainStore.getState().chainItems.length > 0 && sessionId) {
       // Not streaming but chain is pending (gap between chain items) —

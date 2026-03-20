@@ -8,7 +8,8 @@ import { Request, Response } from 'express';
 import { SESSION_ERRORS, SessionListResponse, HistoryMessagesResponse, DeleteSessionsBatchRequest, UpdateSessionNameRequest } from '@hammoc/shared';
 import { sessionService } from '../services/sessionService.js';
 import { projectService } from '../services/projectService.js';
-import { getActiveStreamSessionIds, getStreamStartedAt, getRunningStreamStartedAt } from '../handlers/websocket.js';
+import { getActiveStreamSessionIds, getStreamStartedAt, getRunningStreamStartedAt, getCompletedBuffer } from '../handlers/websocket.js';
+import { transformBufferToHistoryMessages } from '../services/historyParser.js';
 
 export const sessionController = {
   /**
@@ -129,6 +130,20 @@ export const sessionController = {
         pagination: { total: 0, limit, offset, hasMore: false },
         lastAgentCommand: null,
       };
+
+      // Merge completed buffer messages when available (stream finished but
+      // JSONL may not yet be flushed). Only for the latest page (offset 0).
+      const completedBuffer = getCompletedBuffer(sessionId);
+      if (completedBuffer && offset === 0) {
+        const bufferMessages = transformBufferToHistoryMessages(completedBuffer);
+        if (bufferMessages.length > 0) {
+          const existingIds = new Set(response.messages.map(m => m.id));
+          const unique = bufferMessages.filter(m => !existingIds.has(m.id));
+          response.messages = [...response.messages, ...unique];
+          response.pagination.total += unique.length;
+        }
+      }
+
       res.json(response);
     } catch {
       res.status(SESSION_ERRORS.SESSION_PARSE_ERROR.httpStatus).json({

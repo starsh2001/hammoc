@@ -48,6 +48,33 @@ export function useStreaming() {
   // Track seen permission request IDs to avoid duplicates on reconnect
   const seenPermissionIds = useRef(new Set<string>());
 
+  // Track pending fetch generation to prevent duplicate fetches for the same
+  // stream completion (e.g. message:complete + stream:status for same stream).
+  const pendingFetchGenRef = useRef<number | null>(null);
+
+  /** Fetch authoritative history from server after stream completion/abort.
+   *  Uses generation counter to deduplicate and prevent stale clears. */
+  const fetchAndClearSegments = useCallback(() => {
+    const gen = useChatStore.getState().segmentClearGeneration;
+    // Deduplicate: skip if a fetch is already in progress for this generation
+    if (pendingFetchGenRef.current === gen) return;
+    const { currentProjectSlug, currentSessionId } = useMessageStore.getState();
+    if (!currentProjectSlug || !currentSessionId) {
+      // No session context — clear segments immediately to avoid permanent freeze
+      useChatStore.getState().clearStreamingSegments(gen);
+      return;
+    }
+    pendingFetchGenRef.current = gen;
+    useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
+      useChatStore.getState().clearStreamingSegments(gen);
+      pendingFetchGenRef.current = null;
+    }).catch(() => {
+      // On fetch failure, keep segments visible (don't lose user's data).
+      // Segments will be cleared naturally on next send, session switch, or refresh.
+      pendingFetchGenRef.current = null;
+    });
+  }, []);
+
   // Handle keyboard shortcuts to abort streaming (Story 5.4)
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (!useChatStore.getState().isStreaming) return;
@@ -347,16 +374,9 @@ export function useStreaming() {
         }
       }
 
-      // Freeze segments and fetch authoritative history from server.
-      // Server API merges JSONL + completedBuffer so data is available
-      // even before SDK flushes to disk.
+      // Freeze segments and fetch authoritative history from server
       completeStreaming();
-      const { currentProjectSlug, currentSessionId } = useMessageStore.getState();
-      if (currentProjectSlug && currentSessionId) {
-        useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
-          useChatStore.getState().clearStreamingSegments();
-        });
-      }
+      fetchAndClearSegments();
     };
 
     // Handle tool call start - add tool segment (skip AskUserQuestion — handled via permission:request)
@@ -732,12 +752,7 @@ export function useStreaming() {
           });
           // Freeze segments and fetch authoritative history from server
           completeStreaming();
-          const { currentProjectSlug, currentSessionId } = useMessageStore.getState();
-          if (currentProjectSlug && currentSessionId) {
-            useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
-              useChatStore.getState().clearStreamingSegments();
-            });
-          }
+          fetchAndClearSegments();
         } else {
           debugLog.stream('stream:status → inactive, no-op (not streaming)');
         }
@@ -773,12 +788,7 @@ export function useStreaming() {
       if (wasStreaming) {
         flushChunkQueue();
         completeStreaming();
-        const { currentProjectSlug, currentSessionId } = useMessageStore.getState();
-        if (currentProjectSlug && currentSessionId) {
-          useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
-            useChatStore.getState().clearStreamingSegments();
-          });
-        }
+        fetchAndClearSegments();
       }
 
       if (data.reason === 'user-abort') {
