@@ -393,9 +393,10 @@ export function ChatPage() {
       if (projectSlug && sessionId) {
         fetchMessages(projectSlug, sessionId, { silent: true, force: true }).then(() => {
           clearStreamingSegments(gen);
+        }).catch(() => {
+          // On fetch failure, keep segments visible (don't lose data).
+          // Cleared naturally on next send, session switch, or refresh.
         });
-        // On fetch failure, keep segments visible (don't lose data).
-        // Cleared naturally on next send, session switch, or refresh.
       } else {
         // No session context — clear segments to avoid permanent freeze
         clearStreamingSegments(gen);
