@@ -514,3 +514,108 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
 
   return results;
 }
+
+/**
+ * Convert completed stream buffer events to HistoryMessages.
+ * Used by getMessages API to merge recent stream data with JSONL history
+ * when the SDK hasn't flushed to disk yet.
+ */
+export function transformBufferToHistoryMessages(
+  events: Array<{ event: string; data: unknown }>,
+): HistoryMessage[] {
+  const messages: HistoryMessage[] = [];
+  let messageId: string | null = null;
+  let pendingThinking: string | undefined;
+  let textAccumulator = '';
+  const toolResults = new Map<string, { result: { success: boolean; output?: string; error?: string } }>();
+
+  // First pass: collect tool results and extract message:complete timestamp
+  let completeTimestamp: string | undefined;
+  for (const { event, data } of events) {
+    if (event === 'tool:result') {
+      const d = data as { toolCallId: string; result: { success: boolean; output?: string; error?: string } };
+      toolResults.set(d.toolCallId, { result: d.result });
+    } else if (event === 'message:complete') {
+      const d = data as { timestamp?: Date | string };
+      if (d.timestamp) {
+        completeTimestamp = d.timestamp instanceof Date ? d.timestamp.toISOString() : d.timestamp;
+      }
+    }
+  }
+  // Fallback timestamp — prefer message:complete time over parse time
+  const baseTimestamp = completeTimestamp ?? new Date().toISOString();
+
+  const flushText = () => {
+    if (textAccumulator && messageId) {
+      messages.push({
+        id: `${messageId}-text-${messages.length}`,
+        type: 'assistant',
+        content: textAccumulator,
+        timestamp: baseTimestamp,
+        ...(pendingThinking && { thinking: pendingThinking }),
+      });
+      pendingThinking = undefined;
+      textAccumulator = '';
+    }
+  };
+
+  for (const { event, data } of events) {
+    switch (event) {
+      case 'session:created':
+      case 'session:resumed': {
+        const d = data as { sessionId: string };
+        if (!messageId) messageId = d.sessionId;
+        break;
+      }
+      case 'message:chunk': {
+        const d = data as { messageId?: string; content: string };
+        if (d.messageId) messageId = d.messageId;
+        textAccumulator += d.content;
+        break;
+      }
+      case 'thinking:chunk': {
+        const d = data as { content: string };
+        flushText();
+        pendingThinking = (pendingThinking ?? '') + d.content;
+        break;
+      }
+      case 'tool:call': {
+        const d = data as { id: string; name: string; input?: Record<string, unknown>; startedAt?: number };
+        flushText();
+        const result = toolResults.get(d.id);
+        messages.push({
+          id: `${messageId}-tool-${d.id}`,
+          type: 'tool_use',
+          content: `Calling ${d.name}`,
+          // Use startedAt as timestamp if available (actual event time)
+          timestamp: d.startedAt ? new Date(d.startedAt).toISOString() : new Date().toISOString(),
+          toolName: d.name,
+          toolInput: d.input,
+          ...(pendingThinking && { thinking: pendingThinking }),
+          ...(result && { toolResult: result.result }),
+          // toolDuration is not computed from buffer — JSONL parser computes
+          // it accurately from tool_use/tool_result timestamp diff instead.
+        });
+        pendingThinking = undefined;
+        break;
+      }
+      case 'message:complete': {
+        flushText();
+        if (pendingThinking && messageId) {
+          messages.push({
+            id: `${messageId}-thinking-${messages.length}`,
+            type: 'assistant',
+            content: '',
+            timestamp: baseTimestamp,
+            thinking: pendingThinking,
+          });
+          pendingThinking = undefined;
+        }
+        break;
+      }
+    }
+  }
+
+  flushText();
+  return messages;
+}
