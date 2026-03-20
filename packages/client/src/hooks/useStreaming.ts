@@ -79,11 +79,10 @@ export function useStreaming() {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (!useChatStore.getState().isStreaming) return;
 
-    // Escape key → abort
+    // Escape key → abort (abortResponse handles fetch+clear internally)
     if (event.key === 'Escape') {
       event.preventDefault();
       abortResponse();
-      fetchAndClearSegments();
       return;
     }
 
@@ -91,14 +90,12 @@ export function useStreaming() {
     if (event.key === 'c' && (event.ctrlKey || event.metaKey)) {
       const selection = window.getSelection();
       if (!selection || selection.isCollapsed) {
-        // No text selected — treat as abort
         event.preventDefault();
         abortResponse();
-        fetchAndClearSegments();
       }
       // If text is selected, let default copy behavior proceed
     }
-  }, [abortResponse, fetchAndClearSegments]);
+  }, [abortResponse]);
 
   useEffect(() => {
     const socket = getSocket();

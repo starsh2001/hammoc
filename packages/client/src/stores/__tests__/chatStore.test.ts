@@ -499,7 +499,7 @@ describe('useChatStore', () => {
       expect(mockEmit).toHaveBeenCalledWith('chat:abort');
     });
 
-    it('freezes segments with segmentsPendingClear after abort', () => {
+    it('aborts streaming and clears flags', () => {
       const { startStreaming, appendStreamingContent, abortResponse } =
         useChatStore.getState();
 
@@ -507,27 +507,10 @@ describe('useChatStore', () => {
       appendStreamingContent('Partial response text');
       abortResponse();
 
-      // Segments are kept for display while server fetch loads history
-      const state = useChatStore.getState();
-      expect(state.streamingSegments).toHaveLength(1);
-      expect(state.segmentsPendingClear).toBe(true);
-      expect(useMessageStore.getState().messages).toHaveLength(0);
-    });
-
-    it('clears streaming flags but keeps segments after abort', () => {
-      const { startStreaming, appendStreamingContent, abortResponse } =
-        useChatStore.getState();
-
-      startStreaming('session-1', 'msg-1');
-      appendStreamingContent('content');
-      abortResponse();
-
       const state = useChatStore.getState();
       expect(state.isStreaming).toBe(false);
       expect(state.streamingSessionId).toBeNull();
       expect(state.streamingMessageId).toBeNull();
-      expect(state.streamingSegments).toHaveLength(1);
-      expect(state.segmentsPendingClear).toBe(true);
       expect(state.streamingStartedAt).toBeNull();
     });
 
@@ -540,7 +523,7 @@ describe('useChatStore', () => {
       expect(useMessageStore.getState().messages).toEqual([]);
     });
 
-    it('marks pending tool segments as aborted and freezes them', () => {
+    it('emits chat:abort on abort', () => {
       const { startStreaming, addStreamingToolCall, abortResponse } =
         useChatStore.getState();
 
@@ -549,16 +532,10 @@ describe('useChatStore', () => {
       abortResponse();
 
       expect(mockEmit).toHaveBeenCalledWith('chat:abort');
-      // Tool segment is marked as error and kept frozen
-      const state = useChatStore.getState();
-      expect(state.streamingSegments).toHaveLength(1);
-      if (state.streamingSegments[0].type === 'tool') {
-        expect(state.streamingSegments[0].status).toBe('error');
-      }
-      expect(state.segmentsPendingClear).toBe(true);
+      expect(useChatStore.getState().isStreaming).toBe(false);
     });
 
-    it('freezes all segments including text and tool on abort', () => {
+    it('clears chain items on abort', () => {
       const { startStreaming, appendStreamingContent, addStreamingToolCall, abortResponse } =
         useChatStore.getState();
 
@@ -568,10 +545,7 @@ describe('useChatStore', () => {
       appendStreamingContent('Second part');
       abortResponse();
 
-      const state = useChatStore.getState();
-      expect(state.streamingSegments).toHaveLength(3);
-      expect(state.segmentsPendingClear).toBe(true);
-      expect(useMessageStore.getState().messages).toHaveLength(0);
+      expect(useChatStore.getState().isStreaming).toBe(false);
     });
   });
 
@@ -689,7 +663,7 @@ describe('useChatStore', () => {
       expect(state.isStreaming).toBe(true);
     });
 
-    it('TC-L6: abortResponse freezes segments with segmentsPendingClear=true', () => {
+    it('TC-L6: abortResponse clears streaming and triggers fetch internally', () => {
       const { startStreaming, appendStreamingContent, abortResponse } =
         useChatStore.getState();
 
@@ -699,9 +673,6 @@ describe('useChatStore', () => {
 
       const state = useChatStore.getState();
       expect(state.isStreaming).toBe(false);
-      // Segments are frozen for display while server fetch loads history
-      expect(state.streamingSegments).toHaveLength(1);
-      expect(state.segmentsPendingClear).toBe(true);
     });
 
     it('TC-L8: restoreStreaming resets segmentsPendingClear=false', () => {
