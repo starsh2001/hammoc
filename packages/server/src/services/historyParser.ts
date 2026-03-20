@@ -620,6 +620,8 @@ export function transformBufferToHistoryMessages(
         break;
       }
       case 'message:complete': {
+        const d = data as { id?: string };
+        if (d.id) messageId = d.id;
         flushText();
         if (pendingThinking && messageId) {
           messages.push({

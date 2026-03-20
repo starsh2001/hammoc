@@ -83,6 +83,7 @@ export function useStreaming() {
     if (event.key === 'Escape') {
       event.preventDefault();
       abortResponse();
+      fetchAndClearSegments();
       return;
     }
 
@@ -93,10 +94,11 @@ export function useStreaming() {
         // No text selected — treat as abort
         event.preventDefault();
         abortResponse();
+        fetchAndClearSegments();
       }
       // If text is selected, let default copy behavior proceed
     }
-  }, [abortResponse]);
+  }, [abortResponse, fetchAndClearSegments]);
 
   useEffect(() => {
     const socket = getSocket();
