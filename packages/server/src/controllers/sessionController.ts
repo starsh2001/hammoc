@@ -141,6 +141,9 @@ export const sessionController = {
           const existingIds = new Set(response.messages.map(m => m.id));
           const unique = bufferMessages.filter(m => !existingIds.has(m.id));
           response.messages = [...response.messages, ...unique];
+          response.messages.sort((a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
           response.pagination.total += unique.length;
         }
       }
