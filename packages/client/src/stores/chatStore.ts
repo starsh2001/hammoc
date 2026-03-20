@@ -622,6 +622,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Freeze segments and fetch authoritative history from server.
     set({
       isStreaming: false,
+      isCompacting: false,
       streamingSessionId: null,
       streamingMessageId: null,
       streamingSegments: finalSegments,

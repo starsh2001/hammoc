@@ -531,7 +531,8 @@ export function transformBufferToHistoryMessages(
   const toolResults = new Map<string, { result: { success: boolean; output?: string; error?: string } }>();
   const toolInputUpdates = new Map<string, Record<string, unknown>>();
 
-  // First pass: collect tool results and input updates
+  // First pass: collect tool results, input updates, and permission responses
+  const permissionResponses = new Map<string, { approved: boolean; response?: unknown }>();
   for (const { event, data } of events) {
     if (event === 'tool:result') {
       const d = data as { toolCallId: string; result: { success: boolean; output?: string; error?: string } };
@@ -539,6 +540,9 @@ export function transformBufferToHistoryMessages(
     } else if (event === 'tool:input-update') {
       const d = data as { toolCallId: string; input: Record<string, unknown> };
       toolInputUpdates.set(d.toolCallId, d.input);
+    } else if (event === 'permission:resolved') {
+      const d = data as { requestId: string; approved: boolean; response?: unknown };
+      permissionResponses.set(d.requestId, { approved: d.approved, response: d.response });
     }
   }
 
@@ -617,6 +621,34 @@ export function transformBufferToHistoryMessages(
           ...(result && { toolResult: result.result }),
         });
         pendingThinking = undefined;
+        break;
+      }
+      case 'permission:request': {
+        const d = data as { id: string; toolCall?: { id: string; name: string; input?: Record<string, unknown> } };
+        if (d.toolCall) {
+          flushText();
+          const resolved = permissionResponses.get(d.id);
+          // Format response as string for toolResult.output
+          let responseStr: string | undefined;
+          if (resolved?.response) {
+            if (typeof resolved.response === 'string') responseStr = resolved.response;
+            else if (Array.isArray(resolved.response)) responseStr = resolved.response.join(', ');
+            else if (typeof resolved.response === 'object') responseStr = Object.values(resolved.response as Record<string, unknown>).flat().join(', ');
+          }
+          messages.push({
+            id: `${messageId}-tool-${d.toolCall.id}`,
+            type: 'tool_use',
+            content: `Calling ${d.toolCall.name}`,
+            timestamp: new Date(ts).toISOString(),
+            toolName: d.toolCall.name,
+            toolInput: d.toolCall.input,
+            ...(pendingThinking && { thinking: pendingThinking }),
+            ...(resolved && responseStr && {
+              toolResult: { success: resolved.approved, output: responseStr },
+            }),
+          });
+          pendingThinking = undefined;
+        }
         break;
       }
       case 'message:complete': {
