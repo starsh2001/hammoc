@@ -384,30 +384,17 @@ export function ChatPage() {
     [chainMode, internalSend, workingDirectory, sessionId, permissionMode, selectedModel]
   );
 
-  // Handle abort — stops streaming, fetches authoritative history from server,
-  // then clears frozen segments once history is loaded.
+  // Handle abort — abortResponse handles fetch+clear internally
   const handleAbort = useCallback(() => {
     if (useChatStore.getState().isStreaming) {
       abortResponse();
-      const gen = useChatStore.getState().segmentClearGeneration;
-      if (projectSlug && sessionId) {
-        fetchMessages(projectSlug, sessionId, { silent: true, force: true }).then(() => {
-          clearStreamingSegments(gen);
-        }).catch(() => {
-          // On fetch failure, keep segments visible (don't lose data).
-          // Cleared naturally on next send, session switch, or refresh.
-        });
-      } else {
-        // No session context — clear segments to avoid permanent freeze
-        clearStreamingSegments(gen);
-      }
     } else if (useChainStore.getState().chainItems.length > 0 && sessionId) {
       // Not streaming but chain is pending (gap between chain items) —
       // emit chain:clear so the server cancels the next scheduled drain.
       getSocket()?.emit('chain:clear', { sessionId });
       useChainStore.getState().clearChainItems();
     }
-  }, [abortResponse, projectSlug, sessionId, fetchMessages, clearStreamingSegments]);
+  }, [abortResponse, sessionId]);
 
   // Handle BMad agent selection (Story 8.3) - Quick Launch
   const handleAgentSelect = useCallback((agentCommand: string) => {

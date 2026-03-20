@@ -619,8 +619,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       return seg;
     });
 
-    // Keep segments visible (segmentsPendingClear) while the caller fetches
-    // authoritative history from the server.
+    // Freeze segments and fetch authoritative history from server.
     set({
       isStreaming: false,
       streamingSessionId: null,
@@ -631,6 +630,19 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       segmentClearGeneration: get().segmentClearGeneration + 1,
       streamCompletedAt: Date.now(),
     });
+
+    // Fetch history + clear segments (same flow as completeStreaming callers)
+    const gen = get().segmentClearGeneration;
+    const { currentProjectSlug, currentSessionId } = useMessageStore.getState();
+    if (currentProjectSlug && currentSessionId) {
+      useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
+        get().clearStreamingSegments(gen);
+      }).catch(() => {
+        // On fetch failure, keep segments visible
+      });
+    } else {
+      get().clearStreamingSegments(gen);
+    }
   },
 
   setPermissionMode: (mode: PermissionMode) => {
