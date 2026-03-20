@@ -528,13 +528,17 @@ export function transformBufferToHistoryMessages(
   let pendingThinking: string | undefined;
   let textAccumulator = '';
   const toolResults = new Map<string, { result: { success: boolean; output?: string; error?: string } }>();
+  const toolInputUpdates = new Map<string, Record<string, unknown>>();
 
-  // First pass: collect tool results and extract message:complete timestamp
+  // First pass: collect tool results, input updates, and message:complete timestamp
   let completeTimestamp: string | undefined;
   for (const { event, data } of events) {
     if (event === 'tool:result') {
       const d = data as { toolCallId: string; result: { success: boolean; output?: string; error?: string } };
       toolResults.set(d.toolCallId, { result: d.result });
+    } else if (event === 'tool:input-update') {
+      const d = data as { toolCallId: string; input: Record<string, unknown> };
+      toolInputUpdates.set(d.toolCallId, d.input);
     } else if (event === 'message:complete') {
       const d = data as { timestamp?: Date | string };
       if (d.timestamp) {
@@ -561,6 +565,30 @@ export function transformBufferToHistoryMessages(
 
   for (const { event, data } of events) {
     switch (event) {
+      case 'user:message': {
+        const d = data as { content: string; sessionId?: string; timestamp?: string; imageCount?: number };
+        if (d.sessionId && !messageId) messageId = d.sessionId;
+        messages.push({
+          id: `${messageId || 'buf'}-user-${messages.length}`,
+          type: 'user',
+          content: d.content,
+          timestamp: d.timestamp || baseTimestamp,
+        });
+        break;
+      }
+      case 'system:task-notification': {
+        const d = data as { taskId: string; status: 'completed' | 'failed' | 'stopped'; summary?: string; toolUseId?: string };
+        messages.push({
+          id: `${messageId || 'buf'}-task-${d.taskId}`,
+          type: 'task_notification',
+          content: d.summary || '',
+          timestamp: baseTimestamp,
+          taskStatus: d.status,
+          taskSummary: d.summary,
+          taskToolUseId: d.toolUseId,
+        });
+        break;
+      }
       case 'session:created':
       case 'session:resumed': {
         const d = data as { sessionId: string };
@@ -582,6 +610,8 @@ export function transformBufferToHistoryMessages(
       case 'tool:call': {
         const d = data as { id: string; name: string; input?: Record<string, unknown>; startedAt?: number };
         flushText();
+        // Use final input from tool:input-update if available, fall back to initial
+        const finalInput = toolInputUpdates.get(d.id) ?? d.input;
         const result = toolResults.get(d.id);
         messages.push({
           id: `${messageId}-tool-${d.id}`,
@@ -590,7 +620,7 @@ export function transformBufferToHistoryMessages(
           // Use startedAt as timestamp if available (actual event time)
           timestamp: d.startedAt ? new Date(d.startedAt).toISOString() : new Date().toISOString(),
           toolName: d.name,
-          toolInput: d.input,
+          toolInput: finalInput,
           ...(pendingThinking && { thinking: pendingThinking }),
           ...(result && { toolResult: result.result }),
           // toolDuration is not computed from buffer — JSONL parser computes
