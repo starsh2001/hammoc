@@ -625,7 +625,8 @@ export function transformBufferToHistoryMessages(
       }
       case 'permission:request': {
         const d = data as { id: string; toolCall?: { id: string; name: string; input?: Record<string, unknown> } };
-        if (d.toolCall) {
+        // Only handle AskUserQuestion here — other tools are already covered by tool:call
+        if (d.toolCall && d.toolCall.name === 'AskUserQuestion') {
           flushText();
           const resolved = permissionResponses.get(d.id);
           // Format response as string for toolResult.output
