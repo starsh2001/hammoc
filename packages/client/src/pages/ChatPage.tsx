@@ -473,7 +473,10 @@ export function ChatPage() {
               useMessageStore.getState().fetchMessages(projectSlug, sessionId, { silent: true });
             }, 3000);
           }
-        } else if (chat.streamingSegments.length > 0) {
+        } else if (chat.streamingSegments.length > 0 && !chat.segmentsPendingClear) {
+          // Only clear non-frozen segments (e.g., leftover from navigation).
+          // Frozen segments (segmentsPendingClear) are cleared by fetchAndClearSegments
+          // after the completion/abort fetch completes.
           clearStreamingSegments();
         }
 

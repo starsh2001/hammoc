@@ -218,10 +218,12 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       // force: bypass cooldown guard (used by resume recovery where JSONL is
       // already flushed but completeStreaming inflated local message count)
       const effectiveCooldown = options?.force ? false : isInCooldown;
+      // Note: segmentsPendingClear is NOT included in the guard — segments are
+      // frozen independently of message store, so there's nothing to protect here.
       const shouldGuard = !isPaginationFetch &&
                           ((isRestoring && response.messages.length <= currentMessages.length) ||
                            (!isRestoring && response.messages.length < currentMessages.length &&
-                            (chatState.isStreaming || chatState.segmentsPendingClear || effectiveCooldown || chatState.isCompacting)));
+                            (chatState.isStreaming || effectiveCooldown || chatState.isCompacting)));
 
       // DETAILED GUARD DEBUG: Track why messages might disappear
       debugLog.message('fetchMessages → guard check', {
@@ -236,7 +238,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         isInCooldown,
         isCompacting: chatState.isCompacting,
         streamCompletedAt: chatState.streamCompletedAt,
-        guardConditionMet: chatState.isStreaming || chatState.segmentsPendingClear || isInCooldown || chatState.isCompacting,
+        guardConditionMet: chatState.isStreaming || effectiveCooldown || chatState.isCompacting,
         paginationOffset: response.pagination?.offset,
         currentAssistantCount: currentMessages.filter(m => m.type === 'assistant').length,
         serverAssistantCount: response.messages.filter(m => m.type === 'assistant').length,

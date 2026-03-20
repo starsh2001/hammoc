@@ -124,7 +124,7 @@ interface ActiveStream {
   sessionId: string;
   sockets: Set<SocketType>;
   abortController: AbortController;
-  buffer: Array<{ event: string; data: unknown }>;
+  buffer: Array<{ event: string; data: unknown; ts: number }>;
   pendingPermissions: Map<string, PendingPermission>;
   status: 'running' | 'completed' | 'error';
   startedAt: number;
@@ -413,7 +413,7 @@ let permissionRequestCounter = 0;
 /** Create a buffered emit function that buffers and broadcasts to all connected sockets */
 function createStreamEmit(stream: ActiveStream) {
   return (event: string, data: unknown) => {
-    stream.buffer.push({ event, data });
+    stream.buffer.push({ event, data, ts: Date.now() });
     for (const sock of stream.sockets) {
       if (sock.connected) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -455,7 +455,7 @@ export function isSessionStreaming(sessionId: string): boolean {
  *  This is separate from activeStreams so new streams can be created immediately
  *  without losing the completed buffer. */
 const completedBuffers = new Map<string, {
-  events: Array<{ event: string; data: unknown }>;
+  events: Array<{ event: string; data: unknown; ts: number }>;
   startedAt: number;
 }>();
 
@@ -487,7 +487,7 @@ export function getRunningStreamStartedAt(sessionId: string): number | null {
 }
 
 /** Get the completed buffer for a session (null if none or expired). */
-export function getCompletedBuffer(sessionId: string): Array<{ event: string; data: unknown }> | null {
+export function getCompletedBuffer(sessionId: string): Array<{ event: string; data: unknown; ts: number }> | null {
   const completed = completedBuffers.get(sessionId);
   return completed ? completed.events : null;
 }
