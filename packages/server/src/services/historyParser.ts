@@ -521,17 +521,17 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
  * when the SDK hasn't flushed to disk yet.
  */
 export function transformBufferToHistoryMessages(
-  events: Array<{ event: string; data: unknown }>,
+  events: Array<{ event: string; data: unknown; ts: number }>,
 ): HistoryMessage[] {
   const messages: HistoryMessage[] = [];
   let messageId: string | null = null;
   let pendingThinking: string | undefined;
   let textAccumulator = '';
+  let lastTs = Date.now();
   const toolResults = new Map<string, { result: { success: boolean; output?: string; error?: string } }>();
   const toolInputUpdates = new Map<string, Record<string, unknown>>();
 
-  // First pass: collect tool results, input updates, and message:complete timestamp
-  let completeTimestamp: string | undefined;
+  // First pass: collect tool results and input updates
   for (const { event, data } of events) {
     if (event === 'tool:result') {
       const d = data as { toolCallId: string; result: { success: boolean; output?: string; error?: string } };
@@ -539,15 +539,8 @@ export function transformBufferToHistoryMessages(
     } else if (event === 'tool:input-update') {
       const d = data as { toolCallId: string; input: Record<string, unknown> };
       toolInputUpdates.set(d.toolCallId, d.input);
-    } else if (event === 'message:complete') {
-      const d = data as { timestamp?: Date | string };
-      if (d.timestamp) {
-        completeTimestamp = d.timestamp instanceof Date ? d.timestamp.toISOString() : d.timestamp;
-      }
     }
   }
-  // Fallback timestamp — prefer message:complete time over parse time
-  const baseTimestamp = completeTimestamp ?? new Date().toISOString();
 
   const flushText = () => {
     if (textAccumulator && messageId) {
@@ -555,7 +548,7 @@ export function transformBufferToHistoryMessages(
         id: `${messageId}-text-${messages.length}`,
         type: 'assistant',
         content: textAccumulator,
-        timestamp: baseTimestamp,
+        timestamp: new Date(lastTs).toISOString(),
         ...(pendingThinking && { thinking: pendingThinking }),
       });
       pendingThinking = undefined;
@@ -563,16 +556,17 @@ export function transformBufferToHistoryMessages(
     }
   };
 
-  for (const { event, data } of events) {
+  for (const { event, data, ts } of events) {
+    lastTs = ts;
     switch (event) {
       case 'user:message': {
-        const d = data as { content: string; sessionId?: string; timestamp?: string; imageCount?: number };
+        const d = data as { content: string; sessionId?: string; imageCount?: number };
         if (d.sessionId && !messageId) messageId = d.sessionId;
         messages.push({
           id: `${messageId || 'buf'}-user-${messages.length}`,
           type: 'user',
           content: d.content,
-          timestamp: d.timestamp || baseTimestamp,
+          timestamp: new Date(ts).toISOString(),
         });
         break;
       }
@@ -582,7 +576,7 @@ export function transformBufferToHistoryMessages(
           id: `${messageId || 'buf'}-task-${d.taskId}`,
           type: 'task_notification',
           content: d.summary || '',
-          timestamp: baseTimestamp,
+          timestamp: new Date(ts).toISOString(),
           taskStatus: d.status,
           taskSummary: d.summary,
           taskToolUseId: d.toolUseId,
@@ -602,29 +596,25 @@ export function transformBufferToHistoryMessages(
         break;
       }
       case 'thinking:chunk': {
-        const d = data as { content: string };
         flushText();
+        const d = data as { content: string };
         pendingThinking = (pendingThinking ?? '') + d.content;
         break;
       }
       case 'tool:call': {
-        const d = data as { id: string; name: string; input?: Record<string, unknown>; startedAt?: number };
+        const d = data as { id: string; name: string; input?: Record<string, unknown> };
         flushText();
-        // Use final input from tool:input-update if available, fall back to initial
         const finalInput = toolInputUpdates.get(d.id) ?? d.input;
         const result = toolResults.get(d.id);
         messages.push({
           id: `${messageId}-tool-${d.id}`,
           type: 'tool_use',
           content: `Calling ${d.name}`,
-          // Use startedAt as timestamp if available (actual event time)
-          timestamp: d.startedAt ? new Date(d.startedAt).toISOString() : new Date().toISOString(),
+          timestamp: new Date(ts).toISOString(),
           toolName: d.name,
           toolInput: finalInput,
           ...(pendingThinking && { thinking: pendingThinking }),
           ...(result && { toolResult: result.result }),
-          // toolDuration is not computed from buffer — JSONL parser computes
-          // it accurately from tool_use/tool_result timestamp diff instead.
         });
         pendingThinking = undefined;
         break;
@@ -636,7 +626,7 @@ export function transformBufferToHistoryMessages(
             id: `${messageId}-thinking-${messages.length}`,
             type: 'assistant',
             content: '',
-            timestamp: baseTimestamp,
+            timestamp: new Date(ts).toISOString(),
             thinking: pendingThinking,
           });
           pendingThinking = undefined;
