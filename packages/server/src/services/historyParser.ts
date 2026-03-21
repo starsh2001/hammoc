@@ -66,7 +66,7 @@ export async function parseJSONLFile(filePath: string): Promise<RawJSONLMessage[
  */
 export async function parseJSONLSessionMeta(
   filePath: string
-): Promise<{ firstPrompt: string; messageCount: number } | null> {
+): Promise<{ firstPrompt: string; messageCount: number; cwd?: string } | null> {
   if (!existsSync(filePath)) {
     return null;
   }
@@ -75,9 +75,10 @@ export async function parseJSONLSessionMeta(
     let firstPrompt = '';
     let messageCount = 0;
     let firstPromptFound = false;
+    let cwd: string | undefined;
     let settled = false;
 
-    const settle = (value: { firstPrompt: string; messageCount: number } | null) => {
+    const settle = (value: { firstPrompt: string; messageCount: number; cwd?: string } | null) => {
       if (settled) return;
       settled = true;
       resolve(value);
@@ -91,6 +92,10 @@ export async function parseJSONLSessionMeta(
       try {
         const parsed = JSON.parse(line);
         const type = parsed.type;
+
+        if (!cwd && parsed.cwd && typeof parsed.cwd === 'string') {
+          cwd = parsed.cwd;
+        }
 
         if (type === 'user' || type === 'assistant') {
           messageCount++;
@@ -120,7 +125,7 @@ export async function parseJSONLSessionMeta(
     });
 
     rl.on('close', () => {
-      settle({ firstPrompt, messageCount });
+      settle({ firstPrompt, messageCount, cwd });
     });
 
     rl.on('error', () => {

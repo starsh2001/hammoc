@@ -24,6 +24,7 @@ export interface SessionIndexEntry {
   messageCount: number;
   created: string;
   modified: string;
+  projectPath?: string;
 }
 
 /**

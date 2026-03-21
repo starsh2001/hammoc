@@ -121,7 +121,9 @@ vi.mock('../../handlers/websocket.js', () => ({
 const mockProjectService = {
   resolveOriginalPath: vi.fn().mockResolvedValue('/mock/project/path'),
   readSessionNamesBySlug: vi.fn().mockResolvedValue({ 'session-id-1': 'my-session' }),
+  readSessionNames: vi.fn().mockResolvedValue({ 'session-id-1': 'my-session' }),
   updateSessionName: vi.fn().mockResolvedValue(undefined),
+  updateSessionNameByPath: vi.fn().mockResolvedValue(undefined),
 };
 
 // Mock notificationService
@@ -271,22 +273,48 @@ describe('QueueService', () => {
   });
 
   describe('TC-QR-5: @save calls projectService.updateSessionName', () => {
-    it('should call updateSessionName with correct args', async () => {
+    it('should call updateSessionNameByPath with correct args', async () => {
       const items = [
         createPromptItem('', { saveSessionName: 'my-save' }),
       ];
 
       await queueService.start(items, 'test-project', 'existing-session');
 
-      expect(mockProjectService.updateSessionName).toHaveBeenCalledWith(
-        'test-project', 'existing-session', 'my-save'
+      expect(mockProjectService.updateSessionNameByPath).toHaveBeenCalledWith(
+        '/mock/project/path', 'existing-session', 'my-save'
       );
+    });
+
+    it('should pause with error when no active session', async () => {
+      const items = [
+        createPromptItem('', { saveSessionName: 'my-save' }),
+      ];
+
+      // No sessionId provided → currentSessionId is null
+      await queueService.start(items, 'test-project');
+
+      const state = queueService.getState();
+      expect(state.isPaused).toBe(true);
+      expect(mockProjectService.updateSessionNameByPath).not.toHaveBeenCalled();
+    });
+
+    it('should pause with error when updateSessionNameByPath throws', async () => {
+      mockProjectService.updateSessionNameByPath.mockRejectedValueOnce(new Error('disk full'));
+
+      const items = [
+        createPromptItem('', { saveSessionName: 'my-save' }),
+      ];
+
+      await queueService.start(items, 'test-project', 'existing-session');
+
+      const state = queueService.getState();
+      expect(state.isPaused).toBe(true);
     });
   });
 
   describe('TC-QR-6: @load performs reverse name lookup and sets sessionId', () => {
     it('should set sessionId from session-names.json reverse lookup', async () => {
-      mockProjectService.readSessionNamesBySlug.mockResolvedValueOnce({
+      mockProjectService.readSessionNames.mockResolvedValueOnce({
         'session-id-1': 'my-session',
       });
 
@@ -304,7 +332,7 @@ describe('QueueService', () => {
 
   describe('TC-QR-7: @load with unknown name pauses with error', () => {
     it('should pause with error when session name not found', async () => {
-      mockProjectService.readSessionNamesBySlug.mockResolvedValueOnce({});
+      mockProjectService.readSessionNames.mockResolvedValueOnce({});
 
       const items = [
         createPromptItem('Continue', { loadSessionName: 'nonexistent' }),
