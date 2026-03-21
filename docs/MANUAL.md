@@ -58,7 +58,7 @@ npm run dev
 
 1. Open http://localhost:3000 in your browser
 2. **Password Setup**: Set an admin password on first visit. This protects your instance from unauthorized access.
-3. **Login**: Enter your password to sign in. **"Stay signed in"** keeps you logged in for 30 days (checked by default). After 5 failed attempts, login is locked for 30 seconds with a countdown timer.
+3. **Login**: Enter your password to sign in. **"Stay signed in"** keeps you logged in for 30 days (checked by default). After too many failed attempts, login is temporarily locked with a countdown timer.
 4. **CLI Verification**: The onboarding wizard checks that Claude Code CLI is installed and authenticated. Follow the prompts if any step fails.
 5. **Project Selection**: Choose an existing Claude Code project or create a new one.
 
@@ -72,7 +72,7 @@ http://<your-computer-ip>:3000
 
 - Desktop: Enter sends message, Shift+Enter for new line
 - Mobile (touch devices): Enter adds new line, tap the send button to send
-- **Pull-to-refresh**: Swipe down on the session list to refresh (80px threshold)
+- **Pull-to-refresh**: Swipe down on the session list to refresh
 
 ### 1.5 CLI Options
 
@@ -98,21 +98,18 @@ npx hammoc --trust-proxy --cors-origin https://hammoc.yourdomain.com
 ```
 
 **What `--trust-proxy` enables:**
-- Reads real client IP from proxy headers (`CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`)
+- Reads real client IP from proxy headers for correct rate limiting and access control
 - Sets session cookies with `Secure` flag (HTTPS-only)
-- Enables Express `trust proxy` for correct protocol detection
 
 **What `--cors-origin` does:**
 - Restricts cross-origin requests to the specified URL only
 - Without it, any website can make authenticated requests to your Hammoc instance
 
 **Security features (always active, no configuration needed):**
-- Helmet.js security headers (CSP, X-Frame-Options, HSTS, X-Content-Type-Options)
-- Server management APIs (restart, update) restricted to loopback only (127.0.0.1)
+- Security headers (CSP, X-Frame-Options, HSTS, etc.)
+- Server management APIs (restart, update) restricted to localhost only
 - Terminal access restricted to local network IPs
 - Rate limiting (200 req/min/IP by default, adjustable via `--rate-limit`)
-- Strict IP validation with spoofing protection (rightmost XFF parsing)
-- Debug endpoints disabled in production
 
 > **Note:** For multi-hop proxy setups (CDN → Load Balancer → nginx → Hammoc), increase the rate limit with `--rate-limit 1000` since multiple users may share the same proxy IP.
 
@@ -141,7 +138,7 @@ The chat interface is the core of Hammoc. It provides a rich, real-time conversa
 - Type your message in the input area at the bottom
 - **Desktop**: Press `Enter` to send, `Shift+Enter` for a new line
 - **Mobile**: Press `Enter` for a new line, tap the send button to send
-- The input area auto-expands up to 5 lines, then scrolls
+- The input area auto-expands as you type
 
 ### 2.2 Streaming Responses
 
@@ -208,9 +205,8 @@ When Claude modifies files, a diff viewer shows the changes:
 - **Inline mode** — Unified diff view (narrow screens or mobile)
 - **Syntax highlighting** — Language-aware coloring
 - **Diff navigation** — `F7` next change, `Shift+F7` previous change
-- **Large file handling** — Files over 5,000 lines are handled with optimized rendering
+- **Large file handling** — Very large files are handled with optimized rendering
 - **Responsive layout** — Automatically switches between side-by-side and inline modes
-- Powered by CodeMirror 6 merge view
 
 ### 2.8 Permission Requests
 
@@ -223,7 +219,7 @@ Depending on your permission mode, Claude may ask for approval before modifying 
 
 ### 2.9 Prompt Chaining
 
-Queue multiple prompts for sequential execution. Chain state is managed **server-side**, enabling multi-browser sync and background execution.
+Queue multiple prompts for sequential execution. Chain state is managed server-side, enabling multi-browser sync and background execution.
 
 1. Toggle **chain mode** ON via the chain button (link icon next to send) or hold `Ctrl`
 2. Type your first prompt and send it — the send button label changes to **"Add to chain"**
@@ -233,14 +229,12 @@ Queue multiple prompts for sequential execution. Chain state is managed **server
    - **Collapsed mode** — First prompt preview + "+N" count indicator
    - **Expanded mode** — Full list with individual **Remove** buttons (click to expand when 2+ items)
    - **Cancel all** — Clear the entire chain
-6. Each prompt auto-executes when the previous one completes (1-second delay between items)
+6. Each prompt auto-executes when the previous one completes
 
 **Server-side features:**
-- **Multi-browser sync** — Chain state is synchronized across all browser tabs/windows via WebSocket
+- **Multi-browser sync** — Chain state is synchronized across all browser tabs/windows
 - **Background execution** — Chain continues running even if all browsers are closed
-- **Auto-retry** — Failed items are retried up to 3 times before being marked as failed
-- **Failure persistence** — Failed chain items are saved to disk and survive server restarts
-- **Per-item context** — Each chain item preserves its own working directory, permission mode, and model selection
+- **Auto-retry** — Failed items are automatically retried before being marked as failed
 
 ### 2.10 Context Usage
 
@@ -250,8 +244,8 @@ Monitor token usage in real-time:
 - **Cost display** — Estimated cost for the session
 - **Cache tokens** — Cache creation and read token counts
 - **Rate limit dots** — 5h/7d utilization indicators in the input area
-- **Color thresholds** — Green (normal), Yellow (≥50%), Red (≥80%)
-- **Context compaction** — Click the usage donut to trigger compaction, which summarizes the conversation to free up context space. When usage exceeds 90% (critical), clicking instead creates a new session
+- **Color thresholds** — Green (normal), Yellow (moderate), Red (high usage)
+- **Context compaction** — Click the usage donut to trigger compaction, which summarizes the conversation to free up context space. At critical usage levels, clicking instead creates a new session
 
 ### 2.11 Aborting Responses
 
@@ -275,9 +269,9 @@ Dictate messages using your browser's built-in speech recognition:
 
 - **Microphone button** — Located inside the chat input area (right side). Only shown when the browser supports the Web Speech API (Chrome, Edge, Safari)
 - **Toggle** — Click the mic button to start/stop listening
-- **Visual indicator** — Green pulsing ring animation while actively listening
+- **Visual indicator** — Green indicator while actively listening
 - **Language-aware** — Automatically matches the app's language setting (English, Korean, Chinese, Japanese, Spanish, Portuguese)
-- **Transcript appending** — Recognized text is appended to the current input (does not replace existing text)
+- Recognized text is added to the current input without replacing existing text
 - **Auto-stop** — Voice recognition stops automatically when sending a message or when the session becomes locked
 - **Error handling** — Toast notification shown if microphone access is denied or recognition fails
 
@@ -300,7 +294,7 @@ Access the session list via the sidebar or quick panel:
 - **Preview** — First prompt of each session
 - **Session name badge** — Custom name shown as a blue badge (if renamed)
 - **Agent badge** — Active BMad agent shown as a purple badge (if set)
-- **Session ID** — Truncated monospace identifier
+- **Session ID** — Truncated identifier
 - **Message count** — Number of messages in the session
 - **Date** — When the session was last active
 - **Streaming indicator** — Green dot with animation when streaming
@@ -316,7 +310,7 @@ Access the session list via the sidebar or quick panel:
 
 Two distinct search modes:
 
-- **By name/ID** — Quick client-side filtering of the session list by name or session ID
+- **By name/ID** — Client-side filtering of the session list by name or session ID
 - **By content** — Toggle "Search content" to search through actual conversation messages (server-side, slower but thorough)
 - Matching sessions are filtered and displayed in the list
 - "Load more" pagination for large result sets
@@ -396,7 +390,7 @@ Click the star button (★) on the favorites bar to open the management popup:
 
 ### 5.1 Project List
 
-The project list page shows all your Claude Code projects in a responsive grid (1–4 columns):
+The project list page shows all your Claude Code projects in a responsive grid:
 
 Each project card displays:
 
@@ -405,7 +399,7 @@ Each project card displays:
 - **Session count** — Number of chat sessions
 - **Last modified** — When the project was last active
 - **BMad badge** — Indicates BMAD-METHOD enabled projects
-- **Status indicators** — Active sessions (green dot), queue status badge, terminal count (real-time via WebSocket)
+- **Status indicators** — Active sessions (green dot), queue status badge, terminal count (updates in real-time)
 
 Each card has a **kebab menu** (⋮) with:
 
@@ -419,10 +413,10 @@ Each card has a **kebab menu** (⋮) with:
 
 1. Click **"New Project"** on the project list page
 2. Enter the project directory path
-3. The path is validated on blur (must exist, must be a valid directory)
+3. The path is validated automatically (must exist, must be a valid directory)
 4. If the path already belongs to an existing project, a warning with "Navigate to existing" link appears
 5. Optionally enable BMad Method initialization with version selection
-6. Rate limited: 10 creations per minute
+6. Rate limited to prevent abuse
 
 ### 5.3 Project Settings
 
@@ -447,7 +441,7 @@ Clicking a project card opens the Overview tab:
 - **Stats cards** — Three cards showing Total Sessions, Total Messages, and Active Sessions
 - **Recent Sessions** — Last 5 sessions with streaming indicators, session name badges, and message counts. Click to navigate directly to the session
 - **Quick Start** — Buttons for New Session, Queue Runner, and File Explorer
-- **Active streaming banner** — Green banner shown when sessions are actively streaming, with animated pulse indicator
+- **Active streaming banner** — Green banner shown when sessions are actively streaming
 
 For BMad projects, additional sections appear above this standard overview (see §11.4).
 
@@ -489,14 +483,14 @@ Access the file explorer from the sidebar tab. Toggle between views with the too
 - Paste files from clipboard (`Ctrl+V`) while the file explorer is focused
 
 **Toolbar**
-- **Search** — Server-side file search with debounce (300ms)
+- **Search** — File search with real-time filtering
 - **Hidden files** — Toggle visibility of ignored patterns (`.git`, `node_modules`, `.env`, `dist`, etc.)
 - **View toggle** — Switch between Grid and List views
 - Default view mode configurable in settings
 
 ### 6.2 Text Editor
 
-Click any text file to open it in a fullscreen overlay editor (CodeMirror):
+Click any text file to open it in the built-in editor:
 
 - **Syntax highlighting** — Language-aware (detected from file extension)
 - **Line numbers** and **active line highlighting**
@@ -539,7 +533,7 @@ Access files without leaving the chat:
 
 ### 7.1 Git Status
 
-The Git tab shows the current repository state with auto-polling every 30 seconds:
+The Git tab shows the current repository state with automatic refresh:
 
 - **Top bar** — Branch selector dropdown + Pull/Push buttons
 - **File groups** — Three collapsible sections (chevron toggle), each with file count badge:
@@ -547,7 +541,7 @@ The Git tab shows the current repository state with auto-polling every 30 second
   - **Unstaged Changes** — Modified files not yet staged (status indicators: M yellow, D red)
   - **Untracked Files** — New files not tracked by Git (status indicator: ?)
 - **File click** — Clicking a file name opens the Diff viewer slide panel (see 7.8)
-- **Error banner** — Git errors appear at the top and auto-clear after 5 seconds; dismiss manually with X
+- **Error banner** — Git errors appear at the top and auto-clear; dismiss manually with X
 - **Clean state** — When no changes exist, a green checkmark with "No changes" message is shown
 
 ### 7.2 Staging Files
@@ -572,13 +566,13 @@ The Git tab shows the current repository state with auto-polling every 30 second
 - **Branch list** — All local branches displayed; current branch highlighted with a blue checkmark
 - **Create branch** — Input field at the bottom of the dropdown; press Enter to create
 - **Switch branch** — Click on a branch name to switch
-- **Uncommitted changes warning** — If there are staged, unstaged, or untracked files, a ConfirmModal asks for confirmation before switching
+- **Uncommitted changes warning** — If there are staged, unstaged, or untracked files, a confirmation dialog appears before switching
 - **Keyboard navigation** — ArrowUp/Down to navigate, Enter to select, Escape to close dropdown
 
 ### 7.5 Commit History
 
 - Browse recent commits (up to 20 in the full tab):
-  - Short commit hash (7 characters, monospace, blue)
+  - Short commit hash
   - Commit message
   - Author name
   - Relative timestamp (e.g., "2 hours ago", "3 days ago")
@@ -588,7 +582,7 @@ The Git tab shows the current repository state with auto-polling every 30 second
 - **Pull** — Fetch and merge remote changes (↓ arrow button)
 - **Push** — Upload local commits to remote (↑ arrow button)
 - **Ahead/Behind counts** — Each button shows the number of commits ahead or behind the remote
-- Errors displayed in the error banner (auto-clears after 5 seconds)
+- Errors displayed in the error banner
 
 ### 7.7 Quick Git Panel
 
@@ -597,23 +591,22 @@ Lightweight Git access from the quick panel side bar:
 - **Branch name** with changed file count badge (e.g., "3 changes")
 - **Commit input** — Textarea for commit message
 - **"Stage All & Commit"** — Single green button that automatically stages all unstaged/untracked files and commits in one action
-- **Success message** — Displayed for 3 seconds after a successful commit
+- **Success message** — Displayed briefly after a successful commit
 - **Recent commits** — Shows only the 3 most recent commits (hash, timestamp, message)
 - **"View in Git Tab"** link — Navigates to the full Git tab for advanced operations
 - **Git init support** — If the project is not a Git repository, shows an init button
 
 ### 7.8 Diff Viewer
 
-- Clicking a file in the Git tab opens a **slide panel** from the right side (600px wide, max 80vw)
-- Shows the unified diff for the selected file using CodeMirror
+- Clicking a file in the Git tab opens a **slide panel** from the right side
+- Shows the unified diff for the selected file
 - **Close** — Click X button, click the backdrop, or press Escape
-- Animated slide-in/out transition (300ms)
 
 ### 7.9 Git Repository Initialization
 
 If the project directory is not a Git repository:
 
-- **Git tab** — Shows a centered "Initialize Repository" view with a purple Git icon and init button
+- **Git tab** — Shows an "Initialize Repository" button
 - **Quick Git panel** — Shows a message and init button
 - After initialization, the Git status refreshes automatically
 
@@ -625,18 +618,16 @@ If the project directory is not a Git repository:
 
 Full terminal access in your browser:
 
-- **Shell emulation** — Real PTY (pseudo-terminal) connection via Socket.io
+- **Shell emulation** — Real terminal connection to your system shell
 - **Working directory** — Opens in your project directory
 - Supports all shell commands, interactive programs, and TUI apps
-- Powered by **xterm.js** with FitAddon for auto-resize (ResizeObserver)
-- **Theme** — Automatically matches app theme (dark/light), Tokyo Night color palette
-- **Font** — JetBrains Mono, Fira Code, Cascadia Code (fallback chain)
-- **Scrollback** — 1000 lines
+- **Theme** — Automatically matches app theme (dark/light)
+- **Font** — Monospace font (JetBrains Mono, Fira Code, Cascadia Code)
 
 ### 8.2 Multiple Tabs
 
 - Click **"New Terminal"** button (+ icon) in the header to open a new terminal tab
-- **Maximum 5 terminals** per project (client-side limit); button disabled at limit
+- **Maximum 5 terminals** per project; button disabled at limit
 - **Tab labels** — Named after shell (e.g., "bash", "zsh"); numbered when multiple share the same shell ("bash 1", "bash 2")
 - **Switch tabs** — Click on a tab label or use **ArrowLeft/ArrowRight** keyboard navigation
 - **Close tabs** — Click the X button on each tab, or press **Delete** to close the active tab
@@ -649,8 +640,7 @@ Font size controls are available both via keyboard shortcuts and GUI buttons in 
 - **GUI controls** — Minus (-), current size display (click to reset), Plus (+) buttons in the header
 - `Ctrl+=` / `Ctrl++` — Increase font size
 - `Ctrl+-` — Decrease font size
-- `Ctrl+0` — Reset to default size (14)
-- Range: 8 to 24
+- `Ctrl+0` — Reset to default size
 
 ### 8.4 Connection Status
 
@@ -658,19 +648,18 @@ The header shows the current terminal status:
 
 - **Connecting** — Spinner with "Connecting..." text
 - **Connected** — Green dot indicator with "Connected" text
-- **Disconnected** — Red dot badge; fullscreen overlay with "Disconnected" message
-- **Exited** — Gray dot badge with exit code; fullscreen overlay with exit code display
+- **Disconnected** — Red dot; "Disconnected" message shown over the terminal
+- **Exited** — Gray dot with exit code displayed
 
 ### 8.5 Security
 
 Terminal access is restricted for safety:
 
-- **Local network only** — Blocked when accessed from outside the local/private network (RFC1918 IP detection). When behind a reverse proxy with `TRUST_PROXY=true`, real client IPs are extracted from proxy headers
-- **Server management restricted to loopback** — Server restart/update APIs only accept connections from `127.0.0.1` / `::1` (stricter than terminal access)
-- **Shield warning** — When access is denied, a ShieldAlert icon with explanation is shown (both in full tab and quick panel)
+- **Local network only** — Blocked when accessed from outside the local/private network. When behind a reverse proxy with `TRUST_PROXY=true`, real client IPs are used for access control
+- **Access denied warning** — When access is denied, a shield icon with explanation is shown
 - **Configurable** — Enable/disable via the `TERMINAL_ENABLED` environment variable (set `false` to disable)
-- **Max sessions** — Server-side limit (default: 10) via `MAX_TERMINAL_SESSIONS`; client limits to 5 per project
-- **Session persistence** — Terminal sessions survive browser refreshes and temporary network interruptions. Sessions persist until explicitly closed by the user, the PTY process exits, or the server shuts down
+- **Max sessions** — Server-side limit of 10 (configurable via `MAX_TERMINAL_SESSIONS`); client limits to 5 per project
+- **Session persistence** — Terminal sessions survive browser refreshes and temporary network interruptions
 
 ### 8.6 Quick Terminal
 
@@ -680,7 +669,7 @@ Lightweight terminal access from the quick panel side bar:
 - **Font size controls** — Minus, size display (click to reset), Plus buttons in the header
 - **"Open in Tab"** link — Navigate to the full Terminal tab
 - **Tab keyboard navigation** — ArrowLeft/Right to switch, Delete to close
-- **Security warning** — Same ShieldAlert display when terminal access is denied
+- **Security warning** — Same access denied warning when terminal access is restricted
 
 ---
 
@@ -690,7 +679,7 @@ The Queue Runner automates sequences of prompts for batch processing.
 
 ### 9.1 Queue Editor
 
-The editor provides a monospace code area with **syntax highlighting**:
+The editor provides **syntax highlighting**:
 
 - **Directives** (`@new`, `@pause`, etc.) — purple
 - **Directive arguments** — teal
@@ -705,7 +694,6 @@ The editor provides a monospace code area with **syntax highlighting**:
 - **Word Wrap** (WrapText icon) — Toggle line wrapping (persisted across sessions)
 
 **Editor behavior:**
-- Auto-parses script on edit with 300ms debounce
 - **Validation warnings** displayed below the editor (e.g., missing arguments, unclosed multiline blocks, unknown directives)
 - **Empty state** shows a visual command reference overlay listing all available directives
 - Editor is hidden during queue execution, replaced by the runner panel
@@ -769,7 +757,7 @@ Claude's responses can contain special markers to control queue execution:
 4. **Controls:**
    - **Pause** — Temporarily halt execution (shown during running)
    - **Resume** / **Abort** — Shown during paused state
-   - **Abort** requires `window.confirm` confirmation
+   - **Abort** requires confirmation
    - **"Go to Session"** link — Navigate to the active chat session
 5. **Session links** — Completed items show a link icon to navigate to their associated session
 6. **"Back to Editor"** button — Dismiss the runner panel after completion or error
@@ -807,7 +795,7 @@ Templates generate queue scripts by combining a template pattern with story sele
 The dialog has two main sections:
 
 **1. Template Source** — Three tabs:
-- **Input** — Type template text directly in a monospace textarea with word wrap toggle; variable hint shown: `{story_num}, {epic_num}, {story_index}, {story_title}, {date}`
+- **Input** — Type template text directly in the editor with word wrap toggle; variable hint shown: `{story_num}, {epic_num}, {story_index}, {story_title}, {date}`
 - **File** — Upload a `.txt` or `.qlaude-queue` file (max 100KB) via drag area
 - **Saved** — Browse, select, edit, or delete previously saved templates
 
@@ -815,7 +803,7 @@ The dialog has two main sections:
 - Grouped by epic with collapsible sections and checkbox selection
 - **Select All / Deselect All** toggle
 - **"Pause between epics"** checkbox — Inserts `@pause` between different epic groups
-- Each epic header shows selected/total count with indeterminate checkbox state
+- Each epic header shows selected/total count
 
 **Template Variables:**
 
@@ -839,7 +827,7 @@ Implement Story {story_num}: {story_title}
 - **Save** — Save the current template with a name (inline form)
 - **Update** — Overwrite a previously saved template
 - **Delete** — Remove a saved template (with confirmation)
-- Templates are stored per-project on the server
+- Templates are saved per-project
 
 ### 9.8 Queue Status Badge
 
@@ -862,7 +850,7 @@ The default view is a scrollable Kanban board:
 
 - **Columns** represent statuses — each with a colored top border, label, and item count badge
 - **Cards** display issues, stories, and epics with type badges: **[I]** (amber), **[S]** (blue), **[E]** (purple)
-- **Horizontal scroll** — overflow columns peek from the edge with gradient fade overlays (no drag-and-drop between columns)
+- **Horizontal scroll** — overflow columns peek from the edge (no drag-and-drop between columns)
 - Status changes are made via the card **context menu** (⋮), not by dragging
 - Columns are fully customizable (see §10.11)
 
@@ -914,13 +902,32 @@ Severity badges are color-coded on cards:
 
 ### 10.7 Status Workflow
 
-Items follow this lifecycle with 9 possible statuses:
+Items follow this lifecycle. Issues and stories use overlapping but distinct subsets of these statuses:
 
+**Issue statuses:**
 ```
-Open → Draft → Approved → In Progress → Blocked → Review → Done → Closed
-                                                              ↓
-                                                          Promoted
+Open → In Progress → Ready for Done → Done → Closed
+                                               ↓
+                                           Promoted
 ```
+
+**Story statuses (with QA gate):**
+```
+Draft → Approved → In Progress → Ready for Review → Done
+                                       ↓
+                              ┌────────┴────────┐
+                          QA Passed          QA Failed
+                          QA Waived          QA Concerns
+                              ↓                  ↓
+                        Ready for Done     QA Fixed → (re-review)
+```
+
+**QA gate badges** — When a story reaches "Ready for Review", the QA gate result determines the compound badge:
+- **QA Passed** — Quality review passed
+- **QA Waived** — Quality review waived/skipped
+- **QA Failed** — Quality review failed, fixes needed
+- **QA Concerns** — Quality review raised concerns
+- **QA Fixed** — Fixes applied, ready for re-review
 
 Not all statuses are required. Use the context menu to change status directly. **Promoted** indicates an issue that has been escalated to a story or epic.
 
@@ -939,17 +946,41 @@ Attach image files to issues:
 
 Click the **⋮** button on any card to open the context menu. Actions vary by card type:
 
-**Issue actions:**
-- **Quick Fix** — Marks the issue as Done and opens a dev session with the issue context (only available for Open issues)
-- **Promote to Story** — Convert an issue into a development story (disabled if already linked)
-- **Promote to Epic** — Elevate an issue into an epic (disabled if already linked)
-- **Edit** — Open the issue edit dialog
-- **Close** / **Reopen** — Toggle between Closed/Done/Promoted and Open
-- **Delete** — Permanently remove the issue
+**Issue actions (by status):**
+- **Open:**
+  - **Quick Fix** — Marks the issue as Done and opens a dev session with the issue context
+  - **Promote to Story** — Convert an issue into a development story (disabled if already linked)
+  - **Promote to Epic** — Elevate an issue into an epic (disabled if already linked)
+  - **Edit** — Open the issue edit dialog
+  - **Close** — Close the issue
+- **In Progress:**
+  - **Resume Dev** — Resume development session for this issue
+- **Ready for Done:**
+  - **Commit and Mark Done** — Commit related changes and mark as Done
+  - **Mark Done** — Mark as Done without committing
+- **Closed / Done / Promoted:**
+  - **Reopen** — Reopen the issue
+- **Delete** — Permanently remove the issue (available in all states)
 
-**Story actions:**
-- **Normalize Status** — Sync the story status with its source file
-- **Workflow actions** — Context-dependent: Draft → Validate, Approved → Start Dev, In Progress → Request QA, Review → Apply QA Fix
+**Story actions (by status):**
+- **Draft:**
+  - **Validate and Fix** — Validate the story draft and auto-fix issues
+  - **Validate Only** — Validate the story draft without auto-fix
+- **Approved:**
+  - **Start Development** — Begin implementing the story
+  - **Validate and Fix** / **Validate Only** — Re-validate if needed
+- **In Progress:**
+  - **Resume Development** — Continue implementing the story
+- **QA Passed / QA Waived:**
+  - **Commit and Complete Story** — Commit related changes and mark as Done
+  - **Complete Story** — Mark as Done without committing
+  - **Request QA Review** — Re-request quality review
+- **QA Failed / QA Concerns:**
+  - **Apply QA Fix** — Apply fixes for QA issues
+- **QA Fixed:**
+  - **Review Story** — Request re-review after fixes
+- **Ready for Review / Ready for Done (no QA gate):**
+  - **Review Story** — Request quality review
 
 **Epic actions:**
 - **View Sub-Stories** — Open a dialog showing all stories under the epic
@@ -962,12 +993,12 @@ Cards display information based on their type:
 
 - **Type badge** — [I], [S], or [E] with color coding
 - **Severity badge** — For issues only, color-coded by level
-- **Status badge** — Color-coded status indicator
+- **Status badge** — Color-coded status indicator (stories also show QA gate badges such as QA Passed, QA Failed, etc.)
 - **Epic progress bar** — On epic cards, shows completion percentage with done/total count
 - **Story epic number** — Shows the parent epic reference
 - **Unmapped status warning** — ⚠ triangle icon when a card's status doesn't map to any column
 
-**Click behavior:** Clicking a card navigates to its associated file in the development session (issues, stories, and epics with a `filePath`).
+**Click behavior:** Clicking a card navigates to its associated file in the development session.
 
 ### 10.11 Board Configuration
 
@@ -984,7 +1015,7 @@ Customize the board layout via the gear icon:
 - Colors appear as the column's top border
 
 **Status Mapping:**
-- Map each of the 9 statuses (Open, Draft, Approved, In Progress, Blocked, Review, Done, Closed, Promoted) to a column
+- Map statuses and QA gate badges (Open, Draft, Approved, In Progress, Blocked, Ready for Review, QA Passed, QA Waived, QA Failed, QA Concerns, QA Fixed, Ready for Done, Done, Closed, Promoted) to columns
 - **Custom status mapping** — Define additional custom status strings and assign them to columns
 
 **Reset:**
@@ -994,10 +1025,10 @@ Customize the board layout via the gear icon:
 
 On small screens, the board uses a swipe carousel:
 
-- **Swipe left/right** to navigate between columns (threshold: 50px)
+- **Swipe left/right** to navigate between columns
 - **Rubber-band resistance** at the first and last columns (cannot swipe past edges)
 - **Indicator dots** at the bottom show current position
-- Smooth **300ms transition** animation between columns
+- Smooth transition animation between columns
 - Touch-optimized card layout
 
 ---
@@ -1027,7 +1058,7 @@ BMad can be set up in two ways:
 1. Open the project card's **kebab menu** (⋮) on the project list page
 2. Click **"Setup BMad"** (only shown for non-BMad projects)
 3. Confirm the version to install
-4. The `.bmad-core` folder structure is copied from the bundled template
+4. The `.bmad-core` folder is created with the required files
 
 The `.bmad-core` folder contains agents, tasks, templates, workflows, and configuration files including `core-config.yaml`.
 
@@ -1084,7 +1115,7 @@ For BMad projects, the overview page displays additional sections above the stan
 - **Auxiliary documents** section — Stories and QA files with counts and expandable file trees
 
 **Epic Progress Card:**
-- Each epic shows a **color-coded progress bar** (gray 0%, amber <50%, blue ≥50%, green 100%)
+- Each epic shows a **color-coded progress bar** that reflects completion level
 - **Done/planned** story count per epic
 - Click to **expand** and see individual story statuses with color-coded badges
 - Story file links to navigate directly to the story file
@@ -1108,12 +1139,17 @@ The Next Step Recommender analyzes the project state and suggests actions based 
 - **Secondary:** Create Frontend Spec → UX Expert agent (if not exists)
 
 **Phase 3: Implementation** (both PRD and Architecture exist)
-- **Priority 1:** Continue developing In Progress stories → Dev agent
-- QA review for In Progress stories → QA agent
-- Apply QA fixes → Dev agent
-- **Priority 2:** Validate Draft stories → PO agent
-- **Priority 3:** Start developing Approved stories → Dev agent
-- **Priority 4:** Create next story → SM agent (when no actionable stories)
+
+Recommendations follow reverse workflow order (finish what's closest to done first):
+
+- **Priority 1:** QA Passed/Waived stories → Commit and mark Done, or re-request QA review → Dev agent
+- **Priority 2:** QA Fixed stories → Re-review → QA agent
+- **Priority 3:** QA Failed/Concerns stories → Apply QA fixes → Dev agent
+- **Priority 4:** Ready for Review stories (no QA gate) → Request QA review → QA agent
+- **Priority 5:** In Progress stories → Continue development → Dev agent
+- **Priority 6:** Approved stories → Start development (Dev), or re-validate with Validate and Fix / Validate Only → PO agent
+- **Priority 7:** Draft stories → Validate and Fix / Validate Only → PO agent
+- **Priority 8:** Create next story → SM agent (when no actionable stories)
 
 **Phase 4: Completed** (all planned stories are Done)
 - Brainstorm new features → Analyst agent
@@ -1205,7 +1241,7 @@ Default view for the file explorer:
 
 Control the overall page width:
 
-- **Narrow** — Content capped at 1280px, centered
+- **Narrow** — Content centered with a max width
 - **Wide** — Full-width layout using all available screen space
 
 Toggle via the layout button in the header.
@@ -1233,7 +1269,7 @@ How long to wait for Claude's response:
 - 10 minutes
 - 30 minutes
 
-The timeout resets on every activity (messages, tool calls, heartbeats). If overridden by an environment variable, the field is disabled with an amber warning.
+The timeout resets on every activity. If overridden by an environment variable, the field is disabled with an amber warning.
 
 ### 12.10 Notifications
 
@@ -1247,7 +1283,7 @@ Receive browser push notifications when Claude needs attention. Requires HTTPS a
 - **Unsubscribe** — Remove the current browser's push subscription
 - **Enable toggle** — Master switch to enable or disable web push delivery
 - **Subscribed devices** — Shows the number of browsers currently registered
-- **Test** — Send a test push notification (5-second cooldown between tests)
+- **Test** — Send a test push notification to verify setup
 
 > iOS: Add Hammoc to Home Screen first, then subscribe from within the PWA.
 
@@ -1277,7 +1313,7 @@ Get notified on your phone when Claude needs attention:
 **Other Options:**
 - **Always notify** — Get notified for every message (suppressed when the session is visible in the browser)
 
-**Test:** Click "Send Test" to verify your configuration. There is a **5-second cooldown** between tests.
+**Test:** Click "Send Test" to verify your configuration.
 
 **Access URL:** Set your Hammoc base URL (e.g., `http://192.168.1.100:3000`) so notification links open directly in your browser.
 
@@ -1288,22 +1324,22 @@ Get notified on your phone when Claude needs attention:
 Customize Claude's behavior with a fully editable system prompt template:
 
 - **Warning banner** — Displayed at the top, cautioning about the impact of modifications
-- **Editable textarea** — Edit the system prompt with **auto-save** (1-second debounce)
+- **Editable textarea** — Edit the system prompt with **auto-save**
 - **Character count** — Shown below the editor
 - **"Customized" indicator** — Blue banner when a custom prompt is active
 - **Restore to Default** button — Appears when the prompt has been modified
-- **Template variables** — Listed below the editor with descriptions (e.g., `{gitBranch}`, `{gitMainBranch}`, `{gitStatus}`); variables are resolved at runtime by the server
+- **Template variables** — Listed below the editor with descriptions (e.g., `{gitBranch}`, `{gitMainBranch}`, `{gitStatus}`); variables are resolved at runtime
 - **Resolved preview** — Toggle to see the fully rendered prompt with variables replaced for the current project
 
 ### 12.12 Advanced Settings
 
 **Server Management (mode-dependent):**
 
-- **Development mode:** "Server Rebuild" button — rebuilds and restarts the server. Shows elapsed time during the build process (polls every 3 seconds)
+- **Development mode:** "Server Rebuild" button — rebuilds and restarts the server. Shows elapsed time during the build process
 - **Production mode:** Shows current version number, "Check for Updates" button, and "Install Update" button (appears only when an update is available). Includes build progress with elapsed timer
 
 **SDK Parameters:**
-- **Max Thinking Tokens** — Limit Claude's extended thinking tokens (1,024–128,000, step: 1,024)
+- **Max Thinking Tokens** — Limit Claude's extended thinking tokens (1,024–128,000)
 - **Max Turns** — Limit conversation turns per query (1–100)
 - **Max Budget (USD)** — Set cost limit per query ($0.01–$100)
 
@@ -1319,13 +1355,13 @@ In-app usage guide within the Settings page:
 
 ### 12.14 About
 
-Auto-populated from package metadata:
+Displays app information:
 
 - App name and version number
 - Project description
 - Author with link
 - License type
-- **GitHub Issues** link (derived from repository URL)
+- **GitHub Issues** link
 - **Server status** — Healthy/unhealthy with color indicator dot
 - **Server version**
 - **Server time** — Localized timestamp
@@ -1346,7 +1382,7 @@ Auto-populated from package metadata:
 | `/` | Open slash command palette (auto-triggered when input starts with `/`) |
 | `*` | Open star command palette (auto-triggered when input starts with `*`, requires active agent) |
 | `Tab` | Select highlighted command from palette |
-| `Shift+Tab` | Cycle permission mode (plan → default → acceptEdits → bypass) |
+| `Shift+Tab` | Cycle permission mode (Plan → Ask before edits → Edit automatically → Bypass) |
 | `Ctrl` (hold) | Temporary chain mode while held |
 
 ### Quick Panel
@@ -1396,14 +1432,14 @@ Note: Quick panel shortcuts are disabled when an input or textarea is focused.
 | `PORT` | `3000` | Server port |
 | `HOST` | `0.0.0.0` | Bind address (all interfaces) |
 | `NODE_ENV` | — | Set to `production` for optimized mode |
-| `TRUST_PROXY` | `false` | Enable reverse proxy support. Set to `true` when behind Cloudflare Tunnel, nginx, etc. Enables proxy header reading, secure cookies, and Express trust proxy |
+| `TRUST_PROXY` | `false` | Enable reverse proxy support. Set to `true` when behind Cloudflare Tunnel, nginx, etc. |
 | `CORS_ORIGIN` | `true` | CORS origin policy. `true` allows any origin (local/VPN use). Set a specific URL (e.g., `https://hammoc.example.com`) to restrict |
 | `RATE_LIMIT` | `200` | Max requests per minute per IP. Increase for multi-hop proxy setups where users share a proxy IP |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key (required for Claude Code to function) |
 | `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout in milliseconds (5 minutes). Overrides the Settings UI value |
 | `LOG_LEVEL` | `INFO` (prod) / `DEBUG` (dev) | Logging level: ERROR, WARN, INFO, DEBUG, VERBOSE |
 | `TERMINAL_ENABLED` | `true` | Enable/disable terminal feature (set `false` to disable). Overrides the Settings UI value |
-| `SHELL_TIMEOUT` | `30000` | Terminal session cleanup grace period in milliseconds |
+| `SHELL_TIMEOUT` | `30000` | Time (in ms) before an idle terminal session is cleaned up |
 | `MAX_TERMINAL_SESSIONS` | `10` | Maximum concurrent terminal sessions |
 | `TELEGRAM_BOT_TOKEN` | — | Telegram bot token (takes priority over Settings UI value) |
 | `TELEGRAM_CHAT_ID` | — | Telegram chat ID (takes priority over Settings UI value) |
@@ -1451,9 +1487,9 @@ When Anthropic API rate limits are reached, the chat shows a rate limit error wi
 
 ### 15.4 "Connection lost" / Reconnecting
 
-Hammoc automatically reconnects with exponential backoff (1 s → 5 s max delay, unlimited retries). The header shows a status indicator: green (connected), yellow spinning (reconnecting with attempt counter), or red (disconnected with manual Reconnect button).
+Hammoc automatically reconnects when the connection is lost. The header shows a status indicator: green (connected), yellow spinning (reconnecting), or red (disconnected with manual Reconnect button).
 
-On mobile, the app automatically recovers when returning from background: if hidden for more than 3 seconds the socket is force-reconnected, and if hidden for more than 5 minutes authentication is re-validated.
+On mobile, the app automatically recovers when returning from background.
 
 If the connection doesn't recover:
 
@@ -1464,7 +1500,7 @@ If the connection doesn't recover:
 
 ### 15.5 Port already in use
 
-The server automatically retries up to 5 times (1 s intervals) when the port is in use. If it still fails:
+The server automatically retries when the port is in use. If it still fails:
 
 ```bash
 hammoc --port 3001
@@ -1521,4 +1557,4 @@ If you need to find or back up your data:
 | Web Push VAPID keys | `~/.hammoc/vapid-keys.json` |
 | Web Push subscriptions | `~/.hammoc/push-subscriptions.json` |
 | TLS certificates | `~/.hammoc/key.pem`, `~/.hammoc/cert.pem` |
-| Server logs | `./logs/server-YYYY-MM-DD.log` (relative to working directory, date-partitioned) |
+| Server logs | `./logs/server-YYYY-MM-DD.log` (daily log files in working directory) |
