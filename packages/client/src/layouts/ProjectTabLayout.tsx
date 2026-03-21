@@ -1,7 +1,7 @@
 /**
  * ProjectTabLayout - Shared layout for project-level views
  * Provides header with project info + tab navigation
- * Tabs: Overview, Sessions, Queue Runner
+ * Tabs: Overview, Board, Sessions, Queue, Files, Git, Terminal
  */
 
 import { useEffect, useMemo, useState, useRef } from 'react';
