@@ -39,13 +39,9 @@
     "cannotDeleteWhileWorking": "No se puede eliminar mientras la IA está trabajando",
     "reopen": "Reabrir",
     "resumeDev": "Reanudar desarrollo",
-    "markReview": "Solicitar revisión",
     "markDone": "Completar incidencia",
     "commitAndMarkDone": "Commit y completar issue",
-    "rework": "Retrabajar",
     "requestQA": "Solicitar revisión QA",
-    "requestQAAgain": "Volver a solicitar revisión QA",
-    "applyFix": "Aplicar corrección QA",
     "closeConfirm": "¿Cerrar esta incidencia?",
     "deleteConfirm": "¿Eliminar la incidencia \"{{title}}\"?",
     "attachments": "Adjuntos",
@@ -92,11 +88,7 @@
     "resolveGateOutro": "Después de completar las correcciones de QA, cambie el campo gate del archivo YAML de gate a 'FIXED'.",
     "quickFixIntro": "Por favor, solucione el siguiente problema:",
     "issueFileLabel": "Archivo del problema:",
-    "reviewFileLabel": "Archivo de revisión:",
-    "quickFixOutro": "Cuando la corrección esté completa, cambie el estado de la incidencia a Ready for Review.",
-    "issueFixIntro": "La siguiente incidencia fue rechazada por QA. Revise los comentarios de QA en el campo status_reason del archivo YAML de revisión y aplique las correcciones necesarias. Después de aplicar las correcciones, cambie el campo gate del archivo YAML de revisión a 'FIXED':",
-    "issueQAIntro": "Revise la corrección de la siguiente incidencia y verifique que aborda correctamente el problema:",
-    "issueQAOutro": "Si la corrección es satisfactoria, actualice el estado a 'Ready for Done' y cree/actualice el archivo YAML de revisión con gate: PASS.\nSi necesita más trabajo, mantenga el estado como 'Ready for Review' y cree/actualice el archivo de revisión con gate: FAIL y status_reason explicando lo que necesita ser corregido.\n\nFormato YAML del archivo de revisión:\n```yaml\nschema: 1\nissue: '{issueId}'\ngate: PASS\nstatus_reason: 'explicación'\nreviewer: 'QA'\nupdated: '{ISO-8601}'\n```"
+    "quickFixOutro": "Cuando la corrección esté completa, cambie el estado de la incidencia a Ready for Review."
   },
   "status": {
     "open": "Abierto",

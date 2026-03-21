@@ -21,6 +21,7 @@ export interface BadgeDefinition {
 // Ordered list — first match wins. More specific conditions (more entries) come first.
 export const BADGE_DEFINITIONS: BadgeDefinition[] = [
   // QA gate compound badges (status + gateResult)
+  // Ready for Review variants
   {
     id: 'qa-failed',
     label: 'QA Failed',

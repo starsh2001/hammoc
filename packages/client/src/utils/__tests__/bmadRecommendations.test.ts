@@ -314,9 +314,14 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
         epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'PASS' }] }],
       }),
     );
+    // commit-and-mark-done is primary
+    const commitDoneRec = recommendations.find((r) => r.id === 'commit-and-mark-done');
+    expect(commitDoneRec).toBeDefined();
+    expect(commitDoneRec!.variant).toBe('primary');
+    // mark-done is secondary
     const doneRec = recommendations.find((r) => r.id === 'mark-done');
     expect(doneRec).toBeDefined();
-    expect(doneRec!.variant).toBe('primary');
+    expect(doneRec!.variant).toBe('secondary');
     expect(doneRec!.agentCommand).toBe('/BMad:agents:dev');
     expect(doneRec!.taskCommand).toContain('Done');
     // Should also include re-request QA as secondary
@@ -335,9 +340,9 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
         epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'WAIVED' }] }],
       }),
     );
-    const doneRec = recommendations.find((r) => r.id === 'mark-done');
-    expect(doneRec).toBeDefined();
-    expect(doneRec!.variant).toBe('primary');
+    const commitDoneRec2 = recommendations.find((r) => r.id === 'commit-and-mark-done');
+    expect(commitDoneRec2).toBeDefined();
+    expect(commitDoneRec2!.variant).toBe('primary');
   });
 
   it('recommends applying QA fixes when Review + FAIL gate', () => {

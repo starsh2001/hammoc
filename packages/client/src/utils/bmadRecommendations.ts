@@ -330,7 +330,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.commitAndMarkDone'),
       description: label,
       agentCommand: '/BMad:agents:dev',
-      taskCommand: `Please commit all current changes for story ${num}, then update the story status to Done.`,
+      taskCommand: `Please review the current changes with git diff, commit only the files related to story ${num}, then update the story status to Done.`,
       variant: 'primary',
       iconKey: 'git-commit',
       storyFile: qaDoneStory.file,

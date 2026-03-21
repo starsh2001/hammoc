@@ -159,30 +159,12 @@ export function CardContextMenu({
       }
     } else if (badge.id === 'in-progress' && onWorkflowAction) {
       menuItems.push({ label: t('issue.resumeDev'), action: () => onWorkflowAction(item) });
-    } else if ((badge.id === 'qa-failed' || badge.id === 'qa-concerns') && onWorkflowAction) {
-      // QA failed/concerns → apply fixes first (dev agent), then re-request via qa-fixed
-      menuItems.push({ label: t('issue.applyFix'), action: () => onWorkflowAction(item) });
-    } else if ((badge.id === 'qa-passed' || badge.id === 'qa-waived') && onIssueStatusChange) {
-      // QA passed/waived → commit & done first, then plain done, then re-request QA
-      if (onCommitAndComplete) {
-        menuItems.push({ label: t('issue.commitAndMarkDone'), action: () => onCommitAndComplete(item) });
-      }
-      menuItems.push({ label: t('issue.markDone'), action: () => onIssueStatusChange(item, 'Done') });
-      if (onRequestQAReview) {
-        menuItems.push({ label: t('issue.requestQAAgain'), action: () => onRequestQAReview(item) });
-      }
-    } else if ((badge.id === 'qa-fixed' || badge.id === 'ready-for-review') && onRequestQAReview) {
-      // Fixed or no gate → request QA review
-      menuItems.push({ label: t('issue.requestQA'), action: () => onRequestQAReview(item) });
     } else if (badge.id === 'ready-for-done' && onIssueStatusChange) {
-      // Ready for Done → commit & done first, then plain done, then re-request QA
+      // Ready for Done → commit & done, then plain done
       if (onCommitAndComplete) {
         menuItems.push({ label: t('issue.commitAndMarkDone'), action: () => onCommitAndComplete(item) });
       }
       menuItems.push({ label: t('issue.markDone'), action: () => onIssueStatusChange(item, 'Done') });
-      if (onRequestQAReview) {
-        menuItems.push({ label: t('issue.requestQAAgain'), action: () => onRequestQAReview(item) });
-      }
     } else if ((badge.id === 'closed' || badge.id === 'done' || badge.id === 'promoted') && onReopen) {
       menuItems.push({ label: t('issue.reopen'), action: () => onReopen(item) });
     }

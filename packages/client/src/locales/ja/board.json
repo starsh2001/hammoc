@@ -39,13 +39,9 @@
     "cannotDeleteWhileWorking": "AIが作業中は削除できません",
     "reopen": "再オープン",
     "resumeDev": "開発を再開",
-    "markReview": "レビューをリクエスト",
     "markDone": "課題を完了",
     "commitAndMarkDone": "コミット後イシュー完了",
-    "rework": "再作業",
     "requestQA": "QAレビューをリクエスト",
-    "requestQAAgain": "QAレビューを再リクエスト",
-    "applyFix": "QA修正を適用",
     "closeConfirm": "この課題を閉じますか？",
     "deleteConfirm": "課題「{{title}}」を削除しますか？",
     "attachments": "添付ファイル",
@@ -92,11 +88,7 @@
     "resolveGateOutro": "QA修正完了後、gate YAMLファイルのgateフィールドを'FIXED'に変更してください。",
     "quickFixIntro": "以下の問題を修正してください：",
     "issueFileLabel": "問題ファイル：",
-    "reviewFileLabel": "レビューファイル：",
-    "quickFixOutro": "修正が完了したら、課題のステータスをReady for Reviewに変更してください。",
-    "issueFixIntro": "以下の課題はQAにより差し戻されました。レビューYAMLファイルのstatus_reasonフィールドでQAフィードバックを確認し、必要な修正を適用してください。修正完了後、レビューYAMLファイルのgateフィールドを'FIXED'に変更してください：",
-    "issueQAIntro": "以下の課題の修正をレビューし、問題が適切に対処されているか検証してください：",
-    "issueQAOutro": "修正が適切であれば、課題のステータスを「Ready for Done」に更新し、レビューYAMLファイルをgate: PASSで作成/更新してください。\n修正にさらなる作業が必要な場合は、課題のステータスを「Ready for Review」のまま維持し、レビューファイルをgate: FAILとstatus_reasonで作成/更新してください。\n\nレビューファイルYAML形式：\n```yaml\nschema: 1\nissue: '{issueId}'\ngate: PASS\nstatus_reason: '説明'\nreviewer: 'QA'\nupdated: '{ISO-8601}'\n```"
+    "quickFixOutro": "修正が完了したら、課題のステータスをReady for Reviewに変更してください。"
   },
   "status": {
     "open": "オープン",

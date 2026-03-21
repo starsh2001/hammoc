@@ -152,12 +152,13 @@ describe('IssueService', () => {
       expect(updated.severity).toBe('critical');
     });
 
-    it('should accept Ready for Review as a valid issue status', async () => {
+    it('should accept Ready for Review and normalize to Ready for Done', async () => {
       const created = await issueService.createIssue(PROJECT_ROOT, { title: 'RfR test' });
       const updated = await issueService.updateIssue(PROJECT_ROOT, created.id, {
         status: 'Ready for Review',
       });
-      expect(updated.status).toBe('Ready for Review');
+      // Issues normalize Ready for Review → Ready for Done on read
+      expect(updated.status).toBe('Ready for Done');
     });
 
     it('should accept Ready for Done as a valid issue status', async () => {
@@ -490,7 +491,8 @@ Open
 
       const result = await issueService.getBoard(PROJECT_ROOT);
       const item = result.items.find((i: BoardItem) => i.id === issue.id)!;
-      expect(item.status).toBe('Ready for Review');
+      // Ready for Review is normalized to Ready for Done for issues on board read
+      expect(item.status).toBe('Ready for Done');
       expect(item.gateResult).toBe('FAIL');
     });
 
@@ -547,7 +549,7 @@ Open
       await expect(fs.access(reviewFile)).rejects.toThrow();
     });
 
-    it('should preserve raw status for issue Ready for Review/Ready for Done', async () => {
+    it('should normalize Ready for Review to Ready for Done for issues on board read', async () => {
       // Create issues with Ready for Review and Ready for Done statuses
       const issue1 = await issueService.createIssue(PROJECT_ROOT, { title: 'RfR issue' });
       await issueService.updateIssue(PROJECT_ROOT, issue1.id, { status: 'Ready for Review' });
@@ -562,8 +564,9 @@ Open
       });
 
       const result = await issueService.getBoard(PROJECT_ROOT);
+      // Ready for Review is normalized to Ready for Done for issues
       const rfrItem = result.items.find((i: BoardItem) => i.id === issue1.id)!;
-      expect(rfrItem.status).toBe('Ready for Review');
+      expect(rfrItem.status).toBe('Ready for Done');
 
       const rfdItem = result.items.find((i: BoardItem) => i.id === issue2.id)!;
       expect(rfdItem.status).toBe('Ready for Done');
