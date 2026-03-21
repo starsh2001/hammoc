@@ -21,6 +21,7 @@ export interface CardActionCallbacks {
   onViewEpicStories?: (item: BoardItem) => void;
   onRequestQAReview?: (item: BoardItem) => void;
   onIssueStatusChange?: (item: BoardItem, status: string) => void;
+  onCommitAndComplete?: (item: BoardItem) => void;
   onCardClick?: (item: BoardItem) => void;
 }
 
@@ -65,6 +66,7 @@ export function BoardCard({
   onViewEpicStories,
   onRequestQAReview,
   onIssueStatusChange,
+  onCommitAndComplete,
   onCardClick,
 }: BoardCardProps) {
   const { t } = useTranslation('board');
@@ -118,6 +120,7 @@ export function BoardCard({
           onViewEpicStories={onViewEpicStories}
           onRequestQAReview={onRequestQAReview}
           onIssueStatusChange={onIssueStatusChange}
+          onCommitAndComplete={onCommitAndComplete}
         />
       </div>
 

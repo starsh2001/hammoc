@@ -237,6 +237,7 @@
     "applyQaFixes": "QA 반영",
     "applyQaFixesDesc": "QA 피드백을 코드에 반영합니다",
     "markDone": "스토리 완료",
+    "commitAndMarkDone": "커밋 후 스토리 완료",
     "markDoneDesc": "QA 통과 — Done으로 완료",
     "requestQAReview": "QA 재요청",
     "validateStoryOnly": "스토리 검증",

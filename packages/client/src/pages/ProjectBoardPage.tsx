@@ -253,17 +253,17 @@ export function ProjectBoardPage() {
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t, setActionErrorWithClear]);
 
-  // Validate only — validate story without auto-fix
+  // Validate only — validate story without auto-fix, approve after user fixes
   const handleValidateOnly = useCallback((item: BoardItem) => {
     if (!projectSlug || item.type !== 'story') return;
     const sessionId = generateUUID();
     const storyNum = item.id.replace(/^story-/, '');
     const params = new URLSearchParams({
       agent: '/BMad:agents:po',
-      task: `*validate-story-draft ${storyNum}`,
+      task: `*validate-story-draft ${storyNum} ${t('board:workflow.validateOnlyApproveHint')}`,
     });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
-  }, [projectSlug, navigate]);
+  }, [projectSlug, navigate, t]);
 
   // Validate and fix — validate draft story then auto-fix all issues
   const handleValidateAndFix = useCallback((item: BoardItem) => {
@@ -278,6 +278,18 @@ export function ProjectBoardPage() {
     params.append('chain', t('workflow.approveAfterFixPrompt'));
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t]);
+
+  // Commit and complete — commit changes then update status to Done
+  const handleCommitAndComplete = useCallback((item: BoardItem) => {
+    if (!projectSlug) return;
+    const sessionId = generateUUID();
+    const agent = '/BMad:agents:dev';
+    const id = item.id.replace(/^(story|issue)-/, '');
+    const typeLabel = item.type === 'story' ? 'story' : 'issue';
+    const task = `Please commit all current changes for ${typeLabel} ${id}, then update the ${typeLabel} status to Done.`;
+    const params = new URLSearchParams({ agent, task });
+    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+  }, [projectSlug, navigate]);
 
   // QA review for stories (re-request) and issues (Ready for Review)
   const handleRequestQAReview = useCallback((item: BoardItem) => {
@@ -340,6 +352,7 @@ export function ProjectBoardPage() {
     onViewEpicStories: handleViewEpicStories,
     onRequestQAReview: handleRequestQAReview,
     onIssueStatusChange: handleIssueStatusChange,
+    onCommitAndComplete: handleCommitAndComplete,
     onCardClick: handleCardClick,
   };
 

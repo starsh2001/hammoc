@@ -39,7 +39,9 @@ export function BoardListView({
   onValidateAndFixAction,
   onValidateOnlyAction,
   onViewEpicStories,
-
+  onRequestQAReview,
+  onIssueStatusChange,
+  onCommitAndComplete,
   onCardClick,
 }: BoardListViewProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
@@ -122,7 +124,9 @@ export function BoardListView({
                     onValidateAndFixAction={onValidateAndFixAction}
                     onValidateOnlyAction={onValidateOnlyAction}
                     onViewEpicStories={onViewEpicStories}
-
+                    onRequestQAReview={onRequestQAReview}
+                    onIssueStatusChange={onIssueStatusChange}
+                    onCommitAndComplete={onCommitAndComplete}
                     onCardClick={onCardClick}
                   />
                 ))}

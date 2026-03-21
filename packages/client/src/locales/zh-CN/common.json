@@ -236,6 +236,7 @@
     "applyQaFixes": "应用 QA 修复",
     "applyQaFixesDesc": "将 QA 反馈应用到代码中",
     "markDone": "完成 Story",
+    "commitAndMarkDone": "提交后完成 Story",
     "markDoneDesc": "QA 通过 — 标记为 Done",
     "requestQAReview": "重新请求 QA 审查",
     "validateStoryOnly": "验证 Story",
