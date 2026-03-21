@@ -239,8 +239,9 @@
     "markDone": "Complete story",
     "markDoneDesc": "QA passed — mark as Done",
     "requestQAReview": "Re-request QA review",
-    "validateStoryOnly": "Validate Story (No Fix)",
-    "validateAndFixStory": "Validate & Fix Story",
+    "validateStoryOnly": "Validate Story",
+    "validateOnlyApproveHint": "After the user's requested fixes are complete, change the story status to Approved.",
+    "validateAndFixStory": "Validate & Auto-Fix Story",
     "validateFixPrompt": "Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.",
     "approveAfterFixPrompt": "If the story status is not Approved, please change it to Approved now.",
     "startDev": "Start development",
@@ -591,7 +592,9 @@
     "emptyMessage": "No favorites yet. Add favorites from the slash command list.",
     "reorderHandle": "Reorder",
     "removeStarPrefix": "Remove from star favorites: *{{command}}",
-    "removePrefix": "Remove from favorites: {{command}}"
+    "removePrefix": "Remove from favorites: {{command}}",
+    "invalidChip": "This command is no longer available",
+    "globalBadge": "(Global)"
   },
   "contextUsage": {
     "ariaLabel": "Context usage {{percent}}%",

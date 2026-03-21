@@ -15,6 +15,12 @@ const { mockScanProjects } = vi.hoisted(() => ({
 // Mock fs/promises
 vi.mock('fs/promises');
 
+// Mock os.homedir
+vi.mock('os', () => ({
+  default: { homedir: () => '/Users/test' },
+  homedir: () => '/Users/test',
+}));
+
 // Mock projectService
 vi.mock('../projectService', () => ({
   projectService: {
@@ -560,6 +566,122 @@ commands:
     it('should return null for invalid yaml', () => {
       const result = commandService.parseAgentYaml(agentMdInvalidYaml);
       expect(result).toBeNull();
+    });
+  });
+
+  describe('scanClaudeSkills (BS-1)', () => {
+    const skillMdContent = `---
+name: my-skill
+description: A test skill
+---
+# My Skill
+`;
+
+    const globalSkillMdContent = `---
+name: global-helper
+description: A global helper skill
+---
+# Global Helper
+`;
+
+    it('should return project skills with scope "project"', async () => {
+      const norm = (p: string) => p.replace(/\\/g, '/');
+      mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
+        const p = norm(String(dirPath));
+        if (p.includes('.claude/skills') && !p.includes('/Users/test')) {
+          return ['my-skill'] as any;
+        }
+        return [] as any;
+      });
+      mockFs.stat.mockImplementation(async (filePath: unknown) => {
+        const p = norm(String(filePath));
+        if (p.endsWith('my-skill') || p.endsWith('global-helper')) {
+          return { isDirectory: () => true } as import('fs').Stats;
+        }
+        return { isDirectory: () => false } as import('fs').Stats;
+      });
+      mockFs.readFile.mockImplementation(async (filePath: unknown) => {
+        const p = norm(String(filePath));
+        if (p.includes('my-skill') && p.endsWith('SKILL.md')) return skillMdContent;
+        return '';
+      });
+
+      const result = await commandService.scanClaudeSkills('/fake/project');
+
+      const projectSkills = result.filter((s) => s.scope === 'project');
+      expect(projectSkills).toHaveLength(1);
+      expect(projectSkills[0].command).toBe('/my-skill');
+      expect(projectSkills[0].scope).toBe('project');
+    });
+
+    it('should return global skills with scope "global"', async () => {
+      // Normalize paths for cross-platform (Windows uses backslashes)
+      const norm = (p: string) => p.replace(/\\/g, '/');
+      mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
+        const p = norm(String(dirPath));
+        if (p.includes('/Users/test') && p.endsWith('.claude/skills')) {
+          return ['global-helper'] as any;
+        }
+        return [] as any;
+      });
+      mockFs.stat.mockImplementation(async (filePath: unknown) => {
+        const p = norm(String(filePath));
+        if (p.endsWith('global-helper')) {
+          return { isDirectory: () => true } as import('fs').Stats;
+        }
+        return { isDirectory: () => false } as import('fs').Stats;
+      });
+      mockFs.readFile.mockImplementation(async (filePath: unknown) => {
+        const p = norm(String(filePath));
+        if (p.includes('global-helper') && p.endsWith('SKILL.md')) return globalSkillMdContent;
+        return '';
+      });
+
+      const result = await commandService.scanClaudeSkills('/fake/project');
+
+      const globalSkills = result.filter((s) => s.scope === 'global');
+      expect(globalSkills).toHaveLength(1);
+      expect(globalSkills[0].command).toBe('/global-helper');
+      expect(globalSkills[0].scope).toBe('global');
+    });
+
+    it('should return empty array when ~/.claude/skills/ does not exist (no error)', async () => {
+      mockFs.readdir.mockRejectedValue(new Error('ENOENT'));
+
+      const result = await commandService.scanClaudeSkills('/fake/project');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should include same-name skills from both directories (no dedup)', async () => {
+      mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
+        const p = String(dirPath);
+        if (p.includes('/Users/test/.claude/skills')) {
+          return ['shared-skill'] as any;
+        }
+        if (p.includes('.claude') && p.includes('skills')) {
+          return ['shared-skill'] as any;
+        }
+        return [] as any;
+      });
+      mockFs.stat.mockImplementation(async () => {
+        return { isDirectory: () => true } as import('fs').Stats;
+      });
+
+      const sharedSkillMd = `---
+name: shared-skill
+description: A shared skill
+---
+`;
+      mockFs.readFile.mockImplementation(async () => sharedSkillMd);
+
+      const result = await commandService.scanClaudeSkills('/fake/project');
+
+      // Both should be present — project and global
+      expect(result).toHaveLength(2);
+      const scopes = result.map((s) => s.scope);
+      expect(scopes).toContain('project');
+      expect(scopes).toContain('global');
     });
   });
 });

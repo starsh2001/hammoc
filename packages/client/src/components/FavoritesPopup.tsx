@@ -1,6 +1,6 @@
 /**
  * FavoritesPopup - Favorite commands quick access popup
- * [Source: Story 9.6 - Task 1]
+ * [Source: Story 9.6 - Task 1, BS-1 - Task 6]
  *
  * Features:
  * - Display favorite commands with icon, name, description
@@ -8,16 +8,17 @@
  * - Drag & drop reordering (desktop only, HTML5 DnD)
  * - Remove from favorites button
  * - ARIA accessibility (listbox/option roles)
+ * - Scope distinction: global favorites show purple border + (Global) badge
  */
 
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GripVertical, X } from 'lucide-react';
-import type { SlashCommand, StarCommand } from '@hammoc/shared';
+import type { SlashCommand, StarCommand, CommandFavoriteEntry } from '@hammoc/shared';
 
 interface FavoritesPopupProps {
-  /** Favorite command strings list */
-  favoriteCommands: string[];
+  /** Favorite command entries with scope */
+  favoriteCommands: CommandFavoriteEntry[];
   /** Full command objects for display (icon, description) */
   commands: SlashCommand[];
   /** Callback when a favorite command is selected */
@@ -25,9 +26,9 @@ interface FavoritesPopupProps {
   /** Callback to close the popup */
   onClose: () => void;
   /** Callback to reorder favorites */
-  onReorder: (commands: string[]) => void;
+  onReorder: (commands: CommandFavoriteEntry[]) => void;
   /** Callback to remove from favorites */
-  onRemoveFavorite: (command: string) => void;
+  onRemoveFavorite: (entry: CommandFavoriteEntry) => void;
   /** Star favorite command strings for active agent (Story 9.12) */
   starFavorites?: string[];
   /** Star command objects for display (description lookup) (Story 9.12) */
@@ -100,9 +101,9 @@ export function FavoritesPopup({
   }, []);
 
   const handleRemove = useCallback(
-    (e: React.MouseEvent, command: string) => {
+    (e: React.MouseEvent, entry: CommandFavoriteEntry) => {
       e.stopPropagation();
-      onRemoveFavorite(command);
+      onRemoveFavorite(entry);
     },
     [onRemoveFavorite]
   );
@@ -287,14 +288,15 @@ export function FavoritesPopup({
           Slash Command
         </div>
       )}
-      {favoriteCommands.map((commandStr, index) => {
-        const cmd = findCommand(commandStr);
+      {favoriteCommands.map((entry, index) => {
+        const cmd = findCommand(entry.command);
         const isDragging = dragIndex === index;
         const isDragOver = dragOverIndex === index && dragIndex !== index;
+        const isGlobal = entry.scope === 'global';
 
         return (
           <div
-            key={commandStr}
+            key={`${entry.scope}-${entry.command}`}
             role="option"
             aria-selected={false}
             tabIndex={0}
@@ -303,16 +305,17 @@ export function FavoritesPopup({
             onDragOver={(e) => handleDragOver(e, index)}
             onDrop={() => handleDrop(index)}
             onDragEnd={handleDragEnd}
-            onClick={() => onSelect(commandStr)}
+            onClick={() => onSelect(entry.command)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                onSelect(commandStr);
+                onSelect(entry.command);
               }
             }}
             className={`flex items-center gap-2 px-3 py-2 cursor-pointer
                        hover:bg-gray-100 dark:hover:bg-[#253040]
                        transition-colors
+                       ${isGlobal ? 'border-l-2 border-purple-400' : ''}
                        ${isDragging ? 'opacity-50' : ''}
                        ${isDragOver ? 'border-t-2 border-blue-500' : ''}`}
             data-testid={`favorite-item-${index}`}
@@ -333,8 +336,13 @@ export function FavoritesPopup({
             {/* Name and description */}
             <span className="flex-1 min-w-0">
               <span className="text-sm text-gray-900 dark:text-gray-100">
-                {cmd?.name || commandStr}
+                {cmd?.name || entry.command}
               </span>
+              {isGlobal && (
+                <span className="text-xs text-purple-500 ml-1" data-testid={`favorite-global-badge-${index}`}>
+                  {t('favorites.globalBadge')}
+                </span>
+              )}
               {cmd?.description && (
                 <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                   {cmd.description}
@@ -345,15 +353,15 @@ export function FavoritesPopup({
             {/* Remove button */}
             <button
               type="button"
-              onClick={(e) => handleRemove(e, commandStr)}
+              onClick={(e) => handleRemove(e, entry)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   e.stopPropagation();
-                  onRemoveFavorite(commandStr);
+                  onRemoveFavorite(entry);
                 }
               }}
-              aria-label={t('favorites.removePrefix', { command: commandStr })}
+              aria-label={t('favorites.removePrefix', { command: entry.command })}
               className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-[#2d3a4a]
                          text-gray-400 hover:text-red-500 dark:hover:text-red-400
                          transition-colors"

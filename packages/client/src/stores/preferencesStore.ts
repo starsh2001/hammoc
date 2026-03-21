@@ -9,12 +9,22 @@
  */
 
 import { create } from 'zustand';
-import type { UserPreferences, SupportedLanguage } from '@hammoc/shared';
+import type { UserPreferences, SupportedLanguage, CommandFavoriteEntry } from '@hammoc/shared';
 import { preferencesApi } from '../services/api/preferences';
 import { debugLogger } from '../utils/debugLogger';
 import i18n from '../i18n';
 
 const CACHE_KEY = 'hammoc-preferences';
+
+/** Normalize commandFavorites: convert plain strings to CommandFavoriteEntry objects */
+export function normalizeCommandFavorites(
+  raw: Array<string | CommandFavoriteEntry> | undefined
+): CommandFavoriteEntry[] {
+  if (!raw) return [];
+  return raw.map((item) =>
+    typeof item === 'string' ? { command: item, scope: 'project' } : item
+  );
+}
 const DEBOUNCE_MS = 300;
 
 // localStorage helpers

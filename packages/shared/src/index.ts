@@ -72,6 +72,7 @@ export { SlashCommand, StarCommand, CommandsResponse } from './types/command.js'
 
 // User Preferences types (server-side settings)
 export {
+  CommandFavoriteEntry,
   UserPreferences,
   PromptHistoryData,
   DEFAULT_PREFERENCES,

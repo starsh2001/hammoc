@@ -238,8 +238,9 @@
     "markDone": "Concluir story",
     "markDoneDesc": "QA aprovado — marcar como Done",
     "requestQAReview": "Ressolicitar revisão QA",
-    "validateStoryOnly": "Validar story (sem correção)",
-    "validateAndFixStory": "Validar e corrigir story",
+    "validateStoryOnly": "Validar story",
+    "validateOnlyApproveHint": "Após a conclusão das correções solicitadas pelo usuário, altere o status da story para Approved.",
+    "validateAndFixStory": "Validar e autocorrigir story",
     "validateFixPrompt": "Por favor, corrija todos os Critical Issues, Should-Fix Issues e Nice-to-Have Issues identificados nos resultados de validação acima.",
     "approveAfterFixPrompt": "Se o Status da story não for Approved, por favor altere para Approved.",
     "startDev": "Iniciar desenvolvimento",
@@ -563,7 +564,9 @@
     "emptyMessage": "Nenhum favorito ainda. Adicione favoritos na lista de comandos de barra.",
     "reorderHandle": "Reordenar",
     "removeStarPrefix": "Remover dos favoritos com estrela: *{{command}}",
-    "removePrefix": "Remover dos favoritos: {{command}}"
+    "removePrefix": "Remover dos favoritos: {{command}}",
+    "invalidChip": "Este comando não está mais disponível",
+    "globalBadge": "(Global)"
   },
   "contextUsage": {
     "ariaLabel": "Uso do contexto {{percent}}%",
