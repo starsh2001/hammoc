@@ -117,14 +117,21 @@ export const sessionController = {
       const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
       const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
 
+      // Snapshot stream state atomically BEFORE the async JSONL read.
+      // completedBuffer has a 5s TTL — if we read it after the await, it may
+      // have expired while streamStartedAt (captured here) still includes its
+      // startedAt, causing the JSONL filter to exclude messages that the merge
+      // can no longer provide.
+      const streamStartedAt = getStreamStartedAt(sessionId);
+      const runningStreamStartedAt = getRunningStreamStartedAt(sessionId);
+      const completedBuffer = getCompletedBuffer(sessionId);
+
       const result = await sessionService.getSessionMessages(projectSlug, sessionId, {
         limit,
         offset,
-        streamStartedAt: getStreamStartedAt(sessionId),
-        runningStreamStartedAt: getRunningStreamStartedAt(sessionId),
+        streamStartedAt,
+        runningStreamStartedAt,
       });
-
-      const completedBuffer = getCompletedBuffer(sessionId);
 
       // Return empty messages for non-existent sessions (e.g., pre-allocated UUID with no messages yet)
       const response: HistoryMessagesResponse = result ?? {

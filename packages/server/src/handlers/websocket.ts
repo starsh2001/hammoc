@@ -1121,20 +1121,14 @@ export async function initializeWebSocket(
             const bufSnapshot = [...freshStream.buffer];
             const freshMode = freshStream.chatService?.getPermissionMode();
             socket.emit('stream:status', { active: true, sessionId, permissionMode: freshMode });
-            const completedBuf = getCompletedBuffer(sessionId);
-            if (completedBuf) {
-              socket.emit('stream:buffer-replay', { sessionId, events: completedBuf });
-            }
+            // Only replay active buffer — completedBuffer is served via fetchMessages API
             socket.emit('stream:buffer-replay', { sessionId, events: bufSnapshot });
             freshStream.sockets.add(socket);
             return;
           }
           socket.emit('stream:status', { active: false, sessionId, permissionMode });
-          // Replay recently completed stream buffer so the client has the finished turn
-          const completed = getCompletedBuffer(sessionId);
-          if (completed) {
-            socket.emit('stream:buffer-replay', { sessionId, events: completed });
-          }
+          // completedBuffer is NOT replayed here — fetchMessages API already merges
+          // completedBuffer data into its response, so the client gets it via HTTP.
         };
 
         // For 'always' sync policy, restore per-session permission mode from disk
@@ -1168,17 +1162,11 @@ export async function initializeWebSocket(
 
       // Emit order matters for the client:
       // 1. stream:status { active: true } → client calls restoreStreaming + trimMessagesAfterLastUser
-      // 2. completed buffer replay → client calls addMessages (trim already ran, won't remove these)
-      // 3. active buffer replay → client sets streaming segments for the current turn
+      // 2. active buffer replay → client sets streaming segments for the current turn
+      // Note: completedBuffer (previous chain turn) is NOT replayed here — the client's
+      // fetchMessages API already merges completedBuffer data into its response. Sending
+      // it as buffer-replay too would cause duplicate user messages on session entry.
       socket.emit('stream:status', { active: true, sessionId, permissionMode });
-
-      // Replay recently completed stream buffer (e.g., previous chain turn) AFTER
-      // stream:status so the client has already trimmed stale messages.
-      const completedBuf = getCompletedBuffer(sessionId);
-      if (completedBuf) {
-        socket.emit('stream:buffer-replay', { sessionId, events: completedBuf });
-      }
-
       socket.emit('stream:buffer-replay', { sessionId, events: bufferSnapshot });
 
       // NOW add to broadcast set — live events flow from here

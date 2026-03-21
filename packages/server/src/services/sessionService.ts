@@ -745,7 +745,8 @@ export class SessionService {
     let transformed = transformToHistoryMessages(sorted);
 
     // If session has an active stream, exclude messages from the stream period.
-    // Those messages are covered by WebSocket buffer replay (stream:buffer-replay).
+    // Those messages are covered by the active stream's buffer replay or by
+    // completedBuffer merge in the getMessages API (sessionController).
     // This prevents duplicate tool/message cards when the client loads both
     // JSONL history and buffer replay simultaneously.
     //
@@ -757,8 +758,8 @@ export class SessionService {
     //
     // Only runningStreamStartedAt is used for user preservation (not the combined
     // streamStartedAt which may include a completed buffer's earlier start time).
-    // This avoids duplicating user messages from a completed turn that are already
-    // provided via completedBuffer replay.
+    // Completed turn messages from the buffer period are provided via the API's
+    // completedBuffer merge, not via WebSocket buffer replay.
     if (streamStartedAt) {
       transformed = transformed.filter(
         (m) => {
