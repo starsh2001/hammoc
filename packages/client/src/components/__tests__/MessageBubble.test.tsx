@@ -170,90 +170,30 @@ describe('MessageBubble', () => {
     });
   });
 
-  // Story 4.3 - Task 6: Interaction and accessibility tests
-  describe('copy button', () => {
-    it('should show copy button on hover', async () => {
-      const user = userEvent.setup();
+  // Story 25.1: MessageActionBar integration
+  describe('MessageActionBar (Story 25.1)', () => {
+    it('should render MessageActionBar for user messages', () => {
       render(<MessageBubble message={userMessage} />);
 
-      const bubble = screen.getByRole('listitem');
-      await user.hover(bubble);
-
-      const copyButton = screen.getByRole('button', { name: /메시지 복사/i });
-      expect(copyButton).toHaveClass('opacity-100');
+      expect(screen.getByTestId('message-action-bar')).toBeInTheDocument();
     });
 
-    it('should hide copy button when not hovered', () => {
-      render(<MessageBubble message={userMessage} />);
+    it('should render MessageActionBar for assistant messages', () => {
+      render(<MessageBubble message={assistantMessage} />);
 
-      const copyButton = screen.getByRole('button', { name: /메시지 복사/i });
-      expect(copyButton).toHaveClass('opacity-0');
+      expect(screen.getByTestId('message-action-bar')).toBeInTheDocument();
     });
 
-    it('should copy content to clipboard when clicked (verified via onCopy callback)', async () => {
+    it('should forward onCopy callback to MessageActionBar', async () => {
       const user = userEvent.setup();
       const onCopy = vi.fn();
       render(<MessageBubble message={userMessage} onCopy={onCopy} />);
 
-      const bubble = screen.getByRole('listitem');
-      await user.hover(bubble);
-      await user.click(screen.getByRole('button', { name: /메시지 복사/i }));
-
-      await waitFor(() => {
-        // onCopy callback is called with the same content that's written to clipboard
-        expect(onCopy).toHaveBeenCalledWith('Hello, can you help me?');
-      });
-    });
-
-    it('should call onCopy callback when copy is successful', async () => {
-      const user = userEvent.setup();
-      const onCopy = vi.fn();
-      render(<MessageBubble message={userMessage} onCopy={onCopy} />);
-
-      const bubble = screen.getByRole('listitem');
-      await user.hover(bubble);
-      await user.click(screen.getByRole('button', { name: /메시지 복사/i }));
+      await user.click(screen.getByRole('button', { name: /클립보드에 복사/i }));
 
       await waitFor(() => {
         expect(onCopy).toHaveBeenCalledWith('Hello, can you help me?');
       });
-    });
-
-    it('should show check icon after copy (aria-label changes to 복사됨)', async () => {
-      const user = userEvent.setup();
-      render(<MessageBubble message={userMessage} />);
-
-      const bubble = screen.getByRole('listitem');
-      await user.hover(bubble);
-      await user.click(screen.getByRole('button', { name: /메시지 복사/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /복사됨/i })).toBeInTheDocument();
-      });
-    });
-
-    it('should revert to copy icon after 2 seconds', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true });
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      render(<MessageBubble message={userMessage} />);
-
-      const bubble = screen.getByRole('listitem');
-      await user.hover(bubble);
-      await user.click(screen.getByRole('button', { name: /메시지 복사/i }));
-
-      // Verify it shows "복사됨" immediately after click
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /복사됨/i })).toBeInTheDocument();
-      });
-
-      // Advance timer by 2 seconds
-      await vi.advanceTimersByTimeAsync(2000);
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /메시지 복사/i })).toBeInTheDocument();
-      });
-
-      vi.useRealTimers();
     });
   });
 
@@ -266,16 +206,6 @@ describe('MessageBubble', () => {
 
       const desktopWidth = container.querySelector('.md\\:max-w-\\[80\\%\\]');
       expect(desktopWidth).toBeInTheDocument();
-    });
-  });
-
-  describe('touch target size', () => {
-    it('should have padding for adequate touch target on copy button', () => {
-      render(<MessageBubble message={userMessage} />);
-
-      const copyButton = screen.getByRole('button', { name: /메시지 복사/i });
-      // Button has p-1.5 padding for touch target
-      expect(copyButton).toHaveClass('p-1.5');
     });
   });
 
@@ -380,7 +310,7 @@ describe('MessageBubble', () => {
 
       const bubble = screen.getByRole('listitem');
       await user.hover(bubble);
-      await user.click(screen.getByRole('button', { name: /메시지 복사/i }));
+      await user.click(screen.getByRole('button', { name: /클립보드에 복사/i }));
 
       await waitFor(() => {
         // Should copy the raw markdown, not rendered HTML

@@ -479,8 +479,8 @@ class BmadStatusService {
       header.match(/^\*{0,2}Status\*{0,2}\s*:\s*(.+)/m);    // format 4 & 5
     const status = statusMatch ? statusMatch[1].trim() : 'Unknown';
 
-    // Match: "# Story 1.1: Title" or "# Story 1.1 — Title"
-    const titleMatch = header.match(/^#\s+Story\s+\d+\.\d+[:\s–-]+(.+)/m);
+    // Match: "# Story 1.1: Title", "# Story BS-1: Title", "# Story BE-1.2: Title", "# Story: Title"
+    const titleMatch = header.match(/^#\s+Story(?:\s+(?:B[SE]-)?[\d]+(?:\.\d+)?)?[:\s–-]+(.+)/m);
     const title = titleMatch ? titleMatch[1].trim() : undefined;
 
     return { status, title };

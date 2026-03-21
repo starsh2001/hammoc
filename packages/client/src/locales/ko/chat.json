@@ -160,19 +160,21 @@
     "assistantRole": "Claude",
     "assistantName": "Claude",
     "image": "첨부 이미지 {{index}}",
-    "imageAttached": "이미지 첨부됨",
-    "copiedLabel": "복사됨",
-    "copyLabel": "메시지 복사",
-    "copiedTitle": "복사됨!",
-    "copyTitle": "클립보드에 복사"
+    "imageAttached": "이미지 첨부됨"
   },
   "streamingMessage": {
     "ariaLabel": "Claude 응답 중",
-    "assistantName": "Claude",
-    "copiedLabel": "복사됨",
-    "copyLabel": "메시지 복사",
-    "copiedTitle": "복사됨!",
-    "copyTitle": "클립보드에 복사"
+    "assistantName": "Claude"
+  },
+  "messageActionBar": {
+    "copy": "복사",
+    "copied": "복사됨!",
+    "rewind": "되감기",
+    "regenerate": "재생성",
+    "edit": "편집",
+    "share": "공유",
+    "copyAriaLabel": "메시지를 클립보드에 복사",
+    "copiedAriaLabel": "메시지 복사됨"
   },
   "messageListSkeleton": {
     "ariaLabel": "메시지 로딩 중",

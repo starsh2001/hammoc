@@ -1,6 +1,6 @@
 /**
  * StreamingMessage Component Tests
- * [Source: Story 4.5 - Task 14]
+ * [Source: Story 4.5 - Task 14, Story 25.1 - Task 7]
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -48,36 +48,35 @@ describe('StreamingMessage', () => {
     it('shows streaming indicator when not complete', () => {
       render(<StreamingMessage content="Hello" isComplete={false} />);
 
-      // StreamingIndicator is now rendered by MessageArea, not StreamingMessage.
-      // StreamingMessage renders with aria-label indicating active streaming.
       expect(screen.getByLabelText('Claude 응답 중')).toBeInTheDocument();
     });
 
-    it('hides copy button when not complete (streaming)', () => {
+    it('hides MessageActionBar when not complete (streaming)', () => {
       render(<StreamingMessage content="Hello" isComplete={false} />);
 
-      expect(screen.queryByLabelText('메시지 복사')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('message-action-bar')).not.toBeInTheDocument();
     });
   });
 
-  describe('copy button', () => {
-    it('does not show copy button during streaming', () => {
+  // Story 25.1: MessageActionBar integration
+  describe('MessageActionBar (Story 25.1)', () => {
+    it('does not show action bar during streaming', () => {
       render(<StreamingMessage content="Hello" isComplete={false} />);
 
-      expect(screen.queryByLabelText('메시지 복사')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('message-action-bar')).not.toBeInTheDocument();
     });
 
-    it('shows copy button when complete', () => {
+    it('shows action bar when complete', () => {
       render(<StreamingMessage content="Hello" isComplete={true} />);
 
-      expect(screen.getByLabelText('메시지 복사')).toBeInTheDocument();
+      expect(screen.getByTestId('message-action-bar')).toBeInTheDocument();
     });
 
     it('copies content when copy button is clicked', async () => {
       const onCopy = vi.fn();
       render(<StreamingMessage content="Hello World" isComplete={true} onCopy={onCopy} />);
 
-      const copyButton = screen.getByLabelText('메시지 복사');
+      const copyButton = screen.getByRole('button', { name: /클립보드에 복사/i });
       fireEvent.click(copyButton);
 
       await waitFor(() => {
@@ -89,11 +88,11 @@ describe('StreamingMessage', () => {
     it('shows copied state after clicking', async () => {
       render(<StreamingMessage content="Hello" isComplete={true} />);
 
-      const copyButton = screen.getByLabelText('메시지 복사');
+      const copyButton = screen.getByRole('button', { name: /클립보드에 복사/i });
       fireEvent.click(copyButton);
 
       await waitFor(() => {
-        expect(screen.getByLabelText('복사됨')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /메시지 복사됨/i })).toBeInTheDocument();
       });
     });
   });
@@ -116,12 +115,10 @@ describe('StreamingMessage', () => {
 
   describe('markdown rendering', () => {
     it('passes isStreaming=true to MarkdownRenderer when not complete', () => {
-      // Render with code block to verify markdown rendering
       const { container } = render(
         <StreamingMessage content="```javascript\nconst x = 1;\n```" isComplete={false} />
       );
 
-      // Code block should be rendered
       expect(container.querySelector('code')).toBeInTheDocument();
     });
 

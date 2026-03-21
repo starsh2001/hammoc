@@ -160,19 +160,21 @@
     "assistantRole": "Claude",
     "assistantName": "Claude",
     "image": "Attached image {{index}}",
-    "imageAttached": "Image attached",
-    "copiedLabel": "Copied",
-    "copyLabel": "Copy message",
-    "copiedTitle": "Copied!",
-    "copyTitle": "Copy to clipboard"
+    "imageAttached": "Image attached"
   },
   "streamingMessage": {
     "ariaLabel": "Claude is responding",
-    "assistantName": "Claude",
-    "copiedLabel": "Copied",
-    "copyLabel": "Copy message",
-    "copiedTitle": "Copied!",
-    "copyTitle": "Copy to clipboard"
+    "assistantName": "Claude"
+  },
+  "messageActionBar": {
+    "copy": "Copy",
+    "copied": "Copied!",
+    "rewind": "Rewind",
+    "regenerate": "Regenerate",
+    "edit": "Edit",
+    "share": "Share",
+    "copyAriaLabel": "Copy message to clipboard",
+    "copiedAriaLabel": "Message copied"
   },
   "messageListSkeleton": {
     "ariaLabel": "Loading messages",
