@@ -11,7 +11,6 @@ import { toast } from 'sonner';
 import { RefreshCw, FolderOpen, AlertCircle, Settings, Plus, Eye, EyeOff, MoreVertical } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
-import { generateUUID } from '../utils/uuid';
 import { useAuthStore } from '../stores/authStore';
 import { ProjectCard } from '../components/ProjectCard';
 import { ProjectCardSkeleton } from '../components/ProjectCardSkeleton';
@@ -144,8 +143,7 @@ export function ProjectListPage() {
         } else {
           toast.success(t('project.newProjectCreated'));
         }
-        const newSessionId = generateUUID();
-        navigate(`/project/${projectSlug}/session/${newSessionId}`);
+        navigate(`/project/${projectSlug}`);
       }
     },
     [navigate]
@@ -328,22 +326,27 @@ export function ProjectListPage() {
 
         {/* Empty State */}
         {!isLoading && visibleProjects.length === 0 && (
-          <div className="text-center py-12">
-            <FolderOpen
-              className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-500 mb-4"
-              aria-hidden="true"
-            />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <div className="flex flex-col items-center justify-center py-24 px-6 animate-in fade-in duration-500">
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 rounded-full blur-xl scale-150" />
+              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-500/20 dark:to-blue-600/10 border border-blue-200/60 dark:border-blue-500/20 flex items-center justify-center shadow-sm">
+                <FolderOpen
+                  className="w-9 h-9 text-blue-500 dark:text-blue-400"
+                  aria-hidden="true"
+                />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
               {t('project.empty.title')}
             </h3>
-            <p className="text-gray-500 dark:text-gray-300 mb-6">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-xs text-center leading-relaxed">
               {t('project.empty.description')}
             </p>
             <button
               onClick={() => setIsNewProjectDialogOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129]"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-sm shadow-blue-500/25 hover:shadow-md hover:shadow-blue-500/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129]"
             >
-              <Plus className="w-5 h-5" aria-hidden="true" />
+              <Plus className="w-4 h-4" aria-hidden="true" />
               {t('project.createNewProject')}
             </button>
           </div>
