@@ -154,7 +154,7 @@ function EntryTree({
           <button
             key={entry.name}
             onClick={() => onOpenFile(basePath ? `${basePath}/${entry.name}` : entry.name)}
-            className="block text-xs text-gray-600 dark:text-gray-300 hover:underline cursor-pointer"
+            className="block text-xs text-left text-gray-600 dark:text-gray-300 hover:underline cursor-pointer"
           >
             {entry.name}
           </button>
@@ -262,7 +262,7 @@ function DocRow({
         <div className="mt-1 ml-6 space-y-1">
           <button
             onClick={() => handleOpenDoc(doc.path)}
-            className="block text-xs text-gray-600 dark:text-gray-300 hover:underline cursor-pointer"
+            className="block text-xs text-left text-gray-600 dark:text-gray-300 hover:underline cursor-pointer"
           >
             {doc.path}
           </button>
