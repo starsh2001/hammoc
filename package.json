@@ -33,6 +33,7 @@
     "bin/",
     "scripts/",
     "packages/server/dist/",
+    "packages/server/resources/",
     "packages/server/package.json",
     "packages/client/dist/",
     "packages/shared/dist/",
