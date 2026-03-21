@@ -156,18 +156,21 @@
     "assistantRole": "Claude",
     "assistantName": "Claude",
     "image": "Imagen adjunta {{index}}",
-    "copiedLabel": "Copiado",
-    "copyLabel": "Copiar mensaje",
-    "copiedTitle": "¡Copiado!",
-    "copyTitle": "Copiar al portapapeles"
+    "imageAttached": "Imagen adjunta"
   },
   "streamingMessage": {
     "ariaLabel": "Claude está respondiendo",
-    "assistantName": "Claude",
-    "copiedLabel": "Copiado",
-    "copyLabel": "Copiar mensaje",
-    "copiedTitle": "¡Copiado!",
-    "copyTitle": "Copiar al portapapeles"
+    "assistantName": "Claude"
+  },
+  "messageActionBar": {
+    "copy": "Copiar",
+    "copied": "¡Copiado!",
+    "rewind": "Rebobinar",
+    "regenerate": "Regenerar",
+    "edit": "Editar",
+    "share": "Compartir",
+    "copyAriaLabel": "Copiar mensaje al portapapeles",
+    "copiedAriaLabel": "Mensaje copiado"
   },
   "messageListSkeleton": {
     "ariaLabel": "Cargando mensajes",

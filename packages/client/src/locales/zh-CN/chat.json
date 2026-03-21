@@ -156,18 +156,21 @@
     "assistantRole": "Claude",
     "assistantName": "Claude",
     "image": "附件图片 {{index}}",
-    "copiedLabel": "已复制",
-    "copyLabel": "复制消息",
-    "copiedTitle": "已复制！",
-    "copyTitle": "复制到剪贴板"
+    "imageAttached": "已附加图片"
   },
   "streamingMessage": {
     "ariaLabel": "Claude 正在回复",
-    "assistantName": "Claude",
-    "copiedLabel": "已复制",
-    "copyLabel": "复制消息",
-    "copiedTitle": "已复制！",
-    "copyTitle": "复制到剪贴板"
+    "assistantName": "Claude"
+  },
+  "messageActionBar": {
+    "copy": "复制",
+    "copied": "已复制！",
+    "rewind": "回退",
+    "regenerate": "重新生成",
+    "edit": "编辑",
+    "share": "分享",
+    "copyAriaLabel": "复制消息到剪贴板",
+    "copiedAriaLabel": "消息已复制"
   },
   "messageListSkeleton": {
     "ariaLabel": "正在加载消息",

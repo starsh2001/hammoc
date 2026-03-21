@@ -156,18 +156,21 @@
     "assistantRole": "Claude",
     "assistantName": "Claude",
     "image": "添付画像 {{index}}",
-    "copiedLabel": "コピー済み",
-    "copyLabel": "メッセージをコピー",
-    "copiedTitle": "コピーしました！",
-    "copyTitle": "クリップボードにコピー"
+    "imageAttached": "画像添付済み"
   },
   "streamingMessage": {
     "ariaLabel": "Claudeが応答中です",
-    "assistantName": "Claude",
-    "copiedLabel": "コピー済み",
-    "copyLabel": "メッセージをコピー",
-    "copiedTitle": "コピーしました！",
-    "copyTitle": "クリップボードにコピー"
+    "assistantName": "Claude"
+  },
+  "messageActionBar": {
+    "copy": "コピー",
+    "copied": "コピーしました！",
+    "rewind": "巻き戻し",
+    "regenerate": "再生成",
+    "edit": "編集",
+    "share": "共有",
+    "copyAriaLabel": "メッセージをクリップボードにコピー",
+    "copiedAriaLabel": "メッセージをコピーしました"
   },
   "messageListSkeleton": {
     "ariaLabel": "メッセージを読み込み中",
