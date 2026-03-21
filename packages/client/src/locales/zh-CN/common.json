@@ -238,8 +238,9 @@
     "markDone": "完成 Story",
     "markDoneDesc": "QA 通过 — 标记为 Done",
     "requestQAReview": "重新请求 QA 审查",
-    "validateStoryOnly": "验证 Story（不修正）",
-    "validateAndFixStory": "验证并修正 Story",
+    "validateStoryOnly": "验证 Story",
+    "validateOnlyApproveHint": "用户的修改请求完成后，请将 Story 状态更改为 Approved。",
+    "validateAndFixStory": "验证并自动修正 Story",
     "validateFixPrompt": "请修正以上验证结果中发现的所有 Critical Issues、Should-Fix Issues 和 Nice-to-Have Issues。",
     "approveAfterFixPrompt": "如果Story的Status不是Approved，请将其更改为Approved。",
     "startDev": "开始开发",
@@ -584,7 +585,9 @@
     "emptyMessage": "暂无收藏。从斜杠命令列表中添加收藏。",
     "reorderHandle": "调整顺序",
     "removeStarPrefix": "从星标收藏中移除：*{{command}}",
-    "removePrefix": "从收藏中移除：{{command}}"
+    "removePrefix": "从收藏中移除：{{command}}",
+    "invalidChip": "此命令已不再可用",
+    "globalBadge": "(全局)"
   },
   "imageViewer": {
     "close": "关闭查看器",

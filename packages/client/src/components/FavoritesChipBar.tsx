@@ -1,6 +1,6 @@
 /**
  * FavoritesChipBar - Horizontal chip bar for favorite commands quick execution
- * [Source: Story 9.7 - Task 1]
+ * [Source: Story 9.7 - Task 1, BS-1 - Tasks 4, 5]
  *
  * Features:
  * - Fixed star button to open favorites dialog
@@ -8,15 +8,17 @@
  * - Chip tap for immediate command execution
  * - Hidden when no favorites exist (AC: 7)
  * - ARIA toolbar accessibility
+ * - Scope distinction: project (gray) vs global (purple) chips
+ * - Invalid chip validation with AlertTriangle icon
  */
 
 import { useTranslation } from 'react-i18next';
-import { Star } from 'lucide-react';
-import type { SlashCommand } from '@hammoc/shared';
+import { Star, AlertTriangle } from 'lucide-react';
+import type { SlashCommand, CommandFavoriteEntry } from '@hammoc/shared';
 
 interface FavoritesChipBarProps {
-  /** Favorite command strings (ordered) */
-  favoriteCommands: string[];
+  /** Favorite command entries (ordered, with scope) */
+  favoriteCommands: CommandFavoriteEntry[];
   /** Full command objects for display (icon, name) */
   commands: SlashCommand[];
   /** Callback when a chip is tapped — immediate execution */
@@ -60,6 +62,64 @@ export function FavoritesChipBar({
 
   const findCommand = (commandStr: string): SlashCommand | undefined => {
     return commands.find((c) => c.command === commandStr);
+  };
+
+  // Split favorites by scope
+  const projectFavorites = favoriteCommands.filter((e) => e.scope !== 'global');
+  const globalFavorites = favoriteCommands.filter((e) => e.scope === 'global');
+  const hasProjectFavorites = projectFavorites.length > 0;
+  const hasGlobalFavorites = globalFavorites.length > 0;
+
+  const renderChip = (entry: CommandFavoriteEntry, isGlobal: boolean) => {
+    const cmd = findCommand(entry.command);
+    const label = getChipLabel(entry.command, cmd);
+    const isInvalid = !cmd;
+    const scopeLabel = isGlobal ? '(global)' : '(project)';
+
+    if (isInvalid) {
+      return (
+        <button
+          key={`${entry.scope}-${entry.command}`}
+          type="button"
+          role="button"
+          disabled
+          title={t('favorites.invalidChip')}
+          aria-label={`${label} ${scopeLabel} - ${t('favorites.invalidChip')}`}
+          className={`px-2 py-1 rounded-full text-xs
+                     bg-gray-100 dark:bg-[#253040]
+                     text-gray-700 dark:text-gray-200
+                     whitespace-nowrap flex-shrink-0
+                     transition-colors min-h-[28px]
+                     flex items-center gap-1 opacity-50 cursor-not-allowed`}
+          data-testid={`favorite-chip-${entry.command}`}
+        >
+          <AlertTriangle className="w-3 h-3 text-yellow-500" />
+          <span>{label}</span>
+        </button>
+      );
+    }
+
+    const baseClasses = `px-2 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0 transition-colors min-h-[28px] flex items-center gap-1`;
+    const colorClasses = isGlobal
+      ? `bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700 ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-100 dark:hover:bg-purple-800/40 cursor-pointer'}`
+      : `bg-gray-100 dark:bg-[#253040] text-gray-700 dark:text-gray-200 ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-[#2d3a4a] cursor-pointer'}`;
+
+    return (
+      <button
+        key={`${entry.scope}-${entry.command}`}
+        type="button"
+        role="button"
+        disabled={disabled}
+        title={`${label} ${scopeLabel}`}
+        aria-label={t('favorites.executePrefix', { label })}
+        onClick={() => onExecute(entry.command)}
+        className={`${baseClasses} ${colorClasses}`}
+        data-testid={`favorite-chip-${entry.command}`}
+      >
+        {cmd?.icon && <span className="text-sm">{cmd.icon}</span>}
+        <span>{label}</span>
+      </button>
+    );
   };
 
   return (
@@ -119,31 +179,17 @@ export function FavoritesChipBar({
           </>
         )}
 
-        {favoriteCommands.map((commandStr) => {
-          const cmd = findCommand(commandStr);
-          const label = getChipLabel(commandStr, cmd);
+        {/* Project slash favorites (gray) */}
+        {projectFavorites.map((entry) => renderChip(entry, false))}
 
-          return (
-            <button
-              key={commandStr}
-              type="button"
-              role="button"
-              disabled={disabled}
-              aria-label={t('favorites.executePrefix', { label })}
-              onClick={() => onExecute(commandStr)}
-              className={`px-2 py-1 rounded-full text-xs
-                         bg-gray-100 dark:bg-[#253040]
-                         text-gray-700 dark:text-gray-200
-                         whitespace-nowrap flex-shrink-0
-                         transition-colors min-h-[28px]
-                         flex items-center gap-1 ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-[#2d3a4a] cursor-pointer'}`}
-              data-testid={`favorite-chip-${commandStr}`}
-            >
-              {cmd?.icon && <span className="text-sm">{cmd.icon}</span>}
-              <span>{label}</span>
-            </button>
-          );
-        })}
+        {/* Divider between project and global groups */}
+        {hasProjectFavorites && hasGlobalFavorites && (
+          <div className="flex-shrink-0 w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1"
+               data-testid="chip-bar-scope-divider" aria-hidden="true" />
+        )}
+
+        {/* Global slash favorites (purple) */}
+        {globalFavorites.map((entry) => renderChip(entry, true))}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@
 
 import path from 'path';
 import fs from 'fs/promises';
+import os from 'os';
 import yaml from 'js-yaml';
 import type { SlashCommand, StarCommand, CommandsResponse } from '@hammoc/shared';
 import { projectService } from './projectService.js';
@@ -267,9 +268,20 @@ class CommandService {
   /**
    * Scan .claude/skills/ directory for Claude Code skills.
    * Each skill is a subdirectory containing a SKILL.md with YAML frontmatter.
+   * Scans both project-level and global (~/.claude/skills/) directories.
    */
   async scanClaudeSkills(projectPath: string): Promise<SlashCommand[]> {
-    const skillsDir = path.join(projectPath, '.claude', 'skills');
+    const [projectSkills, globalSkills] = await Promise.all([
+      this.scanSkillsDir(path.join(projectPath, '.claude', 'skills'), 'project'),
+      this.scanSkillsDir(path.join(os.homedir(), '.claude', 'skills'), 'global'),
+    ]);
+    return [...projectSkills, ...globalSkills];
+  }
+
+  /**
+   * Scan a single skills directory and tag each result with the given scope.
+   */
+  private async scanSkillsDir(skillsDir: string, scope: 'project' | 'global'): Promise<SlashCommand[]> {
     const commands: SlashCommand[] = [];
 
     let entries: string[];
@@ -301,6 +313,7 @@ class CommandService {
           name: skillName,
           description,
           category: 'skill',
+          scope,
         });
       } catch {
         continue;

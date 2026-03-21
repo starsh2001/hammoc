@@ -31,7 +31,7 @@ import { FavoritesChipBar } from './FavoritesChipBar';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
 import { UsageStatusBar } from './UsageStatusBar';
 import { useSpeechRecognition, getSpeechLang } from '../hooks/useSpeechRecognition';
-import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage } from '@hammoc/shared';
+import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage, CommandFavoriteEntry } from '@hammoc/shared';
 import { IMAGE_CONSTRAINTS } from '@hammoc/shared';
 import { generateUUID } from '../utils/uuid';
 import { debugLogger } from '../utils/debugLogger';
@@ -135,12 +135,12 @@ interface ChatInputProps {
   isFavorite?: (command: string) => boolean;
   /** Toggle favorite status for a command (Story 9.5) */
   onToggleFavorite?: (command: string) => void;
-  /** Favorite command strings (Story 9.6) */
-  favoriteCommands?: string[];
-  /** Reorder favorites callback (Story 9.6) */
-  onReorderFavorites?: (commands: string[]) => void;
-  /** Remove favorite callback (Story 9.6) */
-  onRemoveFavorite?: (command: string) => void;
+  /** Favorite command entries with scope (Story 9.6, BS-1) */
+  favoriteCommands?: CommandFavoriteEntry[];
+  /** Reorder favorites callback (Story 9.6, BS-1) */
+  onReorderFavorites?: (commands: CommandFavoriteEntry[]) => void;
+  /** Remove favorite callback (Story 9.6, BS-1) */
+  onRemoveFavorite?: (entry: CommandFavoriteEntry) => void;
   /** Star commands for the active agent (Story 9.9) */
   starCommands?: StarCommand[];
   /** Active agent info for star command palette header (Story 9.9) */
@@ -911,8 +911,8 @@ export function ChatInput({
               commands={commands}
               onSelect={handleFavoriteSelect}
               onClose={() => setShowFavorites(false)}
-              onReorder={onReorderFavorites || (() => {})}
-              onRemoveFavorite={onRemoveFavorite || (() => {})}
+              onReorder={onReorderFavorites || (() => { /* noop */ })}
+              onRemoveFavorite={onRemoveFavorite || (() => { /* noop */ })}
               starFavorites={starFavorites}
               starCommands={starCommands}
               activeAgent={activeAgent}

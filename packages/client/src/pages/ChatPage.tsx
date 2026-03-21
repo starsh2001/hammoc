@@ -228,18 +228,21 @@ export function ChatPage() {
   // Command favorites (Story 9.4/9.5)
   const { favoriteCommands, addFavorite, removeFavorite, reorderFavorites, isFavorite } = useFavoriteCommands();
 
-  // Toggle favorite command handler (Story 9.5)
+  // Toggle favorite command handler (Story 9.5, BS-1)
   const handleToggleFavorite = useCallback((command: string) => {
     if (isFavorite(command)) {
-      removeFavorite(command);
+      const entry = favoriteCommands.find((e) => e.command === command);
+      if (entry) removeFavorite(entry);
     } else {
       if (favoriteCommands.length >= 20) {
         toast.warning(t('favorites.maxReached'));
         return;
       }
-      addFavorite(command);
+      // Look up scope from loaded commands
+      const cmd = commands.find((c) => c.command === command);
+      addFavorite(command, cmd?.scope);
     }
-  }, [isFavorite, addFavorite, removeFavorite, favoriteCommands.length]);
+  }, [isFavorite, addFavorite, removeFavorite, favoriteCommands, commands, t]);
 
   // Active agent detection (Story 8.5)
   const { activeAgent } = useActiveAgent(messages, commands, lastAgentCommand);

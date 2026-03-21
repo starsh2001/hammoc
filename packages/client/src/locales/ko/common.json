@@ -239,8 +239,9 @@
     "markDone": "스토리 완료",
     "markDoneDesc": "QA 통과 — Done으로 완료",
     "requestQAReview": "QA 재요청",
-    "validateStoryOnly": "스토리 검증 (미수정)",
-    "validateAndFixStory": "스토리 검증 및 수정",
+    "validateStoryOnly": "스토리 검증",
+    "validateOnlyApproveHint": "유저의 수정 요청이 완료되면 스토리 Status를 Approved로 변경하세요.",
+    "validateAndFixStory": "스토리 검증 및 자동 수정",
     "validateFixPrompt": "위 검증 결과에서 발견된 모든 Critical Issues, Should-Fix Issues, Nice-to-Have Issues를 전부 수정해주세요.",
     "approveAfterFixPrompt": "스토리 Status가 Approved가 아니면 Approved로 변경해주세요.",
     "startDev": "개발 시작",
@@ -600,7 +601,9 @@
     "emptyMessage": "즐겨찾기가 비어있습니다. 슬래시 커맨드 목록에서 ⭐을 눌러 추가하세요.",
     "reorderHandle": "순서 변경",
     "removeStarPrefix": "별표 즐겨찾기에서 제거: *{{command}}",
-    "removePrefix": "즐겨찾기에서 제거: {{command}}"
+    "removePrefix": "즐겨찾기에서 제거: {{command}}",
+    "invalidChip": "이 명령어는 더 이상 사용할 수 없습니다",
+    "globalBadge": "(글로벌)"
   },
   "contextUsage": {
     "ariaLabel": "컨텍스트 사용량 {{percent}}%",

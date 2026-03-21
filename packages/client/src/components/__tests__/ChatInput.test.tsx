@@ -1077,7 +1077,10 @@ describe('ChatInput', () => {
   // Story 9.6/9.7 - Favorites quick access tests (updated for chip bar)
   describe('favorites quick access', () => {
     const favoritesProps = {
-      favoriteCommands: ['/BMad:agents:pm', '/BMad:tasks:create-doc'],
+      favoriteCommands: [
+        { command: '/BMad:agents:pm', scope: 'project' as const },
+        { command: '/BMad:tasks:create-doc', scope: 'project' as const },
+      ],
       onReorderFavorites: vi.fn(),
       onRemoveFavorite: vi.fn(),
     };

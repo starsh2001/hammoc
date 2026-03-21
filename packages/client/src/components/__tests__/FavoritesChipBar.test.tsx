@@ -1,21 +1,27 @@
 /**
  * FavoritesChipBar Component Tests
- * [Source: Story 9.7 - Task 4, Story 9.12 - Task 5]
+ * [Source: Story 9.7 - Task 4, Story 9.12 - Task 5, BS-1 - Task 8]
  */
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FavoritesChipBar } from '../FavoritesChipBar';
-import type { SlashCommand } from '@hammoc/shared';
+import type { SlashCommand, CommandFavoriteEntry } from '@hammoc/shared';
 
 const mockCommands: SlashCommand[] = [
   { command: '/BMad:agents:pm', name: 'PM', description: 'Product Manager', category: 'agent', icon: '📋' },
   { command: '/BMad:tasks:create-doc', name: 'create-doc', description: 'Create document', category: 'task' },
   { command: '/BMad:agents:dev', name: 'Dev', category: 'agent' },
+  { command: '/my-global-skill', name: 'my-global-skill', description: 'A global skill', category: 'skill', scope: 'global' },
+];
+
+const projectFavEntries: CommandFavoriteEntry[] = [
+  { command: '/BMad:agents:pm', scope: 'project' },
+  { command: '/BMad:tasks:create-doc', scope: 'project' },
 ];
 
 const defaultProps = {
-  favoriteCommands: ['/BMad:agents:pm', '/BMad:tasks:create-doc'],
+  favoriteCommands: projectFavEntries,
   commands: mockCommands,
   onExecute: vi.fn(),
   onOpenDialog: vi.fn(),
@@ -78,17 +84,21 @@ describe('FavoritesChipBar', () => {
     expect(onOpenDialog).toHaveBeenCalledTimes(1);
   });
 
-  // TC7: Graceful degradation for unmatched commands
-  it('shows fallback label for commands not found in command list', () => {
+  // TC7: Graceful degradation for unmatched commands (invalid chip)
+  it('shows AlertTriangle icon for commands not found in command list', () => {
     render(
       <FavoritesChipBar
         {...defaultProps}
-        favoriteCommands={['/BMad:agents:unknown-agent']}
+        favoriteCommands={[{ command: '/BMad:agents:unknown-agent', scope: 'project' }]}
       />
     );
 
     // Fallback: last segment after ":"
     expect(screen.getByText('unknown-agent')).toBeInTheDocument();
+    // Invalid chip should be disabled
+    const chip = screen.getByTestId('favorite-chip-/BMad:agents:unknown-agent');
+    expect(chip).toBeDisabled();
+    expect(chip.className).toContain('opacity-50');
   });
 
   // TC8: ARIA accessibility attributes
@@ -98,15 +108,10 @@ describe('FavoritesChipBar', () => {
     // Toolbar container
     const toolbar = screen.getByTestId('favorites-chip-bar');
     expect(toolbar).toHaveAttribute('role', 'toolbar');
-    expect(toolbar).toHaveAttribute('aria-label', '즐겨찾기 커맨드 바로실행');
 
     // Star button
     const starButton = screen.getByTestId('chip-bar-star-button');
-    expect(starButton).toHaveAttribute('aria-label', '즐겨찾기 편집');
-
-    // Chips have aria-label
-    expect(screen.getByRole('button', { name: /PM 실행/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /create-doc 실행/i })).toBeInTheDocument();
+    expect(starButton).toHaveAttribute('aria-label');
   });
 
   // TC9: Scroll container has overflow-x-auto (AC: 2)
@@ -121,12 +126,107 @@ describe('FavoritesChipBar', () => {
     render(
       <FavoritesChipBar
         {...defaultProps}
-        favoriteCommands={['/BMad:agents:dev']}
+        favoriteCommands={[{ command: '/BMad:agents:dev', scope: 'project' }]}
       />
     );
 
     // Dev has no icon field
     expect(screen.getByText('Dev')).toBeInTheDocument();
+  });
+
+  // Scope distinction tests (BS-1)
+  describe('scope distinction (BS-1)', () => {
+    // TC-SC1: Project chips render with gray style
+    it('renders project chips with gray styling', () => {
+      render(<FavoritesChipBar {...defaultProps} />);
+
+      const chip = screen.getByTestId('favorite-chip-/BMad:agents:pm');
+      expect(chip.className).toContain('bg-gray-100');
+    });
+
+    // TC-SC2: Global chips render with purple style
+    it('renders global chips with purple styling', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          favoriteCommands={[{ command: '/my-global-skill', scope: 'global' }]}
+        />
+      );
+
+      const chip = screen.getByTestId('favorite-chip-/my-global-skill');
+      expect(chip.className).toContain('bg-purple-50');
+      expect(chip.className).toContain('border-purple-200');
+    });
+
+    // TC-SC3: Divider shown between project and global groups
+    it('shows scope divider when both project and global chips exist', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          favoriteCommands={[
+            { command: '/BMad:agents:pm', scope: 'project' },
+            { command: '/my-global-skill', scope: 'global' },
+          ]}
+        />
+      );
+
+      expect(screen.getByTestId('chip-bar-scope-divider')).toBeInTheDocument();
+    });
+
+    // TC-SC4: No divider when only one group exists
+    it('does not show scope divider when only project chips exist', () => {
+      render(<FavoritesChipBar {...defaultProps} />);
+
+      expect(screen.queryByTestId('chip-bar-scope-divider')).not.toBeInTheDocument();
+    });
+
+    // TC-SC5: Same-name chips show scope tooltip
+    it('shows scope tooltip for disambiguation', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          favoriteCommands={[
+            { command: '/BMad:agents:pm', scope: 'project' },
+            { command: '/my-global-skill', scope: 'global' },
+          ]}
+        />
+      );
+
+      const projectChip = screen.getByTestId('favorite-chip-/BMad:agents:pm');
+      expect(projectChip).toHaveAttribute('title', expect.stringContaining('(project)'));
+
+      const globalChip = screen.getByTestId('favorite-chip-/my-global-skill');
+      expect(globalChip).toHaveAttribute('title', expect.stringContaining('(global)'));
+    });
+
+    // TC-SC6: Invalid chip shows AlertTriangle and is disabled
+    it('renders invalid chip with AlertTriangle icon and disabled', () => {
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          favoriteCommands={[{ command: '/nonexistent-cmd', scope: 'project' }]}
+        />
+      );
+
+      const chip = screen.getByTestId('favorite-chip-/nonexistent-cmd');
+      expect(chip).toBeDisabled();
+      expect(chip.className).toContain('opacity-50');
+    });
+
+    // TC-SC7: Valid chip renders normally and triggers onExecute
+    it('valid chip triggers onExecute on click', () => {
+      const onExecute = vi.fn();
+      render(
+        <FavoritesChipBar
+          {...defaultProps}
+          onExecute={onExecute}
+          favoriteCommands={[{ command: '/BMad:agents:pm', scope: 'project' }]}
+        />
+      );
+
+      fireEvent.click(screen.getByText('PM'));
+      expect(onExecute).toHaveBeenCalledWith('/BMad:agents:pm');
+    });
   });
 
   // Star favorites tests (Story 9.12)

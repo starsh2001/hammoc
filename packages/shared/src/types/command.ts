@@ -14,6 +14,8 @@ export interface SlashCommand {
   category: 'agent' | 'task' | 'builtin' | 'skill';
   /** Agent icon emoji if available (from agent YAML) */
   icon?: string;
+  /** Skill scope — project-level or global (~/.claude/skills/) */
+  scope?: 'project' | 'global';
 }
 
 /**

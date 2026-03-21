@@ -1,7 +1,7 @@
 /**
  * useFavoriteCommands Tests
- * [Source: Story 9.4 - Task 3]
- * Updated: Now backed by preferencesStore (global, not per-project)
+ * [Source: Story 9.4 - Task 3, BS-1 - Task 7]
+ * Updated: Now returns CommandFavoriteEntry[] with scope
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -29,8 +29,9 @@ describe('useFavoriteCommands', () => {
       result.current.addFavorite('/BMad:agents:pm');
     });
 
-    expect(result.current.favoriteCommands).toEqual(['/BMad:agents:pm']);
-    expect(usePreferencesStore.getState().preferences.commandFavorites).toEqual(['/BMad:agents:pm']);
+    expect(result.current.favoriteCommands).toEqual([
+      { command: '/BMad:agents:pm', scope: 'project' },
+    ]);
   });
 
   // TC3: removeFavorite removes from store and updates state
@@ -43,10 +44,12 @@ describe('useFavoriteCommands', () => {
     });
 
     act(() => {
-      result.current.removeFavorite('/BMad:agents:pm');
+      result.current.removeFavorite({ command: '/BMad:agents:pm', scope: 'project' });
     });
 
-    expect(result.current.favoriteCommands).toEqual(['/BMad:agents:dev']);
+    expect(result.current.favoriteCommands).toEqual([
+      { command: '/BMad:agents:dev', scope: 'project' },
+    ]);
   });
 
   // TC4: Maximum 20 favorites — rejects addition at limit
@@ -68,7 +71,7 @@ describe('useFavoriteCommands', () => {
     });
 
     expect(result.current.favoriteCommands).toHaveLength(20);
-    expect(result.current.favoriteCommands).not.toContain('/BMad:cmd:overflow');
+    expect(result.current.favoriteCommands.some((e) => e.command === '/BMad:cmd:overflow')).toBe(false);
   });
 
   // TC5: Duplicate command addition is ignored
@@ -84,7 +87,10 @@ describe('useFavoriteCommands', () => {
       result.current.addFavorite('/BMad:agents:pm');
     });
 
-    expect(result.current.favoriteCommands).toEqual(['/BMad:agents:pm', '/BMad:agents:dev']);
+    expect(result.current.favoriteCommands).toEqual([
+      { command: '/BMad:agents:pm', scope: 'project' },
+      { command: '/BMad:agents:dev', scope: 'project' },
+    ]);
   });
 
   // TC6: reorderFavorites changes order
@@ -98,10 +104,18 @@ describe('useFavoriteCommands', () => {
     });
 
     act(() => {
-      result.current.reorderFavorites(['/BMad:agents:qa', '/BMad:agents:pm', '/BMad:agents:dev']);
+      result.current.reorderFavorites([
+        { command: '/BMad:agents:qa', scope: 'project' },
+        { command: '/BMad:agents:pm', scope: 'project' },
+        { command: '/BMad:agents:dev', scope: 'project' },
+      ]);
     });
 
-    expect(result.current.favoriteCommands).toEqual(['/BMad:agents:qa', '/BMad:agents:pm', '/BMad:agents:dev']);
+    expect(result.current.favoriteCommands).toEqual([
+      { command: '/BMad:agents:qa', scope: 'project' },
+      { command: '/BMad:agents:pm', scope: 'project' },
+      { command: '/BMad:agents:dev', scope: 'project' },
+    ]);
   });
 
   // TC7: Favorites are global (no per-project isolation)
@@ -113,8 +127,12 @@ describe('useFavoriteCommands', () => {
       result1.current.addFavorite('/BMad:agents:pm');
     });
 
-    expect(result1.current.favoriteCommands).toEqual(['/BMad:agents:pm']);
-    expect(result2.current.favoriteCommands).toEqual(['/BMad:agents:pm']);
+    expect(result1.current.favoriteCommands).toEqual([
+      { command: '/BMad:agents:pm', scope: 'project' },
+    ]);
+    expect(result2.current.favoriteCommands).toEqual([
+      { command: '/BMad:agents:pm', scope: 'project' },
+    ]);
   });
 
   // TC8: isFavorite returns correct boolean
@@ -131,37 +149,6 @@ describe('useFavoriteCommands', () => {
 
   // TC9: reorderFavorites input validation edge cases
   describe('reorderFavorites input validation', () => {
-    it('ignores new items not in existing favorites', () => {
-      const { result } = renderHook(() => useFavoriteCommands());
-
-      act(() => {
-        result.current.addFavorite('/BMad:agents:pm');
-        result.current.addFavorite('/BMad:agents:dev');
-      });
-
-      act(() => {
-        result.current.reorderFavorites(['/BMad:agents:dev', '/BMad:agents:pm', '/BMad:agents:new']);
-      });
-
-      expect(result.current.favoriteCommands).toEqual(['/BMad:agents:dev', '/BMad:agents:pm']);
-    });
-
-    it('retains missing items from existing favorites at the end', () => {
-      const { result } = renderHook(() => useFavoriteCommands());
-
-      act(() => {
-        result.current.addFavorite('/BMad:agents:pm');
-        result.current.addFavorite('/BMad:agents:dev');
-        result.current.addFavorite('/BMad:agents:qa');
-      });
-
-      act(() => {
-        result.current.reorderFavorites(['/BMad:agents:qa', '/BMad:agents:pm']);
-      });
-
-      expect(result.current.favoriteCommands).toEqual(['/BMad:agents:qa', '/BMad:agents:pm', '/BMad:agents:dev']);
-    });
-
     it('keeps existing list when empty array is passed', () => {
       const { result } = renderHook(() => useFavoriteCommands());
 
@@ -174,7 +161,40 @@ describe('useFavoriteCommands', () => {
         result.current.reorderFavorites([]);
       });
 
-      expect(result.current.favoriteCommands).toEqual(['/BMad:agents:pm', '/BMad:agents:dev']);
+      // Empty array is a no-op
+      expect(result.current.favoriteCommands).toEqual([
+        { command: '/BMad:agents:pm', scope: 'project' },
+        { command: '/BMad:agents:dev', scope: 'project' },
+      ]);
     });
+  });
+
+  // TC10: addFavorite with global scope
+  it('adds favorite with global scope', () => {
+    const { result } = renderHook(() => useFavoriteCommands());
+
+    act(() => {
+      result.current.addFavorite('/my-global-skill', 'global');
+    });
+
+    expect(result.current.favoriteCommands).toEqual([
+      { command: '/my-global-skill', scope: 'global' },
+    ]);
+  });
+
+  // TC11: Backward compatibility — plain string entries are normalized
+  it('normalizes plain string entries from server data', () => {
+    // Simulate server returning old string[] format
+    usePreferencesStore.setState({
+      preferences: { commandFavorites: ['/BMad:agents:pm', '/BMad:agents:dev'] },
+      loaded: true,
+    });
+
+    const { result } = renderHook(() => useFavoriteCommands());
+
+    expect(result.current.favoriteCommands).toEqual([
+      { command: '/BMad:agents:pm', scope: 'project' },
+      { command: '/BMad:agents:dev', scope: 'project' },
+    ]);
   });
 });

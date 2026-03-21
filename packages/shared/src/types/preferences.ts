@@ -12,6 +12,15 @@ export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 /**
  * Global user preferences stored at ~/.hammoc/preferences.json
  */
+/** Favorite command entry with optional scope info */
+export interface CommandFavoriteEntry {
+  command: string;
+  scope?: 'project' | 'global'; // undefined defaults to 'project'
+}
+
+/**
+ * Global user preferences stored at ~/.hammoc/preferences.json
+ */
 export interface UserPreferences {
   theme?: 'light' | 'dark' | 'system';
   layoutMode?: 'narrow' | 'wide';
@@ -19,7 +28,7 @@ export interface UserPreferences {
   permissionMode?: PermissionMode | 'latest';
   /** Stores the actual last-used mode when permissionMode is 'latest' */
   lastPermissionMode?: PermissionMode;
-  commandFavorites?: string[];
+  commandFavorites?: Array<string | CommandFavoriteEntry>;
   starFavorites?: Record<string, string[]>; // agentId → commands
   defaultModel?: string; // model ID (e.g. 'sonnet', 'claude-opus-4-6') or '' for CLI default
   chatTimeoutMs?: number; // chat response timeout, default 300000 (5 min)

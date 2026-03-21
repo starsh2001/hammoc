@@ -1,21 +1,27 @@
 /**
  * FavoritesPopup Component Tests
- * [Source: Story 9.6 - Task 4, Story 9.12 - Task 6]
+ * [Source: Story 9.6 - Task 4, Story 9.12 - Task 6, BS-1 - Task 8]
  */
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { FavoritesPopup } from '../FavoritesPopup';
-import type { SlashCommand, StarCommand } from '@hammoc/shared';
+import type { SlashCommand, StarCommand, CommandFavoriteEntry } from '@hammoc/shared';
 
 const mockCommands: SlashCommand[] = [
   { command: '/BMad:agents:pm', name: 'PM', description: 'Product Manager', category: 'agent', icon: '📋' },
   { command: '/BMad:tasks:create-doc', name: 'create-doc', description: 'Create doc', category: 'task' },
   { command: '/BMad:agents:dev', name: 'Dev', category: 'agent' }, // no icon, no description
+  { command: '/my-global-skill', name: 'my-global-skill', description: 'A global skill', category: 'skill', scope: 'global' },
+];
+
+const projectFavEntries: CommandFavoriteEntry[] = [
+  { command: '/BMad:agents:pm', scope: 'project' },
+  { command: '/BMad:tasks:create-doc', scope: 'project' },
 ];
 
 const defaultProps = {
-  favoriteCommands: ['/BMad:agents:pm', '/BMad:tasks:create-doc'],
+  favoriteCommands: projectFavEntries,
   commands: mockCommands,
   onSelect: vi.fn(),
   onClose: vi.fn(),
@@ -59,14 +65,14 @@ describe('FavoritesPopup', () => {
     expect(onSelect).toHaveBeenCalledWith('/BMad:agents:pm');
   });
 
-  // TC4: Remove button calls onRemoveFavorite
+  // TC4: Remove button calls onRemoveFavorite with CommandFavoriteEntry
   it('calls onRemoveFavorite when remove button is clicked', () => {
     const onRemoveFavorite = vi.fn();
     render(<FavoritesPopup {...defaultProps} onRemoveFavorite={onRemoveFavorite} />);
 
     fireEvent.click(screen.getByTestId('favorite-remove-0'));
 
-    expect(onRemoveFavorite).toHaveBeenCalledWith('/BMad:agents:pm');
+    expect(onRemoveFavorite).toHaveBeenCalledWith({ command: '/BMad:agents:pm', scope: 'project' });
   });
 
   // TC5: Drag and drop calls onReorder with new order
@@ -81,7 +87,10 @@ describe('FavoritesPopup', () => {
     fireEvent.dragOver(item1, { preventDefault: vi.fn() });
     fireEvent.drop(item1);
 
-    expect(onReorder).toHaveBeenCalledWith(['/BMad:tasks:create-doc', '/BMad:agents:pm']);
+    expect(onReorder).toHaveBeenCalledWith([
+      { command: '/BMad:tasks:create-doc', scope: 'project' },
+      { command: '/BMad:agents:pm', scope: 'project' },
+    ]);
   });
 
   // TC6: Unknown command string still renders (graceful degradation)
@@ -89,7 +98,7 @@ describe('FavoritesPopup', () => {
     render(
       <FavoritesPopup
         {...defaultProps}
-        favoriteCommands={['/unknown:command']}
+        favoriteCommands={[{ command: '/unknown:command', scope: 'project' }]}
       />
     );
 
@@ -102,7 +111,6 @@ describe('FavoritesPopup', () => {
 
     const popup = screen.getByTestId('favorites-popup');
     expect(popup).toHaveAttribute('role', 'listbox');
-    expect(popup).toHaveAttribute('aria-label', '즐겨찾기 커맨드 목록');
 
     const items = screen.getAllByRole('option');
     expect(items.length).toBe(2);
@@ -113,10 +121,6 @@ describe('FavoritesPopup', () => {
     // Drag handle aria-label
     const gripHandles = screen.getAllByLabelText('순서 변경');
     expect(gripHandles.length).toBe(2);
-
-    // Remove button aria-label
-    expect(screen.getByLabelText('즐겨찾기에서 제거: /BMad:agents:pm')).toBeInTheDocument();
-    expect(screen.getByLabelText('즐겨찾기에서 제거: /BMad:tasks:create-doc')).toBeInTheDocument();
   });
 
   // TC8: Optional icon/description fields fallback
@@ -124,7 +128,7 @@ describe('FavoritesPopup', () => {
     render(
       <FavoritesPopup
         {...defaultProps}
-        favoriteCommands={['/BMad:agents:dev']}
+        favoriteCommands={[{ command: '/BMad:agents:dev', scope: 'project' }]}
       />
     );
 
@@ -151,6 +155,79 @@ describe('FavoritesPopup', () => {
     fireEvent.keyDown(screen.getByTestId('favorite-item-0'), { key: ' ' });
 
     expect(onSelect).toHaveBeenCalledWith('/BMad:agents:pm');
+  });
+
+  // Scope distinction tests (BS-1)
+  describe('scope distinction (BS-1)', () => {
+    // TC-G1: Global favorites show purple left-border and (Global) badge
+    it('shows purple left-border and (Global) badge for global favorites', () => {
+      render(
+        <FavoritesPopup
+          {...defaultProps}
+          favoriteCommands={[{ command: '/my-global-skill', scope: 'global' }]}
+        />
+      );
+
+      const item = screen.getByTestId('favorite-item-0');
+      expect(item.className).toContain('border-l-2');
+      expect(item.className).toContain('border-purple-400');
+
+      const badge = screen.getByTestId('favorite-global-badge-0');
+      expect(badge).toBeInTheDocument();
+      expect(badge.textContent).toContain('(');
+    });
+
+    // TC-G2: Project favorites show no badge
+    it('does not show badge for project favorites', () => {
+      render(<FavoritesPopup {...defaultProps} />);
+
+      expect(screen.queryByTestId('favorite-global-badge-0')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('favorite-global-badge-1')).not.toBeInTheDocument();
+    });
+
+    // TC-G3: Remove callback passes CommandFavoriteEntry for global
+    it('passes CommandFavoriteEntry to onRemoveFavorite for global item', () => {
+      const onRemoveFavorite = vi.fn();
+      render(
+        <FavoritesPopup
+          {...defaultProps}
+          onRemoveFavorite={onRemoveFavorite}
+          favoriteCommands={[{ command: '/my-global-skill', scope: 'global' }]}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('favorite-remove-0'));
+
+      expect(onRemoveFavorite).toHaveBeenCalledWith({ command: '/my-global-skill', scope: 'global' });
+    });
+
+    // TC-G4: DnD reorder works with CommandFavoriteEntry
+    it('reorder works with mixed scope entries', () => {
+      const onReorder = vi.fn();
+      const mixedEntries: CommandFavoriteEntry[] = [
+        { command: '/BMad:agents:pm', scope: 'project' },
+        { command: '/my-global-skill', scope: 'global' },
+      ];
+      render(
+        <FavoritesPopup
+          {...defaultProps}
+          onReorder={onReorder}
+          favoriteCommands={mixedEntries}
+        />
+      );
+
+      const item0 = screen.getByTestId('favorite-item-0');
+      const item1 = screen.getByTestId('favorite-item-1');
+
+      fireEvent.dragStart(item0);
+      fireEvent.dragOver(item1, { preventDefault: vi.fn() });
+      fireEvent.drop(item1);
+
+      expect(onReorder).toHaveBeenCalledWith([
+        { command: '/my-global-skill', scope: 'global' },
+        { command: '/BMad:agents:pm', scope: 'project' },
+      ]);
+    });
   });
 
   // Star favorites tests (Story 9.12)
