@@ -110,6 +110,24 @@ function nextStoryNum(data: BmadStatusResponse): string {
       }
     }
   }
+
+  // Check if the current epic's planned stories are exhausted
+  const currentEpic = data.epics.find((ep) => ep.number === maxEpic);
+  if (currentEpic) {
+    const currentEpicStoryCount = currentEpic.stories.length;
+    const planned = currentEpic.plannedStories ?? currentEpicStoryCount;
+    if (currentEpicStoryCount >= planned) {
+      // Current epic is full — find the next epic
+      const numericEpics = data.epics
+        .map((ep) => (typeof ep.number === 'number' ? ep.number : parseInt(String(ep.number), 10)))
+        .filter((n) => !isNaN(n) && n > maxEpic)
+        .sort((a, b) => a - b);
+      if (numericEpics.length > 0) {
+        return `${numericEpics[0]}.1`;
+      }
+    }
+  }
+
   return `${maxEpic}.${maxStory + 1}`;
 }
 
@@ -308,12 +326,22 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     const label = qaDoneStory.title ? `${num}. ${qaDoneStory.title}` : qaDoneStory.file;
 
     recs.push({
+      id: 'commit-and-mark-done',
+      title: i18n.t('common:rec.commitAndMarkDone'),
+      description: label,
+      agentCommand: '/BMad:agents:dev',
+      taskCommand: `Please commit all current changes for story ${num}, then update the story status to Done.`,
+      variant: 'primary',
+      iconKey: 'git-commit',
+      storyFile: qaDoneStory.file,
+    });
+    recs.push({
       id: 'mark-done',
       title: i18n.t('common:rec.markDone'),
       description: i18n.t('common:rec.markDoneDesc'),
       agentCommand: '/BMad:agents:dev',
       taskCommand: `Update story ${num} status to Done. The QA gate has passed.`,
-      variant: 'primary',
+      variant: 'secondary',
       iconKey: 'check-circle',
       storyFile: qaDoneStory.file,
     });
@@ -432,13 +460,13 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       chainPrompts: [i18n.t('common:rec.validateFixPrompt'), i18n.t('common:rec.approveAfterFixPrompt')],
     });
 
-    // 6c: Validate only — no auto-fix
+    // 6c: Validate only — no auto-fix, approve after user fixes
     recs.push({
       id: 'validate-approved-story',
       title: i18n.t('common:rec.validateStoryOnly'),
       description: label,
       agentCommand: '/BMad:agents:po',
-      taskCommand: `*validate-story-draft ${num}`,
+      taskCommand: `*validate-story-draft ${num} ${i18n.t('common:rec.validateOnlyApproveHint')}`,
       variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: approvedStory.file,
@@ -464,13 +492,13 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       chainPrompts: [i18n.t('common:rec.validateFixPrompt'), i18n.t('common:rec.approveAfterFixPrompt')],
     });
 
-    // 7b: Validate only — no auto-fix
+    // 7b: Validate only — no auto-fix, approve after user fixes
     recs.push({
       id: 'validate-story',
       title: i18n.t('common:rec.validateStoryOnly'),
       description: label,
       agentCommand: '/BMad:agents:po',
-      taskCommand: `*validate-story-draft ${num}`,
+      taskCommand: `*validate-story-draft ${num} ${i18n.t('common:rec.validateOnlyApproveHint')}`,
       variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: draftStory.file,

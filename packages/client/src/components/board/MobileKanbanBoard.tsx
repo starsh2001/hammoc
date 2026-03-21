@@ -29,7 +29,9 @@ export function MobileKanbanBoard({
   onValidateAndFixAction,
   onValidateOnlyAction,
   onViewEpicStories,
-
+  onRequestQAReview,
+  onIssueStatusChange,
+  onCommitAndComplete,
   onCardClick,
 }: MobileKanbanBoardProps) {
   const { t } = useTranslation('board');
@@ -170,7 +172,9 @@ export function MobileKanbanBoard({
                       onValidateAndFixAction={onValidateAndFixAction}
                       onValidateOnlyAction={onValidateOnlyAction}
                       onViewEpicStories={onViewEpicStories}
-
+                      onRequestQAReview={onRequestQAReview}
+                      onIssueStatusChange={onIssueStatusChange}
+                      onCommitAndComplete={onCommitAndComplete}
                       onCardClick={onCardClick}
                     />
                   ))}

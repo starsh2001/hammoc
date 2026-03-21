@@ -27,7 +27,9 @@ export function KanbanColumn({
   onValidateAndFixAction,
   onValidateOnlyAction,
   onViewEpicStories,
-
+  onRequestQAReview,
+  onIssueStatusChange,
+  onCommitAndComplete,
   onCardClick,
 }: KanbanColumnProps) {
   return (
@@ -61,7 +63,9 @@ export function KanbanColumn({
             onValidateAndFixAction={onValidateAndFixAction}
             onValidateOnlyAction={onValidateOnlyAction}
             onViewEpicStories={onViewEpicStories}
-
+            onRequestQAReview={onRequestQAReview}
+            onIssueStatusChange={onIssueStatusChange}
+            onCommitAndComplete={onCommitAndComplete}
             onCardClick={onCardClick}
           />
         ))}

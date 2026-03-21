@@ -236,6 +236,7 @@
     "applyQaFixes": "Aplicar correcciones QA",
     "applyQaFixesDesc": "Aplicar retroalimentación QA al código",
     "markDone": "Completar historia",
+    "commitAndMarkDone": "Commit y completar historia",
     "markDoneDesc": "QA aprobado — marcar como Done",
     "requestQAReview": "Volver a solicitar revisión QA",
     "validateStoryOnly": "Validar historia",

@@ -31,7 +31,9 @@ export function KanbanBoard({
   onValidateAndFixAction,
   onValidateOnlyAction,
   onViewEpicStories,
-
+  onRequestQAReview,
+  onIssueStatusChange,
+  onCommitAndComplete,
   onCardClick,
 }: KanbanBoardProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -93,7 +95,9 @@ export function KanbanBoard({
             onValidateAndFixAction={onValidateAndFixAction}
             onValidateOnlyAction={onValidateOnlyAction}
             onViewEpicStories={onViewEpicStories}
-
+            onRequestQAReview={onRequestQAReview}
+            onIssueStatusChange={onIssueStatusChange}
+            onCommitAndComplete={onCommitAndComplete}
             onCardClick={onCardClick}
           />
         ))}

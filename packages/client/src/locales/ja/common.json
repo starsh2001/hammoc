@@ -236,6 +236,7 @@
     "applyQaFixes": "QA修正を適用",
     "applyQaFixesDesc": "QAフィードバックをコードに反映",
     "markDone": "ストーリーを完了",
+    "commitAndMarkDone": "コミット後ストーリー完了",
     "markDoneDesc": "QA合格 — Doneにする",
     "requestQAReview": "QA再レビューをリクエスト",
     "validateStoryOnly": "ストーリー検証",
