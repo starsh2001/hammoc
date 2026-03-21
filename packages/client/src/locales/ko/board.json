@@ -38,14 +38,10 @@
     "alreadyPromotedToEpic": "이미 에픽으로 승격됨",
     "cannotDeleteWhileWorking": "AI가 작업 중이므로 삭제할 수 없습니다",
     "reopen": "다시 열기",
-    "resumeDev": "개발 이어하기",
-    "markReview": "리뷰 요청",
+    "resumeDev": "개발 이어가기",
     "markDone": "이슈 완료",
     "commitAndMarkDone": "커밋 후 이슈 완료",
-    "rework": "재작업",
     "requestQA": "QA 리뷰 요청",
-    "requestQAAgain": "QA 재요청",
-    "applyFix": "QA 수정 적용",
     "closeConfirm": "이 이슈를 닫으시겠습니까?",
     "deleteConfirm": "이슈 \"{{title}}\"을(를) 삭제하시겠습니까?",
     "attachments": "첨부파일",
@@ -92,11 +88,7 @@
     "resolveGateOutro": "QA 수정 완료 후, gate YAML 파일의 gate 필드를 'FIXED'로 변경해주세요.",
     "quickFixIntro": "다음 이슈를 해결해 주세요:",
     "issueFileLabel": "이슈 파일:",
-    "reviewFileLabel": "리뷰 파일:",
-    "quickFixOutro": "수정이 완료되면 이슈 상태를 'Ready for Review'로 변경해주세요.",
-    "issueFixIntro": "다음 이슈가 QA에서 반려되었습니다. 리뷰 YAML 파일의 status_reason 필드에서 QA 피드백을 확인하고 필요한 수정을 적용해주세요. 수정 완료 후 리뷰 YAML 파일의 gate 필드를 'FIXED'로 변경해주세요:",
-    "issueQAIntro": "다음 이슈의 수정 사항을 검토하고 문제가 올바르게 해결되었는지 확인해주세요:",
-    "issueQAOutro": "수정이 적절하면 이슈 상태를 'Ready for Done'으로 변경하고, 리뷰 YAML 파일을 gate: PASS로 생성/갱신해주세요.\n수정이 더 필요하면 이슈 상태는 'Ready for Review'로 유지하고, 리뷰 파일을 gate: FAIL과 status_reason으로 생성/갱신해주세요.\n\n리뷰 파일 YAML 형식:\n```yaml\nschema: 1\nissue: '{issueId}'\ngate: PASS\nstatus_reason: '설명'\nreviewer: 'QA'\nupdated: '{ISO-8601}'\n```"
+    "quickFixOutro": "수정이 완료되면 이슈 상태를 'Ready for Review'로 변경해주세요."
   },
   "status": {
     "open": "열림",

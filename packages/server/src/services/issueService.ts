@@ -143,8 +143,9 @@ function parseIssueMarkdown(content: string, issueId: string): BoardItem {
   const title = titleMatch ? titleMatch[1].trim() : issueId;
 
   const rawStatus = extractSection(content, 'Status') || 'Open';
-  // Normalize legacy 'Review' → 'Ready for Review'
-  const status = rawStatus === 'Review' ? 'Ready for Review' : rawStatus;
+  // Normalize: legacy 'Review' → 'Ready for Review', issues 'Ready for Review' → 'Ready for Done'
+  let status = rawStatus === 'Review' ? 'Ready for Review' : rawStatus;
+  if (status === 'Ready for Review') status = 'Ready for Done';
   const description = extractSection(content, 'Description');
   const severity = extractSection(content, 'Severity') as BoardItem['severity'];
   const issueType = extractSection(content, 'Type') as BoardItem['issueType'];

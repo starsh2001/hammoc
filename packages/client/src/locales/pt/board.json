@@ -39,13 +39,9 @@
     "cannotDeleteWhileWorking": "Não é possível excluir enquanto a IA está trabalhando",
     "reopen": "Reabrir",
     "resumeDev": "Retomar desenvolvimento",
-    "markReview": "Solicitar revisão",
     "markDone": "Concluir issue",
     "commitAndMarkDone": "Commit e completar issue",
-    "rework": "Retrabalhar",
     "requestQA": "Solicitar revisão QA",
-    "requestQAAgain": "Ressolicitar revisão QA",
-    "applyFix": "Aplicar correção QA",
     "closeConfirm": "Fechar esta issue?",
     "deleteConfirm": "Excluir issue \"{{title}}\"?",
     "attachments": "Anexos",
@@ -92,11 +88,7 @@
     "resolveGateOutro": "Após concluir as correções de QA, altere o campo gate do arquivo YAML de gate para 'FIXED'.",
     "quickFixIntro": "Por favor, corrija o seguinte problema:",
     "issueFileLabel": "Arquivo do problema:",
-    "reviewFileLabel": "Arquivo de revisão:",
-    "quickFixOutro": "Quando a correção estiver concluída, altere o status da issue para Ready for Review.",
-    "issueFixIntro": "A seguinte issue foi rejeitada pelo QA. Revise o feedback de QA no campo status_reason do arquivo YAML de revisão e aplique as correções necessárias. Após aplicar as correções, altere o campo gate do arquivo YAML de revisão para 'FIXED':",
-    "issueQAIntro": "Revise a correção da seguinte issue e verifique se ela resolve adequadamente o problema:",
-    "issueQAOutro": "Se a correção for satisfatória, atualize o status para 'Ready for Done' e crie/atualize o arquivo YAML de revisão com gate: PASS.\nSe precisar de mais trabalho, mantenha o status como 'Ready for Review' e crie/atualize o arquivo de revisão com gate: FAIL e status_reason explicando o que precisa ser corrigido.\n\nFormato YAML do arquivo de revisão:\n```yaml\nschema: 1\nissue: '{issueId}'\ngate: PASS\nstatus_reason: 'explicação'\nreviewer: 'QA'\nupdated: '{ISO-8601}'\n```"
+    "quickFixOutro": "Quando a correção estiver concluída, altere o status da issue para Ready for Review."
   },
   "status": {
     "open": "Aberto",
