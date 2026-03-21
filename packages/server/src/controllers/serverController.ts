@@ -30,6 +30,15 @@ if (process.platform === 'win32') {
   } catch { /* keep bare 'npm' fallback */ }
 }
 
+/** Filter warning lines from stderr so only real errors are shown to the user. */
+function stripWarnings(stderr: string): string {
+  return stderr
+    .split(/\r?\n/)
+    .filter(line => !/^\s*(warn(ing)?[\s:]|⚠|A PostCSS plugin)/i.test(line))
+    .join('\n')
+    .trim();
+}
+
 function getLocalNetworkIP(): string | null {
   const interfaces = os.networkInterfaces();
   for (const addrs of Object.values(interfaces)) {
@@ -155,7 +164,7 @@ export const serverController = {
 
     exec(`"${npmPath}" run build`, { cwd: MONOREPO_ROOT, timeout: 300_000, env: { ...process.env, NODE_ENV: 'development' } }, (err, _stdout, stderr) => {
       if (err) {
-        const errorMsg = stderr?.trim() || err.message;
+        const errorMsg = stripWarnings(stderr ?? '') || err.message;
         console.error('[restart] Build failed:', errorMsg);
         buildState = { status: 'failed', error: errorMsg };
         return;
@@ -214,7 +223,7 @@ export const serverController = {
 
     execFile(npmPath, ['install', '-g', `${name}@latest`], { timeout: 300_000, shell: true }, (err, _stdout, stderr) => {
       if (err) {
-        const errorMsg = stderr?.trim() || err.message;
+        const errorMsg = stripWarnings(stderr ?? '') || err.message;
         console.error('[update] npm install failed:', errorMsg);
         buildState = { status: 'failed', error: errorMsg };
         return;
