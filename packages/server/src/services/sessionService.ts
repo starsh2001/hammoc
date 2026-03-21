@@ -647,6 +647,7 @@ export class SessionService {
         messageCount: meta.messageCount,
         created: stat.birthtime.toISOString(),
         modified: stat.mtime.toISOString(),
+        ...(meta.cwd ? { projectPath: meta.cwd } : {}),
       };
 
       // Read existing index — skip update entirely if file exists but is unparseable
@@ -664,8 +665,11 @@ export class SessionService {
       }
 
       // Upsert: replace existing entry or append
+      // Preserve projectPath from existing entry if present
       const existingIdx = index.entries.findIndex(e => e.sessionId === sessionId);
       if (existingIdx >= 0) {
+        const existing = index.entries[existingIdx];
+        if (existing.projectPath) entry.projectPath = existing.projectPath;
         index.entries[existingIdx] = entry;
       } else {
         index.entries.push(entry);

@@ -211,7 +211,26 @@ class ProjectService {
         originalPath = entries[0].projectPath;
       }
 
-      // If still no originalPath, skip this project (invalid format)
+      // If still no originalPath, try extracting cwd from .jsonl session files
+      // (Hammoc-created sessions may lack projectPath in index entries)
+      if (!originalPath || typeof originalPath !== 'string') {
+        originalPath = await this.extractCwdFromSessionFiles(projectPath) ?? undefined;
+
+        // Backfill: write projectPath into entries so future lookups skip the fallback
+        // Use atomic temp+rename to avoid corrupting the index during concurrent reads
+        if (originalPath && entries.length > 0) {
+          for (const e of entries) { e.projectPath = originalPath; }
+          const tmpPath = `${indexPath}.tmp.${Date.now()}`;
+          try {
+            await fs.writeFile(tmpPath, JSON.stringify(index, null, 2), 'utf-8');
+            await fs.rename(tmpPath, indexPath);
+          } catch {
+            // Best-effort backfill — next call will retry
+            fs.unlink(tmpPath).catch(() => {});
+          }
+        }
+      }
+
       if (!originalPath || typeof originalPath !== 'string') {
         // Don't throw error, just skip - this might be a corrupted or empty project
         return null;
@@ -377,8 +396,10 @@ class ProjectService {
     try {
       const content = await fs.readFile(namesPath, 'utf-8');
       return JSON.parse(content) as Record<string, string>;
-    } catch {
-      return {};
+    } catch (err) {
+      // Only return empty for missing file; rethrow other errors to prevent data loss
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {};
+      throw err;
     }
   }
 
@@ -485,6 +506,25 @@ class ProjectService {
     const projectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
     const info = await this.parseSessionsIndex(projectDir, projectSlug);
     return info?.originalPath ?? null;
+  }
+
+  /**
+   * Update a session name using a known original path directly,
+   * bypassing parseSessionsIndex to avoid file contention with the SDK.
+   */
+  async updateSessionNameByPath(
+    originalPath: string,
+    sessionId: string,
+    name: string | null,
+  ): Promise<string | null> {
+    const names = await this.readSessionNames(originalPath);
+    if (name) {
+      names[sessionId] = name;
+    } else {
+      delete names[sessionId];
+    }
+    await this.writeSessionNames(originalPath, names);
+    return name;
   }
 
   /**

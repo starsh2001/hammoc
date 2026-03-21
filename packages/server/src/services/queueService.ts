@@ -338,29 +338,24 @@ export class QueueService {
     }
     if (item.saveSessionName) {
       log.debug(`executeItem: SAVE session name="${item.saveSessionName}", sessionId=${this.currentSessionId}`);
-      // Retry with backoff for transient file lock (sessions-index.json concurrent write by SDK)
-      const maxAttempts = 5;
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          await this.projectService.updateSessionName(
-            this.projectSlug, this.currentSessionId!, item.saveSessionName
-          );
-          break;
-        } catch (error) {
-          const msg = error instanceof Error ? error.message : String(error);
-          if (attempt < maxAttempts) {
-            if (this.abortController?.signal.aborted) break;
-            const delayMs = attempt * 500; // 500, 1000, 1500, 2000ms
-            log.warn(`executeItem: SAVE session name attempt ${attempt}/${maxAttempts} failed (${msg}), retrying in ${delayMs}ms...`);
-            await new Promise<void>(r => {
-              const timer = setTimeout(r, delayMs);
-              this.abortController?.signal.addEventListener('abort', () => { clearTimeout(timer); r(); }, { once: true });
-            });
-            if (this.abortController?.signal.aborted) break;
-          } else {
-            log.warn(`executeItem: SAVE session name failed after ${maxAttempts} attempts (${msg}), continuing execution`);
-          }
-        }
+      if (!this.currentSessionId) {
+        log.warn(`executeItem: SAVE failed — no active session`);
+        const t = i18next.getFixedT(this.lang);
+        this.pauseWithError(t('queue.error.saveNoSession', { defaultValue: 'Cannot save: no active session' }));
+        return { shouldAdvance: false };
+      }
+      // Use workingDirectory directly to avoid reading sessions-index.json
+      // which may be locked by the SDK during active streaming
+      try {
+        await this.projectService.updateSessionNameByPath(
+          this.workingDirectory, this.currentSessionId, item.saveSessionName
+        );
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        log.error(`executeItem: SAVE session name failed (${msg})`);
+        const t = i18next.getFixedT(this.lang);
+        this.pauseWithError(t('queue.error.saveFailed', { defaultValue: `Save failed: ${msg}` }));
+        return { shouldAdvance: false };
       }
     }
     if (item.loadSessionName) {
@@ -605,7 +600,18 @@ export class QueueService {
   }
 
   private async handleLoadSession(name: string): Promise<boolean> {
-    const sessionNames = await this.projectService.readSessionNamesBySlug(this.projectSlug);
+    // Use workingDirectory directly to avoid reading sessions-index.json
+    // which may be locked by the SDK during active streaming
+    let sessionNames: Record<string, string>;
+    try {
+      sessionNames = await this.projectService.readSessionNames(this.workingDirectory);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log.error(`handleLoadSession: failed to read session names (${msg})`);
+      const t = i18next.getFixedT(this.lang);
+      this.pauseWithError(t('queue.error.sessionNotFound', { value: name }));
+      return false;
+    }
     const entry = Object.entries(sessionNames).find(([, n]) => n === name);
     if (!entry) {
       const t = i18next.getFixedT(this.lang);
