@@ -755,9 +755,10 @@ Claude's responses can contain special markers to control queue execution:
      - Clock (gray) — pending
    - **Auto-scroll** to the current item
 4. **Controls:**
-   - **Pause** — Temporarily halt execution (shown during running)
-   - **Resume** / **Abort** — Shown during paused state
-   - **Abort** requires confirmation
+   - **Pause** — Schedule a pause after the current item finishes. While an item is executing, this sets a "pause reservation" rather than pausing immediately. A **Cancel Pause** button appears to revoke the reservation before the item completes.
+   - **Resume** — Shown during paused state; resumes execution from the next pending item
+   - **Edit Script** — Shown during paused state; switches to the text editor with remaining items serialized as script text. Edit freely, then click **Apply** to replace pending items or **Cancel** to discard changes.
+   - **Abort** — Always available (running or paused); requires confirmation
    - **"Go to Session"** link — Navigate to the active chat session
 5. **Session links** — Completed items show a link icon to navigate to their associated session
 6. **"Back to Editor"** button — Dismiss the runner panel after completion or error
@@ -772,13 +773,15 @@ Claude's responses can contain special markers to control queue execution:
 While the queue is running, a **sticky banner** appears at the top of chat sessions:
 
 - **Running** (blue) — Spinner + progress (current/total) + current prompt preview (desktop)
+- **Pause requested** (amber pulse) — Pause scheduled after current item finishes; cancel pause button shown
+- **Waiting for input** (purple pulse) — Queue paused for permission approval or user question; respond in the session to continue
 - **Paused** (amber) — Pause icon + progress; pause reason shown below if provided
 - **Error-paused** (red) — Alert icon + error details
 - **Completed** (green) — Checkmark + total count; dismissible with X button
 - **Error-stopped** (red) — Error message + link to queue editor; dismissible
 
 **Banner controls:**
-- **Pause / Resume / Abort** buttons directly in the banner (icon-only on mobile, icon+text on desktop)
+- **Pause / Cancel Pause / Resume / Abort** buttons directly in the banner (icon-only on mobile, icon+text on desktop)
 - **"Queue Editor"** link — Navigate to the full queue editor (desktop only)
 - **"Go to Session"** link — Navigate to the active queue session
 
