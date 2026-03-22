@@ -14,7 +14,7 @@
  * - Incomplete code block handling during streaming
  */
 
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -268,8 +268,20 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
     [onCodeCopy, t]
   );
 
+  // Intercept copy to strip HTML tags from clipboard
+  const handleCopy = useCallback((e: React.ClipboardEvent) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+    e.preventDefault();
+    const plainText = selection.toString();
+    e.clipboardData.setData('text/plain', plainText);
+  }, []);
+
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none break-words [&_code]:before:content-none [&_code]:after:content-none [&_hr]:my-2">
+    <div
+      className="prose prose-sm dark:prose-invert max-w-none break-words [&_code]:before:content-none [&_code]:after:content-none [&_hr]:my-2"
+      onCopy={handleCopy}
+    >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {processedContent}
       </ReactMarkdown>
