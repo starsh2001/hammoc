@@ -123,6 +123,7 @@
   },
   "promote": {
     "originalIssueHeader": "Issue original (ID: {{id}})",
+    "issueFileRef": "Leia os detalhes completos da issue em `{{file}}` antes de criar a história.",
     "none": "Nenhum"
   },
   "truncated": "...(truncado)",

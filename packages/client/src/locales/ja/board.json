@@ -123,6 +123,7 @@
   },
   "promote": {
     "originalIssueHeader": "元の課題（ID：{{id}}）",
+    "issueFileRef": "ストーリー作成前に `{{file}}` から課題の詳細を確認してください。",
     "none": "なし"
   },
   "truncated": "...（省略）",

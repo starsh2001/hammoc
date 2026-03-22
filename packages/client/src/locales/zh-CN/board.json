@@ -123,6 +123,7 @@
   },
   "promote": {
     "originalIssueHeader": "原始问题（ID：{{id}}）",
+    "issueFileRef": "创建故事前请先阅读 `{{file}}` 中的完整问题详情。",
     "none": "无"
   },
   "truncated": "...（已截断）",
