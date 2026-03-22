@@ -282,6 +282,31 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
         </div>
       </div>
 
+      {/* Validation status — always visible above editor so layout doesn't shift on mobile */}
+      {showEditor && (
+        <div id="queue-warnings" className="flex flex-col gap-1 px-4 pt-2" role="status">
+          {warnings.length > 0 ? (
+            warnings.map((w, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md
+                  bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
+              >
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                <span>{t('queue.lineWarning', { line: w.line, message: w.message })}</span>
+              </div>
+            ))
+          ) : script.trim() ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md
+              bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
+            >
+              <Check className="w-4 h-4 flex-shrink-0" />
+              <span>{t('queue.scriptValid')}</span>
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {/* Content area */}
       <div className={`flex flex-col flex-1 p-4 gap-3 ${showRunner ? '' : 'overflow-auto'}`}>
       {/* Editor area — shown when not executing or in paused edit mode */}
@@ -363,21 +388,6 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
       </div>
       )}
 
-      {/* Validation warnings — shown when editor is visible */}
-      {showEditor && warnings.length > 0 && (
-        <div id="queue-warnings" className="flex flex-col gap-1" role="alert">
-          {warnings.map((w, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md
-                bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
-            >
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              <span>{t('queue.lineWarning', { line: w.line, message: w.message })}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Runner panel — full height when execution active */}
       {parsedItems.length > 0 && showRunner && (
