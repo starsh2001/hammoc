@@ -694,7 +694,7 @@ The editor provides **syntax highlighting**:
 - **Word Wrap** (WrapText icon) — Toggle line wrapping (persisted across sessions)
 
 **Editor behavior:**
-- **Validation warnings** displayed below the editor (e.g., missing arguments, unclosed multiline blocks, unknown directives)
+- **Validation warnings** displayed above the editor (e.g., missing arguments, unclosed multiline blocks, unknown directives)
 - **Empty state** shows a visual command reference overlay listing all available directives
 - Editor is hidden during queue execution, replaced by the runner panel
 
