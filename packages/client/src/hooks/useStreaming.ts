@@ -722,6 +722,19 @@ export function useStreaming() {
           prevIsStreaming: chatState.isStreaming,
           prevSegCount: chatState.streamingSegments.length,
         });
+        // If we were already streaming (reconnection during active chain),
+        // fetch history to pick up intermediate turns completed while disconnected.
+        // Without this, chain turns that completed in the background are never
+        // loaded — only the active turn's buffer replay arrives via WebSocket.
+        if (chatState.isStreaming) {
+          const { currentProjectSlug } = useMessageStore.getState();
+          if (currentProjectSlug && data.sessionId) {
+            debugLog.stream('stream:status ACTIVE → fetching intermediate chain history', {
+              sessionId: data.sessionId,
+            });
+            useMessageStore.getState().fetchMessages(currentProjectSlug, data.sessionId, { silent: true });
+          }
+        }
         restoreStreaming(data.sessionId);
         // Apply the stream's actual permission mode (overrides local preference)
         if (data.permissionMode) {
@@ -925,7 +938,6 @@ export function useStreaming() {
       const localSeenPermissionIds = new Set<string>();
       // Track completed turns — when message:complete arrives, convert segments to messages
       const completedMessages: HistoryMessage[] = [];
-      let completedStreamCompleteCount = 0;
       let lastResultError: ResultErrorData | null = null;
 
       /** Flush accumulated text into a text segment */
@@ -1223,9 +1235,6 @@ export function useStreaming() {
               };
               if (d.usage.model) activeModel = d.usage.model;
             }
-            // Convert accumulated segments to messages (turn completed)
-            convertSegmentsToMessages();
-            completedStreamCompleteCount++;
             // Reset per-turn identity so next turn doesn't inherit stale ID
             messageId = null;
             break;
@@ -1302,10 +1311,6 @@ export function useStreaming() {
 
       // Update chat store — single setState call
       const chatStateUpdate: Record<string, unknown> = {};
-      // Always increment streamCompleteCount for completed turns (even if stream is still active)
-      if (completedStreamCompleteCount > 0) {
-        chatStateUpdate.streamCompleteCount = useChatStore.getState().streamCompleteCount + completedStreamCompleteCount;
-      }
       if (hasActiveSegments && useChatStore.getState().isStreaming) {
         // Stream is actively running (server sent active: true) with in-progress segments
         chatStateUpdate.isStreaming = true;
