@@ -13,6 +13,7 @@ import { QueueRunnerPanel } from './QueueRunnerPanel';
 import { QueueTemplateDialog } from './QueueTemplateDialog';
 import { highlightScript } from './queueHighlight';
 import { readQueueWrapMode, writeQueueWrapMode } from './wrapMode';
+import { queueApi } from '../../services/api/queue';
 
 /** Shared text styles for pre + textarea overlay alignment */
 const sharedTextStyle: React.CSSProperties = {
@@ -59,7 +60,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isLocked = runner.isRunning || runner.isStarting;
+  const isLocked = (runner.isRunning || runner.isStarting) && !isEditingPaused;
   const isExecutionActive = runner.isRunning || runner.isPaused
     || runner.completedItems.size > 0 || !!runner.errorItem;
 
@@ -106,16 +107,16 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
     runner.start(items);
   }, [parseScript, runner]);
 
-  // Enter script edit mode: serialize pending items to editor
+  // Enter script edit mode: serialize pending items to editor (no debounce — parse on apply only)
   const handleEditScript = useCallback(() => {
     const { parsedItems: items, currentIndex, isPaused } = useQueueStore.getState();
     const pendingStart = isPaused ? currentIndex : currentIndex + 1;
     const pendingItems = items.slice(pendingStart);
     const scriptText = serializeQueueItems(pendingItems);
-    setScript(scriptText);
+    useQueueStore.setState({ script: scriptText });
     setEditingPaused(true);
     runner.editStart();
-  }, [setScript, setEditingPaused, runner]);
+  }, [setEditingPaused, runner]);
 
   // Apply edited script: parse and send to server
   const handleApplyEdit = useCallback(() => {
@@ -126,24 +127,31 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
     runner.editEnd();
   }, [parseScript, runner, setEditingPaused]);
 
-  // Cancel edit mode
+  // Cancel edit mode — clear debounce and re-sync items from server
   const handleCancelEdit = useCallback(() => {
+    useQueueStore.getState().cancelScriptDebounce();
     setEditingPaused(false);
     runner.editEnd();
-  }, [setEditingPaused, runner]);
+    // Re-fetch server state to restore original parsedItems
+    queueApi.getStatus(projectSlug)
+      .then((state) => useQueueStore.getState().syncFromStatus(state))
+      .catch(() => {});
+  }, [setEditingPaused, runner, projectSlug]);
 
   // Confirm dialog when remote client tries to resume/abort while we're editing
   // (handled by handleProgress auto-exit in queueStore)
 
-  // Keyboard shortcut: Ctrl+Enter to run
+  // Keyboard shortcut: Ctrl+Enter to run (or apply in edit mode)
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
-      if (!isLocked && parsedItems.length > 0) {
+      if (isEditingPaused && script.trim()) {
+        handleApplyEdit();
+      } else if (!isEditingPaused && !isLocked && parsedItems.length > 0) {
         handleRun();
       }
     }
-  }, [isLocked, parsedItems.length, handleRun]);
+  }, [isEditingPaused, isLocked, parsedItems.length, handleRun, handleApplyEdit]);
 
   // Parse on initial mount if script exists
   useEffect(() => {

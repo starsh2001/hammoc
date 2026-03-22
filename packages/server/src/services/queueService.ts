@@ -393,6 +393,9 @@ export class QueueService {
         this._finalTotalItems = this.items.length;
         this._isRunning = false;
         this._isCompleted = true;
+        this.isPaused = false;
+        this._isPauseRequested = false;
+        this.pauseReason = undefined;
         this.lastError = null; // clear error on successful completion
         this.emitProgress('completed');
         await this.notificationService.notifyQueueComplete(this.buildSessionUrl());
