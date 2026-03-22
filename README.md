@@ -193,7 +193,7 @@ Automate repetitive prompt sequences.
 
 - **Queue editor** — Write prompt sequences line by line
 - **Special commands** — `@new`, `@save`, `@load`, `@pause`, `@model`, `@delay`, `@(/@)`, `#` comments
-- **Execution control** — Start, pause, resume, and abort queue runs
+- **Execution control** — Start, pause (deferred), resume, abort, and edit remaining items while paused
 - **Templates** — Save and load reusable queue scripts
 - **Story-based generation** — Auto-generate queue from PRD epics and stories
 - **Variable substitution** — Use `{story_num}`, `{epic_num}`, `{story_index}`, `{story_title}`, `{date}` in templates
