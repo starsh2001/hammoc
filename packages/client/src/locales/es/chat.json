@@ -170,7 +170,28 @@
     "edit": "Editar",
     "share": "Compartir",
     "copyAriaLabel": "Copiar mensaje al portapapeles",
-    "copiedAriaLabel": "Mensaje copiado"
+    "copiedAriaLabel": "Mensaje copiado",
+    "rewindAriaLabel": "Rebobinar conversación a este punto",
+    "regenerateAriaLabel": "Regenerar esta respuesta",
+    "shareAriaLabel": "Compartir este mensaje"
+  },
+  "rewindDialog": {
+    "rewindTitle": "Rebobinar conversación",
+    "regenerateTitle": "Regenerar respuesta",
+    "editTitle": "Editar mensaje",
+    "warning": "{{count}} mensaje(s) después de este punto serán eliminados.",
+    "conversationOnly": "Solo conversación",
+    "conversationOnlyDesc": "Eliminar mensajes pero mantener todos los cambios de código",
+    "conversationAndCode": "Conversación + Código",
+    "conversationAndCodeDesc": "Eliminar mensajes y restaurar archivos a su estado anterior",
+    "gitNotInitialized": "Git debe estar inicializado para restaurar los cambios de código",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "error": {
+      "rewindFailed": "Error al rebobinar la conversación. Inténtalo de nuevo.",
+      "regenerateFailed": "La conversación fue rebobinada, pero la regeneración falló. Puedes reenviar manualmente.",
+      "noGitCommit": "No se encontró un commit de Git en este punto. La restauración de código no está disponible."
+    }
   },
   "messageListSkeleton": {
     "ariaLabel": "Cargando mensajes",

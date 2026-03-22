@@ -55,6 +55,7 @@ import { useTerminalStore } from '../stores/terminalStore';
 import { useGitStatus } from '../hooks/useGitStatus';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { RewindConfirmDialog } from '../components/RewindConfirmDialog';
 import { ThinkingBlock } from '../components/ThinkingBlock';
 import { PromptChainBanner } from '../components/PromptChainBanner';
 
@@ -65,7 +66,15 @@ import { PromptChainBanner } from '../components/PromptChainBanner';
  */
 const COMPACT_MESSAGE_PREFIX = 'This session is being continued from a previous conversation';
 
-function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[]) {
+interface RenderMessageOptions {
+  onRewind?: (messageId: string) => void;
+  onRegenerate?: (messageId: string) => void;
+  isStreaming?: boolean;
+  isRewinding?: boolean;
+  lastAssistantId?: string;
+}
+
+function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[], options?: RenderMessageOptions) {
   // Render task notification as notification card (not user bubble)
   if (message.type === 'task_notification' && message.taskStatus) {
     return <TaskNotificationCard key={message.id} status={message.taskStatus} summary={message.taskSummary} toolUseId={message.taskToolUseId} />;
@@ -127,6 +136,17 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
     return <ToolCallCard key={message.id} message={message} />;
   }
 
+  // Compute rewind/regenerate props for MessageBubble
+  const isLastAssistant = options?.lastAssistantId === message.id;
+  const rewindProps = {
+    messageId: message.id,
+    isLastAssistant,
+    onRewind: options?.onRewind,
+    onRegenerate: options?.onRegenerate,
+    isStreaming: options?.isStreaming,
+    disabled: options?.isRewinding,
+  };
+
   // Assistant message with thinking → separate ThinkingBlock card + MessageBubble
   if (message.type === 'assistant' && message.thinking) {
     return (
@@ -136,12 +156,12 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
             <ThinkingBlock content={message.thinking} />
           </div>
         </div>
-        {message.content && <MessageBubble message={message} />}
+        {message.content && <MessageBubble message={message} {...rewindProps} />}
       </Fragment>
     );
   }
 
-  return <MessageBubble key={message.id} message={message} />;
+  return <MessageBubble key={message.id} message={message} {...rewindProps} />;
 }
 
 export function ChatPage() {
@@ -686,11 +706,68 @@ export function ChatPage() {
   const sessionIdRef = useRef(sessionId);
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
-  const { changedFileCount } = useGitStatus(projectSlug);
+  // STATE-001: Reset isRewinding on session change to prevent stuck state
+  useEffect(() => {
+    useChatStore.setState({ isRewinding: false });
+  }, [sessionId]);
+
+  const { status: gitStatus, changedFileCount } = useGitStatus(projectSlug);
 
   // Story 17.5: Terminal access state (read from store directly to avoid useTerminal side-effects)
   const terminalAccess = useTerminalStore((state) => state.terminalAccess);
   const isTerminalAccessible = terminalAccess?.allowed ?? true;
+
+  // Story 25.2: Rewind & Regenerate state
+  const isRewinding = useChatStore((s) => s.isRewinding);
+  const [rewindTarget, setRewindTarget] = useState<{ messageId: string; action: 'rewind' | 'regenerate' } | null>(null);
+  const isGitInitialized = gitStatus !== null;
+
+  // Compute lastAssistantId for determining which message gets the Regenerate button
+  const lastAssistantId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].type === 'assistant') return messages[i].id;
+    }
+    return undefined;
+  }, [messages]);
+
+  // Compute messageCount for the RewindConfirmDialog
+  const rewindMessageCount = useMemo(() => {
+    if (!rewindTarget) return 0;
+    const targetIdx = messages.findIndex(m => m.id === rewindTarget.messageId);
+    if (targetIdx === -1) return 0;
+    return messages.slice(targetIdx).filter(m => ['user', 'assistant'].includes(m.type)).length;
+  }, [messages, rewindTarget]);
+
+  const handleRewind = useCallback((messageId: string) => {
+    setRewindTarget({ messageId, action: 'rewind' });
+  }, []);
+
+  const handleRegenerate = useCallback((messageId: string) => {
+    setRewindTarget({ messageId, action: 'regenerate' });
+  }, []);
+
+  const handleRewindConfirm = useCallback((undoMode: 'conversation' | 'conversationAndCode') => {
+    if (!rewindTarget || !sessionId) return;
+    const socket = getSocket();
+    useChatStore.setState({ isRewinding: true });
+    setRewindTarget(null);
+
+    const event = rewindTarget.action === 'rewind' ? 'chat:rewind' : 'chat:regenerate';
+    socket.emit(event, {
+      sessionId,
+      messageId: rewindTarget.messageId,
+      undoMode,
+    });
+  }, [rewindTarget, sessionId]);
+
+  // Render options for renderHistoryMessage
+  const renderOptions: RenderMessageOptions = useMemo(() => ({
+    onRewind: handleRewind,
+    onRegenerate: handleRegenerate,
+    isStreaming,
+    isRewinding,
+    lastAssistantId,
+  }), [handleRewind, handleRegenerate, isStreaming, isRewinding, lastAssistantId]);
 
   const handleNavigateToGitTab = useCallback(() => {
     closePanel();
@@ -828,6 +905,18 @@ export function ChatPage() {
     />
   ) : null;
 
+  const rewindDialogElement = (
+    <RewindConfirmDialog
+      isOpen={rewindTarget !== null}
+      onClose={() => setRewindTarget(null)}
+      onConfirm={handleRewindConfirm}
+      actionType={rewindTarget?.action || 'rewind'}
+      messageCount={rewindMessageCount}
+      isGitInitialized={isGitInitialized}
+      isProcessing={isRewinding}
+    />
+  );
+
   const confirmModalElement = (
     <ConfirmModal
       isOpen={confirmModal.isOpen}
@@ -905,6 +994,7 @@ export function ChatPage() {
         </InputArea>
         {quickPanelElement}
         {confirmModalElement}
+        {rewindDialogElement}
       </div>
     );
   }
@@ -970,6 +1060,7 @@ export function ChatPage() {
         </InputArea>
         {quickPanelElement}
         {confirmModalElement}
+        {rewindDialogElement}
       </div>
     );
   }
@@ -1048,6 +1139,7 @@ export function ChatPage() {
         </InputArea>
         {quickPanelElement}
         {confirmModalElement}
+        {rewindDialogElement}
       </div>
     );
   }
@@ -1102,7 +1194,7 @@ export function ChatPage() {
           )}
 
           {/* Message list */}
-          {displayMessages.map((msg, idx) => renderHistoryMessage(msg, idx, displayMessages))}
+          {displayMessages.map((msg, idx) => renderHistoryMessage(msg, idx, displayMessages, renderOptions))}
         </MessageArea>
       </main>
 
@@ -1150,6 +1242,7 @@ export function ChatPage() {
       </InputArea>
       {quickPanelElement}
       {confirmModalElement}
+      {rewindDialogElement}
     </div>
     </ScrollProvider>
   );

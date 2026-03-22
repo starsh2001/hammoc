@@ -27,6 +27,9 @@ import {
   transformToHistoryMessages,
   cleanCommandTags,
 } from './historyParser.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('sessionService');
 
 /**
  * SessionService - Manages Claude Code session data
@@ -680,6 +683,119 @@ export class SessionService {
       await fs.writeFile(tmpPath, JSON.stringify(index, null, 2), 'utf-8');
       await fs.rename(tmpPath, indexPath);
     });
+  }
+
+  // Story 25.2: Rewind & Regenerate methods
+
+  /**
+   * Truncate session history at the specified message.
+   * Removes the target message and all subsequent messages from the JSONL file.
+   * Uses atomic write (temp file + rename) to prevent corruption.
+   */
+  async truncateSessionHistory(
+    projectSlug: string,
+    sessionId: string,
+    beforeMessageId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const filePath = this.getSessionFilePath(projectSlug, sessionId);
+
+    if (!existsSync(filePath)) {
+      return { success: false, error: 'Session file not found' };
+    }
+
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const lines = content.trim().split('\n').filter(Boolean);
+
+      // Find the target message index by uuid
+      let targetLineIndex = -1;
+      for (let i = 0; i < lines.length; i++) {
+        try {
+          const parsed = JSON.parse(lines[i]);
+          if (parsed.uuid === beforeMessageId) {
+            targetLineIndex = i;
+            break;
+          }
+        } catch {
+          // Skip invalid JSON lines
+        }
+      }
+
+      if (targetLineIndex === -1) {
+        return { success: false, error: 'Message not found in session history' };
+      }
+
+      // Keep only lines before the target message
+      const truncatedLines = lines.slice(0, targetLineIndex);
+      const truncatedContent = truncatedLines.length > 0
+        ? truncatedLines.join('\n') + '\n'
+        : '';
+
+      // Atomic write: write to temp file first, then rename
+      const tmpPath = `${filePath}.tmp.${Date.now()}`;
+      await fs.writeFile(tmpPath, truncatedContent, 'utf-8');
+      await fs.rename(tmpPath, filePath);
+
+      // ERR-002: Update sessions-index.json messageCount as best-effort.
+      // JSONL truncation is already committed at this point; index update failure
+      // should not cause the caller to retry (which would double-truncate).
+      try {
+        await this.updateSessionIndex(projectSlug, sessionId);
+      } catch (indexErr) {
+        log.warn(`Best-effort index update failed after truncation: project=${projectSlug} session=${sessionId}`, indexErr);
+      }
+
+      return { success: true };
+    } catch (error) {
+      log.error(`Failed to truncate session history: project=${projectSlug} session=${sessionId}`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to truncate session history',
+      };
+    }
+  }
+
+  /**
+   * Get rewind context info for a target message.
+   * Returns the last user (human) message UUID before the target,
+   * needed for SDK rewindFiles(), and the UUID of the message just before
+   * the target for resumeSessionAt.
+   */
+  async getRewindInfo(
+    projectSlug: string,
+    sessionId: string,
+    targetMessageId: string
+  ): Promise<{ resumeAtId: string | null; userMessageId: string | null } | null> {
+    const filePath = this.getSessionFilePath(projectSlug, sessionId);
+
+    if (!existsSync(filePath)) {
+      return null;
+    }
+
+    try {
+      const rawMessages = await parseJSONLFile(filePath);
+      const sorted = sortMessagesByParentUuid(rawMessages);
+
+      const targetIdx = sorted.findIndex(m => m.uuid === targetMessageId);
+      if (targetIdx === -1) return null;
+
+      // resumeSessionAt: last message UUID before target
+      const resumeAtId = targetIdx > 0 ? sorted[targetIdx - 1].uuid : null;
+
+      // userMessageId for rewindFiles: last user message before target
+      let userMessageId: string | null = null;
+      for (let i = targetIdx - 1; i >= 0; i--) {
+        if (sorted[i].type === 'user') {
+          userMessageId = sorted[i].uuid;
+          break;
+        }
+      }
+
+      return { resumeAtId, userMessageId };
+    } catch (err) {
+      log.warn('getRewindInfo failed', { sessionId, targetMessageId, error: err });
+      return null;
+    }
   }
 
   // Story 3.5: Session History Loading methods

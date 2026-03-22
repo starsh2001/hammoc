@@ -20,6 +20,16 @@ interface MessageBubbleProps {
   onCopy?: (content: string) => void;
   /** Timestamp display mode - 'always' (default) or 'hover' */
   timestampMode?: 'always' | 'hover';
+  /** Message ID for rewind/regenerate */
+  messageId?: string;
+  /** Whether this is the last assistant message */
+  isLastAssistant?: boolean;
+  /** Callback for rewind action */
+  onRewind?: (messageId: string) => void;
+  /** Callback for regenerate action */
+  onRegenerate?: (messageId: string) => void;
+  /** Whether action bar is disabled (e.g. during rewinding) */
+  disabled?: boolean;
 }
 
 export function MessageBubble({
@@ -27,6 +37,11 @@ export function MessageBubble({
   isStreaming = false,
   onCopy,
   timestampMode = 'always',
+  messageId,
+  isLastAssistant = false,
+  onRewind,
+  onRegenerate,
+  disabled = false,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
@@ -103,6 +118,12 @@ export function MessageBubble({
           role={isUser ? 'user' : 'assistant'}
           content={message.content}
           onCopy={onCopy}
+          messageId={messageId || message.id}
+          isLastAssistant={isLastAssistant}
+          onRewind={onRewind}
+          onRegenerate={onRegenerate}
+          isStreaming={isStreaming}
+          disabled={disabled}
         />
       </div>
     </div>
