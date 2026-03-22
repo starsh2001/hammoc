@@ -15,6 +15,8 @@ export interface UseQueueRunnerReturn {
   // State (from queueStore)
   isRunning: boolean;
   isPaused: boolean;
+  isPauseRequested: boolean;
+  isWaitingForInput: boolean;
   isStarting: boolean;
   /** Server-persisted: queue finished successfully */
   isCompleted: boolean;
@@ -28,11 +30,15 @@ export interface UseQueueRunnerReturn {
   // Control functions
   start: (items: QueueItem[], sessionId?: string) => void;
   pause: () => void;
+  cancelPause: () => void;
   resume: () => void;
   abort: () => void;
   removeItem: (itemIndex: number) => void;
   addItem: (rawLine: string) => void;
   reorderItems: (newOrder: number[]) => void;
+  replaceItems: (items: QueueItem[]) => void;
+  editStart: () => void;
+  editEnd: () => void;
   dismiss: () => void;
 }
 
@@ -41,6 +47,8 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
   const {
     isRunning,
     isPaused,
+    isPauseRequested,
+    isWaitingForInput,
     isStarting,
     isCompleted,
     currentIndex,
@@ -53,6 +61,8 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
   } = useQueueStore(useShallow((s) => ({
     isRunning: s.isRunning,
     isPaused: s.isPaused,
+    isPauseRequested: s.isPauseRequested,
+    isWaitingForInput: s.isWaitingForInput,
     isStarting: s.isStarting,
     isCompleted: s.isCompleted,
     currentIndex: s.currentIndex,
@@ -68,7 +78,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
   useEffect(() => {
     const socket = getSocket();
     // Actions are stable refs — access via getState() to avoid unnecessary effect re-runs
-    const { handleProgress, handleItemComplete, handleError, handleItemsUpdated, syncFromStatus } = useQueueStore.getState();
+    const { handleProgress, handleItemComplete, handleError, handleItemsUpdated, handleEditState, syncFromStatus } = useQueueStore.getState();
 
     // Join project room
     socket.emit('project:join', projectSlug);
@@ -78,12 +88,15 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     const onItemComplete = (data: QueueItemCompleteEvent) => handleItemComplete(data);
     const onError = (data: QueueErrorEvent) => handleError(data);
     const onItemsUpdated = (data: QueueItemsUpdatedEvent) => handleItemsUpdated(data);
+    const onEditState = (data: { isEditing: boolean }) => handleEditState(data);
 
     socket.on('queue:progress', onProgress);
     socket.on('queue:itemComplete', onItemComplete);
     socket.on('queue:error', onError);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     socket.on('queue:itemsUpdated' as any, onItemsUpdated);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.on('queue:editState' as any, onEditState);
 
     // Initial status fetch
     queueApi.getStatus(projectSlug)
@@ -100,6 +113,13 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
       socket.off('queue:error', onError);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       socket.off('queue:itemsUpdated' as any, onItemsUpdated);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      socket.off('queue:editState' as any, onEditState);
+      // Release edit lock if we were editing
+      if (useQueueStore.getState().isEditingPaused) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        socket.emit('queue:editEnd' as any, { projectSlug });
+      }
       socket.emit('project:leave', projectSlug);
       // Clear stale queue state when leaving project
       useQueueStore.getState().reset();
@@ -116,6 +136,12 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
   const pause = useCallback(() => {
     const socket = getSocket();
     socket.emit('queue:pause', { projectSlug });
+  }, [projectSlug]);
+
+  const cancelPause = useCallback(() => {
+    const socket = getSocket();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.emit('queue:cancelPause' as any, { projectSlug });
   }, [projectSlug]);
 
   const resume = useCallback(() => {
@@ -148,6 +174,24 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     socket.emit('queue:addItem' as any, { projectSlug, rawLine });
   }, [projectSlug]);
 
+  const replaceItems = useCallback((items: QueueItem[]) => {
+    const socket = getSocket();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.emit('queue:replaceItems' as any, { projectSlug, items });
+  }, [projectSlug]);
+
+  const editStart = useCallback(() => {
+    const socket = getSocket();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.emit('queue:editStart' as any, { projectSlug });
+  }, [projectSlug]);
+
+  const editEnd = useCallback(() => {
+    const socket = getSocket();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.emit('queue:editEnd' as any, { projectSlug });
+  }, [projectSlug]);
+
   const reorderItems = useCallback((newOrder: number[]) => {
     // Optimistic update — immediately reorder items in the store
     useQueueStore.getState().optimisticReorder(newOrder, projectSlug);
@@ -159,6 +203,8 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
   return {
     isRunning,
     isPaused,
+    isPauseRequested,
+    isWaitingForInput,
     isStarting,
     isCompleted,
     progress: { current: currentIndex, total: totalItems },
@@ -169,11 +215,15 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     itemSessionIds,
     start,
     pause,
+    cancelPause,
     resume,
     abort,
     removeItem,
     addItem,
     reorderItems,
+    replaceItems,
+    editStart,
+    editEnd,
     dismiss,
   };
 }

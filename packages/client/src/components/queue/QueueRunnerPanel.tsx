@@ -21,6 +21,7 @@ import {
   Plus,
   GripVertical,
   RotateCcw,
+  Pencil,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -36,6 +37,10 @@ interface QueueRunnerPanelProps {
   pauseReason: string | undefined;
   errorItem: { index: number; error: string } | null;
   onPause: () => void;
+  onCancelPause?: () => void;
+  isPauseRequested?: boolean;
+  /** True when waiting for user input (permission/question) */
+  isWaitingForInput?: boolean;
   onResume: () => void;
   onAbort: () => void;
   /** Project slug for session link */
@@ -58,6 +63,10 @@ interface QueueRunnerPanelProps {
   isReordering?: boolean;
   /** Server-persisted completed flag (from queueStore) */
   isCompleted?: boolean;
+  /** Callback to enter script edit mode for pending items */
+  onEditScript?: () => void;
+  /** True when another client is editing the queue script */
+  isRemoteEditing?: boolean;
 }
 
 function getItemSummary(item: QueueItem, t: (key: string, opts?: Record<string, unknown>) => string): string {
@@ -113,6 +122,9 @@ export function QueueRunnerPanel({
   pauseReason,
   errorItem,
   onPause,
+  onCancelPause,
+  isPauseRequested = false,
+  isWaitingForInput = false,
   onResume,
   onAbort,
   projectSlug,
@@ -125,6 +137,8 @@ export function QueueRunnerPanel({
   onDismiss,
   isReordering = false,
   isCompleted: isCompletedProp,
+  onEditScript,
+  isRemoteEditing = false,
 }: QueueRunnerPanelProps) {
   const { t } = useTranslation('common');
   const currentItemRef = useRef<HTMLDivElement>(null);
@@ -195,10 +209,22 @@ export function QueueRunnerPanel({
       {/* Header with status and controls */}
       <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 border-b border-gray-200 dark:border-[#253040] flex-shrink-0">
         <div className="flex items-center gap-2 text-sm font-medium min-w-0">
-          {isRunning && !isPaused && (
+          {isRunning && !isPaused && !isPauseRequested && !isWaitingForInput && (
             <>
               <PlayCircle className="w-4 h-4 text-blue-500" />
               <span className="text-blue-600 dark:text-blue-400">{t('queue.statusRunning')}</span>
+            </>
+          )}
+          {isRunning && !isPaused && isWaitingForInput && (
+            <>
+              <Clock className="w-4 h-4 text-purple-500 animate-pulse" />
+              <span className="text-purple-600 dark:text-purple-400">{t('queue.statusWaitingForInput')}</span>
+            </>
+          )}
+          {isRunning && !isPaused && isPauseRequested && !isWaitingForInput && (
+            <>
+              <PauseCircle className="w-4 h-4 text-amber-500 animate-pulse" />
+              <span className="text-amber-600 dark:text-amber-400">{t('queue.statusPauseRequested')}</span>
             </>
           )}
           {isPaused && (
@@ -235,7 +261,7 @@ export function QueueRunnerPanel({
               <ExternalLink className="w-3 h-3" />
             </Link>
           )}
-          {isRunning && !isPaused && (
+          {isRunning && !isPaused && !isPauseRequested && (
             <button
               onClick={onPause}
               aria-label={t('queue.pause')}
@@ -248,10 +274,26 @@ export function QueueRunnerPanel({
               <span>{t('queue.pause')}</span>
             </button>
           )}
+          {isRunning && !isPaused && isPauseRequested && onCancelPause && (
+            <button
+              onClick={onCancelPause}
+              aria-label={t('queue.cancelPause')}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
+                bg-amber-500 dark:bg-amber-600 text-white
+                hover:bg-amber-600 dark:hover:bg-amber-500
+                min-w-[44px] min-h-[44px]"
+            >
+              <Play className="w-3 h-3" />
+              <span>{t('queue.cancelPause')}</span>
+            </button>
+          )}
           {isPaused && (
             <>
               <button
-                onClick={onResume}
+                onClick={() => {
+                  if (isRemoteEditing && !window.confirm(t('queue.confirmResumeWhileEditing'))) return;
+                  onResume();
+                }}
                 aria-label={t('queue.resume')}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
                   bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400
@@ -261,18 +303,34 @@ export function QueueRunnerPanel({
                 <Play className="w-3 h-3" />
                 <span>{t('queue.resume')}</span>
               </button>
-              <button
-                onClick={handleAbort}
-                aria-label={t('queue.abort')}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
-                  bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400
-                  hover:bg-red-200 dark:hover:bg-red-900/50
-                  min-w-[44px] min-h-[44px]"
-              >
-                <Square className="w-3 h-3" />
-                <span>{t('queue.abort')}</span>
-              </button>
+              {onEditScript && (
+                <button
+                  onClick={onEditScript}
+                  aria-label={t('queue.editScript')}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
+                    bg-gray-100 dark:bg-[#253040] text-gray-700 dark:text-gray-200
+                    hover:bg-gray-200 dark:hover:bg-[#2d3a4a]
+                    min-w-[44px] min-h-[44px]"
+                >
+                  <Pencil className="w-3 h-3" />
+                  <span>{t('queue.editScript')}</span>
+                </button>
+              )}
             </>
+          )}
+          {/* Abort — always available when running or paused */}
+          {(isRunning || isPaused) && (
+            <button
+              onClick={handleAbort}
+              aria-label={t('queue.abort')}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md
+                bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400
+                hover:bg-red-200 dark:hover:bg-red-900/50
+                min-w-[44px] min-h-[44px]"
+            >
+              <Square className="w-3 h-3" />
+              <span>{t('queue.abort')}</span>
+            </button>
           )}
           {/* Dismiss button — return to editor after completion/error */}
           {onDismiss && !isRunning && !isPaused && (isCompleted || hasError) && (

@@ -1320,9 +1320,14 @@ export async function initializeWebSocket(
     // Handle project:join/leave — room for queue event delivery (Story 15.2)
     socket.on('project:join', (projectSlug: string) => {
       socket.join(`project:${projectSlug}`);
+      // Track project for disconnect cleanup (e.g. edit lock release)
+      socketProjectRoom.set(socket.id, projectSlug);
     });
     socket.on('project:leave', (projectSlug: string) => {
       socket.leave(`project:${projectSlug}`);
+      if (socketProjectRoom.get(socket.id) === projectSlug) {
+        socketProjectRoom.delete(socket.id);
+      }
     });
 
     // Handle queue events via WebSocket (Story 15.2)
@@ -1356,6 +1361,11 @@ export async function initializeWebSocket(
       triggerDashboardStatusChange(data.projectSlug);
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.on('queue:cancelPause' as any, (data: any) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      qs.cancelPause();
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     socket.on('queue:dismiss' as any, (data: { projectSlug: string }) => {
       const qs = getOrCreateQueueService(data.projectSlug);
       qs.dismiss();
@@ -1374,6 +1384,21 @@ export async function initializeWebSocket(
     socket.on('queue:reorderItems', (data) => {
       const qs = getOrCreateQueueService(data.projectSlug);
       qs.reorderItems(data.newOrder);
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.on('queue:replaceItems' as any, (data: any) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      qs.replaceItems(data.items, socket.id);
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.on('queue:editStart' as any, (data: any) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      qs.editStart(socket.id);
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.on('queue:editEnd' as any, (data: any) => {
+      const qs = getOrCreateQueueService(data.projectSlug);
+      qs.editEnd(socket.id);
     });
 
     // --- Story 17.1: Terminal PTY events ---
@@ -1552,6 +1577,14 @@ export async function initializeWebSocket(
       }
 
       socketSessionRoom.delete(socket.id);
+      // Release queue edit lock only if this socket owns it
+      const disconnectProjectSlug = socketProjectRoom.get(socket.id);
+      if (disconnectProjectSlug) {
+        const qs = getQueueInstances().get(disconnectProjectSlug);
+        if (qs) {
+          qs.editEnd(socket.id);
+        }
+      }
       socketProjectRoom.delete(socket.id);
 
       // PTY sessions are NOT cleaned up on socket disconnect.

@@ -62,9 +62,13 @@ export interface ClientToServerEvents {
   'queue:pause': (data: { projectSlug: string }) => void;
   'queue:resume': (data: { projectSlug: string }) => void;
   'queue:abort': (data: { projectSlug: string }) => void;
+  'queue:cancelPause': (data: { projectSlug: string }) => void;
   'queue:removeItem': (data: { projectSlug: string; itemIndex: number }) => void;
   'queue:addItem': (data: { projectSlug: string; rawLine: string }) => void;
   'queue:reorderItems': (data: { projectSlug: string; newOrder: number[] }) => void;
+  'queue:replaceItems': (data: { projectSlug: string; items: QueueItem[] }) => void;
+  'queue:editStart': (data: { projectSlug: string }) => void;
+  'queue:editEnd': (data: { projectSlug: string }) => void;
   'project:join': (projectSlug: string) => void;
   'project:leave': (projectSlug: string) => void;
   // Story 17.1: Terminal PTY events
@@ -117,6 +121,7 @@ export interface ServerToClientEvents {
   'queue:itemComplete': (data: QueueItemCompleteEvent) => void;
   'queue:error': (data: QueueErrorEvent) => void;
   'queue:itemsUpdated': (data: QueueItemsUpdatedEvent) => void;
+  'queue:editState': (data: { isEditing: boolean }) => void;
   'rateLimit:update': (data: SubscriptionRateLimit) => void;
   'permission:mode-change': (data: { mode: PermissionMode }) => void;
   'apiHealth:update': (data: ApiHealthStatus) => void;

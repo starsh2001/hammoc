@@ -1,5 +1,29 @@
 import type { QueueItem, QueueParseResult, QueueParseWarning } from '../types/queue.js';
 
+/** Convert QueueItem[] back into script text (inverse of parseQueueScript) */
+export function serializeQueueItems(items: QueueItem[]): string {
+  return items.map(item => {
+    if (item.isBreakpoint) {
+      return item.prompt ? `@pause ${item.prompt}` : '@pause';
+    }
+    if (item.saveSessionName) return `@save ${item.saveSessionName}`;
+    if (item.loadSessionName) return `@load ${item.loadSessionName}`;
+    if (item.delayMs != null) return `@delay ${item.delayMs}`;
+    const parts: string[] = [];
+    if (item.isNewSession) parts.push('@new');
+    if (item.modelName) parts.push(`@model ${item.modelName}`);
+    if (item.prompt) {
+      if (item.isMultiline) {
+        parts.push(`@(\n${item.prompt}\n@)`);
+      } else {
+        // Escape @ prefix so parser doesn't treat it as a directive
+        parts.push(item.prompt.startsWith('@') ? `\\${item.prompt}` : item.prompt);
+      }
+    }
+    return parts.join('\n');
+  }).filter(line => line !== '').join('\n');
+}
+
 export function parseQueueScript(script: string): QueueParseResult {
   const items: QueueItem[] = [];
   const warnings: QueueParseWarning[] = [];

@@ -252,8 +252,9 @@ export function ChatPage() {
     isQueueLocked, isQueueRunning, isQueuePaused, isQueueCompleted, isQueueErrored,
     isQueueOnOtherSession, queueActiveSessionId,
     progress: queueProgress, currentPromptPreview: queuePromptPreview,
+    isPauseRequested: queueIsPauseRequested, isWaitingForInput: queueIsWaitingForInput,
     pauseReason: queuePauseReason, errorItem: queueErrorItem,
-    pause: queuePause, resume: queueResume, abort: queueAbort,
+    pause: queuePause, cancelPause: queueCancelPause, resume: queueResume, abort: queueAbort,
     dismissBanner: queueDismissBanner,
   } = useQueueSession(projectSlug || '', sessionId || '');
 
@@ -804,6 +805,9 @@ export function ChatPage() {
       errorItem={queueErrorItem}
       projectSlug={projectSlug!}
       onPause={queuePause}
+      onCancelPause={queueCancelPause}
+      isPauseRequested={queueIsPauseRequested}
+      isWaitingForInput={queueIsWaitingForInput}
       onResume={queueResume}
       onAbort={queueAbort}
       onDismiss={queueDismissBanner}

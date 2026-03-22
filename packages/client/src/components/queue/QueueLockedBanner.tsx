@@ -22,6 +22,9 @@ export interface QueueLockedBannerProps {
   errorItem: { index: number; error: string } | null;
   projectSlug: string;
   onPause: () => void;
+  onCancelPause?: () => void;
+  isPauseRequested?: boolean;
+  isWaitingForInput?: boolean;
   onResume: () => void;
   onAbort: () => void;
   /** Dismiss the completed/errored banner */
@@ -43,6 +46,9 @@ export function QueueLockedBanner({
   errorItem,
   projectSlug,
   onPause,
+  onCancelPause,
+  isPauseRequested = false,
+  isWaitingForInput = false,
   onResume,
   onAbort,
   onDismiss,
@@ -214,6 +220,8 @@ export function QueueLockedBanner({
               }`}>
                 {isPausedWithError ? t('queue.locked.errorPaused') :
                  isPaused ? t('queue.locked.paused') :
+                 isWaitingForInput ? t('queue.statusWaitingForInput') :
+                 isPauseRequested ? t('queue.statusPauseRequested') :
                  t('queue.locked.running')}
               </span>
               <span className={`text-xs sm:text-sm whitespace-nowrap ${
@@ -239,7 +247,7 @@ export function QueueLockedBanner({
 
           {/* Control buttons — icon-only on mobile, icon+text on desktop */}
           <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-            {isRunning && !isPaused && (
+            {isRunning && !isPaused && !isPauseRequested && (
               <button
                 type="button"
                 onClick={onPause}
@@ -251,6 +259,20 @@ export function QueueLockedBanner({
               >
                 <Pause size={14} className="sm:w-3 sm:h-3" aria-hidden="true" />
                 <span className="hidden sm:inline">{t('queue.pause')}</span>
+              </button>
+            )}
+            {isRunning && !isPaused && isPauseRequested && onCancelPause && (
+              <button
+                type="button"
+                onClick={onCancelPause}
+                aria-label={t('queue.cancelPause')}
+                className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 text-xs font-medium rounded-md
+                           bg-amber-500 dark:bg-amber-600 text-white
+                           hover:bg-amber-600 dark:hover:bg-amber-500
+                           transition-colors"
+              >
+                <Play size={14} className="sm:w-3 sm:h-3" aria-hidden="true" />
+                <span className="hidden sm:inline">{t('queue.cancelPause')}</span>
               </button>
             )}
 

@@ -34,6 +34,10 @@ interface QueueState {
   isErrored: boolean;
   isStarting: boolean;
   isAborted: boolean; // suppresses late server events after abort
+  /** True when pause requested but current item still executing */
+  isPauseRequested: boolean;
+  /** True when waiting for user input (permission/question) */
+  isWaitingForInput: boolean;
   currentIndex: number;
   totalItems: number;
   pauseReason: string | undefined;
@@ -45,6 +49,10 @@ interface QueueState {
   itemSessionIds: Map<number, string>;
   /** True while waiting for server to confirm a reorder */
   isReordering: boolean;
+  /** True when local user is editing pending items as script */
+  isEditingPaused: boolean;
+  /** True when a remote client is editing (from server broadcast) */
+  isRemoteEditing: boolean;
 }
 
 interface QueueActions {
@@ -59,6 +67,8 @@ interface QueueActions {
   syncFromStatus: (state: QueueExecutionState) => void;
   handleItemsUpdated: (data: QueueItemsUpdatedEvent) => void;
   optimisticReorder: (newOrder: number[], projectSlug: string) => void;
+  setEditingPaused: (editing: boolean) => void;
+  handleEditState: (data: { isEditing: boolean }) => void;
   reset: () => void;
 }
 
@@ -77,6 +87,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   isErrored: false,
   isStarting: false,
   isAborted: false,
+  isPauseRequested: false,
+  isWaitingForInput: false,
   currentIndex: 0,
   totalItems: 0,
   pauseReason: undefined,
@@ -86,6 +98,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   errorItem: null,
   itemSessionIds: new Map<number, string>(),
   isReordering: false,
+  isEditingPaused: false,
+  isRemoteEditing: false,
 
   setScript: (script: string) => {
     set({ script });
@@ -114,6 +128,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       pauseReason: data.pauseReason,
       lockedSessionId: data.sessionId,
       isStarting: false,
+      isPauseRequested: data.isPauseRequested ?? false,
+      isWaitingForInput: data.isWaitingForInput ?? false,
     };
 
     switch (data.status) {
@@ -149,6 +165,11 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
         update.isErrored = true;
         update.lockedSessionId = null;
         break;
+    }
+
+    // Auto-exit edit mode when queue resumes/aborts/completes (e.g. another client resumed)
+    if (get().isEditingPaused && data.status !== 'paused') {
+      update.isEditingPaused = false;
     }
 
     // Track current item's sessionId
@@ -206,6 +227,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       isCompleted: state.isCompleted ?? false,
       isErrored: state.isErrored ?? false,
       isAborted: false, // clear abort flag on server state sync
+      isPauseRequested: state.isPauseRequested ?? false,
+      isWaitingForInput: state.isWaitingForInput ?? false,
       isReordering: false,
       currentIndex: Math.min(state.currentIndex, state.totalItems > 0 ? state.totalItems : state.currentIndex),
       totalItems: state.totalItems,
@@ -217,6 +240,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       errorItem: state.lastError
         ? { index: state.lastError.itemIndex, error: state.lastError.error }
         : null,
+      isRemoteEditing: state.isEditing ?? false,
       // Restore queue items from server so QueueRunnerPanel displays on page re-entry
       ...(state.items && state.items.length > 0 ? { parsedItems: state.items } : {}),
       // Restore completed item session IDs from server
@@ -256,14 +280,32 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
     });
   },
 
+  setEditingPaused: (editing: boolean) => {
+    set({ isEditingPaused: editing });
+  },
+
+  handleEditState: (data: { isEditing: boolean }) => {
+    // If we are the editor, this is not a remote edit
+    const isRemote = data.isEditing && !get().isEditingPaused;
+    set({ isRemoteEditing: isRemote });
+  },
+
   reset: () => {
+    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
     set({
+      // Editor state
+      script: '',
+      parsedItems: [],
+      warnings: [],
+      // Execution state
       isRunning: false,
       isPaused: false,
       isCompleted: false,
       isErrored: false,
       isStarting: false,
       isAborted: true,
+      isPauseRequested: false,
+      isWaitingForInput: false,
       currentIndex: 0,
       totalItems: 0,
       pauseReason: undefined,
@@ -273,6 +315,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       errorItem: null,
       itemSessionIds: new Map<number, string>(),
       isReordering: false,
+      isEditingPaused: false,
+      isRemoteEditing: false,
     });
   },
 }));
