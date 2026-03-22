@@ -5,7 +5,7 @@
  * Uses a module-level cache so HMR remounts don't flash loading states.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { SlashCommand, StarCommand } from '@hammoc/shared';
 import { toast } from 'sonner';
 import { commandsApi } from '../services/api/commands';
@@ -68,6 +68,20 @@ export function useSlashCommands(projectSlug?: string): UseSlashCommandsResult {
       setStarCommands({});
     }
   }, [projectSlug, fetchCommands]);
+
+  // Re-fetch commands when page resumes from background (mobile)
+  const slugRef = useRef(projectSlug);
+  slugRef.current = projectSlug;
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && slugRef.current) {
+        fetchCommands(slugRef.current);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchCommands]);
 
   return { commands, starCommands, isLoading };
 }
