@@ -409,6 +409,7 @@
     "emptyHint": "クリックして編集を開始 · ファイルを読み込むかテンプレートを使用",
     "scriptEditorAria": "キュースクリプトエディタ",
     "lineWarning": "{{line}}行目：{{message}}",
+    "scriptValid": "すべてのスクリプト構文は正常です。",
     "previousError": "前回のキュー実行エラー（アイテム{{index}}）：{{error}}",
     "confirmAbort": "キューの実行を中止しますか？残りのアイテムは保持されます。",
     "statusRunning": "実行中...",

@@ -409,6 +409,7 @@
     "emptyHint": "Haz clic para empezar a editar · Cargar archivo o usar plantilla",
     "scriptEditorAria": "Editor de script de cola",
     "lineWarning": "Línea {{line}}: {{message}}",
+    "scriptValid": "Toda la sintaxis del script es válida.",
     "previousError": "Error anterior de ejecución de cola (elemento {{index}}): {{error}}",
     "confirmAbort": "¿Cancelar la ejecución de la cola? Los elementos restantes se conservarán.",
     "statusRunning": "Ejecutando...",

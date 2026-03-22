@@ -409,6 +409,7 @@
     "emptyHint": "点击开始编辑 · 加载文件或使用模板",
     "scriptEditorAria": "队列脚本编辑器",
     "lineWarning": "第 {{line}} 行：{{message}}",
+    "scriptValid": "所有脚本语法均正常。",
     "previousError": "上一次队列执行错误（项目 {{index}}）：{{error}}",
     "confirmAbort": "中止队列执行？剩余项目将被保留。",
     "statusRunning": "运行中...",

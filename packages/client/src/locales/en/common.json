@@ -437,6 +437,7 @@
     "emptyHint": "Click to start editing · Load file or use template",
     "scriptEditorAria": "Queue script editor",
     "lineWarning": "Line {{line}}: {{message}}",
+    "scriptValid": "All script syntax is valid.",
     "previousError": "Previous queue execution error (item {{index}}): {{error}}",
     "confirmAbort": "Abort queue execution? Remaining items will be preserved.",
     "statusRunning": "Running...",
