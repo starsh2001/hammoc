@@ -174,7 +174,28 @@
     "edit": "편집",
     "share": "공유",
     "copyAriaLabel": "메시지를 클립보드에 복사",
-    "copiedAriaLabel": "메시지 복사됨"
+    "copiedAriaLabel": "메시지 복사됨",
+    "rewindAriaLabel": "이 시점으로 대화 되감기",
+    "regenerateAriaLabel": "이 응답 재생성",
+    "shareAriaLabel": "이 메시지 공유"
+  },
+  "rewindDialog": {
+    "rewindTitle": "대화 되감기",
+    "regenerateTitle": "응답 재생성",
+    "editTitle": "메시지 편집",
+    "warning": "이 시점 이후의 {{count}}개 메시지가 삭제됩니다.",
+    "conversationOnly": "대화만",
+    "conversationOnlyDesc": "메시지를 삭제하되 코드 변경사항은 유지",
+    "conversationAndCode": "대화 + 코드",
+    "conversationAndCodeDesc": "메시지를 삭제하고 파일을 이전 상태로 복원",
+    "gitNotInitialized": "코드 변경사항을 복원하려면 Git이 초기화되어야 합니다",
+    "confirm": "확인",
+    "cancel": "취소",
+    "error": {
+      "rewindFailed": "대화 되감기에 실패했습니다. 다시 시도해 주세요.",
+      "regenerateFailed": "대화는 되감기되었지만 재생성에 실패했습니다. 수동으로 다시 전송할 수 있습니다.",
+      "noGitCommit": "이 시점의 Git 커밋을 찾을 수 없습니다. 코드 복원을 사용할 수 없습니다."
+    }
   },
   "messageListSkeleton": {
     "ariaLabel": "메시지 로딩 중",

@@ -203,6 +203,8 @@ export class ChatService {
       model: options.model || undefined,
       resume: options.resume,
       sessionId: options.sessionId,
+      resumeSessionAt: options.resumeSessionAt,
+      enableFileCheckpointing: true,
       includePartialMessages: true, // Enable real-time streaming
       settingSources: ['user', 'project', 'local'], // Load settings & .claude/commands/ for skill discovery
       systemPrompt,
@@ -384,6 +386,33 @@ export class ChatService {
     }
 
     return streamHandler.processStream(wrapGenerator(), callbacks);
+  }
+
+  /**
+   * Rewind tracked files to their state at a specific user message.
+   * Creates a temporary SDK query with enableFileCheckpointing to call rewindFiles(),
+   * then closes the query. Requires the session to have been created with
+   * enableFileCheckpointing enabled; returns canRewind: false otherwise.
+   */
+  async rewindSessionFiles(
+    sessionId: string,
+    userMessageId: string
+  ): Promise<{ canRewind: boolean; error?: string; filesChanged?: string[] }> {
+    const rewindQuery = query({
+      prompt: 'rewind',
+      options: {
+        cwd: this.workingDirectory,
+        resume: sessionId,
+        enableFileCheckpointing: true,
+        maxTurns: 0,
+      },
+    });
+
+    try {
+      return await rewindQuery.rewindFiles(userMessageId);
+    } finally {
+      rewindQuery.close();
+    }
   }
 }
 

@@ -41,6 +41,8 @@ export interface ChatOptions {
   maxThinkingTokens?: number;
   /** Max budget in USD per query */
   maxBudgetUsd?: number;
+  /** When resuming, only resume messages up to and including this message UUID (SDK resumeSessionAt) */
+  resumeSessionAt?: string;
 }
 
 /**
