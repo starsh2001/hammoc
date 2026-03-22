@@ -21,7 +21,7 @@ export function serializeQueueItems(items: QueueItem[]): string {
       }
     }
     return parts.join('\n');
-  }).filter(line => line !== '').join('\n');
+  }).join('\n');
 }
 
 export function parseQueueScript(script: string): QueueParseResult {

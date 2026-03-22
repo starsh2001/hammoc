@@ -69,6 +69,7 @@ interface QueueActions {
   optimisticReorder: (newOrder: number[], projectSlug: string) => void;
   setEditingPaused: (editing: boolean) => void;
   handleEditState: (data: { isEditing: boolean }) => void;
+  cancelScriptDebounce: () => void;
   reset: () => void;
 }
 
@@ -288,6 +289,10 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
     // If we are the editor, this is not a remote edit
     const isRemote = data.isEditing && !get().isEditingPaused;
     set({ isRemoteEditing: isRemote });
+  },
+
+  cancelScriptDebounce: () => {
+    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
   },
 
   reset: () => {
