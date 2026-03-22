@@ -428,6 +428,13 @@
     "deleteItemAria": "Eliminar elemento {{index}}",
     "addItemPlaceholder": "Agregar nuevo elemento... (prompt o @directiva)",
     "addItem": "Agregar elemento",
+    "editScript": "Editar script",
+    "applyEdit": "Aplicar",
+    "cancelEdit": "Cancelar",
+    "cancelPause": "Cancelar pausa",
+    "statusPauseRequested": "Pausando después del elemento actual...",
+    "statusWaitingForInput": "Esperando entrada...",
+    "confirmResumeWhileEditing": "Otro usuario está editando el script de la cola. ¿Reanudar de todos modos?",
     "itemSummary": {
       "pause": "Pausar",
       "newSession": "[Nueva sesión]",

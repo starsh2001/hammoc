@@ -465,6 +465,13 @@
     "deleteItemAria": "아이템 {{index}} 삭제",
     "addItemPlaceholder": "새 아이템 추가... (프롬프트 또는 @지시어)",
     "addItem": "아이템 추가",
+    "editScript": "스크립트 편집",
+    "applyEdit": "적용",
+    "cancelEdit": "취소",
+    "cancelPause": "일시정지 취소",
+    "statusPauseRequested": "현재 항목 완료 후 일시정지...",
+    "statusWaitingForInput": "입력 대기 중...",
+    "confirmResumeWhileEditing": "다른 사용자가 큐 스크립트를 편집 중입니다. 그래도 재개하시겠습니까?",
     "itemSummary": {
       "pause": "일시정지",
       "newSession": "[새 세션]",

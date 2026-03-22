@@ -428,6 +428,13 @@
     "deleteItemAria": "删除项目 {{index}}",
     "addItemPlaceholder": "添加新项目...（提示或 @指令）",
     "addItem": "添加项目",
+    "editScript": "编辑脚本",
+    "applyEdit": "应用",
+    "cancelEdit": "取消",
+    "cancelPause": "取消暂停",
+    "statusPauseRequested": "当前项目完成后暂停...",
+    "statusWaitingForInput": "等待输入...",
+    "confirmResumeWhileEditing": "另一个用户正在编辑队列脚本。是否仍然继续？",
     "itemSummary": {
       "pause": "暂停",
       "newSession": "[新建会话]",

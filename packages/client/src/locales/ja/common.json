@@ -428,6 +428,13 @@
     "deleteItemAria": "アイテム{{index}}を削除",
     "addItemPlaceholder": "新しいアイテムを追加...（プロンプトまたは@ディレクティブ）",
     "addItem": "アイテムを追加",
+    "editScript": "スクリプトを編集",
+    "applyEdit": "適用",
+    "cancelEdit": "キャンセル",
+    "cancelPause": "一時停止を取消",
+    "statusPauseRequested": "現在のアイテム完了後に一時停止...",
+    "statusWaitingForInput": "入力待ち...",
+    "confirmResumeWhileEditing": "別のユーザーがキュースクリプトを編集中です。それでも再開しますか？",
     "itemSummary": {
       "pause": "一時停止",
       "newSession": "[新しいセッション]",

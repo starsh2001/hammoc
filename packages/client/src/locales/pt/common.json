@@ -428,6 +428,13 @@
     "deleteItemAria": "Excluir item {{index}}",
     "addItemPlaceholder": "Adicionar novo item... (prompt ou @diretiva)",
     "addItem": "Adicionar item",
+    "editScript": "Editar script",
+    "applyEdit": "Aplicar",
+    "cancelEdit": "Cancelar",
+    "cancelPause": "Cancelar pausa",
+    "statusPauseRequested": "Pausando após o item atual...",
+    "statusWaitingForInput": "Aguardando entrada...",
+    "confirmResumeWhileEditing": "Outro usuário está editando o script da fila. Retomar mesmo assim?",
     "itemSummary": {
       "pause": "Pausar",
       "newSession": "[Nova sessão]",

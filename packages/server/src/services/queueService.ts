@@ -67,6 +67,11 @@ export class QueueService {
   private _isErrored: boolean = false;
   /** Snapshot of totalItems for completed/errored display */
   private _finalTotalItems: number = 0;
+  /** Socket ID that owns the edit lock (null = no one editing) */
+  private _editingSocketId: string | null = null;
+  private _isPauseRequested: boolean = false;
+  /** True when waiting for user input (permission/question) — distinct from isPaused */
+  private _isWaitingForInput: boolean = false;
   private lang: string = 'en';
   constructor(
     private projectService: ProjectService,
@@ -106,9 +111,12 @@ export class QueueService {
     this.currentModel = undefined;
     this.resumeSessionId = null;
     this.pauseReason = undefined;
+    this._isPauseRequested = false;
+    this._isWaitingForInput = false;
     this.lastError = null;
     this._isCompleted = false;
     this._isErrored = false;
+    this._editingSocketId = null;
     this._finalTotalItems = 0;
     this.completedSessionIds = new Map();
     log.info(`START: project="${projectSlug}", items=${items.length}, sessionId=${sessionId ?? '(new)'}, cwd="${this.workingDirectory}"`);
@@ -122,11 +130,26 @@ export class QueueService {
   }
 
   async pause(): Promise<void> {
-    log.info(`PAUSE: index=${this.currentIndex}/${this.items.length}, sessionId=${this.currentSessionId}`);
-    this.isPaused = true;
-    const t = i18next.getFixedT(this.lang);
-    this.pauseReason = t('queue.pause.userPaused');
-    this.emitProgress('paused');
+    log.info(`PAUSE: index=${this.currentIndex}/${this.items.length}, isExecuting=${this.isExecuting}`);
+    if (this.isExecuting) {
+      // Item in progress — schedule pause after completion
+      this._isPauseRequested = true;
+      this.emitProgress('running'); // re-emit so clients pick up isPauseRequested
+    } else {
+      // No item running (e.g. between items) — pause immediately
+      this.isPaused = true;
+      const t = i18next.getFixedT(this.lang);
+      this.pauseReason = t('queue.pause.userPaused');
+      this.emitProgress('paused');
+    }
+  }
+
+  cancelPause(): void {
+    if (!this._isPauseRequested) return;
+    log.info(`CANCEL_PAUSE: index=${this.currentIndex}/${this.items.length}`);
+    this._isPauseRequested = false;
+    // Emit actual state — may already be paused by permission/error/breakpoint
+    this.emitProgress(this.isPaused ? 'paused' : 'running');
   }
 
   async resume(): Promise<void> {
@@ -137,8 +160,14 @@ export class QueueService {
     log.info(`RESUME: index=${this.currentIndex}/${this.items.length}, sessionId=${this.currentSessionId}`);
     this.abortController = new AbortController();
     this.isPaused = false;
+    this._isPauseRequested = false;
     this.pauseReason = undefined;
     this.lastError = null;
+    // Release edit lock when resuming (editor must re-acquire after next pause)
+    if (this._editingSocketId) {
+      this._editingSocketId = null;
+      this.emitEditState();
+    }
     this.emitProgress('running');
     await this.executeLoop();
   }
@@ -149,10 +178,13 @@ export class QueueService {
     this._isRunning = false;
     this.isExecuting = false;
     this.isPaused = false;
+    this._isPauseRequested = false;
+    this._isWaitingForInput = false;
     this.pauseReason = undefined;
     this.lastError = null;
     this._isCompleted = false;
     this._isErrored = false;
+    this._editingSocketId = null;
     this.abortController?.abort();
     this.emitProgress('aborted');
   }
@@ -172,7 +204,7 @@ export class QueueService {
 
   getState() {
     // Include items when queue has meaningful state to display
-    const hasActiveState = this._isRunning || this.isPaused || this._isCompleted || this._isErrored;
+    const hasActiveState = this._isRunning || this.isPaused || this._isWaitingForInput || this._isCompleted || this._isErrored;
     // After abort: _finalTotalItems is set, items are still in memory
     const hasAbortedState = !hasActiveState && this._finalTotalItems > 0;
     return {
@@ -181,12 +213,15 @@ export class QueueService {
       isCompleted: this._isCompleted,
       isErrored: this._isErrored,
       currentIndex: this.currentIndex,
-      totalItems: this._isRunning || this.isPaused ? this.items.length : this._finalTotalItems,
+      totalItems: this._isRunning || this.isPaused || this._isWaitingForInput ? this.items.length : this._finalTotalItems,
       pauseReason: this.pauseReason,
       lockedSessionId: this.lockedSessionId,
       currentModel: this.currentModel,
+      isPauseRequested: this._isPauseRequested,
+      isWaitingForInput: this._isWaitingForInput,
       lastError: this.lastError,
       items: hasActiveState || hasAbortedState ? this.items : undefined,
+      isEditing: this._editingSocketId !== null,
       completedSessionIds: (() => {
         // Include current running item's sessionId so clients joining mid-run see the link
         const all = new Map(this.completedSessionIds);
@@ -250,6 +285,55 @@ export class QueueService {
     return true;
   }
 
+  /** Replace all pending items with new items (script edit mode, paused only) */
+  replaceItems(newItems: QueueItem[], socketId?: string): boolean {
+    if (!this.isPaused) return false;
+    // Require edit lock ownership to replace items
+    if (!this._editingSocketId) return false;
+    if (socketId && this._editingSocketId !== socketId) return false;
+
+    const pendingStart = this.currentIndex;
+    this.items = [...this.items.slice(0, pendingStart), ...newItems];
+    this._editingSocketId = null;
+
+    this.emitItemsUpdated();
+    this.emitProgress('paused');
+    this.emitEditState();
+    log.info(`REPLACE_ITEMS: pendingStart=${pendingStart}, newCount=${newItems.length}, newTotal=${this.items.length}`);
+    return true;
+  }
+
+  /** Mark that a client has entered script edit mode. Returns false if not paused or already locked by another. */
+  editStart(socketId?: string): boolean {
+    if (!this.isPaused) return false;
+    const id = socketId ?? 'unknown';
+    if (this._editingSocketId && this._editingSocketId !== id) {
+      log.info(`EDIT_START rejected: already locked by ${this._editingSocketId}, requested by ${id}`);
+      return false;
+    }
+    this._editingSocketId = id;
+    this.emitEditState();
+    log.info(`EDIT_START: socketId=${this._editingSocketId}`);
+    return true;
+  }
+
+  /** Mark that a client has exited script edit mode */
+  editEnd(socketId?: string): void {
+    if (!this._editingSocketId) return;
+    // Only owner or unspecified caller can release the lock
+    if (socketId && this._editingSocketId !== socketId) return;
+    this._editingSocketId = null;
+    this.emitEditState();
+    log.info(`EDIT_END: socketId=${socketId ?? 'cleanup'}`);
+  }
+
+  private emitEditState(): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.io.to(`project:${this.projectSlug}`).emit('queue:editState' as any, {
+      isEditing: this._editingSocketId !== null,
+    });
+  }
+
   private emitItemsUpdated(): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.io.to(`project:${this.projectSlug}`).emit('queue:itemsUpdated' as any, {
@@ -289,6 +373,14 @@ export class QueueService {
           if (!this.isPaused && this._isRunning && this.currentIndex < this.items.length) {
             this.emitProgress('running');
           }
+        }
+        // Apply deferred pause request after item completion
+        if (!this.isPaused && this._isPauseRequested) {
+          this._isPauseRequested = false;
+          this.isPaused = true;
+          const t = i18next.getFixedT(this.lang);
+          this.pauseReason = t('queue.pause.userPaused');
+          this.emitProgress('paused');
         }
         if (this.isPaused) {
           log.debug(`executeLoop: paused after item, index=${this.currentIndex}, reason="${this.pauseReason}"`);
@@ -384,6 +476,7 @@ export class QueueService {
     if (item.isBreakpoint) {
       log.debug(`executeItem: BREAKPOINT — pausing`);
       this.isPaused = true;
+      this._isPauseRequested = false; // clear deferred request since we're pausing now
       this.pauseReason = item.prompt || 'Breakpoint';
       this.emitProgress('paused');
       return { shouldAdvance: true };
@@ -430,11 +523,11 @@ export class QueueService {
       const requestId = options.toolUseID || `perm-queue-${Date.now()}`;
       log.debug(`canUseTool: tool=${toolName}, isAskUserQuestion=${isAskUserQuestion}, requestId=${requestId}`);
 
-      // Pause queue execution
+      // Mark as waiting for input (distinct from user pause)
       const t = i18next.getFixedT(this.lang);
-      this.isPaused = true;
+      this._isWaitingForInput = true;
       this.pauseReason = t('queue.pause.waitingForPermission', { value: isAskUserQuestion ? t('queue.pause.userAnswer') : t('queue.pause.permissionApproval'), toolName });
-      this.emitProgress('paused');
+      this.emitProgress('running');
       await this.notificationService.notifyQueueInputRequired(this.buildSessionUrl());
 
       // Emit via ActiveStream (buffered + forwarded to session:join'd socket)
@@ -464,8 +557,8 @@ export class QueueService {
         });
       });
 
-      // Auto-resume
-      this.isPaused = false;
+      // Auto-resume from input wait
+      this._isWaitingForInput = false;
       this.pauseReason = undefined;
       this.emitProgress('running');
 
@@ -637,6 +730,7 @@ export class QueueService {
   private pauseWithError(reason: string): void {
     log.error(`pauseWithError: index=${this.currentIndex}, reason="${reason}"`);
     this.isPaused = true;
+    this._isPauseRequested = false; // clear deferred request since we're pausing now
     this.pauseReason = reason;
     this.lastError = { itemIndex: this.currentIndex, error: reason };
     this.emitProgress('paused');
@@ -665,6 +759,8 @@ export class QueueService {
       status,
       pauseReason: this.pauseReason,
       sessionId: this.currentSessionId || '',
+      isPauseRequested: this._isPauseRequested,
+      isWaitingForInput: this._isWaitingForInput,
     });
   }
 

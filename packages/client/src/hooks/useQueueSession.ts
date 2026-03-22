@@ -28,7 +28,10 @@ export interface UseQueueSessionReturn {
   pauseReason: string | undefined;
   errorItem: { index: number; error: string } | null;
   projectSlug: string;
+  isPauseRequested: boolean;
+  isWaitingForInput: boolean;
   pause: () => void;
+  cancelPause: () => void;
   resume: () => void;
   abort: () => void;
   /** Manually dismiss the completed/errored banner (clears server state) */
@@ -39,6 +42,8 @@ export function useQueueSession(projectSlug: string, sessionId: string): UseQueu
   const {
     isRunning,
     isPaused,
+    isPauseRequested,
+    isWaitingForInput,
     isCompleted,
     isErrored,
     currentIndex,
@@ -50,6 +55,8 @@ export function useQueueSession(projectSlug: string, sessionId: string): UseQueu
   } = useQueueStore(useShallow((s) => ({
     isRunning: s.isRunning,
     isPaused: s.isPaused,
+    isPauseRequested: s.isPauseRequested,
+    isWaitingForInput: s.isWaitingForInput,
     isCompleted: s.isCompleted,
     isErrored: s.isErrored,
     currentIndex: s.currentIndex,
@@ -151,6 +158,12 @@ export function useQueueSession(projectSlug: string, sessionId: string): UseQueu
     socket.emit('queue:pause', { projectSlug });
   }, [projectSlug]);
 
+  const cancelPause = useCallback(() => {
+    const socket = getSocket();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.emit('queue:cancelPause' as any, { projectSlug });
+  }, [projectSlug]);
+
   const resume = useCallback(() => {
     const socket = getSocket();
     socket.emit('queue:resume', { projectSlug });
@@ -181,10 +194,13 @@ export function useQueueSession(projectSlug: string, sessionId: string): UseQueu
     queueActiveSessionId: (isRunning || isPaused) ? lockedSessionId : null,
     progress: { current: currentIndex, total: totalItems },
     currentPromptPreview,
+    isPauseRequested,
+    isWaitingForInput,
     pauseReason,
     errorItem,
     projectSlug,
     pause,
+    cancelPause,
     resume,
     abort,
     dismissBanner,

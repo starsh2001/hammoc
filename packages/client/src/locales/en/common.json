@@ -456,6 +456,13 @@
     "deleteItemAria": "Delete item {{index}}",
     "addItemPlaceholder": "Add new item... (prompt or @directive)",
     "addItem": "Add item",
+    "editScript": "Edit Script",
+    "applyEdit": "Apply",
+    "cancelEdit": "Cancel",
+    "cancelPause": "Cancel Pause",
+    "statusPauseRequested": "Pausing after current item...",
+    "statusWaitingForInput": "Waiting for input...",
+    "confirmResumeWhileEditing": "Another user is currently editing the queue script. Resume anyway?",
     "itemSummary": {
       "pause": "Pause",
       "newSession": "[New session]",

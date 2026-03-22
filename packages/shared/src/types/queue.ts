@@ -51,6 +51,12 @@ export interface QueueExecutionState {
   items?: QueueItem[];
   /** Map of itemIndex -> sessionId for completed items (for session links) */
   completedSessionIds?: Record<number, string>;
+  /** True when another client is editing the pending items as script */
+  isEditing?: boolean;
+  /** True when pause has been requested but current item is still executing */
+  isPauseRequested?: boolean;
+  /** True when waiting for user input (permission/question) — distinct from isPaused */
+  isWaitingForInput?: boolean;
 }
 
 export interface QueueItemsUpdatedEvent {
@@ -65,6 +71,10 @@ export interface QueueProgressEvent {
   status: 'running' | 'paused' | 'completed' | 'error' | 'aborted';
   pauseReason?: string;
   sessionId: string;
+  /** True when pause has been requested but current item is still executing */
+  isPauseRequested?: boolean;
+  /** True when waiting for user input (permission/question) */
+  isWaitingForInput?: boolean;
 }
 
 export interface QueueItemCompleteEvent {
