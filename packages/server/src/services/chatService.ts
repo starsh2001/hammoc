@@ -208,6 +208,7 @@ export class ChatService {
       systemPrompt,
       maxThinkingTokens: options.maxThinkingTokens,
       maxBudgetUsd: options.maxBudgetUsd,
+      effort: options.effort,
       canUseTool,
       // Capture CLI stderr for debugging process exit errors
       stderr: (data: string) => {

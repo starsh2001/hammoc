@@ -585,4 +585,72 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
 
     expect(callOrder).toEqual(['onSessionInit', 'onTextChunk', 'onComplete']);
   });
+
+  it('should pass effort option to SDK queryOptions (Story 26.1)', async () => {
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
+    const mockIterator = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: 'init', session_id: 'test-session' };
+        yield {
+          type: 'result',
+          subtype: 'success',
+          result: 'Done',
+          session_id: 'test-session',
+          uuid: 'msg-1',
+          is_error: false,
+          usage: { input_tokens: 10, output_tokens: 5 },
+          total_cost_usd: 0.001,
+        };
+      },
+      interrupt: vi.fn(),
+      setPermissionMode: vi.fn(),
+    };
+
+    vi.mocked(query).mockReturnValue(mockIterator as unknown as ReturnType<typeof query>);
+
+    const callbacks = { onComplete: vi.fn() };
+
+    await service.sendMessageWithCallbacks('Test message', callbacks, {
+      effort: 'low',
+    });
+
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          effort: 'low',
+        }),
+      })
+    );
+  });
+
+  it('should not include effort in queryOptions when not provided (Story 26.1)', async () => {
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
+    const mockIterator = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: 'init', session_id: 'test-session' };
+        yield {
+          type: 'result',
+          subtype: 'success',
+          result: 'Done',
+          session_id: 'test-session',
+          uuid: 'msg-1',
+          is_error: false,
+          usage: { input_tokens: 10, output_tokens: 5 },
+          total_cost_usd: 0.001,
+        };
+      },
+      interrupt: vi.fn(),
+      setPermissionMode: vi.fn(),
+    };
+
+    vi.mocked(query).mockReturnValue(mockIterator as unknown as ReturnType<typeof query>);
+
+    const callbacks = { onComplete: vi.fn() };
+
+    await service.sendMessageWithCallbacks('Test message', callbacks);
+
+    // effort should not be present in queryOptions (undefined values are stripped)
+    const callArgs = vi.mocked(query).mock.calls[0][0] as { options: Record<string, unknown> };
+    expect(callArgs.options).not.toHaveProperty('effort');
+  });
 });

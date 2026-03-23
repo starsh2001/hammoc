@@ -64,6 +64,43 @@ describe('PreferencesService', () => {
     });
   });
 
+  describe('defaultEffort round-trip (Story 26.1)', () => {
+    it('TC-S5: defaultEffort persists through write and read cycle', async () => {
+      const existing = { theme: 'dark' as const };
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify(existing));
+      vi.mocked(fs.mkdir).mockResolvedValueOnce(undefined);
+      vi.mocked(fs.writeFile).mockResolvedValueOnce(undefined);
+
+      const result = await preferencesService.writePreferences({ defaultEffort: 'medium' });
+
+      expect(result.defaultEffort).toBe('medium');
+      expect(result.theme).toBe('dark');
+
+      // Verify the written JSON includes defaultEffort
+      const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
+      const writtenData = JSON.parse(writeCall[1] as string);
+      expect(writtenData.defaultEffort).toBe('medium');
+    });
+
+    it('TC-S6: defaultEffort is included in readPreferences when stored', async () => {
+      const stored = { theme: 'dark', defaultEffort: 'low' };
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify(stored));
+
+      const prefs = await preferencesService.readPreferences();
+
+      expect(prefs.defaultEffort).toBe('low');
+    });
+
+    it('TC-S7: defaultEffort is undefined when not stored', async () => {
+      const stored = { theme: 'dark' };
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify(stored));
+
+      const prefs = await preferencesService.readPreferences();
+
+      expect(prefs.defaultEffort).toBeUndefined();
+    });
+  });
+
   describe('getEffectivePreferences', () => {
     it('TC-S4: env var overrides file value for chatTimeoutMs', async () => {
       const stored = { theme: 'dark', chatTimeoutMs: 300000 };
