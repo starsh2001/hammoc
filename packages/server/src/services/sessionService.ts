@@ -336,21 +336,10 @@ export class SessionService {
         // Sort by mtime descending
         fileStats.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
 
-        // Pre-filter known-empty sessions from index cache when !includeEmpty
+        // When search is active, resolve cache misses for filtering
         let candidates = fileStats;
-        if (!includeEmpty) {
-          candidates = fileStats.filter(({ sessionId }) => {
-            const cached = indexMap.get(sessionId);
-            // If cached and firstPrompt is empty, exclude
-            if (cached && !cached.firstPrompt) return false;
-            return true; // Include cache misses — will filter after resolution
-          });
-        }
-
-        // Apply search filter BEFORE pagination
         if (queryLower) {
-          // Resolve first prompts for cache-miss sessions before metadata filtering
-          const cacheMisses = candidates.filter(({ sessionId }) => !indexMap.has(sessionId));
+          const cacheMisses = fileStats.filter(({ sessionId }) => !indexMap.has(sessionId));
           if (cacheMisses.length > 0) {
             await this.pMapWithLimit(cacheMisses, async ({ file, sessionId }) => {
               const meta = await parseJSONLSessionMeta(path.join(projectDir, file));
@@ -364,6 +353,14 @@ export class SessionService {
                 });
               }
             }, 8);
+          }
+
+          // Pre-filter empty sessions
+          if (!includeEmpty) {
+            candidates = fileStats.filter(({ sessionId }) => {
+              const cached = indexMap.get(sessionId);
+              return cached ? !!cached.firstPrompt : false;
+            });
           }
 
           const metadataMatched = new Set<string>();
@@ -404,41 +401,81 @@ export class SessionService {
           } else {
             candidates = metadataFiltered;
           }
-        }
 
-        const topFiles = candidates.slice(offset, offset + limit);
-
-        // Resolve metadata: use index cache when available, parse JSONL only for misses (in parallel)
-        const sessions = (await Promise.all(
-          topFiles.map(async ({ file, sessionId, stat }): Promise<SessionListItem | null> => {
-            const cached = indexMap.get(sessionId);
-            if (cached) {
-              return {
-                sessionId,
-                firstPrompt: this.truncateFirstPrompt(cached.firstPrompt),
-                messageCount: cached.messageCount,
-                created: stat.birthtime.toISOString(),
-                modified: stat.mtime.toISOString(),
-              };
-            }
-            // Cache miss — use lightweight stream parser
-            const meta = await parseJSONLSessionMeta(path.join(projectDir, file));
-            if (!meta) return null;
-
-            // Filter empty sessions for cache misses when !includeEmpty
-            if (!includeEmpty && !meta.firstPrompt) return null;
-
+          const topFiles = candidates.slice(offset, offset + limit);
+          const sessions = topFiles.map(({ sessionId, stat }) => {
+            const cached = indexMap.get(sessionId)!;
             return {
               sessionId,
-              firstPrompt: meta.firstPrompt ? this.truncateFirstPrompt(meta.firstPrompt) : '',
-              messageCount: meta.messageCount,
+              firstPrompt: this.truncateFirstPrompt(cached.firstPrompt),
+              messageCount: cached.messageCount,
               created: stat.birthtime.toISOString(),
               modified: stat.mtime.toISOString(),
             };
-          })
-        )).filter((s): s is SessionListItem => s !== null);
+          });
+          return { sessions, total: candidates.length };
+        }
 
-        return { sessions, total: candidates.length };
+        // No search: use streaming pagination — resolve only until page is filled
+        // Pre-filter known-empty sessions from index cache
+        if (!includeEmpty) {
+          candidates = fileStats.filter(({ sessionId }) => {
+            const cached = indexMap.get(sessionId);
+            // Known empty from cache → exclude
+            if (cached && !cached.firstPrompt) return false;
+            // Known non-empty from cache, or cache miss (needs resolve) → keep
+            return true;
+          });
+        }
+
+        // Walk candidates in order, resolving cache misses on demand,
+        // skipping empties, until we collect enough for the requested page.
+        // Stop resolving once page is filled — use remaining candidate count as total estimate.
+        const sessions: SessionListItem[] = [];
+        let skipped = 0;
+        let scannedCount = 0;
+
+        for (const { file, sessionId, stat } of candidates) {
+          scannedCount++;
+          const cached = indexMap.get(sessionId);
+          let firstPrompt: string;
+          let messageCount: number;
+
+          if (cached) {
+            firstPrompt = cached.firstPrompt;
+            messageCount = cached.messageCount;
+          } else {
+            // Cache miss — resolve lazily
+            const meta = await parseJSONLSessionMeta(path.join(projectDir, file));
+            if (!meta) continue;
+            firstPrompt = meta.firstPrompt;
+            messageCount = meta.messageCount;
+            // Populate cache for potential future pages
+            indexMap.set(sessionId, { sessionId, firstPrompt, messageCount, created: '', modified: '' });
+          }
+
+          if (!includeEmpty && !firstPrompt) continue;
+
+          if (skipped < offset) { skipped++; continue; }
+          if (sessions.length < limit) {
+            sessions.push({
+              sessionId,
+              firstPrompt: firstPrompt ? this.truncateFirstPrompt(firstPrompt) : '',
+              messageCount,
+              created: stat.birthtime.toISOString(),
+              modified: stat.mtime.toISOString(),
+            });
+          } else {
+            // Page filled — stop scanning
+            break;
+          }
+        }
+
+        // Estimate total: sessions found so far + remaining unscanned candidates
+        const remaining = candidates.length - scannedCount;
+        const total = offset + sessions.length + (remaining > 0 ? remaining : 0);
+
+        return { sessions, total };
       } catch {
         return { sessions: [], total: 0 };
       }
