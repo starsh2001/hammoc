@@ -121,11 +121,6 @@
     "lessColumns": "Mostrar menos columnas",
     "moreColumns": "Mostrar más columnas"
   },
-  "promote": {
-    "originalIssueHeader": "Incidencia original (ID: {{id}})",
-    "issueFileRef": "Lea los detalles completos de la incidencia en `{{file}}` antes de crear la historia.",
-    "none": "Ninguno"
-  },
   "truncated": "...(truncado)",
   "noDescription": "(Sin descripción)",
   "mobileKanban": {

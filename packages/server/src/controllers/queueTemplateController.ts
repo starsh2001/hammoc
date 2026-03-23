@@ -234,26 +234,13 @@ export async function extractStories(req: Request, res: Response): Promise<void>
     const storiesDir = path.join(projectRoot, storyLocation);
     const storyFiles = await fs.readdir(storiesDir);
 
-    const bfEpicStoryRegex = /^BE-(\d+)\.(\d+)\..+\.md$/;
     const bfStandaloneRegex = /^BS-(\d+)\..+\.md$/;
 
     for (const file of storyFiles) {
       let storyInfo: QueueStoryInfo | null = null;
-      const beMatch = file.match(bfEpicStoryRegex);
       const bsMatch = file.match(bfStandaloneRegex);
 
-      if (beMatch) {
-        const epicKey = `BE-${beMatch[1]}`;
-        const storyIndex = parseInt(beMatch[2], 10);
-        // Extract title from file header
-        const title = await extractTitleFromStoryFile(path.join(storiesDir, file));
-        storyInfo = {
-          storyNum: `BE-${beMatch[1]}.${beMatch[2]}`,
-          epicNum: epicKey,
-          storyIndex,
-          title,
-        };
-      } else if (bsMatch) {
+      if (bsMatch) {
         const storyIndex = parseInt(bsMatch[1], 10);
         const title = await extractTitleFromStoryFile(path.join(storiesDir, file));
         storyInfo = {

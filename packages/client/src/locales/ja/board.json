@@ -121,11 +121,6 @@
     "lessColumns": "表示列を減らす",
     "moreColumns": "表示列を増やす"
   },
-  "promote": {
-    "originalIssueHeader": "元の課題（ID：{{id}}）",
-    "issueFileRef": "ストーリー作成前に `{{file}}` から課題の詳細を確認してください。",
-    "none": "なし"
-  },
   "truncated": "...（省略）",
   "noDescription": "（説明なし）",
   "mobileKanban": {

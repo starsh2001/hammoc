@@ -122,16 +122,16 @@ export const boardController = {
     }
   },
 
-  async getNextBrownfieldNum(req: Request, res: Response): Promise<void> {
+  async getNextNum(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       const type = req.query.type as string;
-      if (type !== 'BS' && type !== 'BE') {
-        res.status(400).json({ error: { code: 'INVALID_TYPE', message: 'type must be BS or BE' } });
+      if (type !== 'BS' && type !== 'epic') {
+        res.status(400).json({ error: { code: 'INVALID_TYPE', message: 'type must be BS or epic' } });
         return;
       }
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
-      const nextNum = await issueService.getNextBrownfieldNum(projectRoot, type);
+      const nextNum = await issueService.getNextNum(projectRoot, type);
       res.json({ nextNum });
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;

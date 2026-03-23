@@ -490,7 +490,6 @@ class IssueService {
     for (const epic of statusResponse.epics) {
       // Determine epic key prefix for ID extraction
       const epicKey = epic.number;
-      const isBfEpic = typeof epicKey === 'string' && epicKey.startsWith('BE-');
       const isBfStandalone = epicKey === 'BS';
 
       // Convert stories to BoardItems — raw status preserved directly
@@ -500,14 +499,10 @@ class IssueService {
           let storyId: string;
           let epicNumber: number | string | undefined;
 
-          const bfEpicMatch = story.file.match(/^BE-(\d+)\.(\d+)/);
           const bfStandaloneMatch = story.file.match(/^BS-(\d+)/);
           const regularMatch = story.file.match(/^(\d+\.\d+)/);
 
-          if (bfEpicMatch) {
-            storyId = `BE-${bfEpicMatch[1]}.${bfEpicMatch[2]}`;
-            epicNumber = `BE-${bfEpicMatch[1]}`;
-          } else if (bfStandaloneMatch) {
+          if (bfStandaloneMatch) {
             storyId = `BS-${bfStandaloneMatch[1]}`;
             epicNumber = 'BS';
           } else if (regularMatch) {
@@ -585,33 +580,44 @@ class IssueService {
   }
 
   /**
-   * Get the next available BS/BE number by scanning the story files directory.
+   * Get the next available number for backlog stories (BS) or epics.
    */
-  async getNextBrownfieldNum(projectPath: string, type: 'BS' | 'BE'): Promise<number> {
-    let storyLocation = 'docs/stories';
-    try {
-      const configPath = path.join(projectPath, '.bmad-core', 'core-config.yaml');
-      const content = await fs.readFile(configPath, 'utf-8');
-      const parsed = yaml.load(content) as Record<string, unknown>;
-      if (parsed && typeof parsed.devStoryLocation === 'string') {
-        storyLocation = parsed.devStoryLocation;
-      }
-    } catch { /* use default */ }
+  async getNextNum(projectPath: string, type: 'BS' | 'epic'): Promise<number> {
+    if (type === 'BS') {
+      let storyLocation = 'docs/stories';
+      try {
+        const configPath = path.join(projectPath, '.bmad-core', 'core-config.yaml');
+        const content = await fs.readFile(configPath, 'utf-8');
+        const parsed = yaml.load(content) as Record<string, unknown>;
+        if (parsed && typeof parsed.devStoryLocation === 'string') {
+          storyLocation = parsed.devStoryLocation;
+        }
+      } catch { /* use default */ }
 
-    const storiesDir = path.join(projectPath, storyLocation);
-    const regex = type === 'BS'
-      ? /^BS-(\d+)\./
-      : /^BE-(\d+)\./;
+      const storiesDir = path.join(projectPath, storyLocation);
+      const regex = /^BS-(\d+)\./;
+      const nums: number[] = [];
+      try {
+        const files = await fs.readdir(storiesDir);
+        for (const file of files) {
+          const match = file.match(regex);
+          if (match) nums.push(parseInt(match[1], 10));
+        }
+      } catch { /* directory not found */ }
+      return nums.length > 0 ? Math.max(...nums) + 1 : 1;
+    }
 
+    // epic: scan docs/prd/ for epic-{number}-*.md files
+    const prdDir = path.join(projectPath, 'docs', 'prd');
+    const regex = /^epic-(\d+)-/;
     const nums: number[] = [];
     try {
-      const files = await fs.readdir(storiesDir);
+      const files = await fs.readdir(prdDir);
       for (const file of files) {
         const match = file.match(regex);
         if (match) nums.push(parseInt(match[1], 10));
       }
     } catch { /* directory not found */ }
-
     return nums.length > 0 ? Math.max(...nums) + 1 : 1;
   }
 

@@ -102,12 +102,16 @@ export function ProjectBoardPage() {
       const sessionId = generateUUID();
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
       const taskName = targetType === 'story' ? '*create-brownfield-story' : '*create-brownfield-epic';
-      const taskWithContext = `${taskName}\n\n## ${t('promote.originalIssueHeader', { id: item.id })}\n**${t('issue.titlePlain')}**: ${item.title}\n**${t('issue.severity')}**: ${item.severity || t('promote.none')}\n**${t('issue.type')}**: ${item.issueType || t('promote.none')}\n\n${t('promote.issueFileRef', { file: issueFile })}`;
+      // Get next number from server (authoritative filesystem scan)
+      const numType = targetType === 'story' ? 'BS' as const : 'epic' as const;
+      const { nextNum } = await boardApi.getNextNum(projectSlug, numType);
+      const assignedNumber = targetType === 'story' ? `BS-${nextNum}` : `Epic ${nextNum}`;
+
+      const issueRefKey = targetType === 'story' ? 'promote.issueFileRef' : 'promote.issueFileRefEpic';
+      const taskWithContext = `${taskName}\n\n**Assigned number: ${assignedNumber}**\n\n## ${t('promote.originalIssueHeader', { id: item.id })}\n**${t('issue.titlePlain')}**: ${item.title}\n**${t('issue.severity')}**: ${item.severity || t('promote.none')}\n**${t('issue.type')}**: ${item.issueType || t('promote.none')}\n\n${t(issueRefKey, { file: issueFile })}`;
       const params = new URLSearchParams({ agent: '/BMad:agents:pm', task: taskWithContext });
 
-      // Get next BS/BE number from server (authoritative filesystem scan) and append doc-out chain
-      const bfType = targetType === 'story' ? 'BS' : 'BE';
-      const { nextNum } = await boardApi.getNextBrownfieldNum(projectSlug, bfType);
+      // Append doc-out chain for file output location
       const chainKey = targetType === 'story' ? 'promote.docOutStoryChain' : 'promote.docOutEpicChain';
       params.append('chain', t(chainKey, { nextNum }));
 

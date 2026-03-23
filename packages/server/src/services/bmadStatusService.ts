@@ -289,9 +289,7 @@ class BmadStatusService {
         // Match story files: "1.1.story.md", "1.1.some-name.story.md",
         // or "2.1.kis-api-auth.md" (no ".story" suffix)
         const storyFileRegex = /^(\d+)\.(\d+)\..+\.md$/;
-        // Brownfield epic stories: "BE-1.1.some-name.md"
-        const bfEpicStoryRegex = /^BE-(\d+)\.(\d+)\..+\.md$/;
-        // Brownfield standalone stories: "BS-1.some-name.md"
+        // Backlog standalone stories: "BS-1.some-name.md"
         const bfStandaloneRegex = /^BS-(\d+)\..+\.md$/;
 
         for (const file of files) {
@@ -299,8 +297,6 @@ class BmadStatusService {
           let match = file.match(storyFileRegex);
           if (match) {
             epicKey = parseInt(match[1], 10);
-          } else if ((match = file.match(bfEpicStoryRegex))) {
-            epicKey = `BE-${match[1]}`;
           } else if ((match = file.match(bfStandaloneRegex))) {
             epicKey = 'BS';
           } else {
@@ -328,8 +324,8 @@ class BmadStatusService {
         // Group gate files by story number, keeping the newest
         const latestGatePerStory = new Map<string, { file: string; mtime: number }>();
         for (const gf of gateFiles) {
-          // Match regular (1.1-slug.yml), brownfield epic (BE-1.1-slug.yml), standalone (BS-1-slug.yml)
-          const gateMatch = gf.match(/^(\d+\.\d+|BE-\d+\.\d+|BS-\d+)-.*\.yml$/);
+          // Match regular (1.1-slug.yml) or standalone (BS-1-slug.yml)
+          const gateMatch = gf.match(/^(\d+\.\d+|BS-\d+)-.*\.yml$/);
           if (!gateMatch) continue;
           const storyId = gateMatch[1];
           try {
@@ -364,9 +360,8 @@ class BmadStatusService {
     // Apply gate results to stories
     for (const stories of storyMap.values()) {
       for (const story of stories) {
-        // Match regular (1.1), brownfield epic (BE-1.1), or standalone (BS-1) story IDs
+        // Match regular (1.1) or standalone (BS-1) story IDs
         const num = story.file.match(/^(\d+\.\d+)/)?.[1]
-          ?? story.file.match(/^(BE-\d+\.\d+)/)?.[1]
           ?? story.file.match(/^(BS-\d+)/)?.[1];
         if (!num) continue;
         const gate = gateResults.get(num);
@@ -380,15 +375,13 @@ class BmadStatusService {
       if (!epicMap.has(epicKey)) {
         if (epicKey === 'BS') {
           epicMap.set(epicKey, 'Standalone Stories');
-        } else if (typeof epicKey === 'string' && epicKey.startsWith('BE-')) {
-          epicMap.set(epicKey, `Brownfield Epic ${epicKey}`);
         } else {
           epicMap.set(epicKey, `Epic ${epicKey}`);
         }
       }
     }
 
-    // Build sorted result: regular epics first (numeric sort), then BE-*, then BS
+    // Build sorted result: regular epics first (numeric sort), then BS
     const epics: BmadEpicStatus[] = Array.from(epicMap.entries())
       .sort((a, b) => {
         const aIsNum = typeof a[0] === 'number';
@@ -396,8 +389,7 @@ class BmadStatusService {
         if (aIsNum && bIsNum) return (a[0] as number) - (b[0] as number);
         if (aIsNum) return -1;
         if (bIsNum) return 1;
-        // Both strings: BE-* before BS
-        if (a[0] === b[0]) return 0;
+        // BS always goes last
         if (a[0] === 'BS') return 1;
         if (b[0] === 'BS') return -1;
         return String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true });
@@ -419,32 +411,34 @@ class BmadStatusService {
    * Also matches standalone format: "### Story 1: ..." when epicContext is provided.
    * Uses a Set per epic to deduplicate stories that appear in multiple files.
    */
-  private countPlannedStories(content: string, plannedMap: Map<number | string, Set<string>>, epicContext?: number): void {
+  private countPlannedStories(content: string, plannedMap: Map<number | string, Set<string>>, epicContext?: number | string): void {
+    // Match regular stories: "Story 3.1", "Story 1"
     const regex = /^#{2,3}\s+Story\s+(\d+(?:\.\d+)?)/gm;
     let match;
     while ((match = regex.exec(content)) !== null) {
       const rawId = match[1];
-      let epicNum: number;
+      let epicKey: number | string;
       let storyId: string;
 
       if (rawId.includes('.')) {
         // Dotted format: "Story 3.1" → epic 3, story "3.1"
         storyId = rawId;
-        epicNum = parseInt(rawId.split('.')[0], 10);
+        epicKey = parseInt(rawId.split('.')[0], 10);
       } else if (epicContext != null) {
         // Standalone format: "Story 1" in an epic-specific file → "epicContext.rawId"
         storyId = `${epicContext}.${rawId}`;
-        epicNum = epicContext;
+        epicKey = epicContext;
       } else {
         // Standalone without context — can't determine epic, skip
         continue;
       }
 
-      if (!plannedMap.has(epicNum)) {
-        plannedMap.set(epicNum, new Set());
+      if (!plannedMap.has(epicKey)) {
+        plannedMap.set(epicKey, new Set());
       }
-      plannedMap.get(epicNum)!.add(storyId);
+      plannedMap.get(epicKey)!.add(storyId);
     }
+
   }
 
   /**
@@ -479,8 +473,8 @@ class BmadStatusService {
       header.match(/^\*{0,2}Status\*{0,2}\s*:\s*(.+)/m);    // format 4 & 5
     const status = statusMatch ? statusMatch[1].trim() : 'Unknown';
 
-    // Match: "# Story 1.1: Title", "# Story BS-1: Title", "# Story BE-1.2: Title", "# Story: Title"
-    const titleMatch = header.match(/^#\s+Story(?:\s+(?:B[SE]-)?[\d]+(?:\.\d+)?)?[:\s–-]+(.+)/m);
+    // Match: "# Story 1.1: Title", "# Story BS-1: Title", "# Story: Title"
+    const titleMatch = header.match(/^#\s+Story(?:\s+(?:BS-)?[\d]+(?:\.\d+)?)?[:\s–-]+(.+)/m);
     const title = titleMatch ? titleMatch[1].trim() : undefined;
 
     return { status, title };
