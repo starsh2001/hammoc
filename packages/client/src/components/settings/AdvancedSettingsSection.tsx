@@ -159,22 +159,24 @@ export function AdvancedSettingsSection() {
     }, 1000);
 
     let consecutiveErrors = 0;
+    let serverWentDown = false;
     pollRef.current = setInterval(async () => {
       try {
-        const result = await api.get<{ status: string; error?: string }>('/server/build-status');
-        consecutiveErrors = 0;
-        if (result.status === 'failed') {
-          stopPolling();
-          toast.error(t('toast.buildFailed', { error: result.error?.slice(0, 200) ?? t('toast.buildFailedUnknown') }));
-          setIsProcessing(false);
-        } else if (result.status === 'idle') {
-          stopPolling();
-          toast.success(successMessage);
-          setTimeout(() => window.location.reload(), 1500);
+        // Use raw fetch on a public endpoint — no auth needed
+        const res = await fetch('/api/health', { method: 'GET' });
+        if (!res.ok) throw new Error('not ok');
+        if (!serverWentDown) {
+          // Server hasn't gone down yet — keep waiting
+          return;
         }
+        // Server is back up after restart — reload
+        stopPolling();
+        toast.success(successMessage);
+        setTimeout(() => window.location.reload(), 1500);
       } catch {
+        serverWentDown = true;
         consecutiveErrors++;
-        if (consecutiveErrors > 40) {
+        if (consecutiveErrors > 60) {
           stopPolling();
           toast.error(t('toast.serverTimeout'));
           setIsProcessing(false);

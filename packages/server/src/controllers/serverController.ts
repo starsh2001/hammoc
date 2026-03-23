@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { exec, execFile, execSync, spawn } from 'child_process';
+import { execFile, execSync, spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -66,66 +66,78 @@ function getPackageInfo(): { name: string; version: string } {
 // In-memory build/update state
 let buildState: { status: 'idle' | 'building' | 'updating' | 'failed'; error?: string } = { status: 'idle' };
 
-function spawnAndExit(): void {
-  // Write a temp script and launch it in its own console/shell.
-  // Direct detached spawn with stdio:'ignore' causes the inner npm process
-  // to inherit NUL handles, which can silently fail on both Windows and Unix.
-  const isWin = process.platform === 'win32';
+/** Resolve Git Bash path on Windows */
+function findGitBash(): string {
+  const candidates = [
+    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Git', 'bin', 'bash.exe'),
+    path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Git', 'bin', 'bash.exe'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return 'bash'; // fallback
+}
+
+// Detect npx install: path contains _npx (npm's npx cache directory)
+const isNpxInstall = MONOREPO_ROOT.includes('_npx');
+
+/**
+ * Spawn a new process in Git Bash and exit the current server.
+ * - 'prod'   → npm run prod (dev: build + start)
+ * - 'update' → global: npm install -g + hammoc / npx: npx hammoc@latest
+ */
+function spawnAndExit(mode: 'prod' | 'update'): void {
   const nodeDir = path.dirname(process.execPath);
+  const scriptPath = path.join(os.tmpdir(), 'hammoc-restart.sh');
 
-  if (isWin) {
-    const scriptPath = path.join(os.tmpdir(), 'hammoc-restart.bat');
-    // Build a robust PATH: include node dir + full Windows system paths
-    // so the script works regardless of the parent shell (cmd, Git Bash, etc.)
-    const systemRoot = process.env.SystemRoot || 'C:\\Windows';
-    const robustPath = [
-      nodeDir,
-      `${systemRoot}\\System32`,
-      `${systemRoot}`,
-    ].join(';');
+  const toUnix = (p: string) => p.replace(/\\/g, '/');
+  const { name } = getPackageInfo();
 
-    fs.writeFileSync(scriptPath, [
-      '@echo off',
-      `set "PATH=${robustPath};%PATH%"`,
-      'timeout /t 2 /nobreak >nul',
-      `cd /d "${MONOREPO_ROOT}"`,
-      `"${npmPath}" run start`,
-    ].join('\r\n'));
+  let command: string;
+  if (mode === 'update') {
+    if (isNpxInstall) {
+      const npxPath = process.platform === 'win32'
+        ? path.join(path.dirname(process.execPath), 'npx.cmd')
+        : 'npx';
+      command = `"${toUnix(npxPath)}" ${name}@latest`;
+    } else {
+      // Global install: update in-place, then run the bin command
+      command = `"${toUnix(npmPath)}" install -g ${name}@latest && "${toUnix(npmPath)}" exec hammoc`;
+    }
+  } else {
+    command = `"${toUnix(npmPath)}" run ${mode}`;
+  }
 
-    // Use COMSPEC (full path to cmd.exe) so spawn works from any shell env
-    const comspec = process.env.COMSPEC || path.join(systemRoot, 'System32', 'cmd.exe');
-    const child = spawn(comspec, ['/c', 'start', '""', scriptPath], {
+  fs.writeFileSync(scriptPath, [
+    '#!/bin/bash',
+    `export PATH="${toUnix(nodeDir)}:$PATH"`,
+    'sleep 2',
+    `cd "${toUnix(MONOREPO_ROOT)}"`,
+    command,
+  ].join('\n'));
+
+  const shell = process.platform === 'win32' ? findGitBash() : '/bin/bash';
+
+  let child;
+  if (process.platform === 'win32') {
+    // Use cmd.exe's 'start' to open a visible console window running Git Bash
+    const comspec = process.env.COMSPEC || 'cmd.exe';
+    child = spawn(comspec, ['/c', 'start', '""', shell, scriptPath], {
       detached: true,
       stdio: 'ignore',
     });
-    child.on('error', (err) => {
-      console.error('[server] Failed to spawn restart process:', err.message);
-      buildState = { status: 'failed', error: `Spawn failed: ${err.message}` };
-    });
-    child.unref();
   } else {
-    const scriptPath = path.join(os.tmpdir(), 'hammoc-restart.sh');
-    fs.writeFileSync(scriptPath, [
-      '#!/bin/sh',
-      `export PATH="${nodeDir}:$PATH"`,
-      'sleep 2',
-      `cd "${MONOREPO_ROOT}"`,
-      `"${npmPath}" run start`,
-    ].join('\n'));
-    fs.chmodSync(scriptPath, '755');
-
-    const child = spawn(scriptPath, [], {
+    child = spawn(shell, [scriptPath], {
       cwd: MONOREPO_ROOT,
       detached: true,
       stdio: 'ignore',
-      shell: true,
     });
-    child.on('error', (err) => {
-      console.error('[server] Failed to spawn restart process:', err.message);
-      buildState = { status: 'failed', error: `Spawn failed: ${err.message}` };
-    });
-    child.unref();
   }
+  child.on('error', (err) => {
+    console.error('[server] Failed to spawn restart process:', err.message);
+    buildState = { status: 'failed', error: `Spawn failed: ${err.message}` };
+  });
+  child.unref();
 
   console.log('[server] Exiting old server process. New server will start in ~2s.');
   setTimeout(() => process.exit(0), 500);
@@ -162,16 +174,8 @@ export const serverController = {
     buildState = { status: 'building' };
     res.json({ message: req.t!('server.info.buildStarted') });
 
-    exec(`"${npmPath}" run build`, { cwd: MONOREPO_ROOT, timeout: 300_000, env: { ...process.env, NODE_ENV: 'development' } }, (err, _stdout, stderr) => {
-      if (err) {
-        const errorMsg = stripWarnings(stderr ?? '') || err.message;
-        console.error('[restart] Build failed:', errorMsg);
-        buildState = { status: 'failed', error: errorMsg };
-        return;
-      }
-      console.log('[restart] Build complete. Spawning new server...');
-      spawnAndExit();
-    });
+    console.log('[restart] Spawning new server via npm run prod (build + start)...');
+    spawnAndExit('prod');
   },
 
   /** GET /api/server/check-update - check npm registry for newer version (local network only) */
@@ -221,16 +225,8 @@ export const serverController = {
     buildState = { status: 'updating' };
     res.json({ message: req.t!('server.info.updateStarted') });
 
-    execFile(npmPath, ['install', '-g', `${name}@latest`], { timeout: 300_000, shell: true }, (err, _stdout, stderr) => {
-      if (err) {
-        const errorMsg = stripWarnings(stderr ?? '') || err.message;
-        console.error('[update] npm install failed:', errorMsg);
-        buildState = { status: 'failed', error: errorMsg };
-        return;
-      }
-      console.log('[update] Update complete. Spawning new server...');
-      spawnAndExit();
-    });
+    console.log(`[update] Updating ${name} (${isNpxInstall ? 'npx' : 'global'})...`);
+    spawnAndExit('update');
   },
 
   /** GET /api/server/build-status - poll build/update progress */
