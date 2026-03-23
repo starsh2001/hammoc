@@ -1,11 +1,11 @@
 /**
  * MessageActionBar - Action buttons displayed at the bottom of each message
- * [Source: Story 25.1 - Task 1, 2, Story 25.2 - Task 4]
+ * [Source: Story 25.1 - Task 1, 2]
  */
 
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Check, RotateCcw, RefreshCw, Share2 } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import { debugLogger } from '../utils/debugLogger';
 
 interface MessageActionBarProps {
@@ -14,24 +14,13 @@ interface MessageActionBarProps {
   isLastAssistant?: boolean;
   disabled?: boolean;
   onCopy?: (content: string) => void;
-  messageId?: string;
-  messageIndex?: number;
-  totalMessages?: number;
-  onRewind?: (messageId: string) => void;
-  onRegenerate?: (messageId: string) => void;
-  isStreaming?: boolean;
 }
 
 export function MessageActionBar({
   role,
   content,
-  isLastAssistant = false,
   disabled = false,
   onCopy,
-  messageId,
-  onRewind,
-  onRegenerate,
-  isStreaming = false,
 }: MessageActionBarProps) {
   const { t } = useTranslation('chat');
   const [isCopied, setIsCopied] = useState(false);
@@ -64,7 +53,6 @@ export function MessageActionBar({
   if (disabled) return null;
 
   const isUser = role === 'user';
-  const isAssistant = role === 'assistant';
 
   const buttonBase = `inline-flex items-center justify-center p-0.5 rounded transition-colors ${
     isUser
@@ -72,11 +60,9 @@ export function MessageActionBar({
       : 'hover:bg-gray-200/50 dark:hover:bg-[#2d3a4a] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
   }`;
 
-  const disabledClass = 'opacity-50 cursor-not-allowed pointer-events-none';
-
   return (
     <div
-      className={`flex items-center gap-0.5 ${isUser ? 'justify-end' : 'justify-start'}`}
+      className="flex items-center gap-0.5 justify-end"
       data-testid="message-action-bar"
     >
       {/* Copy button — functional */}
@@ -92,47 +78,6 @@ export function MessageActionBar({
           <Copy className="w-3 h-3" aria-hidden="true" />
         )}
       </button>
-
-      {/* Rewind button — assistant only */}
-      {isAssistant && (
-        <button
-          onClick={() => messageId && onRewind?.(messageId)}
-          className={`${buttonBase} ${isStreaming ? disabledClass : ''}`}
-          title={t('messageActionBar.rewind')}
-          aria-label={t('messageActionBar.rewindAriaLabel')}
-          disabled={isStreaming}
-          data-testid="rewind-button"
-        >
-          <RotateCcw className="w-3 h-3" aria-hidden="true" />
-        </button>
-      )}
-
-      {/* Regenerate button — assistant only, last assistant message only */}
-      {isAssistant && (
-        <button
-          onClick={() => messageId && onRegenerate?.(messageId)}
-          className={`${buttonBase} ${!isLastAssistant || isStreaming ? disabledClass : ''}`}
-          title={t('messageActionBar.regenerate')}
-          aria-label={t('messageActionBar.regenerateAriaLabel')}
-          disabled={!isLastAssistant || isStreaming}
-          data-testid="regenerate-button"
-        >
-          <RefreshCw className="w-3 h-3" aria-hidden="true" />
-        </button>
-      )}
-
-      {/* Share button — assistant only, placeholder for Story 25.3 */}
-      {isAssistant && (
-        <button
-          className={`${buttonBase} ${disabledClass}`}
-          title={t('messageActionBar.share')}
-          aria-label={t('messageActionBar.shareAriaLabel')}
-          disabled
-          data-testid="share-button"
-        >
-          <Share2 className="w-3 h-3" aria-hidden="true" />
-        </button>
-      )}
     </div>
   );
 }

@@ -181,8 +181,6 @@ interface ChatState {
   projectSettings: ProjectSettings | null;
   /** API health status from server polling */
   apiHealth: ApiHealthStatus | null;
-  /** Whether a rewind/regenerate operation is in progress */
-  isRewinding: boolean;
 }
 
 interface SendMessageOptions {
@@ -307,7 +305,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   contextUsage: null,
   subscriptionRateLimit: null,
   apiHealth: null,
-  isRewinding: false,
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),

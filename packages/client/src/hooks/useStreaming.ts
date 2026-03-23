@@ -885,10 +885,6 @@ export function useStreaming() {
         clearChunkQueue();
         abortStreaming();
       }
-      // STATE-001: Reset isRewinding on reconnect failure to prevent stuck state
-      if (useChatStore.getState().isRewinding) {
-        useChatStore.setState({ isRewinding: false });
-      }
     };
 
     // Handle server errors
@@ -1436,51 +1432,6 @@ export function useStreaming() {
     };
     socket.on('chain:update', handleChainUpdate);
 
-    // Story 25.2: Handle chat:rewound — rewind/regenerate result from server
-    const handleChatRewound = (data: { sessionId: string; truncatedBeforeMessageId: string; success: boolean; error?: string; warning?: string }) => {
-      // CLIENT-001: Validate sessionId matches the currently viewed session
-      // This prevents refreshing the wrong session if user switches sessions before response arrives.
-      // For passive viewers (isRewinding=false), refresh if sessionId matches current session.
-      const { currentSessionId, currentProjectSlug } = useMessageStore.getState();
-      const isRewinding = useChatStore.getState().isRewinding;
-
-      if (!isRewinding) {
-        // Passive viewer: refresh if this event is for the currently viewed session
-        if (data.success && data.sessionId && currentSessionId === data.sessionId && currentProjectSlug) {
-          useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).catch(() => {});
-        }
-        return;
-      }
-
-      // STATE-001: Active rewinder: verify sessionId matches.
-      // If mismatch (user switched sessions before response), reset isRewinding to prevent stuck state.
-      if (data.sessionId && currentSessionId && data.sessionId !== currentSessionId) {
-        useChatStore.setState({ isRewinding: false });
-        return;
-      }
-
-      if (data.success) {
-        // Refresh history from server
-        if (currentProjectSlug && currentSessionId) {
-          useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
-            useChatStore.setState({ isRewinding: false });
-          }).catch(() => {
-            useChatStore.setState({ isRewinding: false });
-          });
-        } else {
-          useChatStore.setState({ isRewinding: false });
-        }
-        // UX-001: Show warning toast for partial success (e.g., git checkout failed, no user message for regenerate)
-        if (data.warning) {
-          toast.warning(data.warning);
-        }
-      } else {
-        useChatStore.setState({ isRewinding: false });
-        toast.error(data.error || i18n.t('chat:rewindDialog.error.rewindFailed'));
-      }
-    };
-    socket.on('chat:rewound', handleChatRewound);
-
     socket.io.on('reconnect_failed', handleReconnectFailed);
 
     // Register keyboard event listener
@@ -1527,7 +1478,6 @@ export function useStreaming() {
       socket.off('connect', handleReconnect);
       socket.off('error', handleError);
       socket.off('chain:update', handleChainUpdate);
-      socket.off('chat:rewound', handleChatRewound);
       socket.io.off('reconnect_failed', handleReconnectFailed);
       document.removeEventListener('keydown', handleKeyDown);
     };

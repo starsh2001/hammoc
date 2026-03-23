@@ -174,28 +174,7 @@
     "edit": "Edit",
     "share": "Share",
     "copyAriaLabel": "Copy message to clipboard",
-    "copiedAriaLabel": "Message copied",
-    "rewindAriaLabel": "Rewind conversation to this point",
-    "regenerateAriaLabel": "Regenerate this response",
-    "shareAriaLabel": "Share this message"
-  },
-  "rewindDialog": {
-    "rewindTitle": "Rewind Conversation",
-    "regenerateTitle": "Regenerate Response",
-    "editTitle": "Edit Message",
-    "warning": "{{count}} message(s) after this point will be removed.",
-    "conversationOnly": "Conversation only",
-    "conversationOnlyDesc": "Remove messages but keep all code changes",
-    "conversationAndCode": "Conversation + Code",
-    "conversationAndCodeDesc": "Remove messages and restore files to their previous state",
-    "gitNotInitialized": "Git must be initialized to restore code changes",
-    "confirm": "Confirm",
-    "cancel": "Cancel",
-    "error": {
-      "rewindFailed": "Failed to rewind conversation. Please try again.",
-      "regenerateFailed": "Conversation was rewound, but regeneration failed. You can re-send manually.",
-      "noGitCommit": "No git commit found at this point. Code restore is not available."
-    }
+    "copiedAriaLabel": "Message copied"
   },
   "messageListSkeleton": {
     "ariaLabel": "Loading messages",

@@ -170,28 +170,7 @@
     "edit": "编辑",
     "share": "分享",
     "copyAriaLabel": "复制消息到剪贴板",
-    "copiedAriaLabel": "消息已复制",
-    "rewindAriaLabel": "回退对话到此处",
-    "regenerateAriaLabel": "重新生成此回复",
-    "shareAriaLabel": "分享此消息"
-  },
-  "rewindDialog": {
-    "rewindTitle": "回退对话",
-    "regenerateTitle": "重新生成回复",
-    "editTitle": "编辑消息",
-    "warning": "此处之后的 {{count}} 条消息将被删除。",
-    "conversationOnly": "仅对话",
-    "conversationOnlyDesc": "删除消息但保留所有代码更改",
-    "conversationAndCode": "对话 + 代码",
-    "conversationAndCodeDesc": "删除消息并将文件恢复到之前的状态",
-    "gitNotInitialized": "需要初始化 Git 才能恢复代码更改",
-    "confirm": "确认",
-    "cancel": "取消",
-    "error": {
-      "rewindFailed": "回退对话失败，请重试。",
-      "regenerateFailed": "对话已回退，但重新生成失败。您可以手动重新发送。",
-      "noGitCommit": "未找到此处的 Git 提交。无法恢复代码。"
-    }
+    "copiedAriaLabel": "消息已复制"
   },
   "messageListSkeleton": {
     "ariaLabel": "正在加载消息",
