@@ -17,6 +17,7 @@ import type {
   ImageAttachment,
   PermissionRequest,
   PromptChainItem,
+  ThinkingEffort,
 } from '@hammoc/shared';
 import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS } from '@hammoc/shared';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@hammoc/shared';
@@ -1665,13 +1666,13 @@ function validateImages(images: ImageAttachment[], lang: string): { valid: boole
  */
 async function handleChatSend(
   stream: ActiveStream,
-  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[] },
+  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[]; effort?: ThinkingEffort },
   abortController: AbortController,
   lang: string
 ): Promise<boolean> {
   const emit = createStreamEmit(stream);
   const t = i18next.getFixedT(lang);
-  const { content, workingDirectory, sessionId, resume, permissionMode, model, images } = data;
+  const { content, workingDirectory, sessionId, resume, permissionMode, model, images, effort } = data;
 
   // Validate images if present (Story 5.5)
   if (images && images.length > 0) {
@@ -1727,6 +1728,7 @@ async function handleChatSend(
       maxThinkingTokens: effectivePrefs.maxThinkingTokens,
       maxTurns: effectivePrefs.maxTurns,
       maxBudgetUsd: effectivePrefs.maxBudgetUsd,
+      effort: effort ?? effectivePrefs.defaultEffort,
     };
 
     // Create canUseTool callback for permission & AskUserQuestion handling

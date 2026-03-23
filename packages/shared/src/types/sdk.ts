@@ -41,6 +41,8 @@ export interface ChatOptions {
   maxThinkingTokens?: number;
   /** Max budget in USD per query */
   maxBudgetUsd?: number;
+  /** Thinking effort level for the model */
+  effort?: ThinkingEffort;
 }
 
 /**
@@ -165,6 +167,11 @@ export function estimateTokenCount(text: string): number {
 
 /** Approximate token cost per image attachment (~1600 tokens for typical image) */
 export const IMAGE_TOKEN_ESTIMATE = 1600;
+
+/**
+ * Thinking effort level for the model's reasoning depth
+ */
+export type ThinkingEffort = 'low' | 'medium' | 'high' | 'max';
 
 /**
  * Permission modes for tool usage

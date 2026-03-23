@@ -3,7 +3,7 @@
  * Server-side persistent settings (replaces localStorage)
  */
 
-import type { PermissionMode } from './sdk.js';
+import type { PermissionMode, ThinkingEffort } from './sdk.js';
 
 /** Supported i18n languages (Epic 22) */
 export const SUPPORTED_LANGUAGES = ['en', 'ko', 'zh-CN', 'ja', 'es', 'pt'] as const;
@@ -41,6 +41,7 @@ export interface UserPreferences {
   maxThinkingTokens?: number;       // SDK maxThinkingTokens
   maxTurns?: number;                // SDK maxTurns (conversation turn limit)
   maxBudgetUsd?: number;            // SDK maxBudgetUsd (cost limit per query)
+  defaultEffort?: ThinkingEffort;   // SDK effort (thinking effort level)
   // i18n settings (Epic 22)
   language?: SupportedLanguage;     // User's preferred language
   // Permission sync policy across browsers
