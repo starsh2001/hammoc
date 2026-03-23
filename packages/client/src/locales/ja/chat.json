@@ -170,28 +170,7 @@
     "edit": "編集",
     "share": "共有",
     "copyAriaLabel": "メッセージをクリップボードにコピー",
-    "copiedAriaLabel": "メッセージをコピーしました",
-    "rewindAriaLabel": "この時点まで会話を巻き戻す",
-    "regenerateAriaLabel": "この応答を再生成",
-    "shareAriaLabel": "このメッセージを共有"
-  },
-  "rewindDialog": {
-    "rewindTitle": "会話を巻き戻す",
-    "regenerateTitle": "応答を再生成",
-    "editTitle": "メッセージを編集",
-    "warning": "この時点以降の {{count}} 件のメッセージが削除されます。",
-    "conversationOnly": "会話のみ",
-    "conversationOnlyDesc": "メッセージを削除し、コードの変更は保持",
-    "conversationAndCode": "会話 + コード",
-    "conversationAndCodeDesc": "メッセージを削除し、ファイルを以前の状態に復元",
-    "gitNotInitialized": "コードの変更を復元するには Git の初期化が必要です",
-    "confirm": "確認",
-    "cancel": "キャンセル",
-    "error": {
-      "rewindFailed": "会話の巻き戻しに失敗しました。もう一度お試しください。",
-      "regenerateFailed": "会話は巻き戻されましたが、再生成に失敗しました。手動で再送信できます。",
-      "noGitCommit": "この時点の Git コミットが見つかりません。コードの復元は利用できません。"
-    }
+    "copiedAriaLabel": "メッセージをコピーしました"
   },
   "messageListSkeleton": {
     "ariaLabel": "メッセージを読み込み中",

@@ -84,9 +84,6 @@ export interface ClientToServerEvents {
   'chain:add': (data: { sessionId: string; content: string; workingDirectory: string; permissionMode?: PermissionMode; model?: string }) => void;
   'chain:remove': (data: { sessionId: string; id: string }) => void;
   'chain:clear': (data: { sessionId: string }) => void;
-  // Story 25.2: Rewind & Regenerate events
-  'chat:rewind': (data: { sessionId: string; messageId: string; undoMode: 'conversation' | 'conversationAndCode' }) => void;
-  'chat:regenerate': (data: { sessionId: string; messageId: string; undoMode: 'conversation' | 'conversationAndCode' }) => void;
 }
 
 // ===== Server to Client Events =====
@@ -140,8 +137,6 @@ export interface ServerToClientEvents {
   'dashboard:status-change': (data: DashboardStatusChangeEvent) => void;
   // Story 24.1: Prompt chain update
   'chain:update': (data: { sessionId: string; items: PromptChainItem[] }) => void;
-  // Story 25.2: Rewind/Regenerate result
-  'chat:rewound': (data: { sessionId: string; truncatedBeforeMessageId: string; success: boolean; error?: string; warning?: string }) => void;
   // Buffer replay: send entire buffer as a single batch for fast session join
   'stream:buffer-replay': (data: { sessionId: string; events: Array<{ event: string; data: unknown }> }) => void;
 }

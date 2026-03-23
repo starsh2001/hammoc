@@ -133,8 +133,6 @@ interface ActiveStream {
 
 // Primary maps: sessionId → ActiveStream, socketId → sessionId
 const activeStreams = new Map<string, ActiveStream>();
-// Story 25.2 QA: Per-session rewind mutex to prevent concurrent rewind/regenerate race condition (RACE-001)
-const rewindLocks = new Map<string, Promise<void>>();
 const socketToSession = new Map<string, string>();
 // Story 24.3: Track which session room each socket joined (for session:leave room management)
 const socketSessionRoom = new Map<string, string>();
@@ -994,309 +992,6 @@ export async function initializeWebSocket(
       }
     });
 
-    // Story 25.2: Handle chat:rewind — truncate history at target message
-    socket.on('chat:rewind', async (data) => {
-      // VAL-001: Validate payload shape before destructuring
-      if (!data || typeof data !== 'object') {
-        socket.emit('chat:rewound', { sessionId: '', truncatedBeforeMessageId: '', success: false, error: 'Invalid payload' });
-        return;
-      }
-
-      const { sessionId, messageId, undoMode } = data;
-
-      // Validate session ownership
-      const socketSession = socketToSession.get(socket.id) || socketSessionRoom.get(socket.id);
-      if (!socketSession || socketSession !== sessionId) {
-        socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Session mismatch' });
-        return;
-      }
-
-      // Validate messageId format (UUID)
-      if (!messageId || !UUID_RE.test(messageId)) {
-        socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Invalid message ID' });
-        return;
-      }
-
-      // Reject if stream is active for this session
-      if (activeStreams.has(sessionId) && activeStreams.get(sessionId)!.status === 'running') {
-        socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Cannot rewind while streaming' });
-        return;
-      }
-
-      // RACE-001: Acquire per-session rewind lock to prevent concurrent rewind/regenerate
-      if (rewindLocks.has(sessionId)) {
-        socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Rewind already in progress' });
-        return;
-      }
-
-      let resolveLock: () => void;
-      const lockPromise = new Promise<void>((resolve) => { resolveLock = resolve; });
-      rewindLocks.set(sessionId, lockPromise);
-
-      // ERR-001: Top-level try/catch to prevent client isRewinding stuck state
-      try {
-        const sessionService = new SessionService();
-        const projectSlug = sessionProjectMap.get(sessionId) || socketProjectRoom.get(socket.id);
-        if (!projectSlug) {
-          socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Project not found' });
-          return;
-        }
-
-        // UX-001: Track code restore warning to include in response
-        let codeRestoreWarning: string | undefined;
-
-        // Handle "Conversation + Code" mode BEFORE truncation:
-        // SDK rewindFiles needs the full session JSONL to find file checkpoints,
-        // so it must run before truncateSessionHistory removes messages.
-        if (undoMode === 'conversationAndCode') {
-          const projectPath = await sessionService.getProjectPathBySlug(projectSlug);
-          if (projectPath) {
-            const rewindInfo = await sessionService.getRewindInfo(projectSlug, sessionId, messageId);
-            if (rewindInfo?.userMessageId) {
-              try {
-                const chatService = new ChatService({ workingDirectory: projectPath });
-                const rewindResult = await chatService.rewindSessionFiles(sessionId, rewindInfo.userMessageId);
-                if (!rewindResult.canRewind) {
-                  codeRestoreWarning = rewindResult.error || 'File checkpointing not available for this session. Code restore skipped.';
-                }
-              } catch (err) {
-                log.warn(`SDK rewindFiles failed for rewind: ${err}`);
-                codeRestoreWarning = 'Conversation was rewound, but code restore failed. Files may not match the expected state.';
-              }
-            }
-          }
-        }
-
-        // Truncate history
-        const result = await sessionService.truncateSessionHistory(projectSlug, sessionId, messageId);
-        if (!result.success) {
-          // SEC-001: Return sanitized error message
-          log.error(`Rewind truncation failed: session=${sessionId} message=${messageId}`, result.error);
-          socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Failed to rewind conversation' });
-          return;
-        }
-
-        // Broadcast success to all sockets in session room
-        io.to(`session:${sessionId}`).emit('chat:rewound', {
-          sessionId,
-          truncatedBeforeMessageId: messageId,
-          success: true,
-          ...(codeRestoreWarning ? { warning: codeRestoreWarning } : {}),
-        });
-      } catch (err) {
-        // ERR-001: Ensure chat:rewound is always emitted so client isRewinding resets
-        log.error(`Unexpected error in chat:rewind handler: session=${sessionId}`, err);
-        socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'An unexpected error occurred' });
-      } finally {
-        // RACE-001: Release per-session lock
-        rewindLocks.delete(sessionId);
-        resolveLock!();
-      }
-    });
-
-    // Story 25.2: Handle chat:regenerate — rewind + re-send last user prompt
-    socket.on('chat:regenerate', async (data) => {
-      // VAL-001: Validate payload shape before destructuring
-      if (!data || typeof data !== 'object') {
-        socket.emit('chat:rewound', { sessionId: '', truncatedBeforeMessageId: '', success: false, error: 'Invalid payload' });
-        return;
-      }
-
-      const lang = socket.data.language || 'en';
-      const { sessionId, messageId, undoMode } = data;
-
-      // Validate session ownership
-      const socketSession = socketToSession.get(socket.id) || socketSessionRoom.get(socket.id);
-      if (!socketSession || socketSession !== sessionId) {
-        socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Session mismatch' });
-        return;
-      }
-
-      // Validate messageId format (UUID)
-      if (!messageId || !UUID_RE.test(messageId)) {
-        socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Invalid message ID' });
-        return;
-      }
-
-      // Reject if stream is active
-      if (activeStreams.has(sessionId) && activeStreams.get(sessionId)!.status === 'running') {
-        socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Cannot regenerate while streaming' });
-        return;
-      }
-
-      // RACE-001: Acquire per-session rewind lock to prevent concurrent rewind/regenerate
-      if (rewindLocks.has(sessionId)) {
-        socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Rewind already in progress' });
-        return;
-      }
-
-      let resolveLock: () => void;
-      const lockPromise = new Promise<void>((resolve) => { resolveLock = resolve; });
-      rewindLocks.set(sessionId, lockPromise);
-
-      // ERR-001: Top-level try/catch to prevent client isRewinding stuck state
-      try {
-        const sessionService = new SessionService();
-        const projectSlug = sessionProjectMap.get(sessionId) || socketProjectRoom.get(socket.id);
-        if (!projectSlug) {
-          socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Project not found' });
-          return;
-        }
-
-        // UX-001: Track code restore warning to include in response
-        let codeRestoreWarning: string | undefined;
-
-        // Get rewind context info (user message UUID for rewindFiles, resumeSessionAt UUID)
-        const rewindInfo = await sessionService.getRewindInfo(projectSlug, sessionId, messageId);
-
-        // Handle "Conversation + Code" mode BEFORE truncation:
-        // SDK rewindFiles needs the full session JSONL to find file checkpoints
-        if (undoMode === 'conversationAndCode') {
-          const projectPath = await sessionService.getProjectPathBySlug(projectSlug);
-          if (projectPath && rewindInfo?.userMessageId) {
-            try {
-              const chatService = new ChatService({ workingDirectory: projectPath });
-              const rewindResult = await chatService.rewindSessionFiles(sessionId, rewindInfo.userMessageId);
-              if (!rewindResult.canRewind) {
-                codeRestoreWarning = rewindResult.error || 'File checkpointing not available for this session. Code restore skipped.';
-              }
-            } catch (err) {
-              log.warn(`SDK rewindFiles failed for regenerate: ${err}`);
-              codeRestoreWarning = 'Conversation was rewound, but code restore failed. Files may not match the expected state.';
-            }
-          }
-        }
-
-        // Truncate history (remove the last assistant message)
-        const result = await sessionService.truncateSessionHistory(projectSlug, sessionId, messageId);
-        if (!result.success) {
-          // SEC-001: Return sanitized error message
-          log.error(`Regenerate truncation failed: session=${sessionId} message=${messageId}`, result.error);
-          socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Failed to rewind conversation' });
-          return;
-        }
-
-        // Read the truncated history to find the last user message
-        const history = await sessionService.getSessionMessages(projectSlug, sessionId, { limit: 1000 });
-        if (!history || history.messages.length === 0) {
-          // CONSIST-001: Broadcast to session room instead of single socket
-          io.to(`session:${sessionId}`).emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: true, warning: 'No user message found to regenerate' });
-          return;
-        }
-
-        const lastUserMessage = [...history.messages].reverse().find(m => m.type === 'user');
-        if (!lastUserMessage) {
-          // CONSIST-001: Broadcast to session room instead of single socket
-          io.to(`session:${sessionId}`).emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: true, warning: 'No user message found to regenerate' });
-          return;
-        }
-
-        // Emit rewind success first (include warning if code restore had issues)
-        io.to(`session:${sessionId}`).emit('chat:rewound', {
-          sessionId,
-          truncatedBeforeMessageId: messageId,
-          success: true,
-          ...(codeRestoreWarning ? { warning: codeRestoreWarning } : {}),
-        });
-
-        // RACE-001: Lock session by creating ActiveStream IMMEDIATELY before handleChatSend
-        // This closes the gap where another request could slip in between truncation and stream registration
-        const abortController = new AbortController();
-        const stream: ActiveStream = {
-          sessionId,
-          sockets: new Set<SocketType>([socket]),
-          abortController,
-          buffer: [],
-          pendingPermissions: new Map(),
-          status: 'running',
-          startedAt: Date.now(),
-        };
-        activeStreams.set(sessionId, stream);
-        socketToSession.set(socket.id, sessionId);
-
-        // Add other sockets viewing this session
-        const roomSockets = io.sockets.adapter.rooms.get(`session:${sessionId}`);
-        if (roomSockets) {
-          for (const socketId of roomSockets) {
-            const roomSocket = io.sockets.sockets.get(socketId) as SocketType | undefined;
-            if (roomSocket && roomSocket.id !== socket.id) {
-              stream.sockets.add(roomSocket);
-              socketToSession.set(roomSocket.id, sessionId);
-            }
-          }
-        }
-
-        const projectPath = await sessionService.getProjectPathBySlug(projectSlug);
-        if (!projectPath) {
-          // CODEX-002: Treat missing project path as a hard error to prevent agent running in unintended cwd
-          log.error(`Regenerate failed: project path not found for slug=${projectSlug}`);
-          cleanupStream(sessionId);
-          emitStreamChange(sessionId, false, sessionProjectMap.get(sessionId) ?? null);
-          socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'Failed to regenerate: project path not found' });
-          return;
-        }
-
-        try {
-          const sendSuccess = await handleChatSend(
-            stream,
-            {
-              content: lastUserMessage.content,
-              workingDirectory: projectPath,
-              sessionId,
-              resume: true,
-              // CODEX-004: Forward image attachments from original user message for faithful regeneration
-              ...(lastUserMessage.images && lastUserMessage.images.length > 0 ? { images: lastUserMessage.images } : {}),
-              // SDK state sync: ensure SDK conversation matches truncated JSONL
-              ...(rewindInfo?.resumeAtId ? { resumeSessionAt: rewindInfo.resumeAtId } : {}),
-            },
-            abortController,
-            lang
-          );
-          if (sendSuccess) chainResumableSessions.add(sessionId);
-        } finally {
-          stream.status = 'completed';
-          const isCurrentStream = activeStreams.get(sessionId) === stream;
-          if (isCurrentStream) {
-            const endSlug = sessionProjectMap.get(sessionId) ?? null;
-            cleanupStream(sessionId);
-            emitStreamChange(sessionId, false, endSlug);
-            const finalMode = stream.chatService?.getPermissionMode();
-            if (finalMode) await persistSessionPermissionMode(sessionId, finalMode);
-
-            const endProjectSlug = sessionProjectMap.get(sessionId);
-            if (endProjectSlug) {
-              new SessionService().updateSessionIndex(endProjectSlug, sessionId).catch((err) => {
-                log.warn(`Failed to update session index: project=${endProjectSlug} session=${sessionId}`, err);
-              });
-              triggerDashboardStatusChange(endProjectSlug);
-              sessionProjectMap.delete(sessionId);
-            }
-
-            const pendingChain = chainState.get(sessionId);
-            if (pendingChain && pendingChain.some(item => item.status === 'pending')) {
-              scheduleChainDrain(sessionId, lang);
-            } else {
-              cleanupChainIfIdle(sessionId);
-            }
-          }
-        }
-      } catch (err) {
-        // ERR-001: Ensure chat:rewound is always emitted so client isRewinding resets
-        log.error(`Unexpected error in chat:regenerate handler: session=${sessionId}`, err);
-        socket.emit('chat:rewound', { sessionId, truncatedBeforeMessageId: messageId, success: false, error: 'An unexpected error occurred' });
-
-        // STREAM-001: Clean up activeStreams if set before the error (e.g. getProjectPathBySlug failure)
-        if (activeStreams.has(sessionId)) {
-          cleanupStream(sessionId);
-          emitStreamChange(sessionId, false, sessionProjectMap.get(sessionId) ?? null);
-        }
-      } finally {
-        // RACE-001: Release per-session lock
-        rewindLocks.delete(sessionId);
-        resolveLock!();
-      }
-    });
-
     // Handle permission:mode-change — update SDK permission mode and broadcast to viewers
     socket.on('permission:mode-change', async (data) => {
       const sessionId = socketToSession.get(socket.id) || socketSessionRoom.get(socket.id);
@@ -1970,13 +1665,13 @@ function validateImages(images: ImageAttachment[], lang: string): { valid: boole
  */
 async function handleChatSend(
   stream: ActiveStream,
-  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[]; resumeSessionAt?: string },
+  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[] },
   abortController: AbortController,
   lang: string
 ): Promise<boolean> {
   const emit = createStreamEmit(stream);
   const t = i18next.getFixedT(lang);
-  const { content, workingDirectory, sessionId, resume, permissionMode, model, images, resumeSessionAt } = data;
+  const { content, workingDirectory, sessionId, resume, permissionMode, model, images } = data;
 
   // Validate images if present (Story 5.5)
   if (images && images.length > 0) {
@@ -2024,7 +1719,6 @@ async function handleChatSend(
 
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : { sessionId }),
-      ...(resumeSessionAt ? { resumeSessionAt } : {}),
       abortController,
       model,
       images,
