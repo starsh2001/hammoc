@@ -693,14 +693,14 @@ export function ChatPage() {
   const isTerminalAccessible = terminalAccess?.allowed ?? true;
 
   const handleNavigateToGitTab = useCallback(() => {
-    closePanel();
-    navigate(`/project/${projectSlug}/git`);
-  }, [closePanel, navigate, projectSlug]);
+    navigate(`/project/${projectSlug}/git`, { replace: true });
+    usePanelStore.setState({ activePanel: null });
+  }, [navigate, projectSlug]);
 
   const handleNavigateToTerminalTab = useCallback(() => {
-    closePanel();
-    navigate(`/project/${projectSlug}/terminal`);
-  }, [closePanel, navigate, projectSlug]);
+    navigate(`/project/${projectSlug}/terminal`, { replace: true });
+    usePanelStore.setState({ activePanel: null });
+  }, [navigate, projectSlug]);
 
   // Execute confirmed action (after user confirms in modal)
   const executeConfirmedAction = useCallback(() => {
