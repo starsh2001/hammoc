@@ -41,6 +41,6 @@ export const boardApi = {
   getAttachmentUrl: (projectSlug: string, issueId: string, filename: string) =>
     `/api/projects/${projectSlug}/board/issues/${issueId}/attachments/${filename}`,
 
-  getNextBrownfieldNum: (projectSlug: string, type: 'BS' | 'BE') =>
-    api.get<{ nextNum: number }>(`/projects/${projectSlug}/board/next-brownfield-num?type=${type}`),
+  getNextNum: (projectSlug: string, type: 'BS' | 'epic') =>
+    api.get<{ nextNum: number }>(`/projects/${projectSlug}/board/next-num?type=${type}`),
 };

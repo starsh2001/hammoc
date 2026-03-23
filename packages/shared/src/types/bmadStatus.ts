@@ -64,8 +64,7 @@ export interface BmadEpicStatus {
   /**
    * Epic identifier.
    * - Regular epics: number (1, 2, 3, ...)
-   * - Brownfield epics: string prefixed with "BE-" (e.g., "BE-1", "BE-2")
-   * - Brownfield standalone stories: grouped under the reserved key "BS"
+   * - Backlog standalone stories: grouped under the reserved key "BS"
    */
   number: number | string;
   name: string;

@@ -70,7 +70,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
                 ? epic.epicNumber
                 : `Epic ${epic.epicNumber ?? epic.id.replace(/^epic-/, '')}`}
             </span>
-            {!/^Epic\s+\d+$/.test(epic.title) && !/^Brownfield Epic\s+BE-\d+$/.test(epic.title) && epic.title}
+            {!/^Epic\s+\d+$/.test(epic.title) && epic.title}
           </h2>
           <button
             onClick={handleClose}

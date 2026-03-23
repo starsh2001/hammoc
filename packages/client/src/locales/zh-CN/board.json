@@ -121,11 +121,6 @@
     "lessColumns": "减少显示列数",
     "moreColumns": "增加显示列数"
   },
-  "promote": {
-    "originalIssueHeader": "原始问题（ID：{{id}}）",
-    "issueFileRef": "创建故事前请先阅读 `{{file}}` 中的完整问题详情。",
-    "none": "无"
-  },
   "truncated": "...（已截断）",
   "noDescription": "（无描述）",
   "mobileKanban": {

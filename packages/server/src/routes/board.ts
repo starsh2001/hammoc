@@ -4,7 +4,7 @@ import { boardController, attachmentUpload } from '../controllers/boardControlle
 const router = Router();
 
 router.get('/:projectSlug/board', boardController.getBoard);
-router.get('/:projectSlug/board/next-brownfield-num', boardController.getNextBrownfieldNum);
+router.get('/:projectSlug/board/next-num', boardController.getNextNum);
 router.get('/:projectSlug/board/issues', boardController.listIssues);
 router.post('/:projectSlug/board/issues', boardController.createIssue);
 router.patch('/:projectSlug/board/issues/:issueId', boardController.updateIssue);

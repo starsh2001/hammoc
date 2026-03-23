@@ -125,9 +125,10 @@
   "promote": {
     "originalIssueHeader": "Original Issue (ID: {{id}})",
     "issueFileRef": "Read the full issue details from `{{file}}` before creating the story.",
+    "issueFileRefEpic": "Read the full issue details from `{{file}}` before creating the epic.",
     "none": "None",
     "docOutStoryChain": "*doc-out\n\nIMPORTANT: The output file MUST be saved to `docs/stories/` with the filename prefix `BS-{{nextNum}}.` followed by a kebab-case slug. Example: `docs/stories/BS-{{nextNum}}.my-feature-name.story.md`",
-    "docOutEpicChain": "*doc-out\n\nIMPORTANT: The output file MUST be saved to `docs/stories/` with the filename prefix `BE-{{nextNum}}.1.` followed by a kebab-case slug. Example: `docs/stories/BE-{{nextNum}}.1.my-feature-name.story.md`\nAlso create the epic definition file if needed."
+    "docOutEpicChain": "*doc-out\n\nIMPORTANT:\n- The epic number is **Epic {{nextNum}}**. Use this number consistently throughout the document.\n- The title MUST start with `# Epic {{nextNum}}: `\n- Story headers MUST use the format `### Story {{nextNum}}.1: Title`, `### Story {{nextNum}}.2: Title`, etc.\n- The output file MUST be saved to `docs/prd/epic-{{nextNum}}-` followed by a kebab-case slug. Example: `docs/prd/epic-{{nextNum}}-my-feature-name.md`"
   },
   "truncated": "...(truncated)",
   "noDescription": "(No description)",

@@ -121,11 +121,6 @@
     "lessColumns": "Mostrar menos colunas",
     "moreColumns": "Mostrar mais colunas"
   },
-  "promote": {
-    "originalIssueHeader": "Issue original (ID: {{id}})",
-    "issueFileRef": "Leia os detalhes completos da issue em `{{file}}` antes de criar a história.",
-    "none": "Nenhum"
-  },
   "truncated": "...(truncado)",
   "noDescription": "(Sem descrição)",
   "mobileKanban": {
