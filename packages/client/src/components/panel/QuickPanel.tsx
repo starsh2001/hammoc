@@ -142,10 +142,14 @@ export function QuickPanel({
   // initial off-screen position before transitioning to translate-x-0.
   // Closing: setIsAnimating(false) triggers slide-out, then setTimeout unmounts.
   const needsAnimateRef = useRef(false);
+  // Incremented on each open to trigger useLayoutEffect even when isVisible is already true
+  // (handles reopen-during-close race where setIsVisible(true) is a no-op).
+  const [openNonce, setOpenNonce] = useState(0);
   useEffect(() => {
     if (isOpen) {
       needsAnimateRef.current = true;
       setIsVisible(true);
+      setOpenNonce((n) => n + 1);
     } else {
       needsAnimateRef.current = false;
       setIsAnimating(false);
@@ -163,7 +167,8 @@ export function QuickPanel({
       void panelRef.current.offsetHeight;
       setIsAnimating(true);
     }
-  }, [isVisible]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVisible, openNonce]);
 
   // Fallback: onTransitionEnd as safety net
   const handleTransitionEnd = useCallback(() => {
@@ -287,8 +292,8 @@ export function QuickPanel({
               }`
             : `inset-y-0 ${panelSide === 'right' ? 'right-0' : 'left-0'} bg-white dark:bg-[#263240]
                ${panelSide === 'right'
-                 ? 'border-l border-gray-200 dark:border-[#253040]'
-                 : 'border-r border-gray-200 dark:border-[#253040]'} shadow-xl
+                 ? 'border-l border-gray-300 dark:border-[#3a4d5e]'
+                 : 'border-r border-gray-300 dark:border-[#3a4d5e]'} shadow-xl
                ${suppressTransition ? '' : 'transition-transform duration-300 ease-in-out'}
                ${isAnimating
                  ? 'translate-x-0'
@@ -309,7 +314,7 @@ export function QuickPanel({
         )}
         {/* Common header */}
         <div className="flex items-center justify-between px-4 py-3
-                        border-b border-gray-200 dark:border-[#253040]">
+                        border-b border-gray-300 dark:border-[#3a4d5e]">
           <PanelTabSwitcher
             activePanel={displayPanel}
             onSwitchPanel={onSwitchPanel}

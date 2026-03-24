@@ -643,9 +643,11 @@ export function ChatPage() {
           panelWidth, setPanelWidth, isDragging, panelSide, togglePanelSide, swipeFrom, applyDefaults: applyPanelDefaults } = usePanelStore();
   const panelDefaultOpen = usePreferencesStore((s) => s.preferences.panelDefaultOpen);
   const panelDefaultSide = usePreferencesStore((s) => s.preferences.panelDefaultSide);
+  const prefsLoaded = usePreferencesStore((s) => s.loaded);
   useEffect(() => {
+    if (!prefsLoaded) return;
     applyPanelDefaults({ panelDefaultOpen, panelDefaultSide });
-  }, [applyPanelDefaults, panelDefaultOpen, panelDefaultSide]);
+  }, [applyPanelDefaults, panelDefaultOpen, panelDefaultSide, prefsLoaded]);
   usePanelShortcuts();
   const isMobile = useIsMobile();
 

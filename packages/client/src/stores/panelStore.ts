@@ -116,11 +116,13 @@ export const usePanelStore = create<PanelStore>((set) => ({
   _defaultApplied: false,
   applyDefaults: ({ panelDefaultOpen, panelDefaultSide }) => set((state) => {
     if (state._defaultApplied) return state;
+
     const updates: Partial<PanelStore> = { _defaultApplied: true };
 
     // Apply default side from preferences (if user hasn't manually changed it)
     if (panelDefaultSide && !localStorage.getItem(PANEL_SIDE_KEY)) {
       updates.panelSide = panelDefaultSide;
+      writePanelSide(panelDefaultSide);
     }
 
     // Auto-open on desktop if preference is enabled (default: true)
