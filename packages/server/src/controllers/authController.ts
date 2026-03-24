@@ -30,6 +30,12 @@ const setupSchema = z.object({
   confirmPassword: z.string().min(1),
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(MIN_PASSWORD_LENGTH),
+  confirmNewPassword: z.string().min(1),
+});
+
 const authConfigService = new AuthConfigService();
 
 export const authController = {
@@ -206,6 +212,65 @@ export const authController = {
           code: 'SETUP_ERROR',
           message: req.t!('auth.password.setError'),
         },
+      });
+    }
+  },
+
+  /**
+   * POST /api/auth/change-password
+   * Change password (requires current password verification)
+   */
+  async changePassword(req: Request, res: Response): Promise<void> {
+    try {
+      const validation = changePasswordSchema.safeParse(req.body);
+      if (!validation.success) {
+        const field = validation.error.issues[0]?.path[0];
+        let message: string;
+        if (field === 'currentPassword') {
+          message = req.t!('auth.validation.passwordRequired');
+        } else if (field === 'newPassword') {
+          message = req.t!('auth.validation.passwordMinLength', { value: MIN_PASSWORD_LENGTH });
+        } else if (field === 'confirmNewPassword') {
+          message = req.t!('auth.validation.passwordConfirmRequired');
+        } else {
+          message = req.t!('auth.validation.invalidRequest');
+        }
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } });
+        return;
+      }
+
+      const { currentPassword, newPassword, confirmNewPassword } = validation.data;
+
+      // Verify current password
+      const isValid = await authConfigService.verifyPassword(currentPassword);
+      if (!isValid) {
+        res.status(401).json({
+          error: { code: 'INVALID_PASSWORD', message: req.t!('auth.login.invalidPassword') },
+        });
+        return;
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        res.status(400).json({
+          error: { code: 'PASSWORD_MISMATCH', message: req.t!('auth.password.mismatch') },
+        });
+        return;
+      }
+
+      await authConfigService.resetPassword(newPassword);
+
+      // Clear current session so user must re-login with new password
+      req.session = null;
+
+      res.json({ success: true, message: req.t!('auth.password.changeSuccess') });
+    } catch (err) {
+      if (err instanceof AuthConfigError) {
+        res.status(400).json({ error: { code: err.code, message: err.message } });
+        return;
+      }
+      log.error('Change password handler error:', err);
+      res.status(500).json({
+        error: { code: 'CHANGE_PASSWORD_ERROR', message: req.t!('auth.password.changeError') },
       });
     }
   },

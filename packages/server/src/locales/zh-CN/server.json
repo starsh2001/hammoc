@@ -28,7 +28,9 @@
       "alreadySet": "密码已设置。",
       "mismatch": "两次输入的密码不一致。",
       "setSuccess": "密码设置成功。",
-      "setError": "设置密码时服务器错误。"
+      "setError": "设置密码时服务器错误。",
+      "changeSuccess": "密码已更改。请重新登录。",
+      "changeError": "更改密码时服务器错误。"
     },
     "logout": {
       "success": "已成功登出",

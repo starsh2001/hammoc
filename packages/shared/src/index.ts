@@ -47,6 +47,9 @@ export {
 // Story 2.5: Auth error messages
 export { AUTH_ERROR_MESSAGES } from './types/auth.js';
 
+// Change password types
+export type { ChangePasswordRequest, ChangePasswordResponse } from './types/auth.js';
+
 // Story 3.1: Project types for Project List API
 // Story 3.6: Extended with project creation types
 export {

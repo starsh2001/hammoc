@@ -55,7 +55,7 @@ describe('SettingsPage', () => {
     renderSettingsPage();
     const backButton = screen.getByLabelText('뒤로 가기');
     fireEvent.click(backButton);
-    expect(mockNavigate).toHaveBeenCalledWith('/');
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   // TC-4: Section navigation click navigates to section
