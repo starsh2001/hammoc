@@ -386,7 +386,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.applyQaFixes'),
       description: label,
       agentCommand: '/BMad:agents:dev',
-      taskCommand: `*review-qa ${num}\n\n${i18n.t('board:workflow.resolveGateOutro')}`,
+      taskCommand: `*review-qa ${num}\n\nAfter completing QA fixes, update the gate YAML file's gate field to 'FIXED'.`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'wrench',
       storyFile: qaFailedStory.file,
@@ -457,7 +457,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: approvedStory.file,
-      chainPrompts: [i18n.t('common:rec.validateFixPrompt'), i18n.t('common:rec.approveAfterFixPrompt')],
+      chainPrompts: ['Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.', 'If the story status is not Approved, please change it to Approved now.'],
     });
 
     // 6c: Validate only — no auto-fix, approve after user fixes
@@ -466,7 +466,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.validateStoryOnly'),
       description: label,
       agentCommand: '/BMad:agents:po',
-      taskCommand: `*validate-story-draft ${num} ${i18n.t('common:rec.validateOnlyApproveHint')}`,
+      taskCommand: `*validate-story-draft ${num} After the user's requested fixes are complete, change the story status to Approved.`,
       variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: approvedStory.file,
@@ -489,7 +489,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'shield-check',
       storyFile: draftStory.file,
-      chainPrompts: [i18n.t('common:rec.validateFixPrompt'), i18n.t('common:rec.approveAfterFixPrompt')],
+      chainPrompts: ['Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.', 'If the story status is not Approved, please change it to Approved now.'],
     });
 
     // 7b: Validate only — no auto-fix, approve after user fixes
@@ -498,7 +498,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.validateStoryOnly'),
       description: label,
       agentCommand: '/BMad:agents:po',
-      taskCommand: `*validate-story-draft ${num} ${i18n.t('common:rec.validateOnlyApproveHint')}`,
+      taskCommand: `*validate-story-draft ${num} After the user's requested fixes are complete, change the story status to Approved.`,
       variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: draftStory.file,
