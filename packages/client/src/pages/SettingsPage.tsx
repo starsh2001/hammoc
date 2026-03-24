@@ -4,11 +4,10 @@
  * [Source: Story 10.1 - Task 2]
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Settings, FolderCog, Bell, Send, Wrench, HelpCircle, Info, LogOut } from 'lucide-react';
-import { useAuthStore } from '../stores/authStore';
+import { ArrowLeft, Settings, FolderCog, Bell, Send, Wrench, HelpCircle, Info, UserCog } from 'lucide-react';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { SettingsSection } from '../components/SettingsSection';
 import { GlobalSettingsSection } from '../components/settings/GlobalSettingsSection';
@@ -18,11 +17,13 @@ import { WebPushSettingsSection } from '../components/settings/WebPushSettingsSe
 import { HelpSection } from '../components/settings/HelpSection';
 import { AboutSection } from '../components/settings/AboutSection';
 import { AdvancedSettingsSection } from '../components/settings/AdvancedSettingsSection';
+import { AccountSettingsSection } from '../components/settings/AccountSettingsSection';
 
 const sectionDefs = [
   { id: 'global', titleKey: 'tabs.global', icon: Settings },
   { id: 'project', titleKey: 'tabs.project', icon: FolderCog },
   { id: 'notifications', titleKey: 'tabs.notifications', icon: Bell },
+  { id: 'account', titleKey: 'tabs.account', icon: UserCog },
   { id: 'advanced', titleKey: 'tabs.advanced', icon: Wrench },
   { id: 'help', titleKey: 'tabs.help', icon: HelpCircle },
   { id: 'about', titleKey: 'tabs.about', icon: Info },
@@ -34,10 +35,8 @@ const validTabs = sectionDefs.map(s => s.id) as readonly string[];
 
 export function SettingsPage() {
   const { t } = useTranslation('settings');
-  const { t: tCommon } = useTranslation('common');
   const navigate = useNavigate();
   const { tab } = useParams<{ tab?: string }>();
-  const { logout } = useAuthStore();
   const activeSection: SectionId = (tab && validTabs.includes(tab)) ? tab as SectionId : 'global';
 
   // Mobile accordion state
@@ -45,13 +44,8 @@ export function SettingsPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleBack = () => {
-    navigate('/');
+    navigate(-1);
   };
-
-  const handleLogout = useCallback(async () => {
-    await logout();
-    navigate('/login', { replace: true });
-  }, [logout, navigate]);
 
   const pendingScrollRef = useRef<SectionId | null>(null);
 
@@ -103,6 +97,8 @@ export function SettingsPage() {
         );
       case 'advanced':
         return <AdvancedSettingsSection />;
+      case 'account':
+        return <AccountSettingsSection />;
       case 'help':
         return <HelpSection />;
       case 'about':
@@ -126,14 +122,6 @@ export function SettingsPage() {
           </button>
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1">{t('page.title')}</h1>
           <LayoutToggleButton className="hidden sm:block" />
-          <button
-            onClick={handleLogout}
-            aria-label={tCommon('project.logout')}
-            title={tCommon('project.logout')}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#253040] text-red-600 dark:text-red-400 transition-colors"
-          >
-            <LogOut className="w-5 h-5" aria-hidden="true" />
-          </button>
         </div>
       </header>
 

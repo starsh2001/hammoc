@@ -28,7 +28,9 @@
       "alreadySet": "La contraseña ya está configurada.",
       "mismatch": "Las contraseñas no coinciden.",
       "setSuccess": "Contraseña establecida.",
-      "setError": "Error del servidor al establecer la contraseña."
+      "setError": "Error del servidor al establecer la contraseña.",
+      "changeSuccess": "Contraseña cambiada. Inicie sesión de nuevo.",
+      "changeError": "Error del servidor al cambiar la contraseña."
     },
     "logout": {
       "success": "Cierre de sesión exitoso",

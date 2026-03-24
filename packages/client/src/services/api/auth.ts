@@ -11,6 +11,8 @@ import type {
   AuthStatus,
   SetupPasswordRequest,
   SetupPasswordResponse,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
 } from '@hammoc/shared';
 
 export const authApi = {
@@ -18,4 +20,5 @@ export const authApi = {
   logout: () => api.post<LogoutResponse>('/auth/logout'),
   status: () => api.get<AuthStatus>('/auth/status'),
   setup: (data: SetupPasswordRequest) => api.post<SetupPasswordResponse>('/auth/setup', data),
+  changePassword: (data: ChangePasswordRequest) => api.post<ChangePasswordResponse>('/auth/change-password', data),
 };

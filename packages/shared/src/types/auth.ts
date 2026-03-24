@@ -153,6 +153,23 @@ export interface SetupPasswordResponse {
 }
 
 /**
+ * Change password request DTO
+ */
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
+/**
+ * Change password response DTO
+ */
+export interface ChangePasswordResponse {
+  success: boolean;
+  message?: string;
+}
+
+/**
  * API 에러 코드 상수 (일관된 에러 처리를 위해 shared 패키지에서 관리)
  * [Source: Story 2.4 - Task 1]
  */

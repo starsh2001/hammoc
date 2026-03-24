@@ -28,7 +28,9 @@
       "alreadySet": "Password is already configured.",
       "mismatch": "Passwords do not match.",
       "setSuccess": "Password has been set.",
-      "setError": "Server error while setting password."
+      "setError": "Server error while setting password.",
+      "changeSuccess": "Password has been changed. Please sign in again.",
+      "changeError": "Server error while changing password."
     },
     "logout": {
       "success": "Logout successful",

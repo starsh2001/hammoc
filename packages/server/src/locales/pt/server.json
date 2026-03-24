@@ -28,7 +28,9 @@
       "alreadySet": "A senha já está configurada.",
       "mismatch": "As senhas não coincidem.",
       "setSuccess": "Senha definida.",
-      "setError": "Erro do servidor ao definir a senha."
+      "setError": "Erro do servidor ao definir a senha.",
+      "changeSuccess": "Senha alterada. Faça login novamente.",
+      "changeError": "Erro do servidor ao alterar a senha."
     },
     "logout": {
       "success": "Logout realizado com sucesso",
