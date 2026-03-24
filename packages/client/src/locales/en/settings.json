@@ -45,6 +45,18 @@
       "list": "List View"
     },
     "fileExplorerDesc": "Default view mode when opening the file explorer.",
+    "panelDefaultOpen": "Quick Panel Auto-Open",
+    "panelOpenOption": {
+      "on": "Auto-open on desktop",
+      "off": "Closed by default"
+    },
+    "panelDefaultOpenDesc": "Automatically open the quick panel when entering a session on desktop.",
+    "panelDefaultSide": "Quick Panel Default Side",
+    "panelSideOption": {
+      "left": "Left",
+      "right": "Right"
+    },
+    "panelDefaultSideDesc": "Default side for the quick panel.",
     "chatTimeout": "Chat Timeout",
     "chatTimeoutOverride": "(Set by environment variable)",
     "chatTimeoutDesc": "Time to automatically abort request when no response is received.",
@@ -96,6 +108,7 @@
     "softwareUpdate": "Software Update",
     "currentVersion": "Current version: v{{version}}",
     "building": "Building... ({{elapsed}}s)",
+    "restarting": "Restarting... ({{elapsed}}s)",
     "serverRebuild": "Rebuild & Restart Server",
     "checking": "Checking...",
     "checkUpdate": "Check for Update",
@@ -120,7 +133,15 @@
     "maxBudget": "Max Budget (USD)",
     "maxBudgetDesc": "Maximum cost limit per query (USD, 0.01 ~ 100)",
     "sdkDefault": "SDK default",
-    "unlimited": "Unlimited"
+    "unlimited": "Unlimited",
+    "defaultEffort": "Default Thinking Effort",
+    "defaultEffortDesc": "Default thinking effort level for new sessions. When not set, the SDK default (High) is used.",
+    "effortOption": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
+    }
   },
   "confirm": {
     "serverRestart": "This will rebuild and restart the server. Continue?",

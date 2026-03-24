@@ -8,16 +8,60 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { RotateCcw, RefreshCw, Download } from 'lucide-react';
+import type { ThinkingEffort } from '@hammoc/shared';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { preferencesApi } from '../../services/api/preferences';
 import { projectsApi } from '../../services/api/projects';
 import { api } from '../../services/api/client.js';
 
+/**
+ * Poll server health after restart/update.
+ * Runs outside React lifecycle so it survives component unmounts
+ * (e.g. when auth redirect unmounts the settings page).
+ * Uses /health (not /api/*) to bypass service worker NetworkFirst cache.
+ */
+function pollServerHealth(successMessage: string, onServerDown?: () => void): void {
+  let consecutiveErrors = 0;
+  let serverWentDown = false;
+
+  const poll = setInterval(async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(`/health?_=${Date.now()}`, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error('not ok');
+      if (!serverWentDown) return;
+      clearInterval(poll);
+      toast.success(successMessage);
+      setTimeout(() => window.location.reload(), 1500);
+    } catch {
+      clearTimeout(timeout);
+      if (!serverWentDown) {
+        serverWentDown = true;
+        onServerDown?.();
+      }
+      consecutiveErrors++;
+      if (consecutiveErrors > 60) {
+        clearInterval(poll);
+        toast.error('Server restart timed out');
+      }
+    }
+  }, 3000);
+}
+
 interface TemplateVariable {
   name: string;
   description: string;
 }
+
+const EFFORT_OPTIONS: { value: ThinkingEffort; labelKey: string }[] = [
+  { value: 'low', labelKey: 'advanced.effortOption.low' },
+  { value: 'medium', labelKey: 'advanced.effortOption.medium' },
+  { value: 'high', labelKey: 'advanced.effortOption.high' },
+  { value: 'max', labelKey: 'advanced.effortOption.max' },
+];
 
 export function AdvancedSettingsSection() {
   const { t } = useTranslation('settings');
@@ -129,8 +173,8 @@ export function AdvancedSettingsSection() {
 
   // Build/update progress state
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processPhase, setProcessPhase] = useState<'building' | 'restarting'>('building');
   const [buildElapsed, setBuildElapsed] = useState(0);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Update check state
@@ -138,64 +182,22 @@ export function AdvancedSettingsSection() {
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const [updateAvailable, setUpdateAvailable] = useState(false);
 
-  // Cleanup on unmount
+  // Cleanup elapsed timer on unmount
   useEffect(() => {
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-  }, []);
-
-  /** Shared polling logic: start timer + poll build-status until idle/failed */
-  const startPollingBuildStatus = useCallback((successMessage: string) => {
-    setBuildElapsed(0);
-    timerRef.current = setInterval(() => {
-      setBuildElapsed((prev) => prev + 1);
-    }, 1000);
-
-    let consecutiveErrors = 0;
-    let serverWentDown = false;
-    pollRef.current = setInterval(async () => {
-      try {
-        // Use raw fetch on a public endpoint — no auth needed
-        const res = await fetch('/api/health', { method: 'GET' });
-        if (!res.ok) throw new Error('not ok');
-        if (!serverWentDown) {
-          // Server hasn't gone down yet — keep waiting
-          return;
-        }
-        // Server is back up after restart — reload
-        stopPolling();
-        toast.success(successMessage);
-        setTimeout(() => window.location.reload(), 1500);
-      } catch {
-        serverWentDown = true;
-        consecutiveErrors++;
-        if (consecutiveErrors > 60) {
-          stopPolling();
-          toast.error(t('toast.serverTimeout'));
-          setIsProcessing(false);
-        }
-      }
-    }, 3000);
-  }, [stopPolling]);
-
-  const handleServerRestart = useCallback(async () => {
+  const handleServerRestart = useCallback(() => {
     if (!window.confirm(t('confirm.serverRestart'))) return;
     setIsProcessing(true);
-    try {
-      await api.post('/server/restart');
-      startPollingBuildStatus(t('toast.buildComplete'));
-    } catch {
-      toast.error(t('toast.serverRestartFailed'));
-      setIsProcessing(false);
-    }
-  }, [startPollingBuildStatus]);
+    setProcessPhase('building');
+    setBuildElapsed(0);
+    timerRef.current = setInterval(() => setBuildElapsed((prev) => prev + 1), 1000);
+    api.post('/server/restart').catch(() => {});
+    pollServerHealth(t('toast.buildComplete'), () => setProcessPhase('restarting'));
+  }, []);
 
   const handleCheckUpdate = useCallback(async () => {
     setIsCheckingUpdate(true);
@@ -213,17 +215,15 @@ export function AdvancedSettingsSection() {
     }
   }, []);
 
-  const handleUpdate = useCallback(async () => {
+  const handleUpdate = useCallback(() => {
     if (!window.confirm(t('confirm.updateVersion', { version: latestVersion }))) return;
     setIsProcessing(true);
-    try {
-      await api.post('/server/update');
-      startPollingBuildStatus(t('toast.updateComplete'));
-    } catch {
-      toast.error(t('toast.updateFailed'));
-      setIsProcessing(false);
-    }
-  }, [latestVersion, startPollingBuildStatus]);
+    setProcessPhase('building');
+    setBuildElapsed(0);
+    timerRef.current = setInterval(() => setBuildElapsed((prev) => prev + 1), 1000);
+    api.post('/server/update').catch(() => {});
+    pollServerHealth(t('toast.updateComplete'), () => setProcessPhase('restarting'));
+  }, [latestVersion]);
 
   return (
     <div className="space-y-8">
@@ -258,7 +258,7 @@ export function AdvancedSettingsSection() {
                 }`}
             >
               <RefreshCw className={`w-4 h-4 ${isProcessing ? 'animate-spin' : ''}`} />
-              {isProcessing ? t('advanced.building', { elapsed: buildElapsed }) : t('advanced.serverRebuild')}
+              {isProcessing ? t(`advanced.${processPhase}`, { elapsed: buildElapsed }) : t('advanced.serverRebuild')}
             </button>
           ) : (
             /* User mode: check update & apply */
@@ -291,7 +291,7 @@ export function AdvancedSettingsSection() {
                 >
                   <Download className={`w-4 h-4 ${isProcessing ? 'animate-bounce' : ''}`} />
                   {isProcessing
-                    ? t('advanced.updating', { elapsed: buildElapsed })
+                    ? t(`advanced.${processPhase === 'restarting' ? 'restarting' : 'updating'}`, { elapsed: buildElapsed })
                     : t('advanced.updateTo', { version: latestVersion })
                   }
                 </button>
@@ -486,6 +486,42 @@ export function AdvancedSettingsSection() {
         />
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
           {t('advanced.maxBudgetDesc')}
+        </p>
+      </div>
+
+      {/* Default Thinking Effort */}
+      <div>
+        <label
+          htmlFor="default-effort"
+          className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
+        >
+          {t('advanced.defaultEffort')}
+        </label>
+        <select
+          id="default-effort"
+          value={preferences.defaultEffort ?? ''}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === '') {
+              updatePreference('defaultEffort', undefined);
+            } else {
+              updatePreference('defaultEffort', val as ThinkingEffort);
+            }
+            toast.success(t('toast.settingChanged', { label: t('advanced.defaultEffort') }));
+          }}
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">{t('advanced.sdkDefault')}</option>
+          {EFFORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {t(opt.labelKey)}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+          {t('advanced.defaultEffortDesc')}
         </p>
       </div>
     </div>
