@@ -23,9 +23,9 @@ export interface PromptChainBannerProps {
   onRemove?: (id: string) => void;
 }
 
-/** Shorten command for display (e.g., "/BMad:tasks:create-next-story" → "create-next-story") */
+/** Extract the first line for display in the collapsed banner */
 function shortLabel(prompt: string): string {
-  return prompt.includes(':') ? (prompt.split(':').pop() ?? prompt) : prompt;
+  return prompt.split('\n')[0].trim() || prompt;
 }
 
 export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: PromptChainBannerProps) {
