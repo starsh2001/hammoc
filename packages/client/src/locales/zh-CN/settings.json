@@ -44,6 +44,18 @@
       "list": "列表视图"
     },
     "fileExplorerDesc": "打开文件浏览器时的默认视图模式。",
+    "panelDefaultOpen": "快捷面板自动打开",
+    "panelOpenOption": {
+      "on": "桌面端自动打开",
+      "off": "默认关闭"
+    },
+    "panelDefaultOpenDesc": "在桌面端进入会话时自动打开快捷面板。",
+    "panelDefaultSide": "快捷面板默认位置",
+    "panelSideOption": {
+      "left": "左侧",
+      "right": "右侧"
+    },
+    "panelDefaultSideDesc": "快捷面板的默认显示位置。",
     "chatTimeout": "聊天超时",
     "chatTimeoutOverride": "（由环境变量设置）",
     "chatTimeoutDesc": "未收到响应时自动中止请求的时间。",
@@ -95,6 +107,7 @@
     "softwareUpdate": "软件更新",
     "currentVersion": "当前版本：v{{version}}",
     "building": "正在构建...（{{elapsed}}秒）",
+    "restarting": "正在重启...（{{elapsed}}秒）",
     "serverRebuild": "重新构建并重启服务器",
     "checking": "正在检查...",
     "checkUpdate": "检查更新",
@@ -119,7 +132,15 @@
     "maxBudget": "最大预算（美元）",
     "maxBudgetDesc": "每次查询的最大费用限额（美元，0.01 ~ 100）",
     "sdkDefault": "SDK 默认值",
-    "unlimited": "无限制"
+    "unlimited": "无限制",
+    "defaultEffort": "默认思考级别",
+    "defaultEffortDesc": "新会话的默认思考级别。未设置时，使用 SDK 默认值（High）。",
+    "effortOption": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
+    }
   },
   "confirm": {
     "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",

@@ -44,6 +44,18 @@
       "list": "Vista de lista"
     },
     "fileExplorerDesc": "Modo de vista predeterminado al abrir el explorador de archivos.",
+    "panelDefaultOpen": "Apertura automática del panel rápido",
+    "panelOpenOption": {
+      "on": "Abrir automáticamente en escritorio",
+      "off": "Cerrado por defecto"
+    },
+    "panelDefaultOpenDesc": "Abrir automáticamente el panel rápido al entrar en una sesión en escritorio.",
+    "panelDefaultSide": "Lado predeterminado del panel rápido",
+    "panelSideOption": {
+      "left": "Izquierda",
+      "right": "Derecha"
+    },
+    "panelDefaultSideDesc": "Lado predeterminado del panel rápido.",
     "chatTimeout": "Tiempo de espera del chat",
     "chatTimeoutOverride": "(Establecido por variable de entorno)",
     "chatTimeoutDesc": "Tiempo para cancelar automáticamente la solicitud cuando no se recibe respuesta.",
@@ -95,6 +107,7 @@
     "softwareUpdate": "Actualización de software",
     "currentVersion": "Versión actual: v{{version}}",
     "building": "Compilando... ({{elapsed}}s)",
+    "restarting": "Reiniciando... ({{elapsed}}s)",
     "serverRebuild": "Recompilar y reiniciar servidor",
     "checking": "Verificando...",
     "checkUpdate": "Buscar actualización",
@@ -119,7 +132,15 @@
     "maxBudget": "Presupuesto máximo (USD)",
     "maxBudgetDesc": "Límite de costo máximo por consulta (USD, 0.01 ~ 100)",
     "sdkDefault": "Predeterminado del SDK",
-    "unlimited": "Ilimitado"
+    "unlimited": "Ilimitado",
+    "defaultEffort": "Nivel de razonamiento predeterminado",
+    "defaultEffortDesc": "Nivel de razonamiento predeterminado para nuevas sesiones. Si no se establece, se utiliza el predeterminado del SDK (High).",
+    "effortOption": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
+    }
   },
   "confirm": {
     "serverRestart": "Esto recompilará y reiniciará el servidor. ¿Continuar?",

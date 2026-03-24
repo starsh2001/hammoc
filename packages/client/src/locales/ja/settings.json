@@ -44,6 +44,18 @@
       "list": "リスト表示"
     },
     "fileExplorerDesc": "ファイルエクスプローラーを開く際のデフォルト表示モードです。",
+    "panelDefaultOpen": "クイックパネル自動オープン",
+    "panelOpenOption": {
+      "on": "デスクトップで自動オープン",
+      "off": "デフォルトで閉じる"
+    },
+    "panelDefaultOpenDesc": "デスクトップでセッション開始時にクイックパネルを自動的に開きます。",
+    "panelDefaultSide": "クイックパネルのデフォルト位置",
+    "panelSideOption": {
+      "left": "左",
+      "right": "右"
+    },
+    "panelDefaultSideDesc": "クイックパネルのデフォルト表示位置です。",
     "chatTimeout": "チャットタイムアウト",
     "chatTimeoutOverride": "（環境変数で設定済み）",
     "chatTimeoutDesc": "応答がない場合にリクエストを自動中止するまでの時間です。",
@@ -95,6 +107,7 @@
     "softwareUpdate": "ソフトウェアアップデート",
     "currentVersion": "現在のバージョン：v{{version}}",
     "building": "ビルド中...（{{elapsed}}秒）",
+    "restarting": "再起動中...（{{elapsed}}秒）",
     "serverRebuild": "リビルド＆サーバー再起動",
     "checking": "確認中...",
     "checkUpdate": "アップデートを確認",
@@ -119,7 +132,15 @@
     "maxBudget": "最大予算（USD）",
     "maxBudgetDesc": "1クエリあたりの最大コスト制限（USD、0.01 ～ 100）",
     "sdkDefault": "SDKデフォルト",
-    "unlimited": "無制限"
+    "unlimited": "無制限",
+    "defaultEffort": "デフォルト思考レベル",
+    "defaultEffortDesc": "新しいセッションに適用されるデフォルトの思考レベルです。未設定の場合、SDKデフォルト（High）が使用されます。",
+    "effortOption": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
+    }
   },
   "confirm": {
     "serverRestart": "リビルドしてサーバーを再起動します。続行しますか？",

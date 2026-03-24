@@ -44,6 +44,18 @@
       "list": "Visualização em lista"
     },
     "fileExplorerDesc": "Modo de visualização padrão ao abrir o explorador de arquivos.",
+    "panelDefaultOpen": "Abertura automática do painel rápido",
+    "panelOpenOption": {
+      "on": "Abrir automaticamente no desktop",
+      "off": "Fechado por padrão"
+    },
+    "panelDefaultOpenDesc": "Abrir automaticamente o painel rápido ao entrar numa sessão no desktop.",
+    "panelDefaultSide": "Lado padrão do painel rápido",
+    "panelSideOption": {
+      "left": "Esquerda",
+      "right": "Direita"
+    },
+    "panelDefaultSideDesc": "Lado padrão de exibição do painel rápido.",
     "chatTimeout": "Tempo limite do chat",
     "chatTimeoutOverride": "(Definido por variável de ambiente)",
     "chatTimeoutDesc": "Tempo para abortar automaticamente a requisição quando nenhuma resposta é recebida.",
@@ -95,6 +107,7 @@
     "softwareUpdate": "Atualização de software",
     "currentVersion": "Versão atual: v{{version}}",
     "building": "Compilando... ({{elapsed}}s)",
+    "restarting": "Reiniciando... ({{elapsed}}s)",
     "serverRebuild": "Recompilar e reiniciar servidor",
     "checking": "Verificando...",
     "checkUpdate": "Verificar atualização",
@@ -119,7 +132,15 @@
     "maxBudget": "Orçamento máximo (USD)",
     "maxBudgetDesc": "Limite máximo de custo por consulta (USD, 0,01 ~ 100)",
     "sdkDefault": "Padrão do SDK",
-    "unlimited": "Ilimitado"
+    "unlimited": "Ilimitado",
+    "defaultEffort": "Nível de raciocínio padrão",
+    "defaultEffortDesc": "Nível de raciocínio padrão para novas sessões. Quando não definido, o padrão do SDK (High) é utilizado.",
+    "effortOption": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
+    }
   },
   "confirm": {
     "serverRestart": "Isso irá recompilar e reiniciar o servidor. Continuar?",
