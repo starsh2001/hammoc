@@ -11,6 +11,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, string>) => {
       if (key === 'effort.tooltip' && params) return `${params.model} · ${params.effort}`;
+      if (key === 'effort.label') return 'Effort';
       if (key === 'effort.tooltipFull.low') return 'Low';
       if (key === 'effort.tooltipFull.medium') return 'Medium';
       if (key === 'effort.tooltipFull.high') return 'High';
@@ -19,8 +20,12 @@ vi.mock('react-i18next', () => ({
       if (key === 'effort.medium') return 'Med';
       if (key === 'effort.high') return 'Hi';
       if (key === 'effort.max') return 'Max';
+      if (key === 'effort.default') return 'Default';
       if (key === 'effort.maxOpusOnly') return 'Max is available for Opus 4.6 only';
+      if (key === 'effort.maxSubscriberOnly') return 'Max is not available for Claude.ai subscribers';
+      if (key === 'effort.maxUnavailable') return 'Max N/A';
       if (key === 'effort.selectorAria' && params) return `Thinking effort: ${params.level}`;
+      if (key === 'effort.groupAria') return 'Effort';
       if (key === 'model.selectorAria' && params) return `Model: ${params.label}`;
       if (key === 'model.selectAria') return 'Select model';
       if (key === 'model.defaultLabel') return 'Default';
@@ -36,8 +41,8 @@ describe('ModelSelector', () => {
     activeModel: null as string | null,
   };
 
-  describe('effort segment control', () => {
-    it('renders effort segment control when dropdown is open and onEffortChange is provided', () => {
+  describe('effort intensity bar', () => {
+    it('renders 3 effort bars when dropdown is open and Max is unavailable', () => {
       const onEffortChange = vi.fn();
       render(
         <ModelSelector {...defaultProps} effort={undefined} onEffortChange={onEffortChange} />
@@ -46,19 +51,51 @@ describe('ModelSelector', () => {
       // Open dropdown
       fireEvent.click(screen.getByRole('button', { name: /Model/i }));
 
-      // Check effort buttons are rendered
-      expect(screen.getByText('Lo')).toBeInTheDocument();
-      expect(screen.getByText('Med')).toBeInTheDocument();
-      expect(screen.getByText('Hi')).toBeInTheDocument();
-      expect(screen.getByText('Max')).toBeInTheDocument();
+      // Check 3 radio buttons are rendered (Low, Med, High)
+      const radios = screen.getAllByRole('radio');
+      expect(radios).toHaveLength(3);
     });
 
-    it('does not render effort segment control when onEffortChange is not provided', () => {
+    it('renders 4 effort bars when model is Opus 4.6 and user is not subscriber', () => {
+      const onEffortChange = vi.fn();
+      render(
+        <ModelSelector
+          {...defaultProps}
+          activeModel="claude-opus-4-6"
+          effort={undefined}
+          onEffortChange={onEffortChange}
+          isSubscriber={false}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Model/i }));
+      const radios = screen.getAllByRole('radio');
+      expect(radios).toHaveLength(4);
+    });
+
+    it('renders 3 bars when model is Opus 4.6 but user is subscriber', () => {
+      const onEffortChange = vi.fn();
+      render(
+        <ModelSelector
+          {...defaultProps}
+          activeModel="claude-opus-4-6"
+          effort={undefined}
+          onEffortChange={onEffortChange}
+          isSubscriber={true}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Model/i }));
+      const radios = screen.getAllByRole('radio');
+      expect(radios).toHaveLength(3);
+    });
+
+    it('does not render effort bars when onEffortChange is not provided', () => {
       render(<ModelSelector {...defaultProps} />);
 
       fireEvent.click(screen.getByRole('button', { name: /Model/i }));
 
-      expect(screen.queryByText('Lo')).not.toBeInTheDocument();
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument();
     });
 
     it('calls onEffortChange with effort level on click', () => {
@@ -68,7 +105,10 @@ describe('ModelSelector', () => {
       );
 
       fireEvent.click(screen.getByRole('button', { name: /Model/i }));
-      fireEvent.click(screen.getByText('Hi'));
+
+      // Click the third bar (high)
+      const radios = screen.getAllByRole('radio');
+      fireEvent.click(radios[2]);
 
       expect(onEffortChange).toHaveBeenCalledWith('high');
     });
@@ -80,44 +120,29 @@ describe('ModelSelector', () => {
       );
 
       fireEvent.click(screen.getByRole('button', { name: /Model/i }));
-      fireEvent.click(screen.getByText('Hi'));
+
+      // Click the third bar (high) which is already selected
+      const radios = screen.getAllByRole('radio');
+      fireEvent.click(radios[2]);
 
       expect(onEffortChange).toHaveBeenCalledWith(undefined);
     });
 
-    it('keeps dropdown open after effort button click', () => {
+    it('keeps dropdown open after effort bar click', () => {
       const onEffortChange = vi.fn();
       render(
         <ModelSelector {...defaultProps} effort={undefined} onEffortChange={onEffortChange} />
       );
 
       fireEvent.click(screen.getByRole('button', { name: /Model/i }));
-      fireEvent.click(screen.getByText('Med'));
+      const radios = screen.getAllByRole('radio');
+      fireEvent.click(radios[1]); // click Medium
 
       // Dropdown should still be open (model list should still be visible)
       expect(screen.getByRole('listbox')).toBeInTheDocument();
     });
-  });
 
-  describe('Max button disabled logic', () => {
-    it('disables Max button when activeModel is not Opus 4.6', () => {
-      const onEffortChange = vi.fn();
-      render(
-        <ModelSelector
-          {...defaultProps}
-          activeModel="claude-sonnet-4-5-20250929"
-          effort={undefined}
-          onEffortChange={onEffortChange}
-        />
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /Model/i }));
-      const maxButton = screen.getByText('Max');
-
-      expect(maxButton).toBeDisabled();
-    });
-
-    it('enables Max button when activeModel is claude-opus-4-6', () => {
+    it('shows "Max N/A" label for subscriber on Opus 4.6', () => {
       const onEffortChange = vi.fn();
       render(
         <ModelSelector
@@ -125,47 +150,12 @@ describe('ModelSelector', () => {
           activeModel="claude-opus-4-6"
           effort={undefined}
           onEffortChange={onEffortChange}
+          isSubscriber={true}
         />
       );
 
       fireEvent.click(screen.getByRole('button', { name: /Model/i }));
-      const maxButton = screen.getByText('Max');
-
-      expect(maxButton).not.toBeDisabled();
-    });
-
-    it('enables Max button when model is opus alias', () => {
-      const onEffortChange = vi.fn();
-      render(
-        <ModelSelector
-          {...defaultProps}
-          model="opus"
-          effort={undefined}
-          onEffortChange={onEffortChange}
-        />
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /Model/i }));
-      const maxButton = screen.getByText('Max');
-
-      expect(maxButton).not.toBeDisabled();
-    });
-
-    it('enables Max button when activeModel contains opus-4-6', () => {
-      const onEffortChange = vi.fn();
-      render(
-        <ModelSelector
-          {...defaultProps}
-          activeModel="some-opus-4-6-variant"
-          effort={undefined}
-          onEffortChange={onEffortChange}
-        />
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /Model/i }));
-      const maxButton = screen.getByText('Max');
-
-      expect(maxButton).not.toBeDisabled();
+      expect(screen.getByText('Max N/A')).toBeInTheDocument();
     });
   });
 
@@ -183,7 +173,7 @@ describe('ModelSelector', () => {
       expect(triggerButton).toHaveAttribute('title', 'Default · High');
     });
 
-    it('shows model only in tooltip when effort is undefined', () => {
+    it('shows model + default effort label in tooltip when effort is undefined', () => {
       render(
         <ModelSelector
           {...defaultProps}
@@ -193,7 +183,7 @@ describe('ModelSelector', () => {
       );
 
       const triggerButton = screen.getByRole('button', { name: /Model/i });
-      expect(triggerButton).toHaveAttribute('title', 'Model: Default');
+      expect(triggerButton).toHaveAttribute('title', 'Default · Default (High)');
     });
   });
 });

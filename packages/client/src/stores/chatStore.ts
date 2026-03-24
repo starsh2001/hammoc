@@ -154,6 +154,8 @@ interface ChatState {
   contextUsage: ChatUsage | null;
   /** Subscription rate limit from OAuth polling (null for non-subscription users) */
   subscriptionRateLimit: SubscriptionRateLimit | null;
+  /** Whether the user is a Claude.ai subscriber (from auth:subscriber event) */
+  isSubscriber: boolean;
   /** Last result error (persisted after completeStreaming clears segments) */
   lastResultError: ResultErrorData | null;
   /** Selected model for next message */
@@ -227,6 +229,8 @@ interface ChatActions {
   resetContextUsage: () => void;
   /** Update subscription rate limit from polling */
   setSubscriptionRateLimit: (rateLimit: SubscriptionRateLimit) => void;
+  /** Update subscriber status from auth:subscriber event */
+  setIsSubscriber: (isSubscriber: boolean) => void;
   /** Update API health status from server */
   setApiHealth: (health: ApiHealthStatus) => void;
   /** Clear leftover streaming segments (on session switch) */
@@ -311,6 +315,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   })(),
   contextUsage: null,
   subscriptionRateLimit: null,
+  isSubscriber: true, // fail-closed: assume subscriber until server confirms via auth:subscriber
   apiHealth: null,
 
   // Actions
@@ -672,6 +677,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   resetContextUsage: () => set({ contextUsage: null }),
 
   setSubscriptionRateLimit: (rateLimit: SubscriptionRateLimit) => set({ subscriptionRateLimit: rateLimit }),
+  setIsSubscriber: (isSubscriber: boolean) => set({ isSubscriber }),
 
   setApiHealth: (health: ApiHealthStatus) => set({ apiHealth: health }),
 

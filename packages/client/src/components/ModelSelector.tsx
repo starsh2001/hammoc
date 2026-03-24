@@ -5,7 +5,9 @@
  * - CPU/chip icon button that opens a grouped model list
  * - Checkmark on currently selected model
  * - All supported Claude models grouped by generation
- * - Segmented effort control (Lo | Med | Hi | Max) above model list
+ * - Signal-strength bar control for thinking effort
+ *   · 4 bars when Max is available (Opus 4.6 + API key user)
+ *   · 3 bars when Max is unavailable (non-Opus or subscriber)
  * - Opens upward (input area is at bottom)
  * - Outside click / Escape to close
  * - Disabled during streaming
@@ -26,6 +28,8 @@ interface ModelSelectorProps {
   effort?: ThinkingEffort;
   /** Effort change callback */
   onEffortChange?: (effort: ThinkingEffort | undefined) => void;
+  /** Whether the user is a Claude.ai subscriber (Max effort unavailable) */
+  isSubscriber?: boolean;
 }
 
 interface ModelOption {
@@ -115,12 +119,39 @@ function isOpus46(model: string | null | undefined, activeModel: string | null |
   return (model ? check(model) : false) || (activeModel ? check(activeModel) : false);
 }
 
-const EFFORT_LEVELS: ThinkingEffort[] = ['low', 'medium', 'high', 'max'];
+/** Bar config: level + active/default gradient colors */
+interface BarDef {
+  level: ThinkingEffort;
+  color: string;        // explicit selection
+  defaultColor: string; // SDK default (muted)
+}
 
-export function ModelSelector({ model, onModelChange, disabled, activeModel, effort, onEffortChange }: ModelSelectorProps) {
+// Gradient via lightness only — hue & saturation constant per palette
+// Active:  hsl(217, 91%, L)  — blue
+// Default: hsl(152, 68%, L)  — green/emerald
+const BARS_3: BarDef[] = [
+  { level: 'low', color: 'hsl(217,91%,62%)', defaultColor: 'hsl(152,68%,50%)' },
+  { level: 'medium', color: 'hsl(217,91%,53%)', defaultColor: 'hsl(152,68%,42%)' },
+  { level: 'high', color: 'hsl(217,91%,44%)', defaultColor: 'hsl(152,68%,34%)' },
+];
+const BARS_4: BarDef[] = [
+  { level: 'low', color: 'hsl(217,91%,62%)', defaultColor: 'hsl(152,68%,50%)' },
+  { level: 'medium', color: 'hsl(217,91%,56%)', defaultColor: 'hsl(152,68%,45%)' },
+  { level: 'high', color: 'hsl(217,91%,50%)', defaultColor: 'hsl(152,68%,39%)' },
+  { level: 'max', color: 'hsl(217,91%,44%)', defaultColor: 'hsl(152,68%,34%)' },
+];
+
+const BAR_HEIGHT = 14; // uniform height for all bars
+
+/** Index lookup for determining "active up to" fill */
+const LEVEL_INDEX: Record<ThinkingEffort, number> = { low: 0, medium: 1, high: 2, max: 3 };
+
+export function ModelSelector({ model, onModelChange, disabled, activeModel, effort, onEffortChange, isSubscriber }: ModelSelectorProps) {
   const { t } = useTranslation('chat');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const maxAvailable = isOpus46(model, activeModel) && !isSubscriber;
 
   // Close on outside click
   useEffect(() => {
@@ -149,6 +180,13 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
+
+  // Auto-clear max effort when it becomes unavailable (model change or subscriber detection)
+  useEffect(() => {
+    if (effort === 'max' && !maxAvailable && onEffortChange) {
+      onEffortChange(undefined);
+    }
+  }, [effort, maxAvailable, onEffortChange]);
 
   const handleToggle = useCallback(() => {
     if (disabled) return;
@@ -179,9 +217,17 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
   }, []);
 
   const displayLabel = getModelDisplayLabel(model);
-  const effortLabel = effort ? t(`effort.tooltipFull.${effort}`) : undefined;
-  const tooltip = effortLabel ? t('effort.tooltip', { model: displayLabel, effort: effortLabel }) : `Model: ${displayLabel}`;
-  const maxEnabled = isOpus46(model, activeModel);
+  // Clamp effort at render time: treat 'max' as undefined when unavailable (fail-closed)
+  const effectiveEffort = (effort === 'max' && !maxAvailable) ? undefined : effort;
+  // SDK default is 'high' when no effort is explicitly set
+  const isDefault = !effectiveEffort;
+  const displayEffort = effectiveEffort ?? 'high';
+  const effortLabel = isDefault
+    ? `Default (${t(`effort.tooltipFull.${displayEffort}`)})`
+    : t(`effort.tooltipFull.${displayEffort}`);
+  const tooltip = t('effort.tooltip', { model: displayLabel, effort: effortLabel });
+  const bars = maxAvailable ? BARS_4 : BARS_3;
+  const selectedIdx = LEVEL_INDEX[displayEffort];
 
   return (
     <div ref={containerRef} className="relative">
@@ -220,33 +266,54 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
           aria-label={t('model.selectAria')}
           className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50"
         >
-          {/* Effort segmented control */}
+          {/* Effort intensity bar */}
           {onEffortChange && (
             <div
-              className="px-3 py-2 border-b border-gray-200 dark:border-[#253040]"
+              className="border-b border-gray-200 dark:border-[#253040]"
               aria-label={t('effort.selectorAria', { level: effortLabel ?? '' })}
             >
-              <div className="flex rounded-md overflow-hidden border border-gray-300 dark:border-[#2d3a4a]">
-                {EFFORT_LEVELS.map((level) => {
-                  const isSelected = effort === level;
-                  const isMax = level === 'max';
-                  const isDisabled = isMax && !maxEnabled;
-                  return (
-                    <button
-                      key={level}
-                      type="button"
-                      onClick={() => handleEffortClick(level)}
-                      disabled={isDisabled}
-                      title={isDisabled ? t('effort.maxOpusOnly') : t(`effort.tooltipFull.${level}`)}
-                      className={`flex-1 py-1 text-xs font-medium transition-colors
-                        ${isSelected ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040]'}
-                        ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                      `}
-                    >
-                      {t(`effort.${level}`)}
-                    </button>
-                  );
-                })}
+              {/* Group header — same style as model group headers */}
+              <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                {t('effort.label')}
+              </div>
+
+              {/* Bar + level label row — indented to align with model item labels */}
+              <div className="px-3 py-2.5 flex items-center gap-2">
+                {/* Spacer matching checkmark column (w-4) in model items */}
+                <span className="w-4 shrink-0" />
+                <div className="flex items-center gap-[3px]" role="radiogroup" aria-label={t('effort.groupAria')}>
+                  {bars.map((bar, i) => {
+                    const isActive = selectedIdx >= 0 && i <= selectedIdx;
+                    return (
+                      <button
+                        key={bar.level}
+                        type="button"
+                        role="radio"
+                        aria-checked={effectiveEffort === bar.level}
+                        onClick={() => handleEffortClick(bar.level)}
+                        title={t(`effort.tooltipFull.${bar.level}`)}
+                        className={`w-[7px] rounded-[1.5px] transition-all cursor-pointer
+                          ${!isActive ? 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500' : ''}
+                        `}
+                        style={{
+                          height: `${BAR_HEIGHT}px`,
+                          ...(isActive ? { backgroundColor: isDefault ? bar.defaultColor : bar.color } : {}),
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+                <span className="text-xs text-gray-500 dark:text-gray-400 select-none">
+                  {effortLabel}
+                </span>
+                {!maxAvailable && isOpus46(model, activeModel) && (
+                  <span
+                    className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto"
+                    title={t('effort.maxSubscriberOnly')}
+                  >
+                    {t('effort.maxUnavailable')}
+                  </span>
+                )}
               </div>
             </div>
           )}

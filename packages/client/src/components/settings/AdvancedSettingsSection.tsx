@@ -11,6 +11,7 @@ import { RotateCcw, RefreshCw, Download } from 'lucide-react';
 import type { ThinkingEffort } from '@hammoc/shared';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useSessionStore } from '../../stores/sessionStore';
+import { useChatStore } from '../../stores/chatStore';
 import { preferencesApi } from '../../services/api/preferences';
 import { projectsApi } from '../../services/api/projects';
 import { api } from '../../services/api/client.js';
@@ -67,6 +68,14 @@ export function AdvancedSettingsSection() {
   const { t } = useTranslation('settings');
   const { preferences, updatePreference } = usePreferencesStore();
   const currentProjectSlug = useSessionStore((s) => s.currentProjectSlug);
+  const isSubscriber = useChatStore((s) => s.isSubscriber);
+
+  // Auto-clear invalid 'max' default effort for subscribers
+  useEffect(() => {
+    if (isSubscriber && preferences.defaultEffort === 'max') {
+      updatePreference('defaultEffort', undefined);
+    }
+  }, [isSubscriber, preferences.defaultEffort, updatePreference]);
 
   // Default template and variables fetched from server
   const [defaultTemplate, setDefaultTemplate] = useState<string | null>(null);
@@ -515,8 +524,8 @@ export function AdvancedSettingsSection() {
         >
           <option value="">{t('advanced.sdkDefault')}</option>
           {EFFORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {t(opt.labelKey)}
+            <option key={opt.value} value={opt.value} disabled={opt.value === 'max' && isSubscriber}>
+              {t(opt.labelKey)}{opt.value === 'max' && isSubscriber ? ` (${t('advanced.effortMaxSubscriber')})` : ''}
             </option>
           ))}
         </select>

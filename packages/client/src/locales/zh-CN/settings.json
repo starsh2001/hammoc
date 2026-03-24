@@ -259,12 +259,27 @@
       "slash": "打开斜杠命令面板"
     }
   },
+  "account": {
+    "changePassword": "修改密码",
+    "currentPassword": "当前密码",
+    "newPassword": "新密码",
+    "confirmNewPassword": "确认新密码",
+    "passwordMismatch": "两次输入的新密码不一致。",
+    "changePasswordButton": "修改密码",
+    "changing": "修改中...",
+    "changeSuccess": "密码已更改。请重新登录。",
+    "changeFailed": "修改密码失败。",
+    "session": "会话",
+    "logout": "退出登录",
+    "logoutDesc": "从此设备退出登录。"
+  },
   "tabs": {
     "global": "全局设置",
     "project": "项目设置",
     "telegram": "Telegram 通知",
     "notifications": "通知",
     "advanced": "高级设置",
+    "account": "账户",
     "help": "帮助",
     "about": "关于"
   },

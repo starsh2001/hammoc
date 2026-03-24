@@ -32,6 +32,14 @@ class RateLimitProbeService {
   private consecutiveThrottles = 0;
 
   /**
+   * Check if the user has OAuth credentials (Claude.ai subscriber).
+   * Used to guard features unavailable for subscribers (e.g. max effort).
+   */
+  hasOAuthCredentials(): boolean {
+    return this.readAccessToken() !== null;
+  }
+
+  /**
    * Read OAuth access token from ~/.claude/.credentials.json
    */
   private readAccessToken(): string | null {

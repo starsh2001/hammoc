@@ -217,6 +217,7 @@ export function ChatInput({
   // Session lock state (another browser took over this session)
   const isSessionLocked = useChatStore((s) => s.isSessionLocked);
   const subscriptionRateLimit = useChatStore((s) => s.subscriptionRateLimit);
+  const isSubscriber = useChatStore((s) => s.isSubscriber);
 
   // Local state
   const [content, setContent] = useState('');
@@ -1080,6 +1081,7 @@ export function ChatInput({
             effort={selectedEffort}
             onEffortChange={onEffortChange}
             disabled={queueLocked}
+            isSubscriber={isSubscriber}
           />
         )}
 

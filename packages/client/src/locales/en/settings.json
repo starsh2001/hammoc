@@ -260,12 +260,27 @@
       "slash": "Open slash command palette"
     }
   },
+  "account": {
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "passwordMismatch": "New passwords do not match.",
+    "changePasswordButton": "Change Password",
+    "changing": "Changing...",
+    "changeSuccess": "Password changed. Please sign in again.",
+    "changeFailed": "Failed to change password.",
+    "session": "Session",
+    "logout": "Sign Out",
+    "logoutDesc": "Sign out from this device."
+  },
   "tabs": {
     "global": "Global Settings",
     "project": "Project Settings",
     "telegram": "Telegram Notifications",
     "notifications": "Notifications",
     "advanced": "Advanced Settings",
+    "account": "Account",
     "help": "Help",
     "about": "About"
   },
