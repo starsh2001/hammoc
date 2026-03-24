@@ -8,10 +8,8 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { RotateCcw, RefreshCw, Download } from 'lucide-react';
-import type { ThinkingEffort } from '@hammoc/shared';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useSessionStore } from '../../stores/sessionStore';
-import { useChatStore } from '../../stores/chatStore';
 import { preferencesApi } from '../../services/api/preferences';
 import { projectsApi } from '../../services/api/projects';
 import { api } from '../../services/api/client.js';
@@ -57,25 +55,10 @@ interface TemplateVariable {
   description: string;
 }
 
-const EFFORT_OPTIONS: { value: ThinkingEffort; labelKey: string }[] = [
-  { value: 'low', labelKey: 'advanced.effortOption.low' },
-  { value: 'medium', labelKey: 'advanced.effortOption.medium' },
-  { value: 'high', labelKey: 'advanced.effortOption.high' },
-  { value: 'max', labelKey: 'advanced.effortOption.max' },
-];
-
 export function AdvancedSettingsSection() {
   const { t } = useTranslation('settings');
   const { preferences, updatePreference } = usePreferencesStore();
   const currentProjectSlug = useSessionStore((s) => s.currentProjectSlug);
-  const isSubscriber = useChatStore((s) => s.isSubscriber);
-
-  // Auto-clear invalid 'max' default effort for subscribers
-  useEffect(() => {
-    if (isSubscriber && preferences.defaultEffort === 'max') {
-      updatePreference('defaultEffort', undefined);
-    }
-  }, [isSubscriber, preferences.defaultEffort, updatePreference]);
 
   // Default template and variables fetched from server
   const [defaultTemplate, setDefaultTemplate] = useState<string | null>(null);
@@ -498,41 +481,7 @@ export function AdvancedSettingsSection() {
         </p>
       </div>
 
-      {/* Default Thinking Effort */}
-      <div>
-        <label
-          htmlFor="default-effort"
-          className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
-        >
-          {t('advanced.defaultEffort')}
-        </label>
-        <select
-          id="default-effort"
-          value={preferences.defaultEffort ?? ''}
-          onChange={(e) => {
-            const val = e.target.value;
-            if (val === '') {
-              updatePreference('defaultEffort', undefined);
-            } else {
-              updatePreference('defaultEffort', val as ThinkingEffort);
-            }
-            toast.success(t('toast.settingChanged', { label: t('advanced.defaultEffort') }));
-          }}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
-                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">{t('advanced.sdkDefault')}</option>
-          {EFFORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value} disabled={opt.value === 'max' && isSubscriber}>
-              {t(opt.labelKey)}{opt.value === 'max' && isSubscriber ? ` (${t('advanced.effortMaxSubscriber')})` : ''}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
-          {t('advanced.defaultEffortDesc')}
-        </p>
-      </div>
+      {/* Default Thinking Effort — moved to GlobalSettingsSection */}
     </div>
   );
 }

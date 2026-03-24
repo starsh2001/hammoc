@@ -4,15 +4,22 @@
  * Epic 22: i18n support with useTranslation
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useTheme, type Theme } from '../../hooks/useTheme';
 import { MODEL_GROUPS } from '../ModelSelector';
-import type { PermissionMode, PermissionSyncPolicy, SupportedLanguage } from '@hammoc/shared';
+import type { PermissionMode, PermissionSyncPolicy, SupportedLanguage, ThinkingEffort } from '@hammoc/shared';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
+
+const EFFORT_OPTIONS: { value: ThinkingEffort; labelKey: string }[] = [
+  { value: 'low', labelKey: 'advanced.effortOption.low' },
+  { value: 'medium', labelKey: 'advanced.effortOption.medium' },
+  { value: 'high', labelKey: 'advanced.effortOption.high' },
+  { value: 'max', labelKey: 'advanced.effortOption.max' },
+];
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   en: 'English',
@@ -29,6 +36,14 @@ export function GlobalSettingsSection() {
   const { theme, setTheme } = useTheme();
   const permissionModePref = preferences.permissionMode ?? 'default';
   const setPermissionMode = useChatStore((s) => s.setPermissionMode);
+  const isSubscriber = useChatStore((s) => s.isSubscriber);
+
+  // Auto-clear invalid 'max' default effort for subscribers
+  useEffect(() => {
+    if (isSubscriber && preferences.defaultEffort === 'max') {
+      updatePreference('defaultEffort', undefined);
+    }
+  }, [isSubscriber, preferences.defaultEffort, updatePreference]);
 
   const isOverridden = useCallback((field: string) => overrides.includes(field), [overrides]);
 
@@ -133,6 +148,38 @@ export function GlobalSettingsSection() {
             </optgroup>
           ))}
         </select>
+      </div>
+
+      {/* Default Thinking Effort */}
+      <div>
+        <label
+          htmlFor="default-effort"
+          className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
+        >
+          {t('advanced.defaultEffort')}
+        </label>
+        <select
+          id="default-effort"
+          value={preferences.defaultEffort ?? ''}
+          onChange={(e) => {
+            const val = e.target.value;
+            updatePreference('defaultEffort', val === '' ? undefined : val as ThinkingEffort);
+            toast.success(t('toast.settingChanged', { label: t('advanced.defaultEffort') }));
+          }}
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">{t('advanced.sdkDefault')}</option>
+          {EFFORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value} disabled={opt.value === 'max' && isSubscriber}>
+              {t(opt.labelKey)}{opt.value === 'max' && isSubscriber ? ` (${t('advanced.effortMaxSubscriber')})` : ''}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+          {t('advanced.defaultEffortDesc')}
+        </p>
       </div>
 
       {/* Language Setting (Epic 22) */}
