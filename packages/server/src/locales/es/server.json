@@ -55,6 +55,8 @@
       "settingsLoadFailed": "Error al cargar la configuración.",
       "settingsSaveFailed": "Error al guardar la configuración.",
       "systemPromptFailed": "Error al obtener el prompt del sistema.",
+      "openExplorerLocalOnly": "Abrir el explorador de archivos solo está disponible desde localhost.",
+      "openExplorerFailed": "Error al abrir el explorador de archivos.",
       "scanError": "Error al escanear proyectos.",
       "dirNotFound": "Directorio no encontrado.",
       "permissionDenied": "Permiso denegado.",

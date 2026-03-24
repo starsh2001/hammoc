@@ -240,10 +240,7 @@
     "markDoneDesc": "QA aprovado — marcar como Done",
     "requestQAReview": "Ressolicitar revisão QA",
     "validateStoryOnly": "Validar story",
-    "validateOnlyApproveHint": "Após a conclusão das correções solicitadas pelo usuário, altere o status da story para Approved.",
     "validateAndFixStory": "Validar e autocorrigir story",
-    "validateFixPrompt": "Por favor, corrija todos os Critical Issues, Should-Fix Issues e Nice-to-Have Issues identificados nos resultados de validação acima.",
-    "approveAfterFixPrompt": "Se o Status da story não for Approved, por favor altere para Approved.",
     "startDev": "Iniciar desenvolvimento",
     "createFirstStory": "Criar primeira story",
     "createNextStory": "Criar próxima story",
@@ -298,6 +295,7 @@
     "showHidden": "Mostrar arquivos ocultos",
     "gridView": "Visualização em grade",
     "listView": "Visualização em lista",
+    "openInExplorer": "Abrir no explorador do SO",
     "root": "Raiz",
     "breadcrumb": "Navegação estrutural",
     "projectNotFound": "Projeto não encontrado.",
@@ -528,7 +526,8 @@
     "resizeHandle": "Redimensionar largura do painel",
     "toolbar": "Painel rápido",
     "gitPanel": "Painel Git",
-    "terminalSecurityTooltip": "O terminal não está disponível fora da rede local por motivos de segurança"
+    "terminalSecurityTooltip": "O terminal não está disponível fora da rede local por motivos de segurança",
+    "moveToOtherSide": "Mover painel para o outro lado"
   },
   "terminal": {
     "connecting": "Conectando...",

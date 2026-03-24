@@ -55,6 +55,8 @@
       "settingsLoadFailed": "設定の読み込みでエラーが発生しました。",
       "settingsSaveFailed": "設定の保存でエラーが発生しました。",
       "systemPromptFailed": "システムプロンプトの取得でエラーが発生しました。",
+      "openExplorerLocalOnly": "ファイルエクスプローラーの起動はlocalhostからのみ利用可能です。",
+      "openExplorerFailed": "ファイルエクスプローラーの起動に失敗しました。",
       "scanError": "プロジェクトスキャンでエラーが発生しました。",
       "dirNotFound": "ディレクトリが見つかりません。",
       "permissionDenied": "アクセスが拒否されました。",

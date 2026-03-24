@@ -6,6 +6,7 @@
  */
 
 import { Request, Response } from 'express';
+import { exec } from 'child_process';
 import {
   PROJECT_ERRORS,
   ProjectListResponse,
@@ -22,6 +23,7 @@ import { validateBoardConfig } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
 import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES, resolveTemplateVariables } from '../services/chatService.js';
 import { createLogger } from '../utils/logger.js';
+import { extractRequestIP, isLoopbackIP } from '../utils/networkUtils.js';
 
 const log = createLogger('projectController');
 
@@ -395,6 +397,66 @@ export const projectController = {
       log.error('Error getting system prompt:', error);
       res.status(500).json({
         error: { code: 'SYSTEM_PROMPT_ERROR', message: req.t!('project.error.systemPromptFailed') },
+      });
+    }
+  },
+
+  /**
+   * POST /api/projects/:projectSlug/open-explorer
+   * Open the project root directory in the system's default file explorer.
+   * Only allowed from loopback (localhost) connections.
+   */
+  async openExplorer(req: Request, res: Response): Promise<void> {
+    try {
+      const clientIP = extractRequestIP(req);
+      if (!isLoopbackIP(clientIP)) {
+        res.status(403).json({
+          error: { code: 'FORBIDDEN', message: req.t!('project.error.openExplorerLocalOnly') },
+        });
+        return;
+      }
+
+      const { projectSlug } = req.params;
+      if (!projectSlug) {
+        res.status(400).json({
+          error: { code: 'INVALID_REQUEST', message: req.t!('project.validation.slugRequired') },
+        });
+        return;
+      }
+
+      const projectPath = await projectService.resolveProjectPath(projectSlug);
+      if (!projectPath) {
+        res.status(404).json({
+          error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') },
+        });
+        return;
+      }
+
+      // Determine platform-specific command to open file explorer
+      const platform = process.platform;
+      let command: string;
+      if (platform === 'win32') {
+        command = `explorer "${projectPath}"`;
+      } else if (platform === 'darwin') {
+        command = `open "${projectPath}"`;
+      } else {
+        command = `xdg-open "${projectPath}"`;
+      }
+
+      exec(command, (error) => {
+        if (error) {
+          log.error('Failed to open explorer:', error);
+          res.status(500).json({
+            error: { code: 'OPEN_EXPLORER_ERROR', message: req.t!('project.error.openExplorerFailed') },
+          });
+          return;
+        }
+        res.json({ success: true });
+      });
+    } catch (error) {
+      log.error('Error opening explorer:', error);
+      res.status(500).json({
+        error: { code: 'OPEN_EXPLORER_ERROR', message: req.t!('project.error.openExplorerFailed') },
       });
     }
   },

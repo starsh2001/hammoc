@@ -55,6 +55,8 @@
       "settingsLoadFailed": "설정을 불러오는 중 오류가 발생했습니다.",
       "settingsSaveFailed": "설정 저장 중 오류가 발생했습니다.",
       "systemPromptFailed": "시스템 프롬프트를 가져오는 중 오류가 발생했습니다.",
+      "openExplorerLocalOnly": "파일 탐색기 열기는 localhost에서만 사용할 수 있습니다.",
+      "openExplorerFailed": "파일 탐색기를 여는 데 실패했습니다.",
       "scanError": "프로젝트 검색 중 오류가 발생했습니다.",
       "dirNotFound": "디렉토리를 찾을 수 없습니다.",
       "permissionDenied": "접근이 거부되었습니다.",

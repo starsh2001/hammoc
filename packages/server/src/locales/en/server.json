@@ -55,6 +55,8 @@
       "settingsLoadFailed": "Error loading settings.",
       "settingsSaveFailed": "Error saving settings.",
       "systemPromptFailed": "Error fetching system prompt.",
+      "openExplorerLocalOnly": "Opening file explorer is only available from localhost.",
+      "openExplorerFailed": "Failed to open file explorer.",
       "scanError": "Error scanning projects.",
       "dirNotFound": "Directory not found.",
       "permissionDenied": "Permission denied.",

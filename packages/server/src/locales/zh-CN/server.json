@@ -55,6 +55,8 @@
       "settingsLoadFailed": "加载设置时出错。",
       "settingsSaveFailed": "保存设置时出错。",
       "systemPromptFailed": "获取系统提示词时出错。",
+      "openExplorerLocalOnly": "打开文件资源管理器仅在 localhost 上可用。",
+      "openExplorerFailed": "打开文件资源管理器失败。",
       "scanError": "扫描项目时出错。",
       "dirNotFound": "未找到目录。",
       "permissionDenied": "权限被拒绝。",
