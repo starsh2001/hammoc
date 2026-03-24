@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, FolderRoot, Loader2, List, LayoutGrid, Upload } from 'lucide-react';
+import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, FolderRoot, Loader2, List, LayoutGrid, Upload, ExternalLink } from 'lucide-react';
 
 import type { FileSearchResult } from '@hammoc/shared';
 import { useFileStore } from '../../stores/fileStore.js';
@@ -20,6 +20,7 @@ const HIDDEN_PATTERNS = ['.env', '.git', 'node_modules', '.next', '.cache', '__p
 import { useToast } from '../../hooks/useToast.js';
 import { ToastContainer } from '../common/Toast.js';
 import { fileSystemApi } from '../../services/api/fileSystem.js';
+import { projectsApi } from '../../services/api/projects.js';
 import { FileTree } from './FileTree.js';
 import { FileGridView } from './FileGridView.js';
 
@@ -319,6 +320,18 @@ export function FileExplorerTab() {
     return () => el.removeEventListener('paste', handlePasteFiles);
   }, [handlePasteFiles]);
 
+  // Only show "Open in OS explorer" when accessed from localhost
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  const handleOpenExplorer = useCallback(async () => {
+    if (!projectSlug) return;
+    try {
+      await projectsApi.openExplorer(projectSlug);
+    } catch {
+      showToast({ message: t('files.openInExplorer'), type: 'error' });
+    }
+  }, [projectSlug, showToast, t]);
+
   const segments = (() => {
     if (currentPath === '.') {
       return [{ name: t('files.root'), path: '.' }];
@@ -454,6 +467,22 @@ export function FileExplorerTab() {
             >
               {viewMode === 'list' ? <LayoutGrid className="w-3.5 h-3.5" /> : <List className="w-3.5 h-3.5" />}
             </button>
+
+            {/* Open in OS explorer (localhost only) */}
+            {isLocalhost && (
+              <>
+                <div className="w-px h-5 bg-gray-200 dark:bg-[#253040] mx-1" />
+                <button
+                  onClick={handleOpenExplorer}
+                  title={t('files.openInExplorer')}
+                  className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors
+                    text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#253040]"
+                  aria-label={t('files.openInExplorer')}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

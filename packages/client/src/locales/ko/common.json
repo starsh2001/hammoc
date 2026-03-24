@@ -241,10 +241,7 @@
     "markDoneDesc": "QA 통과 — Done으로 완료",
     "requestQAReview": "QA 재요청",
     "validateStoryOnly": "스토리 검증",
-    "validateOnlyApproveHint": "유저의 수정 요청이 완료되면 스토리 Status를 Approved로 변경하세요.",
     "validateAndFixStory": "스토리 검증 및 자동 수정",
-    "validateFixPrompt": "위 검증 결과에서 발견된 모든 Critical Issues, Should-Fix Issues, Nice-to-Have Issues를 전부 수정해주세요.",
-    "approveAfterFixPrompt": "스토리 Status가 Approved가 아니면 Approved로 변경해주세요.",
     "startDev": "개발 시작",
     "createFirstStory": "첫 스토리 생성",
     "createNextStory": "다음 스토리 생성",
@@ -304,6 +301,7 @@
     "showHidden": "숨김 파일 표시",
     "gridView": "그리드 뷰",
     "listView": "리스트 뷰",
+    "openInExplorer": "OS 탐색기에서 열기",
     "root": "Root",
     "breadcrumb": "경로",
     "projectNotFound": "프로젝트를 찾을 수 없습니다.",
@@ -565,7 +563,8 @@
     "resizeHandle": "패널 폭 조절",
     "toolbar": "퀵 패널",
     "gitPanel": "Git 패널",
-    "terminalSecurityTooltip": "보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다"
+    "terminalSecurityTooltip": "보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다",
+    "moveToOtherSide": "패널을 반대쪽으로 이동"
   },
   "terminal": {
     "connecting": "연결 중...",

@@ -240,10 +240,7 @@
     "markDoneDesc": "QA合格 — Doneにする",
     "requestQAReview": "QA再レビューをリクエスト",
     "validateStoryOnly": "ストーリー検証",
-    "validateOnlyApproveHint": "ユーザーの修正リクエストが完了したら、ストーリーのStatusをApprovedに変更してください。",
     "validateAndFixStory": "ストーリー検証＆自動修正",
-    "validateFixPrompt": "上記の検証結果で発見されたすべてのCritical Issues、Should-Fix Issues、Nice-to-Have Issuesを修正してください。",
-    "approveAfterFixPrompt": "ストーリーのStatusがApprovedでない場合、Approvedに変更してください。",
     "startDev": "開発を開始",
     "createFirstStory": "最初のストーリーを作成",
     "createNextStory": "次のストーリーを作成",
@@ -298,6 +295,7 @@
     "showHidden": "隠しファイルを表示",
     "gridView": "グリッド表示",
     "listView": "リスト表示",
+    "openInExplorer": "OSエクスプローラーで開く",
     "root": "ルート",
     "breadcrumb": "パンくずリスト",
     "projectNotFound": "プロジェクトが見つかりません。",
@@ -528,7 +526,8 @@
     "resizeHandle": "パネル幅のリサイズ",
     "toolbar": "クイックパネル",
     "gitPanel": "Gitパネル",
-    "terminalSecurityTooltip": "セキュリティ上の理由から、ローカルネットワーク外ではターミナルを使用できません"
+    "terminalSecurityTooltip": "セキュリティ上の理由から、ローカルネットワーク外ではターミナルを使用できません",
+    "moveToOtherSide": "パネルを反対側に移動"
   },
   "terminal": {
     "connecting": "接続中...",

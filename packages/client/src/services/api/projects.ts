@@ -55,4 +55,8 @@ export const projectsApi = {
       resolved: string;
       variables: readonly { name: string; description: string }[];
     }>(`/projects/${projectSlug}/system-prompt`),
+
+  /** Open project root directory in the system's default file explorer (localhost only) */
+  openExplorer: (projectSlug: string) =>
+    api.post<{ success: boolean }>(`/projects/${projectSlug}/open-explorer`),
 };

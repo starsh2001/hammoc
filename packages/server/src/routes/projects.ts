@@ -109,6 +109,9 @@ router.patch('/:projectSlug/settings', projectController.updateSettings);
 // GET /api/projects/:projectSlug/system-prompt - Get default system prompt
 router.get('/:projectSlug/system-prompt', projectController.getSystemPrompt);
 
+// POST /api/projects/:projectSlug/open-explorer - Open project in system file explorer (localhost only)
+router.post('/:projectSlug/open-explorer', projectController.openExplorer);
+
 // POST /api/projects/validate-path - Validate directory path (rate limited)
 router.post('/validate-path', validatePathLimiter, projectController.validatePath);
 

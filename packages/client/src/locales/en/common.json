@@ -241,10 +241,7 @@
     "markDoneDesc": "QA passed — mark as Done",
     "requestQAReview": "Re-request QA review",
     "validateStoryOnly": "Validate Story",
-    "validateOnlyApproveHint": "After the user's requested fixes are complete, change the story status to Approved.",
     "validateAndFixStory": "Validate & Auto-Fix Story",
-    "validateFixPrompt": "Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.",
-    "approveAfterFixPrompt": "If the story status is not Approved, please change it to Approved now.",
     "startDev": "Start development",
     "createFirstStory": "Create first story",
     "createNextStory": "Create next story",
@@ -299,6 +296,7 @@
     "showHidden": "Show hidden files",
     "gridView": "Grid view",
     "listView": "List view",
+    "openInExplorer": "Open in OS explorer",
     "root": "Root",
     "breadcrumb": "Breadcrumb",
     "projectNotFound": "Project not found.",
@@ -556,7 +554,8 @@
     "resizeHandle": "Resize panel width",
     "toolbar": "Quick panel",
     "gitPanel": "Git panel",
-    "terminalSecurityTooltip": "Terminal is not available outside the local network for security reasons"
+    "terminalSecurityTooltip": "Terminal is not available outside the local network for security reasons",
+    "moveToOtherSide": "Move panel to other side"
   },
   "terminal": {
     "connecting": "Connecting...",

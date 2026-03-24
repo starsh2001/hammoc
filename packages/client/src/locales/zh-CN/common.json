@@ -240,10 +240,7 @@
     "markDoneDesc": "QA 通过 — 标记为 Done",
     "requestQAReview": "重新请求 QA 审查",
     "validateStoryOnly": "验证 Story",
-    "validateOnlyApproveHint": "用户的修改请求完成后，请将 Story 状态更改为 Approved。",
     "validateAndFixStory": "验证并自动修正 Story",
-    "validateFixPrompt": "请修正以上验证结果中发现的所有 Critical Issues、Should-Fix Issues 和 Nice-to-Have Issues。",
-    "approveAfterFixPrompt": "如果Story的Status不是Approved，请将其更改为Approved。",
     "startDev": "开始开发",
     "createFirstStory": "创建第一个 Story",
     "createNextStory": "创建下一个 Story",
@@ -298,6 +295,7 @@
     "showHidden": "显示隐藏文件",
     "gridView": "网格视图",
     "listView": "列表视图",
+    "openInExplorer": "在系统资源管理器中打开",
     "root": "根目录",
     "breadcrumb": "面包屑导航",
     "projectNotFound": "未找到项目。",
@@ -528,7 +526,8 @@
     "resizeHandle": "调整面板宽度",
     "toolbar": "快捷面板",
     "gitPanel": "Git 面板",
-    "terminalSecurityTooltip": "出于安全原因，终端在非本地网络中不可用"
+    "terminalSecurityTooltip": "出于安全原因，终端在非本地网络中不可用",
+    "moveToOtherSide": "将面板移到另一侧"
   },
   "terminal": {
     "connecting": "正在连接...",
