@@ -131,7 +131,7 @@
     "maxTurnsDesc": "Máximo de turnos permitidos por conversa (1 ~ 100)",
     "maxBudget": "Orçamento máximo (USD)",
     "maxBudgetDesc": "Limite máximo de custo por consulta (USD, 0,01 ~ 100)",
-    "sdkDefault": "Padrão do SDK",
+    "sdkDefault": "Default (High)",
     "unlimited": "Ilimitado",
     "defaultEffort": "Nível de raciocínio padrão",
     "defaultEffortDesc": "Nível de raciocínio padrão para novas sessões. Quando não definido, o padrão do SDK (High) é utilizado.",
@@ -140,7 +140,8 @@
       "medium": "Medium",
       "high": "High",
       "max": "Max"
-    }
+    },
+    "effortMaxSubscriber": "indisponível para assinantes"
   },
   "confirm": {
     "serverRestart": "Isso irá recompilar e reiniciar o servidor. Continuar?",

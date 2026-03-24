@@ -132,7 +132,7 @@
     "maxTurnsDesc": "한 번의 대화에서 허용할 최대 턴 수 (1 ~ 100)",
     "maxBudget": "최대 예산",
     "maxBudgetDesc": "한 번의 쿼리당 최대 비용 제한 (USD, 0.01 ~ 100)",
-    "sdkDefault": "SDK 기본값",
+    "sdkDefault": "Default (High)",
     "unlimited": "무제한",
     "defaultEffort": "기본 사고 수준",
     "defaultEffortDesc": "새 세션에 적용되는 기본 사고 수준입니다. 설정하지 않으면 SDK 기본값(High)이 사용됩니다.",
@@ -141,7 +141,8 @@
       "medium": "Medium",
       "high": "High",
       "max": "Max"
-    }
+    },
+    "effortMaxSubscriber": "구독자 사용 불가"
   },
   "confirm": {
     "serverRestart": "서버를 재빌드하고 재시작합니다. 진행할까요?",

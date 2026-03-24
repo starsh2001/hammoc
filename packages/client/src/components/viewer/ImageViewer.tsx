@@ -32,6 +32,7 @@ export function ImageViewer() {
   const isMobile = useIsMobile();
   const activePanel = usePanelStore((s) => s.activePanel);
   const panelWidth = usePanelStore((s) => s.panelWidth);
+  const panelSide = usePanelStore((s) => s.panelSide);
   const MIN_CONTENT_WIDTH = 480;
   const [windowWidth, setWindowWidth] = useState(
     () => typeof window !== 'undefined' ? window.innerWidth : 1024,
@@ -42,7 +43,7 @@ export function ImageViewer() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   const panelOverlay = isMobile || (activePanel !== null && windowWidth - panelWidth < MIN_CONTENT_WIDTH);
-  const viewerRight = !panelOverlay && activePanel ? panelWidth : 0;
+  const viewerInset = !panelOverlay && activePanel ? panelWidth : 0;
 
   const handleClose = useCallback(() => {
     closeViewer();
@@ -149,15 +150,15 @@ export function ImageViewer() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-[55] transition-[right] duration-300 ease-in-out"
-        style={{ right: viewerRight }}
+        className="fixed inset-0 bg-black/50 z-[55] transition-[left,right] duration-300 ease-in-out"
+        style={panelSide === 'right' ? { right: viewerInset } : { left: viewerInset }}
         onClick={handleClose}
       />
 
       {/* Viewer Panel */}
       <div
-        className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-[#1c2129] transition-[right] duration-300 ease-in-out"
-        style={{ right: viewerRight }}
+        className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-[#1c2129] transition-[left,right] duration-300 ease-in-out"
+        style={panelSide === 'right' ? { right: viewerInset } : { left: viewerInset }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#263240]">

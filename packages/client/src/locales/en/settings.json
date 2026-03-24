@@ -132,7 +132,7 @@
     "maxTurnsDesc": "Maximum turns allowed per conversation (1 ~ 100)",
     "maxBudget": "Max Budget (USD)",
     "maxBudgetDesc": "Maximum cost limit per query (USD, 0.01 ~ 100)",
-    "sdkDefault": "SDK default",
+    "sdkDefault": "Default (High)",
     "unlimited": "Unlimited",
     "defaultEffort": "Default Thinking Effort",
     "defaultEffortDesc": "Default thinking effort level for new sessions. When not set, the SDK default (High) is used.",
@@ -141,7 +141,8 @@
       "medium": "Medium",
       "high": "High",
       "max": "Max"
-    }
+    },
+    "effortMaxSubscriber": "subscribers only"
   },
   "confirm": {
     "serverRestart": "This will rebuild and restart the server. Continue?",
