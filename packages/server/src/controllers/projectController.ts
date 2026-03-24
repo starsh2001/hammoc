@@ -6,7 +6,7 @@
  */
 
 import { Request, Response } from 'express';
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import {
   PROJECT_ERRORS,
   ProjectListResponse,
@@ -432,27 +432,27 @@ export const projectController = {
         return;
       }
 
-      // Determine platform-specific command to open file explorer
+      // Open file explorer with platform-specific command.
+      // Use spawn with detached+unref so the child process doesn't block the server.
+      // Windows explorer.exe always returns exit code 1 even on success,
+      // so we fire-and-forget instead of checking the exit code.
       const platform = process.platform;
-      let command: string;
+      let cmd: string;
+      let args: string[];
       if (platform === 'win32') {
-        command = `explorer "${projectPath}"`;
+        cmd = 'explorer';
+        args = [projectPath.replace(/\//g, '\\')];
       } else if (platform === 'darwin') {
-        command = `open "${projectPath}"`;
+        cmd = 'open';
+        args = [projectPath];
       } else {
-        command = `xdg-open "${projectPath}"`;
+        cmd = 'xdg-open';
+        args = [projectPath];
       }
 
-      exec(command, (error) => {
-        if (error) {
-          log.error('Failed to open explorer:', error);
-          res.status(500).json({
-            error: { code: 'OPEN_EXPLORER_ERROR', message: req.t!('project.error.openExplorerFailed') },
-          });
-          return;
-        }
-        res.json({ success: true });
-      });
+      const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+      child.unref();
+      res.json({ success: true });
     } catch (error) {
       log.error('Error opening explorer:', error);
       res.status(500).json({
