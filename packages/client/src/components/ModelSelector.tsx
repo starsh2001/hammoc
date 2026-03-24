@@ -5,6 +5,7 @@
  * - CPU/chip icon button that opens a grouped model list
  * - Checkmark on currently selected model
  * - All supported Claude models grouped by generation
+ * - Segmented effort control (Lo | Med | Hi | Max) above model list
  * - Opens upward (input area is at bottom)
  * - Outside click / Escape to close
  * - Disabled during streaming
@@ -13,6 +14,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Cpu, Check } from 'lucide-react';
+import type { ThinkingEffort } from '@hammoc/shared';
 
 interface ModelSelectorProps {
   model: string;
@@ -20,6 +22,10 @@ interface ModelSelectorProps {
   disabled?: boolean;
   /** Actual model reported by SDK (shown in Default option description) */
   activeModel?: string | null;
+  /** Currently selected thinking effort */
+  effort?: ThinkingEffort;
+  /** Effort change callback */
+  onEffortChange?: (effort: ThinkingEffort | undefined) => void;
 }
 
 interface ModelOption {
@@ -102,7 +108,16 @@ function formatModelId(modelId: string): string {
     .replace(/-/g, ' ');
 }
 
-export function ModelSelector({ model, onModelChange, disabled, activeModel }: ModelSelectorProps) {
+/** Check if model ID indicates Opus 4.6 */
+function isOpus46(model: string | null | undefined, activeModel: string | null | undefined): boolean {
+  if (!model && !activeModel) return false;
+  const check = (m: string) => m === 'claude-opus-4-6' || m === 'opus' || m.includes('opus-4-6');
+  return (model ? check(model) : false) || (activeModel ? check(activeModel) : false);
+}
+
+const EFFORT_LEVELS: ThinkingEffort[] = ['low', 'medium', 'high', 'max'];
+
+export function ModelSelector({ model, onModelChange, disabled, activeModel, effort, onEffortChange }: ModelSelectorProps) {
   const { t } = useTranslation('chat');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -148,12 +163,25 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
     [onModelChange]
   );
 
+  const handleEffortClick = useCallback(
+    (level: ThinkingEffort) => {
+      if (!onEffortChange) return;
+      // Toggle off if clicking the already-selected effort
+      onEffortChange(effort === level ? undefined : level);
+      // Do NOT close dropdown
+    },
+    [effort, onEffortChange]
+  );
+
   // Prevent focus from moving to button on both desktop and mobile.
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
   }, []);
 
   const displayLabel = getModelDisplayLabel(model);
+  const effortLabel = effort ? t(`effort.tooltipFull.${effort}`) : undefined;
+  const tooltip = effortLabel ? t('effort.tooltip', { model: displayLabel, effort: effortLabel }) : `Model: ${displayLabel}`;
+  const maxEnabled = isOpus46(model, activeModel);
 
   return (
     <div ref={containerRef} className="relative">
@@ -164,7 +192,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
         onClick={handleToggle}
         onPointerDown={handlePointerDown}
         disabled={disabled}
-        title={`Model: ${displayLabel}`}
+        title={tooltip}
         aria-label={t('model.selectorAria', { label: displayLabel })}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -192,6 +220,37 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel }: M
           aria-label={t('model.selectAria')}
           className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50"
         >
+          {/* Effort segmented control */}
+          {onEffortChange && (
+            <div
+              className="px-3 py-2 border-b border-gray-200 dark:border-[#253040]"
+              aria-label={t('effort.selectorAria', { level: effortLabel ?? '' })}
+            >
+              <div className="flex rounded-md overflow-hidden border border-gray-300 dark:border-[#2d3a4a]">
+                {EFFORT_LEVELS.map((level) => {
+                  const isSelected = effort === level;
+                  const isMax = level === 'max';
+                  const isDisabled = isMax && !maxEnabled;
+                  return (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => handleEffortClick(level)}
+                      disabled={isDisabled}
+                      title={isDisabled ? t('effort.maxOpusOnly') : t(`effort.tooltipFull.${level}`)}
+                      className={`flex-1 py-1 text-xs font-medium transition-colors
+                        ${isSelected ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#253040]'}
+                        ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                      `}
+                    >
+                      {t(`effort.${level}`)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {MODEL_GROUPS.map((group, gi) => {
             const groupLabel = group.labelKey ? t(group.labelKey) : group.label;
             return (

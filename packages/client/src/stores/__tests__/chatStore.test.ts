@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useChatStore } from '../chatStore';
 import { useMessageStore } from '../messageStore';
+import { usePreferencesStore } from '../preferencesStore';
 
 // Mock socket
 const mockEmit = vi.fn();
@@ -687,6 +688,66 @@ describe('useChatStore', () => {
       expect(state.segmentsPendingClear).toBe(false);
       expect(state.isStreaming).toBe(true);
       expect(state.streamingSegments).toEqual([]);
+    });
+  });
+
+  describe('selectedEffort (Story 26.2)', () => {
+    it('has initial selectedEffort set to undefined', () => {
+      const { selectedEffort } = useChatStore.getState();
+      expect(selectedEffort).toBeUndefined();
+    });
+
+    it('updates selectedEffort via setSelectedEffort', () => {
+      const { setSelectedEffort } = useChatStore.getState();
+
+      setSelectedEffort('high');
+      expect(useChatStore.getState().selectedEffort).toBe('high');
+
+      setSelectedEffort('low');
+      expect(useChatStore.getState().selectedEffort).toBe('low');
+
+      setSelectedEffort(undefined);
+      expect(useChatStore.getState().selectedEffort).toBeUndefined();
+    });
+
+    it('resetSelectedEffort reads from preferences.defaultEffort', () => {
+      // Set a default effort in preferences
+      usePreferencesStore.setState({
+        preferences: { ...usePreferencesStore.getState().preferences, defaultEffort: 'medium' },
+      });
+
+      useChatStore.getState().setSelectedEffort('high');
+      useChatStore.getState().resetSelectedEffort();
+
+      expect(useChatStore.getState().selectedEffort).toBe('medium');
+    });
+
+    it('resetSelectedEffort sets undefined when no defaultEffort in preferences', () => {
+      usePreferencesStore.setState({
+        preferences: { ...usePreferencesStore.getState().preferences, defaultEffort: undefined },
+      });
+
+      useChatStore.getState().setSelectedEffort('high');
+      useChatStore.getState().resetSelectedEffort();
+
+      expect(useChatStore.getState().selectedEffort).toBeUndefined();
+    });
+
+    it('includes effort in sendMessage emit when selectedEffort is set', () => {
+      useChatStore.getState().setSelectedEffort('high');
+      useChatStore.getState().sendMessage('Hello', { workingDirectory: '/path' });
+
+      expect(mockEmit).toHaveBeenCalledWith('chat:send', expect.objectContaining({
+        effort: 'high',
+      }));
+    });
+
+    it('omits effort from sendMessage emit when selectedEffort is undefined', () => {
+      useChatStore.getState().setSelectedEffort(undefined);
+      useChatStore.getState().sendMessage('Hello', { workingDirectory: '/path' });
+
+      const payload = mockEmit.mock.calls[0][1];
+      expect(payload.effort).toBeUndefined();
     });
   });
 

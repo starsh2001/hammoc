@@ -282,6 +282,21 @@
   "markdown": {
     "openFile": "打开文件：{{href}}"
   },
+  "effort": {
+    "low": "Lo",
+    "medium": "Med",
+    "high": "Hi",
+    "max": "Max",
+    "tooltipFull": {
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "max": "最大"
+    },
+    "maxOpusOnly": "Max 仅适用于 Opus 4.6",
+    "tooltip": "{{model}} · {{effort}}",
+    "selectorAria": "思考努力级别：{{level}}"
+  },
   "model": {
     "defaultLabel": "默认",
     "aliases": "别名（最新）",

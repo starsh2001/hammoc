@@ -165,7 +165,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   // Get session name from sessionStore (populated when coming from session list)
@@ -414,12 +414,13 @@ export function ChatPage() {
       clearMessages();
       clearStreamingSegments();
       resetSelectedModel();
+      resetSelectedEffort();
       resetPermissionMode();
       pendingAgentCommandRef.current = agentCommand;
       const newSessionId = generateUUID();
       navigate(`/project/${projectSlug}/session/${newSessionId}`);
     }
-  }, [handleSendMessage, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
+  }, [handleSendMessage, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, resetSelectedEffort, resetPermissionMode, navigate, projectSlug]);
 
   // Ref to keep latest handleSendMessage for use in fetchMessages callback (Story 8.3)
   const handleSendMessageRef = useRef(handleSendMessage);
@@ -712,12 +713,13 @@ export function ChatPage() {
       clearMessages();
       clearStreamingSegments();
       resetSelectedModel();
+      resetSelectedEffort();
       resetPermissionMode();
       pendingAgentCommandRef.current = confirmModal.agentCommand ?? null;
       const newSessionId = generateUUID();
       navigate(`/project/${projectSlug}/session/${newSessionId}`);
     }
-  }, [confirmModal.action, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
+  }, [confirmModal.action, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, resetSelectedEffort, resetPermissionMode, navigate, projectSlug]);
 
   const handleSessionSelect = useCallback((selectedSessionId: string) => {
     if (panelOverlay) closePanel();
@@ -728,9 +730,10 @@ export function ChatPage() {
     clearMessages();
     clearStreamingSegments();
     resetSelectedModel();
+    resetSelectedEffort();
     resetPermissionMode();
     navigate(`/project/${projectSlug}/session/${selectedSessionId}`, { replace: true });
-  }, [panelOverlay, closePanel, sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
+  }, [panelOverlay, closePanel, sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, resetSelectedEffort, resetPermissionMode, navigate, projectSlug]);
 
   const handleNewSession = useCallback(() => {
     if (!projectSlug) return;
@@ -738,10 +741,11 @@ export function ChatPage() {
     clearMessages();
     clearStreamingSegments();
     resetSelectedModel();
+    resetSelectedEffort();
     resetPermissionMode();
     const newSessionId = generateUUID();
     navigate(`/project/${projectSlug}/session/${newSessionId}`);
-  }, [clearMessages, clearStreamingSegments, resetSelectedModel, resetPermissionMode, navigate, projectSlug]);
+  }, [clearMessages, clearStreamingSegments, resetSelectedModel, resetSelectedEffort, resetPermissionMode, navigate, projectSlug]);
 
   const handleCancelConfirm = useCallback(() => {
     setConfirmModal({ isOpen: false, action: 'agentLaunch' });
@@ -883,6 +887,8 @@ export function ChatPage() {
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             activeModel={activeModel}
+            selectedEffort={selectedEffort}
+            onEffortChange={setSelectedEffort}
             isBmadProject={isBmadProject}
             onAgentSelect={handleAgentSelect}
             agentListOpenTrigger={agentListOpenTrigger}
@@ -948,6 +954,8 @@ export function ChatPage() {
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             activeModel={activeModel}
+            selectedEffort={selectedEffort}
+            onEffortChange={setSelectedEffort}
             isBmadProject={isBmadProject}
             onAgentSelect={handleAgentSelect}
             agentListOpenTrigger={agentListOpenTrigger}
@@ -1020,6 +1028,8 @@ export function ChatPage() {
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             activeModel={activeModel}
+            selectedEffort={selectedEffort}
+            onEffortChange={setSelectedEffort}
             isBmadProject={isBmadProject}
             onAgentSelect={handleAgentSelect}
             agentListOpenTrigger={agentListOpenTrigger}
@@ -1121,6 +1131,8 @@ export function ChatPage() {
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
           activeModel={activeModel}
+          selectedEffort={selectedEffort}
+          onEffortChange={setSelectedEffort}
           isBmadProject={isBmadProject}
           onAgentSelect={handleAgentSelect}
           agentListOpenTrigger={agentListOpenTrigger}

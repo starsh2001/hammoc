@@ -31,7 +31,7 @@ import { FavoritesChipBar } from './FavoritesChipBar';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
 import { UsageStatusBar } from './UsageStatusBar';
 import { useSpeechRecognition, getSpeechLang } from '../hooks/useSpeechRecognition';
-import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage, CommandFavoriteEntry } from '@hammoc/shared';
+import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage, CommandFavoriteEntry, ThinkingEffort } from '@hammoc/shared';
 import { IMAGE_CONSTRAINTS } from '@hammoc/shared';
 import { generateUUID } from '../utils/uuid';
 import { debugLogger } from '../utils/debugLogger';
@@ -117,6 +117,10 @@ interface ChatInputProps {
   onModelChange?: (model: string) => void;
   /** Actual model reported by SDK */
   activeModel?: string | null;
+  /** Currently selected thinking effort */
+  selectedEffort?: ThinkingEffort;
+  /** Effort change callback */
+  onEffortChange?: (effort: ThinkingEffort | undefined) => void;
   /** Whether current project is a BMad project */
   isBmadProject?: boolean;
   /** Callback when a BMad agent is selected */
@@ -181,6 +185,8 @@ export function ChatInput({
   selectedModel,
   onModelChange,
   activeModel,
+  selectedEffort,
+  onEffortChange,
   isBmadProject,
   onAgentSelect,
   agentListOpenTrigger,
@@ -1071,6 +1077,8 @@ export function ChatInput({
             model={selectedModel}
             onModelChange={onModelChange}
             activeModel={activeModel}
+            effort={selectedEffort}
+            onEffortChange={onEffortChange}
             disabled={queueLocked}
           />
         )}
