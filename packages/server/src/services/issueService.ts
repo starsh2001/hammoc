@@ -543,10 +543,11 @@ class IssueService {
       if (aggregated.length === 0) {
         epicStatus = 'Open';
       } else {
+        const allStoriesCreated = !epic.plannedStories || aggregated.length >= epic.plannedStories;
         const allDone = aggregated.every((s) => s === 'done');
         const allOpen = aggregated.every((s) => s === 'open');
 
-        if (allDone) {
+        if (allDone && allStoriesCreated) {
           epicStatus = 'Done';
         } else if (allOpen) {
           epicStatus = 'Open';
