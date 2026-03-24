@@ -102,18 +102,10 @@ export function ProjectBoardPage() {
       const sessionId = generateUUID();
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
       const taskName = targetType === 'story' ? '*create-brownfield-story' : '*create-brownfield-epic';
-      // Get next number from server (authoritative filesystem scan)
-      const numType = targetType === 'story' ? 'BS' as const : 'epic' as const;
-      const { nextNum } = await boardApi.getNextNum(projectSlug, numType);
-      const assignedNumber = targetType === 'story' ? `BS-${nextNum}` : `Epic ${nextNum}`;
 
-      const issueRefKey = targetType === 'story' ? 'promote.issueFileRef' : 'promote.issueFileRefEpic';
-      const taskWithContext = `${taskName}\n\n**Assigned number: ${assignedNumber}**\n\n## ${t('promote.originalIssueHeader', { id: item.id })}\n**${t('issue.titlePlain')}**: ${item.title}\n**${t('issue.severity')}**: ${item.severity || t('promote.none')}\n**${t('issue.type')}**: ${item.issueType || t('promote.none')}\n\n${t(issueRefKey, { file: issueFile })}`;
+      const taskWithContext = `${taskName}\n\n## ${t('promote.originalIssueHeader', { id: item.id })}\n**${t('issue.titlePlain')}**: ${item.title}\n**${t('issue.severity')}**: ${item.severity || t('promote.none')}\n**${t('issue.type')}**: ${item.issueType || t('promote.none')}\n\n${t('promote.issueFileRef', { file: issueFile })}`;
       const params = new URLSearchParams({ agent: '/BMad:agents:pm', task: taskWithContext });
-
-      // Append doc-out chain for file output location
-      const chainKey = targetType === 'story' ? 'promote.docOutStoryChain' : 'promote.docOutEpicChain';
-      params.append('chain', t(chainKey, { nextNum }));
+      params.append('chain', `*doc-out\n\nSave the ${targetType} document to the appropriate project directory.`);
 
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
@@ -160,11 +152,15 @@ export function ProjectBoardPage() {
     }
   }, [projectSlug, refresh, setActionErrorWithClear]);
 
-  // Change issue status (In Progress → Ready for Review, Ready for Done → Done, etc.)
+  // Change issue/story status (In Progress → Ready for Review, Ready for Done → Done, etc.)
   const handleIssueStatusChange = useCallback(async (item: BoardItem, status: string) => {
     if (!projectSlug) return;
     try {
-      await boardApi.updateIssue(projectSlug, item.id, { status });
+      if (item.type === 'story') {
+        await boardApi.updateStoryStatus(projectSlug, item.id, status);
+      } else {
+        await boardApi.updateIssue(projectSlug, item.id, { status });
+      }
       await refresh();
     } catch {
       setActionErrorWithClear(t('errors.updateStatusFailed'));
@@ -220,7 +216,7 @@ export function ProjectBoardPage() {
       task = `*validate-story-draft ${storyNum}`;
     } else if (badge.id === 'approved') {
       try {
-        await boardApi.updateIssue(projectSlug, item.id, { status: 'In Progress' });
+        await boardApi.updateStoryStatus(projectSlug, item.id, 'In Progress');
       } catch {
         setActionErrorWithClear(t('errors.updateStatusFailed'));
         return;
@@ -235,7 +231,7 @@ export function ProjectBoardPage() {
       task = `Update story ${storyNum} status to Done. The QA gate has passed.`;
     } else if (badge.id === 'qa-failed' || badge.id === 'qa-concerns') {
       agent = '/BMad:agents:dev';
-      task = `*review-qa ${storyNum}\n\n${t('workflow.resolveGateOutro')}`;
+      task = `*review-qa ${storyNum}\n\nAfter completing QA fixes, update the gate YAML file's gate field to 'FIXED'.`;
     } else if (badge.id === 'qa-fixed' || badge.id === 'ready-for-review' || badge.id === 'ready-for-done') {
       agent = '/BMad:agents:qa';
       task = `*review ${storyNum}`;
@@ -254,7 +250,7 @@ export function ProjectBoardPage() {
     const storyNum = item.id.replace(/^story-/, '');
     const params = new URLSearchParams({
       agent: '/BMad:agents:po',
-      task: `*validate-story-draft ${storyNum} ${t('board:workflow.validateOnlyApproveHint')}`,
+      task: `*validate-story-draft ${storyNum} After the user's requested fixes are complete, change the story status to Approved.`,
     });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t]);
@@ -268,8 +264,8 @@ export function ProjectBoardPage() {
       agent: '/BMad:agents:po',
       task: `*validate-story-draft ${storyNum}`,
     });
-    params.append('chain', t('workflow.validateFixPrompt'));
-    params.append('chain', t('workflow.approveAfterFixPrompt'));
+    params.append('chain', 'Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.');
+    params.append('chain', 'If the story status is not Approved, please change it to Approved now.');
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t]);
 
@@ -293,6 +289,18 @@ export function ProjectBoardPage() {
     const params = new URLSearchParams({
       agent: '/BMad:agents:qa',
       task: `*review ${storyNum}`,
+    });
+    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+  }, [projectSlug, navigate]);
+
+  // Create next story for an epic
+  const handleCreateNextStory = useCallback((item: BoardItem) => {
+    if (!projectSlug || item.type !== 'epic') return;
+    const sessionId = generateUUID();
+    const epicNum = item.epicNumber ?? item.id.replace(/^epic-/, '');
+    const params = new URLSearchParams({
+      agent: '/BMad:agents:sm',
+      task: `*draft ${epicNum}`,
     });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate]);
@@ -332,6 +340,7 @@ export function ProjectBoardPage() {
     onValidateAndFixAction: handleValidateAndFix,
     onValidateOnlyAction: handleValidateOnly,
     onViewEpicStories: handleViewEpicStories,
+    onCreateNextStory: handleCreateNextStory,
     onRequestQAReview: handleRequestQAReview,
     onIssueStatusChange: handleIssueStatusChange,
     onCommitAndComplete: handleCommitAndComplete,

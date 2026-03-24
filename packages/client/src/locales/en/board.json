@@ -68,15 +68,13 @@
     "subStories": "Epic Sub-Stories",
     "progress": "Progress",
     "noSubStories": "No sub-stories",
-    "viewSubStories": "View Sub-Stories"
+    "viewSubStories": "View Sub-Stories",
+    "createNextStory": "Create Next Story"
   },
   "story": {},
   "workflow": {
     "validateStoryOnly": "Validate Story",
-    "validateOnlyApproveHint": "After the user's requested fixes are complete, change the story status to Approved.",
     "validateAndFixStory": "Validate & Auto-Fix Story",
-    "validateFixPrompt": "Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.",
-    "approveAfterFixPrompt": "If the story status is not Approved, please change it to Approved now.",
     "startDevelopment": "Start Development",
     "resumeDevelopment": "Resume Development",
     "requestQA": "Request QA",
@@ -85,7 +83,6 @@
     "completeStory": "Complete Story",
     "commitAndCompleteStory": "Commit & Complete Story",
     "requestQAReview": "Re-request QA Review",
-    "resolveGateOutro": "After completing QA fixes, update the gate YAML file's gate field to 'FIXED'.",
     "quickFixIntro": "Please fix the following issue:",
     "issueFileLabel": "Issue file:",
     "quickFixOutro": "When the fix is complete, update the issue status to 'Ready for Review'."
@@ -124,11 +121,8 @@
   },
   "promote": {
     "originalIssueHeader": "Original Issue (ID: {{id}})",
-    "issueFileRef": "Read the full issue details from `{{file}}` before creating the story.",
-    "issueFileRefEpic": "Read the full issue details from `{{file}}` before creating the epic.",
-    "none": "None",
-    "docOutStoryChain": "*doc-out\n\nIMPORTANT: The output file MUST be saved to `docs/stories/` with the filename prefix `BS-{{nextNum}}.` followed by a kebab-case slug. Example: `docs/stories/BS-{{nextNum}}.my-feature-name.story.md`",
-    "docOutEpicChain": "*doc-out\n\nIMPORTANT:\n- The epic number is **Epic {{nextNum}}**. Use this number consistently throughout the document.\n- The title MUST start with `# Epic {{nextNum}}: `\n- Story headers MUST use the format `### Story {{nextNum}}.1: Title`, `### Story {{nextNum}}.2: Title`, etc.\n- The output file MUST be saved to `docs/prd/epic-{{nextNum}}-` followed by a kebab-case slug. Example: `docs/prd/epic-{{nextNum}}-my-feature-name.md`"
+    "issueFileRef": "Read the full issue details from `{{file}}` before proceeding.",
+    "none": "None"
   },
   "truncated": "...(truncated)",
   "noDescription": "(No description)",

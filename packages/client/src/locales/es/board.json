@@ -68,15 +68,13 @@
     "subStories": "Sub-historias de la épica",
     "progress": "Progreso",
     "noSubStories": "Sin sub-historias",
-    "viewSubStories": "Ver sub-historias"
+    "viewSubStories": "Ver sub-historias",
+    "createNextStory": "Crear siguiente historia"
   },
   "story": {},
   "workflow": {
     "validateStoryOnly": "Validar historia",
-    "validateOnlyApproveHint": "Una vez completadas las correcciones solicitadas por el usuario, cambie el estado de la historia a Approved.",
     "validateAndFixStory": "Validar y autocorregir historia",
-    "validateFixPrompt": "Por favor, corrija todos los Critical Issues, Should-Fix Issues y Nice-to-Have Issues identificados en los resultados de validación anteriores.",
-    "approveAfterFixPrompt": "Si el Status del story no es Approved, por favor cámbielo a Approved.",
     "startDevelopment": "Iniciar desarrollo",
     "resumeDevelopment": "Continuar desarrollo",
     "requestQA": "Solicitar QA",
@@ -85,7 +83,6 @@
     "completeStory": "Completar historia",
     "commitAndCompleteStory": "Commit y completar historia",
     "requestQAReview": "Volver a solicitar revisión QA",
-    "resolveGateOutro": "Después de completar las correcciones de QA, cambie el campo gate del archivo YAML de gate a 'FIXED'.",
     "quickFixIntro": "Por favor, solucione el siguiente problema:",
     "issueFileLabel": "Archivo del problema:",
     "quickFixOutro": "Cuando la corrección esté completa, cambie el estado de la incidencia a Ready for Review."

@@ -39,6 +39,7 @@ export function BoardListView({
   onValidateAndFixAction,
   onValidateOnlyAction,
   onViewEpicStories,
+  onCreateNextStory,
   onRequestQAReview,
   onIssueStatusChange,
   onCommitAndComplete,
@@ -124,6 +125,7 @@ export function BoardListView({
                     onValidateAndFixAction={onValidateAndFixAction}
                     onValidateOnlyAction={onValidateOnlyAction}
                     onViewEpicStories={onViewEpicStories}
+                    onCreateNextStory={onCreateNextStory}
                     onRequestQAReview={onRequestQAReview}
                     onIssueStatusChange={onIssueStatusChange}
                     onCommitAndComplete={onCommitAndComplete}
