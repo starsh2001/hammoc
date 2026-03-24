@@ -336,6 +336,86 @@ export function GlobalSettingsSection() {
         </p>
       </fieldset>
 
+      {/* Quick Panel Default Open */}
+      <fieldset>
+        <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          {t('global.panelDefaultOpen')}
+        </legend>
+        <div className="flex flex-wrap gap-3">
+          {([
+            { value: true, labelKey: 'global.panelOpenOption.on' },
+            { value: false, labelKey: 'global.panelOpenOption.off' },
+          ]).map((opt) => (
+            <label
+              key={String(opt.value)}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                ${(preferences.panelDefaultOpen !== false) === opt.value
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
+                }
+              `}
+            >
+              <input
+                type="radio"
+                name="panelDefaultOpen"
+                value={String(opt.value)}
+                checked={(preferences.panelDefaultOpen !== false) === opt.value}
+                onChange={() => {
+                  updatePreference('panelDefaultOpen', opt.value);
+                  toast.success(t('toast.settingSaved'));
+                }}
+                className="sr-only"
+              />
+              {t(opt.labelKey)}
+            </label>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+          {t('global.panelDefaultOpenDesc')}
+        </p>
+      </fieldset>
+
+      {/* Quick Panel Default Side */}
+      <fieldset>
+        <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          {t('global.panelDefaultSide')}
+        </legend>
+        <div className="flex flex-wrap gap-3">
+          {([
+            { value: 'left' as const, labelKey: 'global.panelSideOption.left' },
+            { value: 'right' as const, labelKey: 'global.panelSideOption.right' },
+          ]).map((opt) => (
+            <label
+              key={opt.value}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                ${(preferences.panelDefaultSide ?? 'right') === opt.value
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
+                }
+              `}
+            >
+              <input
+                type="radio"
+                name="panelDefaultSide"
+                value={opt.value}
+                checked={(preferences.panelDefaultSide ?? 'right') === opt.value}
+                onChange={() => {
+                  updatePreference('panelDefaultSide', opt.value);
+                  toast.success(t('toast.settingSaved'));
+                }}
+                className="sr-only"
+              />
+              {t(opt.labelKey)}
+            </label>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+          {t('global.panelDefaultSideDesc')}
+        </p>
+      </fieldset>
+
       {/* Chat Timeout Setting */}
       <div>
         <label

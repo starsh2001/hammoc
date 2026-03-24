@@ -11,14 +11,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Plus, Settings, PanelRight } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Plus, Settings, PanelRight, PanelLeft } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { useChatStore } from '../stores/chatStore';
 import { formatAgentRoleLabel } from '../utils/agentUtils';
 import { LayoutToggleButton } from './LayoutToggleButton';
 import { HeaderOverflowMenu } from './HeaderOverflowMenu';
-import type { QuickPanelType } from '../stores/panelStore';
+import type { QuickPanelType, PanelSide } from '../stores/panelStore';
 import { BrandLogo } from './BrandLogo';
 
 interface ChatHeaderProps {
@@ -42,6 +42,8 @@ interface ChatHeaderProps {
   lastActivePanel?: QuickPanelType;
   /** Toggle quick panel by type */
   onTogglePanel?: (type: QuickPanelType) => void;
+  /** Which side the panel is currently on */
+  panelSide?: PanelSide;
   /** Changed file count for Git badge */
   gitChangedCount?: number;
   /** Whether terminal is accessible (false = disabled button due to non-local IP) */
@@ -67,6 +69,7 @@ export function ChatHeader({
   activePanel,
   lastActivePanel = 'sessions',
   onTogglePanel,
+  panelSide = 'right',
   gitChangedCount,
   terminalAccessible = true,
   onRenameSession,
@@ -241,7 +244,10 @@ export function ChatHeader({
               title={t('header.panelToggle')}
               data-testid="panel-toggle-button"
             >
-              <PanelRight className="w-5 h-5" aria-hidden="true" />
+              {panelSide === 'right'
+                ? <PanelRight className="w-5 h-5" aria-hidden="true" />
+                : <PanelLeft className="w-5 h-5" aria-hidden="true" />
+              }
             </button>
           )}
 

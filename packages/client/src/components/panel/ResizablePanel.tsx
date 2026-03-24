@@ -7,6 +7,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePanelStore } from '../../stores/panelStore';
+import type { PanelSide } from '../../stores/panelStore';
 
 interface ResizableHandleProps {
   /** Current panel width (px) — for ARIA valuenow */
@@ -17,6 +18,8 @@ interface ResizableHandleProps {
   minWidth?: number;
   /** Maximum width ratio (default: 0.6 = 60% of screen) */
   maxWidthRatio?: number;
+  /** Which side the panel is on */
+  panelSide?: PanelSide;
 }
 
 function ResizableHandle({
@@ -24,6 +27,7 @@ function ResizableHandle({
   onWidthChange,
   minWidth = 280,
   maxWidthRatio = 0.6,
+  panelSide = 'right',
 }: ResizableHandleProps) {
   const { t } = useTranslation('common');
   // Refs — no re-render needed for drag tracking values
@@ -48,15 +52,17 @@ function ResizableHandle({
   const handlePointerMove = useCallback((e: PointerEvent) => {
     if (!isDragging.current) return;
 
-    // Panel is on the right side, so dragging LEFT increases width
-    const deltaX = startX.current - e.clientX;
+    // Right panel: dragging LEFT increases width; Left panel: dragging RIGHT increases width
+    const deltaX = panelSide === 'right'
+      ? startX.current - e.clientX
+      : e.clientX - startX.current;
     const currentMaxWidth = Math.floor(window.innerWidth * maxWidthRatio);
     const newWidth = Math.min(
       Math.max(startWidth.current + deltaX, minWidth),
       currentMaxWidth
     );
     onWidthChange(newWidth);
-  }, [onWidthChange, minWidth, maxWidthRatio]);
+  }, [onWidthChange, minWidth, maxWidthRatio, panelSide]);
 
   const handlePointerUp = useCallback(() => {
     if (!isDragging.current) return;
@@ -69,11 +75,25 @@ function ResizableHandle({
   useEffect(() => {
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp);
+    document.addEventListener('pointercancel', handlePointerUp);
+    window.addEventListener('blur', handlePointerUp);
     return () => {
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('pointercancel', handlePointerUp);
+      window.removeEventListener('blur', handlePointerUp);
     };
   }, [handlePointerMove, handlePointerUp]);
+
+  // Unmount-only: force-reset drag state to prevent stuck isDragging in store
+  useEffect(() => {
+    return () => {
+      if (isDragging.current) {
+        isDragging.current = false;
+        usePanelStore.getState().setIsDragging(false);
+      }
+    };
+  }, []);
 
   // Keyboard accessibility (WAI-ARIA separator pattern)
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -81,13 +101,19 @@ function ResizableHandle({
     const currentMaxWidth = Math.floor(window.innerWidth * maxWidthRatio);
 
     switch (e.key) {
-      case 'ArrowLeft': // Increase width (panel is on right)
+      case 'ArrowLeft':
         e.preventDefault();
-        onWidthChange(Math.min(width + step, currentMaxWidth));
+        // Right panel: left = increase; Left panel: left = decrease
+        onWidthChange(panelSide === 'right'
+          ? Math.min(width + step, currentMaxWidth)
+          : Math.max(width - step, minWidth));
         break;
-      case 'ArrowRight': // Decrease width
+      case 'ArrowRight':
         e.preventDefault();
-        onWidthChange(Math.max(width - step, minWidth));
+        // Right panel: right = decrease; Left panel: right = increase
+        onWidthChange(panelSide === 'right'
+          ? Math.max(width - step, minWidth)
+          : Math.min(width + step, currentMaxWidth));
         break;
       case 'Home':
         e.preventDefault();
@@ -98,7 +124,7 @@ function ResizableHandle({
         onWidthChange(currentMaxWidth);
         break;
     }
-  }, [width, onWidthChange, minWidth, maxWidthRatio]);
+  }, [width, onWidthChange, minWidth, maxWidthRatio, panelSide]);
 
   // Prevent text selection and override cursor during drag
   useEffect(() => {
@@ -118,7 +144,7 @@ function ResizableHandle({
   return (
     <div
       data-testid="panel-resize-handle"
-      className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10
+      className={`absolute ${panelSide === 'right' ? 'left-0' : 'right-0'} top-0 bottom-0 w-1 cursor-col-resize z-10
                   hover:bg-blue-500/50 active:bg-blue-500/70
                   transition-colors duration-150
                   ${isDraggingState ? 'bg-blue-500/70' : 'bg-transparent'}`}

@@ -50,6 +50,7 @@ import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { QuickPanel } from '../components/panel/QuickPanel';
 import { usePanelStore } from '../stores/panelStore';
+import { usePreferencesStore } from '../stores/preferencesStore';
 import { usePanelShortcuts } from '../hooks/usePanelShortcuts';
 import { useTerminalStore } from '../stores/terminalStore';
 import { useGitStatus } from '../hooks/useGitStatus';
@@ -57,6 +58,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ThinkingBlock } from '../components/ThinkingBlock';
 import { PromptChainBanner } from '../components/PromptChainBanner';
+import { useEdgeSwipe } from '../hooks/useEdgeSwipe';
 
 /**
  * Render a single history message as the appropriate component.
@@ -378,6 +380,7 @@ export function ChatPage() {
           workingDirectory,
           permissionMode,
           model: selectedModel,
+          effort: selectedEffort,
         });
         return;
       }
@@ -385,7 +388,7 @@ export function ChatPage() {
       // Non-chain mode: send directly
       internalSend(content, attachments);
     },
-    [chainMode, internalSend, workingDirectory, sessionId, permissionMode, selectedModel]
+    [chainMode, internalSend, workingDirectory, sessionId, permissionMode, selectedModel, selectedEffort]
   );
 
   // Handle abort — abortResponse handles fetch+clear internally
@@ -493,6 +496,7 @@ export function ChatPage() {
                 workingDirectory: wd,
                 permissionMode: chatState.permissionMode,
                 model: chatState.selectedModel,
+                effort: chatState.selectedEffort,
               };
               if (taskParam) {
                 getSocket()?.emit('chain:add', { sessionId, content: taskParam, ...chainOpts });
@@ -636,9 +640,29 @@ export function ChatPage() {
 
   // Unified panel state (Story 19.1, 19.3, 19.4)
   const { activePanel, lastActivePanel, openPanel, togglePanel, closePanel,
-          panelWidth, setPanelWidth, isDragging } = usePanelStore();
+          panelWidth, setPanelWidth, isDragging, panelSide, togglePanelSide, swipeFrom, applyDefaults: applyPanelDefaults } = usePanelStore();
+  const panelDefaultOpen = usePreferencesStore((s) => s.preferences.panelDefaultOpen);
+  const panelDefaultSide = usePreferencesStore((s) => s.preferences.panelDefaultSide);
+  useEffect(() => {
+    applyPanelDefaults({ panelDefaultOpen, panelDefaultSide });
+  }, [applyPanelDefaults, panelDefaultOpen, panelDefaultSide]);
   usePanelShortcuts();
   const isMobile = useIsMobile();
+
+  // Edge swipe to open/close panel on mobile
+  const { openPanelWithSwipe, closePanelWithSwipe } = usePanelStore();
+  const handleEdgeSwipeOpen = useCallback((from: 'left' | 'right') => {
+    openPanelWithSwipe(lastActivePanel, from);
+  }, [openPanelWithSwipe, lastActivePanel]);
+  const handleEdgeSwipeClose = useCallback((toward: 'left' | 'right') => {
+    closePanelWithSwipe(toward);
+  }, [closePanelWithSwipe]);
+  useEdgeSwipe({
+    isOpen: activePanel !== null,
+    enabled: isMobile,
+    onOpen: handleEdgeSwipeOpen,
+    onClose: handleEdgeSwipeClose,
+  });
 
   // Track viewport width for panel overlay detection
   const MIN_CONTENT_WIDTH = 480;
@@ -663,10 +687,10 @@ export function ChatPage() {
   }, [openPanel, lastActivePanel]);
 
   const chatAreaStyle = !panelOverlay && activePanel
-    ? { paddingRight: `${panelWidth}px` }
+    ? { [panelSide === 'right' ? 'paddingRight' : 'paddingLeft']: `${panelWidth}px` }
     : undefined;
   const chatAreaTransition = !panelOverlay && !isDragging
-    ? 'transition-[padding-right] duration-300 ease-in-out'
+    ? 'transition-[padding-left,padding-right] duration-300 ease-in-out'
     : '';
 
 
@@ -791,6 +815,9 @@ export function ChatPage() {
       onWidthChange={handlePanelWidthChange}
       isMobile={panelOverlay}
       gitChangedCount={changedFileCount}
+      panelSide={panelSide}
+      onToggleSide={togglePanelSide}
+      swipeFrom={swipeFrom}
     />
   );
 
@@ -853,7 +880,7 @@ export function ChatPage() {
         className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} panelSide={panelSide} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -923,7 +950,7 @@ export function ChatPage() {
         className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} panelSide={panelSide} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -990,7 +1017,7 @@ export function ChatPage() {
         className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
+        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} panelSide={panelSide} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
         <main
@@ -1078,6 +1105,7 @@ export function ChatPage() {
         activePanel={activePanel}
         lastActivePanel={lastActivePanel}
         onTogglePanel={togglePanel}
+        panelSide={panelSide}
         gitChangedCount={changedFileCount}
         terminalAccessible={isTerminalAccessible}
         onRefresh={handleRefresh}

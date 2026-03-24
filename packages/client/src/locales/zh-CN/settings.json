@@ -131,7 +131,7 @@
     "maxTurnsDesc": "每次对话允许的最大轮次（1 ~ 100）",
     "maxBudget": "最大预算（美元）",
     "maxBudgetDesc": "每次查询的最大费用限额（美元，0.01 ~ 100）",
-    "sdkDefault": "SDK 默认值",
+    "sdkDefault": "Default (High)",
     "unlimited": "无限制",
     "defaultEffort": "默认思考级别",
     "defaultEffortDesc": "新会话的默认思考级别。未设置时，使用 SDK 默认值（High）。",
@@ -140,7 +140,8 @@
       "medium": "Medium",
       "high": "High",
       "max": "Max"
-    }
+    },
+    "effortMaxSubscriber": "订阅用户不可用"
   },
   "confirm": {
     "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",

@@ -4,11 +4,11 @@
  * [Source: Story 19.1 - Task 3, Story 19.2 - Tasks 3, 4, Story 19.3 - Task 4]
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, History, FolderOpen, GitBranch, Terminal } from 'lucide-react';
+import { X, History, FolderOpen, GitBranch, Terminal, PanelLeft, PanelRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { QuickPanelType } from '../../stores/panelStore';
+import type { QuickPanelType, PanelSide } from '../../stores/panelStore';
 import { useOverlayBackHandler } from '../../hooks/useOverlayBackHandler';
 import { PanelTabSwitcher } from './PanelTabSwitcher';
 import { ResizableHandle } from './ResizablePanel';
@@ -45,6 +45,12 @@ interface QuickPanelProps {
   isMobile: boolean;
   /** Git changed file count for badge on git tab */
   gitChangedCount?: number;
+  /** Which side the panel is on */
+  panelSide: PanelSide;
+  /** Toggle panel side */
+  onToggleSide: () => void;
+  /** Direction of swipe gesture for mobile slide animation */
+  swipeFrom: 'left' | 'right' | null;
 }
 
 export function QuickPanel({
@@ -62,17 +68,51 @@ export function QuickPanel({
   onWidthChange,
   isMobile,
   gitChangedCount,
+  panelSide,
+  onToggleSide,
+  swipeFrom,
 }: QuickPanelProps) {
   const { t } = useTranslation('common');
-  const [isVisible, setIsVisible] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
+  // Initialize to open state if panel is already active on mount
+  // (prevents re-playing slide-in animation on remount during session switch)
+  const [isVisible, setIsVisible] = useState(activePanel !== null);
+  const [isAnimating, setIsAnimating] = useState(activePanel !== null);
   const [visitedPanels, setVisitedPanels] = useState<Set<QuickPanelType>>(
     () => activePanel ? new Set([activePanel]) : new Set()
   );
 
+  // Track the last non-null active panel so we can render content during close animation
+  const displayPanelRef = useRef<QuickPanelType>(activePanel ?? 'sessions');
+  if (activePanel) displayPanelRef.current = activePanel;
+
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<Element | null>(null);
+
+  // Suppress transition briefly when side changes while panel is open
+  const [suppressTransition, setSuppressTransition] = useState(false);
+  const prevSideRef = useRef(panelSide);
+  const suppressRafRef = useRef<number>(0);
+  useEffect(() => {
+    if (prevSideRef.current !== panelSide && isVisible) {
+      // Cancel any pending RAF from a previous rapid toggle
+      if (suppressRafRef.current) cancelAnimationFrame(suppressRafRef.current);
+      setSuppressTransition(true);
+      suppressRafRef.current = requestAnimationFrame(() => {
+        suppressRafRef.current = requestAnimationFrame(() => {
+          suppressRafRef.current = 0;
+          setSuppressTransition(false);
+        });
+      });
+    }
+    prevSideRef.current = panelSide;
+    return () => {
+      if (suppressRafRef.current) {
+        cancelAnimationFrame(suppressRafRef.current);
+        suppressRafRef.current = 0;
+      }
+    };
+  }, [panelSide, isVisible]);
 
   const isOpen = activePanel !== null;
 
@@ -89,24 +129,41 @@ export function QuickPanel({
     }
   }, [activePanel]);
 
-  // Reset visited panels when panel closes
+  // Reset visited panels after close animation completes (isVisible becomes false)
   useEffect(() => {
-    if (!isOpen) {
+    if (!isVisible && !isOpen) {
       setVisitedPanels(new Set());
     }
-  }, [isOpen]);
+  }, [isVisible, isOpen]);
 
   // Slide animation: mount/unmount control
+  // Opening: setIsVisible(true) creates the DOM, then useLayoutEffect forces a
+  // reflow and sets isAnimating — this guarantees the browser has computed the
+  // initial off-screen position before transitioning to translate-x-0.
+  // Closing: setIsAnimating(false) triggers slide-out, then setTimeout unmounts.
+  const needsAnimateRef = useRef(false);
   useEffect(() => {
     if (isOpen) {
+      needsAnimateRef.current = true;
       setIsVisible(true);
-      requestAnimationFrame(() => setIsAnimating(true));
     } else {
+      needsAnimateRef.current = false;
       setIsAnimating(false);
       const timer = setTimeout(() => setIsVisible(false), 350);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  // Trigger slide-in after DOM is created — runs before browser paint
+  useLayoutEffect(() => {
+    if (needsAnimateRef.current && isVisible && panelRef.current) {
+      needsAnimateRef.current = false;
+      // Force reflow so the browser computes the initial off-screen position;
+      // this makes the subsequent class change a genuine computed-style transition.
+      void panelRef.current.offsetHeight;
+      setIsAnimating(true);
+    }
+  }, [isVisible]);
 
   // Fallback: onTransitionEnd as safety net
   const handleTransitionEnd = useCallback(() => {
@@ -192,9 +249,10 @@ export function QuickPanel({
     }
   };
 
-  if (!isVisible || !activePanel) return null;
+  if (!isVisible) return null;
 
-  const config = PANEL_CONFIG[activePanel];
+  const displayPanel = activePanel ?? displayPanelRef.current;
+  const config = PANEL_CONFIG[displayPanel];
 
   return (
     <>
@@ -219,11 +277,22 @@ export function QuickPanel({
         aria-label={t(config.titleKey)}
         className={`fixed z-50 flex flex-col ${
           isMobile
-            ? 'inset-0 bg-white dark:bg-[#1c2129]'
-            : `inset-y-0 right-0 bg-white dark:bg-[#263240]
-               border-l border-gray-200 dark:border-[#253040] shadow-xl
-               transition-transform duration-300 ease-in-out
-               ${isAnimating ? 'translate-x-0' : 'translate-x-full'}`
+            ? `inset-0 bg-white dark:bg-[#1c2129]${
+                swipeFrom
+                  ? ` transition-transform duration-300 ease-in-out ${
+                      isAnimating ? 'translate-x-0'
+                        : swipeFrom === 'left' ? '-translate-x-full' : 'translate-x-full'
+                    }`
+                  : ''
+              }`
+            : `inset-y-0 ${panelSide === 'right' ? 'right-0' : 'left-0'} bg-white dark:bg-[#263240]
+               ${panelSide === 'right'
+                 ? 'border-l border-gray-200 dark:border-[#253040]'
+                 : 'border-r border-gray-200 dark:border-[#253040]'} shadow-xl
+               ${suppressTransition ? '' : 'transition-transform duration-300 ease-in-out'}
+               ${isAnimating
+                 ? 'translate-x-0'
+                 : panelSide === 'right' ? 'translate-x-full' : '-translate-x-full'}`
         }`}
         style={!isMobile ? { width: `${panelWidth}px` } : undefined}
         onTransitionEnd={handleTransitionEnd}
@@ -235,27 +304,46 @@ export function QuickPanel({
             onWidthChange={onWidthChange}
             minWidth={280}
             maxWidthRatio={0.6}
+            panelSide={panelSide}
           />
         )}
         {/* Common header */}
         <div className="flex items-center justify-between px-4 py-3
                         border-b border-gray-200 dark:border-[#253040]">
           <PanelTabSwitcher
-            activePanel={activePanel}
+            activePanel={displayPanel}
             onSwitchPanel={onSwitchPanel}
             terminalAccessible={terminalAccessible}
             gitChangedCount={gitChangedCount}
           />
-          <button
-            ref={closeButtonRef}
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-[#253040] rounded
-                       text-gray-700 dark:text-gray-200
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label={t('panel.close')}
-          >
-            <X className="w-5 h-5" aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-1">
+            {!isMobile && (
+              <button
+                onClick={onToggleSide}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-[#253040] rounded
+                           text-gray-500 dark:text-gray-400
+                           focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label={t('panel.moveToOtherSide')}
+                title={t('panel.moveToOtherSide')}
+                data-testid="panel-side-toggle"
+              >
+                {panelSide === 'right'
+                  ? <PanelLeft className="w-4 h-4" aria-hidden="true" />
+                  : <PanelRight className="w-4 h-4" aria-hidden="true" />
+                }
+              </button>
+            )}
+            <button
+              ref={closeButtonRef}
+              onClick={onClose}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-[#253040] rounded
+                         text-gray-700 dark:text-gray-200
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label={t('panel.close')}
+            >
+              <X className="w-5 h-5" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {/* Content area */}
@@ -265,12 +353,12 @@ export function QuickPanel({
               <div
                 key={type}
                 className={`absolute inset-0 overflow-y-auto ${
-                  activePanel === type ? '' : 'invisible'
+                  displayPanel === type ? '' : 'invisible'
                 }`}
                 role="tabpanel"
                 aria-label={t(PANEL_CONFIG[type].titleKey)}
                 data-testid={`quick-panel-content-${type}`}
-                {...(activePanel !== type ? { inert: '' as unknown as boolean } : {})}
+                {...(displayPanel !== type ? { inert: '' as unknown as boolean } : {})}
               >
                 {renderPanelContent(type)}
               </div>

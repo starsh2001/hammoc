@@ -131,7 +131,7 @@
     "maxTurnsDesc": "1回の会話で許可される最大ターン数（1 ～ 100）",
     "maxBudget": "最大予算（USD）",
     "maxBudgetDesc": "1クエリあたりの最大コスト制限（USD、0.01 ～ 100）",
-    "sdkDefault": "SDKデフォルト",
+    "sdkDefault": "Default (High)",
     "unlimited": "無制限",
     "defaultEffort": "デフォルト思考レベル",
     "defaultEffortDesc": "新しいセッションに適用されるデフォルトの思考レベルです。未設定の場合、SDKデフォルト（High）が使用されます。",
@@ -140,7 +140,8 @@
       "medium": "Medium",
       "high": "High",
       "max": "Max"
-    }
+    },
+    "effortMaxSubscriber": "サブスクライバー利用不可"
   },
   "confirm": {
     "serverRestart": "リビルドしてサーバーを再起動します。続行しますか？",
