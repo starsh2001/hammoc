@@ -19,6 +19,7 @@ export interface CardActionCallbacks {
   onValidateAndFixAction?: (item: BoardItem) => void;
   onValidateOnlyAction?: (item: BoardItem) => void;
   onViewEpicStories?: (item: BoardItem) => void;
+  onCreateNextStory?: (item: BoardItem) => void;
   onRequestQAReview?: (item: BoardItem) => void;
   onIssueStatusChange?: (item: BoardItem, status: string) => void;
   onCommitAndComplete?: (item: BoardItem) => void;
@@ -64,6 +65,7 @@ export function BoardCard({
   onValidateAndFixAction,
   onValidateOnlyAction,
   onViewEpicStories,
+  onCreateNextStory,
   onRequestQAReview,
   onIssueStatusChange,
   onCommitAndComplete,
@@ -116,6 +118,7 @@ export function BoardCard({
           onValidateAndFixAction={onValidateAndFixAction}
           onValidateOnlyAction={onValidateOnlyAction}
           onViewEpicStories={onViewEpicStories}
+          onCreateNextStory={onCreateNextStory}
           onRequestQAReview={onRequestQAReview}
           onIssueStatusChange={onIssueStatusChange}
           onCommitAndComplete={onCommitAndComplete}

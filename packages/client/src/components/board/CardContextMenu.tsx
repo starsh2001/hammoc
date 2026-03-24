@@ -22,6 +22,7 @@ export interface CardContextMenuProps {
   onValidateAndFixAction?: (item: BoardItem) => void;
   onValidateOnlyAction?: (item: BoardItem) => void;
   onViewEpicStories?: (item: BoardItem) => void;
+  onCreateNextStory?: (item: BoardItem) => void;
   onRequestQAReview?: (item: BoardItem) => void;
   onIssueStatusChange?: (item: BoardItem, status: string) => void;
   onCommitAndComplete?: (item: BoardItem) => void;
@@ -116,6 +117,7 @@ export function CardContextMenu({
   onValidateAndFixAction,
   onValidateOnlyAction,
   onViewEpicStories,
+  onCreateNextStory,
   onRequestQAReview,
   onIssueStatusChange,
   onCommitAndComplete,
@@ -192,6 +194,9 @@ export function CardContextMenu({
   } else if (item.type === 'epic') {
     if (onViewEpicStories) {
       menuItems.push({ label: t('epic.viewSubStories'), action: () => onViewEpicStories(item) });
+    }
+    if (badge.id !== 'done' && onCreateNextStory) {
+      menuItems.push({ label: t('epic.createNextStory'), action: () => onCreateNextStory(item) });
     }
   }
 

@@ -29,6 +29,7 @@ export function MobileKanbanBoard({
   onValidateAndFixAction,
   onValidateOnlyAction,
   onViewEpicStories,
+  onCreateNextStory,
   onRequestQAReview,
   onIssueStatusChange,
   onCommitAndComplete,
@@ -172,6 +173,7 @@ export function MobileKanbanBoard({
                       onValidateAndFixAction={onValidateAndFixAction}
                       onValidateOnlyAction={onValidateOnlyAction}
                       onViewEpicStories={onViewEpicStories}
+                      onCreateNextStory={onCreateNextStory}
                       onRequestQAReview={onRequestQAReview}
                       onIssueStatusChange={onIssueStatusChange}
                       onCommitAndComplete={onCommitAndComplete}

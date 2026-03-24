@@ -31,6 +31,7 @@ export function KanbanBoard({
   onValidateAndFixAction,
   onValidateOnlyAction,
   onViewEpicStories,
+  onCreateNextStory,
   onRequestQAReview,
   onIssueStatusChange,
   onCommitAndComplete,
@@ -95,6 +96,7 @@ export function KanbanBoard({
             onValidateAndFixAction={onValidateAndFixAction}
             onValidateOnlyAction={onValidateOnlyAction}
             onViewEpicStories={onViewEpicStories}
+            onCreateNextStory={onCreateNextStory}
             onRequestQAReview={onRequestQAReview}
             onIssueStatusChange={onIssueStatusChange}
             onCommitAndComplete={onCommitAndComplete}

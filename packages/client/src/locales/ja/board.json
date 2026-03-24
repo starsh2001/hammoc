@@ -68,15 +68,13 @@
     "subStories": "エピックのサブストーリー",
     "progress": "進捗",
     "noSubStories": "サブストーリーがありません",
-    "viewSubStories": "サブストーリーを表示"
+    "viewSubStories": "サブストーリーを表示",
+    "createNextStory": "次のストーリーを作成"
   },
   "story": {},
   "workflow": {
     "validateStoryOnly": "ストーリー検証",
-    "validateOnlyApproveHint": "ユーザーの修正リクエストが完了したら、ストーリーのStatusをApprovedに変更してください。",
     "validateAndFixStory": "ストーリー検証＆自動修正",
-    "validateFixPrompt": "上記の検証結果で発見されたすべてのCritical Issues、Should-Fix Issues、Nice-to-Have Issuesを修正してください。",
-    "approveAfterFixPrompt": "ストーリーのStatusがApprovedでない場合、Approvedに変更してください。",
     "startDevelopment": "開発を開始",
     "resumeDevelopment": "開発を再開",
     "requestQA": "QAをリクエスト",
@@ -85,7 +83,6 @@
     "completeStory": "ストーリーを完了",
     "commitAndCompleteStory": "コミット後ストーリー完了",
     "requestQAReview": "QA再レビューをリクエスト",
-    "resolveGateOutro": "QA修正完了後、gate YAMLファイルのgateフィールドを'FIXED'に変更してください。",
     "quickFixIntro": "以下の問題を修正してください：",
     "issueFileLabel": "問題ファイル：",
     "quickFixOutro": "修正が完了したら、課題のステータスをReady for Reviewに変更してください。"

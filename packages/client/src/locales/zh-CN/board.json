@@ -68,15 +68,13 @@
     "subStories": "Epic 子 Story",
     "progress": "进度",
     "noSubStories": "没有子 Story",
-    "viewSubStories": "查看子 Story"
+    "viewSubStories": "查看子 Story",
+    "createNextStory": "创建下一个 Story"
   },
   "story": {},
   "workflow": {
     "validateStoryOnly": "验证 Story",
-    "validateOnlyApproveHint": "用户的修改请求完成后，请将 Story 状态更改为 Approved。",
     "validateAndFixStory": "验证并自动修正 Story",
-    "validateFixPrompt": "请修正以上验证结果中发现的所有 Critical Issues、Should-Fix Issues 和 Nice-to-Have Issues。",
-    "approveAfterFixPrompt": "如果Story的Status不是Approved，请将其更改为Approved。",
     "startDevelopment": "开始开发",
     "resumeDevelopment": "继续开发",
     "requestQA": "请求 QA",
@@ -85,7 +83,6 @@
     "completeStory": "完成 Story",
     "commitAndCompleteStory": "提交后完成 Story",
     "requestQAReview": "重新请求 QA 审查",
-    "resolveGateOutro": "完成QA修复后，请将gate YAML文件的gate字段更改为'FIXED'。",
     "quickFixIntro": "请修复以下问题：",
     "issueFileLabel": "问题文件：",
     "quickFixOutro": "修复完成后，请将问题状态更改为 Ready for Review。"
