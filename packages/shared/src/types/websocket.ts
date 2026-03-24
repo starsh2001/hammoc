@@ -4,7 +4,7 @@
  * Story 1.6: Session Management - Added session events
  */
 
-import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage, SubscriptionRateLimit, ApiHealthStatus } from './sdk.js';
+import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage, ThinkingEffort, SubscriptionRateLimit, ApiHealthStatus } from './sdk.js';
 import type { ToolResult, CompactMetadata, TaskNotificationData } from './streaming.js';
 import type { SessionInfo } from './session.js';
 import type { ImageAttachment } from './message.js';
@@ -81,7 +81,7 @@ export interface ClientToServerEvents {
   'dashboard:subscribe': () => void;
   'dashboard:unsubscribe': () => void;
   // Story 24.1: Prompt chain events
-  'chain:add': (data: { sessionId: string; content: string; workingDirectory: string; permissionMode?: PermissionMode; model?: string }) => void;
+  'chain:add': (data: { sessionId: string; content: string; workingDirectory: string; permissionMode?: PermissionMode; model?: string; effort?: ThinkingEffort }) => void;
   'chain:remove': (data: { sessionId: string; id: string }) => void;
   'chain:clear': (data: { sessionId: string }) => void;
 }
@@ -123,6 +123,7 @@ export interface ServerToClientEvents {
   'queue:itemsUpdated': (data: QueueItemsUpdatedEvent) => void;
   'queue:editState': (data: { isEditing: boolean }) => void;
   'rateLimit:update': (data: SubscriptionRateLimit) => void;
+  'auth:subscriber': (data: { isSubscriber: boolean }) => void;
   'permission:mode-change': (data: { mode: PermissionMode }) => void;
   'apiHealth:update': (data: ApiHealthStatus) => void;
   // Story 17.1: Terminal PTY events

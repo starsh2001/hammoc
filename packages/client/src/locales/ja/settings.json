@@ -259,12 +259,27 @@
       "slash": "スラッシュコマンドパレットを開く"
     }
   },
+  "account": {
+    "changePassword": "パスワード変更",
+    "currentPassword": "現在のパスワード",
+    "newPassword": "新しいパスワード",
+    "confirmNewPassword": "新しいパスワードの確認",
+    "passwordMismatch": "新しいパスワードが一致しません。",
+    "changePasswordButton": "パスワードを変更",
+    "changing": "変更中...",
+    "changeSuccess": "パスワードが変更されました。再度ログインしてください。",
+    "changeFailed": "パスワードの変更に失敗しました。",
+    "session": "セッション",
+    "logout": "ログアウト",
+    "logoutDesc": "このデバイスからログアウトします。"
+  },
   "tabs": {
     "global": "グローバル設定",
     "project": "プロジェクト設定",
     "telegram": "Telegram通知",
     "notifications": "通知",
     "advanced": "詳細設定",
+    "account": "アカウント",
     "help": "ヘルプ",
     "about": "バージョン情報"
   },

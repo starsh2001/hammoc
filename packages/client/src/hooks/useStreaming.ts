@@ -887,10 +887,20 @@ export function useStreaming() {
       }
     };
 
-    // Handle server errors
+    // Handle server errors — display error message to user instead of silently aborting
     const handleError = (data?: unknown) => {
       const currentIsStreaming = useChatStore.getState().isStreaming;
       debugLog.socket('error', { isStreaming: currentIsStreaming, data });
+
+      // Show error message to user if available
+      if (data && typeof data === 'object' && 'message' in data) {
+        const errorData = data as { code?: string; message: string };
+        addResultError({
+          subtype: 'error',
+          result: errorData.message,
+        });
+      }
+
       clearChunkQueue();
       abortStreaming();
     };
@@ -1404,6 +1414,11 @@ export function useStreaming() {
       }
     };
 
+    // Handle auth:subscriber — definitive subscriber status from server (credential file check)
+    const handleAuthSubscriber = (data: { isSubscriber: boolean }) => {
+      useChatStore.getState().setIsSubscriber(data.isSubscriber);
+    };
+
     // Handle rateLimit:update — subscription rate limit polling from server
     const handleRateLimitUpdate = (data: SubscriptionRateLimit) => {
       useChatStore.getState().setSubscriptionRateLimit(data);
@@ -1414,6 +1429,7 @@ export function useStreaming() {
       useChatStore.getState().setApiHealth(data);
     };
 
+    socket.on('auth:subscriber', handleAuthSubscriber);
     socket.on('permission:mode-change', handlePermissionModeChange);
     socket.on('rateLimit:update', handleRateLimitUpdate);
     socket.on('apiHealth:update', handleApiHealthUpdate);
@@ -1468,6 +1484,7 @@ export function useStreaming() {
       socket.off('system:task-notification', handleTaskNotification);
       socket.off('tool:summary', handleToolSummary);
       socket.off('result:error', handleResultError);
+      socket.off('auth:subscriber', handleAuthSubscriber);
       socket.off('permission:mode-change', handlePermissionModeChange);
       socket.off('rateLimit:update', handleRateLimitUpdate);
       socket.off('apiHealth:update', handleApiHealthUpdate);

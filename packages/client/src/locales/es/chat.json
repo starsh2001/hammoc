@@ -283,19 +283,24 @@
     "openFile": "Abrir archivo: {{href}}"
   },
   "effort": {
+    "label": "Esfuerzo",
     "low": "Lo",
     "medium": "Med",
     "high": "Hi",
     "max": "Max",
     "tooltipFull": {
-      "low": "Bajo",
-      "medium": "Medio",
-      "high": "Alto",
-      "max": "Máximo"
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
     },
+    "default": "Default",
     "maxOpusOnly": "Max solo está disponible para Opus 4.6",
+    "maxSubscriberOnly": "Max no está disponible para suscriptores de Claude.ai",
+    "maxUnavailable": "Max N/D",
     "tooltip": "{{model}} · {{effort}}",
-    "selectorAria": "Nivel de esfuerzo de pensamiento: {{level}}"
+    "selectorAria": "Nivel de esfuerzo de pensamiento: {{level}}",
+    "groupAria": "Esfuerzo"
   },
   "model": {
     "defaultLabel": "Predeterminado",

@@ -146,6 +146,7 @@ interface InternalChainItem extends PromptChainItem {
   workingDirectory: string;
   permissionMode?: PermissionMode;
   model?: string;
+  effort?: ThinkingEffort;
 }
 const chainState = new Map<string, InternalChainItem[]>();
 // Per-session drain generation counter for race guard
@@ -274,7 +275,7 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
     if (!nextItem) { log.info(`[CHAIN-DRAIN] no pending item found, cleaning up: sessionId=${sessionId}`); cleanupChainIfIdle(sessionId); return; }
 
     // Use per-item execution context
-    const { workingDirectory, permissionMode, model } = nextItem;
+    const { workingDirectory, permissionMode, model, effort } = nextItem;
 
     // Mark item as 'sending' and broadcast (must happen before any await to prevent duplicate execution)
     nextItem.status = 'sending';
@@ -302,7 +303,7 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
       emitStreamChange(sessionId, true, sessionProjectMap.get(sessionId) ?? null);
       const drainSuccess = await handleChatSend(
         stream,
-        { content: nextItem.content, workingDirectory, sessionId, resume: chainResumableSessions.has(sessionId) || undefined, permissionMode, model },
+        { content: nextItem.content, workingDirectory, sessionId, resume: chainResumableSessions.has(sessionId) || undefined, permissionMode, model, effort },
         abortController,
         lang
       );
@@ -802,6 +803,9 @@ export async function initializeWebSocket(
       );
     }
 
+    // Send subscriber status immediately (credential file check, no network call)
+    socket.emit('auth:subscriber', { isSubscriber: rateLimitProbeService.hasOAuthCredentials() });
+
     // Send cached rate limit data immediately to newly connected client
     const cachedRateLimit = rateLimitProbeService.getCachedResult();
     if (cachedRateLimit) {
@@ -1208,7 +1212,7 @@ export async function initializeWebSocket(
     // Story 24.1: Prompt chain event handlers
     socket.on('chain:add', (data) => {
       if (!data || typeof data !== 'object') return;
-      const { sessionId, content, workingDirectory, permissionMode, model } = data;
+      const { sessionId, content, workingDirectory, permissionMode, model, effort } = data;
       const lang = socket.data.language || 'en';
       const t = i18next.getFixedT(lang);
 
@@ -1241,6 +1245,7 @@ export async function initializeWebSocket(
         workingDirectory,
         permissionMode,
         model,
+        effort,
       };
       items.push(item);
       chainState.set(sessionId, items);
@@ -1728,7 +1733,11 @@ async function handleChatSend(
       maxThinkingTokens: effectivePrefs.maxThinkingTokens,
       maxTurns: effectivePrefs.maxTurns,
       maxBudgetUsd: effectivePrefs.maxBudgetUsd,
-      effort: effort ?? effectivePrefs.defaultEffort,
+      // Strip 'max' effort for Claude.ai subscribers (CLI exits with code 1)
+      effort: (() => {
+        const e = effort ?? effectivePrefs.defaultEffort;
+        return (e === 'max' && rateLimitProbeService.hasOAuthCredentials()) ? 'high' : e;
+      })(),
     };
 
     // Create canUseTool callback for permission & AskUserQuestion handling

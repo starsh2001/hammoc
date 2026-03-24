@@ -287,19 +287,24 @@
     "openFile": "파일 열기: {{href}}"
   },
   "effort": {
+    "label": "사고 강도",
     "low": "Lo",
     "medium": "Med",
     "high": "Hi",
     "max": "Max",
     "tooltipFull": {
-      "low": "낮음",
-      "medium": "보통",
-      "high": "높음",
-      "max": "최대"
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
     },
+    "default": "Default",
     "maxOpusOnly": "Max는 Opus 4.6에서만 사용 가능합니다",
+    "maxSubscriberOnly": "Claude.ai 구독자는 Max를 사용할 수 없습니다",
+    "maxUnavailable": "Max 불가",
     "tooltip": "{{model}} · {{effort}}",
-    "selectorAria": "사고 노력 수준: {{level}}"
+    "selectorAria": "사고 노력 수준: {{level}}",
+    "groupAria": "노력 수준"
   },
   "model": {
     "defaultLabel": "기본",

@@ -287,6 +287,7 @@
     "openFile": "Open file: {{href}}"
   },
   "effort": {
+    "label": "Effort",
     "low": "Lo",
     "medium": "Med",
     "high": "Hi",
@@ -297,9 +298,13 @@
       "high": "High",
       "max": "Max"
     },
+    "default": "Default",
     "maxOpusOnly": "Max is available for Opus 4.6 only",
+    "maxSubscriberOnly": "Max is not available for Claude.ai subscribers",
+    "maxUnavailable": "Max N/A",
     "tooltip": "{{model}} · {{effort}}",
-    "selectorAria": "Thinking effort: {{level}}"
+    "selectorAria": "Thinking effort: {{level}}",
+    "groupAria": "Effort"
   },
   "model": {
     "defaultLabel": "Default",

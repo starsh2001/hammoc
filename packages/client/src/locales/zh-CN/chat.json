@@ -283,19 +283,24 @@
     "openFile": "打开文件：{{href}}"
   },
   "effort": {
+    "label": "强度",
     "low": "Lo",
     "medium": "Med",
     "high": "Hi",
     "max": "Max",
     "tooltipFull": {
-      "low": "低",
-      "medium": "中",
-      "high": "高",
-      "max": "最大"
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
     },
+    "default": "Default",
     "maxOpusOnly": "Max 仅适用于 Opus 4.6",
+    "maxSubscriberOnly": "Claude.ai 订阅用户无法使用 Max",
+    "maxUnavailable": "Max 不可用",
     "tooltip": "{{model}} · {{effort}}",
-    "selectorAria": "思考努力级别：{{level}}"
+    "selectorAria": "思考努力级别：{{level}}",
+    "groupAria": "努力级别"
   },
   "model": {
     "defaultLabel": "默认",

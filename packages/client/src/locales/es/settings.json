@@ -259,12 +259,27 @@
       "slash": "Abrir paleta de comandos de barra"
     }
   },
+  "account": {
+    "changePassword": "Cambiar contraseña",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Nueva contraseña",
+    "confirmNewPassword": "Confirmar nueva contraseña",
+    "passwordMismatch": "Las nuevas contraseñas no coinciden.",
+    "changePasswordButton": "Cambiar contraseña",
+    "changing": "Cambiando...",
+    "changeSuccess": "Contraseña cambiada. Inicie sesión de nuevo.",
+    "changeFailed": "Error al cambiar la contraseña.",
+    "session": "Sesión",
+    "logout": "Cerrar sesión",
+    "logoutDesc": "Cerrar sesión en este dispositivo."
+  },
   "tabs": {
     "global": "Configuración global",
     "project": "Configuración del proyecto",
     "telegram": "Notificaciones de Telegram",
     "notifications": "Notificaciones",
     "advanced": "Configuración avanzada",
+    "account": "Cuenta",
     "help": "Ayuda",
     "about": "Acerca de"
   },

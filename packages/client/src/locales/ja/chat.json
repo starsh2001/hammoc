@@ -283,19 +283,24 @@
     "openFile": "ファイルを開く：{{href}}"
   },
   "effort": {
+    "label": "努力",
     "low": "Lo",
     "medium": "Med",
     "high": "Hi",
     "max": "Max",
     "tooltipFull": {
-      "low": "低",
-      "medium": "中",
-      "high": "高",
-      "max": "最大"
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
     },
+    "default": "Default",
     "maxOpusOnly": "MaxはOpus 4.6でのみ使用可能です",
+    "maxSubscriberOnly": "Claude.aiサブスクライバーはMaxを使用できません",
+    "maxUnavailable": "Max 不可",
     "tooltip": "{{model}} · {{effort}}",
-    "selectorAria": "思考努力レベル: {{level}}"
+    "selectorAria": "思考努力レベル: {{level}}",
+    "groupAria": "努力レベル"
   },
   "model": {
     "defaultLabel": "デフォルト",
