@@ -8,11 +8,26 @@ import { Request, Response } from 'express';
 import { SESSION_ERRORS } from '@hammoc/shared';
 
 // Create hoisted mocks
-const { mockListSessionsBySlug, mockIsValidPathParam, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds } = vi.hoisted(() => ({
+const {
+  mockListSessionsBySlug,
+  mockIsValidPathParam,
+  mockReadSessionNamesBySlug,
+  mockGetActiveStreamSessionIds,
+  mockGetSessionMessages,
+  mockGetStreamStartedAt,
+  mockGetRunningStreamStartedAt,
+  mockGetCompletedBuffer,
+  mockTransformBufferToHistoryMessages,
+} = vi.hoisted(() => ({
   mockListSessionsBySlug: vi.fn(),
   mockIsValidPathParam: vi.fn(() => true),
   mockReadSessionNamesBySlug: vi.fn(),
   mockGetActiveStreamSessionIds: vi.fn(),
+  mockGetSessionMessages: vi.fn(),
+  mockGetStreamStartedAt: vi.fn(),
+  mockGetRunningStreamStartedAt: vi.fn(),
+  mockGetCompletedBuffer: vi.fn(),
+  mockTransformBufferToHistoryMessages: vi.fn(),
 }));
 
 // Mock sessionService
@@ -20,6 +35,7 @@ vi.mock('../../services/sessionService', () => ({
   sessionService: {
     listSessionsBySlug: mockListSessionsBySlug,
     isValidPathParam: mockIsValidPathParam,
+    getSessionMessages: mockGetSessionMessages,
   },
 }));
 
@@ -33,6 +49,14 @@ vi.mock('../../services/projectService', () => ({
 // Mock websocket handler
 vi.mock('../../handlers/websocket', () => ({
   getActiveStreamSessionIds: mockGetActiveStreamSessionIds,
+  getStreamStartedAt: mockGetStreamStartedAt,
+  getRunningStreamStartedAt: mockGetRunningStreamStartedAt,
+  getCompletedBuffer: mockGetCompletedBuffer,
+}));
+
+// Mock historyParser
+vi.mock('../../services/historyParser', () => ({
+  transformBufferToHistoryMessages: mockTransformBufferToHistoryMessages,
 }));
 
 import { sessionController } from '../sessionController';
@@ -60,6 +84,10 @@ describe('sessionController', () => {
     mockIsValidPathParam.mockReturnValue(true);
     mockGetActiveStreamSessionIds.mockReturnValue([]);
     mockReadSessionNamesBySlug.mockResolvedValue({});
+    mockGetStreamStartedAt.mockReturnValue(undefined);
+    mockGetRunningStreamStartedAt.mockReturnValue(undefined);
+    mockGetCompletedBuffer.mockReturnValue(undefined);
+    mockTransformBufferToHistoryMessages.mockReturnValue([]);
   });
 
   afterEach(() => {
@@ -199,6 +227,131 @@ describe('sessionController', () => {
 
       expect(mockRes.status).toHaveBeenCalledWith(SESSION_ERRORS.INVALID_PATH.httpStatus);
       expect(mockListSessionsBySlug).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getMessages - buffer merge pagination', () => {
+    // Helper to create a mock message
+    const makeMsg = (id: string, ts: string) => ({
+      id,
+      type: 'assistant' as const,
+      content: `msg-${id}`,
+      timestamp: ts,
+    });
+
+    beforeEach(() => {
+      mockReq.params = { projectSlug: 'test-project', sessionId: 'sess-1' };
+      mockReq.query = { limit: '5' };
+    });
+
+    it('should keep hasMore false when buffer merge stays under limit', async () => {
+      // Service returns 3 messages (under limit=5), no more pages
+      mockGetSessionMessages.mockResolvedValue({
+        messages: [
+          makeMsg('1', '2026-01-01T00:01:00Z'),
+          makeMsg('2', '2026-01-01T00:02:00Z'),
+          makeMsg('3', '2026-01-01T00:03:00Z'),
+        ],
+        pagination: { total: 3, limit: 5, offset: 0, hasMore: false },
+        lastAgentCommand: null,
+      });
+
+      // Buffer adds 1 unique message → total=4, still under limit
+      mockGetCompletedBuffer.mockReturnValue([{ event: 'done', data: {}, ts: 0 }]);
+      mockTransformBufferToHistoryMessages.mockReturnValue([
+        makeMsg('4', '2026-01-01T00:04:00Z'),
+      ]);
+
+      await sessionController.getMessages(mockReq as Request, mockRes as Response);
+
+      const result = (mockRes.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(result.pagination.total).toBe(4);
+      expect(result.pagination.hasMore).toBe(false);
+      expect(result.messages).toHaveLength(4);
+    });
+
+    it('should set hasMore true and trim messages when buffer merge exceeds limit', async () => {
+      // Service returns 4 messages (under limit=5)
+      mockGetSessionMessages.mockResolvedValue({
+        messages: [
+          makeMsg('1', '2026-01-01T00:01:00Z'),
+          makeMsg('2', '2026-01-01T00:02:00Z'),
+          makeMsg('3', '2026-01-01T00:03:00Z'),
+          makeMsg('4', '2026-01-01T00:04:00Z'),
+        ],
+        pagination: { total: 4, limit: 5, offset: 0, hasMore: false },
+        lastAgentCommand: null,
+      });
+
+      // Buffer adds 3 unique messages → total=7, exceeds limit=5
+      mockGetCompletedBuffer.mockReturnValue([{ event: 'done', data: {}, ts: 0 }]);
+      mockTransformBufferToHistoryMessages.mockReturnValue([
+        makeMsg('5', '2026-01-01T00:05:00Z'),
+        makeMsg('6', '2026-01-01T00:06:00Z'),
+        makeMsg('7', '2026-01-01T00:07:00Z'),
+      ]);
+
+      await sessionController.getMessages(mockReq as Request, mockRes as Response);
+
+      const result = (mockRes.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(result.pagination.total).toBe(7);
+      expect(result.pagination.hasMore).toBe(true);
+      expect(result.messages).toHaveLength(5); // trimmed to limit
+      // Should keep the latest 5 messages (ids 3-7)
+      expect(result.messages[0].id).toBe('3');
+      expect(result.messages[4].id).toBe('7');
+    });
+
+    it('should not count duplicate buffer messages in total', async () => {
+      // Service returns 3 messages
+      mockGetSessionMessages.mockResolvedValue({
+        messages: [
+          makeMsg('1', '2026-01-01T00:01:00Z'),
+          makeMsg('2', '2026-01-01T00:02:00Z'),
+          makeMsg('3', '2026-01-01T00:03:00Z'),
+        ],
+        pagination: { total: 3, limit: 5, offset: 0, hasMore: false },
+        lastAgentCommand: null,
+      });
+
+      // Buffer contains 2 messages but 1 is a duplicate (id=3)
+      mockGetCompletedBuffer.mockReturnValue([{ event: 'done', data: {}, ts: 0 }]);
+      mockTransformBufferToHistoryMessages.mockReturnValue([
+        makeMsg('3', '2026-01-01T00:03:00Z'), // duplicate
+        makeMsg('4', '2026-01-01T00:04:00Z'), // unique
+      ]);
+
+      await sessionController.getMessages(mockReq as Request, mockRes as Response);
+
+      const result = (mockRes.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(result.pagination.total).toBe(4); // only 1 unique added
+      expect(result.pagination.hasMore).toBe(false);
+      expect(result.messages).toHaveLength(4);
+    });
+
+    it('should not merge buffer when offset is non-zero', async () => {
+      mockReq.query = { limit: '5', offset: '5' };
+
+      mockGetSessionMessages.mockResolvedValue({
+        messages: [
+          makeMsg('1', '2026-01-01T00:01:00Z'),
+          makeMsg('2', '2026-01-01T00:02:00Z'),
+        ],
+        pagination: { total: 10, limit: 5, offset: 5, hasMore: false },
+        lastAgentCommand: null,
+      });
+
+      // Buffer exists but should NOT be merged for offset > 0
+      mockGetCompletedBuffer.mockReturnValue([{ event: 'done', data: {}, ts: 0 }]);
+      mockTransformBufferToHistoryMessages.mockReturnValue([
+        makeMsg('99', '2026-01-01T00:99:00Z'),
+      ]);
+
+      await sessionController.getMessages(mockReq as Request, mockRes as Response);
+
+      const result = (mockRes.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(result.messages).toHaveLength(2); // no merge
+      expect(result.pagination.total).toBe(10); // unchanged
     });
   });
 });

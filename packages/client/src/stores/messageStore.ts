@@ -23,6 +23,8 @@ interface MessageState {
   isLoadingMore: boolean;
   error: string | null;
   pagination: PaginationInfo | null;
+  /** True when fetchMoreMessages has loaded all older messages (hasMore became false) */
+  allMessagesLoaded: boolean;
   /** Last slash command from full session history (server-provided, survives pagination) */
   lastAgentCommand: string | null;
 }
@@ -147,6 +149,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
   isLoadingMore: false,
   error: null,
   pagination: null,
+  allMessagesLoaded: false,
   lastAgentCommand: null,
 
   // Actions
@@ -165,7 +168,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
 
     // Clear if switching session
     if (!isSameSession) {
-      set({ messages: [], pagination: null });
+      set({ messages: [], pagination: null, allMessagesLoaded: false });
     }
 
     // Only show loading for session switch, not for silent refresh
@@ -308,6 +311,38 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         }
       }
 
+      // When all older messages were already loaded via "load more" and server
+      // returns a smaller set (latest page only, offset=0), upsert-merge server
+      // messages into the existing set instead of replacing — prevents 500+
+      // messages being trimmed to 50 on socket reconnect or mobile resume.
+      if (get().allMessagesLoaded && isSameSession) {
+        const serverById = new Map(response.messages.map(m => [m.id, m]));
+        // Upsert: update existing messages with server versions, keep others as-is
+        const merged = currentMessages.map(m => serverById.get(m.id) ?? m);
+        // Append truly new messages (IDs not in existing set)
+        const existingIds = new Set(currentMessages.map(m => m.id));
+        const newMsgs = response.messages.filter(m => !existingIds.has(m.id));
+        if (newMsgs.length > 0) {
+          merged.push(...newMsgs);
+          merged.sort((a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+        }
+        debugLog.message('fetchMessages → allMessagesLoaded merge', {
+          existingCount: currentMessages.length,
+          serverCount: response.messages.length,
+          newCount: newMsgs.length,
+          mergedCount: merged.length,
+        });
+        set({
+          messages: merged,
+          pagination: { ...response.pagination, hasMore: false },
+          lastAgentCommand: response.lastAgentCommand ?? get().lastAgentCommand,
+          isLoading: false,
+        });
+        return;
+      }
+
       debugLog.message('DEDUP fetchMessages → setting messages', {
         serverCount: response.messages.length,
         reconciledCount: reconciledMessages.length,
@@ -315,9 +350,15 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         isStreaming: useChatStore.getState().isStreaming,
         segCount: useChatStore.getState().streamingSegments.length,
       });
+      // If user already loaded all older messages via "load more", preserve
+      // hasMore=false so the button doesn't reappear on background re-fetches.
+      const pagination = get().allMessagesLoaded
+        ? { ...response.pagination, hasMore: false }
+        : response.pagination;
+
       set({
         messages: reconciledMessages,
-        pagination: response.pagination,
+        pagination,
         lastAgentCommand: response.lastAgentCommand ?? null,
         isLoading: false,
       });
@@ -361,6 +402,8 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         pagination: response.pagination,
         lastAgentCommand: response.lastAgentCommand ?? get().lastAgentCommand,
         isLoadingMore: false,
+        // Mark all messages loaded when server says no more older messages
+        allMessagesLoaded: !response.pagination.hasMore || get().allMessagesLoaded,
       });
     } catch {
       set({ isLoadingMore: false });
@@ -376,6 +419,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       currentProjectSlug: null,
       currentSessionId: null,
       pagination: null,
+      allMessagesLoaded: false,
       lastAgentCommand: null,
       error: null,
     });
