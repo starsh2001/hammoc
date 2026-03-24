@@ -8,6 +8,7 @@ import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { usePreferencesStore } from '../../stores/preferencesStore';
+import { usePanelStore } from '../../stores/panelStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useTheme, type Theme } from '../../hooks/useTheme';
 import { MODEL_GROUPS } from '../ModelSelector';
@@ -98,7 +99,7 @@ export function GlobalSettingsSection() {
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${theme === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
+                  : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -134,7 +135,7 @@ export function GlobalSettingsSection() {
           id="default-model"
           value={preferences.defaultModel ?? ''}
           onChange={(e) => handleModelChange(e.target.value)}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                      bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
@@ -166,7 +167,7 @@ export function GlobalSettingsSection() {
             updatePreference('defaultEffort', val === '' ? undefined : val as ThinkingEffort);
             toast.success(t('toast.settingChanged', { label: t('advanced.defaultEffort') }));
           }}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                      bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
@@ -194,7 +195,7 @@ export function GlobalSettingsSection() {
           id="language"
           value={preferences.language ?? i18n.language ?? 'en'}
           onChange={(e) => handleLanguageChange(e.target.value)}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                      bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
@@ -225,7 +226,7 @@ export function GlobalSettingsSection() {
                 flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                 ${permissionModePref === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240]'
+                  : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -280,7 +281,7 @@ export function GlobalSettingsSection() {
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.permissionSyncPolicy === 'always' ? 'always' : 'streaming') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
+                  : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -317,7 +318,7 @@ export function GlobalSettingsSection() {
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.markdownDefaultMode ?? 'edit') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
+                  : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -358,7 +359,7 @@ export function GlobalSettingsSection() {
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.fileExplorerViewMode ?? 'grid') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
+                  : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -399,7 +400,7 @@ export function GlobalSettingsSection() {
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.panelDefaultOpen !== false) === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
+                  : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -439,7 +440,7 @@ export function GlobalSettingsSection() {
                 flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.panelDefaultSide ?? 'right') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-300 dark:border-[#2d3a4a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
+                  : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
             >
@@ -450,6 +451,7 @@ export function GlobalSettingsSection() {
                 checked={(preferences.panelDefaultSide ?? 'right') === opt.value}
                 onChange={() => {
                   updatePreference('panelDefaultSide', opt.value);
+                  usePanelStore.getState().setPanelSide(opt.value);
                   toast.success(t('toast.settingSaved'));
                 }}
                 className="sr-only"
@@ -482,7 +484,7 @@ export function GlobalSettingsSection() {
           onChange={(e) => handleTimeoutChange(Number(e.target.value))}
           disabled={isOverridden('chatTimeoutMs')}
           aria-disabled={isOverridden('chatTimeoutMs')}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                      bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500
                      disabled:opacity-50 disabled:cursor-not-allowed"
