@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { toast } from 'sonner';
-import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus } from '@hammoc/shared';
+import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus, ThinkingEffort } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { useChainStore } from './chainStore';
@@ -158,6 +158,8 @@ interface ChatState {
   lastResultError: ResultErrorData | null;
   /** Selected model for next message */
   selectedModel: string;
+  /** Selected thinking effort for next message */
+  selectedEffort: ThinkingEffort | undefined;
   /** Actual model reported by SDK (from session init) */
   activeModel: string | null;
   /** Global thinking blocks expanded state (all blocks share this) */
@@ -267,6 +269,10 @@ interface ChatActions {
   setSelectedModel: (model: string) => void;
   /** Reset selected model to user's default preference */
   resetSelectedModel: () => void;
+  /** Set thinking effort for next message */
+  setSelectedEffort: (effort: ThinkingEffort | undefined) => void;
+  /** Reset selected effort to user's default preference */
+  resetSelectedEffort: () => void;
   /** Reset permission mode to user's default preference */
   resetPermissionMode: () => void;
   /** Set active model reported by SDK */
@@ -288,6 +294,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingStartedAt: null,
   lastResultError: null,
   selectedModel: '',
+  selectedEffort: undefined,
   activeModel: null,
   thinkingExpanded: false,
   isCompacting: false,
@@ -378,6 +385,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         data: a.data,
         name: a.name,
       })),
+      ...(get().selectedEffort ? { effort: get().selectedEffort } : {}),
     });
   },
 
@@ -927,6 +935,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const globalDefault = usePreferencesStore.getState().preferences.defaultModel || '';
     const effectiveDefault = projectSettings?.modelOverride ?? globalDefault;
     set({ selectedModel: effectiveDefault });
+  },
+
+  setSelectedEffort: (effort: ThinkingEffort | undefined) => set({ selectedEffort: effort }),
+
+  resetSelectedEffort: () => {
+    const defaultEffort = usePreferencesStore.getState().preferences.defaultEffort;
+    set({ selectedEffort: defaultEffort });
   },
 
   resetPermissionMode: () => {

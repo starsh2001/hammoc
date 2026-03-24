@@ -286,6 +286,21 @@
   "markdown": {
     "openFile": "파일 열기: {{href}}"
   },
+  "effort": {
+    "low": "Lo",
+    "medium": "Med",
+    "high": "Hi",
+    "max": "Max",
+    "tooltipFull": {
+      "low": "낮음",
+      "medium": "보통",
+      "high": "높음",
+      "max": "최대"
+    },
+    "maxOpusOnly": "Max는 Opus 4.6에서만 사용 가능합니다",
+    "tooltip": "{{model}} · {{effort}}",
+    "selectorAria": "사고 노력 수준: {{level}}"
+  },
   "model": {
     "defaultLabel": "기본",
     "aliases": "별칭 (최신)",

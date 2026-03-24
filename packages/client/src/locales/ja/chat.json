@@ -282,6 +282,21 @@
   "markdown": {
     "openFile": "ファイルを開く：{{href}}"
   },
+  "effort": {
+    "low": "Lo",
+    "medium": "Med",
+    "high": "Hi",
+    "max": "Max",
+    "tooltipFull": {
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "max": "最大"
+    },
+    "maxOpusOnly": "MaxはOpus 4.6でのみ使用可能です",
+    "tooltip": "{{model}} · {{effort}}",
+    "selectorAria": "思考努力レベル: {{level}}"
+  },
   "model": {
     "defaultLabel": "デフォルト",
     "aliases": "エイリアス（最新）",

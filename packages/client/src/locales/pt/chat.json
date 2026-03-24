@@ -282,6 +282,21 @@
   "markdown": {
     "openFile": "Abrir arquivo: {{href}}"
   },
+  "effort": {
+    "low": "Lo",
+    "medium": "Med",
+    "high": "Hi",
+    "max": "Max",
+    "tooltipFull": {
+      "low": "Baixo",
+      "medium": "Médio",
+      "high": "Alto",
+      "max": "Máximo"
+    },
+    "maxOpusOnly": "Max está disponível apenas para Opus 4.6",
+    "tooltip": "{{model}} · {{effort}}",
+    "selectorAria": "Nível de esforço de pensamento: {{level}}"
+  },
   "model": {
     "defaultLabel": "Padrão",
     "aliases": "Aliases (mais recentes)",
