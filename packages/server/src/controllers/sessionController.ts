@@ -152,6 +152,11 @@ export const sessionController = {
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
           );
           response.pagination.total += unique.length;
+          // Re-paginate: keep only latest `limit` messages and recalculate hasMore
+          if (response.messages.length > limit) {
+            response.messages = response.messages.slice(-limit);
+          }
+          response.pagination.hasMore = response.pagination.total > response.messages.length;
         }
       }
 
