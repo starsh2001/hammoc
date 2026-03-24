@@ -135,7 +135,7 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
   const isCompleted = phase.phase === 'completed';
 
   return (
-    <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5">
+    <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-300 dark:border-[#3a4d5e] p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-white">
           {isCompleted ? t('nextSteps.title') : t('nextSteps.tasks')}
@@ -162,7 +162,7 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
       </div>
 
       {/* Quick links */}
-      <div className="mt-4 pt-3 border-t border-gray-200 dark:border-[#253040] flex items-center gap-3">
+      <div className="mt-4 pt-3 border-t border-gray-300 dark:border-[#3a4d5e] flex items-center gap-3">
         <button
           onClick={handleNewSession}
           className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 cursor-pointer"

@@ -192,7 +192,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
         tabIndex={-1}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[#253040]">
+        <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-[#3a4d5e]">
           <h2
             id="new-project-title"
             className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2"
@@ -231,7 +231,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                   ? 'C:\\Users\\user\\my-project'
                   : '/Users/user/my-project'
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-[#2d3a4a] rounded-lg
+              className="w-full px-3 py-2 border border-gray-300 dark:border-[#455568] rounded-lg
                          bg-white dark:bg-[#253040] text-gray-900 dark:text-white
                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
                          min-h-[44px]"
@@ -316,7 +316,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                     id="bmad-version"
                     value={selectedVersion}
                     onChange={(e) => setSelectedVersion(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-[#2d3a4a] rounded-lg
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-[#455568] rounded-lg
                                bg-white dark:bg-[#253040] text-gray-900 dark:text-white
                                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={isCreating}
@@ -338,7 +338,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-[#253040]">
+        <div className="flex justify-end gap-2 p-4 border-t border-gray-300 dark:border-[#3a4d5e]">
           <button
             onClick={handleCancel}
             className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] rounded-lg

@@ -838,7 +838,7 @@ export function ChatInput({
                 <img
                   src={attachment.preview}
                   alt={attachment.name}
-                  className="w-16 h-16 object-cover rounded border border-gray-300 dark:border-[#2d3a4a]"
+                  className="w-16 h-16 object-cover rounded border border-gray-300 dark:border-[#455568]"
                   onError={(e) => {
                     const target = e.currentTarget;
                     target.style.display = 'none';
@@ -847,7 +847,7 @@ export function ChatInput({
                   }}
                 />
                 <div
-                  className="w-16 h-16 rounded border border-gray-300 dark:border-[#2d3a4a] items-center justify-center text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-[#253040] p-1 text-center break-all"
+                  className="w-16 h-16 rounded border border-gray-300 dark:border-[#455568] items-center justify-center text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-[#253040] p-1 text-center break-all"
                   style={{ display: 'none' }}
                 >
                   {attachment.name}
@@ -983,7 +983,7 @@ export function ChatInput({
           className={`relative flex items-center rounded-lg transition-colors duration-150
                      ${chainMode
                        ? 'bg-violet-50 dark:bg-violet-950/30 border border-violet-300 dark:border-violet-700 focus-within:ring-2 focus-within:ring-violet-500 dark:focus-within:ring-violet-400'
-                       : `bg-white dark:bg-[#263240] border border-gray-300 dark:border-[#2d3a4a] focus-within:ring-2 ${modeColors.ring} ${modeColors.border}`}`}
+                       : `bg-white dark:bg-[#263240] border border-gray-300 dark:border-[#455568] focus-within:ring-2 ${modeColors.ring} ${modeColors.border}`}`}
           onClick={() => { if (!isTouchDevice) textareaRef.current?.focus(); }}
         >
           <textarea

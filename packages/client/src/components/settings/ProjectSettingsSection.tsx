@@ -181,7 +181,7 @@ export function ProjectSettingsSection() {
           value={selectedProjectSlug}
           onChange={(e) => setSelectedProjectSlug(e.target.value)}
           disabled={updating}
-          className="w-full max-w-md px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+          className="w-full max-w-md px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                      bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500
                      disabled:opacity-50 disabled:cursor-not-allowed"
@@ -237,7 +237,7 @@ export function ProjectSettingsSection() {
               value={modelSelectValue}
               onChange={(e) => handleModelChange(e.target.value)}
               disabled={updating}
-              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                          bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                          focus:outline-none focus:ring-2 focus:ring-blue-500
                          disabled:opacity-50 disabled:cursor-not-allowed"
@@ -274,7 +274,7 @@ export function ProjectSettingsSection() {
                   flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                   ${permissionValue === GLOBAL_SENTINEL
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240]'
+                    : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
                   }
                 `}
               >
@@ -311,7 +311,7 @@ export function ProjectSettingsSection() {
                     flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                     ${permissionValue === opt.value
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240]'
+                      : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
                     }
                   `}
                 >
@@ -360,7 +360,7 @@ export function ProjectSettingsSection() {
                 checked={settings.hidden ?? false}
                 onChange={handleHiddenChange}
                 disabled={updating}
-                className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+                className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                            text-blue-600 focus:ring-blue-500"
               />
               <span className="text-sm text-gray-900 dark:text-white">
@@ -370,7 +370,7 @@ export function ProjectSettingsSection() {
           </div>
 
           {/* Reset to Global Defaults */}
-          <div className="pt-4 border-t border-gray-200 dark:border-[#253040]">
+          <div className="pt-4 border-t border-gray-300 dark:border-[#3a4d5e]">
             <button
               type="button"
               onClick={handleResetAll}

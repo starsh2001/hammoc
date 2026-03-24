@@ -105,7 +105,7 @@ export function SessionQuickAccessPanel({
             onChange={(e) => handleSearchChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t('session.searchPlaceholder')}
-            className="w-full pl-8 pr-7 py-1.5 text-sm bg-gray-100 dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-8 pr-7 py-1.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 bg-gray-100 dark:bg-[#263240] border border-gray-300 dark:border-[#3a4d5e] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             aria-label={t('session.searchPlaceholder')}
             autoFocus={autoFocusSearch}
             data-testid="search-input"
@@ -149,8 +149,8 @@ export function SessionQuickAccessPanel({
                   className={`w-full text-left p-3 rounded-lg border transition-colors
                     focus:outline-none focus:ring-2 focus:ring-blue-500
                     ${isCurrent
-                      ? 'border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20 border-gray-200 dark:border-[#253040]'
-                      : 'border-gray-200 dark:border-[#253040] hover:border-blue-500 dark:hover:border-blue-400'
+                      ? 'border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20 border-gray-300 dark:border-[#3a4d5e]'
+                      : 'border-gray-300 dark:border-[#3a4d5e] hover:border-blue-500 dark:hover:border-blue-400'
                     }`}
                   data-testid={`session-item-${session.sessionId}`}
                   aria-current={isCurrent ? 'true' : undefined}

@@ -42,7 +42,7 @@ function BmadSkeleton() {
       </div>
 
       {/* NextStepRecommender skeleton */}
-      <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5 space-y-3">
+      <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-300 dark:border-[#3a4d5e] p-5 space-y-3">
         <div className="h-5 w-36 bg-gray-200 dark:bg-[#253040] rounded" />
         <div className="h-4 w-full bg-gray-200 dark:bg-[#253040] rounded" />
         <div className="h-4 w-2/3 bg-gray-200 dark:bg-[#253040] rounded" />
@@ -53,7 +53,7 @@ function BmadSkeleton() {
         {Array.from({ length: 2 }).map((_, i) => (
           <div
             key={i}
-            className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5 space-y-4"
+            className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-300 dark:border-[#3a4d5e] p-5 space-y-4"
           >
             <div className="h-5 w-32 bg-gray-200 dark:bg-[#253040] rounded" />
             <div className="space-y-2">
@@ -217,7 +217,7 @@ export function BmadOverview() {
             projectSlug={projectSlug}
           />
           {/* Visual separator between BMad and general sections */}
-          <div className="mx-6 border-t border-gray-200 dark:border-[#253040]" />
+          <div className="mx-6 border-t border-gray-300 dark:border-[#3a4d5e]" />
         </>
       )}
       <ProjectOverviewPage quickActionsSlot={quickActionsSlot} />

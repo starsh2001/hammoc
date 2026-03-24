@@ -167,7 +167,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-[#253040] flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-300 dark:border-[#3a4d5e] flex-shrink-0">
         <div className="flex items-center gap-3">
           {/* Shell info */}
           {activeSession && (
@@ -229,7 +229,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
         <div
           ref={tabsRef}
           role="tablist"
-          className="flex items-center gap-1 px-2 py-1 border-b border-gray-200 dark:border-[#253040] flex-shrink-0 overflow-x-auto"
+          className="flex items-center gap-1 px-2 py-1 border-b border-gray-300 dark:border-[#3a4d5e] flex-shrink-0 overflow-x-auto"
           onKeyDown={handleTabKeyDown}
         >
           {terminalEntries.map(([id, session]) => {

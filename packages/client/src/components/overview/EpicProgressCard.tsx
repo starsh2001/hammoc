@@ -57,7 +57,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
     <div
       role="region"
       aria-label={t('epic.progressTitle')}
-      className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5"
+      className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-300 dark:border-[#3a4d5e] p-5"
     >
       <div className="flex items-center gap-2 mb-4">
         <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-300" />

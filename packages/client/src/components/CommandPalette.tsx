@@ -99,7 +99,7 @@ export function CommandPalette({
       <div
         data-testid="command-palette"
         className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-[#263240]
-                   border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg
+                   border border-gray-300 dark:border-[#3a4d5e] rounded-lg shadow-lg
                    max-h-[300px] overflow-y-auto z-50"
       >
         <p className="text-center text-gray-500 dark:text-gray-300 text-sm py-4">
@@ -117,7 +117,7 @@ export function CommandPalette({
       aria-label={t('command.slashListAria')}
       data-testid="command-palette"
       className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-[#263240]
-                 border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg
+                 border border-gray-300 dark:border-[#3a4d5e] rounded-lg shadow-lg
                  max-h-[300px] overflow-y-auto z-50 py-1"
     >
       {Array.from(grouped.entries()).map(([category, cmds]) => (

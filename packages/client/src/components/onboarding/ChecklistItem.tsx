@@ -65,7 +65,7 @@ export function ChecklistItem({
 
   return (
     <div
-      className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 dark:border-[#253040] bg-white dark:bg-[#263240] transition-all duration-200 hover:shadow-sm"
+      className="flex items-start gap-3 p-4 rounded-lg border border-gray-300 dark:border-[#3a4d5e] bg-white dark:bg-[#263240] transition-all duration-200 hover:shadow-sm"
       role="listitem"
       aria-label={`${item.label}: ${getStatusText()}`}
     >

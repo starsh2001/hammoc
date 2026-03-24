@@ -77,7 +77,7 @@ export function PendingToolsIndicator({ segments }: { segments: StreamingSegment
   };
 
   return (
-    <div className="flex-shrink-0 border-t border-gray-200 dark:border-[#253040] bg-gray-50/80 dark:bg-[#1e2a35]/90 backdrop-blur-sm">
+    <div className="flex-shrink-0 border-t border-gray-300 dark:border-[#3a4d5e] bg-gray-50/80 dark:bg-[#1e2a35]/90 backdrop-blur-sm">
       <div className="content-container px-4 py-1.5 flex flex-col gap-1">
         {visible.map((tool) => {
           const Icon = getToolIcon(tool.name);

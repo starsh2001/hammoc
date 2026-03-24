@@ -5,7 +5,7 @@
 
 export function SessionListItemSkeleton() {
   return (
-    <div className="w-full p-4 bg-gray-50 dark:bg-[#263240] rounded-lg border border-gray-200 dark:border-[#253040] animate-pulse">
+    <div className="w-full p-4 bg-gray-50 dark:bg-[#263240] rounded-lg border border-gray-300 dark:border-[#3a4d5e] animate-pulse">
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           {/* Name badge + session ID row */}

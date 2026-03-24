@@ -377,7 +377,7 @@ export function ProjectBoardPage() {
               {Array.from({ length: 2 }).map((_, j) => (
                 <div
                   key={j}
-                  className="p-3 bg-gray-50 dark:bg-[#263240] rounded-lg border border-gray-200 dark:border-[#253040] space-y-2"
+                  className="p-3 bg-gray-50 dark:bg-[#263240] rounded-lg border border-gray-300 dark:border-[#3a4d5e] space-y-2"
                 >
                   <div className="h-4 w-3/4 bg-gray-200 dark:bg-[#253040] rounded" />
                   <div className="flex items-center gap-2">
@@ -442,7 +442,7 @@ export function ProjectBoardPage() {
 
           {/* Visible columns stepper (kanban mode only) */}
           {viewMode === 'kanban' && !isMobile && (
-            <div className="flex items-center gap-1 ml-2 border-l border-gray-200 dark:border-[#253040] pl-2">
+            <div className="flex items-center gap-1 ml-2 border-l border-gray-300 dark:border-[#3a4d5e] pl-2">
               <button
                 onClick={() => setVisibleColumns(visibleColumns - 1)}
                 disabled={visibleColumns <= 2}

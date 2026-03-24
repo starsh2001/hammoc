@@ -136,7 +136,7 @@ export function ProjectTabLayout() {
               {overflowMenuOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#263240] rounded-lg shadow-lg border border-gray-200 dark:border-[#253040] z-50 py-1"
+                  className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#263240] rounded-lg shadow-lg border border-gray-300 dark:border-[#3a4d5e] z-50 py-1"
                 >
                   <button
                     role="menuitem"
@@ -146,7 +146,7 @@ export function ProjectTabLayout() {
                     <RefreshCw className="w-4 h-4" />
                     {t('layout.refresh')}
                   </button>
-                  <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
+                  <div className="border-t border-gray-300 dark:border-[#3a4d5e] my-1" />
                   <button
                     role="menuitem"
                     onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }}
@@ -183,7 +183,7 @@ export function ProjectTabLayout() {
                     ? 'border-transparent opacity-50 cursor-not-allowed text-gray-500 dark:text-gray-400'
                     : isActive
                     ? 'border-blue-300 text-blue-200 dark:text-blue-400'
-                    : 'border-transparent text-white/50 dark:text-gray-300 hover:text-white/80 dark:hover:text-gray-300 hover:border-white/30 dark:hover:border-[#2d3a4a]'
+                    : 'border-transparent text-white/50 dark:text-gray-300 hover:text-white/80 dark:hover:text-gray-300 hover:border-white/30 dark:hover:border-[#455568]'
                 }`}
                 aria-current={isActive ? 'page' : undefined}
                 aria-disabled={isDisabled || undefined}

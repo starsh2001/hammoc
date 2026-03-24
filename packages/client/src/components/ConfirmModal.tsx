@@ -91,7 +91,7 @@ export function ConfirmModal({
         className="relative w-full max-w-sm mx-4 bg-white dark:bg-[#263240] rounded-lg shadow-xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[#253040]">
+        <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-[#3a4d5e]">
           <h2
             id="confirm-modal-title"
             className="text-lg font-semibold text-gray-900 dark:text-gray-100"
@@ -120,7 +120,7 @@ export function ConfirmModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-[#253040]">
+        <div className="flex justify-end gap-2 p-4 border-t border-gray-300 dark:border-[#3a4d5e]">
           <button
             type="button"
             onClick={onCancel}

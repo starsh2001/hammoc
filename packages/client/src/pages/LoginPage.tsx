@@ -119,7 +119,7 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               disabled={isDisabled}
               autoFocus
-              className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d3a4a] rounded-md
+              className="w-full px-4 py-2 border border-gray-300 dark:border-[#455568] rounded-md
                          bg-white dark:bg-[#253040] text-gray-900 dark:text-white
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent
                          disabled:opacity-50 disabled:cursor-not-allowed"
@@ -142,7 +142,7 @@ export function LoginPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isDisabled}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d3a4a] rounded-md
+                className="w-full px-4 py-2 border border-gray-300 dark:border-[#455568] rounded-md
                            bg-white dark:bg-[#253040] text-gray-900 dark:text-white
                            focus:ring-2 focus:ring-blue-500 focus:border-transparent
                            disabled:opacity-50 disabled:cursor-not-allowed"
@@ -168,7 +168,7 @@ export function LoginPage() {
                   aria-describedby="rememberMe-description"
                   className="w-4 h-4 text-blue-500 border-gray-300 rounded
                              focus:ring-blue-500 focus:ring-2 focus:ring-offset-2
-                             dark:border-[#2d3a4a] dark:bg-[#253040]
+                             dark:border-[#455568] dark:bg-[#253040]
                              dark:focus:ring-blue-600 dark:focus:ring-offset-[#263240]
                              disabled:opacity-50 disabled:cursor-not-allowed"
                 />

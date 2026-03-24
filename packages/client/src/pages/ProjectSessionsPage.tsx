@@ -249,7 +249,7 @@ export function ProjectSessionsPage() {
   return (
     <>
       {/* Session toolbar */}
-      <div className="sticky top-0 z-[5] bg-white dark:bg-[#1c2129] border-b border-gray-200 dark:border-[#253040]">
+      <div className="sticky top-0 z-[5] bg-white dark:bg-[#1c2129] border-b border-gray-300 dark:border-[#3a4d5e]">
         <div className="flex items-center justify-between px-4 py-2">
           {selectionMode ? (
             <>
@@ -349,7 +349,7 @@ export function ProjectSessionsPage() {
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder={t('session.searchPlaceholder')}
               aria-label={t('session.searchPlaceholder')}
-              className="w-full pl-10 pr-9 py-2 text-sm bg-gray-100 dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-9 py-2 text-sm bg-gray-100 dark:bg-[#263240] border border-gray-300 dark:border-[#3a4d5e] rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             {localSearchQuery && (
               <button
@@ -368,7 +368,7 @@ export function ProjectSessionsPage() {
                   type="checkbox"
                   checked={searchContent}
                   onChange={handleSearchContentToggle}
-                  className="rounded border-gray-300 dark:border-[#2d3a4a] text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
                 />
                 {t('session.searchContent')}
               </label>
