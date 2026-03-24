@@ -335,7 +335,8 @@
       "uploadedMultiple": "{{count}} files uploaded.",
       "uploadFailed": "Upload failed",
       "uploadInProgress": "Upload already in progress, please wait.",
-      "downloadFailed": "Download failed"
+      "downloadFailed": "Download failed",
+      "openExplorerFailed": "Failed to open file explorer"
     }
   },
   "headerMenu": {

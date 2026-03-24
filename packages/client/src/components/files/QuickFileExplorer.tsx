@@ -6,13 +6,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { Search, X, File, Folder, Loader2, Clock } from 'lucide-react';
+import { Search, X, File, Folder, Loader2, Clock, ExternalLink } from 'lucide-react';
 import type { FileSearchResult } from '@hammoc/shared';
 
 import { FileTree } from './FileTree.js';
 import { useFileStore } from '../../stores/fileStore.js';
 import { useImageViewerStore } from '../../stores/imageViewerStore.js';
 import { fileSystemApi } from '../../services/api/fileSystem.js';
+import { projectsApi } from '../../services/api/projects.js';
 import { isImagePath } from '../../utils/languageDetect.js';
 
 const EMPTY_RECENT_FILES: string[] = [];
@@ -99,6 +100,18 @@ export function QuickFileExplorer({
 
   const isSearching = searchResults !== null || searchLoading;
 
+  // Only show "Open in OS explorer" when accessed from localhost
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  const handleOpenExplorer = useCallback(async () => {
+    if (!projectSlug) return;
+    try {
+      await projectsApi.openExplorer(projectSlug);
+    } catch {
+      // silently ignore in quick panel
+    }
+  }, [projectSlug]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Search input */}
@@ -127,6 +140,16 @@ export function QuickFileExplorer({
             </button>
           )}
         </div>
+        {isLocalhost && (
+          <button
+            onClick={handleOpenExplorer}
+            className="flex items-center gap-1 mt-1.5 text-xs text-gray-400 dark:text-gray-500
+                       hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            {t('files.openInExplorer')}
+          </button>
+        )}
       </div>
 
       {/* Content area */}

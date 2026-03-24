@@ -340,7 +340,8 @@
       "uploadedMultiple": "{{count}}개 파일이 업로드되었습니다.",
       "uploadFailed": "업로드 실패",
       "uploadInProgress": "업로드가 진행 중입니다. 잠시 후 다시 시도해주세요.",
-      "downloadFailed": "다운로드 실패"
+      "downloadFailed": "다운로드 실패",
+      "openExplorerFailed": "파일 탐색기를 여는 데 실패했습니다"
     }
   },
   "headerMenu": {

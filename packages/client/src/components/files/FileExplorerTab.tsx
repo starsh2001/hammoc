@@ -328,7 +328,7 @@ export function FileExplorerTab() {
     try {
       await projectsApi.openExplorer(projectSlug);
     } catch {
-      showToast({ message: t('files.openInExplorer'), type: 'error' });
+      showToast({ message: t('files.toast.openExplorerFailed'), type: 'error' });
     }
   }, [projectSlug, showToast, t]);
 
