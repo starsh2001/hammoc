@@ -260,7 +260,7 @@ export function AdvancedSettingsSection() {
                 onClick={handleCheckUpdate}
                 disabled={isProcessing || isCheckingUpdate}
                 className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
-                  border border-gray-300 dark:border-[#2d3a4a]
+                  border border-gray-300 dark:border-[#455568]
                   ${isCheckingUpdate
                     ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-300 cursor-not-allowed'
                     : 'bg-white dark:bg-[#263240] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#253040]'
@@ -338,7 +338,7 @@ export function AdvancedSettingsSection() {
         )}
 
         {isLoadingPrompt ? (
-          <div className="w-full h-[260px] rounded-lg border border-gray-300 dark:border-[#2d3a4a] bg-gray-50 dark:bg-[#263240] flex items-center justify-center">
+          <div className="w-full h-[260px] rounded-lg border border-gray-300 dark:border-[#455568] bg-gray-50 dark:bg-[#263240] flex items-center justify-center">
             <span className="text-sm text-gray-400">{t('advanced.promptLoading')}</span>
           </div>
         ) : (
@@ -347,7 +347,7 @@ export function AdvancedSettingsSection() {
             value={promptText}
             onChange={(e) => handlePromptChange(e.target.value)}
             rows={16}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                        bg-white dark:bg-[#263240] text-gray-900 dark:text-white font-mono text-sm
                        focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
           />
@@ -367,7 +367,7 @@ export function AdvancedSettingsSection() {
 
         {/* Available template variables */}
         {variables.length > 0 && (
-          <div className="mt-3 p-3 bg-gray-50 dark:bg-[#263240]/50 border border-gray-200 dark:border-[#253040] rounded-lg">
+          <div className="mt-3 p-3 bg-gray-50 dark:bg-[#263240]/50 border border-gray-300 dark:border-[#3a4d5e] rounded-lg">
             <p className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">
               {t('advanced.templateVariables')}
             </p>
@@ -395,7 +395,7 @@ export function AdvancedSettingsSection() {
               {t(showPreview ? 'advanced.previewClose' : 'advanced.previewOpen')}
             </button>
             {showPreview && (
-              <pre className="mt-2 p-3 text-xs font-mono bg-gray-100 dark:bg-[#1c2129] border border-gray-200 dark:border-[#253040] rounded-lg overflow-x-auto whitespace-pre-wrap text-gray-600 dark:text-gray-300 max-h-60 overflow-y-auto">
+              <pre className="mt-2 p-3 text-xs font-mono bg-gray-100 dark:bg-[#1c2129] border border-gray-300 dark:border-[#3a4d5e] rounded-lg overflow-x-auto whitespace-pre-wrap text-gray-600 dark:text-gray-300 max-h-60 overflow-y-auto">
                 {resolvedPreview}
               </pre>
             )}
@@ -420,7 +420,7 @@ export function AdvancedSettingsSection() {
           value={preferences.maxThinkingTokens ?? ''}
           onChange={(e) => handleNumberChange('maxThinkingTokens', e.target.value, t('advanced.maxThinkingTokens'))}
           placeholder={t('advanced.sdkDefault')}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                      bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
@@ -446,7 +446,7 @@ export function AdvancedSettingsSection() {
           value={preferences.maxTurns ?? ''}
           onChange={(e) => handleNumberChange('maxTurns', e.target.value, t('advanced.maxTurns'))}
           placeholder={t('advanced.unlimited')}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                      bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
@@ -472,7 +472,7 @@ export function AdvancedSettingsSection() {
           value={preferences.maxBudgetUsd ?? ''}
           onChange={(e) => handleNumberChange('maxBudgetUsd', e.target.value, t('advanced.maxBudget'))}
           placeholder={t('advanced.unlimited')}
-          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                      bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
         />

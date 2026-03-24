@@ -440,7 +440,7 @@ export function DiffViewer({
       >
         {/* File Header */}
         <header
-          className="flex flex-wrap items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-[#263240] border-b border-gray-200 dark:border-[#253040]"
+          className="flex flex-wrap items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-[#263240] border-b border-gray-300 dark:border-[#3a4d5e]"
           role="heading"
           aria-level={3}
         >

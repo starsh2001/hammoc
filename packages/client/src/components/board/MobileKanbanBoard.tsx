@@ -148,7 +148,7 @@ export function MobileKanbanBoard({
                 style={{ width: containerWidth || '100%' }}
               >
                 {/* Column header */}
-                <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-[#253040]">
+                <div className="px-3 py-2 flex items-center justify-between border-b border-gray-300 dark:border-[#3a4d5e]">
                   <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                     {col.label}
                   </span>
@@ -193,7 +193,7 @@ export function MobileKanbanBoard({
       </div>
 
       {/* Indicator dots */}
-      <div className="flex justify-center gap-2 py-3 flex-shrink-0 border-t border-gray-200 dark:border-[#253040]">
+      <div className="flex justify-center gap-2 py-3 flex-shrink-0 border-t border-gray-300 dark:border-[#3a4d5e]">
         {columns.map((col, index) => (
           <button
             key={col.id}

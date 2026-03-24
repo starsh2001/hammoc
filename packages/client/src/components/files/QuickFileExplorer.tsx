@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { Search, X, File, Folder, Loader2, Clock, ExternalLink } from 'lucide-react';
+import { Search, X, File, Folder, Loader2, Clock, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import type { FileSearchResult } from '@hammoc/shared';
 
 import { FileTree } from './FileTree.js';
@@ -33,6 +33,7 @@ export function QuickFileExplorer({
   const [searchResults, setSearchResults] = useState<FileSearchResult[] | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [showHidden, setShowHidden] = useState(false);
 
   // Recent files from store
   const recentFiles = useFileStore((state) => state.recentFiles[sessionId ?? ''] ?? EMPTY_RECENT_FILES);
@@ -107,6 +108,7 @@ export function QuickFileExplorer({
     if (!projectSlug) return;
     try {
       await projectsApi.openExplorer(projectSlug);
+      window.blur();
     } catch {
       // silently ignore in quick panel
     }
@@ -114,9 +116,9 @@ export function QuickFileExplorer({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Search input */}
-      <div className="px-4 py-2 border-b border-gray-200 dark:border-[#253040]">
-        <div className="relative flex items-center">
+      {/* Search input + action icons */}
+      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-gray-300 dark:border-[#3a4d5e]">
+        <div className="relative flex items-center flex-1 min-w-0">
           <Search className="absolute left-3 w-4 h-4 text-gray-400" aria-hidden="true" />
           <input
             ref={searchInputRef}
@@ -125,7 +127,7 @@ export function QuickFileExplorer({
             onChange={(e) => setSearchText(e.target.value)}
             placeholder={t('files.fileSearchPlaceholder')}
             className="w-full pl-9 pr-8 py-1.5 text-sm bg-gray-100 dark:bg-[#263240]
-                       dark:text-white border border-gray-200 dark:border-[#253040]
+                       dark:text-white border border-gray-300 dark:border-[#3a4d5e]
                        rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
                        dark:placeholder-gray-400"
           />
@@ -140,14 +142,31 @@ export function QuickFileExplorer({
             </button>
           )}
         </div>
+
+        {/* Hidden files toggle */}
+        <button
+          onClick={() => setShowHidden((prev) => !prev)}
+          title={showHidden ? t('files.hideHidden') : t('files.showHidden')}
+          className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors flex-shrink-0 ${
+            showHidden
+              ? 'bg-blue-100 dark:bg-blue-600 text-blue-700 dark:text-white'
+              : 'text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#253040]'
+          }`}
+          aria-label={showHidden ? t('files.hideHidden') : t('files.showHidden')}
+        >
+          {showHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+        </button>
+
+        {/* Open in OS explorer (localhost only) */}
         {isLocalhost && (
           <button
             onClick={handleOpenExplorer}
-            className="flex items-center gap-1 mt-1.5 text-xs text-gray-400 dark:text-gray-500
-                       hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+            title={t('files.openInExplorer')}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors flex-shrink-0
+                       text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#253040]"
+            aria-label={t('files.openInExplorer')}
           >
-            <ExternalLink className="w-3 h-3" />
-            {t('files.openInExplorer')}
+            <ExternalLink className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
@@ -209,7 +228,7 @@ export function QuickFileExplorer({
           <>
             {/* Recent files section */}
             {recentFiles.length > 0 && (
-              <div className="px-2 py-2 border-b border-gray-200 dark:border-[#253040]">
+              <div className="px-2 py-2 border-b border-gray-300 dark:border-[#3a4d5e]">
                 <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium
                                 text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   <Clock className="w-3.5 h-3.5" aria-hidden="true" />
@@ -247,7 +266,7 @@ export function QuickFileExplorer({
               projectSlug={projectSlug}
               basePath="."
               onFileSelect={handleFileSelect}
-              showHidden={false}
+              showHidden={showHidden}
               enableContextMenu={false}
             />
           </>

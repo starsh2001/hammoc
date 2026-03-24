@@ -84,7 +84,7 @@ function OnboardingContent() {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
       {/* Header */}
-      <header className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-[#253040]">
+      <header className="flex items-center gap-4 p-4 border-b border-gray-300 dark:border-[#3a4d5e]">
         <button
           onClick={handleBack}
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#263240] transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129]"

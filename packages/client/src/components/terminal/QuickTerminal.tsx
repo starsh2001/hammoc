@@ -85,7 +85,7 @@ export function QuickTerminal({
   return (
     <div className="flex flex-col h-full">
       {/* Header: font controls + new terminal + navigate link */}
-      <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-200 dark:border-[#253040]">
+      <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-300 dark:border-[#3a4d5e]">
         <div className="flex items-center gap-0.5">
           <button
             onClick={decreaseFontSize}
@@ -138,7 +138,7 @@ export function QuickTerminal({
       {terminals.size > 0 && (
         <div
           role="tablist"
-          className="flex items-center gap-0.5 px-2 py-1 border-b border-gray-200 dark:border-[#253040] flex-shrink-0 overflow-x-auto"
+          className="flex items-center gap-0.5 px-2 py-1 border-b border-gray-300 dark:border-[#3a4d5e] flex-shrink-0 overflow-x-auto"
           onKeyDown={handleTabKeyDown}
         >
           {terminalEntries.map(([id, session]) => {

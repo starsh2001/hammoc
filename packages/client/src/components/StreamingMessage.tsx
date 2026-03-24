@@ -36,7 +36,7 @@ export function StreamingMessage({
       role="listitem"
       aria-label={t('streamingMessage.ariaLabel')}
     >
-      <div className="relative group max-w-[90%] md:max-w-[80%] bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-[#253040] p-3 shadow-sm">
+      <div className="relative group max-w-[90%] md:max-w-[80%] bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
         {/* Claude icon and name */}
         <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 dark:text-gray-300">
           <Bot className="w-4 h-4" aria-hidden="true" />

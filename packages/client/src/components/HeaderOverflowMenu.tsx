@@ -125,7 +125,7 @@ export function HeaderOverflowMenu({
         <div
           role="menu"
           className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#263240]
-                     border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50
+                     border border-gray-300 dark:border-[#3a4d5e] rounded-lg shadow-lg z-50
                      py-1 overflow-hidden"
         >
           {/* New session */}
@@ -215,7 +215,7 @@ export function HeaderOverflowMenu({
           {/* Settings */}
           {onNavigateSettings && (
             <>
-              <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
+              <div className="border-t border-gray-300 dark:border-[#3a4d5e] my-1" />
               <button
                 type="button"
                 role="menuitem"

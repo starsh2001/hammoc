@@ -215,7 +215,7 @@ export function TelegramSettingsSection() {
               onChange={(e) => setEditValue(e.target.value)}
               placeholder={t('telegram.enterBotToken')}
               autoFocus
-              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                          bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -243,14 +243,14 @@ export function TelegramSettingsSection() {
               value={settings.maskedBotToken || ''}
               readOnly
               placeholder={t('telegram.notConfigured')}
-              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                          bg-gray-50 dark:bg-[#1c2129] text-gray-500 dark:text-gray-300 cursor-default"
             />
             <button
               onClick={() => handleStartEdit('botToken')}
               disabled={updating}
               className="px-4 py-2 rounded-lg text-sm font-medium
-                         text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-[#2d3a4a]
+                         text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-[#455568]
                          hover:bg-gray-100 dark:hover:bg-[#253040] disabled:opacity-50 transition-colors"
             >
               {t('telegram.change')}
@@ -296,7 +296,7 @@ export function TelegramSettingsSection() {
               onChange={(e) => setEditValue(e.target.value)}
               placeholder={t('telegram.enterChatId')}
               autoFocus
-              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                          bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -324,14 +324,14 @@ export function TelegramSettingsSection() {
               value={settings.chatId || ''}
               readOnly
               placeholder={t('telegram.notConfigured')}
-              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+              className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                          bg-gray-50 dark:bg-[#1c2129] text-gray-500 dark:text-gray-300 cursor-default"
             />
             <button
               onClick={() => handleStartEdit('chatId')}
               disabled={updating}
               className="px-4 py-2 rounded-lg text-sm font-medium
-                         text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-[#2d3a4a]
+                         text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-[#455568]
                          hover:bg-gray-100 dark:hover:bg-[#253040] disabled:opacity-50 transition-colors"
             >
               {t('telegram.change')}
@@ -378,7 +378,7 @@ export function TelegramSettingsSection() {
               handleUpdate({ baseUrl: normalized || null });
             }}
             placeholder={t('telegram.baseUrlPlaceholder')}
-            className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+            className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                        bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -401,7 +401,7 @@ export function TelegramSettingsSection() {
             )}
             disabled={!canToggle || updating}
             aria-disabled={!canToggle}
-            className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                        text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <label
@@ -427,7 +427,7 @@ export function TelegramSettingsSection() {
             checked={settings.alwaysNotify}
             onChange={() => handleUpdate({ alwaysNotify: !settings.alwaysNotify })}
             disabled={!settings.enabled || updating}
-            className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                        text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <label
@@ -455,7 +455,7 @@ export function TelegramSettingsSection() {
               checked={settings.notifyPermission}
               onChange={() => handleUpdate({ notifyPermission: !settings.notifyPermission })}
               disabled={updating}
-              className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-200">
@@ -469,7 +469,7 @@ export function TelegramSettingsSection() {
               checked={settings.notifyComplete}
               onChange={() => handleUpdate({ notifyComplete: !settings.notifyComplete })}
               disabled={updating}
-              className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-200">
@@ -483,7 +483,7 @@ export function TelegramSettingsSection() {
               checked={settings.notifyError}
               onChange={() => handleUpdate({ notifyError: !settings.notifyError })}
               disabled={updating}
-              className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-200">
@@ -506,7 +506,7 @@ export function TelegramSettingsSection() {
               checked={settings.notifyQueueStart}
               onChange={() => handleUpdate({ notifyQueueStart: !settings.notifyQueueStart })}
               disabled={updating}
-              className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-200">
@@ -520,7 +520,7 @@ export function TelegramSettingsSection() {
               checked={settings.notifyQueueComplete}
               onChange={() => handleUpdate({ notifyQueueComplete: !settings.notifyQueueComplete })}
               disabled={updating}
-              className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-200">
@@ -534,7 +534,7 @@ export function TelegramSettingsSection() {
               checked={settings.notifyQueueError}
               onChange={() => handleUpdate({ notifyQueueError: !settings.notifyQueueError })}
               disabled={updating}
-              className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-200">
@@ -548,7 +548,7 @@ export function TelegramSettingsSection() {
               checked={settings.notifyQueueInputRequired}
               onChange={() => handleUpdate({ notifyQueueInputRequired: !settings.notifyQueueInputRequired })}
               disabled={updating}
-              className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                          text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm text-gray-700 dark:text-gray-200">

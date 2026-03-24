@@ -316,7 +316,7 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
     <div
       role="region"
       aria-label={t('document.statusTitle')}
-      className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5"
+      className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-300 dark:border-[#3a4d5e] p-5"
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -347,7 +347,7 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
 
         {/* Auxiliary Documents (stories, QA, etc.) */}
         {auxiliaryDocuments.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-[#253040] mt-2 pt-2 space-y-1">
+          <div className="border-t border-gray-300 dark:border-[#3a4d5e] mt-2 pt-2 space-y-1">
             <p className="text-[11px] uppercase tracking-wider font-medium text-gray-500 dark:text-gray-400 mb-1">{t('document.deliverables')}</p>
             {auxiliaryDocuments.map((doc) => {
               const hasFiles = doc.files && doc.files.length > 0;

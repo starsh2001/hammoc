@@ -77,7 +77,7 @@ export function AccountSettingsSection() {
             type="password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
-            className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+            className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                        bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
@@ -97,7 +97,7 @@ export function AccountSettingsSection() {
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+            className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                        bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
@@ -118,7 +118,7 @@ export function AccountSettingsSection() {
             type="password"
             value={confirmNewPassword}
             onChange={(e) => setConfirmNewPassword(e.target.value)}
-            className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+            className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                        bg-white dark:bg-[#263240] text-gray-900 dark:text-white
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
@@ -138,7 +138,7 @@ export function AccountSettingsSection() {
         </button>
       </form>
 
-      <hr className="border-gray-200 dark:border-[#2d3a4a]" />
+      <hr className="border-gray-300 dark:border-[#455568]" />
 
       {/* Logout */}
       <button

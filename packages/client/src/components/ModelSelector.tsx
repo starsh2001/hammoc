@@ -245,7 +245,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
         className={`
           w-[28px] h-[28px] rounded-md transition-all
           flex items-center justify-center
-          border border-gray-300 dark:border-[#2d3a4a]
+          border border-gray-300 dark:border-[#455568]
           bg-white dark:bg-[#263240]
           text-gray-600 dark:text-gray-200
           focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-400
@@ -264,12 +264,12 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
         <div
           role="listbox"
           aria-label={t('model.selectAria')}
-          className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50"
+          className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-[#263240] border border-gray-300 dark:border-[#3a4d5e] rounded-lg shadow-lg z-50"
         >
           {/* Effort intensity bar */}
           {onEffortChange && (
             <div
-              className="border-b border-gray-200 dark:border-[#253040]"
+              className="border-b border-gray-300 dark:border-[#3a4d5e]"
               aria-label={t('effort.selectorAria', { level: effortLabel ?? '' })}
             >
               {/* Group header — same style as model group headers */}
@@ -323,7 +323,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
             return (
             <div key={group.label}>
               {/* Group divider (not on first group) */}
-              {gi > 0 && <div className="border-t border-gray-200 dark:border-[#253040]" />}
+              {gi > 0 && <div className="border-t border-gray-300 dark:border-[#3a4d5e]" />}
 
               {/* Group header */}
               <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">

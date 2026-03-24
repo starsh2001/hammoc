@@ -308,7 +308,7 @@ export function CardContextMenu({
           ref={menuRef}
           role="menu"
           style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
-          className="w-48 bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50 py-1"
+          className="w-48 bg-white dark:bg-[#263240] border border-gray-300 dark:border-[#3a4d5e] rounded-lg shadow-lg z-50 py-1"
         >
           {menuItems.map((mi, idx) => (
             <button

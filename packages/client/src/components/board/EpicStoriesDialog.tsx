@@ -63,7 +63,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
       {/* Dialog */}
       <div className="relative w-full max-w-lg bg-white dark:bg-[#263240] rounded-lg shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-[#253040]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-300 dark:border-[#3a4d5e]">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white truncate pr-2">
             <span className="text-gray-500 dark:text-gray-300 font-mono mr-1.5">
               {typeof epic.epicNumber === 'string'
@@ -82,7 +82,7 @@ export function EpicStoriesDialog({ open, epic, stories, onClose }: EpicStoriesD
         </div>
 
         {/* Progress bar */}
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-[#253040]">
+        <div className="px-4 py-3 border-b border-gray-300 dark:border-[#3a4d5e]">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs text-gray-500 dark:text-gray-300">{t('epic.progress')}</span>
             <span className="text-xs font-medium text-gray-700 dark:text-gray-200">

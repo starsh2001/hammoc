@@ -225,13 +225,13 @@ export function GitTab() {
       )}
 
       {/* Top Bar: Branch selector + Pull/Push */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-[#253040]">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-300 dark:border-[#3a4d5e]">
         {/* Branch selector */}
         <div className="relative flex-1" ref={branchDropdownRef}>
           <button
             type="button"
             onClick={() => { setBranchDropdownOpen((o) => !o); setActiveBranchIndex(-1); }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240] text-sm w-full max-w-xs"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240] text-sm w-full max-w-xs"
             role="combobox"
             aria-expanded={branchDropdownOpen}
             aria-haspopup="listbox"
@@ -244,7 +244,7 @@ export function GitTab() {
           </button>
 
           {branchDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-[#1c2129] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-40 max-h-64 overflow-y-auto">
+            <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-[#1c2129] border border-gray-300 dark:border-[#3a4d5e] rounded-lg shadow-lg z-40 max-h-64 overflow-y-auto">
               <ul role="listbox" aria-label={t('git.branchList')}>
                 {(branches?.local ?? []).map((branch, index) => (
                   <li
@@ -267,7 +267,7 @@ export function GitTab() {
                 ))}
               </ul>
               {/* New branch input */}
-              <div className="border-t border-gray-200 dark:border-[#253040] px-3 py-2">
+              <div className="border-t border-gray-300 dark:border-[#3a4d5e] px-3 py-2">
                 <div className="flex items-center gap-1">
                   <Plus className="w-4 h-4 text-gray-400 flex-shrink-0" />
                   <input
@@ -294,7 +294,7 @@ export function GitTab() {
           type="button"
           onClick={() => pullAction(projectSlug)}
           disabled={isLoading}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240] text-sm disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240] text-sm disabled:opacity-50"
           title={t('git.pull')}
         >
           <ArrowDown className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -306,7 +306,7 @@ export function GitTab() {
           type="button"
           onClick={() => pushAction(projectSlug)}
           disabled={isLoading}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-[#2d3a4a] hover:bg-gray-50 dark:hover:bg-[#263240] text-sm disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240] text-sm disabled:opacity-50"
           title={t('git.push')}
         >
           <ArrowUp className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -359,13 +359,13 @@ export function GitTab() {
           )}
 
           {/* Commit area */}
-          <div className="border border-gray-200 dark:border-[#253040] rounded-lg p-3 space-y-2">
+          <div className="border border-gray-300 dark:border-[#3a4d5e] rounded-lg p-3 space-y-2">
             <textarea
               value={commitMessage}
               onChange={(e) => setCommitMessage(e.target.value)}
               placeholder={t('git.commitPlaceholder')}
               rows={3}
-              className="w-full text-sm bg-transparent border border-gray-200 dark:border-[#253040] rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full text-sm bg-transparent border border-gray-300 dark:border-[#3a4d5e] rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               type="button"
@@ -441,7 +441,7 @@ export function GitTab() {
             }`}
           >
             {/* Panel header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-[#253040]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-300 dark:border-[#3a4d5e]">
               <span className="text-sm font-mono text-gray-700 dark:text-gray-200 truncate">
                 {selectedFile?.path}
               </span>

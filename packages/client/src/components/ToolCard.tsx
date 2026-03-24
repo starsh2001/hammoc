@@ -78,7 +78,7 @@ function CollapsibleResult({ toolName, toolInput, result }: { toolName: string; 
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="mt-2 border-t border-gray-200 dark:border-[#2d3a4a] pt-2">
+    <div className="mt-2 border-t border-gray-300 dark:border-[#455568] pt-2">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -139,7 +139,7 @@ function ExitPlanModeContent({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="mt-2 border-t border-gray-200 dark:border-[#2d3a4a] pt-2">
+    <div className="mt-2 border-t border-gray-300 dark:border-[#455568] pt-2">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -150,7 +150,7 @@ function ExitPlanModeContent({
         <span>{t('tool.plan')}</span>
       </button>
       {expanded && (
-        <div className="mt-1 max-h-64 overflow-y-auto rounded border border-gray-200 dark:border-[#2d3a4a] bg-white dark:bg-[#1c2129] p-2">
+        <div className="mt-1 max-h-64 overflow-y-auto rounded border border-gray-300 dark:border-[#455568] bg-white dark:bg-[#1c2129] p-2">
           {planContent ? (
             <div className="text-xs">
               <MarkdownRenderer content={planContent} />
@@ -269,7 +269,7 @@ export function ToolCard({
         }
       >
         <div data-tool-card className={`max-w-[80%] bg-gray-100 dark:bg-[#263240] rounded-lg p-3 border ${
-          isDenied || isError ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-[#253040]'
+          isDenied || isError ? 'border-red-200 dark:border-red-800' : 'border-gray-300 dark:border-[#3a4d5e]'
         }`}>
           {/* Header: icon + name + status + duration */}
           <div className="flex items-center gap-2">
@@ -380,7 +380,7 @@ export function ToolCard({
 
           {/* Error display */}
           {isError && (
-            <div className="mt-2 text-xs text-red-500 border-t border-gray-200 dark:border-[#2d3a4a] pt-2 whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
+            <div className="mt-2 text-xs text-red-500 border-t border-gray-300 dark:border-[#455568] pt-2 whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
               {output ? output.slice(0, 500) : t('common:error.unknownError')}
             </div>
           )}
@@ -396,7 +396,7 @@ export function ToolCard({
 
           {/* ExitPlanMode: mode selection buttons */}
           {permissionStatus === 'waiting' && isExitPlanMode && onPlanModeExit && onPermissionRespond && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-200 dark:border-[#2d3a4a] pt-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-300 dark:border-[#455568] pt-2">
               <button
                 type="button"
                 onClick={() => onPlanModeExit('default')}
@@ -438,7 +438,7 @@ export function ToolCard({
 
           {/* Permission approve/deny buttons (non-ExitPlanMode tools) */}
           {permissionStatus === 'waiting' && !isExitPlanMode && onPermissionRespond && (
-            <div className="mt-2 flex items-center gap-2 border-t border-gray-200 dark:border-[#2d3a4a] pt-2">
+            <div className="mt-2 flex items-center gap-2 border-t border-gray-300 dark:border-[#455568] pt-2">
               <button
                 type="button"
                 onClick={() => onPermissionRespond(true)}

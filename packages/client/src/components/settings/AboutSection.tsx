@@ -132,7 +132,7 @@ export function AboutSection() {
               aria-label={t('about.retryCheckAriaLabel')}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
                          text-gray-700 dark:text-gray-200 bg-white dark:bg-[#253040]
-                         border border-gray-300 dark:border-[#2d3a4a] rounded-lg
+                         border border-gray-300 dark:border-[#455568] rounded-lg
                          hover:bg-gray-50 dark:hover:bg-[#2d3a4a] transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
@@ -155,11 +155,11 @@ export function AboutSection() {
                 {health.status}
               </span>
             </div>
-            <div className="flex justify-between items-center py-2 border-t border-gray-200 dark:border-[#253040]">
+            <div className="flex justify-between items-center py-2 border-t border-gray-300 dark:border-[#3a4d5e]">
               <span className="text-sm text-gray-600 dark:text-gray-300">{t('about.version')}</span>
               <span className="text-sm text-gray-900 dark:text-white">{health.version}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-t border-gray-200 dark:border-[#253040]">
+            <div className="flex justify-between items-center py-2 border-t border-gray-300 dark:border-[#3a4d5e]">
               <span className="text-sm text-gray-600 dark:text-gray-300">{t('about.serverTime')}</span>
               <span className="text-sm text-gray-900 dark:text-white">
                 {new Date(health.timestamp).toLocaleString()}

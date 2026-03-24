@@ -207,7 +207,7 @@ export function TextEditor() {
         style={panelSide === 'right' ? { right: editorInset } : { left: editorInset }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#263240]">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-300 dark:border-[#3a4d5e] bg-gray-50 dark:bg-[#263240]">
           <div className="flex items-center gap-2 min-w-0">
             <FileText className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-300" />
             <span className="truncate text-sm font-mono text-gray-700 dark:text-gray-200">

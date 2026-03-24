@@ -20,7 +20,7 @@ export function InputArea({ children, disabled = false }: InputAreaProps) {
     <footer
       aria-label={t('inputArea.ariaLabel')}
       data-testid="input-area"
-      className={`flex-shrink-0 border-t border-gray-200 dark:border-slate-700/50
+      className={`flex-shrink-0 border-t border-gray-300 dark:border-slate-700/50
                   bg-[#fbfbfc] dark:bg-[#171e24]
                   pb-[max(0.25rem,env(safe-area-inset-bottom))]
                   overscroll-contain

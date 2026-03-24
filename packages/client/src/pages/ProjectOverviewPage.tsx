@@ -91,8 +91,8 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
       {/* Quick actions + Recent sessions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent sessions */}
-        <div className="lg:col-span-2 bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040]">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-[#253040]">
+        <div className="lg:col-span-2 bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-300 dark:border-[#3a4d5e]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-300 dark:border-[#3a4d5e]">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-gray-900 dark:text-white">{t('overview.recentSessions')}</h2>
               <BackgroundRefreshIndicator isRefreshing={isRefreshing} />
@@ -168,7 +168,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
         {/* Quick actions — replaced by slot when provided (e.g. BMad recommendations) */}
         <div className="space-y-4">
           {quickActionsSlot ?? (
-            <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040] p-5">
+            <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-300 dark:border-[#3a4d5e] p-5">
               <h2 className="font-semibold text-gray-900 dark:text-white mb-4">{t('overview.quickStartTitle')}</h2>
               <div className="space-y-2">
                 <button

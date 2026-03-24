@@ -523,7 +523,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {/* Stream restoring overlay — shown briefly while buffer replay is being processed */}
         {isRestoringStream && (
           <div className="flex items-center justify-center py-12">
-            <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 dark:bg-[#263240] rounded-lg border border-gray-200 dark:border-[#253040] shadow-sm">
+            <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 dark:bg-[#263240] rounded-lg border border-gray-300 dark:border-[#3a4d5e] shadow-sm">
               <LoadingSpinner size="sm" />
               <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.restoring')}</span>
             </div>
@@ -746,7 +746,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {/* Normal streaming indicator: text is being generated (not compacting) */}
         {isStreaming && !isCompacting && streamingSegments.length > 0 && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-[#253040] p-3 shadow-sm">
+            <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
               <div className="flex items-center gap-2">
                 <StreamingIndicator />
                 <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.generating')}</span>
@@ -758,7 +758,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {/* Waiting indicator: streaming started but no content yet (not compacting) */}
         {isWaitingWithNoContent && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-200 dark:border-[#253040] p-3 shadow-sm">
+            <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
               <div className="flex items-center gap-2">
                 <StreamingIndicator />
                 <span className="text-sm text-gray-500 dark:text-gray-300">

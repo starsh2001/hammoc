@@ -65,7 +65,7 @@ export function GitFileList({
   const staged = type === 'staged';
 
   return (
-    <div className="border border-gray-200 dark:border-[#253040] rounded-lg overflow-hidden">
+    <div className="border border-gray-300 dark:border-[#3a4d5e] rounded-lg overflow-hidden">
       {/* Group header */}
       <button
         type="button"

@@ -72,7 +72,7 @@ export function StarCommandPalette({
         id="star-command-palette"
         data-testid="star-command-palette"
         className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-[#263240]
-                   border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg
+                   border border-gray-300 dark:border-[#3a4d5e] rounded-lg shadow-lg
                    max-h-[300px] overflow-y-auto z-50"
       >
         <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -94,7 +94,7 @@ export function StarCommandPalette({
       aria-label={t('command.starListAria')}
       data-testid="star-command-palette"
       className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-[#263240]
-                 border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg
+                 border border-gray-300 dark:border-[#3a4d5e] rounded-lg shadow-lg
                  max-h-[300px] overflow-y-auto z-50 py-1"
     >
       <li role="presentation">

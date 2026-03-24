@@ -162,7 +162,7 @@ export function FavoritesPopup({
       <div
         className="absolute bottom-full left-0 mb-1 min-w-[280px] w-full sm:w-auto
                    bg-white dark:bg-[#263240]
-                   border border-gray-200 dark:border-[#253040]
+                   border border-gray-300 dark:border-[#3a4d5e]
                    shadow-lg rounded-lg z-50 p-4"
         role="listbox"
         aria-label={t('favorites.listAria')}
@@ -179,7 +179,7 @@ export function FavoritesPopup({
     <div
       className="absolute bottom-full left-0 mb-1 min-w-[280px] w-full sm:w-auto
                  bg-white dark:bg-[#263240]
-                 border border-gray-200 dark:border-[#253040]
+                 border border-gray-300 dark:border-[#3a4d5e]
                  shadow-lg rounded-lg z-50
                  max-h-[300px] overflow-y-auto"
       role="listbox"
@@ -277,7 +277,7 @@ export function FavoritesPopup({
 
       {/* Divider between star and slash sections */}
       {hasStarFavorites && hasSlashFavorites && (
-        <div className="border-t border-gray-200 dark:border-[#253040] my-1"
+        <div className="border-t border-gray-300 dark:border-[#3a4d5e] my-1"
              data-testid="popup-star-divider" aria-hidden="true" />
       )}
 

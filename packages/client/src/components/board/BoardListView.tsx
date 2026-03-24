@@ -85,7 +85,7 @@ export function BoardListView({
         return (
           <div
             key={col.id}
-            className="border border-gray-200 dark:border-[#253040] rounded-lg overflow-hidden"
+            className="border border-gray-300 dark:border-[#3a4d5e] rounded-lg overflow-hidden"
           >
             {/* Accordion header */}
             <button

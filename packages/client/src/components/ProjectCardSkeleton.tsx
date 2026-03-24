@@ -6,7 +6,7 @@
 export function ProjectCardSkeleton() {
   return (
     <div
-      className="relative w-full bg-gray-50 dark:bg-[#2a3545] rounded-lg border border-gray-200 dark:border-[#354050] p-4 animate-pulse"
+      className="relative w-full bg-gray-50 dark:bg-[#2a3545] rounded-lg border border-gray-300 dark:border-[#354050] p-4 animate-pulse"
       role="presentation"
       aria-hidden="true"
     >

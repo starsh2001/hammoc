@@ -35,8 +35,8 @@ export function RecentIssuesCard() {
     .reverse();
 
   return (
-    <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-200 dark:border-[#253040]">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-[#253040]">
+    <div className="bg-gray-50 dark:bg-[#263240] rounded-xl border border-gray-300 dark:border-[#3a4d5e]">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-300 dark:border-[#3a4d5e]">
         <h2 className="font-semibold text-gray-900 dark:text-white">{t('overview.recentIssues')}</h2>
         <button
           onClick={() => navigate(`/project/${projectSlug}/board`)}

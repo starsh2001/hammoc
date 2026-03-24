@@ -114,7 +114,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
             handleClick();
           }
         }}
-        className={`relative w-full text-left bg-gray-50 dark:bg-[#2a3545] rounded-lg border border-gray-200 dark:border-[#354050] p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-[#405060] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129] cursor-pointer ${isHidden ? 'opacity-50' : ''}`}
+        className={`relative w-full text-left bg-gray-50 dark:bg-[#2a3545] rounded-lg border border-gray-300 dark:border-[#354050] p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300 dark:hover:border-[#405060] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-[#1c2129] cursor-pointer ${isHidden ? 'opacity-50' : ''}`}
         aria-label={t('project.ariaLabel', { name: project.originalPath.split(/[/\\]/).filter(Boolean).pop() || project.originalPath, count: project.sessionCount })}
       >
         {/* Kebab menu */}
@@ -132,7 +132,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
 
             {menuOpen && (
               <div
-                className="absolute right-0 mt-1 w-40 bg-white dark:bg-[#263240] rounded-md shadow-lg border border-gray-200 dark:border-[#253040] py-1"
+                className="absolute right-0 mt-1 w-40 bg-white dark:bg-[#263240] rounded-md shadow-lg border border-gray-300 dark:border-[#3a4d5e] py-1"
                 role="menu"
               >
                 {onSetupBmad && !project.isBmadProject && (
@@ -228,7 +228,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
             type="checkbox"
             checked={deleteFiles}
             onChange={(e) => setDeleteFiles(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a] text-red-600 focus:ring-red-500 dark:bg-[#253040]"
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-red-600 focus:ring-red-500 dark:bg-[#253040]"
           />
           <span className="text-sm text-gray-700 dark:text-gray-200">
             {t('project.deleteFiles')}
@@ -260,7 +260,7 @@ export function ProjectCard({ project, onClick, onDelete, onSetupBmad, onHide, o
               id="bmad-version-select"
               value={selectedBmadVersion}
               onChange={(e) => setSelectedBmadVersion(e.target.value)}
-              className="flex-1 px-2 py-1.5 text-sm rounded-md border border-gray-300 dark:border-[#2d3a4a] bg-white dark:bg-[#253040] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-2 py-1.5 text-sm rounded-md border border-gray-300 dark:border-[#455568] bg-white dark:bg-[#253040] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {bmadVersions.map((v) => (
                 <option key={v} value={v}>{v}</option>

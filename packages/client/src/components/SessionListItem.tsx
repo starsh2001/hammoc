@@ -119,7 +119,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
       className={`relative w-full text-left p-4 bg-gray-50 dark:bg-[#263240] rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#1c2129] cursor-pointer ${
         selected
           ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-          : 'border-gray-200 dark:border-[#253040] hover:border-blue-500 dark:hover:border-blue-400'
+          : 'border-gray-300 dark:border-[#3a4d5e] hover:border-blue-500 dark:hover:border-blue-400'
       }`}
       aria-label={`${t('sessionListItem.ariaLabel', { prompt: session.firstPrompt || t('sessionListItem.emptySession') })}. ${t('sessionListItem.messageCount', { count: session.messageCount })}. ${formatRelativeTime(session.modified)}`}
     >
@@ -132,7 +132,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
               checked={selected || false}
               onChange={handleCheckboxChange}
               onClick={(e) => e.stopPropagation()}
-              className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a] text-blue-600 focus:ring-blue-500 dark:bg-[#253040]"
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500 dark:bg-[#253040]"
               aria-label={t('sessionListItem.checkbox', { prompt: session.firstPrompt || t('sessionListItem.emptySession') })}
             />
           </div>
@@ -224,7 +224,7 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
 
           {menuOpen && (
             <div
-              className="absolute right-0 mt-1 w-36 bg-white dark:bg-[#263240] rounded-md shadow-lg border border-gray-200 dark:border-[#253040] py-1"
+              className="absolute right-0 mt-1 w-36 bg-white dark:bg-[#263240] rounded-md shadow-lg border border-gray-300 dark:border-[#3a4d5e] py-1"
               role="menu"
             >
               {onRename && (

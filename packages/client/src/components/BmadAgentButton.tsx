@@ -185,7 +185,7 @@ export function BmadAgentButton({
     const groupLabel = group.label.startsWith('agent.') ? t(group.label) : group.label;
     return (
     <div key={group.testId} role="group" aria-label={groupLabel} data-testid={group.testId}>
-      {groupIndex > 0 && <div className="border-t border-gray-200 dark:border-[#253040]" />}
+      {groupIndex > 0 && <div className="border-t border-gray-300 dark:border-[#3a4d5e]" />}
       <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
         {groupLabel}
       </div>
@@ -220,7 +220,7 @@ export function BmadAgentButton({
         className={`
           w-[28px] h-[28px] ml-0.4 rounded-md transition-all
           flex items-center justify-center
-          border border-gray-300 dark:border-[#2d3a4a]
+          border border-gray-300 dark:border-[#455568]
           bg-white dark:bg-[#263240]
           text-gray-600 dark:text-gray-200
           focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-400
@@ -237,7 +237,7 @@ export function BmadAgentButton({
       {/* Dropdown menu (matches ModelSelector style, same on all screen sizes) */}
       {isOpen && (
         <div
-          className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg z-50"
+          className="absolute bottom-full left-0 mb-1 w-64 max-h-96 overflow-y-auto bg-white dark:bg-[#263240] border border-gray-300 dark:border-[#3a4d5e] rounded-lg shadow-lg z-50"
           data-testid="bmad-agent-popup"
         >
           {agents.length === 0 ? (

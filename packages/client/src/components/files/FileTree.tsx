@@ -197,13 +197,13 @@ export function FileTreeContextMenu({
     <div
       ref={menuRef}
       role="menu"
-      className="fixed z-50 bg-white dark:bg-[#263240] border border-gray-200 dark:border-[#253040] rounded-lg shadow-lg py-1 min-w-[160px]"
+      className="fixed z-50 bg-white dark:bg-[#263240] border border-gray-300 dark:border-[#3a4d5e] rounded-lg shadow-lg py-1 min-w-[160px]"
       style={{ left: adjustedPos.x, top: adjustedPos.y }}
       onKeyDown={handleKeyDown}
     >
       {menuItems.map((item, i) => {
         if ('type' in item) {
-          return <hr key={`sep-${i}`} className="border-t border-gray-200 dark:border-[#253040] my-1" />;
+          return <hr key={`sep-${i}`} className="border-t border-gray-300 dark:border-[#3a4d5e] my-1" />;
         }
         const Icon = item.icon;
         const isDisabled = 'disabled' in item && item.disabled;

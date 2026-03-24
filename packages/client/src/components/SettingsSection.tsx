@@ -30,7 +30,7 @@ export function SettingsSection({
   const isAccordion = onToggle !== undefined;
 
   return (
-    <div className="border-b border-gray-200 dark:border-[#253040] last:border-b-0">
+    <div className="border-b border-gray-300 dark:border-[#3a4d5e] last:border-b-0">
       {isAccordion ? (
         <button
           id={`settings-section-${sectionId}`}

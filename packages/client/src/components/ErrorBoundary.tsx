@@ -66,7 +66,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <div className="flex gap-3 justify-center">
             <button
               onClick={this.handleReset}
-              className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-[#2d3a4a]
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-[#455568]
                          text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240] transition-colors"
             >
               {i18n.t('common:button.retry')}

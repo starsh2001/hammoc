@@ -171,7 +171,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar — matches sessions page style */}
-      <div className="sticky top-0 z-[5] bg-white dark:bg-[#1c2129] border-b border-gray-200 dark:border-[#253040]">
+      <div className="sticky top-0 z-[5] bg-white dark:bg-[#1c2129] border-b border-gray-300 dark:border-[#3a4d5e]">
         <div className="flex items-center justify-between px-4 py-2">
           <div />
 
@@ -312,7 +312,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
       {/* Editor area — shown when not executing or in paused edit mode */}
       {showEditor && (
       <div
-        className="rounded-lg border border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#1c2129] flex-1 min-h-[200px]"
+        className="rounded-lg border border-gray-300 dark:border-[#3a4d5e] bg-gray-50 dark:bg-[#1c2129] flex-1 min-h-[200px]"
         style={{ overflow: 'auto', position: 'relative' }}
       >
         {/* Empty state overlay */}

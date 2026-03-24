@@ -275,7 +275,7 @@ export function WebPushSettingsSection() {
             onClick={handleUnsubscribe}
             disabled={updating}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-                       text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-[#2d3a4a]
+                       text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-[#455568]
                        hover:bg-gray-100 dark:hover:bg-[#253040]
                        disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
@@ -301,7 +301,7 @@ export function WebPushSettingsSection() {
             checked={settings.enabled}
             onChange={handleToggleEnabled}
             disabled={updating}
-            className="w-4 h-4 rounded border-gray-300 dark:border-[#2d3a4a]
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568]
                        text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <label

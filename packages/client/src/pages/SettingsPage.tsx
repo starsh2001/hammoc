@@ -87,7 +87,7 @@ export function SettingsPage() {
               Web Push
             </h3>
             <WebPushSettingsSection />
-            <hr className="my-8 border-gray-200 dark:border-[#2d3a4a]" />
+            <hr className="my-8 border-gray-300 dark:border-[#455568]" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <Send className="w-4 h-4" />
               Telegram
@@ -109,7 +109,7 @@ export function SettingsPage() {
   return (
     <div className="h-dvh flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
       {/* Header */}
-      <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#263240] border-b border-gray-200 dark:border-[#253040]">
+      <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#263240] border-b border-gray-300 dark:border-[#3a4d5e]">
         <div className="content-container flex items-center px-4 py-3 min-h-14">
           <button
             onClick={handleBack}
@@ -127,7 +127,7 @@ export function SettingsPage() {
 
       {/* Desktop layout: sidebar + content */}
       <div className="content-container hidden md:flex flex-1 overflow-hidden w-full">
-        <nav className="flex-shrink-0 border-r border-gray-200 dark:border-[#253040] overflow-y-auto py-4 px-3">
+        <nav className="flex-shrink-0 border-r border-gray-300 dark:border-[#3a4d5e] overflow-y-auto py-4 px-3">
           {sectionDefs.map(section => (
             <button
               key={section.id}

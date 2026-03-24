@@ -232,7 +232,7 @@ export function InteractiveResponseCard({
     const selectedSingle = answers[qIndex] as string | undefined;
 
     return (
-      <div key={qIndex} className={!standalone && qIndex > 0 ? 'mt-4 pt-3 border-t border-gray-100 dark:border-[#253040]' : ''}>
+      <div key={qIndex} className={!standalone && qIndex > 0 ? 'mt-4 pt-3 border-t border-gray-100 dark:border-[#3a4d5e]' : ''}>
         {/* Question header (for multi-question, show per-question header) */}
         {!standalone && (
           <div className="flex items-center gap-1.5 mb-1">
@@ -252,7 +252,7 @@ export function InteractiveResponseCard({
                 className={`flex items-start gap-2 p-2 rounded-md border cursor-pointer transition-colors
                   ${selectedForMulti.has(choice.value)
                     ? 'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20'
-                    : 'border-gray-200 hover:bg-gray-50 dark:border-[#253040] dark:hover:bg-[#253040]/50'}
+                    : 'border-gray-300 hover:bg-gray-50 dark:border-[#3a4d5e] dark:hover:bg-[#253040]/50'}
                   ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <input
@@ -301,7 +301,7 @@ export function InteractiveResponseCard({
                 className={`px-3 py-1.5 text-sm rounded-md border transition-colors
                   ${!standalone && selectedSingle === choice.value
                     ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-900/30 dark:text-blue-300'
-                    : 'border-gray-200 hover:bg-gray-100 text-gray-700 dark:border-[#2d3a4a] dark:hover:bg-[#253040] dark:text-gray-200'}
+                    : 'border-gray-300 hover:bg-gray-100 text-gray-700 dark:border-[#455568] dark:hover:bg-[#253040] dark:text-gray-200'}
                   disabled:opacity-50 disabled:cursor-not-allowed`}
                 aria-label={choice.label}
                 title={choice.description}
@@ -317,7 +317,7 @@ export function InteractiveResponseCard({
               disabled={isDisabled}
               className="px-3 py-1.5 text-sm rounded-md border border-dashed
                 border-gray-300 hover:bg-gray-100 text-gray-500
-                dark:border-[#2d3a4a] dark:hover:bg-[#253040] dark:text-gray-300
+                dark:border-[#455568] dark:hover:bg-[#253040] dark:text-gray-300
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               aria-label={t('interactive.otherOption')}
             >
@@ -339,7 +339,7 @@ export function InteractiveResponseCard({
               placeholder={t('interactive.otherPlaceholder')}
               disabled={isDisabled}
               className="flex-1 px-3 py-1.5 text-sm rounded-md border border-gray-300
-                dark:border-[#2d3a4a] dark:bg-[#253040] dark:text-gray-200
+                dark:border-[#455568] dark:bg-[#253040] dark:text-gray-200
                 focus:outline-none focus:ring-2 focus:ring-blue-500
                 disabled:opacity-50"
               aria-label={t('interactive.otherInputLabel')}
@@ -388,7 +388,7 @@ export function InteractiveResponseCard({
       data-testid="interactive-response-card"
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-[#253040]">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-[#3a4d5e]">
         {type === 'permission' ? (
           <Shield className="w-4 h-4 text-amber-500" aria-hidden="true" />
         ) : (

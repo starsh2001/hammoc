@@ -183,7 +183,7 @@ export function ProjectListPage() {
                   <MoreVertical className="w-5 h-5" />
                 </button>
                 {overflowMenuOpen && (
-                  <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#263240] rounded-lg shadow-lg border border-gray-200 dark:border-[#253040] z-50 py-1">
+                  <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#263240] rounded-lg shadow-lg border border-gray-300 dark:border-[#3a4d5e] z-50 py-1">
                     <button role="menuitem" onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                       <Settings className="w-4 h-4" />
                       {t('project.settings')}
@@ -291,7 +291,7 @@ export function ProjectListPage() {
                 <MoreVertical className="w-5 h-5" />
               </button>
               {overflowMenuOpen && (
-                <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#263240] rounded-lg shadow-lg border border-gray-200 dark:border-[#253040] z-50 py-1">
+                <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#263240] rounded-lg shadow-lg border border-gray-300 dark:border-[#3a4d5e] z-50 py-1">
                   <button role="menuitem" onClick={() => { setIsNewProjectDialogOpen(true); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                     <Plus className="w-4 h-4" />
                     {t('project.newProject')}
@@ -306,7 +306,7 @@ export function ProjectListPage() {
                     <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
                     {t('project.refresh')}
                   </button>
-                  <div className="border-t border-gray-200 dark:border-[#253040] my-1" />
+                  <div className="border-t border-gray-300 dark:border-[#3a4d5e] my-1" />
                   <button role="menuitem" onClick={() => { navigate('/settings'); setOverflowMenuOpen(false); }} className="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] flex items-center gap-2">
                     <Settings className="w-4 h-4" />
                     {t('project.settings')}
@@ -380,7 +380,7 @@ export function ProjectListPage() {
       </main>
 
       {/* Footer */}
-      <footer className="flex-shrink-0 border-t border-gray-200 dark:border-[#253040] bg-gray-50 dark:bg-[#263240] px-4 py-2">
+      <footer className="flex-shrink-0 border-t border-gray-300 dark:border-[#3a4d5e] bg-gray-50 dark:bg-[#263240] px-4 py-2">
         <div className="content-container flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
           <span>Hammoc{serverVersion ? ` v${serverVersion}` : ''}</span>
           <button

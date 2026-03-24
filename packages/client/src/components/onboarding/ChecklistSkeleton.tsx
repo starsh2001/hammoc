@@ -8,7 +8,7 @@ export function ChecklistSkeleton() {
   const { t } = useTranslation('common');
   return (
     <div
-      className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 dark:border-[#253040] bg-white dark:bg-[#263240] animate-pulse"
+      className="flex items-start gap-3 p-4 rounded-lg border border-gray-300 dark:border-[#3a4d5e] bg-white dark:bg-[#263240] animate-pulse"
       role="status"
       aria-label={t('onboarding.loadingAria')}
     >

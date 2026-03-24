@@ -128,7 +128,7 @@ export function QuickGitPanel({
                 onChange={(e) => setCommitMessage(e.target.value)}
                 placeholder={t('git.commitMessagePlaceholder')}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-[#2d3a4a]
+                className="w-full px-3 py-2 border border-gray-300 dark:border-[#455568]
                            bg-white dark:bg-[#253040] text-gray-900 dark:text-white
                            rounded-lg text-sm resize-none
                            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -170,7 +170,7 @@ export function QuickGitPanel({
                   {recentCommits.map((c) => (
                     <div
                       key={c.hash}
-                      className="text-sm border border-gray-100 dark:border-[#253040] rounded-lg p-2"
+                      className="text-sm border border-gray-100 dark:border-[#3a4d5e] rounded-lg p-2"
                     >
                       <div className="flex items-center gap-2">
                         <code className="text-xs text-gray-500 dark:text-gray-300 font-mono">
@@ -193,7 +193,7 @@ export function QuickGitPanel({
       </div>
 
       {/* Footer link */}
-      <div className="px-4 py-3 border-t border-gray-200 dark:border-[#253040]">
+      <div className="px-4 py-3 border-t border-gray-300 dark:border-[#3a4d5e]">
         <button
           onClick={onNavigateToGitTab}
           className="w-full flex items-center justify-center gap-1.5 text-sm text-blue-600 dark:text-blue-400
