@@ -283,6 +283,17 @@ When Claude uses extended thinking, the reasoning is shown in a collapsible bloc
 - Thinking content is visually distinct from the main response
 - Useful for understanding Claude's decision-making process
 
+### 2.15 Thinking Effort
+
+Control how much Claude "thinks" before responding. The intensity bar appears inside the model selector dropdown:
+
+- **Low / Medium / High** — 3 levels available for all users
+- **Max** — Additional level for Opus 4.6 with API key (not available for Claude.ai subscribers)
+- Click the currently active level again to reset to default (High)
+- Cannot be changed while Claude is responding
+
+The default thinking effort for new sessions can be configured in Settings > Global.
+
 ---
 
 ## 3. Sessions
@@ -329,6 +340,8 @@ Access sessions without leaving the chat:
 - Open the quick panel (sidebar tab)
 - Switch between sessions instantly
 - See session previews and status
+- **Side toggle** — Move the panel to the left or right side using the button in the panel header
+- **Mobile swipe** — Swipe inward from the screen edge to open, swipe back toward the edge to close
 
 ---
 
@@ -486,6 +499,7 @@ Access the file explorer from the sidebar tab. Toggle between views with the too
 - **Search** — File search with real-time filtering
 - **Hidden files** — Toggle visibility of ignored patterns (`.git`, `node_modules`, `.env`, `dist`, etc.)
 - **View toggle** — Switch between Grid and List views
+- **Open in OS explorer** — Opens the project folder in your OS file manager (Explorer, Finder, etc.). Only shown when accessing via localhost
 - Default view mode configurable in settings
 
 ### 6.2 Text Editor
@@ -987,6 +1001,7 @@ Click the **⋮** button on any card to open the context menu. Actions vary by c
 
 **Epic actions:**
 - **View Sub-Stories** — Open a dialog showing all stories under the epic
+- **Create Next Story** — Draft the next story for this epic with the SM agent (hidden when the epic is Done)
 
 The menu supports keyboard navigation (Arrow Up/Down, Enter, Escape).
 
@@ -1167,7 +1182,7 @@ Queue templates automate story development in batch. For details, see §9.7 (Que
 
 ## 12. Settings
 
-Access settings via the gear icon or the Settings page. The page has **6 tabs**: Global, Project, Notifications, Advanced, Help, and About. On desktop, tabs appear as a sidebar; on mobile, they use an accordion layout.
+Access settings via the gear icon or the Settings page. The page has **7 tabs**: Global, Project, Notifications, Account, Advanced, Help, and About. On desktop, tabs appear as a sidebar; on mobile, they use an accordion layout.
 
 ### 12.1 Theme
 
@@ -1274,11 +1289,23 @@ How long to wait for Claude's response:
 
 The timeout resets on every activity. If overridden by an environment variable, the field is disabled with an amber warning.
 
-### 12.10 Notifications
+### 12.10 Default Thinking Effort
+
+Set the default thinking effort for new sessions:
+
+- **SDK Default** (High) / Low / Medium / High / Max
+- Max is only available when using Opus 4.6 with an API key
+
+### 12.11 Quick Panel Defaults
+
+- **Default Open** — Whether the quick panel opens automatically when entering a chat page (default: On)
+- **Default Side** — Which side the quick panel appears on (Left or Right, default: Right)
+
+### 12.12 Notifications
 
 The Notifications tab contains two sections: Web Push and Telegram.
 
-#### 12.10.1 Web Push Notifications
+#### 12.12.1 Web Push Notifications
 
 Receive browser push notifications when Claude needs attention. Requires HTTPS and a browser that supports the Push API (Chrome, Firefox, Edge, Safari 16+).
 
@@ -1290,7 +1317,7 @@ Receive browser push notifications when Claude needs attention. Requires HTTPS a
 
 > iOS: Add Hammoc to Home Screen first, then subscribe from within the PWA.
 
-#### 12.10.2 Telegram Notifications
+#### 12.12.2 Telegram Notifications
 
 Get notified on your phone when Claude needs attention:
 
@@ -1322,7 +1349,12 @@ Get notified on your phone when Claude needs attention:
 
 **Environment Variables:** Bot Token and Chat ID can be set via environment variables, which take priority over saved values (shown with an amber "Env" indicator).
 
-### 12.11 System Prompt
+### 12.13 Account
+
+- **Change password** — Enter your current password, new password, and confirm. Minimum 4 characters. After changing, you'll be signed out and redirected to the login page.
+- **Logout** — Sign out immediately.
+
+### 12.14 System Prompt
 
 Customize Claude's behavior with a fully editable system prompt template:
 
@@ -1334,7 +1366,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 - **Template variables** — Listed below the editor with descriptions (e.g., `{gitBranch}`, `{gitMainBranch}`, `{gitStatus}`); variables are resolved at runtime
 - **Resolved preview** — Toggle to see the fully rendered prompt with variables replaced for the current project
 
-### 12.12 Advanced Settings
+### 12.15 Advanced Settings
 
 **Server Management (mode-dependent):**
 
@@ -1346,7 +1378,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 - **Max Turns** — Limit conversation turns per query (1–100)
 - **Max Budget (USD)** — Set cost limit per query ($0.01–$100)
 
-### 12.13 Help
+### 12.16 Help
 
 In-app usage guide within the Settings page:
 
@@ -1356,7 +1388,7 @@ In-app usage guide within the Settings page:
 - **BMad Method** — Quick guide to the BMad workflow
 - **Keyboard shortcuts** — Key bindings table (Enter, Shift+Enter, Escape, Ctrl+C, F7/Shift+F7, /)
 
-### 12.14 About
+### 12.17 About
 
 Displays app information:
 
