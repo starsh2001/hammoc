@@ -434,14 +434,16 @@ export const projectController = {
 
       // Open file explorer with platform-specific command.
       // Use spawn with detached+unref so the child process doesn't block the server.
-      // Windows explorer.exe always returns exit code 1 even on success,
-      // so we fire-and-forget instead of checking the exit code.
+      // On Windows, use "cmd /c start" instead of "explorer" directly because:
+      //   1. explorer.exe always returns exit code 1 even on success
+      //   2. Windows foreground lock prevents background processes (Node.js) from
+      //      bringing spawned windows to the front — "start" handles focus correctly
       const platform = process.platform;
       let cmd: string;
       let args: string[];
       if (platform === 'win32') {
-        cmd = 'explorer';
-        args = [projectPath.replace(/\//g, '\\')];
+        cmd = 'cmd';
+        args = ['/c', 'start', '', projectPath.replace(/\//g, '\\')];
       } else if (platform === 'darwin') {
         cmd = 'open';
         args = [projectPath];
