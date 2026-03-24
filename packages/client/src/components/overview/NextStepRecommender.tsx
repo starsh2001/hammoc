@@ -108,7 +108,7 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
     if (rec.id === 'start-dev' && rec.storyFile) {
       try {
         const storyId = `story-${rec.storyFile.match(/^(\d+\.\d+)/)?.[1] ?? rec.storyFile}`;
-        await boardApi.updateIssue(projectSlug, storyId, { status: 'In Progress' });
+        await boardApi.updateStoryStatus(projectSlug, storyId, 'In Progress');
       } catch (err) {
         console.warn('Failed to transition story to In Progress:', err);
       }

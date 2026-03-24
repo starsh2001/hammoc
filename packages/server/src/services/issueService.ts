@@ -416,6 +416,68 @@ class IssueService {
   }
 
   /**
+   * Update a story's status by modifying its markdown file.
+   * @param projectPath - absolute path to the project root
+   * @param storyId - story ID (e.g. "story-1.1")
+   * @param status - new status string
+   * @throws Error with code 'STORY_NOT_FOUND' if story file doesn't exist
+   */
+  async updateStoryStatus(projectPath: string, storyId: string, status: string): Promise<void> {
+    // Get the board to find the story's filePath
+    const board = await this.getBoard(projectPath);
+    const story = board.items.find((item) => item.id === storyId && item.type === 'story');
+    if (!story || !story.filePath) {
+      const err = new Error(`Story not found: ${storyId}`);
+      (err as NodeJS.ErrnoException).code = 'STORY_NOT_FOUND';
+      throw err;
+    }
+
+    const filePath = path.join(projectPath, story.filePath);
+    let content: string;
+    try {
+      content = await fs.readFile(filePath, 'utf-8');
+    } catch {
+      const err = new Error(`Story file not found: ${story.filePath}`);
+      (err as NodeJS.ErrnoException).code = 'STORY_NOT_FOUND';
+      throw err;
+    }
+
+    // Replace status in the markdown content using the same formats extractStoryMeta recognizes
+    let updated = content;
+    const replacements: [RegExp, string][] = [
+      [/^(## Status\s*\n\s*\n\s*).+/m, `$1${status}`],        // format 1: heading + blank + value
+      [/^(## Status\s*\n\s*)([^\n#].+)/m, `$1${status}`],      // format 2: heading + value
+      [/^(## Status\s*:\s*).+/m, `$1${status}`],                // format 3: heading with inline
+      [/^(\*{0,2}Status\*{0,2}\s*:\s*).+/m, `$1${status}`],    // format 4 & 5: key-value
+    ];
+
+    let replaced = false;
+    for (const [pattern, replacement] of replacements) {
+      if (pattern.test(content)) {
+        updated = content.replace(pattern, replacement);
+        replaced = true;
+        break;
+      }
+    }
+
+    if (!replaced) {
+      // No status found — insert after the first heading
+      const headingMatch = content.match(/^#\s+.+$/m);
+      if (headingMatch) {
+        const insertPos = (headingMatch.index ?? 0) + headingMatch[0].length;
+        updated = content.slice(0, insertPos) + `\n\n## Status: ${status}` + content.slice(insertPos);
+      } else {
+        updated = `## Status: ${status}\n\n${content}`;
+      }
+    }
+
+    // Atomic write
+    const tmpPath = `${filePath}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+    await fs.writeFile(tmpPath, updated, 'utf-8');
+    await fs.rename(tmpPath, filePath);
+  }
+
+  /**
    * Delete an issue.
    * @throws Error with code 'ISSUE_NOT_FOUND' if issue doesn't exist
    * @throws Error with code 'INVALID_ISSUE_ID' if issueId contains path traversal

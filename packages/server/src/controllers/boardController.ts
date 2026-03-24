@@ -233,6 +233,33 @@ export const boardController = {
     }
   },
 
+  async updateStoryStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug, storyId } = req.params;
+      const { status } = req.body;
+
+      if (!status || !VALID_STATUSES.includes(status)) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: req.t!('board.validation.invalidStatus', { value: status }) } });
+        return;
+      }
+
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      await issueService.updateStoryStatus(projectRoot, storyId, status);
+      res.json({ message: 'Story status updated' });
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'PROJECT_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('board.error.projectNotFound', { value: req.params.projectSlug }) } });
+        return;
+      }
+      if (nodeError.code === 'STORY_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'STORY_NOT_FOUND', message: req.t!('board.error.storyNotFound', { value: req.params.storyId }) } });
+        return;
+      }
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
+    }
+  },
+
   async deleteIssue(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug, issueId } = req.params;
