@@ -26,6 +26,9 @@ export const boardApi = {
   deleteIssue: (projectSlug: string, issueId: string) =>
     api.delete<{ message: string }>(`/projects/${projectSlug}/board/issues/${issueId}`),
 
+  updateStoryStatus: (projectSlug: string, storyId: string, status: string) =>
+    api.patch<{ message: string }>(`/projects/${projectSlug}/board/stories/${storyId}`, { status }),
+
   uploadAttachment: (projectSlug: string, issueId: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);

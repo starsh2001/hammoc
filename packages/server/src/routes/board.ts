@@ -9,6 +9,8 @@ router.get('/:projectSlug/board/issues', boardController.listIssues);
 router.post('/:projectSlug/board/issues', boardController.createIssue);
 router.patch('/:projectSlug/board/issues/:issueId', boardController.updateIssue);
 router.delete('/:projectSlug/board/issues/:issueId', boardController.deleteIssue);
+// Story status update
+router.patch('/:projectSlug/board/stories/:storyId', boardController.updateStoryStatus);
 // Issue attachments
 router.post('/:projectSlug/board/issues/:issueId/attachments', attachmentUpload, boardController.uploadAttachment);
 router.get('/:projectSlug/board/issues/:issueId/attachments', boardController.listAttachments);
