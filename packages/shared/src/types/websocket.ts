@@ -108,8 +108,8 @@ export interface ClientToServerEvents {
   'chain:remove': (data: { sessionId: string; id: string }) => void;
   'chain:clear': (data: { sessionId: string }) => void;
   // Story 25.4: Rewind events
-  'chat:rewind': (data: { sessionId: string; userMessageUuid: string; option: RewindOption; workingDirectory: string; requestId: string }) => void;
-  'chat:rewind-dryrun': (data: { sessionId: string; userMessageUuid: string; workingDirectory: string; requestId: string }) => void;
+  'chat:rewind': (data: { sessionId: string; userMessageUuid: string; option: RewindOption; workingDirectory: string }) => void;
+  'chat:rewind-dryrun': (data: { sessionId: string; userMessageUuid: string; workingDirectory: string }) => void;
 }
 
 // ===== Server to Client Events =====
@@ -165,8 +165,8 @@ export interface ServerToClientEvents {
   // Story 24.1: Prompt chain update
   'chain:update': (data: { sessionId: string; items: PromptChainItem[] }) => void;
   // Story 25.4: Rewind result events
-  'rewind:dryrun-result': (data: RewindResultPayload & { requestId: string }) => void;
-  'rewind:result': (data: { success: boolean; error?: string; option: RewindOption; requestId: string }) => void;
+  'rewind:dryrun-result': (data: RewindResultPayload) => void;
+  'rewind:result': (data: { success: boolean; error?: string; option: RewindOption }) => void;
   // Buffer replay: send entire buffer as a single batch for fast session join
   'stream:buffer-replay': (data: { sessionId: string; events: Array<{ event: string; data: unknown }> }) => void;
 }

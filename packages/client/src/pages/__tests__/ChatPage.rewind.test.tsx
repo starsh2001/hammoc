@@ -65,31 +65,28 @@ describe('ChatPage Rewind Logic', () => {
   });
 
   describe('Rewind WebSocket events', () => {
-    it('emits chat:rewind-dryrun with correct payload including requestId', () => {
+    it('emits chat:rewind-dryrun with correct payload', () => {
       const socket = mockSocket;
       socket.emit('chat:rewind-dryrun', {
         sessionId: 'session-1',
         userMessageUuid: 'msg-123',
         workingDirectory: '/test/path',
-        requestId: 'req-1',
       });
 
       expect(socket.emit).toHaveBeenCalledWith('chat:rewind-dryrun', {
         sessionId: 'session-1',
         userMessageUuid: 'msg-123',
         workingDirectory: '/test/path',
-        requestId: 'req-1',
       });
     });
 
-    it('emits chat:rewind with correct payload including requestId', () => {
+    it('emits chat:rewind with correct payload', () => {
       const socket = mockSocket;
       socket.emit('chat:rewind', {
         sessionId: 'session-1',
         userMessageUuid: 'msg-123',
         option: 'restore-all',
         workingDirectory: '/test/path',
-        requestId: 'req-1',
       });
 
       expect(socket.emit).toHaveBeenCalledWith('chat:rewind', {
@@ -97,7 +94,6 @@ describe('ChatPage Rewind Logic', () => {
         userMessageUuid: 'msg-123',
         option: 'restore-all',
         workingDirectory: '/test/path',
-        requestId: 'req-1',
       });
     });
 
