@@ -71,8 +71,6 @@ export interface RawJSONLMessage {
   error?: string;
   // Meta messages are system-injected (e.g., expanded slash commands) - should be hidden
   isMeta?: boolean;
-  // Informational flag set by active-branch algorithm — marks messages excluded from active branch
-  isSidechain?: boolean;
 }
 
 /**
