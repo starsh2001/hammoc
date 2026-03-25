@@ -472,11 +472,50 @@ export function ChatPage() {
     return null;
   }, [messages]);
 
+  // Story 25.4: Active rewind request ID and handler refs for response correlation & cleanup
+  const rewindRequestIdRef = useRef<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rewindHandlerRef = useRef<((...args: any[]) => void) | null>(null);
+  const rewindEventRef = useRef<string | null>(null);
+
+  // Clean up any active rewind socket listener
+  const cleanupRewindListener = useCallback(() => {
+    if (rewindHandlerRef.current && rewindEventRef.current) {
+      const socket = getSocket();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (socket as any).off(rewindEventRef.current, rewindHandlerRef.current);
+      rewindHandlerRef.current = null;
+      rewindEventRef.current = null;
+    }
+  }, []);
+
+  // Resolve the user message UUID and content for rewind target:
+  // SDK rewindFiles() only accepts user message UUIDs, so if the target is an
+  // assistant message, find the preceding user message instead.
+  const resolveUserMessage = useCallback((targetMessageId: string): { id: string; content: string } | null => {
+    const idx = messages.findIndex((m) => m.id === targetMessageId);
+    if (idx === -1) return null;
+    if (messages[idx].type === 'user') return { id: messages[idx].id, content: messages[idx].content };
+    // Walk backwards from the target to find the preceding user message
+    for (let i = idx - 1; i >= 0; i--) {
+      if (messages[i].type === 'user') return { id: messages[i].id, content: messages[i].content };
+    }
+    return null;
+  }, [messages]);
+
   // Story 25.4: Rewind handler
-  const handleRewind = useCallback((messageId: string, messageText: string) => {
+  const handleRewind = useCallback((messageId: string, _messageText: string) => {
     if (isRewinding || isStreaming) return;
+
+    // Resolve to user message UUID + content (SDK only accepts user message UUIDs)
+    const userMsg = resolveUserMessage(messageId);
+    if (!userMsg) return;
+
+    const reqId = generateUUID();
+    rewindRequestIdRef.current = reqId;
+
     setIsRewinding(true);
-    setRewindTarget({ messageId, messageText });
+    setRewindTarget({ messageId: userMsg.id, messageText: userMsg.content });
     setRewindDryRunResult(null);
     setIsRewindDialogOpen(true);
     setIsRegenerate(false);
@@ -484,13 +523,23 @@ export function ChatPage() {
     const socket = getSocket();
     socket.emit('chat:rewind-dryrun', {
       sessionId: sessionId!,
-      userMessageUuid: messageId,
+      userMessageUuid: userMsg.id,
       workingDirectory,
+      requestId: reqId,
     });
-    socket.once('rewind:dryrun-result', (result) => {
+
+    cleanupRewindListener(); // Remove any previous listener before adding new one
+    const handler = (result: typeof rewindDryRunResult & { requestId: string }) => {
+      if (result.requestId !== reqId) return; // Ignore stale responses
+      socket.off('rewind:dryrun-result', handler);
+      rewindHandlerRef.current = null;
+      rewindEventRef.current = null;
       setRewindDryRunResult(result);
-    });
-  }, [isRewinding, isStreaming, sessionId, workingDirectory]);
+    };
+    rewindHandlerRef.current = handler;
+    rewindEventRef.current = 'rewind:dryrun-result';
+    socket.on('rewind:dryrun-result', handler);
+  }, [isRewinding, isStreaming, sessionId, workingDirectory, resolveUserMessage, cleanupRewindListener]);
 
   // Story 25.4: Regenerate handler
   const handleRegenerate = useCallback(() => {
@@ -513,6 +562,9 @@ export function ChatPage() {
     }
     if (!precedingUserMsg) return;
 
+    const reqId = generateUUID();
+    rewindRequestIdRef.current = reqId;
+
     setIsRewinding(true);
     setRewindTarget({ messageId: precedingUserMsg.id, messageText: precedingUserMsg.content });
     setRewindDryRunResult(null);
@@ -524,32 +576,55 @@ export function ChatPage() {
       sessionId: sessionId!,
       userMessageUuid: precedingUserMsg.id,
       workingDirectory,
+      requestId: reqId,
     });
-    socket.once('rewind:dryrun-result', (result) => {
+
+    cleanupRewindListener();
+    const handler = (result: typeof rewindDryRunResult & { requestId: string }) => {
+      if (result.requestId !== reqId) return;
+      socket.off('rewind:dryrun-result', handler);
+      rewindHandlerRef.current = null;
+      rewindEventRef.current = null;
       setRewindDryRunResult(result);
-    });
-  }, [isRewinding, isStreaming, messages, sessionId, workingDirectory]);
+    };
+    rewindHandlerRef.current = handler;
+    rewindEventRef.current = 'rewind:dryrun-result';
+    socket.on('rewind:dryrun-result', handler);
+  }, [isRewinding, isStreaming, messages, sessionId, workingDirectory, cleanupRewindListener]);
 
   // Story 25.4: Rewind option selection
   const handleRewindSelect = useCallback((option: RewindOption) => {
+    // Guard: ensure rewind state is valid before proceeding
+    if (!rewindTarget || !rewindRequestIdRef.current) return;
+
     if (option === 'cancel') {
+      cleanupRewindListener();
       setIsRewindDialogOpen(false);
       setIsRewinding(false);
       setRewindTarget(null);
+      rewindRequestIdRef.current = null;
       return;
     }
 
     setIsRewindDialogOpen(false);
 
+    cleanupRewindListener(); // Clean up dry-run listener before registering result listener
+    const reqId = rewindRequestIdRef.current!;
     const socket = getSocket();
     socket.emit('chat:rewind', {
       sessionId: sessionId!,
       userMessageUuid: rewindTarget!.messageId,
       option,
       workingDirectory,
+      requestId: reqId,
     });
 
-    socket.once('rewind:result', (result) => {
+    const handler = (result: { success: boolean; error?: string; option: RewindOption; requestId: string }) => {
+      if (result.requestId !== reqId) return; // Ignore stale responses
+      socket.off('rewind:result', handler);
+      rewindHandlerRef.current = null;
+      rewindEventRef.current = null;
+
       if (result.success) {
         if (isRegenerate) {
           // Auto-resend preceding user message
@@ -571,19 +646,30 @@ export function ChatPage() {
       setIsRewinding(false);
       setRewindTarget(null);
       setIsRegenerate(false);
-    });
-  }, [sessionId, rewindTarget, workingDirectory, isRegenerate, internalSend, projectSlug, fetchMessages]);
+      rewindRequestIdRef.current = null;
+    };
+    rewindHandlerRef.current = handler;
+    rewindEventRef.current = 'rewind:result';
+    socket.on('rewind:result', handler);
+  }, [sessionId, rewindTarget, workingDirectory, isRegenerate, internalSend, projectSlug, fetchMessages, cleanupRewindListener]);
 
   // Story 25.4: Dialog close handler
   const handleRewindDialogClose = useCallback(() => {
+    cleanupRewindListener();
+    rewindRequestIdRef.current = null;
     setIsRewindDialogOpen(false);
     setIsRewinding(false);
     setRewindTarget(null);
     setIsRegenerate(false);
-    // Clean up stale socket listeners to prevent state updates after dialog close
-    const socket = getSocket();
-    socket.off('rewind:dryrun-result');
-  }, []);
+  }, [cleanupRewindListener]);
+
+  // Story 25.4: Clean up rewind socket listeners on unmount
+  useEffect(() => {
+    return () => {
+      cleanupRewindListener();
+      rewindRequestIdRef.current = null;
+    };
+  }, [cleanupRewindListener]);
 
   // Fetch messages on mount (only for existing sessions)
   // After fetch completes, clear any lingering streaming tool segments

@@ -18,6 +18,7 @@ import type {
   PermissionRequest,
   PromptChainItem,
   ThinkingEffort,
+  RewindOption,
 } from '@hammoc/shared';
 import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS } from '@hammoc/shared';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@hammoc/shared';
@@ -999,15 +1000,24 @@ export async function initializeWebSocket(
 
     // Story 25.4: Handle chat:rewind-dryrun — preview file changes without modifying
     socket.on('chat:rewind-dryrun', async (data) => {
-      const { sessionId, userMessageUuid, workingDirectory } = data;
+      const { sessionId, userMessageUuid, workingDirectory, requestId } = data;
       const lang = socket.data.language || 'en';
       const t = i18next.getFixedT(lang);
 
       try {
-        // Try active stream's chatService first
-        const stream = activeStreams.get(sessionId);
-        let queryInstance = stream?.chatService?.getQuery();
-        let tempChatService: ChatService | null = null;
+        // Reject rewind during active streaming to prevent session corruption
+        const activeStream = activeStreams.get(sessionId);
+        if (activeStream?.status === 'running') {
+          socket.emit('rewind:dryrun-result', {
+            requestId,
+            canRewind: false,
+            error: t('ws.error.rewindFailed'),
+          });
+          return;
+        }
+
+        // Try active stream's chatService first (idle/paused stream)
+        let queryInstance = activeStream?.chatService?.getQuery();
 
         if (!queryInstance) {
           // No active stream — use SDK query() directly to get a Query with rewindFiles
@@ -1023,6 +1033,7 @@ export async function initializeWebSocket(
           try {
             const result = await q.rewindFiles(userMessageUuid, { dryRun: true });
             socket.emit('rewind:dryrun-result', {
+              requestId,
               canRewind: result.canRewind,
               error: result.error,
               filesChanged: result.filesChanged,
@@ -1037,6 +1048,7 @@ export async function initializeWebSocket(
 
         const result = await queryInstance.rewindFiles(userMessageUuid, { dryRun: true });
         socket.emit('rewind:dryrun-result', {
+          requestId,
           canRewind: result.canRewind,
           error: result.error,
           filesChanged: result.filesChanged,
@@ -1046,22 +1058,48 @@ export async function initializeWebSocket(
       } catch (err) {
         log.error('chat:rewind-dryrun error:', err);
         socket.emit('rewind:dryrun-result', {
+          requestId,
           canRewind: false,
           error: err instanceof Error ? err.message : t('ws.error.rewindFailed'),
         });
       }
     });
 
+    // Valid rewind options that trigger SDK rewind (excludes 'cancel')
+    const VALID_REWIND_OPTIONS: ReadonlySet<RewindOption> = new Set<RewindOption>(['restore-all', 'restore-conversation', 'restore-code', 'summarize']);
+
     // Story 25.4: Handle chat:rewind — execute rewind with selected option
     socket.on('chat:rewind', async (data) => {
-      const { sessionId, userMessageUuid, option, workingDirectory } = data;
+      const { sessionId, userMessageUuid, option, workingDirectory, requestId } = data;
       const lang = socket.data.language || 'en';
       const t = i18next.getFixedT(lang);
 
+      // Validate option — reject invalid/cancel values
+      if (!VALID_REWIND_OPTIONS.has(option)) {
+        socket.emit('rewind:result', {
+          requestId,
+          success: false,
+          error: `Invalid rewind option: ${option}`,
+          option,
+        });
+        return;
+      }
+
       try {
-        // Try active stream's chatService first
-        const stream = activeStreams.get(sessionId);
-        let queryInstance = stream?.chatService?.getQuery();
+        // Reject rewind during active streaming to prevent session corruption
+        const activeStream = activeStreams.get(sessionId);
+        if (activeStream?.status === 'running') {
+          socket.emit('rewind:result', {
+            requestId,
+            success: false,
+            error: t('ws.error.rewindFailed'),
+            option,
+          });
+          return;
+        }
+
+        // Try active stream's chatService first (idle/paused stream)
+        let queryInstance = activeStream?.chatService?.getQuery();
 
         if (!queryInstance) {
           // No active stream — use SDK query() directly to resume session
@@ -1076,19 +1114,20 @@ export async function initializeWebSocket(
           });
           try {
             await q.rewindFiles(userMessageUuid);
-            socket.emit('rewind:result', { success: true, option });
+            socket.emit('rewind:result', { requestId, success: true, option });
           } finally {
             await q.interrupt().catch(() => {});
           }
           return;
         }
 
-        // Active stream — call rewindFiles on existing query
+        // Active stream (idle/paused) — call rewindFiles on existing query
         await queryInstance.rewindFiles(userMessageUuid);
-        socket.emit('rewind:result', { success: true, option });
+        socket.emit('rewind:result', { requestId, success: true, option });
       } catch (err) {
         log.error('chat:rewind error:', err);
         socket.emit('rewind:result', {
+          requestId,
           success: false,
           error: err instanceof Error ? err.message : t('ws.error.rewindFailed'),
           option,

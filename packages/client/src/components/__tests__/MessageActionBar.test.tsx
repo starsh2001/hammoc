@@ -1,6 +1,8 @@
 /**
  * MessageActionBar Tests
  * [Source: Story 25.1 - Task 6, Story 25.4 - Task 8]
+ *
+ * @vitest-environment jsdom
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
