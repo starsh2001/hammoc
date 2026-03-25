@@ -710,6 +710,40 @@ invalid json line
       expect(transformed[1].toolResult?.output).toBe('hello');
     });
 
+    it('uses original uuid as id for first split fragment (referential integrity)', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'u1', type: 'user', timestamp: '2026-01-15T10:00:00Z', message: { role: 'user', content: 'Hello' } },
+        {
+          uuid: 'a1',
+          type: 'assistant',
+          parentUuid: 'u1',
+          timestamp: '2026-01-15T10:00:01Z',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'Thinking...', signature: 'sig' },
+              { type: 'text', text: 'Answer' },
+              { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file_path: '/test.ts' } },
+            ],
+          },
+        },
+        { uuid: 'u2', type: 'user', parentUuid: 'a1', timestamp: '2026-01-15T10:00:02Z', message: { role: 'user', content: 'Follow up' } },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+      const idSet = new Set(transformed.map((m) => m.id));
+
+      // First split fragment of 'a1' must use original uuid
+      expect(transformed[1].id).toBe('a1');
+
+      // Every non-undefined parentId must resolve to an existing id
+      for (const msg of transformed) {
+        if (msg.parentId !== undefined) {
+          expect(idSet.has(msg.parentId)).toBe(true);
+        }
+      }
+    });
+
     it('maps parentId for queue-operation task notifications', () => {
       const messages: RawJSONLMessage[] = [
         {

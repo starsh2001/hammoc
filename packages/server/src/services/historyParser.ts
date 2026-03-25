@@ -338,8 +338,11 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
       const messageContent = m.message?.content;
 
       if (Array.isArray(messageContent)) {
-        // Split content blocks into separate HistoryMessages
+        // Split content blocks into separate HistoryMessages.
+        // The first emitted fragment uses m.uuid as its id so that child
+        // messages whose parentId references this raw uuid can resolve it.
         let thinkingContent: string | undefined;
+        let firstFragmentEmitted = false;
 
         for (const block of messageContent) {
           if (block.type === 'thinking') {
@@ -348,8 +351,10 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
             const text = (block as TextContentBlock).text;
             // Skip "(no content)" placeholder
             if (text.trim() && text.trim() !== '(no content)') {
+              const id = !firstFragmentEmitted ? m.uuid : `${m.uuid}-text-${results.length}`;
+              firstFragmentEmitted = true;
               results.push({
-                id: `${m.uuid}-text-${results.length}`,
+                id,
                 type: 'assistant',
                 content: text,
                 timestamp: m.timestamp,
@@ -361,8 +366,10 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
           } else if (block.type === 'tool_use') {
             const toolBlock = block as ToolUseContentBlock;
             const idx = results.length;
+            const id = !firstFragmentEmitted ? m.uuid : `${m.uuid}-tool-${toolBlock.id}`;
+            firstFragmentEmitted = true;
             results.push({
-              id: `${m.uuid}-tool-${toolBlock.id}`,
+              id,
               type: 'tool_use',
               content: `Calling ${toolBlock.name}`,
               timestamp: m.timestamp,
@@ -378,8 +385,9 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
 
         // If only thinking with no text/tool, create thinking-only message
         if (thinkingContent) {
+          const id = !firstFragmentEmitted ? m.uuid : `${m.uuid}-thinking`;
           results.push({
-            id: `${m.uuid}-thinking`,
+            id,
             type: 'assistant',
             content: '',
             timestamp: m.timestamp,
