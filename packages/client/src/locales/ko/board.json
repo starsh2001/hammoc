@@ -74,7 +74,7 @@
   "story": {},
   "workflow": {
     "validateStoryOnly": "스토리 검증",
-    "validateAndFixStory": "스토리 검증 및 자동 수정",
+    "validateAndFixStory": "스토리 검증 및 수정",
     "startDevelopment": "개발 시작",
     "resumeDevelopment": "개발 이어가기",
     "requestQA": "QA 요청",

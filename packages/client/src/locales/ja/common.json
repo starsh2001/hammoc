@@ -240,7 +240,7 @@
     "markDoneDesc": "QA合格 — Doneにする",
     "requestQAReview": "QA再レビューをリクエスト",
     "validateStoryOnly": "ストーリー検証",
-    "validateAndFixStory": "ストーリー検証＆自動修正",
+    "validateAndFixStory": "ストーリー検証＆修正",
     "startDev": "開発を開始",
     "createFirstStory": "最初のストーリーを作成",
     "createNextStory": "次のストーリーを作成",

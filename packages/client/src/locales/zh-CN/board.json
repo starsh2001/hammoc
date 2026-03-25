@@ -74,7 +74,7 @@
   "story": {},
   "workflow": {
     "validateStoryOnly": "验证 Story",
-    "validateAndFixStory": "验证并自动修正 Story",
+    "validateAndFixStory": "验证并修正 Story",
     "startDevelopment": "开始开发",
     "resumeDevelopment": "继续开发",
     "requestQA": "请求 QA",

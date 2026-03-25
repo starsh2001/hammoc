@@ -243,10 +243,10 @@ describe('CardContextMenu', () => {
   });
 
   describe('Story card menu', () => {
-    it('should render "스토리 검증 및 자동 수정" for Draft status', () => {
+    it('should render "스토리 검증 및 수정" for Draft status', () => {
       render(<CardContextMenu item={storyDraft} {...allCallbacks} />);
       fireEvent.click(screen.getByLabelText('카드 메뉴'));
-      expect(screen.getByText('스토리 검증 및 자동 수정')).toBeInTheDocument();
+      expect(screen.getByText('스토리 검증 및 수정')).toBeInTheDocument();
     });
 
     it('should render "개발 시작" for Approved status', () => {
@@ -299,7 +299,7 @@ describe('CardContextMenu', () => {
     it('should call onWorkflowAction when workflow action is clicked', () => {
       render(<CardContextMenu item={storyDraft} {...allCallbacks} />);
       fireEvent.click(screen.getByLabelText('카드 메뉴'));
-      fireEvent.click(screen.getByText('스토리 검증 및 자동 수정'));
+      fireEvent.click(screen.getByText('스토리 검증 및 수정'));
       expect(mockWorkflowAction).toHaveBeenCalledWith(storyDraft);
     });
 

@@ -241,7 +241,7 @@
     "markDoneDesc": "QA passed — mark as Done",
     "requestQAReview": "Re-request QA review",
     "validateStoryOnly": "Validate Story",
-    "validateAndFixStory": "Validate & Auto-Fix Story",
+    "validateAndFixStory": "Validate & Fix Story",
     "startDev": "Start development",
     "createFirstStory": "Create first story",
     "createNextStory": "Create next story",

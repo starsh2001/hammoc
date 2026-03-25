@@ -241,7 +241,7 @@
     "markDoneDesc": "QA 통과 — Done으로 완료",
     "requestQAReview": "QA 재요청",
     "validateStoryOnly": "스토리 검증",
-    "validateAndFixStory": "스토리 검증 및 자동 수정",
+    "validateAndFixStory": "스토리 검증 및 수정",
     "startDev": "개발 시작",
     "createFirstStory": "첫 스토리 생성",
     "createNextStory": "다음 스토리 생성",

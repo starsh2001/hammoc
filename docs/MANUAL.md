@@ -981,8 +981,8 @@ Click the **⋮** button on any card to open the context menu. Actions vary by c
 
 **Story actions (by status):**
 - **Draft:**
-  - **Validate and Fix** — Validate the story draft and auto-fix issues
-  - **Validate Only** — Validate the story draft without auto-fix
+  - **Validate and Fix** — Validate the story draft and fix issues
+  - **Validate Only** — Validate the story draft without fix
 - **Approved:**
   - **Start Development** — Begin implementing the story
   - **Validate and Fix** / **Validate Only** — Re-validate if needed

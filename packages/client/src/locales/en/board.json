@@ -74,7 +74,7 @@
   "story": {},
   "workflow": {
     "validateStoryOnly": "Validate Story",
-    "validateAndFixStory": "Validate & Auto-Fix Story",
+    "validateAndFixStory": "Validate & Fix Story",
     "startDevelopment": "Start Development",
     "resumeDevelopment": "Resume Development",
     "requestQA": "Request QA",

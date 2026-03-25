@@ -240,7 +240,7 @@
     "markDoneDesc": "QA aprovado — marcar como Done",
     "requestQAReview": "Ressolicitar revisão QA",
     "validateStoryOnly": "Validar story",
-    "validateAndFixStory": "Validar e autocorrigir story",
+    "validateAndFixStory": "Validar e corrigir story",
     "startDev": "Iniciar desenvolvimento",
     "createFirstStory": "Criar primeira story",
     "createNextStory": "Criar próxima story",

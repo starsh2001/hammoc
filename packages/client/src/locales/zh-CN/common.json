@@ -240,7 +240,7 @@
     "markDoneDesc": "QA 通过 — 标记为 Done",
     "requestQAReview": "重新请求 QA 审查",
     "validateStoryOnly": "验证 Story",
-    "validateAndFixStory": "验证并自动修正 Story",
+    "validateAndFixStory": "验证并修正 Story",
     "startDev": "开始开发",
     "createFirstStory": "创建第一个 Story",
     "createNextStory": "创建下一个 Story",

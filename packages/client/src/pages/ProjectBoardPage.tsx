@@ -243,7 +243,7 @@ export function ProjectBoardPage() {
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t, setActionErrorWithClear]);
 
-  // Validate only — validate story without auto-fix, approve after user fixes
+  // Validate only — validate story without fix, approve after user fixes
   const handleValidateOnly = useCallback((item: BoardItem) => {
     if (!projectSlug || item.type !== 'story') return;
     const sessionId = generateUUID();
@@ -255,7 +255,7 @@ export function ProjectBoardPage() {
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t]);
 
-  // Validate and fix — validate draft story then auto-fix all issues
+  // Validate and fix — validate draft story then fix all issues
   const handleValidateAndFix = useCallback((item: BoardItem) => {
     if (!projectSlug || item.type !== 'story') return;
     const sessionId = generateUUID();

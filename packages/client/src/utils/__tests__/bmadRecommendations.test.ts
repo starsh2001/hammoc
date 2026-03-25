@@ -238,7 +238,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
         epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Draft' }] }],
       }),
     );
-    // validate-fix-story is primary (validate + auto-fix)
+    // validate-fix-story is primary (validate + fix)
     const validateFixRec = recommendations.find((r) => r.id === 'validate-fix-story');
     expect(validateFixRec).toBeDefined();
     expect(validateFixRec!.variant).toBe('primary');

@@ -447,7 +447,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       storyFile: approvedStory.file,
     });
 
-    // 6b: Validate and fix — validate then auto-fix all issues
+    // 6b: Validate and fix — validate then fix all issues
     recs.push({
       id: 'validate-fix-approved-story',
       title: i18n.t('common:rec.validateAndFixStory'),
@@ -460,7 +460,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       chainPrompts: ['Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.', 'If the story status is not Approved, please change it to Approved now.'],
     });
 
-    // 6c: Validate only — no auto-fix, approve after user fixes
+    // 6c: Validate only — no fix, approve after user fixes
     recs.push({
       id: 'validate-approved-story',
       title: i18n.t('common:rec.validateStoryOnly'),
@@ -479,7 +479,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     const label = draftStory.title ? `${num}. ${draftStory.title}` : draftStory.file;
     const hasPrior = recs.length > 0;
 
-    // 7a: Validate and fix — validate then auto-fix all issues
+    // 7a: Validate and fix — validate then fix all issues
     recs.push({
       id: 'validate-fix-story',
       title: i18n.t('common:rec.validateAndFixStory'),
@@ -492,7 +492,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       chainPrompts: ['Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.', 'If the story status is not Approved, please change it to Approved now.'],
     });
 
-    // 7b: Validate only — no auto-fix, approve after user fixes
+    // 7b: Validate only — no fix, approve after user fixes
     recs.push({
       id: 'validate-story',
       title: i18n.t('common:rec.validateStoryOnly'),
