@@ -322,5 +322,22 @@
     "error": "错误: {{label}}",
     "cost": "费用: ${{amount}}",
     "turns": "轮次: {{count}}"
+  },
+  "rewindDialog": {
+    "title": "回退到此处",
+    "restoreAll": "恢复代码和对话",
+    "restoreAllDesc": "将文件和对话回退到此处",
+    "restoreConversation": "仅恢复对话",
+    "restoreConversationDesc": "回退对话但保留当前代码",
+    "restoreCode": "仅恢复代码",
+    "restoreCodeDesc": "恢复文件但保留对话",
+    "summarize": "从此处开始总结",
+    "summarizeDesc": "将此处之后的消息压缩为摘要",
+    "cancel": "取消",
+    "filesAffected": "受影响的文件",
+    "insertions": "{{count}} 处插入",
+    "deletions": "{{count}} 处删除",
+    "noCheckpoint": "文件检查点不可用",
+    "loading": "正在检查文件更改..."
   }
 }
