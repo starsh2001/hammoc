@@ -1,37 +1,26 @@
 /**
  * MessageActionBar - Action buttons displayed at the bottom of each message
- * [Source: Story 25.1 - Task 1, 2, Story 25.4 - Task 2]
+ * [Source: Story 25.1 - Task 1, 2]
  */
 
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Check, RotateCcw, RefreshCw } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import { debugLogger } from '../utils/debugLogger';
 
 interface MessageActionBarProps {
   role: 'user' | 'assistant';
   content: string;
-  messageId?: string;
-  messageText?: string;
   isLastAssistant?: boolean;
-  isRewinding?: boolean;
   disabled?: boolean;
   onCopy?: (content: string) => void;
-  onRewind?: (messageId: string, messageText: string) => void;
-  onRegenerate?: () => void;
 }
 
 export function MessageActionBar({
   role,
   content,
-  messageId,
-  messageText,
-  isLastAssistant = false,
-  isRewinding = false,
   disabled = false,
   onCopy,
-  onRewind,
-  onRegenerate,
 }: MessageActionBarProps) {
   const { t } = useTranslation('chat');
   const [isCopied, setIsCopied] = useState(false);
@@ -61,16 +50,6 @@ export function MessageActionBar({
     }
   }, [content, onCopy]);
 
-  const handleRewind = useCallback(() => {
-    if (messageId && onRewind) {
-      onRewind(messageId, messageText ?? content);
-    }
-  }, [messageId, messageText, content, onRewind]);
-
-  const handleRegenerate = useCallback(() => {
-    onRegenerate?.();
-  }, [onRegenerate]);
-
   if (disabled) return null;
 
   const isUser = role === 'user';
@@ -81,40 +60,12 @@ export function MessageActionBar({
       : 'hover:bg-gray-200/50 dark:hover:bg-[#2d3a4a] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
   }`;
 
-  const disabledButton = 'opacity-40 cursor-not-allowed';
-
   return (
     <div
       className="flex items-center gap-0.5 justify-end"
       data-testid="message-action-bar"
     >
-      {/* Rewind button — active for both user and assistant messages */}
-      {onRewind && messageId && (
-        <button
-          onClick={handleRewind}
-          disabled={isRewinding}
-          className={`${buttonBase} ${isRewinding ? disabledButton : ''}`}
-          title={t('messageActionBar.rewind')}
-          aria-label={t('messageActionBar.rewindAriaLabel')}
-        >
-          <RotateCcw className="w-3 h-3" aria-hidden="true" />
-        </button>
-      )}
-
-      {/* Regenerate button — only for last assistant message */}
-      {isLastAssistant && onRegenerate && (
-        <button
-          onClick={handleRegenerate}
-          disabled={isRewinding}
-          className={`${buttonBase} ${isRewinding ? disabledButton : ''}`}
-          title={t('messageActionBar.regenerate')}
-          aria-label={t('messageActionBar.regenerateAriaLabel')}
-        >
-          <RefreshCw className="w-3 h-3" aria-hidden="true" />
-        </button>
-      )}
-
-      {/* Copy button */}
+      {/* Copy button — functional */}
       <button
         onClick={handleCopy}
         className={buttonBase}

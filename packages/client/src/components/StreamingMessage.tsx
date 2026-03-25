@@ -1,6 +1,6 @@
 /**
  * StreamingMessage - Component for displaying streaming assistant responses
- * [Source: Story 4.5 - Task 6, Story 25.1 - Task 4, Story 25.4 - Task 5]
+ * [Source: Story 4.5 - Task 6, Story 25.1 - Task 4]
  *
  * Features:
  * - MessageBubble-like styling for assistant messages
@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next';
 import { Bot } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { MessageActionBar } from './MessageActionBar';
-import { useChatStore } from '../stores/chatStore';
 
 interface StreamingMessageProps {
   /** Current streaming content */
@@ -22,24 +21,14 @@ interface StreamingMessageProps {
   isComplete?: boolean;
   /** Callback when message is copied */
   onCopy?: (content: string) => void;
-  /** Rewind callback (Story 25.4) */
-  onRewind?: (messageId: string, messageText: string) => void;
-  /** Regenerate callback (Story 25.4) */
-  onRegenerate?: () => void;
-  /** Whether a rewind is in progress (Story 25.4) */
-  isRewinding?: boolean;
 }
 
 export function StreamingMessage({
   content,
   isComplete = false,
   onCopy,
-  onRewind,
-  onRegenerate,
-  isRewinding,
 }: StreamingMessageProps) {
   const { t } = useTranslation('chat');
-  const streamingMessageId = useChatStore((s) => s.streamingMessageId);
 
   return (
     <div
@@ -62,13 +51,7 @@ export function StreamingMessage({
           <MessageActionBar
             role="assistant"
             content={content}
-            messageId={streamingMessageId ?? undefined}
-            messageText={content}
-            isLastAssistant={true}
-            isRewinding={isRewinding}
             onCopy={onCopy}
-            onRewind={onRewind}
-            onRegenerate={onRegenerate}
           />
         )}
       </div>

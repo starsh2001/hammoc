@@ -171,8 +171,8 @@
     "copied": "복사됨!",
     "rewind": "되감기",
     "regenerate": "재생성",
-    "rewindAriaLabel": "이 메시지로 되감기",
-    "regenerateAriaLabel": "응답 재생성",
+    "edit": "편집",
+    "share": "공유",
     "copyAriaLabel": "메시지를 클립보드에 복사",
     "copiedAriaLabel": "메시지 복사됨"
   },
@@ -342,10 +342,6 @@
     "insertions": "{{count}}개 추가",
     "deletions": "{{count}}개 삭제",
     "noCheckpoint": "파일 체크포인트를 사용할 수 없습니다",
-    "loading": "파일 변경 사항 확인 중...",
-    "rewindSuccess": "대화가 되감아졌습니다",
-    "rewindError": "되감기 실패: {{error}}",
-    "regenerating": "응답 재생성 중...",
-    "summarizePrompt": "이 시점까지의 대화를 요약한 후 여기서 계속해 주세요."
+    "loading": "파일 변경 사항 확인 중..."
   }
 }

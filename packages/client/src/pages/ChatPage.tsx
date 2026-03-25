@@ -59,8 +59,6 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { ThinkingBlock } from '../components/ThinkingBlock';
 import { PromptChainBanner } from '../components/PromptChainBanner';
 import { useEdgeSwipe } from '../hooks/useEdgeSwipe';
-import { RewindConfirmDialog, type RewindOption } from '../components/RewindConfirmDialog';
-import type { RewindFilesResult } from '@anthropic-ai/claude-agent-sdk';
 
 /**
  * Render a single history message as the appropriate component.
@@ -69,20 +67,13 @@ import type { RewindFilesResult } from '@anthropic-ai/claude-agent-sdk';
  */
 const COMPACT_MESSAGE_PREFIX = 'This session is being continued from a previous conversation';
 
-interface RenderMessageContext {
-  lastAssistantId: string | null;
-  onRewind?: (messageId: string, messageText: string) => void;
-  onRegenerate?: () => void;
-  isRewinding?: boolean;
-}
-
-function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[], ctx?: RenderMessageContext) {
+function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[]) {
   // Render task notification as notification card (not user bubble)
   if (message.type === 'task_notification' && message.taskStatus) {
     return <TaskNotificationCard key={message.id} status={message.taskStatus} summary={message.taskSummary} toolUseId={message.taskToolUseId} />;
   }
 
-  // Render context compaction as a simple assistant "Compacted" bubble (no rewind)
+  // Render context compaction as a simple assistant "Compacted" bubble
   if (message.type === 'user' && typeof message.content === 'string' && message.content.startsWith(COMPACT_MESSAGE_PREFIX)) {
     return <MessageBubble key={message.id} message={{ ...message, type: 'assistant', content: 'Compacted' }} />;
   }
@@ -138,14 +129,6 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
     return <ToolCallCard key={message.id} message={message} />;
   }
 
-  // Rewind/regenerate props for user and assistant messages
-  const isLastAssistant = ctx && message.id === ctx.lastAssistantId;
-  const rewindProps = ctx?.onRewind ? {
-    onRewind: ctx.onRewind,
-    isRewinding: ctx.isRewinding,
-    ...(isLastAssistant ? { onRegenerate: ctx.onRegenerate, isLastAssistant: true } : {}),
-  } : {};
-
   // Assistant message with thinking → separate ThinkingBlock card + MessageBubble
   if (message.type === 'assistant' && message.thinking) {
     return (
@@ -155,12 +138,12 @@ function renderHistoryMessage(message: HistoryMessage, index: number, messages: 
             <ThinkingBlock content={message.thinking} />
           </div>
         </div>
-        {message.content && <MessageBubble message={message} {...rewindProps} />}
+        {message.content && <MessageBubble message={message} />}
       </Fragment>
     );
   }
 
-  return <MessageBubble key={message.id} message={message} {...rewindProps} />;
+  return <MessageBubble key={message.id} message={message} />;
 }
 
 export function ChatPage() {
@@ -456,134 +439,6 @@ export function ChatPage() {
       resume: true,
     });
   }, [sendMessage, addOptimisticMessage, workingDirectory, sessionId, isStreaming]);
-
-  // Story 25.4: Rewind/Regenerate state
-  const [rewindTarget, setRewindTarget] = useState<{ messageId: string; messageText: string } | null>(null);
-  const [rewindDryRunResult, setRewindDryRunResult] = useState<RewindFilesResult | null>(null);
-  const [isRewindDialogOpen, setIsRewindDialogOpen] = useState(false);
-  const [isRewinding, setIsRewinding] = useState(false);
-  const [isRegenerate, setIsRegenerate] = useState(false);
-
-  // Compute last assistant message ID
-  const lastAssistantId = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].type === 'assistant') return messages[i].id;
-    }
-    return null;
-  }, [messages]);
-
-  // Story 25.4: Rewind handler
-  const handleRewind = useCallback((messageId: string, messageText: string) => {
-    if (isRewinding || isStreaming) return;
-    setIsRewinding(true);
-    setRewindTarget({ messageId, messageText });
-    setRewindDryRunResult(null);
-    setIsRewindDialogOpen(true);
-    setIsRegenerate(false);
-
-    const socket = getSocket();
-    socket.emit('chat:rewind-dryrun', {
-      sessionId: sessionId!,
-      userMessageUuid: messageId,
-      workingDirectory,
-    });
-    socket.once('rewind:dryrun-result', (result) => {
-      setRewindDryRunResult(result);
-    });
-  }, [isRewinding, isStreaming, sessionId, workingDirectory]);
-
-  // Story 25.4: Regenerate handler
-  const handleRegenerate = useCallback(() => {
-    if (isRewinding || isStreaming) return;
-
-    // Find last assistant, then its preceding user message
-    let lastAssistantIdx = -1;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].type === 'assistant') { lastAssistantIdx = i; break; }
-    }
-    if (lastAssistantIdx === -1) return;
-
-    let precedingUserMsg: HistoryMessage | null = null;
-    for (let i = lastAssistantIdx - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (m.type === 'user') { precedingUserMsg = m; break; }
-      // Skip known non-user types; break on unknown types to avoid unexpected traversal
-      if (['tool_use', 'tool_result', 'thinking', 'task_notification', 'summary'].includes(m.type)) continue;
-      break;
-    }
-    if (!precedingUserMsg) return;
-
-    setIsRewinding(true);
-    setRewindTarget({ messageId: precedingUserMsg.id, messageText: precedingUserMsg.content });
-    setRewindDryRunResult(null);
-    setIsRewindDialogOpen(true);
-    setIsRegenerate(true);
-
-    const socket = getSocket();
-    socket.emit('chat:rewind-dryrun', {
-      sessionId: sessionId!,
-      userMessageUuid: precedingUserMsg.id,
-      workingDirectory,
-    });
-    socket.once('rewind:dryrun-result', (result) => {
-      setRewindDryRunResult(result);
-    });
-  }, [isRewinding, isStreaming, messages, sessionId, workingDirectory]);
-
-  // Story 25.4: Rewind option selection
-  const handleRewindSelect = useCallback((option: RewindOption) => {
-    if (option === 'cancel') {
-      setIsRewindDialogOpen(false);
-      setIsRewinding(false);
-      setRewindTarget(null);
-      return;
-    }
-
-    setIsRewindDialogOpen(false);
-
-    const socket = getSocket();
-    socket.emit('chat:rewind', {
-      sessionId: sessionId!,
-      userMessageUuid: rewindTarget!.messageId,
-      option,
-      workingDirectory,
-    });
-
-    socket.once('rewind:result', (result) => {
-      if (result.success) {
-        if (isRegenerate) {
-          // Auto-resend preceding user message
-          internalSend(rewindTarget!.messageText);
-        } else if (option === 'summarize') {
-          // Load summarize prompt into input
-          useChatStore.getState().setDraftContent(i18n.t('chat:rewindDialog.summarizePrompt'));
-        } else {
-          // Load rewind target text into input
-          useChatStore.getState().setDraftContent(rewindTarget!.messageText);
-        }
-        // Refresh messages to show rewound state
-        if (projectSlug && sessionId) {
-          fetchMessages(projectSlug, sessionId, { silent: true, force: true });
-        }
-      } else {
-        toast.error(result.error || i18n.t('chat:rewindDialog.rewindError', { error: 'Unknown error' }));
-      }
-      setIsRewinding(false);
-      setRewindTarget(null);
-      setIsRegenerate(false);
-    });
-  }, [sessionId, rewindTarget, workingDirectory, isRegenerate, internalSend, projectSlug, fetchMessages]);
-
-  // Story 25.4: Dialog close handler
-  const handleRewindDialogClose = useCallback(() => {
-    setIsRewindDialogOpen(false);
-    setIsRewinding(false);
-    setRewindTarget(null);
-    setIsRegenerate(false);
-    // Clean up stale socket listeners to prevent state updates after dialog close
-    const socket = getSocket();
-    socket.off('rewind:dryrun-result');
-  }, []);
 
   // Fetch messages on mount (only for existing sessions)
   // After fetch completes, clear any lingering streaming tool segments
@@ -1019,21 +874,12 @@ export function ChatPage() {
     />
   );
 
-  const rewindDialogElement = (
-    <RewindConfirmDialog
-      isOpen={isRewindDialogOpen}
-      dryRunResult={rewindDryRunResult}
-      onSelect={handleRewindSelect}
-      onClose={handleRewindDialogClose}
-    />
-  );
-
   // Loading state
   if (isLoading) {
     return (
       <div
         data-testid="chat-page"
-        className={`h-dvh flex flex-col overflow-hidden bg-[var(--bg-page)] ${chatAreaTransition}`}
+        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} panelSide={panelSide} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
@@ -1103,7 +949,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className={`h-dvh flex flex-col overflow-hidden bg-[var(--bg-page)] ${chatAreaTransition}`}
+        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} panelSide={panelSide} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
@@ -1170,7 +1016,7 @@ export function ChatPage() {
     return (
       <div
         data-testid="chat-page"
-        className={`h-dvh flex flex-col overflow-hidden bg-[var(--bg-page)] ${chatAreaTransition}`}
+        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
         style={chatAreaStyle}
       >
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} panelSide={panelSide} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
@@ -1250,7 +1096,7 @@ export function ChatPage() {
     <ScrollProvider value={scrollContextValue}>
     <div
       data-testid="chat-page"
-      className={`h-dvh flex flex-col overflow-hidden bg-[var(--bg-page)] ${chatAreaTransition}`}
+      className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
       style={chatAreaStyle}
     >
       <ChatHeader
@@ -1296,12 +1142,7 @@ export function ChatPage() {
           )}
 
           {/* Message list */}
-          {displayMessages.map((msg, idx) => renderHistoryMessage(msg, idx, displayMessages, {
-            lastAssistantId,
-            onRewind: handleRewind,
-            onRegenerate: handleRegenerate,
-            isRewinding,
-          }))}
+          {displayMessages.map((msg, idx) => renderHistoryMessage(msg, idx, displayMessages))}
         </MessageArea>
       </main>
 
@@ -1351,7 +1192,6 @@ export function ChatPage() {
       </InputArea>
       {quickPanelElement}
       {confirmModalElement}
-      {rewindDialogElement}
     </div>
     </ScrollProvider>
   );
