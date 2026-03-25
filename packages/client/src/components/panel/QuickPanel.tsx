@@ -290,10 +290,10 @@ export function QuickPanel({
                     }`
                   : ''
               }`
-            : `inset-y-0 ${panelSide === 'right' ? 'right-0' : 'left-0'} bg-white dark:bg-[#263240]
+            : `inset-y-0 ${panelSide === 'right' ? 'right-0' : 'left-0'} bg-white dark:bg-[#1c2129]
                ${panelSide === 'right'
-                 ? 'border-l border-gray-300 dark:border-[#3a4d5e]'
-                 : 'border-r border-gray-300 dark:border-[#3a4d5e]'} shadow-xl
+                 ? 'border-l border-slate-600 dark:border-slate-700/50'
+                 : 'border-r border-slate-600 dark:border-slate-700/50'} shadow-xl
                ${suppressTransition ? '' : 'transition-transform duration-300 ease-in-out'}
                ${isAnimating
                  ? 'translate-x-0'
@@ -313,8 +313,9 @@ export function QuickPanel({
           />
         )}
         {/* Common header */}
-        <div className="flex items-center justify-between px-4 py-3
-                        border-b border-gray-300 dark:border-[#3a4d5e]">
+        <div className="flex items-center justify-between px-4 py-[14.5px] min-h-16
+                        bg-[#243648] dark:bg-[#171e24]
+                        border-b border-slate-200 dark:border-slate-700/50">
           <PanelTabSwitcher
             activePanel={displayPanel}
             onSwitchPanel={onSwitchPanel}
@@ -325,8 +326,8 @@ export function QuickPanel({
             {!isMobile && (
               <button
                 onClick={onToggleSide}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-[#253040] rounded
-                           text-gray-500 dark:text-gray-400
+                className="p-1 hover:bg-white/10 dark:hover:bg-gray-700 rounded
+                           text-white/80 dark:text-gray-200
                            focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label={t('panel.moveToOtherSide')}
                 title={t('panel.moveToOtherSide')}
@@ -341,8 +342,8 @@ export function QuickPanel({
             <button
               ref={closeButtonRef}
               onClick={onClose}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-[#253040] rounded
-                         text-gray-700 dark:text-gray-200
+              className="p-1 hover:bg-white/10 dark:hover:bg-gray-700 rounded
+                         text-white/80 dark:text-gray-200
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label={t('panel.close')}
             >

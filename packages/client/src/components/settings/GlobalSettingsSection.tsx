@@ -96,7 +96,7 @@ export function GlobalSettingsSection() {
             <label
               key={opt.value}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                relative flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${theme === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                   : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
@@ -223,7 +223,7 @@ export function GlobalSettingsSection() {
             <label
               key={opt.value}
               className={`
-                flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                 ${permissionModePref === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                   : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
@@ -278,7 +278,7 @@ export function GlobalSettingsSection() {
               key={opt.value}
               title={t(opt.descKey)}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                relative flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.permissionSyncPolicy === 'always' ? 'always' : 'streaming') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                   : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
@@ -315,7 +315,7 @@ export function GlobalSettingsSection() {
             <label
               key={opt.value}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                relative flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.markdownDefaultMode ?? 'edit') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                   : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
@@ -356,7 +356,7 @@ export function GlobalSettingsSection() {
             <label
               key={opt.value}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                relative flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.fileExplorerViewMode ?? 'grid') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                   : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
@@ -397,7 +397,7 @@ export function GlobalSettingsSection() {
             <label
               key={String(opt.value)}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                relative flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.panelDefaultOpen !== false) === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                   : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
@@ -437,7 +437,7 @@ export function GlobalSettingsSection() {
             <label
               key={opt.value}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                relative flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
                 ${(preferences.panelDefaultSide ?? 'right') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                   : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'

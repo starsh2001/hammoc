@@ -271,7 +271,7 @@ export function ProjectSettingsSection() {
               {/* Global default option */}
               <label
                 className={`
-                  flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                  relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                   ${permissionValue === GLOBAL_SENTINEL
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                     : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
@@ -308,7 +308,7 @@ export function ProjectSettingsSection() {
                 <label
                   key={opt.value}
                   className={`
-                    flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                    relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
                     ${permissionValue === opt.value
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                       : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
