@@ -247,7 +247,8 @@
       "terminalNotFound": "ターミナルが見つかりません",
       "ptySpawnError": "ターミナルプロセスの起動に失敗しました",
       "chainContentTooLong": "チェーンプロンプトの内容が最大長を超えています。",
-      "chainMaxExceeded": "チェーンアイテムは最大10個までです。"
+      "chainMaxExceeded": "チェーンアイテムは最大10個までです。",
+      "rewindFailed": "巻き戻し失敗"
     }
   },
   "pathGuard": {

@@ -167,8 +167,8 @@
     "copied": "コピーしました！",
     "rewind": "巻き戻し",
     "regenerate": "再生成",
-    "edit": "編集",
-    "share": "共有",
+    "rewindAriaLabel": "このメッセージまで巻き戻す",
+    "regenerateAriaLabel": "応答を再生成",
     "copyAriaLabel": "メッセージをクリップボードにコピー",
     "copiedAriaLabel": "メッセージをコピーしました"
   },
@@ -338,6 +338,10 @@
     "insertions": "{{count}}件の挿入",
     "deletions": "{{count}}件の削除",
     "noCheckpoint": "ファイルチェックポイントが利用できません",
-    "loading": "ファイル変更を確認中..."
+    "loading": "ファイル変更を確認中...",
+    "rewindSuccess": "会話が巻き戻されました",
+    "rewindError": "巻き戻し失敗: {{error}}",
+    "regenerating": "応答を再生成中...",
+    "summarizePrompt": "ここまでの会話を要約してから、ここから続けてください。"
   }
 }

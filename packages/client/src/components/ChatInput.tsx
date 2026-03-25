@@ -284,6 +284,17 @@ export function ChatInput({
   const validationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userHasFocusedRef = useRef(false);
 
+  // Story 25.4: Consume draftContent from chatStore (one-shot, rewind text)
+  const draftContent = useChatStore((s) => s.draftContent);
+  useEffect(() => {
+    if (draftContent !== null) {
+      setContent(draftContent);
+      useChatStore.getState().setDraftContent(null);
+      // Focus textarea after loading draft
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    }
+  }, [draftContent]);
+
   // Compute filter and filtered commands count for keyboard navigation
   const commandFilter = useMemo(() => {
     if (!content.startsWith('/')) return '';

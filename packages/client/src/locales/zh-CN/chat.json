@@ -167,8 +167,8 @@
     "copied": "已复制！",
     "rewind": "回退",
     "regenerate": "重新生成",
-    "edit": "编辑",
-    "share": "分享",
+    "rewindAriaLabel": "回退到此消息",
+    "regenerateAriaLabel": "重新生成回复",
     "copyAriaLabel": "复制消息到剪贴板",
     "copiedAriaLabel": "消息已复制"
   },
@@ -338,6 +338,10 @@
     "insertions": "{{count}} 处插入",
     "deletions": "{{count}} 处删除",
     "noCheckpoint": "文件检查点不可用",
-    "loading": "正在检查文件更改..."
+    "loading": "正在检查文件更改...",
+    "rewindSuccess": "对话已回退",
+    "rewindError": "回退失败：{{error}}",
+    "regenerating": "正在重新生成回复...",
+    "summarizePrompt": "请总结到目前为止的对话，然后从这里继续。"
   }
 }

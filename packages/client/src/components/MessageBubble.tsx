@@ -20,6 +20,14 @@ interface MessageBubbleProps {
   onCopy?: (content: string) => void;
   /** Timestamp display mode - 'always' (default) or 'hover' */
   timestampMode?: 'always' | 'hover';
+  /** Rewind callback (Story 25.4) */
+  onRewind?: (messageId: string, messageText: string) => void;
+  /** Regenerate callback — only for last assistant (Story 25.4) */
+  onRegenerate?: () => void;
+  /** Whether this is the last assistant message (Story 25.4) */
+  isLastAssistant?: boolean;
+  /** Whether a rewind is in progress (Story 25.4) */
+  isRewinding?: boolean;
 }
 
 export function MessageBubble({
@@ -27,6 +35,10 @@ export function MessageBubble({
   isStreaming = false,
   onCopy,
   timestampMode = 'always',
+  onRewind,
+  onRegenerate,
+  isLastAssistant,
+  isRewinding,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
@@ -46,7 +58,7 @@ export function MessageBubble({
         className={`relative group max-w-[90%] md:max-w-[80%] ${
           isUser
             ? 'bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-l-lg rounded-tr-lg'
-            : 'bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e]'
+            : 'bg-gray-100 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e]'
         } p-3 shadow-sm`}
       >
         {/* Icon for assistant */}
@@ -102,7 +114,13 @@ export function MessageBubble({
         <MessageActionBar
           role={isUser ? 'user' : 'assistant'}
           content={message.content}
+          messageId={onRewind ? message.id : undefined}
+          messageText={message.content}
+          isLastAssistant={isLastAssistant}
+          isRewinding={isRewinding}
           onCopy={onCopy}
+          onRewind={onRewind}
+          onRegenerate={onRegenerate}
         />
       </div>
     </div>

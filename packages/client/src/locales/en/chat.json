@@ -171,10 +171,10 @@
     "copied": "Copied!",
     "rewind": "Rewind",
     "regenerate": "Regenerate",
-    "edit": "Edit",
-    "share": "Share",
     "copyAriaLabel": "Copy message to clipboard",
-    "copiedAriaLabel": "Message copied"
+    "copiedAriaLabel": "Message copied",
+    "rewindAriaLabel": "Rewind to this message",
+    "regenerateAriaLabel": "Regenerate response"
   },
   "messageListSkeleton": {
     "ariaLabel": "Loading messages",
@@ -342,6 +342,10 @@
     "insertions": "{{count}} insertions",
     "deletions": "{{count}} deletions",
     "noCheckpoint": "File checkpoints not available",
-    "loading": "Checking file changes..."
+    "loading": "Checking file changes...",
+    "rewindSuccess": "Conversation rewound",
+    "rewindError": "Rewind failed: {{error}}",
+    "regenerating": "Regenerating response...",
+    "summarizePrompt": "Please summarize the conversation up to this point, then continue from here."
   }
 }

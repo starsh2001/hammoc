@@ -167,8 +167,8 @@
     "copied": "Copiado!",
     "rewind": "Rebobinar",
     "regenerate": "Regenerar",
-    "edit": "Editar",
-    "share": "Compartilhar",
+    "rewindAriaLabel": "Rebobinar para esta mensagem",
+    "regenerateAriaLabel": "Regenerar resposta",
     "copyAriaLabel": "Copiar mensagem para a área de transferência",
     "copiedAriaLabel": "Mensagem copiada"
   },
@@ -338,6 +338,10 @@
     "insertions": "{{count}} inserções",
     "deletions": "{{count}} exclusões",
     "noCheckpoint": "Pontos de verificação de arquivos não disponíveis",
-    "loading": "Verificando alterações de arquivos..."
+    "loading": "Verificando alterações de arquivos...",
+    "rewindSuccess": "Conversa rebobinada",
+    "rewindError": "Falha ao rebobinar: {{error}}",
+    "regenerating": "Regenerando resposta...",
+    "summarizePrompt": "Por favor, resuma a conversa até este ponto e continue a partir daqui."
   }
 }

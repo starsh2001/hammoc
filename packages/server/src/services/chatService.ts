@@ -329,6 +329,13 @@ export class ChatService {
   }
 
   /**
+   * Get the underlying SDK Query instance (for rewindFiles, etc.)
+   */
+  getQuery(): Query | null {
+    return this.currentQuery;
+  }
+
+  /**
    * Get the current permission mode
    */
   getPermissionMode(): PermissionMode {

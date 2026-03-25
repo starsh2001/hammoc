@@ -12,6 +12,29 @@ import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorE
 import type { TerminalCreateRequest, TerminalListRequest, TerminalListResponse, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent, TerminalAccessInfo } from './terminal.js';
 import type { DashboardStatusChangeEvent } from './dashboard.js';
 
+// ===== Rewind =====
+
+/**
+ * Story 25.4: Rewind option for conversation/code rewind
+ */
+export type RewindOption =
+  | 'restore-all'
+  | 'restore-conversation'
+  | 'restore-code'
+  | 'summarize'
+  | 'cancel';
+
+/**
+ * Story 25.4: Dry-run result payload for rewind preview
+ */
+export interface RewindResultPayload {
+  canRewind: boolean;
+  error?: string;
+  filesChanged?: string[];
+  insertions?: number;
+  deletions?: number;
+}
+
 // ===== Prompt Chain =====
 
 /**
@@ -84,6 +107,9 @@ export interface ClientToServerEvents {
   'chain:add': (data: { sessionId: string; content: string; workingDirectory: string; permissionMode?: PermissionMode; model?: string; effort?: ThinkingEffort }) => void;
   'chain:remove': (data: { sessionId: string; id: string }) => void;
   'chain:clear': (data: { sessionId: string }) => void;
+  // Story 25.4: Rewind events
+  'chat:rewind': (data: { sessionId: string; userMessageUuid: string; option: RewindOption; workingDirectory: string }) => void;
+  'chat:rewind-dryrun': (data: { sessionId: string; userMessageUuid: string; workingDirectory: string }) => void;
 }
 
 // ===== Server to Client Events =====
@@ -138,6 +164,9 @@ export interface ServerToClientEvents {
   'dashboard:status-change': (data: DashboardStatusChangeEvent) => void;
   // Story 24.1: Prompt chain update
   'chain:update': (data: { sessionId: string; items: PromptChainItem[] }) => void;
+  // Story 25.4: Rewind result events
+  'rewind:dryrun-result': (data: RewindResultPayload) => void;
+  'rewind:result': (data: { success: boolean; error?: string; option: RewindOption }) => void;
   // Buffer replay: send entire buffer as a single batch for fast session join
   'stream:buffer-replay': (data: { sessionId: string; events: Array<{ event: string; data: unknown }> }) => void;
 }

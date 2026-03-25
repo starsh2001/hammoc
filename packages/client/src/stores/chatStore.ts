@@ -185,6 +185,8 @@ interface ChatState {
   projectSettings: ProjectSettings | null;
   /** API health status from server polling */
   apiHealth: ApiHealthStatus | null;
+  /** Draft content to load into input bar (Story 25.4: rewind text) */
+  draftContent: string | null;
 }
 
 interface SendMessageOptions {
@@ -285,6 +287,8 @@ interface ChatActions {
   toggleThinkingExpanded: () => void;
   /** Set project settings for override application */
   setProjectSettings: (settings: ProjectSettings | null) => void;
+  /** Set draft content for input bar (Story 25.4: rewind text) */
+  setDraftContent: (content: string | null) => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -317,6 +321,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   subscriptionRateLimit: null,
   isSubscriber: true, // fail-closed: assume subscriber until server confirms via auth:subscriber
   apiHealth: null,
+  draftContent: null,
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
@@ -989,4 +994,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       ],
     });
   },
+
+  setDraftContent: (content: string | null) => set({ draftContent: content }),
 }));

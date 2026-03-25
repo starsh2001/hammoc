@@ -997,6 +997,105 @@ export async function initializeWebSocket(
       }
     });
 
+    // Story 25.4: Handle chat:rewind-dryrun — preview file changes without modifying
+    socket.on('chat:rewind-dryrun', async (data) => {
+      const { sessionId, userMessageUuid, workingDirectory } = data;
+      const lang = socket.data.language || 'en';
+      const t = i18next.getFixedT(lang);
+
+      try {
+        // Try active stream's chatService first
+        const stream = activeStreams.get(sessionId);
+        let queryInstance = stream?.chatService?.getQuery();
+        let tempChatService: ChatService | null = null;
+
+        if (!queryInstance) {
+          // No active stream — use SDK query() directly to get a Query with rewindFiles
+          const { query: sdkQuery } = await import('@anthropic-ai/claude-agent-sdk');
+          const q = sdkQuery({
+            prompt: '',
+            options: {
+              cwd: workingDirectory,
+              resume: sessionId,
+              permissionMode: 'default',
+            },
+          });
+          try {
+            const result = await q.rewindFiles(userMessageUuid, { dryRun: true });
+            socket.emit('rewind:dryrun-result', {
+              canRewind: result.canRewind,
+              error: result.error,
+              filesChanged: result.filesChanged,
+              insertions: result.insertions,
+              deletions: result.deletions,
+            });
+          } finally {
+            await q.interrupt().catch(() => {});
+          }
+          return;
+        }
+
+        const result = await queryInstance.rewindFiles(userMessageUuid, { dryRun: true });
+        socket.emit('rewind:dryrun-result', {
+          canRewind: result.canRewind,
+          error: result.error,
+          filesChanged: result.filesChanged,
+          insertions: result.insertions,
+          deletions: result.deletions,
+        });
+      } catch (err) {
+        log.error('chat:rewind-dryrun error:', err);
+        socket.emit('rewind:dryrun-result', {
+          canRewind: false,
+          error: err instanceof Error ? err.message : t('ws.error.rewindFailed'),
+        });
+      }
+    });
+
+    // Story 25.4: Handle chat:rewind — execute rewind with selected option
+    socket.on('chat:rewind', async (data) => {
+      const { sessionId, userMessageUuid, option, workingDirectory } = data;
+      const lang = socket.data.language || 'en';
+      const t = i18next.getFixedT(lang);
+
+      try {
+        // Try active stream's chatService first
+        const stream = activeStreams.get(sessionId);
+        let queryInstance = stream?.chatService?.getQuery();
+
+        if (!queryInstance) {
+          // No active stream — use SDK query() directly to resume session
+          const { query: sdkQuery } = await import('@anthropic-ai/claude-agent-sdk');
+          const q = sdkQuery({
+            prompt: '',
+            options: {
+              cwd: workingDirectory,
+              resume: sessionId,
+              permissionMode: 'default',
+            },
+          });
+          try {
+            await q.rewindFiles(userMessageUuid);
+            socket.emit('rewind:result', { success: true, option });
+          } finally {
+            await q.interrupt().catch(() => {});
+          }
+          return;
+        }
+
+        // Active stream — call rewindFiles on existing query
+        await queryInstance.rewindFiles(userMessageUuid);
+        socket.emit('rewind:result', { success: true, option });
+      } catch (err) {
+        log.error('chat:rewind error:', err);
+        socket.emit('rewind:result', {
+          success: false,
+          error: err instanceof Error ? err.message : t('ws.error.rewindFailed'),
+          option,
+        });
+      }
+    });
+
     // Handle permission:mode-change — update SDK permission mode and broadcast to viewers
     socket.on('permission:mode-change', async (data) => {
       const sessionId = socketToSession.get(socket.id) || socketSessionRoom.get(socket.id);
