@@ -69,6 +69,8 @@ export interface RawJSONLMessage {
   // For tool_result (inline format)
   result?: string;
   error?: string;
+  // Subtype for system messages (e.g., 'compact_boundary')
+  subtype?: string;
   // Meta messages are system-injected (e.g., expanded slash commands) - should be hidden
   isMeta?: boolean;
 }
@@ -78,9 +80,13 @@ export interface RawJSONLMessage {
  */
 export interface HistoryMessage {
   id: string;
-  type: 'user' | 'assistant' | 'tool_use' | 'tool_result' | 'task_notification';
+  type: 'user' | 'assistant' | 'tool_use' | 'tool_result' | 'task_notification' | 'system';
   content: string;
   timestamp: string; // ISO 8601 format
+  // Parent message ID for conversation tree building
+  parentId?: string;
+  // Subtype for system messages (e.g., 'compact_boundary')
+  subtype?: string;
   // Thinking content (assistant messages only)
   thinking?: string;
   // Image attachments (user messages only)

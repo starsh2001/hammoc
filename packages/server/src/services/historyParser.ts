@@ -295,8 +295,26 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
 
   for (const m of raw) {
     // Skip non-display types and meta messages
-    if (!['user', 'assistant', 'tool_use', 'tool_result', 'queue-operation'].includes(m.type)) continue;
+    if (!['user', 'assistant', 'tool_use', 'tool_result', 'queue-operation', 'system'].includes(m.type)) continue;
     if (m.isMeta) continue;
+
+    // Resolve parentId from RawJSONLMessage.parentUuid (convert null to undefined)
+    const parentId = m.parentUuid ?? undefined;
+
+    // Handle system messages (e.g., compact_boundary)
+    if (m.type === 'system') {
+      if (m.subtype === 'compact_boundary') {
+        results.push({
+          id: m.uuid,
+          type: 'system',
+          subtype: 'compact_boundary',
+          content: m.content || 'Conversation compacted',
+          parentId,
+          timestamp: m.timestamp,
+        });
+      }
+      continue;
+    }
 
     // Handle queue-operation task notifications
     if (m.type === 'queue-operation' && m.content) {
@@ -307,6 +325,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
           type: 'task_notification',
           content: taskNotif.summary,
           timestamp: m.timestamp,
+          parentId,
           taskStatus: taskNotif.status,
           taskSummary: taskNotif.summary,
           taskToolUseId: taskNotif.toolUseId,
@@ -334,6 +353,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
                 type: 'assistant',
                 content: text,
                 timestamp: m.timestamp,
+                parentId,
                 thinking: thinkingContent,
               });
               thinkingContent = undefined;
@@ -346,6 +366,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
               type: 'tool_use',
               content: `Calling ${toolBlock.name}`,
               timestamp: m.timestamp,
+              parentId,
               toolName: toolBlock.name,
               toolInput: toolBlock.input,
               thinking: thinkingContent,
@@ -362,6 +383,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
             type: 'assistant',
             content: '',
             timestamp: m.timestamp,
+            parentId,
             thinking: thinkingContent,
           });
         }
@@ -374,6 +396,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
             type: 'assistant',
             content: text,
             timestamp: m.timestamp,
+            parentId,
           });
         }
       }
@@ -419,6 +442,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
               type: 'task_notification',
               content: taskNotif.summary,
               timestamp: m.timestamp,
+              parentId,
               taskStatus: taskNotif.status,
               taskSummary: taskNotif.summary,
               taskToolUseId: taskNotif.toolUseId,
@@ -432,6 +456,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
                 type: 'user',
                 content: cleaned,
                 timestamp: m.timestamp,
+                parentId,
                 ...(images && { images }),
               });
             }
@@ -448,6 +473,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
             type: 'task_notification',
             content: taskNotif.summary,
             timestamp: m.timestamp,
+            parentId,
             taskStatus: taskNotif.status,
             taskSummary: taskNotif.summary,
             taskToolUseId: taskNotif.toolUseId,
@@ -460,6 +486,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
               type: 'user',
               content: cleaned,
               timestamp: m.timestamp,
+              parentId,
             });
           }
         }
@@ -472,6 +499,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
         type: 'tool_use',
         content: `Calling ${m.toolName}`,
         timestamp: m.timestamp,
+        parentId,
         toolName: m.toolName,
         toolInput: m.toolInput,
       });
@@ -506,6 +534,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
             type: 'tool_result',
             content,
             timestamp: m.timestamp,
+            parentId,
             toolResult: {
               success: !m.error,
               output: m.result,

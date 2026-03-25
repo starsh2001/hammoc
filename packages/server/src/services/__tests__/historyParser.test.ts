@@ -192,6 +192,27 @@ invalid json line
       expect(sorted[2].uuid).toBe('3');
       expect(sorted[3].uuid).toBe('4');
     });
+
+    it('returns all messages from branched conversations (Story 25.2 Task 3.2)', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'msg-1', type: 'user', parentUuid: null, timestamp: '2026-01-01T00:00:01Z', message: { role: 'user', content: 'Hello' } },
+        { uuid: 'msg-2', type: 'assistant', parentUuid: 'msg-1', timestamp: '2026-01-01T00:00:02Z', message: { role: 'assistant', content: [{ type: 'text', text: 'Hi there' }] } },
+        { uuid: 'msg-3', type: 'user', parentUuid: 'msg-2', timestamp: '2026-01-01T00:00:03Z', message: { role: 'user', content: 'Branch A' } },
+        { uuid: 'msg-4', type: 'assistant', parentUuid: 'msg-3', timestamp: '2026-01-01T00:00:04Z', message: { role: 'assistant', content: [{ type: 'text', text: 'Response A' }] } },
+        { uuid: 'msg-5', type: 'user', parentUuid: 'msg-2', timestamp: '2026-01-01T00:00:05Z', message: { role: 'user', content: 'Branch B (edited)' } },
+        { uuid: 'msg-6', type: 'assistant', parentUuid: 'msg-5', timestamp: '2026-01-01T00:00:06Z', message: { role: 'assistant', content: [{ type: 'text', text: 'Response B' }] } },
+      ];
+
+      const sorted = sortMessagesByParentUuid(messages);
+
+      // All 6 messages must be present (both branches included)
+      expect(sorted).toHaveLength(6);
+      const uuids = sorted.map((m) => m.uuid);
+      expect(uuids).toContain('msg-3'); // Branch A
+      expect(uuids).toContain('msg-4');
+      expect(uuids).toContain('msg-5'); // Branch B
+      expect(uuids).toContain('msg-6');
+    });
   });
 
   describe('transformToHistoryMessages', () => {
@@ -549,6 +570,198 @@ invalid json line
     it('rejects non-object', () => {
       expect(isValidRawJSONLMessage('string')).toBe(false);
       expect(isValidRawJSONLMessage(123)).toBe(false);
+    });
+  });
+
+  describe('parentId mapping (Story 25.2)', () => {
+    it('maps parentId for linear conversation messages', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'u1', type: 'user', timestamp: '2026-01-15T10:00:00Z', message: { role: 'user', content: 'Hello' } },
+        { uuid: 'a1', type: 'assistant', parentUuid: 'u1', timestamp: '2026-01-15T10:00:01Z', message: { role: 'assistant', content: 'Hi!' } },
+        { uuid: 'u2', type: 'user', parentUuid: 'a1', timestamp: '2026-01-15T10:00:02Z', message: { role: 'user', content: 'How are you?' } },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(3);
+      expect(transformed[0].parentId).toBeUndefined(); // root user — no parentUuid
+      expect(transformed[1].parentId).toBe('u1');
+      expect(transformed[2].parentId).toBe('a1');
+    });
+
+    it('maps parentId for split assistant messages (array content)', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: 'a1',
+          type: 'assistant',
+          parentUuid: 'u1',
+          timestamp: '2026-01-15T10:00:00Z',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'Let me think...', signature: 'sig' },
+              { type: 'text', text: 'Answer' },
+              { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file_path: '/test.ts' } },
+            ],
+          },
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(2); // text + tool_use
+      expect(transformed[0].parentId).toBe('u1');
+      expect(transformed[1].parentId).toBe('u1');
+    });
+
+    it('maps parentId for thinking-only assistant messages', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: 'a1',
+          type: 'assistant',
+          parentUuid: 'u1',
+          timestamp: '2026-01-15T10:00:00Z',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'Deep thinking only...', signature: 'sig' },
+              { type: 'text', text: '(no content)' },
+            ],
+          },
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].parentId).toBe('u1');
+      expect(transformed[0].thinking).toBe('Deep thinking only...');
+    });
+
+    it('maps parentId for simple string assistant messages', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: 'a1',
+          type: 'assistant',
+          parentUuid: 'u1',
+          timestamp: '2026-01-15T10:00:00Z',
+          message: { role: 'assistant', content: 'Simple response' },
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].parentId).toBe('u1');
+    });
+
+    it('maps parentId for user messages (array content with images)', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: 'u1',
+          type: 'user',
+          parentUuid: 'a0',
+          timestamp: '2026-01-15T10:00:00Z',
+          message: {
+            role: 'user',
+            content: [{ type: 'text', text: 'Check this' }],
+          },
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].parentId).toBe('a0');
+    });
+
+    it('maps parentId for simple string user messages', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: 'u1',
+          type: 'user',
+          parentUuid: 'a0',
+          timestamp: '2026-01-15T10:00:00Z',
+          message: { role: 'user', content: 'Hello again' },
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].parentId).toBe('a0');
+    });
+
+    it('maps parentId for legacy inline tool_use messages', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'leg-1', type: 'user', parentUuid: null, timestamp: '2026-01-01T00:00:01Z', message: { role: 'user', content: 'Run a command' } },
+        { uuid: 'leg-2', type: 'tool_use' as RawJSONLMessage['type'], parentUuid: 'leg-1', timestamp: '2026-01-01T00:00:02Z', toolName: 'Bash', toolInput: { command: 'echo hello' } },
+        { uuid: 'leg-3', type: 'tool_result' as RawJSONLMessage['type'], parentUuid: 'leg-2', timestamp: '2026-01-01T00:00:03Z', result: 'hello' },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      // tool_result merges into tool_use → 2 messages (user + tool_use)
+      expect(transformed).toHaveLength(2);
+      expect(transformed[0].type).toBe('user');
+      expect(transformed[0].parentId).toBeUndefined(); // parentUuid: null → undefined
+      expect(transformed[1].type).toBe('tool_use');
+      expect(transformed[1].parentId).toBe('leg-1');
+      expect(transformed[1].toolResult?.output).toBe('hello');
+    });
+
+    it('maps parentId for queue-operation task notifications', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: 'qop-1',
+          type: 'queue-operation',
+          parentUuid: 'prev-msg',
+          timestamp: '2026-03-10T10:00:00Z',
+          operation: 'enqueue',
+          content: '<task-notification>\n<task-id>abc</task-id>\n<status>completed</status>\n<summary>Done</summary>\n</task-notification>',
+        } as unknown as RawJSONLMessage,
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].parentId).toBe('prev-msg');
+    });
+  });
+
+  describe('compact_boundary system messages (Story 25.2)', () => {
+    it('transforms compact_boundary to system HistoryMessage', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'old-1', type: 'user', parentUuid: null, timestamp: '2026-01-01T00:00:01Z', message: { role: 'user', content: 'Old message' } },
+        { uuid: 'old-2', type: 'assistant', parentUuid: 'old-1', timestamp: '2026-01-01T00:00:02Z', message: { role: 'assistant', content: [{ type: 'text', text: 'Old response' }] } },
+        { uuid: 'cb-1', type: 'system', subtype: 'compact_boundary', parentUuid: null, content: 'Conversation compacted', timestamp: '2026-01-01T00:01:00Z' } as unknown as RawJSONLMessage,
+        { uuid: 'sum-1', type: 'user', parentUuid: 'cb-1', timestamp: '2026-01-01T00:01:01Z', message: { role: 'user', content: 'This session is being continued...' } },
+        { uuid: 'new-1', type: 'assistant', parentUuid: 'sum-1', timestamp: '2026-01-01T00:01:02Z', message: { role: 'assistant', content: [{ type: 'text', text: 'Continuing...' }] } },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      // 5 messages: old user, old assistant, compact_boundary, summary user, new assistant
+      expect(transformed).toHaveLength(5);
+      const systemMsg = transformed.find((m) => m.type === 'system');
+      expect(systemMsg).toBeDefined();
+      expect(systemMsg!.subtype).toBe('compact_boundary');
+      expect(systemMsg!.content).toBe('Conversation compacted');
+      expect(systemMsg!.parentId).toBeUndefined(); // parentUuid: null → undefined
+
+      // Summary user message references compact_boundary as parent
+      const summaryMsg = transformed.find((m) => m.id === 'sum-1');
+      expect(summaryMsg!.parentId).toBe('cb-1');
+    });
+
+    it('skips non-compact_boundary system messages', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 's1', type: 'system', timestamp: '2026-01-15T10:00:00Z' },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(0);
     });
   });
 
