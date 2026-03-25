@@ -140,16 +140,36 @@ export async function parseJSONLSessionMeta(
 }
 
 /**
- * Sort messages by parentUuid to maintain conversation order
- * Uses BFS traversal based on parent-child relationships
+ * Extract active branch from messages using parentUuid tree structure.
+ *
+ * Finds the latest leaf message, traces its parentUuid chain back to root,
+ * and returns only messages on that active path. Dead branches from CLI
+ * rewind/fork are excluded. Handles compaction boundaries (multiple roots)
+ * by including earlier compaction segments in full.
+ *
  * @param messages Array of raw messages
- * @returns Sorted array of messages in conversation order
+ * @returns Sorted array of active-branch messages in conversation order
  */
 export function sortMessagesByParentUuid(messages: RawJSONLMessage[]): RawJSONLMessage[] {
-  const childrenMap = new Map<string, RawJSONLMessage[]>();
+  if (messages.length <= 1) return messages;
 
-  // Build children map
+  // Cache parsed timestamps to avoid redundant Date parsing
+  const tsCache = new Map<string, number>();
+  const getTs = (msg: RawJSONLMessage): number => {
+    let ts = tsCache.get(msg.uuid);
+    if (ts === undefined) {
+      ts = new Date(msg.timestamp).getTime();
+      tsCache.set(msg.uuid, ts);
+    }
+    return ts;
+  };
+
+  // Build parent→children map and uuid→message lookup
+  const childrenMap = new Map<string, RawJSONLMessage[]>();
+  const uuidMap = new Map<string, RawJSONLMessage>();
+
   for (const msg of messages) {
+    uuidMap.set(msg.uuid, msg);
     if (msg.parentUuid) {
       const children = childrenMap.get(msg.parentUuid) || [];
       children.push(msg);
@@ -157,31 +177,95 @@ export function sortMessagesByParentUuid(messages: RawJSONLMessage[]): RawJSONLM
     }
   }
 
-  // Find root messages (no parentUuid)
-  const roots = messages.filter((m) => !m.parentUuid);
+  // Identify leaf messages (messages whose uuid is NOT any other message's parentUuid)
+  const parentUuids = new Set(childrenMap.keys());
+  const leaves = messages.filter((m) => !parentUuids.has(m.uuid));
 
-  // Sort roots by timestamp
-  roots.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-  // BFS traversal
-  const sorted: RawJSONLMessage[] = [];
-  const queue = [...roots];
-
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    sorted.push(current);
-
-    const children = childrenMap.get(current.uuid) || [];
-    // Sort children by timestamp for consistent ordering
-    children.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    queue.push(...children);
+  // If no leaves found (shouldn't happen), fall back to all messages sorted
+  if (leaves.length === 0) {
+    return [...messages].sort((a, b) => getTs(a) - getTs(b));
   }
 
-  // Final sort by timestamp to handle session resume scenarios
-  // where multiple root trees exist and BFS order doesn't reflect chronological order
-  sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  // Pick the leaf with the latest timestamp
+  let latestLeaf = leaves[0];
+  let latestLeafTs = getTs(latestLeaf);
+  for (let i = 1; i < leaves.length; i++) {
+    const ts = getTs(leaves[i]);
+    if (ts > latestLeafTs) {
+      latestLeaf = leaves[i];
+      latestLeafTs = ts;
+    }
+  }
 
-  return sorted;
+  // Trace parentUuid chain from latest leaf back to root
+  const activePath = new Set<string>();
+  let current: RawJSONLMessage | undefined = latestLeaf;
+  let activeRoot: RawJSONLMessage | undefined;
+  while (current) {
+    activePath.add(current.uuid);
+    if (!current.parentUuid) {
+      activeRoot = current;
+      break;
+    }
+    current = uuidMap.get(current.parentUuid);
+    // Orphaned message — parentUuid references nonexistent uuid
+    if (!current) break;
+  }
+
+  // Find all root messages for compaction boundary handling
+  const roots = messages.filter((m) => !m.parentUuid);
+
+  if (roots.length <= 1 || !activeRoot) {
+    // Single tree — mark sidechain and filter
+    for (const msg of messages) {
+      if (!activePath.has(msg.uuid)) {
+        msg.isSidechain = true;
+      }
+    }
+    return messages.filter((m) => activePath.has(m.uuid)).sort((a, b) => getTs(a) - getTs(b));
+  }
+
+  // Multiple roots (compaction boundaries)
+  // Collect all messages belonging to each tree segment
+  const activeRootTs = getTs(activeRoot);
+  const result: RawJSONLMessage[] = [];
+
+  // Collect all uuids in each tree via BFS from root
+  for (const root of roots) {
+    const rootTs = getTs(root);
+
+    if (root.uuid === activeRoot.uuid) {
+      // Active segment — only include active path messages
+      for (const msg of messages) {
+        if (activePath.has(msg.uuid)) {
+          result.push(msg);
+        }
+      }
+    } else if (rootTs < activeRootTs) {
+      // Earlier compaction segment — include entirely via BFS
+      const segmentQueue = [root];
+      while (segmentQueue.length > 0) {
+        const node = segmentQueue.shift()!;
+        result.push(node);
+        const children = childrenMap.get(node.uuid);
+        if (children) segmentQueue.push(...children);
+      }
+    }
+    // Later compaction segments (rootTs > activeRootTs) — excluded
+  }
+
+  // Mark all excluded messages as sidechain
+  const resultUuids = new Set(result.map((m) => m.uuid));
+  for (const msg of messages) {
+    if (!resultUuids.has(msg.uuid)) {
+      msg.isSidechain = true;
+    }
+  }
+
+  // Sort by timestamp
+  result.sort((a, b) => getTs(a) - getTs(b));
+
+  return result;
 }
 
 /**

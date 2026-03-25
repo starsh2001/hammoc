@@ -140,10 +140,11 @@ invalid json line
 
       const sorted = sortMessagesByParentUuid(messages);
 
-      // BFS: roots first (sorted by timestamp), then children
-      expect(sorted[0].uuid).toBe('1'); // First root (earlier)
-      expect(sorted[1].uuid).toBe('2'); // Second root (later)
-      expect(sorted[2].uuid).toBe('3'); // Child of 1 (processed after parents in BFS)
+      // Active branch: latest leaf is msg-3 (t=10Z), trace: msg-3→msg-1 (root, t=00Z)
+      // msg-2 is a later compaction root (t=05Z > t=00Z) without the latest leaf → excluded
+      expect(sorted).toHaveLength(2);
+      expect(sorted[0].uuid).toBe('1');
+      expect(sorted[1].uuid).toBe('3');
     });
 
     it('handles empty array', () => {
@@ -172,9 +173,11 @@ invalid json line
 
       const sorted = sortMessagesByParentUuid(messages);
 
+      // Active branch: msg-2 and msg-3 are both children of msg-1 (branch point).
+      // Latest leaf is msg-3 (t=10Z). Active path: msg-3→msg-1. msg-2 is sidechain.
+      expect(sorted).toHaveLength(2);
       expect(sorted[0].uuid).toBe('1');
-      expect(sorted[1].uuid).toBe('2'); // Earlier child
-      expect(sorted[2].uuid).toBe('3'); // Later child
+      expect(sorted[1].uuid).toBe('3');
     });
 
     it('handles deep nesting correctly', () => {
@@ -191,6 +194,152 @@ invalid json line
       expect(sorted[1].uuid).toBe('2');
       expect(sorted[2].uuid).toBe('3');
       expect(sorted[3].uuid).toBe('4');
+    });
+  });
+
+  describe('active branch extraction (Story 25.2)', () => {
+    it('linear conversation — all messages retained, same order', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'msg-1', type: 'user', timestamp: '2026-01-15T10:00:00Z' },
+        { uuid: 'msg-2', parentUuid: 'msg-1', type: 'assistant', timestamp: '2026-01-15T10:00:05Z' },
+        { uuid: 'msg-3', parentUuid: 'msg-2', type: 'user', timestamp: '2026-01-15T10:00:10Z' },
+        { uuid: 'msg-4', parentUuid: 'msg-3', type: 'assistant', timestamp: '2026-01-15T10:00:15Z' },
+      ];
+
+      const sorted = sortMessagesByParentUuid(messages);
+
+      expect(sorted.map((m) => m.uuid)).toEqual(['msg-1', 'msg-2', 'msg-3', 'msg-4']);
+    });
+
+    it('single rewind scenario — dead branch excluded', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'msg-1', type: 'user', timestamp: '2026-01-15T10:00:00Z' },
+        { uuid: 'msg-2', parentUuid: 'msg-1', type: 'assistant', timestamp: '2026-01-15T10:00:05Z' },
+        { uuid: 'msg-3', parentUuid: 'msg-2', type: 'user', timestamp: '2026-01-15T10:00:10Z' },
+        { uuid: 'msg-4', parentUuid: 'msg-3', type: 'assistant', timestamp: '2026-01-15T10:00:15Z' },
+        { uuid: 'msg-5', parentUuid: 'msg-2', type: 'user', timestamp: '2026-01-15T10:00:20Z' },
+        { uuid: 'msg-6', parentUuid: 'msg-5', type: 'assistant', timestamp: '2026-01-15T10:00:25Z' },
+      ];
+
+      const sorted = sortMessagesByParentUuid(messages);
+
+      expect(sorted.map((m) => m.uuid)).toEqual(['msg-1', 'msg-2', 'msg-5', 'msg-6']);
+      // Dead branch messages should be marked as sidechain
+      expect(messages.find((m) => m.uuid === 'msg-3')!.isSidechain).toBe(true);
+      expect(messages.find((m) => m.uuid === 'msg-4')!.isSidechain).toBe(true);
+    });
+
+    it('multiple rewind scenario — only latest branch active', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'msg-1', type: 'user', timestamp: '2026-01-15T10:00:00Z' },
+        { uuid: 'msg-2', parentUuid: 'msg-1', type: 'assistant', timestamp: '2026-01-15T10:00:05Z' },
+        // First branch (dead)
+        { uuid: 'msg-3', parentUuid: 'msg-2', type: 'user', timestamp: '2026-01-15T10:00:10Z' },
+        { uuid: 'msg-4', parentUuid: 'msg-3', type: 'assistant', timestamp: '2026-01-15T10:00:15Z' },
+        // Second branch (dead)
+        { uuid: 'msg-5', parentUuid: 'msg-2', type: 'user', timestamp: '2026-01-15T10:00:20Z' },
+        { uuid: 'msg-6', parentUuid: 'msg-5', type: 'assistant', timestamp: '2026-01-15T10:00:25Z' },
+        // Third branch (active — latest leaf)
+        { uuid: 'msg-7', parentUuid: 'msg-2', type: 'user', timestamp: '2026-01-15T10:00:30Z' },
+        { uuid: 'msg-8', parentUuid: 'msg-7', type: 'assistant', timestamp: '2026-01-15T10:00:35Z' },
+      ];
+
+      const sorted = sortMessagesByParentUuid(messages);
+
+      expect(sorted.map((m) => m.uuid)).toEqual(['msg-1', 'msg-2', 'msg-7', 'msg-8']);
+    });
+
+    it('compaction boundary — earlier segment included entirely, active branch filtered in active segment', () => {
+      const messages: RawJSONLMessage[] = [
+        // Compacted tree 1 (earlier segment)
+        { uuid: 'msg-A', type: 'user', timestamp: '2026-01-15T09:00:00Z' },
+        { uuid: 'msg-B', parentUuid: 'msg-A', type: 'assistant', timestamp: '2026-01-15T09:00:05Z' },
+        { uuid: 'msg-C', parentUuid: 'msg-B', type: 'user', timestamp: '2026-01-15T09:00:10Z' },
+        // Active tree 2 (after compaction)
+        { uuid: 'msg-D', type: 'user', timestamp: '2026-01-15T10:00:00Z' },
+        { uuid: 'msg-E', parentUuid: 'msg-D', type: 'assistant', timestamp: '2026-01-15T10:00:05Z' },
+        // Dead branch in active tree
+        { uuid: 'msg-F', parentUuid: 'msg-E', type: 'user', timestamp: '2026-01-15T10:00:10Z' },
+        // Active branch in active tree
+        { uuid: 'msg-G', parentUuid: 'msg-E', type: 'user', timestamp: '2026-01-15T10:00:15Z' },
+        { uuid: 'msg-H', parentUuid: 'msg-G', type: 'assistant', timestamp: '2026-01-15T10:00:20Z' },
+      ];
+
+      const sorted = sortMessagesByParentUuid(messages);
+
+      expect(sorted.map((m) => m.uuid)).toEqual([
+        'msg-A', 'msg-B', 'msg-C', 'msg-D', 'msg-E', 'msg-G', 'msg-H',
+      ]);
+      expect(messages.find((m) => m.uuid === 'msg-F')!.isSidechain).toBe(true);
+    });
+
+    it('later compaction segment excluded', () => {
+      // Abnormal edge case: tree 1 contains the latest leaf (msg-C at t=25Z),
+      // tree 2 has a later root but does NOT contain the latest leaf → excluded
+      const messages: RawJSONLMessage[] = [
+        // Tree 1 — active segment (contains latest leaf)
+        { uuid: 'msg-A', type: 'user', timestamp: '2026-01-15T10:00:00Z' },
+        { uuid: 'msg-B', parentUuid: 'msg-A', type: 'assistant', timestamp: '2026-01-15T10:00:05Z' },
+        { uuid: 'msg-C', parentUuid: 'msg-B', type: 'user', timestamp: '2026-01-15T10:00:25Z' },
+        // Tree 2 — later root, no latest leaf → excluded
+        { uuid: 'msg-D', type: 'user', timestamp: '2026-01-15T10:00:15Z' },
+        { uuid: 'msg-E', parentUuid: 'msg-D', type: 'assistant', timestamp: '2026-01-15T10:00:20Z' },
+      ];
+
+      const sorted = sortMessagesByParentUuid(messages);
+
+      // Latest leaf: msg-C (t=25Z). Active root: msg-A (t=00Z).
+      // Tree 2 root (msg-D, t=15Z) is newer than active root → later segment → excluded.
+      expect(sorted.map((m) => m.uuid)).toEqual(['msg-A', 'msg-B', 'msg-C']);
+      expect(messages.find((m) => m.uuid === 'msg-D')!.isSidechain).toBe(true);
+      expect(messages.find((m) => m.uuid === 'msg-E')!.isSidechain).toBe(true);
+    });
+
+    it('orphaned messages excluded', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'msg-1', type: 'user', timestamp: '2026-01-15T10:00:00Z' },
+        { uuid: 'msg-2', parentUuid: 'msg-1', type: 'assistant', timestamp: '2026-01-15T10:00:05Z' },
+        { uuid: 'msg-3', parentUuid: 'msg-1', type: 'user', timestamp: '2026-01-15T10:00:10Z' },
+        // Orphaned message — references nonexistent parent
+        { uuid: 'msg-orphan', parentUuid: 'nonexistent', type: 'user', timestamp: '2026-01-15T10:00:08Z' },
+      ];
+
+      const sorted = sortMessagesByParentUuid(messages);
+
+      // Latest leaf: msg-3 (t=10Z). Active path: msg-3→msg-1. Orphan excluded.
+      expect(sorted.map((m) => m.uuid)).toEqual(['msg-1', 'msg-3']);
+      expect(messages.find((m) => m.uuid === 'msg-orphan')!.isSidechain).toBe(true);
+    });
+
+    it('root with parentUuid undefined vs null — both treated as root', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'msg-1', parentUuid: undefined, type: 'user', timestamp: '2026-01-15T10:00:00Z' },
+        { uuid: 'msg-2', parentUuid: null, type: 'assistant', timestamp: '2026-01-15T10:00:05Z', message: { role: 'assistant', content: 'Hi' } } as RawJSONLMessage,
+        { uuid: 'msg-3', parentUuid: 'msg-2', type: 'user', timestamp: '2026-01-15T10:00:10Z' },
+      ];
+
+      const sorted = sortMessagesByParentUuid(messages);
+
+      // Latest leaf: msg-3 (t=10Z). Trace: msg-3→msg-2 (root, parentUuid=null).
+      // msg-1 is an earlier root (t=00Z < t=05Z) → included entirely as earlier compaction segment.
+      // Actually msg-1 (parentUuid=undefined) and msg-2 (parentUuid=null) are both roots.
+      // Active root = msg-2 (contains latest leaf msg-3). msg-1 root is earlier → included.
+      expect(sorted.map((m) => m.uuid)).toEqual(['msg-1', 'msg-2', 'msg-3']);
+    });
+
+    it('empty array returns empty', () => {
+      expect(sortMessagesByParentUuid([])).toEqual([]);
+    });
+
+    it('single message returns as-is', () => {
+      const messages: RawJSONLMessage[] = [
+        { uuid: 'msg-1', type: 'user', timestamp: '2026-01-15T10:00:00Z' },
+      ];
+
+      const sorted = sortMessagesByParentUuid(messages);
+
+      expect(sorted).toHaveLength(1);
+      expect(sorted[0].uuid).toBe('msg-1');
     });
   });
 
@@ -549,6 +698,111 @@ invalid json line
     it('rejects non-object', () => {
       expect(isValidRawJSONLMessage('string')).toBe(false);
       expect(isValidRawJSONLMessage(123)).toBe(false);
+    });
+  });
+
+  describe('active branch + transformToHistoryMessages integration (Story 25.2)', () => {
+    it('branched session: only active branch messages appear in final output', () => {
+      const raw: RawJSONLMessage[] = [
+        {
+          uuid: 'u1', type: 'user', timestamp: '2026-01-15T10:00:00Z',
+          message: { role: 'user', content: 'Hello' },
+        },
+        {
+          uuid: 'a1', parentUuid: 'u1', type: 'assistant', timestamp: '2026-01-15T10:00:05Z',
+          message: { role: 'assistant', content: 'Hi there!' },
+        },
+        // Dead branch
+        {
+          uuid: 'u2-dead', parentUuid: 'a1', type: 'user', timestamp: '2026-01-15T10:00:10Z',
+          message: { role: 'user', content: 'Dead branch question' },
+        },
+        {
+          uuid: 'a2-dead', parentUuid: 'u2-dead', type: 'assistant', timestamp: '2026-01-15T10:00:15Z',
+          message: { role: 'assistant', content: 'Dead branch answer' },
+        },
+        // Active branch (rewind)
+        {
+          uuid: 'u2-active', parentUuid: 'a1', type: 'user', timestamp: '2026-01-15T10:00:20Z',
+          message: { role: 'user', content: 'Active branch question' },
+        },
+        {
+          uuid: 'a2-active', parentUuid: 'u2-active', type: 'assistant', timestamp: '2026-01-15T10:00:25Z',
+          message: { role: 'assistant', content: 'Active branch answer' },
+        },
+      ];
+
+      const sorted = sortMessagesByParentUuid(raw);
+      const result = transformToHistoryMessages(sorted);
+
+      expect(result).toHaveLength(4);
+      expect(result.map((m) => m.content)).toEqual([
+        'Hello', 'Hi there!', 'Active branch question', 'Active branch answer',
+      ]);
+      // Dead branch content should NOT appear
+      expect(result.find((m) => m.content === 'Dead branch question')).toBeUndefined();
+      expect(result.find((m) => m.content === 'Dead branch answer')).toBeUndefined();
+    });
+
+    it('tool_use/tool_result merging works correctly after branch filtering', () => {
+      const raw: RawJSONLMessage[] = [
+        {
+          uuid: 'u1', type: 'user', timestamp: '2026-01-15T10:00:00Z',
+          message: { role: 'user', content: 'Read a file' },
+        },
+        {
+          uuid: 'a1', parentUuid: 'u1', type: 'assistant', timestamp: '2026-01-15T10:00:05Z',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'tool_use' as const, id: 'tool-dead', name: 'Read', input: { file_path: '/dead.ts' } },
+            ],
+          },
+        },
+        // tool_result for dead branch tool_use
+        {
+          uuid: 'tr-dead', parentUuid: 'a1', type: 'user', timestamp: '2026-01-15T10:00:10Z',
+          message: {
+            role: 'user',
+            content: [
+              { type: 'tool_result' as const, tool_use_id: 'tool-dead', content: 'dead file content' },
+            ],
+          },
+        },
+        // Dead branch continues
+        {
+          uuid: 'a2-dead', parentUuid: 'tr-dead', type: 'assistant', timestamp: '2026-01-15T10:00:15Z',
+          message: { role: 'assistant', content: 'Dead response' },
+        },
+        // Active branch (rewind from a1)
+        {
+          uuid: 'u2-active', parentUuid: 'a1', type: 'user', timestamp: '2026-01-15T10:00:20Z',
+          message: {
+            role: 'user',
+            content: [
+              { type: 'tool_result' as const, tool_use_id: 'tool-dead', content: 'active tool result' },
+            ],
+          },
+        },
+        {
+          uuid: 'a3-active', parentUuid: 'u2-active', type: 'assistant', timestamp: '2026-01-15T10:00:25Z',
+          message: { role: 'assistant', content: 'Active response' },
+        },
+      ];
+
+      const sorted = sortMessagesByParentUuid(raw);
+      const result = transformToHistoryMessages(sorted);
+
+      // Active branch: u1 → a1 → u2-active → a3-active
+      // tool_use (tool-dead) from a1 should get merged with tool_result from u2-active
+      const toolMsg = result.find((m) => m.type === 'tool_use');
+      expect(toolMsg).toBeDefined();
+      expect(toolMsg!.toolName).toBe('Read');
+      expect(toolMsg!.toolResult?.output).toBe('active tool result');
+
+      // Dead branch content should not appear
+      expect(result.find((m) => m.content === 'Dead response')).toBeUndefined();
+      expect(result.find((m) => m.content === 'dead file content')).toBeUndefined();
     });
   });
 
