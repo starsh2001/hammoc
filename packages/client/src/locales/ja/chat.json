@@ -322,22 +322,5 @@
     "error": "エラー: {{label}}",
     "cost": "コスト: ${{amount}}",
     "turns": "ターン: {{count}}"
-  },
-  "rewindDialog": {
-    "title": "この時点に巻き戻す",
-    "restoreAll": "コードと会話を復元",
-    "restoreAllDesc": "ファイルと会話をこの時点に巻き戻します",
-    "restoreConversation": "会話のみ復元",
-    "restoreConversationDesc": "会話を巻き戻しますが、現在のコードは保持します",
-    "restoreCode": "コードのみ復元",
-    "restoreCodeDesc": "ファイルを復元しますが、会話は保持します",
-    "summarize": "ここから要約",
-    "summarizeDesc": "この時点以降のメッセージを要約に圧縮します",
-    "cancel": "キャンセル",
-    "filesAffected": "影響を受けるファイル",
-    "insertions": "{{count}}件の挿入",
-    "deletions": "{{count}}件の削除",
-    "noCheckpoint": "ファイルチェックポイントが利用できません",
-    "loading": "ファイル変更を確認中..."
   }
 }

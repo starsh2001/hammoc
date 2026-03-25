@@ -322,22 +322,5 @@
     "error": "Error: {{label}}",
     "cost": "Costo: ${{amount}}",
     "turns": "Turnos: {{count}}"
-  },
-  "rewindDialog": {
-    "title": "Retroceder a este punto",
-    "restoreAll": "Restaurar código y conversación",
-    "restoreAllDesc": "Retroceder archivos y conversación a este punto",
-    "restoreConversation": "Restaurar solo conversación",
-    "restoreConversationDesc": "Retroceder conversación pero mantener el código actual",
-    "restoreCode": "Restaurar solo código",
-    "restoreCodeDesc": "Restaurar archivos pero mantener la conversación",
-    "summarize": "Resumir desde aquí",
-    "summarizeDesc": "Comprimir los mensajes después de este punto en un resumen",
-    "cancel": "Cancelar",
-    "filesAffected": "Archivos afectados",
-    "insertions": "{{count}} inserciones",
-    "deletions": "{{count}} eliminaciones",
-    "noCheckpoint": "Puntos de control de archivos no disponibles",
-    "loading": "Verificando cambios de archivos..."
   }
 }

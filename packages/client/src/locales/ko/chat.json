@@ -326,22 +326,5 @@
     "error": "오류: {{label}}",
     "cost": "비용: ${{amount}}",
     "turns": "턴: {{count}}"
-  },
-  "rewindDialog": {
-    "title": "이 시점으로 되돌리기",
-    "restoreAll": "코드와 대화 모두 복원",
-    "restoreAllDesc": "파일과 대화를 이 시점으로 되돌립니다",
-    "restoreConversation": "대화만 복원",
-    "restoreConversationDesc": "대화를 되돌리되 현재 코드는 유지합니다",
-    "restoreCode": "코드만 복원",
-    "restoreCodeDesc": "파일을 복원하되 대화는 유지합니다",
-    "summarize": "여기서부터 요약",
-    "summarizeDesc": "이 시점 이후의 메시지를 요약으로 압축합니다",
-    "cancel": "취소",
-    "filesAffected": "영향받는 파일",
-    "insertions": "{{count}}개 추가",
-    "deletions": "{{count}}개 삭제",
-    "noCheckpoint": "파일 체크포인트를 사용할 수 없습니다",
-    "loading": "파일 변경 사항 확인 중..."
   }
 }

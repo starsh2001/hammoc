@@ -326,22 +326,5 @@
     "error": "Error: {{label}}",
     "cost": "Cost: ${{amount}}",
     "turns": "Turns: {{count}}"
-  },
-  "rewindDialog": {
-    "title": "Rewind to this point",
-    "restoreAll": "Restore code and conversation",
-    "restoreAllDesc": "Rewind both files and conversation to this point",
-    "restoreConversation": "Restore conversation only",
-    "restoreConversationDesc": "Rewind conversation but keep current code",
-    "restoreCode": "Restore code only",
-    "restoreCodeDesc": "Restore files but keep conversation",
-    "summarize": "Summarize from here",
-    "summarizeDesc": "Compress messages after this point into a summary",
-    "cancel": "Cancel",
-    "filesAffected": "Files affected",
-    "insertions": "{{count}} insertions",
-    "deletions": "{{count}} deletions",
-    "noCheckpoint": "File checkpoints not available",
-    "loading": "Checking file changes..."
   }
 }
