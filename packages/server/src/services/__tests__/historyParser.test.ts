@@ -710,7 +710,7 @@ invalid json line
       expect(transformed[1].toolResult?.output).toBe('hello');
     });
 
-    it('uses original uuid as id for first split fragment (referential integrity)', () => {
+    it('uses original uuid as id for first split fragment — text first (referential integrity)', () => {
       const messages: RawJSONLMessage[] = [
         { uuid: 'u1', type: 'user', timestamp: '2026-01-15T10:00:00Z', message: { role: 'user', content: 'Hello' } },
         {
@@ -733,6 +733,9 @@ invalid json line
       const transformed = transformToHistoryMessages(messages);
       const idSet = new Set(transformed.map((m) => m.id));
 
+      // All IDs must be unique
+      expect(idSet.size).toBe(transformed.length);
+
       // First split fragment of 'a1' must use original uuid
       expect(transformed[1].id).toBe('a1');
 
@@ -742,6 +745,55 @@ invalid json line
           expect(idSet.has(msg.parentId)).toBe(true);
         }
       }
+    });
+
+    it('uses original uuid as id for first split fragment — tool_use first', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: 'a1',
+          type: 'assistant',
+          parentUuid: 'u1',
+          timestamp: '2026-01-15T10:00:00Z',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'I need to read.', signature: 'sig' },
+              { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file_path: '/test.ts' } },
+            ],
+          },
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+      const idSet = new Set(transformed.map((m) => m.id));
+
+      expect(idSet.size).toBe(transformed.length);
+      expect(transformed[0].id).toBe('a1');
+      expect(transformed[0].type).toBe('tool_use');
+    });
+
+    it('uses original uuid as id for thinking-only fragment', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: 'a1',
+          type: 'assistant',
+          parentUuid: 'u1',
+          timestamp: '2026-01-15T10:00:00Z',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'Deep thought only...', signature: 'sig' },
+              { type: 'text', text: '(no content)' },
+            ],
+          },
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].id).toBe('a1');
+      expect(transformed[0].thinking).toBe('Deep thought only...');
     });
 
     it('maps parentId for queue-operation task notifications', () => {
