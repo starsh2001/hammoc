@@ -60,18 +60,32 @@ export function KanbanBoard({
     setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - tolerance);
   }, []);
 
+  // Convert vertical wheel scroll to horizontal scroll
+  // Scrollable columns stop propagation via their own passive listener, so this only fires
+  // for non-scrollable columns and empty board areas — no performance penalty on column scroll.
+  const handleWheel = useCallback((e: WheelEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (el.scrollWidth <= el.clientWidth) return;
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    e.preventDefault();
+    el.scrollLeft += e.deltaY;
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     updateScrollState();
     el.addEventListener('scroll', updateScrollState, { passive: true });
+    el.addEventListener('wheel', handleWheel, { passive: false });
     const ro = new ResizeObserver(updateScrollState);
     ro.observe(el);
     return () => {
       el.removeEventListener('scroll', updateScrollState);
+      el.removeEventListener('wheel', handleWheel);
       ro.disconnect();
     };
-  }, [updateScrollState, totalColumns, effectiveVisible]);
+  }, [updateScrollState, handleWheel, totalColumns, effectiveVisible]);
 
   return (
     <div className="relative h-full">
