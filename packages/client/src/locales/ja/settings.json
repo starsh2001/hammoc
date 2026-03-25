@@ -53,9 +53,10 @@
     "panelDefaultSide": "クイックパネルのデフォルト位置",
     "panelSideOption": {
       "left": "左",
-      "right": "右"
+      "right": "右",
+      "last": "前回の位置"
     },
-    "panelDefaultSideDesc": "クイックパネルのデフォルト表示位置です。",
+    "panelDefaultSideDesc": "クイックパネルのデフォルト表示位置です。「前回の位置」を選択すると、前回のセッションで使用した位置を維持します。",
     "chatTimeout": "チャットタイムアウト",
     "chatTimeoutOverride": "（環境変数で設定済み）",
     "chatTimeoutDesc": "応答がない場合にリクエストを自動中止するまでの時間です。",

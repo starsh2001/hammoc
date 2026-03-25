@@ -54,9 +54,10 @@
     "panelDefaultSide": "Quick Panel Default Side",
     "panelSideOption": {
       "left": "Left",
-      "right": "Right"
+      "right": "Right",
+      "last": "Last used"
     },
-    "panelDefaultSideDesc": "Default side for the quick panel.",
+    "panelDefaultSideDesc": "Default side for the quick panel. 'Last used' keeps the side from the previous session.",
     "chatTimeout": "Chat Timeout",
     "chatTimeoutOverride": "(Set by environment variable)",
     "chatTimeoutDesc": "Time to automatically abort request when no response is received.",

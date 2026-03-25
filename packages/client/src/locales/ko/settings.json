@@ -54,9 +54,10 @@
     "panelDefaultSide": "퀵 패널 기본 위치",
     "panelSideOption": {
       "left": "왼쪽",
-      "right": "오른쪽"
+      "right": "오른쪽",
+      "last": "마지막 위치"
     },
-    "panelDefaultSideDesc": "퀵 패널의 기본 표시 위치입니다.",
+    "panelDefaultSideDesc": "퀵 패널의 기본 표시 위치입니다. '마지막 위치'를 선택하면 이전 세션에서 사용한 위치를 유지합니다.",
     "chatTimeout": "채팅 타임아웃",
     "chatTimeoutOverride": "(환경변수로 설정됨)",
     "chatTimeoutDesc": "응답이 없을 때 자동으로 요청을 중단하는 시간입니다.",

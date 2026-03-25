@@ -53,9 +53,10 @@
     "panelDefaultSide": "Lado padrão do painel rápido",
     "panelSideOption": {
       "left": "Esquerda",
-      "right": "Direita"
+      "right": "Direita",
+      "last": "Última posição"
     },
-    "panelDefaultSideDesc": "Lado padrão de exibição do painel rápido.",
+    "panelDefaultSideDesc": "Lado padrão de exibição do painel rápido. 'Última posição' mantém o lado da sessão anterior.",
     "chatTimeout": "Tempo limite do chat",
     "chatTimeoutOverride": "(Definido por variável de ambiente)",
     "chatTimeoutDesc": "Tempo para abortar automaticamente a requisição quando nenhuma resposta é recebida.",

@@ -70,7 +70,7 @@ interface PanelStore {
   /** Whether default-open has already been applied this session */
   _defaultApplied: boolean;
   /** Apply preferences-based defaults (called once after preferences load) */
-  applyDefaults: (opts: { panelDefaultOpen?: boolean; panelDefaultSide?: 'left' | 'right' }) => void;
+  applyDefaults: (opts: { panelDefaultOpen?: boolean; panelDefaultSide?: 'left' | 'right' | 'last' }) => void;
 }
 
 export const usePanelStore = create<PanelStore>((set) => ({
@@ -119,8 +119,8 @@ export const usePanelStore = create<PanelStore>((set) => ({
 
     const updates: Partial<PanelStore> = { _defaultApplied: true };
 
-    // Apply default side from preferences (if user hasn't manually changed it)
-    if (panelDefaultSide && !localStorage.getItem(PANEL_SIDE_KEY)) {
+    // Apply default side from preferences ('last' = keep localStorage value)
+    if (panelDefaultSide && panelDefaultSide !== 'last') {
       updates.panelSide = panelDefaultSide;
       writePanelSide(panelDefaultSide);
     }

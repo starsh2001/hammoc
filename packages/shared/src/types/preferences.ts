@@ -48,7 +48,7 @@ export interface UserPreferences {
   permissionSyncPolicy?: PermissionSyncPolicy;
   // Quick panel settings
   panelDefaultOpen?: boolean;       // Auto-open panel on desktop (default: true)
-  panelDefaultSide?: 'left' | 'right'; // Default panel side (default: 'right')
+  panelDefaultSide?: 'left' | 'right' | 'last'; // Default panel side (default: 'right')
   // Allowed read paths outside project root (absolute paths only)
   // Default: [~/.claude] — set broader paths (e.g. home dir) to expand access
   allowedReadPaths?: string[];

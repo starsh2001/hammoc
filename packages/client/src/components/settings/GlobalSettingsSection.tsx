@@ -433,6 +433,7 @@ export function GlobalSettingsSection() {
           {([
             { value: 'left' as const, labelKey: 'global.panelSideOption.left' },
             { value: 'right' as const, labelKey: 'global.panelSideOption.right' },
+            { value: 'last' as const, labelKey: 'global.panelSideOption.last' },
           ]).map((opt) => (
             <label
               key={opt.value}
@@ -451,7 +452,9 @@ export function GlobalSettingsSection() {
                 checked={(preferences.panelDefaultSide ?? 'right') === opt.value}
                 onChange={() => {
                   updatePreference('panelDefaultSide', opt.value);
-                  usePanelStore.getState().setPanelSide(opt.value);
+                  if (opt.value !== 'last') {
+                    usePanelStore.getState().setPanelSide(opt.value);
+                  }
                   toast.success(t('toast.settingSaved'));
                 }}
                 className="sr-only"

@@ -53,9 +53,10 @@
     "panelDefaultSide": "快捷面板默认位置",
     "panelSideOption": {
       "left": "左侧",
-      "right": "右侧"
+      "right": "右侧",
+      "last": "上次位置"
     },
-    "panelDefaultSideDesc": "快捷面板的默认显示位置。",
+    "panelDefaultSideDesc": "快捷面板的默认显示位置。选择"上次位置"将保持上一个会话中使用的位置。",
     "chatTimeout": "聊天超时",
     "chatTimeoutOverride": "（由环境变量设置）",
     "chatTimeoutDesc": "未收到响应时自动中止请求的时间。",
