@@ -1708,6 +1708,16 @@ async function handleChatSend(
   });
 
   const isResuming = resume && sessionId;
+
+  // Story 25.7: resumeSessionAt/rewindToMessageUuid require a valid resume flow
+  if ((resumeSessionAt || rewindToMessageUuid) && !isResuming) {
+    emit('error', {
+      code: ERROR_CODES.VALIDATION_ERROR,
+      message: t('ws.error.resumeSessionAtRequiresResume', { defaultValue: 'resumeSessionAt and rewindToMessageUuid require resume=true and a valid sessionId' }),
+    });
+    return false;
+  }
+
   const sessionService = new SessionService();
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -1936,6 +1946,10 @@ async function handleChatSend(
       if (sendResult.isError && isResumeAttempt && !abortController.signal.aborted && !hasEmittedOutput) {
         log.info(`[RESUME-RETRY] SDK returned error result while resuming, converting to thrown error for retry`);
         throw new Error(sendResult.content || 'Resume returned error result');
+      }
+      // Story 25.7: warn client if file rewind failed (non-fatal)
+      if (chatService.rewindWarning) {
+        emit('error', { code: 'REWIND_WARNING', message: chatService.rewindWarning });
       }
       // Resume succeeded or non-resume — flush any gated events
       ungateCallbacks();

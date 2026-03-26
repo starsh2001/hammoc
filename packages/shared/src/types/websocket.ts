@@ -46,6 +46,7 @@ export interface ClientToServerEvents {
     permissionMode?: PermissionMode;
     model?: string;
     images?: ImageAttachment[];
+    effort?: ThinkingEffort;
     resumeSessionAt?: string;
     rewindToMessageUuid?: string;
   }) => void;

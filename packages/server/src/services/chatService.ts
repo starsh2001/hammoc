@@ -111,6 +111,8 @@ export class ChatService {
   private allowedTools: string[];
   private disallowedTools: string[];
   private currentQuery: Query | null = null;
+  /** Warning message from rewindFiles failure (non-fatal, streaming continues) */
+  rewindWarning: string | null = null;
 
   constructor(config: ChatServiceConfig = {}) {
     this.workingDirectory = config.workingDirectory;
@@ -247,10 +249,14 @@ export class ChatService {
         const rewindResult = await this.currentQuery.rewindFiles(options.rewindToMessageUuid);
         log.info(`rewindFiles result: canRewind=${rewindResult.canRewind}, filesChanged=${rewindResult.filesChanged?.length ?? 0}, insertions=${rewindResult.insertions ?? 0}, deletions=${rewindResult.deletions ?? 0}`);
         if (!rewindResult.canRewind) {
-          log.warn(`rewindFiles failed: ${rewindResult.error ?? 'unknown reason'}`);
+          const reason = rewindResult.error ?? 'unknown reason';
+          log.warn(`rewindFiles failed: ${reason}`);
+          this.rewindWarning = `File rewind failed: ${reason}`;
         }
       } catch (err) {
-        log.error(`rewindFiles threw: ${err instanceof Error ? err.message : String(err)}`);
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error(`rewindFiles threw: ${msg}`);
+        this.rewindWarning = `File rewind error: ${msg}`;
       }
     }
 
