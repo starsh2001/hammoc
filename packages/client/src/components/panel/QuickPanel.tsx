@@ -282,7 +282,7 @@ export function QuickPanel({
         aria-label={t(config.titleKey)}
         className={`fixed z-50 flex flex-col ${
           isMobile
-            ? `inset-0 bg-white dark:bg-[#1c2129]${
+            ? `inset-0 bg-[var(--bg-page)]${
                 swipeFrom
                   ? ` transition-transform duration-300 ease-in-out ${
                       isAnimating ? 'translate-x-0'
@@ -290,7 +290,7 @@ export function QuickPanel({
                     }`
                   : ''
               }`
-            : `inset-y-0 ${panelSide === 'right' ? 'right-0' : 'left-0'} bg-white dark:bg-[#1c2129]
+            : `inset-y-0 ${panelSide === 'right' ? 'right-0' : 'left-0'} bg-[var(--bg-page)]
                ${panelSide === 'right'
                  ? 'border-l border-slate-600 dark:border-slate-700/50'
                  : 'border-r border-slate-600 dark:border-slate-700/50'} shadow-xl

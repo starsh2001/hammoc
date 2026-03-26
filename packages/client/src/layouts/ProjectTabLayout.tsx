@@ -77,7 +77,7 @@ export function ProjectTabLayout() {
   };
 
   return (
-    <div className="h-dvh flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
+    <div className="h-dvh flex flex-col bg-[var(--bg-page)] transition-colors duration-200">
       {/* Header */}
       <header className="flex-shrink-0 sticky top-0 z-10 bg-[#243648] dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
         {/* Top row: project info + actions */}

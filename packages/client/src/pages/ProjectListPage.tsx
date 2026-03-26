@@ -152,7 +152,7 @@ export function ProjectListPage() {
   // Error state
   if (error) {
     return (
-      <div className="h-dvh flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
+      <div className="h-dvh flex flex-col bg-[var(--bg-page)] transition-colors duration-200">
         {/* Header */}
         <header className="flex-shrink-0 sticky top-0 z-10 bg-[#243648] dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
           <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
@@ -216,7 +216,7 @@ export function ProjectListPage() {
   }
 
   return (
-    <div className="h-dvh flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
+    <div className="h-dvh flex flex-col bg-[var(--bg-page)] transition-colors duration-200">
       {/* Header */}
       <header className="flex-shrink-0 sticky top-0 z-10 bg-[#243648] dark:bg-[#171e24] border-b border-slate-200 dark:border-slate-700/50">
         <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">
@@ -380,7 +380,7 @@ export function ProjectListPage() {
       </main>
 
       {/* Footer */}
-      <footer className="flex-shrink-0 border-t border-gray-300 dark:border-[#3a4d5e] bg-gray-50 dark:bg-[#263240] px-4 py-2">
+      <footer className="flex-shrink-0 border-t border-gray-300 dark:border-[#3a4d5e] bg-[var(--bg-footer)] px-4 py-2">
         <div className="content-container flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
           <span>Hammoc{serverVersion ? ` v${serverVersion}` : ''}</span>
           <button

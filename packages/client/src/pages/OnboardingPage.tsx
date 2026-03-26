@@ -82,7 +82,7 @@ function OnboardingContent() {
   }, [refetch]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-[var(--bg-page)] transition-colors duration-200">
       {/* Header */}
       <header className="flex items-center gap-4 p-4 border-b border-gray-300 dark:border-[#3a4d5e]">
         <button

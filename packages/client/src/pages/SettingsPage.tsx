@@ -107,9 +107,9 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="h-dvh flex flex-col bg-white dark:bg-[#1c2129] transition-colors duration-200">
+    <div className="h-dvh flex flex-col bg-[var(--bg-page)] transition-colors duration-200">
       {/* Header */}
-      <header className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#263240] border-b border-gray-300 dark:border-[#3a4d5e]">
+      <header className="flex-shrink-0 sticky top-0 z-10 bg-[var(--bg-footer)] border-b border-gray-300 dark:border-[#3a4d5e]">
         <div className="content-container flex items-center px-4 py-3 min-h-14">
           <button
             onClick={handleBack}

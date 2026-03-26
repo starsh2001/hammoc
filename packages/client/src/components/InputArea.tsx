@@ -21,7 +21,7 @@ export function InputArea({ children, disabled = false }: InputAreaProps) {
       aria-label={t('inputArea.ariaLabel')}
       data-testid="input-area"
       className={`flex-shrink-0 border-t border-gray-300 dark:border-slate-700/50
-                  bg-[#fbfbfc] dark:bg-[#171e24]
+                  bg-[var(--bg-footer)]
                   pb-[max(0.25rem,env(safe-area-inset-bottom))]
                   overscroll-contain
                   ${disabled ? 'opacity-50 pointer-events-none' : ''}`}

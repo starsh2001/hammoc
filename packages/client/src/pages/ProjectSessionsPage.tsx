@@ -249,7 +249,7 @@ export function ProjectSessionsPage() {
   return (
     <>
       {/* Session toolbar */}
-      <div className="sticky top-0 z-[5] bg-white dark:bg-[#1c2129] border-b border-gray-300 dark:border-[#3a4d5e]">
+      <div className="sticky top-0 z-[5] bg-[var(--bg-page)] border-b border-gray-300 dark:border-[#3a4d5e]">
         <div className="flex items-center justify-between px-4 py-2">
           {selectionMode ? (
             <>
@@ -340,7 +340,7 @@ export function ProjectSessionsPage() {
 
       {/* Search bar */}
       {!selectionMode && (
-        <div className="px-4 pt-3 pb-1 bg-white dark:bg-[#1c2129]">
+        <div className="px-4 pt-3 pb-1 bg-[var(--bg-page)]">
           <div role="search" className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400 pointer-events-none" aria-hidden="true" />
             <input
