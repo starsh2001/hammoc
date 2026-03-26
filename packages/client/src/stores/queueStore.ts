@@ -214,10 +214,10 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   },
 
   syncFromStatus: (state: QueueExecutionState) => {
-    // Clamp completedItems to actual totalItems to prevent impossible progress (e.g. 36/32)
+    // Clamp completedItems: when totalItems is 0 (dismissed/idle), completedItems must also be 0
     const maxCompleted = state.totalItems > 0
       ? Math.min(state.currentIndex, state.totalItems)
-      : state.currentIndex;
+      : 0;
     const completedItems = state.isRunning || maxCompleted > 0
       ? new Set(Array.from({ length: maxCompleted }, (_, i) => i))
       : new Set<number>();

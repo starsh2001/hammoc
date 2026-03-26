@@ -191,12 +191,19 @@ export class QueueService {
 
   /** Dismiss the completed/errored terminal state banner and release held data */
   dismiss(): void {
+    // Guard: never dismiss while execution is active
+    if (this._isRunning || this.isPaused || this._isWaitingForInput) return;
+
     log.info(`DISMISS: wasCompleted=${this._isCompleted}, wasErrored=${this._isErrored}`);
     this._isCompleted = false;
     this._isErrored = false;
     this.lastError = null;
     this._finalTotalItems = 0;
     this.currentIndex = 0;
+    this._isPauseRequested = false;
+    this.pauseReason = undefined;
+    this.currentSessionId = null;
+    this.currentModel = undefined;
     // Release memory held by completed run data
     this.items = [];
     this.completedSessionIds = new Map();
