@@ -153,7 +153,7 @@ export function MessageBubble({
             content={message.content}
             disabled={isStreaming}
             onCopy={onCopy}
-            onEdit={() => setIsEditing(true)}
+            onEdit={onEditSubmit ? () => setIsEditing(true) : undefined}
             isOptimistic={(message as any)._optimistic === true}
           />
         </div>

@@ -820,7 +820,7 @@ export function ChatPage() {
 
   // Story 25.6: Edit submit handler (actual branching implemented in 25.7)
   const handleEditSubmit = useCallback((params: EditSubmitParams) => {
-    console.log('[Story 25.6] onEditSubmit', params);
+    debugLogger.info('[Story 25.6] onEditSubmit', params as unknown as Record<string, unknown>);
   }, []);
 
   const handleLoadMore = useCallback(() => {
