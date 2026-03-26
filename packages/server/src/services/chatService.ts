@@ -209,6 +209,8 @@ export class ChatService {
       maxThinkingTokens: options.maxThinkingTokens,
       maxBudgetUsd: options.maxBudgetUsd,
       effort: options.effort,
+      resumeSessionAt: options.resumeSessionAt,
+      enableFileCheckpointing: options.enableFileCheckpointing,
       canUseTool,
       // Capture CLI stderr for debugging process exit errors
       stderr: (data: string) => {
@@ -237,6 +239,19 @@ export class ChatService {
         prompt: content,
         options: queryOptions,
       });
+    }
+
+    // Story 25.7: rewind files to the specified user message checkpoint before streaming
+    if (options.rewindToMessageUuid && this.currentQuery) {
+      try {
+        const rewindResult = await this.currentQuery.rewindFiles(options.rewindToMessageUuid);
+        log.info(`rewindFiles result: canRewind=${rewindResult.canRewind}, filesChanged=${rewindResult.filesChanged?.length ?? 0}, insertions=${rewindResult.insertions ?? 0}, deletions=${rewindResult.deletions ?? 0}`);
+        if (!rewindResult.canRewind) {
+          log.warn(`rewindFiles failed: ${rewindResult.error ?? 'unknown reason'}`);
+        }
+      } catch (err) {
+        log.error(`rewindFiles threw: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
     let finalResponse: ChatResponse = {

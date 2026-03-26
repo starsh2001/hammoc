@@ -46,6 +46,8 @@ export interface ClientToServerEvents {
     permissionMode?: PermissionMode;
     model?: string;
     images?: ImageAttachment[];
+    resumeSessionAt?: string;
+    rewindToMessageUuid?: string;
   }) => void;
   'chat:abort': () => void;
   'permission:respond': (data: {

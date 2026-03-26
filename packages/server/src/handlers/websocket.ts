@@ -1667,13 +1667,13 @@ function validateImages(images: ImageAttachment[], lang: string): { valid: boole
  */
 async function handleChatSend(
   stream: ActiveStream,
-  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[]; effort?: ThinkingEffort },
+  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[]; effort?: ThinkingEffort; resumeSessionAt?: string; rewindToMessageUuid?: string },
   abortController: AbortController,
   lang: string
 ): Promise<boolean> {
   const emit = createStreamEmit(stream);
   const t = i18next.getFixedT(lang);
-  const { content, workingDirectory, sessionId, resume, permissionMode, model, images, effort } = data;
+  const { content, workingDirectory, sessionId, resume, permissionMode, model, images, effort, resumeSessionAt, rewindToMessageUuid } = data;
 
   // Validate images if present (Story 5.5)
   if (images && images.length > 0) {
@@ -1734,6 +1734,10 @@ async function handleChatSend(
         const e = effort ?? effectivePrefs.defaultEffort;
         return (e === 'max' && rateLimitProbeService.hasOAuthCredentials()) ? 'high' : e;
       })(),
+      // Story 25.7: conversation branching via resumeSessionAt
+      ...(resumeSessionAt ? { resumeSessionAt } : {}),
+      enableFileCheckpointing: true,
+      ...(rewindToMessageUuid ? { rewindToMessageUuid } : {}),
     };
 
     // Create canUseTool callback for permission & AskUserQuestion handling

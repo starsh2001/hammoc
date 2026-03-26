@@ -531,6 +531,73 @@ describe('WebSocket Handler', () => {
         expect.any(Function)
       );
     });
+
+    it('should pass resumeSessionAt to chatOptions when provided', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      mockState.sendImpl = vi.fn().mockResolvedValue({});
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Edited message',
+        workingDirectory: '/valid/path',
+        sessionId: 'branch-session-id',
+        resume: true,
+        resumeSessionAt: 'assistant-uuid-123',
+        rewindToMessageUuid: 'user-uuid-456',
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(mockState.sendImpl).toHaveBeenCalledWith(
+        'Edited message',
+        expect.any(Object),
+        expect.objectContaining({
+          resume: 'branch-session-id',
+          resumeSessionAt: 'assistant-uuid-123',
+          enableFileCheckpointing: true,
+          rewindToMessageUuid: 'user-uuid-456',
+        }),
+        expect.any(Function),
+        expect.any(Function)
+      );
+    });
+
+    it('should always include enableFileCheckpointing: true in chatOptions', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      mockState.sendImpl = vi.fn().mockResolvedValue({});
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Normal message',
+        workingDirectory: '/valid/path',
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(mockState.sendImpl).toHaveBeenCalledWith(
+        'Normal message',
+        expect.any(Object),
+        expect.objectContaining({
+          enableFileCheckpointing: true,
+        }),
+        expect.any(Function),
+        expect.any(Function)
+      );
+    });
   });
 
   describe('WebSocket Authentication (Story 2.5)', () => {

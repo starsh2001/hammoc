@@ -196,6 +196,10 @@ interface SendMessageOptions {
   resume?: boolean;
   /** Image attachments */
   attachments?: Attachment[];
+  /** Assistant UUID to branch from (Story 25.7) */
+  resumeSessionAt?: string;
+  /** User message UUID for file rewind (Story 25.7) */
+  rewindToMessageUuid?: string;
 }
 
 interface ChatActions {
@@ -323,7 +327,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   sendMessage: (content: string, options: SendMessageOptions) => {
     const socket = getSocket();
-    const { workingDirectory, sessionId, resume, attachments } = options;
+    const { workingDirectory, sessionId, resume, attachments, resumeSessionAt, rewindToMessageUuid } = options;
 
     const msgState = useMessageStore.getState();
     debugLog.state('sendMessage', {
@@ -391,6 +395,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         name: a.name,
       })),
       ...(get().selectedEffort ? { effort: get().selectedEffort } : {}),
+      ...(resumeSessionAt ? { resumeSessionAt } : {}),
+      ...(rewindToMessageUuid ? { rewindToMessageUuid } : {}),
     });
   },
 

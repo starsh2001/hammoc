@@ -818,10 +818,23 @@ export function ChatPage() {
   // replay (streaming segments). No client-side dedup filtering needed.
   const { displayMessages, branchPoints, navigateBranch, isBranchNavigationDisabled } = useMessageTree(messages);
 
-  // Story 25.6: Edit submit handler (actual branching implemented in 25.7)
+  // Story 25.7: Edit submit handler — creates a conversation branch via resumeSessionAt
   const handleEditSubmit = useCallback((params: EditSubmitParams) => {
-    debugLogger.info('[Story 25.6] onEditSubmit', params as unknown as Record<string, unknown>);
-  }, []);
+    if (!workingDirectory || !sessionId) {
+      debugLogger.error('Cannot edit message: workingDirectory or sessionId not found');
+      return;
+    }
+    debugLogger.info('[Story 25.7] onEditSubmit', params as unknown as Record<string, unknown>);
+
+    addOptimisticMessage(params.newText);
+    sendMessage(params.newText, {
+      workingDirectory,
+      sessionId,
+      resume: true,
+      resumeSessionAt: params.parentId,
+      rewindToMessageUuid: params.restoreCode ? params.messageUuid : undefined,
+    });
+  }, [workingDirectory, sessionId, sendMessage, addOptimisticMessage]);
 
   const handleLoadMore = useCallback(() => {
     fetchMoreMessages();

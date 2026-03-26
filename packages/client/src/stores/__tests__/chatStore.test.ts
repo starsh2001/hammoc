@@ -175,6 +175,37 @@ describe('useChatStore', () => {
       const emittedPayload = mockEmit.mock.calls[0][1];
       expect(emittedPayload.images).toBeUndefined();
     });
+
+    it('includes resumeSessionAt and rewindToMessageUuid when provided', () => {
+      const { sendMessage } = useChatStore.getState();
+
+      sendMessage('Edited message', {
+        workingDirectory: '/path/to/project',
+        sessionId: 'session-123',
+        resume: true,
+        resumeSessionAt: 'assistant-uuid-abc',
+        rewindToMessageUuid: 'user-uuid-def',
+      });
+
+      expect(mockEmit).toHaveBeenCalledWith('chat:send', expect.objectContaining({
+        content: 'Edited message',
+        resumeSessionAt: 'assistant-uuid-abc',
+        rewindToMessageUuid: 'user-uuid-def',
+        resume: true,
+      }));
+    });
+
+    it('omits resumeSessionAt and rewindToMessageUuid when not provided', () => {
+      const { sendMessage } = useChatStore.getState();
+
+      sendMessage('Normal message', {
+        workingDirectory: '/path/to/project',
+      });
+
+      const emittedPayload = mockEmit.mock.calls[0][1];
+      expect(emittedPayload.resumeSessionAt).toBeUndefined();
+      expect(emittedPayload.rewindToMessageUuid).toBeUndefined();
+    });
   });
 
   describe('startStreaming', () => {
