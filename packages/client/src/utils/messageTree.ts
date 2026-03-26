@@ -20,6 +20,8 @@ export interface MessageTree {
 export interface BranchPoint {
   total: number;
   current: number;
+  /** The key to use in branchSelections (server-provided for server-detected branches) */
+  selectionKey?: string;
 }
 
 // --- Helpers ---

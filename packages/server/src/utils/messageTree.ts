@@ -27,6 +27,9 @@ export interface RawMessageTree {
 export interface BranchPointInfo {
   total: number;
   current: number;
+  /** The key to use in branchSelections when navigating this branch point.
+   *  For inner branches: the parent node's UUID. For root-level: ROOT_BRANCH_KEY. */
+  selectionKey: string;
 }
 
 export interface ActiveBranchResult {
@@ -286,7 +289,7 @@ export function getActiveRawBranch(
       const clampedIdx = Math.max(0, Math.min(selectedIdx, conversationRoots.length - 1));
       const selectedRoot = conversationRoots[clampedIdx];
       const rootKey = selectedRoot.message.type === 'user' ? selectedRoot.message.uuid : ROOT_BRANCH_KEY;
-      branchPoints[rootKey] = { total: conversationRoots.length, current: clampedIdx };
+      branchPoints[rootKey] = { total: conversationRoots.length, current: clampedIdx, selectionKey: ROOT_BRANCH_KEY };
       activeRoots = [selectedRoot];
     } else {
       // Sequential orphan roots — display all conversation roots
@@ -312,7 +315,7 @@ export function getActiveRawBranch(
       const selectedBranch = branches[clampedIdx];
       const firstUserInBranch = selectedBranch.find((n) => n.message.type === 'user');
       const branchKey = firstUserInBranch ? firstUserInBranch.message.uuid : node.message.uuid;
-      branchPoints[branchKey] = { total: branches.length, current: clampedIdx };
+      branchPoints[branchKey] = { total: branches.length, current: clampedIdx, selectionKey: node.message.uuid };
 
       for (const child of selectedBranch) {
         traverse(child);

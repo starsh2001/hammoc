@@ -66,7 +66,9 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
 
   // Merge server branchPoints into client branchPoints when available.
   // Server keys are raw UUIDs; client keys may be split IDs (e.g., {uuid}-text-0).
-  // Match using getBaseUuid() on client keys.
+  // The server sees the full tree and reports branches the client can't detect
+  // (client only receives the selected branch's messages), so server-only keys
+  // must also be added by matching against displayMessage IDs.
   const branchPoints = useMemo(() => {
     if (!serverBranchPoints || Object.keys(serverBranchPoints).length === 0) {
       return clientBranchPoints;
@@ -81,12 +83,24 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
       } else if (clientKey in serverBranchPoints) {
         merged.set(clientKey, serverBranchPoints[clientKey]);
       } else {
-        // Keep client value as-is
         merged.set(clientKey, clientValue);
       }
     }
+
+    // Add server-only branchPoints that the client couldn't detect.
+    // Match server keys against displayMessage IDs (direct or base UUID match).
+    for (const serverKey of Object.keys(serverBranchPoints)) {
+      if (merged.has(serverKey)) continue;
+      // Check if any displayMessage's id or baseUuid matches this server key
+      const matchMsg = displayMessages.find(
+        (m) => m.id === serverKey || getBaseUuid(m.id) === serverKey,
+      );
+      if (matchMsg) {
+        merged.set(matchMsg.id, serverBranchPoints[serverKey]);
+      }
+    }
     return merged;
-  }, [clientBranchPoints, serverBranchPoints]);
+  }, [clientBranchPoints, serverBranchPoints, displayMessages]);
 
   // Check if branch navigation should be disabled (streaming/compacting)
   const isStreaming = useChatStore((s) => s.isStreaming);
@@ -102,19 +116,26 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
       setBranchSelections((prev) => {
         const next = new Map(prev);
         let total: number;
-        // Resolve the actual parent key used in branchSelections
-        const selectionKey = branchKeyToParent.get(messageId) ?? messageId;
+
+        // Resolve the branchSelections key: server branchPoints include a
+        // selectionKey (the parent node UUID the server uses for lookup).
+        // Fall back to client branchKeyToParent or the messageId itself.
+        const serverInfo = serverBranchPoints?.[messageId]
+          ?? serverBranchPoints?.[getBaseUuid(messageId)];
+        const selectionKey = serverInfo?.selectionKey
+          ?? branchKeyToParent.get(messageId)
+          ?? messageId;
 
         if (selectionKey === ROOT_BRANCH_KEY) {
-          total = tree.roots.length;
+          total = serverInfo?.total ?? tree.roots.length;
         } else {
           const node = tree.nodeMap.get(selectionKey);
-          if (!node) return prev;
-          const branches = groupChildrenIntoBranches(node.children);
-          total = branches.length;
+          if (!node && !serverInfo) return prev;
+          const clientTotal = node ? groupChildrenIntoBranches(node.children).length : 1;
+          total = clientTotal > 1 ? clientTotal : (serverInfo?.total ?? clientTotal);
         }
 
-        const current = prev.get(selectionKey) ?? total - 1;
+        const current = prev.get(selectionKey) ?? (serverInfo?.current ?? total - 1);
         const newIdx = direction === 'prev'
           ? Math.max(0, current - 1)
           : Math.min(total - 1, current + 1);
@@ -152,7 +173,7 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
         }
       });
     },
-    [tree, branchKeyToParent],
+    [tree, branchKeyToParent, serverBranchPoints],
   );
 
   return { displayMessages, branchPoints, navigateBranch, isBranchNavigationDisabled };

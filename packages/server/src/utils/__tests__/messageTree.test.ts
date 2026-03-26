@@ -219,7 +219,7 @@ describe('getActiveRawBranch', () => {
     const tree = buildRawMessageTree(msgs);
     const { branchPoints } = getActiveRawBranch(tree.roots, { root: 0 });
     // Branch point should be keyed by the first user message in selected branch
-    expect(branchPoints['u1']).toEqual({ total: 2, current: 0 });
+    expect(branchPoints['u1']).toMatchObject({ total: 2, current: 0, selectionKey: 'root' });
   });
 
   it('should handle multiple branch points', () => {

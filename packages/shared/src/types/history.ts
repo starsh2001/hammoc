@@ -130,7 +130,7 @@ export interface HistoryMessagesResponse {
   /** Last slash command found in user messages (for agent detection across pagination) */
   lastAgentCommand?: string | null;
   /** Branch points with total sibling count and current selection index */
-  branchPoints?: Record<string, { total: number; current: number }>;
+  branchPoints?: Record<string, { total: number; current: number; selectionKey?: string }>;
 }
 
 /**

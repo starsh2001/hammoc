@@ -28,7 +28,7 @@ interface MessageState {
   /** Last slash command from full session history (server-provided, survives pagination) */
   lastAgentCommand: string | null;
   /** Server-provided branch points for branch-aware pagination (Story 25.4) */
-  serverBranchPoints: Record<string, { total: number; current: number }> | null;
+  serverBranchPoints: Record<string, { total: number; current: number; selectionKey?: string }> | null;
   /** Current branch selections sent to server (Story 25.4) */
   currentBranchSelections: Record<string, number> | null;
 }
