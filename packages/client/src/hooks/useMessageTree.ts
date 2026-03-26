@@ -58,9 +58,12 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
 
       // Determine the selection key and current index
       const selectionKey = serverInfo.selectionKey ?? baseUuid;
+      if (serverInfo.total <= 0) return;
       const { currentBranchSelections, currentProjectSlug, currentSessionId, fetchMessages } =
         useMessageStore.getState();
-      const current = currentBranchSelections?.[selectionKey] ?? serverInfo.current;
+      // Clamp current to valid range — stale selections may exceed total after branch deletion
+      const rawCurrent = currentBranchSelections?.[selectionKey] ?? serverInfo.current;
+      const current = Math.max(0, Math.min(rawCurrent, serverInfo.total - 1));
 
       // Compute new index
       const newIdx = direction === 'prev'
