@@ -196,6 +196,7 @@ export class QueueService {
     this._isErrored = false;
     this.lastError = null;
     this._finalTotalItems = 0;
+    this.currentIndex = 0;
     // Release memory held by completed run data
     this.items = [];
     this.completedSessionIds = new Map();
