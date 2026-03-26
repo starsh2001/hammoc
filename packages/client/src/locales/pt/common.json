@@ -420,6 +420,7 @@
     "resume": "Retomar",
     "abort": "Abortar",
     "backToEditor": "Voltar ao editor",
+    "dismissFailed": "Falha ao limpar o estado da fila. Tente novamente.",
     "progress": "Progresso: {{current}} / {{total}}",
     "pauseReason": "Motivo: {{reason}}",
     "errorMessage": "Erro: {{error}}",

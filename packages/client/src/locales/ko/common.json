@@ -458,6 +458,7 @@
     "resume": "재개",
     "abort": "중단",
     "backToEditor": "에디터로 돌아가기",
+    "dismissFailed": "큐 상태를 정리하지 못했습니다. 다시 시도해 주세요.",
     "progress": "진행: {{current}} / {{total}}",
     "pauseReason": "사유: {{reason}}",
     "errorMessage": "오류: {{error}}",

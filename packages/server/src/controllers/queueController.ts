@@ -29,6 +29,21 @@ export function getOrCreateQueueService(projectSlug: string): QueueService {
   return instance;
 }
 
+export async function dismissQueue(req: Request, res: Response): Promise<void> {
+  const projectSlug = req.params.projectSlug;
+  if (!projectSlug) {
+    res.status(400).json({ error: req.t!('queue.validation.slugRequired') });
+    return;
+  }
+
+  const queueService = queueInstances.get(projectSlug);
+  if (queueService) {
+    queueService.dismiss();
+  }
+
+  res.status(200).json({ ok: true });
+}
+
 export async function getQueueStatus(req: Request, res: Response): Promise<void> {
   const projectSlug = req.params.projectSlug;
   if (!projectSlug) {

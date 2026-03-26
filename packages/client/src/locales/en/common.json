@@ -449,6 +449,7 @@
     "resume": "Resume",
     "abort": "Abort",
     "backToEditor": "Back to editor",
+    "dismissFailed": "Failed to dismiss queue status. Please try again.",
     "progress": "Progress: {{current}} / {{total}}",
     "pauseReason": "Reason: {{reason}}",
     "errorMessage": "Error: {{error}}",

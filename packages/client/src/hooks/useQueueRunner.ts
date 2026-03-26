@@ -4,7 +4,9 @@
  */
 
 import { useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
+import { toast } from 'sonner';
 import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useQueueStore } from '../stores/queueStore';
@@ -39,10 +41,11 @@ export interface UseQueueRunnerReturn {
   replaceItems: (items: QueueItem[]) => void;
   editStart: () => void;
   editEnd: () => void;
-  dismiss: () => void;
+  dismiss: () => Promise<void>;
 }
 
 export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
+  const { t } = useTranslation('common');
   // Subscribe only to state values we expose (not script/parsedItems/warnings)
   const {
     isRunning,
@@ -155,12 +158,14 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     useQueueStore.getState().reset();
   }, [projectSlug]);
 
-  const dismiss = useCallback(() => {
-    const socket = getSocket();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (socket as any).emit('queue:dismiss', { projectSlug });
-    useQueueStore.getState().reset();
-  }, [projectSlug]);
+  const dismiss = useCallback(async () => {
+    try {
+      await queueApi.dismiss(projectSlug);
+      useQueueStore.getState().reset();
+    } catch {
+      toast.error(t('queue.dismissFailed'));
+    }
+  }, [projectSlug, t]);
 
   const removeItem = useCallback((itemIndex: number) => {
     const socket = getSocket();

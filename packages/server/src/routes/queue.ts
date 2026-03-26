@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import { getQueueStatus } from '../controllers/queueController.js';
+import { getQueueStatus, dismissQueue } from '../controllers/queueController.js';
 import {
   listTemplates, createTemplate, updateTemplate, deleteTemplate, extractStories,
   listGlobalTemplates, createGlobalTemplate, updateGlobalTemplate, deleteGlobalTemplate,
@@ -14,6 +14,7 @@ const router = Router();
 
 // Queue status route (execution control is handled via WebSocket)
 router.get('/:projectSlug/queue/status', getQueueStatus);
+router.post('/:projectSlug/queue/dismiss', dismissQueue);
 
 // Project-level template routes (Story 15.5)
 router.get('/:projectSlug/queue/stories', extractStories);

@@ -10,6 +10,9 @@ export const queueApi = {
   getStatus: (projectSlug: string) =>
     api.get<QueueExecutionState>(`/projects/${projectSlug}/queue/status`),
 
+  dismiss: (projectSlug: string) =>
+    api.post<void>(`/projects/${projectSlug}/queue/dismiss`),
+
   // Story 15.5: Template and story extraction
   getStories: (projectSlug: string) =>
     api.get<{ stories: QueueStoryInfo[] }>(`/projects/${projectSlug}/queue/stories`),

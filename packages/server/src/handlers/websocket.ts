@@ -1371,11 +1371,7 @@ export async function initializeWebSocket(
       const qs = getOrCreateQueueService(data.projectSlug);
       qs.cancelPause();
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on('queue:dismiss' as any, (data: { projectSlug: string }) => {
-      const qs = getOrCreateQueueService(data.projectSlug);
-      qs.dismiss();
-    });
+    // queue:dismiss moved to HTTP POST — see queueController.dismissQueue
     socket.on('queue:removeItem', (data) => {
       const qs = getOrCreateQueueService(data.projectSlug);
       qs.removeItem(data.itemIndex);

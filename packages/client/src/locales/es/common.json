@@ -420,6 +420,7 @@
     "resume": "Reanudar",
     "abort": "Cancelar",
     "backToEditor": "Volver al editor",
+    "dismissFailed": "No se pudo limpiar el estado de la cola. Inténtelo de nuevo.",
     "progress": "Progreso: {{current}} / {{total}}",
     "pauseReason": "Motivo: {{reason}}",
     "errorMessage": "Se produjo un error",

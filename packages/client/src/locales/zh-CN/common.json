@@ -420,6 +420,7 @@
     "resume": "恢复",
     "abort": "中止",
     "backToEditor": "返回编辑器",
+    "dismissFailed": "无法清除队列状态，请重试。",
     "progress": "进度：{{current}} / {{total}}",
     "pauseReason": "原因：{{reason}}",
     "errorMessage": "错误：{{error}}",

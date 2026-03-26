@@ -420,6 +420,7 @@
     "resume": "再開",
     "abort": "中止",
     "backToEditor": "エディタに戻る",
+    "dismissFailed": "キューステータスのクリアに失敗しました。もう一度お試しください。",
     "progress": "進捗：{{current}} / {{total}}",
     "pauseReason": "理由：{{reason}}",
     "errorMessage": "エラー：{{error}}",

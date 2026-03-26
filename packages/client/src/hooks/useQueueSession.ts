@@ -4,7 +4,9 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
+import { toast } from 'sonner';
 import type { QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useQueueStore } from '../stores/queueStore';
@@ -35,10 +37,11 @@ export interface UseQueueSessionReturn {
   resume: () => void;
   abort: () => void;
   /** Manually dismiss the completed/errored banner (clears server state) */
-  dismissBanner: () => void;
+  dismissBanner: () => Promise<void>;
 }
 
 export function useQueueSession(projectSlug: string, sessionId: string): UseQueueSessionReturn {
+  const { t } = useTranslation('common');
   const {
     isRunning,
     isPaused,
@@ -176,13 +179,16 @@ export function useQueueSession(projectSlug: string, sessionId: string): UseQueu
   }, [projectSlug]);
 
   // Dismiss completed/errored banner — notifies server to clear persisted state
-  const dismissBanner = useCallback(() => {
+  const dismissBanner = useCallback(async () => {
     setTerminalDismissed(true);
-    const socket = getSocket();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (socket as any).emit('queue:dismiss', { projectSlug });
-    useQueueStore.setState({ isCompleted: false, isErrored: false, errorItem: null });
-  }, [projectSlug]);
+    try {
+      await queueApi.dismiss(projectSlug);
+      useQueueStore.setState({ isCompleted: false, isErrored: false, errorItem: null });
+    } catch {
+      setTerminalDismissed(false); // revert — show banner again
+      toast.error(t('queue.dismissFailed'));
+    }
+  }, [projectSlug, t]);
 
   return {
     isQueueLocked,
