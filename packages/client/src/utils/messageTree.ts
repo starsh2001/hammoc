@@ -29,7 +29,7 @@ export const ROOT_BRANCH_KEY = '__root__' as const;
  * The first fragment of a split keeps the original {uuid} with no suffix.
  */
 export function getBaseUuid(id: string): string {
-  const match = id.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:-(text|tool|thinking))?/);
+  const match = id.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:-(text-\d+|tool-.+|thinking))?$/);
   return match ? match[1] : id;
 }
 
@@ -108,6 +108,15 @@ export function buildMessageTree(messages: HistoryMessage[]): MessageTree {
 
     for (const root of [...roots]) {
       detectCycle(root);
+    }
+
+    // Phase 3b: Promote unvisited nodes as roots (rootless cycles or disconnected chains)
+    for (const node of nodeMap.values()) {
+      if (!visited.has(node.message.id)) {
+        console.warn(`[messageTree] Unreachable node "${node.message.id}" promoted to root`);
+        roots.push(node);
+        detectCycle(node);
+      }
     }
 
     // Phase 4: Assign branchIndex to children based on UUID grouping
