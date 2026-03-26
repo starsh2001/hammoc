@@ -10,6 +10,8 @@ export interface TreeNode {
   message: HistoryMessage;
   children: TreeNode[];
   branchIndex: number;
+  /** True when parentId exists but the parent message is not in the current page */
+  isOrphan?: boolean;
 }
 
 export interface MessageTree {
@@ -113,8 +115,9 @@ export function buildMessageTree(messages: HistoryMessage[]): MessageTree {
       } else {
         const parent = nodeMap.get(msg.parentId);
         if (!parent) {
-          // Orphan: parentId references non-existent message → treat as root
+          // Orphan: parentId references non-existent message (outside current page) → treat as root
           console.warn(`[messageTree] Orphan message "${msg.id}" references non-existent parent "${msg.parentId}", treating as root`);
+          node.isOrphan = true;
           roots.push(node);
         } else {
           parent.children.push(node);
@@ -280,6 +283,7 @@ export function getDefaultBranchSelections(roots: TreeNode[]): Map<string, numbe
 export function getActiveBranch(
   roots: TreeNode[],
   branchSelections: Map<string, number>,
+  options?: { serverHasRootBranch?: boolean },
 ): { displayMessages: HistoryMessage[]; branchPoints: Map<string, BranchPoint>; branchKeyToParent: Map<string, string> } {
   const displayMessages: HistoryMessage[] = [];
   const branchPoints = new Map<string, BranchPoint>();
@@ -287,32 +291,24 @@ export function getActiveBranch(
 
   if (roots.length === 0) return { displayMessages, branchPoints, branchKeyToParent };
 
-  // Handle multi-root: paginate when there are multiple user-type roots
-  // (real branches from same missing parent, or compact_boundary roots).
-  // Single-type orphan chains (e.g. sequential messages whose parents are
-  // not loaded) are displayed sequentially without pagination.
-  let activeRoots: TreeNode[];
-  if (roots.length > 1) {
-    const userRootCount = roots.filter((r) => r.message.type === 'user').length;
-    const hasCompactBoundary = roots.some(
-      (r) => r.message.type === 'system' && r.message.subtype === 'compact_boundary',
-    );
+  // Separate true roots (parentId undefined = real tree roots) from orphan roots
+  // (parentId exists but parent not in current page = pagination artifacts).
+  // Only true roots participate in branch pagination; orphans always display sequentially.
+  const trueRoots = roots.filter((r) => !r.isOrphan);
+  const orphanRoots = roots.filter((r) => r.isOrphan);
 
-    if (userRootCount > 1 || hasCompactBoundary) {
-      const selectedIdx = branchSelections.get(ROOT_BRANCH_KEY) ?? roots.length - 1;
-      const clampedIdx = Math.max(0, Math.min(selectedIdx, roots.length - 1));
-      const selectedRoot = roots[clampedIdx];
-      // Tag the selected root user message with branch info
-      const rootKey = selectedRoot.message.type === 'user' ? selectedRoot.message.id : ROOT_BRANCH_KEY;
-      branchPoints.set(rootKey, { total: roots.length, current: clampedIdx });
-      if (rootKey !== ROOT_BRANCH_KEY) {
-        branchKeyToParent.set(rootKey, ROOT_BRANCH_KEY);
-      }
-      activeRoots = [selectedRoot];
-    } else {
-      // Sequential orphan roots — display all
-      activeRoots = roots;
+  let activeRoots: TreeNode[];
+  if (trueRoots.length > 1 && options?.serverHasRootBranch) {
+    const selectedIdx = branchSelections.get(ROOT_BRANCH_KEY) ?? trueRoots.length - 1;
+    const clampedIdx = Math.max(0, Math.min(selectedIdx, trueRoots.length - 1));
+    const selectedRoot = trueRoots[clampedIdx];
+    const rootKey = selectedRoot.message.type === 'user' ? selectedRoot.message.id : ROOT_BRANCH_KEY;
+    branchPoints.set(rootKey, { total: trueRoots.length, current: clampedIdx });
+    if (rootKey !== ROOT_BRANCH_KEY) {
+      branchKeyToParent.set(rootKey, ROOT_BRANCH_KEY);
     }
+    // Display orphan roots (older page context) + selected true root
+    activeRoots = [...orphanRoots, selectedRoot];
   } else {
     activeRoots = roots;
   }

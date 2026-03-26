@@ -56,8 +56,8 @@ export function MessageActionBar({
 
   const buttonBase = `inline-flex items-center justify-center p-0.5 rounded transition-colors ${
     isUser
-      ? 'hover:bg-blue-200/50 dark:hover:bg-blue-500/30 text-gray-400 dark:text-blue-200/60 hover:text-gray-600 dark:hover:text-blue-200'
-      : 'hover:bg-gray-200/50 dark:hover:bg-[#2d3a4a] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+      ? 'hover:bg-blue-200/50 dark:hover:bg-blue-500/30 text-gray-400 dark:text-blue-300/50 hover:text-gray-700 dark:hover:text-white'
+      : 'hover:bg-gray-200/50 dark:hover:bg-[#2d3a4a] text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200'
   }`;
 
   return (

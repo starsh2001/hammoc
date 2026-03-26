@@ -245,7 +245,7 @@ describe('messageTree', () => {
       expect(branchPoints.get('b')).toEqual({ total: 2, current: 1 });
     });
 
-    it('handles multi-root pagination with compact_boundary', () => {
+    it('handles multi-root pagination with compact_boundary when server confirms root branch', () => {
       const messages = [
         makeMsg({ id: 'root-1', type: 'system', subtype: 'compact_boundary' }),
         makeMsg({ id: 'root-2' }),
@@ -253,24 +253,29 @@ describe('messageTree', () => {
 
       const tree = buildMessageTree(messages);
       const selections = new Map([[ROOT_BRANCH_KEY, 0]]);
-      const { displayMessages, branchPoints } = getActiveBranch(tree.roots, selections);
+      const { displayMessages, branchPoints } = getActiveBranch(tree.roots, selections, { serverHasRootBranch: true });
 
       expect(displayMessages.map((m) => m.id)).toEqual(['root-1']);
       expect(branchPoints.get(ROOT_BRANCH_KEY)).toEqual({ total: 2, current: 0 });
     });
 
-    it('paginates multi-root user messages as branches', () => {
+    it('paginates multi-root user messages only when server confirms root branch', () => {
       const messages = [
         makeMsg({ id: 'root-1' }),
         makeMsg({ id: 'root-2' }),
       ];
 
       const tree = buildMessageTree(messages);
-      const { displayMessages, branchPoints } = getActiveBranch(tree.roots, new Map());
 
-      // Multiple user roots → pagination, default to last
-      expect(displayMessages.map((m) => m.id)).toEqual(['root-2']);
-      expect(branchPoints.get('root-2')).toEqual({ total: 2, current: 1 });
+      // Without server confirmation → display all roots sequentially (orphans)
+      const noServer = getActiveBranch(tree.roots, new Map());
+      expect(noServer.displayMessages.map((m) => m.id)).toEqual(['root-1', 'root-2']);
+      expect(noServer.branchPoints.size).toBe(0);
+
+      // With server confirmation → pagination, default to last
+      const withServer = getActiveBranch(tree.roots, new Map(), { serverHasRootBranch: true });
+      expect(withServer.displayMessages.map((m) => m.id)).toEqual(['root-2']);
+      expect(withServer.branchPoints.get('root-2')).toEqual({ total: 2, current: 1 });
     });
 
     it('does not count split messages as separate branches', () => {

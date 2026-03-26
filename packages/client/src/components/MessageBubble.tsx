@@ -101,7 +101,7 @@ export function MessageBubble({
 
         {/* Timestamp */}
         <div
-          className={`mt-2 text-xs transition-opacity duration-200 ${
+          className={`mt-1 text-xs transition-opacity duration-200 ${
             isUser ? 'text-gray-600 dark:text-blue-200' : 'text-gray-500 dark:text-gray-400'
           } ${timestampMode === 'hover' ? (isHovered ? 'opacity-100' : 'opacity-0') : 'opacity-100'}`}
         >
@@ -109,7 +109,7 @@ export function MessageBubble({
         </div>
 
         {/* Bottom bar: branch pagination (left) + action bar (right) */}
-        <div className="flex items-center justify-between mt-1.5">
+        <div className="flex items-center justify-between mt-0.5">
           <div>
             {isUser && branchInfo && onNavigateBranch && (
               <BranchPagination

@@ -28,6 +28,7 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
   const tree = useMemo(() => buildMessageTree(messages), [messages]);
 
   // When messages change, merge new default selections (keep user selections for existing branch points)
+  const currentBranchSelections = useMessageStore((s) => s.currentBranchSelections);
   useEffect(() => {
     if (messages === prevMessagesRef.current) return;
     prevMessagesRef.current = messages;
@@ -35,7 +36,7 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
     const defaults = getDefaultBranchSelections(tree.roots);
     setBranchSelections((prev) => {
       const merged = new Map(defaults);
-      // Preserve user selections that are still valid
+      // Preserve user selections that are still valid in the client tree
       for (const [key, idx] of prev) {
         if (key === ROOT_BRANCH_KEY) {
           if (tree.roots.length > 1 && idx < tree.roots.length) {
@@ -51,17 +52,35 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
           }
         }
       }
+      // Restore server-sent branch selections whose keys may not exist in
+      // the client tree (client only receives the selected branch's messages,
+      // so parent-branch selection keys from other branches are absent).
+      if (currentBranchSelections) {
+        for (const [key, idx] of Object.entries(currentBranchSelections)) {
+          if (!merged.has(key)) {
+            merged.set(key, idx);
+          }
+        }
+      }
       return merged;
     });
-  }, [messages, tree]);
+  }, [messages, tree, currentBranchSelections]);
 
   // Use server branchPoints if available, falling back to client-computed
   const serverBranchPoints = useMessageStore((s) => s.serverBranchPoints);
 
+  // Check if server confirmed a real root-level branch exists
+  const serverHasRootBranch = useMemo(() => {
+    if (!serverBranchPoints) return false;
+    return Object.values(serverBranchPoints).some(
+      (bp) => bp.selectionKey === ROOT_BRANCH_KEY,
+    );
+  }, [serverBranchPoints]);
+
   // Extract active branch (recomputes when tree or selections change)
   const { displayMessages, branchPoints: clientBranchPoints, branchKeyToParent } = useMemo(
-    () => getActiveBranch(tree.roots, branchSelections),
-    [tree, branchSelections],
+    () => getActiveBranch(tree.roots, branchSelections, { serverHasRootBranch }),
+    [tree, branchSelections, serverHasRootBranch],
   );
 
   // Merge server branchPoints into client branchPoints when available.
