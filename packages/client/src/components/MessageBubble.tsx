@@ -10,6 +10,7 @@ import { formatRelativeTime } from '../utils/formatters';
 import { Bot } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { MessageActionBar } from './MessageActionBar';
+import { BranchPagination } from './BranchPagination';
 
 interface MessageBubbleProps {
   /** Message data */
@@ -20,6 +21,12 @@ interface MessageBubbleProps {
   onCopy?: (content: string) => void;
   /** Timestamp display mode - 'always' (default) or 'hover' */
   timestampMode?: 'always' | 'hover';
+  /** Branch info for this message (only shown on user messages) */
+  branchInfo?: { total: number; current: number };
+  /** Callback for branch navigation */
+  onNavigateBranch?: (messageId: string, direction: 'prev' | 'next') => void;
+  /** Whether branch navigation buttons should be disabled */
+  isBranchNavigationDisabled?: boolean;
 }
 
 export function MessageBubble({
@@ -27,6 +34,9 @@ export function MessageBubble({
   isStreaming = false,
   onCopy,
   timestampMode = 'always',
+  branchInfo,
+  onNavigateBranch,
+  isBranchNavigationDisabled,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
@@ -98,12 +108,25 @@ export function MessageBubble({
           {formattedTime}
         </div>
 
-        {/* Action bar */}
-        <MessageActionBar
-          role={isUser ? 'user' : 'assistant'}
-          content={message.content}
-          onCopy={onCopy}
-        />
+        {/* Bottom bar: branch pagination (left) + action bar (right) */}
+        <div className="flex items-center justify-between mt-1.5">
+          <div>
+            {isUser && branchInfo && onNavigateBranch && (
+              <BranchPagination
+                messageId={message.id}
+                total={branchInfo.total}
+                current={branchInfo.current}
+                onNavigate={onNavigateBranch}
+                disabled={isBranchNavigationDisabled}
+              />
+            )}
+          </div>
+          <MessageActionBar
+            role={isUser ? 'user' : 'assistant'}
+            content={message.content}
+            onCopy={onCopy}
+          />
+        </div>
       </div>
     </div>
   );

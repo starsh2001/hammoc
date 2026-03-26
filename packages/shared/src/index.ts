@@ -9,7 +9,7 @@ export * from './types/websocket.js';
 
 // Story 5.5: Attachment, ImageAttachment, IMAGE_CONSTRAINTS
 export * from './types/message.js';
-export * from './constants/errorCodes.js';
+export * from './constants/index.js';
 
 // Story 1.6: Session types for session management
 // Story 3.3: Session List API types (SessionListItem, SessionListResponse, SESSION_ERRORS)

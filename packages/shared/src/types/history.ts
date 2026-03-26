@@ -129,6 +129,8 @@ export interface HistoryMessagesResponse {
   pagination: PaginationInfo;
   /** Last slash command found in user messages (for agent detection across pagination) */
   lastAgentCommand?: string | null;
+  /** Branch points with total sibling count and current selection index */
+  branchPoints?: Record<string, { total: number; current: number }>;
 }
 
 /**
@@ -144,4 +146,6 @@ export interface PaginationOptions {
    *  buffer start). Used to preserve user messages from the active turn so
    *  trimMessagesAfterLastUser() on the client works correctly. */
   runningStreamStartedAt?: number | null;
+  /** Branch selections for branch-aware pagination. Maps branch point UUID to selected branch index. */
+  branchSelections?: Record<string, number>;
 }

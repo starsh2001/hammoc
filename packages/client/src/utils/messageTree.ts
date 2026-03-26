@@ -1,4 +1,8 @@
 import type { HistoryMessage } from '@hammoc/shared';
+import { ROOT_BRANCH_KEY } from '@hammoc/shared';
+
+// Re-export for existing consumers
+export { ROOT_BRANCH_KEY };
 
 // --- Types ---
 
@@ -18,9 +22,6 @@ export interface BranchPoint {
   current: number;
 }
 
-// Special key for root-level branch selection (multi-root from compact_boundary)
-export const ROOT_BRANCH_KEY = '__root__' as const;
-
 // --- Helpers ---
 
 /**
@@ -34,17 +35,54 @@ export function getBaseUuid(id: string): string {
 }
 
 /**
- * Group children by base UUID — each group = one logical branch (turn).
- * Split messages from the same assistant turn share the same UUID prefix.
+ * Group children into logical branches.
+ *
+ * Split fragments from the same assistant turn (same base UUID) are always
+ * grouped together.  Beyond that, a true branch only exists when a parent has
+ * multiple *user*-type children (from edits / resumes).  Sequential non-user
+ * children (tool_result, assistant continuations) are part of the linear flow
+ * and must NOT create false branches.
  */
 export function groupChildrenIntoBranches(children: TreeNode[]): TreeNode[][] {
+  // Step 1: group split fragments by base UUID
   const groups: Map<string, TreeNode[]> = new Map();
   for (const child of children) {
     const base = getBaseUuid(child.message.id);
     if (!groups.has(base)) groups.set(base, []);
     groups.get(base)!.push(child);
   }
-  return Array.from(groups.values());
+  const uuidGroups = Array.from(groups.values());
+
+  if (uuidGroups.length <= 1) return uuidGroups;
+
+  // Step 2: detect true branches — only user-type groups count
+  const userGroupCount = uuidGroups.filter((g) =>
+    g.some((n) => n.message.type === 'user'),
+  ).length;
+
+  if (userGroupCount <= 1) {
+    // No real branches — all children are sequential flow
+    return [children];
+  }
+
+  // Multiple user groups = true branch point.
+  // Fold non-user groups into the nearest preceding user group so that
+  // every selectable branch has a user message anchor for the pager.
+  const branches: TreeNode[][] = [];
+  for (const group of uuidGroups) {
+    const hasUser = group.some((n) => n.message.type === 'user');
+    if (hasUser) {
+      branches.push([...group]);
+    } else if (branches.length > 0) {
+      // Append to previous user branch (sequential continuation)
+      branches[branches.length - 1].push(...group);
+    } else {
+      // Leading non-user group before any user branch — start a new group
+      // that will be merged when the first user group arrives
+      branches.push([...group]);
+    }
+  }
+  return branches;
 }
 
 // --- Core Functions ---
@@ -240,19 +278,39 @@ export function getDefaultBranchSelections(roots: TreeNode[]): Map<string, numbe
 export function getActiveBranch(
   roots: TreeNode[],
   branchSelections: Map<string, number>,
-): { displayMessages: HistoryMessage[]; branchPoints: Map<string, BranchPoint> } {
+): { displayMessages: HistoryMessage[]; branchPoints: Map<string, BranchPoint>; branchKeyToParent: Map<string, string> } {
   const displayMessages: HistoryMessage[] = [];
   const branchPoints = new Map<string, BranchPoint>();
+  const branchKeyToParent = new Map<string, string>();
 
-  if (roots.length === 0) return { displayMessages, branchPoints };
+  if (roots.length === 0) return { displayMessages, branchPoints, branchKeyToParent };
 
-  // Handle multi-root (compact_boundary)
+  // Handle multi-root: paginate when there are multiple user-type roots
+  // (real branches from same missing parent, or compact_boundary roots).
+  // Single-type orphan chains (e.g. sequential messages whose parents are
+  // not loaded) are displayed sequentially without pagination.
   let activeRoots: TreeNode[];
   if (roots.length > 1) {
-    const selectedIdx = branchSelections.get(ROOT_BRANCH_KEY) ?? roots.length - 1;
-    const clampedIdx = Math.max(0, Math.min(selectedIdx, roots.length - 1));
-    branchPoints.set(ROOT_BRANCH_KEY, { total: roots.length, current: clampedIdx });
-    activeRoots = [roots[clampedIdx]];
+    const userRootCount = roots.filter((r) => r.message.type === 'user').length;
+    const hasCompactBoundary = roots.some(
+      (r) => r.message.type === 'system' && r.message.subtype === 'compact_boundary',
+    );
+
+    if (userRootCount > 1 || hasCompactBoundary) {
+      const selectedIdx = branchSelections.get(ROOT_BRANCH_KEY) ?? roots.length - 1;
+      const clampedIdx = Math.max(0, Math.min(selectedIdx, roots.length - 1));
+      const selectedRoot = roots[clampedIdx];
+      // Tag the selected root user message with branch info
+      const rootKey = selectedRoot.message.type === 'user' ? selectedRoot.message.id : ROOT_BRANCH_KEY;
+      branchPoints.set(rootKey, { total: roots.length, current: clampedIdx });
+      if (rootKey !== ROOT_BRANCH_KEY) {
+        branchKeyToParent.set(rootKey, ROOT_BRANCH_KEY);
+      }
+      activeRoots = [selectedRoot];
+    } else {
+      // Sequential orphan roots — display all
+      activeRoots = roots;
+    }
   } else {
     activeRoots = roots;
   }
@@ -266,10 +324,19 @@ export function getActiveBranch(
     if (branches.length > 1) {
       const selectedIdx = branchSelections.get(node.message.id) ?? branches.length - 1;
       const clampedIdx = Math.max(0, Math.min(selectedIdx, branches.length - 1));
-      branchPoints.set(node.message.id, { total: branches.length, current: clampedIdx });
+
+      // Tag the first user message in the selected branch with branch info
+      // so pagination renders inside the user message card, not on the parent
+      const selectedBranch = branches[clampedIdx];
+      const firstUserInBranch = selectedBranch.find((n) => n.message.type === 'user');
+      const branchKey = firstUserInBranch ? firstUserInBranch.message.id : node.message.id;
+      branchPoints.set(branchKey, { total: branches.length, current: clampedIdx });
+      if (branchKey !== node.message.id) {
+        branchKeyToParent.set(branchKey, node.message.id);
+      }
 
       // Traverse all messages in the selected branch group
-      for (const child of branches[clampedIdx]) {
+      for (const child of selectedBranch) {
         traverse(child);
       }
     } else {
@@ -284,5 +351,5 @@ export function getActiveBranch(
     traverse(root);
   }
 
-  return { displayMessages, branchPoints };
+  return { displayMessages, branchPoints, branchKeyToParent };
 }

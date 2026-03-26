@@ -226,7 +226,8 @@ describe('messageTree', () => {
       const { displayMessages, branchPoints } = getActiveBranch(tree.roots, selections);
 
       expect(displayMessages.map((m) => m.id)).toEqual(['root', 'a', 'a-child']);
-      expect(branchPoints.get('root')).toEqual({ total: 2, current: 0 });
+      // branchPoint key is on the user message (first child in selected branch)
+      expect(branchPoints.get('a')).toEqual({ total: 2, current: 0 });
     });
 
     it('defaults to last branch when no selection', () => {
@@ -239,14 +240,14 @@ describe('messageTree', () => {
       const tree = buildMessageTree(messages);
       const { displayMessages, branchPoints } = getActiveBranch(tree.roots, new Map());
 
-      // Defaults to last branch (index 1 = 'b')
+      // Defaults to last branch (index 1 = 'b'), key is on user message 'b'
       expect(displayMessages.map((m) => m.id)).toEqual(['root', 'b']);
-      expect(branchPoints.get('root')).toEqual({ total: 2, current: 1 });
+      expect(branchPoints.get('b')).toEqual({ total: 2, current: 1 });
     });
 
-    it('handles multi-root pagination', () => {
+    it('handles multi-root pagination with compact_boundary', () => {
       const messages = [
-        makeMsg({ id: 'root-1' }),
+        makeMsg({ id: 'root-1', type: 'system', subtype: 'compact_boundary' }),
         makeMsg({ id: 'root-2' }),
       ];
 
@@ -256,6 +257,20 @@ describe('messageTree', () => {
 
       expect(displayMessages.map((m) => m.id)).toEqual(['root-1']);
       expect(branchPoints.get(ROOT_BRANCH_KEY)).toEqual({ total: 2, current: 0 });
+    });
+
+    it('paginates multi-root user messages as branches', () => {
+      const messages = [
+        makeMsg({ id: 'root-1' }),
+        makeMsg({ id: 'root-2' }),
+      ];
+
+      const tree = buildMessageTree(messages);
+      const { displayMessages, branchPoints } = getActiveBranch(tree.roots, new Map());
+
+      // Multiple user roots → pagination, default to last
+      expect(displayMessages.map((m) => m.id)).toEqual(['root-2']);
+      expect(branchPoints.get('root-2')).toEqual({ total: 2, current: 1 });
     });
 
     it('does not count split messages as separate branches', () => {
@@ -287,13 +302,14 @@ describe('messageTree', () => {
       const tree = buildMessageTree(messages);
       const { branchPoints } = getActiveBranch(tree.roots, new Map());
 
-      expect(branchPoints.has('root')).toBe(true);
-      // Since default selects last branch (a2), a1's children won't be in active path
-      // unless we select a1
+      // Default selects last branch (a2), so branchPoint key is on 'a2'
+      expect(branchPoints.has('a2')).toBe(true);
+      // Select first branch (a1) to see nested branch point
       const selectionsA1 = new Map([['root', 0]]);
       const result2 = getActiveBranch(tree.roots, selectionsA1);
-      expect(result2.branchPoints.has('a1')).toBe(true);
-      expect(result2.branchPoints.get('a1')).toEqual({ total: 2, current: 1 });
+      // a1's children b1,b2 are branches, key is on selected user child
+      expect(result2.branchPoints.has('b2')).toBe(true);
+      expect(result2.branchPoints.get('b2')).toEqual({ total: 2, current: 1 });
     });
 
     it('clamps out-of-range selection', () => {

@@ -117,6 +117,26 @@ export const sessionController = {
       const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
       const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
 
+      // Parse branchSelections from query parameter (JSON string, URL-encoded)
+      let branchSelections: Record<string, number> | undefined;
+      if (req.query.branchSelections) {
+        try {
+          const parsed = JSON.parse(req.query.branchSelections as string);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            const validated: Record<string, number> = {};
+            for (const [key, value] of Object.entries(parsed)) {
+              if (typeof value === 'number' && Number.isFinite(value)) {
+                validated[key] = value;
+              }
+              // Non-numeric values are silently discarded — fallback to default for that branch point
+            }
+            branchSelections = Object.keys(validated).length > 0 ? validated : undefined;
+          }
+        } catch {
+          // Invalid JSON — silently ignore, use default branch
+        }
+      }
+
       // Snapshot stream state atomically BEFORE the async JSONL read.
       // completedBuffer has a 5s TTL — if we read it after the await, it may
       // have expired while streamStartedAt (captured here) still includes its
@@ -131,6 +151,7 @@ export const sessionController = {
         offset,
         streamStartedAt,
         runningStreamStartedAt,
+        branchSelections,
       });
 
       // Return empty messages for non-existent sessions (e.g., pre-allocated UUID with no messages yet)
@@ -142,7 +163,10 @@ export const sessionController = {
 
       // Merge completed buffer messages when available (stream finished but
       // JSONL may not yet be flushed). Only for the latest page (offset 0).
-      if (completedBuffer && offset === 0) {
+      // Only merge on default branch — non-default branches skip buffer merge
+      // because buffer messages always belong to the latest branch tip.
+      const isDefaultBranch = !branchSelections || Object.keys(branchSelections).length === 0;
+      if (completedBuffer && offset === 0 && isDefaultBranch) {
         const bufferMessages = transformBufferToHistoryMessages(completedBuffer);
         if (bufferMessages.length > 0) {
           const existingIds = new Set(response.messages.map(m => m.id));

@@ -1,0 +1,307 @@
+/**
+ * Server-side message tree building utilities
+ * Story 25.4: Branch-aware Message Pagination
+ *
+ * Pure functions that work with RawJSONLMessage to build a tree,
+ * extract active branch paths, and compute branch points.
+ */
+
+import type { RawJSONLMessage } from '@hammoc/shared';
+import { ROOT_BRANCH_KEY } from '@hammoc/shared';
+import { createLogger } from './logger.js';
+
+const log = createLogger('messageTree');
+
+// --- Types ---
+
+export interface RawTreeNode {
+  message: RawJSONLMessage;
+  children: RawTreeNode[];
+}
+
+export interface RawMessageTree {
+  roots: RawTreeNode[];
+  nodeMap: Map<string, RawTreeNode>;
+}
+
+export interface BranchPointInfo {
+  total: number;
+  current: number;
+}
+
+export interface ActiveBranchResult {
+  messages: RawJSONLMessage[];
+  branchPoints: Record<string, BranchPointInfo>;
+}
+
+// --- Helpers ---
+
+/**
+ * Extract base UUID from a potentially split message UUID.
+ * Split IDs follow patterns: {uuid}-text-{n}, {uuid}-tool-{id}, {uuid}-thinking
+ */
+function getBaseUuid(uuid: string): string {
+  const match = uuid.match(
+    /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:-(text-\d+|tool-.+|thinking))?$/,
+  );
+  return match ? match[1] : uuid;
+}
+
+/**
+ * Group children into logical branches by UUID prefix.
+ * A true branch exists only when there are multiple user-type groups.
+ * Mirrors client-side groupChildrenIntoBranches logic.
+ */
+export function groupRawChildrenIntoBranches(children: RawTreeNode[]): RawTreeNode[][] {
+  // Step 1: group split fragments by base UUID
+  const groups: Map<string, RawTreeNode[]> = new Map();
+  for (const child of children) {
+    const base = getBaseUuid(child.message.uuid);
+    if (!groups.has(base)) groups.set(base, []);
+    groups.get(base)!.push(child);
+  }
+  const uuidGroups = Array.from(groups.values());
+
+  if (uuidGroups.length <= 1) return uuidGroups;
+
+  // Step 2: detect true branches — only user-type groups count
+  const userGroupCount = uuidGroups.filter((g) =>
+    g.some((n) => n.message.type === 'user'),
+  ).length;
+
+  if (userGroupCount <= 1) {
+    // No real branches — all children are sequential flow
+    return [children];
+  }
+
+  // Multiple user groups = true branch point.
+  // Fold non-user groups into the nearest preceding user group.
+  const branches: RawTreeNode[][] = [];
+  for (const group of uuidGroups) {
+    const hasUser = group.some((n) => n.message.type === 'user');
+    if (hasUser) {
+      branches.push([...group]);
+    } else if (branches.length > 0) {
+      branches[branches.length - 1].push(...group);
+    } else {
+      branches.push([...group]);
+    }
+  }
+  return branches;
+}
+
+// --- Core Functions ---
+
+/**
+ * Build a raw message tree from JSONL messages using parentUuid links.
+ * Handles orphans (missing parent) and circular references defensively.
+ */
+export function buildRawMessageTree(messages: RawJSONLMessage[]): RawMessageTree {
+  const nodeMap = new Map<string, RawTreeNode>();
+  const roots: RawTreeNode[] = [];
+
+  // Phase 1: Create all nodes
+  for (const msg of messages) {
+    nodeMap.set(msg.uuid, { message: msg, children: [] });
+  }
+
+  // Phase 2: Link parent→children, detect orphans
+  for (const msg of messages) {
+    const node = nodeMap.get(msg.uuid)!;
+    if (!msg.parentUuid) {
+      roots.push(node);
+    } else {
+      const parent = nodeMap.get(msg.parentUuid);
+      if (!parent) {
+        log.warn(`Orphan message "${msg.uuid}" references non-existent parent "${msg.parentUuid}", treating as root`);
+        roots.push(node);
+      } else {
+        parent.children.push(node);
+      }
+    }
+  }
+
+  // Phase 3: Detect circular references
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+
+  function detectCycle(node: RawTreeNode): boolean {
+    if (inStack.has(node.message.uuid)) return true;
+    if (visited.has(node.message.uuid)) return false;
+
+    visited.add(node.message.uuid);
+    inStack.add(node.message.uuid);
+
+    for (const child of node.children) {
+      if (detectCycle(child)) {
+        log.warn(`Circular reference detected at "${child.message.uuid}", breaking link and treating as root`);
+        node.children = node.children.filter((c) => c !== child);
+        roots.push(child);
+      }
+    }
+
+    inStack.delete(node.message.uuid);
+    return false;
+  }
+
+  for (const root of [...roots]) {
+    detectCycle(root);
+  }
+
+  // Phase 3b: Promote unvisited nodes (rootless cycles)
+  for (const node of nodeMap.values()) {
+    if (!visited.has(node.message.uuid)) {
+      log.warn(`Unreachable node "${node.message.uuid}" promoted to root`);
+      roots.push(node);
+      detectCycle(node);
+    }
+  }
+
+  return { roots, nodeMap };
+}
+
+/**
+ * Find default branch selections by tracing from the newest leaf to root.
+ * Returns a Record<string, number> mapping branch point UUIDs to selected indices.
+ */
+export function getDefaultRawBranchSelections(roots: RawTreeNode[]): Record<string, number> {
+  const selections: Record<string, number> = {};
+  if (roots.length === 0) return selections;
+
+  // Find newest leaf
+  let newestLeaf: RawTreeNode | null = null;
+  let newestTime = '';
+
+  function findLeaves(node: RawTreeNode) {
+    const branches = groupRawChildrenIntoBranches(node.children);
+    if (branches.length === 0) {
+      const ts = node.message.timestamp || '';
+      if (ts > newestTime || !newestLeaf) {
+        newestTime = ts;
+        newestLeaf = node;
+      }
+      return;
+    }
+    for (const branch of branches) {
+      for (const child of branch) {
+        findLeaves(child);
+      }
+    }
+  }
+
+  for (const root of roots) {
+    findLeaves(root);
+  }
+
+  if (!newestLeaf) return selections;
+
+  // Build parent map for reverse traversal
+  const parentMap = new Map<string, RawTreeNode>();
+  function buildParentMap(node: RawTreeNode) {
+    for (const child of node.children) {
+      parentMap.set(child.message.uuid, node);
+      buildParentMap(child);
+    }
+  }
+  for (const root of roots) {
+    buildParentMap(root);
+  }
+
+  // Walk up from leaf
+  let current: RawTreeNode | null = newestLeaf;
+  while (current) {
+    const parent = parentMap.get(current.message.uuid);
+    if (parent) {
+      const branches = groupRawChildrenIntoBranches(parent.children);
+      if (branches.length > 1) {
+        const branchIdx = branches.findIndex((branch) =>
+          branch.some((n) => n.message.uuid === current!.message.uuid),
+        );
+        if (branchIdx >= 0) {
+          selections[parent.message.uuid] = branchIdx;
+        }
+      }
+    } else {
+      // current is a root — check multi-root selection
+      if (roots.length > 1) {
+        const rootIdx = roots.indexOf(current);
+        if (rootIdx >= 0) {
+          selections[ROOT_BRANCH_KEY] = rootIdx;
+        }
+      }
+    }
+    current = parent || null;
+  }
+
+  return selections;
+}
+
+/**
+ * Extract the active branch as a flat RawJSONLMessage array,
+ * following branch selections. Unselected branch points default to last (newest) branch.
+ * Also computes branchPoints info for the response.
+ */
+export function getActiveRawBranch(
+  roots: RawTreeNode[],
+  branchSelections: Record<string, number>,
+): ActiveBranchResult {
+  const messages: RawJSONLMessage[] = [];
+  const branchPoints: Record<string, BranchPointInfo> = {};
+
+  if (roots.length === 0) return { messages, branchPoints };
+
+  // Handle multi-root
+  let activeRoots: RawTreeNode[];
+  if (roots.length > 1) {
+    const userRootCount = roots.filter((r) => r.message.type === 'user').length;
+    const hasCompactBoundary = roots.some(
+      (r) => r.message.type === 'system' && r.message.subtype === 'compact_boundary',
+    );
+
+    if (userRootCount > 1 || hasCompactBoundary) {
+      const selectedIdx = branchSelections[ROOT_BRANCH_KEY] ?? roots.length - 1;
+      const clampedIdx = Math.max(0, Math.min(selectedIdx, roots.length - 1));
+      const selectedRoot = roots[clampedIdx];
+      const rootKey = selectedRoot.message.type === 'user' ? selectedRoot.message.uuid : ROOT_BRANCH_KEY;
+      branchPoints[rootKey] = { total: roots.length, current: clampedIdx };
+      activeRoots = [selectedRoot];
+    } else {
+      // Sequential orphan roots — display all
+      activeRoots = roots;
+    }
+  } else {
+    activeRoots = roots;
+  }
+
+  function traverse(node: RawTreeNode) {
+    messages.push(node.message);
+
+    const branches = groupRawChildrenIntoBranches(node.children);
+    if (branches.length === 0) return;
+
+    if (branches.length > 1) {
+      const selectedIdx = branchSelections[node.message.uuid] ?? branches.length - 1;
+      const clampedIdx = Math.max(0, Math.min(selectedIdx, branches.length - 1));
+
+      // Tag the first user message in the selected branch with branch info
+      const selectedBranch = branches[clampedIdx];
+      const firstUserInBranch = selectedBranch.find((n) => n.message.type === 'user');
+      const branchKey = firstUserInBranch ? firstUserInBranch.message.uuid : node.message.uuid;
+      branchPoints[branchKey] = { total: branches.length, current: clampedIdx };
+
+      for (const child of selectedBranch) {
+        traverse(child);
+      }
+    } else {
+      for (const child of branches[0]) {
+        traverse(child);
+      }
+    }
+  }
+
+  for (const root of activeRoots) {
+    traverse(root);
+  }
+
+  return { messages, branchPoints };
+}

@@ -27,10 +27,20 @@ interface MessageState {
   allMessagesLoaded: boolean;
   /** Last slash command from full session history (server-provided, survives pagination) */
   lastAgentCommand: string | null;
+  /** Server-provided branch points for branch-aware pagination (Story 25.4) */
+  serverBranchPoints: Record<string, { total: number; current: number }> | null;
+  /** Current branch selections sent to server (Story 25.4) */
+  currentBranchSelections: Record<string, number> | null;
 }
 
 interface MessageActions {
-  fetchMessages: (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number; force?: boolean }) => Promise<void>;
+  fetchMessages: (projectSlug: string, sessionId: string, options?: {
+    silent?: boolean;
+    minMessageCount?: number;
+    force?: boolean;
+    branchSelections?: Record<string, number>;
+    isBranchSwitch?: boolean;
+  }) => Promise<void>;
   fetchMoreMessages: () => Promise<void>;
   clearMessages: () => void;
   /** Add user message optimistically (before server confirmation) */
@@ -151,9 +161,11 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
   pagination: null,
   allMessagesLoaded: false,
   lastAgentCommand: null,
+  serverBranchPoints: null,
+  currentBranchSelections: null,
 
   // Actions
-  fetchMessages: async (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number; force?: boolean }) => {
+  fetchMessages: async (projectSlug: string, sessionId: string, options?: { silent?: boolean; minMessageCount?: number; force?: boolean; branchSelections?: Record<string, number>; isBranchSwitch?: boolean }) => {
     const state = get();
     const isSameSession = state.currentSessionId === sessionId;
     debugLog.message('fetchMessages called', {
@@ -183,7 +195,9 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     });
 
     try {
-      const response = await sessionsApi.getMessages(projectSlug, sessionId);
+      const response = await sessionsApi.getMessages(projectSlug, sessionId, {
+        branchSelections: options?.branchSelections,
+      });
 
       // Stale data guard: if caller specified a minimum message count and
       // the server returned fewer messages, the SDK hasn't flushed yet — skip update.
@@ -223,7 +237,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       const effectiveCooldown = options?.force ? false : isInCooldown;
       // Note: segmentsPendingClear is NOT included in the guard — segments are
       // frozen independently of message store, so there's nothing to protect here.
-      const shouldGuard = !isPaginationFetch &&
+      const shouldGuard = !isPaginationFetch && !options?.isBranchSwitch &&
                           ((isRestoring && response.messages.length <= currentMessages.length) ||
                            (!isRestoring && response.messages.length < currentMessages.length &&
                             (chatState.isStreaming || effectiveCooldown || chatState.isCompacting)));
@@ -339,6 +353,8 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
           pagination: { ...response.pagination, hasMore: false },
           lastAgentCommand: response.lastAgentCommand ?? get().lastAgentCommand,
           isLoading: false,
+          serverBranchPoints: response.branchPoints ?? null,
+          currentBranchSelections: options?.branchSelections ?? null,
         });
         return;
       }
@@ -361,6 +377,8 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         pagination,
         lastAgentCommand: response.lastAgentCommand ?? null,
         isLoading: false,
+        serverBranchPoints: response.branchPoints ?? null,
+        currentBranchSelections: options?.branchSelections ?? null,
       });
     } catch (err) {
       // For silent background fetches, don't set error state (preserves current messages)
@@ -389,7 +407,11 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       const response = await sessionsApi.getMessages(
         currentProjectSlug,
         currentSessionId,
-        { limit: pagination.limit, offset: pagination.offset + pagination.limit }
+        {
+          limit: pagination.limit,
+          offset: pagination.offset + pagination.limit,
+          branchSelections: get().currentBranchSelections ?? undefined,
+        }
       );
 
       // Merge older messages with current and sort to guarantee chronological order
@@ -422,6 +444,8 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       allMessagesLoaded: false,
       lastAgentCommand: null,
       error: null,
+      serverBranchPoints: null,
+      currentBranchSelections: null,
     });
   },
 

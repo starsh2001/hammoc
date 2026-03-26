@@ -32,11 +32,14 @@ export const sessionsApi = {
   getMessages: (
     projectSlug: string,
     sessionId: string,
-    options?: { limit?: number; offset?: number }
+    options?: { limit?: number; offset?: number; branchSelections?: Record<string, number> }
   ) => {
     const params = new URLSearchParams();
     if (options?.limit) params.set('limit', options.limit.toString());
     if (options?.offset) params.set('offset', options.offset.toString());
+    if (options?.branchSelections && Object.keys(options.branchSelections).length > 0) {
+      params.set('branchSelections', JSON.stringify(options.branchSelections));
+    }
 
     const queryString = params.toString();
     const url = `/projects/${projectSlug}/sessions/${sessionId}/messages${

@@ -23,10 +23,14 @@ import type {
 import {
   parseJSONLFile,
   parseJSONLSessionMeta,
-  sortMessagesByParentUuid,
   transformToHistoryMessages,
   cleanCommandTags,
 } from './historyParser.js';
+import {
+  buildRawMessageTree,
+  getActiveRawBranch,
+  getDefaultRawBranchSelections,
+} from '../utils/messageTree.js';
 
 /**
  * SessionService - Manages Claude Code session data
@@ -765,15 +769,20 @@ export class SessionService {
    * Get session messages with pagination
    * @param projectSlug The project slug
    * @param sessionId The session ID
-   * @param options Pagination options (limit, offset)
+   * @param options Pagination options (limit, offset, branchSelections)
    * @returns Messages with pagination info, or null if session not found
    */
   async getSessionMessages(
     projectSlug: string,
     sessionId: string,
     options: PaginationOptions = {}
-  ): Promise<{ messages: HistoryMessage[]; pagination: PaginationInfo; lastAgentCommand: string | null } | null> {
-    const { limit = 50, offset = 0, streamStartedAt, runningStreamStartedAt } = options;
+  ): Promise<{
+    messages: HistoryMessage[];
+    pagination: PaginationInfo;
+    lastAgentCommand: string | null;
+    branchPoints: Record<string, { total: number; current: number }>;
+  } | null> {
+    const { limit = 50, offset = 0, streamStartedAt, runningStreamStartedAt, branchSelections } = options;
 
     const filePath = this.getSessionFilePath(projectSlug, sessionId);
 
@@ -782,8 +791,16 @@ export class SessionService {
     }
 
     const rawMessages = await parseJSONLFile(filePath);
-    const sorted = sortMessagesByParentUuid(rawMessages);
-    let transformed = transformToHistoryMessages(sorted);
+
+    // Build tree and extract active branch (Story 25.4)
+    const tree = buildRawMessageTree(rawMessages);
+    const effectiveSelections = branchSelections && Object.keys(branchSelections).length > 0
+      ? branchSelections
+      : getDefaultRawBranchSelections(tree.roots);
+    const { messages: activeBranchRaw, branchPoints } = getActiveRawBranch(tree.roots, effectiveSelections);
+
+    // Transform only active branch messages to HistoryMessages
+    let transformed = transformToHistoryMessages(activeBranchRaw);
 
     // If session has an active stream, exclude messages from the stream period.
     // Those messages are covered by the active stream's buffer replay or by
@@ -824,7 +841,7 @@ export class SessionService {
     const endIndex = Math.max(0, total - offset);
     const paginated = transformed.slice(startIndex, endIndex);
 
-    // Scan full message list (reverse) for last agent command in user messages.
+    // Scan active branch messages (reverse) for last agent command in user messages.
     // Must match agent command pattern (:agents:), not any slash command —
     // otherwise non-agent commands like /commit would shadow the real agent.
     let lastAgentCommand: string | null = null;
@@ -844,6 +861,7 @@ export class SessionService {
         hasMore: startIndex > 0, // There are older messages to load
       },
       lastAgentCommand,
+      branchPoints,
     };
   }
 }
