@@ -177,6 +177,15 @@
     "copyAriaLabel": "Copy message to clipboard",
     "copiedAriaLabel": "Message copied"
   },
+  "messageEdit": {
+    "accept": "Accept",
+    "cancel": "Cancel",
+    "restoreCode": "Also restore code to this point",
+    "acceptAriaLabel": "Accept edited message",
+    "cancelAriaLabel": "Cancel editing",
+    "textareaAriaLabel": "Edit message text",
+    "emptyWarning": "Message cannot be empty"
+  },
   "messageListSkeleton": {
     "ariaLabel": "Loading messages",
     "srText": "Loading messages..."

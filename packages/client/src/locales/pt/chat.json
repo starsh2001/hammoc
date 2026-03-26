@@ -173,6 +173,15 @@
     "copyAriaLabel": "Copiar mensagem para a área de transferência",
     "copiedAriaLabel": "Mensagem copiada"
   },
+  "messageEdit": {
+    "accept": "Aceitar",
+    "cancel": "Cancelar",
+    "restoreCode": "Também restaurar o código para este ponto",
+    "acceptAriaLabel": "Aceitar mensagem editada",
+    "cancelAriaLabel": "Cancelar edição",
+    "textareaAriaLabel": "Editar texto da mensagem",
+    "emptyWarning": "A mensagem não pode estar vazia"
+  },
   "messageListSkeleton": {
     "ariaLabel": "Carregando mensagens",
     "srText": "Carregando mensagens..."

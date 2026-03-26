@@ -40,7 +40,7 @@ describe('MessageActionBar', () => {
     expect(buttons).toHaveLength(1);
   });
 
-  it('renders only the copy button for user messages', () => {
+  it('renders only the copy button for user messages without onEdit', () => {
     render(<MessageActionBar role="user" content="test" />);
 
     const buttons = screen.getAllByRole('button');
@@ -105,11 +105,48 @@ describe('MessageActionBar', () => {
     Object.assign(navigator, { clipboard: mockClipboard });
   });
 
-  // Does not render when disabled is true
-  it('does not render when disabled is true', () => {
-    const { container } = render(<MessageActionBar role="assistant" content="test" disabled />);
+  // ActionBar renders when disabled but edit button is hidden
+  it('renders ActionBar when disabled but hides edit button', () => {
+    render(<MessageActionBar role="user" content="test" disabled onEdit={vi.fn()} />);
 
-    expect(container.querySelector('[data-testid="message-action-bar"]')).not.toBeInTheDocument();
+    expect(screen.getByTestId('message-action-bar')).toBeInTheDocument();
+    // Copy button is still visible
+    expect(screen.getByRole('button', { name: /클립보드에 복사/i })).toBeInTheDocument();
+    // Only copy button — no edit button
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
+
+  // Edit button shown for user + non-optimistic + non-disabled
+  it('shows edit button for user messages when not optimistic and not disabled', () => {
+    const onEdit = vi.fn();
+    render(<MessageActionBar role="user" content="test" onEdit={onEdit} />);
+
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(2); // edit + copy
+    expect(screen.getByRole('button', { name: /편집/i })).toBeInTheDocument();
+  });
+
+  // Edit button hidden for optimistic user messages
+  it('hides edit button for optimistic user messages', () => {
+    render(<MessageActionBar role="user" content="test" onEdit={vi.fn()} isOptimistic />);
+
+    expect(screen.getAllByRole('button')).toHaveLength(1); // copy only
+  });
+
+  // Edit button hidden for assistant messages
+  it('hides edit button for assistant messages', () => {
+    render(<MessageActionBar role="assistant" content="test" onEdit={vi.fn()} />);
+
+    expect(screen.getAllByRole('button')).toHaveLength(1); // copy only
+  });
+
+  // Edit button click calls onEdit
+  it('calls onEdit when edit button is clicked', () => {
+    const onEdit = vi.fn();
+    render(<MessageActionBar role="user" content="test" onEdit={onEdit} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /편집/i }));
+    expect(onEdit).toHaveBeenCalledTimes(1);
   });
 
   // Alignment: user messages right-aligned, assistant messages left-aligned

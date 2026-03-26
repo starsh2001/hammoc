@@ -23,6 +23,7 @@ import { useProjectStore } from '../stores/projectStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { useChainStore } from '../stores/chainStore';
 import type { Attachment, HistoryMessage } from '@hammoc/shared';
+import type { EditSubmitParams } from '../components/MessageBubble';
 import { projectsApi } from '../services/api/projects';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
@@ -77,6 +78,8 @@ function renderHistoryMessage(
   branchInfo?: { total: number; current: number },
   onNavigateBranch?: (messageId: string, direction: 'prev' | 'next') => void,
   isBranchNavigationDisabled?: boolean,
+  onEditSubmit?: (params: EditSubmitParams) => void,
+  isStreaming?: boolean,
 ) {
   // Render task notification as notification card (not user bubble)
   if (message.type === 'task_notification' && message.taskStatus) {
@@ -161,12 +164,12 @@ function renderHistoryMessage(
             <ThinkingBlock content={message.thinking} />
           </div>
         </div>
-        {message.content && <MessageBubble message={message} />}
+        {message.content && <MessageBubble message={message} isStreaming={isStreaming} />}
       </Fragment>
     );
   }
 
-  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} />;
+  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} />;
 }
 
 export function ChatPage() {
@@ -815,6 +818,11 @@ export function ChatPage() {
   // replay (streaming segments). No client-side dedup filtering needed.
   const { displayMessages, branchPoints, navigateBranch, isBranchNavigationDisabled } = useMessageTree(messages);
 
+  // Story 25.6: Edit submit handler (actual branching implemented in 25.7)
+  const handleEditSubmit = useCallback((params: EditSubmitParams) => {
+    console.log('[Story 25.6] onEditSubmit', params);
+  }, []);
+
   const handleLoadMore = useCallback(() => {
     fetchMoreMessages();
   }, [fetchMoreMessages]);
@@ -1173,6 +1181,8 @@ export function ChatPage() {
                   branchPoints.get(msg.id),
                   navigateBranch,
                   isBranchNavigationDisabled,
+                  handleEditSubmit,
+                  isStreaming,
                 )}
               </div>
             </Fragment>

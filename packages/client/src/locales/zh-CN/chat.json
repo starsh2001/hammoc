@@ -173,6 +173,15 @@
     "copyAriaLabel": "复制消息到剪贴板",
     "copiedAriaLabel": "消息已复制"
   },
+  "messageEdit": {
+    "accept": "接受",
+    "cancel": "取消",
+    "restoreCode": "同时将代码恢复到此时间点",
+    "acceptAriaLabel": "接受编辑后的消息",
+    "cancelAriaLabel": "取消编辑",
+    "textareaAriaLabel": "编辑消息文本",
+    "emptyWarning": "消息不能为空"
+  },
   "messageListSkeleton": {
     "ariaLabel": "正在加载消息",
     "srText": "正在加载消息..."

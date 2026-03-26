@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Pencil } from 'lucide-react';
 import { debugLogger } from '../utils/debugLogger';
 
 interface MessageActionBarProps {
@@ -14,6 +14,8 @@ interface MessageActionBarProps {
   isLastAssistant?: boolean;
   disabled?: boolean;
   onCopy?: (content: string) => void;
+  onEdit?: () => void;
+  isOptimistic?: boolean;
 }
 
 export function MessageActionBar({
@@ -21,6 +23,8 @@ export function MessageActionBar({
   content,
   disabled = false,
   onCopy,
+  onEdit,
+  isOptimistic = false,
 }: MessageActionBarProps) {
   const { t } = useTranslation('chat');
   const [isCopied, setIsCopied] = useState(false);
@@ -50,9 +54,8 @@ export function MessageActionBar({
     }
   }, [content, onCopy]);
 
-  if (disabled) return null;
-
   const isUser = role === 'user';
+  const showEditButton = isUser && !isOptimistic && !disabled;
 
   const buttonBase = `inline-flex items-center justify-center p-0.5 rounded transition-colors ${
     isUser
@@ -65,6 +68,18 @@ export function MessageActionBar({
       className="flex items-center gap-0.5 justify-end"
       data-testid="message-action-bar"
     >
+      {/* Edit button — user messages only, hidden during streaming or optimistic */}
+      {showEditButton && onEdit && (
+        <button
+          onClick={onEdit}
+          className={buttonBase}
+          title={t('messageActionBar.edit')}
+          aria-label={t('messageActionBar.edit')}
+        >
+          <Pencil className="w-3 h-3" aria-hidden="true" />
+        </button>
+      )}
+
       {/* Copy button — functional */}
       <button
         onClick={handleCopy}

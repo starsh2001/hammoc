@@ -173,6 +173,15 @@
     "copyAriaLabel": "メッセージをクリップボードにコピー",
     "copiedAriaLabel": "メッセージをコピーしました"
   },
+  "messageEdit": {
+    "accept": "承認",
+    "cancel": "キャンセル",
+    "restoreCode": "コードもこの時点に復元する",
+    "acceptAriaLabel": "編集したメッセージを承認",
+    "cancelAriaLabel": "編集をキャンセル",
+    "textareaAriaLabel": "メッセージテキストを編集",
+    "emptyWarning": "メッセージは空にできません"
+  },
   "messageListSkeleton": {
     "ariaLabel": "メッセージを読み込み中",
     "srText": "メッセージを読み込み中..."

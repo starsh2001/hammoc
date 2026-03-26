@@ -10,7 +10,16 @@ import { formatRelativeTime } from '../utils/formatters';
 import { Bot } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { MessageActionBar } from './MessageActionBar';
+import { MessageEditForm } from './MessageEditForm';
 import { BranchPagination } from './BranchPagination';
+import { getBaseUuid } from '../utils/messageTree';
+
+export interface EditSubmitParams {
+  messageUuid: string;
+  parentId?: string;
+  newText: string;
+  restoreCode: boolean;
+}
 
 interface MessageBubbleProps {
   /** Message data */
@@ -27,6 +36,8 @@ interface MessageBubbleProps {
   onNavigateBranch?: (messageId: string, direction: 'prev' | 'next') => void;
   /** Whether branch navigation buttons should be disabled */
   isBranchNavigationDisabled?: boolean;
+  /** Callback when user submits an edited message */
+  onEditSubmit?: (params: EditSubmitParams) => void;
 }
 
 export function MessageBubble({
@@ -37,9 +48,11 @@ export function MessageBubble({
   branchInfo,
   onNavigateBranch,
   isBranchNavigationDisabled,
+  onEditSubmit,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const isUser = message.type === 'user';
   const formattedTime = formatRelativeTime(message.timestamp);
@@ -57,7 +70,7 @@ export function MessageBubble({
           isUser
             ? 'bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-l-lg rounded-tr-lg'
             : 'bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e]'
-        } p-3 shadow-sm`}
+        } p-3 shadow-sm${isEditing ? ' ring-2 ring-blue-400 dark:ring-blue-500' : ''}`}
       >
         {/* Icon for assistant */}
         {!isUser && (
@@ -93,7 +106,21 @@ export function MessageBubble({
         )}
 
         {/* Message content - plain text for user, markdown for assistant */}
-        {isUser ? (
+        {isUser && isEditing ? (
+          <MessageEditForm
+            initialText={message.content}
+            onSubmit={(newText, restoreCode) => {
+              onEditSubmit?.({
+                messageUuid: getBaseUuid(message.id),
+                parentId: message.parentId,
+                newText,
+                restoreCode,
+              });
+              setIsEditing(false);
+            }}
+            onCancel={() => setIsEditing(false)}
+          />
+        ) : isUser ? (
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
         ) : (
           message.content && <MarkdownRenderer content={message.content} isStreaming={isStreaming} />
@@ -124,7 +151,10 @@ export function MessageBubble({
           <MessageActionBar
             role={isUser ? 'user' : 'assistant'}
             content={message.content}
+            disabled={isStreaming}
             onCopy={onCopy}
+            onEdit={() => setIsEditing(true)}
+            isOptimistic={(message as any)._optimistic === true}
           />
         </div>
       </div>
