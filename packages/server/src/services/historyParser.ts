@@ -293,13 +293,38 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
   // Map tool_use block id → index in results (for merging tool_results)
   const toolUseIndexMap = new Map<string, number>();
 
-  for (const m of raw) {
-    // Skip non-display types and meta messages
-    if (!['user', 'assistant', 'tool_use', 'tool_result', 'queue-operation', 'system'].includes(m.type)) continue;
-    if (m.isMeta) continue;
+  // Redirect map: when a message is skipped (non-display type, isMeta, empty
+  // content), record uuid → parentUuid so that its children's parentId resolves
+  // to the nearest included ancestor. Without this, children of skipped messages
+  // become orphan roots in the client tree, breaking the conversation chain.
+  const skippedRedirect = new Map<string, string | undefined>();
 
-    // Resolve parentId from RawJSONLMessage.parentUuid (convert null to undefined)
-    const parentId = m.parentUuid ?? undefined;
+  function resolveParentId(parentUuid: string | null | undefined): string | undefined {
+    if (!parentUuid) return undefined;
+    let id: string | undefined = parentUuid;
+    const visited = new Set<string>();
+    while (id && skippedRedirect.has(id)) {
+      if (visited.has(id)) return undefined; // cycle → treat as root
+      visited.add(id);
+      id = skippedRedirect.get(id);
+    }
+    return id;
+  }
+
+  for (const m of raw) {
+    // Skip non-display types and meta messages, but record redirect so children
+    // can resolve to the nearest included ancestor.
+    const isDisplayType = ['user', 'assistant', 'tool_use', 'tool_result', 'queue-operation', 'system'].includes(m.type);
+    if (!isDisplayType || m.isMeta) {
+      skippedRedirect.set(m.uuid, m.parentUuid ?? undefined);
+      continue;
+    }
+
+    // Track whether this message produces any visible output.
+    const resultsBefore = results.length;
+
+    // Resolve parentId through redirect chain (handles skipped ancestors)
+    const parentId = resolveParentId(m.parentUuid);
 
     // Handle system messages (e.g., compact_boundary)
     if (m.type === 'system') {
@@ -312,6 +337,10 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
           parentId,
           timestamp: m.timestamp,
         });
+      }
+      // Non-compact_boundary system messages: skip with redirect
+      if (results.length === resultsBefore) {
+        skippedRedirect.set(m.uuid, m.parentUuid ?? undefined);
       }
       continue;
     }
@@ -551,6 +580,13 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
           });
         }
       }
+    }
+
+    // If this raw message produced no visible output (e.g., empty assistant,
+    // user consumed entirely by tool_result merging), register redirect so
+    // children's parentId resolves to this message's parent instead.
+    if (results.length === resultsBefore) {
+      skippedRedirect.set(m.uuid, m.parentUuid ?? undefined);
     }
   }
 

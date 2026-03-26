@@ -392,3 +392,63 @@ describe('50+ messages with multi-branch pagination', () => {
     expect(branchAIds.has('branch-b-0')).toBe(false);
   });
 });
+
+// --- Metadata root filtering ---
+
+describe('metadata root filtering', () => {
+  it('should ignore isolated metadata roots (queue-operation, progress) for leaf selection and branch handling', () => {
+    // Simulate real SDK JSONL: conversation chain + isolated metadata roots
+    const msgs: RawJSONLMessage[] = [
+      // Isolated metadata roots (no children) — like queue-operation, file-history-snapshot
+      { uuid: '__line-0', type: 'queue-operation' as 'user', parentUuid: undefined, timestamp: '2026-01-15T10:05:00Z', message: { role: 'user', content: '' } } as RawJSONLMessage,
+      { uuid: '__line-1', type: 'progress' as 'user', parentUuid: undefined, timestamp: '2026-01-15T10:06:00Z', message: { role: 'user', content: '' } } as RawJSONLMessage,
+      // Conversation chain
+      makeRawMsg('progress-root', null, 'user', '2026-01-15T10:00:00Z', { type: 'progress' as 'user' }),
+      makeRawMsg('u1', 'progress-root', 'user', '2026-01-15T10:00:01Z'),
+      makeRawMsg('a1', 'u1', 'assistant', '2026-01-15T10:00:02Z'),
+      makeRawMsg('u2', 'a1', 'user', '2026-01-15T10:00:03Z'),
+      makeRawMsg('a2', 'u2', 'assistant', '2026-01-15T10:00:04Z'),
+    ];
+
+    const tree = buildRawMessageTree(msgs);
+    // Metadata roots are newer (10:05, 10:06) but should NOT be selected as newest leaf
+    const defaults = getDefaultRawBranchSelections(tree.roots);
+    const { messages } = getActiveRawBranch(tree.roots, defaults);
+
+    // Should include conversation messages, not just the isolated metadata root
+    const uuids = messages.map(m => m.uuid);
+    expect(uuids).toContain('u1');
+    expect(uuids).toContain('a1');
+    expect(uuids).toContain('u2');
+    expect(uuids).toContain('a2');
+  });
+
+  it('should select correct compact_boundary root even with newer metadata roots', () => {
+    const msgs: RawJSONLMessage[] = [
+      // Initial conversation tree (progress root)
+      makeRawMsg('progress-root', null, 'user', '2026-01-15T10:00:00Z', { type: 'progress' as 'user' }),
+      makeRawMsg('u1', 'progress-root', 'user', '2026-01-15T10:00:01Z'),
+      makeRawMsg('a1', 'u1', 'assistant', '2026-01-15T10:00:02Z'),
+      // Compact boundary epoch
+      makeRawMsg('compact-1', null, 'system', '2026-01-15T11:00:00Z', { subtype: 'compact_boundary' }),
+      makeRawMsg('u2', 'compact-1', 'user', '2026-01-15T11:00:01Z'),
+      makeRawMsg('a2', 'u2', 'assistant', '2026-01-15T11:00:02Z'),
+      // Isolated metadata root AFTER compact_boundary (newer timestamp)
+      { uuid: '__line-99', type: 'queue-operation' as 'user', parentUuid: undefined, timestamp: '2026-01-15T11:01:00Z', message: { role: 'user', content: '' } } as RawJSONLMessage,
+    ];
+
+    const tree = buildRawMessageTree(msgs);
+    const defaults = getDefaultRawBranchSelections(tree.roots);
+    const { messages, branchPoints } = getActiveRawBranch(tree.roots, defaults);
+
+    // Should select compact_boundary epoch (not the metadata root)
+    const uuids = messages.map(m => m.uuid);
+    expect(uuids).toContain('compact-1');
+    expect(uuids).toContain('u2');
+    expect(uuids).toContain('a2');
+    // Should NOT contain pre-compaction messages
+    expect(uuids).not.toContain('u1');
+    // Branch points should reflect 2 conversation roots
+    expect(Object.keys(branchPoints).length).toBeGreaterThan(0);
+  });
+});

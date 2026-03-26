@@ -36,6 +36,9 @@ export interface ActiveBranchResult {
 
 // --- Helpers ---
 
+/** Message types that participate in the conversation tree for branch selection */
+const CONVERSATION_TYPES = new Set(['user', 'assistant', 'system']);
+
 /**
  * Extract base UUID from a potentially split message UUID.
  * Split IDs follow patterns: {uuid}-text-{n}, {uuid}-tool-{id}, {uuid}-thinking
@@ -175,6 +178,12 @@ export function getDefaultRawBranchSelections(roots: RawTreeNode[]): Record<stri
   function findLeaves(node: RawTreeNode) {
     const branches = groupRawChildrenIntoBranches(node.children);
     if (branches.length === 0) {
+      // Only consider conversation-relevant types (user, assistant, system) as
+      // leaf candidates. Metadata types (queue-operation, file-history-snapshot,
+      // progress, last-prompt) are often isolated roots with no children — if
+      // their timestamp is newer than the last conversation message they would
+      // be incorrectly selected, causing getActiveRawBranch to pick an empty root.
+      if (!CONVERSATION_TYPES.has(node.message.type)) return;
       const ts = node.message.timestamp || '';
       if (ts > newestTime || !newestLeaf) {
         newestTime = ts;
@@ -223,8 +232,12 @@ export function getDefaultRawBranchSelections(roots: RawTreeNode[]): Record<stri
       }
     } else {
       // current is a root — check multi-root selection
-      if (roots.length > 1) {
-        const rootIdx = roots.indexOf(current);
+      // Use conversation-relevant roots only (matching getActiveRawBranch)
+      const convRoots = roots.filter((r) =>
+        r.children.length > 0 || CONVERSATION_TYPES.has(r.message.type),
+      );
+      if (convRoots.length > 1) {
+        const rootIdx = convRoots.indexOf(current);
         if (rootIdx >= 0) {
           selections[ROOT_BRANCH_KEY] = rootIdx;
         }
@@ -251,26 +264,38 @@ export function getActiveRawBranch(
   if (roots.length === 0) return { messages, branchPoints };
 
   // Handle multi-root
+  // Filter to conversation-relevant roots: roots that either have children
+  // (part of a conversation chain) or are displayable types (user/assistant/system).
+  // Isolated metadata roots (queue-operation, file-history-snapshot, progress
+  // without children, last-prompt) are noise and must not participate in
+  // branch selection — otherwise they inflate the root count and cause the
+  // wrong root to be selected as the active conversation epoch.
   let activeRoots: RawTreeNode[];
-  if (roots.length > 1) {
-    const userRootCount = roots.filter((r) => r.message.type === 'user').length;
-    const hasCompactBoundary = roots.some(
+  const conversationRoots = roots.filter((r) =>
+    r.children.length > 0 || CONVERSATION_TYPES.has(r.message.type),
+  );
+
+  if (conversationRoots.length > 1) {
+    const userRootCount = conversationRoots.filter((r) => r.message.type === 'user').length;
+    const hasCompactBoundary = conversationRoots.some(
       (r) => r.message.type === 'system' && r.message.subtype === 'compact_boundary',
     );
 
     if (userRootCount > 1 || hasCompactBoundary) {
-      const selectedIdx = branchSelections[ROOT_BRANCH_KEY] ?? roots.length - 1;
-      const clampedIdx = Math.max(0, Math.min(selectedIdx, roots.length - 1));
-      const selectedRoot = roots[clampedIdx];
+      const selectedIdx = branchSelections[ROOT_BRANCH_KEY] ?? conversationRoots.length - 1;
+      const clampedIdx = Math.max(0, Math.min(selectedIdx, conversationRoots.length - 1));
+      const selectedRoot = conversationRoots[clampedIdx];
       const rootKey = selectedRoot.message.type === 'user' ? selectedRoot.message.uuid : ROOT_BRANCH_KEY;
-      branchPoints[rootKey] = { total: roots.length, current: clampedIdx };
+      branchPoints[rootKey] = { total: conversationRoots.length, current: clampedIdx };
       activeRoots = [selectedRoot];
     } else {
-      // Sequential orphan roots — display all
-      activeRoots = roots;
+      // Sequential orphan roots — display all conversation roots
+      activeRoots = conversationRoots;
     }
   } else {
-    activeRoots = roots;
+    // 0 or 1 conversation root — traverse all conversation roots (+ metadata
+    // roots with children, already included via the filter)
+    activeRoots = conversationRoots.length > 0 ? conversationRoots : roots;
   }
 
   function traverse(node: RawTreeNode) {

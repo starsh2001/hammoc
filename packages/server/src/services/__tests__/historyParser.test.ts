@@ -262,7 +262,6 @@ invalid json line
 
       const transformed = transformToHistoryMessages(messages);
 
-      // tool_result merged into tool_use — single message
       expect(transformed).toHaveLength(1);
       expect(transformed[0].toolName).toBe('Read');
       expect(transformed[0].toolInput).toEqual({ file_path: '/index.ts' });
@@ -336,7 +335,6 @@ invalid json line
 
       const transformed = transformToHistoryMessages(messages);
 
-      // Messages without content are filtered out
       expect(transformed).toHaveLength(0);
     });
 
@@ -359,7 +357,7 @@ invalid json line
           type: 'user',
           timestamp: '2026-01-15T10:00:01Z',
           message: { role: 'user', content: '# Expanded command content...' },
-          isMeta: true, // This should be filtered out
+          isMeta: true,
         },
         {
           uuid: '3',
