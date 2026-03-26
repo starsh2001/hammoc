@@ -27,9 +27,13 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
     const matchedServerKeys = new Set<string>();
     for (const msg of messages) {
       const baseUuid = getBaseUuid(msg.id);
-      if (baseUuid in serverBranchPoints && !matchedServerKeys.has(baseUuid)) {
-        result.set(msg.id, serverBranchPoints[baseUuid]);
-        matchedServerKeys.add(baseUuid);
+      // Match by baseUuid first, then fall back to full messageId (consistent with navigateBranch)
+      const serverKey = baseUuid in serverBranchPoints ? baseUuid
+        : msg.id in serverBranchPoints ? msg.id
+        : null;
+      if (serverKey && !matchedServerKeys.has(serverKey)) {
+        result.set(msg.id, serverBranchPoints[serverKey]);
+        matchedServerKeys.add(serverKey);
       }
     }
     return result;
@@ -78,9 +82,13 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
 
       // Scroll the branch point into view
       requestAnimationFrame(() => {
-        const el = document.querySelector(`[data-message-id="${messageId}"]`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        try {
+          const el = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        } catch {
+          // Ignore selector errors from unexpected messageId formats
         }
       });
     },
