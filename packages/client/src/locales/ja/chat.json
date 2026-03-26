@@ -94,7 +94,8 @@
   "compaction": {
     "complete": "コンテキスト圧縮完了 — レスポンスを再生成しています...",
     "inProgress": "コンテキストを圧縮中...（{{percent}}%）",
-    "inProgressNoPercent": "コンテキストを圧縮中..."
+    "inProgressNoPercent": "コンテキストを圧縮中...",
+    "boundary": "会話が圧縮されました"
   },
   "inputArea": {
     "ariaLabel": "メッセージ入力",
@@ -313,6 +314,11 @@
     "mostCapable": "最高性能",
     "selectorAria": "モデル：{{label}}。クリックしてモデルを変更",
     "selectAria": "モデルを選択"
+  },
+  "branch": {
+    "prev": "前のブランチ",
+    "next": "次のブランチ",
+    "indicator": "ブランチ {{current}} / {{total}}"
   },
   "message": {
     "taskStatus": "Agentタスク {{status}}",

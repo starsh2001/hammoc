@@ -98,7 +98,8 @@
   "compaction": {
     "complete": "Context compaction complete — Regenerating response...",
     "inProgress": "Compacting context... ({{percent}}%)",
-    "inProgressNoPercent": "Compacting context..."
+    "inProgressNoPercent": "Compacting context...",
+    "boundary": "Conversation compacted"
   },
   "inputArea": {
     "ariaLabel": "Message input",
@@ -317,6 +318,11 @@
     "mostCapable": "Most capable",
     "selectorAria": "Model: {{label}}. Click to change model",
     "selectAria": "Select model"
+  },
+  "branch": {
+    "prev": "Previous branch",
+    "next": "Next branch",
+    "indicator": "Branch {{current}} of {{total}}"
   },
   "message": {
     "taskStatus": "Agent task {{status}}",

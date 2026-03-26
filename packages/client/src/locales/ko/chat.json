@@ -98,7 +98,8 @@
   "compaction": {
     "complete": "컨텍스트 압축 완료 — 응답 재생성 중...",
     "inProgress": "컨텍스트 압축 중... ({{percent}}%)",
-    "inProgressNoPercent": "컨텍스트 압축 중..."
+    "inProgressNoPercent": "컨텍스트 압축 중...",
+    "boundary": "대화가 요약되었습니다"
   },
   "inputArea": {
     "ariaLabel": "메시지 입력",
@@ -317,6 +318,11 @@
     "mostCapable": "최고 성능",
     "selectorAria": "모델: {{label}}. 클릭하여 모델 변경",
     "selectAria": "모델 선택"
+  },
+  "branch": {
+    "prev": "이전 브랜치",
+    "next": "다음 브랜치",
+    "indicator": "브랜치 {{current}} / {{total}}"
   },
   "message": {
     "taskStatus": "Agent 작업 {{status}}",

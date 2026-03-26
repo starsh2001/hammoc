@@ -94,7 +94,8 @@
   "compaction": {
     "complete": "Compactación de contexto completa — Regenerando respuesta...",
     "inProgress": "Compactando contexto... ({{percent}}%)",
-    "inProgressNoPercent": "Compactando contexto..."
+    "inProgressNoPercent": "Compactando contexto...",
+    "boundary": "Conversación compactada"
   },
   "inputArea": {
     "ariaLabel": "Entrada de mensaje",
@@ -313,6 +314,11 @@
     "mostCapable": "Más capaz",
     "selectorAria": "Modelo: {{label}}. Haz clic para cambiar el modelo",
     "selectAria": "Seleccionar modelo"
+  },
+  "branch": {
+    "prev": "Rama anterior",
+    "next": "Rama siguiente",
+    "indicator": "Rama {{current}} de {{total}}"
   },
   "message": {
     "taskStatus": "Tarea de Agent {{status}}",

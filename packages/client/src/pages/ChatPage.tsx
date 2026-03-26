@@ -59,6 +59,9 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { ThinkingBlock } from '../components/ThinkingBlock';
 import { PromptChainBanner } from '../components/PromptChainBanner';
 import { useEdgeSwipe } from '../hooks/useEdgeSwipe';
+import { useMessageTree } from '../hooks/useMessageTree';
+import { BranchPagination } from '../components/BranchPagination';
+import { ROOT_BRANCH_KEY } from '../utils/messageTree';
 
 /**
  * Render a single history message as the appropriate component.
@@ -67,10 +70,23 @@ import { useEdgeSwipe } from '../hooks/useEdgeSwipe';
  */
 const COMPACT_MESSAGE_PREFIX = 'This session is being continued from a previous conversation';
 
-function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[]) {
+function renderHistoryMessage(message: HistoryMessage, index: number, messages: HistoryMessage[], t?: (key: string) => string) {
   // Render task notification as notification card (not user bubble)
   if (message.type === 'task_notification' && message.taskStatus) {
     return <TaskNotificationCard key={message.id} status={message.taskStatus} summary={message.taskSummary} toolUseId={message.taskToolUseId} />;
+  }
+
+  // Render compact_boundary system message as divider + badge
+  if (message.type === 'system' && message.subtype === 'compact_boundary') {
+    return (
+      <div key={message.id} className="flex items-center gap-3 my-4 px-4">
+        <div className="flex-1 border-t border-zinc-300 dark:border-zinc-600" />
+        <span className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+          {t?.('compaction.boundary') ?? 'Conversation compacted'}
+        </span>
+        <div className="flex-1 border-t border-zinc-300 dark:border-zinc-600" />
+      </div>
+    );
   }
 
   // Render context compaction as a simple assistant "Compacted" bubble
@@ -790,7 +806,7 @@ export function ChatPage() {
   // Server-side streamStartedAt filtering ensures fetchMessages only returns
   // pre-stream history. Stream-period content comes exclusively from buffer
   // replay (streaming segments). No client-side dedup filtering needed.
-  const displayMessages = messages;
+  const { displayMessages, branchPoints, navigateBranch } = useMessageTree(messages);
 
   const handleLoadMore = useCallback(() => {
     fetchMoreMessages();
@@ -1141,8 +1157,38 @@ export function ChatPage() {
             </div>
           )}
 
+          {/* Root-level branch pagination (multi-root from compact_boundary) */}
+          {branchPoints.has(ROOT_BRANCH_KEY) && (() => {
+            const bp = branchPoints.get(ROOT_BRANCH_KEY)!;
+            return (
+              <BranchPagination
+                messageId={ROOT_BRANCH_KEY}
+                total={bp.total}
+                current={bp.current}
+                onNavigate={navigateBranch}
+              />
+            );
+          })()}
+
           {/* Message list */}
-          {displayMessages.map((msg, idx) => renderHistoryMessage(msg, idx, displayMessages))}
+          {displayMessages.map((msg, idx) => (
+            <Fragment key={msg.id}>
+              <div data-message-id={msg.id}>
+                {renderHistoryMessage(msg, idx, displayMessages, t)}
+              </div>
+              {branchPoints.has(msg.id) && (() => {
+                const bp = branchPoints.get(msg.id)!;
+                return (
+                  <BranchPagination
+                    messageId={msg.id}
+                    total={bp.total}
+                    current={bp.current}
+                    onNavigate={navigateBranch}
+                  />
+                );
+              })()}
+            </Fragment>
+          ))}
         </MessageArea>
       </main>
 
