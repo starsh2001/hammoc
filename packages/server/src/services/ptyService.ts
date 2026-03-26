@@ -38,6 +38,65 @@ class PtyService {
   }
 
   /**
+   * Convert MINGW64 Unix-style PATH entries to Windows format.
+   * Handles mixed PATH values (e.g. "/c/Program Files/nodejs:C:\Windows\System32").
+   * Splits on colons that are NOT preceded by a drive letter (to preserve "C:\...").
+   */
+  private normalizePathForWindows(env: Record<string, string>): Record<string, string> {
+    if (process.platform !== 'win32') return env;
+
+    // Collect all PATH-like keys and merge into one canonical 'Path' key
+    const pathKeys = Object.keys(env).filter((k) => k.toUpperCase() === 'PATH');
+    if (pathKeys.length === 0) return env;
+
+    const merged = pathKeys.map((k) => env[k]).filter(Boolean).join(';');
+    if (!merged) return env;
+
+    const normalized = { ...env };
+    // Remove all PATH variants, then set canonical 'Path'
+    for (const k of pathKeys) {
+      delete normalized[k];
+    }
+
+    // Split on : that is NOT a drive-letter colon (e.g. not "C:")
+    // Strategy: split on ; first (Windows separator), then split remaining on : (MINGW separator)
+    // but preserve drive-letter colons
+    const entries: string[] = [];
+    for (const rawSegment of merged.split(';')) {
+      const segment = rawSegment.trim().replace(/^"|"$/g, '');
+      if (!segment) continue;
+      // Split on : but rejoin drive-letter colons (X: followed by \ or /)
+      const parts = segment.split(':');
+      let i = 0;
+      while (i < parts.length) {
+        const part = parts[i];
+        // Check if this is a single drive letter followed by a path
+        if (part.length === 1 && /^[a-zA-Z]$/.test(part) && i + 1 < parts.length && /^[/\\]/.test(parts[i + 1])) {
+          entries.push(`${part}:${parts[i + 1]}`);
+          i += 2;
+        } else if (part) {
+          entries.push(part);
+          i++;
+        } else {
+          i++;
+        }
+      }
+    }
+
+    // Convert MINGW paths (/c/...) to Windows format (C:\...)
+    const windowsEntries = entries.map((p) => {
+      const match = p.match(/^\/([a-zA-Z])\/(.*)/);
+      if (match) {
+        return `${match[1].toUpperCase()}:\\${match[2].replace(/\//g, '\\')}`;
+      }
+      return p;
+    });
+
+    normalized['Path'] = windowsEntries.join(';');
+    return normalized;
+  }
+
+  /**
    * Create a new PTY session for a project
    */
   createSession(
@@ -60,6 +119,11 @@ class PtyService {
         cols: 80,
         rows: 24,
         cwd: projectPath,
+        env: this.normalizePathForWindows(
+          Object.fromEntries(
+            Object.entries(process.env).filter((e): e is [string, string] => e[1] != null),
+          ),
+        ),
       });
     } catch {
       const err = new Error(TERMINAL_ERRORS.PTY_SPAWN_ERROR.message);
