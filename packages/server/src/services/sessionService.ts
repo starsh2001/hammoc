@@ -9,7 +9,8 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, createReadStream } from 'fs';
+import readline from 'readline';
 import { createLogger } from '../utils/logger.js';
 import type {
   SessionInfo,
@@ -869,6 +870,38 @@ export class SessionService {
       lastAgentCommand,
       branchPoints,
     };
+  }
+
+  /**
+   * Get the UUID of the first root message in a session JSONL.
+   * Used to resolve ROOT_BRANCH_KEY for root-level edit branching.
+   */
+  async getRootMessageUuid(projectSlug: string, sessionId: string): Promise<string | null> {
+    const filePath = this.getSessionFilePath(projectSlug, sessionId);
+    if (!existsSync(filePath)) return null;
+
+    // Stream-read lines until the first root message is found.
+    // Avoids parsing the entire JSONL for large sessions.
+    const stream = createReadStream(filePath, { encoding: 'utf-8' });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+    try {
+      for await (const line of rl) {
+        if (!line.trim()) continue;
+        try {
+          const obj = JSON.parse(line);
+          if (!obj.parentUuid && obj.uuid) {
+            return obj.uuid;
+          }
+        } catch {
+          // Skip malformed lines
+        }
+      }
+    } finally {
+      rl.close();
+      stream.destroy();
+    }
+    return null;
   }
 
 }

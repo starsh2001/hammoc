@@ -22,6 +22,7 @@ import { useChatStore } from '../stores/chatStore';
 import { useProjectStore } from '../stores/projectStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { useChainStore } from '../stores/chainStore';
+import { ROOT_BRANCH_KEY } from '@hammoc/shared';
 import type { Attachment, HistoryMessage } from '@hammoc/shared';
 import type { EditSubmitParams } from '../components/MessageBubble';
 import { projectsApi } from '../services/api/projects';
@@ -832,15 +833,19 @@ export function ChatPage() {
       (m) => m.id === params.messageUuid || m.id.startsWith(params.messageUuid),
     );
     const editedBranchInfo = editedMsg?.branchInfo;
-    // Use branchInfo.selectionKey for already-branched messages,
-    // or parentId for first-time edits. Server ensures parentId is always
-    // populated (including buffer-merged messages).
-    const branchPointId = editedBranchInfo?.selectionKey ?? params.parentId;
+    // Root message (no parentId) always uses ROOT_BRANCH_KEY — server resolves
+    // to the actual JSONL root UUID. This ensures root edits always take the
+    // same code path regardless of whether branches already exist.
+    // Non-root messages use selectionKey (existing branch) or parentId (first edit).
+    const isRootEdit = !params.parentId;
+    const branchPointId = isRootEdit
+      ? ROOT_BRANCH_KEY
+      : (editedBranchInfo?.selectionKey ?? params.parentId);
 
-    // Truncate old branch messages at the branch point assistant message.
-    // parentId is a base UUID but message IDs may be split (e.g. uuid-text-0),
-    // so use startsWith for matching.
-    if (branchPointId) {
+    // Truncate old branch messages at the branch point.
+    if (isRootEdit) {
+      useMessageStore.setState({ messages: [] });
+    } else if (branchPointId) {
       const bpId = branchPointId;
       const branchIdx = msgs.findIndex((m) => m.id === bpId || m.id.startsWith(bpId));
       if (branchIdx !== -1) {
@@ -1086,87 +1091,12 @@ export function ChatPage() {
     );
   }
 
-  // Empty state (no messages)
-  if (messages.length === 0) {
-    return (
-      <div
-        data-testid="chat-page"
-        className={`h-dvh flex flex-col overflow-hidden bg-white dark:bg-[#1c2129] ${chatAreaTransition}`}
-        style={chatAreaStyle}
-      >
-        <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} panelSide={panelSide} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
-        {queueBannerElement}
-        {promptChainBannerElement}
-        <main
-          role="main"
-          aria-label={t('chatPage.ariaLabel')}
-          className="flex-1 flex flex-col min-h-0 overflow-hidden"
-        >
-          <MessageArea
-            streamingSegments={streamingSegments}
-            isStreaming={isStreaming && !!streamingSessionId}
-            isCompacting={isCompacting}
-            segmentsPendingClear={segmentsPendingClear}
-            emptyState={
-              !isStreaming && streamingSegments.length === 0 ? (
-                <EmptyState
-                  title={t('chatPage.empty.title')}
-                  description={t('chatPage.empty.description')}
-                />
-              ) : undefined
-            }
-          >
-            {null}
-          </MessageArea>
-        </main>
-        <InputArea>
-          <ChatInput
-            onSend={handleSendMessage}
-            isStreaming={isStreaming}
-            onAbort={handleAbort}
-            queueLocked={isQueueLocked}
-            placeholder={isStreaming ? t('chatPage.streaming') : t('chatPage.default')}
-            commands={commands}
-            permissionMode={permissionMode}
-            onPermissionModeChange={setPermissionMode}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            activeModel={activeModel}
-            selectedEffort={selectedEffort}
-            onEffortChange={setSelectedEffort}
-            isBmadProject={isBmadProject}
-            onAgentSelect={handleAgentSelect}
-            agentListOpenTrigger={agentListOpenTrigger}
-            activeAgentCommand={activeAgent?.command}
-            starCommands={activeAgentStarCommands}
-            activeAgent={activeAgent}
+  // Unified messages / empty-session view.
+  // Both states share the same JSX tree so that ChatInput is never unmounted
+  // during the empty→messages transition (which would lose typed text and
+  // dismiss the mobile keyboard).
+  const isEmpty = messages.length === 0;
 
-            isFavorite={isFavorite}
-            onToggleFavorite={handleToggleFavorite}
-            favoriteCommands={favoriteCommands}
-            onReorderFavorites={reorderFavorites}
-            onRemoveFavorite={removeFavorite}
-
-            isStarFavorite={isStarFavorite}
-            onToggleStarFavorite={handleToggleStarFavorite}
-            starFavorites={starFavorites}
-            onReorderStarFavorites={reorderStarFavorites}
-            onRemoveStarFavorite={handleRemoveStarFavorite}
-
-            chainMode={chainMode}
-            onChainModeToggle={() => { if (!ctrlChainRef.current) setChainMode((prev) => !prev); }}
-            chainCount={chainItems.length}
-            chainMax={10}
-            getChainLength={getChainLength}
-          />
-        </InputArea>
-        {quickPanelElement}
-        {confirmModalElement}
-      </div>
-    );
-  }
-
-  // Messages view
   return (
     <ScrollProvider value={scrollContextValue}>
     <div
@@ -1199,9 +1129,25 @@ export function ChatPage() {
         aria-label={t('chatPage.ariaLabel')}
         className="flex-1 flex flex-col min-h-0 overflow-hidden"
       >
-        <MessageArea ref={messageAreaRef} scrollDependencies={[messages]} streamingSegments={streamingSegments} isStreaming={isStreaming && !!streamingSessionId} isCompacting={isCompacting} isLoadingMore={isLoadingMore} segmentsPendingClear={segmentsPendingClear}>
+        <MessageArea
+          ref={isEmpty ? undefined : messageAreaRef}
+          scrollDependencies={isEmpty ? undefined : [messages]}
+          streamingSegments={streamingSegments}
+          isStreaming={isStreaming && !!streamingSessionId}
+          isCompacting={isCompacting}
+          isLoadingMore={isEmpty ? undefined : isLoadingMore}
+          segmentsPendingClear={segmentsPendingClear}
+          emptyState={
+            isEmpty && !isStreaming && streamingSegments.length === 0 ? (
+              <EmptyState
+                title={t('chatPage.empty.title')}
+                description={t('chatPage.empty.description')}
+              />
+            ) : undefined
+          }
+        >
           {/* Load older messages button */}
-          {pagination?.hasMore && (
+          {!isEmpty && pagination?.hasMore && (
             <div className="flex justify-center py-4">
               <button
                 onClick={handleLoadMore}

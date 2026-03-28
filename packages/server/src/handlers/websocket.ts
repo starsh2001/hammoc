@@ -19,7 +19,7 @@ import type {
   PromptChainItem,
   ThinkingEffort,
 } from '@hammoc/shared';
-import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS } from '@hammoc/shared';
+import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS, ROOT_BRANCH_KEY } from '@hammoc/shared';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@hammoc/shared';
 import i18next from '../i18n.js';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
@@ -1690,7 +1690,7 @@ async function handleChatSend(
 ): Promise<boolean> {
   const emit = createStreamEmit(stream);
   const t = i18next.getFixedT(lang);
-  const { content, workingDirectory, sessionId, resume, permissionMode, model, images, effort, resumeSessionAt, rewindToMessageUuid } = data;
+  const { content, workingDirectory, sessionId, resume, permissionMode, model, images, effort, resumeSessionAt: rawResumeSessionAt, rewindToMessageUuid } = data;
 
   // Validate images if present (Story 5.5)
   if (images && images.length > 0) {
@@ -1727,7 +1727,7 @@ async function handleChatSend(
   const isResuming = resume && sessionId;
 
   // Story 25.7: resumeSessionAt/rewindToMessageUuid require a valid resume flow
-  if ((resumeSessionAt || rewindToMessageUuid) && !isResuming) {
+  if ((rawResumeSessionAt || rewindToMessageUuid) && !isResuming) {
     emit('error', {
       code: ERROR_CODES.VALIDATION_ERROR,
       message: t('ws.error.resumeSessionAtRequiresResume', { defaultValue: 'resumeSessionAt and rewindToMessageUuid require resume=true and a valid sessionId' }),
@@ -1736,6 +1736,27 @@ async function handleChatSend(
   }
 
   const sessionService = new SessionService();
+
+  // Resolve ROOT_BRANCH_KEY to the actual first root message UUID in the JSONL.
+  // Root edits send '__root__' because the client has no visibility into the
+  // non-display root message (progress/init type) that the SDK needs.
+  let resumeSessionAt = rawResumeSessionAt;
+  if (resumeSessionAt === ROOT_BRANCH_KEY && sessionId) {
+    const projectSlug = sessionService.encodeProjectPath(workingDirectory);
+    const rootUuid = await sessionService.getRootMessageUuid(projectSlug, sessionId);
+    if (rootUuid) {
+      resumeSessionAt = rootUuid;
+      // Update stream so completedBuffer gets the resolved UUID, not ROOT_BRANCH_KEY.
+      // This ensures branchInfo.selectionKey matches the tree's node UUID for navigation.
+      stream.resumeSessionAt = rootUuid;
+    } else {
+      emit('error', {
+        code: ERROR_CODES.VALIDATION_ERROR,
+        message: 'Cannot resolve root branch point: no root message found in session',
+      });
+      return false;
+    }
+  }
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 

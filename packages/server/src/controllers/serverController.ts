@@ -108,9 +108,22 @@ function spawnAndExit(mode: 'prod' | 'update'): void {
     command = `"${toUnix(npmPath)}" run ${mode}`;
   }
 
+  // Export all current environment variables so the restarted process
+  // inherits them (on Windows, `cmd /c start` + Git Bash loses the parent env).
+  // - Filter names to valid bash identifiers (reject e.g. "PROGRAMFILES(X86)")
+  // - Use single quotes to prevent bash expansion of $, `, etc.
+  const bashSafe = (v: string) => "'" + v.replace(/'/g, "'\\''") + "'";
+  const envExports = Object.entries(process.env)
+    .filter(([k, v]) => v !== undefined && k !== 'PATH' && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k))
+    .map(([k, v]) => `export ${k}=${bashSafe(v!)}`)
+    .join('\n');
+
   fs.writeFileSync(scriptPath, [
     '#!/bin/bash',
+    envExports,
     `export PATH="${toUnix(nodeDir)}:$PATH"`,
+    // Always propagate the running port even if PORT was not in process.env
+    `export PORT=${bashSafe(String(config.server.port))}`,
     'sleep 2',
     `cd "${toUnix(MONOREPO_ROOT)}"`,
     command,
@@ -139,8 +152,12 @@ function spawnAndExit(mode: 'prod' | 'update'): void {
   });
   child.unref();
 
-  console.log('[server] Exiting old server process. New server will start in ~2s.');
-  setTimeout(() => process.exit(0), 500);
+  // Wait until the child process is confirmed spawned before exiting.
+  // Exiting too early (before detach completes) can kill the child on Windows.
+  child.on('spawn', () => {
+    console.log('[server] Child process spawned. Exiting old server in 500ms.');
+    setTimeout(() => process.exit(0), 500);
+  });
 }
 
 export const serverController = {

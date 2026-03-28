@@ -218,22 +218,27 @@ export const sessionController = {
         }
       }
 
-      // Attach branchInfo to the final message list in a single pass.
-      // Handles both JSONL branchPoints and buffer-synthesized branch points.
+      // Attach branchInfo to the final message list.
+      // branchPoints from getActiveRawBranch provides:
+      //   key = first user message UUID of the selected branch (the attachment target)
+      //   selectionKey = parent node UUID (for client navigation)
+      // We attach directly to the key message — no indirect "find parent, get next user" needed.
       const branchInfoAttached = new Set<string>();
 
-      // Helper: attach branchInfo to the first user message after a given assistant
-      const attachBranchInfo = (selKey: string, info: { total: number; current: number; selectionKey: string }) => {
+      // Attach branchInfo to the target user message by ID.
+      // No fallback — caller handles root/missing cases explicitly.
+      const attachBranchInfoTo = (
+        msgId: string,
+        selKey: string,
+        info: { total: number; current: number; selectionKey: string },
+      ) => {
         if (branchInfoAttached.has(selKey)) return;
-        const aIdx = response.messages.findIndex(
-          (m) => m.id === selKey || m.id.startsWith(selKey),
+        const target = response.messages.find(
+          (m) => m.id === msgId || m.id.startsWith(msgId),
         );
-        if (aIdx >= 0) {
-          const nextUser = response.messages.slice(aIdx + 1).find((m) => m.type === 'user');
-          if (nextUser) {
-            nextUser.branchInfo = info;
-            branchInfoAttached.add(selKey);
-          }
+        if (target) {
+          target.branchInfo = info;
+          branchInfoAttached.add(selKey);
         }
       };
 
@@ -241,25 +246,33 @@ export const sessionController = {
       if (response.branchPoints) {
         for (const [key, bp] of Object.entries(response.branchPoints)) {
           const selKey = bp.selectionKey ?? key;
-          // Use client-provided expectedBranchTotal when this is the buffer's branch point
           const isBufBranch = completedBuffer?.resumeSessionAt === selKey && completedBuffer?.expectedBranchTotal;
           const total = isBufBranch ? completedBuffer!.expectedBranchTotal! : bp.total;
           const current = (isBufBranch && isDefaultBranch) ? total - 1 : bp.current;
-          attachBranchInfo(selKey, { total, current, selectionKey: selKey });
+          attachBranchInfoTo(key, selKey, { total, current, selectionKey: selKey });
         }
       }
 
-      // 2. Buffer created a branch at a point with no existing JSONL branchPoints
-      //    (first edit). Use expectedBranchTotal from client, or fallback to 2.
+      // 2. Buffer created a branch with no existing JSONL branchPoints (first edit).
+      //    attachBranchInfoTo's fallback to first user handles root branches.
       if (completedBuffer?.resumeSessionAt) {
         const selKey = completedBuffer.resumeSessionAt;
         if (!branchInfoAttached.has(selKey)) {
           const total = completedBuffer.expectedBranchTotal ?? 2;
-          attachBranchInfo(selKey, {
-            total,
-            current: isDefaultBranch ? total - 1 : 0,
-            selectionKey: selKey,
-          });
+          // Find next user after parent, or first user (root branch fallback)
+          const parentIdx = response.messages.findIndex(
+            (m) => m.id === selKey || m.id.startsWith(selKey),
+          );
+          const targetUser = parentIdx >= 0
+            ? response.messages.slice(parentIdx + 1).find((m) => m.type === 'user')
+            : response.messages.find((m) => m.type === 'user');
+          if (targetUser) {
+            attachBranchInfoTo(targetUser.id, selKey, {
+              total,
+              current: isDefaultBranch ? total - 1 : 0,
+              selectionKey: selKey,
+            });
+          }
         }
       }
 
