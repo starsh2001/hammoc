@@ -33,9 +33,23 @@ export function MessageEditForm({ initialText, onSubmit, onCancel }: MessageEdit
     adjustHeight();
   }, [text, adjustHeight]);
 
-  // Auto-focus on mount
+  // Auto-focus on mount + scroll into view when mobile keyboard resizes viewport
   useEffect(() => {
-    textareaRef.current?.focus();
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.focus();
+
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let fired = false;
+    const handleResize = () => {
+      if (fired) return;
+      fired = true;
+      textarea.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      vv.removeEventListener('resize', handleResize);
+    };
+    vv.addEventListener('resize', handleResize);
+    return () => vv.removeEventListener('resize', handleResize);
   }, []);
 
   const handleKeyDown = useCallback(

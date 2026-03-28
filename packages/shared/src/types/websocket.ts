@@ -49,6 +49,7 @@ export interface ClientToServerEvents {
     effort?: ThinkingEffort;
     resumeSessionAt?: string;
     rewindToMessageUuid?: string;
+    expectedBranchTotal?: number;
   }) => void;
   'chat:abort': () => void;
   'permission:respond': (data: {

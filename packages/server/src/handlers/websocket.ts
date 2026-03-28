@@ -130,6 +130,8 @@ interface ActiveStream {
   status: 'running' | 'completed' | 'error';
   startedAt: number;
   chatService?: ChatService;
+  resumeSessionAt?: string;
+  expectedBranchTotal?: number;
 }
 
 // Primary maps: sessionId → ActiveStream, socketId → sessionId
@@ -203,7 +205,12 @@ function cleanupChainIfIdle(sessionId: string): void {
     return;
   }
   chainState.delete(sessionId);
-  chainResumableSessions.delete(sessionId);
+  // NOTE: chainResumableSessions is intentionally NOT deleted here.
+  // It tracks whether a session has ever completed a successful handleChatSend,
+  // which is needed for future chain:add items to use resume mode. Deleting it
+  // causes the next chain drain to attempt a fresh session with an existing
+  // sessionId, resulting in "process exited with code 1".
+  //
   // NOTE: chainDrainGeneration is intentionally NOT deleted here.
   // Deleting would reset the counter to 0, allowing stale timers from before
   // cleanup to match a new gen=1 value (ABA problem).
@@ -459,6 +466,8 @@ export function isSessionStreaming(sessionId: string): boolean {
 const completedBuffers = new Map<string, {
   events: Array<{ event: string; data: unknown; ts: number }>;
   startedAt: number;
+  resumeSessionAt?: string;
+  expectedBranchTotal?: number;
 }>();
 
 /** Timer handles for completedBuffer expiry, keyed by sessionId.
@@ -489,9 +498,13 @@ export function getRunningStreamStartedAt(sessionId: string): number | null {
 }
 
 /** Get the completed buffer for a session (null if none or expired). */
-export function getCompletedBuffer(sessionId: string): Array<{ event: string; data: unknown; ts: number }> | null {
-  const completed = completedBuffers.get(sessionId);
-  return completed ? completed.events : null;
+export function getCompletedBuffer(sessionId: string): {
+  events: Array<{ event: string; data: unknown; ts: number }>;
+  startedAt: number;
+  resumeSessionAt?: string;
+  expectedBranchTotal?: number;
+} | null {
+  return completedBuffers.get(sessionId) ?? null;
 }
 
 /** Clean up a stream from activeStreams immediately. Saves the buffer to
@@ -522,6 +535,8 @@ function cleanupStream(streamKey: string, expectedStream?: ActiveStream) {
       completedBuffers.set(streamKey, {
         events: stream.buffer,
         startedAt: stream.startedAt,
+        resumeSessionAt: stream.resumeSessionAt,
+        expectedBranchTotal: stream.expectedBranchTotal,
       });
       const timer = setTimeout(() => {
         // Guard: only delete if this timer is still the current one for this key.
@@ -869,6 +884,8 @@ export async function initializeWebSocket(
         pendingPermissions: new Map(),
         status: 'running',
         startedAt: Date.now(),
+        resumeSessionAt: data.resumeSessionAt,
+        expectedBranchTotal: data.expectedBranchTotal,
       };
       activeStreams.set(streamKey, stream);
       // Bump drain generation so any pending scheduled drain is invalidated
@@ -1667,7 +1684,7 @@ function validateImages(images: ImageAttachment[], lang: string): { valid: boole
  */
 async function handleChatSend(
   stream: ActiveStream,
-  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[]; effort?: ThinkingEffort; resumeSessionAt?: string; rewindToMessageUuid?: string },
+  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[]; effort?: ThinkingEffort; resumeSessionAt?: string; rewindToMessageUuid?: string; expectedBranchTotal?: number },
   abortController: AbortController,
   lang: string
 ): Promise<boolean> {

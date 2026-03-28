@@ -8,7 +8,10 @@ import { Request, Response } from 'express';
 import { SESSION_ERRORS, SessionListResponse, HistoryMessagesResponse, DeleteSessionsBatchRequest, UpdateSessionNameRequest } from '@hammoc/shared';
 import { sessionService } from '../services/sessionService.js';
 import { projectService } from '../services/projectService.js';
-import { getActiveStreamSessionIds, getStreamStartedAt, getRunningStreamStartedAt, getCompletedBuffer } from '../handlers/websocket.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('sessionController');
+import { getActiveStreamSessionIds, getRunningStreamStartedAt, getCompletedBuffer } from '../handlers/websocket.js';
 import { transformBufferToHistoryMessages } from '../services/historyParser.js';
 
 export const sessionController = {
@@ -142,14 +145,17 @@ export const sessionController = {
       // have expired while streamStartedAt (captured here) still includes its
       // startedAt, causing the JSONL filter to exclude messages that the merge
       // can no longer provide.
-      const streamStartedAt = getStreamStartedAt(sessionId);
       const runningStreamStartedAt = getRunningStreamStartedAt(sessionId);
       const completedBuffer = getCompletedBuffer(sessionId);
 
+      // Only pass the running stream's startedAt for JSONL filtering.
+      // Completed buffer filtering is handled below INSIDE the merge block
+      // so the filter and merge are always paired — if merge is skipped
+      // (e.g. branch navigation), the filter is also skipped.
       const result = await sessionService.getSessionMessages(projectSlug, sessionId, {
         limit,
         offset,
-        streamStartedAt,
+        streamStartedAt: runningStreamStartedAt,
         runningStreamStartedAt,
         branchSelections,
       });
@@ -166,21 +172,94 @@ export const sessionController = {
       // Only merge on default branch — non-default branches skip buffer merge
       // because buffer messages always belong to the latest branch tip.
       const isDefaultBranch = !branchSelections || Object.keys(branchSelections).length === 0;
+
       if (completedBuffer && offset === 0 && isDefaultBranch) {
-        const bufferMessages = transformBufferToHistoryMessages(completedBuffer);
+        const bufferMessages = transformBufferToHistoryMessages(completedBuffer.events);
+
         if (bufferMessages.length > 0) {
-          const existingIds = new Set(response.messages.map(m => m.id));
-          const unique = bufferMessages.filter(m => !existingIds.has(m.id));
-          response.messages = [...response.messages, ...unique];
+          // Filter out JSONL messages from the completed buffer's period to
+          // prevent duplication — then add them back from the buffer.
+          // This filter is intentionally inside the merge block: if merge is
+          // skipped (branch navigation), filtering is also skipped so the JSONL
+          // tree output is returned intact.
+          const bufferStart = completedBuffer.startedAt;
+          response.messages = response.messages.filter(
+            (m) => new Date(m.timestamp).getTime() < bufferStart,
+          );
+
+          response.messages = [...response.messages, ...bufferMessages];
+
           response.messages.sort((a, b) =>
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
           );
-          response.pagination.total += unique.length;
-          // Re-paginate: keep only latest `limit` messages and recalculate hasMore
-          if (response.messages.length > limit) {
+          const total = response.messages.length;
+          response.pagination.total = total;
+          if (total > limit) {
             response.messages = response.messages.slice(-limit);
           }
-          response.pagination.hasMore = response.pagination.total > response.messages.length;
+          response.pagination.hasMore = total > response.messages.length;
+        }
+      }
+
+      // Fill missing parentId on buffer-originated messages.
+      // JSONL messages already have parentId from historyParser, but buffer messages
+      // (from transformBufferToHistoryMessages) lack it. Walk the merged list and
+      // set parentId to the last seen assistant's base UUID for any user message missing it.
+      {
+        let lastAssistantBaseId: string | undefined;
+        for (const msg of response.messages) {
+          if (msg.type === 'assistant') {
+            // Extract base UUID: "uuid-text-0" → "uuid", plain "uuid" → "uuid"
+            const dash = msg.id.indexOf('-', 36); // UUID is 36 chars
+            lastAssistantBaseId = dash > 0 ? msg.id.slice(0, 36) : msg.id;
+          } else if (msg.type === 'user' && !msg.parentId && lastAssistantBaseId) {
+            msg.parentId = lastAssistantBaseId;
+          }
+        }
+      }
+
+      // Attach branchInfo to the final message list in a single pass.
+      // Handles both JSONL branchPoints and buffer-synthesized branch points.
+      const branchInfoAttached = new Set<string>();
+
+      // Helper: attach branchInfo to the first user message after a given assistant
+      const attachBranchInfo = (selKey: string, info: { total: number; current: number; selectionKey: string }) => {
+        if (branchInfoAttached.has(selKey)) return;
+        const aIdx = response.messages.findIndex(
+          (m) => m.id === selKey || m.id.startsWith(selKey),
+        );
+        if (aIdx >= 0) {
+          const nextUser = response.messages.slice(aIdx + 1).find((m) => m.type === 'user');
+          if (nextUser) {
+            nextUser.branchInfo = info;
+            branchInfoAttached.add(selKey);
+          }
+        }
+      };
+
+      // 1. From JSONL branchPoints
+      if (response.branchPoints) {
+        for (const [key, bp] of Object.entries(response.branchPoints)) {
+          const selKey = bp.selectionKey ?? key;
+          // Use client-provided expectedBranchTotal when this is the buffer's branch point
+          const isBufBranch = completedBuffer?.resumeSessionAt === selKey && completedBuffer?.expectedBranchTotal;
+          const total = isBufBranch ? completedBuffer!.expectedBranchTotal! : bp.total;
+          const current = (isBufBranch && isDefaultBranch) ? total - 1 : bp.current;
+          attachBranchInfo(selKey, { total, current, selectionKey: selKey });
+        }
+      }
+
+      // 2. Buffer created a branch at a point with no existing JSONL branchPoints
+      //    (first edit). Use expectedBranchTotal from client, or fallback to 2.
+      if (completedBuffer?.resumeSessionAt) {
+        const selKey = completedBuffer.resumeSessionAt;
+        if (!branchInfoAttached.has(selKey)) {
+          const total = completedBuffer.expectedBranchTotal ?? 2;
+          attachBranchInfo(selKey, {
+            total,
+            current: isDefaultBranch ? total - 1 : 0,
+            selectionKey: selKey,
+          });
         }
       }
 

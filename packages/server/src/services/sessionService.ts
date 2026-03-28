@@ -10,6 +10,7 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
+import { createLogger } from '../utils/logger.js';
 import type {
   SessionInfo,
   SessionsIndex,
@@ -31,6 +32,8 @@ import {
   getActiveRawBranch,
   getDefaultRawBranchSelections,
 } from '../utils/messageTree.js';
+
+const log = createLogger('sessionService');
 
 /**
  * SessionService - Manages Claude Code session data
@@ -802,6 +805,9 @@ export class SessionService {
     // Transform only active branch messages to HistoryMessages
     let transformed = transformToHistoryMessages(activeBranchRaw);
 
+    // branchInfo is attached by sessionController AFTER buffer merge,
+    // so that both JSONL and buffer messages are handled in one place.
+
     // If session has an active stream, exclude messages from the stream period.
     // Those messages are covered by the active stream's buffer replay or by
     // completedBuffer merge in the getMessages API (sessionController).
@@ -864,6 +870,7 @@ export class SessionService {
       branchPoints,
     };
   }
+
 }
 
 // Singleton export for controllers (Story 3.3)

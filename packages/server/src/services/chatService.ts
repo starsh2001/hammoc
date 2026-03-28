@@ -227,7 +227,12 @@ export class ChatService {
       }
     });
 
-    log.debug(`SDK query cwd="${queryOptions.cwd}"${queryOptions.resume ? `, resume="${queryOptions.resume}"` : ''}${queryOptions.model ? `, model="${queryOptions.model}"` : ''}${queryOptions.sessionId ? `, sessionId="${queryOptions.sessionId}"` : ''}`);
+    log.debug(`SDK query cwd="${queryOptions.cwd}"${queryOptions.resume ? `, resume="${queryOptions.resume}"` : ''}${queryOptions.model ? `, model="${queryOptions.model}"` : ''}${queryOptions.sessionId ? `, sessionId="${queryOptions.sessionId}"` : ''}${queryOptions.resumeSessionAt ? `, resumeSessionAt="${queryOptions.resumeSessionAt}"` : ''}${options.enableFileCheckpointing ? `, checkpointing=true` : ''}`);
+
+    // Story 25.7: explicit log for resumeSessionAt branching
+    if (queryOptions.resumeSessionAt) {
+      log.info(`resumeSessionAt branch: assistantUuid="${queryOptions.resumeSessionAt}", resume="${queryOptions.resume}"`);
+    }
 
     // Use AsyncIterable prompt when images are present (Story 5.5)
     const { images } = options;
@@ -244,7 +249,11 @@ export class ChatService {
     }
 
     // Story 25.7: rewind files to the specified user message checkpoint before streaming
-    if (options.rewindToMessageUuid && this.currentQuery) {
+    this.rewindWarning = null;
+    if (options.rewindToMessageUuid && !this.currentQuery) {
+      log.error('rewindFiles requested but currentQuery is null');
+      this.rewindWarning = 'File rewind failed: query not initialized';
+    } else if (options.rewindToMessageUuid && this.currentQuery) {
       try {
         const rewindResult = await this.currentQuery.rewindFiles(options.rewindToMessageUuid);
         log.info(`rewindFiles result: canRewind=${rewindResult.canRewind}, filesChanged=${rewindResult.filesChanged?.length ?? 0}, insertions=${rewindResult.insertions ?? 0}, deletions=${rewindResult.deletions ?? 0}`);

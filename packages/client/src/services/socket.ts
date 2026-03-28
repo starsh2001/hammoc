@@ -15,10 +15,11 @@ let socketInstance: Socket<ServerToClientEvents, ClientToServerEvents> | null = 
  */
 export function getSocket(): Socket<ServerToClientEvents, ClientToServerEvents> {
   if (!socketInstance) {
-    // Use current hostname for mobile/remote access, fallback to localhost
-    // Server port is configurable via VITE_SERVER_PORT env var (for multi-instance setup)
-    const serverPort = import.meta.env.VITE_SERVER_PORT || '3000';
-    const socketUrl = `http://${window.location.hostname}:${serverPort}`;
+    // Use VITE_SERVER_PORT if explicitly set (dev mode), otherwise use the
+    // current page origin so --port CLI flag works without rebuild.
+    const socketUrl = import.meta.env.VITE_SERVER_PORT
+      ? `http://${window.location.hostname}:${import.meta.env.VITE_SERVER_PORT}`
+      : window.location.origin;
     socketInstance = io(socketUrl, {
       autoConnect: true,
       withCredentials: true,

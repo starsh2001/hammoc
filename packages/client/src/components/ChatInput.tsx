@@ -357,16 +357,24 @@ export function ChatInput({
     adjustHeight();
   }, [content, adjustHeight]);
 
-  // Auto-focus on mount (desktop only - skip on touch devices to prevent keyboard popup)
+  // Auto-focus on mount.
+  // Desktop: always focus. Mobile: only when streaming or chain is pending
+  // (e.g. ChatInput remounts during empty→messages view transition while
+  // chain drain is active — without this the keyboard dismisses).
+  const shouldKeepFocus = isStreaming || chainCount > 0;
   useEffect(() => {
-    if (textareaRef.current && !isTouchDevice) {
+    if (!textareaRef.current) return;
+    if (!isTouchDevice || shouldKeepFocus) {
       textareaRef.current.focus();
+      userHasFocusedRef.current = true;
     }
-  }, [isTouchDevice]);
+  }, [isTouchDevice, shouldKeepFocus]);
 
-  // Keep focus on mobile during streaming (prevent keyboard from hiding)
+  // Keep focus on mobile during streaming or while chain items are pending.
+  // Without chainCount check, the keyboard dismisses during the 1s gap
+  // between chain drain items (isStreaming briefly becomes false).
   useEffect(() => {
-    if (!isTouchDevice || !isStreaming) return;
+    if (!isTouchDevice || !shouldKeepFocus) return;
 
     const interval = setInterval(() => {
       if (userHasFocusedRef.current && textareaRef.current && document.activeElement !== textareaRef.current) {
@@ -375,7 +383,7 @@ export function ChatInput({
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isTouchDevice, isStreaming]);
+  }, [isTouchDevice, shouldKeepFocus]);
 
   // Clear timeouts on unmount
   useEffect(() => {

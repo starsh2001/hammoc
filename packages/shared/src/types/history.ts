@@ -109,6 +109,8 @@ export interface HistoryMessage {
   taskStatus?: 'completed' | 'failed' | 'stopped';
   taskSummary?: string;
   taskToolUseId?: string;
+  /** Branch info attached directly by server — client renders as-is */
+  branchInfo?: { total: number; current: number; selectionKey: string };
 }
 
 /**

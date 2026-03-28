@@ -17,27 +17,17 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
   // Server-driven: messages are already the active branch — use directly
   const displayMessages = messages;
 
-  // Build branchPoints from serverBranchPoints by matching against displayMessages
-  const serverBranchPoints = useMessageStore((s) => s.serverBranchPoints);
-
+  // Build branchPoints directly from message.branchInfo (set by server).
+  // No UUID matching needed — server attaches branchInfo to the correct message.
   const branchPoints = useMemo(() => {
     const result = new Map<string, BranchPoint>();
-    if (!serverBranchPoints) return result;
-
-    const matchedServerKeys = new Set<string>();
     for (const msg of messages) {
-      const baseUuid = getBaseUuid(msg.id);
-      // Match by baseUuid first, then fall back to full messageId (consistent with navigateBranch)
-      const serverKey = baseUuid in serverBranchPoints ? baseUuid
-        : msg.id in serverBranchPoints ? msg.id
-        : null;
-      if (serverKey && !matchedServerKeys.has(serverKey)) {
-        result.set(msg.id, serverBranchPoints[serverKey]);
-        matchedServerKeys.add(serverKey);
+      if (msg.branchInfo) {
+        result.set(msg.id, msg.branchInfo);
       }
     }
     return result;
-  }, [messages, serverBranchPoints]);
+  }, [messages]);
 
   // Check if branch navigation should be disabled (streaming/compacting)
   const isStreaming = useChatStore((s) => s.isStreaming);
@@ -50,25 +40,23 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
       const chatState = useChatStore.getState();
       if (chatState.isStreaming || chatState.isCompacting) return;
 
-      // Look up server branchPoints for this message
-      const baseUuid = getBaseUuid(messageId);
-      const serverInfo = serverBranchPoints?.[baseUuid]
-        ?? serverBranchPoints?.[messageId];
-      if (!serverInfo) return;
+      // Look up branchInfo from the message itself
+      const msgState = useMessageStore.getState();
+      const msg = msgState.messages.find(
+        (m) => m.id === messageId || getBaseUuid(m.id) === getBaseUuid(messageId),
+      );
+      if (!msg?.branchInfo || msg.branchInfo.total <= 0) return;
 
-      // Determine the selection key and current index
-      const selectionKey = serverInfo.selectionKey ?? baseUuid;
-      if (serverInfo.total <= 0) return;
-      const { currentBranchSelections, currentProjectSlug, currentSessionId, fetchMessages } =
-        useMessageStore.getState();
-      // Clamp current to valid range — stale selections may exceed total after branch deletion
-      const rawCurrent = currentBranchSelections?.[selectionKey] ?? serverInfo.current;
-      const current = Math.max(0, Math.min(rawCurrent, serverInfo.total - 1));
+      const { selectionKey, total } = msg.branchInfo;
+      const { currentBranchSelections, currentProjectSlug, currentSessionId, fetchMessages } = msgState;
+      // Clamp current to valid range
+      const rawCurrent = currentBranchSelections?.[selectionKey] ?? msg.branchInfo.current;
+      const current = Math.max(0, Math.min(rawCurrent, total - 1));
 
       // Compute new index
       const newIdx = direction === 'prev'
         ? Math.max(0, current - 1)
-        : Math.min(serverInfo.total - 1, current + 1);
+        : Math.min(total - 1, current + 1);
       if (newIdx === current) return;
 
       // Build new branchSelections record preserving other branch choices
@@ -95,7 +83,7 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
         }
       });
     },
-    [serverBranchPoints],
+    [],
   );
 
   return { displayMessages, branchPoints, navigateBranch, isBranchNavigationDisabled };

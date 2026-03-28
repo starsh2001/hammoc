@@ -329,7 +329,8 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       // returns a smaller set (latest page only, offset=0), upsert-merge server
       // messages into the existing set instead of replacing — prevents 500+
       // messages being trimmed to 50 on socket reconnect or mobile resume.
-      if (get().allMessagesLoaded && isSameSession) {
+      // Skip for branch switches — server returns a different branch, not a subset.
+      if (get().allMessagesLoaded && isSameSession && !options?.isBranchSwitch) {
         const serverById = new Map(response.messages.map(m => [m.id, m]));
         // Upsert: update existing messages with server versions, keep others as-is
         const merged = currentMessages.map(m => serverById.get(m.id) ?? m);

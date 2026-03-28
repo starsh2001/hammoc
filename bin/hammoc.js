@@ -71,6 +71,18 @@ if (rateLimitIndex !== -1 && args[rateLimitIndex + 1]) {
 // Always run in production mode
 process.env.NODE_ENV = 'production';
 
+// Ensure @hammoc/shared is resolvable (postinstall may be skipped by npx)
+import { existsSync, mkdirSync, symlinkSync } from 'fs';
+const root = path.resolve(__dirname, '..');
+const sharedPkg = path.resolve(root, 'packages', 'shared');
+const nmScope = path.resolve(root, 'node_modules', '@hammoc');
+const nmTarget = path.resolve(nmScope, 'shared');
+if (existsSync(sharedPkg) && !existsSync(nmTarget)) {
+  mkdirSync(nmScope, { recursive: true });
+  const type = process.platform === 'win32' ? 'junction' : 'dir';
+  symlinkSync(sharedPkg, nmTarget, type);
+}
+
 // Start the server
 const serverEntry = path.resolve(__dirname, '..', 'packages', 'server', 'dist', 'index.js');
 await import(pathToFileURL(serverEntry).href);

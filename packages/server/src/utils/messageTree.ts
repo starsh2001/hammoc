@@ -70,10 +70,19 @@ export function groupRawChildrenIntoBranches(children: RawTreeNode[]): RawTreeNo
 
   if (uuidGroups.length <= 1) return uuidGroups;
 
-  // Step 2: detect true branches — only user-type groups count
-  const userGroupCount = uuidGroups.filter((g) =>
-    g.some((n) => n.message.type === 'user'),
-  ).length;
+  // Step 2: detect true branches — only user-type groups count.
+  // A group "leads to a user" if it directly contains a user-type node OR
+  // if it contains a non-conversation intermediary (e.g. progress) whose
+  // subtree contains a user child. This handles the asymmetry where
+  // resumeSessionAt creates user as a direct child of assistant, while
+  // normal flow goes assistant → progress → user.
+  function groupLeadsToUser(g: RawTreeNode[]): boolean {
+    return g.some((n) =>
+      n.message.type === 'user' ||
+      (!CONVERSATION_TYPES.has(n.message.type) && n.children.some((c) => c.message.type === 'user')),
+    );
+  }
+  const userGroupCount = uuidGroups.filter(groupLeadsToUser).length;
 
   if (userGroupCount <= 1) {
     // No real branches — all children are sequential flow
@@ -84,8 +93,7 @@ export function groupRawChildrenIntoBranches(children: RawTreeNode[]): RawTreeNo
   // Fold non-user groups into the nearest preceding user group.
   const branches: RawTreeNode[][] = [];
   for (const group of uuidGroups) {
-    const hasUser = group.some((n) => n.message.type === 'user');
-    if (hasUser) {
+    if (groupLeadsToUser(group)) {
       branches.push([...group]);
     } else if (branches.length > 0) {
       branches[branches.length - 1].push(...group);
@@ -311,9 +319,12 @@ export function getActiveRawBranch(
       const selectedIdx = branchSelections[node.message.uuid] ?? branches.length - 1;
       const clampedIdx = Math.max(0, Math.min(selectedIdx, branches.length - 1));
 
-      // Tag the first user message in the selected branch with branch info
+      // Tag the first user message in the selected branch with branch info.
+      // If no direct user child exists, check one level deeper (handles
+      // assistant → progress → user pattern where progress is intermediary).
       const selectedBranch = branches[clampedIdx];
-      const firstUserInBranch = selectedBranch.find((n) => n.message.type === 'user');
+      const firstUserInBranch = selectedBranch.find((n) => n.message.type === 'user')
+        || selectedBranch.flatMap((n) => n.children).find((c) => c.message.type === 'user');
       const branchKey = firstUserInBranch ? firstUserInBranch.message.uuid : node.message.uuid;
       branchPoints[branchKey] = { total: branches.length, current: clampedIdx, selectionKey: node.message.uuid };
 

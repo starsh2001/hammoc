@@ -200,6 +200,8 @@ interface SendMessageOptions {
   resumeSessionAt?: string;
   /** User message UUID for file rewind (Story 25.7) */
   rewindToMessageUuid?: string;
+  /** Expected total branch count after this edit */
+  expectedBranchTotal?: number;
 }
 
 interface ChatActions {
@@ -327,7 +329,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   sendMessage: (content: string, options: SendMessageOptions) => {
     const socket = getSocket();
-    const { workingDirectory, sessionId, resume, attachments, resumeSessionAt, rewindToMessageUuid } = options;
+    const { workingDirectory, sessionId, resume, attachments, resumeSessionAt, rewindToMessageUuid, expectedBranchTotal } = options;
 
     const msgState = useMessageStore.getState();
     debugLog.state('sendMessage', {
@@ -397,6 +399,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       ...(get().selectedEffort ? { effort: get().selectedEffort } : {}),
       ...(resumeSessionAt ? { resumeSessionAt } : {}),
       ...(rewindToMessageUuid ? { rewindToMessageUuid } : {}),
+      ...(expectedBranchTotal ? { expectedBranchTotal } : {}),
     });
   },
 

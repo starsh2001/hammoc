@@ -818,21 +818,52 @@ export function ChatPage() {
   // replay (streaming segments). No client-side dedup filtering needed.
   const { displayMessages, branchPoints, navigateBranch, isBranchNavigationDisabled } = useMessageTree(messages);
 
-  // Story 25.7: Edit submit handler — creates a conversation branch via resumeSessionAt
+  // Story 25.7: Edit submit handler — truncate old branch, add optimistic message,
+  // then send edit to server. Truncation also happens in handleSessionInit (useStreaming)
+  // for passive viewers receiving session:resumed with resumeSessionAt.
   const handleEditSubmit = useCallback((params: EditSubmitParams) => {
     if (!workingDirectory || !sessionId) {
       debugLogger.error('Cannot edit message: workingDirectory or sessionId not found');
       return;
     }
-    debugLogger.info('[Story 25.7] onEditSubmit', params as unknown as Record<string, unknown>);
+
+    const msgs = useMessageStore.getState().messages;
+    const editedMsg = msgs.find(
+      (m) => m.id === params.messageUuid || m.id.startsWith(params.messageUuid),
+    );
+    const editedBranchInfo = editedMsg?.branchInfo;
+    // Use branchInfo.selectionKey for already-branched messages,
+    // or parentId for first-time edits. Server ensures parentId is always
+    // populated (including buffer-merged messages).
+    const branchPointId = editedBranchInfo?.selectionKey ?? params.parentId;
+
+    // Truncate old branch messages at the branch point assistant message.
+    // parentId is a base UUID but message IDs may be split (e.g. uuid-text-0),
+    // so use startsWith for matching.
+    if (branchPointId) {
+      const bpId = branchPointId;
+      const branchIdx = msgs.findIndex((m) => m.id === bpId || m.id.startsWith(bpId));
+      if (branchIdx !== -1) {
+        let lastPartIdx = branchIdx;
+        for (let i = branchIdx + 1; i < msgs.length; i++) {
+          if (msgs[i].id.startsWith(bpId)) {
+            lastPartIdx = i;
+          } else {
+            break;
+          }
+        }
+        useMessageStore.setState({ messages: msgs.slice(0, lastPartIdx + 1) });
+      }
+    }
 
     addOptimisticMessage(params.newText);
     sendMessage(params.newText, {
       workingDirectory,
       sessionId,
       resume: true,
-      resumeSessionAt: params.parentId,
+      resumeSessionAt: branchPointId,
       rewindToMessageUuid: params.restoreCode ? params.messageUuid : undefined,
+      expectedBranchTotal: editedBranchInfo ? editedBranchInfo.total + 1 : undefined,
     });
   }, [workingDirectory, sessionId, sendMessage, addOptimisticMessage]);
 
@@ -1186,20 +1217,26 @@ export function ChatPage() {
           )}
 
           {/* Message list */}
-          {displayMessages.map((msg, idx) => (
+          {/* Disable editing when viewing a non-latest branch */}
+          {(() => {
+            const isOnOldBranch = displayMessages.some(
+              (m) => m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1,
+            );
+            return displayMessages.map((msg, idx) => (
             <Fragment key={msg.id}>
               <div data-message-id={msg.id}>
                 {renderHistoryMessage(
                   msg, idx, displayMessages, t,
-                  branchPoints.get(msg.id),
+                  msg.branchInfo,
                   navigateBranch,
                   isBranchNavigationDisabled,
-                  handleEditSubmit,
+                  isOnOldBranch ? undefined : handleEditSubmit,
                   isStreaming,
                 )}
               </div>
             </Fragment>
-          ))}
+          ));
+          })()}
         </MessageArea>
       </main>
 

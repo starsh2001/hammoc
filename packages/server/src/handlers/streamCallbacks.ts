@@ -49,6 +49,8 @@ export interface CallbackBuilderDeps {
   notificationService: NotificationRef;
   /** Initial sessionId before SDK resolves the actual one (used as fallback in emit payloads) */
   initialSessionId?: string;
+  /** Story 25.7: branch point UUID for edit — included in session:resumed so clients can truncate */
+  resumeSessionAt?: string;
   /** Returns current queue progress when running inside queue executor */
   getQueueProgress?: () => QueueProgress | undefined;
 }
@@ -75,7 +77,7 @@ export function buildStreamCallbacks(
   deps: CallbackBuilderDeps,
   hooks?: CallbackBuilderHooks,
 ): BuildResult {
-  const { emit, stream, isResuming, rekeyStream, broadcastStreamChange, notificationService } = deps;
+  const { emit, stream, isResuming, resumeSessionAt, rekeyStream, broadcastStreamChange, notificationService } = deps;
   const activity = hooks?.onCallbackActivity;
   const sessionIdRef: SessionIdRef = { current: deps.initialSessionId };
 
@@ -87,7 +89,7 @@ export function buildStreamCallbacks(
       rekeyStream(sid);
 
       if (isResuming) {
-        emit('session:resumed', { sessionId: sid, model: metadata?.model });
+        emit('session:resumed', { sessionId: sid, model: metadata?.model, ...(resumeSessionAt ? { resumeSessionAt } : {}) });
       } else {
         emit('session:created', { sessionId: sid, model: metadata?.model });
       }
