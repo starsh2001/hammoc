@@ -247,7 +247,9 @@
       "terminalNotFound": "Terminal não encontrado",
       "ptySpawnError": "Falha ao iniciar o processo do terminal",
       "chainContentTooLong": "O conteúdo do prompt da cadeia excede o comprimento máximo.",
-      "chainMaxExceeded": "Máximo de 10 itens na cadeia permitidos."
+      "chainMaxExceeded": "Máximo de 10 itens na cadeia permitidos.",
+      "rewindMissingParams": "sessionId and messageUuid are required for rewind",
+      "rewindFailed": "Failed to rewind files: {{error}}"
     }
   },
   "pathGuard": {

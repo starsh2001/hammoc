@@ -854,4 +854,55 @@ describe('useChatStore', () => {
       expect(state.streamingSegments).toEqual([]);
     });
   });
+
+  // Story 25.8: rewindFiles tests
+  describe('rewindFiles', () => {
+    beforeEach(() => {
+      mockEmit.mockClear();
+      useChatStore.setState({ isRewinding: false, lastDryRunResult: null });
+    });
+
+    it('emits session:rewind-files event via WebSocket', () => {
+      const { rewindFiles } = useChatStore.getState();
+      rewindFiles('session-1', '/path', 'msg-uuid-1', true);
+
+      expect(mockEmit).toHaveBeenCalledWith('session:rewind-files', {
+        sessionId: 'session-1',
+        workingDirectory: '/path',
+        messageUuid: 'msg-uuid-1',
+        dryRun: true,
+      });
+    });
+
+    it('sets isRewinding to true when called', () => {
+      const { rewindFiles } = useChatStore.getState();
+      rewindFiles('session-1', '/path', 'msg-uuid-1');
+
+      expect(useChatStore.getState().isRewinding).toBe(true);
+    });
+
+    it('prevents duplicate calls when isRewinding is true', () => {
+      useChatStore.setState({ isRewinding: true });
+      const { rewindFiles } = useChatStore.getState();
+      rewindFiles('session-1', '/path', 'msg-uuid-1');
+
+      expect(mockEmit).not.toHaveBeenCalled();
+    });
+
+    it('setIsRewinding resets isRewinding state', () => {
+      useChatStore.setState({ isRewinding: true });
+      useChatStore.getState().setIsRewinding(false);
+
+      expect(useChatStore.getState().isRewinding).toBe(false);
+    });
+
+    it('clearLastDryRunResult clears the dryRun result', () => {
+      useChatStore.setState({
+        lastDryRunResult: { filesChanged: ['a.ts'], insertions: 1, deletions: 0 },
+      });
+      useChatStore.getState().clearLastDryRunResult();
+
+      expect(useChatStore.getState().lastDryRunResult).toBeNull();
+    });
+  });
 });

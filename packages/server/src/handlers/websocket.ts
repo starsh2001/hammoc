@@ -24,6 +24,7 @@ import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, Te
 import i18next from '../i18n.js';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 import { isLocalIP, extractClientIP } from '../utils/networkUtils.js';
+import { query as sdkQuery } from '@anthropic-ai/claude-agent-sdk';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import { ChatService } from '../services/chatService.js';
 import { SessionService } from '../services/sessionService.js';
@@ -1330,6 +1331,79 @@ export async function initializeWebSocket(
         .catch((err) => {
           log.error(`Failed to clear persisted failures for session ${sessionId}:`, err);
         });
+    });
+
+    // Story 25.8: Standalone file rewind
+    socket.on('session:rewind-files', async (data) => {
+      const lang = socket.data.language || 'en';
+      const t = i18next.getFixedT(lang);
+
+      if (!data || typeof data !== 'object') return;
+      const { sessionId, workingDirectory, messageUuid, dryRun } = data;
+
+      // Validation
+      if (!sessionId || typeof sessionId !== 'string' || !UUID_RE.test(sessionId) ||
+          !messageUuid || typeof messageUuid !== 'string') {
+        socket.emit('error', { code: ERROR_CODES.VALIDATION_ERROR, message: t('ws.error.rewindMissingParams') });
+        return;
+      }
+
+      if (!workingDirectory || typeof workingDirectory !== 'string') {
+        socket.emit('error', { code: ERROR_CODES.VALIDATION_ERROR, message: t('ws.error.rewindMissingParams') });
+        return;
+      }
+
+      // Validate socket is a member of the session room
+      if (!socket.rooms.has(`session:${sessionId}`)) return;
+
+      log.info(`session:rewind-files sessionId=${sessionId}, messageUuid=${messageUuid}, dryRun=${!!dryRun}`);
+
+      try {
+        const sessionService = new SessionService();
+        const projectSlug = sessionService.encodeProjectPath(workingDirectory);
+
+        const rewindQuery = sdkQuery({
+          prompt: '',
+          options: {
+            resume: sessionId,
+            cwd: workingDirectory,
+            enableFileCheckpointing: true,
+            sessionId: projectSlug,
+          },
+        });
+
+        try {
+          const rewindResult = await rewindQuery.rewindFiles(messageUuid, { dryRun: !!dryRun });
+          log.info(`rewindFiles result: canRewind=${rewindResult.canRewind}, filesChanged=${rewindResult.filesChanged?.length ?? 0}, insertions=${rewindResult.insertions ?? 0}, deletions=${rewindResult.deletions ?? 0}`);
+
+          if (rewindResult.canRewind) {
+            socket.emit('session:rewind-result', {
+              success: true,
+              dryRun: !!dryRun,
+              filesChanged: rewindResult.filesChanged,
+              insertions: rewindResult.insertions,
+              deletions: rewindResult.deletions,
+            });
+          } else {
+            socket.emit('session:rewind-result', {
+              success: false,
+              dryRun: !!dryRun,
+              error: rewindResult.error,
+            });
+          }
+        } finally {
+          // Clean up the query object
+          rewindQuery.close();
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error(`session:rewind-files error: ${msg}`);
+        socket.emit('session:rewind-result', {
+          success: false,
+          dryRun: !!dryRun,
+          error: msg,
+        });
+      }
     });
 
     // Story 20.1: Dashboard subscribe/unsubscribe

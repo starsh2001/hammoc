@@ -185,6 +185,14 @@ interface ChatState {
   projectSettings: ProjectSettings | null;
   /** API health status from server polling */
   apiHealth: ApiHealthStatus | null;
+  /** Whether a rewind operation is in progress */
+  isRewinding: boolean;
+  /** Last dryRun result for rewind confirmation dialog */
+  lastDryRunResult: {
+    filesChanged?: string[];
+    insertions?: number;
+    deletions?: number;
+  } | null;
 }
 
 interface SendMessageOptions {
@@ -291,6 +299,14 @@ interface ChatActions {
   toggleThinkingExpanded: () => void;
   /** Set project settings for override application */
   setProjectSettings: (settings: ProjectSettings | null) => void;
+  /** Emit session:rewind-files event to server */
+  rewindFiles: (sessionId: string, workingDirectory: string, messageUuid: string, dryRun?: boolean) => void;
+  /** Set isRewinding state */
+  setIsRewinding: (isRewinding: boolean) => void;
+  /** Set last dryRun result for confirmation dialog */
+  setLastDryRunResult: (result: ChatState['lastDryRunResult']) => void;
+  /** Clear last dryRun result (dialog close/cancel) */
+  clearLastDryRunResult: () => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -323,6 +339,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   subscriptionRateLimit: null,
   isSubscriber: true, // fail-closed: assume subscriber until server confirms via auth:subscriber
   apiHealth: null,
+  isRewinding: false,
+  lastDryRunResult: null,
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
@@ -980,6 +998,19 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   toggleThinkingExpanded: () => set((state) => ({ thinkingExpanded: !state.thinkingExpanded })),
 
   setProjectSettings: (settings: ProjectSettings | null) => set({ projectSettings: settings }),
+
+  rewindFiles: (sessionId: string, workingDirectory: string, messageUuid: string, dryRun?: boolean) => {
+    if (get().isRewinding) return;
+    set({ isRewinding: true });
+    const socket = getSocket();
+    socket.emit('session:rewind-files', { sessionId, workingDirectory, messageUuid, dryRun });
+  },
+
+  setIsRewinding: (isRewinding: boolean) => set({ isRewinding }),
+
+  setLastDryRunResult: (result: ChatState['lastDryRunResult']) => set({ lastDryRunResult: result }),
+
+  clearLastDryRunResult: () => set({ lastDryRunResult: null }),
 
   addResultError: (data: ResultErrorData) => {
     const segments = get().streamingSegments;

@@ -163,4 +163,48 @@ describe('MessageActionBar', () => {
     const bar = screen.getByTestId('message-action-bar');
     expect(bar.className).toContain('justify-start');
   });
+
+  // Story 25.8: Rewind button tests
+  it('shows rewind button for user messages when onRewind provided', () => {
+    render(<MessageActionBar role="user" content="test" onRewind={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: /rewind code|코드 되돌리기/i })).toBeInTheDocument();
+  });
+
+  it('hides rewind button for optimistic user messages', () => {
+    render(<MessageActionBar role="user" content="test" onRewind={vi.fn()} isOptimistic />);
+
+    const buttons = screen.getAllByRole('button');
+    // Only copy button — no rewind
+    expect(buttons).toHaveLength(1);
+  });
+
+  it('hides rewind button for assistant messages', () => {
+    render(<MessageActionBar role="assistant" content="test" onRewind={vi.fn()} />);
+
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(1); // copy only
+  });
+
+  it('disables rewind button when streaming (disabled=true)', () => {
+    render(<MessageActionBar role="user" content="test" onRewind={vi.fn()} disabled />);
+
+    const rewindBtn = screen.getByRole('button', { name: /rewind code|코드 되돌리기/i });
+    expect(rewindBtn).toBeDisabled();
+  });
+
+  it('disables rewind button when isRewinding is true', () => {
+    render(<MessageActionBar role="user" content="test" onRewind={vi.fn()} isRewinding />);
+
+    const rewindBtn = screen.getByRole('button', { name: /rewind code|코드 되돌리기/i });
+    expect(rewindBtn).toBeDisabled();
+  });
+
+  it('calls onRewind when rewind button is clicked', () => {
+    const onRewind = vi.fn();
+    render(<MessageActionBar role="user" content="test" onRewind={onRewind} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /rewind code|코드 되돌리기/i }));
+    expect(onRewind).toHaveBeenCalledTimes(1);
+  });
 });

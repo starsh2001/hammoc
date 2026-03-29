@@ -19,6 +19,16 @@ const { mockState } = vi.hoisted(() => {
   return { mockState };
 });
 
+// Mock SDK query for session:rewind-files tests
+const { mockSdkQuery } = vi.hoisted(() => {
+  const mockSdkQuery = vi.fn();
+  return { mockSdkQuery };
+});
+
+vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
+  query: mockSdkQuery,
+}));
+
 // Mock fs module used by logger and other imports
 vi.mock('fs', () => ({
   existsSync: vi.fn(),
@@ -51,6 +61,7 @@ vi.mock('../../services/sessionService.js', () => ({
   SessionService: class MockSessionService {
     saveSessionId = vi.fn().mockResolvedValue(undefined);
     getSessionId = vi.fn().mockResolvedValue(null);
+    encodeProjectPath = vi.fn().mockReturnValue('mock-project-slug');
     listSessions = vi.fn().mockResolvedValue([
       {
         sessionId: 'session-123',
@@ -186,6 +197,7 @@ vi.mock('../../services/rateLimitProbeService.js', () => ({
     stopPolling: vi.fn(),
     getCachedResult: vi.fn().mockReturnValue(null),
     getApiHealth: vi.fn().mockReturnValue(null),
+    hasOAuthCredentials: vi.fn().mockReturnValue(false),
   },
 }));
 
@@ -1926,6 +1938,146 @@ describe('WebSocket Handler', () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       expect(received).toBe(true);
+    });
+  });
+
+  describe('session:rewind-files event handler', () => {
+    const VALID_SESSION_UUID = '12345678-1234-1234-1234-123456789abc';
+    const VALID_MSG_UUID = 'abcdef01-abcd-abcd-abcd-abcdef012345';
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      vi.mocked(existsSync).mockReturnValue(true);
+    });
+
+    it('should emit error event when validation fails (missing sessionId)', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (error) => resolve(error));
+      });
+
+      clientSocket.emit('session:rewind-files', {
+        sessionId: '',
+        workingDirectory: '/valid/path',
+        messageUuid: VALID_MSG_UUID,
+      });
+
+      const error = await errorPromise;
+      expect(error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+    });
+
+    it('should emit session:rewind-result {success:true} when canRewind is true', async () => {
+      const mockClose = vi.fn();
+      const mockRewindFiles = vi.fn().mockResolvedValue({
+        canRewind: true,
+        filesChanged: ['src/index.ts', 'src/utils.ts'],
+        insertions: 10,
+        deletions: 5,
+      });
+      mockSdkQuery.mockReturnValue({ rewindFiles: mockRewindFiles, close: mockClose });
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const resultPromise = new Promise<{ success: boolean; dryRun: boolean; filesChanged?: string[] }>((resolve) => {
+        clientSocket.on('session:rewind-result', (data) => resolve(data));
+      });
+
+      // Join session room before rewind (required by room membership check)
+      clientSocket.emit('session:join', VALID_SESSION_UUID);
+      // Allow server to process the join before emitting rewind
+      await new Promise((r) => setTimeout(r, 50));
+
+      clientSocket.emit('session:rewind-files', {
+        sessionId: VALID_SESSION_UUID,
+        workingDirectory: '/valid/path',
+        messageUuid: VALID_MSG_UUID,
+        dryRun: true,
+      });
+
+      const result = await resultPromise;
+      expect(result.success).toBe(true);
+      expect(result.dryRun).toBe(true);
+      expect(result.filesChanged).toEqual(['src/index.ts', 'src/utils.ts']);
+      expect(mockRewindFiles).toHaveBeenCalledWith(VALID_MSG_UUID, { dryRun: true });
+    });
+
+    it('should silently reject rewind when socket has not joined the session room', async () => {
+      const mockClose = vi.fn();
+      const mockRewindFiles = vi.fn();
+      mockSdkQuery.mockReturnValue({ rewindFiles: mockRewindFiles, close: mockClose });
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      // Do NOT join session room — emit rewind directly
+      clientSocket.emit('session:rewind-files', {
+        sessionId: VALID_SESSION_UUID,
+        workingDirectory: '/valid/path',
+        messageUuid: VALID_MSG_UUID,
+        dryRun: true,
+      });
+
+      // Wait enough time for handler to potentially fire
+      await new Promise((r) => setTimeout(r, 200));
+
+      // rewindFiles should never be called since socket is not in the session room
+      expect(mockRewindFiles).not.toHaveBeenCalled();
+      expect(mockClose).not.toHaveBeenCalled();
+    });
+
+    it('should emit session:rewind-result {success:false} when canRewind is false', async () => {
+      const mockClose = vi.fn();
+      const mockRewindFiles = vi.fn().mockResolvedValue({
+        canRewind: false,
+        error: 'No checkpoint available for this message',
+      });
+      mockSdkQuery.mockReturnValue({ rewindFiles: mockRewindFiles, close: mockClose });
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const resultPromise = new Promise<{ success: boolean; dryRun: boolean; error?: string }>((resolve) => {
+        clientSocket.on('session:rewind-result', (data) => resolve(data));
+      });
+
+      // Join session room before rewind (required by room membership check)
+      clientSocket.emit('session:join', VALID_SESSION_UUID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      clientSocket.emit('session:rewind-files', {
+        sessionId: VALID_SESSION_UUID,
+        workingDirectory: '/valid/path',
+        messageUuid: VALID_MSG_UUID,
+        dryRun: false,
+      });
+
+      const result = await resultPromise;
+      expect(result.success).toBe(false);
+      expect(result.dryRun).toBe(false);
+      expect(result.error).toBe('No checkpoint available for this message');
     });
   });
 });

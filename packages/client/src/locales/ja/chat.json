@@ -337,5 +337,18 @@
     "error": "エラー: {{label}}",
     "cost": "コスト: ${{amount}}",
     "turns": "ターン: {{count}}"
+  },
+  "rewind": {
+    "button": "Rewind code",
+    "confirmTitle": "Rewind Code",
+    "confirmMessage": "Rewind code to this point?",
+    "confirm": "Rewind",
+    "cancel": "Cancel",
+    "success": "Code restored. {{count}} file(s) changed.",
+    "error": "Code rewind failed: {{error}}",
+    "noCheckpoint": "No checkpoint available for this message.",
+    "noChanges": "Code is already at this point.",
+    "dryRunSummary": "{{count}} file(s) will be changed ({{insertions}} insertions, {{deletions}} deletions)",
+    "fileList": "Files to be changed:"
   }
 }

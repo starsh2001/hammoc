@@ -341,5 +341,18 @@
     "error": "오류: {{label}}",
     "cost": "비용: ${{amount}}",
     "turns": "턴: {{count}}"
+  },
+  "rewind": {
+    "button": "코드 되돌리기",
+    "confirmTitle": "코드 되돌리기",
+    "confirmMessage": "이 시점의 코드로 되돌리시겠습니까?",
+    "confirm": "되돌리기",
+    "cancel": "취소",
+    "success": "코드가 복원되었습니다. {{count}}개 파일 변경.",
+    "error": "코드 되돌리기 실패: {{error}}",
+    "noCheckpoint": "이 메시지에 대한 체크포인트가 없습니다.",
+    "noChanges": "이미 해당 시점의 코드 상태입니다.",
+    "dryRunSummary": "{{count}}개 파일이 변경됩니다 ({{insertions}}개 삽입, {{deletions}}개 삭제)",
+    "fileList": "변경될 파일:"
   }
 }

@@ -81,6 +81,8 @@ function renderHistoryMessage(
   isBranchNavigationDisabled?: boolean,
   onEditSubmit?: (params: EditSubmitParams) => void,
   isStreaming?: boolean,
+  onRewind?: (messageUuid: string) => void,
+  isRewinding?: boolean,
 ) {
   // Render task notification as notification card (not user bubble)
   if (message.type === 'task_notification' && message.taskStatus) {
@@ -170,7 +172,7 @@ function renderHistoryMessage(
     );
   }
 
-  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} />;
+  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} onRewind={onRewind} isRewinding={isRewinding} />;
 }
 
 export function ChatPage() {
@@ -194,7 +196,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   // Get session name from sessionStore (populated when coming from session list)
@@ -867,10 +869,31 @@ export function ChatPage() {
       sessionId,
       resume: true,
       resumeSessionAt: branchPointId,
-      rewindToMessageUuid: params.restoreCode ? params.messageUuid : undefined,
       expectedBranchTotal: editedBranchInfo ? editedBranchInfo.total + 1 : undefined,
     });
   }, [workingDirectory, sessionId, sendMessage, addOptimisticMessage]);
+
+  // Story 25.8: Rewind code — dryRun 2-step flow
+  const [rewindMessageUuid, setRewindMessageUuid] = useState<string | null>(null);
+
+  const handleRewind = useCallback((messageUuid: string) => {
+    if (!workingDirectory || !sessionId) return;
+    setRewindMessageUuid(messageUuid);
+    rewindFiles(sessionId, workingDirectory, messageUuid, true);
+  }, [workingDirectory, sessionId, rewindFiles]);
+
+  const handleRewindConfirm = useCallback(() => {
+    if (!workingDirectory || !sessionId || !rewindMessageUuid) return;
+    clearLastDryRunResult();
+    rewindFiles(sessionId, workingDirectory, rewindMessageUuid, false);
+    setRewindMessageUuid(null);
+  }, [workingDirectory, sessionId, rewindMessageUuid, rewindFiles, clearLastDryRunResult]);
+
+  const handleRewindCancel = useCallback(() => {
+    clearLastDryRunResult();
+    setIsRewinding(false);
+    setRewindMessageUuid(null);
+  }, [clearLastDryRunResult, setIsRewinding]);
 
   const handleLoadMore = useCallback(() => {
     fetchMoreMessages();
@@ -1178,6 +1201,8 @@ export function ChatPage() {
                   isBranchNavigationDisabled,
                   isOnOldBranch ? undefined : handleEditSubmit,
                   isStreaming,
+                  handleRewind,
+                  isRewinding,
                 )}
               </div>
             </Fragment>
@@ -1232,6 +1257,39 @@ export function ChatPage() {
       </InputArea>
       {quickPanelElement}
       {confirmModalElement}
+
+      {/* Story 25.8: Rewind confirmation dialog */}
+      <ConfirmModal
+        isOpen={!!lastDryRunResult}
+        title={t('rewind.confirmTitle')}
+        message={t('rewind.confirmMessage')}
+        confirmText={t('rewind.confirm')}
+        cancelText={t('rewind.cancel')}
+        onConfirm={handleRewindConfirm}
+        onCancel={handleRewindCancel}
+      >
+        {lastDryRunResult && (
+          <div className="text-sm text-gray-600 dark:text-gray-300">
+            <p className="mb-2 font-medium">
+              {t('rewind.dryRunSummary', {
+                count: lastDryRunResult.filesChanged?.length ?? 0,
+                insertions: lastDryRunResult.insertions ?? 0,
+                deletions: lastDryRunResult.deletions ?? 0,
+              })}
+            </p>
+            {lastDryRunResult.filesChanged && lastDryRunResult.filesChanged.length > 0 && (
+              <>
+                <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{t('rewind.fileList')}</p>
+                <ul className="max-h-60 overflow-y-auto text-xs font-mono space-y-0.5">
+                  {lastDryRunResult.filesChanged.map((file) => (
+                    <li key={file} className="truncate text-gray-700 dark:text-gray-200">{file}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+      </ConfirmModal>
     </div>
     </ScrollProvider>
   );

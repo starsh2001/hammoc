@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Check, Pencil } from 'lucide-react';
+import { Copy, Check, Pencil, Undo2, Loader2 } from 'lucide-react';
 import { debugLogger } from '../utils/debugLogger';
 
 interface MessageActionBarProps {
@@ -16,6 +16,8 @@ interface MessageActionBarProps {
   onCopy?: (content: string) => void;
   onEdit?: () => void;
   isOptimistic?: boolean;
+  onRewind?: () => void;
+  isRewinding?: boolean;
 }
 
 export function MessageActionBar({
@@ -25,6 +27,8 @@ export function MessageActionBar({
   onCopy,
   onEdit,
   isOptimistic = false,
+  onRewind,
+  isRewinding = false,
 }: MessageActionBarProps) {
   const { t } = useTranslation('chat');
   const [isCopied, setIsCopied] = useState(false);
@@ -56,6 +60,7 @@ export function MessageActionBar({
 
   const isUser = role === 'user';
   const showEditButton = isUser && !isOptimistic && !disabled;
+  const showRewindButton = isUser && !isOptimistic;
 
   const buttonBase = `inline-flex items-center justify-center p-0.5 rounded transition-colors ${
     isUser
@@ -93,6 +98,23 @@ export function MessageActionBar({
           <Copy className="w-3 h-3" aria-hidden="true" />
         )}
       </button>
+
+      {/* Rewind button — user messages only, hidden for optimistic */}
+      {showRewindButton && onRewind && (
+        <button
+          onClick={onRewind}
+          className={buttonBase}
+          title={t('rewind.button')}
+          aria-label={t('rewind.button')}
+          disabled={disabled || isRewinding}
+        >
+          {isRewinding ? (
+            <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+          ) : (
+            <Undo2 className="w-3 h-3" aria-hidden="true" />
+          )}
+        </button>
+      )}
     </div>
   );
 }

@@ -18,7 +18,6 @@ export interface EditSubmitParams {
   messageUuid: string;
   parentId?: string;
   newText: string;
-  restoreCode: boolean;
 }
 
 interface MessageBubbleProps {
@@ -38,6 +37,10 @@ interface MessageBubbleProps {
   isBranchNavigationDisabled?: boolean;
   /** Callback when user submits an edited message */
   onEditSubmit?: (params: EditSubmitParams) => void;
+  /** Callback when user clicks rewind code button */
+  onRewind?: (messageUuid: string) => void;
+  /** Whether a rewind operation is in progress */
+  isRewinding?: boolean;
 }
 
 export function MessageBubble({
@@ -49,6 +52,8 @@ export function MessageBubble({
   onNavigateBranch,
   isBranchNavigationDisabled,
   onEditSubmit,
+  onRewind,
+  isRewinding = false,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
@@ -109,12 +114,11 @@ export function MessageBubble({
         {isUser && isEditing ? (
           <MessageEditForm
             initialText={message.content}
-            onSubmit={(newText, restoreCode) => {
+            onSubmit={(newText) => {
               onEditSubmit?.({
                 messageUuid: getBaseUuid(message.id),
                 parentId: message.parentId,
                 newText,
-                restoreCode,
               });
               setIsEditing(false);
             }}
@@ -155,6 +159,8 @@ export function MessageBubble({
             onCopy={onCopy}
             onEdit={onEditSubmit ? () => setIsEditing(true) : undefined}
             isOptimistic={(message as any)._optimistic === true}
+            onRewind={(message as any)._optimistic !== true && onRewind ? () => onRewind(getBaseUuid(message.id)) : undefined}
+            isRewinding={isRewinding}
           />
         </div>
       </div>

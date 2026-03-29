@@ -1448,6 +1448,39 @@ export function useStreaming() {
     };
     socket.on('chain:update', handleChainUpdate);
 
+    // Story 25.8: Handle rewind result from server
+    const handleRewindResult = (data: { success: boolean; dryRun: boolean; error?: string; filesChanged?: string[]; insertions?: number; deletions?: number }) => {
+      const { setIsRewinding, setLastDryRunResult } = useChatStore.getState();
+
+      if (data.dryRun) {
+        if (data.success && data.filesChanged && data.filesChanged.length > 0) {
+          // dryRun success with changes — show confirmation dialog via lastDryRunResult
+          setLastDryRunResult({
+            filesChanged: data.filesChanged,
+            insertions: data.insertions,
+            deletions: data.deletions,
+          });
+          // Keep isRewinding true — dialog is shown, user decides
+        } else if (data.success && (!data.filesChanged || data.filesChanged.length === 0)) {
+          // dryRun success but no changes
+          toast.info(i18n.t('chat:rewind.noChanges'));
+          setIsRewinding(false);
+        } else {
+          // dryRun failed
+          toast.error(i18n.t('chat:rewind.error', { error: data.error || 'Unknown error' }));
+          setIsRewinding(false);
+        }
+      } else {
+        if (data.success) {
+          toast.success(i18n.t('chat:rewind.success', { count: data.filesChanged?.length ?? 0 }));
+        } else {
+          toast.error(i18n.t('chat:rewind.error', { error: data.error || 'Unknown error' }));
+        }
+        setIsRewinding(false);
+      }
+    };
+    socket.on('session:rewind-result', handleRewindResult);
+
     socket.io.on('reconnect_failed', handleReconnectFailed);
 
     // Register keyboard event listener
@@ -1495,6 +1528,7 @@ export function useStreaming() {
       socket.off('connect', handleReconnect);
       socket.off('error', handleError);
       socket.off('chain:update', handleChainUpdate);
+      socket.off('session:rewind-result', handleRewindResult);
       socket.io.off('reconnect_failed', handleReconnectFailed);
       document.removeEventListener('keydown', handleKeyDown);
     };

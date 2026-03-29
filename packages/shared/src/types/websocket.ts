@@ -88,6 +88,13 @@ export interface ClientToServerEvents {
   'chain:add': (data: { sessionId: string; content: string; workingDirectory: string; permissionMode?: PermissionMode; model?: string; effort?: ThinkingEffort }) => void;
   'chain:remove': (data: { sessionId: string; id: string }) => void;
   'chain:clear': (data: { sessionId: string }) => void;
+  // Story 25.8: Standalone file rewind
+  'session:rewind-files': (data: {
+    sessionId: string;
+    workingDirectory: string;
+    messageUuid: string;
+    dryRun?: boolean;
+  }) => void;
 }
 
 // ===== Server to Client Events =====
@@ -144,6 +151,15 @@ export interface ServerToClientEvents {
   'chain:update': (data: { sessionId: string; items: PromptChainItem[] }) => void;
   // Buffer replay: send entire buffer as a single batch for fast session join
   'stream:buffer-replay': (data: { sessionId: string; events: Array<{ event: string; data: unknown }> }) => void;
+  // Story 25.8: Standalone file rewind result
+  'session:rewind-result': (data: {
+    success: boolean;
+    dryRun: boolean;
+    error?: string;
+    filesChanged?: string[];
+    insertions?: number;
+    deletions?: number;
+  }) => void;
 }
 
 // ===== Inter-server Events =====

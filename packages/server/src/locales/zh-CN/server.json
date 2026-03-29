@@ -247,7 +247,9 @@
       "terminalNotFound": "未找到终端",
       "ptySpawnError": "终端进程启动失败",
       "chainContentTooLong": "链提示内容超过最大长度。",
-      "chainMaxExceeded": "最多允许10个链项目。"
+      "chainMaxExceeded": "最多允许10个链项目。",
+      "rewindMissingParams": "sessionId and messageUuid are required for rewind",
+      "rewindFailed": "Failed to rewind files: {{error}}"
     }
   },
   "pathGuard": {
