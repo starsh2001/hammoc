@@ -354,17 +354,5 @@
     "noChanges": "이미 해당 시점의 코드 상태입니다.",
     "dryRunSummary": "{{count}}개 파일이 변경됩니다 ({{insertions}}개 삽입, {{deletions}}개 삭제)",
     "fileList": "변경될 파일:"
-  },
-  "summarize": {
-    "button": "요약 후 시작",
-    "confirmTitle": "요약 후 시작",
-    "confirmMessage": "이 메시지 이전의 대화를 요약하고 여기서부터 이어서 시작합니다.",
-    "contextPlaceholder": "요약에 포함할 추가 지시사항을 입력하세요 (선택)",
-    "confirm": "요약",
-    "cancel": "취소",
-    "success": "대화가 요약되었습니다. 선택한 지점에서 계속합니다.",
-    "error": "요약 실패: {{error}}",
-    "inProgress": "대화 요약 중...",
-    "compactRetryHint": "브랜치가 생성되었지만 압축에 실패했습니다. /compact를 수동으로 전송하여 다시 시도할 수 있습니다."
   }
 }

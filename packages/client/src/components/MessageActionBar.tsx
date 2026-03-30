@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Check, Pencil, Undo2, Sparkles, Loader2 } from 'lucide-react';
+import { Copy, Check, Pencil, Undo2, Loader2 } from 'lucide-react';
 import { debugLogger } from '../utils/debugLogger';
 
 interface MessageActionBarProps {
@@ -18,8 +18,6 @@ interface MessageActionBarProps {
   isOptimistic?: boolean;
   onRewind?: () => void;
   isRewinding?: boolean;
-  onSummarize?: () => void;
-  isCompacting?: boolean;
 }
 
 export function MessageActionBar({
@@ -31,8 +29,6 @@ export function MessageActionBar({
   isOptimistic = false,
   onRewind,
   isRewinding = false,
-  onSummarize,
-  isCompacting = false,
 }: MessageActionBarProps) {
   const { t } = useTranslation('chat');
   const [isCopied, setIsCopied] = useState(false);
@@ -65,7 +61,6 @@ export function MessageActionBar({
   const isUser = role === 'user';
   const showEditButton = isUser && !isOptimistic && !disabled;
   const showRewindButton = isUser && !isOptimistic;
-  const showSummarizeButton = isUser && !isOptimistic && !!onSummarize;
 
   const buttonBase = `inline-flex items-center justify-center p-0.5 rounded transition-colors ${
     isUser
@@ -117,23 +112,6 @@ export function MessageActionBar({
             <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
           ) : (
             <Undo2 className="w-3 h-3" aria-hidden="true" />
-          )}
-        </button>
-      )}
-
-      {/* Summarize button — user messages only, hidden for optimistic or first message (no onSummarize) */}
-      {showSummarizeButton && (
-        <button
-          onClick={onSummarize}
-          className={buttonBase}
-          title={t('summarize.button')}
-          aria-label={t('summarize.button')}
-          disabled={disabled || isCompacting}
-        >
-          {isCompacting ? (
-            <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
-          ) : (
-            <Sparkles className="w-3 h-3" aria-hidden="true" />
           )}
         </button>
       )}

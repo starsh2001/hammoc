@@ -83,8 +83,6 @@ function renderHistoryMessage(
   isStreaming?: boolean,
   onRewind?: (messageUuid: string) => void,
   isRewinding?: boolean,
-  onSummarize?: (messageUuid: string, parentId: string | undefined, messageText: string) => void,
-  isCompacting?: boolean,
 ) {
   // Render task notification as notification card (not user bubble)
   if (message.type === 'task_notification' && message.taskStatus) {
@@ -174,7 +172,7 @@ function renderHistoryMessage(
     );
   }
 
-  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} onRewind={onRewind} isRewinding={isRewinding} onSummarize={onSummarize} isCompacting={isCompacting} />;
+  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} onRewind={onRewind} isRewinding={isRewinding} />;
 }
 
 export function ChatPage() {
@@ -875,67 +873,6 @@ export function ChatPage() {
     });
   }, [workingDirectory, sessionId, sendMessage, addOptimisticMessage]);
 
-  // Story 25.9: Summarize & continue — dialog state + handler
-  const [summarizeDialog, setSummarizeDialog] = useState<{
-    messageUuid: string;
-    messageText: string;
-    parentId?: string;
-  } | null>(null);
-  const [summarizeContext, setSummarizeContext] = useState('');
-
-  const handleSummarize = useCallback((messageUuid: string, parentId: string | undefined, messageText: string) => {
-    setSummarizeDialog({ messageUuid, messageText, parentId });
-    setSummarizeContext('');
-  }, []);
-
-  const handleSummarizeConfirm = useCallback(() => {
-    if (!workingDirectory || !sessionId || !summarizeDialog) return;
-
-    // Re-entrancy guard: clear dialog first to prevent duplicate clicks
-    const { parentId, messageText } = summarizeDialog;
-    setSummarizeDialog(null);
-
-    const socket = getSocket();
-    if (!socket?.connected) {
-      toast.error(t('summarize.error', { error: 'Not connected' }));
-      setSummarizeContext('');
-      return;
-    }
-
-    const combinedText = summarizeContext.trim()
-      ? `${messageText}\n\n[Context: ${summarizeContext.trim()}]`
-      : messageText;
-
-    // Scenario A: chain:add first (/compact), then sendMessage (branch + text)
-    // chain:add is safe to call before sendMessage — server only drains after streaming completes
-    // Socket.io guarantees ordering on a single connection.
-    socket.emit('chain:add', {
-      sessionId,
-      content: '/compact',
-      workingDirectory,
-      permissionMode,
-      model: selectedModel,
-      effort: selectedEffort,
-    });
-
-    // Branch at parentId (assistant UUID before the selected user message)
-    const branchPointId = parentId || ROOT_BRANCH_KEY;
-    addOptimisticMessage(combinedText);
-    sendMessage(combinedText, {
-      workingDirectory,
-      sessionId,
-      resume: true,
-      resumeSessionAt: branchPointId,
-    });
-
-    setSummarizeContext('');
-  }, [workingDirectory, sessionId, summarizeDialog, summarizeContext, sendMessage, addOptimisticMessage, permissionMode, selectedModel, selectedEffort, t]);
-
-  const handleSummarizeCancel = useCallback(() => {
-    setSummarizeDialog(null);
-    setSummarizeContext('');
-  }, []);
-
   // Story 25.8: Rewind code — dryRun 2-step flow
   const [rewindMessageUuid, setRewindMessageUuid] = useState<string | null>(null);
 
@@ -1266,8 +1203,6 @@ export function ChatPage() {
                   isStreaming,
                   handleRewind,
                   isRewinding,
-                  handleSummarize,
-                  isCompacting,
                 )}
               </div>
             </Fragment>
@@ -1352,33 +1287,6 @@ export function ChatPage() {
                 </ul>
               </>
             )}
-          </div>
-        )}
-      </ConfirmModal>
-
-      {/* Story 25.9: Summarize & continue confirmation dialog */}
-      <ConfirmModal
-        isOpen={!!summarizeDialog}
-        title={t('summarize.confirmTitle')}
-        message={t('summarize.confirmMessage')}
-        confirmText={t('summarize.confirm')}
-        cancelText={t('summarize.cancel')}
-        onConfirm={handleSummarizeConfirm}
-        onCancel={handleSummarizeCancel}
-      >
-        {summarizeDialog && (
-          <div className="text-sm text-gray-600 dark:text-gray-300">
-            <div className="mb-3 max-h-32 overflow-y-auto rounded bg-gray-100 dark:bg-[#1e2a36] p-2 text-xs whitespace-pre-wrap break-words">
-              {summarizeDialog.messageText}
-            </div>
-            <textarea
-              value={summarizeContext}
-              onChange={(e) => setSummarizeContext(e.target.value)}
-              placeholder={t('summarize.contextPlaceholder')}
-              maxLength={2000}
-              className="w-full rounded border border-gray-300 dark:border-[#3a4d5e] bg-white dark:bg-[#1e2a36] p-2 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-              rows={3}
-            />
           </div>
         )}
       </ConfirmModal>
