@@ -1491,7 +1491,11 @@ export function useStreaming() {
 
     // Story 25.9: Handle summary result from server
     const handleSummaryResult = (data: { messageUuid: string; summary?: string; error?: string }) => {
-      const { setSummarizing, setSummaryResult } = useChatStore.getState();
+      const { isSummarizing, summarizingMessageUuid, setSummarizing, setSummaryResult } = useChatStore.getState();
+
+      // Ignore stale/cancelled responses that don't match the active request
+      if (!isSummarizing || summarizingMessageUuid !== data.messageUuid) return;
+
       setSummarizing(false, null);
 
       if (data.error) {

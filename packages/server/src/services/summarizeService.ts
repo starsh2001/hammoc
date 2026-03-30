@@ -64,6 +64,9 @@ export async function summarize(
       totalTokens -= estimateTokens(removed.content);
     }
     log.info(`Truncated messages from ${messages.length} to ${truncated.length} (token estimate: ${totalTokens})`);
+    if (truncated.length === 0) {
+      throw new Error('Conversation too large to summarize');
+    }
   }
 
   // Format conversation for the user message

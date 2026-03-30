@@ -129,7 +129,7 @@ export function MessageActionBar({
           className={buttonBase}
           title={isSummarizing ? t('summarize.generating') : t('summarize.button')}
           aria-label={isSummarizing ? t('summarize.generating') : t('summarize.button')}
-          disabled={disabled || (isSummarizing && !isSummarizeHovered)}
+          disabled={disabled && !isSummarizing}
           onMouseEnter={() => setIsSummarizeHovered(true)}
           onMouseLeave={() => setIsSummarizeHovered(false)}
         >

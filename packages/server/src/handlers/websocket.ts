@@ -1433,7 +1433,10 @@ export async function initializeWebSocket(
       }
 
       // Validate socket is in the session room
-      if (!socket.rooms.has(`session:${sessionId}`)) return;
+      if (!socket.rooms.has(`session:${sessionId}`)) {
+        socket.emit('session:summary-result', { messageUuid, error: 'Not joined to session' });
+        return;
+      }
 
       // Per-socket guard: prevent concurrent summarization
       const state = socketSummarizing.get(socket.id);
