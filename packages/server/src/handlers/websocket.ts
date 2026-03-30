@@ -1485,11 +1485,20 @@ export async function initializeWebSocket(
           return;
         }
 
+        // Resolve project originalPath for Agent SDK cwd
+        let cwd: string | undefined;
+        try {
+          cwd = await projectService.resolveOriginalPath(projectSlug);
+        } catch {
+          // Non-fatal — summarize will work without cwd
+        }
+
         log.info(`session:generate-summary sessionId=${sessionId}, messageUuid=${messageUuid}, targetMessages=${afterMessages.length}`);
 
         const summary = await summarize(afterMessages, {
           signal: abortController.signal,
           locale: lang !== 'en' ? lang : undefined,
+          cwd,
         });
 
         socket.emit('session:summary-result', { messageUuid, summary });

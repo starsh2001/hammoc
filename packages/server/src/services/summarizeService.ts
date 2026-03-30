@@ -1,23 +1,36 @@
 /**
  * Summarize Service — Story 25.9
  *
- * Uses Anthropic REST SDK to generate conversation summaries
- * independently from the Agent SDK session system.
+ * Uses Agent SDK query() with a temporary session to generate conversation
+ * summaries. Works with both OAuth and API key authentication.
+ * The temporary session JSONL is deleted after use.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { randomUUID } from 'crypto';
+import { unlink } from 'fs/promises';
+import path from 'path';
+import os from 'os';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('summarizeService');
 
-const SYSTEM_PROMPT = `You are a conversation summarizer. Given a conversation between a user and an AI assistant, produce a concise structured summary that preserves:
+const SUMMARY_PROMPT_PREFIX = `You are a conversation summarizer. Given the following conversation between a user and an AI assistant, produce a concise structured summary that preserves:
 
 1. **Key decisions made** — what was agreed upon
 2. **Important code changes** — files created/modified, patterns adopted
 3. **Current state** — what has been completed, what remains
 4. **Critical context** — constraints, gotchas, or requirements mentioned
 
-Format the summary as a bulleted list grouped by these categories. Be concise but complete — the summary will be used to continue the conversation from an earlier point. Write in the same language as the original conversation.`;
+Format the summary as a bulleted list grouped by these categories. Be concise but complete — the summary will be used to continue the conversation from an earlier point. Write in the same language as the original conversation.
+
+<conversation>
+`;
+
+const SUMMARY_PROMPT_SUFFIX = `
+</conversation>
+
+Summarize the above conversation.`;
 
 /** Max estimated tokens for input messages (safety margin) */
 const MAX_INPUT_TOKENS = 200_000;
@@ -35,10 +48,27 @@ export interface SummarizeMessage {
 export interface SummarizeOptions {
   signal?: AbortSignal;
   locale?: string;
+  /** Working directory for SDK query (needed for project context) */
+  cwd?: string;
 }
 
 /**
- * Summarize a list of conversation messages using Anthropic REST API.
+ * Get the temp session JSONL path for cleanup.
+ * Agent SDK stores sessions at ~/.claude/projects/{encodedPath}/{sessionId}.jsonl
+ * For temp sessions with no cwd, it uses a default location.
+ */
+function getTempSessionPath(sessionId: string, cwd?: string): string {
+  const claudeDir = path.join(os.homedir(), '.claude', 'projects');
+  // Agent SDK encodes path: replace /\: with -, strip leading -
+  const encoded = cwd
+    ? cwd.replace(/[/\\:]/g, '-').replace(/^-+/, '')
+    : '_temp';
+  return path.join(claudeDir, encoded, `${sessionId}.jsonl`);
+}
+
+/**
+ * Summarize a list of conversation messages using Agent SDK query().
+ * Creates a temporary session, extracts the summary, then deletes the session file.
  */
 export async function summarize(
   messages: SummarizeMessage[],
@@ -46,11 +76,6 @@ export async function summarize(
 ): Promise<string> {
   if (!messages || messages.length === 0) {
     throw new Error('No messages to summarize');
-  }
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not set');
   }
 
   // Truncate from the beginning if over token limit (keep recent messages)
@@ -69,43 +94,64 @@ export async function summarize(
     }
   }
 
-  // Format conversation for the user message
+  // Format conversation
   const conversationText = truncated
     .map((m) => `${m.role}: ${m.content}`)
     .join('\n');
 
-  // Build system prompt with optional locale
-  let systemPrompt = SYSTEM_PROMPT;
+  let localeHint = '';
   if (options?.locale) {
-    systemPrompt += `\nRespond in ${options.locale} language.`;
+    localeHint = `\nRespond in ${options.locale} language.\n`;
   }
 
-  const client = new Anthropic({ apiKey });
-  const model = process.env.SUMMARIZE_MODEL || 'claude-sonnet-4-20250514';
+  const prompt = SUMMARY_PROMPT_PREFIX + conversationText + SUMMARY_PROMPT_SUFFIX + localeHint;
 
-  log.info(`Generating summary with model=${model}, messageCount=${truncated.length}`);
+  const tempSessionId = randomUUID();
+  const tempSessionPath = getTempSessionPath(tempSessionId, options?.cwd);
 
-  const response = await client.messages.create(
-    {
-      model,
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `<conversation>\n${conversationText}\n</conversation>\n\nSummarize the above conversation.`,
-        },
-      ],
-    },
-    {
-      signal: options?.signal,
+  log.info(`Generating summary: tempSession=${tempSessionId}, messageCount=${truncated.length}`);
+
+  try {
+    const q = query({
+      prompt,
+      options: {
+        maxTurns: 1,
+        sessionId: tempSessionId,
+        cwd: options?.cwd,
+        permissionMode: 'dontAsk',
+        abortController: options?.signal
+          ? { signal: options.signal, abort: () => {} } as unknown as AbortController
+          : undefined,
+      },
+    });
+
+    let resultText = '';
+
+    for await (const message of q) {
+      if (options?.signal?.aborted) {
+        q.abort();
+        break;
+      }
+      if (message.type === 'result') {
+        const msg = message as unknown as { result?: string; subtype?: string };
+        if (msg.subtype === 'success' && msg.result) {
+          resultText = msg.result;
+        }
+      }
     }
-  );
 
-  const textBlock = response.content.find((b) => b.type === 'text');
-  if (!textBlock || textBlock.type !== 'text') {
-    throw new Error('No text content in summary response');
+    if (!resultText) {
+      throw new Error('No text content in summary response');
+    }
+
+    return resultText;
+  } finally {
+    // Clean up temporary session JSONL
+    try {
+      await unlink(tempSessionPath);
+      log.debug(`Deleted temp session: ${tempSessionPath}`);
+    } catch {
+      // File may not exist if query failed early — ignore
+    }
   }
-
-  return textBlock.text;
 }
