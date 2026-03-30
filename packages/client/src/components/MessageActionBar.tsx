@@ -91,37 +91,6 @@ export function MessageActionBar({
         </button>
       )}
 
-      {/* Copy button — functional */}
-      <button
-        onClick={handleCopy}
-        className={buttonBase}
-        title={isCopied ? t('messageActionBar.copied') : t('messageActionBar.copy')}
-        aria-label={isCopied ? t('messageActionBar.copiedAriaLabel') : t('messageActionBar.copyAriaLabel')}
-      >
-        {isCopied ? (
-          <Check className="w-3 h-3" aria-hidden="true" />
-        ) : (
-          <Copy className="w-3 h-3" aria-hidden="true" />
-        )}
-      </button>
-
-      {/* Rewind button — user messages only, hidden for optimistic */}
-      {showRewindButton && onRewind && (
-        <button
-          onClick={onRewind}
-          className={buttonBase}
-          title={t('rewind.button')}
-          aria-label={t('rewind.button')}
-          disabled={disabled || isRewinding}
-        >
-          {isRewinding ? (
-            <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
-          ) : (
-            <Undo2 className="w-3 h-3" aria-hidden="true" />
-          )}
-        </button>
-      )}
-
       {/* Summarize button — user messages only, hidden for optimistic */}
       {showSummarizeButton && (
         <button
@@ -144,6 +113,37 @@ export function MessageActionBar({
           )}
         </button>
       )}
+
+      {/* Rewind button — user messages only, hidden for optimistic */}
+      {showRewindButton && onRewind && (
+        <button
+          onClick={onRewind}
+          className={buttonBase}
+          title={t('rewind.button')}
+          aria-label={t('rewind.button')}
+          disabled={disabled || isRewinding}
+        >
+          {isRewinding ? (
+            <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+          ) : (
+            <Undo2 className="w-3 h-3" aria-hidden="true" />
+          )}
+        </button>
+      )}
+
+      {/* Copy button */}
+      <button
+        onClick={handleCopy}
+        className={buttonBase}
+        title={isCopied ? t('messageActionBar.copied') : t('messageActionBar.copy')}
+        aria-label={isCopied ? t('messageActionBar.copiedAriaLabel') : t('messageActionBar.copyAriaLabel')}
+      >
+        {isCopied ? (
+          <Check className="w-3 h-3" aria-hidden="true" />
+        ) : (
+          <Copy className="w-3 h-3" aria-hidden="true" />
+        )}
+      </button>
     </div>
   );
 }

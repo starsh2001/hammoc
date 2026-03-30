@@ -9,7 +9,7 @@ import { Check, X } from 'lucide-react';
 
 interface MessageEditFormProps {
   initialText: string;
-  onSubmit: (newText: string, restoreCode: boolean) => void;
+  onSubmit: (newText: string) => void;
   onCancel: () => void;
   isSummaryEdit?: boolean;
 }
@@ -17,7 +17,6 @@ interface MessageEditFormProps {
 export function MessageEditForm({ initialText, onSubmit, onCancel, isSummaryEdit = false }: MessageEditFormProps) {
   const { t } = useTranslation('chat');
   const [text, setText] = useState(initialText);
-  const [restoreCode, setRestoreCode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isEmpty = text.trim().length === 0;
@@ -61,11 +60,11 @@ export function MessageEditForm({ initialText, onSubmit, onCancel, isSummaryEdit
       } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         if (!isEmpty) {
-          onSubmit(text, restoreCode);
+          onSubmit(text);
         }
       }
     },
-    [onCancel, onSubmit, text, restoreCode, isEmpty],
+    [onCancel, onSubmit, text, isEmpty],
   );
 
   return (
@@ -84,17 +83,7 @@ export function MessageEditForm({ initialText, onSubmit, onCancel, isSummaryEdit
         aria-label={t('messageEdit.textareaAriaLabel')}
         data-testid="message-edit-textarea"
       />
-      <div className="flex items-center justify-between">
-        <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={restoreCode}
-            onChange={(e) => setRestoreCode(e.target.checked)}
-            className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-            data-testid="restore-code-checkbox"
-          />
-          {t('messageEdit.restoreCode')}
-        </label>
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-1">
           <button
             onClick={onCancel}
@@ -106,7 +95,7 @@ export function MessageEditForm({ initialText, onSubmit, onCancel, isSummaryEdit
             {t('messageEdit.cancel')}
           </button>
           <button
-            onClick={() => onSubmit(text, restoreCode)}
+            onClick={() => onSubmit(text)}
             disabled={isEmpty}
             className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label={t('messageEdit.acceptAriaLabel')}

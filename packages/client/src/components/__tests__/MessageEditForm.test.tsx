@@ -25,14 +25,14 @@ describe('MessageEditForm', () => {
     expect(textarea.value).toBe('Hello World');
   });
 
-  it('calls onSubmit with edited text and restoreCode on accept click', () => {
+  it('calls onSubmit with edited text on accept click', () => {
     render(<MessageEditForm {...defaultProps} />);
 
     const textarea = screen.getByTestId('message-edit-textarea');
     fireEvent.change(textarea, { target: { value: 'Updated text' } });
     fireEvent.click(screen.getByTestId('edit-accept-button'));
 
-    expect(defaultProps.onSubmit).toHaveBeenCalledWith('Updated text', false);
+    expect(defaultProps.onSubmit).toHaveBeenCalledWith('Updated text');
   });
 
   it('calls onCancel on cancel click', () => {
@@ -52,20 +52,6 @@ describe('MessageEditForm', () => {
     expect(screen.getByTestId('edit-accept-button')).toBeDisabled();
   });
 
-  it('toggles restoreCode checkbox value', () => {
-    render(<MessageEditForm {...defaultProps} />);
-
-    const checkbox = screen.getByTestId('restore-code-checkbox') as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
-
-    fireEvent.click(checkbox);
-    expect(checkbox.checked).toBe(true);
-
-    // Submit with restoreCode = true
-    fireEvent.click(screen.getByTestId('edit-accept-button'));
-    expect(defaultProps.onSubmit).toHaveBeenCalledWith('Hello World', true);
-  });
-
   it('calls onCancel on Escape key', () => {
     render(<MessageEditForm {...defaultProps} />);
 
@@ -81,7 +67,7 @@ describe('MessageEditForm', () => {
     const textarea = screen.getByTestId('message-edit-textarea');
     fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
 
-    expect(defaultProps.onSubmit).toHaveBeenCalledWith('Hello World', false);
+    expect(defaultProps.onSubmit).toHaveBeenCalledWith('Hello World');
   });
 
   it('does not call onSubmit on Ctrl+Enter when text is empty', () => {
