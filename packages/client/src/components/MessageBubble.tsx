@@ -41,6 +41,10 @@ interface MessageBubbleProps {
   onRewind?: (messageUuid: string) => void;
   /** Whether a rewind operation is in progress */
   isRewinding?: boolean;
+  /** Callback when user clicks summarize button */
+  onSummarize?: (messageUuid: string, parentId: string | undefined, messageText: string) => void;
+  /** Whether a compact/summarize operation is in progress */
+  isCompacting?: boolean;
 }
 
 export function MessageBubble({
@@ -54,6 +58,8 @@ export function MessageBubble({
   onEditSubmit,
   onRewind,
   isRewinding = false,
+  onSummarize,
+  isCompacting = false,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
@@ -161,6 +167,12 @@ export function MessageBubble({
             isOptimistic={(message as any)._optimistic === true}
             onRewind={(message as any)._optimistic !== true && onRewind ? () => onRewind(getBaseUuid(message.id)) : undefined}
             isRewinding={isRewinding}
+            onSummarize={
+              (message as any)._optimistic !== true && message.parentId && onSummarize
+                ? () => onSummarize(getBaseUuid(message.id), message.parentId, message.content)
+                : undefined
+            }
+            isCompacting={isCompacting}
           />
         </div>
       </div>

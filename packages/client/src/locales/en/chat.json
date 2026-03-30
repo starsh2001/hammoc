@@ -354,5 +354,17 @@
     "noChanges": "Code is already at this point.",
     "dryRunSummary": "{{count}} file(s) will be changed ({{insertions}} insertions, {{deletions}} deletions)",
     "fileList": "Files to be changed:"
+  },
+  "summarize": {
+    "button": "Summarize & continue",
+    "confirmTitle": "Summarize & Continue",
+    "confirmMessage": "Summarize the conversation before this message and continue from here.",
+    "contextPlaceholder": "Add any context or instructions for the summary (optional)",
+    "confirm": "Summarize",
+    "cancel": "Cancel",
+    "success": "Conversation summarized. Continuing from selected point.",
+    "error": "Summarize failed: {{error}}",
+    "inProgress": "Summarizing conversation...",
+    "compactRetryHint": "Branch created but compaction failed. You can retry by sending /compact manually."
   }
 }
