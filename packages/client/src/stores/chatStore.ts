@@ -1000,7 +1000,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setProjectSettings: (settings: ProjectSettings | null) => set({ projectSettings: settings }),
 
   rewindFiles: (sessionId: string, workingDirectory: string, messageUuid: string, dryRun?: boolean) => {
-    if (get().isRewinding) return;
+    // Allow the actual rewind call (dryRun=false) even when isRewinding is
+    // still true from the preceding dryRun — the guard only blocks new
+    // independent rewind requests, not the confirmation step.
+    if (get().isRewinding && dryRun) return;
     set({ isRewinding: true });
     const socket = getSocket();
     socket.emit('session:rewind-files', { sessionId, workingDirectory, messageUuid, dryRun });

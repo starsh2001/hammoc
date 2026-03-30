@@ -1368,7 +1368,9 @@ export async function initializeWebSocket(
             resume: sessionId,
             cwd: workingDirectory,
             enableFileCheckpointing: true,
-            sessionId: projectSlug,
+            // Do NOT pass sessionId here — CLI rejects --session-id
+            // combined with --resume unless --fork-session is also set.
+            // resume: sessionId already identifies the session.
           },
         });
 

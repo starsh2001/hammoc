@@ -18,6 +18,11 @@ import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
 import { debugLog } from '../utils/debugLogger';
+
+// Module-scoped cache: SDK returns filesChanged=0 for actual rewind,
+// so we remember the count from the preceding dryRun for the success toast.
+// Must live outside useEffect to survive re-renders that re-run the effect.
+let __dryRunFileCount = 0;
 import { useChainStore } from '../stores/chainStore';
 import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus, PromptChainItem, PermissionMode, HistoryMessage, ImageAttachment } from '@hammoc/shared';
 import type { InteractiveStatus, StreamingSegment, StreamingToolCall, ResultErrorData } from '../stores/chatStore';
@@ -1454,6 +1459,7 @@ export function useStreaming() {
 
       if (data.dryRun) {
         if (data.success && data.filesChanged && data.filesChanged.length > 0) {
+          __dryRunFileCount = data.filesChanged.length;
           // dryRun success with changes — show confirmation dialog via lastDryRunResult
           setLastDryRunResult({
             filesChanged: data.filesChanged,
@@ -1472,10 +1478,12 @@ export function useStreaming() {
         }
       } else {
         if (data.success) {
-          toast.success(i18n.t('chat:rewind.success', { count: data.filesChanged?.length ?? 0 }));
+          const count = __dryRunFileCount || data.filesChanged?.length || 0;
+          toast.success(i18n.t('chat:rewind.success', { count }));
         } else {
           toast.error(i18n.t('chat:rewind.error', { error: data.error || 'Unknown error' }));
         }
+        __dryRunFileCount = 0;
         setIsRewinding(false);
       }
     };
