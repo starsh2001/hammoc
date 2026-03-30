@@ -11,9 +11,10 @@ interface MessageEditFormProps {
   initialText: string;
   onSubmit: (newText: string, restoreCode: boolean) => void;
   onCancel: () => void;
+  isSummaryEdit?: boolean;
 }
 
-export function MessageEditForm({ initialText, onSubmit, onCancel }: MessageEditFormProps) {
+export function MessageEditForm({ initialText, onSubmit, onCancel, isSummaryEdit = false }: MessageEditFormProps) {
   const { t } = useTranslation('chat');
   const [text, setText] = useState(initialText);
   const [restoreCode, setRestoreCode] = useState(false);
@@ -69,6 +70,11 @@ export function MessageEditForm({ initialText, onSubmit, onCancel }: MessageEdit
 
   return (
     <div className="flex flex-col gap-2" data-testid="message-edit-form">
+      {isSummaryEdit && (
+        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium" data-testid="summary-edit-hint">
+          {t('summarize.editHint')}
+        </p>
+      )}
       <textarea
         ref={textareaRef}
         value={text}

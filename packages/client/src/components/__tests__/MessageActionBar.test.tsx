@@ -207,4 +207,49 @@ describe('MessageActionBar', () => {
     fireEvent.click(screen.getByRole('button', { name: /rewind code|코드 되돌리기/i }));
     expect(onRewind).toHaveBeenCalledTimes(1);
   });
+
+  // Story 25.9: Summarize button tests
+  it('shows summarize button for user messages when onSummarize provided', () => {
+    render(<MessageActionBar role="user" content="test" onSummarize={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: /summarize|요약/i })).toBeInTheDocument();
+  });
+
+  it('hides summarize button for optimistic user messages', () => {
+    render(<MessageActionBar role="user" content="test" onSummarize={vi.fn()} isOptimistic />);
+
+    // Only copy button — no summarize
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(1);
+  });
+
+  it('hides summarize button for assistant messages', () => {
+    render(<MessageActionBar role="assistant" content="test" onSummarize={vi.fn()} />);
+
+    // Only copy button — no summarize
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(1);
+  });
+
+  it('disables summarize button when streaming (disabled=true)', () => {
+    render(<MessageActionBar role="user" content="test" onSummarize={vi.fn()} disabled />);
+
+    const summarizeBtn = screen.getByRole('button', { name: /summarize|요약/i });
+    expect(summarizeBtn).toBeDisabled();
+  });
+
+  it('calls onSummarize when summarize button is clicked', () => {
+    const onSummarize = vi.fn();
+    render(<MessageActionBar role="user" content="test" onSummarize={onSummarize} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /summarize|요약/i }));
+    expect(onSummarize).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows spinner when isSummarizing is true', () => {
+    render(<MessageActionBar role="user" content="test" onSummarize={vi.fn()} isSummarizing />);
+
+    const summarizeBtn = screen.getByRole('button', { name: /generating|생성 중/i });
+    expect(summarizeBtn).toBeInTheDocument();
+  });
 });

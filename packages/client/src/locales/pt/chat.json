@@ -350,5 +350,13 @@
     "noChanges": "Code is already at this point.",
     "dryRunSummary": "{{count}} file(s) will be changed ({{insertions}} insertions, {{deletions}} deletions)",
     "fileList": "Files to be changed:"
+  },
+  "summarize": {
+    "button": "Resumir e continuar",
+    "generating": "Gerando resumo...",
+    "error": "Falha ao gerar resumo",
+    "noMessages": "Sem mensagens para resumir",
+    "tooFewMessages": "Conversa muito curta para resumir",
+    "editHint": "Resumo gerado por IA. Revise e edite antes de aceitar."
   }
 }

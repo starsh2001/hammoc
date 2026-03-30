@@ -40,6 +40,8 @@ import { rateLimitProbeService } from '../services/rateLimitProbeService.js';
 import { ptyService } from '../services/ptyService.js';
 import { projectService } from '../services/projectService.js';
 import { dashboardService } from '../services/dashboardService.js';
+import { summarize } from '../services/summarizeService.js';
+import { parseJSONLFile } from '../services/historyParser.js';
 const log = createLogger('websocket');
 
 // Alias for concise usage in guards
@@ -159,6 +161,9 @@ const chainResumableSessions = new Set<string>();
 let chainItemCounter = 0;
 const CHAIN_MAX_RETRIES = 3;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Story 25.9: Per-socket summarizing guard
+const socketSummarizing = new Map<string, { isSummarizing: boolean; abortController: AbortController | null }>();
 
 /** Generate a unique chain item ID */
 function generateChainItemId(): string {
@@ -1408,6 +1413,105 @@ export async function initializeWebSocket(
       }
     });
 
+    // Story 25.9: Generate conversation summary
+    socket.on('session:generate-summary', async (data) => {
+      const lang = socket.data.language || 'en';
+
+      if (!data || typeof data !== 'object') return;
+      const { sessionId, messageUuid } = data;
+
+      // Validate sessionId
+      if (!sessionId || typeof sessionId !== 'string' || !UUID_RE.test(sessionId)) {
+        socket.emit('session:summary-result', { messageUuid: messageUuid ?? '', error: 'Invalid sessionId' });
+        return;
+      }
+
+      // Validate messageUuid format
+      if (!messageUuid || typeof messageUuid !== 'string' || !UUID_RE.test(messageUuid)) {
+        socket.emit('session:summary-result', { messageUuid: messageUuid ?? '', error: 'Invalid messageUuid format' });
+        return;
+      }
+
+      // Validate socket is in the session room
+      if (!socket.rooms.has(`session:${sessionId}`)) return;
+
+      // Per-socket guard: prevent concurrent summarization
+      const state = socketSummarizing.get(socket.id);
+      if (state?.isSummarizing) return;
+
+      const abortController = new AbortController();
+      socketSummarizing.set(socket.id, { isSummarizing: true, abortController });
+
+      try {
+        const sessionService = new SessionService();
+        // Find projectSlug for this session — try sessionProjectMap first, then socketProjectRoom
+        const projectSlug = sessionProjectMap.get(sessionId) || socketProjectRoom.get(socket.id);
+        if (!projectSlug) {
+          socket.emit('session:summary-result', { messageUuid, error: 'Session project not found' });
+          return;
+        }
+
+        const filePath = sessionService.getSessionFilePath(projectSlug, sessionId);
+        const rawMessages = await parseJSONLFile(filePath);
+
+        // Find messageUuid index
+        const targetIdx = rawMessages.findIndex((m) => m.uuid === messageUuid);
+        if (targetIdx === -1) {
+          socket.emit('session:summary-result', { messageUuid, error: 'Message not found' });
+          return;
+        }
+
+        // Extract messages AFTER the target (not including it)
+        const afterMessages = rawMessages
+          .slice(targetIdx + 1)
+          .filter((m) => (m.type === 'user' || m.type === 'assistant') && m.message)
+          .map((m) => ({
+            role: m.message!.role as 'user' | 'assistant',
+            content: typeof m.message!.content === 'string'
+              ? m.message!.content
+              : (m.message!.content as Array<{ type: string; text?: string }>)
+                  .filter((b) => b.type === 'text' && b.text)
+                  .map((b) => b.text!)
+                  .join('\n'),
+          }))
+          .filter((m) => m.content.length > 0);
+
+        // Min message guard: need at least 2 pairs (4 messages)
+        if (afterMessages.length < 4) {
+          socket.emit('session:summary-result', { messageUuid, error: 'Too few messages to summarize' });
+          return;
+        }
+
+        log.info(`session:generate-summary sessionId=${sessionId}, messageUuid=${messageUuid}, targetMessages=${afterMessages.length}`);
+
+        const summary = await summarize(afterMessages, {
+          signal: abortController.signal,
+          locale: lang !== 'en' ? lang : undefined,
+        });
+
+        socket.emit('session:summary-result', { messageUuid, summary });
+      } catch (err) {
+        if (abortController.signal.aborted) {
+          // Cancelled — don't emit error
+          return;
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error(`session:generate-summary error: ${msg}`);
+        socket.emit('session:summary-result', { messageUuid, error: msg });
+      } finally {
+        socketSummarizing.set(socket.id, { isSummarizing: false, abortController: null });
+      }
+    });
+
+    // Story 25.9: Cancel ongoing summary
+    socket.on('session:cancel-summary', () => {
+      const state = socketSummarizing.get(socket.id);
+      if (state?.isSummarizing && state.abortController) {
+        state.abortController.abort();
+        socketSummarizing.set(socket.id, { isSummarizing: false, abortController: null });
+      }
+    });
+
     // Story 20.1: Dashboard subscribe/unsubscribe
     socket.on('dashboard:subscribe', () => {
       socket.join('dashboard');
@@ -1681,6 +1785,13 @@ export async function initializeWebSocket(
         }
       }
       socketProjectRoom.delete(socket.id);
+
+      // Story 25.9: Cleanup summarizing state on disconnect
+      const sumState = socketSummarizing.get(socket.id);
+      if (sumState?.isSummarizing && sumState.abortController) {
+        sumState.abortController.abort();
+      }
+      socketSummarizing.delete(socket.id);
 
       // PTY sessions are NOT cleaned up on socket disconnect.
       // They persist until explicitly closed by the user, the PTY process exits,

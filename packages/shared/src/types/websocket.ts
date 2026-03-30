@@ -95,6 +95,14 @@ export interface ClientToServerEvents {
     messageUuid: string;
     dryRun?: boolean;
   }) => void;
+  // Story 25.9: Summarize & continue
+  'session:generate-summary': (data: {
+    sessionId: string;
+    messageUuid: string;
+  }) => void;
+  'session:cancel-summary': (data: {
+    sessionId: string;
+  }) => void;
 }
 
 // ===== Server to Client Events =====
@@ -159,6 +167,12 @@ export interface ServerToClientEvents {
     filesChanged?: string[];
     insertions?: number;
     deletions?: number;
+  }) => void;
+  // Story 25.9: Summarize result
+  'session:summary-result': (data: {
+    messageUuid: string;
+    summary?: string;
+    error?: string;
   }) => void;
 }
 

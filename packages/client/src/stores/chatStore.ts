@@ -193,6 +193,12 @@ interface ChatState {
     insertions?: number;
     deletions?: number;
   } | null;
+  /** Story 25.9: Whether a summarize operation is in progress */
+  isSummarizing: boolean;
+  /** Story 25.9: UUID of the message being summarized */
+  summarizingMessageUuid: string | null;
+  /** Story 25.9: Result of a completed summary generation */
+  summaryResult: { messageUuid: string; summary: string } | null;
 }
 
 interface SendMessageOptions {
@@ -307,6 +313,12 @@ interface ChatActions {
   setLastDryRunResult: (result: ChatState['lastDryRunResult']) => void;
   /** Clear last dryRun result (dialog close/cancel) */
   clearLastDryRunResult: () => void;
+  /** Story 25.9: Set summarizing state */
+  setSummarizing: (isSummarizing: boolean, messageUuid?: string | null) => void;
+  /** Story 25.9: Set summary result */
+  setSummaryResult: (result: ChatState['summaryResult']) => void;
+  /** Story 25.9: Clear summary result */
+  clearSummaryResult: () => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -341,6 +353,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   apiHealth: null,
   isRewinding: false,
   lastDryRunResult: null,
+  isSummarizing: false,
+  summarizingMessageUuid: null,
+  summaryResult: null,
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
@@ -1014,6 +1029,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setLastDryRunResult: (result: ChatState['lastDryRunResult']) => set({ lastDryRunResult: result }),
 
   clearLastDryRunResult: () => set({ lastDryRunResult: null }),
+
+  // Story 25.9: Summarize actions
+  setSummarizing: (isSummarizing: boolean, messageUuid?: string | null) =>
+    set({ isSummarizing, summarizingMessageUuid: messageUuid ?? null }),
+  setSummaryResult: (result: ChatState['summaryResult']) => set({ summaryResult: result }),
+  clearSummaryResult: () => set({ summaryResult: null }),
 
   addResultError: (data: ResultErrorData) => {
     const segments = get().streamingSegments;

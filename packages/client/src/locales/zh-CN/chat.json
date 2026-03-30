@@ -350,5 +350,13 @@
     "noChanges": "Code is already at this point.",
     "dryRunSummary": "{{count}} file(s) will be changed ({{insertions}} insertions, {{deletions}} deletions)",
     "fileList": "Files to be changed:"
+  },
+  "summarize": {
+    "button": "总结后继续",
+    "generating": "正在生成总结...",
+    "error": "总结生成失败",
+    "noMessages": "没有可总结的消息",
+    "tooFewMessages": "对话太短，无法总结",
+    "editHint": "AI 生成的总结。请审查和编辑后再接受。"
   }
 }

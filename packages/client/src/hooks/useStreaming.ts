@@ -1489,6 +1489,22 @@ export function useStreaming() {
     };
     socket.on('session:rewind-result', handleRewindResult);
 
+    // Story 25.9: Handle summary result from server
+    const handleSummaryResult = (data: { messageUuid: string; summary?: string; error?: string }) => {
+      const { setSummarizing, setSummaryResult } = useChatStore.getState();
+      setSummarizing(false, null);
+
+      if (data.error) {
+        toast.error(i18n.t('chat:summarize.error') + ': ' + data.error);
+        return;
+      }
+
+      if (data.summary) {
+        setSummaryResult({ messageUuid: data.messageUuid, summary: data.summary });
+      }
+    };
+    socket.on('session:summary-result', handleSummaryResult);
+
     socket.io.on('reconnect_failed', handleReconnectFailed);
 
     // Register keyboard event listener
@@ -1537,6 +1553,7 @@ export function useStreaming() {
       socket.off('error', handleError);
       socket.off('chain:update', handleChainUpdate);
       socket.off('session:rewind-result', handleRewindResult);
+      socket.off('session:summary-result', handleSummaryResult);
       socket.io.off('reconnect_failed', handleReconnectFailed);
       document.removeEventListener('keydown', handleKeyDown);
     };

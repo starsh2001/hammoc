@@ -62,6 +62,7 @@ import { ThinkingBlock } from '../components/ThinkingBlock';
 import { PromptChainBanner } from '../components/PromptChainBanner';
 import { useEdgeSwipe } from '../hooks/useEdgeSwipe';
 import { useMessageTree } from '../hooks/useMessageTree';
+import { getBaseUuid } from '../utils/messageTree';
 
 
 /**
@@ -83,6 +84,11 @@ function renderHistoryMessage(
   isStreaming?: boolean,
   onRewind?: (messageUuid: string) => void,
   isRewinding?: boolean,
+  onSummarize?: (messageUuid: string) => void,
+  isSummarizing?: boolean,
+  summarizingMessageUuid?: string | null,
+  summaryResult?: { messageUuid: string; summary: string } | null,
+  onClearSummaryResult?: () => void,
 ) {
   // Render task notification as notification card (not user bubble)
   if (message.type === 'task_notification' && message.taskStatus) {
@@ -172,7 +178,7 @@ function renderHistoryMessage(
     );
   }
 
-  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} onRewind={onRewind} isRewinding={isRewinding} />;
+  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} onRewind={onRewind} isRewinding={isRewinding} onSummarize={onSummarize} isSummarizing={isSummarizing && summarizingMessageUuid === getBaseUuid(message.id)} summaryResult={summaryResult} onClearSummaryResult={onClearSummaryResult} />;
 }
 
 export function ChatPage() {
@@ -196,7 +202,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   // Get session name from sessionStore (populated when coming from session list)
@@ -895,6 +901,20 @@ export function ChatPage() {
     setRewindMessageUuid(null);
   }, [clearLastDryRunResult, setIsRewinding]);
 
+  // Story 25.9: Handle summarize button click (or cancel if already summarizing)
+  const handleSummarize = useCallback((messageUuid: string) => {
+    if (!sessionId) return;
+    const socket = getSocket();
+    // If already summarizing, cancel
+    if (isSummarizing) {
+      socket.emit('session:cancel-summary', { sessionId });
+      setSummarizing(false, null);
+      return;
+    }
+    setSummarizing(true, messageUuid);
+    socket.emit('session:generate-summary', { sessionId, messageUuid });
+  }, [sessionId, isSummarizing, setSummarizing]);
+
   const handleLoadMore = useCallback(() => {
     fetchMoreMessages();
   }, [fetchMoreMessages]);
@@ -1203,6 +1223,11 @@ export function ChatPage() {
                   isStreaming,
                   handleRewind,
                   isRewinding,
+                  handleSummarize,
+                  isSummarizing,
+                  summarizingMessageUuid,
+                  summaryResult,
+                  clearSummaryResult,
                 )}
               </div>
             </Fragment>

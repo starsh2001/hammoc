@@ -354,5 +354,13 @@
     "noChanges": "Code is already at this point.",
     "dryRunSummary": "{{count}} file(s) will be changed ({{insertions}} insertions, {{deletions}} deletions)",
     "fileList": "Files to be changed:"
+  },
+  "summarize": {
+    "button": "Summarize & continue",
+    "generating": "Generating summary...",
+    "error": "Failed to generate summary",
+    "noMessages": "No messages to summarize",
+    "tooFewMessages": "Conversation is too short to summarize",
+    "editHint": "AI-generated summary. Review and edit before accepting."
   }
 }

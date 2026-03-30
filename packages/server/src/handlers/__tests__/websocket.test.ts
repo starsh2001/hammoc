@@ -62,6 +62,7 @@ vi.mock('../../services/sessionService.js', () => ({
     saveSessionId = vi.fn().mockResolvedValue(undefined);
     getSessionId = vi.fn().mockResolvedValue(null);
     encodeProjectPath = vi.fn().mockReturnValue('mock-project-slug');
+    getSessionFilePath = vi.fn().mockReturnValue('/mock/.claude/projects/mock-project-slug/session.jsonl');
     listSessions = vi.fn().mockResolvedValue([
       {
         sessionId: 'session-123',
@@ -85,6 +86,13 @@ vi.mock('../../services/preferencesService.js', () => ({
       chatTimeoutMs: 300000,
     }),
     getTerminalEnabled: vi.fn().mockResolvedValue(true),
+    readPreferences: vi.fn().mockResolvedValue({
+      theme: 'dark',
+      defaultModel: '',
+      permissionMode: 'default',
+      chatTimeoutMs: 300000,
+      permissionSyncPolicy: 'manual',
+    }),
   },
 }));
 
@@ -236,6 +244,18 @@ vi.mock('../../services/dashboardService.js', () => ({
   dashboardService: {
     getProjectStatus: (...args: unknown[]) => mockGetProjectStatus(...args),
   },
+}));
+
+// Mock summarizeService (Story 25.9)
+const mockSummarize = vi.fn();
+vi.mock('../../services/summarizeService.js', () => ({
+  summarize: (...args: unknown[]) => mockSummarize(...args),
+}));
+
+// Mock historyParser (Story 25.9)
+const mockParseJSONLFile = vi.fn();
+vi.mock('../../services/historyParser.js', () => ({
+  parseJSONLFile: (...args: unknown[]) => mockParseJSONLFile(...args),
 }));
 
 // Mock logger
@@ -2078,6 +2098,280 @@ describe('WebSocket Handler', () => {
       expect(result.success).toBe(false);
       expect(result.dryRun).toBe(false);
       expect(result.error).toBe('No checkpoint available for this message');
+    });
+  });
+
+  // Story 25.9: session:generate-summary tests
+  describe('session:generate-summary event handler', () => {
+    const VALID_SESSION_UUID = '12345678-1234-1234-1234-123456789abc';
+    const VALID_MSG_UUID = 'abcdef01-abcd-abcd-abcd-abcdef012345';
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should emit summary-result with error for invalid messageUuid format', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      const resultPromise = new Promise<{ messageUuid: string; error?: string }>((resolve) => {
+        clientSocket.on('session:summary-result', (data) => resolve(data));
+      });
+
+      clientSocket.emit('session:generate-summary', {
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: 'not-a-uuid',
+      });
+
+      const result = await resultPromise;
+      expect(result.error).toBe('Invalid messageUuid format');
+    });
+
+    it('should silently ignore when socket is not in session room', async () => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      // Don't join session room — just emit
+      let received = false;
+      clientSocket.on('session:summary-result', () => { received = true; });
+
+      clientSocket.emit('session:generate-summary', {
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: VALID_MSG_UUID,
+      });
+
+      // Wait a bit and verify no response
+      await new Promise<void>((resolve) => setTimeout(resolve, 200));
+      expect(received).toBe(false);
+    });
+
+    it('should emit summary-result with error when messageUuid not found', async () => {
+      mockParseJSONLFile.mockResolvedValue([
+        { uuid: 'other-uuid-1234-1234-1234-123456789abc', type: 'user', message: { role: 'user', content: 'hello' }, timestamp: '2026-01-01T00:00:00Z' },
+      ]);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      // Join session room and emit a chat:send first to populate sessionProjectMap
+      clientSocket.emit('session:join', VALID_SESSION_UUID, 'test-project');
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+      const resultPromise = new Promise<{ messageUuid: string; error?: string }>((resolve) => {
+        clientSocket.on('session:summary-result', (data) => resolve(data));
+      });
+
+      clientSocket.emit('session:generate-summary', {
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: VALID_MSG_UUID,
+      });
+
+      const result = await resultPromise;
+      expect(result.messageUuid).toBe(VALID_MSG_UUID);
+      expect(result.error).toContain('not found');
+    });
+
+    it('should emit summary-result with error when too few messages', async () => {
+      mockParseJSONLFile.mockResolvedValue([
+        { uuid: VALID_MSG_UUID, type: 'user', message: { role: 'user', content: 'hello' }, timestamp: '2026-01-01T00:00:00Z' },
+        { uuid: '22222222-2222-2222-2222-222222222222', type: 'assistant', message: { role: 'assistant', content: 'hi' }, timestamp: '2026-01-01T00:00:01Z' },
+        { uuid: '33333333-3333-3333-3333-333333333333', type: 'user', message: { role: 'user', content: 'bye' }, timestamp: '2026-01-01T00:00:02Z' },
+      ]);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('session:join', VALID_SESSION_UUID, 'test-project');
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+      const resultPromise = new Promise<{ messageUuid: string; error?: string }>((resolve) => {
+        clientSocket.on('session:summary-result', (data) => resolve(data));
+      });
+
+      clientSocket.emit('session:generate-summary', {
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: VALID_MSG_UUID,
+      });
+
+      const result = await resultPromise;
+      expect(result.error).toBe('Too few messages to summarize');
+    });
+
+    it('should emit summary-result with summary on success', async () => {
+      mockParseJSONLFile.mockResolvedValue([
+        { uuid: VALID_MSG_UUID, type: 'user', message: { role: 'user', content: 'hello' }, timestamp: '2026-01-01T00:00:00Z' },
+        { uuid: '22222222-2222-2222-2222-222222222222', type: 'user', message: { role: 'user', content: 'q1' }, timestamp: '2026-01-01T00:00:01Z' },
+        { uuid: '33333333-3333-3333-3333-333333333333', type: 'assistant', message: { role: 'assistant', content: 'a1' }, timestamp: '2026-01-01T00:00:02Z' },
+        { uuid: '44444444-4444-4444-4444-444444444444', type: 'user', message: { role: 'user', content: 'q2' }, timestamp: '2026-01-01T00:00:03Z' },
+        { uuid: '55555555-5555-5555-5555-555555555555', type: 'assistant', message: { role: 'assistant', content: 'a2' }, timestamp: '2026-01-01T00:00:04Z' },
+      ]);
+      mockSummarize.mockResolvedValue('## Summary\n- Key decisions');
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('session:join', VALID_SESSION_UUID, 'test-project');
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+      const resultPromise = new Promise<{ messageUuid: string; summary?: string }>((resolve) => {
+        clientSocket.on('session:summary-result', (data) => resolve(data));
+      });
+
+      clientSocket.emit('session:generate-summary', {
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: VALID_MSG_UUID,
+      });
+
+      const result = await resultPromise;
+      expect(result.messageUuid).toBe(VALID_MSG_UUID);
+      expect(result.summary).toBe('## Summary\n- Key decisions');
+    });
+
+    it('should ignore concurrent generate-summary request while one is in progress', async () => {
+      // First call: slow summarize that won't resolve until we let it
+      let resolveFirst!: (value: string) => void;
+      const firstCallPromise = new Promise<string>((resolve) => { resolveFirst = resolve; });
+      mockSummarize.mockReturnValueOnce(firstCallPromise);
+
+      mockParseJSONLFile.mockResolvedValue([
+        { uuid: VALID_MSG_UUID, type: 'user', message: { role: 'user', content: 'hello' }, timestamp: '2026-01-01T00:00:00Z' },
+        { uuid: '22222222-2222-2222-2222-222222222222', type: 'user', message: { role: 'user', content: 'q1' }, timestamp: '2026-01-01T00:00:01Z' },
+        { uuid: '33333333-3333-3333-3333-333333333333', type: 'assistant', message: { role: 'assistant', content: 'a1' }, timestamp: '2026-01-01T00:00:02Z' },
+        { uuid: '44444444-4444-4444-4444-444444444444', type: 'user', message: { role: 'user', content: 'q2' }, timestamp: '2026-01-01T00:00:03Z' },
+        { uuid: '55555555-5555-5555-5555-555555555555', type: 'assistant', message: { role: 'assistant', content: 'a2' }, timestamp: '2026-01-01T00:00:04Z' },
+      ]);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('session:join', VALID_SESSION_UUID, 'test-project');
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+      const results: Array<{ messageUuid: string; summary?: string }>  = [];
+      clientSocket.on('session:summary-result', (data) => results.push(data));
+
+      // Fire first request
+      clientSocket.emit('session:generate-summary', {
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: VALID_MSG_UUID,
+      });
+      // Wait for server to start processing
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+      // Fire second request while first is still in progress — should be ignored
+      clientSocket.emit('session:generate-summary', {
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: VALID_MSG_UUID,
+      });
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+      // Resolve first call
+      resolveFirst('## Summary\n- First result');
+      await new Promise<void>((resolve) => setTimeout(resolve, 200));
+
+      // Only one result should have been emitted (second request was silently ignored)
+      expect(results).toHaveLength(1);
+      expect(results[0].summary).toBe('## Summary\n- First result');
+      // summarize was only called once (second request never reached the service)
+      expect(mockSummarize).toHaveBeenCalledTimes(1);
+    });
+
+    it('should abort in-progress summary when cancel-summary is received', async () => {
+      // Slow summarize that rejects with abort error
+      let rejectSummarize!: (err: Error) => void;
+      const slowPromise = new Promise<string>((_, reject) => { rejectSummarize = reject; });
+      mockSummarize.mockReturnValueOnce(slowPromise);
+
+      mockParseJSONLFile.mockResolvedValue([
+        { uuid: VALID_MSG_UUID, type: 'user', message: { role: 'user', content: 'hello' }, timestamp: '2026-01-01T00:00:00Z' },
+        { uuid: '22222222-2222-2222-2222-222222222222', type: 'user', message: { role: 'user', content: 'q1' }, timestamp: '2026-01-01T00:00:01Z' },
+        { uuid: '33333333-3333-3333-3333-333333333333', type: 'assistant', message: { role: 'assistant', content: 'a1' }, timestamp: '2026-01-01T00:00:02Z' },
+        { uuid: '44444444-4444-4444-4444-444444444444', type: 'user', message: { role: 'user', content: 'q2' }, timestamp: '2026-01-01T00:00:03Z' },
+        { uuid: '55555555-5555-5555-5555-555555555555', type: 'assistant', message: { role: 'assistant', content: 'a2' }, timestamp: '2026-01-01T00:00:04Z' },
+      ]);
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('session:join', VALID_SESSION_UUID, 'test-project');
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+      const results: Array<{ messageUuid: string; summary?: string; error?: string }> = [];
+      clientSocket.on('session:summary-result', (data) => results.push(data));
+
+      // Start summary
+      clientSocket.emit('session:generate-summary', {
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: VALID_MSG_UUID,
+      });
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+      // Cancel it
+      clientSocket.emit('session:cancel-summary', { sessionId: VALID_SESSION_UUID });
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+
+      // Simulate the abort rejection (in real code, Anthropic SDK throws on abort)
+      const abortError = new Error('Request was aborted');
+      abortError.name = 'AbortError';
+      rejectSummarize(abortError);
+      await new Promise<void>((resolve) => setTimeout(resolve, 200));
+
+      // No error should be emitted to client (cancelled requests are silently dropped)
+      expect(results).toHaveLength(0);
+
+      // After cancel, a new request should be accepted (isSummarizing was reset)
+      mockSummarize.mockResolvedValueOnce('## New Summary');
+      const newResultPromise = new Promise<{ messageUuid: string; summary?: string }>((resolve) => {
+        // Re-attach since results array captures all
+        const handler = (data: { messageUuid: string; summary?: string }) => {
+          resolve(data);
+          clientSocket.off('session:summary-result', handler);
+        };
+        clientSocket.on('session:summary-result', handler);
+      });
+
+      clientSocket.emit('session:generate-summary', {
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: VALID_MSG_UUID,
+      });
+
+      const newResult = await newResultPromise;
+      expect(newResult.summary).toBe('## New Summary');
     });
   });
 });

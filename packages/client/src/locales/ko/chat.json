@@ -354,5 +354,13 @@
     "noChanges": "이미 해당 시점의 코드 상태입니다.",
     "dryRunSummary": "{{count}}개 파일이 변경됩니다 ({{insertions}}개 삽입, {{deletions}}개 삭제)",
     "fileList": "변경될 파일:"
+  },
+  "summarize": {
+    "button": "요약 후 시작",
+    "generating": "요약 생성 중...",
+    "error": "요약 생성에 실패했습니다",
+    "noMessages": "요약할 메시지가 없습니다",
+    "tooFewMessages": "요약하기에 대화가 너무 짧습니다",
+    "editHint": "AI가 생성한 요약입니다. 수정 후 수락하세요."
   }
 }

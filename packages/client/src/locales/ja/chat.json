@@ -350,5 +350,13 @@
     "noChanges": "Code is already at this point.",
     "dryRunSummary": "{{count}} file(s) will be changed ({{insertions}} insertions, {{deletions}} deletions)",
     "fileList": "Files to be changed:"
+  },
+  "summarize": {
+    "button": "要約して続行",
+    "generating": "要約を生成中...",
+    "error": "要約の生成に失敗しました",
+    "noMessages": "要約するメッセージがありません",
+    "tooFewMessages": "要約するには会話が短すぎます",
+    "editHint": "AIが生成した要約です。確認・編集してから承認してください。"
   }
 }

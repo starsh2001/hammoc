@@ -3,7 +3,7 @@
  * [Source: Story 3.5 - Task 6, Story 4.3 - Task 1, Story 4.4 - Task 4, Story 25.1 - Task 3]
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { HistoryMessage } from '@hammoc/shared';
 import { formatRelativeTime } from '../utils/formatters';
@@ -41,6 +41,14 @@ interface MessageBubbleProps {
   onRewind?: (messageUuid: string) => void;
   /** Whether a rewind operation is in progress */
   isRewinding?: boolean;
+  /** Callback when user clicks summarize button */
+  onSummarize?: (messageUuid: string) => void;
+  /** Whether a summarize operation is in progress */
+  isSummarizing?: boolean;
+  /** Summary result to auto-open edit form */
+  summaryResult?: { messageUuid: string; summary: string } | null;
+  /** Clear summary result after consuming it */
+  onClearSummaryResult?: () => void;
 }
 
 export function MessageBubble({
@@ -54,10 +62,26 @@ export function MessageBubble({
   onEditSubmit,
   onRewind,
   isRewinding = false,
+  onSummarize,
+  isSummarizing = false,
+  summaryResult,
+  onClearSummaryResult,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [summaryText, setSummaryText] = useState<string | null>(null);
+  const [isSummaryEdit, setIsSummaryEdit] = useState(false);
+
+  // Auto-open edit form when summary result arrives for this message
+  useEffect(() => {
+    if (summaryResult && summaryResult.messageUuid === getBaseUuid(message.id)) {
+      setSummaryText(summaryResult.summary);
+      setIsEditing(true);
+      setIsSummaryEdit(true);
+      onClearSummaryResult?.();
+    }
+  }, [summaryResult, message.id, onClearSummaryResult]);
 
   const isUser = message.type === 'user';
   const formattedTime = formatRelativeTime(message.timestamp);
@@ -113,7 +137,8 @@ export function MessageBubble({
         {/* Message content - plain text for user, markdown for assistant */}
         {isUser && isEditing ? (
           <MessageEditForm
-            initialText={message.content}
+            initialText={summaryText ?? message.content}
+            isSummaryEdit={isSummaryEdit}
             onSubmit={(newText) => {
               onEditSubmit?.({
                 messageUuid: getBaseUuid(message.id),
@@ -121,8 +146,14 @@ export function MessageBubble({
                 newText,
               });
               setIsEditing(false);
+              setSummaryText(null);
+              setIsSummaryEdit(false);
             }}
-            onCancel={() => setIsEditing(false)}
+            onCancel={() => {
+              setIsEditing(false);
+              setSummaryText(null);
+              setIsSummaryEdit(false);
+            }}
           />
         ) : isUser ? (
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
@@ -161,6 +192,12 @@ export function MessageBubble({
             isOptimistic={(message as any)._optimistic === true}
             onRewind={(message as any)._optimistic !== true && onRewind ? () => onRewind(getBaseUuid(message.id)) : undefined}
             isRewinding={isRewinding}
+            onSummarize={
+              (message as any)._optimistic !== true && onSummarize && message.parentId
+                ? () => onSummarize(getBaseUuid(message.id))
+                : undefined
+            }
+            isSummarizing={isSummarizing}
           />
         </div>
       </div>
