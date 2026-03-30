@@ -1489,8 +1489,8 @@ export async function initializeWebSocket(
         let cwd: string | undefined;
         try {
           cwd = await projectService.resolveOriginalPath(projectSlug);
-        } catch {
-          // Non-fatal — summarize will work without cwd
+        } catch (err) {
+          log.warn(`Failed to resolve originalPath for ${projectSlug}, summarize will proceed without cwd:`, err);
         }
 
         log.info(`session:generate-summary sessionId=${sessionId}, messageUuid=${messageUuid}, targetMessages=${afterMessages.length}`);

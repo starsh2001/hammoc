@@ -120,7 +120,7 @@ export async function summarize(
         cwd: options?.cwd,
         permissionMode: 'dontAsk',
         abortController: options?.signal
-          ? { signal: options.signal, abort: () => {} } as unknown as AbortController
+          ? (() => { const ac = new AbortController(); options.signal.addEventListener('abort', () => ac.abort(), { once: true }); return ac; })()
           : undefined,
       },
     });
@@ -133,9 +133,11 @@ export async function summarize(
         break;
       }
       if (message.type === 'result') {
-        const msg = message as unknown as { result?: string; subtype?: string };
+        const msg = message as unknown as { result?: string; subtype?: string; is_error?: boolean };
         if (msg.subtype === 'success' && msg.result) {
           resultText = msg.result;
+        } else if (msg.is_error || (msg.subtype && msg.subtype !== 'success')) {
+          throw new Error(msg.result || `Summary failed: ${msg.subtype}`);
         }
       }
     }
