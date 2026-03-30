@@ -891,14 +891,25 @@ export function ChatPage() {
   const handleSummarizeConfirm = useCallback(() => {
     if (!workingDirectory || !sessionId || !summarizeDialog) return;
 
+    // Re-entrancy guard: clear dialog first to prevent duplicate clicks
     const { parentId, messageText } = summarizeDialog;
+    setSummarizeDialog(null);
+
+    const socket = getSocket();
+    if (!socket?.connected) {
+      toast.error(t('summarize.error', { error: 'Not connected' }));
+      setSummarizeContext('');
+      return;
+    }
+
     const combinedText = summarizeContext.trim()
       ? `${messageText}\n\n[Context: ${summarizeContext.trim()}]`
       : messageText;
 
     // Scenario A: chain:add first (/compact), then sendMessage (branch + text)
     // chain:add is safe to call before sendMessage — server only drains after streaming completes
-    getSocket()?.emit('chain:add', {
+    // Socket.io guarantees ordering on a single connection.
+    socket.emit('chain:add', {
       sessionId,
       content: '/compact',
       workingDirectory,
@@ -917,9 +928,8 @@ export function ChatPage() {
       resumeSessionAt: branchPointId,
     });
 
-    setSummarizeDialog(null);
     setSummarizeContext('');
-  }, [workingDirectory, sessionId, summarizeDialog, summarizeContext, sendMessage, addOptimisticMessage, permissionMode, selectedModel, selectedEffort]);
+  }, [workingDirectory, sessionId, summarizeDialog, summarizeContext, sendMessage, addOptimisticMessage, permissionMode, selectedModel, selectedEffort, t]);
 
   const handleSummarizeCancel = useCallback(() => {
     setSummarizeDialog(null);
