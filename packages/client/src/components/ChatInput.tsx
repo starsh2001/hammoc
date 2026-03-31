@@ -161,6 +161,8 @@ interface ChatInputProps {
   onRemoveStarFavorite?: (command: string) => void;
   /** Whether the session is queue-locked (Story 15.4) */
   queueLocked?: boolean;
+  /** Whether all input actions are disabled (e.g. viewing non-active branch) */
+  actionsDisabled?: boolean;
   /** Prompt chain mode — queue messages during streaming (Story 12.3) */
   chainMode?: boolean;
   /** Toggle chain mode callback */
@@ -207,6 +209,7 @@ export function ChatInput({
   onReorderStarFavorites,
   onRemoveStarFavorite,
   queueLocked = false,
+  actionsDisabled = false,
   chainMode = false,
   onChainModeToggle,
   chainCount = 0,
@@ -265,10 +268,10 @@ export function ChatInput({
 
   // Stop speech recognition when input becomes locked
   useEffect(() => {
-    if ((queueLocked || isSessionLocked) && speechRecognition.isListening) {
+    if ((queueLocked || actionsDisabled || isSessionLocked) && speechRecognition.isListening) {
       speechRecognition.stop();
     }
-  }, [queueLocked, isSessionLocked, speechRecognition.isListening, speechRecognition.stop]);
+  }, [queueLocked, actionsDisabled, isSessionLocked, speechRecognition.isListening, speechRecognition.stop]);
 
   // Detect touch device (mobile) - Enter becomes newline, send via button only
   const isTouchDevice = useMemo(() => window.matchMedia('(pointer: coarse)').matches, []);
@@ -607,7 +610,7 @@ export function ChatInput({
 
   // Submit handler
   const handleSubmit = useCallback(() => {
-    if (isSessionLocked || queueLocked) return;
+    if (isSessionLocked || queueLocked || actionsDisabled) return;
     const trimmedContent = content.trim();
     if (!trimmedContent) return;
     // Block submit during streaming when chain mode is OFF (no queuing available)
@@ -651,7 +654,7 @@ export function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = '0px';
     }
-  }, [content, isConnected, isSessionLocked, isStreaming, queueLocked, onSend, attachments, chainMode, chainMax, getChainLength, chainCount, speechRecognition.stop]);
+  }, [content, isConnected, isSessionLocked, isStreaming, queueLocked, actionsDisabled, onSend, attachments, chainMode, chainMax, getChainLength, chainCount, speechRecognition.stop]);
 
   // Keyboard handler
   const handleKeyDown = useCallback(
@@ -917,7 +920,7 @@ export function ChatInput({
               setShowFavorites(false);
               selectPlaceholders(text);
             }}
-            disabled={queueLocked}
+            disabled={queueLocked || actionsDisabled}
           />
           {showFavorites && (
             <FavoritesPopup
@@ -997,7 +1000,7 @@ export function ChatInput({
             ref={textareaRef}
             value={content}
             onChange={(e) => {
-              if (isSessionLocked || queueLocked) return;
+              if (isSessionLocked || queueLocked || actionsDisabled) return;
               setContent(e.target.value);
               resetNavigation();
             }}
@@ -1009,7 +1012,7 @@ export function ChatInput({
             onBlur={() => {
               userHasFocusedRef.current = false;
             }}
-            disabled={isSessionLocked || queueLocked || undefined}
+            disabled={isSessionLocked || queueLocked || actionsDisabled || undefined}
             placeholder={isSessionLocked ? t('input.lockedOtherBrowser') : queueLocked ? t('input.queueControlled') : isStreaming && chainMode ? (isChainFull ? t('input.chainFull') : t('input.chainAdd')) : placeholder || t('input.placeholder')}
             role={showCommands || showStarCommands ? 'combobox' : undefined}
             aria-label={t('input.ariaLabel')}
@@ -1038,7 +1041,7 @@ export function ChatInput({
               type="button"
               onClick={speechRecognition.toggle}
               onPointerDown={preventFocusLoss}
-              disabled={queueLocked || isSessionLocked}
+              disabled={queueLocked || actionsDisabled || isSessionLocked}
               aria-label={speechRecognition.isListening ? t('input.stopVoice') : t('input.startVoice')}
               className={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full
                          ${speechRecognition.isListening
@@ -1075,7 +1078,7 @@ export function ChatInput({
           <PermissionModeSelector
             mode={permissionMode}
             onModeChange={onPermissionModeChange}
-            disabled={queueLocked}
+            disabled={queueLocked || actionsDisabled}
           />
         )}
 
@@ -1087,7 +1090,7 @@ export function ChatInput({
             activeModel={activeModel}
             effort={selectedEffort}
             onEffortChange={onEffortChange}
-            disabled={queueLocked}
+            disabled={queueLocked || actionsDisabled}
             isSubscriber={isSubscriber}
           />
         )}
@@ -1102,7 +1105,7 @@ export function ChatInput({
             }}
             openTrigger={agentListOpenTrigger}
             activeAgentCommand={activeAgentCommand}
-            disabled={queueLocked}
+            disabled={queueLocked || actionsDisabled}
           />
         )}
 
@@ -1113,7 +1116,7 @@ export function ChatInput({
             tabIndex={-1}
             onClick={onChainModeToggle}
             onPointerDown={preventFocusLoss}
-            disabled={queueLocked}
+            disabled={queueLocked || actionsDisabled}
             aria-label={chainMode ? t('chainMode.off') : t('chainMode.on')}
             aria-pressed={chainMode}
             title={t('input.promptChainTitle')}
@@ -1147,7 +1150,7 @@ export function ChatInput({
           contextUsage={contextUsage ?? null}
           onNewSession={onNewSession}
           onCompact={onCompact}
-          disabled={queueLocked}
+          disabled={queueLocked || actionsDisabled}
         />
 
         {/* Attach button (Story 5.5) */}
@@ -1155,7 +1158,7 @@ export function ChatInput({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           onPointerDown={preventFocusLoss}
-          disabled={isAttachDisabled || queueLocked}
+          disabled={isAttachDisabled || queueLocked || actionsDisabled}
           aria-label={t('input.attachImage')}
           className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
                      text-gray-500 dark:text-gray-300
@@ -1188,7 +1191,7 @@ export function ChatInput({
             type="button"
             onClick={onAbort}
             onPointerDown={preventFocusLoss}
-            disabled={queueLocked}
+            disabled={queueLocked || actionsDisabled}
             aria-label={t('input.abort')}
             className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
                        bg-red-600 hover:bg-red-700

@@ -223,6 +223,7 @@
     },
     "streaming": "正在回复...",
     "default": "输入消息...",
+    "oldBranch": "正在查看之前的分支（只读）",
     "loadingMore": "加载中...",
     "loadMore": "加载更多消息"
   },

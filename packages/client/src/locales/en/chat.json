@@ -227,6 +227,7 @@
     },
     "streaming": "Responding...",
     "default": "Type a message...",
+    "oldBranch": "Viewing a previous branch (read-only)",
     "loadingMore": "Loading...",
     "loadMore": "Load more messages"
   },

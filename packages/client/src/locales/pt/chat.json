@@ -223,6 +223,7 @@
     },
     "streaming": "Respondendo...",
     "default": "Digite uma mensagem...",
+    "oldBranch": "Visualizando um ramo anterior (somente leitura)",
     "loadingMore": "Carregando...",
     "loadMore": "Carregar mais mensagens"
   },

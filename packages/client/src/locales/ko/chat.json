@@ -227,6 +227,7 @@
     },
     "streaming": "응답 중...",
     "default": "메시지를 입력하세요...",
+    "oldBranch": "이전 브랜치를 보고 있습니다 (읽기 전용)",
     "loadingMore": "로딩 중...",
     "loadMore": "이전 메시지 더 보기"
   },

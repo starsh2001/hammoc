@@ -833,6 +833,13 @@ export function ChatPage() {
   // replay (streaming segments). No client-side dedup filtering needed.
   const { displayMessages, branchPoints, navigateBranch, isBranchNavigationDisabled } = useMessageTree(messages);
 
+  // True when viewing a non-latest (non-active) branch via pagination.
+  // SDK cannot operate on non-active branch messages, so all actions and input must be disabled.
+  const isOnOldBranch = useMemo(() =>
+    displayMessages.some((m) => m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1),
+    [displayMessages]
+  );
+
   // Story 25.7: Edit submit handler — truncate old branch, add optimistic message,
   // then send edit to server. Truncation also happens in handleSessionInit (useStreaming)
   // for passive viewers receiving session:resumed with resumeSessionAt.
@@ -1212,12 +1219,9 @@ export function ChatPage() {
           )}
 
           {/* Message list */}
-          {/* Disable editing when viewing a non-latest branch */}
+          {/* Disable all actions when viewing a non-latest branch (SDK limitation) */}
           {(() => {
-            const isOnOldBranch = displayMessages.some(
-              (m) => m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1,
-            );
-            const actionsLocked = isRewinding || isSummarizing || !!editingMessageUuid;
+            const actionsLocked = isRewinding || isSummarizing || !!editingMessageUuid || isOnOldBranch;
             return displayMessages.map((msg, idx) => (
             <Fragment key={msg.id}>
               <div data-message-id={msg.id}>
@@ -1225,12 +1229,12 @@ export function ChatPage() {
                   msg, idx, displayMessages, t,
                   msg.branchInfo,
                   navigateBranch,
-                  isBranchNavigationDisabled || actionsLocked,
+                  isBranchNavigationDisabled || isRewinding || isSummarizing || !!editingMessageUuid,
                   isOnOldBranch ? undefined : handleEditSubmit,
                   isStreaming,
-                  handleRewind,
+                  isOnOldBranch ? undefined : handleRewind,
                   isRewinding,
-                  handleSummarize,
+                  isOnOldBranch ? undefined : handleSummarize,
                   isSummarizing,
                   summarizingMessageUuid,
                   summaryResult,
@@ -1252,7 +1256,8 @@ export function ChatPage() {
           isStreaming={isStreaming}
           onAbort={handleAbort}
           queueLocked={isQueueLocked}
-          placeholder={isStreaming ? t('chatPage.streaming') : t('chatPage.default')}
+          actionsDisabled={isOnOldBranch}
+          placeholder={isStreaming ? t('chatPage.streaming') : isOnOldBranch ? t('chatPage.oldBranch') : t('chatPage.default')}
           commands={commands}
           permissionMode={permissionMode}
           onPermissionModeChange={setPermissionMode}
