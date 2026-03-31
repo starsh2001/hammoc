@@ -1490,13 +1490,13 @@ export function useStreaming() {
     socket.on('session:rewind-result', handleRewindResult);
 
     // Story 25.9: Handle summary result from server
-    const handleSummaryResult = (data: { messageUuid: string; summary?: string; error?: string }) => {
-      const { isSummarizing, summarizingMessageUuid, setSummarizing, setSummaryResult } = useChatStore.getState();
+    const handleSummaryResult = (data: { requestId?: string; messageUuid: string; summary?: string; error?: string }) => {
+      const { isSummarizing, summarizeRequestId, setSummarizing, setSummaryResult } = useChatStore.getState();
 
       // Ignore stale/cancelled responses that don't match the active request
-      if (!isSummarizing || summarizingMessageUuid !== data.messageUuid) return;
+      if (!isSummarizing || (data.requestId && summarizeRequestId !== data.requestId)) return;
 
-      setSummarizing(false, null);
+      setSummarizing(false, null, null);
 
       if (data.error) {
         toast.error(i18n.t('chat:summarize.error') + ': ' + data.error);

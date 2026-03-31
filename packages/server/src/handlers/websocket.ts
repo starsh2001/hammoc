@@ -8,6 +8,7 @@
 import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { existsSync, unlinkSync } from 'fs';
+import { randomUUID } from 'crypto';
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -1451,7 +1452,7 @@ export async function initializeWebSocket(
         prevState.abortController.abort();
       }
 
-      const requestId = messageUuid; // Use messageUuid as requestId
+      const requestId = randomUUID();
       const abortController = new AbortController();
       socketSummarizing.set(socket.id, { activeRequestId: requestId, abortController });
 
@@ -1511,7 +1512,7 @@ export async function initializeWebSocket(
           cwd,
         });
 
-        socket.emit('session:summary-result', { messageUuid, summary });
+        socket.emit('session:summary-result', { requestId, messageUuid, summary });
       } catch (err) {
         if (abortController.signal.aborted) {
           // Cancelled — don't emit error
@@ -1519,7 +1520,7 @@ export async function initializeWebSocket(
         }
         const msg = err instanceof Error ? err.message : String(err);
         log.error(`session:generate-summary error: ${msg}`);
-        socket.emit('session:summary-result', { messageUuid, error: msg });
+        socket.emit('session:summary-result', { requestId, messageUuid, error: msg });
       } finally {
         // Only clean up if this request is still the active one
         const current = socketSummarizing.get(socket.id);
@@ -1530,7 +1531,13 @@ export async function initializeWebSocket(
     });
 
     // Story 25.9: Cancel ongoing summary
-    socket.on('session:cancel-summary', () => {
+    socket.on('session:cancel-summary', (data) => {
+      if (!data || typeof data !== 'object') return;
+      const { sessionId } = data;
+      if (!sessionId || typeof sessionId !== 'string') return;
+      // Only cancel if socket is in the session room (prevents cross-session cancel)
+      if (!socket.rooms.has(`session:${sessionId}`)) return;
+
       const state = socketSummarizing.get(socket.id);
       if (state?.abortController) {
         state.abortController.abort();

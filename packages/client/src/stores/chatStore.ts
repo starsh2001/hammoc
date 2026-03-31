@@ -197,6 +197,8 @@ interface ChatState {
   isSummarizing: boolean;
   /** Story 25.9: UUID of the message being summarized */
   summarizingMessageUuid: string | null;
+  /** Story 25.9: Unique request ID for the active summarize request */
+  summarizeRequestId: string | null;
   /** Story 25.9: Result of a completed summary generation */
   summaryResult: { messageUuid: string; summary: string } | null;
 }
@@ -314,7 +316,7 @@ interface ChatActions {
   /** Clear last dryRun result (dialog close/cancel) */
   clearLastDryRunResult: () => void;
   /** Story 25.9: Set summarizing state */
-  setSummarizing: (isSummarizing: boolean, messageUuid?: string | null) => void;
+  setSummarizing: (isSummarizing: boolean, messageUuid?: string | null, requestId?: string | null) => void;
   /** Story 25.9: Set summary result */
   setSummaryResult: (result: ChatState['summaryResult']) => void;
   /** Story 25.9: Clear summary result */
@@ -355,6 +357,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   lastDryRunResult: null,
   isSummarizing: false,
   summarizingMessageUuid: null,
+  summarizeRequestId: null,
   summaryResult: null,
 
   // Actions
@@ -1031,8 +1034,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   clearLastDryRunResult: () => set({ lastDryRunResult: null }),
 
   // Story 25.9: Summarize actions
-  setSummarizing: (isSummarizing: boolean, messageUuid?: string | null) =>
-    set({ isSummarizing, summarizingMessageUuid: messageUuid ?? null }),
+  setSummarizing: (isSummarizing: boolean, messageUuid?: string | null, requestId?: string | null) =>
+    set({ isSummarizing, summarizingMessageUuid: messageUuid ?? null, summarizeRequestId: requestId ?? null }),
   setSummaryResult: (result: ChatState['summaryResult']) => set({ summaryResult: result }),
   clearSummaryResult: () => set({ summaryResult: null }),
 

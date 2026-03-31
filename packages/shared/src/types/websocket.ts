@@ -170,6 +170,7 @@ export interface ServerToClientEvents {
   }) => void;
   // Story 25.9: Summarize result
   'session:summary-result': (data: {
+    requestId?: string;
     messageUuid: string;
     summary?: string;
     error?: string;
