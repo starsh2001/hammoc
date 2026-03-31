@@ -162,8 +162,8 @@ let chainItemCounter = 0;
 const CHAIN_MAX_RETRIES = 3;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Story 25.9: Per-socket summarizing guard
-const socketSummarizing = new Map<string, { isSummarizing: boolean; abortController: AbortController | null }>();
+// Story 25.9: Per-socket summarizing state — requestId prevents race between cancel + new request
+const socketSummarizing = new Map<string, { activeRequestId: string | null; abortController: AbortController | null }>();
 
 /** Generate a unique chain item ID */
 function generateChainItemId(): string {
@@ -1218,6 +1218,13 @@ export async function initializeWebSocket(
       if (roomSessionId) {
         socket.leave(`session:${roomSessionId}`);
       }
+      // Story 25.9: Cancel in-progress summary on session leave
+      const sumState = socketSummarizing.get(socket.id);
+      if (sumState?.abortController) {
+        sumState.abortController.abort();
+        socketSummarizing.set(socket.id, { activeRequestId: null, abortController: null });
+      }
+
       // Story 24.3: Clean up session room tracking on leave
       // Only clear project room if the leaving session matches current tracking.
       // Prevents race where a new session:join overwrites tracking before old leave arrives.
@@ -1438,12 +1445,15 @@ export async function initializeWebSocket(
         return;
       }
 
-      // Per-socket guard: prevent concurrent summarization
-      const state = socketSummarizing.get(socket.id);
-      if (state?.isSummarizing) return;
+      // Abort any in-progress summary before starting a new one
+      const prevState = socketSummarizing.get(socket.id);
+      if (prevState?.abortController) {
+        prevState.abortController.abort();
+      }
 
+      const requestId = messageUuid; // Use messageUuid as requestId
       const abortController = new AbortController();
-      socketSummarizing.set(socket.id, { isSummarizing: true, abortController });
+      socketSummarizing.set(socket.id, { activeRequestId: requestId, abortController });
 
       try {
         const sessionService = new SessionService();
@@ -1511,16 +1521,20 @@ export async function initializeWebSocket(
         log.error(`session:generate-summary error: ${msg}`);
         socket.emit('session:summary-result', { messageUuid, error: msg });
       } finally {
-        socketSummarizing.set(socket.id, { isSummarizing: false, abortController: null });
+        // Only clean up if this request is still the active one
+        const current = socketSummarizing.get(socket.id);
+        if (current?.activeRequestId === requestId) {
+          socketSummarizing.set(socket.id, { activeRequestId: null, abortController: null });
+        }
       }
     });
 
     // Story 25.9: Cancel ongoing summary
     socket.on('session:cancel-summary', () => {
       const state = socketSummarizing.get(socket.id);
-      if (state?.isSummarizing && state.abortController) {
+      if (state?.abortController) {
         state.abortController.abort();
-        socketSummarizing.set(socket.id, { isSummarizing: false, abortController: null });
+        socketSummarizing.set(socket.id, { activeRequestId: null, abortController: null });
       }
     });
 
@@ -1800,7 +1814,7 @@ export async function initializeWebSocket(
 
       // Story 25.9: Cleanup summarizing state on disconnect
       const sumState = socketSummarizing.get(socket.id);
-      if (sumState?.isSummarizing && sumState.abortController) {
+      if (sumState?.abortController) {
         sumState.abortController.abort();
       }
       socketSummarizing.delete(socket.id);

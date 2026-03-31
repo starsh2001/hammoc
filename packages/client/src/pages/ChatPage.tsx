@@ -562,6 +562,11 @@ export function ChatPage() {
       clearMessages();
       useChainStore.getState().clearChainItems();
       const socket = getSocket();
+      // Story 25.9: Cancel in-progress summary on session leave
+      if (useChatStore.getState().isSummarizing) {
+        socket.emit('session:cancel-summary', { sessionId: sessionIdRef.current || '' });
+        useChatStore.getState().setSummarizing(false, null);
+      }
       socket.emit('session:leave', sessionIdRef.current || '');
       if (useChatStore.getState().isStreaming) {
         useChatStore.getState().abortStreaming();
