@@ -1225,7 +1225,7 @@ export function ChatPage() {
                   msg, idx, displayMessages, t,
                   msg.branchInfo,
                   navigateBranch,
-                  isBranchNavigationDisabled,
+                  isBranchNavigationDisabled || actionsLocked,
                   isOnOldBranch ? undefined : handleEditSubmit,
                   isStreaming,
                   handleRewind,
