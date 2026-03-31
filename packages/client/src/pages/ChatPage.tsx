@@ -197,7 +197,6 @@ export function ChatPage() {
     error,
     pagination,
     lastAgentCommand,
-    currentBranchSelections,
     fetchMessages,
     fetchMoreMessages,
     clearMessages,
@@ -379,9 +378,8 @@ export function ChatPage() {
   }, [chainMode]);
 
   // Internal send — sends directly to server (non-chain-mode sends).
-  // Story 25.10: Extended with options to support branch continuation via resumeSessionAt.
   const internalSend = useCallback(
-    (content: string, attachments?: Attachment[], options?: { resumeSessionAt?: string; expectedBranchTotal?: number }) => {
+    (content: string, attachments?: Attachment[]) => {
       const currentMessages = useMessageStore.getState().messages;
       const images = attachments?.map((a) => ({
         mimeType: a.mimeType,
@@ -394,8 +392,6 @@ export function ChatPage() {
         sessionId,
         resume: currentMessages.length > 0,
         attachments,
-        resumeSessionAt: options?.resumeSessionAt,
-        expectedBranchTotal: options?.expectedBranchTotal,
       });
     },
     [sendMessage, addOptimisticMessage, workingDirectory, sessionId]
@@ -422,42 +418,6 @@ export function ChatPage() {
           model: selectedModel,
           effort: selectedEffort,
         });
-        return;
-      }
-
-      // Story 25.10: Branch continuation — when viewing a non-latest branch,
-      // resume from the last assistant message of the current display.
-      // Guard: only activate when actually viewing a historical (non-latest) branch.
-      // currentBranchSelections is non-null even when user navigates to the latest
-      // branch via pagination arrows, so we must check branchInfo.current < total-1.
-      // Note: branchInfo is attached to USER messages by the server. selectionKey
-      // is the parent assistant node UUID — the correct value for resumeSessionAt.
-      const { currentBranchSelections: branchSelections, messages: currentMsgs } = useMessageStore.getState();
-      const branchMsg = branchSelections
-        ? [...currentMsgs].reverse().find((m) => m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1)
-        : undefined;
-      if (branchMsg?.branchInfo) {
-        const { selectionKey, total } = branchMsg.branchInfo;
-        // selectionKey is the parent assistant UUID — use as resumeSessionAt
-        const branchPointId = selectionKey;
-
-        // Truncate messages store at the branch point (same pattern as handleEditSubmit)
-        const msgs = currentMsgs;
-        const bpId = branchPointId;
-        const branchIdx = msgs.findIndex((m) => m.id === bpId || m.id.startsWith(bpId));
-        if (branchIdx !== -1) {
-          let lastPartIdx = branchIdx;
-          for (let i = branchIdx + 1; i < msgs.length; i++) {
-            if (msgs[i].id.startsWith(bpId)) {
-              lastPartIdx = i;
-            } else {
-              break;
-            }
-          }
-          useMessageStore.setState({ messages: msgs.slice(0, lastPartIdx + 1) });
-        }
-
-        internalSend(content, attachments, { resumeSessionAt: branchPointId, expectedBranchTotal: total + 1 });
         return;
       }
 
@@ -872,15 +832,6 @@ export function ChatPage() {
   // pre-stream history. Stream-period content comes exclusively from buffer
   // replay (streaming segments). No client-side dedup filtering needed.
   const { displayMessages, branchPoints, navigateBranch, isBranchNavigationDisabled } = useMessageTree(messages);
-
-  // Story 25.10: True when user is viewing a historical (non-latest) branch via pagination.
-  // Used for placeholder hint and to guard against sending resumeSessionAt on the latest branch.
-  const isViewingNonLatestBranch = useMemo(() =>
-    !!currentBranchSelections && messages.some((m) =>
-      m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1
-    ),
-    [currentBranchSelections, messages]
-  );
 
   // Story 25.7: Edit submit handler — truncate old branch, add optimistic message,
   // then send edit to server. Truncation also happens in handleSessionInit (useStreaming)
@@ -1301,7 +1252,7 @@ export function ChatPage() {
           isStreaming={isStreaming}
           onAbort={handleAbort}
           queueLocked={isQueueLocked}
-          placeholder={isStreaming ? t('chatPage.streaming') : isViewingNonLatestBranch ? t('branch.continueHint') : t('chatPage.default')}
+          placeholder={isStreaming ? t('chatPage.streaming') : t('chatPage.default')}
           commands={commands}
           permissionMode={permissionMode}
           onPermissionModeChange={setPermissionMode}

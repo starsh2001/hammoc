@@ -331,8 +331,7 @@
   "branch": {
     "prev": "이전 브랜치",
     "next": "다음 브랜치",
-    "indicator": "브랜치 {{current}} / {{total}}",
-    "continueHint": "이전 브랜치에서 이어서 대화합니다"
+    "indicator": "브랜치 {{current}} / {{total}}"
   },
   "message": {
     "taskStatus": "Agent 작업 {{status}}",

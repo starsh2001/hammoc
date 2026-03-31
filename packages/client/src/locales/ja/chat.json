@@ -327,8 +327,7 @@
   "branch": {
     "prev": "前のブランチ",
     "next": "次のブランチ",
-    "indicator": "ブランチ {{current}} / {{total}}",
-    "continueHint": "このブランチから会話を続けます"
+    "indicator": "ブランチ {{current}} / {{total}}"
   },
   "message": {
     "taskStatus": "Agentタスク {{status}}",

@@ -331,8 +331,7 @@
   "branch": {
     "prev": "Previous branch",
     "next": "Next branch",
-    "indicator": "Branch {{current}} of {{total}}",
-    "continueHint": "Continue from this branch"
+    "indicator": "Branch {{current}} of {{total}}"
   },
   "message": {
     "taskStatus": "Agent task {{status}}",
