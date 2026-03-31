@@ -71,7 +71,7 @@ export function MessageActionBar({
   const showRewindButton = isUser && !isOptimistic;
   const showSummarizeButton = isUser && !isOptimistic && !!onSummarize;
 
-  const buttonBase = `inline-flex items-center justify-center p-0.5 rounded transition-colors ${
+  const buttonBase = `inline-flex items-center justify-center p-0.5 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
     isUser
       ? 'hover:bg-blue-200/50 dark:hover:bg-blue-500/30 text-gray-400 dark:text-blue-300/50 hover:text-gray-700 dark:hover:text-white'
       : 'hover:bg-gray-200/50 dark:hover:bg-[#2d3a4a] text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200'
