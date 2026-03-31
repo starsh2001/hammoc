@@ -741,6 +741,13 @@ export class SessionService {
   }
 
   /**
+   * Get the project directory path for a given project slug
+   */
+  getProjectDir(projectSlug: string): string {
+    return path.join(this.claudeProjectsDir, projectSlug);
+  }
+
+  /**
    * Check if a session file exists
    * @param projectSlug The project slug
    * @param sessionId The session ID
@@ -904,6 +911,58 @@ export class SessionService {
     return null;
   }
 
+  /**
+   * Delete phantom sessions — JSONL files that contain only metadata entries
+   * (e.g. file-history-snapshot) without any user/assistant conversation messages.
+   * These are created when SDK query() writes its initial checkpoint but fails
+   * before processing the user message (due to rate-limit, auth, abort, etc.).
+   *
+   * @returns Number of phantom sessions deleted
+   */
+  async cleanupPhantomSessions(projectSlug: string): Promise<number> {
+    const projectDir = path.join(this.claudeProjectsDir, projectSlug);
+    if (!existsSync(projectDir)) return 0;
+
+    const files = await fs.readdir(projectDir);
+    const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
+    let deleted = 0;
+
+    for (const file of jsonlFiles) {
+      const filePath = path.join(projectDir, file);
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        const hasConversation = content.includes('"type":"user"') || content.includes('"type":"assistant"');
+        if (!hasConversation) {
+          await fs.unlink(filePath);
+          deleted++;
+        }
+      } catch {
+        // Skip files that can't be read or deleted
+      }
+    }
+
+    // Rebuild index to remove stale entries for deleted files
+    if (deleted > 0) {
+      const indexPath = path.join(projectDir, 'sessions-index.json');
+      try {
+        const indexContent = await fs.readFile(indexPath, 'utf-8');
+        const index: SessionsIndex = JSON.parse(indexContent);
+        if (index.entries && Array.isArray(index.entries)) {
+          const before = index.entries.length;
+          index.entries = index.entries.filter(e =>
+            existsSync(path.join(projectDir, `${e.sessionId}.jsonl`))
+          );
+          if (index.entries.length < before) {
+            await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf-8');
+          }
+        }
+      } catch {
+        // Index may not exist or be corrupt — skip
+      }
+    }
+
+    return deleted;
+  }
 }
 
 // Singleton export for controllers (Story 3.3)

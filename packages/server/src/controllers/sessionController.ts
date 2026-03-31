@@ -397,4 +397,35 @@ export const sessionController = {
       });
     }
   },
+
+  /**
+   * POST /api/projects/:projectSlug/sessions/cleanup-phantom
+   * Delete phantom sessions (JSONL files with only metadata, no conversation messages)
+   */
+  async cleanupPhantom(req: Request, res: Response): Promise<void> {
+    const { projectSlug } = req.params;
+
+    if (!sessionService.isValidPathParam(projectSlug)) {
+      res.status(SESSION_ERRORS.INVALID_PATH.httpStatus).json({
+        error: {
+          code: SESSION_ERRORS.INVALID_PATH.code,
+          message: req.t!('session.error.invalidPath'),
+        },
+      });
+      return;
+    }
+
+    try {
+      const deleted = await sessionService.cleanupPhantomSessions(projectSlug);
+      log.info(`Phantom session cleanup: project=${projectSlug}, deleted=${deleted}`);
+      res.json({ deleted });
+    } catch {
+      res.status(500).json({
+        error: {
+          code: 'CLEANUP_ERROR',
+          message: req.t!('session.error.cleanupError', { defaultValue: 'Failed to clean up phantom sessions' }),
+        },
+      });
+    }
+  },
 };

@@ -16,6 +16,9 @@ router.get('/:projectSlug/sessions', sessionController.list);
 // POST /api/projects/:projectSlug/sessions/delete-batch - Batch delete sessions
 router.post('/:projectSlug/sessions/delete-batch', sessionController.deleteBatch);
 
+// POST /api/projects/:projectSlug/sessions/cleanup-phantom - Delete phantom sessions
+router.post('/:projectSlug/sessions/cleanup-phantom', sessionController.cleanupPhantom);
+
 // GET /api/projects/:projectSlug/sessions/:sessionId/messages - Get session history
 // [Source: Story 3.5 - Task 3]
 router.get('/:projectSlug/sessions/:sessionId/messages', sessionController.getMessages);

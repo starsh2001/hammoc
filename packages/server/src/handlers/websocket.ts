@@ -7,7 +7,7 @@
 
 import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
-import { existsSync, unlinkSync } from 'fs';
+import { existsSync, unlinkSync, readFileSync, readdirSync } from 'fs';
 import { randomUUID } from 'crypto';
 import type {
   ClientToServerEvents,
@@ -1981,6 +1981,22 @@ async function handleChatSend(
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
+  // Snapshot JSONL files before SDK query to detect phantom checkpoint files.
+  // The SDK's file checkpointing creates separate JSONL files (new UUIDs) with
+  // only file-history-snapshot entries alongside the real session file. These
+  // are redundant copies of checkpoint state already present in the session
+  // file and are not needed for rewindFiles() to function.
+  let preQueryFiles: Set<string> | null = null;
+  try {
+    const encoded = sessionService.encodeProjectPath(workingDirectory);
+    const projectDir = sessionService.getProjectDir(encoded);
+    if (existsSync(projectDir)) {
+      preQueryFiles = new Set(readdirSync(projectDir).filter(f => f.endsWith('.jsonl')));
+    }
+  } catch {
+    // Non-critical — cleanup will be skipped if snapshot fails
+  }
+
   try {
     const chatService = new ChatService({ workingDirectory, permissionMode });
     stream.chatService = chatService;
@@ -2286,6 +2302,35 @@ async function handleChatSend(
   } finally {
     if (timeoutId) {
       clearTimeout(timeoutId);
+    }
+
+    // Delete phantom checkpoint files created by SDK file checkpointing.
+    // These are separate JSONL files (new UUIDs) containing only
+    // file-history-snapshot entries. The same snapshot data already exists
+    // in the actual session file, so these are redundant and not needed
+    // for rewindFiles() to function.
+    if (preQueryFiles) {
+      try {
+        const encoded = sessionService.encodeProjectPath(workingDirectory);
+        const projectDir = sessionService.getProjectDir(encoded);
+        const postQueryFiles = readdirSync(projectDir).filter(f => f.endsWith('.jsonl'));
+        for (const file of postQueryFiles) {
+          if (preQueryFiles.has(file)) continue;
+          const filePath = `${projectDir}/${file}`;
+          try {
+            const raw = readFileSync(filePath, 'utf8');
+            const hasConversation = raw.includes('"type":"user"') || raw.includes('"type":"assistant"');
+            if (!hasConversation) {
+              unlinkSync(filePath);
+              log.info(`Deleted phantom checkpoint file: ${file}`);
+            }
+          } catch {
+            // Skip unreadable files
+          }
+        }
+      } catch (cleanupErr) {
+        log.warn('Failed to clean up phantom checkpoint files:', cleanupErr);
+      }
     }
   }
 }
