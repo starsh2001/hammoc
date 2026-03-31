@@ -49,6 +49,8 @@ interface MessageBubbleProps {
   summaryResult?: { messageUuid: string; summary: string } | null;
   /** Clear summary result after consuming it */
   onClearSummaryResult?: () => void;
+  /** When true, edit/rewind/summarize buttons are disabled (but still visible) */
+  actionsLocked?: boolean;
 }
 
 export function MessageBubble({
@@ -66,6 +68,7 @@ export function MessageBubble({
   isSummarizing = false,
   summaryResult,
   onClearSummaryResult,
+  actionsLocked = false,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
@@ -198,6 +201,7 @@ export function MessageBubble({
                 : undefined
             }
             isSummarizing={isSummarizing}
+            actionsLocked={actionsLocked}
           />
         </div>
       </div>

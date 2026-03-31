@@ -179,7 +179,7 @@ function renderHistoryMessage(
     );
   }
 
-  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={actionsLocked ? undefined : onEditSubmit} isStreaming={isStreaming} onRewind={actionsLocked ? undefined : onRewind} isRewinding={isRewinding} onSummarize={actionsLocked ? undefined : onSummarize} isSummarizing={isSummarizing && summarizingMessageUuid === getBaseUuid(message.id)} summaryResult={summaryResult} onClearSummaryResult={onClearSummaryResult} />;
+  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} onRewind={onRewind} isRewinding={isRewinding} onSummarize={onSummarize} isSummarizing={isSummarizing && summarizingMessageUuid === getBaseUuid(message.id)} summaryResult={summaryResult} onClearSummaryResult={onClearSummaryResult} actionsLocked={actionsLocked} />;
 }
 
 export function ChatPage() {

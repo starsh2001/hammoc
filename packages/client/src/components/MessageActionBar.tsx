@@ -20,6 +20,8 @@ interface MessageActionBarProps {
   isRewinding?: boolean;
   onSummarize?: () => void;
   isSummarizing?: boolean;
+  /** When true, edit/rewind/summarize buttons are disabled (but still visible) */
+  actionsLocked?: boolean;
 }
 
 export function MessageActionBar({
@@ -33,6 +35,7 @@ export function MessageActionBar({
   isRewinding = false,
   onSummarize,
   isSummarizing = false,
+  actionsLocked = false,
 }: MessageActionBarProps) {
   const { t } = useTranslation('chat');
   const [isCopied, setIsCopied] = useState(false);
@@ -64,7 +67,7 @@ export function MessageActionBar({
   }, [content, onCopy]);
 
   const isUser = role === 'user';
-  const showEditButton = isUser && !isOptimistic && !disabled;
+  const showEditButton = isUser && !isOptimistic && !disabled && !!onEdit;
   const showRewindButton = isUser && !isOptimistic;
   const showSummarizeButton = isUser && !isOptimistic && !!onSummarize;
 
@@ -80,12 +83,13 @@ export function MessageActionBar({
       data-testid="message-action-bar"
     >
       {/* Edit button — user messages only, hidden during streaming or optimistic */}
-      {showEditButton && onEdit && (
+      {showEditButton && (
         <button
           onClick={onEdit}
           className={buttonBase}
           title={t('messageActionBar.edit')}
           aria-label={t('messageActionBar.edit')}
+          disabled={actionsLocked}
         >
           <Pencil className="w-3 h-3" aria-hidden="true" />
         </button>
@@ -98,7 +102,7 @@ export function MessageActionBar({
           className={buttonBase}
           title={isSummarizing ? t('summarize.generating') : t('summarize.button')}
           aria-label={isSummarizing ? t('summarize.generating') : t('summarize.button')}
-          disabled={disabled && !isSummarizing}
+          disabled={(disabled && !isSummarizing) || (actionsLocked && !isSummarizing)}
           onMouseEnter={() => setIsSummarizeHovered(true)}
           onMouseLeave={() => setIsSummarizeHovered(false)}
         >
@@ -121,7 +125,7 @@ export function MessageActionBar({
           className={buttonBase}
           title={t('rewind.button')}
           aria-label={t('rewind.button')}
-          disabled={disabled || isRewinding}
+          disabled={disabled || isRewinding || actionsLocked}
         >
           {isRewinding ? (
             <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
