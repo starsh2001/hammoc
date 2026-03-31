@@ -1491,12 +1491,13 @@ export function useStreaming() {
 
     // Story 25.9: Handle summary result from server
     const handleSummaryResult = (data: { requestId?: string; messageUuid: string; summary?: string; error?: string }) => {
-      const { isSummarizing, summarizeRequestId, setSummarizing, setSummaryResult } = useChatStore.getState();
+      const { isSummarizing, summarizingMessageUuid, setSummarizing, setSummaryResult } = useChatStore.getState();
 
-      // Ignore stale/cancelled responses that don't match the active request
-      if (!isSummarizing || (data.requestId && summarizeRequestId !== data.requestId)) return;
+      // Ignore stale/cancelled responses — requestId race is handled server-side,
+      // client matches by messageUuid only
+      if (!isSummarizing || summarizingMessageUuid !== data.messageUuid) return;
 
-      setSummarizing(false, null, null);
+      setSummarizing(false, null);
 
       if (data.error) {
         toast.error(i18n.t('chat:summarize.error') + ': ' + data.error);
