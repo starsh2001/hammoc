@@ -181,7 +181,7 @@ export function MessageBubble({
         </div>
 
         {/* Bottom bar: branch pagination (left) + action bar (right) */}
-        <div className="flex items-center justify-between mt-0.5">
+        <div className="flex items-center justify-between mt-2.5">
           <div>
             {isUser && branchInfo && onNavigateBranch && (
               <BranchPagination
@@ -203,7 +203,7 @@ export function MessageBubble({
             onRewind={(message as any)._optimistic !== true && onRewind ? () => onRewind(getBaseUuid(message.id)) : undefined}
             isRewinding={isRewinding}
             onSummarize={
-              (message as any)._optimistic !== true && onSummarize && message.parentId
+              (message as any)._optimistic !== true && onSummarize
                 ? () => onSummarize(getBaseUuid(message.id))
                 : undefined
             }
