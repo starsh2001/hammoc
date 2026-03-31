@@ -1,4 +1,4 @@
-import { query, type Query, type Options, type SDKMessage, type CanUseTool } from '@anthropic-ai/claude-agent-sdk';
+import { query, type Query, type Options, type SDKMessage, type SDKUserMessage, type CanUseTool } from '@anthropic-ai/claude-agent-sdk';
 import type {
   ChatServiceConfig,
   ChatOptions,
@@ -425,12 +425,7 @@ export class ChatService {
 async function* createMessageWithImages(
   text: string,
   images: ImageAttachment[]
-): AsyncGenerator<{
-  type: 'user';
-  session_id: string;
-  message: { role: 'user'; content: Array<{ type: string; [key: string]: unknown }> };
-  parent_tool_use_id: null;
-}> {
+): AsyncGenerator<SDKUserMessage> {
   yield {
     type: 'user' as const,
     session_id: '',
@@ -449,5 +444,5 @@ async function* createMessageWithImages(
       ],
     },
     parent_tool_use_id: null,
-  };
+  } as SDKUserMessage;
 }
