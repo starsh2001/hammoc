@@ -2219,7 +2219,7 @@ async function handleChatSend(
       // SDK may return "No conversation found" as an error result (not a thrown exception).
       // Convert to a thrown error so the retry logic below can handle it.
       if (sendResult.isError && isResumeAttempt && !abortController.signal.aborted && !hasEmittedOutput) {
-        log.info(`[RESUME-RETRY] SDK returned error result while resuming, converting to thrown error for retry`);
+        log.info(`[RESUME-RETRY] SDK returned error result while resuming, converting to thrown error for retry. result="${(sendResult.content || '').slice(0, 200)}"`);
         throw new Error(sendResult.content || 'Resume returned error result');
       }
       // Story 25.7: warn client if file rewind failed (non-fatal)
@@ -2244,6 +2244,7 @@ async function handleChatSend(
         && !abortController.signal.aborted
         && !hasEmittedOutput
         && !isNonSessionError
+        && !chatOptions.resumeSessionAt
       ) {
         log.info(`[RESUME-RETRY] resume failed, retrying without resume: sessionId=${sessionId}, error=${parsedError.message.slice(0, 120)}`);
         // Discard gated events and restore original callbacks for the retry
@@ -2264,8 +2265,9 @@ async function handleChatSend(
             log.warn(`[RESUME-RETRY] failed to delete stale session file: ${staleFile}`, e);
           }
         }
-        const retryOptions = { ...chatOptions, resume: undefined, sessionId };
+        const retryOptions = { ...chatOptions, resume: undefined, resumeSessionAt: undefined, sessionId };
         delete retryOptions.resume;
+        delete retryOptions.resumeSessionAt;
         resetTimeout('resume-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, retryOptions, canUseTool, (messageType: string) => {
           resetTimeout(`raw:${messageType}`);
