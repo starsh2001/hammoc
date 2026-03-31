@@ -8,10 +8,9 @@
 
 import { randomUUID } from 'crypto';
 import { unlink } from 'fs/promises';
-import path from 'path';
-import os from 'os';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { createLogger } from '../utils/logger.js';
+import { SessionService } from './sessionService.js';
 
 const log = createLogger('summarizeService');
 
@@ -50,20 +49,8 @@ export interface SummarizeOptions {
   locale?: string;
   /** Working directory for SDK query (needed for project context) */
   cwd?: string;
-}
-
-/**
- * Get the temp session JSONL path for cleanup.
- * Agent SDK stores sessions at ~/.claude/projects/{encodedPath}/{sessionId}.jsonl
- * For temp sessions with no cwd, it uses a default location.
- */
-function getTempSessionPath(sessionId: string, cwd?: string): string {
-  const claudeDir = path.join(os.homedir(), '.claude', 'projects');
-  // Agent SDK encodes path: replace /\: with -, strip leading -
-  const encoded = cwd
-    ? cwd.replace(/[/\\:]/g, '-').replace(/^-+/, '')
-    : '_temp';
-  return path.join(claudeDir, encoded, `${sessionId}.jsonl`);
+  /** Project slug for temp session cleanup — uses SessionService path encoding */
+  projectSlug?: string;
 }
 
 /**
@@ -107,7 +94,13 @@ export async function summarize(
   const prompt = SUMMARY_PROMPT_PREFIX + conversationText + SUMMARY_PROMPT_SUFFIX + localeHint;
 
   const tempSessionId = randomUUID();
-  const tempSessionPath = getTempSessionPath(tempSessionId, options?.cwd);
+
+  // Resolve temp session JSONL path using SessionService (same encoding as SDK)
+  let tempSessionPath: string | null = null;
+  if (options?.projectSlug) {
+    const sessionService = new SessionService();
+    tempSessionPath = sessionService.getSessionFilePath(options.projectSlug, tempSessionId);
+  }
 
   log.info(`Generating summary: tempSession=${tempSessionId}, messageCount=${truncated.length}`);
 
@@ -129,7 +122,7 @@ export async function summarize(
 
     for await (const message of q) {
       if (options?.signal?.aborted) {
-        q.abort();
+        await q.return();
         break;
       }
       if (message.type === 'result') {
@@ -149,11 +142,13 @@ export async function summarize(
     return resultText;
   } finally {
     // Clean up temporary session JSONL
-    try {
-      await unlink(tempSessionPath);
-      log.debug(`Deleted temp session: ${tempSessionPath}`);
-    } catch {
-      // File may not exist if query failed early — ignore
+    if (tempSessionPath) {
+      try {
+        await unlink(tempSessionPath);
+        log.debug(`Deleted temp session: ${tempSessionPath}`);
+      } catch {
+        log.warn(`Failed to delete temp session: ${tempSessionPath}`);
+      }
     }
   }
 }

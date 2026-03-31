@@ -1510,6 +1510,7 @@ export async function initializeWebSocket(
           signal: abortController.signal,
           locale: lang !== 'en' ? lang : undefined,
           cwd,
+          projectSlug,
         });
 
         socket.emit('session:summary-result', { requestId, messageUuid, summary });
