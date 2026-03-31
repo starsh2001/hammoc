@@ -117,7 +117,8 @@ export function QuickPanel({
   const isOpen = activePanel !== null;
 
   // Close/reopen overlay on browser back/forward navigation
-  useOverlayBackHandler(isOpen, onClose, onReopen);
+  // Only intercept back button in overlay mode; sidebar mode should not affect navigation
+  useOverlayBackHandler(isOpen, onClose, onReopen, !isMobile);
 
   // Track visited panels
   useEffect(() => {

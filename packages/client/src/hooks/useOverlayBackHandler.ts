@@ -22,6 +22,8 @@ export function useOverlayBackHandler(
   isOpen: boolean,
   onClose: () => void,
   onReopen?: () => void,
+  /** When true, skip all history manipulation (e.g. sidebar mode on desktop) */
+  disabled?: boolean,
 ) {
   const isOpenRef = useRef(isOpen);
   const stateRef = useRef<'idle' | 'pushed' | 'popped'>('idle');
@@ -29,9 +31,13 @@ export function useOverlayBackHandler(
   const myIdRef = useRef<number | null>(null);
   isOpenRef.current = isOpen;
 
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
+
   // Persistent popstate listener (survives open/close toggles)
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
+      if (disabledRef.current) return;
       // Skip popstate events triggered by another overlay's programmatic close
       if (_programmaticBack) return;
 
@@ -56,6 +62,21 @@ export function useOverlayBackHandler(
 
   // Push/pop history entry when overlay opens/closes
   useEffect(() => {
+    if (disabled) {
+      // Clean up any existing overlay entry when switching to disabled
+      if (stateRef.current === 'pushed') {
+        stateRef.current = 'idle';
+        _programmaticBack = true;
+        window.history.back();
+        const reset = () => {
+          _programmaticBack = false;
+          window.removeEventListener('popstate', reset);
+        };
+        window.addEventListener('popstate', reset);
+      }
+      return;
+    }
+
     if (isOpen) {
       if (stateRef.current !== 'pushed') {
         const id = ++_nextOverlayId;
@@ -79,5 +100,5 @@ export function useOverlayBackHandler(
       window.addEventListener('popstate', reset);
     }
     // If 'popped' (closed via back), the forward entry stays for reopen
-  }, [isOpen]);
+  }, [isOpen, disabled]);
 }
