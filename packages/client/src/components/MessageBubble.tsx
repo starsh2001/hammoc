@@ -95,7 +95,7 @@ export function MessageBubble({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`relative group max-w-[90%] md:max-w-[80%] ${
+        className={`relative group ${isEditing ? 'max-w-full' : 'max-w-[90%] md:max-w-[80%]'} ${
           isUser
             ? 'bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-l-lg rounded-tr-lg'
             : 'bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e]'

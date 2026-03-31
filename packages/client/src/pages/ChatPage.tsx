@@ -89,6 +89,7 @@ function renderHistoryMessage(
   summarizingMessageUuid?: string | null,
   summaryResult?: { messageUuid: string; summary: string } | null,
   onClearSummaryResult?: () => void,
+  actionsLocked?: boolean,
 ) {
   // Render task notification as notification card (not user bubble)
   if (message.type === 'task_notification' && message.taskStatus) {
@@ -178,7 +179,7 @@ function renderHistoryMessage(
     );
   }
 
-  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} onRewind={onRewind} isRewinding={isRewinding} onSummarize={onSummarize} isSummarizing={isSummarizing && summarizingMessageUuid === getBaseUuid(message.id)} summaryResult={summaryResult} onClearSummaryResult={onClearSummaryResult} />;
+  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={actionsLocked ? undefined : onEditSubmit} isStreaming={isStreaming} onRewind={actionsLocked ? undefined : onRewind} isRewinding={isRewinding} onSummarize={actionsLocked ? undefined : onSummarize} isSummarizing={isSummarizing && summarizingMessageUuid === getBaseUuid(message.id)} summaryResult={summaryResult} onClearSummaryResult={onClearSummaryResult} />;
 }
 
 export function ChatPage() {
@@ -1216,6 +1217,7 @@ export function ChatPage() {
             const isOnOldBranch = displayMessages.some(
               (m) => m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1,
             );
+            const actionsLocked = isRewinding || isSummarizing;
             return displayMessages.map((msg, idx) => (
             <Fragment key={msg.id}>
               <div data-message-id={msg.id}>
@@ -1233,6 +1235,7 @@ export function ChatPage() {
                   summarizingMessageUuid,
                   summaryResult,
                   clearSummaryResult,
+                  actionsLocked,
                 )}
               </div>
             </Fragment>
