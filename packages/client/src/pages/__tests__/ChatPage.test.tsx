@@ -1104,19 +1104,21 @@ describe('ChatPage', () => {
   });
 
   describe('Story 25.10: Branch continuation', () => {
+    // branchInfo is attached to USER messages by the server.
+    // selectionKey is the parent assistant node UUID.
     const branchMessages: HistoryMessage[] = [
       {
         id: 'msg-u1',
         type: 'user',
         content: 'Hello',
         timestamp: '2026-01-15T10:00:00Z',
+        branchInfo: { total: 2, current: 0, selectionKey: 'msg-a0' },
       },
       {
         id: 'msg-a1',
         type: 'assistant',
         content: 'Hi there!',
         timestamp: '2026-01-15T10:00:05Z',
-        branchInfo: { total: 2, current: 0, selectionKey: 'msg-a1' },
       },
     ];
 
@@ -1135,7 +1137,7 @@ describe('ChatPage', () => {
       useMessageStore.setState({
         messages: branchMessages,
         pagination: mockPagination,
-        currentBranchSelections: { 'msg-a1': 0 },
+        currentBranchSelections: { 'msg-a0': 0 },
       });
 
       renderChatPage();
@@ -1145,7 +1147,7 @@ describe('ChatPage', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
 
       expect(sendMessageSpy).toHaveBeenCalledWith('Continue from branch', expect.objectContaining({
-        resumeSessionAt: 'msg-a1',
+        resumeSessionAt: 'msg-a0',
         expectedBranchTotal: 3,
       }));
     });
@@ -1208,7 +1210,7 @@ describe('ChatPage', () => {
       }));
     });
 
-    it('should use getBaseUuid for resumeSessionAt when assistant has no selectionKey', () => {
+    it('should use selectionKey from branchInfo user message for resumeSessionAt in deep conversation', () => {
       const sendMessageSpy = vi.fn();
       useChatStore.setState({ sendMessage: sendMessageSpy });
       useProjectStore.setState({
@@ -1221,16 +1223,17 @@ describe('ChatPage', () => {
         }],
       });
 
-      const messagesWithBranchAndNoSelectionKey: HistoryMessage[] = [
-        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z' },
-        { id: 'some-key', type: 'assistant', content: 'Branch point', timestamp: '2026-01-15T10:00:02Z', branchInfo: { total: 2, current: 0, selectionKey: 'some-key' } },
+      // branchInfo on user message, selectionKey = parent assistant UUID
+      const deepBranchMessages: HistoryMessage[] = [
+        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z', branchInfo: { total: 2, current: 0, selectionKey: 'parent-assistant-uuid' } },
+        { id: 'msg-a1', type: 'assistant', content: 'Branch point response', timestamp: '2026-01-15T10:00:02Z' },
         { id: 'msg-u2', type: 'user', content: 'Follow up', timestamp: '2026-01-15T10:00:03Z' },
-        { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee-text-0', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z' },
+        { id: 'msg-a2', type: 'assistant', content: 'Deep response', timestamp: '2026-01-15T10:00:05Z' },
       ];
       useMessageStore.setState({
-        messages: messagesWithBranchAndNoSelectionKey,
+        messages: deepBranchMessages,
         pagination: mockPagination,
-        currentBranchSelections: { 'some-key': 0 },
+        currentBranchSelections: { 'parent-assistant-uuid': 0 },
       });
 
       renderChatPage();
@@ -1239,9 +1242,10 @@ describe('ChatPage', () => {
       fireEvent.change(textarea, { target: { value: 'Branch msg' } });
       fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
 
+      // resumeSessionAt should be the selectionKey (parent assistant UUID), not last assistant
       expect(sendMessageSpy).toHaveBeenCalledWith('Branch msg', expect.objectContaining({
-        resumeSessionAt: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
-        expectedBranchTotal: undefined,
+        resumeSessionAt: 'parent-assistant-uuid',
+        expectedBranchTotal: 3,
       }));
     });
 
@@ -1258,16 +1262,15 @@ describe('ChatPage', () => {
         }],
       });
 
-      // Simulate branch view: messages end at the branch point assistant
-      // (server returns only the selected branch's messages)
+      // branchInfo on user message; selectionKey = parent assistant UUID (branch point)
       const branchViewMessages: HistoryMessage[] = [
-        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z' },
-        { id: 'msg-a1', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z', branchInfo: { total: 2, current: 0, selectionKey: 'msg-a1' } },
+        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z', branchInfo: { total: 2, current: 0, selectionKey: 'msg-a0' } },
+        { id: 'msg-a1', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z' },
       ];
       useMessageStore.setState({
         messages: branchViewMessages,
         pagination: mockPagination,
-        currentBranchSelections: { 'msg-a1': 0 },
+        currentBranchSelections: { 'msg-a0': 0 },
       });
 
       renderChatPage();
@@ -1276,17 +1279,10 @@ describe('ChatPage', () => {
       fireEvent.change(textarea, { target: { value: 'Branch continue' } });
       fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
 
-      // After truncation at branch point + optimistic message
-      const storeMessages = useMessageStore.getState().messages;
-      // Messages up to and including branch point (msg-u1, msg-a1) + optimistic user message
-      expect(storeMessages.length).toBe(3);
-      expect(storeMessages[0].id).toBe('msg-u1');
-      expect(storeMessages[1].id).toBe('msg-a1');
-      expect(storeMessages[2].content).toBe('Branch continue');
-
-      // Verify sendMessage was called with resumeSessionAt
+      // Verify sendMessage was called with selectionKey as resumeSessionAt
       expect(sendMessageSpy).toHaveBeenCalledWith('Branch continue', expect.objectContaining({
-        resumeSessionAt: 'msg-a1',
+        resumeSessionAt: 'msg-a0',
+        expectedBranchTotal: 3,
       }));
     });
 
@@ -1303,15 +1299,15 @@ describe('ChatPage', () => {
         }],
       });
 
-      // Latest branch: current=1, total=2 → current >= total-1
+      // Latest branch: current=1, total=2 → current >= total-1 → no resumeSessionAt
       const latestBranchMessages: HistoryMessage[] = [
-        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z' },
-        { id: 'msg-a1', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z', branchInfo: { total: 2, current: 1, selectionKey: 'msg-a1' } },
+        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z', branchInfo: { total: 2, current: 1, selectionKey: 'msg-a0' } },
+        { id: 'msg-a1', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z' },
       ];
       useMessageStore.setState({
         messages: latestBranchMessages,
         pagination: mockPagination,
-        currentBranchSelections: { 'msg-a1': 1 },
+        currentBranchSelections: { 'msg-a0': 1 },
       });
 
       renderChatPage();
@@ -1328,13 +1324,13 @@ describe('ChatPage', () => {
 
     it('should show default placeholder on latest branch even with branchSelections', () => {
       const latestBranchMessages: HistoryMessage[] = [
-        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z' },
-        { id: 'msg-a1', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z', branchInfo: { total: 2, current: 1, selectionKey: 'msg-a1' } },
+        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z', branchInfo: { total: 2, current: 1, selectionKey: 'msg-a0' } },
+        { id: 'msg-a1', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z' },
       ];
       useMessageStore.setState({
         messages: latestBranchMessages,
         pagination: mockPagination,
-        currentBranchSelections: { 'msg-a1': 1 },
+        currentBranchSelections: { 'msg-a0': 1 },
       });
 
       renderChatPage();
@@ -1347,7 +1343,7 @@ describe('ChatPage', () => {
       useMessageStore.setState({
         messages: branchMessages,
         pagination: mockPagination,
-        currentBranchSelections: { 'msg-a1': 0 },
+        currentBranchSelections: { 'msg-a0': 0 },
       });
 
       renderChatPage();

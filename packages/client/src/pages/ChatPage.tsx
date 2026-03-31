@@ -430,35 +430,35 @@ export function ChatPage() {
       // Guard: only activate when actually viewing a historical (non-latest) branch.
       // currentBranchSelections is non-null even when user navigates to the latest
       // branch via pagination arrows, so we must check branchInfo.current < total-1.
+      // Note: branchInfo is attached to USER messages by the server. selectionKey
+      // is the parent assistant node UUID — the correct value for resumeSessionAt.
       const { currentBranchSelections: branchSelections, messages: currentMsgs } = useMessageStore.getState();
-      const isNonLatestBranch = branchSelections && currentMsgs.some((m) =>
-        m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1
-      );
-      if (isNonLatestBranch) {
-        const lastAssistant = [...currentMsgs].reverse().find((m) => m.type === 'assistant');
-        if (lastAssistant) {
-          const branchPointId = lastAssistant.branchInfo?.selectionKey ?? getBaseUuid(lastAssistant.id);
-          const expectedBranchTotal = lastAssistant.branchInfo ? lastAssistant.branchInfo.total + 1 : undefined;
+      const branchMsg = branchSelections
+        ? [...currentMsgs].reverse().find((m) => m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1)
+        : undefined;
+      if (branchMsg?.branchInfo) {
+        const { selectionKey, total } = branchMsg.branchInfo;
+        // selectionKey is the parent assistant UUID — use as resumeSessionAt
+        const branchPointId = selectionKey;
 
-          // Truncate messages store at the branch point (same pattern as handleEditSubmit)
-          const msgs = currentMsgs;
-          const bpId = branchPointId;
-          const branchIdx = msgs.findIndex((m) => m.id === bpId || m.id.startsWith(bpId));
-          if (branchIdx !== -1) {
-            let lastPartIdx = branchIdx;
-            for (let i = branchIdx + 1; i < msgs.length; i++) {
-              if (msgs[i].id.startsWith(bpId)) {
-                lastPartIdx = i;
-              } else {
-                break;
-              }
+        // Truncate messages store at the branch point (same pattern as handleEditSubmit)
+        const msgs = currentMsgs;
+        const bpId = branchPointId;
+        const branchIdx = msgs.findIndex((m) => m.id === bpId || m.id.startsWith(bpId));
+        if (branchIdx !== -1) {
+          let lastPartIdx = branchIdx;
+          for (let i = branchIdx + 1; i < msgs.length; i++) {
+            if (msgs[i].id.startsWith(bpId)) {
+              lastPartIdx = i;
+            } else {
+              break;
             }
-            useMessageStore.setState({ messages: msgs.slice(0, lastPartIdx + 1) });
           }
-
-          internalSend(content, attachments, { resumeSessionAt: branchPointId, expectedBranchTotal });
-          return;
+          useMessageStore.setState({ messages: msgs.slice(0, lastPartIdx + 1) });
         }
+
+        internalSend(content, attachments, { resumeSessionAt: branchPointId, expectedBranchTotal: total + 1 });
+        return;
       }
 
       // Non-chain mode: send directly
