@@ -199,6 +199,8 @@ interface ChatState {
   summarizingMessageUuid: string | null;
   /** Story 25.9: Result of a completed summary generation */
   summaryResult: { messageUuid: string; summary: string } | null;
+  /** UUID of the message currently being edited (inline edit form open) */
+  editingMessageUuid: string | null;
 }
 
 interface SendMessageOptions {
@@ -319,6 +321,8 @@ interface ChatActions {
   setSummaryResult: (result: ChatState['summaryResult']) => void;
   /** Story 25.9: Clear summary result */
   clearSummaryResult: () => void;
+  /** Set the UUID of the message currently being edited */
+  setEditingMessageUuid: (uuid: string | null) => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -356,6 +360,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   isSummarizing: false,
   summarizingMessageUuid: null,
   summaryResult: null,
+  editingMessageUuid: null,
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
@@ -1035,6 +1040,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({ isSummarizing, summarizingMessageUuid: messageUuid ?? null }),
   setSummaryResult: (result: ChatState['summaryResult']) => set({ summaryResult: result }),
   clearSummaryResult: () => set({ summaryResult: null }),
+  setEditingMessageUuid: (uuid: string | null) => set({ editingMessageUuid: uuid }),
 
   addResultError: (data: ResultErrorData) => {
     const segments = get().streamingSegments;

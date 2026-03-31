@@ -3,7 +3,7 @@
  * [Source: Story 3.5 - Task 6, Story 4.3 - Task 1, Story 4.4 - Task 4, Story 25.1 - Task 3]
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { HistoryMessage } from '@hammoc/shared';
 import { formatRelativeTime } from '../utils/formatters';
@@ -13,6 +13,7 @@ import { MessageActionBar } from './MessageActionBar';
 import { MessageEditForm } from './MessageEditForm';
 import { BranchPagination } from './BranchPagination';
 import { getBaseUuid } from '../utils/messageTree';
+import { useChatStore } from '../stores/chatStore';
 
 export interface EditSubmitParams {
   messageUuid: string;
@@ -72,9 +73,15 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const [isHovered, setIsHovered] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditingLocal] = useState(false);
   const [summaryText, setSummaryText] = useState<string | null>(null);
   const [isSummaryEdit, setIsSummaryEdit] = useState(false);
+  const setEditingMessageUuid = useChatStore((s) => s.setEditingMessageUuid);
+
+  const setIsEditing = useCallback((editing: boolean) => {
+    setIsEditingLocal(editing);
+    setEditingMessageUuid(editing ? message.id : null);
+  }, [message.id, setEditingMessageUuid]);
 
   // Auto-open edit form when summary result arrives for this message
   useEffect(() => {

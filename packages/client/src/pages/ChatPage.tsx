@@ -203,7 +203,7 @@ export function ChatPage() {
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult, editingMessageUuid } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   // Get session name from sessionStore (populated when coming from session list)
@@ -1217,7 +1217,7 @@ export function ChatPage() {
             const isOnOldBranch = displayMessages.some(
               (m) => m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1,
             );
-            const actionsLocked = isRewinding || isSummarizing;
+            const actionsLocked = isRewinding || isSummarizing || !!editingMessageUuid;
             return displayMessages.map((msg, idx) => (
             <Fragment key={msg.id}>
               <div data-message-id={msg.id}>
