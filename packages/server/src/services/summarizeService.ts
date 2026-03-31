@@ -112,6 +112,7 @@ export async function summarize(
         sessionId: tempSessionId,
         cwd: options?.cwd,
         permissionMode: 'dontAsk',
+        enableFileCheckpointing: false,
         abortController: options?.signal
           ? (() => { const ac = new AbortController(); options.signal.addEventListener('abort', () => ac.abort(), { once: true }); return ac; })()
           : undefined,
