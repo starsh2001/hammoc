@@ -20,11 +20,15 @@ vi.stubGlobal('ResizeObserver', class {
   disconnect() {}
 });
 
-// Mock Element.scrollTo (not available in jsdom)
-Element.prototype.scrollTo = vi.fn();
+// Mock Element.scrollTo (not available in jsdom) — use globalThis for safe access
+if (typeof Element !== 'undefined') {
+  Element.prototype.scrollTo = vi.fn();
+}
 
 // Mock HTMLCanvasElement.getContext (used by ContextUsageDisplay chart)
-HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as never;
+if (typeof HTMLCanvasElement !== 'undefined') {
+  HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as never;
+}
 
 // Mock useNavigate
 const mockNavigate = vi.fn();
@@ -96,6 +100,11 @@ vi.mock('../../stores/sessionStore', () => ({
     searchSessions: vi.fn(),
     resetSearchState: vi.fn(),
   })),
+}));
+
+// Mock QuickPanel to avoid xterm.js 'self is not defined' in jsdom
+vi.mock('../../components/panel/QuickPanel', () => ({
+  QuickPanel: () => null,
 }));
 
 // Mock socket service (Story 5.4 - abortResponse calls getSocket)
@@ -1092,5 +1101,221 @@ describe('ChatPage', () => {
       expect(screen.getByTestId('interactive-response-card')).toBeInTheDocument();
       expect(screen.getByText('Y')).toBeInTheDocument();
     });
+  });
+
+  describe('Story 25.10: Branch continuation', () => {
+    const branchMessages: HistoryMessage[] = [
+      {
+        id: 'msg-u1',
+        type: 'user',
+        content: 'Hello',
+        timestamp: '2026-01-15T10:00:00Z',
+      },
+      {
+        id: 'msg-a1',
+        type: 'assistant',
+        content: 'Hi there!',
+        timestamp: '2026-01-15T10:00:05Z',
+        branchInfo: { total: 2, current: 0, selectionKey: 'msg-a1' },
+      },
+    ];
+
+    it('should send resumeSessionAt when branch is selected (currentBranchSelections !== null)', () => {
+      const sendMessageSpy = vi.fn();
+      useChatStore.setState({ sendMessage: sendMessageSpy });
+      useProjectStore.setState({
+        projects: [{
+          projectSlug: 'test-project',
+          originalPath: '/test/path',
+          sessionCount: 0,
+          lastModified: '2026-01-01T00:00:00Z',
+          isBmadProject: false,
+        }],
+      });
+      useMessageStore.setState({
+        messages: branchMessages,
+        pagination: mockPagination,
+        currentBranchSelections: { 'msg-a1': 0 },
+      });
+
+      renderChatPage();
+
+      const textarea = screen.getByRole('textbox', { name: '메시지 입력' });
+      fireEvent.change(textarea, { target: { value: 'Continue from branch' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      expect(sendMessageSpy).toHaveBeenCalledWith('Continue from branch', expect.objectContaining({
+        resumeSessionAt: 'msg-a1',
+        expectedBranchTotal: 3,
+      }));
+    });
+
+    it('should NOT send resumeSessionAt when on latest branch (currentBranchSelections === null)', () => {
+      const sendMessageSpy = vi.fn();
+      useChatStore.setState({ sendMessage: sendMessageSpy });
+      useProjectStore.setState({
+        projects: [{
+          projectSlug: 'test-project',
+          originalPath: '/test/path',
+          sessionCount: 0,
+          lastModified: '2026-01-01T00:00:00Z',
+          isBmadProject: false,
+        }],
+      });
+      useMessageStore.setState({
+        messages: branchMessages,
+        pagination: mockPagination,
+        currentBranchSelections: null,
+      });
+
+      renderChatPage();
+
+      const textarea = screen.getByRole('textbox', { name: '메시지 입력' });
+      fireEvent.change(textarea, { target: { value: 'Normal message' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      expect(sendMessageSpy).toHaveBeenCalledWith('Normal message', expect.objectContaining({
+        resumeSessionAt: undefined,
+      }));
+    });
+
+    it('should NOT send resumeSessionAt in linear conversation (no branches)', () => {
+      const sendMessageSpy = vi.fn();
+      useChatStore.setState({ sendMessage: sendMessageSpy });
+      useProjectStore.setState({
+        projects: [{
+          projectSlug: 'test-project',
+          originalPath: '/test/path',
+          sessionCount: 0,
+          lastModified: '2026-01-01T00:00:00Z',
+          isBmadProject: false,
+        }],
+      });
+      useMessageStore.setState({
+        messages: mockMessages,
+        pagination: mockPagination,
+        currentBranchSelections: null,
+      });
+
+      renderChatPage();
+
+      const textarea = screen.getByRole('textbox', { name: '메시지 입력' });
+      fireEvent.change(textarea, { target: { value: 'Linear message' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      expect(sendMessageSpy).toHaveBeenCalledWith('Linear message', expect.objectContaining({
+        resumeSessionAt: undefined,
+      }));
+    });
+
+    it('should use getBaseUuid for resumeSessionAt when assistant has no selectionKey', () => {
+      const sendMessageSpy = vi.fn();
+      useChatStore.setState({ sendMessage: sendMessageSpy });
+      useProjectStore.setState({
+        projects: [{
+          projectSlug: 'test-project',
+          originalPath: '/test/path',
+          sessionCount: 0,
+          lastModified: '2026-01-01T00:00:00Z',
+          isBmadProject: false,
+        }],
+      });
+
+      const noBranchInfoMessages: HistoryMessage[] = [
+        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z' },
+        { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee-text-0', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z' },
+      ];
+      useMessageStore.setState({
+        messages: noBranchInfoMessages,
+        pagination: mockPagination,
+        currentBranchSelections: { 'some-key': 0 },
+      });
+
+      renderChatPage();
+
+      const textarea = screen.getByRole('textbox', { name: '메시지 입력' });
+      fireEvent.change(textarea, { target: { value: 'Branch msg' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      expect(sendMessageSpy).toHaveBeenCalledWith('Branch msg', expect.objectContaining({
+        resumeSessionAt: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        expectedBranchTotal: undefined,
+      }));
+    });
+
+    it('should truncate messages at branch point before sending', () => {
+      const sendMessageSpy = vi.fn();
+      useChatStore.setState({ sendMessage: sendMessageSpy });
+      useProjectStore.setState({
+        projects: [{
+          projectSlug: 'test-project',
+          originalPath: '/test/path',
+          sessionCount: 0,
+          lastModified: '2026-01-01T00:00:00Z',
+          isBmadProject: false,
+        }],
+      });
+
+      // Simulate branch view: messages end at the branch point assistant
+      // (server returns only the selected branch's messages)
+      const branchViewMessages: HistoryMessage[] = [
+        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z' },
+        { id: 'msg-a1', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z', branchInfo: { total: 2, current: 0, selectionKey: 'msg-a1' } },
+      ];
+      useMessageStore.setState({
+        messages: branchViewMessages,
+        pagination: mockPagination,
+        currentBranchSelections: { 'msg-a1': 0 },
+      });
+
+      renderChatPage();
+
+      const textarea = screen.getByRole('textbox', { name: '메시지 입력' });
+      fireEvent.change(textarea, { target: { value: 'Branch continue' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      // After truncation at branch point + optimistic message
+      const storeMessages = useMessageStore.getState().messages;
+      // Messages up to and including branch point (msg-u1, msg-a1) + optimistic user message
+      expect(storeMessages.length).toBe(3);
+      expect(storeMessages[0].id).toBe('msg-u1');
+      expect(storeMessages[1].id).toBe('msg-a1');
+      expect(storeMessages[2].content).toBe('Branch continue');
+
+      // Verify sendMessage was called with resumeSessionAt
+      expect(sendMessageSpy).toHaveBeenCalledWith('Branch continue', expect.objectContaining({
+        resumeSessionAt: 'msg-a1',
+      }));
+    });
+
+    it('should show branch hint placeholder when branch is selected', () => {
+      useMessageStore.setState({
+        messages: branchMessages,
+        pagination: mockPagination,
+        currentBranchSelections: { 'msg-a1': 0 },
+      });
+
+      renderChatPage();
+
+      // Test env forces Korean locale
+      expect(screen.getByPlaceholderText('이전 브랜치에서 이어서 대화합니다')).toBeInTheDocument();
+    });
+
+    it('should show default placeholder when on latest branch', () => {
+      useMessageStore.setState({
+        messages: branchMessages,
+        pagination: mockPagination,
+        currentBranchSelections: null,
+      });
+
+      renderChatPage();
+
+      // Default placeholder from chat namespace
+      expect(screen.getByPlaceholderText('메시지를 입력하세요...')).toBeInTheDocument();
+    });
+
+    // AC 6: Chain mode ignores branch selections — verified by code structure:
+    // handleSendMessage checks `if (chainMode)` BEFORE the branch continuation
+    // logic, ensuring chain:add is always emitted without resumeSessionAt.
   });
 });

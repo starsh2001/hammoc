@@ -327,7 +327,8 @@
   "branch": {
     "prev": "上一个分支",
     "next": "下一个分支",
-    "indicator": "分支 {{current}} / {{total}}"
+    "indicator": "分支 {{current}} / {{total}}",
+    "continueHint": "从此分支继续对话"
   },
   "message": {
     "taskStatus": "Agent任务 {{status}}",

@@ -327,7 +327,8 @@
   "branch": {
     "prev": "Ramo anterior",
     "next": "Próximo ramo",
-    "indicator": "Ramo {{current}} de {{total}}"
+    "indicator": "Ramo {{current}} de {{total}}",
+    "continueHint": "Continuar a partir deste ramo"
   },
   "message": {
     "taskStatus": "Tarefa de Agent {{status}}",

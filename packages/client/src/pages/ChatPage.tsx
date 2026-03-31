@@ -197,6 +197,7 @@ export function ChatPage() {
     error,
     pagination,
     lastAgentCommand,
+    currentBranchSelections,
     fetchMessages,
     fetchMoreMessages,
     clearMessages,
@@ -378,8 +379,9 @@ export function ChatPage() {
   }, [chainMode]);
 
   // Internal send — sends directly to server (non-chain-mode sends).
+  // Story 25.10: Extended with options to support branch continuation via resumeSessionAt.
   const internalSend = useCallback(
-    (content: string, attachments?: Attachment[]) => {
+    (content: string, attachments?: Attachment[], options?: { resumeSessionAt?: string; expectedBranchTotal?: number }) => {
       const currentMessages = useMessageStore.getState().messages;
       const images = attachments?.map((a) => ({
         mimeType: a.mimeType,
@@ -392,6 +394,8 @@ export function ChatPage() {
         sessionId,
         resume: currentMessages.length > 0,
         attachments,
+        resumeSessionAt: options?.resumeSessionAt,
+        expectedBranchTotal: options?.expectedBranchTotal,
       });
     },
     [sendMessage, addOptimisticMessage, workingDirectory, sessionId]
@@ -419,6 +423,36 @@ export function ChatPage() {
           effort: selectedEffort,
         });
         return;
+      }
+
+      // Story 25.10: Branch continuation — when viewing a non-latest branch,
+      // resume from the last assistant message of the current display.
+      const { currentBranchSelections: branchSelections, messages: currentMsgs } = useMessageStore.getState();
+      if (branchSelections) {
+        const lastAssistant = [...currentMsgs].reverse().find((m) => m.type === 'assistant');
+        if (lastAssistant) {
+          const branchPointId = lastAssistant.branchInfo?.selectionKey ?? getBaseUuid(lastAssistant.id);
+          const expectedBranchTotal = lastAssistant.branchInfo ? lastAssistant.branchInfo.total + 1 : undefined;
+
+          // Truncate messages store at the branch point (same pattern as handleEditSubmit)
+          const msgs = currentMsgs;
+          const bpId = branchPointId;
+          const branchIdx = msgs.findIndex((m) => m.id === bpId || m.id.startsWith(bpId));
+          if (branchIdx !== -1) {
+            let lastPartIdx = branchIdx;
+            for (let i = branchIdx + 1; i < msgs.length; i++) {
+              if (msgs[i].id.startsWith(bpId)) {
+                lastPartIdx = i;
+              } else {
+                break;
+              }
+            }
+            useMessageStore.setState({ messages: msgs.slice(0, lastPartIdx + 1) });
+          }
+
+          internalSend(content, attachments, { resumeSessionAt: branchPointId, expectedBranchTotal });
+          return;
+        }
       }
 
       // Non-chain mode: send directly
@@ -1252,7 +1286,7 @@ export function ChatPage() {
           isStreaming={isStreaming}
           onAbort={handleAbort}
           queueLocked={isQueueLocked}
-          placeholder={isStreaming ? t('chatPage.streaming') : t('chatPage.default')}
+          placeholder={isStreaming ? t('chatPage.streaming') : currentBranchSelections ? t('branch.continueHint') : t('chatPage.default')}
           commands={commands}
           permissionMode={permissionMode}
           onPermissionModeChange={setPermissionMode}
