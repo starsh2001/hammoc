@@ -427,8 +427,14 @@ export function ChatPage() {
 
       // Story 25.10: Branch continuation — when viewing a non-latest branch,
       // resume from the last assistant message of the current display.
+      // Guard: only activate when actually viewing a historical (non-latest) branch.
+      // currentBranchSelections is non-null even when user navigates to the latest
+      // branch via pagination arrows, so we must check branchInfo.current < total-1.
       const { currentBranchSelections: branchSelections, messages: currentMsgs } = useMessageStore.getState();
-      if (branchSelections) {
+      const isNonLatestBranch = branchSelections && currentMsgs.some((m) =>
+        m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1
+      );
+      if (isNonLatestBranch) {
         const lastAssistant = [...currentMsgs].reverse().find((m) => m.type === 'assistant');
         if (lastAssistant) {
           const branchPointId = lastAssistant.branchInfo?.selectionKey ?? getBaseUuid(lastAssistant.id);
@@ -867,6 +873,15 @@ export function ChatPage() {
   // replay (streaming segments). No client-side dedup filtering needed.
   const { displayMessages, branchPoints, navigateBranch, isBranchNavigationDisabled } = useMessageTree(messages);
 
+  // Story 25.10: True when user is viewing a historical (non-latest) branch via pagination.
+  // Used for placeholder hint and to guard against sending resumeSessionAt on the latest branch.
+  const isViewingNonLatestBranch = useMemo(() =>
+    !!currentBranchSelections && messages.some((m) =>
+      m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1
+    ),
+    [currentBranchSelections, messages]
+  );
+
   // Story 25.7: Edit submit handler — truncate old branch, add optimistic message,
   // then send edit to server. Truncation also happens in handleSessionInit (useStreaming)
   // for passive viewers receiving session:resumed with resumeSessionAt.
@@ -1286,7 +1301,7 @@ export function ChatPage() {
           isStreaming={isStreaming}
           onAbort={handleAbort}
           queueLocked={isQueueLocked}
-          placeholder={isStreaming ? t('chatPage.streaming') : currentBranchSelections ? t('branch.continueHint') : t('chatPage.default')}
+          placeholder={isStreaming ? t('chatPage.streaming') : isViewingNonLatestBranch ? t('branch.continueHint') : t('chatPage.default')}
           commands={commands}
           permissionMode={permissionMode}
           onPermissionModeChange={setPermissionMode}

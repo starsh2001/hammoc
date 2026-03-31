@@ -1221,12 +1221,14 @@ describe('ChatPage', () => {
         }],
       });
 
-      const noBranchInfoMessages: HistoryMessage[] = [
+      const messagesWithBranchAndNoSelectionKey: HistoryMessage[] = [
         { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z' },
+        { id: 'some-key', type: 'assistant', content: 'Branch point', timestamp: '2026-01-15T10:00:02Z', branchInfo: { total: 2, current: 0, selectionKey: 'some-key' } },
+        { id: 'msg-u2', type: 'user', content: 'Follow up', timestamp: '2026-01-15T10:00:03Z' },
         { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee-text-0', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z' },
       ];
       useMessageStore.setState({
-        messages: noBranchInfoMessages,
+        messages: messagesWithBranchAndNoSelectionKey,
         pagination: mockPagination,
         currentBranchSelections: { 'some-key': 0 },
       });
@@ -1286,6 +1288,59 @@ describe('ChatPage', () => {
       expect(sendMessageSpy).toHaveBeenCalledWith('Branch continue', expect.objectContaining({
         resumeSessionAt: 'msg-a1',
       }));
+    });
+
+    it('should NOT send resumeSessionAt when viewing latest branch via pagination (2/2)', () => {
+      const sendMessageSpy = vi.fn();
+      useChatStore.setState({ sendMessage: sendMessageSpy });
+      useProjectStore.setState({
+        projects: [{
+          projectSlug: 'test-project',
+          originalPath: '/test/path',
+          sessionCount: 0,
+          lastModified: '2026-01-01T00:00:00Z',
+          isBmadProject: false,
+        }],
+      });
+
+      // Latest branch: current=1, total=2 → current >= total-1
+      const latestBranchMessages: HistoryMessage[] = [
+        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z' },
+        { id: 'msg-a1', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z', branchInfo: { total: 2, current: 1, selectionKey: 'msg-a1' } },
+      ];
+      useMessageStore.setState({
+        messages: latestBranchMessages,
+        pagination: mockPagination,
+        currentBranchSelections: { 'msg-a1': 1 },
+      });
+
+      renderChatPage();
+
+      const textarea = screen.getByRole('textbox', { name: '메시지 입력' });
+      fireEvent.change(textarea, { target: { value: 'Latest branch msg' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+
+      // Should NOT send resumeSessionAt on latest branch
+      expect(sendMessageSpy).toHaveBeenCalledWith('Latest branch msg', expect.objectContaining({
+        resumeSessionAt: undefined,
+      }));
+    });
+
+    it('should show default placeholder on latest branch even with branchSelections', () => {
+      const latestBranchMessages: HistoryMessage[] = [
+        { id: 'msg-u1', type: 'user', content: 'Hello', timestamp: '2026-01-15T10:00:00Z' },
+        { id: 'msg-a1', type: 'assistant', content: 'Hi', timestamp: '2026-01-15T10:00:05Z', branchInfo: { total: 2, current: 1, selectionKey: 'msg-a1' } },
+      ];
+      useMessageStore.setState({
+        messages: latestBranchMessages,
+        pagination: mockPagination,
+        currentBranchSelections: { 'msg-a1': 1 },
+      });
+
+      renderChatPage();
+
+      // Latest branch → default placeholder, NOT branch hint
+      expect(screen.getByPlaceholderText('메시지를 입력하세요...')).toBeInTheDocument();
     });
 
     it('should show branch hint placeholder when branch is selected', () => {
