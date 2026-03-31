@@ -67,7 +67,7 @@ export function MessageActionBar({
   }, [content, onCopy]);
 
   const isUser = role === 'user';
-  const showEditButton = isUser && !isOptimistic && !disabled && !!onEdit;
+  const showEditButton = isUser && !isOptimistic && !!onEdit;
   const showRewindButton = isUser && !isOptimistic;
   const showSummarizeButton = isUser && !isOptimistic && !!onSummarize;
 
@@ -89,7 +89,7 @@ export function MessageActionBar({
           className={buttonBase}
           title={t('messageActionBar.edit')}
           aria-label={t('messageActionBar.edit')}
-          disabled={actionsLocked}
+          disabled={disabled || actionsLocked}
         >
           <Pencil className="w-3 h-3" aria-hidden="true" />
         </button>
