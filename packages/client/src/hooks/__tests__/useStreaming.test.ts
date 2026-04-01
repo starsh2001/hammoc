@@ -587,4 +587,21 @@ describe('useStreaming', () => {
       expect(useChatStore.getState().isStreaming).toBe(true);
     });
   });
+
+  // Story 25.11: session:forked event handler
+  describe('session:forked event', () => {
+    it('sets forkedSessionId in chatStore when session:forked is received', () => {
+      renderHook(() => useStreaming());
+
+      act(() => {
+        mockSocket.trigger('session:forked', {
+          sessionId: 'new-forked-session-id',
+          originalSessionId: 'original-session-id',
+          model: 'claude-4',
+        });
+      });
+
+      expect(useChatStore.getState().forkedSessionId).toBe('new-forked-session-id');
+    });
+  });
 });

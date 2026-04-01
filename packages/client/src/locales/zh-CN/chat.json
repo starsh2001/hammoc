@@ -352,6 +352,17 @@
     "dryRunSummary": "{{count}} file(s) will be changed ({{insertions}} insertions, {{deletions}} deletions)",
     "fileList": "Files to be changed:"
   },
+  "fork": {
+    "button": "分叉会话",
+    "tooltip": "从此处分叉到新会话",
+    "success": "已分叉到新会话",
+    "error": "分叉会话失败",
+    "prompt": "从这里继续",
+    "promptPlaceholder": "输入分叉会话的起始消息（留空使用默认消息）",
+    "dialogTitle": "分叉会话",
+    "dialogConfirm": "分叉",
+    "dialogCancel": "取消"
+  },
   "summarize": {
     "button": "总结后继续",
     "generating": "正在生成总结...",

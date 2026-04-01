@@ -905,4 +905,51 @@ describe('useChatStore', () => {
       expect(useChatStore.getState().lastDryRunResult).toBeNull();
     });
   });
+
+  // Story 25.11: Fork session tests
+  describe('forkSession', () => {
+    it('includes forkSession in chat:send payload when option is true', () => {
+      const { sendMessage } = useChatStore.getState();
+
+      sendMessage('Continue from here', {
+        workingDirectory: '/path/to/project',
+        sessionId: 'session-123',
+        resume: true,
+        resumeSessionAt: 'assistant-uuid',
+        forkSession: true,
+      });
+
+      expect(mockEmit).toHaveBeenCalledWith('chat:send', expect.objectContaining({
+        content: 'Continue from here',
+        forkSession: true,
+        resumeSessionAt: 'assistant-uuid',
+        resume: true,
+        sessionId: 'session-123',
+      }));
+    });
+
+    it('does not include forkSession when option is falsy', () => {
+      const { sendMessage } = useChatStore.getState();
+
+      sendMessage('Hello', {
+        workingDirectory: '/path/to/project',
+        sessionId: 'session-123',
+        resume: true,
+      });
+
+      const payload = mockEmit.mock.calls[0][1];
+      expect(payload.forkSession).toBeUndefined();
+    });
+
+    it('setForkedSessionId sets the forkedSessionId state', () => {
+      useChatStore.getState().setForkedSessionId('new-session-id');
+      expect(useChatStore.getState().forkedSessionId).toBe('new-session-id');
+    });
+
+    it('clearForkedSessionId resets forkedSessionId to null', () => {
+      useChatStore.setState({ forkedSessionId: 'some-id' });
+      useChatStore.getState().clearForkedSessionId();
+      expect(useChatStore.getState().forkedSessionId).toBeNull();
+    });
+  });
 });

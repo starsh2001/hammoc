@@ -356,6 +356,17 @@
     "dryRunSummary": "{{count}} file(s) will be changed ({{insertions}} insertions, {{deletions}} deletions)",
     "fileList": "Files to be changed:"
   },
+  "fork": {
+    "button": "Fork session",
+    "tooltip": "Fork to new session from here",
+    "success": "Forked to new session",
+    "error": "Failed to fork session",
+    "prompt": "Continue from here",
+    "promptPlaceholder": "Enter a message to start the forked session (leave empty for default)",
+    "dialogTitle": "Fork session",
+    "dialogConfirm": "Fork",
+    "dialogCancel": "Cancel"
+  },
   "summarize": {
     "button": "Summarize & continue",
     "generating": "Generating summary...",

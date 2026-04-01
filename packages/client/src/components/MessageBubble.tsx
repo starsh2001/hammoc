@@ -50,6 +50,8 @@ interface MessageBubbleProps {
   summaryResult?: { messageUuid: string; summary: string } | null;
   /** Clear summary result after consuming it */
   onClearSummaryResult?: () => void;
+  /** Callback when user clicks fork button (assistant messages only) */
+  onFork?: (assistantMessageId: string) => void;
   /** When true, edit/rewind/summarize buttons are disabled (but still visible) */
   actionsLocked?: boolean;
 }
@@ -69,6 +71,7 @@ export function MessageBubble({
   isSummarizing = false,
   summaryResult,
   onClearSummaryResult,
+  onFork,
   actionsLocked = false,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
@@ -208,6 +211,11 @@ export function MessageBubble({
                 : undefined
             }
             isSummarizing={isSummarizing}
+            onFork={
+              !isUser && (message as any)._optimistic !== true && onFork
+                ? () => onFork(message.id)
+                : undefined
+            }
             actionsLocked={actionsLocked}
           />
         </div>

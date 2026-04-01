@@ -352,6 +352,17 @@
     "dryRunSummary": "{{count}} file(s) will be changed ({{insertions}} insertions, {{deletions}} deletions)",
     "fileList": "Files to be changed:"
   },
+  "fork": {
+    "button": "セッションをフォーク",
+    "tooltip": "ここから新しいセッションにフォーク",
+    "success": "新しいセッションにフォークしました",
+    "error": "セッションのフォークに失敗しました",
+    "prompt": "ここから続ける",
+    "promptPlaceholder": "フォークしたセッションで開始するメッセージを入力してください（空欄の場合はデフォルトメッセージを使用）",
+    "dialogTitle": "セッションをフォーク",
+    "dialogConfirm": "フォーク",
+    "dialogCancel": "キャンセル"
+  },
   "summarize": {
     "button": "要約して続行",
     "generating": "要約を生成中...",

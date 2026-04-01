@@ -48,6 +48,7 @@ export interface ClientToServerEvents {
     images?: ImageAttachment[];
     effort?: ThinkingEffort;
     resumeSessionAt?: string;
+    forkSession?: boolean;
     rewindToMessageUuid?: string;
     expectedBranchTotal?: number;
   }) => void;
@@ -120,6 +121,7 @@ export interface ServerToClientEvents {
   'error': (data: { code: string; message: string }) => void;
   'session:created': (data: { sessionId: string; model?: string }) => void;
   'session:resumed': (data: { sessionId: string; model?: string }) => void;
+  'session:forked': (data: { sessionId: string; originalSessionId: string; model?: string }) => void;
   'context:usage': (data: ChatUsage) => void;
   'assistant:usage': (data: { inputTokens: number; outputTokens: number; cacheCreationInputTokens: number; cacheReadInputTokens: number }) => void;
   'context:estimate': (data: { estimatedTokens: number; contextWindow: number }) => void;

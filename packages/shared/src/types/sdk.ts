@@ -45,6 +45,8 @@ export interface ChatOptions {
   effort?: ThinkingEffort;
   /** When resuming, resume messages up to this assistant UUID — creates a new branch */
   resumeSessionAt?: string;
+  /** When true, resumed sessions will fork to a new session ID rather than continuing the previous session. Use with `resume`. */
+  forkSession?: boolean;
   /** Enable file checkpointing to track file changes during the session */
   enableFileCheckpointing?: boolean;
   /** User message UUID for rewindFiles call on server (restores files to that point) */

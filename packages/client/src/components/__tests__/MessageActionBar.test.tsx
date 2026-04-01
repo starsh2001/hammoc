@@ -252,4 +252,49 @@ describe('MessageActionBar', () => {
     const summarizeBtn = screen.getByRole('button', { name: /generating|생성 중/i });
     expect(summarizeBtn).toBeInTheDocument();
   });
+
+  // Story 25.11: Fork button tests
+  it('shows fork button for assistant messages when onFork provided', () => {
+    render(<MessageActionBar role="assistant" content="test" onFork={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: /fork|포크/i })).toBeInTheDocument();
+  });
+
+  it('hides fork button for user messages', () => {
+    render(<MessageActionBar role="user" content="test" onFork={vi.fn()} />);
+
+    // Only copy button — no fork (fork is assistant-only)
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(1);
+  });
+
+  it('hides fork button for optimistic assistant messages', () => {
+    render(<MessageActionBar role="assistant" content="test" onFork={vi.fn()} isOptimistic />);
+
+    // Only copy button — no fork
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(1);
+  });
+
+  it('disables fork button when actionsLocked', () => {
+    render(<MessageActionBar role="assistant" content="test" onFork={vi.fn()} actionsLocked />);
+
+    const forkBtn = screen.getByRole('button', { name: /fork|포크/i });
+    expect(forkBtn).toBeDisabled();
+  });
+
+  it('calls onFork when fork button is clicked', () => {
+    const onFork = vi.fn();
+    render(<MessageActionBar role="assistant" content="test" onFork={onFork} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /fork|포크/i }));
+    expect(onFork).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not show fork button when onFork is undefined', () => {
+    render(<MessageActionBar role="assistant" content="test" />);
+
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(1); // copy only
+  });
 });

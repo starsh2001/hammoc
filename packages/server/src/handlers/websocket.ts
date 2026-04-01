@@ -1905,13 +1905,13 @@ function validateImages(images: ImageAttachment[], lang: string): { valid: boole
  */
 async function handleChatSend(
   stream: ActiveStream,
-  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[]; effort?: ThinkingEffort; resumeSessionAt?: string; rewindToMessageUuid?: string; expectedBranchTotal?: number },
+  data: { content: string; workingDirectory: string; sessionId?: string; resume?: boolean; permissionMode?: PermissionMode; model?: string; images?: ImageAttachment[]; effort?: ThinkingEffort; resumeSessionAt?: string; forkSession?: boolean; rewindToMessageUuid?: string; expectedBranchTotal?: number },
   abortController: AbortController,
   lang: string
 ): Promise<boolean> {
   const emit = createStreamEmit(stream);
   const t = i18next.getFixedT(lang);
-  const { content, workingDirectory, sessionId, resume, permissionMode, model, images, effort, resumeSessionAt: rawResumeSessionAt, rewindToMessageUuid } = data;
+  const { content, workingDirectory, sessionId, resume, permissionMode, model, images, effort, resumeSessionAt: rawResumeSessionAt, forkSession, rewindToMessageUuid } = data;
 
   // Validate images if present (Story 5.5)
   if (images && images.length > 0) {
@@ -2021,6 +2021,8 @@ async function handleChatSend(
       })(),
       // Story 25.7: conversation branching via resumeSessionAt
       ...(resumeSessionAt ? { resumeSessionAt } : {}),
+      // Story 25.11: fork session — create new session from branch point
+      ...(forkSession ? { forkSession: true } : {}),
       enableFileCheckpointing: true,
       ...(rewindToMessageUuid ? { rewindToMessageUuid } : {}),
     };
@@ -2117,6 +2119,7 @@ async function handleChatSend(
         emit,
         stream,
         isResuming: !!isResuming,
+        isFork: !!forkSession,
         initialSessionId: sessionId,
         rekeyStream: (sid) => rekeyStream(stream, sid),
         broadcastStreamChange,

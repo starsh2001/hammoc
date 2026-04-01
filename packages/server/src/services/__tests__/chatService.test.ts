@@ -653,4 +653,40 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
     const callArgs = vi.mocked(query).mock.calls[0][0] as { options: Record<string, unknown> };
     expect(callArgs.options).not.toHaveProperty('effort');
   });
+
+  it('should pass forkSession option to SDK queryOptions (Story 25.11)', async () => {
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
+    const mockIterator = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: 'init', session_id: 'test-session' };
+        yield {
+          type: 'result',
+          subtype: 'success',
+          result: 'Done',
+          session_id: 'forked-session',
+          uuid: 'msg-1',
+          is_error: false,
+          usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+          total_cost_usd: 0.001,
+        };
+      },
+      interrupt: vi.fn(),
+      setPermissionMode: vi.fn(),
+    };
+
+    vi.mocked(query).mockReturnValue(mockIterator as unknown as ReturnType<typeof query>);
+
+    const callbacks = { onComplete: vi.fn() };
+
+    await service.sendMessageWithCallbacks('Continue from here', callbacks, {
+      resume: 'original-session-id',
+      resumeSessionAt: 'assistant-uuid',
+      forkSession: true,
+    });
+
+    const callArgs = vi.mocked(query).mock.calls[0][0] as { options: Record<string, unknown> };
+    expect(callArgs.options).toHaveProperty('forkSession', true);
+    expect(callArgs.options).toHaveProperty('resumeSessionAt', 'assistant-uuid');
+    expect(callArgs.options).toHaveProperty('resume', 'original-session-id');
+  });
 });

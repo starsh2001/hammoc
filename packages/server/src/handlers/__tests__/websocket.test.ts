@@ -601,6 +601,43 @@ describe('WebSocket Handler', () => {
       );
     });
 
+    it('should pass forkSession to chatOptions when provided (Story 25.11)', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      mockState.sendImpl = vi.fn().mockResolvedValue({});
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
+        transports: ['websocket'],
+      });
+
+      await new Promise<void>((resolve) => {
+        clientSocket.on('connect', () => resolve());
+      });
+
+      clientSocket.emit('chat:send', {
+        content: 'Continue from here',
+        workingDirectory: '/valid/path',
+        sessionId: 'original-session-id',
+        resume: true,
+        resumeSessionAt: 'assistant-uuid-123',
+        forkSession: true,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(mockState.sendImpl).toHaveBeenCalledWith(
+        'Continue from here',
+        expect.any(Object),
+        expect.objectContaining({
+          resume: 'original-session-id',
+          resumeSessionAt: 'assistant-uuid-123',
+          forkSession: true,
+          enableFileCheckpointing: true,
+        }),
+        expect.any(Function),
+        expect.any(Function)
+      );
+    });
+
     it('should always include enableFileCheckpointing: true in chatOptions', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
       mockState.sendImpl = vi.fn().mockResolvedValue({});

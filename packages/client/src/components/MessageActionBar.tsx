@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Check, Pencil, Undo2, Loader2, Sparkles, X } from 'lucide-react';
+import { Copy, Check, Pencil, Undo2, Loader2, Sparkles, X, GitFork } from 'lucide-react';
 import { debugLogger } from '../utils/debugLogger';
 
 interface MessageActionBarProps {
@@ -20,6 +20,7 @@ interface MessageActionBarProps {
   isRewinding?: boolean;
   onSummarize?: () => void;
   isSummarizing?: boolean;
+  onFork?: () => void;
   /** When true, edit/rewind/summarize buttons are disabled (but still visible) */
   actionsLocked?: boolean;
 }
@@ -35,6 +36,7 @@ export function MessageActionBar({
   isRewinding = false,
   onSummarize,
   isSummarizing = false,
+  onFork,
   actionsLocked = false,
 }: MessageActionBarProps) {
   const { t } = useTranslation('chat');
@@ -70,6 +72,7 @@ export function MessageActionBar({
   const showEditButton = isUser && !isOptimistic && !!onEdit;
   const showRewindButton = isUser && !isOptimistic;
   const showSummarizeButton = isUser && !isOptimistic && !!onSummarize;
+  const showForkButton = !isUser && !isOptimistic && !!onFork;
 
   const buttonBase = `inline-flex items-center justify-center p-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
     isUser
@@ -132,6 +135,19 @@ export function MessageActionBar({
           ) : (
             <Undo2 className="w-3 h-3" aria-hidden="true" />
           )}
+        </button>
+      )}
+
+      {/* Fork button — assistant messages only, hidden for optimistic and old branch */}
+      {showForkButton && (
+        <button
+          onClick={onFork}
+          className={buttonBase}
+          title={t('fork.tooltip')}
+          aria-label={t('fork.tooltip')}
+          disabled={disabled || actionsLocked}
+        >
+          <GitFork className="w-3 h-3" aria-hidden="true" />
         </button>
       )}
 

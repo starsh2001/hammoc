@@ -212,6 +212,7 @@ export class ChatService {
       maxBudgetUsd: options.maxBudgetUsd,
       effort: options.effort,
       resumeSessionAt: options.resumeSessionAt,
+      forkSession: options.forkSession,
       enableFileCheckpointing: options.enableFileCheckpointing,
       canUseTool,
       // Capture CLI stderr for debugging process exit errors
@@ -227,7 +228,7 @@ export class ChatService {
       }
     });
 
-    log.debug(`SDK query cwd="${queryOptions.cwd}"${queryOptions.resume ? `, resume="${queryOptions.resume}"` : ''}${queryOptions.model ? `, model="${queryOptions.model}"` : ''}${queryOptions.sessionId ? `, sessionId="${queryOptions.sessionId}"` : ''}${queryOptions.resumeSessionAt ? `, resumeSessionAt="${queryOptions.resumeSessionAt}"` : ''}${options.enableFileCheckpointing ? `, checkpointing=true` : ''}`);
+    log.debug(`SDK query cwd="${queryOptions.cwd}"${queryOptions.resume ? `, resume="${queryOptions.resume}"` : ''}${queryOptions.model ? `, model="${queryOptions.model}"` : ''}${queryOptions.sessionId ? `, sessionId="${queryOptions.sessionId}"` : ''}${queryOptions.resumeSessionAt ? `, resumeSessionAt="${queryOptions.resumeSessionAt}"` : ''}${queryOptions.forkSession ? `, forkSession=true` : ''}${options.enableFileCheckpointing ? `, checkpointing=true` : ''}`);
 
     // Story 25.7: explicit log for resumeSessionAt branching
     if (queryOptions.resumeSessionAt) {

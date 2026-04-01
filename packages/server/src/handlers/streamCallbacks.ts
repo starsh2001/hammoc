@@ -53,6 +53,8 @@ export interface CallbackBuilderDeps {
   resumeSessionAt?: string;
   /** Returns current queue progress when running inside queue executor */
   getQueueProgress?: () => QueueProgress | undefined;
+  /** Story 25.11: when true, emit 'session:forked' instead of 'session:created'/'session:resumed' */
+  isFork?: boolean;
 }
 
 export interface CallbackBuilderHooks {
@@ -77,7 +79,7 @@ export function buildStreamCallbacks(
   deps: CallbackBuilderDeps,
   hooks?: CallbackBuilderHooks,
 ): BuildResult {
-  const { emit, stream, isResuming, resumeSessionAt, rekeyStream, broadcastStreamChange, notificationService } = deps;
+  const { emit, stream, isResuming, resumeSessionAt, rekeyStream, broadcastStreamChange, notificationService, isFork } = deps;
   const activity = hooks?.onCallbackActivity;
   const sessionIdRef: SessionIdRef = { current: deps.initialSessionId };
 
@@ -88,7 +90,9 @@ export function buildStreamCallbacks(
 
       rekeyStream(sid);
 
-      if (isResuming) {
+      if (isFork) {
+        emit('session:forked', { sessionId: sid, originalSessionId: deps.initialSessionId || '', model: metadata?.model });
+      } else if (isResuming) {
         emit('session:resumed', { sessionId: sid, model: metadata?.model, ...(resumeSessionAt ? { resumeSessionAt } : {}) });
       } else {
         emit('session:created', { sessionId: sid, model: metadata?.model });

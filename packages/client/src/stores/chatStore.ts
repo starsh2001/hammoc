@@ -201,6 +201,8 @@ interface ChatState {
   summaryResult: { messageUuid: string; summary: string } | null;
   /** UUID of the message currently being edited (inline edit form open) */
   editingMessageUuid: string | null;
+  /** Story 25.11: forked session ID from session:forked event (triggers navigation) */
+  forkedSessionId: string | null;
 }
 
 interface SendMessageOptions {
@@ -218,6 +220,8 @@ interface SendMessageOptions {
   rewindToMessageUuid?: string;
   /** Expected total branch count after this edit */
   expectedBranchTotal?: number;
+  /** Fork to a new session from the branch point (Story 25.11) */
+  forkSession?: boolean;
 }
 
 interface ChatActions {
@@ -323,6 +327,10 @@ interface ChatActions {
   clearSummaryResult: () => void;
   /** Set the UUID of the message currently being edited */
   setEditingMessageUuid: (uuid: string | null) => void;
+  /** Story 25.11: set forked session ID (triggers navigation) */
+  setForkedSessionId: (id: string) => void;
+  /** Story 25.11: clear forked session ID */
+  clearForkedSessionId: () => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -361,13 +369,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   summarizingMessageUuid: null,
   summaryResult: null,
   editingMessageUuid: null,
+  forkedSessionId: null,
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
 
   sendMessage: (content: string, options: SendMessageOptions) => {
     const socket = getSocket();
-    const { workingDirectory, sessionId, resume, attachments, resumeSessionAt, rewindToMessageUuid, expectedBranchTotal } = options;
+    const { workingDirectory, sessionId, resume, attachments, resumeSessionAt, rewindToMessageUuid, expectedBranchTotal, forkSession } = options;
 
     const msgState = useMessageStore.getState();
     debugLog.state('sendMessage', {
@@ -436,6 +445,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       })),
       ...(get().selectedEffort ? { effort: get().selectedEffort } : {}),
       ...(resumeSessionAt ? { resumeSessionAt } : {}),
+      ...(forkSession ? { forkSession: true } : {}),
       ...(rewindToMessageUuid ? { rewindToMessageUuid } : {}),
       ...(expectedBranchTotal ? { expectedBranchTotal } : {}),
     });
@@ -1041,6 +1051,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setSummaryResult: (result: ChatState['summaryResult']) => set({ summaryResult: result }),
   clearSummaryResult: () => set({ summaryResult: null }),
   setEditingMessageUuid: (uuid: string | null) => set({ editingMessageUuid: uuid }),
+  setForkedSessionId: (id: string) => set({ forkedSessionId: id }),
+  clearForkedSessionId: () => set({ forkedSessionId: null }),
 
   addResultError: (data: ResultErrorData) => {
     const segments = get().streamingSegments;

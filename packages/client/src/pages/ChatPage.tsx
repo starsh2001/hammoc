@@ -90,6 +90,7 @@ function renderHistoryMessage(
   summaryResult?: { messageUuid: string; summary: string } | null,
   onClearSummaryResult?: () => void,
   actionsLocked?: boolean,
+  onFork?: (assistantMessageId: string) => void,
 ) {
   // Render task notification as notification card (not user bubble)
   if (message.type === 'task_notification' && message.taskStatus) {
@@ -179,7 +180,7 @@ function renderHistoryMessage(
     );
   }
 
-  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} onRewind={onRewind} isRewinding={isRewinding} onSummarize={onSummarize} isSummarizing={isSummarizing && summarizingMessageUuid === getBaseUuid(message.id)} summaryResult={summaryResult} onClearSummaryResult={onClearSummaryResult} actionsLocked={actionsLocked} />;
+  return <MessageBubble key={message.id} message={message} branchInfo={branchInfo} onNavigateBranch={onNavigateBranch} isBranchNavigationDisabled={isBranchNavigationDisabled} onEditSubmit={onEditSubmit} isStreaming={isStreaming} onRewind={onRewind} isRewinding={isRewinding} onSummarize={onSummarize} isSummarizing={isSummarizing && summarizingMessageUuid === getBaseUuid(message.id)} summaryResult={summaryResult} onClearSummaryResult={onClearSummaryResult} actionsLocked={actionsLocked} onFork={onFork} />;
 }
 
 export function ChatPage() {
@@ -928,6 +929,57 @@ export function ChatPage() {
     socket.emit('session:generate-summary', { sessionId, messageUuid });
   }, [sessionId, isSummarizing, setSummarizing]);
 
+  // Story 25.11: Fork session dialog state & handler
+  const [forkTargetMessageId, setForkTargetMessageId] = useState<string | null>(null);
+  const [forkPromptText, setForkPromptText] = useState('');
+  const isForkingRef = useRef(false);
+
+  const handleForkClick = useCallback((assistantMessageId: string) => {
+    setForkTargetMessageId(assistantMessageId);
+    setForkPromptText('');
+  }, []);
+
+  const handleForkConfirm = useCallback(() => {
+    if (!workingDirectory || !sessionId || !forkTargetMessageId) return;
+    const assistantUuid = getBaseUuid(forkTargetMessageId);
+    const prompt = forkPromptText.trim() || t('fork.prompt');
+    isForkingRef.current = true;
+    sendMessage(prompt, {
+      workingDirectory,
+      sessionId,
+      resume: true,
+      resumeSessionAt: assistantUuid,
+      forkSession: true,
+    });
+    setForkTargetMessageId(null);
+  }, [workingDirectory, sessionId, forkTargetMessageId, forkPromptText, sendMessage, t]);
+
+  const handleForkCancel = useCallback(() => {
+    setForkTargetMessageId(null);
+    setForkPromptText('');
+  }, []);
+
+  // Story 25.11: Navigate to forked session when forkedSessionId is set
+  const forkedSessionId = useChatStore((s) => s.forkedSessionId);
+  const clearForkedSessionId = useChatStore((s) => s.clearForkedSessionId);
+
+  useEffect(() => {
+    if (forkedSessionId && projectSlug) {
+      clearForkedSessionId();
+      isForkingRef.current = false;
+      navigate(`/project/${projectSlug}/session/${forkedSessionId}`);
+    }
+  }, [forkedSessionId, projectSlug, clearForkedSessionId, navigate]);
+
+  // Story 25.11: Clean up isForkingRef on error during fork
+  const lastResultError = useChatStore((s) => s.lastResultError);
+  useEffect(() => {
+    if (lastResultError && isForkingRef.current) {
+      isForkingRef.current = false;
+      toast.error(t('fork.error'));
+    }
+  }, [lastResultError, t]);
+
   const handleLoadMore = useCallback(() => {
     fetchMoreMessages();
   }, [fetchMoreMessages]);
@@ -1240,6 +1292,7 @@ export function ChatPage() {
                   summaryResult,
                   clearSummaryResult,
                   actionsLocked,
+                  isOnOldBranch ? undefined : handleForkClick,
                 )}
               </div>
             </Fragment>
@@ -1328,6 +1381,50 @@ export function ChatPage() {
           </div>
         )}
       </ConfirmModal>
+
+      {/* Story 25.11: Fork session prompt dialog */}
+      {forkTargetMessageId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={handleForkCancel}>
+          <div
+            className="w-full max-w-md mx-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              {t('fork.dialogTitle')}
+            </h3>
+            <textarea
+              className="w-full h-24 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                         placeholder-gray-400 dark:placeholder-gray-500
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder={t('fork.promptPlaceholder')}
+              value={forkPromptText}
+              onChange={(e) => setForkPromptText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleForkConfirm();
+                }
+              }}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={handleForkCancel}
+                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                {t('fork.dialogCancel')}
+              </button>
+              <button
+                onClick={handleForkConfirm}
+                className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+              >
+                {t('fork.dialogConfirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </ScrollProvider>
   );

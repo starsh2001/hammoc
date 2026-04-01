@@ -356,6 +356,17 @@
     "dryRunSummary": "{{count}}개 파일이 변경됩니다 ({{insertions}}개 삽입, {{deletions}}개 삭제)",
     "fileList": "변경될 파일:"
   },
+  "fork": {
+    "button": "세션 포크",
+    "tooltip": "여기서 새 세션으로 포크",
+    "success": "새 세션으로 포크되었습니다",
+    "error": "세션 포크에 실패했습니다",
+    "prompt": "여기서 이어서 시작",
+    "promptPlaceholder": "포크된 세션에서 시작할 메시지를 입력하세요 (비워두면 기본 메시지 사용)",
+    "dialogTitle": "세션 포크",
+    "dialogConfirm": "포크",
+    "dialogCancel": "취소"
+  },
   "summarize": {
     "button": "요약 후 시작",
     "generating": "요약 생성 중...",

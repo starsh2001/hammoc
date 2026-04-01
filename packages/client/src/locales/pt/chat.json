@@ -352,6 +352,17 @@
     "dryRunSummary": "{{count}} file(s) will be changed ({{insertions}} insertions, {{deletions}} deletions)",
     "fileList": "Files to be changed:"
   },
+  "fork": {
+    "button": "Bifurcar sessão",
+    "tooltip": "Bifurcar para nova sessão a partir daqui",
+    "success": "Bifurcado para nova sessão",
+    "error": "Falha ao bifurcar sessão",
+    "prompt": "Continuar a partir daqui",
+    "promptPlaceholder": "Digite uma mensagem para iniciar a sessão bifurcada (deixe vazio para o padrão)",
+    "dialogTitle": "Bifurcar sessão",
+    "dialogConfirm": "Bifurcar",
+    "dialogCancel": "Cancelar"
+  },
   "summarize": {
     "button": "Resumir e continuar",
     "generating": "Gerando resumo...",

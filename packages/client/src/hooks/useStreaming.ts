@@ -1391,8 +1391,15 @@ export function useStreaming() {
 
     // Register socket event listeners
     socket.on('user:message', handleUserMessage);
+    // Story 25.11: Handle session:forked — set forkedSessionId for navigation
+    const handleSessionForked = (data: { sessionId: string; originalSessionId: string; model?: string }) => {
+      debugLog.stream('session:forked', { sessionId: data.sessionId, originalSessionId: data.originalSessionId });
+      useChatStore.getState().setForkedSessionId(data.sessionId);
+    };
+
     socket.on('session:created', handleSessionInit);
     socket.on('session:resumed', handleSessionInit);
+    socket.on('session:forked', handleSessionForked);
     socket.on('message:chunk', handleChunk);
     socket.on('thinking:chunk', handleThinkingChunk);
     socket.on('message:complete', handleComplete);
@@ -1529,6 +1536,7 @@ export function useStreaming() {
       socket.off('user:message', handleUserMessage);
       socket.off('session:created', handleSessionInit);
       socket.off('session:resumed', handleSessionInit);
+      socket.off('session:forked', handleSessionForked);
       socket.off('message:chunk', handleChunk);
       socket.off('thinking:chunk', handleThinkingChunk);
       socket.off('message:complete', handleComplete);

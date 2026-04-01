@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { ChatPage } from '../ChatPage';
 import { useMessageStore } from '../../stores/messageStore';
@@ -1091,6 +1091,27 @@ describe('ChatPage', () => {
 
       expect(screen.getByTestId('interactive-response-card')).toBeInTheDocument();
       expect(screen.getByText('Y')).toBeInTheDocument();
+    });
+  });
+
+  // Story 25.11: Fork session tests
+  describe('fork session (Story 25.11)', () => {
+    it('navigates to forked session when forkedSessionId is set', async () => {
+      renderChatPage();
+
+      // Simulate forkedSessionId being set by useStreaming handler
+      act(() => {
+        useChatStore.setState({ forkedSessionId: 'new-forked-session-id' });
+      });
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/project/test-project/session/new-forked-session-id'
+        );
+      });
+
+      // forkedSessionId should be cleared after navigation
+      expect(useChatStore.getState().forkedSessionId).toBeNull();
     });
   });
 });
