@@ -940,7 +940,7 @@ export function ChatPage() {
   }, []);
 
   const handleForkConfirm = useCallback(() => {
-    if (!workingDirectory || !sessionId || !forkTargetMessageId) return;
+    if (!workingDirectory || !sessionId || !forkTargetMessageId || isForkingRef.current) return;
     const assistantUuid = getBaseUuid(forkTargetMessageId);
     const prompt = forkPromptText.trim() || t('fork.prompt');
     isForkingRef.current = true;
@@ -971,7 +971,7 @@ export function ChatPage() {
     }
   }, [forkedSessionId, projectSlug, clearForkedSessionId, navigate]);
 
-  // Story 25.11: Clean up isForkingRef on error during fork
+  // Story 25.11: Clean up isForkingRef on error or unexpected stream end during fork
   const lastResultError = useChatStore((s) => s.lastResultError);
   useEffect(() => {
     if (lastResultError && isForkingRef.current) {
@@ -979,6 +979,20 @@ export function ChatPage() {
       toast.error(t('fork.error'));
     }
   }, [lastResultError, t]);
+
+  // If streaming ended while forking but no forkedSessionId arrived, clean up
+  useEffect(() => {
+    if (!isStreaming && isForkingRef.current) {
+      // Give a brief window for session:forked to arrive after stream completes
+      const timeoutId = setTimeout(() => {
+        if (isForkingRef.current && !useChatStore.getState().forkedSessionId) {
+          isForkingRef.current = false;
+          toast.error(t('fork.error'));
+        }
+      }, 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isStreaming, t]);
 
   const handleLoadMore = useCallback(() => {
     fetchMoreMessages();

@@ -1394,6 +1394,14 @@ export function useStreaming() {
     // Story 25.11: Handle session:forked — set forkedSessionId for navigation
     const handleSessionForked = (data: { sessionId: string; originalSessionId: string; model?: string }) => {
       debugLog.stream('session:forked', { sessionId: data.sessionId, originalSessionId: data.originalSessionId });
+      // Only accept fork events matching the session we're currently viewing
+      const viewingSessionId = useMessageStore.getState().currentSessionId;
+      if (viewingSessionId && data.originalSessionId && data.originalSessionId !== viewingSessionId) {
+        debugLog.stream('session:forked dropped: originalSessionId mismatch', {
+          original: data.originalSessionId, viewing: viewingSessionId,
+        });
+        return;
+      }
       useChatStore.getState().setForkedSessionId(data.sessionId);
     };
 

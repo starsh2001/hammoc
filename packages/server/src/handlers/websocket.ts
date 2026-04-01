@@ -1948,10 +1948,11 @@ async function handleChatSend(
   const isResuming = resume && sessionId;
 
   // Story 25.7: resumeSessionAt/rewindToMessageUuid require a valid resume flow
-  if ((rawResumeSessionAt || rewindToMessageUuid) && !isResuming) {
+  // Story 25.11: forkSession also requires resume context (SDK needs original session to read)
+  if ((rawResumeSessionAt || rewindToMessageUuid || forkSession) && !isResuming) {
     emit('error', {
       code: ERROR_CODES.VALIDATION_ERROR,
-      message: t('ws.error.resumeSessionAtRequiresResume', { defaultValue: 'resumeSessionAt and rewindToMessageUuid require resume=true and a valid sessionId' }),
+      message: t('ws.error.resumeSessionAtRequiresResume', { defaultValue: 'resumeSessionAt, rewindToMessageUuid, and forkSession require resume=true and a valid sessionId' }),
     });
     return false;
   }

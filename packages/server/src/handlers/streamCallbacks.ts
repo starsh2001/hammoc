@@ -91,7 +91,10 @@ export function buildStreamCallbacks(
       rekeyStream(sid);
 
       if (isFork) {
-        emit('session:forked', { sessionId: sid, originalSessionId: deps.initialSessionId || '', model: metadata?.model });
+        if (!deps.initialSessionId) {
+          log.warn('session:forked emitted without originalSessionId — fork request may be missing sessionId');
+        }
+        emit('session:forked', { sessionId: sid, originalSessionId: deps.initialSessionId || sid, model: metadata?.model });
       } else if (isResuming) {
         emit('session:resumed', { sessionId: sid, model: metadata?.model, ...(resumeSessionAt ? { resumeSessionAt } : {}) });
       } else {
