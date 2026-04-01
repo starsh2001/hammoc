@@ -871,6 +871,15 @@ export async function initializeWebSocket(
         existingStream.abortController.abort('another-client');
       }
 
+      // Ensure this socket is in the session room so that chain:add events
+      // emitted right after chat:send pass the room membership check.
+      // Only join the room — do NOT update socketSessionRoom here, because
+      // session:join uses it to find and leave the previous session room.
+      // Overwriting it early would prevent proper cleanup of old rooms.
+      if (data.sessionId && !socket.rooms.has(`session:${streamKey}`)) {
+        socket.join(`session:${streamKey}`);
+      }
+
       // Collect all sockets viewing this session (from persistent session room)
       const initialSockets = new Set<SocketType>([socket]);
       const roomSockets = io.sockets.adapter.rooms.get(`session:${streamKey}`);

@@ -536,6 +536,9 @@ export function ChatPage() {
           const chainPrompts = searchParams.getAll('chain');
           if (agentParam && useMessageStore.getState().messages.length === 0) {
             window.history.replaceState(null, '', window.location.pathname);
+            // Send agent command first — chat:send joins the session room on the server,
+            // so subsequent chain:add events pass the room membership check.
+            handleSendMessageRef.current(agentParam);
             // Queue task command for prompt chain via server (sent after agent response completes)
             const wd = currentProject?.originalPath;
             if (sessionId && wd) {
@@ -553,7 +556,6 @@ export function ChatPage() {
                 getSocket()?.emit('chain:add', { sessionId, content: prompt, ...chainOpts });
               }
             }
-            handleSendMessageRef.current(agentParam);
           }
         }
       });
