@@ -115,7 +115,9 @@ function spawnAndExit(mode: 'prod' | 'update'): void {
   const bashSafe = (v: string) => "'" + v.replace(/'/g, "'\\''") + "'";
   const envExports = Object.entries(process.env)
     .filter(([k, v]) => v !== undefined && k !== 'PATH' && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k))
-    .map(([k, v]) => `export ${k}=${bashSafe(v!)}`)
+    // Strip \r and other control chars (except \t) that break bash parsing on Windows
+    .filter(([, v]) => !/[\x00-\x08\x0b-\x0c\x0e-\x1f]/.test(v!))
+    .map(([k, v]) => `export ${k}=${bashSafe(v!.replace(/\r/g, ''))}`)
     .join('\n');
 
   fs.writeFileSync(scriptPath, [
