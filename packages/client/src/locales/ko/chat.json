@@ -368,7 +368,7 @@
     "dialogCancel": "취소"
   },
   "summarize": {
-    "button": "요약 후 시작",
+    "button": "여기서부터 요약 후 다시 시작",
     "generating": "요약 생성 중...",
     "error": "요약 생성에 실패했습니다",
     "noMessages": "요약할 메시지가 없습니다",
