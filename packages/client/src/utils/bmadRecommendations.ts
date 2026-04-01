@@ -96,7 +96,24 @@ function nextStoryNum(data: BmadStatusResponse): string {
     const firstEpic = data.epics[0];
     return firstEpic ? `${firstEpic.number}.1` : '1.1';
   }
-  // Find the highest story number and increment the minor part
+
+  // Check for epics with gaps (plannedStories > actual stories) first.
+  // An earlier epic with unfilled planned slots takes priority over the latest epic.
+  for (const epic of data.epics) {
+    const epicNum = typeof epic.number === 'number' ? epic.number : parseInt(String(epic.number), 10);
+    if (isNaN(epicNum)) continue;
+    if (epic.plannedStories && epic.stories.length < epic.plannedStories) {
+      // Find the highest existing story number in this epic
+      let maxInEpic = 0;
+      for (const s of epic.stories) {
+        const m = s.file.match(/^(\d+)\.(\d+)/);
+        if (m) maxInEpic = Math.max(maxInEpic, parseInt(m[2], 10));
+      }
+      return `${epicNum}.${maxInEpic + 1}`;
+    }
+  }
+
+  // No gaps found — find the highest story number and increment
   let maxEpic = 0;
   let maxStory = 0;
   for (const s of stories) {
@@ -515,9 +532,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     recs.push({
       id: 'create-story',
       title: stories.length === 0 ? i18n.t('common:rec.createFirstStory') : i18n.t('common:rec.createNextStory'),
-      description: hasMorePlanned
-        ? i18n.t('common:rec.storiesRemaining', { count: totalPlanned - doneCount })
-        : i18n.t('common:rec.createStoryDesc'),
+      description: `Story ${nextNum}`,
       agentCommand: '/BMad:agents:sm',
       taskCommand: `*draft ${nextNum}`,
       variant: hasActionable ? 'secondary' : 'primary',
