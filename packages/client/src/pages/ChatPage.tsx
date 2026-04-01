@@ -477,6 +477,10 @@ export function ChatPage() {
     });
   }, [sendMessage, addOptimisticMessage, workingDirectory, sessionId, isStreaming]);
 
+  // Promise that resolves when initial fetchMessages completes.
+  // session:join (emitJoin) waits on this so history is visible before buffer-replay.
+  const initialFetchDoneRef = useRef<{ resolve: () => void; promise: Promise<void> } | null>(null);
+
   // Fetch messages on mount (only for existing sessions)
   // After fetch completes, clear any lingering streaming tool segments
   // (handles new session → real session URL navigation case)
@@ -484,7 +488,14 @@ export function ChatPage() {
   // assistant message to avoid duplication with buffer replay.
   useEffect(() => {
     if (projectSlug && sessionId) {
+      // Create a fresh promise for this session — emitJoin will await it
+      let resolve: () => void;
+      const promise = new Promise<void>((r) => { resolve = r; });
+      initialFetchDoneRef.current = { resolve: resolve!, promise };
+
       fetchMessages(projectSlug, sessionId).then(() => {
+        // Signal that initial fetch is done — emitJoin can now send session:join
+        initialFetchDoneRef.current?.resolve();
         const chat = useChatStore.getState();
         const msgState = useMessageStore.getState();
         debugLog.chatpage('DEDUP fetchMessages.then() callback', {
@@ -607,7 +618,7 @@ export function ChatPage() {
     let isInitialConnect = true; // Track whether this is first connect or reconnect
     let hasJoined = false; // Prevent duplicate session:join (React Strict Mode / rapid navigation)
 
-    const emitJoin = () => {
+    const emitJoin = async () => {
       const isStreaming = useChatStore.getState().isStreaming;
       debugLog.chatpage('DEDUP emitJoin', {
         sessionId,
@@ -622,6 +633,10 @@ export function ChatPage() {
       // Prevent duplicate join for the same effect lifecycle
       if (hasJoined) return;
       hasJoined = true;
+      // Wait for initial history fetch to complete before joining the stream.
+      // This ensures conversation history (e.g., forked session's original messages)
+      // is visible before buffer-replay starts showing streaming content.
+      await initialFetchDoneRef.current?.promise;
       socket.emit('session:join', sessionId, projectSlug);
     };
 
