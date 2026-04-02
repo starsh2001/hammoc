@@ -1453,6 +1453,25 @@ export function useStreaming() {
     socket.on('permission:mode-change', handlePermissionModeChange);
     socket.on('rateLimit:update', handleRateLimitUpdate);
     socket.on('apiHealth:update', handleApiHealthUpdate);
+    // Story 25.11: Handle stream:history — fork session history delivered before streaming
+    const handleStreamHistory = (data: { sessionId: string; messages: HistoryMessage[] }) => {
+      debugLog.stream('stream:history received', {
+        sessionId: data.sessionId,
+        messageCount: data.messages.length,
+      });
+      // Drop if session doesn't match what we're currently viewing
+      const viewingSessionId = useMessageStore.getState().currentSessionId;
+      if (viewingSessionId && viewingSessionId !== data.sessionId) {
+        debugLog.stream('stream:history dropped: session mismatch', {
+          viewing: viewingSessionId, received: data.sessionId,
+        });
+        return;
+      }
+      if (data.messages.length > 0) {
+        useMessageStore.setState({ messages: data.messages });
+      }
+    };
+    socket.on('stream:history', handleStreamHistory);
     socket.on('stream:status', handleStreamStatus);
     socket.on('stream:buffer-replay', handleBufferReplay);
     socket.on('stream:detached', handleStreamDetached);
@@ -1566,6 +1585,7 @@ export function useStreaming() {
       socket.off('permission:mode-change', handlePermissionModeChange);
       socket.off('rateLimit:update', handleRateLimitUpdate);
       socket.off('apiHealth:update', handleApiHealthUpdate);
+      socket.off('stream:history', handleStreamHistory);
       socket.off('stream:status', handleStreamStatus);
       socket.off('stream:buffer-replay', handleBufferReplay);
       socket.off('stream:detached', handleStreamDetached);

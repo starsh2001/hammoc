@@ -43,6 +43,22 @@ export interface ActiveBranchResult {
 const CONVERSATION_TYPES = new Set(['user', 'assistant', 'system']);
 
 /**
+ * Detect task-notification user messages injected by background tasks.
+ * These are user-type messages whose content starts with <task-notification> —
+ * they should not count as branch-creating user messages since they are
+ * system-injected and can arrive concurrently with real user input.
+ */
+function isTaskNotification(node: RawTreeNode): boolean {
+  const content = node.message.message?.content;
+  if (typeof content === 'string') return content.trimStart().startsWith('<task-notification>');
+  if (Array.isArray(content)) {
+    const first = content.find((c): c is { type: 'text'; text: string } => c.type === 'text');
+    return first?.text?.trimStart().startsWith('<task-notification>') ?? false;
+  }
+  return false;
+}
+
+/**
  * Extract base UUID from a potentially split message UUID.
  * Split IDs follow patterns: {uuid}-text-{n}, {uuid}-tool-{id}, {uuid}-thinking
  */
@@ -78,8 +94,8 @@ export function groupRawChildrenIntoBranches(children: RawTreeNode[]): RawTreeNo
   // normal flow goes assistant → progress → user.
   function groupLeadsToUser(g: RawTreeNode[]): boolean {
     return g.some((n) =>
-      n.message.type === 'user' ||
-      (!CONVERSATION_TYPES.has(n.message.type) && n.children.some((c) => c.message.type === 'user')),
+      (n.message.type === 'user' && !isTaskNotification(n)) ||
+      (!CONVERSATION_TYPES.has(n.message.type) && n.children.some((c) => c.message.type === 'user' && !isTaskNotification(c))),
     );
   }
   const userGroupCount = uuidGroups.filter(groupLeadsToUser).length;
@@ -343,4 +359,62 @@ export function getActiveRawBranch(
   }
 
   return { messages, branchPoints };
+}
+
+/**
+ * Find branch selections that lead to a specific message UUID.
+ * Returns a branchSelections record suitable for getActiveRawBranch,
+ * or null if the UUID is not found in the tree.
+ */
+export function findBranchSelectionsForUuid(
+  roots: RawTreeNode[],
+  targetUuid: string,
+): Record<string, number> | null {
+  const selections: Record<string, number> = {};
+
+  function containsUuid(node: RawTreeNode): boolean {
+    if (node.message.uuid === targetUuid) return true;
+    return node.children.some(containsUuid);
+  }
+
+  function traverse(node: RawTreeNode): boolean {
+    if (node.message.uuid === targetUuid) return true;
+
+    const branches = groupRawChildrenIntoBranches(node.children);
+    if (branches.length === 0) return false;
+
+    for (let i = 0; i < branches.length; i++) {
+      if (branches[i].some(containsUuid)) {
+        if (branches.length > 1) {
+          selections[node.message.uuid] = i;
+        }
+        for (const child of branches[i]) {
+          if (traverse(child)) return true;
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Handle multi-root: check which root tree contains the target
+  const conversationRoots = roots.filter((r) =>
+    r.children.length > 0 || CONVERSATION_TYPES.has(r.message.type),
+  );
+  if (conversationRoots.length > 1) {
+    for (let i = 0; i < conversationRoots.length; i++) {
+      if (containsUuid(conversationRoots[i])) {
+        selections[ROOT_BRANCH_KEY] = i;
+        if (traverse(conversationRoots[i])) return selections;
+        return selections;
+      }
+    }
+    return null;
+  }
+
+  const searchRoots = conversationRoots.length > 0 ? conversationRoots : roots;
+  for (const root of searchRoots) {
+    if (traverse(root)) return selections;
+  }
+  return null;
 }

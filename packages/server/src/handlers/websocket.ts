@@ -42,7 +42,9 @@ import { ptyService } from '../services/ptyService.js';
 import { projectService } from '../services/projectService.js';
 import { dashboardService } from '../services/dashboardService.js';
 import { summarize } from '../services/summarizeService.js';
-import { parseJSONLFile } from '../services/historyParser.js';
+import { parseJSONLFile, transformToHistoryMessages } from '../services/historyParser.js';
+import { buildRawMessageTree, getActiveRawBranch, getDefaultRawBranchSelections, findBranchSelectionsForUuid } from '../utils/messageTree.js';
+import type { HistoryMessage } from '@hammoc/shared';
 const log = createLogger('websocket');
 
 // Alias for concise usage in guards
@@ -136,6 +138,8 @@ interface ActiveStream {
   chatService?: ChatService;
   resumeSessionAt?: string;
   expectedBranchTotal?: number;
+  isFork?: boolean;
+  forkHistory?: HistoryMessage[];
 }
 
 // Primary maps: sessionId → ActiveStream, socketId → sessionId
@@ -542,8 +546,10 @@ function cleanupStream(streamKey: string, expectedStream?: ActiveStream) {
       completedBuffers.set(streamKey, {
         events: stream.buffer,
         startedAt: stream.startedAt,
-        resumeSessionAt: stream.resumeSessionAt,
-        expectedBranchTotal: stream.expectedBranchTotal,
+        // Fork streams create a new linear session — resumeSessionAt is the
+        // fork origin in the original session, not a branch point within this one.
+        resumeSessionAt: stream.isFork ? undefined : stream.resumeSessionAt,
+        expectedBranchTotal: stream.isFork ? undefined : stream.expectedBranchTotal,
       });
       const timer = setTimeout(() => {
         // Guard: only delete if this timer is still the current one for this key.
@@ -642,6 +648,13 @@ export function createHeadlessStream(
  */
 export function rekeyStream(stream: ActiveStream, newSessionId: string): void {
   if (stream.sessionId === newSessionId) return;
+  // For fork streams, reset startedAt to now. The SDK has finished copying
+  // history (all with timestamps <= now) and is about to start generating
+  // the response. This lets the streamStartedAt JSONL filter correctly
+  // distinguish copied history from the streaming response.
+  if (stream.isFork) {
+    stream.startedAt = Date.now();
+  }
   const oldSessionId = stream.sessionId;
   const projectSlug = sessionProjectMap.get(oldSessionId);
   activeStreams.delete(oldSessionId);
@@ -902,6 +915,7 @@ export async function initializeWebSocket(
         startedAt: Date.now(),
         resumeSessionAt: data.resumeSessionAt,
         expectedBranchTotal: data.expectedBranchTotal,
+        isFork: !!data.forkSession,
       };
       activeStreams.set(streamKey, stream);
       // Bump drain generation so any pending scheduled drain is invalidated
@@ -1199,11 +1213,15 @@ export async function initializeWebSocket(
       const permissionMode = stream.chatService?.getPermissionMode();
 
       // Emit order matters for the client:
-      // 1. stream:status { active: true } → client calls restoreStreaming + trimMessagesAfterLastUser
-      // 2. active buffer replay → client sets streaming segments for the current turn
+      // 1. stream:history (fork only) → client sets history messages before streaming starts
+      // 2. stream:status { active: true } → client calls restoreStreaming + trimMessagesAfterLastUser
+      // 3. active buffer replay → client sets streaming segments for the current turn
       // Note: completedBuffer (previous chain turn) is NOT replayed here — the client's
       // fetchMessages API already merges completedBuffer data into its response. Sending
       // it as buffer-replay too would cause duplicate user messages on session entry.
+      if (stream.forkHistory) {
+        socket.emit('stream:history', { sessionId, messages: stream.forkHistory });
+      }
       socket.emit('stream:status', { active: true, sessionId, permissionMode });
       socket.emit('stream:buffer-replay', { sessionId, events: bufferSnapshot });
 
@@ -1945,14 +1963,18 @@ async function handleChatSend(
 
   // Buffer the user's message so reconnecting clients can display it
   // (SDK may not have written the JSONL file yet at reconnect time).
+  // Skip for fork sessions — the fork prompt is delivered via stream.forkHistory
+  // (stream:history event) instead, avoiding duplicate user messages on the client.
   // Include timestamp for correct ordering. For images, only send count
   // (not full base64 data) to avoid bloating the buffer.
-  emit('user:message', {
-    content,
-    sessionId: sessionId || '',
-    timestamp: new Date().toISOString(),
-    ...(images && images.length > 0 ? { imageCount: images.length } : {}),
-  });
+  if (!forkSession) {
+    emit('user:message', {
+      content,
+      sessionId: sessionId || '',
+      timestamp: new Date().toISOString(),
+      ...(images && images.length > 0 ? { imageCount: images.length } : {}),
+    });
+  }
 
   const isResuming = resume && sessionId;
 
@@ -1986,6 +2008,51 @@ async function handleChatSend(
         message: 'Cannot resolve root branch point: no root message found in session',
       });
       return false;
+    }
+  }
+
+  // Story 25.11: Cache fork history from original session JSONL before SDK starts.
+  // The SDK may not have written the new session's JSONL by the time the client
+  // navigates and calls fetchMessages, so we read the original session now and
+  // deliver it via stream:history on session:join.
+  if (forkSession && sessionId && resumeSessionAt) {
+    try {
+      const projectSlug = sessionService.encodeProjectPath(workingDirectory);
+      const filePath = sessionService.getSessionFilePath(projectSlug, sessionId);
+      if (existsSync(filePath)) {
+        const rawMessages = await parseJSONLFile(filePath);
+        const tree = buildRawMessageTree(rawMessages);
+        // Find the branch path that contains the fork point message
+        const selections = findBranchSelectionsForUuid(tree.roots, resumeSessionAt)
+          ?? getDefaultRawBranchSelections(tree.roots);
+        const { messages: activeBranchRaw } = getActiveRawBranch(tree.roots, selections);
+        const transformed = transformToHistoryMessages(activeBranchRaw);
+
+        // Truncate at the resumeSessionAt message (the fork branch point).
+        // Use getBaseUuid-style prefix match for split message IDs
+        // (e.g., {uuid}-text-0, {uuid}-tool-xyz).
+        const forkIdx = transformed.findIndex(m => m.id === resumeSessionAt || m.id.startsWith(resumeSessionAt + '-'));
+        if (forkIdx >= 0) {
+          stream.forkHistory = transformed.slice(0, forkIdx + 1);
+        } else {
+          // Fallback: include all messages (better than nothing)
+          stream.forkHistory = transformed;
+        }
+        // Append the fork user prompt so the client's trimMessagesAfterLastUser
+        // sees it as the last user message and preserves all history before it.
+        // This also lets buffer-replay's existing content-based dedup skip the
+        // duplicate user:message event naturally — no client-side fork patches needed.
+        stream.forkHistory.push({
+          id: `fork-user-${Date.now()}`,
+          type: 'user',
+          content,
+          timestamp: new Date().toISOString(),
+        });
+        log.debug(`Fork history cached: ${stream.forkHistory.length} messages from session ${sessionId}`);
+      }
+    } catch (err) {
+      log.warn('Failed to cache fork history:', err);
+      // Non-critical — client will fall back to fetchMessages
     }
   }
 
