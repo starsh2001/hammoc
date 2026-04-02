@@ -407,7 +407,7 @@ describe('useChatStore', () => {
   });
 
   describe('completeStreaming', () => {
-    it('freezes segments with segmentsPendingClear on completion', () => {
+    it('clears segments immediately on completion (Story 27.1)', () => {
       const { startStreaming, appendStreamingContent, completeStreaming } =
         useChatStore.getState();
 
@@ -417,14 +417,12 @@ describe('useChatStore', () => {
 
       const state = useChatStore.getState();
       expect(state.isStreaming).toBe(false);
-      // Segments are kept for display while server fetch loads history
-      expect(state.streamingSegments).toHaveLength(1);
-      expect(state.segmentsPendingClear).toBe(true);
+      expect(state.streamingSegments).toHaveLength(0);
       expect(state.streamingSessionId).toBeNull();
       expect(state.streamingMessageId).toBeNull();
     });
 
-    it('does not convert segments to messages (server fetch handles that)', () => {
+    it('does not convert segments to messages (server delivers history via socket)', () => {
       const { startStreaming, appendStreamingContent, addStreamingToolCall, updateStreamingToolCall, completeStreaming } =
         useChatStore.getState();
 
@@ -435,10 +433,8 @@ describe('useChatStore', () => {
       appendStreamingContent('After tool');
       completeStreaming();
 
-      // No client-side conversion — server API provides history
       const messages = useMessageStore.getState().messages;
       expect(messages).toHaveLength(0);
-      expect(useChatStore.getState().segmentsPendingClear).toBe(true);
     });
 
     it('does nothing when not streaming', () => {
@@ -617,108 +613,6 @@ describe('useChatStore', () => {
       resetContextUsage();
 
       expect(useChatStore.getState().contextUsage).toBeNull();
-    });
-  });
-
-  describe('segmentsPendingClear lifecycle (Story 18.2)', () => {
-    it('TC-L1: completeStreaming freezes segments with segmentsPendingClear=true', () => {
-      const { startStreaming, appendStreamingContent, completeStreaming } =
-        useChatStore.getState();
-
-      startStreaming('session-1', 'msg-1');
-      appendStreamingContent('Hello');
-      completeStreaming();
-
-      const state = useChatStore.getState();
-      expect(state.isStreaming).toBe(false);
-      // Segments are frozen for display while server fetch loads history
-      expect(state.streamingSegments).toHaveLength(1);
-      expect(state.segmentsPendingClear).toBe(true);
-    });
-
-    it('TC-L2: clearStreamingSegments clears segments and sets segmentsPendingClear=false', () => {
-      useChatStore.setState({
-        streamingSegments: [{ type: 'text', content: 'hello' }],
-        segmentsPendingClear: true,
-      });
-
-      useChatStore.getState().clearStreamingSegments();
-
-      const state = useChatStore.getState();
-      expect(state.streamingSegments).toEqual([]);
-      expect(state.segmentsPendingClear).toBe(false);
-    });
-
-    it('TC-L3: abortStreaming clears segments and sets segmentsPendingClear=false', () => {
-      const { startStreaming, appendStreamingContent, abortStreaming } =
-        useChatStore.getState();
-
-      startStreaming('session-1', 'msg-1');
-      appendStreamingContent('partial');
-      abortStreaming();
-
-      const state = useChatStore.getState();
-      expect(state.streamingSegments).toEqual([]);
-      expect(state.segmentsPendingClear).toBe(false);
-    });
-
-    it('TC-L4: startStreaming sets segmentsPendingClear=false', () => {
-      // Simulate a state where segments are pending clear from previous completion
-      useChatStore.setState({
-        segmentsPendingClear: true,
-        streamingSegments: [{ type: 'text', content: 'old' }],
-      });
-
-      useChatStore.getState().startStreaming('session-2', 'msg-2');
-
-      const state = useChatStore.getState();
-      expect(state.segmentsPendingClear).toBe(false);
-      expect(state.streamingSegments).toEqual([]);
-      expect(state.isStreaming).toBe(true);
-    });
-
-    it('TC-L5: sendMessage clears existing stale segments', () => {
-      // Simulate stale segments from previous response
-      useChatStore.setState({
-        streamingSegments: [{ type: 'text', content: 'stale' }],
-        segmentsPendingClear: true,
-      });
-
-      useChatStore.getState().sendMessage('New message', {
-        workingDirectory: '/path',
-      });
-
-      const state = useChatStore.getState();
-      expect(state.streamingSegments).toEqual([]);
-      // sendMessage does not explicitly reset segmentsPendingClear;
-      // it will be reset by startStreaming when the server responds
-      expect(state.isStreaming).toBe(true);
-    });
-
-    it('TC-L6: abortResponse clears streaming and triggers fetch internally', () => {
-      const { startStreaming, appendStreamingContent, abortResponse } =
-        useChatStore.getState();
-
-      startStreaming('session-1', 'msg-1');
-      appendStreamingContent('content');
-      abortResponse();
-
-      const state = useChatStore.getState();
-      expect(state.isStreaming).toBe(false);
-    });
-
-    it('TC-L8: restoreStreaming resets segmentsPendingClear=false', () => {
-      useChatStore.setState({
-        segmentsPendingClear: true,
-        streamingSegments: [{ type: 'text', content: 'old' }],
-      });
-
-      useChatStore.getState().restoreStreaming('session-2');
-
-      const state = useChatStore.getState();
-      expect(state.segmentsPendingClear).toBe(false);
-      expect(state.isStreaming).toBe(true);
-      expect(state.streamingSegments).toEqual([]);
     });
   });
 

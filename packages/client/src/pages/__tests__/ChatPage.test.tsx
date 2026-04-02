@@ -138,8 +138,6 @@ describe('ChatPage', () => {
     hasMore: false,
   };
 
-  const mockFetchMessages = vi.fn().mockResolvedValue(undefined);
-  const mockFetchMoreMessages = vi.fn();
   const mockClearMessages = vi.fn();
 
   beforeEach(() => {
@@ -181,8 +179,6 @@ describe('ChatPage', () => {
       isLoadingMore: false,
       error: null,
       pagination: null,
-      fetchMessages: mockFetchMessages,
-      fetchMoreMessages: mockFetchMoreMessages,
       clearMessages: mockClearMessages,
     });
   });
@@ -397,18 +393,6 @@ describe('ChatPage', () => {
       expect(screen.getByRole('button', { name: '새로고침' })).toBeInTheDocument();
     });
 
-    it('should call fetchMessages on refresh click', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
-      renderChatPage();
-
-      fireEvent.click(screen.getByRole('button', { name: '새로고침' }));
-
-      expect(mockFetchMessages).toHaveBeenCalledWith('test-project', 'session-123');
-    });
   });
 
   describe('Pagination', () => {

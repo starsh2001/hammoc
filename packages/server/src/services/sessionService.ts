@@ -817,21 +817,12 @@ export class SessionService {
     // so that both JSONL and buffer messages are handled in one place.
 
     // If session has an active stream, exclude messages from the stream period.
-    // Those messages are covered by the active stream's buffer replay or by
-    // completedBuffer merge in the getMessages API (sessionController).
-    // This prevents duplicate tool/message cards when the client loads both
-    // JSONL history and buffer replay simultaneously.
+    // Those messages are delivered via SessionBufferManager (stream:history).
+    // This prevents duplicate tool/message cards.
     //
     // IMPORTANT: User messages from the *running* stream's period are preserved
     // so that trimMessagesAfterLastUser() on the client correctly identifies the
-    // triggering user message as the "last" user message. Without this, the client
-    // trims the previous assistant reply because the SDK writes the user message
-    // to JSONL after the stream starts (timestamp >= streamStartedAt).
-    //
-    // Only runningStreamStartedAt is used for user preservation (not the combined
-    // streamStartedAt which may include a completed buffer's earlier start time).
-    // Completed turn messages from the buffer period are provided via the API's
-    // completedBuffer merge, not via WebSocket buffer replay.
+    // triggering user message as the "last" user message.
     if (streamStartedAt) {
       transformed = transformed.filter(
         (m) => {

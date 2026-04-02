@@ -53,32 +53,6 @@ export function useStreaming() {
   // Track seen permission request IDs to avoid duplicates on reconnect
   const seenPermissionIds = useRef(new Set<string>());
 
-  // Track pending fetch generation to prevent duplicate fetches for the same
-  // stream completion (e.g. message:complete + stream:status for same stream).
-  const pendingFetchGenRef = useRef<number | null>(null);
-
-  /** Fetch authoritative history from server after stream completion/abort.
-   *  Uses generation counter to deduplicate and prevent stale clears. */
-  const fetchAndClearSegments = useCallback(() => {
-    const gen = useChatStore.getState().segmentClearGeneration;
-    // Deduplicate: skip if a fetch is already in progress for this generation
-    if (pendingFetchGenRef.current === gen) return;
-    const { currentProjectSlug, currentSessionId } = useMessageStore.getState();
-    if (!currentProjectSlug || !currentSessionId) {
-      // No session context — clear segments immediately to avoid permanent freeze
-      useChatStore.getState().clearStreamingSegments(gen);
-      return;
-    }
-    pendingFetchGenRef.current = gen;
-    useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
-      useChatStore.getState().clearStreamingSegments(gen);
-      if (pendingFetchGenRef.current === gen) pendingFetchGenRef.current = null;
-    }).catch(() => {
-      // On fetch failure, keep segments visible (don't lose user's data).
-      // Segments will be cleared naturally on next send, session switch, or refresh.
-      if (pendingFetchGenRef.current === gen) pendingFetchGenRef.current = null;
-    });
-  }, []);
 
   // Handle keyboard shortcuts to abort streaming (Story 5.4)
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -380,7 +354,7 @@ export function useStreaming() {
 
       // Freeze segments and fetch authoritative history from server
       completeStreaming();
-      fetchAndClearSegments();
+      // Story 27.1: segments cleared by completeStreaming; confirmed messages arrive via stream:complete-messages
     };
 
     // Handle tool call start - add tool segment (skip AskUserQuestion — handled via permission:request)
@@ -548,13 +522,7 @@ export function useStreaming() {
     // Handle context compaction notification
     const handleCompact = (data: CompactMetadata) => {
       flushChunkQueue();
-      // Extend stale-data guard cooldown when compact arrives after streaming completed.
-      // Auto-compact rewrites the JSONL file — without this, the cooldown from the
-      // preceding message:complete could expire before the rewrite finishes, allowing
-      // fetchMessages to overwrite in-memory messages with stale/partial JSONL data.
-      if (!useChatStore.getState().isStreaming) {
-        useChatStore.setState({ streamCompletedAt: Date.now() });
-      }
+      // Story 27.1: cooldown guard removed — messages arrive via WebSocket only
       // Update context usage with actual pre-compact token count from SDK
       // This is the real context size when compact was triggered (more accurate than stale assistant:usage)
       if (data.preTokens > 0) {
@@ -736,16 +704,8 @@ export function useStreaming() {
         // stream start (sendMessage → session:join), streamingSessionId is null
         // or 'pending' — fetching now would get stale JSONL that doesn't yet
         // reflect the new branch (e.g., edit creates branch but SDK hasn't written it).
-        if (chatState.isStreaming && chatState.streamingSessionId
-            && chatState.streamingSessionId !== 'pending') {
-          const { currentProjectSlug } = useMessageStore.getState();
-          if (currentProjectSlug && data.sessionId) {
-            debugLog.stream('stream:status ACTIVE → fetching intermediate chain history', {
-              sessionId: data.sessionId,
-            });
-            useMessageStore.getState().fetchMessages(currentProjectSlug, data.sessionId, { silent: true });
-          }
-        }
+        // Story 27.1: stream:history already delivers buffer messages on session:join.
+        // No intermediate fetch needed — session:join handler sends current buffer state.
         restoreStreaming(data.sessionId);
         // Apply the stream's actual permission mode (overrides local preference)
         if (data.permissionMode) {
@@ -775,7 +735,7 @@ export function useStreaming() {
           });
           // Freeze segments and fetch authoritative history from server
           completeStreaming();
-          fetchAndClearSegments();
+          // Story 27.1: segments cleared by completeStreaming; confirmed messages arrive via stream:complete-messages
         } else {
           debugLog.stream('stream:status → inactive, no-op (not streaming)');
         }
@@ -811,7 +771,7 @@ export function useStreaming() {
       if (wasStreaming) {
         flushChunkQueue();
         completeStreaming();
-        fetchAndClearSegments();
+        // Story 27.1: segments cleared by completeStreaming; confirmed messages arrive via stream:complete-messages
       }
 
       if (data.reason === 'user-abort') {
@@ -830,15 +790,7 @@ export function useStreaming() {
         });
       }
 
-      // Fetch latest messages from server so this client has up-to-date history
-      const msgState = useMessageStore.getState();
-      const { currentProjectSlug, currentSessionId } = msgState;
-      if (currentProjectSlug && currentSessionId) {
-        // Delay slightly to allow server JSONL to flush
-        setTimeout(() => {
-          useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true });
-        }, 1000);
-      }
+      // Story 27.1: Messages are refreshed via stream:history on reconnection (session:join)
     };
 
     // Handle disconnection during streaming
@@ -1360,7 +1312,6 @@ export function useStreaming() {
         }
         chatStateUpdate.streamingMessageId = null;
         chatStateUpdate.streamingSegments = [];
-        chatStateUpdate.streamCompletedAt = Date.now();
       } else if (hasCompletedTurns) {
         // Buffer only had completed turns (all converted to messages via addMessages).
         // Don't set isStreaming — the stream may have already completed (server sent
@@ -1368,7 +1319,6 @@ export function useStreaming() {
         // be visible without displayMessages filtering them.
         chatStateUpdate.streamingMessageId = null;
         chatStateUpdate.streamingSegments = [];
-        chatStateUpdate.streamCompletedAt = Date.now();
       } else {
         // Empty/metadata-only buffer — clear 'restoring' sentinel so spinner disappears.
         chatStateUpdate.streamingMessageId = null;
@@ -1459,13 +1409,12 @@ export function useStreaming() {
     socket.on('permission:mode-change', handlePermissionModeChange);
     socket.on('rateLimit:update', handleRateLimitUpdate);
     socket.on('apiHealth:update', handleApiHealthUpdate);
-    // Story 25.11: Handle stream:history — fork session history delivered before streaming
+    // Story 27.1: Handle stream:history — session history delivered on session:join
     const handleStreamHistory = (data: { sessionId: string; messages: HistoryMessage[] }) => {
       debugLog.stream('stream:history received', {
         sessionId: data.sessionId,
         messageCount: data.messages.length,
       });
-      // Drop if session doesn't match what we're currently viewing
       const viewingSessionId = useMessageStore.getState().currentSessionId;
       if (viewingSessionId && viewingSessionId !== data.sessionId) {
         debugLog.stream('stream:history dropped: session mismatch', {
@@ -1474,10 +1423,26 @@ export function useStreaming() {
         return;
       }
       if (data.messages.length > 0) {
-        useMessageStore.setState({ messages: data.messages });
+        useMessageStore.getState().setMessages(data.messages);
       }
     };
+
+    // Story 27.1: Handle stream:complete-messages — confirmed messages after streaming completion
+    const handleStreamCompleteMessages = (data: { sessionId: string; messages: HistoryMessage[] }) => {
+      debugLog.stream('stream:complete-messages received', {
+        sessionId: data.sessionId,
+        messageCount: data.messages.length,
+      });
+      const viewingSessionId = useMessageStore.getState().currentSessionId;
+      if (viewingSessionId && viewingSessionId !== data.sessionId) {
+        return;
+      }
+      // Atomically replace all messages with confirmed JSONL data
+      useMessageStore.getState().setMessages(data.messages);
+    };
+
     socket.on('stream:history', handleStreamHistory);
+    socket.on('stream:complete-messages', handleStreamCompleteMessages);
     socket.on('stream:status', handleStreamStatus);
     socket.on('stream:buffer-replay', handleBufferReplay);
     socket.on('stream:detached', handleStreamDetached);
@@ -1592,6 +1557,7 @@ export function useStreaming() {
       socket.off('rateLimit:update', handleRateLimitUpdate);
       socket.off('apiHealth:update', handleApiHealthUpdate);
       socket.off('stream:history', handleStreamHistory);
+      socket.off('stream:complete-messages', handleStreamCompleteMessages);
       socket.off('stream:status', handleStreamStatus);
       socket.off('stream:buffer-replay', handleBufferReplay);
       socket.off('stream:detached', handleStreamDetached);

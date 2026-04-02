@@ -194,17 +194,12 @@ export function ChatPage() {
   const {
     messages,
     isLoading,
-    isLoadingMore,
     error,
-    pagination,
-    lastAgentCommand,
-    fetchMessages,
-    fetchMoreMessages,
     clearMessages,
     addOptimisticMessage,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, segmentsPendingClear, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult, editingMessageUuid } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult, editingMessageUuid } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   // Get session name from sessionStore (populated when coming from session list)
@@ -284,7 +279,7 @@ export function ChatPage() {
   }, [isFavorite, addFavorite, removeFavorite, favoriteCommands, commands, t]);
 
   // Active agent detection (Story 8.5)
-  const { activeAgent } = useActiveAgent(messages, commands, lastAgentCommand);
+  const { activeAgent } = useActiveAgent(messages, commands, null);
 
   // Queue session lock detection (Story 15.4)
   const {
@@ -462,7 +457,7 @@ export function ChatPage() {
     }
   }, [handleSendMessage, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, resetSelectedEffort, resetPermissionMode, navigate, projectSlug]);
 
-  // Ref to keep latest handleSendMessage for use in fetchMessages callback (Story 8.3)
+  // Ref to keep latest handleSendMessage for use in callbacks
   const handleSendMessageRef = useRef(handleSendMessage);
   useEffect(() => { handleSendMessageRef.current = handleSendMessage; }, [handleSendMessage]);
 
@@ -477,42 +472,25 @@ export function ChatPage() {
     });
   }, [sendMessage, addOptimisticMessage, workingDirectory, sessionId, isStreaming]);
 
-  // Fetch messages on mount (only for existing sessions)
-  // After fetch completes, clear any lingering streaming tool segments
-  // (handles new session → real session URL navigation case)
-  // If a background stream was restored during fetch, trim the last
-  // assistant message to avoid duplication with buffer replay.
+  // Story 27.1: Messages are now delivered via stream:history on session:join.
+  // On mount, set session context and handle auto-send from URL params.
   useEffect(() => {
     if (projectSlug && sessionId) {
-      fetchMessages(projectSlug, sessionId).then(() => {
-        const chat = useChatStore.getState();
-        const msgState = useMessageStore.getState();
-        debugLog.chatpage('DEDUP fetchMessages.then() callback', {
-          isStreaming: chat.isStreaming,
-          isCompacting: chat.isCompacting,
-          segCount: chat.streamingSegments.length,
-          segTypes: chat.streamingSegments.map(s => s.type),
-          msgCount: msgState.messages.length,
-          msgTypes: msgState.messages.map(m => m.type),
-        });
-        if (chat.isStreaming) {
-          // Server-side streamStartedAt filtering already excludes stream-period
-          // messages from fetchMessages response. No client-side trim needed.
-          // If messages are empty during active streaming (SDK may be rewriting
-          // JSONL during compaction), schedule a retry to pick up flushed history.
-          if (useMessageStore.getState().messages.length === 0) {
-            setTimeout(() => {
-              useMessageStore.getState().fetchMessages(projectSlug, sessionId, { silent: true });
-            }, 3000);
-          }
-        } else if (chat.streamingSegments.length > 0 && !chat.segmentsPendingClear) {
-          // Only clear non-frozen segments (e.g., leftover from navigation).
-          // Frozen segments (segmentsPendingClear) are cleared by fetchAndClearSegments
-          // after the completion/abort fetch completes.
-          clearStreamingSegments();
-        }
+      // Set session context so stream:history / stream:complete-messages can match
+      useMessageStore.setState({
+        currentProjectSlug: projectSlug,
+        currentSessionId: sessionId,
+      });
 
-        // Auto-send pending agent command after navigation (Story 8.3)
+      // Clear stale segments from previous session
+      const chat = useChatStore.getState();
+      if (chat.streamingSegments.length > 0 && !chat.isStreaming) {
+        clearStreamingSegments();
+      }
+
+      // Auto-send pending agent command after navigation (Story 8.3)
+      // Use a short delay to allow stream:history to arrive first
+      setTimeout(() => {
         if (pendingAgentCommandRef.current) {
           const command = pendingAgentCommandRef.current;
           pendingAgentCommandRef.current = null;
@@ -525,10 +503,7 @@ export function ChatPage() {
           const chainPrompts = searchParams.getAll('chain');
           if (agentParam && useMessageStore.getState().messages.length === 0) {
             window.history.replaceState(null, '', window.location.pathname);
-            // Send agent command first — chat:send joins the session room on the server,
-            // so subsequent chain:add events pass the room membership check.
             handleSendMessageRef.current(agentParam);
-            // Queue task command for prompt chain via server (sent after agent response completes)
             const wd = currentProject?.originalPath;
             if (sessionId && wd) {
               const chatState = useChatStore.getState();
@@ -547,9 +522,9 @@ export function ChatPage() {
             }
           }
         }
-      });
+      }, 100);
     }
-  }, [projectSlug, sessionId, fetchMessages, clearStreamingSegments]);
+  }, [projectSlug, sessionId, clearStreamingSegments]);
 
   // Clean up on component unmount (not on sessionId change):
   // - Clear messages
@@ -644,20 +619,8 @@ export function ChatPage() {
       }
       emitJoin();
 
-      // On RECONNECTION (not initial load), do a silent history refresh
-      // to pick up any messages that arrived while disconnected.
-      // Skip during active streaming — useStreaming handles reconnection separately,
-      // and fetchMessages could replace messages with stale history (JSONL not yet flushed).
-      if (!isInitialConnect && projectSlug && sessionId && !useChatStore.getState().isStreaming) {
-        const msgState = useMessageStore.getState();
-        if (msgState.currentSessionId === sessionId && msgState.messages.length > 0) {
-          debugLog.chatpage('handleConnect → fetchMessages (reconnection)', {
-            currentSessionId: msgState.currentSessionId,
-            msgCount: msgState.messages.length,
-          });
-          msgState.fetchMessages(projectSlug, sessionId, { silent: true });
-        }
-      }
+      // Story 27.1: On reconnection, emitJoin() above re-joins the session room,
+      // which triggers stream:history from the server with current buffer data.
       isInitialConnect = false;
     };
 
@@ -671,7 +634,7 @@ export function ChatPage() {
     };
   }, [sessionId, projectSlug]);
 
-  // Reset context usage on session change (separate from fetchMessages useEffect)
+  // Reset context usage on session change
   useEffect(() => {
     resetContextUsage();
   }, [sessionId, resetContextUsage]);
@@ -822,18 +785,17 @@ export function ChatPage() {
   }, []);
 
   const handleRetry = useCallback(() => {
+    // Story 27.1: Re-join session to trigger stream:history from server
     if (projectSlug && sessionId) {
-      fetchMessages(projectSlug, sessionId);
+      const socket = getSocket();
+      socket.emit('session:join', sessionId, projectSlug);
     }
-  }, [projectSlug, sessionId, fetchMessages]);
+  }, [projectSlug, sessionId]);
 
   const handleRefresh = useCallback(() => {
     window.location.reload();
   }, []);
 
-  // Server-side streamStartedAt filtering ensures fetchMessages only returns
-  // pre-stream history. Stream-period content comes exclusively from buffer
-  // replay (streaming segments). No client-side dedup filtering needed.
   const { displayMessages, branchPoints, navigateBranch, isBranchNavigationDisabled } = useMessageTree(messages);
 
   // True when viewing a non-latest (non-active) branch via pagination.
@@ -995,10 +957,6 @@ export function ChatPage() {
       return () => clearTimeout(timeoutId);
     }
   }, [isStreaming, t]);
-
-  const handleLoadMore = useCallback(() => {
-    fetchMoreMessages();
-  }, [fetchMoreMessages]);
 
   // Redirect if required params are missing (MUST be after all hooks)
   if (!projectSlug || !sessionId) {
@@ -1259,8 +1217,6 @@ export function ChatPage() {
           streamingSegments={streamingSegments}
           isStreaming={isStreaming && !!streamingSessionId}
           isCompacting={isCompacting}
-          isLoadingMore={isEmpty ? undefined : isLoadingMore}
-          segmentsPendingClear={segmentsPendingClear}
           emptyState={
             isEmpty && !isStreaming && streamingSegments.length === 0 ? (
               <EmptyState
@@ -1270,22 +1226,6 @@ export function ChatPage() {
             ) : undefined
           }
         >
-          {/* Load older messages button */}
-          {!isEmpty && pagination?.hasMore && (
-            <div className="flex justify-center py-4">
-              <button
-                onClick={handleLoadMore}
-                disabled={isLoadingMore}
-                className="px-4 py-2 text-sm text-blue-600 dark:text-blue-400
-                           hover:text-blue-700 dark:hover:text-blue-300
-                           disabled:opacity-50 focus:outline-none focus:ring-2
-                           focus:ring-blue-500 rounded-lg"
-              >
-                {isLoadingMore ? t('chatPage.loadingMore') : t('chatPage.loadMore')}
-              </button>
-            </div>
-          )}
-
           {/* Message list */}
           {/* Disable all actions when viewing a non-latest branch (SDK limitation) */}
           {(() => {

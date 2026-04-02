@@ -51,8 +51,6 @@ interface MessageAreaProps {
   isCompacting?: boolean;
   /** Whether currently loading older messages (for scroll position preservation) */
   isLoadingMore?: boolean;
-  /** Whether segments are pending clear (post-streaming, awaiting history fetch) */
-  segmentsPendingClear?: boolean;
 }
 
 /**
@@ -399,7 +397,6 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   isStreaming = false,
   isCompacting = false,
   isLoadingMore = false,
-  segmentsPendingClear = false,
 }, ref) {
   const { t } = useTranslation('chat');
   // Include streaming content changes in scroll dependencies for auto-scroll during streaming
@@ -461,11 +458,8 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
     return () => clearTimeout(timer);
   }, [isWaitingWithNoContent]);
 
-  // Determine whether to render streaming segments:
-  // - Always render during active streaming
-  // - Render while pending clear (post-streaming fallback until history loads)
-  // - Hide once segments have been cleared (history is authoritative)
-  const shouldRenderSegments = isStreaming || (segmentsPendingClear === true && streamingSegments.length > 0);
+  // Render streaming segments during active streaming
+  const shouldRenderSegments = isStreaming;
 
   const hasChildren = Array.isArray(children)
     ? children.length > 0

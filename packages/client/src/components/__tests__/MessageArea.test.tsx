@@ -560,19 +560,17 @@ describe('MessageArea', () => {
     });
   });
 
-  // Story 18.2 - segmentsPendingClear dedup guard
-  describe('segmentsPendingClear dedup guard (Story 18.2)', () => {
+  describe('streaming segment rendering', () => {
     const mockTextSegment: StreamingSegment = {
       type: 'text',
       content: 'Streaming content here',
     };
 
-    it('TC-M1: renders segments when isStreaming=true', () => {
+    it('renders segments when isStreaming=true', () => {
       render(
         <MessageArea
           streamingSegments={[mockTextSegment]}
           isStreaming={true}
-          segmentsPendingClear={false}
         >
           <div>History</div>
         </MessageArea>
@@ -581,26 +579,11 @@ describe('MessageArea', () => {
       expect(screen.getByText('Streaming content here')).toBeInTheDocument();
     });
 
-    it('TC-M2: renders segments when isStreaming=false but segmentsPendingClear=true', () => {
+    it('does NOT render segments when isStreaming=false', () => {
       render(
         <MessageArea
           streamingSegments={[mockTextSegment]}
           isStreaming={false}
-          segmentsPendingClear={true}
-        >
-          <div>History</div>
-        </MessageArea>
-      );
-
-      expect(screen.getByText('Streaming content here')).toBeInTheDocument();
-    });
-
-    it('TC-M3: does NOT render segments when isStreaming=false and segmentsPendingClear=false', () => {
-      render(
-        <MessageArea
-          streamingSegments={[mockTextSegment]}
-          isStreaming={false}
-          segmentsPendingClear={false}
         >
           <div>History</div>
         </MessageArea>

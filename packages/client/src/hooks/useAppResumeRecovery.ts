@@ -33,13 +33,9 @@ export function useAppResumeRecovery(): void {
 
   useEffect(() => {
     /**
-     * Schedule a delayed fetchMessages as a safety net.
-     * The stream:status handler's immediate fetch may get stale data if JSONL
-     * hasn't flushed yet. This delayed retry covers that gap.
-     *
-     * Always runs when not streaming — we can't reliably detect whether the
-     * immediate fetch succeeded because completeStreaming() can increase
-     * message count even when JSONL data is still stale.
+     * Schedule a delayed session:join re-emit as a safety net.
+     * On resume, the server sends stream:history with fresh buffer data.
+     * This delayed retry covers cases where the initial join got stale data.
      */
     const scheduleResumeFetch = () => {
       // Cancel any existing timer
@@ -63,7 +59,9 @@ export function useAppResumeRecovery(): void {
             projectSlug: currentProjectSlug,
             sessionId: currentSessionId,
           });
-          msgState.fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true });
+          // Story 27.1: Re-join session to get fresh stream:history from server
+          const socket = getSocket();
+          socket.emit('session:join', currentSessionId, currentProjectSlug);
         }
       }, RESUME_FETCH_DELAY_MS);
     };

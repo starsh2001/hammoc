@@ -160,8 +160,10 @@ export interface ServerToClientEvents {
   'dashboard:status-change': (data: DashboardStatusChangeEvent) => void;
   // Story 24.1: Prompt chain update
   'chain:update': (data: { sessionId: string; items: PromptChainItem[] }) => void;
-  // Story 25.11: Fork history — deliver original session messages before streaming starts
+  // Story 27.1: Session history — deliver buffer messages on session:join
   'stream:history': (data: { sessionId: string; messages: HistoryMessage[] }) => void;
+  // Story 27.1: Confirmed messages after streaming completion (JSONL re-parsed)
+  'stream:complete-messages': (data: { sessionId: string; messages: HistoryMessage[] }) => void;
   // Buffer replay: send entire buffer as a single batch for fast session join
   'stream:buffer-replay': (data: { sessionId: string; events: Array<{ event: string; data: unknown }> }) => void;
   // Story 25.8: Standalone file rewind result

@@ -48,7 +48,8 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
       if (!msg?.branchInfo || msg.branchInfo.total <= 0) return;
 
       const { selectionKey, total } = msg.branchInfo;
-      const { currentBranchSelections, currentProjectSlug, currentSessionId, fetchMessages } = msgState;
+      const { currentProjectSlug, currentSessionId } = msgState;
+      const currentBranchSelections: Record<string, number> | null = null; // Story 27.4: branch navigation via socket
       // Clamp current to valid range
       const rawCurrent = currentBranchSelections?.[selectionKey] ?? msg.branchInfo.current;
       const current = Math.max(0, Math.min(rawCurrent, total - 1));
@@ -59,17 +60,12 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
         : Math.min(total - 1, current + 1);
       if (newIdx === current) return;
 
-      // Build new branchSelections record preserving other branch choices
-      const newSelections = { ...currentBranchSelections, [selectionKey]: newIdx };
-
-      // Request messages from server with new selections
-      if (currentProjectSlug && currentSessionId) {
-        fetchMessages(currentProjectSlug, currentSessionId, {
-          silent: true,
-          branchSelections: newSelections,
-          isBranchSwitch: true,
-        });
-      }
+      // Story 27.4: Branch navigation will be implemented via WebSocket
+      // For now, this is a no-op placeholder
+      const newSelections = { [selectionKey]: newIdx };
+      void newSelections;
+      void currentProjectSlug;
+      void currentSessionId;
 
       // Scroll the branch point into view
       requestAnimationFrame(() => {

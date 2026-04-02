@@ -122,8 +122,6 @@ describe('ChatPage Accessibility', () => {
     hasMore: false,
   };
 
-  const mockFetchMessages = vi.fn().mockResolvedValue(undefined);
-  const mockFetchMoreMessages = vi.fn();
   const mockClearMessages = vi.fn();
 
   beforeEach(() => {
@@ -133,11 +131,7 @@ describe('ChatPage Accessibility', () => {
       currentProjectSlug: null,
       currentSessionId: null,
       isLoading: false,
-      isLoadingMore: false,
       error: null,
-      pagination: null,
-      fetchMessages: mockFetchMessages,
-      fetchMoreMessages: mockFetchMoreMessages,
       clearMessages: mockClearMessages,
     });
   });

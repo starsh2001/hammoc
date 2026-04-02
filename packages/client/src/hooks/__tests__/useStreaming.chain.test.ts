@@ -41,7 +41,6 @@ describe('useStreaming — chain:update', () => {
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
-      segmentsPendingClear: false,
       isCompacting: false,
       isSessionLocked: false,
     });

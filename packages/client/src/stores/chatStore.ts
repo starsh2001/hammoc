@@ -170,14 +170,6 @@ interface ChatState {
   isCompacting: boolean;
   /** Whether this session was taken over by another browser (locks UI until refresh) */
   isSessionLocked: boolean;
-  /** Whether segments are being held pending history fetch (post-completeStreaming) */
-  segmentsPendingClear: boolean;
-  /** Generation counter for segment clearing — prevents stale fetch callbacks from
-   *  clearing segments that belong to a newer stream. Incremented on freeze and on
-   *  new stream start. */
-  segmentClearGeneration: number;
-  /** Timestamp when streaming completed (cooldown guard for fetchMessages) */
-  streamCompletedAt: number | null;
   /** Counter incremented only on normal streaming completion (not abort/error).
    *  Used by prompt chain to distinguish normal completion from error/abort. */
   streamCompleteCount: number;
@@ -349,9 +341,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   thinkingExpanded: false,
   isCompacting: false,
   isSessionLocked: false,
-  segmentsPendingClear: false,
-  segmentClearGeneration: 0,
-  streamCompletedAt: null,
   streamCompleteCount: 0,
   projectSettings: null,
   permissionMode: (() => {
@@ -386,7 +375,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       currentMsgCount: msgState.messages.length,
       currentMsgTypes: msgState.messages.map(m => m.type),
       segmentCount: get().streamingSegments.length,
-      segmentsPendingClear: get().segmentsPendingClear,
     });
 
     // Clear any existing delay timeout
@@ -477,9 +465,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       streamingStartedAt: new Date(),
       lastResultError: null,
-      segmentsPendingClear: false,
-      segmentClearGeneration: get().segmentClearGeneration + 1,
-      streamCompletedAt: null,
     });
   },
 
@@ -614,19 +599,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingDelayTimeoutId = null;
     }
 
-    // Keep segments visible (segmentsPendingClear) while the caller fetches
-    // authoritative history from the server. The server API merges JSONL +
-    // completedBuffer so messages are available even before JSONL flush.
-    // Increment segmentClearGeneration so the fetch callback can target this
-    // specific freeze — a newer stream's startStreaming will bump it again.
+    // Story 27.1: Segments are cleared immediately. Confirmed messages will
+    // arrive via stream:complete-messages (server re-parses JSONL after RESULT).
     set({
       isStreaming: false,
       isCompacting: false,
       streamingSessionId: null,
       streamingMessageId: null,
-      segmentsPendingClear: true,
-      segmentClearGeneration: get().segmentClearGeneration + 1,
-      streamCompletedAt: Date.now(),
+      streamingSegments: [],
+      streamingStartedAt: null,
       streamCompleteCount: get().streamCompleteCount + 1,
     });
   },
@@ -651,8 +632,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
-      segmentsPendingClear: false,
-      streamCompletedAt: Date.now(),
     });
   },
 
@@ -688,30 +667,19 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       return seg;
     });
 
-    // Freeze segments and fetch authoritative history from server.
+    // Story 27.1: Clear segments immediately. Confirmed messages arrive via WebSocket.
     set({
       isStreaming: false,
       isCompacting: false,
       streamingSessionId: null,
       streamingMessageId: null,
       streamingSegments: finalSegments,
-      segmentsPendingClear: true,
-      segmentClearGeneration: get().segmentClearGeneration + 1,
-      streamCompletedAt: Date.now(),
     });
 
-    // Fetch history + clear segments (same flow as completeStreaming callers)
-    const gen = get().segmentClearGeneration;
-    const { currentProjectSlug, currentSessionId } = useMessageStore.getState();
-    if (currentProjectSlug && currentSessionId) {
-      useMessageStore.getState().fetchMessages(currentProjectSlug, currentSessionId, { silent: true, force: true }).then(() => {
-        get().clearStreamingSegments(gen);
-      }).catch(() => {
-        // On fetch failure, keep segments visible
-      });
-    } else {
-      get().clearStreamingSegments(gen);
-    }
+    // Clear segments after a short delay so the user can see the abort state
+    setTimeout(() => {
+      set({ streamingSegments: [], streamingStartedAt: null });
+    }, 500);
   },
 
   setPermissionMode: (mode: PermissionMode) => {
@@ -738,23 +706,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   setApiHealth: (health: ApiHealthStatus) => set({ apiHealth: health }),
 
-  clearStreamingSegments: (forGeneration?: number) => {
-    const prev = get();
-    // If a generation is specified, only clear if it matches the current generation.
-    // This prevents stale fetch callbacks from clearing segments of a newer stream.
-    if (forGeneration !== undefined && forGeneration !== prev.segmentClearGeneration) return;
+  clearStreamingSegments: () => {
     debugLog.state('clearStreamingSegments', {
-      clearedSegmentCount: prev.streamingSegments.length,
-      segmentTypes: prev.streamingSegments.map(s => s.type),
+      clearedSegmentCount: get().streamingSegments.length,
       msgCount: useMessageStore.getState().messages.length,
-      isStreaming: prev.isStreaming,
-      wasPending: prev.segmentsPendingClear,
-      generation: forGeneration,
-      currentGeneration: prev.segmentClearGeneration,
     });
     pendingPermissionBuffer.clear();
     pendingInputBuffer.clear();
-    set({ streamingSegments: [], segmentsPendingClear: false, streamingStartedAt: null });
+    set({ streamingSegments: [], streamingStartedAt: null });
   },
 
   updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),
@@ -986,8 +945,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       streamingStartedAt: new Date(),
       lastResultError: null,
-      segmentsPendingClear: false,
-      segmentClearGeneration: get().segmentClearGeneration + 1,
     });
   },
 

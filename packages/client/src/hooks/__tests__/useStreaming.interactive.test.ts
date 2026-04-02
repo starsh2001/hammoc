@@ -30,13 +30,12 @@ vi.mock('../../services/socket', () => ({
   getSocket: () => mockSocket,
 }));
 
-// Mock messageStore to prevent fetch calls
+// Mock messageStore
 vi.mock('../../stores/messageStore', () => ({
   useMessageStore: {
     getState: () => ({
       currentProjectSlug: null,
       currentSessionId: null,
-      fetchMessages: vi.fn(),
       addMessages: vi.fn(),
     }),
   },
