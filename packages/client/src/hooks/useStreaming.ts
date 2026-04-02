@@ -731,7 +731,13 @@ export function useStreaming() {
         // fetch history to pick up intermediate turns completed while disconnected.
         // Without this, chain turns that completed in the background are never
         // loaded — only the active turn's buffer replay arrives via WebSocket.
-        if (chatState.isStreaming) {
+        // Only on RECONNECTION: streamingSessionId is already set to the real
+        // session ID from a prior restoreStreaming/startStreaming. On initial
+        // stream start (sendMessage → session:join), streamingSessionId is null
+        // or 'pending' — fetching now would get stale JSONL that doesn't yet
+        // reflect the new branch (e.g., edit creates branch but SDK hasn't written it).
+        if (chatState.isStreaming && chatState.streamingSessionId
+            && chatState.streamingSessionId !== 'pending') {
           const { currentProjectSlug } = useMessageStore.getState();
           if (currentProjectSlug && data.sessionId) {
             debugLog.stream('stream:status ACTIVE → fetching intermediate chain history', {
