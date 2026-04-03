@@ -7,7 +7,7 @@
 
 import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
-import { existsSync, unlinkSync, readFileSync, readdirSync } from 'fs';
+import { existsSync, unlinkSync, readFileSync, readdirSync, statSync } from 'fs';
 import { randomUUID } from 'crypto';
 import type {
   ClientToServerEvents,
@@ -19,6 +19,7 @@ import type {
   PermissionRequest,
   PromptChainItem,
   ThinkingEffort,
+  ChatUsage,
 } from '@hammoc/shared';
 import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS, ROOT_BRANCH_KEY } from '@hammoc/shared';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@hammoc/shared';
@@ -140,6 +141,8 @@ interface ActiveStream {
   resumeSessionAt?: string;
   expectedBranchTotal?: number;
   isFork?: boolean;
+  /** Deferred usage data — included in stream:complete-messages after JSONL flush */
+  deferredUsage?: ChatUsage;
 }
 
 // Primary maps: sessionId → ActiveStream, socketId → sessionId
@@ -391,20 +394,8 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
           const remaining = chainState.get(sessionId);
           const remainingPending = remaining?.filter(item => item.status === 'pending').length ?? 0;
           log.info(`[CHAIN-DRAIN] finally: cleaning up stream, remainingItems=${remaining?.length ?? 0}, remainingPending=${remainingPending}`);
-          // Story 27.1: Reload JSONL and broadcast confirmed messages
           const chainEndSlug = sessionProjectMap.get(sessionId) ?? null;
-          if (chainEndSlug) {
-            try {
-              const messages = await sessionBufferManager.reloadFromJSONL(sessionId, chainEndSlug);
-              sessionBufferManager.setStreaming(sessionId, false);
-              io.to(`session:${sessionId}`).emit('stream:complete-messages', { sessionId, messages });
-            } catch (err) {
-              log.error(`[CHAIN-DRAIN] finally: failed to reload JSONL for ${sessionId}:`, err);
-              sessionBufferManager.setStreaming(sessionId, false);
-            }
-          } else {
-            sessionBufferManager.setStreaming(sessionId, false);
-          }
+          await completeBufferAndBroadcast(sessionId, chainEndSlug, stream);
           cleanupStream(sessionId);
           emitStreamChange(sessionId, false, chainEndSlug);
           // Persist per-session permission mode before cleanup
@@ -482,6 +473,90 @@ export function isSessionStreaming(sessionId: string): boolean {
   return !!stream && stream.status === 'running';
 }
 
+
+/**
+ * Wait for JSONL to contain conversation data, then reload buffer and broadcast.
+ * The SDK writes user/assistant messages asynchronously after returning from
+ * sendMessageWithCallbacks, so we poll until the data appears.
+ */
+
+
+async function completeBufferAndBroadcast(sessionId: string, projectSlug: string | null | undefined, stream?: ActiveStream): Promise<void> {
+  const aborted = stream?.abortController.signal.aborted ?? false;
+  const usage = stream?.deferredUsage;
+
+  if (aborted) {
+    // Abort: treat same as normal completion — send current buffer messages.
+    sessionBufferManager.setStreaming(sessionId, false);
+    const buf = sessionBufferManager.get(sessionId);
+    io.to(`session:${sessionId}`).emit('stream:complete-messages', {
+      sessionId,
+      messages: buf?.messages ?? [],
+      usage,
+      aborted: true,
+    });
+    return;
+  }
+
+  if (projectSlug) {
+    try {
+      const messages = await pollFileStabilityThenReload(sessionId, projectSlug);
+      sessionBufferManager.setStreaming(sessionId, false);
+      io.to(`session:${sessionId}`).emit('stream:complete-messages', { sessionId, messages, usage });
+    } catch (err) {
+      log.error(`completeBufferAndBroadcast: failed for ${sessionId}:`, err);
+      sessionBufferManager.setStreaming(sessionId, false);
+      const fallback = sessionBufferManager.get(sessionId)?.messages ?? [];
+      io.to(`session:${sessionId}`).emit('stream:complete-messages', { sessionId, messages: fallback, usage });
+    }
+  } else {
+    sessionBufferManager.setStreaming(sessionId, false);
+    const buf = sessionBufferManager.get(sessionId);
+    io.to(`session:${sessionId}`).emit('stream:complete-messages', {
+      sessionId, messages: buf?.messages ?? [], usage,
+    });
+  }
+}
+
+/**
+ * Poll until the JSONL file size stabilizes (3 consecutive checks unchanged),
+ * then reload the buffer from the confirmed JSONL data.
+ * Used for both normal completion and abort — SDK writes asynchronously
+ * after returning from sendMessageWithCallbacks.
+ */
+const FILE_POLL_INTERVAL_MS = 100;
+const FILE_POLL_TIMEOUT_MS = 5000;
+const FILE_POLL_STABLE_COUNT = 3;
+
+async function pollFileStabilityThenReload(sessionId: string, projectSlug: string): Promise<HistoryMessage[]> {
+  const svc = new SessionService();
+  const filePath = svc.getSessionFilePath(projectSlug, sessionId);
+
+  const getFileSize = (): number => {
+    try { return existsSync(filePath) ? statSync(filePath).size : -1; } catch { return -1; }
+  };
+
+  let lastSize = getFileSize();
+  let stableCount = 0;
+  const startedAt = Date.now();
+  const deadline = startedAt + FILE_POLL_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, FILE_POLL_INTERVAL_MS));
+    const currentSize = getFileSize();
+    // Don't count stability if file doesn't exist yet (-1)
+    if (currentSize >= 0 && currentSize === lastSize) {
+      stableCount++;
+      if (stableCount >= FILE_POLL_STABLE_COUNT) break;
+    } else {
+      stableCount = 0;
+      lastSize = currentSize;
+    }
+  }
+
+  log.info(`pollFileStability: session=${sessionId}, elapsed=${Date.now() - startedAt}ms, stable=${stableCount >= FILE_POLL_STABLE_COUNT}`);
+  return sessionBufferManager.reloadFromJSONL(sessionId, projectSlug);
+}
 
 /** Clean up a stream from activeStreams immediately.
  *  Story 27.1: SessionBufferManager retains the messages; no completedBuffer needed. */
@@ -561,14 +636,9 @@ export function createHeadlessStream(
   };
   activeStreams.set(sessionId, stream);
   // Story 27.1: Initialize SessionBufferManager for headless stream
-  sessionBufferManager.create(sessionId);
-  sessionBufferManager.setStreaming(sessionId, true);
+  sessionBufferManager.create(sessionId, true);
   if (projectSlug) {
     sessionProjectMap.set(sessionId, projectSlug);
-    // Load existing history into buffer (fire-and-forget)
-    sessionBufferManager.reloadFromJSONL(sessionId, projectSlug).catch((err) => {
-      log.warn(`createHeadlessStream: failed to preload history for ${sessionId}:`, err);
-    });
   }
   for (const sock of sockets) {
     socketToSession.set(sock.id, sessionId);
@@ -623,19 +693,7 @@ export async function finalizeStream(sessionId: string): Promise<void> {
 
     // Story 27.1: JSONL is fully written (appendFileSync). Reload buffer from disk
     // and broadcast confirmed messages to all session viewers.
-    const projectSlug = sessionProjectMap.get(sessionId);
-    if (projectSlug) {
-      try {
-        const messages = await sessionBufferManager.reloadFromJSONL(sessionId, projectSlug);
-        sessionBufferManager.setStreaming(sessionId, false);
-        io.to(`session:${sessionId}`).emit('stream:complete-messages', { sessionId, messages });
-      } catch (err) {
-        log.error(`finalizeStream: failed to reload JSONL for session ${sessionId}:`, err);
-        sessionBufferManager.setStreaming(sessionId, false);
-      }
-    } else {
-      sessionBufferManager.setStreaming(sessionId, false);
-    }
+    await completeBufferAndBroadcast(sessionId, sessionProjectMap.get(sessionId), stream);
 
     // Pass stream reference so cleanupStream won't accidentally clean up a
     // replacement stream that started during the async persistence above.
@@ -881,23 +939,13 @@ export async function initializeWebSocket(
       }
 
       // Story 27.1: Initialize SessionBufferManager for this stream
-      sessionBufferManager.create(streamKey);
-      sessionBufferManager.setStreaming(streamKey, true);
+      sessionBufferManager.create(streamKey, true);
 
       // Story 20.1: Populate session→project mapping for dashboard triggers
-      // Use stream.sessionId (mutable) instead of captured streamKey to handle
-      // race condition where rekeyStream() may have already changed the session ID
-      // Story 27.1: Also load history into buffer for mid-stream session:join
       projectService.findProjectByPath(data.workingDirectory).then(async (project) => {
         if (project && stream.status === 'running') {
           sessionProjectMap.set(stream.sessionId, project.projectSlug);
           triggerDashboardStatusChange(project.projectSlug);
-          // Load existing history into buffer so mid-stream joiners see context
-          try {
-            await sessionBufferManager.reloadFromJSONL(stream.sessionId, project.projectSlug);
-          } catch (err) {
-            log.warn(`chat:send: failed to preload history for ${stream.sessionId}:`, err);
-          }
         }
       }).catch(() => {});
 
@@ -916,18 +964,7 @@ export async function initializeWebSocket(
           // Story 27.1: JSONL is fully written (appendFileSync). Reload buffer
           // from disk and broadcast confirmed messages to all session viewers.
           const sendEndSlug = sessionProjectMap.get(endedSessionId) ?? null;
-          if (sendEndSlug) {
-            try {
-              const messages = await sessionBufferManager.reloadFromJSONL(endedSessionId, sendEndSlug);
-              sessionBufferManager.setStreaming(endedSessionId, false);
-              io.to(`session:${endedSessionId}`).emit('stream:complete-messages', { sessionId: endedSessionId, messages });
-            } catch (err) {
-              log.error(`chat:send finally: failed to reload JSONL for ${endedSessionId}:`, err);
-              sessionBufferManager.setStreaming(endedSessionId, false);
-            }
-          } else {
-            sessionBufferManager.setStreaming(endedSessionId, false);
-          }
+          await completeBufferAndBroadcast(endedSessionId, sendEndSlug, stream);
 
           cleanupStream(endedSessionId);
           emitStreamChange(endedSessionId, false, sendEndSlug);
@@ -1112,6 +1149,13 @@ export async function initializeWebSocket(
       // Story 24.3: Track session room membership for session:leave room management
       socketSessionRoom.set(socket.id, sessionId);
 
+      // Register sessionProjectMap on join so leave cleanup can find the slug.
+      if (projectSlug && UUID_RE.test(sessionId)) {
+        if (!sessionProjectMap.has(sessionId)) {
+          sessionProjectMap.set(sessionId, projectSlug);
+        }
+      }
+
       const stream = activeStreams.get(sessionId);
 
       // Story 24.1: Send current chain state on join (in-memory + persisted failures)
@@ -1164,6 +1208,23 @@ export async function initializeWebSocket(
             return;
           }
 
+          // Completed stream still flushing (polling JSONL): deliver history +
+          // raw buffer replay so the joining browser sees the full conversation
+          // immediately, matching what already-connected browsers saw via live events.
+          // stream:complete-messages will follow shortly with confirmed data.
+          const completedStream = freshStream ?? activeStreams.get(sessionId);
+          if (completedStream && completedStream.status === 'completed' && completedStream.buffer.length > 0) {
+            socketToSession.set(socket.id, sessionId);
+            const buf = sessionBufferManager.get(sessionId);
+            if (buf && buf.messages.length > 0) {
+              socket.emit('stream:history', { sessionId, messages: buf.messages });
+            }
+            socket.emit('stream:status', { active: true, sessionId, permissionMode });
+            socket.emit('stream:buffer-replay', { sessionId, events: [...completedStream.buffer] });
+            completedStream.sockets.add(socket);
+            return;
+          }
+
           // Inactive: deliver buffer messages or parse JSONL as fallback
           let buf = sessionBufferManager.get(sessionId);
           const resolvedSlug = projectSlug || sessionProjectMap.get(sessionId);
@@ -1212,7 +1273,22 @@ export async function initializeWebSocket(
 
       // Story 27.1: Deliver buffer messages (history + streaming data accumulated so far)
       // so a new browser joining mid-stream sees the full context immediately.
-      const buf = sessionBufferManager.get(sessionId);
+      let buf = sessionBufferManager.get(sessionId);
+      // Buffer may have been destroyed if all sockets left briefly — recover from JSONL
+      if (!buf) {
+        const slug = sessionProjectMap.get(sessionId);
+        if (slug) {
+          sessionBufferManager.create(sessionId, true);
+          sessionBufferManager.reloadFromJSONL(sessionId, slug)
+            .then(() => {
+              const recovered = sessionBufferManager.get(sessionId);
+              if (recovered && recovered.messages.length > 0) {
+                socket.emit('stream:history', { sessionId, messages: recovered.messages });
+              }
+            })
+            .catch(() => { /* best effort */ });
+        }
+      }
       if (buf && buf.messages.length > 0) {
         socket.emit('stream:history', { sessionId, messages: buf.messages });
       }
@@ -1241,9 +1317,10 @@ export async function initializeWebSocket(
       if (roomSessionId) {
         socket.leave(`session:${roomSessionId}`);
 
-        // Story 27.1: Destroy buffer when no sockets remain in the session room
+        // Story 27.1: Destroy buffer when no sockets remain AND no active stream.
+        // Active stream needs the buffer for mid-stream joiners and completion.
         const remaining = io.sockets.adapter.rooms.get(`session:${roomSessionId}`);
-        if (!remaining || remaining.size === 0) {
+        if ((!remaining || remaining.size === 0) && !activeStreams.has(roomSessionId)) {
           sessionBufferManager.destroy(roomSessionId);
         }
       }
@@ -1980,14 +2057,14 @@ async function handleChatSend(
   // (SDK may not have written the JSONL file yet at reconnect time).
   // Skip for fork sessions — the fork prompt is delivered via SessionBufferManager
   // (stream:history event) instead, avoiding duplicate user messages on the client.
-  // Include timestamp for correct ordering. For images, only send count
-  // (not full base64 data) to avoid bloating the buffer.
+  // Images are included inline (base64) so all browsers see them immediately.
+  // TODO: Replace with server-stored image URLs to reduce buffer size.
   if (!forkSession) {
     emit('user:message', {
       content,
       sessionId: sessionId || '',
       timestamp: new Date().toISOString(),
-      ...(images && images.length > 0 ? { imageCount: images.length } : {}),
+      ...(images && images.length > 0 ? { images: images.map(img => ({ mimeType: img.mimeType, data: img.data, name: img.name })) } : {}),
     });
   }
 
@@ -2046,8 +2123,7 @@ async function handleChatSend(
         const forkHistory = forkIdx >= 0
           ? transformed.slice(0, forkIdx + 1)
           : transformed;
-        // Append the fork user prompt so the client's trimMessagesAfterLastUser
-        // sees it as the last user message and preserves all history before it.
+        // Append the fork user prompt so the client sees it as part of the history.
         forkHistory.push({
           id: `fork-user-${Date.now()}`,
           type: 'user',
@@ -2227,6 +2303,19 @@ async function handleChatSend(
       origOnSessionInit?.(sid, metadata);
     };
 
+    // Defer completion until JSONL is flushed — keeps client in streaming state.
+    // Usage data is stored and included in stream:complete-messages.
+    const baseOnComplete = callbacks.onComplete;
+    callbacks.onComplete = (response) => {
+      if (response.usage) {
+        stream.deferredUsage = response.usage;
+        emit('context:usage', response.usage);
+      }
+      if (notificationService.shouldNotify(stream.sockets.size)) {
+        notificationService.notifyComplete(stream.sessionId, response.content);
+      }
+    };
+
     // Browser-only callbacks
     callbacks.onActivity = (messageType: string) => {
       resetTimeout(`onActivity:${messageType}`);
@@ -2317,6 +2406,7 @@ async function handleChatSend(
       ungateCallbacks();
       if (gatedResultError) origOnResultError?.(gatedResultError as never);
       if (gatedComplete) origOnComplete?.(gatedComplete as never);
+
     } catch (sendError) {
       // Resume failed — retry once without resume so SDK creates a fresh session.
       // Guards:
@@ -2403,8 +2493,12 @@ async function handleChatSend(
         const encoded = sessionService.encodeProjectPath(workingDirectory);
         const projectDir = sessionService.getProjectDir(encoded);
         const postQueryFiles = readdirSync(projectDir).filter(f => f.endsWith('.jsonl'));
+        // Skip the active session's JSONL — for new sessions, the SDK creates
+        // this file during the query so it's not in preQueryFiles, but it's
+        // the real session file, not a phantom checkpoint.
+        const activeSessionFile = `${stream.sessionId}.jsonl`;
         for (const file of postQueryFiles) {
-          if (preQueryFiles.has(file)) continue;
+          if (preQueryFiles.has(file) || file === activeSessionFile) continue;
           const filePath = `${projectDir}/${file}`;
           try {
             const raw = readFileSync(filePath, 'utf8');
