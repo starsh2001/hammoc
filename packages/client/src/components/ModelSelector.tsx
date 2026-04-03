@@ -6,8 +6,8 @@
  * - Checkmark on currently selected model
  * - All supported Claude models grouped by generation
  * - Signal-strength bar control for thinking effort
- *   · 4 bars when Max is available (Opus 4.6 + API key user)
- *   · 3 bars when Max is unavailable (non-Opus or subscriber)
+ *   · 4 bars when Max is available (Opus 4.6)
+ *   · 3 bars when Max is unavailable (non-Opus models)
  * - Opens upward (input area is at bottom)
  * - Outside click / Escape to close
  * - Disabled during streaming
@@ -28,8 +28,6 @@ interface ModelSelectorProps {
   effort?: ThinkingEffort;
   /** Effort change callback */
   onEffortChange?: (effort: ThinkingEffort | undefined) => void;
-  /** Whether the user is a Claude.ai subscriber (Max effort unavailable) */
-  isSubscriber?: boolean;
 }
 
 interface ModelOption {
@@ -146,12 +144,12 @@ const BAR_HEIGHT = 14; // uniform height for all bars
 /** Index lookup for determining "active up to" fill */
 const LEVEL_INDEX: Record<ThinkingEffort, number> = { low: 0, medium: 1, high: 2, max: 3 };
 
-export function ModelSelector({ model, onModelChange, disabled, activeModel, effort, onEffortChange, isSubscriber }: ModelSelectorProps) {
+export function ModelSelector({ model, onModelChange, disabled, activeModel, effort, onEffortChange }: ModelSelectorProps) {
   const { t } = useTranslation('chat');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const maxAvailable = isOpus46(model, activeModel) && !isSubscriber;
+  const maxAvailable = isOpus46(model, activeModel);
 
   // Close on outside click
   useEffect(() => {
@@ -306,14 +304,6 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
                 <span className="text-xs text-gray-500 dark:text-gray-400 select-none">
                   {effortLabel}
                 </span>
-                {!maxAvailable && isOpus46(model, activeModel) && (
-                  <span
-                    className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto"
-                    title={t('effort.maxSubscriberOnly')}
-                  >
-                    {t('effort.maxUnavailable')}
-                  </span>
-                )}
               </div>
             </div>
           )}

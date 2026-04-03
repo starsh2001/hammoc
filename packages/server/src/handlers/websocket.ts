@@ -865,9 +865,6 @@ export async function initializeWebSocket(
       );
     }
 
-    // Send subscriber status immediately (credential file check, no network call)
-    socket.emit('auth:subscriber', { isSubscriber: rateLimitProbeService.hasOAuthCredentials() });
-
     // Send cached rate limit data immediately to newly connected client
     const cachedRateLimit = rateLimitProbeService.getCachedResult();
     if (cachedRateLimit) {
@@ -2198,6 +2195,11 @@ async function handleChatSend(
     // Load preferences early for advanced settings + timeout
     const effectivePrefs = await preferencesService.getEffectivePreferences();
 
+    // Clamp 'max' effort to 'high' for non-Opus 4.6 models
+    const resolvedEffort = effort ?? effectivePrefs.defaultEffort;
+    const isOpus46 = model && (model === 'claude-opus-4-6' || model === 'opus' || model.includes('opus-4-6'));
+    const effectiveEffort = resolvedEffort === 'max' && !isOpus46 ? 'high' : resolvedEffort;
+
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : { sessionId }),
       abortController,
@@ -2208,7 +2210,7 @@ async function handleChatSend(
       maxThinkingTokens: effectivePrefs.maxThinkingTokens,
       maxTurns: effectivePrefs.maxTurns,
       maxBudgetUsd: effectivePrefs.maxBudgetUsd,
-      effort: effort ?? effectivePrefs.defaultEffort,
+      effort: effectiveEffort,
       // Story 25.7: conversation branching via resumeSessionAt
       ...(resumeSessionAt ? { resumeSessionAt } : {}),
       // Story 25.11: fork session — create new session from branch point

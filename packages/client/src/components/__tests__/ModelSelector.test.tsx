@@ -56,7 +56,7 @@ describe('ModelSelector', () => {
       expect(radios).toHaveLength(3);
     });
 
-    it('renders 4 effort bars when model is Opus 4.6 and user is not subscriber', () => {
+    it('renders 4 effort bars when model is Opus 4.6', () => {
       const onEffortChange = vi.fn();
       render(
         <ModelSelector
@@ -64,30 +64,12 @@ describe('ModelSelector', () => {
           activeModel="claude-opus-4-6"
           effort={undefined}
           onEffortChange={onEffortChange}
-          isSubscriber={false}
         />
       );
 
       fireEvent.click(screen.getByRole('button', { name: /Model/i }));
       const radios = screen.getAllByRole('radio');
       expect(radios).toHaveLength(4);
-    });
-
-    it('renders 3 bars when model is Opus 4.6 but user is subscriber', () => {
-      const onEffortChange = vi.fn();
-      render(
-        <ModelSelector
-          {...defaultProps}
-          activeModel="claude-opus-4-6"
-          effort={undefined}
-          onEffortChange={onEffortChange}
-          isSubscriber={true}
-        />
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /Model/i }));
-      const radios = screen.getAllByRole('radio');
-      expect(radios).toHaveLength(3);
     });
 
     it('does not render effort bars when onEffortChange is not provided', () => {
@@ -142,21 +124,6 @@ describe('ModelSelector', () => {
       expect(screen.getByRole('listbox')).toBeInTheDocument();
     });
 
-    it('shows "Max N/A" label for subscriber on Opus 4.6', () => {
-      const onEffortChange = vi.fn();
-      render(
-        <ModelSelector
-          {...defaultProps}
-          activeModel="claude-opus-4-6"
-          effort={undefined}
-          onEffortChange={onEffortChange}
-          isSubscriber={true}
-        />
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /Model/i }));
-      expect(screen.getByText('Max N/A')).toBeInTheDocument();
-    });
   });
 
   describe('tooltip', () => {

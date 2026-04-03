@@ -4,7 +4,7 @@
  * Epic 22: i18n support with useTranslation
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { usePreferencesStore } from '../../stores/preferencesStore';
@@ -37,15 +37,6 @@ export function GlobalSettingsSection() {
   const { theme, setTheme } = useTheme();
   const permissionModePref = preferences.permissionMode ?? 'default';
   const setPermissionMode = useChatStore((s) => s.setPermissionMode);
-  const isSubscriber = useChatStore((s) => s.isSubscriber);
-
-  // Auto-clear invalid 'max' default effort for subscribers
-  useEffect(() => {
-    if (isSubscriber && preferences.defaultEffort === 'max') {
-      updatePreference('defaultEffort', undefined);
-    }
-  }, [isSubscriber, preferences.defaultEffort, updatePreference]);
-
   const isOverridden = useCallback((field: string) => overrides.includes(field), [overrides]);
 
   const handleThemeChange = useCallback((newTheme: Theme) => {
@@ -173,8 +164,8 @@ export function GlobalSettingsSection() {
         >
           <option value="">{t('advanced.sdkDefault')}</option>
           {EFFORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value} disabled={opt.value === 'max' && isSubscriber}>
-              {t(opt.labelKey)}{opt.value === 'max' && isSubscriber ? ` (${t('advanced.effortMaxSubscriber')})` : ''}
+            <option key={opt.value} value={opt.value}>
+              {t(opt.labelKey)}
             </option>
           ))}
         </select>

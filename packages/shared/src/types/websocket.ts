@@ -146,7 +146,6 @@ export interface ServerToClientEvents {
   'queue:itemsUpdated': (data: QueueItemsUpdatedEvent) => void;
   'queue:editState': (data: { isEditing: boolean }) => void;
   'rateLimit:update': (data: SubscriptionRateLimit) => void;
-  'auth:subscriber': (data: { isSubscriber: boolean }) => void;
   'permission:mode-change': (data: { mode: PermissionMode }) => void;
   'apiHealth:update': (data: ApiHealthStatus) => void;
   // Story 17.1: Terminal PTY events
