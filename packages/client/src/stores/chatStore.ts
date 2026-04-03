@@ -67,7 +67,7 @@ export interface ResultErrorData {
 export type StreamingSegment =
   | { type: 'text'; content: string }
   | { type: 'thinking'; content: string }
-  | { type: 'system'; subtype: 'compact' | 'info'; message: string }
+  | { type: 'system'; subtype: 'compact' | 'info' | 'abort'; message: string }
   | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error'; permissionId?: string; permissionStatus?: 'waiting' | 'approved' | 'denied' }
   | {
       type: 'interactive';
@@ -105,7 +105,7 @@ export function isToolSegment(
 /** Type guard for system segments */
 export function isSystemSegment(
   seg: StreamingSegment
-): seg is { type: 'system'; subtype: 'compact' | 'info'; message: string } {
+): seg is { type: 'system'; subtype: 'compact' | 'info' | 'abort'; message: string } {
   return seg.type === 'system';
 }
 
@@ -256,7 +256,7 @@ interface ChatActions {
   /** Update streaming sessionId without resetting segments (for late sessionId arrival) */
   updateStreamingSessionId: (sessionId: string) => void;
   /** Add a system segment (e.g., context compaction notification, info messages) */
-  addSystemSegment: (message: string, subtype?: 'compact' | 'info') => void;
+  addSystemSegment: (message: string, subtype?: 'compact' | 'info' | 'abort') => void;
   /** Add an interactive segment (permission request or AskUserQuestion) */
   addInteractiveSegment: (segment: {
     id: string;
@@ -599,8 +599,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingDelayTimeoutId = null;
     }
 
-    // Story 27.1: Segments are cleared immediately. Confirmed messages will
-    // arrive via stream:complete-messages (server re-parses JSONL after RESULT).
     set({
       isStreaming: false,
       isCompacting: false,
@@ -639,47 +637,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const state = get();
     if (!state.isStreaming) return;
 
-    pendingPermissionBuffer.clear();
-    pendingInputBuffer.clear();
-
-    // Clear delay timeout
-    if (streamingDelayTimeoutId) {
-      clearTimeout(streamingDelayTimeoutId);
-      streamingDelayTimeoutId = null;
-    }
-
-    // Notify server to abort SDK request (server also clears prompt chain)
+    // Notify server to abort SDK request. Server will broadcast
+    // stream:detached { reason: 'user-abort' } to ALL sockets,
+    // then stream:complete-messages { aborted: true } with confirmed data.
     const socket = getSocket();
     socket.emit('chat:abort');
 
     // Immediately clear local chain state so UI reflects the stop
     useChainStore.getState().clearChainItems();
-
-    // Mark pending tool segments as aborted (stop spinners/timers)
-    const finalSegments = state.streamingSegments.map((seg) => {
-      if (seg.type === 'tool' && seg.status === 'pending') {
-        return {
-          ...seg,
-          status: 'error' as const,
-          toolCall: { ...seg.toolCall, output: i18n.t('notification:chat.aborted') },
-        };
-      }
-      return seg;
-    });
-
-    // Story 27.1: Clear segments immediately. Confirmed messages arrive via WebSocket.
-    set({
-      isStreaming: false,
-      isCompacting: false,
-      streamingSessionId: null,
-      streamingMessageId: null,
-      streamingSegments: finalSegments,
-    });
-
-    // Clear segments after a short delay so the user can see the abort state
-    setTimeout(() => {
-      set({ streamingSegments: [], streamingStartedAt: null });
-    }, 500);
   },
 
   setPermissionMode: (mode: PermissionMode) => {
@@ -718,7 +683,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),
 
-  addSystemSegment: (message: string, subtype: 'compact' | 'info' = 'compact') => {
+  addSystemSegment: (message: string, subtype: 'compact' | 'info' | 'abort' = 'compact') => {
     const segments = get().streamingSegments;
     // Don't auto-set isCompacting here — callers (handleCompact) manage it
     // conditionally based on whether real content has already arrived

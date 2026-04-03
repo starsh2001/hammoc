@@ -458,8 +458,8 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
     return () => clearTimeout(timer);
   }, [isWaitingWithNoContent]);
 
-  // Render streaming segments during active streaming
-  const shouldRenderSegments = isStreaming;
+  // Render streaming segments during active streaming or while awaiting confirmation (abort)
+  const shouldRenderSegments = isStreaming || streamingSegments.length > 0;
 
   const hasChildren = Array.isArray(children)
     ? children.length > 0
@@ -539,9 +539,12 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           }
 
           if (isSystemSegment(seg)) {
+            const isAbort = seg.subtype === 'abort';
             const isCompact = seg.subtype === 'compact';
-            const Icon = isCompact ? Database : Info;
-            const colorClasses = isCompact
+            const Icon = isAbort ? XOctagon : isCompact ? Database : Info;
+            const colorClasses = isAbort
+              ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
+              : isCompact
               ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
               : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800';
             return (

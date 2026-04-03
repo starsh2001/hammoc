@@ -129,45 +129,18 @@ export function useStreaming() {
       }
     };
 
-    // Handle user:message from buffer replay (restores the user's sent message
-    // when reconnecting before SDK has flushed the JSONL file)
-    const handleUserMessage = (data: { content: string; sessionId: string; timestamp?: string; imageCount?: number }) => {
+    // Handle user:message — server broadcasts to ALL sockets (including sender).
+    // No dedup needed — this is the single source of truth for user messages.
+    const handleUserMessage = (data: { content: string; sessionId: string; timestamp?: string; images?: ImageAttachment[] }) => {
       if (!data.content) return;
-      const msgs = useMessageStore.getState().messages;
-      const incomingTrimmed = data.content.trim();
-      // Check against the last user message with trimmed comparison
-      // (addOptimisticMessage stores content.trim(), so comparison must also trim).
-      // Note: JSONL timestamps and buffer timestamps differ (different sources), so
-      // timestamp-based dedup is unreliable here — content match is more robust.
-      const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
-      const isDuplicate = !!lastUserMsg && lastUserMsg.content.trim() === incomingTrimmed;
-      debugLog.stream('DEDUP user:message received', {
+      debugLog.stream('user:message received', {
         sessionId: data.sessionId,
         contentPreview: data.content.slice(0, 50),
-        msgCount: msgs.length,
-        msgTypes: msgs.map(m => m.type),
-        isDuplicate,
-        lastUserContent: lastUserMsg?.content?.slice(0, 50),
-        isStreaming: useChatStore.getState().isStreaming,
+        msgCount: useMessageStore.getState().messages.length,
       });
-      debugLog.message('user:message', {
-        sessionId: data.sessionId,
-        contentPreview: data.content.slice(0, 50),
-        msgCount: msgs.length,
-        isDuplicate,
-        lastUserMsgId: lastUserMsg?.id,
-      });
-      if (!isDuplicate) {
-        const placeholderImages: ImageAttachment[] | undefined = data.imageCount
-          ? Array.from({ length: data.imageCount }, (_, i) => ({ mimeType: 'image/jpeg', data: '', name: `image-${i + 1}` }))
-          : undefined;
-        useMessageStore.getState().addOptimisticMessage(data.content, placeholderImages, data.timestamp);
-        debugLog.stream('DEDUP user:message → added optimistic', {
-          newMsgCount: useMessageStore.getState().messages.length,
-        });
-      }
+      useMessageStore.getState().addUserMessage(data.content, data.images, data.timestamp);
       // Detect /compact command and restore compacting indicator
-      if (incomingTrimmed === '/compact') {
+      if (data.content.trim() === '/compact') {
         useChatStore.setState({ isCompacting: true });
       }
 
@@ -352,9 +325,8 @@ export function useStreaming() {
         }
       }
 
-      // Freeze segments and fetch authoritative history from server
-      completeStreaming();
-      // Story 27.1: segments cleared by completeStreaming; confirmed messages arrive via stream:complete-messages
+      // Don't call completeStreaming() — stream:complete-messages handles it
+      // after server confirms JSONL flush.
     };
 
     // Handle tool call start - add tool segment (skip AskUserQuestion — handled via permission:request)
@@ -711,12 +683,8 @@ export function useStreaming() {
         if (data.permissionMode) {
           useChatStore.setState({ permissionMode: data.permissionMode });
         }
-        // Trim all messages after the last user message to avoid duplication
-        // with buffer replay (which replays the entire assistant turn)
-        trimMessagesAfterLastUser();
-        debugLog.stream('DEDUP stream:status ACTIVE → after trim', {
+        debugLog.stream('stream:status ACTIVE → restored', {
           msgCount: useMessageStore.getState().messages.length,
-          msgTypes: useMessageStore.getState().messages.map(m => m.type),
         });
         debugLog.stream('stream:status → restored', { sessionId: data.sessionId });
       } else {
@@ -733,54 +701,33 @@ export function useStreaming() {
             sessionId: data.sessionId,
             hadSegments,
           });
-          // Freeze segments and fetch authoritative history from server
           completeStreaming();
-          // Story 27.1: segments cleared by completeStreaming; confirmed messages arrive via stream:complete-messages
         } else {
           debugLog.stream('stream:status → inactive, no-op (not streaming)');
         }
       }
     };
 
-    // Remove all messages after the last user message from the message store.
-    // Called when restoring a background stream to prevent overlap between
-    // fetched history (JSONL) and replayed buffer events. The entire assistant
-    // turn (multiple assistant/tool_use messages) will be recreated from
-    // streaming segments via completeStreaming.
-    const trimMessagesAfterLastUser = () => {
-      const msgs = useMessageStore.getState().messages;
-      let lastUserIdx = -1;
-      for (let i = msgs.length - 1; i >= 0; i--) {
-        if (msgs[i].type === 'user') {
-          lastUserIdx = i;
-          break;
-        }
-      }
-      if (lastUserIdx >= 0 && lastUserIdx < msgs.length - 1) {
-        useMessageStore.setState({ messages: msgs.slice(0, lastUserIdx + 1) });
-      }
-    };
-
-    // Handle stream:detached — another browser took over or user aborted from another viewer
+    // Handle stream:detached — another browser took over or user aborted
     const handleStreamDetached = (data: { sessionId: string; reason: string }) => {
-      const wasStreaming = useChatStore.getState().isStreaming;
+      const chatState = useChatStore.getState();
+      const viewingSessionId = useMessageStore.getState().currentSessionId;
       debugLog.stream('stream:detached', {
         reason: data.reason,
-        isStreaming: wasStreaming,
+        isStreaming: chatState.isStreaming,
+        sessionId: data.sessionId,
+        viewingSessionId,
       });
-      if (wasStreaming) {
+      // Ignore detach from a different session (stale event after session switch)
+      if (viewingSessionId && data.sessionId !== viewingSessionId) return;
+      if (chatState.isStreaming) {
         flushChunkQueue();
         completeStreaming();
-        // Story 27.1: segments cleared by completeStreaming; confirmed messages arrive via stream:complete-messages
       }
 
       if (data.reason === 'user-abort') {
-        // Abort initiated from another viewer — just complete streaming, no lock needed.
-        // If wasStreaming is false, this socket already called abortResponse() itself
-        // (i.e., the user who initiated the abort) — skip the redundant toast.
-        if (wasStreaming) {
-          toast.info(i18n.t('notification:streaming.abortedInOtherBrowser'));
-        }
+        // stream:complete-messages { aborted: true } will follow with confirmed
+        // data and a cancellation message card — no special handling needed here.
       } else {
         // Another client took over (another-client) — lock this session
         useChatStore.setState({ isSessionLocked: true });
@@ -789,8 +736,6 @@ export function useStreaming() {
           duration: Infinity,
         });
       }
-
-      // Story 27.1: Messages are refreshed via stream:history on reconnection (session:join)
     };
 
     // Handle disconnection during streaming
@@ -1027,21 +972,17 @@ export function useStreaming() {
 
         switch (event) {
           case 'user:message': {
-            const d = eventData as { content: string; sessionId: string; timestamp?: string; imageCount?: number };
+            const d = eventData as { content: string; sessionId: string; timestamp?: string; images?: ImageAttachment[] };
             if (!d.content) break;
-            const msgs = useMessageStore.getState().messages;
-            const incomingTrimmed = d.content.trim();
-            const lastUserMsg = [...msgs].reverse().find(m => m.type === 'user');
-            if (!lastUserMsg || lastUserMsg.content.trim() !== incomingTrimmed) {
-              // Create placeholder images for buffer replay (full data not stored in buffer).
-              // addOptimisticMessage will try to restore from client-side cache first;
-              // if not cached, these placeholders render as "[image attached]" in the UI.
-              const placeholderImages: ImageAttachment[] | undefined = d.imageCount
-                ? Array.from({ length: d.imageCount }, (_, i) => ({ mimeType: 'image/jpeg', data: '', name: `image-${i + 1}` }))
-                : undefined;
-              useMessageStore.getState().addOptimisticMessage(d.content, placeholderImages, d.timestamp);
+            // Skip if this user message already exists in history (delivered via stream:history)
+            const existingMsgs = useMessageStore.getState().messages;
+            const alreadyExists = d.timestamp && existingMsgs.some(
+              m => m.type === 'user' && m.timestamp === d.timestamp && m.content === d.content.trim()
+            );
+            if (!alreadyExists) {
+              useMessageStore.getState().addUserMessage(d.content, d.images, d.timestamp);
             }
-            if (incomingTrimmed === '/compact') isCompacting = true;
+            if (d.content.trim() === '/compact') isCompacting = true;
             break;
           }
           case 'session:created':
@@ -1427,18 +1368,51 @@ export function useStreaming() {
       }
     };
 
-    // Story 27.1: Handle stream:complete-messages — confirmed messages after streaming completion
-    const handleStreamCompleteMessages = (data: { sessionId: string; messages: HistoryMessage[] }) => {
+    // Story 27.1: stream:complete-messages — single completion signal after JSONL flush.
+    // Replaces messages with confirmed data, processes usage, and ends streaming state.
+    // Abort is treated the same as normal completion — messages are replaced with
+    // confirmed data and a cancellation message card is appended.
+    const handleStreamCompleteMessages = (data: { sessionId: string; messages: HistoryMessage[]; usage?: ChatUsage; aborted?: boolean }) => {
       debugLog.stream('stream:complete-messages received', {
         sessionId: data.sessionId,
         messageCount: data.messages.length,
+        hasUsage: !!data.usage,
+        aborted: !!data.aborted,
       });
       const viewingSessionId = useMessageStore.getState().currentSessionId;
-      if (viewingSessionId && viewingSessionId !== data.sessionId) {
-        return;
+      const isCurrentSession = !viewingSessionId || viewingSessionId === data.sessionId;
+
+      if (isCurrentSession) {
+        // Process usage metadata (contextWindow, model, totalCostUSD)
+        if (data.usage) {
+          const existing = useChatStore.getState().contextUsage;
+          if (existing) {
+            setContextUsage({
+              ...existing,
+              contextWindow: data.usage.contextWindow,
+              totalCostUSD: data.usage.totalCostUSD,
+              model: data.usage.model ?? existing.model,
+            });
+          } else {
+            setContextUsage(data.usage as ChatUsage);
+          }
+          if (data.usage.model) {
+            useChatStore.getState().setActiveModel(data.usage.model);
+          }
+        }
+        // Append cancellation message card for aborted streams
+        const messages = data.aborted
+          ? [...data.messages, {
+              id: `abort-${data.sessionId}-${Date.now()}`,
+              type: 'system' as const,
+              subtype: 'abort',
+              content: i18n.t('notification:streaming.aborted'),
+              timestamp: new Date().toISOString(),
+            }]
+          : data.messages;
+        useMessageStore.getState().setMessages(messages);
+        completeStreaming();
       }
-      // Atomically replace all messages with confirmed JSONL data
-      useMessageStore.getState().setMessages(data.messages);
     };
 
     socket.on('stream:history', handleStreamHistory);

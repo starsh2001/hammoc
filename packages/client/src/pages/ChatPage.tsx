@@ -97,6 +97,19 @@ function renderHistoryMessage(
     return <TaskNotificationCard key={message.id} status={message.taskStatus} summary={message.taskSummary} toolUseId={message.taskToolUseId} />;
   }
 
+  // Render abort system message as red divider + badge
+  if (message.type === 'system' && message.subtype === 'abort') {
+    return (
+      <div key={message.id} className="flex items-center gap-3 my-4 px-4">
+        <div className="flex-1 border-t border-red-300 dark:border-red-700" />
+        <span className="text-xs text-red-500 dark:text-red-400 whitespace-nowrap">
+          {message.content}
+        </span>
+        <div className="flex-1 border-t border-red-300 dark:border-red-700" />
+      </div>
+    );
+  }
+
   // Render compact_boundary system message as divider + badge
   if (message.type === 'system' && message.subtype === 'compact_boundary') {
     return (
@@ -196,7 +209,6 @@ export function ChatPage() {
     isLoading,
     error,
     clearMessages,
-    addOptimisticMessage,
   } = useMessageStore();
 
   const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult, editingMessageUuid } = useChatStore();
@@ -377,12 +389,6 @@ export function ChatPage() {
   const internalSend = useCallback(
     (content: string, attachments?: Attachment[]) => {
       const currentMessages = useMessageStore.getState().messages;
-      const images = attachments?.map((a) => ({
-        mimeType: a.mimeType,
-        data: a.data,
-        name: a.name,
-      }));
-      addOptimisticMessage(content, images);
       sendMessage(content, {
         workingDirectory: workingDirectory!,
         sessionId,
@@ -390,7 +396,7 @@ export function ChatPage() {
         attachments,
       });
     },
-    [sendMessage, addOptimisticMessage, workingDirectory, sessionId]
+    [sendMessage, workingDirectory, sessionId]
   );
 
   // Handle message send
@@ -464,13 +470,12 @@ export function ChatPage() {
   // Handle manual compaction
   const handleCompact = useCallback(() => {
     if (!workingDirectory || isStreaming || messages.length === 0) return;
-    addOptimisticMessage('/compact');
     sendMessage('/compact', {
       workingDirectory,
       sessionId,
       resume: true,
     });
-  }, [sendMessage, addOptimisticMessage, workingDirectory, sessionId, isStreaming]);
+  }, [sendMessage, workingDirectory, sessionId, isStreaming]);
 
   // Story 27.1: Messages are now delivered via stream:history on session:join.
   // On mount, set session context and handle auto-send from URL params.
@@ -847,7 +852,6 @@ export function ChatPage() {
       }
     }
 
-    addOptimisticMessage(params.newText);
     sendMessage(params.newText, {
       workingDirectory,
       sessionId,
@@ -855,7 +859,7 @@ export function ChatPage() {
       resumeSessionAt: branchPointId,
       expectedBranchTotal: editedBranchInfo ? editedBranchInfo.total + 1 : undefined,
     });
-  }, [workingDirectory, sessionId, sendMessage, addOptimisticMessage]);
+  }, [workingDirectory, sessionId, sendMessage]);
 
   // Story 25.8: Rewind code — dryRun 2-step flow
   const [rewindMessageUuid, setRewindMessageUuid] = useState<string | null>(null);

@@ -9,11 +9,8 @@ import type { HistoryMessage, ImageAttachment } from '@hammoc/shared';
 import { generateUUID } from '../utils/uuid';
 import { debugLog } from '../utils/debugLogger';
 
-/** Client-local extension: marks optimistic messages for reconciliation */
-type OptimisticHistoryMessage = HistoryMessage & { _optimistic?: boolean };
-
 interface MessageState {
-  messages: OptimisticHistoryMessage[];
+  messages: HistoryMessage[];
   currentProjectSlug: string | null;
   currentSessionId: string | null;
   isLoading: boolean;
@@ -24,30 +21,13 @@ interface MessageActions {
   /** Replace all messages with server-authoritative data (stream:history / stream:complete-messages) */
   setMessages: (messages: HistoryMessage[]) => void;
   clearMessages: () => void;
-  /** Add user message optimistically (before server confirmation) */
-  addOptimisticMessage: (content: string, images?: ImageAttachment[], timestamp?: string) => void;
+  /** Add a user message from server user:message event */
+  addUserMessage: (content: string, images?: ImageAttachment[], timestamp?: string) => void;
   /** Add multiple messages in batch (used by completeStreaming) */
   addMessages: (newMessages: HistoryMessage[]) => void;
 }
 
 type MessageStore = MessageState & MessageActions;
-
-/**
- * Client-side image cache: preserves user-attached images across session
- * re-entry during active streaming.
- * - Keyed by sessionId + trimmed content to prevent cross-session collisions
- * - Populated when sendMessage includes real image data
- * - Read during buffer replay to restore images (server only sends imageCount)
- * - NOT cleared on session change (must survive re-entry); bounded by entry count
- * - Survives ChatPage unmount (module-level) but not page refresh
- */
-const userImageCache = new Map<string, ImageAttachment[]>();
-const MAX_IMAGE_CACHE_ENTRIES = 5;
-
-/** Clear image cache (called on session change) */
-export function clearUserImageCache() {
-  userImageCache.clear();
-}
 
 export const useMessageStore = create<MessageStore>((set, get) => ({
   // State
@@ -57,16 +37,26 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
   isLoading: false,
   error: null,
 
-  // Actions
-
   setMessages: (messages: HistoryMessage[]) => {
+    const current = get().messages;
+
+    // Skip no-op: same length and all IDs match (common on reconnect/re-join)
+    if (
+      current.length === messages.length &&
+      current.length > 0 &&
+      current.every((m, i) => m.id === messages[i].id)
+    ) {
+      debugLog.message('setMessages skipped (no change)', { count: messages.length });
+      return;
+    }
+
     debugLog.message('setMessages called', {
       count: messages.length,
       types: messages.map(m => m.type),
     });
 
-    // Preserve images from existing user messages (server doesn't store images)
-    const current = get().messages;
+    // Preserve images from existing user messages (server JSONL parser
+    // may not include images when they're stored separately)
     const existingImages = new Map<string, HistoryMessage['images']>();
     for (const msg of current) {
       if (msg.type === 'user' && msg.images && msg.images.length > 0) {
@@ -94,49 +84,18 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     });
   },
 
-  addOptimisticMessage: (content: string, images?: ImageAttachment[], timestamp?: string) => {
-    const state = get();
-    const { messages } = state;
-
-    // Rapid fire guard: skip if same content within 1 second
-    const lastMessage = messages[messages.length - 1];
-    if (
-      (lastMessage as OptimisticHistoryMessage)?._optimistic &&
-      lastMessage?.type === 'user' &&
-      lastMessage?.content.trim() === content.trim() &&
-      Date.now() - new Date(lastMessage.timestamp).getTime() < 1000
-    ) {
-      return;
-    }
-
+  addUserMessage: (content: string, images?: ImageAttachment[], timestamp?: string) => {
     const trimmed = content.trim();
     const ts = timestamp ?? new Date().toISOString();
-    const cacheKey = `${state.currentSessionId ?? ''}:${ts}:${trimmed}`;
 
-    // Image cache: store real images, restore from cache for placeholders
-    let resolvedImages = images;
-    if (images && images.length > 0 && images.every(i => i.data)) {
-      userImageCache.set(cacheKey, images);
-      if (userImageCache.size > MAX_IMAGE_CACHE_ENTRIES) {
-        const firstKey = userImageCache.keys().next().value;
-        if (firstKey) userImageCache.delete(firstKey);
-      }
-    } else if (images && images.length > 0 && images.every(i => !i.data)) {
-      const cached = userImageCache.get(cacheKey);
-      if (cached) {
-        resolvedImages = cached;
-      }
-    }
-
-    const optimisticMessage: OptimisticHistoryMessage = {
-      id: `optimistic-${generateUUID()}`,
+    const message: HistoryMessage = {
+      id: `user-${generateUUID()}`,
       type: 'user',
       content: trimmed,
       timestamp: ts,
-      _optimistic: true,
-      ...(resolvedImages && resolvedImages.length > 0 ? { images: resolvedImages } : {}),
+      ...(images && images.length > 0 ? { images } : {}),
     };
-    set({ messages: [...messages, optimisticMessage] });
+    set((state) => ({ messages: [...state.messages, message] }));
   },
 
   addMessages: (newMessages: HistoryMessage[]) => {
@@ -144,15 +103,8 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     set((state) => {
       const existingIds = new Set(state.messages.map((m) => m.id));
       const uniqueNewMessages = newMessages.filter((m) => !existingIds.has(m.id));
-      debugLog.message('DEDUP addMessages', {
-        incomingCount: newMessages.length,
-        existingCount: state.messages.length,
-        uniqueCount: uniqueNewMessages.length,
-      });
       if (uniqueNewMessages.length === 0) return state;
-      const merged = [...state.messages, ...uniqueNewMessages];
-      merged.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-      return { messages: merged };
+      return { messages: [...state.messages, ...uniqueNewMessages] };
     });
   },
 }));
