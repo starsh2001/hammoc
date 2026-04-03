@@ -913,6 +913,7 @@ export function ChatPage() {
   const [forkTargetMessageId, setForkTargetMessageId] = useState<string | null>(null);
   const [forkPromptText, setForkPromptText] = useState('');
   const isForkingRef = useRef(false);
+  const [isForking, setIsForking] = useState(false);
 
   const handleForkClick = useCallback((assistantMessageId: string) => {
     setForkTargetMessageId(assistantMessageId);
@@ -924,6 +925,7 @@ export function ChatPage() {
     const assistantUuid = getBaseUuid(forkTargetMessageId);
     const prompt = forkPromptText.trim() || t('fork.prompt');
     isForkingRef.current = true;
+    setIsForking(true);
     sendMessage(prompt, {
       workingDirectory,
       sessionId,
@@ -947,6 +949,7 @@ export function ChatPage() {
     if (forkedSessionId && projectSlug) {
       clearForkedSessionId();
       isForkingRef.current = false;
+      setIsForking(false);
       navigate(`/project/${projectSlug}/session/${forkedSessionId}`);
     }
   }, [forkedSessionId, projectSlug, clearForkedSessionId, navigate]);
@@ -956,6 +959,7 @@ export function ChatPage() {
   useEffect(() => {
     if (lastResultError && isForkingRef.current) {
       isForkingRef.current = false;
+      setIsForking(false);
       toast.error(t('fork.error'));
     }
   }, [lastResultError, t]);
@@ -967,6 +971,7 @@ export function ChatPage() {
       const timeoutId = setTimeout(() => {
         if (isForkingRef.current && !useChatStore.getState().forkedSessionId) {
           isForkingRef.current = false;
+      setIsForking(false);
           toast.error(t('fork.error'));
         }
       }, 2000);
@@ -1233,6 +1238,7 @@ export function ChatPage() {
           streamingSegments={streamingSegments}
           isStreaming={isStreaming && !!streamingSessionId}
           isCompacting={isCompacting}
+          isForking={isForking}
           emptyState={
             isEmpty && !isStreaming && streamingSegments.length === 0 ? (
               <EmptyState

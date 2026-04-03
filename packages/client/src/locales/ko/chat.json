@@ -290,6 +290,7 @@
     "ariaLabel": "Claude가 응답을 생성하고 있습니다",
     "srText": "Claude가 생각 중입니다...",
     "waiting": "생각 중...",
+    "forking": "세션 포크 중...",
     "generating": "응답 생성 중...",
     "restoring": "대화 복원 중...",
     "compactionHint": "컨텍스트 압축 중일 수 있음"

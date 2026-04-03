@@ -290,6 +290,7 @@
     "ariaLabel": "Claude is generating a response",
     "srText": "Claude is thinking...",
     "waiting": "Thinking...",
+    "forking": "Forking session...",
     "generating": "Generating...",
     "restoring": "Restoring conversation...",
     "compactionHint": "context compaction may be in progress"

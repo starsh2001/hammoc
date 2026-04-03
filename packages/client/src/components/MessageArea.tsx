@@ -49,6 +49,8 @@ interface MessageAreaProps {
   isStreaming?: boolean;
   /** Whether context compaction is in progress */
   isCompacting?: boolean;
+  /** Whether a fork operation is in progress */
+  isForking?: boolean;
   /** Whether currently loading older messages (for scroll position preservation) */
   isLoadingMore?: boolean;
 }
@@ -396,6 +398,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   streamingSegments = [],
   isStreaming = false,
   isCompacting = false,
+  isForking = false,
   isLoadingMore = false,
 }, ref) {
   const { t } = useTranslation('chat');
@@ -759,8 +762,8 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
               <div className="flex items-center gap-2">
                 <StreamingIndicator />
                 <span className="text-sm text-gray-500 dark:text-gray-300">
-                  {t('streaming.waiting')}
-                  {showCompactionHint && (
+                  {isForking ? t('streaming.forking') : t('streaming.waiting')}
+                  {!isForking && showCompactionHint && (
                     <span className="text-amber-600 dark:text-amber-400"> ({t('streaming.compactionHint')})</span>
                   )}
                 </span>
