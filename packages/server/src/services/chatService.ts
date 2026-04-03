@@ -198,6 +198,7 @@ export class ChatService {
     const queryOptions: Options = {
       cwd: this.workingDirectory,
       permissionMode: this.permissionMode,
+      allowDangerouslySkipPermissions: this.permissionMode === 'bypassPermissions',
       allowedTools: resolvedAllowed.length > 0 ? resolvedAllowed : undefined,
       disallowedTools: resolvedDisallowed.length > 0 ? resolvedDisallowed : undefined,
       maxTurns: options.maxTurns,
