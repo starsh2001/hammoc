@@ -7,7 +7,7 @@
 import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage, ThinkingEffort, SubscriptionRateLimit, ApiHealthStatus } from './sdk.js';
 import type { ToolResult, CompactMetadata, TaskNotificationData } from './streaming.js';
 import type { SessionInfo } from './session.js';
-import type { ImageAttachment } from './message.js';
+import type { ImageAttachment, ImageRef } from './message.js';
 import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from './queue.js';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalListResponse, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent, TerminalAccessInfo } from './terminal.js';
 import type { DashboardStatusChangeEvent } from './dashboard.js';
@@ -137,7 +137,7 @@ export interface ServerToClientEvents {
   'permission:already-resolved': (data: { requestId: string }) => void;
   'permission:resolved': (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question'; response?: string | string[] | Record<string, string | string[]> }) => void;
   'session:stream-change': (data: { sessionId: string; active: boolean; projectSlug?: string | null }) => void;
-  'user:message': (data: { content: string; sessionId: string; timestamp?: string; imageCount?: number }) => void;
+  'user:message': (data: { content: string; sessionId: string; timestamp?: string; images?: ImageRef[] }) => void;
   // Story 15.2: Queue runner events
   'queue:progress': (data: QueueProgressEvent) => void;
   'queue:itemComplete': (data: QueueItemCompleteEvent) => void;

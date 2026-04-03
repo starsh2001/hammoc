@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand';
-import type { HistoryMessage, ImageAttachment } from '@hammoc/shared';
+import type { HistoryMessage, ImageRef } from '@hammoc/shared';
 import { generateUUID } from '../utils/uuid';
 import { debugLog } from '../utils/debugLogger';
 
@@ -22,7 +22,7 @@ interface MessageActions {
   setMessages: (messages: HistoryMessage[]) => void;
   clearMessages: () => void;
   /** Add a user message from server user:message event */
-  addUserMessage: (content: string, images?: ImageAttachment[], timestamp?: string) => void;
+  addUserMessage: (content: string, images?: ImageRef[], timestamp?: string) => void;
   /** Add multiple messages in batch (used by completeStreaming) */
   addMessages: (newMessages: HistoryMessage[]) => void;
 }
@@ -55,23 +55,10 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       types: messages.map(m => m.type),
     });
 
-    // Preserve images from existing user messages (server JSONL parser
-    // may not include images when they're stored separately)
-    const existingImages = new Map<string, HistoryMessage['images']>();
-    for (const msg of current) {
-      if (msg.type === 'user' && msg.images && msg.images.length > 0) {
-        existingImages.set(msg.content, msg.images);
-      }
-    }
-
-    const result = messages.map(msg => {
-      if (msg.type === 'user' && !msg.images && existingImages.has(msg.content)) {
-        return { ...msg, images: existingImages.get(msg.content) };
-      }
-      return msg;
-    });
-
-    set({ messages: result, isLoading: false, error: null });
+    // Story 27.2: Server always provides ImageRef with URL in both
+    // user:message and stream:history / stream:complete-messages,
+    // so client-side image preservation is no longer needed.
+    set({ messages, isLoading: false, error: null });
   },
 
   clearMessages: () => {
@@ -84,7 +71,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     });
   },
 
-  addUserMessage: (content: string, images?: ImageAttachment[], timestamp?: string) => {
+  addUserMessage: (content: string, images?: ImageRef[], timestamp?: string) => {
     const trimmed = content.trim();
     const ts = timestamp ?? new Date().toISOString();
 

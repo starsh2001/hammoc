@@ -12,6 +12,20 @@ import type { RawJSONLMessage } from '@hammoc/shared';
 vi.mock('fs/promises');
 vi.mock('fs', () => ({
   existsSync: vi.fn(),
+  createReadStream: vi.fn(),
+}));
+vi.mock('../sessionService.js', () => ({
+  sessionService: {
+    getProjectDir: vi.fn((slug: string) => `/mock/projects/${slug}`),
+  },
+}));
+vi.mock('../../utils/logger.js', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
 }));
 
 const mockFs = vi.mocked(fs);
@@ -953,6 +967,102 @@ invalid json line
       expect(result).toHaveLength(1);
       expect(result[0].type).toBe('task_notification');
       expect(result[0].taskStatus).toBe('stopped');
+    });
+  });
+
+  describe('extractImages via transformToHistoryMessages (Story 27.2)', () => {
+    it('returns ImageRef with URL instead of raw base64 data', () => {
+      // existsSync returns false for the lazy backfill check
+      mockExistsSync.mockReturnValue(false);
+      // Mock fs.mkdir and fs.writeFile for lazy backfill (fire-and-forget)
+      mockFs.mkdir.mockResolvedValue(undefined);
+      mockFs.writeFile.mockResolvedValue();
+
+      const raw: RawJSONLMessage[] = [
+        {
+          uuid: 'u1',
+          type: 'user',
+          timestamp: '2026-01-15T10:00:00Z',
+          message: {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Check this image' },
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: 'image/png',
+                  data: 'aGVsbG8=', // "hello" in base64
+                },
+              },
+            ],
+          },
+        },
+      ];
+
+      const result = transformToHistoryMessages(raw, 'proj1', 'sess1');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].images).toBeDefined();
+      expect(result[0].images).toHaveLength(1);
+      const img = result[0].images![0];
+      // Should have URL, not data
+      expect(img.url).toMatch(/^\/api\/projects\/proj1\/sessions\/sess1\/images\/[a-f0-9]{16}\.png$/);
+      expect(img.mimeType).toBe('image/png');
+      expect(img.name).toBe('image-1');
+      // Should NOT have data field
+      expect((img as Record<string, unknown>).data).toBeUndefined();
+    });
+
+    it('SHA-256 hash consistency: same base64 produces same URL', () => {
+      mockExistsSync.mockReturnValue(true); // File already exists (no backfill)
+
+      const base64Data = 'd29ybGQ='; // "world" in base64
+      const makeRaw = (uuid: string): RawJSONLMessage => ({
+        uuid,
+        type: 'user',
+        timestamp: '2026-01-15T10:00:00Z',
+        message: {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Image' },
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: 'image/jpeg', data: base64Data },
+            },
+          ],
+        },
+      });
+
+      const result1 = transformToHistoryMessages([makeRaw('u1')], 'proj1', 'sess1');
+      const result2 = transformToHistoryMessages([makeRaw('u2')], 'proj1', 'sess1');
+
+      expect(result1[0].images![0].url).toBe(result2[0].images![0].url);
+    });
+
+    it('returns no images when projectSlug/sessionId not provided', () => {
+      const raw: RawJSONLMessage[] = [
+        {
+          uuid: 'u1',
+          type: 'user',
+          timestamp: '2026-01-15T10:00:00Z',
+          message: {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Image' },
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: 'image/png', data: 'aGVsbG8=' },
+              },
+            ],
+          },
+        },
+      ];
+
+      // No projectSlug/sessionId — images should be undefined
+      const result = transformToHistoryMessages(raw);
+      expect(result).toHaveLength(1);
+      expect(result[0].images).toBeUndefined();
     });
   });
 });

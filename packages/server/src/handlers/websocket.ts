@@ -46,7 +46,8 @@ import { summarize } from '../services/summarizeService.js';
 import { parseJSONLFile, transformToHistoryMessages } from '../services/historyParser.js';
 import { buildRawMessageTree, getActiveRawBranch, getDefaultRawBranchSelections, findBranchSelectionsForUuid } from '../utils/messageTree.js';
 import { sessionBufferManager } from '../services/sessionBufferManager.js';
-import type { HistoryMessage } from '@hammoc/shared';
+import { imageStorageService } from '../services/imageStorageService.js';
+import type { HistoryMessage, ImageRef } from '@hammoc/shared';
 const log = createLogger('websocket');
 
 // Alias for concise usage in guards
@@ -2057,14 +2058,18 @@ async function handleChatSend(
   // (SDK may not have written the JSONL file yet at reconnect time).
   // Skip for fork sessions — the fork prompt is delivered via SessionBufferManager
   // (stream:history event) instead, avoiding duplicate user messages on the client.
-  // Images are included inline (base64) so all browsers see them immediately.
-  // TODO: Replace with server-stored image URLs to reduce buffer size.
+  // Story 27.2: Store images as files, emit URL-based ImageRef[] instead of base64.
   if (!forkSession) {
+    let imageRefs: ImageRef[] | undefined;
+    if (images && images.length > 0) {
+      const encoded = new SessionService().encodeProjectPath(workingDirectory);
+      imageRefs = await imageStorageService.storeImages(encoded, sessionId || '', images);
+    }
     emit('user:message', {
       content,
       sessionId: sessionId || '',
       timestamp: new Date().toISOString(),
-      ...(images && images.length > 0 ? { images: images.map(img => ({ mimeType: img.mimeType, data: img.data, name: img.name })) } : {}),
+      ...(imageRefs && imageRefs.length > 0 ? { images: imageRefs } : {}),
     });
   }
 
@@ -2116,7 +2121,7 @@ async function handleChatSend(
         const selections = findBranchSelectionsForUuid(tree.roots, resumeSessionAt)
           ?? getDefaultRawBranchSelections(tree.roots);
         const { messages: activeBranchRaw } = getActiveRawBranch(tree.roots, selections);
-        const transformed = transformToHistoryMessages(activeBranchRaw);
+        const transformed = transformToHistoryMessages(activeBranchRaw, projectSlug, sessionId);
 
         // Truncate at the resumeSessionAt message (the fork branch point).
         const forkIdx = transformed.findIndex(m => m.id === resumeSessionAt || m.id.startsWith(resumeSessionAt + '-'));

@@ -10,7 +10,9 @@
  *   thinking → text → tool_use (each) with tool_result merged by ID
  */
 
+import crypto from 'crypto';
 import fs from 'fs/promises';
+import path from 'path';
 import { createReadStream, existsSync } from 'fs';
 import * as readline from 'node:readline';
 import type {
@@ -22,7 +24,10 @@ import type {
   ToolUseContentBlock,
   ToolResultContentBlock,
   ImageContentBlock,
+  ImageRef,
 } from '@hammoc/shared';
+import { sessionService } from './sessionService.js';
+import { createLogger } from '../utils/logger.js';
 
 /**
  * Parse a JSONL file and return raw messages
@@ -209,21 +214,56 @@ function extractTextContent(content: string | ContentBlock[] | undefined): strin
   return '';
 }
 
-/**
- * Extract image attachments from message content
- * @param content The message content (array of ContentBlock)
- * @returns Array of image attachments in HistoryMessage format
- */
-function extractImages(content: ContentBlock[] | undefined): Array<{ mimeType: string; data: string; name: string }> | undefined {
-  if (!content || !Array.isArray(content)) return undefined;
+const extractImagesLog = createLogger('historyParser:extractImages');
 
-  const images = content
-    .filter((block): block is ImageContentBlock => block.type === 'image')
-    .map((block, index) => ({
-      mimeType: block.source.media_type,
-      data: block.source.data,
-      name: `image-${index + 1}`, // Generate name from index
-    }));
+const MIME_TO_EXT: Record<string, string> = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+};
+
+/**
+ * Extract image attachments from message content as URL-based ImageRef[].
+ * Story 27.2: Computes SHA-256 hash of base64 data to generate deterministic URLs.
+ * Lazy backfill: writes image file to disk if not already present (for pre-existing sessions).
+ */
+function extractImages(content: ContentBlock[] | undefined, projectSlug?: string, sessionId?: string): ImageRef[] | undefined {
+  if (!content || !Array.isArray(content)) return undefined;
+  if (!projectSlug || !sessionId) return undefined;
+
+  const imageBlocks = content.filter((block): block is ImageContentBlock => block.type === 'image');
+  if (imageBlocks.length === 0) return undefined;
+
+  const images: ImageRef[] = [];
+
+  for (let i = 0; i < imageBlocks.length; i++) {
+    const block = imageBlocks[i];
+    try {
+      const mimeType = block.source.media_type;
+      const ext = MIME_TO_EXT[mimeType];
+      if (!ext) continue;
+
+      const hash = crypto.createHash('sha256').update(block.source.data).digest('hex').substring(0, 16);
+      const filename = `${hash}${ext}`;
+      const url = `/api/projects/${projectSlug}/sessions/${sessionId}/images/${filename}`;
+
+      // Lazy backfill: write image to disk if missing
+      const projectDir = sessionService.getProjectDir(projectSlug);
+      const imageDir = path.join(projectDir, 'images', sessionId);
+      const filePath = path.join(imageDir, filename);
+      if (!existsSync(filePath)) {
+        // Fire-and-forget async write — next parse will find it on disk
+        fs.mkdir(imageDir, { recursive: true })
+          .then(() => fs.writeFile(filePath, Buffer.from(block.source.data, 'base64')))
+          .catch((err) => extractImagesLog.warn(`Lazy backfill failed for ${filename}: ${err}`));
+      }
+
+      images.push({ url, mimeType, name: `image-${i + 1}` });
+    } catch (err) {
+      extractImagesLog.warn(`Failed to process image block ${i}: ${err}`);
+    }
+  }
 
   return images.length > 0 ? images : undefined;
 }
@@ -288,7 +328,7 @@ export function cleanCommandTags(content: string): string {
  * @param raw Array of raw messages (sorted)
  * @returns Array of transformed HistoryMessages for display
  */
-export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessage[] {
+export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?: string, sessionId?: string): HistoryMessage[] {
   const results: HistoryMessage[] = [];
   // Map tool_use block id → index in results (for merging tool_results)
   const toolUseIndexMap = new Map<string, number>();
@@ -487,7 +527,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[]): HistoryMessa
           } else {
             const cleaned = cleanCommandTags(textContent);
             if (cleaned.trim()) {
-              const images = extractImages(messageContent);
+              const images = extractImages(messageContent, projectSlug, sessionId);
               results.push({
                 id: m.uuid,
                 type: 'user',

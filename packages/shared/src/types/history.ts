@@ -3,6 +3,8 @@
  * Story 3.5: Session History Loading
  */
 
+import type { ImageRef } from './message.js';
+
 /**
  * Content block types used in Claude Code messages
  */
@@ -89,12 +91,8 @@ export interface HistoryMessage {
   subtype?: string;
   // Thinking content (assistant messages only)
   thinking?: string;
-  // Image attachments (user messages only)
-  images?: Array<{
-    mimeType: string;
-    data: string; // Base64 raw data
-    name: string;
-  }>;
+  // Image attachments (user messages only) — URL-based references (Story 27.2)
+  images?: ImageRef[];
   // Tool-specific fields
   toolName?: string;
   toolInput?: Record<string, unknown>;

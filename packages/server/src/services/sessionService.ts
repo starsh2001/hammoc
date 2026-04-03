@@ -635,6 +635,9 @@ export class SessionService {
   async deleteSession(projectSlug: string, sessionId: string): Promise<void> {
     const filePath = this.getSessionFilePath(projectSlug, sessionId);
     await fs.unlink(filePath);
+    // Story 27.2: Clean up stored images for the deleted session
+    const { imageStorageService } = await import('./imageStorageService.js');
+    await imageStorageService.deleteSessionImages(projectSlug, sessionId);
     await this.removeFromSessionsIndex(projectSlug, sessionId);
   }
 
@@ -655,6 +658,9 @@ export class SessionService {
       try {
         const filePath = this.getSessionFilePath(projectSlug, sessionId);
         await fs.unlink(filePath);
+        // Story 27.2: Clean up stored images for the deleted session
+        const { imageStorageService } = await import('./imageStorageService.js');
+        await imageStorageService.deleteSessionImages(projectSlug, sessionId);
         deleted++;
         deletedIds.add(sessionId);
       } catch {
@@ -811,7 +817,7 @@ export class SessionService {
     const { messages: activeBranchRaw, branchPoints } = getActiveRawBranch(tree.roots, effectiveSelections);
 
     // Transform only active branch messages to HistoryMessages
-    let transformed = transformToHistoryMessages(activeBranchRaw);
+    let transformed = transformToHistoryMessages(activeBranchRaw, projectSlug, sessionId);
 
     // branchInfo is attached by sessionController AFTER buffer merge,
     // so that both JSONL and buffer messages are handled in one place.

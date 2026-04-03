@@ -27,6 +27,7 @@ import queueRoutes from './routes/queue.js';
 import gitRoutes from './routes/git.js';
 import dashboardRoutes from './routes/dashboard.js';
 import boardRoutes from './routes/board.js';
+import imageRoutes from './routes/images.js';
 import serverRoutes from './routes/server.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
@@ -174,6 +175,9 @@ export async function createApp(): Promise<Express> {
 
   // Board routes (Story 21.1)
   app.use('/api/projects', boardRoutes);
+
+  // Image serving routes (Story 27.2)
+  app.use('/api/projects', imageRoutes);
 
   // Server management routes (restart)
   app.use('/api/server', serverRoutes);

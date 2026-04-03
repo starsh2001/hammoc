@@ -28,6 +28,16 @@ export interface ImageAttachment {
 }
 
 /**
+ * URL-based image reference for client rendering (replaces base64 data in broadcasts/history)
+ * Story 27.2: Image Server Storage
+ */
+export interface ImageRef {
+  url: string;
+  mimeType: string;
+  name: string;
+}
+
+/**
  * Image constraint constants
  */
 export const IMAGE_CONSTRAINTS = {

@@ -78,7 +78,7 @@ export class SessionBufferManager {
     const tree = buildRawMessageTree(rawMessages);
     const selections = getDefaultRawBranchSelections(tree.roots);
     const { messages: branchMessages } = getActiveRawBranch(tree.roots, selections);
-    const historyMessages = transformToHistoryMessages(branchMessages);
+    const historyMessages = transformToHistoryMessages(branchMessages, projectSlug, sessionId);
     this.setMessages(sessionId, historyMessages);
     log.debug(`reloadFromJSONL: session=${sessionId}, ${historyMessages.length} messages`);
     return historyMessages;

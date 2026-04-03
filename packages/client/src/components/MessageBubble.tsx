@@ -12,6 +12,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { MessageActionBar } from './MessageActionBar';
 import { MessageEditForm } from './MessageEditForm';
 import { BranchPagination } from './BranchPagination';
+import { ImageViewerModal } from './ImageViewerModal';
 import { getBaseUuid } from '../utils/messageTree';
 import { useChatStore } from '../stores/chatStore';
 
@@ -96,6 +97,8 @@ export function MessageBubble({
     }
   }, [summaryResult, message.id, onClearSummaryResult]);
 
+  const [viewerImageIndex, setViewerImageIndex] = useState<number | null>(null);
+  const [failedImages, setFailedImages] = useState<Set<number>>(() => new Set());
   const isUser = message.type === 'user';
   const formattedTime = formatRelativeTime(message.timestamp);
 
@@ -122,27 +125,37 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Attached images (user messages only) */}
+        {/* Attached images (user messages only) — Story 27.2: URL-based rendering */}
         {isUser && message.images && message.images.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {message.images.map((img, idx) =>
-              img.data ? (
+              img.url && !failedImages.has(idx) ? (
                 <img
                   key={`${message.id}-img-${idx}`}
-                  src={`data:${img.mimeType};base64,${img.data}`}
+                  src={img.url}
                   alt={img.name || t('messageBubble.image', { index: idx + 1 })}
                   className="max-w-[200px] max-h-[150px] rounded object-cover cursor-pointer hover:opacity-90"
-                  onClick={() => window.open(`data:${img.mimeType};base64,${img.data}`, '_blank')}
+                  onClick={() => setViewerImageIndex(idx)}
+                  onError={() => {
+                    setFailedImages((prev) => new Set(prev).add(idx));
+                  }}
                 />
               ) : (
                 <div
                   key={`${message.id}-img-${idx}`}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 dark:bg-gray-600 rounded text-xs text-gray-500 dark:text-gray-300"
                 >
-                  <span>📎</span>
-                  <span>{t('messageBubble.imageAttached')}</span>
+                  <span>{'\u{1F4CE}'}</span>
+                  <span>{failedImages.has(idx) ? t('messageBubble.imageLoadFailed', 'image load failed') : t('messageBubble.imageAttached')}</span>
                 </div>
               )
+            )}
+            {viewerImageIndex !== null && (
+              <ImageViewerModal
+                images={message.images}
+                initialIndex={viewerImageIndex}
+                onClose={() => setViewerImageIndex(null)}
+              />
             )}
           </div>
         )}

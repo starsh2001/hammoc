@@ -24,7 +24,7 @@ import { debugLog } from '../utils/debugLogger';
 // Must live outside useEffect to survive re-renders that re-run the effect.
 let __dryRunFileCount = 0;
 import { useChainStore } from '../stores/chainStore';
-import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus, PromptChainItem, PermissionMode, HistoryMessage, ImageAttachment } from '@hammoc/shared';
+import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus, PromptChainItem, PermissionMode, HistoryMessage, ImageRef } from '@hammoc/shared';
 import type { InteractiveStatus, StreamingSegment, StreamingToolCall, ResultErrorData } from '../stores/chatStore';
 
 export function useStreaming() {
@@ -131,7 +131,7 @@ export function useStreaming() {
 
     // Handle user:message — server broadcasts to ALL sockets (including sender).
     // No dedup needed — this is the single source of truth for user messages.
-    const handleUserMessage = (data: { content: string; sessionId: string; timestamp?: string; images?: ImageAttachment[] }) => {
+    const handleUserMessage = (data: { content: string; sessionId: string; timestamp?: string; images?: ImageRef[] }) => {
       if (!data.content) return;
       debugLog.stream('user:message received', {
         sessionId: data.sessionId,
@@ -980,7 +980,7 @@ export function useStreaming() {
 
         switch (event) {
           case 'user:message': {
-            const d = eventData as { content: string; sessionId: string; timestamp?: string; images?: ImageAttachment[] };
+            const d = eventData as { content: string; sessionId: string; timestamp?: string; images?: ImageRef[] };
             if (!d.content) break;
             // Skip if this user message already exists in history (delivered via stream:history)
             const existingMsgs = useMessageStore.getState().messages;
