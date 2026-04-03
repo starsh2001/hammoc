@@ -647,6 +647,14 @@ export function useStreaming() {
         msgCount: useMessageStore.getState().messages.length,
       });
 
+      // Session join complete — clear loading indicator.
+      // stream:status always arrives after stream:history, so messages are already set.
+      // Only clear for the currently viewed session to avoid rapid-switch races.
+      const msgStore = useMessageStore.getState();
+      if (!msgStore.currentSessionId || msgStore.currentSessionId === data.sessionId) {
+        useMessageStore.setState({ isLoading: false });
+      }
+
       // Clear reconnect timeout if set (Task 3)
       if (reconnectTimeoutId) {
         clearTimeout(reconnectTimeoutId);
