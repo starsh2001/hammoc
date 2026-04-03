@@ -728,16 +728,29 @@ export function useStreaming() {
       });
       // Ignore detach from a different session (stale event after session switch)
       if (viewingSessionId && data.sessionId !== viewingSessionId) return;
-      if (chatState.isStreaming) {
-        flushChunkQueue();
-        completeStreaming();
-      }
 
       if (data.reason === 'user-abort') {
-        // stream:complete-messages { aborted: true } will follow with confirmed
-        // data and a cancellation message card — no special handling needed here.
+        // Keep streaming segments visible until stream:complete-messages arrives
+        // with confirmed JSONL data — avoids a flash where messages disappear
+        // during the polling window then reappear.
+        flushChunkQueue();
+        // Watchdog: if stream:complete-messages doesn't arrive within 10s
+        // (polling timeout 5s + generous margin), force-complete to avoid
+        // permanently stuck streaming state.
+        const abortWatchdog = setTimeout(() => {
+          if (useChatStore.getState().isStreaming) {
+            debugLog.stream('abort watchdog: force-completing after timeout');
+            completeStreaming();
+          }
+        }, 10_000);
+        // Clear watchdog when stream:complete-messages arrives
+        socket.once('stream:complete-messages', () => clearTimeout(abortWatchdog));
       } else {
-        // Another client took over (another-client) — lock this session
+        // Another client took over — finalize immediately and lock
+        if (chatState.isStreaming) {
+          flushChunkQueue();
+          completeStreaming();
+        }
         useChatStore.setState({ isSessionLocked: true });
         toast.warning(i18n.t('notification:streaming.sessionInUseWarning'), {
           id: 'session-locked',

@@ -486,35 +486,26 @@ async function completeBufferAndBroadcast(sessionId: string, projectSlug: string
   const aborted = stream?.abortController.signal.aborted ?? false;
   const usage = stream?.deferredUsage;
 
-  if (aborted) {
-    // Abort: treat same as normal completion — send current buffer messages.
-    sessionBufferManager.setStreaming(sessionId, false);
-    const buf = sessionBufferManager.get(sessionId);
-    io.to(`session:${sessionId}`).emit('stream:complete-messages', {
-      sessionId,
-      messages: buf?.messages ?? [],
-      usage,
-      aborted: true,
-    });
-    return;
-  }
-
   if (projectSlug) {
     try {
       const messages = await pollFileStabilityThenReload(sessionId, projectSlug);
       sessionBufferManager.setStreaming(sessionId, false);
-      io.to(`session:${sessionId}`).emit('stream:complete-messages', { sessionId, messages, usage });
+      io.to(`session:${sessionId}`).emit('stream:complete-messages', {
+        sessionId, messages, usage, ...(aborted && { aborted: true }),
+      });
     } catch (err) {
       log.error(`completeBufferAndBroadcast: failed for ${sessionId}:`, err);
       sessionBufferManager.setStreaming(sessionId, false);
       const fallback = sessionBufferManager.get(sessionId)?.messages ?? [];
-      io.to(`session:${sessionId}`).emit('stream:complete-messages', { sessionId, messages: fallback, usage });
+      io.to(`session:${sessionId}`).emit('stream:complete-messages', {
+        sessionId, messages: fallback, usage, ...(aborted && { aborted: true }),
+      });
     }
   } else {
     sessionBufferManager.setStreaming(sessionId, false);
     const buf = sessionBufferManager.get(sessionId);
     io.to(`session:${sessionId}`).emit('stream:complete-messages', {
-      sessionId, messages: buf?.messages ?? [], usage,
+      sessionId, messages: buf?.messages ?? [], usage, ...(aborted && { aborted: true }),
     });
   }
 }
