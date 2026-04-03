@@ -12,9 +12,9 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { MessageActionBar } from './MessageActionBar';
 import { MessageEditForm } from './MessageEditForm';
 import { BranchPagination } from './BranchPagination';
-import { ImageViewerModal } from './ImageViewerModal';
 import { getBaseUuid } from '../utils/messageTree';
 import { useChatStore } from '../stores/chatStore';
+import { useImageViewerStore } from '../stores/imageViewerStore';
 
 export interface EditSubmitParams {
   messageUuid: string;
@@ -97,7 +97,6 @@ export function MessageBubble({
     }
   }, [summaryResult, message.id, onClearSummaryResult]);
 
-  const [viewerImageIndex, setViewerImageIndex] = useState<number | null>(null);
   const [failedImages, setFailedImages] = useState<Set<number>>(() => new Set());
   useEffect(() => { setFailedImages(new Set()); }, [message.id]);
   const isUser = message.type === 'user';
@@ -136,7 +135,7 @@ export function MessageBubble({
                   src={img.url}
                   alt={img.name || t('messageBubble.image', { index: idx + 1 })}
                   className="max-w-[200px] max-h-[150px] rounded object-cover cursor-pointer hover:opacity-90"
-                  onClick={() => setViewerImageIndex(idx)}
+                  onClick={() => useImageViewerStore.getState().openImageViewerUrls(message.images!, idx)}
                   onError={() => {
                     setFailedImages((prev) => new Set(prev).add(idx));
                   }}
@@ -150,13 +149,6 @@ export function MessageBubble({
                   <span>{failedImages.has(idx) ? t('messageBubble.imageLoadFailed', 'image load failed') : t('messageBubble.imageAttached')}</span>
                 </div>
               )
-            )}
-            {viewerImageIndex !== null && (
-              <ImageViewerModal
-                images={message.images}
-                initialIndex={viewerImageIndex}
-                onClose={() => setViewerImageIndex(null)}
-              />
             )}
           </div>
         )}
