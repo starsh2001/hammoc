@@ -2179,11 +2179,7 @@ async function handleChatSend(
       maxThinkingTokens: effectivePrefs.maxThinkingTokens,
       maxTurns: effectivePrefs.maxTurns,
       maxBudgetUsd: effectivePrefs.maxBudgetUsd,
-      // Strip 'max' effort for Claude.ai subscribers (CLI exits with code 1)
-      effort: (() => {
-        const e = effort ?? effectivePrefs.defaultEffort;
-        return (e === 'max' && rateLimitProbeService.hasOAuthCredentials()) ? 'high' : e;
-      })(),
+      effort: effort ?? effectivePrefs.defaultEffort,
       // Story 25.7: conversation branching via resumeSessionAt
       ...(resumeSessionAt ? { resumeSessionAt } : {}),
       // Story 25.11: fork session — create new session from branch point
