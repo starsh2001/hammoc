@@ -10,7 +10,6 @@
  *   thinking → text → tool_use (each) with tool_result merged by ID
  */
 
-import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { createReadStream, existsSync } from 'fs';
@@ -28,6 +27,7 @@ import type {
 } from '@hammoc/shared';
 import { sessionService } from './sessionService.js';
 import { createLogger } from '../utils/logger.js';
+import { buildImageFilename, buildImageUrl, getImageDir } from '../utils/imageUtils.js';
 
 /**
  * Parse a JSONL file and return raw messages
@@ -216,13 +216,6 @@ function extractTextContent(content: string | ContentBlock[] | undefined): strin
 
 const extractImagesLog = createLogger('historyParser:extractImages');
 
-const MIME_TO_EXT: Record<string, string> = {
-  'image/png': '.png',
-  'image/jpeg': '.jpg',
-  'image/gif': '.gif',
-  'image/webp': '.webp',
-};
-
 /**
  * Extract image attachments from message content as URL-based ImageRef[].
  * Story 27.2: Computes SHA-256 hash of base64 data to generate deterministic URLs.
@@ -235,22 +228,19 @@ function extractImages(content: ContentBlock[] | undefined, projectSlug?: string
   const imageBlocks = content.filter((block): block is ImageContentBlock => block.type === 'image');
   if (imageBlocks.length === 0) return undefined;
 
+  const projectDir = sessionService.getProjectDir(projectSlug);
+  const imageDir = getImageDir(projectDir, sessionId);
   const images: ImageRef[] = [];
 
   for (let i = 0; i < imageBlocks.length; i++) {
     const block = imageBlocks[i];
     try {
-      const mimeType = block.source.media_type;
-      const ext = MIME_TO_EXT[mimeType];
-      if (!ext) continue;
+      const filename = buildImageFilename(block.source.data, block.source.media_type);
+      if (!filename) continue;
 
-      const hash = crypto.createHash('sha256').update(block.source.data).digest('hex').substring(0, 16);
-      const filename = `${hash}${ext}`;
-      const url = `/api/projects/${projectSlug}/sessions/${sessionId}/images/${filename}`;
+      const url = buildImageUrl(projectSlug, sessionId, filename);
 
       // Lazy backfill: write image to disk if missing
-      const projectDir = sessionService.getProjectDir(projectSlug);
-      const imageDir = path.join(projectDir, 'images', sessionId);
       const filePath = path.join(imageDir, filename);
       if (!existsSync(filePath)) {
         // Fire-and-forget async write — next parse will find it on disk
@@ -259,7 +249,7 @@ function extractImages(content: ContentBlock[] | undefined, projectSlug?: string
           .catch((err) => extractImagesLog.warn(`Lazy backfill failed for ${filename}: ${err}`));
       }
 
-      images.push({ url, mimeType, name: `image-${i + 1}` });
+      images.push({ url, mimeType: block.source.media_type, name: `image-${i + 1}` });
     } catch (err) {
       extractImagesLog.warn(`Failed to process image block ${i}: ${err}`);
     }

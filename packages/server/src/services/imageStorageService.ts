@@ -3,21 +3,14 @@
  * Story 27.2: Store uploaded images as files and serve via URL references
  */
 
-import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import type { ImageAttachment, ImageRef } from '@hammoc/shared';
 import { sessionService } from './sessionService.js';
 import { createLogger } from '../utils/logger.js';
+import { buildImageFilename, buildImageUrl, getImageDir } from '../utils/imageUtils.js';
 
 const logger = createLogger('imageStorageService');
-
-const MIME_TO_EXT: Record<string, string> = {
-  'image/png': '.png',
-  'image/jpeg': '.jpg',
-  'image/gif': '.gif',
-  'image/webp': '.webp',
-};
 
 const VALID_FILENAME_RE = /^[a-f0-9]{16}\.(png|jpg|jpeg|gif|webp)$/;
 
@@ -33,42 +26,43 @@ class ImageStorageService {
     images: ImageAttachment[],
   ): Promise<ImageRef[]> {
     const projectDir = sessionService.getProjectDir(projectSlug);
-    const imageDir = path.join(projectDir, 'images', sessionId);
+    const imageDir = getImageDir(projectDir, sessionId);
     await fs.mkdir(imageDir, { recursive: true });
 
-    const results: ImageRef[] = [];
-
-    for (const img of images) {
-      try {
-        const ext = MIME_TO_EXT[img.mimeType];
-        if (!ext) {
+    const settled = await Promise.allSettled(
+      images.map(async (img): Promise<ImageRef | null> => {
+        const filename = buildImageFilename(img.data, img.mimeType);
+        if (!filename) {
           logger.warn(`Unsupported mimeType: ${img.mimeType}, skipping image`);
-          continue;
+          return null;
         }
 
-        const hash = crypto.createHash('sha256').update(img.data).digest('hex').substring(0, 16);
-        const filename = `${hash}${ext}`;
         const filePath = path.join(imageDir, filename);
 
         // Dedup: skip write if file already exists
         try {
           await fs.access(filePath);
         } catch {
-          // File doesn't exist, write it
           const buffer = Buffer.from(img.data, 'base64');
           await fs.writeFile(filePath, buffer);
         }
 
-        results.push({
-          url: `/api/projects/${projectSlug}/sessions/${sessionId}/images/${filename}`,
+        return {
+          url: buildImageUrl(projectSlug, sessionId, filename),
           mimeType: img.mimeType,
           name: img.name,
-        });
-      } catch (err) {
-        logger.warn(`Failed to store image for project=${projectSlug} session=${sessionId}: ${err}`);
+        };
+      }),
+    );
+
+    const results: ImageRef[] = [];
+    for (const result of settled) {
+      if (result.status === 'fulfilled' && result.value) {
+        results.push(result.value);
+      } else if (result.status === 'rejected') {
+        logger.warn(`Failed to store image for project=${projectSlug} session=${sessionId}: ${result.reason}`);
       }
     }
-
     return results;
   }
 
@@ -82,7 +76,7 @@ class ImageStorageService {
       return null;
     }
     const projectDir = sessionService.getProjectDir(projectSlug);
-    return path.join(projectDir, 'images', sessionId, filename);
+    return path.join(getImageDir(projectDir, sessionId), filename);
   }
 
   /**
@@ -91,7 +85,7 @@ class ImageStorageService {
    */
   async deleteSessionImages(projectSlug: string, sessionId: string): Promise<void> {
     const projectDir = sessionService.getProjectDir(projectSlug);
-    const imageDir = path.join(projectDir, 'images', sessionId);
+    const imageDir = getImageDir(projectDir, sessionId);
     try {
       await fs.rm(imageDir, { recursive: true, force: true });
     } catch {

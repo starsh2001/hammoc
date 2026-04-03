@@ -99,6 +99,7 @@ export function MessageBubble({
 
   const [viewerImageIndex, setViewerImageIndex] = useState<number | null>(null);
   const [failedImages, setFailedImages] = useState<Set<number>>(() => new Set());
+  useEffect(() => { setFailedImages(new Set()); }, [message.id]);
   const isUser = message.type === 'user';
   const formattedTime = formatRelativeTime(message.timestamp);
 

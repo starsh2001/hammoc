@@ -2058,12 +2058,15 @@ async function handleChatSend(
   // (SDK may not have written the JSONL file yet at reconnect time).
   // Skip for fork sessions — the fork prompt is delivered via SessionBufferManager
   // (stream:history event) instead, avoiding duplicate user messages on the client.
+  // Shared instance — reused for image storage, root-branch resolution, and fork-history below.
+  const sessionService = new SessionService();
+  const projectSlug = sessionService.encodeProjectPath(workingDirectory);
+
   // Story 27.2: Store images as files, emit URL-based ImageRef[] instead of base64.
   if (!forkSession) {
     let imageRefs: ImageRef[] | undefined;
     if (images && images.length > 0) {
-      const encoded = new SessionService().encodeProjectPath(workingDirectory);
-      imageRefs = await imageStorageService.storeImages(encoded, sessionId || '', images);
+      imageRefs = await imageStorageService.storeImages(projectSlug, sessionId || '', images);
     }
     emit('user:message', {
       content,
@@ -2085,14 +2088,11 @@ async function handleChatSend(
     return false;
   }
 
-  const sessionService = new SessionService();
-
   // Resolve ROOT_BRANCH_KEY to the actual first root message UUID in the JSONL.
   // Root edits send '__root__' because the client has no visibility into the
   // non-display root message (progress/init type) that the SDK needs.
   let resumeSessionAt = rawResumeSessionAt;
   if (resumeSessionAt === ROOT_BRANCH_KEY && sessionId) {
-    const projectSlug = sessionService.encodeProjectPath(workingDirectory);
     const rootUuid = await sessionService.getRootMessageUuid(projectSlug, sessionId);
     if (rootUuid) {
       resumeSessionAt = rootUuid;
@@ -2112,7 +2112,6 @@ async function handleChatSend(
   // deliver via stream:history on session:join.
   if (forkSession && sessionId && resumeSessionAt) {
     try {
-      const projectSlug = sessionService.encodeProjectPath(workingDirectory);
       const filePath = sessionService.getSessionFilePath(projectSlug, sessionId);
       if (existsSync(filePath)) {
         const rawMessages = await parseJSONLFile(filePath);
@@ -2153,8 +2152,7 @@ async function handleChatSend(
   // file and are not needed for rewindFiles() to function.
   let preQueryFiles: Set<string> | null = null;
   try {
-    const encoded = sessionService.encodeProjectPath(workingDirectory);
-    const projectDir = sessionService.getProjectDir(encoded);
+    const projectDir = sessionService.getProjectDir(projectSlug);
     if (existsSync(projectDir)) {
       preQueryFiles = new Set(readdirSync(projectDir).filter(f => f.endsWith('.jsonl')));
     }
@@ -2432,8 +2430,7 @@ async function handleChatSend(
         // Delete stale session file from the aborted first send so the SDK
         // can create a fresh session with the same ID (avoids "Session ID already in use").
         if (sessionId) {
-          const encoded = sessionService.encodeProjectPath(workingDirectory);
-          const staleFile = sessionService.getSessionFilePath(encoded, sessionId);
+          const staleFile = sessionService.getSessionFilePath(projectSlug, sessionId);
           try {
             if (existsSync(staleFile)) {
               unlinkSync(staleFile);
@@ -2491,8 +2488,7 @@ async function handleChatSend(
     // for rewindFiles() to function.
     if (preQueryFiles) {
       try {
-        const encoded = sessionService.encodeProjectPath(workingDirectory);
-        const projectDir = sessionService.getProjectDir(encoded);
+        const projectDir = sessionService.getProjectDir(projectSlug);
         const postQueryFiles = readdirSync(projectDir).filter(f => f.endsWith('.jsonl'));
         // Skip the active session's JSONL — for new sessions, the SDK creates
         // this file during the query so it's not in preQueryFiles, but it's
