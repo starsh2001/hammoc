@@ -13,6 +13,7 @@
 
 import type { BmadStatusResponse, BmadSupplementaryDoc, BmadStoryStatus } from '@hammoc/shared';
 import i18n from '../i18n';
+import { statusMatches } from './statusMatch.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,7 +73,7 @@ function allStories(data: BmadStatusResponse): BmadStoryStatus[] {
 /** Find the first story matching a status (or any of multiple statuses) */
 function firstStoryByStatus(data: BmadStatusResponse, ...statuses: string[]): BmadStoryStatus | undefined {
   for (const epic of data.epics) {
-    const found = epic.stories.find((s) => statuses.includes(s.status));
+    const found = epic.stories.find((s) => statuses.some((st) => statusMatches(s.status, st)));
     if (found) return found;
   }
   return undefined;
@@ -80,7 +81,7 @@ function firstStoryByStatus(data: BmadStatusResponse, ...statuses: string[]): Bm
 
 /** Count stories by status */
 function countByStatus(data: BmadStatusResponse, status: string): number {
-  return data.epics.reduce((sum, e) => sum + e.stories.filter((s) => s.status === status).length, 0);
+  return data.epics.reduce((sum, e) => sum + e.stories.filter((s) => statusMatches(s.status, status)).length, 0);
 }
 
 /** Extract story number (e.g. "1.1") from file name (e.g. "1.1.story.md") */
@@ -163,7 +164,7 @@ export function detectPhase(data: BmadStatusResponse): PhaseInfo {
   // Check if all planned work is complete
   const stories = allStories(data);
   const totalPlanned = data.epics.reduce((s, e) => s + (e.plannedStories ?? e.stories.length), 0);
-  const nonDoneStories = stories.filter((s) => s.status !== 'Done');
+  const nonDoneStories = stories.filter((s) => !statusMatches(s.status, 'Done'));
   if (stories.length > 0 && nonDoneStories.length === 0 && totalPlanned <= stories.length) {
     return { phase: 'completed', label: i18n.t('common:phase.completed') };
   }
@@ -311,7 +312,7 @@ function firstReviewStoryByGate(data: BmadStatusResponse, ...gates: (string | un
   const reviewStatuses = ['Review', 'Ready for Review', 'Ready for Done'];
   for (const epic of data.epics) {
     const found = epic.stories.find(
-      (s) => reviewStatuses.includes(s.status) && gates.includes(s.gateResult),
+      (s) => reviewStatuses.some((rs) => statusMatches(s.status, rs)) && gates.includes(s.gateResult),
     );
     if (found) return found;
   }
@@ -333,7 +334,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
   const stories = allStories(data);
   const totalPlanned = data.epics.reduce((s, e) => s + (e.plannedStories ?? e.stories.length), 0);
   const doneCount = countByStatus(data, 'Done');
-  const nonDoneStories = stories.filter((s) => s.status !== 'Done');
+  const nonDoneStories = stories.filter((s) => !statusMatches(s.status, 'Done'));
 
   // Recommendations follow reverse workflow order (finish what's closest to done first)
 

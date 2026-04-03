@@ -4,6 +4,7 @@ import { BarChart3, ChevronDown, FileText } from 'lucide-react';
 import type { BmadEpicStatus } from '@hammoc/shared';
 
 import { useFileStore } from '../../stores/fileStore.js';
+import { statusMatches } from '../../utils/statusMatch.js';
 
 interface EpicProgressCardProps {
   epics: BmadEpicStatus[];
@@ -28,7 +29,8 @@ function getBarColor(pct: number): string {
 }
 
 function getStatusStyle(status: string): string {
-  return STATUS_STYLES[status] ?? 'bg-gray-100 dark:bg-[#253040] text-gray-600 dark:text-gray-200';
+  const key = Object.keys(STATUS_STYLES).find((k) => statusMatches(status, k));
+  return key ? STATUS_STYLES[key] : 'bg-gray-100 dark:bg-[#253040] text-gray-600 dark:text-gray-200';
 }
 
 export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProgressCardProps) {
@@ -65,7 +67,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
       </div>
       <div className="space-y-3 text-sm">
         {epics.map((epic) => {
-          const doneCount = epic.stories.filter((s) => s.status === 'Done').length;
+          const doneCount = epic.stories.filter((s) => statusMatches(s.status, 'Done')).length;
           const writtenCount = epic.stories.length;
           const planned = epic.plannedStories ?? writtenCount;
           const barTotal = Math.max(planned, writtenCount);

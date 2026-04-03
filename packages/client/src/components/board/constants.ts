@@ -4,6 +4,7 @@
  */
 
 import type { BoardItem } from '@hammoc/shared';
+import { statusMatches } from '../../utils/statusMatch.js';
 
 // Badge condition: a field on BoardItem and the value it must match
 interface BadgeCondition {
@@ -138,7 +139,7 @@ export function resolveBadge(item: BoardItem): BadgeDefinition {
   for (const badge of BADGE_DEFINITIONS) {
     const match = badge.conditions.every((cond) => {
       const fieldValue = item[cond.field];
-      return fieldValue != null && String(fieldValue) === cond.value;
+      return statusMatches(fieldValue != null ? String(fieldValue) : null, cond.value);
     });
     if (match) return badge;
   }

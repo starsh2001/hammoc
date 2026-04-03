@@ -14,6 +14,7 @@ import { useProjectStore } from '../stores/projectStore.js';
 import { useBmadStatus } from '../hooks/useBmadStatus.js';
 import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator.js';
 
+import { statusMatches } from '../utils/statusMatch.js';
 import { ProjectOverviewPage } from './ProjectOverviewPage.js';
 import { DocumentStatusCard } from '../components/overview/DocumentStatusCard.js';
 import { EpicProgressCard } from '../components/overview/EpicProgressCard.js';
@@ -71,10 +72,10 @@ function BmadSkeleton() {
 function computeStats(epics: BmadEpicStatus[]) {
   const totalEpics = epics.length;
   const totalStories = epics.reduce((s, e) => s + (e.plannedStories ?? e.stories.length), 0);
-  const doneStories = epics.reduce((s, e) => s + e.stories.filter((st) => st.status === 'Done').length, 0);
+  const doneStories = epics.reduce((s, e) => s + e.stories.filter((st) => statusMatches(st.status, 'Done')).length, 0);
   const doneEpics = epics.filter((e) => {
     const planned = e.plannedStories ?? e.stories.length;
-    return planned > 0 && e.stories.filter((st) => st.status === 'Done').length >= planned;
+    return planned > 0 && e.stories.filter((st) => statusMatches(st.status, 'Done')).length >= planned;
   }).length;
   const pct = totalStories > 0 ? Math.round((doneStories / totalStories) * 100) : 0;
   return { totalEpics, doneEpics, totalStories, doneStories, pct };
