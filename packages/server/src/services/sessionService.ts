@@ -820,17 +820,13 @@ export class SessionService {
     // Those messages are delivered via SessionBufferManager (stream:history).
     // This prevents duplicate tool/message cards.
     //
-    // IMPORTANT: User messages from the *running* stream's period are preserved
-    // so that trimMessagesAfterLastUser() on the client correctly identifies the
-    // triggering user message as the "last" user message.
+    // If session has an active stream, exclude messages from the stream period
+    // to prevent duplicates with SessionBufferManager data.
     if (streamStartedAt) {
       transformed = transformed.filter(
         (m) => {
           const ts = new Date(m.timestamp).getTime();
           if (ts < streamStartedAt) return true;
-          // When a stream is actively running, preserve user messages from
-          // that stream's period so trimMessagesAfterLastUser() works correctly.
-          // Not needed for completed-buffer-only (no trimming runs on inactive streams).
           if (runningStreamStartedAt && m.type === 'user' && ts >= runningStreamStartedAt) return true;
           return false;
         }

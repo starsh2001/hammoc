@@ -25,13 +25,13 @@ export interface SessionBuffer {
 export class SessionBufferManager {
   private buffers = new Map<string, SessionBuffer>();
 
-  create(sessionId: string): SessionBuffer {
+  create(sessionId: string, streaming = false): SessionBuffer {
     const existing = this.buffers.get(sessionId);
     if (existing) {
-      log.debug(`Buffer already exists for session ${sessionId}, reusing`);
+      existing.streaming = streaming;
       return existing;
     }
-    const buffer: SessionBuffer = { sessionId, messages: [], streaming: false };
+    const buffer: SessionBuffer = { sessionId, messages: [], streaming };
     this.buffers.set(sessionId, buffer);
     log.debug(`Buffer created for session ${sessionId}`);
     return buffer;
@@ -80,7 +80,7 @@ export class SessionBufferManager {
     const { messages: branchMessages } = getActiveRawBranch(tree.roots, selections);
     const historyMessages = transformToHistoryMessages(branchMessages);
     this.setMessages(sessionId, historyMessages);
-    log.debug(`reloadFromJSONL: session ${sessionId}, ${historyMessages.length} messages`);
+    log.debug(`reloadFromJSONL: session=${sessionId}, ${historyMessages.length} messages`);
     return historyMessages;
   }
 

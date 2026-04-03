@@ -145,8 +145,7 @@ export interface PaginationOptions {
    *  messages from an active stream period (covered by buffer replay). */
   streamStartedAt?: number | null;
   /** Start timestamp of the currently running stream only (excludes completed
-   *  buffer start). Used to preserve user messages from the active turn so
-   *  trimMessagesAfterLastUser() on the client works correctly. */
+   *  buffer start). Used to preserve user messages from the active turn. */
   runningStreamStartedAt?: number | null;
   /** Branch selections for branch-aware pagination. Maps branch point UUID to selected branch index. */
   branchSelections?: Record<string, number>;

@@ -38,6 +38,7 @@
   "streaming": {
     "alreadyResponded": "Already responded in another browser.",
     "respondedBeforeReconnect": "(Responded before reconnect)",
+    "aborted": "Response was canceled by user.",
     "abortedInOtherBrowser": "Response was aborted in another browser.",
     "sessionInUseWarning": "This session is being used in another browser. Refresh and try again.",
     "respondedInOtherBrowser": "(Responded in another browser)",

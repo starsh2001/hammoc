@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { SessionListResponse, SessionListParams, HistoryMessagesResponse, DeleteSessionResponse, DeleteSessionsBatchResponse, UpdateSessionNameResponse, PromptHistoryData } from '@hammoc/shared';
+import type { SessionListResponse, SessionListParams, DeleteSessionResponse, DeleteSessionsBatchResponse, UpdateSessionNameResponse, PromptHistoryData } from '@hammoc/shared';
 
 export const sessionsApi = {
   /**
@@ -19,34 +19,6 @@ export const sessionsApi = {
     if (options?.searchContent) params.set('searchContent', 'true');
     const qs = params.toString();
     return api.get<SessionListResponse>(`/projects/${projectSlug}/sessions${qs ? `?${qs}` : ''}`);
-  },
-
-  /**
-   * Get session messages with pagination
-   * [Source: Story 3.5 - Task 4]
-   *
-   * @param projectSlug The project slug
-   * @param sessionId The session ID
-   * @param options Pagination options (limit, offset)
-   */
-  getMessages: (
-    projectSlug: string,
-    sessionId: string,
-    options?: { limit?: number; offset?: number; branchSelections?: Record<string, number> }
-  ) => {
-    const params = new URLSearchParams();
-    if (options?.limit) params.set('limit', options.limit.toString());
-    if (options?.offset) params.set('offset', options.offset.toString());
-    if (options?.branchSelections && Object.keys(options.branchSelections).length > 0) {
-      params.set('branchSelections', JSON.stringify(options.branchSelections));
-    }
-
-    const queryString = params.toString();
-    const url = `/projects/${projectSlug}/sessions/${sessionId}/messages${
-      queryString ? `?${queryString}` : ''
-    }`;
-
-    return api.get<HistoryMessagesResponse>(url);
   },
 
   /** Delete a single session */
