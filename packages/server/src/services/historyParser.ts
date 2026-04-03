@@ -244,7 +244,6 @@ function extractImages(content: ContentBlock[] | undefined, projectSlug?: string
 
       const thumbFilename = buildThumbnailFilename(block.source.data, block.source.media_type);
       const url = buildImageUrl(projectSlug, sessionId, filename);
-      const thumbnailUrl = thumbFilename ? buildImageUrl(projectSlug, sessionId, thumbFilename) : undefined;
 
       // Lazy backfill: write image & thumbnail to disk if missing
       const filePath = path.join(imageDir, filename);
@@ -272,6 +271,12 @@ function extractImages(content: ContentBlock[] | undefined, projectSlug?: string
           )
           .catch((err) => extractImagesLog.warn(`Thumbnail backfill failed for ${filename}: ${err}`));
       }
+
+      // Only include thumbnailUrl when the file actually exists on disk
+      const thumbnailUrl =
+        thumbPath && existsSync(thumbPath)
+          ? buildImageUrl(projectSlug, sessionId, thumbFilename!)
+          : undefined;
 
       images.push({
         url,
