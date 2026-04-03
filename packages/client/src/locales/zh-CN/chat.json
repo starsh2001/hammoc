@@ -8,7 +8,9 @@
     "refresh": "刷新",
     "settings": "设置",
     "logout": "退出登录",
-    "panelToggle": "切换面板"
+    "panelToggle": "切换面板",
+    "branchViewer": "查看分支历史",
+    "exitBranchViewer": "退出分支查看器"
   },
   "sessionTitle": {
     "placeholder": "输入会话名称...",
@@ -225,6 +227,7 @@
     "streaming": "正在回复...",
     "default": "输入消息...",
     "oldBranch": "正在查看之前的分支（只读）",
+    "branchViewer": "分支查看模式（只读）",
     "loadingMore": "加载中...",
     "loadMore": "加载更多消息"
   },

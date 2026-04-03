@@ -327,7 +327,9 @@
     "git": "Git",
     "terminal": "终端",
     "refreshing": "正在刷新...",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "branchViewer": "查看分支历史",
+    "exitBranchViewer": "退出分支查看器"
   },
   "pullToRefresh": "正在刷新...",
   "editor": {

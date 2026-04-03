@@ -170,6 +170,83 @@ describe('SessionBufferManager', () => {
       expect(result).toEqual([]);
       expect(manager.get('s1')!.messages).toEqual([]);
     });
+
+    it('should merge custom branchSelections with defaults', async () => {
+      manager.create('s1');
+      const rawMessages = [{ uuid: '1', type: 'user' }];
+      const historyMessages = [makeMsg('1', 'user')];
+
+      mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      mockBuildRawMessageTree.mockReturnValue({ roots: [{ message: rawMessages[0], children: [] }], nodeMap: new Map() } as any);
+      mockGetDefaultRawBranchSelections.mockReturnValue({ key1: 0, key2: 1 });
+      mockGetActiveRawBranch.mockReturnValue({ messages: rawMessages, branchPoints: {} } as any);
+      mockTransformToHistoryMessages.mockReturnValue(historyMessages);
+
+      await manager.reloadFromJSONL('s1', 'test-project', { key1: 2 });
+
+      // Should merge: defaults { key1: 0, key2: 1 } + override { key1: 2 } = { key1: 2, key2: 1 }
+      expect(mockGetActiveRawBranch).toHaveBeenCalledWith(
+        expect.anything(),
+        { key1: 2, key2: 1 },
+      );
+    });
+
+    it('should NOT update buffer messages when custom branchSelections is provided', async () => {
+      manager.create('s1');
+      const originalMessages = [makeMsg('original')];
+      manager.setMessages('s1', originalMessages);
+
+      const rawMessages = [{ uuid: '1', type: 'user' }];
+      const viewerMessages = [makeMsg('viewer')];
+
+      mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      mockBuildRawMessageTree.mockReturnValue({ roots: [{ message: rawMessages[0], children: [] }], nodeMap: new Map() } as any);
+      mockGetDefaultRawBranchSelections.mockReturnValue({});
+      mockGetActiveRawBranch.mockReturnValue({ messages: rawMessages, branchPoints: {} } as any);
+      mockTransformToHistoryMessages.mockReturnValue(viewerMessages);
+
+      const result = await manager.reloadFromJSONL('s1', 'test-project', {});
+
+      // Should return viewer messages but NOT update the buffer
+      expect(result).toEqual(viewerMessages);
+      expect(manager.get('s1')!.messages).toEqual(originalMessages);
+    });
+
+    it('should update buffer messages when no branchSelections is provided', async () => {
+      manager.create('s1');
+      manager.setMessages('s1', [makeMsg('old')]);
+
+      const rawMessages = [{ uuid: '1', type: 'user' }];
+      const newMessages = [makeMsg('new')];
+
+      mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      mockBuildRawMessageTree.mockReturnValue({ roots: [{ message: rawMessages[0], children: [] }], nodeMap: new Map() } as any);
+      mockGetDefaultRawBranchSelections.mockReturnValue({});
+      mockGetActiveRawBranch.mockReturnValue({ messages: rawMessages, branchPoints: {} } as any);
+      mockTransformToHistoryMessages.mockReturnValue(newMessages);
+
+      await manager.reloadFromJSONL('s1', 'test-project');
+
+      expect(manager.get('s1')!.messages).toEqual(newMessages);
+    });
+
+    it('should not setMessages for empty JSONL when branchSelections is provided', async () => {
+      manager.create('s1');
+      const originalMessages = [makeMsg('keep')];
+      manager.setMessages('s1', originalMessages);
+
+      mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      mockParseJSONLFile.mockResolvedValue([]);
+
+      const result = await manager.reloadFromJSONL('s1', 'test-project', {});
+
+      expect(result).toEqual([]);
+      // Buffer should remain unchanged
+      expect(manager.get('s1')!.messages).toEqual(originalMessages);
+    });
   });
 
   describe('multiple sessions independence', () => {

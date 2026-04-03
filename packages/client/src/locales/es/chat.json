@@ -8,7 +8,9 @@
     "refresh": "Actualizar",
     "settings": "Configuración",
     "logout": "Cerrar sesión",
-    "panelToggle": "Alternar panel"
+    "panelToggle": "Alternar panel",
+    "branchViewer": "Ver historial de ramas",
+    "exitBranchViewer": "Salir del visor de ramas"
   },
   "sessionTitle": {
     "placeholder": "Ingresa nombre de sesión...",
@@ -225,6 +227,7 @@
     "streaming": "Respondiendo...",
     "default": "Escribe un mensaje...",
     "oldBranch": "Viendo una rama anterior (solo lectura)",
+    "branchViewer": "Modo visor de ramas (solo lectura)",
     "loadingMore": "Cargando...",
     "loadMore": "Cargar más mensajes"
   },

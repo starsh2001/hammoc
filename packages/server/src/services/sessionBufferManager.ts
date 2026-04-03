@@ -68,18 +68,29 @@ export class SessionBufferManager {
     buffer.streaming = streaming;
   }
 
-  async reloadFromJSONL(sessionId: string, projectSlug: string): Promise<HistoryMessage[]> {
+  async reloadFromJSONL(
+    sessionId: string,
+    projectSlug: string,
+    branchSelections?: Record<string, number>,
+  ): Promise<HistoryMessage[]> {
     const filePath = sessionService.getSessionFilePath(projectSlug, sessionId);
     const rawMessages = await parseJSONLFile(filePath);
     if (rawMessages.length === 0) {
-      this.setMessages(sessionId, []);
+      if (!branchSelections) {
+        this.setMessages(sessionId, []);
+      }
       return [];
     }
     const tree = buildRawMessageTree(rawMessages);
-    const selections = getDefaultRawBranchSelections(tree.roots);
+    const defaults = getDefaultRawBranchSelections(tree.roots);
+    const selections = branchSelections
+      ? { ...defaults, ...branchSelections }
+      : defaults;
     const { messages: branchMessages } = getActiveRawBranch(tree.roots, selections);
     const historyMessages = transformToHistoryMessages(branchMessages, projectSlug, sessionId);
-    this.setMessages(sessionId, historyMessages);
+    if (!branchSelections) {
+      this.setMessages(sessionId, historyMessages);
+    }
     log.debug(`reloadFromJSONL: session=${sessionId}, ${historyMessages.length} messages`);
     return historyMessages;
   }

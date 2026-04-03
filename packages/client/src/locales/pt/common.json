@@ -327,7 +327,9 @@
     "git": "Git",
     "terminal": "Terminal",
     "refreshing": "Atualizando...",
-    "refresh": "Atualizar"
+    "refresh": "Atualizar",
+    "branchViewer": "Ver histórico de ramificações",
+    "exitBranchViewer": "Sair do visualizador de ramificações"
   },
   "pullToRefresh": "Atualizando...",
   "editor": {

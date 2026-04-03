@@ -105,6 +105,8 @@ export interface ClientToServerEvents {
   'session:cancel-summary': (data: {
     sessionId: string;
   }) => void;
+  // Story 27.3: Branch viewer mode — switch branch via custom selections
+  'messages:switch-branch': (data: { sessionId: string; branchSelections: Record<string, number> }) => void;
 }
 
 // ===== Server to Client Events =====

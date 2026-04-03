@@ -3,7 +3,8 @@ import type { HistoryMessage } from '@hammoc/shared';
 import { getBaseUuid } from '../utils/messageTree';
 import type { BranchPoint } from '../utils/messageTree';
 import { useMessageStore } from '../stores/messageStore';
-import { useChatStore } from '../stores/chatStore';
+import { useChatStore, scheduleBranchSwitchEmit } from '../stores/chatStore';
+import { getSocket } from '../services/socket';
 
 interface UseMessageTreeReturn {
   displayMessages: HistoryMessage[];
@@ -39,6 +40,7 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
       // Guard: block during streaming/compacting
       const chatState = useChatStore.getState();
       if (chatState.isStreaming || chatState.isCompacting) return;
+      if (!chatState.isBranchViewerMode) return; // Only navigate in viewer mode
 
       // Look up branchInfo from the message itself
       const msgState = useMessageStore.getState();
@@ -56,7 +58,21 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
         : Math.min(total - 1, current + 1);
       if (newIdx === current) return;
 
-      // Story 27.4: Branch navigation will be implemented via WebSocket
+      // Accumulate selection and emit via WebSocket (debounced)
+      const { updateViewerSelection } = useChatStore.getState();
+      updateViewerSelection(msg.branchInfo.selectionKey, newIdx);
+
+      scheduleBranchSwitchEmit(() => {
+        const socket = getSocket();
+        const sessionId = useMessageStore.getState().currentSessionId;
+        const { viewerBranchSelections } = useChatStore.getState();
+        if (socket && sessionId) {
+          socket.emit('messages:switch-branch', {
+            sessionId,
+            branchSelections: viewerBranchSelections,
+          });
+        }
+      }, 150);
 
       // Scroll the branch point into view
       requestAnimationFrame(() => {

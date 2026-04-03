@@ -20,6 +20,9 @@ interface HeaderOverflowMenuProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   onNavigateSettings?: () => void;
+  onToggleBranchViewer?: () => void;
+  isBranchViewerMode?: boolean;
+  isBranchViewerDisabled?: boolean;
 }
 
 export function HeaderOverflowMenu({
@@ -32,6 +35,9 @@ export function HeaderOverflowMenu({
   onRefresh,
   isRefreshing = false,
   onNavigateSettings,
+  onToggleBranchViewer,
+  isBranchViewerMode,
+  isBranchViewerDisabled,
 }: HeaderOverflowMenuProps) {
   const { t } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(false);
@@ -103,6 +109,11 @@ export function HeaderOverflowMenu({
     setIsOpen(false);
   }, [onNavigateSettings]);
 
+  const handleToggleBranchViewer = useCallback(() => {
+    onToggleBranchViewer?.();
+    setIsOpen(false);
+  }, [onToggleBranchViewer]);
+
   const itemClass =
     'w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040] transition-colors';
 
@@ -138,6 +149,21 @@ export function HeaderOverflowMenu({
             >
               <Plus className="w-4 h-4" aria-hidden="true" />
               {t('headerMenu.newSession')}
+            </button>
+          )}
+
+          {/* Branch viewer */}
+          {onToggleBranchViewer && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={isBranchViewerDisabled ? undefined : handleToggleBranchViewer}
+              disabled={isBranchViewerDisabled}
+              aria-disabled={isBranchViewerDisabled}
+              className={`${itemClass} ${isBranchViewerDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${isBranchViewerMode ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+            >
+              <GitBranch className="w-4 h-4" aria-hidden="true" />
+              {isBranchViewerMode ? t('headerMenu.exitBranchViewer') : t('headerMenu.branchViewer')}
             </button>
           )}
 

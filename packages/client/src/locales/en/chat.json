@@ -8,7 +8,9 @@
     "refresh": "Refresh",
     "settings": "Settings",
     "logout": "Logout",
-    "panelToggle": "Toggle panel"
+    "panelToggle": "Toggle panel",
+    "branchViewer": "View branch history",
+    "exitBranchViewer": "Exit branch viewer"
   },
   "sessionTitle": {
     "placeholder": "Enter session name...",
@@ -229,6 +231,7 @@
     "streaming": "Responding...",
     "default": "Type a message...",
     "oldBranch": "Viewing a previous branch (read-only)",
+    "branchViewer": "Branch viewer mode (read-only)",
     "loadingMore": "Loading...",
     "loadMore": "Load more messages"
   },

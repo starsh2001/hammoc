@@ -8,7 +8,9 @@
     "refresh": "更新",
     "settings": "設定",
     "logout": "ログアウト",
-    "panelToggle": "パネルの切り替え"
+    "panelToggle": "パネルの切り替え",
+    "branchViewer": "ブランチ履歴を表示",
+    "exitBranchViewer": "ブランチビューアーを終了"
   },
   "sessionTitle": {
     "placeholder": "セッション名を入力...",
@@ -225,6 +227,7 @@
     "streaming": "応答中...",
     "default": "メッセージを入力...",
     "oldBranch": "以前のブランチを表示中（読み取り専用）",
+    "branchViewer": "ブランチビューアーモード（読み取り専用）",
     "loadingMore": "読み込み中...",
     "loadMore": "メッセージをもっと読み込む"
   },

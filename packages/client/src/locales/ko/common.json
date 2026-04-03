@@ -352,7 +352,9 @@
     "git": "Git",
     "terminal": "터미널",
     "refreshing": "새로고침 중...",
-    "refresh": "새로고침"
+    "refresh": "새로고침",
+    "branchViewer": "분기 기록 보기",
+    "exitBranchViewer": "분기 뷰어 종료"
   },
   "pullToRefresh": "새로고침 중...",
   "editor": {

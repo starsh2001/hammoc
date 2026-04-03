@@ -138,6 +138,10 @@ export function useStreaming() {
         contentPreview: data.content.slice(0, 50),
         msgCount: useMessageStore.getState().messages.length,
       });
+      // Auto-exit branch viewer when another browser sends a message (AC: 8)
+      if (useChatStore.getState().isBranchViewerMode) {
+        useChatStore.getState().exitBranchViewer(true);
+      }
       useMessageStore.getState().addUserMessage(data.content, data.images, data.timestamp);
       // Detect /compact command and restore compacting indicator
       if (data.content.trim() === '/compact') {
@@ -662,6 +666,10 @@ export function useStreaming() {
       }
 
       if (data.active) {
+        // Auto-exit branch viewer when streaming starts (AC: 8)
+        if (useChatStore.getState().isBranchViewerMode) {
+          useChatStore.getState().exitBranchViewer(true);
+        }
         // Clear seen permissions so replayed permission:request events are processed
         seenPermissionIds.current.clear();
         // Clear any pending text chunks from a previous buffer replay to prevent

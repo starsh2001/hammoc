@@ -211,7 +211,7 @@ export function ChatPage() {
     clearMessages,
   } = useMessageStore();
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult, editingMessageUuid } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult, editingMessageUuid, isBranchViewerMode, enterBranchViewer, exitBranchViewer } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   // Get session name from sessionStore (populated when coming from session list)
@@ -502,6 +502,10 @@ export function ChatPage() {
       const chat = useChatStore.getState();
       if (chat.streamingSegments.length > 0 && !chat.isStreaming) {
         clearStreamingSegments();
+      }
+      // Reset branch viewer on session switch
+      if (chat.isBranchViewerMode) {
+        exitBranchViewer(true);
       }
 
       // Auto-send pending agent command after navigation (Story 8.3)
@@ -819,6 +823,11 @@ export function ChatPage() {
   // SDK cannot operate on non-active branch messages, so all actions and input must be disabled.
   const isOnOldBranch = useMemo(() =>
     displayMessages.some((m) => m.branchInfo && m.branchInfo.current < m.branchInfo.total - 1),
+    [displayMessages]
+  );
+
+  const hasBranches = useMemo(() =>
+    displayMessages.some((m) => m.branchInfo && m.branchInfo.total > 1),
     [displayMessages]
   );
 
@@ -1223,6 +1232,11 @@ export function ChatPage() {
         activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null}
         onAgentIndicatorClick={handleAgentIndicatorClick}
         isBmadProject={isBmadProject}
+        hasBranches={hasBranches}
+        isBranchViewerMode={isBranchViewerMode}
+        onEnterBranchViewer={enterBranchViewer}
+        onExitBranchViewer={exitBranchViewer}
+        isStreaming={isStreaming}
       />
       {queueBannerElement}
       {promptChainBannerElement}
@@ -1251,26 +1265,26 @@ export function ChatPage() {
           {/* Message list */}
           {/* Disable all actions when viewing a non-latest branch (SDK limitation) */}
           {(() => {
-            const actionsLocked = isRewinding || isSummarizing || !!editingMessageUuid || isOnOldBranch;
+            const actionsLocked = isRewinding || isSummarizing || !!editingMessageUuid || isOnOldBranch || isBranchViewerMode;
             return displayMessages.map((msg, idx) => (
             <Fragment key={msg.id}>
               <div data-message-id={msg.id}>
                 {renderHistoryMessage(
                   msg, idx, displayMessages, t,
                   msg.branchInfo,
-                  navigateBranch,
+                  isBranchViewerMode ? navigateBranch : undefined,
                   isBranchNavigationDisabled || isRewinding || isSummarizing || !!editingMessageUuid,
-                  isOnOldBranch ? undefined : handleEditSubmit,
+                  isOnOldBranch || isBranchViewerMode ? undefined : handleEditSubmit,
                   isStreaming,
-                  isOnOldBranch ? undefined : handleRewind,
+                  isOnOldBranch || isBranchViewerMode ? undefined : handleRewind,
                   isRewinding,
-                  isOnOldBranch ? undefined : handleSummarize,
+                  isOnOldBranch || isBranchViewerMode ? undefined : handleSummarize,
                   isSummarizing,
                   summarizingMessageUuid,
                   summaryResult,
                   clearSummaryResult,
                   actionsLocked,
-                  isOnOldBranch ? undefined : handleForkClick,
+                  isOnOldBranch || isBranchViewerMode ? undefined : handleForkClick,
                 )}
               </div>
             </Fragment>
@@ -1287,8 +1301,8 @@ export function ChatPage() {
           isStreaming={isStreaming}
           onAbort={handleAbort}
           queueLocked={isQueueLocked}
-          actionsDisabled={isOnOldBranch}
-          placeholder={isStreaming ? t('chatPage.streaming') : isOnOldBranch ? t('chatPage.oldBranch') : t('chatPage.default')}
+          actionsDisabled={isOnOldBranch || isBranchViewerMode}
+          placeholder={isStreaming ? t('chatPage.streaming') : isBranchViewerMode ? t('chatPage.branchViewer') : isOnOldBranch ? t('chatPage.oldBranch') : t('chatPage.default')}
           commands={commands}
           permissionMode={permissionMode}
           onPermissionModeChange={setPermissionMode}

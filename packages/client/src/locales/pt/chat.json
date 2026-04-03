@@ -8,7 +8,9 @@
     "refresh": "Atualizar",
     "settings": "Configurações",
     "logout": "Sair",
-    "panelToggle": "Alternar painel"
+    "panelToggle": "Alternar painel",
+    "branchViewer": "Ver histórico de ramificações",
+    "exitBranchViewer": "Sair do visualizador de ramificações"
   },
   "sessionTitle": {
     "placeholder": "Insira o nome da sessão...",
@@ -225,6 +227,7 @@
     "streaming": "Respondendo...",
     "default": "Digite uma mensagem...",
     "oldBranch": "Visualizando um ramo anterior (somente leitura)",
+    "branchViewer": "Modo visualizador de ramificações (somente leitura)",
     "loadingMore": "Carregando...",
     "loadMore": "Carregar mais mensagens"
   },

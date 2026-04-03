@@ -11,7 +11,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Plus, Settings, PanelRight, PanelLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Plus, Settings, PanelRight, PanelLeft, GitBranch } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { useChatStore } from '../stores/chatStore';
@@ -56,6 +56,16 @@ interface ChatHeaderProps {
   onAgentIndicatorClick?: () => void;
   /** Whether current project is a BMad project */
   isBmadProject?: boolean;
+  /** Whether the session has branches (show viewer button) */
+  hasBranches?: boolean;
+  /** Whether branch viewer mode is active */
+  isBranchViewerMode?: boolean;
+  /** Callback to enter branch viewer mode */
+  onEnterBranchViewer?: () => void;
+  /** Callback to exit branch viewer mode */
+  onExitBranchViewer?: () => void;
+  /** Whether streaming is active (disables branch viewer entry) */
+  isStreaming?: boolean;
 }
 
 export function ChatHeader({
@@ -76,6 +86,11 @@ export function ChatHeader({
   activeAgent,
   onAgentIndicatorClick,
   isBmadProject,
+  hasBranches,
+  isBranchViewerMode,
+  onEnterBranchViewer,
+  onExitBranchViewer,
+  isStreaming,
 }: ChatHeaderProps) {
   const { t } = useTranslation('chat');
   const navigate = useNavigate();
@@ -230,6 +245,23 @@ export function ChatHeader({
             </button>
           )}
 
+          {hasBranches && (
+            <button
+              onClick={isBranchViewerMode ? onExitBranchViewer : onEnterBranchViewer}
+              disabled={isStreaming}
+              className={`hidden md:block p-2 rounded-lg transition-colors
+                         focus:outline-none focus:ring-2 focus:ring-blue-500
+                         ${isStreaming ? 'opacity-50 cursor-not-allowed' : ''}
+                         ${isBranchViewerMode
+                           ? 'bg-blue-500/20 text-blue-300'
+                           : 'hover:bg-white/10 dark:hover:bg-gray-700 text-white/80 dark:text-gray-200'
+                         }`}
+              aria-label={isBranchViewerMode ? t('header.exitBranchViewer') : t('header.branchViewer')}
+            >
+              <GitBranch className="w-5 h-5" aria-hidden="true" />
+            </button>
+          )}
+
           {onTogglePanel && (
             <button
               onClick={() => onTogglePanel(activePanel ?? lastActivePanel)}
@@ -294,6 +326,9 @@ export function ChatHeader({
               onRefresh={onRefresh}
               isRefreshing={isRefreshing}
               onNavigateSettings={() => navigate('/settings')}
+              onToggleBranchViewer={hasBranches ? (isBranchViewerMode ? onExitBranchViewer : onEnterBranchViewer) : undefined}
+              isBranchViewerMode={isBranchViewerMode}
+              isBranchViewerDisabled={isStreaming}
             />
           </div>
         </div>

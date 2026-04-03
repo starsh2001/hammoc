@@ -16,6 +16,22 @@ import i18n from '../i18n';
 /** Delay before showing "waiting" UI (ms) — both sender and passive viewers */
 const STREAMING_UI_DELAY_MS = 1000;
 
+// Story 27.3: Branch switch debounce timer — module-level to avoid circular import with useMessageTree
+let branchSwitchTimer: ReturnType<typeof setTimeout> | null = null;
+export function cancelBranchSwitchTimer() {
+  if (branchSwitchTimer) {
+    clearTimeout(branchSwitchTimer);
+    branchSwitchTimer = null;
+  }
+}
+export function scheduleBranchSwitchEmit(fn: () => void, ms: number) {
+  cancelBranchSwitchTimer();
+  branchSwitchTimer = setTimeout(() => {
+    branchSwitchTimer = null;
+    fn();
+  }, ms);
+}
+
 /** Track the delay timeout so we can cancel if response arrives early */
 let streamingDelayTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -193,6 +209,10 @@ interface ChatState {
   editingMessageUuid: string | null;
   /** Story 25.11: forked session ID from session:forked event (triggers navigation) */
   forkedSessionId: string | null;
+  /** Story 27.3: Whether the user is in branch viewer (read-only) mode */
+  isBranchViewerMode: boolean;
+  /** Story 27.3: Accumulated branch selections for multi-level navigation */
+  viewerBranchSelections: Record<string, number>;
 }
 
 interface SendMessageOptions {
@@ -319,6 +339,12 @@ interface ChatActions {
   setForkedSessionId: (id: string) => void;
   /** Story 25.11: clear forked session ID */
   clearForkedSessionId: () => void;
+  /** Story 27.3: Enter branch viewer mode */
+  enterBranchViewer: () => void;
+  /** Story 27.3: Exit branch viewer mode */
+  exitBranchViewer: (skipEmit?: boolean) => void;
+  /** Story 27.3: Accumulate branch selection for multi-level navigation */
+  updateViewerSelection: (selectionKey: string, newIndex: number) => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -354,6 +380,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   summaryResult: null,
   editingMessageUuid: null,
   forkedSessionId: null,
+  isBranchViewerMode: false,
+  viewerBranchSelections: {},
 
   // Actions
   setStreaming: (streaming: boolean) => set({ isStreaming: streaming }),
@@ -969,6 +997,28 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setEditingMessageUuid: (uuid: string | null) => set({ editingMessageUuid: uuid }),
   setForkedSessionId: (id: string) => set({ forkedSessionId: id }),
   clearForkedSessionId: () => set({ forkedSessionId: null }),
+
+  enterBranchViewer: () => {
+    const { isStreaming, isCompacting } = get();
+    if (isStreaming || isCompacting) return;
+    set({ isBranchViewerMode: true, viewerBranchSelections: {} });
+  },
+  exitBranchViewer: (skipEmit?: boolean) => {
+    set({ isBranchViewerMode: false, viewerBranchSelections: {} });
+    cancelBranchSwitchTimer();
+    if (!skipEmit) {
+      const socket = getSocket();
+      const sessionId = useMessageStore.getState().currentSessionId;
+      if (socket && sessionId) {
+        socket.emit('messages:switch-branch', { sessionId, branchSelections: {} });
+      }
+    }
+  },
+  updateViewerSelection: (selectionKey: string, newIndex: number) => {
+    set((state) => ({
+      viewerBranchSelections: { ...state.viewerBranchSelections, [selectionKey]: newIndex },
+    }));
+  },
 
   addResultError: (data: ResultErrorData) => {
     const segments = get().streamingSegments;

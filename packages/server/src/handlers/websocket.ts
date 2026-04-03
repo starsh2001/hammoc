@@ -1675,6 +1675,44 @@ export async function initializeWebSocket(
       }
     });
 
+    // Story 27.3: Branch viewer mode — switch branch via custom selections
+    socket.on('messages:switch-branch', async (data) => {
+      try {
+        if (!data || typeof data !== 'object') return;
+        const { sessionId, branchSelections } = data;
+
+        if (!sessionId || typeof sessionId !== 'string') return;
+
+        // Validate socket is in the session room
+        if (!socket.rooms.has(`session:${sessionId}`)) {
+          socket.emit('error', { code: 'NOT_IN_SESSION', message: 'Not joined to session' });
+          return;
+        }
+
+        // Guard: reject during active streaming
+        if (activeStreams.has(sessionId)) {
+          socket.emit('error', { code: 'STREAMING_ACTIVE', message: 'Cannot switch branches during streaming' });
+          return;
+        }
+
+        const projectSlug = sessionProjectMap.get(sessionId) || socketProjectRoom.get(socket.id);
+        if (!projectSlug) {
+          socket.emit('error', { code: 'PROJECT_NOT_FOUND', message: 'Session project not found' });
+          return;
+        }
+
+        const historyMessages = await sessionBufferManager.reloadFromJSONL(
+          sessionId,
+          projectSlug,
+          branchSelections,
+        );
+        socket.emit('stream:history', { sessionId, messages: historyMessages });
+      } catch (err) {
+        log.error('messages:switch-branch error:', err);
+        socket.emit('error', { code: 'BRANCH_SWITCH_ERROR', message: 'Failed to switch branch' });
+      }
+    });
+
     // Story 20.1: Dashboard subscribe/unsubscribe
     socket.on('dashboard:subscribe', () => {
       socket.join('dashboard');

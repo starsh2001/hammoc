@@ -327,7 +327,9 @@
     "git": "Git",
     "terminal": "Terminal",
     "refreshing": "Actualizando...",
-    "refresh": "Actualizar"
+    "refresh": "Actualizar",
+    "branchViewer": "Ver historial de ramas",
+    "exitBranchViewer": "Salir del visor de ramas"
   },
   "pullToRefresh": "Actualizando...",
   "editor": {

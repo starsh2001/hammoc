@@ -327,7 +327,9 @@
     "git": "Git",
     "terminal": "ターミナル",
     "refreshing": "更新中...",
-    "refresh": "更新"
+    "refresh": "更新",
+    "branchViewer": "ブランチ履歴を表示",
+    "exitBranchViewer": "ブランチビューアーを終了"
   },
   "pullToRefresh": "更新中...",
   "editor": {

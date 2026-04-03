@@ -347,7 +347,9 @@
     "git": "Git",
     "terminal": "Terminal",
     "refreshing": "Refreshing...",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "branchViewer": "View branch history",
+    "exitBranchViewer": "Exit branch viewer"
   },
   "pullToRefresh": "Refreshing...",
   "editor": {
