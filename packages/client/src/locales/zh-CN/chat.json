@@ -79,6 +79,7 @@
     "emptySession": "（空会话）",
     "streaming": "流式响应中",
     "waiting": "等待中",
+    "waitingStatus": "已连接",
     "queueActive": "队列运行器运行中",
     "queue": "队列",
     "messageCount": "{{count}} 条消息",

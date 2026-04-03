@@ -79,6 +79,7 @@
     "emptySession": "(Sesión vacía)",
     "streaming": "Transmitiendo",
     "waiting": "Esperando",
+    "waitingStatus": "Conectado",
     "queueActive": "Ejecutor de cola activo",
     "queue": "Cola",
     "messageCount": "{{count}} mensajes",

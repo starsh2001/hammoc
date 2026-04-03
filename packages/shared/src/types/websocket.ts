@@ -137,6 +137,7 @@ export interface ServerToClientEvents {
   'permission:already-resolved': (data: { requestId: string }) => void;
   'permission:resolved': (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question'; response?: string | string[] | Record<string, string | string[]> }) => void;
   'session:stream-change': (data: { sessionId: string; active: boolean; projectSlug?: string | null }) => void;
+  'session:waiting-change': (data: { sessionId: string; waiting: boolean; projectSlug: string }) => void;
   'user:message': (data: { content: string; sessionId: string; timestamp?: string; images?: ImageRef[] }) => void;
   // Story 15.2: Queue runner events
   'queue:progress': (data: QueueProgressEvent) => void;

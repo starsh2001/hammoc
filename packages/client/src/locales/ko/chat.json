@@ -83,6 +83,7 @@
     "emptySession": "(빈 세션)",
     "streaming": "스트리밍 중",
     "waiting": "대기 중",
+    "waitingStatus": "대기 중",
     "queueActive": "큐 러너 작업 중",
     "queue": "큐",
     "messageCount": "{{count}}개 메시지",

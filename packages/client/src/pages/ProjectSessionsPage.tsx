@@ -83,12 +83,21 @@ export function ProjectSessionsPage() {
     const MAX_RETRIES = 10;
 
     const joinRoom = () => { socket?.emit('project:join', projectSlug); };
+    let isInitialConnect = true;
+    const onReconnect = () => {
+      joinRoom();
+      // Refresh session list on reconnect to pick up events missed during sleep/disconnect
+      if (!isInitialConnect) {
+        fetchSessions(projectSlug, { limit: 20 });
+      }
+      isInitialConnect = false;
+    };
 
     function tryConnect() {
       try {
         socket = getSocket();
-        joinRoom();
-        socket.on('connect', joinRoom);
+        onReconnect();
+        socket.on('connect', onReconnect);
       } catch {
         if (++retryCount < MAX_RETRIES) {
           retryTimer = setTimeout(tryConnect, 200);
@@ -100,11 +109,11 @@ export function ProjectSessionsPage() {
     return () => {
       clearTimeout(retryTimer);
       if (socket) {
-        socket.off('connect', joinRoom);
+        socket.off('connect', onReconnect);
         socket.emit('project:leave', projectSlug);
       }
     };
-  }, [projectSlug]);
+  }, [projectSlug, fetchSessions]);
 
   // Clear search and fetch sessions on mount/navigation/projectSlug change
   const includeEmptyInitialRef = useRef(true);

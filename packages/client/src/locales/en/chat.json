@@ -83,6 +83,7 @@
     "emptySession": "(Empty session)",
     "streaming": "Streaming",
     "waiting": "Waiting",
+    "waitingStatus": "Connected",
     "queueActive": "Queue runner active",
     "queue": "Queue",
     "messageCount": "{{count}} messages",

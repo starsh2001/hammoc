@@ -11,7 +11,7 @@ import { projectService } from '../services/projectService.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('sessionController');
-import { getActiveStreamSessionIds } from '../handlers/websocket.js';
+import { getActiveStreamSessionIds, getJoinedSessionIdsByProject } from '../handlers/websocket.js';
 
 export const sessionController = {
   /**
@@ -69,14 +69,44 @@ export const sessionController = {
       // Note: Empty array is a valid response (project exists but no sessions)
       // Mark sessions that have an active background stream + merge session names
       const activeIds = new Set(getActiveStreamSessionIds());
+      const joinedIds = getJoinedSessionIdsByProject(projectSlug);
       const sessions = result.sessions;
       const total = result.total;
+
+      // Merge socket-connected sessions that have no JSONL file yet.
+      // Only include on the first page (offset=0) and exclude from total/hasMore
+      // so pagination math stays consistent across pages.
+      const waitingSessions: SessionListResponse['sessions'] = [];
+      if (offset === 0) {
+        const now = new Date().toISOString();
+        for (const id of joinedIds) {
+          if (!sessionService.sessionFileExists(projectSlug, id)) {
+            waitingSessions.push({
+              sessionId: id,
+              firstPrompt: '',
+              messageCount: 0,
+              created: now,
+              modified: now,
+              isWaiting: true,
+              ...(activeIds.has(id) && { isStreaming: true }),
+              ...(sessionNames[id] && { name: sessionNames[id] }),
+            });
+          }
+        }
+      }
+
+      // isWaiting: socket-connected and not streaming (applies to all sessions)
+      // isStreaming: active stream running (takes priority over isWaiting visually)
       const response: SessionListResponse = {
-        sessions: sessions.map(s => ({
-          ...s,
-          ...(activeIds.has(s.sessionId) && { isStreaming: true }),
-          ...(sessionNames[s.sessionId] && { name: sessionNames[s.sessionId] }),
-        })),
+        sessions: [
+          ...waitingSessions,
+          ...sessions.map(s => ({
+            ...s,
+            ...(activeIds.has(s.sessionId) && { isStreaming: true }),
+            ...(joinedIds.has(s.sessionId) && !activeIds.has(s.sessionId) && { isWaiting: true }),
+            ...(sessionNames[s.sessionId] && { name: sessionNames[s.sessionId] }),
+          })),
+        ],
         total,
         hasMore: limit > 0 ? (offset + sessions.length) < total : false,
       };

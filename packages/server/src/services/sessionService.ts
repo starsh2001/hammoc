@@ -45,6 +45,9 @@ export class SessionService {
   // Per-project mutex for sessions-index.json writes to prevent concurrent read-modify-write races
   private static indexWriteLocks = new Map<string, Promise<void>>();
 
+  // Track in-flight index backfill operations to prevent duplicate fire-and-forget calls
+  private static pendingBackfills = new Set<string>();
+
   constructor() {
     this.claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
   }
@@ -330,21 +333,50 @@ export class SessionService {
         const files = await fs.readdir(projectDir);
         const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
 
-        // Stat all files (cheap) to get modified time
-        const fileStats = await Promise.all(
-          jsonlFiles.map(async (file) => {
-            const stat = await fs.stat(path.join(projectDir, file));
-            return { file, sessionId: file.replace('.jsonl', ''), stat };
-          })
-        );
+        // Build sortable entries using index timestamps where available.
+        // Only stat files missing from the index to avoid O(N) stat calls.
+        const unindexedFiles: string[] = [];
+        const fileEntries: { file: string; sessionId: string; mtimeMs: number }[] = [];
+        for (const file of jsonlFiles) {
+          const sessionId = file.replace('.jsonl', '');
+          const cached = indexMap.get(sessionId);
+          if (cached && cached.modified) {
+            fileEntries.push({ file, sessionId, mtimeMs: new Date(cached.modified).getTime() || 0 });
+          } else {
+            unindexedFiles.push(file);
+          }
+        }
+        // Stat only unindexed files
+        if (unindexedFiles.length > 0) {
+          const stats = await Promise.all(
+            unindexedFiles.map(async (file) => {
+              const stat = await fs.stat(path.join(projectDir, file));
+              return { file, sessionId: file.replace('.jsonl', ''), mtimeMs: stat.mtimeMs };
+            })
+          );
+          fileEntries.push(...stats);
 
-        // Sort by mtime descending
-        fileStats.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
+          // Backfill index in background so future requests skip stat for these files.
+          // Deduplicate to prevent repeated fire-and-forget calls for the same session.
+          for (const file of unindexedFiles) {
+            const sid = file.replace('.jsonl', '');
+            const key = `${projectSlug}:${sid}`;
+            if (!SessionService.pendingBackfills.has(key)) {
+              SessionService.pendingBackfills.add(key);
+              this.updateSessionIndex(projectSlug, sid)
+                .catch(() => {})
+                .finally(() => SessionService.pendingBackfills.delete(key));
+            }
+          }
+        }
+
+        // Sort by modified time descending
+        fileEntries.sort((a, b) => b.mtimeMs - a.mtimeMs);
 
         // When search is active, resolve cache misses for filtering
-        let candidates = fileStats;
+        let candidates = fileEntries;
         if (queryLower) {
-          const cacheMisses = fileStats.filter(({ sessionId }) => !indexMap.has(sessionId));
+          const cacheMisses = fileEntries.filter(({ sessionId }) => !indexMap.has(sessionId));
           if (cacheMisses.length > 0) {
             await this.pMapWithLimit(cacheMisses, async ({ file, sessionId }) => {
               const meta = await parseJSONLSessionMeta(path.join(projectDir, file));
@@ -362,7 +394,7 @@ export class SessionService {
 
           // Pre-filter empty sessions
           if (!includeEmpty) {
-            candidates = fileStats.filter(({ sessionId }) => {
+            candidates = fileEntries.filter(({ sessionId }) => {
               const cached = indexMap.get(sessionId);
               return cached ? !!cached.firstPrompt : false;
             });
@@ -402,14 +434,16 @@ export class SessionService {
             );
             candidates = [...metadataFiltered, ...contentHits];
             // Re-sort after merging
-            candidates.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
+            candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
           } else {
             candidates = metadataFiltered;
           }
 
           const topFiles = candidates.slice(offset, offset + limit);
-          const sessions = topFiles.map(({ sessionId, stat }) => {
+          // Stat only the page result files for accurate timestamps
+          const sessions = await Promise.all(topFiles.map(async ({ file, sessionId }) => {
             const cached = indexMap.get(sessionId)!;
+            const stat = await fs.stat(path.join(projectDir, file));
             return {
               sessionId,
               firstPrompt: this.truncateFirstPrompt(cached.firstPrompt),
@@ -417,14 +451,14 @@ export class SessionService {
               created: stat.birthtime.toISOString(),
               modified: stat.mtime.toISOString(),
             };
-          });
+          }));
           return { sessions, total: candidates.length };
         }
 
         // No search: use streaming pagination — resolve only until page is filled
         // Pre-filter known-empty sessions from index cache
         if (!includeEmpty) {
-          candidates = fileStats.filter(({ sessionId }) => {
+          candidates = fileEntries.filter(({ sessionId }) => {
             const cached = indexMap.get(sessionId);
             // Known empty from cache → exclude
             if (cached && !cached.firstPrompt) return false;
@@ -440,7 +474,7 @@ export class SessionService {
         let skipped = 0;
         let scannedCount = 0;
 
-        for (const { file, sessionId, stat } of candidates) {
+        for (const { file, sessionId } of candidates) {
           scannedCount++;
           const cached = indexMap.get(sessionId);
           let firstPrompt: string;
@@ -463,6 +497,8 @@ export class SessionService {
 
           if (skipped < offset) { skipped++; continue; }
           if (sessions.length < limit) {
+            // Stat only page result files for accurate timestamps
+            const stat = await fs.stat(path.join(projectDir, file));
             sessions.push({
               sessionId,
               firstPrompt: firstPrompt ? this.truncateFirstPrompt(firstPrompt) : '',

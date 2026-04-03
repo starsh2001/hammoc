@@ -166,11 +166,14 @@ export function SessionQuickAccessPanel({
                     </p>
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-300">
-                    <span className="relative flex h-2 w-2" title={session.isStreaming ? t('sessionQuickAccess.streaming') : t('sessionQuickAccess.waiting')}>
+                    <span className="relative flex h-2 w-2" title={session.isStreaming ? t('sessionQuickAccess.streaming') : session.isWaiting ? t('sessionListItem.waitingStatus') : t('sessionQuickAccess.waiting')}>
                       {session.isStreaming && (
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                       )}
-                      <span className={`relative inline-flex rounded-full h-2 w-2 ${session.isStreaming ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                      {session.isWaiting && !session.isStreaming && (
+                        <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      )}
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${session.isStreaming ? 'bg-green-500' : session.isWaiting ? 'bg-amber-400' : 'bg-gray-300 dark:bg-gray-600'}`} />
                     </span>
                     <span className="flex items-center gap-1">
                       <MessageSquare className="w-3 h-3" aria-hidden="true" />

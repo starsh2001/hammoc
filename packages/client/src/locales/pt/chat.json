@@ -79,6 +79,7 @@
     "emptySession": "(Sessão vazia)",
     "streaming": "Transmitindo",
     "waiting": "Aguardando",
+    "waitingStatus": "Conectado",
     "queueActive": "Executor de fila ativo",
     "queue": "Fila",
     "messageCount": "{{count}} mensagens",

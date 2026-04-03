@@ -42,6 +42,8 @@ interface SessionActions {
   clearError: () => void;
   /** Update a session's streaming status (called from socket listener) */
   updateSessionStreaming: (sessionId: string, active: boolean) => void;
+  /** Update a session's waiting status (called from socket listener) */
+  updateSessionWaiting: (sessionId: string, waiting: boolean) => void;
   /** Delete a single session */
   deleteSession: (projectSlug: string, sessionId: string) => Promise<boolean>;
   /** Delete multiple sessions at once */
@@ -186,8 +188,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     try {
       const { includeEmpty, searchQuery, searchContent } = get();
       const limit = options?.limit ?? 20;
-      // Capture offset from current state right before the API call
-      const offset = get().sessions.length;
+      // Capture offset from current state right before the API call.
+      // Exclude no-JSONL placeholder sessions from offset — they are prepended by the server
+      // but not part of the paginated JSONL result set. JSONL-backed sessions with isWaiting
+      // ARE in the paginated set and must be counted.
+      const offset = get().sessions.filter(s => !(s.isWaiting && !s.firstPrompt && s.messageCount === 0)).length;
       const apiOptions: { includeEmpty?: boolean; limit?: number; offset?: number; query?: string; searchContent?: boolean } = {
         includeEmpty,
         limit,
@@ -237,6 +242,38 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const updated = [...sessions];
     updated[idx] = { ...updated[idx], isStreaming: active || undefined };
     set({ sessions: updated });
+  },
+
+  updateSessionWaiting: (sessionId: string, waiting: boolean) => {
+    const { sessions } = get();
+    if (waiting) {
+      // Add waiting session to top of list if not already present
+      if (sessions.some((s) => s.sessionId === sessionId)) {
+        const updated = sessions.map((s) =>
+          s.sessionId === sessionId ? { ...s, isWaiting: true } : s,
+        );
+        set({ sessions: updated });
+      } else {
+        const now = new Date().toISOString();
+        set({
+          sessions: [
+            { sessionId, firstPrompt: '', messageCount: 0, created: now, modified: now, isWaiting: true },
+            ...sessions,
+          ],
+        });
+      }
+    } else {
+      // Remove isWaiting flag; remove entirely if it was a JSONL-less placeholder
+      const updated = sessions
+        .map((s) => {
+          if (s.sessionId !== sessionId) return s;
+          if (s.messageCount === 0 && !s.firstPrompt) return null; // placeholder — remove
+          const { isWaiting: _, ...rest } = s;
+          return rest;
+        })
+        .filter(Boolean) as typeof sessions;
+      set({ sessions: updated });
+    }
   },
 
   deleteSession: async (projectSlug: string, sessionId: string) => {
@@ -378,6 +415,13 @@ function registerStreamChangeListener() {
             useSessionStore.getState().fetchSessions(slug);
           }, 500));
         }
+      }
+    });
+
+    socket.on('session:waiting-change', (data: { sessionId: string; waiting: boolean; projectSlug: string }) => {
+      const state = useSessionStore.getState();
+      if (state.currentProjectSlug === data.projectSlug) {
+        state.updateSessionWaiting(data.sessionId, data.waiting);
       }
     });
 

@@ -474,6 +474,19 @@ export function isSessionStreaming(sessionId: string): boolean {
   return !!stream && stream.status === 'running';
 }
 
+/** Get session IDs that have active socket connections for a given project */
+export function getJoinedSessionIdsByProject(projectSlug: string): Set<string> {
+  const sessionIds = new Set<string>();
+  for (const [socketId, slug] of socketProjectRoom.entries()) {
+    if (slug !== projectSlug) continue;
+    const sessionId = socketSessionRoom.get(socketId);
+    if (sessionId && UUID_RE.test(sessionId)) {
+      sessionIds.add(sessionId);
+    }
+  }
+  return sessionIds;
+}
+
 
 /**
  * Wait for JSONL to contain conversation data, then reload buffer and broadcast.
@@ -716,6 +729,14 @@ function emitStreamChange(sessionId: string, active: boolean, projectSlug: strin
     io.to(`project:${projectSlug}`).emit('session:stream-change', payload);
   } else {
     io.emit('session:stream-change', payload);
+  }
+  // When streaming ends, check if sockets are still connected to the session.
+  // If so, transition from "streaming" to "waiting" for session list viewers.
+  if (!active && projectSlug) {
+    const room = io.sockets.adapter.rooms.get(`session:${sessionId}`);
+    if (room && room.size > 0) {
+      io.to(`project:${projectSlug}`).emit('session:waiting-change', { sessionId, waiting: true, projectSlug });
+    }
   }
 }
 
@@ -1148,6 +1169,12 @@ export async function initializeWebSocket(
         }
       }
 
+      // Notify session list viewers that this session is now connected (waiting).
+      // Skip if the session is actively streaming — it's already shown as streaming.
+      if (projectSlug && UUID_RE.test(sessionId) && !activeStreams.has(sessionId)) {
+        socket.to(`project:${projectSlug}`).emit('session:waiting-change', { sessionId, waiting: true, projectSlug });
+      }
+
       const stream = activeStreams.get(sessionId);
 
       // Story 24.1: Send current chain state on join (in-memory + persisted failures)
@@ -1314,6 +1341,14 @@ export async function initializeWebSocket(
         const remaining = io.sockets.adapter.rooms.get(`session:${roomSessionId}`);
         if ((!remaining || remaining.size === 0) && !activeStreams.has(roomSessionId)) {
           sessionBufferManager.destroy(roomSessionId);
+        }
+
+        // Notify session list viewers when no sockets remain for this session
+        if (!remaining || remaining.size === 0) {
+          const slug = socketProjectRoom.get(socket.id) || sessionProjectMap.get(roomSessionId);
+          if (slug) {
+            io.to(`project:${slug}`).emit('session:waiting-change', { sessionId: roomSessionId, waiting: false, projectSlug: slug });
+          }
         }
       }
       // Story 25.9: Cancel in-progress summary on session leave
@@ -1916,6 +1951,11 @@ export async function initializeWebSocket(
           // Only destroy if no active stream (streaming continues in background)
           if (!activeStreams.has(disconnectSessionId)) {
             sessionBufferManager.destroy(disconnectSessionId);
+          }
+          // Notify session list viewers when no sockets remain for this session
+          const slug = socketProjectRoom.get(socket.id) || sessionProjectMap.get(disconnectSessionId);
+          if (slug) {
+            io.to(`project:${slug}`).emit('session:waiting-change', { sessionId: disconnectSessionId, waiting: false, projectSlug: slug });
           }
         }
       }
