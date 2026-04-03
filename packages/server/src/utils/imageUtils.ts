@@ -27,6 +27,12 @@ export function buildImageFilename(data: string, mimeType: string): string | nul
   return `${computeImageHash(data)}${ext}`;
 }
 
+export function buildThumbnailFilename(data: string, mimeType: string): string | null {
+  const ext = MIME_TO_EXT[mimeType];
+  if (!ext) return null;
+  return `${computeImageHash(data)}_thumb${ext}`;
+}
+
 export function buildImageUrl(projectSlug: string, sessionId: string, filename: string): string {
   return `/api/projects/${projectSlug}/sessions/${sessionId}/images/${filename}`;
 }

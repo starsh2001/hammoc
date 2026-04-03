@@ -132,7 +132,7 @@ export function MessageBubble({
               img.url && !failedImages.has(idx) ? (
                 <img
                   key={`${message.id}-img-${idx}`}
-                  src={img.url}
+                  src={img.thumbnailUrl ?? img.url}
                   alt={img.name || t('messageBubble.image', { index: idx + 1 })}
                   className="max-w-[200px] max-h-[150px] rounded object-cover cursor-pointer hover:opacity-90"
                   onClick={() => useImageViewerStore.getState().openImageViewerUrls(message.images!, idx)}

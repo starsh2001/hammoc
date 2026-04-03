@@ -5,20 +5,30 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import sharp from 'sharp';
 import type { ImageAttachment, ImageRef } from '@hammoc/shared';
 import { sessionService } from './sessionService.js';
 import { createLogger } from '../utils/logger.js';
-import { buildImageFilename, buildImageUrl, getImageDir } from '../utils/imageUtils.js';
+import {
+  buildImageFilename,
+  buildThumbnailFilename,
+  buildImageUrl,
+  getImageDir,
+} from '../utils/imageUtils.js';
 
 const logger = createLogger('imageStorageService');
 
-const VALID_FILENAME_RE = /^[a-f0-9]{16}\.(png|jpg|jpeg|gif|webp)$/;
+const THUMBNAIL_MAX_WIDTH = 400;
+const THUMBNAIL_MAX_HEIGHT = 300;
+
+const VALID_FILENAME_RE = /^[a-f0-9]{16}(_thumb)?\.(png|jpg|jpeg|gif|webp)$/;
 
 class ImageStorageService {
   /**
    * Store uploaded images as files and return URL-based references.
    * Dedup: if file already exists (same hash), skip write and return existing URL.
    * Partial success: if a disk write fails, log warning and skip the failed image.
+   * Also generates a thumbnail (400x300) for each image.
    */
   async storeImages(
     projectSlug: string,
@@ -38,17 +48,38 @@ class ImageStorageService {
         }
 
         const filePath = path.join(imageDir, filename);
+        const buffer = Buffer.from(img.data, 'base64');
 
         // Dedup: skip write if file already exists
         try {
           await fs.access(filePath);
         } catch {
-          const buffer = Buffer.from(img.data, 'base64');
           await fs.writeFile(filePath, buffer);
+        }
+
+        // Generate thumbnail
+        const thumbFilename = buildThumbnailFilename(img.data, img.mimeType);
+        let thumbnailUrl: string | undefined;
+        if (thumbFilename) {
+          const thumbPath = path.join(imageDir, thumbFilename);
+          try {
+            await fs.access(thumbPath);
+            thumbnailUrl = buildImageUrl(projectSlug, sessionId, thumbFilename);
+          } catch {
+            try {
+              await sharp(buffer)
+                .resize(THUMBNAIL_MAX_WIDTH, THUMBNAIL_MAX_HEIGHT, { fit: 'inside' })
+                .toFile(thumbPath);
+              thumbnailUrl = buildImageUrl(projectSlug, sessionId, thumbFilename);
+            } catch (err) {
+              logger.warn(`Thumbnail generation failed for ${filename}: ${err}`);
+            }
+          }
         }
 
         return {
           url: buildImageUrl(projectSlug, sessionId, filename),
+          ...(thumbnailUrl ? { thumbnailUrl } : {}),
           mimeType: img.mimeType,
           name: img.name,
         };

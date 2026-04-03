@@ -27,7 +27,11 @@ import type {
 } from '@hammoc/shared';
 import { sessionService } from './sessionService.js';
 import { createLogger } from '../utils/logger.js';
-import { buildImageFilename, buildImageUrl, getImageDir } from '../utils/imageUtils.js';
+import sharp from 'sharp';
+import { buildImageFilename, buildThumbnailFilename, buildImageUrl, getImageDir } from '../utils/imageUtils.js';
+
+const THUMBNAIL_MAX_WIDTH = 400;
+const THUMBNAIL_MAX_HEIGHT = 300;
 
 /**
  * Parse a JSONL file and return raw messages
@@ -238,18 +242,43 @@ function extractImages(content: ContentBlock[] | undefined, projectSlug?: string
       const filename = buildImageFilename(block.source.data, block.source.media_type);
       if (!filename) continue;
 
+      const thumbFilename = buildThumbnailFilename(block.source.data, block.source.media_type);
       const url = buildImageUrl(projectSlug, sessionId, filename);
+      const thumbnailUrl = thumbFilename ? buildImageUrl(projectSlug, sessionId, thumbFilename) : undefined;
 
-      // Lazy backfill: write image to disk if missing
+      // Lazy backfill: write image & thumbnail to disk if missing
       const filePath = path.join(imageDir, filename);
+      const thumbPath = thumbFilename ? path.join(imageDir, thumbFilename) : null;
       if (!existsSync(filePath)) {
+        const buffer = Buffer.from(block.source.data, 'base64');
         // Fire-and-forget async write — next parse will find it on disk
         fs.mkdir(imageDir, { recursive: true })
-          .then(() => fs.writeFile(filePath, Buffer.from(block.source.data, 'base64')))
+          .then(async () => {
+            await fs.writeFile(filePath, buffer);
+            if (thumbPath && !existsSync(thumbPath)) {
+              await sharp(buffer)
+                .resize(THUMBNAIL_MAX_WIDTH, THUMBNAIL_MAX_HEIGHT, { fit: 'inside' })
+                .toFile(thumbPath);
+            }
+          })
           .catch((err) => extractImagesLog.warn(`Lazy backfill failed for ${filename}: ${err}`));
+      } else if (thumbPath && !existsSync(thumbPath)) {
+        // Original exists but thumbnail missing — backfill thumbnail only
+        fs.readFile(filePath)
+          .then((buffer) =>
+            sharp(buffer)
+              .resize(THUMBNAIL_MAX_WIDTH, THUMBNAIL_MAX_HEIGHT, { fit: 'inside' })
+              .toFile(thumbPath),
+          )
+          .catch((err) => extractImagesLog.warn(`Thumbnail backfill failed for ${filename}: ${err}`));
       }
 
-      images.push({ url, mimeType: block.source.media_type, name: `image-${i + 1}` });
+      images.push({
+        url,
+        ...(thumbnailUrl ? { thumbnailUrl } : {}),
+        mimeType: block.source.media_type,
+        name: `image-${i + 1}`,
+      });
     } catch (err) {
       extractImagesLog.warn(`Failed to process image block ${i}: ${err}`);
     }

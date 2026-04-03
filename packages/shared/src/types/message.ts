@@ -33,6 +33,7 @@ export interface ImageAttachment {
  */
 export interface ImageRef {
   url: string;
+  thumbnailUrl?: string;
   mimeType: string;
   name: string;
 }
