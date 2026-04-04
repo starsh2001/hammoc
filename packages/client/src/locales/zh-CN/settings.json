@@ -23,6 +23,8 @@
       "bypass": "跳过所有权限检查（包括 Bash）",
       "latest": "新会话保持上一个会话的权限模式"
     },
+    "autoApproveSafetyChecks": "在Bypass模式下自动批准安全检查",
+    "autoApproveSafetyChecksDesc": "启用后，在Bypass模式下CLI安全检查提示将自动批准，无需用户确认。",
     "permissionSync": "权限模式同步",
     "permissionSyncOption": {
       "streaming": "仅在流式传输期间",

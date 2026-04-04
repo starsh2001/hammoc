@@ -530,6 +530,17 @@ export class QueueService {
     // canUseTool — permissions stored in stream.pendingPermissions
     // (same map that permission:respond handler in websocket.ts checks)
     const canUseTool: CanUseTool = async (toolName, input, options): Promise<PermissionResult> => {
+      // Auto-approve CLI safety checks in Bypass mode when user preference is enabled.
+      if (toolName !== 'AskUserQuestion' && this.chatService?.getPermissionMode() === 'bypassPermissions') {
+        try {
+          const prefs = await this.preferencesService.readPreferences();
+          if (prefs.autoApproveSafetyChecks ?? true) {
+            log.debug(`canUseTool: auto-approving safety check for ${toolName} (autoApproveSafetyChecks enabled)`);
+            return { behavior: 'allow', updatedInput: input };
+          }
+        } catch { /* fall through to normal permission flow */ }
+      }
+
       const isAskUserQuestion = toolName === 'AskUserQuestion';
       const requestId = options.toolUseID || `perm-queue-${Date.now()}`;
       log.debug(`canUseTool: tool=${toolName}, isAskUserQuestion=${isAskUserQuestion}, requestId=${requestId}`);
@@ -678,9 +689,11 @@ export class QueueService {
       return { shouldAdvance: false };
     } finally {
       log.debug(`executePrompt: FINALLY — cleaning up stream for ${stream.sessionId}`);
-      // Clean up — identical to handleChatSend finally block
+      // Clean up — identical to handleChatSend finally block.
+      // Must await to ensure stream:complete-messages is sent before the next
+      // item starts, otherwise the late completion overwrites the new user message.
       stream.status = 'completed';
-      finalizeStream(stream.sessionId);
+      await finalizeStream(stream.sessionId);
     }
 
     // After first successful prompt, subsequent prompts resume the session

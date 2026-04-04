@@ -23,6 +23,8 @@
       "bypass": "Ignora todas as verificações de permissão (incluindo Bash)",
       "latest": "Novas sessões mantêm o modo de permissão da sessão anterior"
     },
+    "autoApproveSafetyChecks": "Aprovar automaticamente verificações de segurança no modo Bypass",
+    "autoApproveSafetyChecksDesc": "Quando ativado, as solicitações de verificação de segurança do CLI são aprovadas automaticamente sem confirmação do usuário no modo Bypass.",
     "permissionSync": "Sincronização do modo de permissão",
     "permissionSyncOption": {
       "streaming": "Apenas durante streaming",

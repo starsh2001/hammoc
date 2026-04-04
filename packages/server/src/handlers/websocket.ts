@@ -2282,6 +2282,19 @@ async function handleChatSend(
         return { behavior: 'allow', updatedInput: input };
       }
 
+      // Auto-approve CLI safety checks in Bypass mode when user preference is enabled.
+      // The CLI sends safety check prompts even in bypass mode for certain tools (e.g. Write).
+      // When autoApproveSafetyChecks is true, skip the permission UI for non-interactive tools.
+      if (toolName !== 'AskUserQuestion' && chatService.getPermissionMode() === 'bypassPermissions') {
+        try {
+          const prefs = await preferencesService.readPreferences();
+          if (prefs.autoApproveSafetyChecks ?? true) {
+            log.debug(`Auto-approving safety check for ${toolName}: autoApproveSafetyChecks enabled`);
+            return { behavior: 'allow', updatedInput: input };
+          }
+        } catch { /* fall through to normal permission flow */ }
+      }
+
       const isAskUserQuestion = toolName === 'AskUserQuestion';
 
       const requestId = options.toolUseID || `perm-${++permissionRequestCounter}`;

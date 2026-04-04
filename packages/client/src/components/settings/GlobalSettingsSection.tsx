@@ -255,6 +255,31 @@ export function GlobalSettingsSection() {
         </div>
       </fieldset>
 
+      {/* Auto-approve safety checks in Bypass mode */}
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          id="autoApproveSafetyChecks"
+          checked={preferences.autoApproveSafetyChecks ?? true}
+          onChange={() => {
+            updatePreference('autoApproveSafetyChecks', !(preferences.autoApproveSafetyChecks ?? true));
+            toast.success(t('toast.settingSaved'));
+          }}
+          className="mt-1 w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+        />
+        <div>
+          <label
+            htmlFor="autoApproveSafetyChecks"
+            className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer"
+          >
+            {t('global.autoApproveSafetyChecks')}
+          </label>
+          <p className="text-xs text-gray-500 dark:text-gray-300 mt-0.5">
+            {t('global.autoApproveSafetyChecksDesc')}
+          </p>
+        </div>
+      </div>
+
       {/* Permission Sync Policy */}
       <fieldset>
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">

@@ -24,6 +24,8 @@
       "acceptEdits": "Automatically performs file edits",
       "bypass": "Skips all permission checks (including Bash)"
     },
+    "autoApproveSafetyChecks": "Auto-approve safety checks in Bypass mode",
+    "autoApproveSafetyChecksDesc": "When enabled, CLI safety check prompts are automatically approved without user confirmation in Bypass mode.",
     "permissionSync": "Permission Mode Sync",
     "permissionSyncOption": {
       "streaming": "During streaming only",

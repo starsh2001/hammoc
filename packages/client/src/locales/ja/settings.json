@@ -23,6 +23,8 @@
       "bypass": "すべての権限チェックをスキップします（Bashを含む）",
       "latest": "新しいセッションは前回のセッションの権限モードを引き継ぎます"
     },
+    "autoApproveSafetyChecks": "Bypassモードで安全チェックを自動承認",
+    "autoApproveSafetyChecksDesc": "有効にすると、Bypassモードで安全チェックプロンプトをユーザー確認なしで自動承認します。",
     "permissionSync": "権限モード同期",
     "permissionSyncOption": {
       "streaming": "ストリーミング中のみ",

@@ -24,6 +24,8 @@
       "acceptEdits": "파일 수정을 자동으로 수행합니다",
       "bypass": "모든 권한 확인을 건너뜁니다 (Bash 포함)"
     },
+    "autoApproveSafetyChecks": "Bypass 모드에서 안전 검사 자동 승인",
+    "autoApproveSafetyChecksDesc": "활성화하면 Bypass 모드에서 CLI 안전 검사 프롬프트를 사용자 확인 없이 자동 승인합니다.",
     "permissionSync": "권한 모드 동기화",
     "permissionSyncOption": {
       "streaming": "스트리밍 중에만",

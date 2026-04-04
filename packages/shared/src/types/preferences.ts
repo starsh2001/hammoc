@@ -52,6 +52,9 @@ export interface UserPreferences {
   // Allowed read paths outside project root (absolute paths only)
   // Default: [~/.claude] — set broader paths (e.g. home dir) to expand access
   allowedReadPaths?: string[];
+  // Auto-approve CLI safety checks in Bypass mode (default: false)
+  // When enabled, safety check prompts from the CLI are auto-approved without user confirmation
+  autoApproveSafetyChecks?: boolean;
 }
 
 /** Controls when permission mode changes are broadcast to other browsers viewing the same session */
