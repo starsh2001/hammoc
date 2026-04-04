@@ -5,6 +5,7 @@
  */
 
 import type { HistoryMessage } from '@hammoc/shared';
+import { ROOT_BRANCH_KEY } from '@hammoc/shared';
 import { parseJSONLFile, transformToHistoryMessages } from './historyParser.js';
 import { sessionService } from './sessionService.js';
 import {
@@ -86,8 +87,24 @@ export class SessionBufferManager {
     const selections = branchSelections
       ? { ...defaults, ...branchSelections }
       : defaults;
-    const { messages: branchMessages } = getActiveRawBranch(tree.roots, selections);
+    const { messages: branchMessages, branchPoints } = getActiveRawBranch(tree.roots, selections);
     const historyMessages = transformToHistoryMessages(branchMessages, projectSlug, sessionId);
+    // Attach branchInfo to individual messages so the client can render branch navigation
+    if (Object.keys(branchPoints).length > 0) {
+      const idIndex = new Map<string, HistoryMessage>();
+      for (const m of historyMessages) {
+        idIndex.set(m.id, m);
+      }
+      for (const [msgId, info] of Object.entries(branchPoints)) {
+        const msg = idIndex.get(msgId)
+          // ROOT_BRANCH_KEY ('__root__') won't match any message ID —
+          // attach to the first message so root-level branches are navigable.
+          ?? (msgId === ROOT_BRANCH_KEY ? historyMessages[0] : undefined);
+        if (msg) {
+          msg.branchInfo = info;
+        }
+      }
+    }
     if (!branchSelections) {
       this.setMessages(sessionId, historyMessages);
     }

@@ -123,6 +123,23 @@ describe('groupRawChildrenIntoBranches', () => {
     expect(branches).toHaveLength(2);
   });
 
+  it('should detect branches through attachment chains (user → attachment → assistant vs user sibling)', () => {
+    // Simulates root edit: root user has both attachment chain (normal flow)
+    // and a direct user child (from resumeSessionAt edit)
+    const tree = buildRawMessageTree([
+      makeRawMsg('root-user', null, 'user'),
+      { uuid: 'attach1', parentUuid: 'root-user', type: 'attachment' as any, timestamp: new Date().toISOString() } as any,
+      { uuid: 'attach2', parentUuid: 'attach1', type: 'attachment' as any, timestamp: new Date().toISOString() } as any,
+      makeRawMsg('first-assistant', 'attach2', 'assistant'),
+      makeRawMsg('edit-user', 'root-user', 'user'),
+    ]);
+    const root = tree.roots[0];
+    const branches = groupRawChildrenIntoBranches(root.children);
+    // attachment chain leads to assistant (conversation type) → counts as a branch
+    // edit-user is a direct user child → counts as a branch
+    expect(branches).toHaveLength(2);
+  });
+
   it('should not create branches for non-user children only', () => {
     const tree = buildRawMessageTree([
       makeRawMsg('parent', null, 'user'),

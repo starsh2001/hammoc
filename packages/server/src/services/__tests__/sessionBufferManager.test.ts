@@ -233,6 +233,59 @@ describe('SessionBufferManager', () => {
       expect(manager.get('s1')!.messages).toEqual(newMessages);
     });
 
+    it('should attach branchInfo to messages matching branchPoints', async () => {
+      manager.create('s1');
+      const rawMessages = [{ uuid: 'u1', type: 'user' }, { uuid: 'u2', type: 'user' }];
+      const msg1 = makeMsg('u1', 'user');
+      const msg2 = makeMsg('a1');
+      const msg3 = makeMsg('u2', 'user');
+      const historyMessages = [msg1, msg2, msg3];
+
+      mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      mockBuildRawMessageTree.mockReturnValue({ roots: [], nodeMap: new Map() } as any);
+      mockGetDefaultRawBranchSelections.mockReturnValue({});
+      mockGetActiveRawBranch.mockReturnValue({
+        messages: rawMessages,
+        branchPoints: {
+          u1: { total: 3, current: 1, selectionKey: 'u1' },
+          u2: { total: 2, current: 0, selectionKey: 'parent-uuid' },
+        },
+      } as any);
+      mockTransformToHistoryMessages.mockReturnValue(historyMessages);
+
+      const result = await manager.reloadFromJSONL('s1', 'test-project');
+
+      expect(result[0].branchInfo).toEqual({ total: 3, current: 1, selectionKey: 'u1' });
+      expect(result[1].branchInfo).toBeUndefined();
+      expect(result[2].branchInfo).toEqual({ total: 2, current: 0, selectionKey: 'parent-uuid' });
+    });
+
+    it('should attach ROOT_BRANCH_KEY branchInfo to the first message', async () => {
+      manager.create('s1');
+      const rawMessages = [{ uuid: 'r1', type: 'user' }];
+      const msg1 = makeMsg('r1', 'user');
+      const msg2 = makeMsg('a1');
+      const historyMessages = [msg1, msg2];
+
+      mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      mockBuildRawMessageTree.mockReturnValue({ roots: [], nodeMap: new Map() } as any);
+      mockGetDefaultRawBranchSelections.mockReturnValue({});
+      mockGetActiveRawBranch.mockReturnValue({
+        messages: rawMessages,
+        branchPoints: {
+          __root__: { total: 2, current: 1, selectionKey: '__root__' },
+        },
+      } as any);
+      mockTransformToHistoryMessages.mockReturnValue(historyMessages);
+
+      const result = await manager.reloadFromJSONL('s1', 'test-project');
+
+      expect(result[0].branchInfo).toEqual({ total: 2, current: 1, selectionKey: '__root__' });
+      expect(result[1].branchInfo).toBeUndefined();
+    });
+
     it('should not setMessages for empty JSONL when branchSelections is provided', async () => {
       manager.create('s1');
       const originalMessages = [makeMsg('keep')];

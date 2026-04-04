@@ -88,14 +88,19 @@ export function groupRawChildrenIntoBranches(children: RawTreeNode[]): RawTreeNo
 
   // Step 2: detect true branches — only user-type groups count.
   // A group "leads to a user" if it directly contains a user-type node OR
-  // if it contains a non-conversation intermediary (e.g. progress) whose
-  // subtree contains a user child. This handles the asymmetry where
-  // resumeSessionAt creates user as a direct child of assistant, while
-  // normal flow goes assistant → progress → user.
+  // if it contains a non-conversation intermediary (e.g. attachment, progress)
+  // whose subtree contains any conversation node. This handles chains like
+  // user → attachment → attachment → assistant (normal flow through attachments)
+  // and assistant → progress → user (resumeSessionAt asymmetry).
+  function hasConversationDescendant(n: RawTreeNode, depth: number): boolean {
+    if (depth > 10) return false;
+    if (CONVERSATION_TYPES.has(n.message.type)) return true;
+    return n.children.some((c) => hasConversationDescendant(c, depth + 1));
+  }
   function groupLeadsToUser(g: RawTreeNode[]): boolean {
     return g.some((n) =>
       (n.message.type === 'user' && !isTaskNotification(n)) ||
-      (!CONVERSATION_TYPES.has(n.message.type) && n.children.some((c) => c.message.type === 'user' && !isTaskNotification(c))),
+      (!CONVERSATION_TYPES.has(n.message.type) && hasConversationDescendant(n, 0)),
     );
   }
   const userGroupCount = uuidGroups.filter(groupLeadsToUser).length;

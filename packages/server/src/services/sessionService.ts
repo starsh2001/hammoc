@@ -855,8 +855,8 @@ export class SessionService {
     // Transform only active branch messages to HistoryMessages
     let transformed = transformToHistoryMessages(activeBranchRaw, projectSlug, sessionId);
 
-    // branchInfo is attached by sessionController AFTER buffer merge,
-    // so that both JSONL and buffer messages are handled in one place.
+    // branchInfo is attached by SessionBufferManager.reloadFromJSONL()
+    // after building the active branch, so all delivery paths get it.
 
     // If session has an active stream, exclude messages from the stream period.
     // Those messages are delivered via SessionBufferManager (stream:history).
@@ -910,14 +910,14 @@ export class SessionService {
 
   /**
    * Get the UUID of the first root message in a session JSONL.
-   * Used to resolve ROOT_BRANCH_KEY for root-level edit branching.
+   * Currently unused — root-level edit branching is disabled because the SDK's
+   * resumeSessionAt only accepts assistant message UUIDs, and there is no
+   * assistant before the first user message.
    */
   async getRootMessageUuid(projectSlug: string, sessionId: string): Promise<string | null> {
     const filePath = this.getSessionFilePath(projectSlug, sessionId);
     if (!existsSync(filePath)) return null;
 
-    // Stream-read lines until the first root message is found.
-    // Avoids parsing the entire JSONL for large sessions.
     const stream = createReadStream(filePath, { encoding: 'utf-8' });
     const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 

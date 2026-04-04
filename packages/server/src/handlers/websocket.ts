@@ -2168,22 +2168,16 @@ async function handleChatSend(
     return false;
   }
 
-  // Resolve ROOT_BRANCH_KEY to the actual first root message UUID in the JSONL.
-  // Root edits send '__root__' because the client has no visibility into the
-  // non-display root message (progress/init type) that the SDK needs.
+  // Root-level edit branching is not supported — the SDK's --resume-session-at
+  // only accepts assistant message UUIDs, and there is no assistant before the
+  // first user message. The client should not send ROOT_BRANCH_KEY; reject if received.
   let resumeSessionAt = rawResumeSessionAt;
-  if (resumeSessionAt === ROOT_BRANCH_KEY && sessionId) {
-    const rootUuid = await sessionService.getRootMessageUuid(projectSlug, sessionId);
-    if (rootUuid) {
-      resumeSessionAt = rootUuid;
-      stream.resumeSessionAt = rootUuid;
-    } else {
-      emit('error', {
-        code: ERROR_CODES.VALIDATION_ERROR,
-        message: 'Cannot resolve root branch point: no root message found in session',
-      });
-      return false;
-    }
+  if (resumeSessionAt === ROOT_BRANCH_KEY) {
+    emit('error', {
+      code: ERROR_CODES.VALIDATION_ERROR,
+      message: 'Root-level edit branching is not supported',
+    });
+    return false;
   }
 
   // Story 25.11 + 27.1: Cache fork history from original session JSONL into

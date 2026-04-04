@@ -22,7 +22,6 @@ import { useChatStore } from '../stores/chatStore';
 import { useProjectStore } from '../stores/projectStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { useChainStore } from '../stores/chainStore';
-import { ROOT_BRANCH_KEY } from '@hammoc/shared';
 import type { Attachment, HistoryMessage } from '@hammoc/shared';
 import type { EditSubmitParams } from '../components/MessageBubble';
 import { projectsApi } from '../services/api/projects';
@@ -844,20 +843,17 @@ export function ChatPage() {
     const editedMsg = msgs.find(
       (m) => m.id === params.messageUuid || m.id.startsWith(params.messageUuid),
     );
+    // Root-level edit branching is not supported — SDK's resumeSessionAt only
+    // accepts assistant UUIDs, and there is no assistant before the first user message.
+    if (!params.parentId) {
+      debugLogger.error('Cannot edit root message: root-level branching is not supported');
+      return;
+    }
     const editedBranchInfo = editedMsg?.branchInfo;
-    // Root message (no parentId) always uses ROOT_BRANCH_KEY — server resolves
-    // to the actual JSONL root UUID. This ensures root edits always take the
-    // same code path regardless of whether branches already exist.
-    // Non-root messages use selectionKey (existing branch) or parentId (first edit).
-    const isRootEdit = !params.parentId;
-    const branchPointId = isRootEdit
-      ? ROOT_BRANCH_KEY
-      : (editedBranchInfo?.selectionKey ?? params.parentId);
+    const branchPointId = editedBranchInfo?.selectionKey ?? params.parentId;
 
     // Truncate old branch messages at the branch point.
-    if (isRootEdit) {
-      useMessageStore.setState({ messages: [] });
-    } else if (branchPointId) {
+    if (branchPointId) {
       const bpId = branchPointId;
       const branchIdx = msgs.findIndex((m) => m.id === bpId || m.id.startsWith(bpId));
       if (branchIdx !== -1) {
@@ -1274,11 +1270,11 @@ export function ChatPage() {
                   msg.branchInfo,
                   isBranchViewerMode ? navigateBranch : undefined,
                   isBranchNavigationDisabled || isRewinding || isSummarizing || !!editingMessageUuid,
-                  isOnOldBranch || isBranchViewerMode ? undefined : handleEditSubmit,
+                  isOnOldBranch || isBranchViewerMode || (msg.type === 'user' && !msg.parentId) ? undefined : handleEditSubmit,
                   isStreaming,
                   isOnOldBranch || isBranchViewerMode ? undefined : handleRewind,
                   isRewinding,
-                  isOnOldBranch || isBranchViewerMode ? undefined : handleSummarize,
+                  isOnOldBranch || isBranchViewerMode || (msg.type === 'user' && !msg.parentId) ? undefined : handleSummarize,
                   isSummarizing,
                   summarizingMessageUuid,
                   summaryResult,
