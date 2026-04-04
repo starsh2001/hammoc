@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, RefreshCw, FileText, XOctagon, Database, Info } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
-import { LoadingSpinner } from './LoadingSpinner';
+import { MessageListSkeleton } from './MessageListSkeleton';
 import { StreamingIndicator } from './StreamingIndicator';
 import { ToolCard } from './ToolCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
@@ -517,14 +517,9 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           {children}
         </div>
 
-        {/* Stream restoring overlay — shown briefly while buffer replay is being processed */}
+        {/* Stream restoring overlay — skeleton shown briefly while buffer replay is being processed */}
         {isRestoringStream && (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 dark:bg-[#263240] rounded-lg border border-gray-300 dark:border-[#3a4d5e] shadow-sm">
-              <LoadingSpinner size="sm" />
-              <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.restoring')}</span>
-            </div>
-          </div>
+          <MessageListSkeleton count={3} />
         )}
 
         {/* Streaming segments - rendered in order (hidden after pending permission, hidden during restore) */}
