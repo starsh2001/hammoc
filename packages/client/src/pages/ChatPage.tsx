@@ -205,10 +205,19 @@ export function ChatPage() {
 
   const {
     messages,
-    isLoading,
+    isLoading: storeLoading,
+    currentProjectSlug: storeProjectSlug,
+    currentSessionId: storeSessionId,
     error,
     clearMessages,
   } = useMessageStore();
+
+  // Treat as loading when the store hasn't caught up with the new route params yet.
+  // useEffect sets isLoading=true after render, so the first frame would flash
+  // the EmptyState (new-session icon) before the skeleton appears.
+  // Guard with !!sessionId so initial null store state doesn't mismatch undefined params.
+  const isSessionMismatch = !!sessionId && (storeSessionId !== sessionId || storeProjectSlug !== projectSlug);
+  const isLoading = storeLoading || isSessionMismatch;
 
   const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult, editingMessageUuid, isBranchViewerMode, enterBranchViewer, exitBranchViewer } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
