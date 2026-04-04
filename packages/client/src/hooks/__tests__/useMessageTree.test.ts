@@ -233,6 +233,36 @@ describe('useMessageTree', () => {
       // Only one emit (the second debounced call)
       expect(mockEmit).toHaveBeenCalledTimes(1);
     });
+
+    it('debounce callback skips emit if viewer mode exited before timer fires', () => {
+      useChatStore.setState({ isBranchViewerMode: true });
+      const { result } = renderHook(() => useMessageTree([branchMsg]));
+
+      act(() => { result.current.navigateBranch(UUID_A, 'next'); });
+
+      // Exit viewer before debounce fires (but don't cancel timer manually — test the guard)
+      useChatStore.setState({ isBranchViewerMode: false });
+
+      act(() => { vi.advanceTimersByTime(150); });
+
+      // Should NOT emit because viewer mode is no longer active
+      expect(mockEmit).not.toHaveBeenCalled();
+    });
+
+    it('debounce callback skips emit if session changed before timer fires', () => {
+      useChatStore.setState({ isBranchViewerMode: true });
+      const { result } = renderHook(() => useMessageTree([branchMsg]));
+
+      act(() => { result.current.navigateBranch(UUID_A, 'next'); });
+
+      // Switch session before debounce fires
+      useMessageStore.setState({ currentSessionId: 'different-session' });
+
+      act(() => { vi.advanceTimersByTime(150); });
+
+      // Should NOT emit because session changed
+      expect(mockEmit).not.toHaveBeenCalled();
+    });
   });
 
   describe('branch viewer store actions', () => {

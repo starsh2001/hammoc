@@ -350,4 +350,52 @@ describe('messages:switch-branch handler', () => {
     expect(error.code).toBe('STREAMING_ACTIVE');
     expect(error.message).toBe('Cannot switch branches during streaming');
   });
+
+  it('should reject invalid branchSelections (non-integer value)', async () => {
+    await connectAndJoinSession(SESSION_1);
+
+    const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+      clientSocket.on('error', (data) => resolve(data));
+    });
+
+    clientSocket.emit('messages:switch-branch', {
+      sessionId: SESSION_1,
+      branchSelections: { key: 'not-a-number' },
+    });
+
+    const error = await errorPromise;
+    expect(error.code).toBe('INVALID_DATA');
+  });
+
+  it('should reject invalid branchSelections (negative value)', async () => {
+    await connectAndJoinSession(SESSION_2);
+
+    const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+      clientSocket.on('error', (data) => resolve(data));
+    });
+
+    clientSocket.emit('messages:switch-branch', {
+      sessionId: SESSION_2,
+      branchSelections: { key: -1 },
+    });
+
+    const error = await errorPromise;
+    expect(error.code).toBe('INVALID_DATA');
+  });
+
+  it('should reject invalid branchSelections (array instead of object)', async () => {
+    await connectAndJoinSession(SESSION_3);
+
+    const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+      clientSocket.on('error', (data) => resolve(data));
+    });
+
+    clientSocket.emit('messages:switch-branch', {
+      sessionId: SESSION_3,
+      branchSelections: [0, 1, 2],
+    });
+
+    const error = await errorPromise;
+    expect(error.code).toBe('INVALID_DATA');
+  });
 });

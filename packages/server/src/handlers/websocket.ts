@@ -1683,6 +1683,20 @@ export async function initializeWebSocket(
 
         if (!sessionId || typeof sessionId !== 'string') return;
 
+        // Validate branchSelections shape: must be a plain object with non-negative integer values
+        if (branchSelections != null) {
+          if (typeof branchSelections !== 'object' || Array.isArray(branchSelections)) {
+            socket.emit('error', { code: 'INVALID_DATA', message: 'Invalid branchSelections format' });
+            return;
+          }
+          for (const val of Object.values(branchSelections as Record<string, unknown>)) {
+            if (typeof val !== 'number' || !Number.isInteger(val) || val < 0) {
+              socket.emit('error', { code: 'INVALID_DATA', message: 'Invalid branch selection value' });
+              return;
+            }
+          }
+        }
+
         // Validate socket is in the session room
         if (!socket.rooms.has(`session:${sessionId}`)) {
           socket.emit('error', { code: 'NOT_IN_SESSION', message: 'Not joined to session' });

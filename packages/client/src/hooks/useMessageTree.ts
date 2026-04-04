@@ -62,14 +62,21 @@ export function useMessageTree(messages: HistoryMessage[]): UseMessageTreeReturn
       const { updateViewerSelection } = useChatStore.getState();
       updateViewerSelection(msg.branchInfo.selectionKey, newIdx);
 
+      // Capture session context at schedule time to prevent cross-session contamination
+      const scheduledSessionId = useMessageStore.getState().currentSessionId;
+
       scheduleBranchSwitchEmit(() => {
+        const chatState = useChatStore.getState();
+        // Guard: viewer mode still active and session hasn't changed since scheduling
+        if (!chatState.isBranchViewerMode) return;
+        const currentSessionId = useMessageStore.getState().currentSessionId;
+        if (currentSessionId !== scheduledSessionId) return;
+
         const socket = getSocket();
-        const sessionId = useMessageStore.getState().currentSessionId;
-        const { viewerBranchSelections } = useChatStore.getState();
-        if (socket && sessionId) {
+        if (socket && currentSessionId) {
           socket.emit('messages:switch-branch', {
-            sessionId,
-            branchSelections: viewerBranchSelections,
+            sessionId: currentSessionId,
+            branchSelections: chatState.viewerBranchSelections,
           });
         }
       }, 150);
