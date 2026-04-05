@@ -96,6 +96,20 @@ vi.mock('../preferencesService.js', () => ({
   preferencesService: {},
 }));
 
+// Mock snippetResolver for BS-2 snippet integration tests
+const mockResolveSnippet = vi.fn();
+const mockIsSnippetRef = vi.fn().mockReturnValue(false);
+vi.mock('../../utils/snippetResolver.js', () => ({
+  isSnippetRef: (...args: unknown[]) => mockIsSnippetRef(...args),
+  resolveSnippet: (...args: unknown[]) => mockResolveSnippet(...args),
+  SnippetError: class SnippetError extends Error {
+    constructor(public code: string, message: string) {
+      super(message);
+      this.name = 'SnippetError';
+    }
+  },
+}));
+
 // Mock websocket exports used by QueueService (ActiveStream pattern)
 const mockStreamPendingPermissions = new Map<string, any>();
 vi.mock('../../handlers/websocket.js', () => ({
@@ -700,6 +714,68 @@ describe('QueueService', () => {
       expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(1);
       expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('After break');
       expect(queueService.getState().isRunning).toBe(false); // completed
+    });
+  });
+
+  describe('BS-2: Snippet expansion in executeItem', () => {
+    beforeEach(() => {
+      mockIsSnippetRef.mockReturnValue(false);
+      mockResolveSnippet.mockReset();
+    });
+
+    it('should expand snippet into multiple items and execute all', async () => {
+      setupMockChat();
+      mockIsSnippetRef.mockImplementation((text: string) => text?.startsWith('%') ?? false);
+      mockResolveSnippet.mockResolvedValue(['expanded one', 'expanded two']);
+
+      const items = [createPromptItem('%my-snippet arg1')];
+      await queueService.start(items, 'test-project');
+
+      expect(mockResolveSnippet).toHaveBeenCalledWith('%my-snippet arg1', '/mock/project/path');
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(2);
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('expanded one');
+      expect(mockSendMessageWithCallbacks.mock.calls[1][0]).toBe('expanded two');
+      expect(queueService.getState().isCompleted).toBe(true);
+    });
+
+    it('should not re-resolve snippet-expanded items (recursion prevention)', async () => {
+      setupMockChat();
+      // First call is a snippet ref, expanded items also start with %
+      mockIsSnippetRef.mockImplementation((text: string) => text?.startsWith('%') ?? false);
+      mockResolveSnippet.mockResolvedValue(['%still-percent one', '%still-percent two']);
+
+      const items = [createPromptItem('%snippet')];
+      await queueService.start(items, 'test-project');
+
+      // resolveSnippet called only once (for original item), not for expanded items
+      expect(mockResolveSnippet).toHaveBeenCalledTimes(1);
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(2);
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('%still-percent one');
+      expect(mockSendMessageWithCallbacks.mock.calls[1][0]).toBe('%still-percent two');
+    });
+
+    it('should pause with error on SnippetError', async () => {
+      const { SnippetError } = await import('../../utils/snippetResolver.js');
+      mockIsSnippetRef.mockImplementation((text: string) => text?.startsWith('%') ?? false);
+      mockResolveSnippet.mockRejectedValue(new SnippetError('NOT_FOUND', 'Snippet file not found: missing'));
+
+      const items = [createPromptItem('%missing')];
+      await queueService.start(items, 'test-project');
+
+      expect(queueService.getState().isPaused).toBe(true);
+      expect(mockSendMessageWithCallbacks).not.toHaveBeenCalled();
+    });
+
+    it('should not resolve non-snippet prompts', async () => {
+      setupMockChat();
+      mockIsSnippetRef.mockReturnValue(false);
+
+      const items = [createPromptItem('regular prompt')];
+      await queueService.start(items, 'test-project');
+
+      expect(mockResolveSnippet).not.toHaveBeenCalled();
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(1);
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('regular prompt');
     });
   });
 });

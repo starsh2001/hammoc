@@ -249,7 +249,10 @@
       "chainContentTooLong": "チェーンプロンプトの内容が最大長を超えています。",
       "chainMaxExceeded": "チェーンアイテムは最大10個までです。",
       "rewindMissingParams": "sessionId and messageUuid are required for rewind",
-      "rewindFailed": "Failed to rewind files: {{error}}"
+      "rewindFailed": "Failed to rewind files: {{error}}",
+      "snippetNotFound": "スニペットファイルが見つかりません: {{name}}",
+      "snippetParseError": "スニペット解析エラー: {{message}}",
+      "snippetSizeExceeded": "スニペットファイルが100KB制限を超えています: {{name}}"
     }
   },
   "pathGuard": {

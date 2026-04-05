@@ -21,6 +21,7 @@ import { ChatService } from './chatService.js';
 import { parseSDKError } from '../utils/errors.js';
 import { createLogger } from '../utils/logger.js';
 import i18next from '../i18n.js';
+import { isSnippetRef, resolveSnippet, SnippetError } from '../utils/snippetResolver.js';
 
 const log = createLogger('queueService');
 import { projectService as _ps } from './projectService.js';
@@ -72,6 +73,7 @@ export class QueueService {
   private _isPauseRequested: boolean = false;
   /** True when waiting for user input (permission/question) — distinct from isPaused */
   private _isWaitingForInput: boolean = false;
+  private snippetExpandedItems = new WeakSet<QueueItem>();
   private lang: string = 'en';
   constructor(
     private projectService: ProjectService,
@@ -103,6 +105,7 @@ export class QueueService {
     this.abortController = new AbortController();
     this.items = items;
     this.currentIndex = 0;
+    this.snippetExpandedItems = new WeakSet();
     this._isRunning = true;
     this.isPaused = false;
     this.isExecuting = false;
@@ -206,6 +209,7 @@ export class QueueService {
     this.currentModel = undefined;
     // Release memory held by completed run data
     this.items = [];
+    this.snippetExpandedItems = new WeakSet();
     this.completedSessionIds = new Map();
     this.chatService = null;
   }
@@ -491,6 +495,38 @@ export class QueueService {
       this.pauseReason = item.prompt || 'Breakpoint';
       this.emitProgress('paused');
       return { shouldAdvance: true };
+    }
+
+    // Step 2.5: Snippet resolution (skip already-expanded items to prevent recursion)
+    if (item.prompt && isSnippetRef(item.prompt) && !this.snippetExpandedItems.has(item)) {
+      try {
+        const prompts = await resolveSnippet(item.prompt, this.workingDirectory);
+        item.prompt = prompts[0];
+        this.snippetExpandedItems.add(item);
+        if (prompts.length > 1) {
+          const newItems: QueueItem[] = prompts.slice(1).map((p) => {
+            const qi: QueueItem = { prompt: p, isNewSession: false };
+            this.snippetExpandedItems.add(qi);
+            return qi;
+          });
+          this.items.splice(this.currentIndex + 1, 0, ...newItems);
+          this.emitItemsUpdated();
+        }
+      } catch (error) {
+        if (error instanceof SnippetError) {
+          const t = i18next.getFixedT(this.lang);
+          const errKey = error.code === 'NOT_FOUND' ? 'snippetNotFound'
+            : error.code === 'SIZE_EXCEEDED' ? 'snippetSizeExceeded'
+            : 'snippetParseError';
+          this.pauseWithError(t(`ws.error.${errKey}`, {
+            name: error.snippetName || error.message,
+            message: error.message,
+            defaultValue: error.message,
+          }));
+          return { shouldAdvance: false };
+        }
+        throw error;
+      }
     }
 
     // Step 3: Prompt execution (only if prompt is non-empty)

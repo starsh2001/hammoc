@@ -47,6 +47,7 @@ import { parseJSONLFile, transformToHistoryMessages } from '../services/historyP
 import { buildRawMessageTree, getActiveRawBranch, getDefaultRawBranchSelections, findBranchSelectionsForUuid } from '../utils/messageTree.js';
 import { sessionBufferManager } from '../services/sessionBufferManager.js';
 import { imageStorageService } from '../services/imageStorageService.js';
+import { isSnippetRef, resolveSnippet, SnippetError } from '../utils/snippetResolver.js';
 import type { HistoryMessage, ImageRef } from '@hammoc/shared';
 const log = createLogger('websocket');
 
@@ -1370,7 +1371,7 @@ export async function initializeWebSocket(
     });
 
     // Story 24.1: Prompt chain event handlers
-    socket.on('chain:add', (data) => {
+    socket.on('chain:add', async (data) => {
       if (!data || typeof data !== 'object') return;
       const { sessionId, content, workingDirectory, permissionMode, model, effort } = data;
       const lang = socket.data.language || 'en';
@@ -1389,6 +1390,56 @@ export async function initializeWebSocket(
       if (!socket.rooms.has(`session:${sessionId}`)) return;
 
       const items = chainState.get(sessionId) || [];
+
+      // BS-2: Snippet resolution
+      if (isSnippetRef(content)) {
+        let resolvedPrompts: string[];
+        try {
+          resolvedPrompts = await resolveSnippet(content, workingDirectory);
+        } catch (error) {
+          if (error instanceof SnippetError) {
+            const errKey = error.code === 'NOT_FOUND' ? 'snippetNotFound'
+              : error.code === 'SIZE_EXCEEDED' ? 'snippetSizeExceeded'
+              : 'snippetParseError';
+            socket.emit('error', {
+              code: ERROR_CODES.CHAT_ERROR,
+              message: t(`ws.error.${errKey}`, {
+                name: error.snippetName || error.message,
+                message: error.message,
+                defaultValue: error.message,
+              }),
+            });
+            return;
+          }
+          throw error;
+        }
+        if (items.length + resolvedPrompts.length > 10) {
+          socket.emit('error', {
+            code: ERROR_CODES.CHAIN_MAX_EXCEEDED,
+            message: t('ws.error.chainMaxExceeded'),
+          });
+          return;
+        }
+        for (const prompt of resolvedPrompts) {
+          items.push({
+            id: generateChainItemId(),
+            content: prompt,
+            status: 'pending',
+            createdAt: Date.now(),
+            workingDirectory,
+            permissionMode,
+            model,
+            effort,
+          });
+        }
+        chainState.set(sessionId, items);
+        broadcastChainUpdate(sessionId);
+        if (!activeStreams.has(sessionId)) {
+          scheduleChainDrain(sessionId, lang);
+        }
+        return;
+      }
+
       if (items.length >= 10) {
         socket.emit('error', {
           code: ERROR_CODES.CHAIN_MAX_EXCEEDED,

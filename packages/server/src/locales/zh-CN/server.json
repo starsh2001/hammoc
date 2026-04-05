@@ -249,7 +249,10 @@
       "chainContentTooLong": "链提示内容超过最大长度。",
       "chainMaxExceeded": "最多允许10个链项目。",
       "rewindMissingParams": "sessionId and messageUuid are required for rewind",
-      "rewindFailed": "Failed to rewind files: {{error}}"
+      "rewindFailed": "Failed to rewind files: {{error}}",
+      "snippetNotFound": "代码片段文件未找到: {{name}}",
+      "snippetParseError": "代码片段解析错误: {{message}}",
+      "snippetSizeExceeded": "代码片段文件超过100KB限制: {{name}}"
     }
   },
   "pathGuard": {

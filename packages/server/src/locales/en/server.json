@@ -256,7 +256,10 @@
       "chainContentTooLong": "Chain prompt content exceeds maximum length.",
       "chainMaxExceeded": "Maximum 10 chain items allowed.",
       "rewindMissingParams": "sessionId and messageUuid are required for rewind",
-      "rewindFailed": "Failed to rewind files: {{error}}"
+      "rewindFailed": "Failed to rewind files: {{error}}",
+      "snippetNotFound": "Snippet file not found: {{name}}",
+      "snippetParseError": "Snippet parse error: {{message}}",
+      "snippetSizeExceeded": "Snippet file exceeds 100KB limit: {{name}}"
     }
   },
   "pathGuard": {

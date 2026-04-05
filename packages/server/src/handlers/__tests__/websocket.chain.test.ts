@@ -101,6 +101,20 @@ vi.mock('../../controllers/queueController.js', () => ({
   getQueueInstances: vi.fn().mockReturnValue(new Map()),
 }));
 
+// Mock snippetResolver for BS-2 snippet integration tests
+const mockResolveSnippet = vi.fn();
+const mockIsSnippetRef = vi.fn().mockReturnValue(false);
+vi.mock('../../utils/snippetResolver.js', () => ({
+  isSnippetRef: (...args: unknown[]) => mockIsSnippetRef(...args),
+  resolveSnippet: (...args: unknown[]) => mockResolveSnippet(...args),
+  SnippetError: class SnippetError extends Error {
+    constructor(public code: string, message: string) {
+      super(message);
+      this.name = 'SnippetError';
+    }
+  },
+}));
+
 vi.mock('../../utils/networkUtils.js', () => ({
   isLocalIP: vi.fn().mockReturnValue(true),
   extractClientIP: vi.fn().mockReturnValue('127.0.0.1'),
@@ -581,6 +595,202 @@ describe('WebSocket Chain Handler (Story 24.1)', () => {
       };
       expect(item.status).toBe('failed');
       expect(item.retryCount).toBe(3);
+    });
+  });
+
+  describe('BS-2: Snippet expansion in chain:add', () => {
+    it('should expand snippet into multiple chain items', async () => {
+      mockIsSnippetRef.mockImplementation((text: string) => text.trim().startsWith('%'));
+      mockResolveSnippet.mockResolvedValue(['prompt one', 'prompt two']);
+
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      const updatePromise = new Promise<{ items: PromptChainItem[] }>((resolve) => {
+        clientSocket.on('chain:update', (data) => {
+          if (data.items.length === 2) resolve(data);
+        });
+      });
+
+      clientSocket.emit('chain:add', {
+        sessionId: SESSION_ID,
+        content: '%my-snippet arg1',
+        workingDirectory: '/test/path',
+      });
+
+      const update = await updatePromise;
+      expect(update.items).toHaveLength(2);
+      expect(update.items[0].content).toBe('prompt one');
+      expect(update.items[1].content).toBe('prompt two');
+
+      mockIsSnippetRef.mockReturnValue(false);
+      mockResolveSnippet.mockReset();
+    });
+
+    it('should reject snippet when total items exceed 10 (9 existing + 2-item snippet)', async () => {
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      // Add 9 regular items
+      for (let i = 0; i < 9; i++) {
+        clientSocket.emit('chain:add', {
+          sessionId: SESSION_ID,
+          content: `Item ${i}`,
+          workingDirectory: '/test/path',
+        });
+      }
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Now try a snippet that expands to 2 items (9+2=11>10)
+      mockIsSnippetRef.mockImplementation((text: string) => text.trim().startsWith('%'));
+      mockResolveSnippet.mockResolvedValue(['prompt one', 'prompt two']);
+
+      const errorPromise = new Promise<{ code: string }>((resolve) => {
+        clientSocket.on('error', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chain:add', {
+        sessionId: SESSION_ID,
+        content: '%snippet arg1',
+        workingDirectory: '/test/path',
+      });
+
+      const error = await errorPromise;
+      expect(error.code).toBe(ERROR_CODES.CHAIN_MAX_EXCEEDED);
+
+      mockIsSnippetRef.mockReturnValue(false);
+      mockResolveSnippet.mockReset();
+    });
+
+    it('should allow snippet when total items equal 10 (8 existing + 2-item snippet)', async () => {
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      // Add 8 regular items
+      for (let i = 0; i < 8; i++) {
+        clientSocket.emit('chain:add', {
+          sessionId: SESSION_ID,
+          content: `Item ${i}`,
+          workingDirectory: '/test/path',
+        });
+      }
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Snippet that expands to 2 items (8+2=10, allowed)
+      mockIsSnippetRef.mockImplementation((text: string) => text.trim().startsWith('%'));
+      mockResolveSnippet.mockResolvedValue(['prompt one', 'prompt two']);
+
+      const updatePromise = new Promise<{ items: PromptChainItem[] }>((resolve) => {
+        clientSocket.on('chain:update', (data) => {
+          if (data.items.length === 10) resolve(data);
+        });
+      });
+
+      clientSocket.emit('chain:add', {
+        sessionId: SESSION_ID,
+        content: '%snippet arg1',
+        workingDirectory: '/test/path',
+      });
+
+      const update = await updatePromise;
+      expect(update.items).toHaveLength(10);
+
+      mockIsSnippetRef.mockReturnValue(false);
+      mockResolveSnippet.mockReset();
+    });
+
+    it('should allow snippet when total items equal 10 (9 existing + 1-item snippet)', async () => {
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      // Add 9 regular items
+      for (let i = 0; i < 9; i++) {
+        clientSocket.emit('chain:add', {
+          sessionId: SESSION_ID,
+          content: `Item ${i}`,
+          workingDirectory: '/test/path',
+        });
+      }
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Snippet that expands to 1 item (9+1=10, allowed)
+      mockIsSnippetRef.mockImplementation((text: string) => text.trim().startsWith('%'));
+      mockResolveSnippet.mockResolvedValue(['single prompt']);
+
+      const updatePromise = new Promise<{ items: PromptChainItem[] }>((resolve) => {
+        clientSocket.on('chain:update', (data) => {
+          if (data.items.length === 10) resolve(data);
+        });
+      });
+
+      clientSocket.emit('chain:add', {
+        sessionId: SESSION_ID,
+        content: '%snippet arg1',
+        workingDirectory: '/test/path',
+      });
+
+      const update = await updatePromise;
+      expect(update.items).toHaveLength(10);
+
+      mockIsSnippetRef.mockReturnValue(false);
+      mockResolveSnippet.mockReset();
+    });
+
+    it('should emit error on SnippetError (not found)', async () => {
+      const { SnippetError } = await import('../../utils/snippetResolver.js');
+      mockIsSnippetRef.mockImplementation((text: string) => text.trim().startsWith('%'));
+      mockResolveSnippet.mockRejectedValue(new SnippetError('NOT_FOUND', 'Snippet file not found: missing'));
+
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chain:add', {
+        sessionId: SESSION_ID,
+        content: '%missing',
+        workingDirectory: '/test/path',
+      });
+
+      const error = await errorPromise;
+      expect(error.code).toBe(ERROR_CODES.CHAT_ERROR);
+      expect(error.message).toContain('Snippet file not found');
+
+      mockIsSnippetRef.mockReturnValue(false);
+      mockResolveSnippet.mockReset();
+    });
+
+    it('should not affect non-snippet content', async () => {
+      // Ensure isSnippetRef returns false for regular content
+      mockIsSnippetRef.mockReturnValue(false);
+
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      const updatePromise = new Promise<{ items: PromptChainItem[] }>((resolve) => {
+        clientSocket.on('chain:update', (data) => {
+          if (data.items.length === 1) resolve(data);
+        });
+      });
+
+      clientSocket.emit('chain:add', {
+        sessionId: SESSION_ID,
+        content: 'Regular prompt',
+        workingDirectory: '/test/path',
+      });
+
+      const update = await updatePromise;
+      expect(update.items).toHaveLength(1);
+      expect(update.items[0].content).toBe('Regular prompt');
+      expect(mockResolveSnippet).not.toHaveBeenCalled();
     });
   });
 });
