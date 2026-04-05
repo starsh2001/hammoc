@@ -43,6 +43,7 @@ import { ChatInput } from '../components/ChatInput';
 import { QueueLockedBanner } from '../components/queue/QueueLockedBanner';
 import { useQueueSession } from '../hooks/useQueueSession';
 import { MessageBubble } from '../components/MessageBubble';
+import { BranchPagination } from '../components/BranchPagination';
 import { TaskNotificationCard } from '../components/TaskNotificationCard';
 import { ToolCallCard } from '../components/ToolCallCard';
 import { InteractiveResponseCard } from '../components/InteractiveResponseCard';
@@ -110,21 +111,41 @@ function renderHistoryMessage(
   }
 
   // Render compact_boundary system message as divider + badge
+  // When in branch viewer mode, show pagination to navigate between epochs
   if (message.type === 'system' && message.subtype === 'compact_boundary') {
     return (
-      <div key={message.id} className="flex items-center gap-3 my-4 px-4">
-        <div className="flex-1 border-t border-zinc-300 dark:border-zinc-600" />
-        <span className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-          {t?.('compaction.boundary') ?? 'Conversation compacted'}
-        </span>
-        <div className="flex-1 border-t border-zinc-300 dark:border-zinc-600" />
+      <div key={message.id}>
+        <div className="flex items-center gap-3 my-4 px-4">
+          <div className="flex-1 border-t border-zinc-300 dark:border-zinc-600" />
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+            {t?.('compaction.boundary') ?? 'Conversation compacted'}
+          </span>
+          <div className="flex-1 border-t border-zinc-300 dark:border-zinc-600" />
+        </div>
+        {branchInfo && onNavigateBranch && (
+          <BranchPagination
+            messageId={message.id}
+            total={branchInfo.total}
+            current={branchInfo.current}
+            onNavigate={onNavigateBranch}
+            disabled={isBranchNavigationDisabled}
+          />
+        )}
       </div>
     );
   }
 
-  // Render context compaction as a simple assistant "Compacted" bubble
-  if (message.type === 'user' && typeof message.content === 'string' && message.content.startsWith(COMPACT_MESSAGE_PREFIX)) {
-    return <MessageBubble key={message.id} message={{ ...message, type: 'assistant', content: 'Compacted' }} />;
+  // Skip compact-related noise in the compact epoch.
+  // The compact_boundary separator already tells the user that compaction occurred.
+  // - Summary ("This session is being continued..."): redundant, caused ordering confusion
+  // - "/compact" command: belongs to the previous epoch conceptually (the user sent it
+  //   before compact), but the SDK places it inside the compact epoch tree.
+  if (message.type === 'user' && typeof message.content === 'string') {
+    if (message.content.startsWith(COMPACT_MESSAGE_PREFIX)) return null;
+    if (message.content === '/compact' &&
+        messages.some((m, j) => j < index && m.type === 'system' && (m as HistoryMessage).subtype === 'compact_boundary')) {
+      return null;
+    }
   }
 
   if (message.type === 'tool_use' && message.toolName === 'AskUserQuestion') {

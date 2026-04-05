@@ -207,7 +207,7 @@ export function getDefaultRawBranchSelections(roots: RawTreeNode[]): Record<stri
   let newestLeaf: RawTreeNode | null = null;
   let newestTime = '';
 
-  function findLeaves(node: RawTreeNode) {
+  function findLeaves(node: RawTreeNode): boolean {
     const branches = groupRawChildrenIntoBranches(node.children);
     if (branches.length === 0) {
       // Only consider conversation-relevant types (user, assistant, system) as
@@ -215,19 +215,32 @@ export function getDefaultRawBranchSelections(roots: RawTreeNode[]): Record<stri
       // progress, last-prompt) are often isolated roots with no children — if
       // their timestamp is newer than the last conversation message they would
       // be incorrectly selected, causing getActiveRawBranch to pick an empty root.
-      if (!CONVERSATION_TYPES.has(node.message.type)) return;
+      if (!CONVERSATION_TYPES.has(node.message.type)) return false;
       const ts = node.message.timestamp || '';
       if (ts > newestTime || !newestLeaf) {
         newestTime = ts;
         newestLeaf = node;
       }
-      return;
+      return true;
     }
+    let foundConvLeaf = false;
     for (const branch of branches) {
       for (const child of branch) {
-        findLeaves(child);
+        if (findLeaves(child)) foundConvLeaf = true;
       }
     }
+    // If no conversation-type leaf was found in the subtree but this node
+    // itself is a conversation type, treat it as an effective leaf.
+    // This handles compact epochs where the deepest conversation node
+    // (e.g. user) only has non-conversation children (e.g. attachment).
+    if (!foundConvLeaf && CONVERSATION_TYPES.has(node.message.type)) {
+      const ts = node.message.timestamp || '';
+      if (ts > newestTime || !newestLeaf) {
+        newestTime = ts;
+        newestLeaf = node;
+      }
+    }
+    return foundConvLeaf || CONVERSATION_TYPES.has(node.message.type);
   }
 
   for (const root of roots) {

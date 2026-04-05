@@ -191,6 +191,29 @@ describe('getDefaultRawBranchSelections', () => {
     // Two roots, newest leaf is in r2 → select root index 1
     expect(selections[ROOT_BRANCH_KEY]).toBe(1);
   });
+
+  it('should select compact epoch when its deepest conversation node only has non-conversation children', () => {
+    // Reproduces the real compact structure: compact epoch ends with
+    // user → attachment (non-conversation leaf). Without the fix,
+    // findLeaves finds no conversation leaf in the compact epoch and
+    // falls back to the pre-compact root (page 1).
+    const msgs: RawJSONLMessage[] = [
+      makeRawMsg('r1', null, 'user', '2026-04-04T14:11:33Z'),
+      makeRawMsg('a1', 'r1', 'assistant', '2026-04-04T14:11:38Z'),
+      makeRawMsg('cb', null, 'system', '2026-04-05T03:26:11Z', { subtype: 'compact_boundary' }),
+      makeRawMsg('summary', 'cb', 'user', '2026-04-05T03:26:11Z'),
+      makeRawMsg('cmd-caveat', 'summary', 'user', '2026-04-05T03:24:47Z'),
+      makeRawMsg('cmd-compact', 'cmd-caveat', 'user', '2026-04-05T03:24:47Z'),
+      makeRawMsg('cmd-stdout', 'cmd-compact', 'user', '2026-04-05T03:26:11Z'),
+      // attachment is the tree leaf but NOT a conversation type
+      { uuid: 'attach-1', parentUuid: 'cmd-stdout', type: 'attachment' as 'user',
+        timestamp: '2026-04-05T03:26:10Z', message: { role: 'user', content: '' } } as RawJSONLMessage,
+    ];
+    const tree = buildRawMessageTree(msgs);
+    const selections = getDefaultRawBranchSelections(tree.roots);
+    // Should select compact epoch (root index 1), NOT pre-compact (root index 0)
+    expect(selections[ROOT_BRANCH_KEY]).toBe(1);
+  });
 });
 
 // --- getActiveRawBranch ---

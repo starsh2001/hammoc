@@ -329,6 +329,10 @@ export function cleanCommandTags(content: string): string {
   if (content.includes('<local-command-stdout>')) {
     return '';
   }
+  // Skip local command caveats (SDK-injected wrapper for command context)
+  if (content.includes('<local-command-caveat>')) {
+    return '';
+  }
   let cleaned = content;
   // Remove <ide_opened_file> blocks entirely (content included)
   cleaned = cleaned.replace(/<ide_opened_file>[\s\S]*?<\/ide_opened_file>/g, '');
