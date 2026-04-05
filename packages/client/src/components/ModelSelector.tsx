@@ -65,23 +65,9 @@ export const MODEL_GROUPS: ModelGroup[] = [
     models: [
       { value: 'claude-opus-4-6', label: 'Opus 4.6', description: 'Most capable · 1M ctx' },
       { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5', description: '2025-11-01' },
-      { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1', description: '2025-08-05' },
-      { value: 'claude-opus-4-20250514', label: 'Opus 4', description: '2025-05-14' },
       { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5', description: '2025-09-29' },
       { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4', description: '2025-05-14' },
       { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', description: '2025-10-01' },
-    ],
-  },
-  {
-    label: 'Claude 3.x',
-    labelKey: 'model.claude3x',
-    models: [
-      { value: 'claude-3-7-sonnet-20250219', label: 'Sonnet 3.7', description: '2025-02-19' },
-      { value: 'claude-3-5-sonnet-20241022', label: 'Sonnet 3.5', description: '2024-10-22' },
-      { value: 'claude-3-5-haiku-20241022', label: 'Haiku 3.5', description: '2024-10-22' },
-      { value: 'claude-3-opus-20240229', label: 'Opus 3', description: '2024-02-29' },
-      { value: 'claude-3-sonnet-20240229', label: 'Sonnet 3', description: '2024-02-29' },
-      { value: 'claude-3-haiku-20240307', label: 'Haiku 3', description: '2024-03-07' },
     ],
   },
 ];
