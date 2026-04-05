@@ -49,6 +49,9 @@ vi.mock('../../services/sessionService.js', () => ({
     saveSessionId = vi.fn().mockResolvedValue(undefined);
     getSessionId = vi.fn().mockResolvedValue(null);
     listSessions = vi.fn().mockResolvedValue([]);
+    encodeProjectPath = vi.fn().mockReturnValue('mock-project-slug');
+    getSessionFilePath = vi.fn().mockReturnValue('/mock/session.jsonl');
+    updateSessionIndex = vi.fn().mockResolvedValue(undefined);
   },
 }));
 
@@ -791,6 +794,128 @@ describe('WebSocket Chain Handler (Story 24.1)', () => {
       expect(update.items).toHaveLength(1);
       expect(update.items[0].content).toBe('Regular prompt');
       expect(mockResolveSnippet).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('BS-3: Snippet resolution in chat:send / handleChatSend', () => {
+    it('should resolve single-prompt snippet and pass resolved content to ChatService', async () => {
+      mockIsSnippetRef.mockImplementation((text: string) => text.trim().startsWith('%'));
+      mockResolveSnippet.mockResolvedValue(['Resolved prompt content']);
+
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      clientSocket.emit('chat:send', {
+        content: '%my-snippet arg1',
+        workingDirectory: '/test/path',
+        sessionId: SESSION_ID,
+      });
+
+      await new Promise((r) => setTimeout(r, 200));
+      expect(mockResolveSnippet).toHaveBeenCalledWith('%my-snippet arg1', '/test/path');
+      // ChatService receives the resolved content (not the raw snippet ref)
+      expect(mockState.sendImpl).toHaveBeenCalled();
+
+      mockIsSnippetRef.mockReturnValue(false);
+      mockResolveSnippet.mockReset();
+    });
+
+    it('should resolve multi-prompt snippet: first as message, rest as chain items', async () => {
+      mockIsSnippetRef.mockImplementation((text: string) => text.trim().startsWith('%'));
+      mockResolveSnippet.mockResolvedValue(['First prompt', 'Second prompt', 'Third prompt']);
+
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      const chainStatePromise = new Promise<{ items: PromptChainItem[] }>((resolve) => {
+        clientSocket.on('chain:state', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: '%multi-snippet',
+        workingDirectory: '/test/path',
+        sessionId: SESSION_ID,
+      });
+
+      const chainState = await chainStatePromise;
+      expect(chainState.items).toHaveLength(2);
+      expect(chainState.items[0].content).toBe('Second prompt');
+      expect(chainState.items[1].content).toBe('Third prompt');
+
+      mockIsSnippetRef.mockReturnValue(false);
+      mockResolveSnippet.mockReset();
+    });
+
+    it('should emit error on SnippetError and not send message', async () => {
+      const { SnippetError } = await import('../../utils/snippetResolver.js');
+      mockIsSnippetRef.mockImplementation((text: string) => text.trim().startsWith('%'));
+      mockResolveSnippet.mockRejectedValue(new SnippetError('NOT_FOUND', 'Snippet file not found: missing'));
+
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      const errorPromise = new Promise<{ code: string; message: string }>((resolve) => {
+        clientSocket.on('error', (data) => resolve(data));
+      });
+
+      clientSocket.emit('chat:send', {
+        content: '%missing',
+        workingDirectory: '/test/path',
+        sessionId: SESSION_ID,
+      });
+
+      const error = await errorPromise;
+      expect(error.code).toBe(ERROR_CODES.CHAT_ERROR);
+      // ChatService should NOT have been called
+      await new Promise((r) => setTimeout(r, 100));
+      expect(mockState.sendImpl).not.toHaveBeenCalled();
+
+      mockIsSnippetRef.mockReturnValue(false);
+      mockResolveSnippet.mockReset();
+    });
+
+    it('should not resolve snippets for non-% messages (regression)', async () => {
+      mockIsSnippetRef.mockReturnValue(false);
+
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      clientSocket.emit('chat:send', {
+        content: 'Normal message without snippet',
+        workingDirectory: '/test/path',
+        sessionId: SESSION_ID,
+      });
+
+      await new Promise((r) => setTimeout(r, 200));
+      expect(mockResolveSnippet).not.toHaveBeenCalled();
+      // ChatService should still be called with original content
+      expect(mockState.sendImpl).toHaveBeenCalled();
+    });
+
+    it('should resolve snippet with context block', async () => {
+      mockIsSnippetRef.mockImplementation((text: string) => text.trim().startsWith('%'));
+      mockResolveSnippet.mockResolvedValue(['Resolved with context']);
+
+      clientSocket = await connectClient();
+      clientSocket.emit('session:join', SESSION_ID);
+      await new Promise((r) => setTimeout(r, 50));
+
+      const contentWithContext = '%my-snippet arg1\n---context\nSome context content';
+      clientSocket.emit('chat:send', {
+        content: contentWithContext,
+        workingDirectory: '/test/path',
+        sessionId: SESSION_ID,
+      });
+
+      await new Promise((r) => setTimeout(r, 200));
+      expect(mockResolveSnippet).toHaveBeenCalledWith(contentWithContext, '/test/path');
+
+      mockIsSnippetRef.mockReturnValue(false);
+      mockResolveSnippet.mockReset();
     });
   });
 });

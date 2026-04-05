@@ -84,9 +84,9 @@ export function ProjectBoardPage() {
       const sessionId = generateUUID();
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
       const desc = item.description
-        ? (item.description.length > 500 ? item.description.slice(0, 500) + t('truncated') : item.description)
-        : t('noDescription');
-      const prompt = `${t('workflow.quickFixIntro')}\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n${t('workflow.issueFileLabel')} ${issueFile}\n\n${t('workflow.quickFixOutro')}`;
+        ? (item.description.length > 500 ? item.description.slice(0, 500) + '...' : item.description)
+        : '';
+      const prompt = `%quick-fix-issue ${issueFile} ${item.severity || 'unknown'} ${item.issueType || 'unknown'}\n---context\n# ${item.title}\n\n${desc}`;
       const params = new URLSearchParams({ agent: '/BMad:agents:dev', task: prompt });
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
@@ -103,9 +103,8 @@ export function ProjectBoardPage() {
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
       const taskName = targetType === 'story' ? '*create-brownfield-story' : '*create-brownfield-epic';
 
-      const taskWithContext = `${taskName}\n\n## ${t('promote.originalIssueHeader', { id: item.id })}\n**${t('issue.titlePlain')}**: ${item.title}\n**${t('issue.severity')}**: ${item.severity || t('promote.none')}\n**${t('issue.type')}**: ${item.issueType || t('promote.none')}\n\n${t('promote.issueFileRef', { file: issueFile })}`;
-      const params = new URLSearchParams({ agent: '/BMad:agents:pm', task: taskWithContext });
-      params.append('chain', `*doc-out\n\nSave the ${targetType} document to the appropriate project directory.`);
+      const prompt = `%promote-issue "${taskName}" ${item.id} "${item.title}" ${item.severity || 'unknown'} ${item.issueType || 'unknown'} ${issueFile} ${targetType}`;
+      const params = new URLSearchParams({ agent: '/BMad:agents:pm', task: prompt });
 
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
@@ -191,13 +190,13 @@ export function ProjectBoardPage() {
     if (item.type === 'issue') {
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
       const desc = item.description
-        ? (item.description.length > 500 ? item.description.slice(0, 500) + t('truncated') : item.description)
-        : t('noDescription');
+        ? (item.description.length > 500 ? item.description.slice(0, 500) + '...' : item.description)
+        : '';
 
       if (badge.id === 'in-progress') {
         // Resume development — same prompt as quick fix
         agent = '/BMad:agents:dev';
-        task = `${t('workflow.quickFixIntro')}\n\n# ${item.title}\n\n${desc}\n\n${t('issue.severityLabel')} ${item.severity || t('promote.none')}\n${t('issue.typeLabel')} ${item.issueType || t('promote.none')}\n\n${t('workflow.issueFileLabel')} ${issueFile}\n\n${t('workflow.quickFixOutro')}`;
+        task = `%quick-fix-issue ${issueFile} ${item.severity || 'unknown'} ${item.issueType || 'unknown'}\n---context\n# ${item.title}\n\n${desc}`;
       } else {
         return;
       }
@@ -228,10 +227,10 @@ export function ProjectBoardPage() {
       task = `*develop-story ${storyNum}`;
     } else if (badge.id === 'qa-passed' || badge.id === 'qa-waived') {
       agent = '/BMad:agents:dev';
-      task = `Update story ${storyNum} status to Done. The QA gate has passed.`;
+      task = `%mark-done ${storyNum}`;
     } else if (badge.id === 'qa-failed' || badge.id === 'qa-concerns') {
       agent = '/BMad:agents:dev';
-      task = `*review-qa ${storyNum}\n\nAfter completing QA fixes, update the gate YAML file's gate field to 'FIXED'.`;
+      task = `%apply-qa-fixes ${storyNum}`;
     } else if (badge.id === 'qa-fixed' || badge.id === 'ready-for-review' || badge.id === 'ready-for-done') {
       agent = '/BMad:agents:qa';
       task = `*review ${storyNum}`;
@@ -250,7 +249,7 @@ export function ProjectBoardPage() {
     const storyNum = item.id.replace(/^story-/, '');
     const params = new URLSearchParams({
       agent: '/BMad:agents:po',
-      task: `*validate-story-draft ${storyNum} After the user's requested fixes are complete, change the story status to Approved.`,
+      task: `%validate-and-approve ${storyNum}`,
     });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t]);
@@ -262,10 +261,8 @@ export function ProjectBoardPage() {
     const storyNum = item.id.replace(/^story-/, '');
     const params = new URLSearchParams({
       agent: '/BMad:agents:po',
-      task: `*validate-story-draft ${storyNum}`,
+      task: `%validate-and-fix ${storyNum}`,
     });
-    params.append('chain', 'Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.');
-    params.append('chain', 'If the story status is not Approved, please change it to Approved now.');
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t]);
 
@@ -276,7 +273,7 @@ export function ProjectBoardPage() {
     const agent = '/BMad:agents:dev';
     const id = item.id.replace(/^(story|issue)-/, '');
     const typeLabel = item.type === 'story' ? 'story' : 'issue';
-    const task = `Please review the current changes with git diff, commit only the files related to ${typeLabel} ${id}, then update the ${typeLabel} status to Done.`;
+    const task = `%commit-and-done ${typeLabel} ${id}`;
     const params = new URLSearchParams({ agent, task });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate]);

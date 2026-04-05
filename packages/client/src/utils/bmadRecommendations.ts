@@ -38,8 +38,6 @@ export interface NextStepRecommendation {
   iconKey: string;
   /** Related story file name (implementation phase only) */
   storyFile?: string;
-  /** Additional prompts to queue in the prompt chain after the task command */
-  chainPrompts?: string[];
 }
 
 export interface PhaseInfo {
@@ -348,7 +346,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.commitAndMarkDone'),
       description: label,
       agentCommand: '/BMad:agents:dev',
-      taskCommand: `Please review the current changes with git diff, commit only the files related to story ${num}, then update the story status to Done.`,
+      taskCommand: `%commit-and-done story ${num}`,
       variant: 'primary',
       iconKey: 'git-commit',
       storyFile: qaDoneStory.file,
@@ -358,7 +356,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.markDone'),
       description: i18n.t('common:rec.markDoneDesc'),
       agentCommand: '/BMad:agents:dev',
-      taskCommand: `Update story ${num} status to Done. The QA gate has passed.`,
+      taskCommand: `%mark-done ${num}`,
       variant: 'secondary',
       iconKey: 'check-circle',
       storyFile: qaDoneStory.file,
@@ -404,7 +402,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.applyQaFixes'),
       description: label,
       agentCommand: '/BMad:agents:dev',
-      taskCommand: `*review-qa ${num}\n\nAfter completing QA fixes, update the gate YAML file's gate field to 'FIXED'.`,
+      taskCommand: `%apply-qa-fixes ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'wrench',
       storyFile: qaFailedStory.file,
@@ -471,11 +469,10 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.validateAndFixStory'),
       description: label,
       agentCommand: '/BMad:agents:po',
-      taskCommand: `*validate-story-draft ${num}`,
+      taskCommand: `%validate-and-fix ${num}`,
       variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: approvedStory.file,
-      chainPrompts: ['Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.', 'If the story status is not Approved, please change it to Approved now.'],
     });
 
     // 6c: Validate only — no fix, approve after user fixes
@@ -484,7 +481,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.validateStoryOnly'),
       description: label,
       agentCommand: '/BMad:agents:po',
-      taskCommand: `*validate-story-draft ${num} After the user's requested fixes are complete, change the story status to Approved.`,
+      taskCommand: `%validate-and-approve ${num}`,
       variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: approvedStory.file,
@@ -503,11 +500,10 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.validateAndFixStory'),
       description: label,
       agentCommand: '/BMad:agents:po',
-      taskCommand: `*validate-story-draft ${num}`,
+      taskCommand: `%validate-and-fix ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'shield-check',
       storyFile: draftStory.file,
-      chainPrompts: ['Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.', 'If the story status is not Approved, please change it to Approved now.'],
     });
 
     // 7b: Validate only — no fix, approve after user fixes
@@ -516,7 +512,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       title: i18n.t('common:rec.validateStoryOnly'),
       description: label,
       agentCommand: '/BMad:agents:po',
-      taskCommand: `*validate-story-draft ${num} After the user's requested fixes are complete, change the story status to Approved.`,
+      taskCommand: `%validate-and-approve ${num}`,
       variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: draftStory.file,

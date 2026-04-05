@@ -49,6 +49,49 @@ describe('parseSnippetRef', () => {
   it('returns null for name with path separator', () => {
     expect(parseSnippetRef('%../etc/passwd')).toBeNull();
   });
+
+  // BS-3: Quoted args
+  it('parses quoted multi-word arg', () => {
+    expect(parseSnippetRef('%fix "multi word" arg2')).toEqual({
+      name: 'fix',
+      args: ['multi word', 'arg2'],
+    });
+  });
+
+  it('handles escaped quotes inside quoted arg', () => {
+    expect(parseSnippetRef('%fix "say \\"hello\\""')).toEqual({
+      name: 'fix',
+      args: ['say "hello"'],
+    });
+  });
+
+  it('handles escaped backslash inside quoted arg', () => {
+    expect(parseSnippetRef('%fix "a\\\\b"')).toEqual({
+      name: 'fix',
+      args: ['a\\b'],
+    });
+  });
+
+  it('parses mixed plain and quoted args', () => {
+    expect(parseSnippetRef('%fix plain "quoted" plain2')).toEqual({
+      name: 'fix',
+      args: ['plain', 'quoted', 'plain2'],
+    });
+  });
+
+  it('handles unclosed quote leniently', () => {
+    expect(parseSnippetRef('%fix "no end')).toEqual({
+      name: 'fix',
+      args: ['no end'],
+    });
+  });
+
+  it('handles empty quotes', () => {
+    expect(parseSnippetRef('%fix ""')).toEqual({
+      name: 'fix',
+      args: [''],
+    });
+  });
 });
 
 // --- isSnippetRef ---
@@ -167,5 +210,76 @@ describe('resolveSnippet', () => {
       'story-3와 관련된 내용을 커밋해줘',
       'story-3의 qa-gate 상태가 PASSED이면 상태를 done으로 바꿔줘',
     ]);
+  });
+
+  // BS-3: Context block
+  it('resolves {context} from ---context block', async () => {
+    await fs.writeFile(path.join(snippetsDir, 'ctx'), '{context}\n\nIssue: {arg1}');
+    const result = await resolveSnippet('%ctx myfile\n---context\nHello World', tmpDir);
+    expect(result).toEqual(['Hello World\n\nIssue: myfile']);
+  });
+
+  it('leaves {context} as literal when no context block provided', async () => {
+    await fs.writeFile(path.join(snippetsDir, 'noctx'), '{context} remains');
+    const result = await resolveSnippet('%noctx', tmpDir);
+    expect(result).toEqual(['{context} remains']);
+  });
+
+  it('context preserves newlines, quotes, and special chars', async () => {
+    await fs.writeFile(path.join(snippetsDir, 'preserve'), 'Content: {context}');
+    const contextContent = 'line1\nline2\n"quoted"\n---\nmore';
+    const result = await resolveSnippet(`%preserve\n---context\n${contextContent}`, tmpDir);
+    // --- in context should NOT split into extra prompts
+    expect(result).toEqual([`Content: ${contextContent}`]);
+  });
+
+  it('---context only recognized in invocation, not in snippet file --- separators', async () => {
+    await fs.writeFile(path.join(snippetsDir, 'twoprompt'), 'Prompt 1 {context}\n---\nPrompt 2 {context}');
+    const result = await resolveSnippet('%twoprompt\n---context\nMyContext', tmpDir);
+    expect(result).toEqual(['Prompt 1 MyContext', 'Prompt 2 MyContext']);
+  });
+
+  // BS-3: Fallback directory
+  it('resolves from .bmad-core/snippets when .hammoc/snippets has no match', async () => {
+    const fallbackDir = path.join(tmpDir, '.bmad-core', 'snippets');
+    await fs.mkdir(fallbackDir, { recursive: true });
+    await fs.writeFile(path.join(fallbackDir, 'framework'), 'From framework');
+    const result = await resolveSnippet('%framework', tmpDir);
+    expect(result).toEqual(['From framework']);
+  });
+
+  it('.hammoc/snippets takes precedence over .bmad-core/snippets', async () => {
+    const fallbackDir = path.join(tmpDir, '.bmad-core', 'snippets');
+    await fs.mkdir(fallbackDir, { recursive: true });
+    await fs.writeFile(path.join(snippetsDir, 'both'), 'User version');
+    await fs.writeFile(path.join(fallbackDir, 'both'), 'Framework version');
+    const result = await resolveSnippet('%both', tmpDir);
+    expect(result).toEqual(['User version']);
+  });
+
+  it('throws NOT_FOUND when file in neither directory', async () => {
+    const fallbackDir = path.join(tmpDir, '.bmad-core', 'snippets');
+    await fs.mkdir(fallbackDir, { recursive: true });
+    await expect(resolveSnippet('%missing', tmpDir)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('propagates SIZE_EXCEEDED from .hammoc/snippets without falling back', async () => {
+    const fallbackDir = path.join(tmpDir, '.bmad-core', 'snippets');
+    await fs.mkdir(fallbackDir, { recursive: true });
+    await fs.writeFile(path.join(snippetsDir, 'toobig'), 'x'.repeat(102_401));
+    await fs.writeFile(path.join(fallbackDir, 'toobig'), 'Small fallback');
+    await expect(resolveSnippet('%toobig', tmpDir)).rejects.toMatchObject({ code: 'SIZE_EXCEEDED' });
+  });
+
+  it('applies path traversal prevention to fallback directory too', async () => {
+    await expect(resolveSnippet('%../etc/passwd', tmpDir)).rejects.toMatchObject({ code: 'PARSE_ERROR' });
+  });
+
+  it('resolves .md extension from fallback directory', async () => {
+    const fallbackDir = path.join(tmpDir, '.bmad-core', 'snippets');
+    await fs.mkdir(fallbackDir, { recursive: true });
+    await fs.writeFile(path.join(fallbackDir, 'readme.md'), 'Fallback MD');
+    const result = await resolveSnippet('%readme', tmpDir);
+    expect(result).toEqual(['Fallback MD']);
   });
 });

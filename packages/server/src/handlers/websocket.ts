@@ -2162,7 +2162,7 @@ async function handleChatSend(
 ): Promise<boolean> {
   const emit = createStreamEmit(stream);
   const t = i18next.getFixedT(lang);
-  const { content, workingDirectory, sessionId, resume, permissionMode, model, images, effort, resumeSessionAt: rawResumeSessionAt, forkSession, rewindToMessageUuid } = data;
+  const { content: rawContent, workingDirectory, sessionId, resume, permissionMode, model, images, effort, resumeSessionAt: rawResumeSessionAt, forkSession, rewindToMessageUuid } = data;
 
   // Validate images if present (Story 5.5)
   if (images && images.length > 0) {
@@ -2183,6 +2183,54 @@ async function handleChatSend(
       message: t('ws.error.projectPathNotFound'),
     });
     return false;
+  }
+
+  // BS-3: Resolve %snippet references in chat:send messages
+  let content = rawContent;
+  const firstLine = rawContent.split('\n')[0];
+  if (isSnippetRef(firstLine)) {
+    try {
+      const resolvedPrompts = await resolveSnippet(rawContent, workingDirectory);
+      content = resolvedPrompts[0];
+
+      // Multi-prompt: add remaining prompts as chain items
+      if (resolvedPrompts.length > 1 && stream.sessionId) {
+        const items = chainState.get(stream.sessionId) || [];
+        for (let i = 1; i < resolvedPrompts.length; i++) {
+          items.push({
+            id: generateChainItemId(),
+            content: resolvedPrompts[i],
+            status: 'pending',
+            createdAt: Date.now(),
+            workingDirectory,
+            permissionMode,
+            model,
+            effort,
+          });
+        }
+        chainState.set(stream.sessionId, items);
+        io.to(`session:${stream.sessionId}`).emit('chain:state', {
+          sessionId: stream.sessionId,
+          items: items.map(toPublicChainItem),
+        });
+      }
+    } catch (error) {
+      if (error instanceof SnippetError) {
+        const errKey = error.code === 'NOT_FOUND' ? 'snippetNotFound'
+          : error.code === 'SIZE_EXCEEDED' ? 'snippetSizeExceeded'
+          : 'snippetParseError';
+        emit('error', {
+          code: ERROR_CODES.CHAT_ERROR,
+          message: t(`ws.error.${errKey}`, {
+            name: error.snippetName || error.message,
+            message: error.message,
+            defaultValue: error.message,
+          }),
+        });
+        return false;
+      }
+      throw error;
+    }
   }
 
   // Buffer the user's message so reconnecting clients can display it
