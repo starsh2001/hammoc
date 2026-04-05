@@ -6,10 +6,12 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus, ThinkingEffort } from '@hammoc/shared';
+import { getEffectiveContextLimit } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { useChainStore } from './chainStore';
 import { usePreferencesStore } from './preferencesStore';
+import { getModelMaxContextTokens } from '../components/ModelSelector';
 import { debugLog } from '../utils/debugLogger';
 import i18n from '../i18n';
 
@@ -434,6 +436,36 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Project override application (Story 10.3)
     const projectSettings = get().projectSettings;
     const effectivePermissionMode = projectSettings?.permissionModeOverride ?? get().permissionMode;
+
+    // Pre-check: warn if current context exceeds the target model's max context window
+    const contextUsage = get().contextUsage;
+    if (contextUsage && resume) {
+      const globalDefault = usePreferencesStore.getState().preferences.defaultModel || '';
+      const effectiveDefault = projectSettings?.modelOverride ?? globalDefault;
+      const targetModel = get().selectedModel || effectiveDefault || get().activeModel || '';
+      const maxCtx = getModelMaxContextTokens(targetModel);
+      if (maxCtx > 0) {
+        const currentTokens = contextUsage.inputTokens + contextUsage.cacheCreationInputTokens + contextUsage.cacheReadInputTokens;
+        const effectiveLimit = getEffectiveContextLimit(maxCtx);
+        if (currentTokens > effectiveLimit) {
+          const currentK = Math.round(currentTokens / 1000);
+          const maxK = Math.round(effectiveLimit / 1000);
+          toast.error(
+            i18n.t('chat:contextOverflow', {
+              current: `${currentK}K`,
+              max: `${maxK}K`,
+              defaultValue: `Context (${currentK}K tokens) exceeds model limit (${maxK}K). Run /compact or switch to a larger model.`,
+            }),
+          );
+          set({ isStreaming: false, isCompacting: false });
+          if (streamingDelayTimeoutId) {
+            clearTimeout(streamingDelayTimeoutId);
+            streamingDelayTimeoutId = null;
+          }
+          return;
+        }
+      }
+    }
 
     // Emit chat:send event to server
     socket.emit('chat:send', {
