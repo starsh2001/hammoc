@@ -177,6 +177,7 @@ Attach images to your messages for Claude to analyze:
 - Supported formats: PNG, JPEG, GIF, WebP
 - Maximum: 5 images per message, 10MB per image
 - Images preview in the input area before sending
+- Sent images display as clickable thumbnails above the message text. Clicking a thumbnail opens the full image viewer with multi-image navigation (see §6.4)
 
 ### 2.5 Tool Call Visualization
 
@@ -287,12 +288,99 @@ When Claude uses extended thinking, the reasoning is shown in a collapsible bloc
 
 Control how much Claude "thinks" before responding. The intensity bar appears inside the model selector dropdown:
 
-- **Low / Medium / High** — 3 levels available for all users
-- **Max** — Additional level for Opus 4.6 with API key (not available for Claude.ai subscribers)
+- **Low / Medium / High** — 3 levels available for all models
+- **Max** — Additional level available when using Opus 4.6
 - Click the currently active level again to reset to default (High)
 - Cannot be changed while Claude is responding
+- If you switch from Opus 4.6 to another model while Max is selected, the effort automatically resets
 
 The default thinking effort for new sessions can be configured in Settings > Global.
+
+### 2.16 Message Actions
+
+Each message has an action bar that appears at its bottom-right corner. Available actions depend on the message type:
+
+**On all messages:**
+- **Copy** — Copy the message text to clipboard
+
+**On user messages:**
+- **Edit** — Open an inline editor to modify the message (see §2.17)
+- **Summarize & Continue** — Generate an AI summary of the conversation up to that point (see §2.18)
+- **Rewind Code** — Restore the codebase to the state it was in when this message was sent (see §2.19)
+
+**On assistant messages:**
+- **Fork** — Create a new session branching from this response (see §2.20)
+
+All action buttons are disabled during streaming, and while another action (edit, rewind, summarize) is in progress. Actions are also disabled when viewing an old branch or in branch viewer mode (see §2.22).
+
+### 2.17 Message Edit
+
+Edit a previously sent user message to explore a different conversation path:
+
+1. Click the **Edit** button (pencil icon) on a user message
+2. The message transforms into an editable textarea with the original text
+3. Modify the text, then:
+   - **Accept** (checkmark button or `Ctrl+Enter`) — Send the edited message. Claude responds to the new version, creating a new conversation branch
+   - **Cancel** (X button or `Escape`) — Discard changes
+4. Empty messages cannot be submitted
+
+After editing, you can navigate between the original and edited branches using branch pagination (see §2.21).
+
+### 2.18 Summarize & Continue
+
+Compress a long conversation into a summary to free up context space while continuing the session:
+
+1. Click the **Summarize & Continue** button (sparkles icon) on a user message
+2. AI generates a summary of the conversation up to that point (spinner shown during generation)
+3. To cancel mid-generation, click the button again (shows X on hover)
+4. When complete, the inline edit form opens with the generated summary pre-filled
+5. Review, edit if needed, then **Accept** to continue with the summary or **Cancel** to discard
+
+### 2.19 Code Rewind
+
+Revert project files to a previous state in the conversation:
+
+1. Click the **Rewind Code** button (undo icon) on a user message
+2. A dry-run preview shows how many files will change (insertions/deletions count)
+3. Review the file list and click **Rewind** to confirm, or **Cancel** to abort
+4. On success, a toast confirms the number of files restored
+
+If no checkpoint is available for that message, or the code is already at that state, an error message is shown.
+
+### 2.20 Session Fork
+
+Branch into a completely new session from any assistant response:
+
+1. Click the **Fork** button (git-fork icon) on an assistant message
+2. A dialog appears with an optional message field (defaults to "Continue from here")
+3. Click **Fork** to create the new session
+4. The new session starts with the full conversation history up to that point, plus your fork message
+5. You are automatically navigated to the new session
+
+The original session remains unchanged.
+
+### 2.21 Conversation Branching
+
+When you edit a message, the conversation splits into branches. Branch pagination controls appear at the bottom-left of user messages that have multiple branches:
+
+- **← / →** arrows to navigate between branches
+- **"X / Y"** indicator showing current branch number and total count
+- Keyboard: **Left/Right arrow keys** to navigate (when the pagination is focused)
+- Navigation is disabled during streaming
+
+Switching branches replaces all messages from that point forward with the selected branch's history.
+
+### 2.22 Branch Viewer
+
+Browse all conversation branches in a read-only mode:
+
+1. Click the **branch history button** (git-branch icon) in the chat header — only visible when the session has branches
+2. The chat enters read-only mode:
+   - Branch pagination controls become active at every branch point
+   - Navigate freely between branches using ← / → arrows
+   - The input area shows "Branch viewer mode (read-only)"
+   - All message actions (edit, rewind, summarize, fork) are disabled
+3. Click **"Exit branch viewer"** in the header to return to the active conversation
 
 ---
 
@@ -309,6 +397,7 @@ Access the session list via the sidebar or quick panel:
 - **Message count** — Number of messages in the session
 - **Date** — When the session was last active
 - **Streaming indicator** — Green dot with animation when streaming
+- **Waiting indicator** — Amber pulsing dot with "Waiting" badge when a session is connected but not yet streaming
 - **Queue badge** — Shown when queue runner is active on the session
 - Empty sessions are hidden by default (toggle with the eye icon)
 
@@ -529,6 +618,7 @@ Click any image file to open the viewer in a fullscreen overlay:
 - **Drag to pan** — Click and drag to move the image
 - **Zoom percentage** — Displayed between zoom buttons
 - **Reset view** — Return to original size and position
+- **Multi-image navigation** — When multiple images are available (e.g., from a chat message with several attachments), left/right arrow buttons appear in the header. Use arrow keys or click to browse. The current position is shown as "filename (2/5)"
 - **Close** — `Escape` key or the X button
 - Supports PNG, JPEG, GIF, WebP, SVG, BMP, ICO
 
@@ -867,7 +957,7 @@ The default view is a scrollable Kanban board:
 
 - **Columns** represent statuses — each with a colored top border, label, and item count badge
 - **Cards** display issues, stories, and epics with type badges: **[I]** (amber), **[S]** (blue), **[E]** (purple)
-- **Horizontal scroll** — overflow columns peek from the edge (no drag-and-drop between columns)
+- **Horizontal scroll** — overflow columns peek from the edge (no drag-and-drop between columns). On desktop, vertical mouse wheel scrolling in empty column areas is automatically converted to horizontal scroll
 - Status changes are made via the card **context menu** (⋮), not by dragging
 - Columns are fully customizable (see §10.11)
 
@@ -1187,7 +1277,7 @@ Access settings via the gear icon or the Settings page. The page has **7 tabs**:
 ### 12.1 Theme
 
 - **Dark** — Dark background, light text (default)
-- **Light** — White background, dark text
+- **Light** — Warm gray background, dark text
 - **System** — Follows your OS/browser preference
 
 ### 12.2 Language
@@ -1238,6 +1328,8 @@ Set how Claude handles file modifications:
 | **Ask before edits** | Claude asks for approval before each change (default) |
 | **Edit automatically** | Claude edits files automatically |
 | **Bypass permissions** | Full autonomy, no restrictions |
+
+**Auto-approve safety checks** — When Bypass mode is selected, a checkbox option appears to automatically approve CLI safety check prompts without user confirmation. Enabled by default.
 
 Can be overridden per-project (see §12.8). Quick-cycle with `Shift+Tab` when the chat input is focused.
 
@@ -1294,12 +1386,15 @@ The timeout resets on every activity. If overridden by an environment variable, 
 Set the default thinking effort for new sessions:
 
 - **SDK Default** (High) / Low / Medium / High / Max
-- Max is only available when using Opus 4.6 with an API key
+- Max is only available when using Opus 4.6
 
 ### 12.11 Quick Panel Defaults
 
 - **Default Open** — Whether the quick panel opens automatically when entering a chat page (default: On)
-- **Default Side** — Which side the quick panel appears on (Left or Right, default: Right)
+- **Default Side** — Which side the quick panel appears on:
+  - **Left** — Always opens on the left
+  - **Right** — Always opens on the right (default)
+  - **Last Used** — Remembers the last side you used and restores it
 
 ### 12.12 Notifications
 
@@ -1419,6 +1514,13 @@ Displays app information:
 | `Tab` | Select highlighted command from palette |
 | `Shift+Tab` | Cycle permission mode (Plan → Ask before edits → Edit automatically → Bypass) |
 | `Ctrl` (hold) | Temporary chain mode while held |
+
+### Message Actions
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Enter` / `Cmd+Enter` | Accept edited message |
+| `ESC` | Cancel message edit |
 
 ### Quick Panel
 

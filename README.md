@@ -124,10 +124,15 @@ Real-time conversations with Claude through a rich web UI.
 
 - **Streaming responses** — Messages appear progressively as Claude generates them
 - **Markdown rendering** — Full markdown support with syntax-highlighted code blocks and copy buttons
-- **Image attachments** — Attach up to 5 images (PNG, JPEG, GIF, WebP) per message
+- **Image attachments** — Attach up to 5 images (PNG, JPEG, GIF, WebP) per message with thumbnail display
 - **Tool call visualization** — See what tools Claude uses, with inputs, outputs, and execution time
 - **Diff viewer** — Side-by-side file diff display for code changes
 - **Extended thinking** — View Claude's reasoning process in collapsible blocks
+- **Message edit** — Edit previous messages to branch the conversation into alternative paths
+- **Summarize & Continue** — Compress long conversations with AI-generated summaries
+- **Code rewind** — Restore project files to any earlier point in the conversation
+- **Session fork** — Branch into a new session from any assistant response
+- **Conversation branching** — Navigate between branches with pagination controls, and browse all branches in a read-only viewer
 - **Prompt history** — Navigate previous inputs with arrow keys
 - **Prompt chaining** — Queue up to 10 prompts for sequential execution (server-synced, multi-browser)
 - **Voice input** — Dictate messages using browser speech recognition (Chrome, Edge, Safari)
@@ -153,6 +158,7 @@ Real-time conversations with Claude through a rich web UI.
 ### Model & Permission Control
 
 - **Model selector** — Choose between Claude Sonnet, Opus, and Haiku variants
+- **Thinking effort** — Adjust reasoning intensity (Low / Medium / High / Max on Opus 4.6)
 - **Permission modes** — Plan, Ask (default), Auto, or Bypass
 - **Per-project overrides** — Different settings per project
 
@@ -170,7 +176,7 @@ Real-time conversations with Claude through a rich web UI.
 - **Tree navigation** — Directory hierarchy with breadcrumbs
 - **Text editor** — Syntax highlighting with save (Ctrl+S)
 - **Markdown preview** — Toggle between edit and preview modes
-- **Image viewer** — Full-screen image viewing with zoom controls
+- **Image viewer** — Full-screen image viewing with zoom controls and multi-image navigation
 - **File operations** — Create, rename, and delete files and folders
 
 ### Git Integration
