@@ -21,19 +21,8 @@ const ATTACHMENT_MAX_COUNT = 10;
 const ATTACHMENTS_DIR_NAME = 'attachments';
 const REVIEWS_DIR_NAME = 'reviews';
 
-/**
- * Generate a URL-safe slug from a title.
- * Strips non-ASCII, converts to kebab-case. Falls back to 'issue' if empty.
- */
-function slugify(title: string): string {
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-  return slug || 'issue';
-}
+const ISSUE_ID_PREFIX = 'ISSUE-';
+const ISSUE_ID_RE = /^ISSUE-(\d+)$/;
 
 /**
  * Validate issueId to prevent path traversal attacks.
@@ -283,6 +272,27 @@ class IssueService {
   }
 
   /**
+   * Scan existing issue files and return the next sequential number.
+   */
+  private async nextIssueNumber(issuesDir: string): Promise<number> {
+    let files: string[];
+    try {
+      files = await fs.readdir(issuesDir);
+    } catch {
+      return 1;
+    }
+    let max = 0;
+    for (const f of files) {
+      const match = f.replace(/\.md$/, '').match(ISSUE_ID_RE);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > max) max = num;
+      }
+    }
+    return max + 1;
+  }
+
+  /**
    * List all issues in the project.
    */
   async listIssues(projectPath: string): Promise<BoardItem[]> {
@@ -328,10 +338,8 @@ class IssueService {
     const issuesDir = await this.resolveIssuesDir(projectPath);
     await this.ensureIssuesDir(issuesDir);
 
-    const slug = slugify(data.title);
-    const timestamp = Date.now();
-    const randomSuffix = crypto.randomBytes(3).toString('hex');
-    const issueId = `${timestamp}-${randomSuffix}-${slug}`;
+    const nextNum = await this.nextIssueNumber(issuesDir);
+    const issueId = `${ISSUE_ID_PREFIX}${nextNum}`;
     const fileName = `${issueId}.md`;
 
     const markdown = generateIssueMarkdown({
