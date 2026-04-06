@@ -25,27 +25,33 @@ interface SnippetPaletteProps {
   onSelect: (snippet: SnippetItem) => void;
 }
 
-/**
- * Filter snippets by query string (case-insensitive, partial match)
- */
-export function filterSnippets(snippets: SnippetItem[], query: string): SnippetItem[] {
-  if (!query) return snippets;
-
-  const normalizedQuery = query.toLowerCase();
-
-  return snippets.filter((s) => {
-    return (
-      s.name.toLowerCase().includes(normalizedQuery) ||
-      (s.preview && s.preview.toLowerCase().includes(normalizedQuery))
-    );
-  });
-}
+const SOURCE_ORDER: SnippetItem['source'][] = ['project', 'global', 'bundled'];
 
 const SOURCE_LABELS: Record<SnippetItem['source'], string> = {
   project: 'Project',
   global: 'Global',
   bundled: 'Bundled',
 };
+
+/**
+ * Filter snippets by query string (case-insensitive, partial match).
+ * Returns results in grouped display order (project → global → bundled)
+ * so flat indices match the rendered palette.
+ */
+export function filterSnippets(snippets: SnippetItem[], query: string): SnippetItem[] {
+  const base = query
+    ? snippets.filter((s) => {
+        const q = query.toLowerCase();
+        return (
+          s.name.toLowerCase().includes(q) ||
+          (s.preview && s.preview.toLowerCase().includes(q))
+        );
+      })
+    : snippets;
+
+  // Sort to match groupSnippets display order (source group, then original order within group)
+  return base.slice().sort((a, b) => SOURCE_ORDER.indexOf(a.source) - SOURCE_ORDER.indexOf(b.source));
+}
 
 /**
  * Group snippets by source

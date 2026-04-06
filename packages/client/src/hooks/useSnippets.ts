@@ -11,7 +11,10 @@ export function useSnippets(workingDirectory: string | undefined) {
   const [snippets, setSnippets] = useState<SnippetItem[]>([]);
 
   useEffect(() => {
-    if (!workingDirectory) return;
+    if (!workingDirectory) {
+      setSnippets([]);
+      return;
+    }
 
     const socket = getSocket();
 
