@@ -47,7 +47,7 @@ import { parseJSONLFile, transformToHistoryMessages } from '../services/historyP
 import { buildRawMessageTree, getActiveRawBranch, getDefaultRawBranchSelections, findBranchSelectionsForUuid } from '../utils/messageTree.js';
 import { sessionBufferManager } from '../services/sessionBufferManager.js';
 import { imageStorageService } from '../services/imageStorageService.js';
-import { isSnippetRef, resolveSnippet, SnippetError } from '../utils/snippetResolver.js';
+import { isSnippetRef, resolveSnippet, listSnippets, SnippetError } from '../utils/snippetResolver.js';
 import type { HistoryMessage, ImageRef } from '@hammoc/shared';
 const log = createLogger('websocket');
 
@@ -1214,12 +1214,13 @@ export async function initializeWebSocket(
           if (freshStream && freshStream.status === 'running') {
             socketToSession.set(socket.id, sessionId);
             const freshMode = freshStream.chatService?.getPermissionMode();
-            // Deliver buffer messages (history + streaming data so far)
+            // Deliver buffer messages + status atomically so client processes
+            // messages and streaming state in a single event handler.
             const buf = sessionBufferManager.get(sessionId);
-            if (buf && buf.messages.length > 0) {
-              socket.emit('stream:history', { sessionId, messages: buf.messages });
-            }
-            socket.emit('stream:status', { active: true, sessionId, permissionMode: freshMode });
+            socket.emit('stream:status', {
+              active: true, sessionId, permissionMode: freshMode,
+              messages: buf && buf.messages.length > 0 ? buf.messages : undefined,
+            });
             socket.emit('stream:buffer-replay', { sessionId, events: [...freshStream.buffer] });
             freshStream.sockets.add(socket);
             return;
@@ -1233,10 +1234,10 @@ export async function initializeWebSocket(
           if (completedStream && completedStream.status === 'completed' && completedStream.buffer.length > 0) {
             socketToSession.set(socket.id, sessionId);
             const buf = sessionBufferManager.get(sessionId);
-            if (buf && buf.messages.length > 0) {
-              socket.emit('stream:history', { sessionId, messages: buf.messages });
-            }
-            socket.emit('stream:status', { active: true, sessionId, permissionMode });
+            socket.emit('stream:status', {
+              active: true, sessionId, permissionMode,
+              messages: buf && buf.messages.length > 0 ? buf.messages : undefined,
+            });
             socket.emit('stream:buffer-replay', { sessionId, events: [...completedStream.buffer] });
             completedStream.sockets.add(socket);
             return;
@@ -1255,10 +1256,12 @@ export async function initializeWebSocket(
               log.warn(`session:join: failed to load JSONL for ${sessionId}:`, err);
             }
           }
-          if (buf && buf.messages.length > 0) {
-            socket.emit('stream:history', { sessionId, messages: buf.messages });
-          }
-          socket.emit('stream:status', { active: false, sessionId, permissionMode });
+          // Deliver messages + status atomically — prevents duplicate message
+          // bubbles caused by React rendering between separate events.
+          socket.emit('stream:status', {
+            active: false, sessionId, permissionMode,
+            messages: buf && buf.messages.length > 0 ? buf.messages : undefined,
+          });
         };
 
         // For 'always' sync policy, restore per-session permission mode from disk
@@ -1306,10 +1309,12 @@ export async function initializeWebSocket(
             .catch(() => { /* best effort */ });
         }
       }
-      if (buf && buf.messages.length > 0) {
-        socket.emit('stream:history', { sessionId, messages: buf.messages });
-      }
-      socket.emit('stream:status', { active: true, sessionId, permissionMode });
+      // Deliver messages + status atomically so client processes both in
+      // a single event handler, preventing duplicate message bubbles.
+      socket.emit('stream:status', {
+        active: true, sessionId, permissionMode,
+        messages: buf && buf.messages.length > 0 ? buf.messages : undefined,
+      });
       // Replay raw event buffer so the client can build streaming segments
       socket.emit('stream:buffer-replay', { sessionId, events: [...stream.buffer] });
 
@@ -1784,6 +1789,17 @@ export async function initializeWebSocket(
     });
     socket.on('dashboard:unsubscribe', () => {
       socket.leave('dashboard');
+    });
+
+    // ISSUE-54: Snippet autocomplete — list available snippets
+    socket.on('snippets:list', async (data) => {
+      try {
+        const snippets = await listSnippets(data.workingDirectory);
+        socket.emit('snippets:list', { snippets });
+      } catch (err) {
+        log.error('Failed to list snippets:', err);
+        socket.emit('snippets:list', { snippets: [] });
+      }
     });
 
     // Handle project:join/leave — room for queue event delivery (Story 15.2)

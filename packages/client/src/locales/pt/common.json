@@ -615,6 +615,10 @@
     "removeFavorite": "Remover dos favoritos",
     "addFavorite": "Adicionar aos favoritos"
   },
+  "snippet": {
+    "noMatch": "Nenhum snippet correspondente",
+    "listAria": "Lista de snippets"
+  },
   "code": {
     "copied": "Copiado",
     "copyFailed": "Falha ao copiar",

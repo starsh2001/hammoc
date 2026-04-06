@@ -12,6 +12,7 @@ import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorE
 import type { TerminalCreateRequest, TerminalListRequest, TerminalListResponse, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent, TerminalAccessInfo } from './terminal.js';
 import type { DashboardStatusChangeEvent } from './dashboard.js';
 import type { HistoryMessage } from './history.js';
+import type { SnippetItem } from './command.js';
 
 // ===== Prompt Chain =====
 
@@ -107,6 +108,8 @@ export interface ClientToServerEvents {
   }) => void;
   // Story 27.3: Branch viewer mode — switch branch via custom selections
   'messages:switch-branch': (data: { sessionId: string; branchSelections: Record<string, number> }) => void;
+  // ISSUE-54: Snippet autocomplete — request available snippets list
+  'snippets:list': (data: { workingDirectory: string }) => void;
 }
 
 // ===== Server to Client Events =====
@@ -134,7 +137,7 @@ export interface ServerToClientEvents {
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
-  'stream:status': (data: { active: boolean; sessionId: string; permissionMode?: PermissionMode }) => void;
+  'stream:status': (data: { active: boolean; sessionId: string; permissionMode?: PermissionMode; messages?: HistoryMessage[] }) => void;
   'stream:detached': (data: { sessionId: string; reason: string }) => void;
   'permission:already-resolved': (data: { requestId: string }) => void;
   'permission:resolved': (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question'; response?: string | string[] | Record<string, string | string[]> }) => void;
@@ -168,6 +171,8 @@ export interface ServerToClientEvents {
   'stream:complete-messages': (data: { sessionId: string; messages: HistoryMessage[]; usage?: ChatUsage; aborted?: boolean }) => void;
   // Buffer replay: send entire buffer as a single batch for fast session join
   'stream:buffer-replay': (data: { sessionId: string; events: Array<{ event: string; data: unknown }> }) => void;
+  // ISSUE-54: Snippet autocomplete — return available snippets
+  'snippets:list': (data: { snippets: SnippetItem[] }) => void;
   // Story 25.8: Standalone file rewind result
   'session:rewind-result': (data: {
     success: boolean;

@@ -645,6 +645,10 @@
     "removeFavorite": "즐겨찾기 제거",
     "addFavorite": "즐겨찾기 추가"
   },
+  "snippet": {
+    "noMatch": "일치하는 스니펫이 없습니다",
+    "listAria": "스니펫 목록"
+  },
   "code": {
     "copied": "복사됨",
     "copyFailed": "복사 실패",

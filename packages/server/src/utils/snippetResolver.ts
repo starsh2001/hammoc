@@ -6,6 +6,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import type { SnippetItem } from '@hammoc/shared';
 import { fileURLToPath } from 'node:url';
 
 const SNIPPETS_DIR = '.hammoc/snippets';
@@ -204,4 +205,71 @@ export async function resolveSnippet(
   }
 
   return prompts;
+}
+
+/**
+ * Scan a directory for snippet files and return SnippetItem entries.
+ * Returns empty array if the directory does not exist.
+ */
+async function scanSnippetDir(
+  dir: string,
+  source: SnippetItem['source'],
+): Promise<SnippetItem[]> {
+  let entries: import('node:fs').Dirent[];
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  const items: SnippetItem[] = [];
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const rawName = entry.name;
+    const name = rawName.endsWith('.md') ? rawName.slice(0, -3) : rawName;
+    if (!NAME_RE.test(name)) continue;
+
+    // Read first non-empty line as preview
+    let preview: string | undefined;
+    try {
+      const content = await fs.readFile(path.join(dir, rawName), 'utf-8');
+      const firstLine = content.split('\n').find((l) => l.trim().length > 0);
+      if (firstLine) {
+        preview = firstLine.trim().slice(0, 80);
+      }
+    } catch {
+      // Skip unreadable files
+    }
+
+    items.push({ name, preview, source });
+  }
+  return items;
+}
+
+/**
+ * List all available snippets across project, global, and bundled directories.
+ * Project snippets override global, which override bundled (by name).
+ */
+export async function listSnippets(
+  projectPath: string,
+  bundledDir: string = BUNDLED_SNIPPETS_DIR,
+): Promise<SnippetItem[]> {
+  const [projectItems, globalItems, bundledItems] = await Promise.all([
+    scanSnippetDir(path.resolve(projectPath, SNIPPETS_DIR), 'project'),
+    scanSnippetDir(path.resolve(os.homedir(), SNIPPETS_DIR), 'global'),
+    scanSnippetDir(bundledDir, 'bundled'),
+  ]);
+
+  // Deduplicate: project > global > bundled
+  const seen = new Set<string>();
+  const result: SnippetItem[] = [];
+
+  for (const item of [...projectItems, ...globalItems, ...bundledItems]) {
+    if (!seen.has(item.name)) {
+      seen.add(item.name);
+      result.push(item);
+    }
+  }
+
+  return result.sort((a, b) => a.name.localeCompare(b.name));
 }

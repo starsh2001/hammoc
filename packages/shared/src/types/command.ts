@@ -32,6 +32,19 @@ export interface StarCommand {
 }
 
 /**
+ * Snippet item for autocomplete popup
+ * [Source: ISSUE-54 - Snippet autocomplete]
+ */
+export interface SnippetItem {
+  /** Snippet file name (without extension) */
+  name: string;
+  /** First line preview of snippet content */
+  preview?: string;
+  /** Where this snippet was resolved from */
+  source: 'project' | 'global' | 'bundled';
+}
+
+/**
  * Extended commands response with star commands
  * [Source: Story 9.8 - Task 1]
  */

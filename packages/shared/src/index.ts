@@ -71,7 +71,7 @@ export {
 
 // Story 5.1: SlashCommand types for command autocomplete
 // Story 9.8: StarCommand, CommandsResponse types
-export { SlashCommand, StarCommand, CommandsResponse } from './types/command.js';
+export { SlashCommand, StarCommand, CommandsResponse, SnippetItem } from './types/command.js';
 
 // User Preferences types (server-side settings)
 export {

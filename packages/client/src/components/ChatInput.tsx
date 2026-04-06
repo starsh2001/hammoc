@@ -23,6 +23,7 @@ import { usePromptHistory } from '../hooks/usePromptHistory';
 import { CommandPalette } from './CommandPalette';
 import { filterCommands } from './CommandPalette';
 import { StarCommandPalette, filterStarCommands } from './StarCommandPalette';
+import { SnippetPalette, filterSnippets } from './SnippetPalette';
 import { PermissionModeSelector } from './PermissionModeSelector';
 import { ModelSelector } from './ModelSelector';
 import { BmadAgentButton } from './BmadAgentButton';
@@ -31,7 +32,7 @@ import { FavoritesChipBar } from './FavoritesChipBar';
 import { ContextUsageDisplay } from './ContextUsageDisplay';
 import { UsageStatusBar } from './UsageStatusBar';
 import { useSpeechRecognition, getSpeechLang } from '../hooks/useSpeechRecognition';
-import type { SlashCommand, StarCommand, Attachment, PermissionMode, ChatUsage, CommandFavoriteEntry, ThinkingEffort } from '@hammoc/shared';
+import type { SlashCommand, StarCommand, SnippetItem, Attachment, PermissionMode, ChatUsage, CommandFavoriteEntry, ThinkingEffort } from '@hammoc/shared';
 import { IMAGE_CONSTRAINTS } from '@hammoc/shared';
 import { generateUUID } from '../utils/uuid';
 import { debugLogger } from '../utils/debugLogger';
@@ -159,6 +160,8 @@ interface ChatInputProps {
   onReorderStarFavorites?: (commands: string[]) => void;
   /** Remove star favorite callback (Story 9.12) */
   onRemoveStarFavorite?: (command: string) => void;
+  /** Available snippets for autocomplete (ISSUE-54) */
+  snippets?: SnippetItem[];
   /** Whether the session is queue-locked (Story 15.4) */
   queueLocked?: boolean;
   /** Whether all input actions are disabled (e.g. viewing non-active branch) */
@@ -208,6 +211,7 @@ export function ChatInput({
   starFavorites,
   onReorderStarFavorites,
   onRemoveStarFavorite,
+  snippets = [],
   queueLocked = false,
   actionsDisabled = false,
   chainMode = false,
@@ -231,6 +235,10 @@ export function ChatInput({
   // Star command palette state (Story 9.9)
   const [showStarCommands, setShowStarCommands] = useState(false);
   const [starSelectedIndex, setStarSelectedIndex] = useState(0);
+
+  // Snippet palette state (ISSUE-54)
+  const [showSnippets, setShowSnippets] = useState(false);
+  const [snippetSelectedIndex, setSnippetSelectedIndex] = useState(0);
 
   // Favorites popup state (Story 9.6)
   const [showFavorites, setShowFavorites] = useState(false);
@@ -307,6 +315,17 @@ export function ChatInput({
     return filterStarCommands(starCommands, starCommandFilter).length;
   }, [showStarCommands, starCommands, starCommandFilter]);
 
+  // Snippet filter (ISSUE-54)
+  const snippetFilter = useMemo(() => {
+    if (!content.startsWith('%')) return '';
+    return content.slice(1);
+  }, [content]);
+
+  const filteredSnippetsCount = useMemo(() => {
+    if (!showSnippets || snippets.length === 0) return 0;
+    return filterSnippets(snippets, snippetFilter).length;
+  }, [showSnippets, snippets, snippetFilter]);
+
   // Get mode colors based on current permission mode
   const modeColors = useMemo(() => {
     if (!permissionMode) return DEFAULT_MODE_COLORS;
@@ -320,15 +339,23 @@ export function ChatInput({
       setShowCommands(true);
       setShowFavorites(false);
       setShowStarCommands(false);
+      setShowSnippets(false);
     } else if (content.startsWith('*') && !content.includes(' ') && activeAgent && starCommands && starCommands.length > 0) {
       setShowStarCommands(true);
       setShowCommands(false);
       setShowFavorites(false);
+      setShowSnippets(false);
+    } else if (content.startsWith('%') && !content.includes(' ') && snippets.length > 0) {
+      setShowSnippets(true);
+      setShowCommands(false);
+      setShowStarCommands(false);
+      setShowFavorites(false);
     } else {
       setShowCommands(false);
       setShowStarCommands(false);
+      setShowSnippets(false);
     }
-  }, [content, commands.length, activeAgent, starCommands]);
+  }, [content, commands.length, activeAgent, starCommands, snippets.length]);
 
   // Reset selectedIndex when filter changes
   useEffect(() => {
@@ -339,6 +366,11 @@ export function ChatInput({
   useEffect(() => {
     setStarSelectedIndex(0);
   }, [starCommandFilter]);
+
+  // Reset snippetSelectedIndex when snippet filter changes (ISSUE-54)
+  useEffect(() => {
+    setSnippetSelectedIndex(0);
+  }, [snippetFilter]);
 
   // Height adjustment - textarea grows up to max-height, then scrolls internally.
   // Uses '0px' instead of 'auto' to minimize layout thrash that can trigger
@@ -539,7 +571,8 @@ export function ChatInput({
   useClickOutside(commandPaletteAreaRef, useCallback(() => {
     if (showCommands) setShowCommands(false);
     if (showStarCommands) setShowStarCommands(false);
-  }, [showCommands, showStarCommands]));
+    if (showSnippets) setShowSnippets(false);
+  }, [showCommands, showStarCommands, showSnippets]));
 
   // Favorites popup: close on outside click (Story 9.6)
   useClickOutside(favoritesContainerRef, useCallback(() => {
@@ -552,6 +585,7 @@ export function ChatInput({
       if (!prev) {
         setShowCommands(false);      // Mutual exclusion
         setShowStarCommands(false);   // Mutual exclusion (Story 9.9)
+        setShowSnippets(false);       // Mutual exclusion (ISSUE-54)
       }
       return !prev;
     });
@@ -597,6 +631,14 @@ export function ChatInput({
     setStarSelectedIndex(0);
     selectPlaceholders(text);
   }, [selectPlaceholders]);
+
+  // Snippet selection handler (ISSUE-54)
+  const handleSnippetSelect = useCallback((snippet: SnippetItem) => {
+    setContent('%' + snippet.name + ' ');
+    setShowSnippets(false);
+    setSnippetSelectedIndex(0);
+    textareaRef.current?.focus();
+  }, []);
 
   // Command selection handler (Story 5.1)
   const handleCommandSelect = useCallback((command: SlashCommand) => {
@@ -724,6 +766,37 @@ export function ChatInput({
         }
       }
 
+      // Snippet palette keyboard navigation (ISSUE-54)
+      if (showSnippets && filteredSnippetsCount > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSnippetSelectedIndex((prev) =>
+            prev >= filteredSnippetsCount - 1 ? 0 : prev + 1
+          );
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSnippetSelectedIndex((prev) =>
+            prev <= 0 ? filteredSnippetsCount - 1 : prev - 1
+          );
+          return;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          const filtered = filterSnippets(snippets, snippetFilter);
+          if (filtered[snippetSelectedIndex]) {
+            handleSnippetSelect(filtered[snippetSelectedIndex]);
+          }
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setShowSnippets(false);
+          return;
+        }
+      }
+
       // Shift+Tab: cycle permission mode
       if (e.key === 'Tab' && e.shiftKey && permissionMode && onPermissionModeChange) {
         e.preventDefault();
@@ -779,7 +852,7 @@ export function ChatInput({
       }
       // Shift+Enter (desktop) / Enter (mobile): default behavior (newline)
     },
-    [handleSubmit, showCommands, showFavorites, showStarCommands, filteredCommandsCount, filteredStarCommandsCount, commands, commandFilter, selectedIndex, handleCommandSelect, starCommands, starCommandFilter, starSelectedIndex, handleStarCommandSelect, content, navigateUp, navigateDown, isNavigating, isTouchDevice, permissionMode, onPermissionModeChange]
+    [handleSubmit, showCommands, showFavorites, showStarCommands, showSnippets, filteredCommandsCount, filteredStarCommandsCount, filteredSnippetsCount, commands, commandFilter, selectedIndex, handleCommandSelect, starCommands, starCommandFilter, starSelectedIndex, handleStarCommandSelect, snippets, snippetFilter, snippetSelectedIndex, handleSnippetSelect, content, navigateUp, navigateDown, isNavigating, isTouchDevice, permissionMode, onPermissionModeChange]
   );
 
   // Button click handler
@@ -974,6 +1047,16 @@ export function ChatInput({
           />
         )}
 
+        {/* Snippet palette (ISSUE-54) */}
+        {showSnippets && snippets.length > 0 && (
+          <SnippetPalette
+            snippets={snippets}
+            filter={snippetFilter}
+            selectedIndex={snippetSelectedIndex}
+            onSelect={handleSnippetSelect}
+          />
+        )}
+
         {/* Star Command palette (Story 9.9) */}
         {showStarCommands && activeAgent && starCommands && starCommands.length > 0 && (
           <StarCommandPalette
@@ -1012,17 +1095,18 @@ export function ChatInput({
             }}
             disabled={isSessionLocked || queueLocked || actionsDisabled || undefined}
             placeholder={isSessionLocked ? t('input.lockedOtherBrowser') : queueLocked ? t('input.queueControlled') : isStreaming && chainMode ? (isChainFull ? t('input.chainFull') : t('input.chainAdd')) : placeholder || t('input.placeholder')}
-            role={showCommands || showStarCommands ? 'combobox' : undefined}
+            role={showCommands || showStarCommands || showSnippets ? 'combobox' : undefined}
             aria-label={t('input.ariaLabel')}
             aria-describedby="input-hint"
-            aria-expanded={showCommands || showStarCommands ? true : undefined}
-            aria-controls={showCommands ? 'command-palette' : showStarCommands ? 'star-command-palette' : undefined}
+            aria-expanded={showCommands || showStarCommands || showSnippets ? true : undefined}
+            aria-controls={showCommands ? 'command-palette' : showStarCommands ? 'star-command-palette' : showSnippets ? 'snippet-palette' : undefined}
             aria-activedescendant={
               showCommands && filteredCommandsCount > 0 ? `command-option-${selectedIndex}` :
               showStarCommands && filteredStarCommandsCount > 0 ? `star-command-option-${starSelectedIndex}` :
+              showSnippets && filteredSnippetsCount > 0 ? `snippet-option-${snippetSelectedIndex}` :
               undefined
             }
-            aria-autocomplete={showCommands || showStarCommands ? 'list' : undefined}
+            aria-autocomplete={showCommands || showStarCommands || showSnippets ? 'list' : undefined}
             rows={1}
             className={`w-full resize-none py-1 pl-2 bg-transparent
                        text-gray-900 dark:text-gray-100

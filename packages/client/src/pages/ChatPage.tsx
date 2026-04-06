@@ -27,6 +27,7 @@ import type { EditSubmitParams } from '../components/MessageBubble';
 import { projectsApi } from '../services/api/projects';
 import { useStreaming } from '../hooks/useStreaming';
 import { useSlashCommands } from '../hooks/useSlashCommands';
+import { useSnippets } from '../hooks/useSnippets';
 import { useFavoriteCommands } from '../hooks/useFavoriteCommands';
 import { useStarFavorites } from '../hooks/useStarFavorites';
 import { useActiveAgent } from '../hooks/useActiveAgent';
@@ -299,6 +300,9 @@ export function ChatPage() {
 
   // Fetch slash commands for autocomplete (Story 5.1)
   const { commands, starCommands } = useSlashCommands(projectSlug);
+
+  // Fetch snippets for autocomplete (ISSUE-54)
+  const { snippets } = useSnippets(workingDirectory || undefined);
 
   // Command favorites (Story 9.4/9.5)
   const { favoriteCommands, addFavorite, removeFavorite, reorderFavorites, isFavorite } = useFavoriteCommands();
@@ -1135,6 +1139,7 @@ export function ChatPage() {
             queueLocked={isQueueLocked}
             placeholder={t('chatPage.loadingPlaceholder')}
             commands={commands}
+            snippets={snippets}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
             selectedModel={selectedModel}
@@ -1202,6 +1207,7 @@ export function ChatPage() {
             queueLocked={isQueueLocked}
             placeholder={t('chatPage.errorPlaceholder')}
             commands={commands}
+            snippets={snippets}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
             selectedModel={selectedModel}
@@ -1336,6 +1342,7 @@ export function ChatPage() {
           actionsDisabled={isOnOldBranch || isBranchViewerMode}
           placeholder={isStreaming ? t('chatPage.streaming') : isBranchViewerMode ? t('chatPage.branchViewer') : isOnOldBranch ? t('chatPage.oldBranch') : t('chatPage.default')}
           commands={commands}
+          snippets={snippets}
           permissionMode={permissionMode}
           onPermissionModeChange={setPermissionMode}
           selectedModel={selectedModel}
