@@ -55,6 +55,9 @@ export interface UserPreferences {
   // Auto-approve CLI safety checks in Bypass mode (default: false)
   // When enabled, safety check prompts from the CLI are auto-approved without user confirmation
   autoApproveSafetyChecks?: boolean;
+  // File checkpointing (enables rewind/restore of file changes)
+  enableChatCheckpointing?: boolean;   // default: true (browser chat sessions)
+  enableQueueCheckpointing?: boolean;  // default: false (queue runner — can increase JSONL size)
 }
 
 /** Controls when permission mode changes are broadcast to other browsers viewing the same session */

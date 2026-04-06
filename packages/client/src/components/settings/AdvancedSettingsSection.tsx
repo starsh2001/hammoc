@@ -481,6 +481,48 @@ export function AdvancedSettingsSection() {
         </p>
       </div>
 
+      {/* File Checkpointing */}
+      <div>
+        <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          {t('advanced.fileCheckpointing')}
+        </p>
+        <div className="space-y-3">
+          {/* Chat checkpointing */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={preferences.enableChatCheckpointing ?? true}
+              onChange={(e) => {
+                updatePreference('enableChatCheckpointing', e.target.checked);
+                toast.success(t('toast.settingChanged', { label: t('advanced.chatCheckpointing') }));
+              }}
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-sm text-gray-900 dark:text-white">{t('advanced.chatCheckpointing')}</span>
+              <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.chatCheckpointingDesc')}</p>
+            </div>
+          </label>
+
+          {/* Queue checkpointing */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={preferences.enableQueueCheckpointing ?? false}
+              onChange={(e) => {
+                updatePreference('enableQueueCheckpointing', e.target.checked);
+                toast.success(t('toast.settingChanged', { label: t('advanced.queueCheckpointing') }));
+              }}
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-sm text-gray-900 dark:text-white">{t('advanced.queueCheckpointing')}</span>
+              <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.queueCheckpointingDesc')}</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
       {/* Default Thinking Effort — moved to GlobalSettingsSection */}
     </div>
   );

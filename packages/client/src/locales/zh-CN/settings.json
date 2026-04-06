@@ -144,7 +144,12 @@
       "high": "High",
       "max": "Max"
     },
-    "effortMaxSubscriber": "订阅用户不可用"
+    "effortMaxSubscriber": "订阅用户不可用",
+    "fileCheckpointing": "文件检查点",
+    "chatCheckpointing": "聊天会话",
+    "chatCheckpointingDesc": "在聊天期间保存文件快照以支持回退/恢复",
+    "queueCheckpointing": "队列执行器",
+    "queueCheckpointingDesc": "在队列执行期间保存文件快照（会增加 JSONL 文件大小）"
   },
   "confirm": {
     "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",

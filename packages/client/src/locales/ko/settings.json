@@ -145,7 +145,12 @@
       "high": "High",
       "max": "Max"
     },
-    "effortMaxSubscriber": "구독자 사용 불가"
+    "effortMaxSubscriber": "구독자 사용 불가",
+    "fileCheckpointing": "파일 체크포인트",
+    "chatCheckpointing": "채팅 세션",
+    "chatCheckpointingDesc": "채팅 중 파일 스냅샷을 저장하여 되돌리기/복원 지원",
+    "queueCheckpointing": "큐 러너",
+    "queueCheckpointingDesc": "큐 실행 중 파일 스냅샷 저장 (JSONL 파일 크기 증가)"
   },
   "confirm": {
     "serverRestart": "서버를 재빌드하고 재시작합니다. 진행할까요?",

@@ -144,7 +144,12 @@
       "high": "High",
       "max": "Max"
     },
-    "effortMaxSubscriber": "サブスクライバー利用不可"
+    "effortMaxSubscriber": "サブスクライバー利用不可",
+    "fileCheckpointing": "ファイルチェックポイント",
+    "chatCheckpointing": "チャットセッション",
+    "chatCheckpointingDesc": "チャット中にファイルスナップショットを保存して巻き戻し/復元を可能にする",
+    "queueCheckpointing": "キューランナー",
+    "queueCheckpointingDesc": "キュー実行中にファイルスナップショットを保存（JSONLファイルサイズが増加します）"
   },
   "confirm": {
     "serverRestart": "リビルドしてサーバーを再起動します。続行しますか？",

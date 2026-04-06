@@ -545,7 +545,7 @@ export class QueueService {
    * work identically to normal chat.
    */
   private async executePrompt(item: QueueItem): Promise<ExecuteItemResult> {
-    const chatOptions = this.buildChatOptions();
+    const chatOptions = await this.buildChatOptions();
     const streamKey = this.currentSessionId || `queue-pending-${Date.now()}`;
     log.debug(`executePrompt: START prompt=${JSON.stringify((item.prompt || '').slice(0, 120))}, streamKey=${streamKey}, model=${chatOptions.model || '(default)'}, resume=${chatOptions.resume || 'none'}, sessionId=${chatOptions.sessionId || 'none'}`);
 
@@ -776,7 +776,7 @@ export class QueueService {
     return true;
   }
 
-  private buildChatOptions(): ChatOptions {
+  private async buildChatOptions(): Promise<ChatOptions> {
     const opts: ChatOptions = { abortController: this.abortController! };
     if (this.resumeSessionId) {
       opts.resume = this.resumeSessionId;
@@ -784,6 +784,12 @@ export class QueueService {
       opts.sessionId = this.currentSessionId;
     }
     if (this.currentModel) opts.model = this.currentModel;
+    try {
+      const prefs = await this.preferencesService.readPreferences();
+      if (prefs.enableQueueCheckpointing) {
+        opts.enableFileCheckpointing = true;
+      }
+    } catch { /* use default (no checkpointing) */ }
     return opts;
   }
 

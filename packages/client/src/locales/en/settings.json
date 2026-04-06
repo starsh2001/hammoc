@@ -145,7 +145,12 @@
       "high": "High",
       "max": "Max"
     },
-    "effortMaxSubscriber": "subscribers only"
+    "effortMaxSubscriber": "subscribers only",
+    "fileCheckpointing": "File Checkpointing",
+    "chatCheckpointing": "Chat sessions",
+    "chatCheckpointingDesc": "Save file snapshots during chat for rewind/restore",
+    "queueCheckpointing": "Queue runner",
+    "queueCheckpointingDesc": "Save file snapshots during queue execution (increases JSONL file size)"
   },
   "confirm": {
     "serverRestart": "This will rebuild and restart the server. Continue?",

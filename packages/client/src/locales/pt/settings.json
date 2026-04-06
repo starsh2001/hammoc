@@ -144,7 +144,12 @@
       "high": "High",
       "max": "Max"
     },
-    "effortMaxSubscriber": "indisponível para assinantes"
+    "effortMaxSubscriber": "indisponível para assinantes",
+    "fileCheckpointing": "Checkpoint de arquivos",
+    "chatCheckpointing": "Sessões de chat",
+    "chatCheckpointingDesc": "Salvar snapshots de arquivos durante o chat para rebobinar/restaurar",
+    "queueCheckpointing": "Executor de fila",
+    "queueCheckpointingDesc": "Salvar snapshots de arquivos durante a execução da fila (aumenta o tamanho do arquivo JSONL)"
   },
   "confirm": {
     "serverRestart": "Isso irá recompilar e reiniciar o servidor. Continuar?",
