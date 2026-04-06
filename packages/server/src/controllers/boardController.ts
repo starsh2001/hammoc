@@ -284,6 +284,28 @@ export const boardController = {
     }
   },
 
+  async legacyIssueCount(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      const count = await issueService.countLegacyIssues(projectRoot);
+      res.json({ count });
+    } catch {
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
+    }
+  },
+
+  async migrateIssues(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectSlug } = req.params;
+      const projectRoot = await projectService.resolveOriginalPath(projectSlug);
+      const migrated = await issueService.migrateIssues(projectRoot);
+      res.json({ migrated });
+    } catch {
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: req.t!('board.error.internal') } });
+    }
+  },
+
   async uploadAttachment(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug, issueId } = req.params;

@@ -4,10 +4,13 @@
  */
 
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const SNIPPETS_DIR = '.hammoc/snippets';
-const FALLBACK_SNIPPETS_DIR = '.bmad-core/snippets';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const BUNDLED_SNIPPETS_DIR = path.resolve(__dirname, '..', 'snippets');
 const MAX_FILE_SIZE = 102_400; // 100KB
 const NAME_RE = /^[a-zA-Z0-9._-]+$/;
 const SEPARATOR_RE = /^\s*---\s*$/m;
@@ -129,7 +132,8 @@ async function tryResolveFromDir(
       }
     } catch (err) {
       if (err instanceof SnippetError) throw err;
-      // File not found, try next candidate
+      if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw err;
     }
   }
 
@@ -138,10 +142,14 @@ async function tryResolveFromDir(
 
 /**
  * Resolve a snippet reference to an array of prompt strings.
- * Checks {projectPath}/.hammoc/snippets/ first, then .bmad-core/snippets/ as fallback.
+ * Resolution order: {projectPath}/.hammoc/snippets/ → ~/.hammoc/snippets/ → bundled standard snippets.
  * Substitutes {arg1}, {arg2}, {context}, splits by --- separator.
  */
-export async function resolveSnippet(text: string, projectPath: string): Promise<string[]> {
+export async function resolveSnippet(
+  text: string,
+  projectPath: string,
+  bundledDir: string = BUNDLED_SNIPPETS_DIR,
+): Promise<string[]> {
   // Extract context block from invocation text (before parsing snippet ref)
   let snippetLine = text;
   let contextContent: string | null = null;
@@ -163,9 +171,10 @@ export async function resolveSnippet(text: string, projectPath: string): Promise
     throw new SnippetError('PARSE_ERROR', `Invalid snippet name: ${name}`, name);
   }
 
-  // Try user snippets first, then fallback to framework snippets
-  const primaryResult = await tryResolveFromDir(path.resolve(projectPath, SNIPPETS_DIR), name);
-  const result = primaryResult ?? await tryResolveFromDir(path.resolve(projectPath, FALLBACK_SNIPPETS_DIR), name);
+  // Resolution order: project custom → global custom → bundled standard
+  const projectResult = await tryResolveFromDir(path.resolve(projectPath, SNIPPETS_DIR), name);
+  const globalResult = projectResult ?? await tryResolveFromDir(path.resolve(os.homedir(), SNIPPETS_DIR), name);
+  const result = globalResult ?? await tryResolveFromDir(bundledDir, name);
 
   if (!result) {
     throw new SnippetError('NOT_FOUND', `Snippet file not found: ${name}`, name);

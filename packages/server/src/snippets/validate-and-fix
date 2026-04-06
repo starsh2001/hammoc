@@ -1,0 +1,7 @@
+/BMad:agents:po
+---
+*validate-story-draft {arg1}
+---
+Please fix all Critical Issues, Should-Fix Issues, and Nice-to-Have Issues identified in the validation results above.
+---
+If the story status is not Approved, please change it to Approved now.

@@ -3,7 +3,7 @@
  * Story BS-2: Prompt Snippet System
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
@@ -239,47 +239,114 @@ describe('resolveSnippet', () => {
     expect(result).toEqual(['Prompt 1 MyContext', 'Prompt 2 MyContext']);
   });
 
-  // BS-3: Fallback directory
-  it('resolves from .bmad-core/snippets when .hammoc/snippets has no match', async () => {
-    const fallbackDir = path.join(tmpDir, '.bmad-core', 'snippets');
-    await fs.mkdir(fallbackDir, { recursive: true });
-    await fs.writeFile(path.join(fallbackDir, 'framework'), 'From framework');
-    const result = await resolveSnippet('%framework', tmpDir);
-    expect(result).toEqual(['From framework']);
+  // BS-3: Fallback to ~/.hammoc/snippets/ (global custom)
+  describe('global custom fallback (~/.hammoc/snippets)', () => {
+    let fakeHome: string;
+    let globalSnippetsDir: string;
+    let emptyBundled: string;
+
+    beforeEach(async () => {
+      fakeHome = await fs.mkdtemp(path.join(os.tmpdir(), 'snippet-home-'));
+      globalSnippetsDir = path.join(fakeHome, '.hammoc', 'snippets');
+      await fs.mkdir(globalSnippetsDir, { recursive: true });
+      emptyBundled = await fs.mkdtemp(path.join(os.tmpdir(), 'snippet-bundled-empty-'));
+      vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+    });
+
+    afterEach(async () => {
+      vi.restoreAllMocks();
+      await fs.rm(fakeHome, { recursive: true, force: true });
+      await fs.rm(emptyBundled, { recursive: true, force: true });
+    });
+
+    it('resolves from ~/.hammoc/snippets when project has no match', async () => {
+      await fs.writeFile(path.join(globalSnippetsDir, 'global'), 'From global');
+      const result = await resolveSnippet('%global', tmpDir, emptyBundled);
+      expect(result).toEqual(['From global']);
+    });
+
+    it('project .hammoc/snippets takes precedence over global', async () => {
+      await fs.writeFile(path.join(snippetsDir, 'both'), 'Project version');
+      await fs.writeFile(path.join(globalSnippetsDir, 'both'), 'Global version');
+      const result = await resolveSnippet('%both', tmpDir, emptyBundled);
+      expect(result).toEqual(['Project version']);
+    });
+
+    it('propagates SIZE_EXCEEDED from project without falling back to global', async () => {
+      await fs.writeFile(path.join(snippetsDir, 'toobig'), 'x'.repeat(102_401));
+      await fs.writeFile(path.join(globalSnippetsDir, 'toobig'), 'Small global');
+      await expect(resolveSnippet('%toobig', tmpDir, emptyBundled)).rejects.toMatchObject({ code: 'SIZE_EXCEEDED' });
+    });
+
+    it('resolves .md extension from global directory', async () => {
+      await fs.writeFile(path.join(globalSnippetsDir, 'readme.md'), 'Global MD');
+      const result = await resolveSnippet('%readme', tmpDir, emptyBundled);
+      expect(result).toEqual(['Global MD']);
+    });
   });
 
-  it('.hammoc/snippets takes precedence over .bmad-core/snippets', async () => {
-    const fallbackDir = path.join(tmpDir, '.bmad-core', 'snippets');
-    await fs.mkdir(fallbackDir, { recursive: true });
-    await fs.writeFile(path.join(snippetsDir, 'both'), 'User version');
-    await fs.writeFile(path.join(fallbackDir, 'both'), 'Framework version');
-    const result = await resolveSnippet('%both', tmpDir);
-    expect(result).toEqual(['User version']);
-  });
+  // BS-3: Bundled standard snippets (3rd tier)
+  describe('bundled standard snippets fallback', () => {
+    let fakeHome: string;
+    let globalSnippetsDir: string;
+    let bundledDir: string;
 
-  it('throws NOT_FOUND when file in neither directory', async () => {
-    const fallbackDir = path.join(tmpDir, '.bmad-core', 'snippets');
-    await fs.mkdir(fallbackDir, { recursive: true });
-    await expect(resolveSnippet('%missing', tmpDir)).rejects.toMatchObject({ code: 'NOT_FOUND' });
-  });
+    beforeEach(async () => {
+      fakeHome = await fs.mkdtemp(path.join(os.tmpdir(), 'snippet-home-'));
+      globalSnippetsDir = path.join(fakeHome, '.hammoc', 'snippets');
+      await fs.mkdir(globalSnippetsDir, { recursive: true });
+      bundledDir = await fs.mkdtemp(path.join(os.tmpdir(), 'snippet-bundled-'));
+      vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+    });
 
-  it('propagates SIZE_EXCEEDED from .hammoc/snippets without falling back', async () => {
-    const fallbackDir = path.join(tmpDir, '.bmad-core', 'snippets');
-    await fs.mkdir(fallbackDir, { recursive: true });
-    await fs.writeFile(path.join(snippetsDir, 'toobig'), 'x'.repeat(102_401));
-    await fs.writeFile(path.join(fallbackDir, 'toobig'), 'Small fallback');
-    await expect(resolveSnippet('%toobig', tmpDir)).rejects.toMatchObject({ code: 'SIZE_EXCEEDED' });
-  });
+    afterEach(async () => {
+      vi.restoreAllMocks();
+      await fs.rm(fakeHome, { recursive: true, force: true });
+      await fs.rm(bundledDir, { recursive: true, force: true });
+    });
 
-  it('applies path traversal prevention to fallback directory too', async () => {
-    await expect(resolveSnippet('%../etc/passwd', tmpDir)).rejects.toMatchObject({ code: 'PARSE_ERROR' });
-  });
+    it('resolves from bundled when project and global have no match', async () => {
+      await fs.writeFile(path.join(bundledDir, 'standard'), 'From bundled');
+      const result = await resolveSnippet('%standard', tmpDir, bundledDir);
+      expect(result).toEqual(['From bundled']);
+    });
 
-  it('resolves .md extension from fallback directory', async () => {
-    const fallbackDir = path.join(tmpDir, '.bmad-core', 'snippets');
-    await fs.mkdir(fallbackDir, { recursive: true });
-    await fs.writeFile(path.join(fallbackDir, 'readme.md'), 'Fallback MD');
-    const result = await resolveSnippet('%readme', tmpDir);
-    expect(result).toEqual(['Fallback MD']);
+    it('project takes precedence over bundled', async () => {
+      await fs.writeFile(path.join(snippetsDir, 'shared'), 'Project version');
+      await fs.writeFile(path.join(bundledDir, 'shared'), 'Bundled version');
+      const result = await resolveSnippet('%shared', tmpDir, bundledDir);
+      expect(result).toEqual(['Project version']);
+    });
+
+    it('global takes precedence over bundled', async () => {
+      await fs.writeFile(path.join(globalSnippetsDir, 'shared'), 'Global version');
+      await fs.writeFile(path.join(bundledDir, 'shared'), 'Bundled version');
+      const result = await resolveSnippet('%shared', tmpDir, bundledDir);
+      expect(result).toEqual(['Global version']);
+    });
+
+    it('full 3-tier precedence: project > global > bundled', async () => {
+      await fs.writeFile(path.join(snippetsDir, 'all'), 'Project');
+      await fs.writeFile(path.join(globalSnippetsDir, 'all'), 'Global');
+      await fs.writeFile(path.join(bundledDir, 'all'), 'Bundled');
+      const result = await resolveSnippet('%all', tmpDir, bundledDir);
+      expect(result).toEqual(['Project']);
+    });
+
+    it('SIZE_EXCEEDED from global does NOT fall back to bundled', async () => {
+      await fs.writeFile(path.join(globalSnippetsDir, 'toobig'), 'x'.repeat(102_401));
+      await fs.writeFile(path.join(bundledDir, 'toobig'), 'Small bundled');
+      await expect(resolveSnippet('%toobig', tmpDir, bundledDir)).rejects.toMatchObject({ code: 'SIZE_EXCEEDED' });
+    });
+
+    it('throws NOT_FOUND when snippet in none of the three tiers', async () => {
+      await expect(resolveSnippet('%nowhere', tmpDir, bundledDir)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    });
+
+    it('resolves .md extension from bundled directory', async () => {
+      await fs.writeFile(path.join(bundledDir, 'readme.md'), 'Bundled MD');
+      const result = await resolveSnippet('%readme', tmpDir, bundledDir);
+      expect(result).toEqual(['Bundled MD']);
+    });
   });
 });

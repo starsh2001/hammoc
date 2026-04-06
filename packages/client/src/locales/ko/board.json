@@ -106,7 +106,13 @@
     "editFailed": "이슈 수정에 실패했습니다.",
     "closeFailed": "이슈 닫기에 실패했습니다.",
     "reopenFailed": "이슈 다시 열기에 실패했습니다.",
-    "deleteFailed": "이슈 삭제에 실패했습니다."
+    "deleteFailed": "이슈 삭제에 실패했습니다.",
+    "migrationFailed": "이슈 마이그레이션에 실패했습니다."
+  },
+  "migration": {
+    "legacyIssues": "레거시 형식의 이슈가 {{count}}개 있습니다. 새로운 ISSUE-N 형식으로 변환하시겠습니까?",
+    "migrate": "변환하기",
+    "migrating": "변환 중..."
   },
   "empty": {
     "message": "보드에 항목이 없습니다. 이슈를 추가해 보세요.",

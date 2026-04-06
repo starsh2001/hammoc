@@ -107,7 +107,13 @@
     "closeFailed": "Failed to close issue.",
     "reopenFailed": "Failed to re-open issue.",
     "deleteFailed": "Failed to delete issue.",
-    "normalizeStatusFailed": "Failed to normalize status."
+    "normalizeStatusFailed": "Failed to normalize status.",
+    "migrationFailed": "Failed to migrate issues."
+  },
+  "migration": {
+    "legacyIssues": "{{count}} issues use the legacy format. Migrate to the new ISSUE-N format?",
+    "migrate": "Migrate",
+    "migrating": "Migrating..."
   },
   "empty": {
     "message": "No items on the board. Try adding an issue.",

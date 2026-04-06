@@ -332,6 +332,77 @@ class IssueService {
   }
 
   /**
+   * Count legacy (non-ISSUE-N) issue files.
+   */
+  async countLegacyIssues(projectPath: string): Promise<number> {
+    const issuesDir = await this.resolveIssuesDir(projectPath);
+    let files: string[];
+    try {
+      files = await fs.readdir(issuesDir);
+    } catch {
+      return 0;
+    }
+    return files.filter((f) => f.endsWith('.md') && !ISSUE_ID_RE.test(f.replace(/\.md$/, ''))).length;
+  }
+
+  /**
+   * Migrate all legacy issue files to ISSUE-N format.
+   * Renames files and their attachment directories. Returns count of migrated files.
+   */
+  async migrateIssues(projectPath: string): Promise<number> {
+    const issuesDir = await this.resolveIssuesDir(projectPath);
+    let files: string[];
+    try {
+      files = await fs.readdir(issuesDir);
+    } catch {
+      return 0;
+    }
+
+    const legacyFiles = files
+      .filter((f) => f.endsWith('.md') && !ISSUE_ID_RE.test(f.replace(/\.md$/, '')))
+      .sort(); // deterministic order
+
+    if (legacyFiles.length === 0) return 0;
+
+    let nextNum = await this.nextIssueNumber(issuesDir);
+    let migrated = 0;
+
+    for (const file of legacyFiles) {
+      const oldId = file.replace(/\.md$/, '');
+      const newId = `${ISSUE_ID_PREFIX}${nextNum}`;
+      const oldPath = path.join(issuesDir, file);
+      const newPath = path.join(issuesDir, `${newId}.md`);
+
+      await fs.rename(oldPath, newPath);
+
+      // Rename attachment directory if it exists
+      const oldAttachDir = path.join(issuesDir, ATTACHMENTS_DIR_NAME, oldId);
+      const newAttachDir = path.join(issuesDir, ATTACHMENTS_DIR_NAME, newId);
+      try {
+        await fs.access(oldAttachDir);
+        await fs.rename(oldAttachDir, newAttachDir);
+      } catch {
+        // No attachments directory — skip
+      }
+
+      // Rename review file if it exists
+      const oldReview = path.join(issuesDir, REVIEWS_DIR_NAME, `${oldId}-review.yml`);
+      const newReview = path.join(issuesDir, REVIEWS_DIR_NAME, `${newId}-review.yml`);
+      try {
+        await fs.access(oldReview);
+        await fs.rename(oldReview, newReview);
+      } catch {
+        // No review file — skip
+      }
+
+      nextNum++;
+      migrated++;
+    }
+
+    return migrated;
+  }
+
+  /**
    * Create a new issue file.
    */
   async createIssue(projectPath: string, data: CreateIssueRequest): Promise<BoardItem> {

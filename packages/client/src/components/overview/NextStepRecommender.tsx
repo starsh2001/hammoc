@@ -115,7 +115,10 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
     }
 
     const sessionId = generateUUID();
-    const params = new URLSearchParams({ agent: rec.agentCommand });
+    const params = new URLSearchParams();
+    if (rec.agentCommand) {
+      params.set('agent', rec.agentCommand);
+    }
     if (rec.taskCommand) {
       params.set('task', rec.taskCommand);
     }

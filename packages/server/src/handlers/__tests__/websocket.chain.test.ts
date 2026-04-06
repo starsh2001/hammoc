@@ -830,7 +830,7 @@ describe('WebSocket Chain Handler (Story 24.1)', () => {
       await new Promise((r) => setTimeout(r, 50));
 
       const chainStatePromise = new Promise<{ items: PromptChainItem[] }>((resolve) => {
-        clientSocket.on('chain:state', (data) => resolve(data));
+        clientSocket.on('chain:update', (data) => resolve(data));
       });
 
       clientSocket.emit('chat:send', {

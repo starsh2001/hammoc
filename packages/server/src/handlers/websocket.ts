@@ -2209,7 +2209,7 @@ async function handleChatSend(
           });
         }
         chainState.set(stream.sessionId, items);
-        io.to(`session:${stream.sessionId}`).emit('chain:state', {
+        io.to(`session:${stream.sessionId}`).emit('chain:update', {
           sessionId: stream.sessionId,
           items: items.map(toPublicChainItem),
         });
@@ -2360,7 +2360,7 @@ async function handleChatSend(
       ...(resumeSessionAt ? { resumeSessionAt } : {}),
       // Story 25.11: fork session — create new session from branch point
       ...(forkSession ? { forkSession: true } : {}),
-      enableFileCheckpointing: true,
+      enableFileCheckpointing: effectivePrefs.enableChatCheckpointing ?? true,
       ...(rewindToMessageUuid ? { rewindToMessageUuid } : {}),
     };
 

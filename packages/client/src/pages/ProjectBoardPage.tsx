@@ -47,6 +47,8 @@ export function ProjectBoardPage() {
   const [editingIssue, setEditingIssue] = useState<BoardItem | null>(null);
   const [epicDialogData, setEpicDialogData] = useState<{ epic: BoardItem; stories: BoardItem[] } | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [legacyCount, setLegacyCount] = useState(0);
+  const [isMigrating, setIsMigrating] = useState(false);
 
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -55,6 +57,26 @@ export function ProjectBoardPage() {
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (projectSlug) {
+      boardApi.legacyIssueCount(projectSlug).then((r) => setLegacyCount(r.count)).catch(() => {});
+    }
+  }, [projectSlug]);
+
+  const handleMigrateIssues = useCallback(async () => {
+    if (!projectSlug || isMigrating) return;
+    setIsMigrating(true);
+    try {
+      await boardApi.migrateIssues(projectSlug);
+      setLegacyCount(0);
+      refresh();
+    } catch {
+      setActionErrorWithClear(t('errors.migrationFailed'));
+    } finally {
+      setIsMigrating(false);
+    }
+  }, [projectSlug, isMigrating, refresh]);
 
   const setActionErrorWithClear = useCallback((msg: string) => {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
@@ -83,11 +105,8 @@ export function ProjectBoardPage() {
       await boardApi.updateIssue(projectSlug, item.id, { status: 'In Progress' });
       const sessionId = generateUUID();
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
-      const desc = item.description
-        ? (item.description.length > 500 ? item.description.slice(0, 500) + '...' : item.description)
-        : '';
-      const prompt = `%quick-fix-issue ${issueFile} ${item.severity || 'unknown'} ${item.issueType || 'unknown'}\n---context\n# ${item.title}\n\n${desc}`;
-      const params = new URLSearchParams({ agent: '/BMad:agents:dev', task: prompt });
+      const prompt = `%quick-fix-issue ${issueFile}`;
+      const params = new URLSearchParams({ task: prompt });
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
       setActionErrorWithClear(t('errors.updateStatusFailed'));
@@ -101,10 +120,9 @@ export function ProjectBoardPage() {
       await boardApi.updateIssue(projectSlug, item.id, { status: 'Promoted' });
       const sessionId = generateUUID();
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
-      const taskName = targetType === 'story' ? '*create-brownfield-story' : '*create-brownfield-epic';
-
-      const prompt = `%promote-issue "${taskName}" ${item.id} "${item.title}" ${item.severity || 'unknown'} ${item.issueType || 'unknown'} ${issueFile} ${targetType}`;
-      const params = new URLSearchParams({ agent: '/BMad:agents:pm', task: prompt });
+      const snippetName = targetType === 'story' ? 'promote-to-story' : 'promote-to-epic';
+      const prompt = `%${snippetName} ${issueFile}`;
+      const params = new URLSearchParams({ task: prompt });
 
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
     } catch {
@@ -183,25 +201,19 @@ export function ProjectBoardPage() {
     if (!projectSlug) return;
     const sessionId = generateUUID();
     const badge = resolveBadge(item);
-    let agent = '';
     let task = '';
 
     // Issue workflow actions
     if (item.type === 'issue') {
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
-      const desc = item.description
-        ? (item.description.length > 500 ? item.description.slice(0, 500) + '...' : item.description)
-        : '';
 
       if (badge.id === 'in-progress') {
-        // Resume development — same prompt as quick fix
-        agent = '/BMad:agents:dev';
-        task = `%quick-fix-issue ${issueFile} ${item.severity || 'unknown'} ${item.issueType || 'unknown'}\n---context\n# ${item.title}\n\n${desc}`;
+        task = `%quick-fix-issue ${issueFile}`;
       } else {
         return;
       }
 
-      const params = new URLSearchParams({ agent, task });
+      const params = new URLSearchParams({ task });
       navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
       return;
     }
@@ -211,8 +223,7 @@ export function ProjectBoardPage() {
     const storyNum = item.id.replace(/^story-/, '');
 
     if (badge.id === 'draft') {
-      agent = '/BMad:agents:po';
-      task = `*validate-story-draft ${storyNum}`;
+      task = `%validate-story ${storyNum}`;
     } else if (badge.id === 'approved') {
       try {
         await boardApi.updateStoryStatus(projectSlug, item.id, 'In Progress');
@@ -220,25 +231,20 @@ export function ProjectBoardPage() {
         setActionErrorWithClear(t('errors.updateStatusFailed'));
         return;
       }
-      agent = '/BMad:agents:dev';
-      task = `*develop-story ${storyNum}`;
+      task = `%develop-story ${storyNum}`;
     } else if (badge.id === 'in-progress') {
-      agent = '/BMad:agents:dev';
-      task = `*develop-story ${storyNum}`;
+      task = `%develop-story ${storyNum}`;
     } else if (badge.id === 'qa-passed' || badge.id === 'qa-waived') {
-      agent = '/BMad:agents:dev';
       task = `%mark-done ${storyNum}`;
     } else if (badge.id === 'qa-failed' || badge.id === 'qa-concerns') {
-      agent = '/BMad:agents:dev';
       task = `%apply-qa-fixes ${storyNum}`;
     } else if (badge.id === 'qa-fixed' || badge.id === 'ready-for-review' || badge.id === 'ready-for-done') {
-      agent = '/BMad:agents:qa';
-      task = `*review ${storyNum}`;
+      task = `%qa-review ${storyNum}`;
     } else {
       return;
     }
 
-    const params = new URLSearchParams({ agent, task });
+    const params = new URLSearchParams({ task });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t, setActionErrorWithClear]);
 
@@ -248,8 +254,7 @@ export function ProjectBoardPage() {
     const sessionId = generateUUID();
     const storyNum = item.id.replace(/^story-/, '');
     const params = new URLSearchParams({
-      agent: '/BMad:agents:po',
-      task: `%validate-and-approve ${storyNum}`,
+      task: `%validate-story ${storyNum}`,
     });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate, t]);
@@ -260,7 +265,6 @@ export function ProjectBoardPage() {
     const sessionId = generateUUID();
     const storyNum = item.id.replace(/^story-/, '');
     const params = new URLSearchParams({
-      agent: '/BMad:agents:po',
       task: `%validate-and-fix ${storyNum}`,
     });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
@@ -270,11 +274,9 @@ export function ProjectBoardPage() {
   const handleCommitAndComplete = useCallback((item: BoardItem) => {
     if (!projectSlug) return;
     const sessionId = generateUUID();
-    const agent = '/BMad:agents:dev';
-    const id = item.id.replace(/^(story|issue)-/, '');
-    const typeLabel = item.type === 'story' ? 'story' : 'issue';
-    const task = `%commit-and-done ${typeLabel} ${id}`;
-    const params = new URLSearchParams({ agent, task });
+    const storyNum = item.id.replace(/^story-/, '');
+    const task = `%commit-and-done ${storyNum}`;
+    const params = new URLSearchParams({ task });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate]);
 
@@ -284,8 +286,7 @@ export function ProjectBoardPage() {
     const sessionId = generateUUID();
     const storyNum = item.id.replace(/^story-/, '');
     const params = new URLSearchParams({
-      agent: '/BMad:agents:qa',
-      task: `*review ${storyNum}`,
+      task: `%qa-review ${storyNum}`,
     });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate]);
@@ -296,8 +297,7 @@ export function ProjectBoardPage() {
     const sessionId = generateUUID();
     const epicNum = item.epicNumber ?? item.id.replace(/^epic-/, '');
     const params = new URLSearchParams({
-      agent: '/BMad:agents:sm',
-      task: `*draft ${epicNum}`,
+      task: `%draft-story ${epicNum}`,
     });
     navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
   }, [projectSlug, navigate]);
@@ -480,6 +480,20 @@ export function ProjectBoardPage() {
           </button>
         </div>
       </div>
+
+      {/* Legacy issue migration banner */}
+      {legacyCount > 0 && (
+        <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-400 text-sm flex items-center justify-between">
+          <span>{t('migration.legacyIssues', { count: legacyCount })}</span>
+          <button
+            onClick={handleMigrateIssues}
+            disabled={isMigrating}
+            className="px-3 py-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded text-xs font-medium transition-colors"
+          >
+            {isMigrating ? t('migration.migrating') : t('migration.migrate')}
+          </button>
+        </div>
+      )}
 
       {/* Error banner (when items exist but refresh fails) */}
       {(error || actionError) && (

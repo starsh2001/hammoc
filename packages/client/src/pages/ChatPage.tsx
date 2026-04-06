@@ -550,24 +550,30 @@ export function ChatPage() {
           const agentParam = searchParams.get('agent');
           const taskParam = searchParams.get('task');
           const chainPrompts = searchParams.getAll('chain');
-          if (agentParam && useMessageStore.getState().messages.length === 0) {
+          if ((agentParam || taskParam) && useMessageStore.getState().messages.length === 0) {
             window.history.replaceState(null, '', window.location.pathname);
-            handleSendMessageRef.current(agentParam);
-            const wd = currentProject?.originalPath;
-            if (sessionId && wd) {
-              const chatState = useChatStore.getState();
-              const chainOpts = {
-                workingDirectory: wd,
-                permissionMode: chatState.permissionMode,
-                model: chatState.selectedModel,
-                effort: chatState.selectedEffort,
-              };
-              if (taskParam) {
-                getSocket()?.emit('chain:add', { sessionId, content: taskParam, ...chainOpts });
+            if (agentParam) {
+              // Legacy: separate agent + task params
+              handleSendMessageRef.current(agentParam);
+              const wd = currentProject?.originalPath;
+              if (sessionId && wd) {
+                const chatState = useChatStore.getState();
+                const chainOpts = {
+                  workingDirectory: wd,
+                  permissionMode: chatState.permissionMode,
+                  model: chatState.selectedModel,
+                  effort: chatState.selectedEffort,
+                };
+                if (taskParam) {
+                  getSocket()?.emit('chain:add', { sessionId, content: taskParam, ...chainOpts });
+                }
+                for (const prompt of chainPrompts) {
+                  getSocket()?.emit('chain:add', { sessionId, content: prompt, ...chainOpts });
+                }
               }
-              for (const prompt of chainPrompts) {
-                getSocket()?.emit('chain:add', { sessionId, content: prompt, ...chainOpts });
-              }
+            } else if (taskParam) {
+              // Snippet-based: task includes agent activation via multi-prompt resolution
+              handleSendMessageRef.current(taskParam);
             }
           }
         }

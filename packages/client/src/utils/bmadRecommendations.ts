@@ -29,9 +29,9 @@ export interface NextStepRecommendation {
   title: string;
   /** One-liner describing the action */
   description: string;
-  /** Agent slash command — always present, e.g. "/BMad:agents:pm" */
-  agentCommand: string;
-  /** Star command sent after agent activation, e.g. "*create-prd" */
+  /** Agent to activate before task (legacy, non-snippet actions only) */
+  agentCommand?: string;
+  /** %snippet reference (includes agent) or raw command (requires agentCommand) */
   taskCommand: string;
   variant: ActionVariant;
   /** Key used by the UI component to pick a lucide icon */
@@ -190,8 +190,7 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
       id: 'brainstorming',
       title: i18n.t('common:rec.brainstorming'),
       description: i18n.t('common:rec.brainstormingDesc'),
-      agentCommand: '/BMad:agents:analyst',
-      taskCommand: '*brainstorm',
+      taskCommand: '%brainstorm',
       variant: 'primary',
       iconKey: 'lightbulb',
     });
@@ -202,8 +201,7 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
       id: 'brief',
       title: i18n.t('common:rec.projectBrief'),
       description: i18n.t('common:rec.projectBriefDesc'),
-      agentCommand: '/BMad:agents:analyst',
-      taskCommand: '*create-project-brief',
+      taskCommand: '%create-project-brief',
       variant: 'primary',
       iconKey: 'clipboard',
     });
@@ -214,8 +212,7 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
     id: 'create-prd',
     title: i18n.t('common:rec.createPrd'),
     description: i18n.t('common:rec.createPrdDesc'),
-    agentCommand: '/BMad:agents:pm',
-    taskCommand: '*create-prd',
+    taskCommand: '%create-prd',
     variant: prdVariant,
     iconKey: 'file-text',
   });
@@ -226,8 +223,7 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
       id: 'market-research',
       title: i18n.t('common:rec.marketResearch'),
       description: i18n.t('common:rec.marketResearchDesc'),
-      agentCommand: '/BMad:agents:analyst',
-      taskCommand: '*perform-market-research',
+      taskCommand: '%market-research',
       variant: 'secondary',
       iconKey: 'search',
     });
@@ -238,8 +234,7 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
       id: 'competitor-analysis',
       title: i18n.t('common:rec.competitorAnalysis'),
       description: i18n.t('common:rec.competitorAnalysisDesc'),
-      agentCommand: '/BMad:agents:analyst',
-      taskCommand: '*create-competitor-analysis',
+      taskCommand: '%competitor-analysis',
       variant: 'secondary',
       iconKey: 'users',
     });
@@ -259,8 +254,7 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
     id: 'create-backend-arch',
     title: i18n.t('common:rec.backendArch'),
     description: i18n.t('common:rec.backendArchDesc'),
-    agentCommand: '/BMad:agents:architect',
-    taskCommand: '*create-backend-architecture',
+    taskCommand: '%create-backend-arch',
     variant: 'primary',
     iconKey: 'blocks',
   });
@@ -271,8 +265,7 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
       id: 'create-frontend-arch',
       title: i18n.t('common:rec.feArch'),
       description: i18n.t('common:rec.feArchDesc'),
-      agentCommand: '/BMad:agents:architect',
-      taskCommand: '*create-front-end-architecture',
+      taskCommand: '%create-frontend-arch',
       variant: 'primary',
       iconKey: 'layout',
     });
@@ -283,8 +276,7 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
     id: 'create-fullstack-arch',
     title: i18n.t('common:rec.fullstackArch'),
     description: i18n.t('common:rec.fullstackArchDesc'),
-    agentCommand: '/BMad:agents:architect',
-    taskCommand: '*create-full-stack-architecture',
+    taskCommand: '%create-fullstack-arch',
     variant: 'primary',
     iconKey: 'blocks',
   });
@@ -295,8 +287,7 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
       id: 'fe-spec',
       title: i18n.t('common:rec.feSpec'),
       description: i18n.t('common:rec.feSpecDesc'),
-      agentCommand: '/BMad:agents:ux-expert',
-      taskCommand: '*create-front-end-spec',
+      taskCommand: '%create-frontend-spec',
       variant: 'secondary',
       iconKey: 'palette',
     });
@@ -345,8 +336,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'commit-and-mark-done',
       title: i18n.t('common:rec.commitAndMarkDone'),
       description: label,
-      agentCommand: '/BMad:agents:dev',
-      taskCommand: `%commit-and-done story ${num}`,
+      taskCommand: `%commit-and-done ${num}`,
       variant: 'primary',
       iconKey: 'git-commit',
       storyFile: qaDoneStory.file,
@@ -355,7 +345,6 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'mark-done',
       title: i18n.t('common:rec.markDone'),
       description: i18n.t('common:rec.markDoneDesc'),
-      agentCommand: '/BMad:agents:dev',
       taskCommand: `%mark-done ${num}`,
       variant: 'secondary',
       iconKey: 'check-circle',
@@ -365,8 +354,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'request-qa-review',
       title: i18n.t('common:rec.requestQAReview'),
       description: label,
-      agentCommand: '/BMad:agents:qa',
-      taskCommand: `*review ${num}`,
+      taskCommand: `%qa-review ${num}`,
       variant: 'secondary',
       iconKey: 'rotate-ccw',
       storyFile: qaDoneStory.file,
@@ -383,8 +371,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'review-fixed',
       title: i18n.t('common:rec.qaReview'),
       description: i18n.t('common:rec.qaReviewDesc', { label }),
-      agentCommand: '/BMad:agents:qa',
-      taskCommand: `*review ${num}`,
+      taskCommand: `%qa-review ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'check-circle',
       storyFile: qaFixedStory.file,
@@ -401,7 +388,6 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'review-apply-fixes',
       title: i18n.t('common:rec.applyQaFixes'),
       description: label,
-      agentCommand: '/BMad:agents:dev',
       taskCommand: `%apply-qa-fixes ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'wrench',
@@ -419,8 +405,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'review-story',
       title: i18n.t('common:rec.qaReview'),
       description: i18n.t('common:rec.qaReviewDesc', { label }),
-      agentCommand: '/BMad:agents:qa',
-      taskCommand: `*review ${num}`,
+      taskCommand: `%qa-review ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'check-circle',
       storyFile: reviewStory.file,
@@ -437,8 +422,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'continue-dev',
       title: i18n.t('common:rec.continueDev'),
       description: label,
-      agentCommand: '/BMad:agents:dev',
-      taskCommand: `*develop-story ${num}`,
+      taskCommand: `%develop-story ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'code',
       storyFile: inProgressStory.file,
@@ -456,8 +440,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'start-dev',
       title: i18n.t('common:rec.startDev'),
       description: label,
-      agentCommand: '/BMad:agents:dev',
-      taskCommand: `*develop-story ${num}`,
+      taskCommand: `%develop-story ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'play',
       storyFile: approvedStory.file,
@@ -468,7 +451,6 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'validate-fix-approved-story',
       title: i18n.t('common:rec.validateAndFixStory'),
       description: label,
-      agentCommand: '/BMad:agents:po',
       taskCommand: `%validate-and-fix ${num}`,
       variant: 'secondary',
       iconKey: 'shield-check',
@@ -480,8 +462,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'validate-approved-story',
       title: i18n.t('common:rec.validateStoryOnly'),
       description: label,
-      agentCommand: '/BMad:agents:po',
-      taskCommand: `%validate-and-approve ${num}`,
+      taskCommand: `%validate-story ${num}`,
       variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: approvedStory.file,
@@ -499,7 +480,6 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'validate-fix-story',
       title: i18n.t('common:rec.validateAndFixStory'),
       description: label,
-      agentCommand: '/BMad:agents:po',
       taskCommand: `%validate-and-fix ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'shield-check',
@@ -511,8 +491,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'validate-story',
       title: i18n.t('common:rec.validateStoryOnly'),
       description: label,
-      agentCommand: '/BMad:agents:po',
-      taskCommand: `%validate-and-approve ${num}`,
+      taskCommand: `%validate-story ${num}`,
       variant: 'secondary',
       iconKey: 'shield-check',
       storyFile: draftStory.file,
@@ -530,8 +509,7 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       id: 'create-story',
       title: stories.length === 0 ? i18n.t('common:rec.createFirstStory') : i18n.t('common:rec.createNextStory'),
       description: `Story ${nextNum}`,
-      agentCommand: '/BMad:agents:sm',
-      taskCommand: `*draft ${nextNum}`,
+      taskCommand: `%draft-story ${nextNum}`,
       variant: hasActionable ? 'secondary' : 'primary',
       iconKey: 'plus-circle',
     });
@@ -549,8 +527,7 @@ function buildCompletedRecommendations(data: BmadStatusResponse): NextStepRecomm
     id: 'brainstorm-features',
     title: i18n.t('common:rec.newFeatureBrainstorm'),
     description: i18n.t('common:rec.newFeatureBrainstormDesc'),
-    agentCommand: '/BMad:agents:analyst',
-    taskCommand: '*brainstorm',
+    taskCommand: '%brainstorm',
     variant: 'primary',
     iconKey: 'lightbulb',
   });
@@ -559,8 +536,7 @@ function buildCompletedRecommendations(data: BmadStatusResponse): NextStepRecomm
     id: 'new-epic',
     title: i18n.t('common:rec.addNewEpic'),
     description: i18n.t('common:rec.addNewEpicDesc'),
-    agentCommand: '/BMad:agents:pm',
-    taskCommand: '*brownfield-create-epic',
+    taskCommand: '%brownfield-create-epic',
     variant: 'primary',
     iconKey: 'plus-circle',
   });
@@ -569,8 +545,7 @@ function buildCompletedRecommendations(data: BmadStatusResponse): NextStepRecomm
     id: 'add-brownfield-story',
     title: i18n.t('common:rec.addStoryToEpic'),
     description: i18n.t('common:rec.addStoryToEpicDesc'),
-    agentCommand: '/BMad:agents:sm',
-    taskCommand: '*brownfield-create-story',
+    taskCommand: '%brownfield-create-story',
     variant: 'secondary',
     iconKey: 'file-text',
   });

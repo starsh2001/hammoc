@@ -1,0 +1,9 @@
+/BMad:agents:pm
+---
+*create-brownfield-epic
+
+Read the issue file {arg1} and use it as context.
+---
+*doc-out
+
+Save the epic document to the appropriate project directory.

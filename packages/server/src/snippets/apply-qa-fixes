@@ -1,0 +1,5 @@
+/BMad:agents:dev
+---
+*review-qa {arg1}
+
+After completing QA fixes, update the gate YAML file's gate field to 'FIXED'.

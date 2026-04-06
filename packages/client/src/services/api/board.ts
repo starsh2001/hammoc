@@ -26,6 +26,12 @@ export const boardApi = {
   deleteIssue: (projectSlug: string, issueId: string) =>
     api.delete<{ message: string }>(`/projects/${projectSlug}/board/issues/${issueId}`),
 
+  legacyIssueCount: (projectSlug: string) =>
+    api.get<{ count: number }>(`/projects/${projectSlug}/board/issues-legacy-count`),
+
+  migrateIssues: (projectSlug: string) =>
+    api.post<{ migrated: number }>(`/projects/${projectSlug}/board/issues-migrate`),
+
   updateStoryStatus: (projectSlug: string, storyId: string, status: string) =>
     api.patch<{ message: string }>(`/projects/${projectSlug}/board/stories/${storyId}`, { status }),
 
