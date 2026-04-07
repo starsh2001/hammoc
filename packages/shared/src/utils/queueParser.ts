@@ -179,15 +179,12 @@ export function parseQueueScript(script: string): QueueParseResult {
                 break;
               }
             }
-            if (!keyword) {
-              warnings.push({ line: lineNum, message: '@pauseword requires a non-empty keyword' });
-            } else {
-              items.push({
-                prompt: '',
-                isNewSession: false,
-                pauseword: keyword,
-              });
-            }
+            // Empty string is valid — clears the active pauseword
+            items.push({
+              prompt: '',
+              isNewSession: false,
+              pauseword: keyword,
+            });
           }
           break;
         }

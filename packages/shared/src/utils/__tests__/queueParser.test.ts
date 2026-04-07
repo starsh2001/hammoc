@@ -270,12 +270,12 @@ describe('parseQueueScript', () => {
     expect(result.warnings[0]).toEqual({ line: 1, message: '@pauseword requires a keyword' });
   });
 
-  // TC-QP-22: @pauseword with empty quoted string emits warning
-  it('TC-QP-22: @pauseword with empty quoted string emits warning', () => {
+  // TC-QP-22: @pauseword with empty quoted string clears pauseword
+  it('TC-QP-22: @pauseword with empty quoted string is valid (clears pauseword)', () => {
     const result = parseQueueScript('@pauseword ""');
-    expect(result.items).toHaveLength(0);
-    expect(result.warnings).toHaveLength(1);
-    expect(result.warnings[0]).toEqual({ line: 1, message: '@pauseword requires a non-empty keyword' });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toEqual({ prompt: '', isNewSession: false, pauseword: '' });
+    expect(result.warnings).toHaveLength(0);
   });
 
   // TC-QP-23: @pauseword with mismatched quotes emits warning
