@@ -104,6 +104,8 @@ interface ChatInputProps {
   placeholder?: string;
   /** Available slash commands for autocomplete */
   commands?: SlashCommand[];
+  /** Refresh command list from server */
+  onCommandRefresh?: () => void;
   /** Whether Claude is currently streaming a response */
   isStreaming?: boolean;
   /** Callback to abort the current response */
@@ -185,6 +187,7 @@ export function ChatInput({
   disabled = false,
   placeholder,
   commands = [],
+  onCommandRefresh,
   isStreaming = false,
   onAbort,
   permissionMode,
@@ -343,6 +346,7 @@ export function ChatInput({
       setShowFavorites(false);
       setShowStarCommands(false);
       setShowSnippets(false);
+      onCommandRefresh?.();
     } else if (content.startsWith('*') && !content.includes(' ') && activeAgent && starCommands && starCommands.length > 0) {
       setShowStarCommands(true);
       setShowCommands(false);
@@ -359,7 +363,7 @@ export function ChatInput({
       setShowStarCommands(false);
       setShowSnippets(false);
     }
-  }, [content, commands.length, activeAgent, starCommands, snippets.length, onSnippetRefresh]);
+  }, [content, commands.length, activeAgent, starCommands, snippets.length, onCommandRefresh, onSnippetRefresh]);
 
   // Reset selectedIndex when filter changes
   useEffect(() => {

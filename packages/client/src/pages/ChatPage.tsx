@@ -299,7 +299,7 @@ export function ChatPage() {
   useStreaming();
 
   // Fetch slash commands for autocomplete (Story 5.1)
-  const { commands, starCommands } = useSlashCommands(projectSlug);
+  const { commands, starCommands, refresh: refreshCommands } = useSlashCommands(projectSlug);
 
   // Fetch snippets for autocomplete (ISSUE-54)
   const { snippets, refresh: refreshSnippets } = useSnippets(workingDirectory || undefined);
@@ -1139,6 +1139,7 @@ export function ChatPage() {
             queueLocked={isQueueLocked}
             placeholder={t('chatPage.loadingPlaceholder')}
             commands={commands}
+            onCommandRefresh={refreshCommands}
             snippets={snippets}
             onSnippetRefresh={refreshSnippets}
             permissionMode={permissionMode}
@@ -1208,6 +1209,7 @@ export function ChatPage() {
             queueLocked={isQueueLocked}
             placeholder={t('chatPage.errorPlaceholder')}
             commands={commands}
+            onCommandRefresh={refreshCommands}
             snippets={snippets}
             onSnippetRefresh={refreshSnippets}
             permissionMode={permissionMode}
@@ -1344,6 +1346,7 @@ export function ChatPage() {
           actionsDisabled={isOnOldBranch || isBranchViewerMode}
           placeholder={isStreaming ? t('chatPage.streaming') : isBranchViewerMode ? t('chatPage.branchViewer') : isOnOldBranch ? t('chatPage.oldBranch') : t('chatPage.default')}
           commands={commands}
+          onCommandRefresh={refreshCommands}
           snippets={snippets}
           onSnippetRefresh={refreshSnippets}
           permissionMode={permissionMode}

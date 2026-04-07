@@ -16,6 +16,7 @@ interface UseSlashCommandsResult {
   commands: SlashCommand[];
   starCommands: Record<string, StarCommand[]>;
   isLoading: boolean;
+  refresh: () => void;
 }
 
 // Module-level cache survives HMR remounts.
@@ -111,5 +112,10 @@ export function useSlashCommands(projectSlug?: string): UseSlashCommandsResult {
     };
   }, [fetchCommands]);
 
-  return { commands, starCommands, isLoading };
+  const refresh = useCallback(() => {
+    const slug = slugRef.current;
+    if (slug) fetchCommands(slug);
+  }, [fetchCommands]);
+
+  return { commands, starCommands, isLoading, refresh };
 }
