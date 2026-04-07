@@ -272,11 +272,6 @@ export class QueueService {
   addItem(item: QueueItem): boolean {
     if (!this._isRunning && !this.isPaused) return false;
 
-    // Apply @pauseword immediately so subsequent responses are checked
-    if (item.pauseword !== undefined) {
-      this.pauseword = item.pauseword;
-    }
-
     this.items.push(item);
     this.emitItemsUpdated();
     this.emitProgress(this.isPaused ? 'paused' : 'running');
@@ -557,8 +552,6 @@ export class QueueService {
    * work identically to normal chat.
    */
   private async executePrompt(item: QueueItem): Promise<ExecuteItemResult> {
-    // Snapshot pauseword at prompt start so mid-stream addItem mutations don't affect this prompt
-    const activePauseword = this.pauseword;
     const chatOptions = await this.buildChatOptions();
     const streamKey = this.currentSessionId || `queue-pending-${Date.now()}`;
     log.debug(`executePrompt: START prompt=${JSON.stringify((item.prompt || '').slice(0, 120))}, streamKey=${streamKey}, model=${chatOptions.model || '(default)'}, resume=${chatOptions.resume || 'none'}, sessionId=${chatOptions.sessionId || 'none'}`);
@@ -750,10 +743,10 @@ export class QueueService {
     this.resumeSessionId = this.currentSessionId;
     log.debug(`executePrompt: SUCCESS — resumeSessionId=${this.resumeSessionId}, chunks=${chunks.length}, totalChars=${chunks.reduce((a, c) => a + c.length, 0)}`);
 
-    // Check @pauseword (snapshot taken at prompt start to avoid mid-stream mutation via addItem)
-    if (activePauseword) {
+    // Check @pauseword
+    if (this.pauseword) {
       const fullText = chunks.join('');
-      if (fullText.includes(activePauseword)) {
+      if (fullText.includes(this.pauseword)) {
         log.warn(`executePrompt: pauseword "${this.pauseword}" detected in response`);
         const tq = i18next.getFixedT(this.lang);
         this.pauseWithError(tq('queue.error.pausewordDetected', { value: this.pauseword }));
