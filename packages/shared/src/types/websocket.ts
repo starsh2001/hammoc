@@ -137,7 +137,7 @@ export interface ServerToClientEvents {
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;
-  'stream:status': (data: { active: boolean; sessionId: string; permissionMode?: PermissionMode; messages?: HistoryMessage[] }) => void;
+  'stream:status': (data: { active: boolean; sessionId: string; permissionMode?: PermissionMode }) => void;
   'stream:detached': (data: { sessionId: string; reason: string }) => void;
   'permission:already-resolved': (data: { requestId: string }) => void;
   'permission:resolved': (data: { requestId: string; approved: boolean; interactionType: 'permission' | 'question'; response?: string | string[] | Record<string, string | string[]> }) => void;

@@ -1433,6 +1433,12 @@ export function useStreaming() {
               timestamp: new Date().toISOString(),
             }]
           : data.messages;
+        // Cancel any pending requestAnimationFrame chunk flush BEFORE clearing
+        // streaming state. Without this, a paused rAF (window was minimized before
+        // the next frame) fires after completeStreaming() and re-populates segments
+        // via appendStreamingContent, creating an orphaned segment that renders as
+        // a duplicate message bubble.
+        clearChunkQueue();
         useMessageStore.getState().setMessages(messages);
         completeStreaming();
       }
