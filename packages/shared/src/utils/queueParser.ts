@@ -169,15 +169,25 @@ export function parseQueueScript(script: string): QueueParseResult {
           if (!argStr) {
             warnings.push({ line: lineNum, message: '@pauseword requires a keyword' });
           } else {
-            // Strip surrounding quotes if present
-            const keyword = argStr.startsWith('"') && argStr.endsWith('"')
-              ? argStr.slice(1, -1)
-              : argStr;
-            items.push({
-              prompt: '',
-              isNewSession: false,
-              pauseword: keyword,
-            });
+            // Strip surrounding quotes if present; warn on mismatched quotes
+            let keyword = argStr;
+            if (argStr.startsWith('"')) {
+              if (argStr.endsWith('"') && argStr.length > 1) {
+                keyword = argStr.slice(1, -1);
+              } else {
+                warnings.push({ line: lineNum, message: '@pauseword has mismatched quotes' });
+                break;
+              }
+            }
+            if (!keyword) {
+              warnings.push({ line: lineNum, message: '@pauseword requires a non-empty keyword' });
+            } else {
+              items.push({
+                prompt: '',
+                isNewSession: false,
+                pauseword: keyword,
+              });
+            }
           }
           break;
         }

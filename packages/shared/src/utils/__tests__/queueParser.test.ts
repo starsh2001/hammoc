@@ -270,8 +270,24 @@ describe('parseQueueScript', () => {
     expect(result.warnings[0]).toEqual({ line: 1, message: '@pauseword requires a keyword' });
   });
 
-  // TC-QP-22: @pauseword is case-insensitive for directive name
-  it('TC-QP-22: @pauseword directive is case-insensitive', () => {
+  // TC-QP-22: @pauseword with empty quoted string emits warning
+  it('TC-QP-22: @pauseword with empty quoted string emits warning', () => {
+    const result = parseQueueScript('@pauseword ""');
+    expect(result.items).toHaveLength(0);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toEqual({ line: 1, message: '@pauseword requires a non-empty keyword' });
+  });
+
+  // TC-QP-23: @pauseword with mismatched quotes emits warning
+  it('TC-QP-23: @pauseword with mismatched quotes emits warning', () => {
+    const result = parseQueueScript('@pauseword "STOP');
+    expect(result.items).toHaveLength(0);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toEqual({ line: 1, message: '@pauseword has mismatched quotes' });
+  });
+
+  // TC-QP-24: @pauseword is case-insensitive for directive name
+  it('TC-QP-24: @pauseword directive is case-insensitive', () => {
     const result = parseQueueScript('@PAUSEWORD "HALT"');
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toEqual({ prompt: '', isNewSession: false, pauseword: 'HALT' });
