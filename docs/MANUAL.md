@@ -443,6 +443,7 @@ Type `/` in the chat input to open the command palette:
 - Browse available commands grouped by category (Agents, Tasks, Skills, Commands)
 - Filter by typing: `/test` shows commands containing "test"
 - Commands are project-specific — loaded from the project's configured agents and tasks
+- **Real-time refresh** — The command and skill list is fetched from the server each time the palette opens, reflecting newly added or removed commands
 - Navigate with **ArrowUp/Down**, close with **Escape**
 - Press **Enter** or click to insert the selected command
 
@@ -485,6 +486,105 @@ Click the star button (★) on the favorites bar to open the management popup:
 - Remove favorites with the X button
 - Drag to reorder within each section
 - Click a command to insert it into the chat input
+
+### 4.6 Prompt Snippets
+
+Prompt snippets are reusable prompt templates stored as files. Invoke them with the `%` prefix in the chat input.
+
+**Snippet storage (3-tier hierarchy, highest priority first):**
+
+1. **Project snippets** — `.hammoc/snippets/` in the project directory
+2. **Global snippets** — `~/.hammoc/snippets/`
+3. **Bundled snippets** — Built-in snippets shipped with Hammoc (~22 standard snippets)
+
+If the same snippet name exists in multiple tiers, the highest-priority source is used. You can override bundled snippets by placing a file with the same name in your project or global snippets directory.
+
+**Snippet files:**
+- Plain text files (optionally with `.md` extension)
+- File name becomes the snippet name (e.g., `commit-and-done` or `commit-and-done.md`)
+- Maximum file size: 100KB
+
+**Bundled standard snippets include:**
+- Workflow: `commit-and-done`, `mark-done`, `apply-qa-fixes`, `validate-and-approve`, `validate-and-fix`
+- Issues: `quick-fix-issue`, `promote-issue`, `promote-to-story`, `promote-to-epic`
+- Research: `brainstorm`, `competitor-analysis`, `market-research`, `create-prd`, `create-project-brief`
+- Architecture: `create-backend-arch`, `create-frontend-arch`, `create-fullstack-arch`, `create-frontend-spec`
+- Stories: `develop-story`, `draft-story`, `brownfield-create-story`, `brownfield-create-epic`
+- QA: `qa-review`, `validate-story`
+
+### 4.7 Snippet Autocomplete
+
+Type `%` in the chat input to open the snippet autocomplete popup:
+
+- **Grouped by source** — Sections labeled "Project", "Global", and "Bundled"
+- **Preview** — Shows the first line of each snippet's content (up to 80 characters)
+- **Real-time filtering** — Type after `%` to filter by name or preview text (case-insensitive)
+- **Keyboard navigation** — ArrowUp/Down to navigate, Enter or Tab to select, Escape to close
+- **Click** to select a snippet
+- **Real-time refresh** — The snippet list is fetched from the server each time the popup opens, reflecting any file changes
+
+Selecting a snippet inserts `%snippet-name ` (with trailing space) into the input. Deduplication ensures only the highest-priority version of each snippet name appears.
+
+### 4.8 Snippet Arguments & Context
+
+Snippets support placeholder substitution for dynamic content.
+
+**Positional arguments** (`{arg1}`, `{arg2}`, ...):
+
+Arguments are space-separated after the snippet name:
+
+```
+%commit-and-done BS-2
+```
+
+If the snippet file contains `Commit changes for story {arg1}`, this resolves to `Commit changes for story BS-2`.
+
+**Quoted arguments** — Use double quotes for multi-word arguments:
+
+```
+%promote-issue "Fix login button" critical bug
+```
+
+Here `{arg1}` = `Fix login button`, `{arg2}` = `critical`, `{arg3}` = `bug`. Inside quotes, use `\"` for literal quotes and `\\` for literal backslashes.
+
+**Context blocks** (`{context}` + `---context`):
+
+For injecting longer text into a snippet, add `---context` after the arguments followed by the content:
+
+```
+%quick-fix-issue docs/issues/ISSUE-1.md critical bug
+---context
+# Button fails on mobile
+The login button doesn't render on iOS devices.
+```
+
+The text after `---context` replaces all `{context}` placeholders in the snippet.
+
+**Unreferenced arguments** are ignored. Unreplaced placeholders remain as literal text.
+
+### 4.9 Multi-Prompt Snippets
+
+Snippets can contain multiple prompts separated by `---` on its own line:
+
+```
+*validate-story-draft {arg1}
+---
+Please fix all identified issues.
+---
+Mark as approved.
+```
+
+When invoked as `%validate-and-fix BS-2`:
+
+1. The first prompt executes immediately as the chat message
+2. Remaining prompts are added to the prompt chain queue (see §2.9) for sequential execution
+
+The total number of chain items is subject to the 10-item chain limit.
+
+**Usage in different contexts:**
+- **Chat messages** — First prompt sent immediately, remaining prompts queued as chain items
+- **Prompt chain** — All resolved prompts added as chain items
+- **Queue scripts** — Snippet is expanded inline, with additional prompts spliced into the queue
 
 ---
 
@@ -983,7 +1083,7 @@ Click **"New Issue"** to create:
 | **Severity** | Low, Medium, High, Critical |
 | **Attachments** | Optional — drag-and-drop, click to browse, or paste from clipboard |
 
-Status is automatically set to **Open** (not a user-editable field).
+Status is automatically set to **Open** (not a user-editable field). Each issue is assigned a sequential ID in the **ISSUE-N** format (e.g., ISSUE-1, ISSUE-2) automatically.
 
 ### 10.4 Editing Issues
 
@@ -1468,6 +1568,10 @@ Customize Claude's behavior with a fully editable system prompt template:
 - **Development mode:** "Server Rebuild" button — rebuilds and restarts the server. Shows elapsed time during the build process
 - **Production mode:** Shows current version number, "Check for Updates" button, and "Install Update" button (appears only when an update is available). Includes build progress with elapsed timer
 
+**File Checkpointing:**
+- **Chat sessions** — Save file snapshots during chat for rewind/restore (default: on). Disabling this prevents the Code Rewind feature (see §2.19) from working
+- **Queue runner** — Save file snapshots during queue execution (default: off). Enabling increases JSONL session file size
+
 **SDK Parameters:**
 - **Max Thinking Tokens** — Limit Claude's extended thinking tokens (1,024–128,000)
 - **Max Turns** — Limit conversation turns per query (1–100)
@@ -1511,6 +1615,7 @@ Displays app information:
 | `↑` / `↓` | Navigate prompt history (when cursor is at start/end of input) |
 | `/` | Open slash command palette (auto-triggered when input starts with `/`) |
 | `*` | Open star command palette (auto-triggered when input starts with `*`, requires active agent) |
+| `%` | Open snippet autocomplete palette (auto-triggered when input starts with `%`) |
 | `Tab` | Select highlighted command from palette |
 | `Shift+Tab` | Cycle permission mode (Plan → Ask before edits → Edit automatically → Bypass) |
 | `Ctrl` (hold) | Temporary chain mode while held |
@@ -1690,6 +1795,8 @@ If you need to find or back up your data:
 | User preferences | `~/.hammoc/preferences.json` |
 | Queue templates | `<project-root>/.hammoc/queue-templates.json` (per project) |
 | Chain failures | `~/.hammoc/chain-failures/<sessionId>.json` (per session) |
+| Global snippets | `~/.hammoc/snippets/` (shared across all projects) |
+| Project snippets | `<project-root>/.hammoc/snippets/` (per project) |
 | Session data | `~/.claude/projects/` |
 | Web Push VAPID keys | `~/.hammoc/vapid-keys.json` |
 | Web Push subscriptions | `~/.hammoc/push-subscriptions.json` |

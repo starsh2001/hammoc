@@ -147,9 +147,11 @@ Real-time conversations with Claude through a rich web UI.
 - **Quick session panel** — Access sessions without leaving the chat
 - **Active streaming indicator** — See which sessions are currently active
 
-### Slash Commands & Favorites
+### Slash Commands, Snippets & Favorites
 
 - **Command palette** — Type `/` to browse available commands with autocomplete
+- **Prompt snippets** — Type `%` to insert reusable prompt templates with argument substitution, context blocks, and multi-prompt chaining
+- **Snippet hierarchy** — Project, global, and bundled snippets with override support
 - **Favorites bar** — Pin up to 20 frequently used commands above the input
 - **Star favorites** — Mark up to 10 star commands for quick access
 - **Drag-to-reorder** — Customize favorite command order
@@ -252,6 +254,7 @@ For detailed BMAD-METHOD documentation, visit the [official repository](https://
 | `Ctrl+S` | Save file in editor |
 | `Ctrl+=` `Ctrl+-` | Terminal font size |
 | `Ctrl+0` | Reset terminal font size |
+| `%` | Open snippet autocomplete palette |
 | `↑` / `↓` | Navigate prompt history |
 | `Alt+1/2/3/4` | Toggle quick panel (Sessions/Files/Git/Terminal) |
 
@@ -307,6 +310,8 @@ npm run dev
 | User preferences | `~/.hammoc/preferences.json` |
 | Queue templates | `<project-root>/.hammoc/queue-templates.json` (per project) |
 | Chain failures | `~/.hammoc/chain-failures/<sessionId>.json` (per session) |
+| Snippets (global) | `~/.hammoc/snippets/` (shared across projects) |
+| Snippets (project) | `<project-root>/.hammoc/snippets/` (per project) |
 | TLS certificates | `~/.hammoc/cert.pem`, `~/.hammoc/key.pem` |
 | Session data | `~/.claude/projects/` (managed by Claude Code CLI) |
 
