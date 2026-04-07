@@ -185,7 +185,7 @@
     "queueNotificationType": "Queue Notification Types",
     "notifyQueueStart": "Queue start — When queue execution starts",
     "notifyQueueComplete": "Queue complete — After all items are processed",
-    "notifyQueueError": "Queue error — On QUEUE_STOP or SDK error",
+    "notifyQueueError": "Queue error — On @pauseword match or SDK error",
     "notifyQueueInput": "Queue input request — When user response is needed",
     "alwaysNotify": "Always notify — Send even when session is visible",
     "alwaysNotifyHint": "By default, notifications are suppressed when you're viewing the session.",

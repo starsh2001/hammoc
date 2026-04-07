@@ -184,7 +184,7 @@
     "queueNotificationType": "Tipos de notificação de fila",
     "notifyQueueStart": "Início da fila — Quando a execução da fila começa",
     "notifyQueueComplete": "Fila concluída — Após todos os itens serem processados",
-    "notifyQueueError": "Erro na fila — Em caso de QUEUE_STOP ou erro do SDK",
+    "notifyQueueError": "Erro na fila — Em caso de @pauseword ou erro do SDK",
     "notifyQueueInput": "Solicitação de entrada da fila — Quando uma resposta do usuário é necessária",
     "alwaysNotify": "Sempre notificar — Enviar mesmo quando a sessão estiver visível",
     "alwaysNotifyHint": "Por padrão, as notificações são suprimidas quando você está visualizando a sessão.",

@@ -15,6 +15,8 @@ export interface QueueItem {
   modelName?: string;
   /** @delay: delay in milliseconds */
   delayMs?: number;
+  /** @pauseword: keyword that triggers pause when detected in response */
+  pauseword?: string;
 }
 
 export interface QueueParseWarning {
@@ -80,7 +82,6 @@ export interface QueueProgressEvent {
 export interface QueueItemCompleteEvent {
   itemIndex: number;
   sessionId: string;
-  markerDetected?: 'QUEUE_STOP' | 'QUEUE_PASS';
 }
 
 export interface QueueErrorEvent {

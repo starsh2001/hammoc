@@ -32,7 +32,7 @@ vi.mock('../../i18n.js', () => ({
         'queue.pause.userAnswer': 'user answer',
         'queue.pause.permissionApproval': 'permission approval',
         'queue.error.sdkError': `SDK Error: ${opts?.value || 'unknown'}`,
-        'queue.error.queueStopDetected': 'QUEUE_STOP detected in response',
+        'queue.error.pausewordDetected': `Pauseword "${opts?.value || ''}" detected in response`,
         'queue.error.sessionNotFound': `Session not found: ${opts?.value || 'unknown'}`,
         'queue.error.sessionBusy': 'Session is busy',
       };
@@ -58,7 +58,7 @@ vi.mock('../../handlers/streamCallbacks.js', () => ({
     const sessionIdRef = { current: undefined as string | undefined };
     const callbacks = {
       onSessionInit: vi.fn(),
-      // onTextChunk must invoke onTextChunkReceived hook for QUEUE_STOP/QUEUE_PASS marker detection
+      // onTextChunk must invoke onTextChunkReceived hook for @pauseword detection
       onTextChunk: vi.fn().mockImplementation((chunk: any) => {
         hooks?.onTextChunkReceived?.(chunk);
       }),
@@ -421,20 +421,23 @@ describe('QueueService', () => {
     });
   });
 
-  describe('TC-QR-11: QUEUE_STOP in response pauses and keeps currentIndex', () => {
-    it('should pause and not advance on QUEUE_STOP', async () => {
+  describe('TC-QR-11: @pauseword in response pauses and keeps currentIndex', () => {
+    it('should pause and not advance when pauseword is detected', async () => {
       setupMockChat('Some text QUEUE_STOP here');
 
-      const items = [createPromptItem('Check')];
+      const items = [
+        createPromptItem('', { pauseword: 'QUEUE_STOP' }),
+        createPromptItem('Check'),
+      ];
 
       await queueService.start(items, 'test-project');
 
       const state = queueService.getState();
       expect(state.isPaused).toBe(true);
-      expect(state.currentIndex).toBe(0); // stays at failed item
+      expect(state.currentIndex).toBe(1); // stays at failed prompt item
       expect(state.pauseReason).toContain('QUEUE_STOP');
       expect(mockNotificationService.notifyQueueError).toHaveBeenCalledWith(
-        'QUEUE_STOP detected in response',
+        'Pauseword "QUEUE_STOP" detected in response',
         expect.any(String)
       );
 
@@ -442,27 +445,31 @@ describe('QueueService', () => {
       const errorCalls = mockEmit.mock.calls.filter(([event]) => event === 'queue:error');
       expect(errorCalls.length).toBe(1);
       expect(errorCalls[0][1]).toEqual(expect.objectContaining({
-        itemIndex: 0,
+        itemIndex: 1,
         error: expect.stringContaining('QUEUE_STOP'),
       }));
     });
+
+    it('should not pause when no pauseword is set', async () => {
+      setupMockChat('Some text QUEUE_STOP here');
+
+      const items = [createPromptItem('Check')];
+
+      await queueService.start(items, 'test-project');
+
+      const state = queueService.getState();
+      expect(state.isCompleted).toBe(true);
+      expect(state.isPaused).toBe(false);
+    });
   });
 
-  describe('TC-QR-12: QUEUE_PASS in response proceeds normally', () => {
-    it('should advance on QUEUE_PASS', async () => {
-      setupMockChat('Result QUEUE_PASS done');
-
-      const items = [
-        createPromptItem('Check'),
-        createPromptItem('Next'),
-      ];
-
-      // Reset to handle both calls
+  describe('TC-QR-12: @pauseword persists across items', () => {
+    it('should check pauseword for all subsequent prompts', async () => {
       let callCount = 0;
       mockSendMessageWithCallbacks.mockImplementation(
         async (content: string, callbacks: StreamCallbacks) => {
           callCount++;
-          const text = callCount === 1 ? 'Result QUEUE_PASS done' : 'Normal response';
+          const text = callCount === 1 ? 'Normal response' : 'Response with HALT marker';
           callbacks.onTextChunk?.({
             sessionId: 'test-session',
             messageId: `msg-${callCount}`,
@@ -480,11 +487,19 @@ describe('QueueService', () => {
         }
       );
 
+      const items = [
+        createPromptItem('', { pauseword: 'HALT' }),
+        createPromptItem('First'),
+        createPromptItem('Second'),
+      ];
+
       await queueService.start(items, 'test-project');
 
-      const state = queueService.getState();
-      expect(state.isRunning).toBe(false); // completed
+      // First prompt succeeds, second triggers pauseword
       expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(2);
+      const state = queueService.getState();
+      expect(state.isPaused).toBe(true);
+      expect(state.currentIndex).toBe(2); // stays at second prompt
     });
   });
 

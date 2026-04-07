@@ -184,7 +184,7 @@
     "queueNotificationType": "Tipos de notificación de cola",
     "notifyQueueStart": "Inicio de cola — Cuando comienza la ejecución de la cola",
     "notifyQueueComplete": "Cola completada — Después de procesar todos los elementos",
-    "notifyQueueError": "Error de cola — En QUEUE_STOP o error del SDK",
+    "notifyQueueError": "Error de cola — En coincidencia de @pauseword o error del SDK",
     "notifyQueueInput": "Solicitud de entrada de cola — Cuando se necesita respuesta del usuario",
     "alwaysNotify": "Notificar siempre — Enviar incluso cuando la sesión es visible",
     "alwaysNotifyHint": "Por defecto, las notificaciones se suprimen cuando estás viendo la sesión.",

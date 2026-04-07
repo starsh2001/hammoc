@@ -3,6 +3,7 @@ import type { QueueItem, QueueParseResult, QueueParseWarning } from '../types/qu
 /** Convert QueueItem[] back into script text (inverse of parseQueueScript) */
 export function serializeQueueItems(items: QueueItem[]): string {
   return items.map(item => {
+    if (item.pauseword != null) return `@pauseword "${item.pauseword}"`;
     if (item.isBreakpoint) {
       return item.prompt ? `@pause ${item.prompt}` : '@pause';
     }
@@ -159,6 +160,23 @@ export function parseQueueScript(script: string): QueueParseResult {
               prompt: '',
               isNewSession: false,
               delayMs: ms,
+            });
+          }
+          break;
+        }
+
+        case '@pauseword': {
+          if (!argStr) {
+            warnings.push({ line: lineNum, message: '@pauseword requires a keyword' });
+          } else {
+            // Strip surrounding quotes if present
+            const keyword = argStr.startsWith('"') && argStr.endsWith('"')
+              ? argStr.slice(1, -1)
+              : argStr;
+            items.push({
+              prompt: '',
+              isNewSession: false,
+              pauseword: keyword,
             });
           }
           break;

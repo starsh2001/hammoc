@@ -176,7 +176,7 @@
       "alreadyRunning": "이 프로젝트에서 이미 큐가 실행 중입니다",
       "noRunningQueue": "이 프로젝트에 실행 중인 큐가 없습니다",
       "sdkError": "SDK 오류: {{value}}",
-      "queueStopDetected": "응답에서 QUEUE_STOP이 감지되었습니다",
+      "pausewordDetected": "응답에서 정지 키워드 \"{{value}}\"이(가) 감지되었습니다",
       "sessionNotFound": "세션 이름 \"{{value}}\"을(를) 찾을 수 없습니다",
       "sessionBusy": "세션이 현재 스트리밍 중이므로 충돌 방지를 위해 큐가 일시정지되었습니다"
     },

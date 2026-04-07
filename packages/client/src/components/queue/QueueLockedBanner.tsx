@@ -178,7 +178,7 @@ export function QueueLockedBanner({
     );
   }
 
-  // Paused with error (e.g., QUEUE_STOP)
+  // Paused with error (e.g., @pauseword match)
   const isPausedWithError = isPaused && !!errorItem;
 
   // Determine background color

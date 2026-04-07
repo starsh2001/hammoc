@@ -101,10 +101,10 @@ describe('QueueLockedBanner', () => {
     renderBanner({
       isRunning: true,
       isPaused: true,
-      errorItem: { index: 3, error: 'QUEUE_STOP detected' },
+      errorItem: { index: 3, error: 'Pauseword "STOP" detected' },
     });
 
-    expect(screen.getByText(/오류: 4: QUEUE_STOP detected/)).toBeInTheDocument();
+    expect(screen.getByText(/오류: 4: Pauseword "STOP" detected/)).toBeInTheDocument();
   });
 
   it('TC-QL-20: shows completed state with checkmark', () => {

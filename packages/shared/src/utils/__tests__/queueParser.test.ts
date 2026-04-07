@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseQueueScript } from '../queueParser.js';
+import { parseQueueScript, serializeQueueItems } from '../queueParser.js';
 
 describe('parseQueueScript', () => {
   // TC-QP-1: Single-line prompts are parsed correctly (AC: 1)
@@ -246,6 +246,38 @@ describe('parseQueueScript', () => {
     expect(result.warnings).toHaveLength(0);
   });
 
+  // TC-QP-19: @pauseword with quoted keyword
+  it('TC-QP-19: parses @pauseword with quoted keyword', () => {
+    const result = parseQueueScript('@pauseword "QUEUE_STOP"');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toEqual({ prompt: '', isNewSession: false, pauseword: 'QUEUE_STOP' });
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  // TC-QP-20: @pauseword with unquoted keyword
+  it('TC-QP-20: parses @pauseword with unquoted keyword', () => {
+    const result = parseQueueScript('@pauseword STOP');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toEqual({ prompt: '', isNewSession: false, pauseword: 'STOP' });
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  // TC-QP-21: @pauseword without keyword emits warning
+  it('TC-QP-21: @pauseword without keyword emits warning', () => {
+    const result = parseQueueScript('@pauseword');
+    expect(result.items).toHaveLength(0);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toEqual({ line: 1, message: '@pauseword requires a keyword' });
+  });
+
+  // TC-QP-22: @pauseword is case-insensitive for directive name
+  it('TC-QP-22: @pauseword directive is case-insensitive', () => {
+    const result = parseQueueScript('@PAUSEWORD "HALT"');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toEqual({ prompt: '', isNewSession: false, pauseword: 'HALT' });
+    expect(result.warnings).toHaveLength(0);
+  });
+
   // TC-QP-17: Empty input returns empty items array with no warnings
   it('TC-QP-17: empty input returns empty result', () => {
     const result = parseQueueScript('');
@@ -261,5 +293,20 @@ describe('parseQueueScript', () => {
     expect(result.items[0]).toEqual({ prompt: 'first prompt', isNewSession: false });
     expect(result.items[1]).toEqual({ prompt: '', isNewSession: true });
     expect(result.warnings).toHaveLength(0);
+  });
+});
+
+describe('serializeQueueItems', () => {
+  it('serializes @pauseword item with quoted keyword', () => {
+    const result = serializeQueueItems([{ prompt: '', isNewSession: false, pauseword: 'QUEUE_STOP' }]);
+    expect(result).toBe('@pauseword "QUEUE_STOP"');
+  });
+
+  it('roundtrips @pauseword through parse and serialize', () => {
+    const script = '@pauseword "HALT"\nprompt here';
+    const parsed = parseQueueScript(script);
+    const serialized = serializeQueueItems(parsed.items);
+    const reparsed = parseQueueScript(serialized);
+    expect(reparsed.items).toEqual(parsed.items);
   });
 });

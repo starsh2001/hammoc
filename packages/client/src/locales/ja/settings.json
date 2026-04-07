@@ -184,7 +184,7 @@
     "queueNotificationType": "キュー通知タイプ",
     "notifyQueueStart": "キュー開始 — キューの実行が開始された場合",
     "notifyQueueComplete": "キュー完了 — すべてのアイテムが処理された後",
-    "notifyQueueError": "キューエラー — QUEUE_STOPまたはSDKエラーの場合",
+    "notifyQueueError": "キューエラー — @pauseword一致またはSDKエラーの場合",
     "notifyQueueInput": "キュー入力リクエスト — ユーザーの応答が必要な場合",
     "alwaysNotify": "常に通知 — セッション表示中でも通知を送信",
     "alwaysNotifyHint": "デフォルトでは、セッションを表示中は通知が抑制されます。",

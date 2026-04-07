@@ -44,7 +44,6 @@ type SocketIOServer4 = SocketIOServer<ClientToServerEvents, ServerToClientEvents
 
 interface ExecuteItemResult {
   shouldAdvance: boolean;
-  markerDetected?: 'QUEUE_STOP' | 'QUEUE_PASS';
 }
 
 export class QueueService {
@@ -74,6 +73,8 @@ export class QueueService {
   /** True when waiting for user input (permission/question) — distinct from isPaused */
   private _isWaitingForInput: boolean = false;
   private snippetExpandedItems = new WeakSet<QueueItem>();
+  /** @pauseword: keyword that triggers pause when detected in response */
+  private pauseword: string | undefined = undefined;
   private lang: string = 'en';
   constructor(
     private projectService: ProjectService,
@@ -106,6 +107,7 @@ export class QueueService {
     this.items = items;
     this.currentIndex = 0;
     this.snippetExpandedItems = new WeakSet();
+    this.pauseword = undefined;
     this._isRunning = true;
     this.isPaused = false;
     this.isExecuting = false;
@@ -125,7 +127,7 @@ export class QueueService {
     log.info(`START: project="${projectSlug}", items=${items.length}, sessionId=${sessionId ?? '(new)'}, cwd="${this.workingDirectory}"`);
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      log.verbose(`item[${i}]: prompt=${JSON.stringify((it.prompt || '').slice(0, 80))}${it.isNewSession ? ' [NEW_SESSION]' : ''}${it.isBreakpoint ? ' [BREAKPOINT]' : ''}${it.modelName ? ` model=${it.modelName}` : ''}${it.saveSessionName ? ` save="${it.saveSessionName}"` : ''}${it.loadSessionName ? ` load="${it.loadSessionName}"` : ''}${it.delayMs ? ` delay=${it.delayMs}ms` : ''}`);
+      log.verbose(`item[${i}]: prompt=${JSON.stringify((it.prompt || '').slice(0, 80))}${it.isNewSession ? ' [NEW_SESSION]' : ''}${it.isBreakpoint ? ' [BREAKPOINT]' : ''}${it.modelName ? ` model=${it.modelName}` : ''}${it.saveSessionName ? ` save="${it.saveSessionName}"` : ''}${it.loadSessionName ? ` load="${it.loadSessionName}"` : ''}${it.delayMs ? ` delay=${it.delayMs}ms` : ''}${it.pauseword !== undefined ? ` pauseword="${it.pauseword}"` : ''}`);
     }
     this.emitProgress('running');
     await this.notificationService.notifyQueueStart(items.length, this.buildSessionUrl());
@@ -210,6 +212,7 @@ export class QueueService {
     // Release memory held by completed run data
     this.items = [];
     this.snippetExpandedItems = new WeakSet();
+    this.pauseword = undefined;
     this.completedSessionIds = new Map();
     this.chatService = null;
   }
@@ -268,6 +271,11 @@ export class QueueService {
   /** Add a new item at the end of the queue */
   addItem(item: QueueItem): boolean {
     if (!this._isRunning && !this.isPaused) return false;
+
+    // Apply @pauseword immediately so subsequent responses are checked
+    if (item.pauseword !== undefined) {
+      this.pauseword = item.pauseword;
+    }
 
     this.items.push(item);
     this.emitItemsUpdated();
@@ -373,13 +381,13 @@ export class QueueService {
         const startTime = Date.now();
         const result = await this.executeItem(item);
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        log.debug(`executeLoop: item[${this.currentIndex}] done in ${elapsed}s, shouldAdvance=${result.shouldAdvance}, marker=${result.markerDetected || 'none'}, isPaused=${this.isPaused}`);
+        log.debug(`executeLoop: item[${this.currentIndex}] done in ${elapsed}s, shouldAdvance=${result.shouldAdvance}, isPaused=${this.isPaused}`);
 
         // Process advancement FIRST, then check pause.
         // @pause: shouldAdvance=true (advance past breakpoint), isPaused=true (break after)
-        // QUEUE_STOP/error/@load failure: shouldAdvance=false (stay for retry), isPaused=true (break)
+        // @pauseword/error/@load failure: shouldAdvance=false (stay for retry), isPaused=true (break)
         if (result.shouldAdvance) {
-          this.emitItemComplete(this.currentIndex, result.markerDetected);
+          this.emitItemComplete(this.currentIndex);
           this.currentIndex++;
           // Emit progress after advancing so clients update currentIndex and sessionId in real-time
           if (!this.isPaused && this._isRunning && this.currentIndex < this.items.length) {
@@ -473,6 +481,10 @@ export class QueueService {
         return { shouldAdvance: false };
       }
       log.debug(`executeItem: LOAD OK → sessionId=${this.currentSessionId}`);
+    }
+    if (item.pauseword !== undefined) {
+      log.debug(`executeItem: PAUSEWORD set → "${item.pauseword}"`);
+      this.pauseword = item.pauseword;
     }
     if (item.delayMs) {
       log.debug(`executeItem: DELAY ${item.delayMs}ms`);
@@ -736,18 +748,16 @@ export class QueueService {
     this.resumeSessionId = this.currentSessionId;
     log.debug(`executePrompt: SUCCESS — resumeSessionId=${this.resumeSessionId}, chunks=${chunks.length}, totalChars=${chunks.reduce((a, c) => a + c.length, 0)}`);
 
-    // Check markers
-    const fullText = chunks.join('');
-    if (fullText.includes('QUEUE_STOP')) {
-      log.warn(`executePrompt: QUEUE_STOP marker detected in response`);
-      const tq = i18next.getFixedT(this.lang);
-      this.pauseWithError(tq('queue.error.queueStopDetected'));
-      await this.notificationService.notifyQueueError(tq('queue.error.queueStopDetected'), this.buildSessionUrl());
-      return { shouldAdvance: false, markerDetected: 'QUEUE_STOP' };
-    }
-    if (fullText.includes('QUEUE_PASS')) {
-      log.debug(`executePrompt: QUEUE_PASS marker detected`);
-      return { shouldAdvance: true, markerDetected: 'QUEUE_PASS' };
+    // Check @pauseword
+    if (this.pauseword) {
+      const fullText = chunks.join('');
+      if (fullText.includes(this.pauseword)) {
+        log.warn(`executePrompt: pauseword "${this.pauseword}" detected in response`);
+        const tq = i18next.getFixedT(this.lang);
+        this.pauseWithError(tq('queue.error.pausewordDetected', { value: this.pauseword }));
+        await this.notificationService.notifyQueueError(tq('queue.error.pausewordDetected', { value: this.pauseword }), this.buildSessionUrl());
+        return { shouldAdvance: false };
+      }
     }
     return { shouldAdvance: true };
   }
@@ -830,14 +840,13 @@ export class QueueService {
     });
   }
 
-  private emitItemComplete(itemIndex: number, markerDetected?: 'QUEUE_STOP' | 'QUEUE_PASS'): void {
+  private emitItemComplete(itemIndex: number): void {
     const sessionId = this.currentSessionId || '';
     this.completedSessionIds.set(itemIndex, sessionId);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.io.to(`project:${this.projectSlug}`).emit('queue:itemComplete' as any, {
       itemIndex,
       sessionId,
-      markerDetected,
     });
   }
 }

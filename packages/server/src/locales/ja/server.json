@@ -169,7 +169,7 @@
       "alreadyRunning": "このプロジェクトのキューは既に実行中です",
       "noRunningQueue": "このプロジェクトに実行中のキューはありません",
       "sdkError": "SDKエラー: {{value}}",
-      "queueStopDetected": "レスポンスでQUEUE_STOPが検出されました",
+      "pausewordDetected": "レスポンスで停止キーワード \"{{value}}\" が検出されました",
       "sessionNotFound": "セッション名 \"{{value}}\" が見つかりません",
       "sessionBusy": "セッションは現在ストリーミング中です — 競合を防ぐためキューを一時停止しました"
     },

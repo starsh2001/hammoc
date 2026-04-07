@@ -185,7 +185,7 @@
     "queueNotificationType": "큐 알림 유형",
     "notifyQueueStart": "큐 시작 알림 — 큐 실행이 시작될 때",
     "notifyQueueComplete": "큐 완료 알림 — 모든 항목이 처리된 후",
-    "notifyQueueError": "큐 에러 알림 — QUEUE_STOP 또는 SDK 에러 시",
+    "notifyQueueError": "큐 에러 알림 — @pauseword 감지 또는 SDK 에러 시",
     "notifyQueueInput": "큐 입력 요청 알림 — 사용자 응답이 필요할 때",
     "alwaysNotify": "항상 알림 — 세션을 보고 있을 때에도 알림 전송",
     "alwaysNotifyHint": "기본적으로 세션을 보고 있으면 알림이 억제됩니다.",

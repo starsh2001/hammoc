@@ -153,7 +153,7 @@ describe('useQueueSession', () => {
         isPaused: false,
         isErrored: true,
         lockedSessionId: 'session-1',
-        errorItem: { index: 2, error: 'QUEUE_STOP' },
+        errorItem: { index: 2, error: 'Pauseword detected' },
       });
     });
 
