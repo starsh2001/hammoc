@@ -162,6 +162,8 @@ interface ChatInputProps {
   onRemoveStarFavorite?: (command: string) => void;
   /** Available snippets for autocomplete (ISSUE-54) */
   snippets?: SnippetItem[];
+  /** Refresh snippet list from server (ISSUE-54) */
+  onSnippetRefresh?: () => void;
   /** Whether the session is queue-locked (Story 15.4) */
   queueLocked?: boolean;
   /** Whether all input actions are disabled (e.g. viewing non-active branch) */
@@ -212,6 +214,7 @@ export function ChatInput({
   onReorderStarFavorites,
   onRemoveStarFavorite,
   snippets = [],
+  onSnippetRefresh,
   queueLocked = false,
   actionsDisabled = false,
   chainMode = false,
@@ -345,17 +348,18 @@ export function ChatInput({
       setShowCommands(false);
       setShowFavorites(false);
       setShowSnippets(false);
-    } else if (content.startsWith('%') && !content.includes(' ') && snippets.length > 0) {
+    } else if (content.startsWith('%') && !content.includes(' ')) {
       setShowSnippets(true);
       setShowCommands(false);
       setShowStarCommands(false);
       setShowFavorites(false);
+      onSnippetRefresh?.();
     } else {
       setShowCommands(false);
       setShowStarCommands(false);
       setShowSnippets(false);
     }
-  }, [content, commands.length, activeAgent, starCommands, snippets.length]);
+  }, [content, commands.length, activeAgent, starCommands, snippets.length, onSnippetRefresh]);
 
   // Reset selectedIndex when filter changes
   useEffect(() => {

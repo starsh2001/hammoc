@@ -302,7 +302,7 @@ export function ChatPage() {
   const { commands, starCommands } = useSlashCommands(projectSlug);
 
   // Fetch snippets for autocomplete (ISSUE-54)
-  const { snippets } = useSnippets(workingDirectory || undefined);
+  const { snippets, refresh: refreshSnippets } = useSnippets(workingDirectory || undefined);
 
   // Command favorites (Story 9.4/9.5)
   const { favoriteCommands, addFavorite, removeFavorite, reorderFavorites, isFavorite } = useFavoriteCommands();
@@ -1140,6 +1140,7 @@ export function ChatPage() {
             placeholder={t('chatPage.loadingPlaceholder')}
             commands={commands}
             snippets={snippets}
+            onSnippetRefresh={refreshSnippets}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
             selectedModel={selectedModel}
@@ -1208,6 +1209,7 @@ export function ChatPage() {
             placeholder={t('chatPage.errorPlaceholder')}
             commands={commands}
             snippets={snippets}
+            onSnippetRefresh={refreshSnippets}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
             selectedModel={selectedModel}
@@ -1343,6 +1345,7 @@ export function ChatPage() {
           placeholder={isStreaming ? t('chatPage.streaming') : isBranchViewerMode ? t('chatPage.branchViewer') : isOnOldBranch ? t('chatPage.oldBranch') : t('chatPage.default')}
           commands={commands}
           snippets={snippets}
+          onSnippetRefresh={refreshSnippets}
           permissionMode={permissionMode}
           onPermissionModeChange={setPermissionMode}
           selectedModel={selectedModel}
