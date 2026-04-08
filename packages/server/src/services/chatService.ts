@@ -12,6 +12,7 @@ import fs from 'fs/promises';
 import { execSync } from 'child_process';
 import { InvalidPathError, parseSDKError } from '../utils/errors.js';
 import { StreamHandler } from './streamHandler.js';
+import { SessionService } from './sessionService.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('chatService');
@@ -234,6 +235,22 @@ export class ChatService {
     // Story 25.7: explicit log for resumeSessionAt branching
     if (queryOptions.resumeSessionAt) {
       log.info(`resumeSessionAt branch: assistantUuid="${queryOptions.resumeSessionAt}", resume="${queryOptions.resume}"`);
+    }
+
+    // Strip empty user messages left by rewind before SDK reads the JSONL.
+    // SDK query({ prompt: '' }) used for file rewind writes an empty text
+    // block that triggers cache_control 400 errors on subsequent API calls.
+    const resumeSessionId = queryOptions.resume;
+    if (resumeSessionId && this.workingDirectory) {
+      try {
+        const sessionService = new SessionService();
+        const cleaned = sessionService.cleanRewindDirty(this.workingDirectory, resumeSessionId);
+        if (cleaned) {
+          log.info(`Cleaned rewind-dirty JSONL for session ${resumeSessionId}`);
+        }
+      } catch (err) {
+        log.warn(`cleanRewindDirty failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
     // Use AsyncIterable prompt when images are present (Story 5.5)

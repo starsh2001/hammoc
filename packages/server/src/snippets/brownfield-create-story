@@ -1,3 +1,4 @@
-/BMad:agents:sm
+/BMad:agents:pm
 ---
-*brownfield-create-story
+*create-brownfield-story
+Save the story file as docs/stories/BS-{N}.{kebab-case}.story.md (scan existing BS-*.story.md for next number). Title: # Story BS-{N}: ...

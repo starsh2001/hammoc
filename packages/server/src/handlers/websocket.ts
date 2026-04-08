@@ -1587,8 +1587,14 @@ export async function initializeWebSocket(
             });
           }
         } finally {
+          // Mark session as dirty BEFORE close — SDK query({ prompt: '' })
+          // writes an empty user message to the JSONL which causes
+          // cache_control 400 errors. chatService will clean the JSONL
+          // before the next resume.
+          sessionService.markRewindDirty(workingDirectory, sessionId);
+
           // Clean up the query object
-          rewindQuery.close();
+          try { rewindQuery.close(); } catch { /* best-effort */ }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

@@ -9,7 +9,7 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
-import { existsSync, createReadStream } from 'fs';
+import { existsSync, createReadStream, readFileSync, writeFileSync, unlinkSync, renameSync } from 'fs';
 import readline from 'readline';
 import { createLogger } from '../utils/logger.js';
 import type {
@@ -85,6 +85,60 @@ export class SessionService {
   getSessionsDir(projectPath: string): string {
     const encoded = this.encodeProjectPath(projectPath);
     return path.join(this.claudeProjectsDir, encoded);
+  }
+
+  /**
+   * Mark a session as dirty after rewind — SDK query({ prompt: '' }) writes
+   * an empty user message to the JSONL that triggers cache_control 400 errors.
+   */
+  markRewindDirty(projectPath: string, sessionId: string): void {
+    const markerPath = path.join(this.getSessionsDir(projectPath), `${sessionId}.rewind-dirty`);
+    try {
+      writeFileSync(markerPath, '', 'utf8');
+    } catch (err) {
+      log.warn(`markRewindDirty failed for ${sessionId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /**
+   * If the session was marked dirty by a rewind, strip empty user messages
+   * from the JSONL and remove the marker. Call before SDK resume.
+   * Returns true if cleanup was performed.
+   */
+  cleanRewindDirty(projectPath: string, sessionId: string): boolean {
+    const sessionsDir = this.getSessionsDir(projectPath);
+    const markerPath = path.join(sessionsDir, `${sessionId}.rewind-dirty`);
+    if (!existsSync(markerPath)) return false;
+
+    const jsonlPath = path.join(sessionsDir, `${sessionId}.jsonl`);
+    if (existsSync(jsonlPath)) {
+      const raw = readFileSync(jsonlPath, 'utf8');
+      const lines = raw.split('\n');
+      const cleaned = lines.filter((line: string) => {
+        if (!line.trim()) return true; // preserve empty lines as-is
+        try {
+          const obj = JSON.parse(line);
+          if (obj.type === 'user' && obj.message?.role === 'user') {
+            const content = obj.message.content;
+            if (Array.isArray(content) &&
+                content.length === 1 &&
+                content[0].type === 'text' &&
+                content[0].text === '') {
+              return false; // drop empty user message
+            }
+          }
+        } catch { /* keep unparseable lines */ }
+        return true;
+      });
+      if (cleaned.length !== lines.length) {
+        const tmpPath = `${jsonlPath}.tmp`;
+        writeFileSync(tmpPath, cleaned.join('\n'), 'utf8');
+        renameSync(tmpPath, jsonlPath);
+      }
+    }
+
+    try { unlinkSync(markerPath); } catch { /* best-effort */ }
+    return true;
   }
 
   /**
