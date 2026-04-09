@@ -417,6 +417,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           isCompleted={runner.isCompleted}
           onEditScript={handleEditScript}
           isRemoteEditing={isRemoteEditing}
+          loopProgress={runner.loopProgress}
         />
       )}
 

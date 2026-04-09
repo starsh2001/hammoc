@@ -17,6 +17,13 @@ export interface QueueItem {
   delayMs?: number;
   /** @pauseword: keyword that triggers pause when detected in response */
   pauseword?: string;
+  /** @loop: loop block containing inner items and execution parameters */
+  loop?: {
+    max: number;
+    until?: string;
+    onExceed: 'pause' | 'continue';
+    items: QueueItem[];
+  };
 }
 
 export interface QueueParseWarning {
@@ -77,6 +84,13 @@ export interface QueueProgressEvent {
   isPauseRequested?: boolean;
   /** True when waiting for user input (permission/question) */
   isWaitingForInput?: boolean;
+  /** Loop progress info when executing inside a @loop block */
+  loopProgress?: {
+    iteration: number;
+    max: number;
+    innerIndex: number;
+    innerTotal: number;
+  };
 }
 
 export interface QueueItemCompleteEvent {

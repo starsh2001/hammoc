@@ -22,6 +22,7 @@ import {
   GripVertical,
   RotateCcw,
   Pencil,
+  Repeat,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -67,9 +68,16 @@ interface QueueRunnerPanelProps {
   onEditScript?: () => void;
   /** True when another client is editing the queue script */
   isRemoteEditing?: boolean;
+  /** Loop progress when executing inside a @loop block */
+  loopProgress?: { iteration: number; max: number; innerIndex: number; innerTotal: number } | null;
 }
 
 function getItemSummary(item: QueueItem, t: (key: string, opts?: Record<string, unknown>) => string): string {
+  if (item.loop) {
+    let summary = `@loop max=${item.loop.max}`;
+    if (item.loop.until) summary += ` until="${item.loop.until}"`;
+    return summary;
+  }
   if (item.isBreakpoint) return `${t('queue.itemSummary.pause')}${item.prompt ? `: ${item.prompt}` : ''}`;
   if (item.isNewSession && item.prompt) return `${t('queue.itemSummary.newSession')} ${item.prompt.slice(0, 80)}`;
   if (item.isNewSession) return t('queue.itemSummary.newSessionStart');
@@ -139,6 +147,7 @@ export function QueueRunnerPanel({
   isCompleted: isCompletedProp,
   onEditScript,
   isRemoteEditing = false,
+  loopProgress,
 }: QueueRunnerPanelProps) {
   const { t } = useTranslation('common');
   const currentItemRef = useRef<HTMLDivElement>(null);
@@ -385,6 +394,69 @@ export function QueueRunnerPanel({
           const isCurrent = index === currentIndex && (isRunning || isPaused);
           const itemSessionId = itemSessionIds?.get(index);
 
+          // Loop item — render header + inner items + @end separator
+          if (item.loop) {
+            const isLoopCurrent = isCurrent && loopProgress != null;
+            return (
+              <div key={index}>
+                {/* @loop header row */}
+                <div
+                  ref={isCurrent ? currentItemRef : undefined}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50
+                    ${isCurrent ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                    ${status === 'error' ? 'bg-red-50 dark:bg-red-900/10' : ''}
+                  `}
+                  aria-label={isLoopCurrent ? `Loop iteration ${(loopProgress?.iteration ?? 0) + 1} of ${item.loop.max}` : undefined}
+                >
+                  <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{index + 1}</span>
+                  <Repeat className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                  <span className={`truncate flex-1 ${status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                    {getItemSummary(item, t)}
+                  </span>
+                  {isLoopCurrent && loopProgress && (
+                    <span className="text-xs font-mono bg-blue-500/20 text-blue-400 rounded px-1.5 py-0.5">
+                      ({loopProgress.iteration + 1}/{loopProgress.max})
+                    </span>
+                  )}
+                  {item.loop.until && (
+                    <span className="text-xs text-gray-400 font-mono">until=&quot;{item.loop.until}&quot;</span>
+                  )}
+                  {itemSessionId && projectSlug && (status === 'completed' || status === 'running' || status === 'paused') && (
+                    <Link to={`/project/${projectSlug}/session/${itemSessionId}`} className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 flex-shrink-0 p-0.5" title={t('queue.goToSession')}>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
+                </div>
+                {/* Inner items with indentation */}
+                {item.loop.items.map((innerItem, innerIdx) => {
+                  let innerStatus: ItemStatus = 'pending';
+                  if (status === 'completed') {
+                    innerStatus = 'completed';
+                  } else if (isLoopCurrent && loopProgress) {
+                    if (innerIdx < loopProgress.innerIndex) innerStatus = 'completed';
+                    else if (innerIdx === loopProgress.innerIndex) innerStatus = isPaused ? 'paused' : 'running';
+                    else innerStatus = 'pending';
+                  }
+                  return (
+                    <div
+                      key={`${index}-inner-${innerIdx}`}
+                      className={`flex items-center gap-2 pl-6 pr-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50
+                        ${isLoopCurrent && innerIdx === loopProgress?.innerIndex ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                      `}
+                    >
+                      <ItemStatusIcon status={innerStatus} />
+                      <span className={`truncate flex-1 ${innerStatus === 'completed' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                        {getItemSummary(innerItem, t)}
+                      </span>
+                    </div>
+                  );
+                })}
+                {/* @end separator */}
+                <div className="border-t border-dashed border-gray-600 mx-4 my-1" />
+              </div>
+            );
+          }
+
           return (
             <div
               key={index}
@@ -470,6 +542,25 @@ export function QueueRunnerPanel({
           pendingItems.map((item, idx) => {
             const globalIndex = pendingStart + idx;
             const status = getItemStatus(globalIndex, currentIndex, isRunning, isPaused, completedItems, errorItem);
+
+            if (item.loop) {
+              return (
+                <div key={globalIndex}>
+                  <div className="flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50">
+                    <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{globalIndex + 1}</span>
+                    <Repeat className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <span className="truncate flex-1 text-gray-700 dark:text-gray-200">{getItemSummary(item, t)}</span>
+                  </div>
+                  {item.loop.items.map((innerItem, innerIdx) => (
+                    <div key={`${globalIndex}-inner-${innerIdx}`} className="flex items-center gap-2 pl-6 pr-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50">
+                      <ItemStatusIcon status="pending" />
+                      <span className="truncate flex-1 text-gray-700 dark:text-gray-200">{getItemSummary(innerItem, t)}</span>
+                    </div>
+                  ))}
+                  <div className="border-t border-dashed border-gray-600 mx-4 my-1" />
+                </div>
+              );
+            }
 
             return (
               <div

@@ -53,6 +53,8 @@ interface QueueState {
   isEditingPaused: boolean;
   /** True when a remote client is editing (from server broadcast) */
   isRemoteEditing: boolean;
+  /** Loop progress when executing inside a @loop block */
+  loopProgress: { iteration: number; max: number; innerIndex: number; innerTotal: number } | null;
 }
 
 interface QueueActions {
@@ -101,6 +103,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   isReordering: false,
   isEditingPaused: false,
   isRemoteEditing: false,
+  loopProgress: null,
 
   setScript: (script: string) => {
     set({ script });
@@ -131,6 +134,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       isStarting: false,
       isPauseRequested: data.isPauseRequested ?? false,
       isWaitingForInput: data.isWaitingForInput ?? false,
+      loopProgress: data.loopProgress ?? null,
     };
 
     switch (data.status) {
@@ -322,6 +326,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       isReordering: false,
       isEditingPaused: false,
       isRemoteEditing: false,
+      loopProgress: null,
     });
   },
 }));

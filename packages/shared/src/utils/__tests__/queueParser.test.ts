@@ -325,4 +325,290 @@ describe('serializeQueueItems', () => {
     const reparsed = parseQueueScript(serialized);
     expect(reparsed.items).toEqual(parsed.items);
   });
+
+  it('serializes @loop block with all parameters', () => {
+    const result = serializeQueueItems([{
+      prompt: '',
+      isNewSession: false,
+      loop: {
+        max: 5,
+        until: 'DONE',
+        onExceed: 'continue',
+        items: [
+          { prompt: 'do something', isNewSession: false },
+          { prompt: '', isNewSession: true },
+        ],
+      },
+    }]);
+    expect(result).toBe('@loop max=5 until="DONE" on_exceed="continue"\ndo something\n@new\n@end');
+  });
+
+  it('serializes @loop block omitting default on_exceed="pause"', () => {
+    const result = serializeQueueItems([{
+      prompt: '',
+      isNewSession: false,
+      loop: {
+        max: 3,
+        onExceed: 'pause',
+        items: [{ prompt: 'item', isNewSession: false }],
+      },
+    }]);
+    expect(result).toBe('@loop max=3\nitem\n@end');
+  });
+
+  it('roundtrips @loop through parse and serialize', () => {
+    const script = '@loop max=3 until="[DONE]"\n@new\ndo work\n@pause\n@end';
+    const parsed = parseQueueScript(script);
+    expect(parsed.warnings).toHaveLength(0);
+    const serialized = serializeQueueItems(parsed.items);
+    const reparsed = parseQueueScript(serialized);
+    expect(reparsed.warnings).toHaveLength(0);
+    expect(reparsed.items).toEqual(parsed.items);
+  });
+
+  it('roundtrips @loop with on_exceed="continue" through parse and serialize', () => {
+    const script = '@loop max=5 until="SUCCESS" on_exceed="continue"\nrun test\n@end';
+    const parsed = parseQueueScript(script);
+    expect(parsed.warnings).toHaveLength(0);
+    const serialized = serializeQueueItems(parsed.items);
+    const reparsed = parseQueueScript(serialized);
+    expect(reparsed.warnings).toHaveLength(0);
+    expect(reparsed.items).toEqual(parsed.items);
+  });
+});
+
+describe('parseQueueScript — @loop/@end', () => {
+  // Basic @loop max=N ~ @end produces single QueueItem with loop.items
+  it('parses basic @loop max=3 ~ @end into loop item', () => {
+    const script = '@loop max=3\ndo something\ncheck result\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].loop).toBeDefined();
+    expect(result.items[0].loop!.max).toBe(3);
+    expect(result.items[0].loop!.onExceed).toBe('pause');
+    expect(result.items[0].loop!.until).toBeUndefined();
+    expect(result.items[0].loop!.items).toHaveLength(2);
+    expect(result.items[0].loop!.items[0]).toEqual({ prompt: 'do something', isNewSession: false });
+    expect(result.items[0].loop!.items[1]).toEqual({ prompt: 'check result', isNewSession: false });
+  });
+
+  // until and on_exceed parameters parsed correctly
+  it('parses until and on_exceed parameters correctly', () => {
+    const script = '@loop max=5 until="SUCCESS" on_exceed="continue"\nrun test\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].loop!.max).toBe(5);
+    expect(result.items[0].loop!.until).toBe('SUCCESS');
+    expect(result.items[0].loop!.onExceed).toBe('continue');
+  });
+
+  // @new inside loop creates separate inner items
+  it('parses @new inside loop as separate inner items', () => {
+    const script = '@loop max=2\n@new\nfirst prompt\nsecond prompt\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items[0].loop!.items).toHaveLength(3);
+    expect(result.items[0].loop!.items[0]).toEqual({ prompt: '', isNewSession: true });
+    expect(result.items[0].loop!.items[1]).toEqual({ prompt: 'first prompt', isNewSession: false });
+    expect(result.items[0].loop!.items[2]).toEqual({ prompt: 'second prompt', isNewSession: false });
+  });
+
+  // Nested @loop rejected with warning
+  it('rejects nested @loop with warning', () => {
+    const script = '@loop max=3\nouter item\n@loop max=2\ninner item\n@end\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toContain('Nested @loop is not allowed');
+    expect(result.items).toHaveLength(1);
+    // Only outer item is preserved (nested block content is discarded)
+    expect(result.items[0].loop!.items).toHaveLength(1);
+    expect(result.items[0].loop!.items[0]).toEqual({ prompt: 'outer item', isNewSession: false });
+  });
+
+  // Unclosed @loop warning
+  it('warns on unclosed @loop (missing @end)', () => {
+    const script = '@loop max=3\nitem one\nitem two';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toContain('Unclosed @loop block: missing @end');
+    expect(result.warnings[0].message).toContain('started at line 1');
+    // Still creates the loop item with collected items
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].loop!.items).toHaveLength(2);
+  });
+
+  // Orphan @end warning
+  it('warns on orphan @end without matching @loop', () => {
+    const script = 'some prompt\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toBe('@end without matching @loop');
+    expect(result.warnings[0].line).toBe(2);
+  });
+
+  // Missing max warning
+  it('warns on @loop without max parameter', () => {
+    const script = '@loop\nitem\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings.some(w => w.message.includes('@loop requires max=N parameter'))).toBe(true);
+  });
+
+  // Invalid max: max=0
+  it('warns on @loop max=0 (not a positive integer)', () => {
+    const script = '@loop max=0\nitem\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings.some(w => w.message.includes('@loop requires max=N parameter'))).toBe(true);
+  });
+
+  // Invalid max: max=-1
+  it('warns on @loop max=-1 (not a positive integer)', () => {
+    const script = '@loop max=-1\nitem\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings.some(w => w.message.includes('@loop requires max=N parameter'))).toBe(true);
+  });
+
+  // pauseword == until cross-validation warning
+  it('warns when @pauseword keyword matches until token', () => {
+    const script = '@pauseword "STOP"\n@loop max=3 until="STOP"\ndo something\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toContain('@pauseword keyword "STOP" matches until token');
+    expect(result.warnings[0].message).toContain('pauseword will always fire first');
+    // Loop is still created despite the warning
+    expect(result.items).toHaveLength(2); // pauseword item + loop item
+  });
+
+  // on_exceed without until cross-validation warning
+  it('warns when on_exceed is set without until', () => {
+    const script = '@loop max=3 on_exceed="continue"\nitem\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toBe('on_exceed has no effect without until parameter');
+    // Loop is still created
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].loop!.onExceed).toBe('continue');
+  });
+
+  // until parameter with mismatched quotes emits warning
+  it('warns on until parameter with mismatched quotes', () => {
+    const script = '@loop max=3 until="DONE\nitem\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toBe('@loop until has mismatched quotes');
+    // Loop is still created but without until
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].loop).toBeDefined();
+    expect(result.items[0].loop!.until).toBeUndefined();
+  });
+
+  // @( multiline block inside @loop works correctly
+  it('parses @( multiline block inside @loop correctly', () => {
+    const script = '@loop max=2\n@(\nline one\nline two\n@)\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].loop!.items).toHaveLength(1);
+    expect(result.items[0].loop!.items[0]).toEqual({
+      prompt: 'line one\nline two',
+      isNewSession: false,
+      isMultiline: true,
+    });
+  });
+
+  // until token with special characters
+  it('parses until token with special characters', () => {
+    const script = '@loop max=5 until="[DONE]"\ncheck\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items[0].loop!.until).toBe('[DONE]');
+  });
+
+  // Loop with items before and after
+  it('parses loop with items before and after', () => {
+    const script = 'before loop\n@loop max=2\nloop item\n@end\nafter loop';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items).toHaveLength(3);
+    expect(result.items[0]).toEqual({ prompt: 'before loop', isNewSession: false });
+    expect(result.items[1].loop).toBeDefined();
+    expect(result.items[1].loop!.items[0]).toEqual({ prompt: 'loop item', isNewSession: false });
+    expect(result.items[2]).toEqual({ prompt: 'after loop', isNewSession: false });
+  });
+
+  // @loop directive is case-insensitive
+  it('parses @LOOP and @END case-insensitively', () => {
+    const script = '@LOOP max=2\nitem\n@END';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].loop!.max).toBe(2);
+  });
+
+  // All inner directives work inside loop
+  it('supports all directives inside loop', () => {
+    const script = [
+      '@loop max=3',
+      '@new',
+      '@model sonnet',
+      '@pause check',
+      '@delay 1000',
+      '@pauseword "HALT"',
+      'regular prompt',
+      '@end',
+    ].join('\n');
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    const inner = result.items[0].loop!.items;
+    expect(inner).toHaveLength(6);
+    expect(inner[0]).toEqual({ prompt: '', isNewSession: true });
+    expect(inner[1]).toEqual({ prompt: '', isNewSession: false, modelName: 'sonnet' });
+    expect(inner[2]).toEqual({ prompt: 'check', isNewSession: false, isBreakpoint: true });
+    expect(inner[3]).toEqual({ prompt: '', isNewSession: false, delayMs: 1000 });
+    expect(inner[4]).toEqual({ prompt: '', isNewSession: false, pauseword: 'HALT' });
+    expect(inner[5]).toEqual({ prompt: 'regular prompt', isNewSession: false });
+  });
+
+  // on_exceed="pause" explicit with until — no warning
+  it('accepts explicit on_exceed="pause" when until is set', () => {
+    const script = '@loop max=3 until="DONE" on_exceed="pause"\nitem\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items[0].loop!.onExceed).toBe('pause');
+  });
+
+  // Loop with max=1 (minimum boundary)
+  it('parses @loop max=1 correctly (minimum boundary)', () => {
+    const script = '@loop max=1\nitem\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items[0].loop!.max).toBe(1);
+  });
+
+  // Empty loop (no inner items)
+  it('parses empty loop with no inner items', () => {
+    const script = '@loop max=3\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].loop!.items).toHaveLength(0);
+  });
+
+  // Pauseword inside loop updates tracking for subsequent loops
+  it('tracks pauseword changes inside loop for subsequent loop cross-validation', () => {
+    const script = [
+      '@loop max=2',
+      '@pauseword "HALT"',
+      'do work',
+      '@end',
+      '@loop max=3 until="HALT"',
+      'check',
+      '@end',
+    ].join('\n');
+    const result = parseQueueScript(script);
+    // Second loop should warn: pauseword "HALT" matches until "HALT"
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toContain('@pauseword keyword "HALT" matches until token');
+  });
 });

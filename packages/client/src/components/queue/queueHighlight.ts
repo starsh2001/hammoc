@@ -30,8 +30,9 @@ export function highlightScript(script: string): string {
       return escapeHtml(line);
     }
 
-    // Multiline markers
-    if (trimmed.toLowerCase() === '@(' || trimmed.toLowerCase() === '@)') {
+    // Block markers: multiline @(/@), loop @loop/@end
+    const lower = trimmed.toLowerCase();
+    if (lower === '@(' || lower === '@)' || lower === '@end' || lower.startsWith('@loop')) {
       return `<span class="text-blue-700 dark:text-blue-400">${escapeHtml(line)}</span>`;
     }
 

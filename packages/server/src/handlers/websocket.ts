@@ -1860,7 +1860,13 @@ export async function initializeWebSocket(
       const qs = getOrCreateQueueService(data.projectSlug);
       const result = parseQueueScript(data.rawLine);
       if (result.items.length > 0) {
-        qs.addItem(result.items[0]);
+        const added = qs.addItem(result.items[0]);
+        if (!added && result.items[0].loop) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          socket.emit('queue:addItemRejected' as any, {
+            reason: 'Block directives (@loop/@end) cannot be added via addItem',
+          });
+        }
       }
     });
     socket.on('queue:reorderItems', (data) => {

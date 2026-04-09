@@ -28,6 +28,7 @@ export interface UseQueueRunnerReturn {
   completedItems: Set<number>;
   errorItem: { index: number; error: string } | null;
   itemSessionIds: Map<number, string>;
+  loopProgress: { iteration: number; max: number; innerIndex: number; innerTotal: number } | null;
 
   // Control functions
   start: (items: QueueItem[], sessionId?: string) => void;
@@ -61,6 +62,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     completedItems,
     errorItem,
     itemSessionIds,
+    loopProgress,
   } = useQueueStore(useShallow((s) => ({
     isRunning: s.isRunning,
     isPaused: s.isPaused,
@@ -75,6 +77,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     completedItems: s.completedItems,
     errorItem: s.errorItem,
     itemSessionIds: s.itemSessionIds,
+    loopProgress: s.loopProgress,
   })));
 
   // WebSocket setup and teardown
@@ -92,6 +95,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     const onError = (data: QueueErrorEvent) => handleError(data);
     const onItemsUpdated = (data: QueueItemsUpdatedEvent) => handleItemsUpdated(data);
     const onEditState = (data: { isEditing: boolean }) => handleEditState(data);
+    const onAddItemRejected = (data: { reason: string }) => { toast.error(data.reason); };
 
     socket.on('queue:progress', onProgress);
     socket.on('queue:itemComplete', onItemComplete);
@@ -100,6 +104,8 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     socket.on('queue:itemsUpdated' as any, onItemsUpdated);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     socket.on('queue:editState' as any, onEditState);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.on('queue:addItemRejected' as any, onAddItemRejected);
 
     // Initial status fetch
     queueApi.getStatus(projectSlug)
@@ -118,6 +124,8 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
       socket.off('queue:itemsUpdated' as any, onItemsUpdated);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       socket.off('queue:editState' as any, onEditState);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      socket.off('queue:addItemRejected' as any, onAddItemRejected);
       // Release edit lock if we were editing
       if (useQueueStore.getState().isEditingPaused) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -218,6 +226,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     completedItems,
     errorItem,
     itemSessionIds,
+    loopProgress,
     start,
     pause,
     cancelPause,

@@ -793,4 +793,264 @@ describe('QueueService', () => {
       expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('regular prompt');
     });
   });
+
+  // ===== BS-4: @loop execution tests =====
+
+  describe('BS-4: @loop execution', () => {
+    function createLoopItem(max: number, innerItems: QueueItem[], opts?: { until?: string; onExceed?: 'pause' | 'continue' }): QueueItem {
+      return {
+        prompt: '',
+        isNewSession: false,
+        loop: {
+          max,
+          until: opts?.until,
+          onExceed: opts?.onExceed ?? 'pause',
+          items: innerItems,
+        },
+      };
+    }
+
+    it('simple loop (max=3, no until): inner items execute exactly 3 times', async () => {
+      setupMockChat();
+      const items = [createLoopItem(3, [createPromptItem('do work')])];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(3);
+      for (let i = 0; i < 3; i++) {
+        expect(mockSendMessageWithCallbacks.mock.calls[i][0]).toBe('do work');
+      }
+      expect(queueService.getState().isCompleted).toBe(true);
+    });
+
+    it('simple loop (max=1, no until): inner items execute exactly once', async () => {
+      setupMockChat();
+      const items = [createLoopItem(1, [createPromptItem('once')])];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(1);
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('once');
+    });
+
+    it('loop with until: exits early when token found in response', async () => {
+      let callCount = 0;
+      mockSendMessageWithCallbacks.mockImplementation(
+        async (_content: string, callbacks: any) => {
+          callCount++;
+          const text = callCount >= 2 ? 'Result: SUCCESS found' : 'Still working...';
+          callbacks.onTextChunk?.({ sessionId: 'test-session', messageId: 'msg-1', content: text, done: true });
+          callbacks.onComplete?.({ id: 'resp-1', sessionId: 'test-session', content: text, done: true, isError: false });
+          return { id: 'resp-1', sessionId: 'test-session', content: text, done: true, isError: false };
+        }
+      );
+
+      const items = [createLoopItem(10, [createPromptItem('check')], { until: 'SUCCESS' })];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(2); // Exits on 2nd iteration
+      expect(queueService.getState().isCompleted).toBe(true);
+    });
+
+    it('loop with until + on_exceed="pause": pauseWithError on max exceeded', async () => {
+      setupMockChat('no token here');
+      const items = [createLoopItem(2, [createPromptItem('check')], { until: 'TOKEN', onExceed: 'pause' })];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(2);
+      const state = queueService.getState();
+      expect(state.isPaused).toBe(true);
+      expect(state.lastError?.error).toContain('Loop max');
+      expect(mockNotificationService.notifyQueueError).toHaveBeenCalled();
+    });
+
+    it('loop with until + on_exceed="continue": continues to next item on max', async () => {
+      setupMockChat('no token here');
+      const items = [
+        createLoopItem(2, [createPromptItem('check')], { until: 'TOKEN', onExceed: 'continue' }),
+        createPromptItem('after loop'),
+      ];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(3); // 2 loop + 1 after
+      expect(mockSendMessageWithCallbacks.mock.calls[2][0]).toBe('after loop');
+      expect(queueService.getState().isCompleted).toBe(true);
+    });
+
+    it('@pauseword inside loop pauses immediately (takes precedence over until)', async () => {
+      setupMockChat('response with STOP word');
+      const items = [createLoopItem(5, [
+        { prompt: '', isNewSession: false, pauseword: 'STOP' },
+        createPromptItem('do work'),
+      ], { until: 'DONE' })];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(1);
+      const state = queueService.getState();
+      expect(state.isPaused).toBe(true);
+      expect(state.lastError?.error).toContain('Pauseword');
+    });
+
+    it('replaceItems during loop pause resets loop state', async () => {
+      // Create a loop that will pause (on_exceed)
+      setupMockChat('no token');
+      const loopItem = createLoopItem(1, [createPromptItem('check')], { until: 'TOKEN', onExceed: 'pause' });
+      await queueService.start([loopItem, createPromptItem('after')], 'test-project');
+
+      expect(queueService.getState().isPaused).toBe(true);
+
+      // Simulate edit mode
+      queueService.editStart('test-socket');
+
+      // Replace with new items — should reset loop
+      const newItems = [createPromptItem('new item')];
+      const replaced = queueService.replaceItems(newItems, 'test-socket');
+      expect(replaced).toBe(true);
+
+      // Resume — should execute new items, not re-enter loop
+      setupMockChat();
+      await queueService.resume();
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledWith('new item', expect.anything(), expect.anything(), expect.anything());
+    });
+
+    it('addItem rejects loop items', async () => {
+      setupMockChat();
+      const items = [createPromptItem('first')];
+      await queueService.start(items, 'test-project');
+
+      // Try to add a loop item (start a new run first since previous completed)
+      mockSendMessageWithCallbacks.mockImplementation(() => new Promise(() => {})); // Never resolve
+      const startPromise = queueService.start([createPromptItem('running')], 'test-project');
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      const result = queueService.addItem(createLoopItem(3, [createPromptItem('inner')]));
+      expect(result).toBe(false);
+
+      await queueService.abort();
+    });
+
+    it('loop progress events are emitted correctly', async () => {
+      setupMockChat();
+      const items = [createLoopItem(2, [createPromptItem('work'), createPromptItem('check')])];
+      await queueService.start(items, 'test-project');
+
+      const progressCalls = mockEmit.mock.calls.filter(([event]: any) => event === 'queue:progress');
+      const loopProgressEvents = progressCalls
+        .map(([, data]: any) => data.loopProgress)
+        .filter(Boolean);
+
+      expect(loopProgressEvents.length).toBeGreaterThan(0);
+      // Should have loopProgress with iteration, max, innerIndex, innerTotal
+      expect(loopProgressEvents[0]).toEqual(expect.objectContaining({
+        max: 2,
+        innerTotal: 2,
+      }));
+    });
+
+    it('loop with until + last inner item is non-prompt: until check skipped', async () => {
+      let callCount = 0;
+      mockSendMessageWithCallbacks.mockImplementation(
+        async (_content: string, callbacks: any) => {
+          callCount++;
+          // Always return the until token — but last item is @pause, so until should be skipped
+          const text = 'Result: DONE';
+          callbacks.onTextChunk?.({ sessionId: 'test-session', messageId: 'msg-1', content: text, done: true });
+          callbacks.onComplete?.({ id: 'resp-1', sessionId: 'test-session', content: text, done: true, isError: false });
+          return { id: 'resp-1', sessionId: 'test-session', content: text, done: true, isError: false };
+        }
+      );
+
+      // Last inner item is @pause (non-prompt) — until check should be skipped
+      const items = [createLoopItem(2, [
+        createPromptItem('check'),
+        { prompt: '', isNewSession: false, delayMs: 1 }, // Non-prompt last item
+      ], { until: 'DONE', onExceed: 'continue' })];
+      await queueService.start(items, 'test-project');
+
+      // Should run all 2 iterations because until check is skipped (last item is non-prompt)
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(2);
+      expect(queueService.getState().isCompleted).toBe(true);
+    });
+
+    it('on_exceed="pause" resume: execution continues to item after loop', async () => {
+      setupMockChat('no token');
+      const items = [
+        createLoopItem(1, [createPromptItem('check')], { until: 'TOKEN', onExceed: 'pause' }),
+        createPromptItem('after loop'),
+      ];
+      await queueService.start(items, 'test-project');
+
+      expect(queueService.getState().isPaused).toBe(true);
+
+      // Resume — should continue to 'after loop'
+      setupMockChat('after response');
+      await queueService.resume();
+
+      const lastCall = mockSendMessageWithCallbacks.mock.calls[mockSendMessageWithCallbacks.mock.calls.length - 1];
+      expect(lastCall[0]).toBe('after loop');
+      expect(queueService.getState().isCompleted).toBe(true);
+    });
+
+    it('loop with multiple inner items executes all per iteration', async () => {
+      setupMockChat();
+      const items = [createLoopItem(2, [
+        createPromptItem('step 1'),
+        createPromptItem('step 2'),
+        createPromptItem('step 3'),
+      ])];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(6); // 3 items × 2 iterations
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('step 1');
+      expect(mockSendMessageWithCallbacks.mock.calls[1][0]).toBe('step 2');
+      expect(mockSendMessageWithCallbacks.mock.calls[2][0]).toBe('step 3');
+      expect(mockSendMessageWithCallbacks.mock.calls[3][0]).toBe('step 1');
+      expect(mockSendMessageWithCallbacks.mock.calls[4][0]).toBe('step 2');
+      expect(mockSendMessageWithCallbacks.mock.calls[5][0]).toBe('step 3');
+    });
+
+    it('loop with until + max=1: token not found applies on_exceed immediately', async () => {
+      setupMockChat('no match');
+      const items = [createLoopItem(1, [createPromptItem('check')], { until: 'TOKEN', onExceed: 'pause' })];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(1);
+      expect(queueService.getState().isPaused).toBe(true);
+      expect(queueService.getState().lastError?.error).toContain('Loop max');
+    });
+
+    it('items before and after loop execute normally', async () => {
+      setupMockChat();
+      const items = [
+        createPromptItem('before'),
+        createLoopItem(2, [createPromptItem('loop body')]),
+        createPromptItem('after'),
+      ];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(4); // 1 + 2 + 1
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('before');
+      expect(mockSendMessageWithCallbacks.mock.calls[1][0]).toBe('loop body');
+      expect(mockSendMessageWithCallbacks.mock.calls[2][0]).toBe('loop body');
+      expect(mockSendMessageWithCallbacks.mock.calls[3][0]).toBe('after');
+      expect(queueService.getState().isCompleted).toBe(true);
+    });
+
+    it('notifyQueueError called on max exceeded with on_exceed="pause"', async () => {
+      setupMockChat('no token');
+      const items = [createLoopItem(1, [createPromptItem('check')], { until: 'DONE', onExceed: 'pause' })];
+      await queueService.start(items, 'test-project');
+
+      expect(mockNotificationService.notifyQueueError).toHaveBeenCalledWith(
+        expect.stringContaining('Loop max'),
+        expect.any(String),
+      );
+    });
+
+    it('notifyQueueComplete when loop completes normally as part of queue', async () => {
+      setupMockChat();
+      const items = [createLoopItem(2, [createPromptItem('work')])];
+      await queueService.start(items, 'test-project');
+
+      expect(mockNotificationService.notifyQueueComplete).toHaveBeenCalled();
+    });
+  });
 });

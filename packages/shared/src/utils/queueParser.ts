@@ -3,6 +3,16 @@ import type { QueueItem, QueueParseResult, QueueParseWarning } from '../types/qu
 /** Convert QueueItem[] back into script text (inverse of parseQueueScript) */
 export function serializeQueueItems(items: QueueItem[]): string {
   return items.map(item => {
+    if (item.loop) {
+      const parts: string[] = [];
+      let header = `@loop max=${item.loop.max}`;
+      if (item.loop.until != null) header += ` until="${item.loop.until}"`;
+      if (item.loop.onExceed !== 'pause') header += ` on_exceed="${item.loop.onExceed}"`;
+      parts.push(header);
+      parts.push(serializeQueueItems(item.loop.items));
+      parts.push('@end');
+      return parts.join('\n');
+    }
     if (item.pauseword != null) return `@pauseword "${item.pauseword}"`;
     if (item.isBreakpoint) {
       return item.prompt ? `@pause ${item.prompt}` : '@pause';
@@ -39,15 +49,43 @@ export function parseQueueScript(script: string): QueueParseResult {
   let multilineContent: string[] = [];
   let multilineStartLine = 0;
 
+  // Loop block state
+  let inLoopBlock = false;
+  let loopItems: QueueItem[] = [];
+  let loopStartLine = 0;
+  let loopMax = 0;
+  let loopUntil: string | undefined;
+  let loopOnExceed: 'pause' | 'continue' = 'pause';
+  let nestedLoopDepth = 0;
+
+  // Track active pauseword for cross-validation
+  let activePauseword: string | undefined;
+
+  // Helper to push items to the correct target (top-level or loop inner)
+  const pushItem = (item: QueueItem) => {
+    (inLoopBlock ? loopItems : items).push(item);
+  };
+
   for (let i = 0; i < lines.length; i++) {
     const lineNum = i + 1;
     const line = lines[i];
     const trimmed = line.trim();
 
+    // Inside rejected nested loop — only track @loop/@end depth
+    if (inLoopBlock && nestedLoopDepth > 0) {
+      const lower = trimmed.toLowerCase();
+      if (lower.startsWith('@loop')) {
+        nestedLoopDepth++;
+      } else if (lower === '@end') {
+        nestedLoopDepth--;
+      }
+      continue;
+    }
+
     // Inside multiline block
     if (inMultilineBlock) {
       if (trimmed.toLowerCase() === '@)') {
-        items.push({
+        pushItem({
           prompt: multilineContent.join('\n'),
           isNewSession: false,
           isMultiline: true,
@@ -72,7 +110,7 @@ export function parseQueueScript(script: string): QueueParseResult {
 
     // Escape handling: \\@ -> literal \@ prompt
     if (trimmed.startsWith('\\\\@')) {
-      items.push({
+      pushItem({
         prompt: trimmed.slice(1), // remove first backslash
         isNewSession: false,
       });
@@ -81,7 +119,7 @@ export function parseQueueScript(script: string): QueueParseResult {
 
     // Escape handling: \@ -> literal @ prompt
     if (trimmed.startsWith('\\@')) {
-      items.push({
+      pushItem({
         prompt: trimmed.slice(1), // remove backslash
         isNewSession: false,
       });
@@ -100,7 +138,7 @@ export function parseQueueScript(script: string): QueueParseResult {
 
       switch (directive) {
         case '@new':
-          items.push({
+          pushItem({
             prompt: '',
             isNewSession: true,
           });
@@ -110,7 +148,7 @@ export function parseQueueScript(script: string): QueueParseResult {
           if (!argStr) {
             warnings.push({ line: lineNum, message: '@save requires a session name' });
           } else {
-            items.push({
+            pushItem({
               prompt: '',
               isNewSession: false,
               saveSessionName: argStr,
@@ -122,7 +160,7 @@ export function parseQueueScript(script: string): QueueParseResult {
           if (!argStr) {
             warnings.push({ line: lineNum, message: '@load requires a session name' });
           } else {
-            items.push({
+            pushItem({
               prompt: '',
               isNewSession: false,
               loadSessionName: argStr,
@@ -131,7 +169,7 @@ export function parseQueueScript(script: string): QueueParseResult {
           break;
 
         case '@pause': {
-          items.push({
+          pushItem({
             prompt: argStr,
             isNewSession: false,
             isBreakpoint: true,
@@ -143,7 +181,7 @@ export function parseQueueScript(script: string): QueueParseResult {
           if (!argStr) {
             warnings.push({ line: lineNum, message: '@model requires a model name' });
           } else {
-            items.push({
+            pushItem({
               prompt: '',
               isNewSession: false,
               modelName: argStr,
@@ -156,7 +194,7 @@ export function parseQueueScript(script: string): QueueParseResult {
           if (!argStr || isNaN(ms) || ms <= 0 || !Number.isInteger(ms) || argStr !== String(ms)) {
             warnings.push({ line: lineNum, message: '@delay requires a positive integer value' });
           } else {
-            items.push({
+            pushItem({
               prompt: '',
               isNewSession: false,
               delayMs: ms,
@@ -179,13 +217,124 @@ export function parseQueueScript(script: string): QueueParseResult {
                 break;
               }
             }
+            // Track active pauseword for loop cross-validation
+            activePauseword = keyword || undefined;
             // Empty string is valid — clears the active pauseword
-            items.push({
+            pushItem({
               prompt: '',
               isNewSession: false,
               pauseword: keyword,
             });
           }
+          break;
+        }
+
+        case '@loop': {
+          if (inLoopBlock) {
+            // Nested loop — reject with warning
+            nestedLoopDepth++;
+            warnings.push({ line: lineNum, message: `Nested @loop is not allowed (line ${loopStartLine})` });
+            break;
+          }
+
+          // Parse parameters: max=N, until="TOKEN", on_exceed="pause"|"continue"
+          const tokens = argStr.split(/\s+/).filter(t => t !== '');
+          let parsedMax: number | undefined;
+          let parsedUntil: string | undefined;
+          let parsedOnExceed: 'pause' | 'continue' = 'pause';
+          let parsedOnExceedExplicit = false;
+
+          for (const token of tokens) {
+            const eqIdx = token.indexOf('=');
+            if (eqIdx === -1) continue;
+            const key = token.slice(0, eqIdx).toLowerCase();
+            const val = token.slice(eqIdx + 1);
+
+            switch (key) {
+              case 'max': {
+                const n = parseInt(val, 10);
+                if (!isNaN(n) && n > 0 && Number.isInteger(n) && val === String(n)) {
+                  parsedMax = n;
+                }
+                break;
+              }
+              case 'until': {
+                if (val.startsWith('"') && val.endsWith('"') && val.length > 1) {
+                  const inner = val.slice(1, -1);
+                  if (inner) parsedUntil = inner;
+                } else if (val.startsWith('"')) {
+                  // Mismatched quotes — starts with " but no closing "
+                  warnings.push({ line: lineNum, message: '@loop until has mismatched quotes' });
+                } else if (val) {
+                  parsedUntil = val;
+                }
+                break;
+              }
+              case 'on_exceed': {
+                let v = val;
+                if (v.startsWith('"') && v.endsWith('"') && v.length > 1) {
+                  v = v.slice(1, -1);
+                }
+                if (v === 'pause' || v === 'continue') {
+                  parsedOnExceed = v;
+                  parsedOnExceedExplicit = true;
+                }
+                break;
+              }
+            }
+          }
+
+          // Validate max parameter
+          if (parsedMax == null) {
+            warnings.push({ line: lineNum, message: '@loop requires max=N parameter (positive integer)' });
+            break;
+          }
+
+          // Cross-validation: on_exceed without until
+          if (parsedOnExceedExplicit && parsedUntil == null) {
+            warnings.push({ line: lineNum, message: 'on_exceed has no effect without until parameter' });
+          }
+
+          // Cross-validation: pauseword == until
+          if (parsedUntil && activePauseword && activePauseword === parsedUntil) {
+            warnings.push({
+              line: lineNum,
+              message: `@pauseword keyword "${activePauseword}" matches until token — pauseword will always fire first, making loop exit impossible`,
+            });
+          }
+
+          // Enter loop-collecting mode
+          inLoopBlock = true;
+          loopStartLine = lineNum;
+          loopItems = [];
+          loopMax = parsedMax;
+          loopUntil = parsedUntil;
+          loopOnExceed = parsedOnExceed;
+          nestedLoopDepth = 0;
+          break;
+        }
+
+        case '@end': {
+          if (!inLoopBlock) {
+            warnings.push({ line: lineNum, message: '@end without matching @loop' });
+            break;
+          }
+
+          // Finalize loop block
+          items.push({
+            prompt: '',
+            isNewSession: false,
+            loop: {
+              max: loopMax,
+              until: loopUntil,
+              onExceed: loopOnExceed,
+              items: loopItems,
+            },
+          });
+
+          inLoopBlock = false;
+          loopItems = [];
+          nestedLoopDepth = 0;
           break;
         }
 
@@ -198,7 +347,7 @@ export function parseQueueScript(script: string): QueueParseResult {
         default:
           // Unknown directive
           warnings.push({ line: lineNum, message: `Unknown directive: ${directive}` });
-          items.push({
+          pushItem({
             prompt: trimmed,
             isNewSession: false,
           });
@@ -208,7 +357,7 @@ export function parseQueueScript(script: string): QueueParseResult {
     }
 
     // Regular line (prompt)
-    items.push({
+    pushItem({
       prompt: trimmed,
       isNewSession: false,
     });
@@ -220,10 +369,28 @@ export function parseQueueScript(script: string): QueueParseResult {
       line: multilineStartLine,
       message: 'Unclosed multiline block: missing @)',
     });
-    items.push({
+    pushItem({
       prompt: multilineContent.join('\n'),
       isNewSession: false,
       isMultiline: true,
+    });
+  }
+
+  // Unclosed loop block
+  if (inLoopBlock) {
+    warnings.push({
+      line: loopStartLine,
+      message: `Unclosed @loop block: missing @end (started at line ${loopStartLine})`,
+    });
+    items.push({
+      prompt: '',
+      isNewSession: false,
+      loop: {
+        max: loopMax,
+        until: loopUntil,
+        onExceed: loopOnExceed,
+        items: loopItems,
+      },
     });
   }
 

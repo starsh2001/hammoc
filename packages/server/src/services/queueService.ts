@@ -75,6 +75,19 @@ export class QueueService {
   private snippetExpandedItems = new WeakSet<QueueItem>();
   /** @pauseword: keyword that triggers pause when detected in response */
   private pauseword: string | undefined = undefined;
+  /** @loop runtime state — null when not inside a loop */
+  private loopState: {
+    iteration: number;
+    innerIndex: number;
+    items: QueueItem[];
+    max: number;
+    until?: string;
+    onExceed: 'pause' | 'continue';
+  } | null = null;
+  /** Last prompt response text (for @loop until check) */
+  private lastPromptResponse: string = '';
+  /** Whether the last executeItem call produced a prompt (for @loop until check) */
+  private lastItemWasPrompt: boolean = false;
   private lang: string = 'en';
   constructor(
     private projectService: ProjectService,
@@ -108,6 +121,9 @@ export class QueueService {
     this.currentIndex = 0;
     this.snippetExpandedItems = new WeakSet();
     this.pauseword = undefined;
+    this.loopState = null;
+    this.lastPromptResponse = '';
+    this.lastItemWasPrompt = false;
     this._isRunning = true;
     this.isPaused = false;
     this.isExecuting = false;
@@ -190,6 +206,7 @@ export class QueueService {
     this._isCompleted = false;
     this._isErrored = false;
     this._editingSocketId = null;
+    this.loopState = null;
     this.abortController?.abort();
     this.emitProgress('aborted');
   }
@@ -213,6 +230,7 @@ export class QueueService {
     this.items = [];
     this.snippetExpandedItems = new WeakSet();
     this.pauseword = undefined;
+    this.loopState = null;
     this.completedSessionIds = new Map();
     this.chatService = null;
   }
@@ -271,6 +289,7 @@ export class QueueService {
   /** Add a new item at the end of the queue */
   addItem(item: QueueItem): boolean {
     if (!this._isRunning && !this.isPaused) return false;
+    if (item.loop) return false; // Block directives cannot be added via addItem
 
     this.items.push(item);
     this.emitItemsUpdated();
@@ -310,6 +329,7 @@ export class QueueService {
     const pendingStart = this.currentIndex;
     this.items = [...this.items.slice(0, pendingStart), ...newItems];
     this._editingSocketId = null;
+    this.loopState = null; // Script edit resets loop state
 
     this.emitItemsUpdated();
     this.emitProgress('paused');
@@ -374,7 +394,9 @@ export class QueueService {
         const item = this.items[this.currentIndex];
         log.debug(`executeLoop: executing item[${this.currentIndex}], prompt=${JSON.stringify((item.prompt || '').slice(0, 80))}, sessionId=${this.currentSessionId}`);
         const startTime = Date.now();
-        const result = await this.executeItem(item);
+        const result = item.loop
+          ? await this.executeLoopItem(item)
+          : await this.executeItem(item);
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
         log.debug(`executeLoop: item[${this.currentIndex}] done in ${elapsed}s, shouldAdvance=${result.shouldAdvance}, isPaused=${this.isPaused}`);
 
@@ -434,7 +456,102 @@ export class QueueService {
     }
   }
 
+  private async executeLoopItem(item: QueueItem): Promise<ExecuteItemResult> {
+    const loop = item.loop!;
+
+    // Initialize or resume loop state
+    if (!this.loopState) {
+      this.loopState = {
+        iteration: 0,
+        innerIndex: 0,
+        items: loop.items,
+        max: loop.max,
+        until: loop.until,
+        onExceed: loop.onExceed,
+      };
+      log.info(`LOOP_START: max=${loop.max}, until=${loop.until || '(none)'}, onExceed=${loop.onExceed}, innerItems=${loop.items.length}`);
+    } else if (this.loopState.iteration >= this.loopState.max) {
+      // Loop already exhausted (on_exceed="pause" resume case) — advance past it
+      log.info('LOOP_RESUME after on_exceed pause — advancing past loop');
+      this.loopState = null;
+      return { shouldAdvance: true };
+    } else {
+      log.info(`LOOP_RESUME: iteration=${this.loopState.iteration}, innerIndex=${this.loopState.innerIndex}`);
+    }
+
+    this.emitProgress('running');
+
+    while (this.loopState.iteration < this.loopState.max && this._isRunning && !this.isPaused) {
+      // Execute inner items for this iteration
+      while (this.loopState.innerIndex < this.loopState.items.length && this._isRunning && !this.isPaused) {
+        const innerItem = this.loopState.items[this.loopState.innerIndex];
+        this.emitProgress('running');
+
+        const result = await this.executeItem(innerItem);
+
+        if (!result.shouldAdvance) {
+          // Error/pauseword — loopState.innerIndex preserved for retry on resume
+          return { shouldAdvance: false };
+        }
+
+        this.loopState.innerIndex++;
+        this.emitProgress('running');
+
+        // Handle deferred manual pause (AC-S:1: resume continues from next inner item)
+        if (!this.isPaused && this._isPauseRequested) {
+          this._isPauseRequested = false;
+          this.isPaused = true;
+          const t = i18next.getFixedT(this.lang);
+          this.pauseReason = t('queue.pause.userPaused');
+          this.emitProgress('paused');
+          return { shouldAdvance: false };
+        }
+      }
+
+      if (this.isPaused || !this._isRunning) {
+        return { shouldAdvance: false };
+      }
+
+      // Iteration complete — check until token on last inner item if it was a prompt (AC-E:3, AC-E:7)
+      if (this.loopState.until && this.lastItemWasPrompt) {
+        if (this.lastPromptResponse.includes(this.loopState.until)) {
+          log.info(`LOOP_EXIT: until token "${this.loopState.until}" found at iteration ${this.loopState.iteration}`);
+          this.loopState = null;
+          return { shouldAdvance: true };
+        }
+      }
+
+      // Next iteration
+      this.loopState.iteration++;
+      this.loopState.innerIndex = 0;
+      this.emitProgress('running');
+    }
+
+    if (this.isPaused || !this._isRunning) {
+      return { shouldAdvance: false };
+    }
+
+    // Max reached
+    if (this.loopState.until) {
+      // Had until but token never found
+      if (this.loopState.onExceed === 'pause') {
+        const msg = `Loop max (${this.loopState.max}) exceeded without until token "${this.loopState.until}"`;
+        this.pauseWithError(msg);
+        await this.notificationService.notifyQueueError(msg, this.buildSessionUrl());
+        // Keep loopState with iteration >= max — on resume, the exhausted check advances past the loop
+        return { shouldAdvance: false };
+      }
+      // on_exceed="continue" — exit loop, continue to next item
+    }
+
+    log.info(`LOOP_COMPLETE: iterations=${this.loopState?.iteration ?? 0}`);
+    this.loopState = null;
+    return { shouldAdvance: true };
+  }
+
   private async executeItem(item: QueueItem): Promise<ExecuteItemResult> {
+    this.lastItemWasPrompt = false;
+
     // Step 1: Session management flags (processed sequentially, not exclusively)
     if (item.isNewSession) {
       const newSessionId = crypto.randomUUID();
@@ -538,6 +655,7 @@ export class QueueService {
 
     // Step 3: Prompt execution (only if prompt is non-empty)
     if (item.prompt) {
+      this.lastItemWasPrompt = true;
       return await this.executePrompt(item);
     }
 
@@ -741,12 +859,12 @@ export class QueueService {
 
     // After first successful prompt, subsequent prompts resume the session
     this.resumeSessionId = this.currentSessionId;
-    log.debug(`executePrompt: SUCCESS — resumeSessionId=${this.resumeSessionId}, chunks=${chunks.length}, totalChars=${chunks.reduce((a, c) => a + c.length, 0)}`);
+    this.lastPromptResponse = chunks.join('');
+    log.debug(`executePrompt: SUCCESS — resumeSessionId=${this.resumeSessionId}, chunks=${chunks.length}, totalChars=${this.lastPromptResponse.length}`);
 
     // Check @pauseword
     if (this.pauseword) {
-      const fullText = chunks.join('');
-      if (fullText.includes(this.pauseword)) {
+      if (this.lastPromptResponse.includes(this.pauseword)) {
         log.warn(`executePrompt: pauseword "${this.pauseword}" detected in response`);
         const tq = i18next.getFixedT(this.lang);
         this.pauseWithError(tq('queue.error.pausewordDetected', { value: this.pauseword }));
@@ -832,6 +950,12 @@ export class QueueService {
       sessionId: this.currentSessionId || '',
       isPauseRequested: this._isPauseRequested,
       isWaitingForInput: this._isWaitingForInput,
+      loopProgress: this.loopState ? {
+        iteration: this.loopState.iteration,
+        max: this.loopState.max,
+        innerIndex: this.loopState.innerIndex,
+        innerTotal: this.loopState.items.length,
+      } : undefined,
     });
   }
 
