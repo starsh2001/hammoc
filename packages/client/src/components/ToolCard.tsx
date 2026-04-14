@@ -272,9 +272,9 @@ export function ToolCard({
           isDenied || isError ? 'border-red-200 dark:border-red-800' : 'border-gray-300 dark:border-[#3a4d5e]'
         }`}>
           {/* Header: icon + name + status + duration */}
-          <div className="flex items-center gap-2">
-            <ToolIcon className="w-4 h-4 text-blue-500" aria-hidden="true" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+          <div className="flex items-center gap-2 min-w-0">
+            <ToolIcon className="w-4 h-4 text-blue-500 flex-shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-200 min-w-0 break-all">
               {toolDisplayName}
             </span>
             {isDenied ? (
