@@ -209,6 +209,16 @@ export class QueueService {
     this.loopState = null;
     this.abortController?.abort();
     this.emitProgress('aborted');
+    // Clean up after emitting so future getState() returns idle
+    this._finalTotalItems = 0;
+    this.currentIndex = 0;
+    this.items = [];
+    this.snippetExpandedItems = new WeakSet();
+    this.pauseword = undefined;
+    this.completedSessionIds = new Map();
+    this.chatService = null;
+    this.currentSessionId = null;
+    this.currentModel = undefined;
   }
 
   /** Dismiss the completed/errored terminal state banner and release held data */
@@ -828,7 +838,17 @@ export class QueueService {
         baseOnToolResult(toolCallId, result);
       };
 
-      await this.chatService!.sendMessageWithCallbacks(item.prompt, callbacks, chatOptions, canUseTool);
+      const response = await this.chatService!.sendMessageWithCallbacks(item.prompt, callbacks, chatOptions, canUseTool);
+
+      // Guard: SDK process terminated without yielding a result message.
+      // The generator ends silently (no throw) so we must check response.done.
+      if (!response.done) {
+        log.error(`executePrompt: SDK terminated without result message (done=${response.done}, content=${JSON.stringify((response.content || '').slice(0, 120))})`);
+        const te = i18next.getFixedT(this.lang);
+        this.pauseWithError(te('queue.error.sdkError', { value: 'SDK process terminated unexpectedly without completing the conversation' }));
+        await this.notificationService.notifyQueueError('SDK terminated unexpectedly', this.buildSessionUrl());
+        return { shouldAdvance: false };
+      }
     } catch (error) {
       const sdkError = parseSDKError(error);
 

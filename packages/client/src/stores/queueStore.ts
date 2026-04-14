@@ -160,9 +160,13 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
         update.isPaused = false;
         update.isCompleted = false;
         update.isErrored = false;
+        update.isStarting = false;
         update.errorItem = null;
         update.pauseReason = undefined;
         update.lockedSessionId = null;
+        update.completedItems = new Set<number>();
+        update.itemSessionIds = new Map<number, string>();
+        update.loopProgress = null;
         break;
       case 'error':
         update.isRunning = false;
