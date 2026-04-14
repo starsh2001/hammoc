@@ -122,12 +122,12 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
     if (rec.taskCommand) {
       params.set('task', rec.taskCommand);
     }
-    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}?${params.toString()}`);
   };
 
   const handleNewSession = () => {
     const sessionId = generateUUID();
-    navigate(`/project/${projectSlug}/session/${sessionId}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}`);
   };
 
   const isCompleted = phase.phase === 'completed';

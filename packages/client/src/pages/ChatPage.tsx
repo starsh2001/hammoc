@@ -492,7 +492,7 @@ export function ChatPage() {
       resetPermissionMode();
       pendingAgentCommandRef.current = agentCommand;
       const newSessionId = generateUUID();
-      navigate(`/project/${projectSlug}/session/${newSessionId}`);
+      navigate(`/project/${projectSlug}/session/${encodeURIComponent(newSessionId)}`);
     }
   }, [handleSendMessage, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, resetSelectedEffort, resetPermissionMode, navigate, projectSlug]);
 
@@ -810,7 +810,7 @@ export function ChatPage() {
       resetPermissionMode();
       pendingAgentCommandRef.current = confirmModal.agentCommand ?? null;
       const newSessionId = generateUUID();
-      navigate(`/project/${projectSlug}/session/${newSessionId}`);
+      navigate(`/project/${projectSlug}/session/${encodeURIComponent(newSessionId)}`);
     }
   }, [confirmModal.action, confirmModal.agentCommand, abortResponse, clearMessages, clearStreamingSegments, resetSelectedModel, resetSelectedEffort, resetPermissionMode, navigate, projectSlug]);
 
@@ -825,7 +825,7 @@ export function ChatPage() {
     resetSelectedModel();
     resetSelectedEffort();
     resetPermissionMode();
-    navigate(`/project/${projectSlug}/session/${selectedSessionId}`, { replace: true });
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(selectedSessionId)}`, { replace: true });
   }, [panelOverlay, closePanel, sessionId, clearMessages, clearStreamingSegments, resetSelectedModel, resetSelectedEffort, resetPermissionMode, navigate, projectSlug]);
 
   const handleNewSession = useCallback(() => {
@@ -837,7 +837,7 @@ export function ChatPage() {
     resetSelectedEffort();
     resetPermissionMode();
     const newSessionId = generateUUID();
-    navigate(`/project/${projectSlug}/session/${newSessionId}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(newSessionId)}`);
   }, [clearMessages, clearStreamingSegments, resetSelectedModel, resetSelectedEffort, resetPermissionMode, navigate, projectSlug]);
 
   const handleCancelConfirm = useCallback(() => {
@@ -995,7 +995,7 @@ export function ChatPage() {
       clearForkedSessionId();
       isForkingRef.current = false;
       setIsForking(false);
-      navigate(`/project/${projectSlug}/session/${forkedSessionId}`);
+      navigate(`/project/${projectSlug}/session/${encodeURIComponent(forkedSessionId)}`);
     }
   }, [forkedSessionId, projectSlug, clearForkedSessionId, navigate]);
 

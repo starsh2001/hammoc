@@ -263,7 +263,7 @@ export function QueueRunnerPanel({
           {/* Session link */}
           {projectSlug && activeSessionId && (isRunning || isPaused) && (
             <Link
-              to={`/project/${projectSlug}/session/${activeSessionId}`}
+              to={`/project/${projectSlug}/session/${encodeURIComponent(activeSessionId)}`}
               className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
             >
               {t('queue.goToSession')}
@@ -422,7 +422,7 @@ export function QueueRunnerPanel({
                     <span className="text-xs text-gray-400 font-mono">until=&quot;{item.loop.until}&quot;</span>
                   )}
                   {itemSessionId && projectSlug && (status === 'completed' || status === 'running' || status === 'paused') && (
-                    <Link to={`/project/${projectSlug}/session/${itemSessionId}`} className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 flex-shrink-0 p-0.5" title={t('queue.goToSession')}>
+                    <Link to={`/project/${projectSlug}/session/${encodeURIComponent(itemSessionId)}`} className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 flex-shrink-0 p-0.5" title={t('queue.goToSession')}>
                       <ExternalLink className="w-3.5 h-3.5" />
                     </Link>
                   )}
@@ -476,7 +476,7 @@ export function QueueRunnerPanel({
               {/* Session link for completed and current items */}
               {(status === 'completed' || status === 'running' || status === 'paused') && itemSessionId && projectSlug && (
                 <Link
-                  to={`/project/${projectSlug}/session/${itemSessionId}`}
+                  to={`/project/${projectSlug}/session/${encodeURIComponent(itemSessionId)}`}
                   className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 flex-shrink-0 p-0.5"
                   title={t('queue.goToSession')}
                 >

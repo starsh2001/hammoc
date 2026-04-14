@@ -299,7 +299,7 @@ export function DocumentStatusCard({ documents, auxiliaryDocuments, projectSlug 
   };
 
   const handleCreateDoc = (agentCommand: string) => {
-    navigate(`/project/${projectSlug}/session/${generateUUID()}?agent=${encodeURIComponent(agentCommand)}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(generateUUID())}?agent=${encodeURIComponent(agentCommand)}`);
   };
 
   const handleOpenDoc = (docPath: string) => {

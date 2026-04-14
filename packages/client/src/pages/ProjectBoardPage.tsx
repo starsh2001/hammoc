@@ -107,7 +107,7 @@ export function ProjectBoardPage() {
       const issueFile = item.externalRef || `docs/issues/${item.id}.md`;
       const prompt = `%quick-fix-issue ${issueFile}`;
       const params = new URLSearchParams({ task: prompt });
-      navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+      navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}?${params.toString()}`);
     } catch {
       setActionErrorWithClear(t('errors.updateStatusFailed'));
     }
@@ -124,7 +124,7 @@ export function ProjectBoardPage() {
       const prompt = `%${snippetName} ${issueFile}`;
       const params = new URLSearchParams({ task: prompt });
 
-      navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+      navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}?${params.toString()}`);
     } catch {
       setActionErrorWithClear(t('errors.promoteFailed'));
     }
@@ -214,7 +214,7 @@ export function ProjectBoardPage() {
       }
 
       const params = new URLSearchParams({ task });
-      navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+      navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}?${params.toString()}`);
       return;
     }
 
@@ -245,7 +245,7 @@ export function ProjectBoardPage() {
     }
 
     const params = new URLSearchParams({ task });
-    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}?${params.toString()}`);
   }, [projectSlug, navigate, t, setActionErrorWithClear]);
 
   // Validate only — validate story without fix, approve after user fixes
@@ -256,7 +256,7 @@ export function ProjectBoardPage() {
     const params = new URLSearchParams({
       task: `%validate-story ${storyNum}`,
     });
-    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}?${params.toString()}`);
   }, [projectSlug, navigate, t]);
 
   // Validate and fix — validate draft story then fix all issues
@@ -267,7 +267,7 @@ export function ProjectBoardPage() {
     const params = new URLSearchParams({
       task: `%validate-and-fix ${storyNum}`,
     });
-    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}?${params.toString()}`);
   }, [projectSlug, navigate, t]);
 
   // Commit and complete — commit changes then update status to Done
@@ -277,7 +277,7 @@ export function ProjectBoardPage() {
     const storyNum = item.id.replace(/^story-/, '');
     const task = `%commit-and-done ${storyNum}`;
     const params = new URLSearchParams({ task });
-    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}?${params.toString()}`);
   }, [projectSlug, navigate]);
 
   // QA review for stories (re-request)
@@ -288,7 +288,7 @@ export function ProjectBoardPage() {
     const params = new URLSearchParams({
       task: `%qa-review ${storyNum}`,
     });
-    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}?${params.toString()}`);
   }, [projectSlug, navigate]);
 
   // Create next story for an epic
@@ -299,7 +299,7 @@ export function ProjectBoardPage() {
     const params = new URLSearchParams({
       task: `%draft-story ${epicNum}`,
     });
-    navigate(`/project/${projectSlug}/session/${sessionId}?${params.toString()}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}?${params.toString()}`);
   }, [projectSlug, navigate]);
 
   // View epic stories

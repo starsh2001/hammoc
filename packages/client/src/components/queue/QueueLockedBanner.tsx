@@ -93,7 +93,7 @@ export function QueueLockedBanner({
             </button>
           ) : (
             <Link
-              to={`/project/${projectSlug}/session/${activeSessionId}`}
+              to={`/project/${projectSlug}/session/${encodeURIComponent(activeSessionId)}`}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 flex-shrink-0"
             >
               {t('queue.locked.goToSession')}

@@ -43,7 +43,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
 
   const handleNewSession = () => {
     const newSessionId = generateUUID();
-    navigate(`/project/${projectSlug}/session/${newSessionId}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(newSessionId)}`);
   };
 
   return (
@@ -134,7 +134,7 @@ export function ProjectOverviewPage({ quickActionsSlot }: ProjectOverviewPagePro
               {recentSessions.map((session) => (
                 <button
                   key={session.sessionId}
-                  onClick={() => navigate(`/project/${projectSlug}/session/${session.sessionId}`)}
+                  onClick={() => navigate(`/project/${projectSlug}/session/${encodeURIComponent(session.sessionId)}`)}
                   className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-100/50 dark:hover:bg-[#253040]/50 transition-colors text-left"
                 >
                   <div className="min-w-0 flex-1">

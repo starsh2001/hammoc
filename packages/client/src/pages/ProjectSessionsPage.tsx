@@ -208,11 +208,11 @@ export function ProjectSessionsPage() {
 
   const handleNewSession = useCallback(() => {
     const newSessionId = generateUUID();
-    navigate(`/project/${projectSlug}/session/${newSessionId}`);
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(newSessionId)}`);
   }, [navigate, projectSlug]);
 
   const handleSessionClick = useCallback(
-    (sessionId: string) => navigate(`/project/${projectSlug}/session/${sessionId}`),
+    (sessionId: string) => navigate(`/project/${projectSlug}/session/${encodeURIComponent(sessionId)}`),
     [navigate, projectSlug]
   );
 
