@@ -500,15 +500,29 @@ async function completeBufferAndBroadcast(sessionId: string, projectSlug: string
   const aborted = stream?.abortController.signal.aborted ?? false;
   const usage = stream?.deferredUsage;
 
+  // Guard: if a new stream has taken over during async polling, skip emit
+  // to prevent overwriting the newer stream's client state with stale data.
+  const isStreamReplaced = () => stream && activeStreams.has(sessionId) && activeStreams.get(sessionId) !== stream;
+
   if (projectSlug) {
     try {
       const messages = await pollFileStabilityThenReload(sessionId, projectSlug);
+      if (isStreamReplaced()) {
+        log.info(`completeBufferAndBroadcast: stream replaced during JSONL polling, skipping emit for ${sessionId}`);
+        sessionBufferManager.setStreaming(sessionId, false);
+        return;
+      }
       sessionBufferManager.setStreaming(sessionId, false);
       io.to(`session:${sessionId}`).emit('stream:complete-messages', {
         sessionId, messages, usage, ...(aborted && { aborted: true }),
       });
     } catch (err) {
       log.error(`completeBufferAndBroadcast: failed for ${sessionId}:`, err);
+      if (isStreamReplaced()) {
+        log.info(`completeBufferAndBroadcast: stream replaced (error path), skipping emit for ${sessionId}`);
+        sessionBufferManager.setStreaming(sessionId, false);
+        return;
+      }
       sessionBufferManager.setStreaming(sessionId, false);
       const fallback = sessionBufferManager.get(sessionId)?.messages ?? [];
       io.to(`session:${sessionId}`).emit('stream:complete-messages', {
@@ -977,7 +991,14 @@ export async function initializeWebSocket(
           const sendEndSlug = sessionProjectMap.get(endedSessionId) ?? null;
           await completeBufferAndBroadcast(endedSessionId, sendEndSlug, stream);
 
-          cleanupStream(endedSessionId);
+          // Re-check after async operation — a new chat:send may have replaced
+          // this stream during JSONL polling, taking over activeStreams/socketToSession.
+          // Cleaning up or emitting inactive would corrupt the replacement stream.
+          if (activeStreams.get(endedSessionId) !== stream && activeStreams.has(endedSessionId)) {
+            log.info(`chat:send finally: stream replaced after completeBufferAndBroadcast for ${endedSessionId}, skipping cleanup`);
+          } else {
+
+          cleanupStream(endedSessionId, stream);
           emitStreamChange(endedSessionId, false, sendEndSlug);
           // Persist per-session permission mode before cleanup
           const sendFinalMode = stream.chatService?.getPermissionMode();
@@ -1004,6 +1025,8 @@ export async function initializeWebSocket(
             log.info(`[CHAIN-DRAIN] chat:send finally: no pending chain items, calling cleanupChainIfIdle for ${endedSessionId}`);
             cleanupChainIfIdle(endedSessionId);
           }
+
+          } // end re-check else (stream not replaced after await)
         } else {
           log.warn(`[CHAIN-DRAIN] chat:send finally: stream is NOT current active stream (replaced?): endedSessionId=${endedSessionId}`);
         }
