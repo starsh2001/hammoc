@@ -16,7 +16,9 @@
 
 import { memo, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import ReactMarkdown, { Components } from 'react-markdown';
+import ReactMarkdown, { Components, defaultUrlTransform } from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './CodeBlock';
 import { useThrottle } from '../hooks/useThrottle';
@@ -36,6 +38,33 @@ function isExternalUrl(href: string): boolean {
     || href.startsWith('#');
 }
 
+/**
+ * Encode `#` in Hammoc session URLs so the browser doesn't treat it as a fragment.
+ * e.g. http://host/project/slug/session/file_#01.md → ...file_%2301.md
+ */
+function urlTransform(url: string): string {
+  const sessionMatch = url.match(/^(https?:\/\/[^/]+\/project\/[^/]+\/session\/)(.+)$/);
+  if (sessionMatch) {
+    return sessionMatch[1] + sessionMatch[2].replace(/#/g, '%23');
+  }
+  return defaultUrlTransform(url);
+}
+
+/**
+ * Resolve a relative path against a base directory, normalizing `.` and `..` segments.
+ */
+function resolvePath(basePath: string, relative: string): string {
+  if (!basePath) return relative;
+  const parts = (basePath + '/' + relative).split('/');
+  const resolved: string[] = [];
+  for (const p of parts) {
+    if (p === '.' || p === '') continue;
+    if (p === '..') { resolved.pop(); continue; }
+    resolved.push(p);
+  }
+  return resolved.join('/');
+}
+
 interface MarkdownRendererProps {
   /** Markdown content to render */
   content: string;
@@ -43,12 +72,18 @@ interface MarkdownRendererProps {
   isStreaming?: boolean;
   /** Callback when code block is copied */
   onCodeCopy?: (code: string) => void;
+  /** Project slug for resolving relative image paths via /fs/raw */
+  projectSlug?: string | null;
+  /** Base directory of the source file (for relative path resolution) */
+  basePath?: string;
 }
 
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   isStreaming = false,
   onCodeCopy,
+  projectSlug: propProjectSlug,
+  basePath = '',
 }: MarkdownRendererProps) {
   const { t } = useTranslation('chat');
   // Throttle content during streaming (~20fps), immediate when complete.
@@ -113,13 +148,17 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       a({ href, children, ...props }) {
         // File link: relative path (not external URL)
         if (href && !isExternalUrl(href)) {
-          // Parse fragment: #L42 or #L42-L51
-          const hashIdx = href.indexOf('#');
-          const filePath = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
+          // remark-rehype percent-encodes non-ASCII chars in href (e.g. 차→%EC%B0%A8).
+          // Decode first to get the raw file path so fileSystemApi doesn't double-encode.
+          let decoded: string;
+          try { decoded = decodeURIComponent(href); } catch { decoded = href; }
+          // Parse line-number fragment: #L42 or #L42-L51 (only at end of href).
+          // Plain '#' in filenames (e.g. "report_#03.md") must not be treated as a fragment.
+          const fragmentMatch = decoded.match(/#(L\d+(?:-L\d+)?)$/);
+          const filePath = fragmentMatch ? decoded.slice(0, decoded.lastIndexOf('#')) : decoded;
           let targetLine: number | undefined;
-          if (hashIdx >= 0) {
-            const fragment = href.slice(hashIdx + 1);
-            const lineMatch = fragment.match(/^L(\d+)/);
+          if (fragmentMatch) {
+            const lineMatch = fragmentMatch[1].match(/^L(\d+)/);
             if (lineMatch) targetLine = parseInt(lineMatch[1], 10);
           }
 
@@ -250,6 +289,20 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
         );
       },
 
+      // Images - resolve relative paths via /fs/raw API
+      img({ src, alt, ...imgProps }) {
+        if (src && !isExternalUrl(src)) {
+          const slug = propProjectSlug ?? useMessageStore.getState().currentProjectSlug;
+          if (slug) {
+            let decoded: string;
+            try { decoded = decodeURIComponent(src); } catch { decoded = src; }
+            const resolved = resolvePath(basePath, decoded);
+            src = `/api/projects/${slug}/fs/raw?path=${encodeURIComponent(resolved)}`;
+          }
+        }
+        return <img src={src} alt={alt ?? ''} className="max-w-full h-auto rounded" {...imgProps} />;
+      },
+
       // Horizontal rule
       hr() {
         return <hr className="my-2 border-gray-300 dark:border-gray-600" />;
@@ -265,7 +318,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
         return <em className="italic">{children}</em>;
       },
     }),
-    [onCodeCopy, t]
+    [onCodeCopy, t, propProjectSlug, basePath]
   );
 
   // Intercept copy to strip HTML tags from clipboard
@@ -282,7 +335,12 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       className="prose prose-sm dark:prose-invert max-w-none break-words [&_code]:before:content-none [&_code]:after:content-none [&_hr]:my-2"
       onCopy={handleCopy}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[[remarkGfm, { singleTilde: false }]]}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, defaultSchema]]}
+        components={components}
+        urlTransform={urlTransform}
+      >
         {processedContent}
       </ReactMarkdown>
     </div>
