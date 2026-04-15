@@ -440,7 +440,7 @@ export function QueueRunnerPanel({
                   return (
                     <div
                       key={`${index}-inner-${innerIdx}`}
-                      className={`flex items-center gap-2 pl-6 pr-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50
+                      className={`flex items-center gap-2 pl-16 pr-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50
                         ${isLoopCurrent && innerIdx === loopProgress?.innerIndex ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
                       `}
                     >
@@ -552,7 +552,7 @@ export function QueueRunnerPanel({
                     <span className="truncate flex-1 text-gray-700 dark:text-gray-200">{getItemSummary(item, t)}</span>
                   </div>
                   {item.loop.items.map((innerItem, innerIdx) => (
-                    <div key={`${globalIndex}-inner-${innerIdx}`} className="flex items-center gap-2 pl-6 pr-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50">
+                    <div key={`${globalIndex}-inner-${innerIdx}`} className="flex items-center gap-2 pl-16 pr-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50">
                       <ItemStatusIcon status="pending" />
                       <span className="truncate flex-1 text-gray-700 dark:text-gray-200">{getItemSummary(innerItem, t)}</span>
                     </div>

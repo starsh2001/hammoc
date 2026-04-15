@@ -250,12 +250,14 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
         ? { index: state.lastError.itemIndex, error: state.lastError.error }
         : null,
       isRemoteEditing: state.isEditing ?? false,
-      // Restore queue items from server so QueueRunnerPanel displays on page re-entry
-      ...(state.items && state.items.length > 0 ? { parsedItems: state.items } : {}),
+      // Restore queue items from server, or clear stale items when server omits them
+      parsedItems: state.items && state.items.length > 0 ? state.items : [],
       // Restore completed item session IDs from server
       itemSessionIds: state.completedSessionIds
         ? new Map(Object.entries(state.completedSessionIds).map(([k, v]) => [Number(k), v]))
         : new Map<number, string>(),
+      // Restore loop progress from server
+      loopProgress: state.loopProgress ?? null,
     });
   },
 

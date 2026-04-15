@@ -82,6 +82,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
 
   // WebSocket setup and teardown
   useEffect(() => {
+    let active = true; // Guard against stale fetch responses after unmount/slug change
     const socket = getSocket();
     // Actions are stable refs — access via getState() to avoid unnecessary effect re-runs
     const { handleProgress, handleItemComplete, handleError, handleItemsUpdated, handleEditState, syncFromStatus } = useQueueStore.getState();
@@ -107,16 +108,25 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     socket.on('queue:addItemRejected' as any, onAddItemRejected);
 
+    // Fetch and apply server state (guarded against stale responses)
+    const fetchAndSync = () => {
+      queueApi.getStatus(projectSlug)
+        .then((state) => { if (active) syncFromStatus(state); })
+        .catch(() => {});
+    };
+
     // Initial status fetch
-    queueApi.getStatus(projectSlug)
-      .then((state) => {
-        syncFromStatus(state);
-      })
-      .catch(() => {
-        // 404 or error = queue not started, use default state
-      });
+    fetchAndSync();
+
+    // Re-join room and re-sync state on socket reconnection
+    const onReconnect = () => {
+      socket.emit('project:join', projectSlug);
+      fetchAndSync();
+    };
+    socket.on('connect', onReconnect);
 
     return () => {
+      active = false;
       socket.off('queue:progress', onProgress);
       socket.off('queue:itemComplete', onItemComplete);
       socket.off('queue:error', onError);
@@ -126,6 +136,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
       socket.off('queue:editState' as any, onEditState);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       socket.off('queue:addItemRejected' as any, onAddItemRejected);
+      socket.off('connect', onReconnect);
       // Release edit lock if we were editing
       if (useQueueStore.getState().isEditingPaused) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

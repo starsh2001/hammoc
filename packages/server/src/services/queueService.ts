@@ -273,6 +273,12 @@ export class QueueService {
         }
         return all.size > 0 ? Object.fromEntries(all) : undefined;
       })(),
+      loopProgress: this.loopState ? {
+        iteration: this.loopState.iteration,
+        max: this.loopState.max,
+        innerIndex: this.loopState.innerIndex,
+        innerTotal: this.loopState.items.length,
+      } : undefined,
     };
   }
 

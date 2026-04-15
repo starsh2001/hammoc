@@ -66,6 +66,8 @@ export interface QueueExecutionState {
   isPauseRequested?: boolean;
   /** True when waiting for user input (permission/question) — distinct from isPaused */
   isWaitingForInput?: boolean;
+  /** Loop progress when executing inside a @loop block (for page re-entry) */
+  loopProgress?: { iteration: number; max: number; innerIndex: number; innerTotal: number };
 }
 
 export interface QueueItemsUpdatedEvent {
