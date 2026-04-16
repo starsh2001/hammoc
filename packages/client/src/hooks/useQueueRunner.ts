@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { toast } from 'sonner';
 import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from '@hammoc/shared';
-import { getSocket } from '../services/socket';
+import { getSocket, joinProjectRoom, leaveProjectRoom, rejoinProjectRooms } from '../services/socket';
 import { useQueueStore } from '../stores/queueStore';
 import { useChatStore } from '../stores/chatStore';
 import { queueApi } from '../services/api/queue';
@@ -84,11 +84,14 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
   useEffect(() => {
     let active = true; // Guard against stale fetch responses after unmount/slug change
     const socket = getSocket();
+    // Clear abort flag from previous cleanup so incoming events aren't blocked
+    // while the async fetchAndSync is still pending
+    useQueueStore.setState({ isAborted: false });
     // Actions are stable refs — access via getState() to avoid unnecessary effect re-runs
     const { handleProgress, handleItemComplete, handleError, handleItemsUpdated, handleEditState, syncFromStatus } = useQueueStore.getState();
 
-    // Join project room
-    socket.emit('project:join', projectSlug);
+    // Join project room (ref-counted)
+    joinProjectRoom(projectSlug);
 
     // Register listeners
     const onProgress = (data: QueueProgressEvent) => handleProgress(data);
@@ -118,9 +121,9 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
     // Initial status fetch
     fetchAndSync();
 
-    // Re-join room and re-sync state on socket reconnection
+    // Re-join rooms and re-sync state on socket reconnection
     const onReconnect = () => {
-      socket.emit('project:join', projectSlug);
+      rejoinProjectRooms();
       fetchAndSync();
     };
     socket.on('connect', onReconnect);
@@ -142,7 +145,7 @@ export function useQueueRunner(projectSlug: string): UseQueueRunnerReturn {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         socket.emit('queue:editEnd' as any, { projectSlug });
       }
-      socket.emit('project:leave', projectSlug);
+      leaveProjectRoom(projectSlug);
       // Clear stale queue state when leaving project
       useQueueStore.getState().reset();
     };

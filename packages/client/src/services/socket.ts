@@ -52,3 +52,46 @@ export function disconnectSocket(): void {
     socketInstance = null;
   }
 }
+
+// --- Project room reference counting ---
+// Multiple hooks (useQueueRunner, useQueueSession, ProjectSessionsPage) independently
+// join/leave the same project room. Without ref-counting, one hook's cleanup can remove
+// the socket from the room while another hook still needs it.
+
+const projectRoomRefs = new Map<string, number>();
+
+/**
+ * Join a project room with reference counting.
+ * Only emits project:join on the first reference.
+ */
+export function joinProjectRoom(projectSlug: string): void {
+  const count = projectRoomRefs.get(projectSlug) ?? 0;
+  projectRoomRefs.set(projectSlug, count + 1);
+  if (count === 0) {
+    getSocket().emit('project:join', projectSlug);
+  }
+}
+
+/**
+ * Leave a project room with reference counting.
+ * Only emits project:leave when the last reference is released.
+ */
+export function leaveProjectRoom(projectSlug: string): void {
+  const count = projectRoomRefs.get(projectSlug) ?? 0;
+  if (count <= 1) {
+    projectRoomRefs.delete(projectSlug);
+    getSocket().emit('project:leave', projectSlug);
+  } else {
+    projectRoomRefs.set(projectSlug, count - 1);
+  }
+}
+
+/**
+ * Re-join all active project rooms (after socket reconnection).
+ */
+export function rejoinProjectRooms(): void {
+  const socket = getSocket();
+  for (const slug of projectRoomRefs.keys()) {
+    socket.emit('project:join', slug);
+  }
+}

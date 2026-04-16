@@ -10,7 +10,7 @@ import { Plus, CheckSquare, Trash2, X, Eye, EyeOff, RefreshCw, Loader2, Search }
 import { useSessionStore } from '../stores/sessionStore';
 import { BackgroundRefreshIndicator } from '../components/BackgroundRefreshIndicator';
 import { useQueueStore } from '../stores/queueStore';
-import { getSocket } from '../services/socket';
+import { getSocket, joinProjectRoom, leaveProjectRoom } from '../services/socket';
 import { SessionListItem } from '../components/SessionListItem';
 import { SessionListItemSkeleton } from '../components/SessionListItemSkeleton';
 import { EmptyState } from '../components/EmptyState';
@@ -49,6 +49,7 @@ export function ProjectSessionsPage() {
     setSearchContent,
   } = useSessionStore();
   const queueLockedSessionId = useQueueStore((s) => (s.isRunning || s.isPaused) ? s.lockedSessionId : null);
+  const isQueuePaused = useQueueStore((s) => s.isPaused);
   const skeletonCount = useSkeletonCount(5);
 
   // Selection mode state
@@ -82,10 +83,8 @@ export function ProjectSessionsPage() {
     let retryCount = 0;
     const MAX_RETRIES = 10;
 
-    const joinRoom = () => { socket?.emit('project:join', projectSlug); };
     let isInitialConnect = true;
     const onReconnect = () => {
-      joinRoom();
       // Refresh session list on reconnect to pick up events missed during sleep/disconnect
       if (!isInitialConnect) {
         fetchSessions(projectSlug, { limit: 20 });
@@ -96,6 +95,7 @@ export function ProjectSessionsPage() {
     function tryConnect() {
       try {
         socket = getSocket();
+        joinProjectRoom(projectSlug!);
         onReconnect();
         socket.on('connect', onReconnect);
       } catch {
@@ -110,8 +110,8 @@ export function ProjectSessionsPage() {
       clearTimeout(retryTimer);
       if (socket) {
         socket.off('connect', onReconnect);
-        socket.emit('project:leave', projectSlug);
       }
+      leaveProjectRoom(projectSlug!);
     };
   }, [projectSlug, fetchSessions]);
 
@@ -460,7 +460,7 @@ export function ProjectSessionsPage() {
                 isEditing={editingSessionId === session.sessionId}
                 onEditStart={(id) => setEditingSessionId(id)}
                 onEditEnd={() => setEditingSessionId(null)}
-                isQueueActive={queueLockedSessionId === session.sessionId}
+                queueStatus={queueLockedSessionId === session.sessionId ? (isQueuePaused ? 'paused' : 'running') : undefined}
               />
             ))}
             {hasMore && projectSlug && (
