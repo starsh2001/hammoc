@@ -38,10 +38,6 @@ describe('historyParser', () => {
     mockExistsSync.mockReturnValue(true);
   });
 
-  afterEach(() => {
-    vi.resetAllMocks();
-  });
-
   describe('parseJSONLFile', () => {
     it('parses valid JSONL content', async () => {
       const content = `{"uuid":"1","type":"user","message":{"role":"user","content":"Hello"},"timestamp":"2026-01-15T10:00:00Z"}

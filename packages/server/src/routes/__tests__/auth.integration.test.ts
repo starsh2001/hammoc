@@ -12,6 +12,7 @@ vi.mock('../../services/authConfigService.js', () => ({
   AuthConfigService: vi.fn().mockImplementation(() => ({
     getSessionSecret: vi.fn().mockResolvedValue('test-secret-key-for-integration-tests'),
     verifyPassword: vi.fn().mockResolvedValue(true),
+    isPasswordConfigured: vi.fn().mockReturnValue(true),
   })),
 }));
 
@@ -43,7 +44,7 @@ describe('Auth Integration Tests', () => {
         .get('/api/auth/status')
         .expect(200);
 
-      expect(response.body).toEqual({ authenticated: false });
+      expect(response.body).toEqual({ authenticated: false, passwordConfigured: true });
     });
 
     it('[HIGH] GET /api/health - accessible without auth', async () => {
@@ -102,7 +103,7 @@ describe('Auth Integration Tests', () => {
         .get('/api/auth/status')
         .expect(200);
 
-      expect(response.body).toEqual({ authenticated: true });
+      expect(response.body).toEqual({ authenticated: true, passwordConfigured: true });
     });
 
     it('[HIGH] GET /api/cli-status after login - returns 200', async () => {

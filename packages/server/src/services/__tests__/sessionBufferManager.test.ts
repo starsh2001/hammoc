@@ -147,9 +147,12 @@ describe('SessionBufferManager', () => {
       const historyMessages = [makeMsg('1', 'user'), makeMsg('2')];
 
       mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockBuildRawMessageTree.mockReturnValue({ roots: [{ message: rawMessages[0], children: [] }], nodeMap: new Map() } as any);
       mockGetDefaultRawBranchSelections.mockReturnValue({});
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockGetActiveRawBranch.mockReturnValue({ messages: rawMessages, branchPoints: {} } as any);
       mockTransformToHistoryMessages.mockReturnValue(historyMessages);
 
@@ -177,9 +180,12 @@ describe('SessionBufferManager', () => {
       const historyMessages = [makeMsg('1', 'user')];
 
       mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockBuildRawMessageTree.mockReturnValue({ roots: [{ message: rawMessages[0], children: [] }], nodeMap: new Map() } as any);
       mockGetDefaultRawBranchSelections.mockReturnValue({ key1: 0, key2: 1 });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockGetActiveRawBranch.mockReturnValue({ messages: rawMessages, branchPoints: {} } as any);
       mockTransformToHistoryMessages.mockReturnValue(historyMessages);
 
@@ -201,9 +207,12 @@ describe('SessionBufferManager', () => {
       const viewerMessages = [makeMsg('viewer')];
 
       mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockBuildRawMessageTree.mockReturnValue({ roots: [{ message: rawMessages[0], children: [] }], nodeMap: new Map() } as any);
       mockGetDefaultRawBranchSelections.mockReturnValue({});
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockGetActiveRawBranch.mockReturnValue({ messages: rawMessages, branchPoints: {} } as any);
       mockTransformToHistoryMessages.mockReturnValue(viewerMessages);
 
@@ -222,9 +231,12 @@ describe('SessionBufferManager', () => {
       const newMessages = [makeMsg('new')];
 
       mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockBuildRawMessageTree.mockReturnValue({ roots: [{ message: rawMessages[0], children: [] }], nodeMap: new Map() } as any);
       mockGetDefaultRawBranchSelections.mockReturnValue({});
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockGetActiveRawBranch.mockReturnValue({ messages: rawMessages, branchPoints: {} } as any);
       mockTransformToHistoryMessages.mockReturnValue(newMessages);
 
@@ -242,7 +254,9 @@ describe('SessionBufferManager', () => {
       const historyMessages = [msg1, msg2, msg3];
 
       mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockBuildRawMessageTree.mockReturnValue({ roots: [], nodeMap: new Map() } as any);
       mockGetDefaultRawBranchSelections.mockReturnValue({});
       mockGetActiveRawBranch.mockReturnValue({
@@ -251,6 +265,7 @@ describe('SessionBufferManager', () => {
           u1: { total: 3, current: 1, selectionKey: 'u1' },
           u2: { total: 2, current: 0, selectionKey: 'parent-uuid' },
         },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
       mockTransformToHistoryMessages.mockReturnValue(historyMessages);
 
@@ -269,7 +284,9 @@ describe('SessionBufferManager', () => {
       const historyMessages = [msg1, msg2];
 
       mockGetSessionFilePath.mockReturnValue('/path/to/s1.jsonl');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockParseJSONLFile.mockResolvedValue(rawMessages as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockBuildRawMessageTree.mockReturnValue({ roots: [], nodeMap: new Map() } as any);
       mockGetDefaultRawBranchSelections.mockReturnValue({});
       mockGetActiveRawBranch.mockReturnValue({
@@ -277,6 +294,7 @@ describe('SessionBufferManager', () => {
         branchPoints: {
           __root__: { total: 2, current: 1, selectionKey: '__root__' },
         },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
       mockTransformToHistoryMessages.mockReturnValue(historyMessages);
 

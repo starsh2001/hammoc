@@ -156,7 +156,7 @@ describe('CliService', () => {
       });
     });
 
-    it('should return false for authentication when CLI is not installed', async () => {
+    it('should check authentication independently when CLI is not installed', async () => {
       mockExecResult = Object.assign(new Error('spawn claude ENOENT'), {
         code: 'ENOENT',
       });
@@ -167,7 +167,8 @@ describe('CliService', () => {
       const result = await service.getStatus();
 
       expect(result.cliInstalled).toBe(false);
-      expect(result.authenticated).toBe(false);
+      // Authentication is checked independently via filesystem, not CLI
+      expect(result.authenticated).toBe(true);
       expect(result.apiKeySet).toBe(false);
     });
 

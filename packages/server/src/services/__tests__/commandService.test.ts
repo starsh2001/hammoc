@@ -98,6 +98,7 @@ describe('CommandService', () => {
 
     it('should return BUILTIN_COMMANDS when .bmad-core directory does not exist', async () => {
       mockFs.stat.mockRejectedValue(new Error('ENOENT'));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockFs.readdir.mockResolvedValue([] as any);
 
       const result = await commandService.getCommands('test-slug');
@@ -118,8 +119,11 @@ describe('CommandService', () => {
       // agents readdir
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['pm.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('tasks')) return ['create-doc.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return [] as any;
       });
 
@@ -157,7 +161,9 @@ describe('CommandService', () => {
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['pm.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('tasks')) return [] as any;
         return [];
       });
@@ -177,7 +183,9 @@ describe('CommandService', () => {
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['pm.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('tasks')) return [] as any;
         return [];
       });
@@ -197,7 +205,9 @@ describe('CommandService', () => {
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['no-yaml.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('tasks')) return [] as any;
         return [];
       });
@@ -219,7 +229,9 @@ describe('CommandService', () => {
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['invalid.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('tasks')) return [] as any;
         return [];
       });
@@ -255,7 +267,9 @@ describe('CommandService', () => {
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['readme.txt', '.DS_Store'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('tasks')) return ['config.yaml'] as any;
         return [];
       });
@@ -394,7 +408,9 @@ agent:
     it('TC4: should group star commands by agent, excluding agents without commands', async () => {
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['sm.md', 'analyst.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return [] as any;
       });
       mockFs.readFile.mockImplementation(async (filePath: unknown) => {
@@ -435,7 +451,9 @@ commands:
 `;
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['orchestrator.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return [] as any;
       });
       mockFs.readFile.mockImplementation(async (filePath: unknown) => {
@@ -455,7 +473,9 @@ commands:
     it('TC6: should skip agents with YAML parse failure (graceful degradation)', async () => {
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['good.md', 'bad.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return [] as any;
       });
       mockFs.readFile.mockImplementation(async (filePath: unknown) => {
@@ -496,8 +516,11 @@ commands:
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['sm.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('tasks')) return [] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return [] as any;
       });
 
@@ -534,8 +557,11 @@ commands:
       });
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('agents')) return ['pm.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p.includes('tasks')) return ['create-doc.md'] as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return [] as any;
       });
 
@@ -589,8 +615,10 @@ description: A global helper skill
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = norm(String(dirPath));
         if (p.includes('.claude/skills') && !p.includes('/Users/test')) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return ['my-skill'] as any;
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return [] as any;
       });
       mockFs.stat.mockImplementation(async (filePath: unknown) => {
@@ -620,8 +648,10 @@ description: A global helper skill
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = norm(String(dirPath));
         if (p.includes('/Users/test') && p.endsWith('.claude/skills')) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return ['global-helper'] as any;
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return [] as any;
       });
       mockFs.stat.mockImplementation(async (filePath: unknown) => {
@@ -657,11 +687,14 @@ description: A global helper skill
       mockFs.readdir.mockImplementation(async (dirPath: unknown) => {
         const p = String(dirPath);
         if (p.includes('/Users/test/.claude/skills')) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return ['shared-skill'] as any;
         }
         if (p.includes('.claude') && p.includes('skills')) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return ['shared-skill'] as any;
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return [] as any;
       });
       mockFs.stat.mockImplementation(async () => {

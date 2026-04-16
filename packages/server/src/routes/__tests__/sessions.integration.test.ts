@@ -63,6 +63,20 @@ vi.mock('../../services/sessionService.js', async () => {
       return isNaN(timestamp) ? 0 : timestamp;
     }
 
+    isValidPathParam(param: string): boolean {
+      if (param.includes('..') || param.includes('/') || param.includes('\\')) {
+        return false;
+      }
+      if (param.includes('\0') || param.includes('%00')) {
+        return false;
+      }
+      return /^[a-zA-Z0-9_-]+$/.test(param);
+    }
+
+    sessionFileExists(_projectSlug: string, _sessionId: string): boolean {
+      return false;
+    }
+
     async listSessionsBySlug(
       projectSlug: string,
       _params: Record<string, unknown> = {}
@@ -124,6 +138,7 @@ vi.mock('../../services/projectService.js', () => ({
 // Mock websocket handler
 vi.mock('../../handlers/websocket.js', () => ({
   getActiveStreamSessionIds: vi.fn().mockReturnValue([]),
+  getJoinedSessionIdsByProject: vi.fn().mockReturnValue(new Set<string>()),
 }));
 
 import { createApp } from '../../app.js';

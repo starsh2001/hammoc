@@ -606,6 +606,7 @@ describe('SessionService', () => {
       };
 
       mockFs.readFile.mockResolvedValue(JSON.stringify(indexData));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockFs.readdir.mockResolvedValue(['s1.jsonl', 's2.jsonl', 's3.jsonl'] as any);
 
       const mockStat = (mtime: Date) => ({
@@ -615,8 +616,11 @@ describe('SessionService', () => {
       });
 
       mockFs.stat
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .mockResolvedValueOnce(mockStat(new Date('2026-01-01')) as any)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .mockResolvedValueOnce(mockStat(new Date('2026-01-02')) as any)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .mockResolvedValueOnce(mockStat(new Date('2026-01-03')) as any);
 
       const result = await service.listSessionsBySlug('project-hash', {
@@ -645,6 +649,7 @@ describe('SessionService', () => {
       };
 
       mockFs.readFile.mockResolvedValue(JSON.stringify(indexData));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockFs.readdir.mockResolvedValue(['s1.jsonl', 's2.jsonl'] as any);
 
       const mockStat = (mtime: Date) => ({
@@ -654,7 +659,9 @@ describe('SessionService', () => {
       });
 
       mockFs.stat
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .mockResolvedValueOnce(mockStat(new Date('2026-01-01')) as any)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .mockResolvedValueOnce(mockStat(new Date('2026-01-02')) as any);
 
       const { parseJSONLFile: mockParseJSONL } = await import('../historyParser.js');
@@ -662,10 +669,12 @@ describe('SessionService', () => {
         if (filePath.includes('s1')) {
           return [
             { type: 'user', message: { content: 'Tell me about GraphQL' }, uuid: '1', timestamp: '2026-01-01T00:00:00Z' },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ] as any;
         }
         return [
           { type: 'user', message: { content: 'Hello world' }, uuid: '2', timestamp: '2026-01-02T00:00:00Z' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ] as any;
       });
 
@@ -696,6 +705,7 @@ describe('SessionService', () => {
       }));
 
       mockFs.readFile.mockResolvedValue(JSON.stringify({ entries }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockFs.readdir.mockResolvedValue(entries.map(e => `${e.sessionId}.jsonl`) as any);
 
       const mockStat = (i: number) => ({
@@ -705,12 +715,14 @@ describe('SessionService', () => {
       });
 
       for (let i = 0; i < 120; i++) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mockFs.stat.mockResolvedValueOnce(mockStat(i) as any);
       }
 
       const { parseJSONLFile: mockParseJSONL } = await import('../historyParser.js');
       vi.mocked(mockParseJSONL).mockResolvedValue([
         { type: 'user', message: { content: 'target keyword found' }, uuid: '1', timestamp: '2026-01-01T00:00:00Z' },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ] as any);
 
       const result = await service.listSessionsBySlug('project-hash', {
@@ -759,6 +771,7 @@ describe('SessionService', () => {
           uuid: '2',
           timestamp: '2026-01-01T00:01:00Z',
         },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ] as any);
 
       const result = await service.listSessionsBySlug('project-hash', {
@@ -828,6 +841,7 @@ describe('SessionService', () => {
           uuid: '1',
           timestamp: '2026-01-01T00:00:00Z',
         },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ] as any);
 
       const result = await service.listSessionsBySlug('project-hash', {

@@ -493,6 +493,11 @@ export class QueueService {
       return { shouldAdvance: true };
     } else {
       log.info(`LOOP_RESUME: iteration=${this.loopState.iteration}, innerIndex=${this.loopState.innerIndex}`);
+      // Skip past breakpoint that caused the previous pause (it already executed)
+      const resumeItem = this.loopState.items[this.loopState.innerIndex];
+      if (resumeItem?.isBreakpoint) {
+        this.loopState.innerIndex++;
+      }
     }
 
     this.emitProgress('running');
@@ -510,13 +515,13 @@ export class QueueService {
           return { shouldAdvance: false };
         }
 
-        this.loopState.innerIndex++;
-
-        // Skip progress emit if already paused (e.g. @pause breakpoint inside loop)
+        // Breakpoints set isPaused inside executeItem — keep innerIndex pointing
+        // to the breakpoint itself so socket events and REST getState() are consistent.
         if (this.isPaused) {
           return { shouldAdvance: false };
         }
 
+        this.loopState.innerIndex++;
         this.emitProgress('running');
 
         // Handle deferred manual pause (AC-S:1: resume continues from next inner item)

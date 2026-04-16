@@ -35,7 +35,7 @@ vi.mock('sharp', () => ({
 import { imageStorageService } from '../imageStorageService.js';
 
 const mockFs = vi.mocked(fs);
-const mockExistsSync = vi.mocked(existsSync);
+const _mockExistsSync = vi.mocked(existsSync);
 
 // Helper: compute expected hash for a given base64 string
 function expectedHash(data: string): string {
@@ -45,10 +45,6 @@ function expectedHash(data: string): string {
 describe('imageStorageService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.resetAllMocks();
   });
 
   describe('storeImages', () => {

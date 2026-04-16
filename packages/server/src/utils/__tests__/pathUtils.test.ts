@@ -3,11 +3,11 @@
  * [Source: Story 11.1 - Task 7.2]
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
-import { isBinaryFile, getMimeType, MAX_FILE_SIZE, isProtectedPath, PROTECTED_DIRECTORIES } from '../pathUtils.js';
+import { isBinaryFile, getMimeType, MAX_FILE_SIZE, isProtectedPath } from '../pathUtils.js';
 
 describe('isBinaryFile', () => {
   let tmpDir: string;

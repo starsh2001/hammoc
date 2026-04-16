@@ -128,7 +128,9 @@ describe('groupRawChildrenIntoBranches', () => {
     // and a direct user child (from resumeSessionAt edit)
     const tree = buildRawMessageTree([
       makeRawMsg('root-user', null, 'user'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { uuid: 'attach1', parentUuid: 'root-user', type: 'attachment' as any, timestamp: new Date().toISOString() } as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { uuid: 'attach2', parentUuid: 'attach1', type: 'attachment' as any, timestamp: new Date().toISOString() } as any,
       makeRawMsg('first-assistant', 'attach2', 'assistant'),
       makeRawMsg('edit-user', 'root-user', 'user'),

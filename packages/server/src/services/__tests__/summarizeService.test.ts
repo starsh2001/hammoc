@@ -23,6 +23,14 @@ vi.mock('fs/promises', () => ({
   unlink: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock SessionService so that getSessionFilePath returns a testable path
+vi.mock('../sessionService.js', () => ({
+  SessionService: vi.fn().mockImplementation(() => ({
+    getSessionFilePath: vi.fn().mockReturnValue('/tmp/test-session.jsonl'),
+  })),
+  sessionService: {},
+}));
+
 import { summarize, type SummarizeMessage } from '../summarizeService.js';
 
 function makeAsyncIterator(messages: Array<{ type: string; [key: string]: unknown }>) {
@@ -136,7 +144,7 @@ describe('summarizeService (Agent SDK)', () => {
       { type: 'result', subtype: 'success', result: 'Summary' },
     ]);
 
-    await summarize(sampleMessages);
+    await summarize(sampleMessages, { projectSlug: 'test-proj' });
 
     expect(unlink).toHaveBeenCalledTimes(1);
     const deletedPath = (unlink as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
@@ -150,7 +158,7 @@ describe('summarizeService (Agent SDK)', () => {
       { type: 'result', subtype: 'error', result: '' },
     ]);
 
-    await expect(summarize(sampleMessages)).rejects.toThrow();
+    await expect(summarize(sampleMessages, { projectSlug: 'test-proj' })).rejects.toThrow();
     expect(unlink).toHaveBeenCalledTimes(1);
   });
 });

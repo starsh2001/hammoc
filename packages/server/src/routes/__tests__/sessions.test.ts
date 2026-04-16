@@ -6,23 +6,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
-import type { SessionListItem, HistoryMessage, PaginationInfo } from '@hammoc/shared';
+import type { SessionListItem } from '@hammoc/shared';
 
 // Create hoisted mocks for sessionService
-const { mockListSessionsBySlug, mockGetSessionMessages, mockIsValidPathParam, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds } = vi.hoisted(() => ({
+const { mockListSessionsBySlug, mockIsValidPathParam, mockSessionFileExists, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds, mockGetJoinedSessionIdsByProject } = vi.hoisted(() => ({
   mockListSessionsBySlug: vi.fn(),
-  mockGetSessionMessages: vi.fn(),
   mockIsValidPathParam: vi.fn(),
+  mockSessionFileExists: vi.fn().mockReturnValue(false),
   mockReadSessionNamesBySlug: vi.fn().mockResolvedValue({}),
   mockGetActiveStreamSessionIds: vi.fn().mockReturnValue([]),
+  mockGetJoinedSessionIdsByProject: vi.fn().mockReturnValue(new Set<string>()),
 }));
 
 // Mock sessionService
 vi.mock('../../services/sessionService', () => ({
   sessionService: {
     listSessionsBySlug: mockListSessionsBySlug,
-    getSessionMessages: mockGetSessionMessages,
     isValidPathParam: mockIsValidPathParam,
+    sessionFileExists: mockSessionFileExists,
   },
 }));
 
@@ -38,6 +39,7 @@ vi.mock('../../services/projectService', () => ({
 // Mock websocket handler
 vi.mock('../../handlers/websocket', () => ({
   getActiveStreamSessionIds: mockGetActiveStreamSessionIds,
+  getJoinedSessionIdsByProject: mockGetJoinedSessionIdsByProject,
 }));
 
 import sessionsRoutes from '../sessions';
@@ -48,11 +50,16 @@ describe('Sessions Routes', () => {
   beforeEach(() => {
     app = express();
     app.use(express.json());
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     app.use((req: any, _res: any, next: any) => { req.t = (key: string) => key; req.language = 'en'; next(); });
     app.use('/api/projects', sessionsRoutes);
     vi.clearAllMocks();
     // Default: path params are valid
     mockIsValidPathParam.mockReturnValue(true);
+    mockSessionFileExists.mockReturnValue(false);
+    mockReadSessionNamesBySlug.mockResolvedValue({});
+    mockGetActiveStreamSessionIds.mockReturnValue([]);
+    mockGetJoinedSessionIdsByProject.mockReturnValue(new Set<string>());
   });
 
   afterEach(() => {
@@ -137,199 +144,4 @@ describe('Sessions Routes', () => {
     });
   });
 
-  // Story 3.5: Session History Loading tests
-  describe('GET /api/projects/:projectSlug/sessions/:sessionId/messages', () => {
-    const mockMessages: HistoryMessage[] = [
-      {
-        id: 'msg-1',
-        type: 'user',
-        content: 'Hello',
-        timestamp: '2026-01-15T10:00:00Z',
-      },
-      {
-        id: 'msg-2',
-        type: 'assistant',
-        content: 'Hi! How can I help?',
-        timestamp: '2026-01-15T10:00:05Z',
-      },
-    ];
-
-    const mockPagination: PaginationInfo = {
-      total: 2,
-      limit: 50,
-      offset: 0,
-      hasMore: false,
-    };
-
-    it('should return 200 with messages array', async () => {
-      mockGetSessionMessages.mockResolvedValue({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
-      const response = await request(app)
-        .get('/api/projects/test-project/sessions/session-123/messages')
-        .expect(200);
-
-      expect(response.body).toEqual({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-      expect(mockGetSessionMessages).toHaveBeenCalledWith('test-project', 'session-123', {
-        limit: 50,
-        offset: 0,
-      });
-    });
-
-    it('should handle custom limit and offset', async () => {
-      mockGetSessionMessages.mockResolvedValue({
-        messages: mockMessages,
-        pagination: { ...mockPagination, limit: 10, offset: 20 },
-      });
-
-      const response = await request(app)
-        .get('/api/projects/test-project/sessions/session-123/messages?limit=10&offset=20')
-        .expect(200);
-
-      expect(mockGetSessionMessages).toHaveBeenCalledWith('test-project', 'session-123', {
-        limit: 10,
-        offset: 20,
-      });
-      expect(response.body.pagination.limit).toBe(10);
-      expect(response.body.pagination.offset).toBe(20);
-    });
-
-    it('should cap limit at 100', async () => {
-      mockGetSessionMessages.mockResolvedValue({
-        messages: mockMessages,
-        pagination: { ...mockPagination, limit: 100 },
-      });
-
-      await request(app)
-        .get('/api/projects/test-project/sessions/session-123/messages?limit=200')
-        .expect(200);
-
-      expect(mockGetSessionMessages).toHaveBeenCalledWith('test-project', 'session-123', {
-        limit: 100,
-        offset: 0,
-      });
-    });
-
-    it('should handle negative offset as 0', async () => {
-      mockGetSessionMessages.mockResolvedValue({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
-      await request(app)
-        .get('/api/projects/test-project/sessions/session-123/messages?offset=-10')
-        .expect(200);
-
-      expect(mockGetSessionMessages).toHaveBeenCalledWith('test-project', 'session-123', {
-        limit: 50,
-        offset: 0,
-      });
-    });
-
-    it('should return 200 with empty messages for non-existent session', async () => {
-      mockGetSessionMessages.mockResolvedValue(null);
-
-      const response = await request(app)
-        .get('/api/projects/test-project/sessions/nonexistent/messages')
-        .expect(200);
-
-      expect(response.body.messages).toEqual([]);
-      expect(response.body.pagination.total).toBe(0);
-    });
-
-    it('should return 400 for invalid path param in projectSlug', async () => {
-      // Using a valid URL format but mock returns invalid
-      mockIsValidPathParam.mockReturnValueOnce(false);
-
-      const response = await request(app)
-        .get('/api/projects/invalid..slug/sessions/session-123/messages')
-        .expect(400);
-
-      expect(response.body).toEqual({
-        error: {
-          code: 'INVALID_PATH',
-          message: 'session.error.invalidPath',
-        },
-      });
-    });
-
-    it('should return 400 for invalid path param in sessionId', async () => {
-      mockIsValidPathParam
-        .mockReturnValueOnce(true) // projectSlug is valid
-        .mockReturnValueOnce(false); // sessionId is invalid
-
-      const response = await request(app)
-        .get('/api/projects/test-project/sessions/invalid..session/messages')
-        .expect(400);
-
-      expect(response.body).toEqual({
-        error: {
-          code: 'INVALID_PATH',
-          message: 'session.error.invalidPath',
-        },
-      });
-    });
-
-    it('should return 500 on service error', async () => {
-      mockGetSessionMessages.mockRejectedValue(new Error('Parse error'));
-
-      const response = await request(app)
-        .get('/api/projects/test-project/sessions/session-123/messages')
-        .expect(500);
-
-      expect(response.body).toEqual({
-        error: {
-          code: 'SESSION_PARSE_ERROR',
-          message: 'session.error.parseError',
-        },
-      });
-    });
-
-    it('should return messages with tool_use and tool_result', async () => {
-      const messagesWithTools: HistoryMessage[] = [
-        {
-          id: 'msg-1',
-          type: 'user',
-          content: 'Read a file',
-          timestamp: '2026-01-15T10:00:00Z',
-        },
-        {
-          id: 'msg-2',
-          type: 'tool_use',
-          content: 'Calling Read',
-          timestamp: '2026-01-15T10:00:05Z',
-          toolName: 'Read',
-          toolInput: { file_path: '/index.ts' },
-        },
-        {
-          id: 'msg-3',
-          type: 'tool_result',
-          content: 'file content',
-          timestamp: '2026-01-15T10:00:06Z',
-          toolResult: {
-            success: true,
-            output: 'file content',
-          },
-        },
-      ];
-
-      mockGetSessionMessages.mockResolvedValue({
-        messages: messagesWithTools,
-        pagination: { total: 3, limit: 50, offset: 0, hasMore: false },
-      });
-
-      const response = await request(app)
-        .get('/api/projects/test-project/sessions/session-123/messages')
-        .expect(200);
-
-      expect(response.body.messages).toHaveLength(3);
-      expect(response.body.messages[1].toolName).toBe('Read');
-      expect(response.body.messages[2].toolResult.success).toBe(true);
-    });
-  });
 });

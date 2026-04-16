@@ -37,6 +37,7 @@ describe('Board Routes', () => {
     vi.clearAllMocks();
     app = express();
     app.use(express.json());
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     app.use((req: any, _res: any, next: any) => { req.t = (key: string) => key; req.language = 'en'; next(); });
     app.use('/api/projects', boardRoutes);
 
@@ -82,7 +83,7 @@ describe('Board Routes', () => {
       expect(response.body.description).toBe('Something broken');
       expect(response.body.severity).toBe('high');
       expect(response.body.issueType).toBe('bug');
-      expect(response.body.id).toMatch(/^\d+-[a-f0-9]{6}-new-bug$/);
+      expect(response.body.id).toMatch(/^ISSUE-\d+$/);
     });
 
     it('should return 400 when title is missing', async () => {

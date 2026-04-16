@@ -7,9 +7,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock ChatService constructor — must use regular function (not arrow) for `new`
 const mockSendMessageWithCallbacks = vi.fn();
+const mockGetPermissionMode = vi.fn().mockReturnValue('default');
 vi.mock('../chatService.js', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ChatService: vi.fn().mockImplementation(function (this: any) {
     this.sendMessageWithCallbacks = mockSendMessageWithCallbacks;
+    this.getPermissionMode = mockGetPermissionMode;
   }),
 }));
 
@@ -54,11 +57,13 @@ vi.mock('../../utils/logger.js', () => ({
 
 // Mock streamCallbacks — buildStreamCallbacks wires hooks so chunk collection works
 vi.mock('../../handlers/streamCallbacks.js', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   buildStreamCallbacks: vi.fn().mockImplementation((_deps: any, hooks?: any) => {
     const sessionIdRef = { current: undefined as string | undefined };
     const callbacks = {
       onSessionInit: vi.fn(),
       // onTextChunk must invoke onTextChunkReceived hook for @pauseword detection
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onTextChunk: vi.fn().mockImplementation((chunk: any) => {
         hooks?.onTextChunkReceived?.(chunk);
       }),
@@ -111,6 +116,7 @@ vi.mock('../../utils/snippetResolver.js', () => ({
 }));
 
 // Mock websocket exports used by QueueService (ActiveStream pattern)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockStreamPendingPermissions = new Map<string, any>();
 vi.mock('../../handlers/websocket.js', () => ({
   createHeadlessStream: vi.fn().mockImplementation((sessionId: string) => {
@@ -207,12 +213,14 @@ describe('QueueService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockStreamPendingPermissions.clear();
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     queueService = new QueueService(
       mockProjectService as any,
       mockNotificationService as any,
       mockPreferencesService as any,
       mockIo as any
     );
+    /* eslint-enable @typescript-eslint/no-explicit-any */
     setupMockChat();
   });
 
@@ -505,10 +513,12 @@ describe('QueueService', () => {
 
   describe('TC-QR-13: Permission request auto-pauses execution', () => {
     it('should pause and store pending permission', async () => {
-      let canUseToolFn: any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let _canUseToolFn: any;
       mockSendMessageWithCallbacks.mockImplementation(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async (_content: string, callbacks: StreamCallbacks, _options: unknown, canUseTool: any) => {
-          canUseToolFn = canUseTool;
+          _canUseToolFn = canUseTool;
           // Call canUseTool — it will pause and wait for permission resolution
           const permPromise = canUseTool('Bash', { command: 'ls' }, { toolUseID: 'perm-1' });
 
@@ -552,6 +562,7 @@ describe('QueueService', () => {
   describe('TC-QR-14: Execution resumes after permission response', () => {
     it('should continue execution after user responds to permission', async () => {
       mockSendMessageWithCallbacks.mockImplementation(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async (_content: string, callbacks: StreamCallbacks, _options: unknown, canUseTool: any) => {
           const result = await canUseTool('Bash', { command: 'ls' }, { toolUseID: 'perm-2' });
           expect(result.behavior).toBe('allow');
@@ -624,29 +635,31 @@ describe('QueueService', () => {
   });
 
   describe('TC-QR-17: pause() / resume() / abort() control methods', () => {
-    it('pause() sets isPaused', async () => {
+    it('pause() sets isPauseRequested when item is executing', async () => {
       // Start a long-running queue
       mockSendMessageWithCallbacks.mockImplementation(() => new Promise(() => {})); // never resolves
 
       const items = [createPromptItem('Test')];
-      const startPromise = queueService.start(items, 'test-project');
+      const _startPromise = queueService.start(items, 'test-project');
 
       // Give start() time to begin
       await new Promise(resolve => setTimeout(resolve, 10));
 
       await queueService.pause();
-      expect(queueService.getState().isPaused).toBe(true);
+      // When an item is actively executing, pause() defers via isPauseRequested
+      // (isPaused is set when the current item completes)
+      expect(queueService.getState().isPauseRequested).toBe(true);
 
       // Abort to clean up
       await queueService.abort();
-      // Don't await startPromise as it will never complete
+      // Don't await _startPromise as it will never complete
     });
 
     it('abort() sets isRunning to false', async () => {
       mockSendMessageWithCallbacks.mockImplementation(() => new Promise(() => {}));
 
       const items = [createPromptItem('Test')];
-      const startPromise = queueService.start(items, 'test-project');
+      const _startPromise = queueService.start(items, 'test-project');
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -834,6 +847,7 @@ describe('QueueService', () => {
     it('loop with until: exits early when token found in response', async () => {
       let callCount = 0;
       mockSendMessageWithCallbacks.mockImplementation(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async (_content: string, callbacks: any) => {
           callCount++;
           const text = callCount >= 2 ? 'Result: SUCCESS found' : 'Still working...';
@@ -918,7 +932,7 @@ describe('QueueService', () => {
 
       // Try to add a loop item (start a new run first since previous completed)
       mockSendMessageWithCallbacks.mockImplementation(() => new Promise(() => {})); // Never resolve
-      const startPromise = queueService.start([createPromptItem('running')], 'test-project');
+      const _startPromise = queueService.start([createPromptItem('running')], 'test-project');
       await new Promise(resolve => setTimeout(resolve, 10));
 
       const result = queueService.addItem(createLoopItem(3, [createPromptItem('inner')]));
@@ -932,8 +946,10 @@ describe('QueueService', () => {
       const items = [createLoopItem(2, [createPromptItem('work'), createPromptItem('check')])];
       await queueService.start(items, 'test-project');
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const progressCalls = mockEmit.mock.calls.filter(([event]: any) => event === 'queue:progress');
       const loopProgressEvents = progressCalls
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map(([, data]: any) => data.loopProgress)
         .filter(Boolean);
 
@@ -946,10 +962,11 @@ describe('QueueService', () => {
     });
 
     it('loop with until + last inner item is non-prompt: until check skipped', async () => {
-      let callCount = 0;
+      let _callCount = 0;
       mockSendMessageWithCallbacks.mockImplementation(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async (_content: string, callbacks: any) => {
-          callCount++;
+          _callCount++;
           // Always return the until token — but last item is @pause, so until should be skipped
           const text = 'Result: DONE';
           callbacks.onTextChunk?.({ sessionId: 'test-session', messageId: 'msg-1', content: text, done: true });

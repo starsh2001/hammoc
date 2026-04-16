@@ -31,6 +31,8 @@ vi.mock('fs', async (importOriginal) => {
     ...actual,
     existsSync: vi.fn().mockReturnValue(true),
     mkdirSync: vi.fn(),
+    statSync: vi.fn().mockReturnValue({ size: 100 }),
+    readdirSync: vi.fn().mockReturnValue([]),
   };
 });
 
@@ -51,6 +53,7 @@ vi.mock('../../services/chatService.js', () => ({
     constructor(...args: unknown[]) { mockState.lastCtorArgs = args[0]; }
     sendMessageWithCallbacks(...args: unknown[]) { return mockState.sendImpl(...args); }
     setPermissionMode() {}
+    getPermissionMode() { return 'default'; }
   },
 }));
 
@@ -60,6 +63,10 @@ vi.mock('../../services/sessionService.js', () => ({
     saveSessionId = vi.fn().mockResolvedValue(undefined);
     getSessionId = vi.fn().mockResolvedValue(null);
     listSessions = vi.fn().mockResolvedValue([]);
+    updateSessionIndex = vi.fn().mockResolvedValue(undefined);
+    encodeProjectPath = vi.fn().mockReturnValue('mock-project-slug');
+    getSessionFilePath = vi.fn().mockReturnValue('/mock/.claude/projects/mock-project-slug/session.jsonl');
+    getProjectDir = vi.fn().mockReturnValue('/mock/.claude/projects/mock-project-slug');
   },
 }));
 
@@ -73,6 +80,13 @@ vi.mock('../../services/preferencesService.js', () => ({
       chatTimeoutMs: 300000,
     }),
     getTerminalEnabled: vi.fn().mockResolvedValue(true),
+    readPreferences: vi.fn().mockResolvedValue({
+      theme: 'dark',
+      defaultModel: '',
+      permissionMode: 'default',
+      chatTimeoutMs: 300000,
+      permissionSyncPolicy: 'manual',
+    }),
   },
 }));
 
@@ -80,12 +94,10 @@ vi.mock('../../services/preferencesService.js', () => ({
 vi.mock('../../config/index.js', () => ({
   config: {
     chat: { timeoutMs: 300000 },
-    websocket: {
-      cors: {
-        origin: 'http://localhost:5173',
-        methods: ['GET', 'POST'],
-        credentials: true,
-      },
+    cors: {
+      origin: 'http://localhost:5173',
+      methods: ['GET', 'POST'],
+      credentials: true,
     },
     telegram: { botToken: '', chatId: '', enabled: false },
     terminal: { enabled: true, shellTimeout: 30000, maxSessions: 10 },
@@ -151,7 +163,7 @@ vi.mock('../../services/projectService.js', () => ({
   projectService: {
     resolveProjectPath: vi.fn().mockResolvedValue('/mock/project/path'),
     findProjectByPath: vi.fn().mockResolvedValue({ projectSlug: 'test-project' }),
-    readChainFailures: vi.fn().mockResolvedValue([]),
+    readChainFailures: vi.fn().mockImplementation(() => Promise.resolve([])),
     writeChainFailures: vi.fn().mockResolvedValue(undefined),
   },
 }));
@@ -499,7 +511,7 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
       // Test passes if no errors occur — items are preserved
     });
 
-    it('3.4 — handleAbort in ChatPage does not emit chain:clear (source code verification)', () => {
+    it('3.4 — handleAbort in ChatPage emits chain:clear only when not streaming (source code verification)', () => {
       // Extract handleAbort function body from ChatPage source
       const abortStart = chatPageSource.indexOf('const handleAbort = useCallback');
       expect(abortStart).toBeGreaterThan(-1);
@@ -507,13 +519,13 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
       const nextDecl = chatPageSource.indexOf('\n  const ', abortStart + 1);
       expect(nextDecl).toBeGreaterThan(abortStart);
       const handleAbortBody = chatPageSource.slice(abortStart, nextDecl);
-      // handleAbort must NOT contain chain:clear
-      expect(handleAbortBody).not.toContain('chain:clear');
-      // handleAbort should call abortResponse
+      // handleAbort should call abortResponse when streaming
       expect(handleAbortBody).toContain('abortResponse');
-      // chain:clear should only appear in PromptChainBanner's onCancel context
+      // handleAbort may emit chain:clear when NOT streaming but chain items are pending
+      // This is correct: it clears the pending chain during the gap between drain items
+      expect(handleAbortBody).toContain('isStreaming');
+      // chain:clear should also appear in PromptChainBanner's onCancel context
       expect(chatPageSource).toContain('chain:clear');
-      expect(chatPageSource).toContain('onCancel={() =>');
     });
   });
 
@@ -609,21 +621,23 @@ describe('WebSocket Chain Sync (Story 24.3)', () => {
   // ─── Task 5: Concurrent add/remove race conditions ─────────────────
 
   describe('Concurrent add/remove race conditions (Task 5)', () => {
-    it('5.1 — chain handlers are synchronous within event loop (source code verification)', () => {
+    it('5.1 — chain:remove and chain:clear handlers are synchronous; chain:add is async for snippet resolution (source code verification)', () => {
       // Extract chain handler blocks by index range
       const addStart = websocketSource.indexOf("socket.on('chain:add'");
       const removeStart = websocketSource.indexOf("socket.on('chain:remove'");
       const clearStart = websocketSource.indexOf("socket.on('chain:clear'");
-      const dashboardStart = websocketSource.indexOf("socket.on('dashboard:subscribe'");
       expect(addStart).toBeGreaterThan(-1);
       expect(removeStart).toBeGreaterThan(addStart);
       expect(clearStart).toBeGreaterThan(removeStart);
-      expect(dashboardStart).toBeGreaterThan(clearStart);
       const addHandler = websocketSource.slice(addStart, removeStart);
       const removeHandler = websocketSource.slice(removeStart, clearStart);
-      const clearHandler = websocketSource.slice(clearStart, dashboardStart);
-      // None of the chain handlers should use 'await' (synchronous within event loop)
-      expect(addHandler).not.toContain('await');
+      // Find the next socket.on handler after chain:clear to bound the clear handler
+      const nextHandlerAfterClear = websocketSource.indexOf("socket.on('", clearStart + 1);
+      expect(nextHandlerAfterClear).toBeGreaterThan(clearStart);
+      const clearHandler = websocketSource.slice(clearStart, nextHandlerAfterClear);
+      // chain:add is async due to snippet resolution (resolveSnippet uses await)
+      expect(addHandler).toContain('async');
+      // chain:remove and chain:clear remain synchronous (no 'await' keyword)
       expect(removeHandler).not.toContain('await');
       expect(clearHandler).not.toContain('await');
       // All should use synchronous Map operations

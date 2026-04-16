@@ -14,6 +14,7 @@ import { preferencesService } from '../preferencesService.js';
 // Mock preferencesService to return home dir as allowed root (default behavior)
 vi.spyOn(preferencesService, 'readPreferences').mockResolvedValue({
   allowedReadPaths: [os.homedir()],
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any);
 
 let tmpDir: string;
@@ -29,6 +30,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   // Reset allowed roots cache between tests
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (fileSystemService as any)._cachedAllowedRoots = null;
   await fs.rm(tmpDir, { recursive: true, force: true });
 });

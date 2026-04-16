@@ -11,13 +11,17 @@ import { SESSION_ERRORS } from '@hammoc/shared';
 const {
   mockListSessionsBySlug,
   mockIsValidPathParam,
+  mockSessionFileExists,
   mockReadSessionNamesBySlug,
   mockGetActiveStreamSessionIds,
+  mockGetJoinedSessionIdsByProject,
 } = vi.hoisted(() => ({
   mockListSessionsBySlug: vi.fn(),
   mockIsValidPathParam: vi.fn(() => true),
+  mockSessionFileExists: vi.fn(() => false),
   mockReadSessionNamesBySlug: vi.fn(),
   mockGetActiveStreamSessionIds: vi.fn(),
+  mockGetJoinedSessionIdsByProject: vi.fn(),
 }));
 
 // Mock sessionService
@@ -25,6 +29,7 @@ vi.mock('../../services/sessionService', () => ({
   sessionService: {
     listSessionsBySlug: mockListSessionsBySlug,
     isValidPathParam: mockIsValidPathParam,
+    sessionFileExists: mockSessionFileExists,
   },
 }));
 
@@ -38,6 +43,7 @@ vi.mock('../../services/projectService', () => ({
 // Mock websocket handler
 vi.mock('../../handlers/websocket', () => ({
   getActiveStreamSessionIds: mockGetActiveStreamSessionIds,
+  getJoinedSessionIdsByProject: mockGetJoinedSessionIdsByProject,
 }));
 
 import { sessionController } from '../sessionController';
@@ -63,7 +69,9 @@ describe('sessionController', () => {
 
     // Default mocks for supporting services (after clearAllMocks)
     mockIsValidPathParam.mockReturnValue(true);
+    mockSessionFileExists.mockReturnValue(false);
     mockGetActiveStreamSessionIds.mockReturnValue([]);
+    mockGetJoinedSessionIdsByProject.mockReturnValue(new Set<string>());
     mockReadSessionNamesBySlug.mockResolvedValue({});
   });
 

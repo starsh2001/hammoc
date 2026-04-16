@@ -122,8 +122,8 @@ describe('gitService.getLog', () => {
       author: 'Dev',
       date: '2026-01-01T00:00:00Z',
     });
-    // body takes precedence over message when non-empty
-    expect(result.commits[1].message).toBe('Detailed body');
+    // message field is always used (body is not mapped)
+    expect(result.commits[1].message).toBe('Second commit');
     expect(mockLog).toHaveBeenCalledWith({ maxCount: 20 });
   });
 

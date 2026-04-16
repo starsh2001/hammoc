@@ -88,6 +88,7 @@ describe('ProjectService Settings', () => {
 
       // Access private method via the public getProjectSettingsWithEffective
       // We'll test through the mock parseSessionsIndex path
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await (projectService as any)._buildEffectiveResponse('/tmp/test-project');
 
       expect(result.effectiveModel).toBe('sonnet');
@@ -100,6 +101,7 @@ describe('ProjectService Settings', () => {
         modelOverride: 'opus',
       }));
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await (projectService as any)._buildEffectiveResponse('/tmp/test-project');
 
       expect(result.effectiveModel).toBe('opus');
@@ -113,6 +115,7 @@ describe('ProjectService Settings', () => {
         permissionModeOverride: 'plan',
       }));
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await (projectService as any)._buildEffectiveResponse('/tmp/test-project');
 
       expect(result._overrides).toEqual(['permissionModeOverride']);

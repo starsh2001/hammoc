@@ -19,6 +19,7 @@ describe('CLI Routes', () => {
     vi.clearAllMocks();
     app = express();
     app.use(express.json());
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     app.use((req: any, _res: any, next: any) => { req.t = (key: string) => key; req.language = 'en'; next(); });
     app.use('/api', cliRoutes);
   });
