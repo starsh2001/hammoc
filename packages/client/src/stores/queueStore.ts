@@ -273,8 +273,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   },
 
   optimisticReorder: (newOrder: number[], projectSlug: string) => {
-    const { parsedItems, currentIndex, isPaused } = get();
-    const pendingStart = isPaused ? currentIndex : currentIndex + 1;
+    const { parsedItems, currentIndex } = get();
+    const pendingStart = currentIndex + 1;
     const reordered = newOrder.map(i => parsedItems[i]);
     if (reorderSafetyTimer) clearTimeout(reorderSafetyTimer);
     reorderSafetyTimer = setTimeout(() => {

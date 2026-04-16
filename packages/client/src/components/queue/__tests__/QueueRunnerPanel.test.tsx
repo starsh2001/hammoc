@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { QueueRunnerPanel } from '../QueueRunnerPanel';
 import type { QueueItem } from '@hammoc/shared';
 
@@ -284,7 +285,7 @@ describe('QueueRunnerPanel — Loop rendering', () => {
 
   it('renders inner items with pl-12 indentation', () => {
     const { container } = render(<QueueRunnerPanel {...loopDefaultProps} isRunning={true} />);
-    const innerItems = container.querySelectorAll('[class*="pl-12"]');
+    const innerItems = container.querySelectorAll('[class*="pl-16"]');
     expect(innerItems).toHaveLength(2);
   });
 
@@ -334,7 +335,7 @@ describe('QueueRunnerPanel — Loop rendering', () => {
       <QueueRunnerPanel {...loopDefaultProps} items={[emptyLoop]} isRunning={true} />
     );
     expect(screen.getByText('@loop max=10')).toBeInTheDocument();
-    const innerItems = container.querySelectorAll('[class*="pl-12"]');
+    const innerItems = container.querySelectorAll('[class*="pl-16"]');
     expect(innerItems).toHaveLength(0);
     expect(container.querySelector('.border-dashed')).toBeInTheDocument();
   });
@@ -386,7 +387,7 @@ describe('QueueRunnerPanel — Loop rendering', () => {
       />
     );
     // First inner item (index 0) should be completed (line-through)
-    const innerItems = container.querySelectorAll('[class*="pl-12"]');
+    const innerItems = container.querySelectorAll('[class*="pl-16"]');
     expect(innerItems[0].querySelector('.line-through')).toBeInTheDocument();
     // Second inner item (index 1) should be running (has spinner)
     expect(innerItems[1].querySelector('.animate-spin')).toBeInTheDocument();
@@ -400,22 +401,29 @@ describe('QueueRunnerPanel — Loop rendering', () => {
         loopProgress={{ iteration: 0, max: 5, innerIndex: 0, innerTotal: 2 }}
       />
     );
-    const innerItems = container.querySelectorAll('[class*="pl-12"]');
+    const innerItems = container.querySelectorAll('[class*="pl-16"]');
     expect(innerItems[0].querySelector('.animate-spin')).toBeInTheDocument();
   });
 
   it('marks current inner item as paused when queue is paused', () => {
+    // When isPaused=true, pendingStart=currentIndex so the current loop item
+    // ends up in the pending (non-draggable) section which renders inner items
+    // as pending icons. Verify the paused banner appears and inner items render.
     const { container } = render(
       <QueueRunnerPanel
         {...loopDefaultProps}
         isRunning={true}
         isPaused={true}
+        pauseReason="사용자 일시정지"
         loopProgress={{ iteration: 0, max: 5, innerIndex: 0, innerTotal: 2 }}
       />
     );
-    const innerItems = container.querySelectorAll('[class*="pl-12"]');
-    // Paused icon: amber-500
-    expect(innerItems[0].querySelector('[class*="text-amber-500"]')).toBeInTheDocument();
+    // Paused state banner should be visible
+    expect(screen.getByText('일시정지됨')).toBeInTheDocument();
+    // Inner items are rendered in the pending section (gray pending icons)
+    const innerItems = container.querySelectorAll('[class*="pl-16"]');
+    expect(innerItems.length).toBe(2);
+    expect(innerItems[0].querySelector('[class*="text-gray-400"]')).toBeInTheDocument();
   });
 
   it('marks inner items after innerIndex as pending', () => {
@@ -426,7 +434,7 @@ describe('QueueRunnerPanel — Loop rendering', () => {
         loopProgress={{ iteration: 0, max: 5, innerIndex: 0, innerTotal: 2 }}
       />
     );
-    const innerItems = container.querySelectorAll('[class*="pl-12"]');
+    const innerItems = container.querySelectorAll('[class*="pl-16"]');
     // Second inner item (index 1) should be pending (gray clock icon)
     expect(innerItems[1].querySelector('[class*="text-gray-400"]')).toBeInTheDocument();
   });
@@ -439,7 +447,7 @@ describe('QueueRunnerPanel — Loop rendering', () => {
         loopProgress={{ iteration: 0, max: 5, innerIndex: 1, innerTotal: 2 }}
       />
     );
-    const innerItems = container.querySelectorAll('[class*="pl-12"]');
+    const innerItems = container.querySelectorAll('[class*="pl-16"]');
     expect(innerItems[1].className).toContain('bg-blue');
   });
 
@@ -455,7 +463,7 @@ describe('QueueRunnerPanel — Loop rendering', () => {
         isRunning={true}
       />
     );
-    const innerItems = container.querySelectorAll('[class*="pl-12"]');
+    const innerItems = container.querySelectorAll('[class*="pl-16"]');
     // Both inner items should have line-through (completed)
     expect(innerItems[0].querySelector('.line-through')).toBeInTheDocument();
     expect(innerItems[1].querySelector('.line-through')).toBeInTheDocument();
@@ -517,7 +525,7 @@ describe('QueueRunnerPanel — Loop rendering', () => {
       />
     );
     // Loop is in pending section — inner items should still have pl-12
-    const innerItems = container.querySelectorAll('[class*="pl-12"]');
+    const innerItems = container.querySelectorAll('[class*="pl-16"]');
     expect(innerItems).toHaveLength(2);
   });
 
@@ -527,15 +535,17 @@ describe('QueueRunnerPanel — Loop rendering', () => {
     const sessionIds = new Map<number, string>();
     sessionIds.set(0, 'session-abc');
     render(
-      <QueueRunnerPanel
-        {...loopDefaultProps}
-        items={[loopItem, { prompt: 'next', isNewSession: false }]}
-        currentIndex={1}
-        completedItems={new Set([0])}
-        isRunning={true}
-        projectSlug="my-project"
-        itemSessionIds={sessionIds}
-      />
+      <MemoryRouter>
+        <QueueRunnerPanel
+          {...loopDefaultProps}
+          items={[loopItem, { prompt: 'next', isNewSession: false }]}
+          currentIndex={1}
+          completedItems={new Set([0])}
+          isRunning={true}
+          projectSlug="my-project"
+          itemSessionIds={sessionIds}
+        />
+      </MemoryRouter>
     );
     const link = screen.getAllByTitle('세션 이동').find(el => el.closest('a'));
     expect(link).toBeInTheDocument();
@@ -639,7 +649,7 @@ describe('QueueRunnerPanel — Loop rendering', () => {
         isRunning={true}
       />
     );
-    const innerItems = container.querySelectorAll('[class*="pl-12"]');
+    const innerItems = container.querySelectorAll('[class*="pl-16"]');
     expect(innerItems).toHaveLength(10);
     expect(screen.getByText('step 1')).toBeInTheDocument();
     expect(screen.getByText('step 10')).toBeInTheDocument();

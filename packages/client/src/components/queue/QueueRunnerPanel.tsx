@@ -7,10 +7,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  CheckCircle,
   PlayCircle,
   PauseCircle,
   XCircle,
+  CheckCircle,
   Clock,
   Loader2,
   Play,
@@ -28,6 +28,7 @@ import { Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { QueueItem } from '@hammoc/shared';
+import { getItemSummary, getItemStatus, ItemStatusIcon, type ItemStatus } from './queueItemUtils';
 
 interface QueueRunnerPanelProps {
   items: QueueItem[];
@@ -70,55 +71,6 @@ interface QueueRunnerPanelProps {
   isRemoteEditing?: boolean;
   /** Loop progress when executing inside a @loop block */
   loopProgress?: { iteration: number; max: number; innerIndex: number; innerTotal: number } | null;
-}
-
-function getItemSummary(item: QueueItem, t: (key: string, opts?: Record<string, unknown>) => string): string {
-  if (item.loop) {
-    let summary = `@loop max=${item.loop.max}`;
-    if (item.loop.until) summary += ` until="${item.loop.until}"`;
-    return summary;
-  }
-  if (item.isBreakpoint) return `${t('queue.itemSummary.pause')}${item.prompt ? `: ${item.prompt}` : ''}`;
-  if (item.isNewSession && item.prompt) return `${t('queue.itemSummary.newSession')} ${item.prompt.slice(0, 80)}`;
-  if (item.isNewSession) return t('queue.itemSummary.newSessionStart');
-  if (item.saveSessionName) return `${t('queue.itemSummary.saveSession')} ${item.saveSessionName}`;
-  if (item.loadSessionName) return `${t('queue.itemSummary.loadSession')} ${item.loadSessionName}`;
-  if (item.modelName && item.prompt) return `${t('queue.itemSummary.modelPrefix')} ${item.modelName}] ${item.prompt.slice(0, 60)}`;
-  if (item.modelName) return `${t('queue.itemSummary.modelChange')} ${item.modelName}`;
-  if (item.delayMs) return `${t('queue.itemSummary.wait')} ${item.delayMs}ms`;
-  return item.prompt.slice(0, 80) + (item.prompt.length > 80 ? '...' : '');
-}
-
-type ItemStatus = 'error' | 'running' | 'paused' | 'completed' | 'pending';
-
-function getItemStatus(
-  index: number,
-  currentIndex: number,
-  isRunning: boolean,
-  isPaused: boolean,
-  completedItems: Set<number>,
-  errorItem: { index: number; error: string } | null,
-): ItemStatus {
-  if (errorItem?.index === index) return 'error';
-  if (index === currentIndex && isRunning && !isPaused) return 'running';
-  if (index === currentIndex && isPaused) return 'paused';
-  if (completedItems.has(index) || index < currentIndex) return 'completed';
-  return 'pending';
-}
-
-function ItemStatusIcon({ status }: { status: ItemStatus }) {
-  switch (status) {
-    case 'error':
-      return <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />;
-    case 'running':
-      return <Loader2 className="w-4 h-4 text-blue-500 animate-spin flex-shrink-0" />;
-    case 'paused':
-      return <PauseCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />;
-    case 'completed':
-      return <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />;
-    case 'pending':
-      return <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />;
-  }
 }
 
 export function QueueRunnerPanel({
@@ -186,7 +138,8 @@ export function QueueRunnerPanel({
   }, [newItemText, onAddItem]);
 
   // Determine the start index of pending items (for DnD boundary)
-  const pendingStart = isPaused ? currentIndex : currentIndex + 1;
+  // Current item is always fixed (non-draggable) — it's either running or paused mid-execution
+  const pendingStart = currentIndex + 1;
 
   const handleDragEnd = useCallback((result: DropResult) => {
     if (!result.destination || !onReorderItems) return;
@@ -437,17 +390,30 @@ export function QueueRunnerPanel({
                     else if (innerIdx === loopProgress.innerIndex) innerStatus = isPaused ? 'paused' : 'running';
                     else innerStatus = 'pending';
                   }
+                  const isInnerCurrent = isLoopCurrent && innerIdx === loopProgress?.innerIndex;
                   return (
-                    <div
-                      key={`${index}-inner-${innerIdx}`}
-                      className={`flex items-center gap-2 pl-16 pr-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50
-                        ${isLoopCurrent && innerIdx === loopProgress?.innerIndex ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
-                      `}
-                    >
-                      <ItemStatusIcon status={innerStatus} />
-                      <span className={`truncate flex-1 ${innerStatus === 'completed' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
-                        {getItemSummary(innerItem, t)}
-                      </span>
+                    <div key={`${index}-inner-${innerIdx}`}>
+                      <div
+                        className={`flex items-center gap-2 pl-16 pr-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50
+                          ${isInnerCurrent && innerStatus === 'paused' ? 'bg-amber-50 dark:bg-amber-900/20' : ''}
+                          ${isInnerCurrent && innerStatus === 'running' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                        `}
+                      >
+                        <ItemStatusIcon status={innerStatus} />
+                        <span className={`truncate flex-1 ${
+                          innerStatus === 'completed' ? 'line-through text-gray-400' :
+                          innerStatus === 'paused' ? 'font-medium text-amber-700 dark:text-amber-300' :
+                          'text-gray-700 dark:text-gray-200'
+                        }`}>
+                          {getItemSummary(innerItem, t)}
+                        </span>
+                      </div>
+                      {/* Pause reason inline — skip for breakpoints (summary already contains the reason) */}
+                      {isInnerCurrent && innerStatus === 'paused' && pauseReason && !innerItem.isBreakpoint && (
+                        <div className="pl-16 pr-4 py-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-900/10 border-b border-gray-100 dark:border-[#3a4d5e]/50">
+                          ↳ {pauseReason}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -503,30 +469,40 @@ export function QueueRunnerPanel({
                           <div
                             ref={dragProvided.innerRef}
                             {...dragProvided.draggableProps}
-                            className={`flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50
-                              ${snapshot.isDragging ? 'bg-blue-50 dark:bg-blue-900/20 shadow-md rounded' : ''}
-                            `}
+                            className={snapshot.isDragging ? 'bg-blue-50 dark:bg-blue-900/20 shadow-md rounded' : ''}
                           >
-                            {/* Drag handle */}
-                            <span {...dragProvided.dragHandleProps} className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none">
-                              <GripVertical className="w-3.5 h-3.5 text-gray-400" />
-                            </span>
-                            <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{globalIndex + 1}</span>
-                            <ItemStatusIcon status={status} />
-                            <span className="truncate flex-1 text-gray-700 dark:text-gray-200">
-                              {getItemSummary(item, t)}
-                            </span>
-                            {/* Delete button for pending items */}
-                            {onRemoveItem && (
-                              <button
-                                onClick={() => onRemoveItem(globalIndex)}
-                                className="text-gray-400 hover:text-red-500 flex-shrink-0 p-0.5"
-                                title={t('queue.deleteItem')}
-                                aria-label={t('queue.deleteItemAria', { index: globalIndex + 1 })}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            <div className="flex items-center gap-2 px-4 py-2 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50">
+                              {/* Drag handle */}
+                              <span {...dragProvided.dragHandleProps} className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none">
+                                <GripVertical className="w-3.5 h-3.5 text-gray-400" />
+                              </span>
+                              <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">{globalIndex + 1}</span>
+                              {item.loop
+                                ? <Repeat className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                                : <ItemStatusIcon status={status} />
+                              }
+                              <span className="truncate flex-1 text-gray-700 dark:text-gray-200">
+                                {getItemSummary(item, t)}
+                              </span>
+                              {/* Delete button for pending items */}
+                              {onRemoveItem && (
+                                <button
+                                  onClick={() => onRemoveItem(globalIndex)}
+                                  className="text-gray-400 hover:text-red-500 flex-shrink-0 p-0.5"
+                                  title={t('queue.deleteItem')}
+                                  aria-label={t('queue.deleteItemAria', { index: globalIndex + 1 })}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                            {/* Loop inner items preview (read-only, moves with drag) */}
+                            {item.loop && !snapshot.isDragging && item.loop.items.map((innerItem, innerIdx) => (
+                              <div key={`${globalIndex}-inner-${innerIdx}`} className="flex items-center gap-2 pl-16 pr-4 py-1.5 text-sm border-b border-gray-100 dark:border-[#3a4d5e]/50 text-gray-500 dark:text-gray-400">
+                                <ItemStatusIcon status="pending" size="sm" />
+                                <span className="truncate flex-1">{getItemSummary(innerItem, t)}</span>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </Draggable>
