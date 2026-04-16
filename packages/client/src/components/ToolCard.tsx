@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { CheckCircle, XCircle, AlertCircle, ChevronRight, ChevronDown, Loader2, Files, ExternalLink, ShieldCheck, ShieldX } from 'lucide-react';
+import { CheckCircle, XCircle, ChevronRight, ChevronDown, Loader2, Files, ShieldCheck, ShieldX } from 'lucide-react';
 import { ToolPathDisplay } from './ToolPathDisplay';
 import { DiffViewer } from './DiffViewer';
 import { ToolResultRenderer } from './ToolResultRenderer';

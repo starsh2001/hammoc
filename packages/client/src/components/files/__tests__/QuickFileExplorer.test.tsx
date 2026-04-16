@@ -17,6 +17,7 @@ const mockAddRecentFile = vi.fn();
 
 vi.mock('../../../stores/fileStore.js', () => ({
   useFileStore: Object.assign(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.fn((selector: any) => {
       if (selector) {
         return selector({

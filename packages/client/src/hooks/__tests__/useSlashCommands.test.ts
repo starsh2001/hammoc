@@ -101,7 +101,7 @@ describe('useSlashCommands', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockList.mockRejectedValue(new Error('Network error'));
 
-    const { result } = renderHook(() => useSlashCommands('test-slug'));
+    const { result } = renderHook(() => useSlashCommands('test-slug-star-error'));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);

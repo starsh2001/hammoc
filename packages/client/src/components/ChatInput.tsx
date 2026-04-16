@@ -184,7 +184,7 @@ interface ChatInputProps {
 
 export function ChatInput({
   onSend,
-  disabled = false,
+  disabled: _disabled = false,
   placeholder,
   commands = [],
   onCommandRefresh,

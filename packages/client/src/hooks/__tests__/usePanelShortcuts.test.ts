@@ -3,7 +3,7 @@
  * [Source: Story 19.4 - Task 6]
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { usePanelShortcuts } from '../usePanelShortcuts';
 

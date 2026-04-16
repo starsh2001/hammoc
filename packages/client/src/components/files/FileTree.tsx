@@ -444,7 +444,6 @@ export function FileTree({
     if (refreshTrigger === undefined || refreshTrigger === 0) return;
     loadDirectory(basePath);
     expandedDirs.forEach((dir) => loadDirectory(dir));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger]);
 
   const toggleDir = useCallback(

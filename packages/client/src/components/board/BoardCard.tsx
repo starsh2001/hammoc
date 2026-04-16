@@ -71,7 +71,7 @@ export function BoardCard({
   onCommitAndComplete,
   onCardClick,
 }: BoardCardProps) {
-  const { t } = useTranslation('board');
+  const { t: _t } = useTranslation('board');
   const typeBadge = TYPE_BADGE[item.type];
   const badge = resolveBadge(item);
   const isClickable = item.type === 'issue' || item.type === 'epic' || (item.type === 'story' && !!item.filePath);

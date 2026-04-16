@@ -26,8 +26,8 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
   const {
     terminalId: activeTerminalId,
     terminals,
-    status,
-    shell,
+    status: _status,
+    shell: _shell,
     terminalAccess,
     create,
     closeById,

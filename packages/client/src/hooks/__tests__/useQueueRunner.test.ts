@@ -3,7 +3,7 @@
  * [Source: Story 15.3 - Task 7.4]
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useQueueRunner } from '../useQueueRunner';
 import { useQueueStore } from '../../stores/queueStore';

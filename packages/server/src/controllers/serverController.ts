@@ -31,7 +31,7 @@ if (process.platform === 'win32') {
 }
 
 /** Filter warning lines from stderr so only real errors are shown to the user. */
-function stripWarnings(stderr: string): string {
+function _stripWarnings(stderr: string): string {
   return stderr
     .split(/\r?\n/)
     .filter(line => !/^\s*(warn(ing)?[\s:]|⚠|A PostCSS plugin)/i.test(line))
@@ -116,6 +116,7 @@ function spawnAndExit(mode: 'prod' | 'update'): void {
   const envExports = Object.entries(process.env)
     .filter(([k, v]) => v !== undefined && k !== 'PATH' && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k))
     // Strip \r and other control chars (except \t) that break bash parsing on Windows
+    // eslint-disable-next-line no-control-regex
     .filter(([, v]) => !/[\x00-\x08\x0b-\x0c\x0e-\x1f]/.test(v!))
     .map(([k, v]) => `export ${k}=${bashSafe(v!.replace(/\r/g, ''))}`)
     .join('\n');

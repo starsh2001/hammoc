@@ -28,7 +28,7 @@ import { ConfirmModal } from '../ConfirmModal';
 export function GitTab() {
   const { t } = useTranslation('common');
   const { projectSlug } = useParams<{ projectSlug: string }>();
-  const { status, isLoading: statusLoading } = useGitStatus(projectSlug);
+  const { status, isLoading: _statusLoading } = useGitStatus(projectSlug);
 
   const commits = useGitStore((s) => s.commits);
   const branches = useGitStore((s) => s.branches);

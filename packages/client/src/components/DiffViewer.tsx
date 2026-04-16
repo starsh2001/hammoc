@@ -80,7 +80,7 @@ export function DiffViewer({
   modified,
   layout = DEFAULT_PROPS.layout,
   responsiveLayout = true,
-  readOnly = DEFAULT_PROPS.readOnly,
+  readOnly: _readOnly = DEFAULT_PROPS.readOnly,
   fullscreen = DEFAULT_PROPS.fullscreen,
   onClose,
   onReopen,

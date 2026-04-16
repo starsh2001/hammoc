@@ -167,7 +167,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const result = await projectsApi.validatePath(path);
       set({ pathValidation: result, isValidating: false });
       return result;
-    } catch (err) {
+    } catch (_err) {
       const errorResult: ValidatePathResponse = {
         valid: false,
         exists: false,

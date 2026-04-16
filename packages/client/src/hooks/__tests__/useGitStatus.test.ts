@@ -36,6 +36,7 @@ describe('useGitStatus', () => {
       commits: [],
       branches: null,
       fetchStatus: mockFetchStatus,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
   });
 
@@ -77,6 +78,7 @@ describe('useGitStatus', () => {
   it('computes changedFileCount as staged + unstaged + untracked', () => {
     const { result } = renderHook(() => useGitStatus('test-project'));
     // Set status after mount (which calls resetData)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     act(() => { useGitStore.setState({ status: mockStatus } as any); });
     // 2 staged + 1 unstaged + 2 untracked = 5
     expect(result.current.changedFileCount).toBe(5);
@@ -84,6 +86,7 @@ describe('useGitStatus', () => {
 
   // TC-GIT-H5: Returns changedFileCount = 0 when status is null
   it('returns changedFileCount = 0 when status is null', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useGitStore.setState({ status: null } as any);
     const { result } = renderHook(() => useGitStatus('test-project'));
     expect(result.current.changedFileCount).toBe(0);

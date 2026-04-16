@@ -492,7 +492,6 @@ export function FileExplorerTab() {
       </div>
 
       {/* Content: Search results or FileTree — click focuses container for Ctrl+V paste */}
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div className="flex-1 overflow-auto min-h-0 grid" onClick={() => explorerRef.current?.focus()}>
         {isSearching ? (
           <div className="px-2">

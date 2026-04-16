@@ -137,7 +137,7 @@ describe('BoardCard', () => {
         status: 'Blocked',
         epicNumber: 1,
       };
-      const { container } = render(<BoardCard item={blockedStory} />);
+      const { container: _container } = render(<BoardCard item={blockedStory} />);
       const badge = screen.getByText('Blocked');
       expect(badge).toBeInTheDocument();
       expect(badge.className).toContain('bg-red-100');

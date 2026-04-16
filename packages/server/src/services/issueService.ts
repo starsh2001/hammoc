@@ -70,7 +70,7 @@ function extractAttachments(content: string): IssueAttachment[] {
   let match: RegExpExecArray | null;
   while ((match = lineRegex.exec(section)) !== null) {
     // Unescape markdown link text
-    const originalName = match[1].replace(/\\([\[\]\\])/g, '$1');
+    const originalName = match[1].replace(/\\([[\\])/g, '$1');
     attachments.push({
       originalName,
       filename: match[2],
@@ -948,7 +948,7 @@ class IssueService {
  * Escape markdown link-breaking characters in display text.
  */
 function escapeMarkdownLinkText(text: string): string {
-  return text.replace(/[\[\]\\]/g, (ch) => `\\${ch}`);
+  return text.replace(/[[\]\\]/g, (ch) => `\\${ch}`);
 }
 
 /**

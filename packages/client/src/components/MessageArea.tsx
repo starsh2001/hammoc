@@ -6,7 +6,7 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo, forwardRef, useImperativeHandle, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronRight, RefreshCw, FileText, XOctagon, Database, Info } from 'lucide-react';
+import { ChevronDown, FileText, XOctagon, Database, Info } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { MessageListSkeleton } from './MessageListSkeleton';

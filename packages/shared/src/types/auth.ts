@@ -180,7 +180,7 @@ export const AUTH_ERROR_CODES = {
   UNAUTHORIZED: 'UNAUTHORIZED',
 } as const;
 
-type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];
+type _AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];
 
 /**
  * API Error Messages (centralized for consistency)

@@ -799,7 +799,7 @@ export class SessionService {
         if (!index.entries || !Array.isArray(index.entries)) {
           index.entries = [];
         }
-      } catch (err: unknown) {
+      } catch (_err: unknown) {
         // If index file exists but is corrupt, skip to avoid overwriting valid data
         if (existsSync(indexPath)) return;
         index = { version: 1, entries: [] };

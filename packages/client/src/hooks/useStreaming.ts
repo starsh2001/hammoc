@@ -459,7 +459,7 @@ export function useStreaming() {
     // By the time this arrives, the local segment is already in a terminal state
     // (respondToInteractive / respondToolPermission set state immediately).
     // The toast informs the user their response was ignored.
-    const handlePermissionAlreadyResolved = (data: { requestId: string }) => {
+    const handlePermissionAlreadyResolved = (_data: { requestId: string }) => {
       toast.info(i18n.t('notification:streaming.alreadyResponded'));
     };
 

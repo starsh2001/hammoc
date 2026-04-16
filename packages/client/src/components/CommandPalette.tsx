@@ -73,7 +73,7 @@ export function CommandPalette({
   filter,
   selectedIndex,
   onSelect,
-  onClose,
+  onClose: _onClose,
   isFavorite,
   onToggleFavorite,
 }: CommandPaletteProps) {

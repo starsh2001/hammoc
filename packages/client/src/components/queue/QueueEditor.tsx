@@ -158,7 +158,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
     if (script) {
       parseScript();
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Persist wrap mode preference so QueueEditor and QueueTemplateDialog stay in sync
   useEffect(() => {

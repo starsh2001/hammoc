@@ -42,9 +42,6 @@ function isPath(displayInfo: string): boolean {
   return displayInfo.includes('/') || displayInfo.includes('\\');
 }
 
-/** Tools that have a file_path in their input */
-const FILE_PATH_TOOLS = ['Read', 'Edit', 'Write'];
-
 /**
  * Tools that should show full content by default (truncated if needed)
  */

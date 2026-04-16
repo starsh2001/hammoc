@@ -268,7 +268,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         .map((s) => {
           if (s.sessionId !== sessionId) return s;
           if (s.messageCount === 0 && !s.firstPrompt) return null; // placeholder — remove
-          const { isWaiting: _, ...rest } = s;
+          const { isWaiting: _isWaiting, ...rest } = s;
           return rest;
         })
         .filter(Boolean) as typeof sessions;

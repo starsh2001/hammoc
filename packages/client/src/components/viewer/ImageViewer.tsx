@@ -33,7 +33,7 @@ export function ImageViewer() {
     openImage,
     zoomLevel,
     closeViewer,
-    setZoom,
+    setZoom: _setZoom,
     zoomBy,
     resetView,
     goNext,

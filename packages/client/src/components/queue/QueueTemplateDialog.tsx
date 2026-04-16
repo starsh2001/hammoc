@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Save, Upload, Trash2, RefreshCw, WrapText, FileText, Globe, FolderOpen } from 'lucide-react';
+import { X, Save, Upload, Trash2, RefreshCw, WrapText, Globe, FolderOpen } from 'lucide-react';
 import { generateQueueFromTemplate } from '@hammoc/shared';
 import type { QueueStoryInfo, QueueTemplate } from '@hammoc/shared';
 import { queueApi } from '../../services/api/queue';

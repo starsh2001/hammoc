@@ -21,7 +21,7 @@ export async function listTemplates(req: Request, res: Response): Promise<void> 
     const projectRoot = await getProjectRoot(req.params.projectSlug);
     const templates = await queueTemplateService.getTemplates(projectRoot);
     res.status(200).json(templates);
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ error: req.t!('queueTemplate.error.listFailed') });
   }
 }
@@ -36,7 +36,7 @@ export async function createTemplate(req: Request, res: Response): Promise<void>
     const projectRoot = await getProjectRoot(req.params.projectSlug);
     const created = await queueTemplateService.saveTemplate(projectRoot, name.trim(), template);
     res.status(201).json(created);
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ error: req.t!('queueTemplate.error.createFailed') });
   }
 }

@@ -102,7 +102,7 @@ export const CodeBlock = memo(function CodeBlock({
         highlightTimerRef.current = null;
       }
     };
-  }, [code, normalizedLang, isDark]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [code, normalizedLang, isDark]);
 
   // Copy handler
   const handleCopy = useCallback(async () => {

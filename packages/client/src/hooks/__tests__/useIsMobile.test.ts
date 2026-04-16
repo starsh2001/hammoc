@@ -4,7 +4,7 @@
  */
 
 import { renderHook, act } from '@testing-library/react';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, it, expect, afterEach } from 'vitest';
 import { useIsMobile } from '../useIsMobile';
 
 // --- matchMedia mock helper ---

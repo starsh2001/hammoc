@@ -27,7 +27,7 @@ export class OnboardingErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, _errorInfo: ErrorInfo) {
     debugLogger.error('Error caught in OnboardingErrorBoundary', { error: error.message, stack: error.stack });
   }
 

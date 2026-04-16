@@ -22,7 +22,7 @@ function makeMsg(overrides: Partial<HistoryMessage> & { id: string }): HistoryMe
 
 const UUID_A = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 const UUID_B = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
-const UUID_C = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
+const _UUID_C = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
 
 describe('useMessageTree', () => {
   beforeEach(() => {

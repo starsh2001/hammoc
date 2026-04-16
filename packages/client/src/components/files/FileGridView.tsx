@@ -184,7 +184,6 @@ export function FileGridView({
   useEffect(() => {
     if (refreshTrigger === undefined || refreshTrigger === 0) return;
     loadDirectory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger]);
 
   // Delay spinner to avoid flash on fast loads

@@ -260,7 +260,7 @@ export const projectController = {
         result.error = req.t!('project.validation.invalidPathFormat');
       }
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         error: {
           code: 'VALIDATION_ERROR',

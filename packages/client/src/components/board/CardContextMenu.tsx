@@ -280,7 +280,6 @@ export function CardContextMenu({
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, focusIndex, closeMenu]);
 
   // No actions available — hide menu button

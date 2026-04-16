@@ -87,7 +87,7 @@ export function AdvancedSettingsSection() {
         // Silently fail
       })
       .finally(() => setIsLoadingPrompt(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch resolved preview when project is available
   useEffect(() => {

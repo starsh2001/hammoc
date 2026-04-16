@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import type { BoardConfig, BoardColumnConfig } from '@hammoc/shared';
-import { COLUMN_COLOR_PALETTE, DEFAULT_BOARD_CONFIG, REQUIRED_COLUMN_IDS, validateBoardConfig } from '@hammoc/shared';
+import { COLUMN_COLOR_PALETTE, REQUIRED_COLUMN_IDS, validateBoardConfig } from '@hammoc/shared';
 import { generateUUID } from '../../utils/uuid';
 import { ALL_BADGE_IDS, getBadgeById } from './constants';
 

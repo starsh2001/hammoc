@@ -6,7 +6,6 @@
 
 import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage, ThinkingEffort, SubscriptionRateLimit, ApiHealthStatus } from './sdk.js';
 import type { ToolResult, CompactMetadata, TaskNotificationData } from './streaming.js';
-import type { SessionInfo } from './session.js';
 import type { ImageAttachment, ImageRef } from './message.js';
 import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from './queue.js';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalListResponse, TerminalInputEvent, TerminalResizeEvent, TerminalCreatedResponse, TerminalOutputEvent, TerminalExitEvent, TerminalErrorEvent, TerminalAccessInfo } from './terminal.js';

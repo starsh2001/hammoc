@@ -26,7 +26,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
+  componentDidCatch(error: Error, _info: ErrorInfo) {
     debugLogger.error('Uncaught error in ErrorBoundary', { error: error.message, stack: error.stack });
 
     // Auto-reload on stale chunk errors (e.g. after server rebuild)

@@ -42,6 +42,7 @@ describe('useTerminal', () => {
       createTerminal: mockCreate,
       closeTerminal: mockClose,
       setActiveTerminalId: mockSetActiveTerminalId,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
   });
 

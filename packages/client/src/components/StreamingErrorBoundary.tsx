@@ -40,7 +40,7 @@ export class StreamingErrorBoundary extends Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+  componentDidCatch(error: Error, _errorInfo: ErrorInfo): void {
     debugLogger.error('Error caught in StreamingErrorBoundary', { error: error.message, stack: error.stack });
   }
 

@@ -168,7 +168,6 @@ export function QuickPanel({
       void panelRef.current.offsetHeight;
       setIsAnimating(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisible, openNonce]);
 
   // Fallback: onTransitionEnd as safety net

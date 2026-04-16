@@ -153,7 +153,7 @@ describe('CommandPalette', () => {
   });
 
   describe('favorites (Story 9.5)', () => {
-    const favoritesProps = {
+    const _favoritesProps = {
       isFavorite: vi.fn().mockReturnValue(false),
       onToggleFavorite: vi.fn(),
     };

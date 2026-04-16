@@ -58,7 +58,7 @@ export function BoardListView({
   // Reconcile expanded state when columns change
   useEffect(() => {
     setExpandedGroups(getInitialExpanded(isMobile, boardConfig));
-  }, [columnKey, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [columnKey, isMobile]);
 
   const toggleGroup = (columnId: string) => {
     setExpandedGroups((prev) => {
