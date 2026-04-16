@@ -107,6 +107,16 @@ function formatModelId(modelId: string): string {
     .replace(/-/g, ' ');
 }
 
+/** Get short family name for button label (e.g. "claude-opus-4-6" → "Opus") */
+function getButtonLabel(model: string, activeModel: string | null | undefined): string {
+  const effective = model || activeModel || '';
+  if (!effective) return '';
+  if (effective.includes('opus')) return 'Opus';
+  if (effective.includes('sonnet')) return 'Sonnet';
+  if (effective.includes('haiku')) return 'Haiku';
+  return getModelDisplayLabel(effective).split(' ')[0];
+}
+
 /** Check if model ID indicates Opus 4.6 */
 function isOpus46(model: string | null | undefined, activeModel: string | null | undefined): boolean {
   if (!model && !activeModel) return false;
@@ -212,6 +222,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
   }, []);
 
   const displayLabel = getModelDisplayLabel(model);
+  const buttonLabel = getButtonLabel(model, activeModel);
   // Clamp effort at render time: treat 'max' as undefined when unavailable (fail-closed)
   const effectiveEffort = (effort === 'max' && !maxAvailable) ? undefined : effort;
   // SDK default is 'high' when no effort is explicitly set
@@ -238,8 +249,8 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={`
-          w-[28px] h-[28px] rounded-md transition-all
-          flex items-center justify-center
+          w-[44px] h-[28px] rounded-md transition-all
+          flex items-center justify-center gap-1 px-1
           border border-gray-300 dark:border-[#455568]
           bg-white dark:bg-[#263240]
           text-gray-600 dark:text-gray-200
@@ -251,7 +262,10 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
           ${isOpen ? 'bg-gray-100 dark:bg-[#253040] ring-2 ring-gray-400 ring-offset-1' : ''}
         `}
       >
-        <Cpu className="w-4 h-4" aria-hidden="true" />
+        {buttonLabel
+          ? <span className="text-[10px] font-semibold truncate">{buttonLabel}</span>
+          : <Cpu className="w-4 h-4" aria-hidden="true" />
+        }
       </button>
 
       {/* Dropdown menu (opens upward) */}

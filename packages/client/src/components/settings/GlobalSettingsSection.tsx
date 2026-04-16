@@ -295,7 +295,7 @@ export function GlobalSettingsSection() {
               title={t(opt.descKey)}
               className={`
                 relative flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors
-                ${(preferences.permissionSyncPolicy === 'always' ? 'always' : 'streaming') === opt.value
+                ${(preferences.permissionSyncPolicy === 'streaming' ? 'streaming' : 'always') === opt.value
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                   : 'border-gray-300 dark:border-[#455568] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
@@ -305,7 +305,7 @@ export function GlobalSettingsSection() {
                 type="radio"
                 name="permissionSyncPolicy"
                 value={opt.value}
-                checked={(preferences.permissionSyncPolicy === 'always' ? 'always' : 'streaming') === opt.value}
+                checked={(preferences.permissionSyncPolicy === 'streaming' ? 'streaming' : 'always') === opt.value}
                 onChange={() => {
                   updatePreference('permissionSyncPolicy', opt.value as PermissionSyncPolicy);
                   toast.success(t('toast.settingSaved'));

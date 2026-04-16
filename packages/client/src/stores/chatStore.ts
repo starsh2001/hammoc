@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { toast } from 'sonner';
-import type { PermissionMode, Attachment, ChatUsage, HistoryMessage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus, ThinkingEffort } from '@hammoc/shared';
+import type { PermissionMode, Attachment, ChatUsage, ProjectSettings, SubscriptionRateLimit, ApiHealthStatus, ThinkingEffort } from '@hammoc/shared';
 import { getEffectiveContextLimit } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
@@ -709,7 +709,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     usePreferencesStore.getState().updatePreference('lastPermissionMode', mode);
     // Notify server for SDK update and broadcast to other viewers
     const rawPolicy = usePreferencesStore.getState().preferences.permissionSyncPolicy;
-    const syncPolicy = rawPolicy === 'always' ? 'always' : 'streaming'; // normalize legacy 'never'
+    const syncPolicy = rawPolicy === 'streaming' ? 'streaming' : 'always'; // normalize legacy 'never'
     if (syncPolicy === 'streaming' && !get().isStreaming) return;
     // 'always' → always emit; 'streaming' + isStreaming → emit for SDK update
     const socket = getSocket();

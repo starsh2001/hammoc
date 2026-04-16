@@ -712,6 +712,9 @@ export function ChatPage() {
   const panelDefaultOpen = usePreferencesStore((s) => s.preferences.panelDefaultOpen);
   const panelDefaultSide = usePreferencesStore((s) => s.preferences.panelDefaultSide);
   const prefsLoaded = usePreferencesStore((s) => s.loaded);
+  const defaultModel = usePreferencesStore((s) => s.preferences.defaultModel);
+  // Show configured default model immediately in ModelSelector; fall back to last SDK-reported model
+  const effectiveActiveModel = defaultModel || activeModel;
   useEffect(() => {
     if (!prefsLoaded) return;
     applyPanelDefaults({ panelDefaultOpen, panelDefaultSide });
@@ -1150,7 +1153,7 @@ export function ChatPage() {
             onPermissionModeChange={setPermissionMode}
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
-            activeModel={activeModel}
+            activeModel={effectiveActiveModel}
             selectedEffort={selectedEffort}
             onEffortChange={setSelectedEffort}
             isBmadProject={isBmadProject}
@@ -1220,7 +1223,7 @@ export function ChatPage() {
             onPermissionModeChange={setPermissionMode}
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
-            activeModel={activeModel}
+            activeModel={effectiveActiveModel}
             selectedEffort={selectedEffort}
             onEffortChange={setSelectedEffort}
             isBmadProject={isBmadProject}
@@ -1357,7 +1360,7 @@ export function ChatPage() {
           onPermissionModeChange={setPermissionMode}
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
-          activeModel={activeModel}
+          activeModel={effectiveActiveModel}
           selectedEffort={selectedEffort}
           onEffortChange={setSelectedEffort}
           isBmadProject={isBmadProject}

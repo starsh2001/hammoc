@@ -599,7 +599,7 @@ function cleanupStream(streamKey: string, expectedStream?: ActiveStream) {
 
 /** Normalize legacy 'never' sync policy to 'streaming' */
 function normalizeSyncPolicy(policy: string | undefined): 'streaming' | 'always' {
-  return policy === 'always' ? 'always' : 'streaming';
+  return policy === 'streaming' ? 'streaming' : 'always';
 }
 
 /**
@@ -1133,7 +1133,7 @@ export async function initializeWebSocket(
       await persistSessionPermissionMode(sessionId, mode, projectSlug);
 
       // 3) Broadcast to other viewers based on sync policy
-      let syncPolicy: 'streaming' | 'always' = 'streaming';
+      let syncPolicy: 'streaming' | 'always' = 'always';
       try {
         const prefs = await preferencesService.readPreferences();
         syncPolicy = normalizeSyncPolicy(prefs.permissionSyncPolicy);
@@ -1313,7 +1313,7 @@ export async function initializeWebSocket(
 
       // Story 27.1: Deliver buffer messages (history + streaming data accumulated so far)
       // so a new browser joining mid-stream sees the full context immediately.
-      let buf = sessionBufferManager.get(sessionId);
+      const buf = sessionBufferManager.get(sessionId);
       // Buffer may have been destroyed if all sockets left briefly — recover from JSONL
       if (!buf) {
         const slug = sessionProjectMap.get(sessionId);
@@ -1576,7 +1576,7 @@ export async function initializeWebSocket(
 
       try {
         const sessionService = new SessionService();
-        const projectSlug = sessionService.encodeProjectPath(workingDirectory);
+        const _projectSlug = sessionService.encodeProjectPath(workingDirectory);
 
         const rewindQuery = sdkQuery({
           prompt: '',
@@ -2316,7 +2316,7 @@ async function handleChatSend(
   // Root-level edit branching is not supported — the SDK's --resume-session-at
   // only accepts assistant message UUIDs, and there is no assistant before the
   // first user message. The client should not send ROOT_BRANCH_KEY; reject if received.
-  let resumeSessionAt = rawResumeSessionAt;
+  const resumeSessionAt = rawResumeSessionAt;
   if (resumeSessionAt === ROOT_BRANCH_KEY) {
     emit('error', {
       code: ERROR_CODES.VALIDATION_ERROR,
@@ -2541,7 +2541,7 @@ async function handleChatSend(
 
     // Defer completion until JSONL is flushed — keeps client in streaming state.
     // Usage data is stored and included in stream:complete-messages.
-    const baseOnComplete = callbacks.onComplete;
+    const _baseOnComplete = callbacks.onComplete;
     callbacks.onComplete = (response) => {
       if (response.usage) {
         stream.deferredUsage = response.usage;
