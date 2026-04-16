@@ -304,6 +304,19 @@ describe('TextEditor', () => {
     expect(mockOpenFileInEditor).toHaveBeenCalledWith('test', 'src/index.ts');
   });
 
+  it('TC-TE11b: should show download button instead of retry for binary files', async () => {
+    mockStoreState.openFile = { projectSlug: 'test', path: 'assets/image.png' };
+    mockStoreState.error = '바이너리 파일은 편집할 수 없습니다.';
+
+    await renderAndWaitForEditor(<TextEditor />);
+
+    expect(screen.queryByText('다시 시도')).toBeNull();
+    const downloadLink = screen.getByText('다운로드');
+    expect(downloadLink).toBeDefined();
+    expect(downloadLink.closest('a')).toBeDefined();
+    expect(downloadLink.closest('a')?.getAttribute('href')).toContain('download=true');
+  });
+
   it('TC-TE12: should dismiss confirm dialog on Escape without closing editor', async () => {
     mockStoreState.openFile = { projectSlug: 'test', path: 'src/index.ts' };
     mockStoreState.content = 'modified';

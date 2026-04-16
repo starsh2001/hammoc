@@ -9,10 +9,11 @@ import { useTranslation } from 'react-i18next';
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { FileText, X, Loader2, Eye, Pencil } from 'lucide-react';
+import { FileText, X, Loader2, Eye, Pencil, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useFileStore } from '../../stores/fileStore';
+import { fileSystemApi } from '../../services/api/fileSystem';
 import { usePanelStore } from '../../stores/panelStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useOverlayBackHandler } from '../../hooks/useOverlayBackHandler';
@@ -265,17 +266,28 @@ export function TextEditor() {
             </span>
           </div>
         ) : error ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-red-500">
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-500 dark:text-gray-400">
             <p>{error}</p>
-            <button
-              onClick={() => {
-                resetError();
-                openFileInEditor(openFile.projectSlug, openFile.path);
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-            >
-              {t('button.retry')}
-            </button>
+            {error === t('notification:file.binaryNotEditable') ? (
+              <a
+                href={fileSystemApi.getDownloadUrl(openFile.projectSlug, openFile.path)}
+                download
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                {t('files.download')}
+              </a>
+            ) : (
+              <button
+                onClick={() => {
+                  resetError();
+                  openFileInEditor(openFile.projectSlug, openFile.path);
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              >
+                {t('button.retry')}
+              </button>
+            )}
           </div>
         ) : (
           <>
