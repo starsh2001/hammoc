@@ -14,6 +14,7 @@ export enum SDKErrorCode {
   AUTHENTICATION_ERROR = 'AUTHENTICATION_ERROR',
   NETWORK_ERROR = 'NETWORK_ERROR',
   INVALID_REQUEST = 'INVALID_REQUEST',
+  CONTEXT_OVERFLOW = 'CONTEXT_OVERFLOW',
   SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
   PERMISSION_DENIED = 'PERMISSION_DENIED',
   INVALID_PATH = 'INVALID_PATH',
@@ -29,6 +30,7 @@ export const SDK_ERROR_STATUS: Record<SDKErrorCode, number> = {
   [SDKErrorCode.AUTHENTICATION_ERROR]: 401,
   [SDKErrorCode.NETWORK_ERROR]: 503,
   [SDKErrorCode.INVALID_REQUEST]: 400,
+  [SDKErrorCode.CONTEXT_OVERFLOW]: 400,
   [SDKErrorCode.SERVICE_UNAVAILABLE]: 503,
   [SDKErrorCode.PERMISSION_DENIED]: 403,
   [SDKErrorCode.INVALID_PATH]: 400,
@@ -206,6 +208,19 @@ export function parseSDKError(error: unknown, lang?: string): SDKError {
     // Check for abort errors
     if (message.includes('abort') || error.name === 'AbortError') {
       return new AbortedError(error, t?.('error.aborted'));
+    }
+
+    // Check for context overflow / token limit errors
+    if (
+      message.includes('context window') ||
+      message.includes('context length') ||
+      message.includes('token limit') ||
+      message.includes('too many tokens') ||
+      message.includes('max_tokens')
+    ) {
+      return new SDKError(error.message, SDKErrorCode.CONTEXT_OVERFLOW, {
+        originalError: error,
+      });
     }
 
     // Check for service unavailable

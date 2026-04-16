@@ -2644,19 +2644,44 @@ async function handleChatSend(
       if (gatedComplete) origOnComplete?.(gatedComplete as never);
 
     } catch (sendError) {
-      // Resume failed — retry once without resume so SDK creates a fresh session.
+      const parsedError = parseSDKError(sendError, lang);
+
+      // Context overflow during resume — auto-compact then retry the original message.
+      // /compact is a CLI-level command processed before context evaluation,
+      // so it works even when context is overflowing.
+      if (
+        isResumeAttempt
+        && parsedError.code === SDKErrorCode.CONTEXT_OVERFLOW
+        && !abortController.signal.aborted
+        && !hasEmittedOutput
+      ) {
+        log.info(`[AUTO-COMPACT] context overflow on resume, running /compact: sessionId=${sessionId}`);
+        emit('system:info', { message: 'Context limit reached — auto-compacting…' });
+        gatedResultError = null;
+        gatedComplete = null;
+        ungateCallbacks();
+        resetTimeout('auto-compact');
+        // Run /compact to shrink context (preserves session file)
+        await chatService.sendMessageWithCallbacks('/compact', callbacks, chatOptions, canUseTool, (messageType: string) => {
+          resetTimeout(`compact:${messageType}`);
+        });
+        // Retry the original message after compaction
+        log.info(`[AUTO-COMPACT] compaction done, retrying original message: sessionId=${sessionId}`);
+        resetTimeout('auto-compact-retry');
+        await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
+          resetTimeout(`retry:${messageType}`);
+        });
+      // Resume failed for other unknown reasons — retry without resume (fresh session).
       // Guards:
       //  1. Only when resuming (not a fresh session send)
       //  2. Skip if intentionally aborted (user-abort / another-client / timeout)
       //  3. Skip if SDK already emitted output (onSessionInit fired) — retrying would duplicate side-effects
       //  4. Skip for non-session errors (rate-limit / auth / network / service-unavailable)
-      const parsedError = parseSDKError(sendError, lang);
-      const isNonSessionError = !!parsedError.code && parsedError.code !== SDKErrorCode.UNKNOWN;
-      if (
+      } else if (
         isResumeAttempt
         && !abortController.signal.aborted
         && !hasEmittedOutput
-        && !isNonSessionError
+        && parsedError.code === SDKErrorCode.UNKNOWN
         && !chatOptions.resumeSessionAt
       ) {
         log.info(`[RESUME-RETRY] resume failed, retrying without resume: sessionId=${sessionId}, error=${parsedError.message.slice(0, 120)}`);

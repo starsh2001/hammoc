@@ -34,8 +34,6 @@ interface ModelOption {
   value: string;
   label: string;
   description: string;
-  /** Max context window in tokens (0 = unknown, skip check) */
-  maxContextTokens?: number;
 }
 
 interface ModelGroup {
@@ -56,32 +54,24 @@ export const MODEL_GROUPS: ModelGroup[] = [
     label: 'Aliases (Latest)',
     labelKey: 'model.aliases',
     models: [
-      { value: 'sonnet', label: 'Sonnet', description: 'Latest Sonnet', maxContextTokens: 200_000 },
-      { value: 'opus', label: 'Opus', description: 'Latest Opus', maxContextTokens: 1_000_000 },
-      { value: 'haiku', label: 'Haiku', description: 'Latest Haiku', maxContextTokens: 200_000 },
+      { value: 'sonnet', label: 'Sonnet', description: 'Latest Sonnet' },
+      { value: 'opus', label: 'Opus', description: 'Latest Opus' },
+      { value: 'haiku', label: 'Haiku', description: 'Latest Haiku' },
     ],
   },
   {
     label: 'Claude 4.x',
     labelKey: 'model.claude4x',
     models: [
-      { value: 'claude-opus-4-6', label: 'Opus 4.6', description: 'Most capable · 1M ctx', maxContextTokens: 1_000_000 },
-      { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5', description: '2025-11-01', maxContextTokens: 200_000 },
-      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5', description: '2025-09-29', maxContextTokens: 200_000 },
-      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4', description: '2025-05-14', maxContextTokens: 200_000 },
-      { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', description: '2025-10-01', maxContextTokens: 200_000 },
+      { value: 'claude-opus-4-6', label: 'Opus 4.6', description: 'Most capable · 1M ctx' },
+      { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6', description: '1M ctx' },
+      { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5', description: '2025-11-01' },
+      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5', description: '2025-09-29' },
+      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4', description: '2025-05-14' },
+      { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', description: '2025-10-01' },
     ],
   },
 ];
-
-/** Get max context tokens for a model value (0 = unknown) */
-export function getModelMaxContextTokens(value: string): number {
-  for (const group of MODEL_GROUPS) {
-    const found = group.models.find((m) => m.value === value);
-    if (found?.maxContextTokens) return found.maxContextTokens;
-  }
-  return 0;
-}
 
 /** Find display label for any model value */
 function getModelDisplayLabel(value: string): string {

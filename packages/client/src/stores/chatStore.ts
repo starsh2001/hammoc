@@ -11,7 +11,6 @@ import { getSocket } from '../services/socket';
 import { useMessageStore } from './messageStore';
 import { useChainStore } from './chainStore';
 import { usePreferencesStore } from './preferencesStore';
-import { getModelMaxContextTokens } from '../components/ModelSelector';
 import { debugLog } from '../utils/debugLogger';
 import i18n from '../i18n';
 
@@ -443,7 +442,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const globalDefault = usePreferencesStore.getState().preferences.defaultModel || '';
       const effectiveDefault = projectSettings?.modelOverride ?? globalDefault;
       const targetModel = get().selectedModel || effectiveDefault || get().activeModel || '';
-      const maxCtx = getModelMaxContextTokens(targetModel);
+      const maxCtx = contextUsage.contextWindow;
       if (maxCtx > 0) {
         const currentTokens = contextUsage.inputTokens + contextUsage.cacheCreationInputTokens + contextUsage.cacheReadInputTokens;
         const effectiveLimit = getEffectiveContextLimit(maxCtx);
