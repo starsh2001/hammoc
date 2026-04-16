@@ -5,6 +5,7 @@
 
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { ChatResponse } from '@hammoc/shared';
+import { correctContextWindow } from '@hammoc/shared';
 import { createLogger } from '../utils/logger.js';
 import {
   SDKMessageType,
@@ -342,7 +343,7 @@ export class StreamHandler {
             cacheReadInputTokens: msg.usage.cache_read_input_tokens ?? 0,
             cacheCreationInputTokens: msg.usage.cache_creation_input_tokens ?? 0,
             totalCostUSD: msg.total_cost_usd ?? 0,
-            contextWindow: extractContextWindow(msg.modelUsage),
+            contextWindow: correctContextWindow(extractContextWindow(msg.modelUsage), msg.modelUsage ? Object.keys(msg.modelUsage)[0] : undefined),
             model: msg.modelUsage ? Object.keys(msg.modelUsage)[0] : undefined,
           }
         : undefined,

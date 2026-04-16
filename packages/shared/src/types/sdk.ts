@@ -136,6 +136,23 @@ export const CONTEXT_TOKEN_RESERVES = {
 } as const;
 
 /**
+ * Models whose native context window is 1M but SDK may under-report as 200K.
+ * See: https://github.com/anthropics/claude-code/issues/24208
+ */
+const NATIVE_1M_MODELS = ['claude-opus-4-6', 'claude-sonnet-4-6', 'opus', 'sonnet'];
+
+/**
+ * Correct SDK-reported contextWindow for known 1M models.
+ * Returns max(reported, 1M) when the model is known to support 1M natively.
+ */
+export function correctContextWindow(reported: number, model?: string): number {
+  if (model && NATIVE_1M_MODELS.some(m => model === m || model.startsWith(`${m}-`))) {
+    return Math.max(reported, 1_000_000);
+  }
+  return reported;
+}
+
+/**
  * Calculate effective context limit (usable input tokens after reserves)
  */
 export function getEffectiveContextLimit(contextWindow: number): number {

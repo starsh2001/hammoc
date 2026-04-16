@@ -7,6 +7,7 @@ import type {
   StreamCallbacks,
   ImageAttachment,
 } from '@hammoc/shared';
+import { correctContextWindow } from '@hammoc/shared';
 import path from 'path';
 import fs from 'fs/promises';
 import { execSync } from 'child_process';
@@ -334,7 +335,7 @@ export class ChatService {
               cacheReadInputTokens: msg.usage.cache_read_input_tokens ?? 0,
               cacheCreationInputTokens: msg.usage.cache_creation_input_tokens ?? 0,
               totalCostUSD: msg.total_cost_usd,
-              contextWindow: extractContextWindow(msg.modelUsage),
+              contextWindow: correctContextWindow(extractContextWindow(msg.modelUsage), msg.modelUsage ? Object.keys(msg.modelUsage)[0] : undefined),
             },
           };
         }
