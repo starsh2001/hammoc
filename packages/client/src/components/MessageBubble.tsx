@@ -76,6 +76,7 @@ export function MessageBubble({
   actionsLocked = false,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
+  const isOptimistic = (message as HistoryMessage & { _optimistic?: boolean })._optimistic === true;
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditingLocal] = useState(false);
   const [summaryText, setSummaryText] = useState<string | null>(null);
@@ -208,17 +209,17 @@ export function MessageBubble({
             disabled={isStreaming}
             onCopy={onCopy}
             onEdit={onEditSubmit ? () => setIsEditing(true) : undefined}
-            isOptimistic={(message as any)._optimistic === true}
-            onRewind={(message as any)._optimistic !== true && onRewind ? () => onRewind(getBaseUuid(message.id)) : undefined}
+            isOptimistic={isOptimistic}
+            onRewind={!isOptimistic && onRewind ? () => onRewind(getBaseUuid(message.id)) : undefined}
             isRewinding={isRewinding}
             onSummarize={
-              (message as any)._optimistic !== true && onSummarize
+              !isOptimistic && onSummarize
                 ? () => onSummarize(getBaseUuid(message.id))
                 : undefined
             }
             isSummarizing={isSummarizing}
             onFork={
-              !isUser && (message as any)._optimistic !== true && onFork
+              !isUser && !isOptimistic && onFork
                 ? () => onFork(message.id)
                 : undefined
             }

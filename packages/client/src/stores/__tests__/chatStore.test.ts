@@ -527,7 +527,7 @@ describe('useChatStore', () => {
       expect(mockEmit).toHaveBeenCalledWith('chat:abort');
     });
 
-    it('aborts streaming and clears flags', () => {
+    it('emits chat:abort and clears chain items but does not reset streaming flags', () => {
       const { startStreaming, appendStreamingContent, abortResponse } =
         useChatStore.getState();
 
@@ -535,11 +535,11 @@ describe('useChatStore', () => {
       appendStreamingContent('Partial response text');
       abortResponse();
 
+      // abortResponse only notifies the server and clears chain items;
+      // streaming flags are cleared later when the server sends stream:complete-messages.
+      expect(mockEmit).toHaveBeenCalledWith('chat:abort');
       const state = useChatStore.getState();
-      expect(state.isStreaming).toBe(false);
-      expect(state.streamingSessionId).toBeNull();
-      expect(state.streamingMessageId).toBeNull();
-      expect(state.streamingStartedAt).toBeNull();
+      expect(state.isStreaming).toBe(true);
     });
 
     it('is no-op when not streaming', () => {
@@ -560,7 +560,8 @@ describe('useChatStore', () => {
       abortResponse();
 
       expect(mockEmit).toHaveBeenCalledWith('chat:abort');
-      expect(useChatStore.getState().isStreaming).toBe(false);
+      // Streaming flags remain true until server confirms via stream:complete-messages
+      expect(useChatStore.getState().isStreaming).toBe(true);
     });
 
     it('clears chain items on abort', () => {
@@ -573,7 +574,9 @@ describe('useChatStore', () => {
       appendStreamingContent('Second part');
       abortResponse();
 
-      expect(useChatStore.getState().isStreaming).toBe(false);
+      // Streaming flags remain true; chain items are cleared
+      expect(useChatStore.getState().isStreaming).toBe(true);
+      expect(mockEmit).toHaveBeenCalledWith('chat:abort');
     });
   });
 
@@ -775,10 +778,11 @@ describe('useChatStore', () => {
       expect(useChatStore.getState().isRewinding).toBe(true);
     });
 
-    it('prevents duplicate calls when isRewinding is true', () => {
+    it('prevents duplicate dryRun calls when isRewinding is true', () => {
       useChatStore.setState({ isRewinding: true });
       const { rewindFiles } = useChatStore.getState();
-      rewindFiles('session-1', '/path', 'msg-uuid-1');
+      // Guard only blocks new dryRun requests; actual rewind (dryRun=false/undefined) is allowed
+      rewindFiles('session-1', '/path', 'msg-uuid-1', true);
 
       expect(mockEmit).not.toHaveBeenCalled();
     });

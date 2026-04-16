@@ -134,7 +134,7 @@ describe('MessageArea', () => {
       render(<MessageArea>Content</MessageArea>);
 
       const messageArea = screen.getByTestId('message-area');
-      expect(messageArea.className).toContain('dark:bg-gray-900');
+      expect(messageArea.className).toContain('dark:bg-[#1c2129]');
     });
   });
 
@@ -177,17 +177,17 @@ describe('MessageArea', () => {
     });
 
     it('should render streaming text after history messages', () => {
-      const { container } = render(
+      render(
         <MessageArea streamingSegments={[mockTextSegment]} isStreaming={true}>
           <div data-testid="history-message">History</div>
         </MessageArea>
       );
 
       const historyMessage = screen.getByTestId('history-message');
-      const streamingMessage = container.querySelector('[aria-label="Claude 응답 중"]');
+      const streamingText = screen.getByText('Hello from Claude...');
 
-      // Streaming message should come after history message in DOM
-      expect(historyMessage.compareDocumentPosition(streamingMessage as Node)).toBe(
+      // Streaming text should come after history message in DOM
+      expect(historyMessage.compareDocumentPosition(streamingText)).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING
       );
     });
@@ -280,13 +280,14 @@ describe('MessageArea', () => {
     });
 
     it('should render streaming message in error boundary', () => {
-      const { container } = render(
+      render(
         <MessageArea streamingSegments={[mockTextSegment]} isStreaming={true}>
           {null}
         </MessageArea>
       );
 
-      expect(container.querySelector('[aria-label="Claude 응답 중"]')).toBeInTheDocument();
+      // StreamingErrorBoundary wraps text segments; verify the text content is rendered
+      expect(screen.getByText('Hello from Claude...')).toBeInTheDocument();
     });
 
     it('renders ToolCard for Edit tool streaming segment', () => {
@@ -579,7 +580,7 @@ describe('MessageArea', () => {
       expect(screen.getByText('Streaming content here')).toBeInTheDocument();
     });
 
-    it('does NOT render segments when isStreaming=false', () => {
+    it('still renders segments when isStreaming=false but segments exist (pending confirmation)', () => {
       render(
         <MessageArea
           streamingSegments={[mockTextSegment]}
@@ -589,7 +590,8 @@ describe('MessageArea', () => {
         </MessageArea>
       );
 
-      expect(screen.queryByText('Streaming content here')).not.toBeInTheDocument();
+      // Segments remain visible while awaiting confirmation (e.g. after abort)
+      expect(screen.getByText('Streaming content here')).toBeInTheDocument();
       expect(screen.getByText('History')).toBeInTheDocument();
     });
   });

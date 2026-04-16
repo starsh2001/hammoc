@@ -7,9 +7,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { HistoryMessage } from '@hammoc/shared';
 import { useMessageStore } from '../messageStore';
 
-/** Test helper type matching the client-local optimistic extension */
-type OptimisticHistoryMessage = HistoryMessage & { _optimistic?: boolean };
-
 describe('useMessageStore', () => {
   beforeEach(() => {
     // Reset store state
@@ -163,74 +160,65 @@ describe('useMessageStore', () => {
     });
   });
 
-  describe('addOptimisticMessage - rapid fire prevention', () => {
-    // TC-F1: Same content within 1 second is not added
-    it('should prevent duplicate optimistic message within 1 second', () => {
-      const now = Date.now();
-      vi.spyOn(Date, 'now').mockReturnValue(now);
-      vi.spyOn(crypto, 'randomUUID').mockReturnValueOnce('uuid-1' as `${string}-${string}-${string}-${string}-${string}`).mockReturnValueOnce('uuid-2' as `${string}-${string}-${string}-${string}-${string}`);
+  describe('addUserMessage - multiple messages', () => {
+    it('should add multiple user messages in succession', () => {
+      vi.spyOn(crypto, 'randomUUID')
+        .mockReturnValueOnce('uuid-1' as `${string}-${string}-${string}-${string}-${string}`)
+        .mockReturnValueOnce('uuid-2' as `${string}-${string}-${string}-${string}-${string}`);
 
-      useMessageStore.getState().addOptimisticMessage('Hello');
-
-      // Try to add same content immediately (within 1 second)
-      vi.spyOn(Date, 'now').mockReturnValue(now + 500); // 500ms later
-      useMessageStore.getState().addOptimisticMessage('Hello');
-
-      const messages = useMessageStore.getState().messages;
-      expect(messages).toHaveLength(1);
-      expect(messages[0].id).toBe('optimistic-uuid-1');
-    });
-
-    // TC-F2: Same content after 1 second is added normally
-    it('should allow same content after 1 second', () => {
-      const now = Date.now();
-      vi.spyOn(Date, 'now').mockReturnValue(now);
-      vi.spyOn(crypto, 'randomUUID').mockReturnValueOnce('uuid-1' as `${string}-${string}-${string}-${string}-${string}`).mockReturnValueOnce('uuid-2' as `${string}-${string}-${string}-${string}-${string}`);
-
-      useMessageStore.getState().addOptimisticMessage('Hello');
-
-      // Add same content after 1 second
-      vi.spyOn(Date, 'now').mockReturnValue(now + 1001); // 1001ms later
-      useMessageStore.getState().addOptimisticMessage('Hello');
-
-      const messages = useMessageStore.getState().messages;
-      expect(messages).toHaveLength(2);
-    });
-
-    // TC-F3: Different content can be sent in rapid succession
-    it('should allow different content in rapid succession', () => {
-      const now = Date.now();
-      vi.spyOn(Date, 'now').mockReturnValue(now);
-      vi.spyOn(crypto, 'randomUUID').mockReturnValueOnce('uuid-1' as `${string}-${string}-${string}-${string}-${string}`).mockReturnValueOnce('uuid-2' as `${string}-${string}-${string}-${string}-${string}`);
-
-      useMessageStore.getState().addOptimisticMessage('Hello');
-      useMessageStore.getState().addOptimisticMessage('World');
+      useMessageStore.getState().addUserMessage('Hello');
+      useMessageStore.getState().addUserMessage('World');
 
       const messages = useMessageStore.getState().messages;
       expect(messages).toHaveLength(2);
       expect(messages[0].content).toBe('Hello');
       expect(messages[1].content).toBe('World');
     });
+
+    it('should allow same content to be added multiple times', () => {
+      vi.spyOn(crypto, 'randomUUID')
+        .mockReturnValueOnce('uuid-1' as `${string}-${string}-${string}-${string}-${string}`)
+        .mockReturnValueOnce('uuid-2' as `${string}-${string}-${string}-${string}-${string}`);
+
+      useMessageStore.getState().addUserMessage('Hello');
+      useMessageStore.getState().addUserMessage('Hello');
+
+      const messages = useMessageStore.getState().messages;
+      expect(messages).toHaveLength(2);
+      expect(messages[0].id).toBe('user-uuid-1');
+      expect(messages[1].id).toBe('user-uuid-2');
+    });
+
+    it('should generate unique IDs for each message', () => {
+      vi.spyOn(crypto, 'randomUUID')
+        .mockReturnValueOnce('uuid-1' as `${string}-${string}-${string}-${string}-${string}`)
+        .mockReturnValueOnce('uuid-2' as `${string}-${string}-${string}-${string}-${string}`);
+
+      useMessageStore.getState().addUserMessage('First');
+      useMessageStore.getState().addUserMessage('Second');
+
+      const messages = useMessageStore.getState().messages;
+      expect(messages[0].id).not.toBe(messages[1].id);
+    });
   });
 
-  describe('addOptimisticMessage - basic', () => {
-    it('should add optimistic message with _optimistic flag and UUID-based ID', () => {
+  describe('addUserMessage - basic', () => {
+    it('should add user message with UUID-based ID', () => {
       vi.spyOn(crypto, 'randomUUID').mockReturnValue('test-uuid' as `${string}-${string}-${string}-${string}-${string}`);
 
-      useMessageStore.getState().addOptimisticMessage('Test message');
+      useMessageStore.getState().addUserMessage('Test message');
 
       const messages = useMessageStore.getState().messages;
       expect(messages).toHaveLength(1);
-      expect(messages[0].id).toBe('optimistic-test-uuid');
+      expect(messages[0].id).toBe('user-test-uuid');
       expect(messages[0].type).toBe('user');
       expect(messages[0].content).toBe('Test message');
-      expect((messages[0] as OptimisticHistoryMessage)._optimistic).toBe(true);
     });
 
-    it('should trim content in optimistic message', () => {
+    it('should trim content in user message', () => {
       vi.spyOn(crypto, 'randomUUID').mockReturnValue('test-uuid' as `${string}-${string}-${string}-${string}-${string}`);
 
-      useMessageStore.getState().addOptimisticMessage('  Hello world  ');
+      useMessageStore.getState().addUserMessage('  Hello world  ');
 
       const messages = useMessageStore.getState().messages;
       expect(messages[0].content).toBe('Hello world');
@@ -240,7 +228,7 @@ describe('useMessageStore', () => {
       vi.spyOn(crypto, 'randomUUID').mockReturnValue('test-uuid' as `${string}-${string}-${string}-${string}-${string}`);
       const images = [{ mimeType: 'image/png', data: 'base64', name: 'img.png' }];
 
-      useMessageStore.getState().addOptimisticMessage('With image', images);
+      useMessageStore.getState().addUserMessage('With image', images);
 
       const messages = useMessageStore.getState().messages;
       expect(messages[0].images).toEqual(images);

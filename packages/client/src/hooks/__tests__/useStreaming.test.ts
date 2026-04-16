@@ -3,6 +3,7 @@
  * [Source: Story 4.5 - Task 11, Story 4.8 - Task 4]
  */
 
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useStreaming } from '../useStreaming';
@@ -49,9 +50,7 @@ describe('useStreaming', () => {
       currentProjectSlug: 'test-project',
       currentSessionId: 'session-1',
       isLoading: false,
-      isLoadingMore: false,
       error: null,
-      pagination: null,
     });
   });
 
@@ -107,7 +106,7 @@ describe('useStreaming', () => {
   });
 
   describe('message:complete event', () => {
-    it('completes streaming on complete event', async () => {
+    it('updates metadata on complete but waits for stream:complete-messages to finalize', async () => {
       renderHook(() => useStreaming());
 
       // Start streaming
@@ -121,7 +120,8 @@ describe('useStreaming', () => {
 
       expect(useChatStore.getState().isStreaming).toBe(true);
 
-      // Complete streaming
+      // message:complete no longer calls completeStreaming —
+      // stream:complete-messages handles finalization after JSONL flush
       mockSocket.trigger('message:complete', {
         id: 'msg-1',
         sessionId: 'session-1',
@@ -129,13 +129,22 @@ describe('useStreaming', () => {
         content: 'Hello World!',
         timestamp: new Date(),
       });
+      await act(async () => {});
 
-      // Wait for async handleComplete (completeStreaming sets isStreaming=false)
-      await vi.waitFor(() => {
-        expect(useChatStore.getState().isStreaming).toBe(false);
+      // isStreaming remains true — waiting for stream:complete-messages
+      expect(useChatStore.getState().isStreaming).toBe(true);
+      // streamingMessageId is updated from the completion data
+      expect(useChatStore.getState().streamingMessageId).toBe('msg-1');
+
+      // Now stream:complete-messages arrives and finalizes
+      mockSocket.trigger('stream:complete-messages', {
+        sessionId: 'session-1',
+        messages: [
+          { id: 'msg-1', type: 'assistant', content: 'Hello World!', timestamp: new Date().toISOString() },
+        ],
       });
-      // Segments are converted to messages and cleared immediately
 
+      expect(useChatStore.getState().isStreaming).toBe(false);
     });
   });
 
@@ -227,7 +236,7 @@ describe('useStreaming', () => {
   });
 
   describe('keyboard shortcuts', () => {
-    it('aborts streaming via abortResponse when Escape is pressed during streaming', () => {
+    it('emits chat:abort when Escape is pressed during streaming', () => {
       renderHook(() => useStreaming());
 
       // Start streaming with text content
@@ -243,12 +252,9 @@ describe('useStreaming', () => {
       const event = new KeyboardEvent('keydown', { key: 'Escape' });
       document.dispatchEvent(event);
 
-      // abortResponse: streaming stopped, segments converted to messages and cleared
-      expect(useChatStore.getState().isStreaming).toBe(false);
-      expect(useChatStore.getState().streamingSegments).toHaveLength(0);
-
-      // Partial content converted to message by abortResponse
-      expect(useMessageStore.getState().messages).toHaveLength(1);
+      // abortResponse emits chat:abort to server; actual completion happens
+      // via server-sent stream:detached + stream:complete-messages
+      expect(mockSocket.emit).toHaveBeenCalledWith('chat:abort');
     });
 
     it('does not abort when Escape is pressed while not streaming', () => {
@@ -265,7 +271,7 @@ describe('useStreaming', () => {
       expect(useChatStore.getState().isStreaming).toBe(false);
     });
 
-    it('aborts streaming via Ctrl+C when no text is selected', () => {
+    it('emits chat:abort via Ctrl+C when no text is selected', () => {
       renderHook(() => useStreaming());
 
       // Start streaming
@@ -285,11 +291,8 @@ describe('useStreaming', () => {
       const event = new KeyboardEvent('keydown', { key: 'c', ctrlKey: true });
       document.dispatchEvent(event);
 
-      // abortResponse: streaming stopped, segments converted to messages and cleared
-      expect(useChatStore.getState().isStreaming).toBe(false);
-      expect(useChatStore.getState().streamingSegments).toHaveLength(0);
-      // Partial content converted to message by abortResponse
-      expect(useMessageStore.getState().messages).toHaveLength(1);
+      // abortResponse emits chat:abort to server
+      expect(mockSocket.emit).toHaveBeenCalledWith('chat:abort');
 
       vi.restoreAllMocks();
     });
@@ -387,7 +390,7 @@ describe('useStreaming', () => {
   });
 
   describe('handleUserMessage — reconnection buffer replay (Story 18.3)', () => {
-    it('TC-R1: prevents duplicate when buffer replay has trailing whitespace', () => {
+    it('TC-R1: adds user message from buffer replay via addUserMessage', () => {
       useMessageStore.setState({
         messages: [
           { id: 'msg-1', type: 'user', content: 'hello world', timestamp: new Date().toISOString() },
@@ -398,11 +401,12 @@ describe('useStreaming', () => {
 
       renderHook(() => useStreaming());
 
-      // Buffer replay sends content with trailing whitespace
+      // Buffer replay sends content — addUserMessage always adds (server-authoritative)
       mockSocket.trigger('user:message', { content: 'hello world  ', sessionId: 'test-session' });
 
-      // Should NOT add duplicate — trimmed comparison matches
-      expect(useMessageStore.getState().messages).toHaveLength(1);
+      // Message is added (trimmed) since addUserMessage doesn't deduplicate
+      expect(useMessageStore.getState().messages).toHaveLength(2);
+      expect(useMessageStore.getState().messages[1].content).toBe('hello world');
     });
 
     it('TC-R2: adds optimistic message when content does not match last user message', () => {
@@ -515,8 +519,8 @@ describe('useStreaming', () => {
       // Simulate reconnection
       mockSocket.trigger('connect');
 
-      // Verify session:join was emitted
-      expect(mockSocket.emit).toHaveBeenCalledWith('session:join', 'session-1');
+      // Verify session:join was emitted (with projectSlug as second arg)
+      expect(mockSocket.emit).toHaveBeenCalledWith('session:join', 'session-1', 'test-project');
 
       // Before timeout: still streaming
       expect(useChatStore.getState().isStreaming).toBe(true);
@@ -564,12 +568,15 @@ describe('useStreaming', () => {
   // Story 25.11: session:forked event handler
   describe('session:forked event', () => {
     it('sets forkedSessionId in chatStore when session:forked is received', () => {
+      // Set currentSessionId to match originalSessionId so the handler accepts the event
+      useMessageStore.setState({ currentSessionId: 'session-1' });
+
       renderHook(() => useStreaming());
 
       act(() => {
         mockSocket.trigger('session:forked', {
           sessionId: 'new-forked-session-id',
-          originalSessionId: 'original-session-id',
+          originalSessionId: 'session-1',
           model: 'claude-4',
         });
       });

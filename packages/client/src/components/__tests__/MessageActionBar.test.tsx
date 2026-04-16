@@ -105,15 +105,18 @@ describe('MessageActionBar', () => {
     Object.assign(navigator, { clipboard: mockClipboard });
   });
 
-  // ActionBar renders when disabled but edit button is hidden
-  it('renders ActionBar when disabled but hides edit button', () => {
+  // ActionBar renders when disabled — edit button is visible but disabled
+  it('renders ActionBar when disabled with edit button disabled', () => {
     render(<MessageActionBar role="user" content="test" disabled onEdit={vi.fn()} />);
 
     expect(screen.getByTestId('message-action-bar')).toBeInTheDocument();
     // Copy button is still visible
     expect(screen.getByRole('button', { name: /클립보드에 복사/i })).toBeInTheDocument();
-    // Only copy button — no edit button
-    expect(screen.getAllByRole('button')).toHaveLength(1);
+    // Edit button is visible but disabled
+    const editBtn = screen.getByRole('button', { name: /편집/i });
+    expect(editBtn).toBeDisabled();
+    // Both edit and copy buttons present
+    expect(screen.getAllByRole('button')).toHaveLength(2);
   });
 
   // Edit button shown for user + non-optimistic + non-disabled
@@ -157,11 +160,11 @@ describe('MessageActionBar', () => {
     expect(bar.className).toContain('justify-end');
   });
 
-  it('left-aligns actions for assistant messages', () => {
+  it('right-aligns actions for assistant messages (same as user)', () => {
     render(<MessageActionBar role="assistant" content="test" />);
 
     const bar = screen.getByTestId('message-action-bar');
-    expect(bar.className).toContain('justify-start');
+    expect(bar.className).toContain('justify-end');
   });
 
   // Story 25.8: Rewind button tests
