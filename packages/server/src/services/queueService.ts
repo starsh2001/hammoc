@@ -511,10 +511,16 @@ export class QueueService {
         }
 
         this.loopState.innerIndex++;
+
+        // Skip progress emit if already paused (e.g. @pause breakpoint inside loop)
+        if (this.isPaused) {
+          return { shouldAdvance: false };
+        }
+
         this.emitProgress('running');
 
         // Handle deferred manual pause (AC-S:1: resume continues from next inner item)
-        if (!this.isPaused && this._isPauseRequested) {
+        if (this._isPauseRequested) {
           this._isPauseRequested = false;
           this.isPaused = true;
           const t = i18next.getFixedT(this.lang);
@@ -551,9 +557,15 @@ export class QueueService {
     if (this.loopState.until) {
       // Had until but token never found
       if (this.loopState.onExceed === 'pause') {
-        const msg = `Loop max (${this.loopState.max}) exceeded without until token "${this.loopState.until}"`;
-        this.pauseWithError(msg);
-        await this.notificationService.notifyQueueError(msg, this.buildSessionUrl());
+        const t = i18next.getFixedT(this.lang);
+        this.isPaused = true;
+        this._isPauseRequested = false;
+        this.pauseReason = t('queue.loop.maxExceeded', {
+          max: this.loopState.max,
+          until: this.loopState.until,
+          defaultValue: `Loop completed ${this.loopState.max} iterations without "${this.loopState.until}" — paused for review`,
+        });
+        this.emitProgress('paused');
         // Keep loopState with iteration >= max — on resume, the exhausted check advances past the loop
         return { shouldAdvance: false };
       }
@@ -694,7 +706,7 @@ export class QueueService {
     if (isSessionStreaming(streamKey)) {
       log.warn(`executePrompt: session ${streamKey} already has an active stream — pausing queue`);
       const t = i18next.getFixedT(this.lang);
-      this.pauseWithError(t('queue.error.sessionBusy'));
+      this.pauseForReview(t('queue.error.sessionBusy'));
       return { shouldAdvance: false };
     }
 
@@ -891,10 +903,15 @@ export class QueueService {
     // Check @pauseword
     if (this.pauseword) {
       if (this.lastPromptResponse.includes(this.pauseword)) {
-        log.warn(`executePrompt: pauseword "${this.pauseword}" detected in response`);
+        log.info(`executePrompt: pauseword "${this.pauseword}" detected in response`);
         const tq = i18next.getFixedT(this.lang);
-        this.pauseWithError(tq('queue.error.pausewordDetected', { value: this.pauseword }));
-        await this.notificationService.notifyQueueError(tq('queue.error.pausewordDetected', { value: this.pauseword }), this.buildSessionUrl());
+        this.isPaused = true;
+        this._isPauseRequested = false;
+        this.pauseReason = tq('queue.pause.pausewordDetected', {
+          value: this.pauseword,
+          defaultValue: `Pauseword "${this.pauseword}" detected — paused for review`,
+        });
+        this.emitProgress('paused');
         return { shouldAdvance: false };
       }
     }
@@ -945,11 +962,20 @@ export class QueueService {
   private pauseWithError(reason: string): void {
     log.error(`pauseWithError: index=${this.currentIndex}, reason="${reason}"`);
     this.isPaused = true;
-    this._isPauseRequested = false; // clear deferred request since we're pausing now
+    this._isPauseRequested = false;
     this.pauseReason = reason;
     this.lastError = { itemIndex: this.currentIndex, error: reason };
     this.emitProgress('paused');
     this.emitQueueError(reason);
+  }
+
+  /** Pause for user review — not an error, just needs attention (e.g. script issues, busy session) */
+  private pauseForReview(reason: string): void {
+    log.info(`pauseForReview: index=${this.currentIndex}, reason="${reason}"`);
+    this.isPaused = true;
+    this._isPauseRequested = false;
+    this.pauseReason = reason;
+    this.emitProgress('paused');
   }
 
   private emitQueueError(error: string): void {

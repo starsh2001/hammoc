@@ -180,11 +180,15 @@
       "sessionNotFound": "Session name \"{{value}}\" not found",
       "sessionBusy": "Session is currently streaming — queue paused to avoid conflict"
     },
+    "loop": {
+      "maxExceeded": "Loop completed {{max}} iterations without \"{{until}}\" — paused for review"
+    },
     "pause": {
       "userPaused": "User paused",
       "waitingForPermission": "Waiting for {{value}}: {{toolName}}",
       "userAnswer": "user answer",
-      "permissionApproval": "permission"
+      "permissionApproval": "permission",
+      "pausewordDetected": "Pauseword \"{{value}}\" detected — paused for review"
     }
   },
   "queueTemplate": {
