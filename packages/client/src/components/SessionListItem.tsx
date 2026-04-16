@@ -5,7 +5,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MessageSquare, MoreVertical, Trash2, Pencil, X, ListOrdered } from 'lucide-react';
+import { MessageSquare, MoreVertical, Trash2, Pencil, X, Play, Pause } from 'lucide-react';
 import type { SessionListItem as SessionListItemType } from '@hammoc/shared';
 import { formatRelativeTime } from '../utils/formatters';
 
@@ -23,11 +23,11 @@ interface SessionListItemProps {
   isEditing?: boolean;
   onEditStart?: (sessionId: string) => void;
   onEditEnd?: () => void;
-  /** Whether this session is controlled by queue runner */
-  isQueueActive?: boolean;
+  /** Queue status for this session: 'running' | 'paused' | undefined (not queue-locked) */
+  queueStatus?: 'running' | 'paused';
 }
 
-export function SessionListItem({ session, onClick, onDelete, onRename, selectionMode, selected, onToggleSelect, agentInfo, isEditing, onEditStart, onEditEnd, isQueueActive }: SessionListItemProps) {
+export function SessionListItem({ session, onClick, onDelete, onRename, selectionMode, selected, onToggleSelect, agentInfo, isEditing, onEditStart, onEditEnd, queueStatus }: SessionListItemProps) {
   const { t } = useTranslation('chat');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -203,13 +203,22 @@ export function SessionListItem({ session, onClick, onDelete, onRename, selectio
                   {t('sessionListItem.waitingStatus')}
                 </span>
               )}
-              {isQueueActive && (
+              {queueStatus === 'running' && (
                 <span
-                  className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-px rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300"
-                  title={t('sessionListItem.queueActive')}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-px rounded bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300"
+                  title={t('sessionListItem.queueRunning')}
                 >
-                  <ListOrdered className="w-3 h-3" />
-                  {t('sessionListItem.queue')}
+                  <Play className="w-2.5 h-2.5" />
+                  {t('sessionListItem.queueRunningLabel')}
+                </span>
+              )}
+              {queueStatus === 'paused' && (
+                <span
+                  className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-px rounded bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300"
+                  title={t('sessionListItem.queuePaused')}
+                >
+                  <Pause className="w-2.5 h-2.5" />
+                  {t('sessionListItem.queuePausedLabel')}
                 </span>
               )}
               <MessageSquare className="w-4 h-4" aria-hidden="true" />
