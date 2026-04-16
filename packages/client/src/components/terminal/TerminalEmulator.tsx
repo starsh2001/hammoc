@@ -321,7 +321,8 @@ export function TerminalEmulator({
     resizeObserver.observe(containerRef.current);
 
     // Initial fit after render
-    let initRafId: number | null = requestAnimationFrame(() => {
+    let initRafId: number | null = null;
+    initRafId = requestAnimationFrame(() => {
       initRafId = null;
       fitAndResize();
 
@@ -351,7 +352,6 @@ export function TerminalEmulator({
     };
     // Re-run when terminalId or mobile mode changes (remounts terminal
     // to reconfigure disableStdin and proxy input for the new mode).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terminalId, isMobile]);
 
   // Dynamic theme update

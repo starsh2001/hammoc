@@ -48,6 +48,6 @@ describe('DashboardSummaryBar', () => {
       <DashboardSummaryBar totals={{ totalSessions: 1, activeSessions: 1, queueRunning: 0, terminals: 0 }} projectCount={1} />
     );
     const container = screen.getByRole('status');
-    expect(container).toHaveAttribute('aria-label', 'Dashboard summary');
+    expect(container).toHaveAttribute('aria-label', '대시보드 요약');
   });
 });

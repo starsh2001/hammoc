@@ -245,8 +245,8 @@ describe('ChatHeader', () => {
       renderComponent();
 
       const header = screen.getByTestId('chat-header');
-      expect(header.className).toContain('dark:bg-gray-800');
-      expect(header.className).toContain('dark:border-gray-700');
+      expect(header.className).toContain('dark:bg-[#171e24]');
+      expect(header.className).toContain('dark:border-slate-700/50');
     });
   });
 

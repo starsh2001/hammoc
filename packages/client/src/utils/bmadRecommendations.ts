@@ -77,11 +77,6 @@ function firstStoryByStatus(data: BmadStatusResponse, ...statuses: string[]): Bm
   return undefined;
 }
 
-/** Count stories by status */
-function countByStatus(data: BmadStatusResponse, status: string): number {
-  return data.epics.reduce((sum, e) => sum + e.stories.filter((s) => statusMatches(s.status, status)).length, 0);
-}
-
 /** Extract story number (e.g. "1.1") from file name (e.g. "1.1.story.md") */
 function storyNum(file: string): string {
   return file.match(/^(\d+\.\d+)/)?.[1] ?? file;
@@ -322,7 +317,6 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
 
   const stories = allStories(data);
   const totalPlanned = data.epics.reduce((s, e) => s + (e.plannedStories ?? e.stories.length), 0);
-  const doneCount = countByStatus(data, 'Done');
   const nonDoneStories = stories.filter((s) => !statusMatches(s.status, 'Done'));
 
   // Recommendations follow reverse workflow order (finish what's closest to done first)
@@ -501,8 +495,6 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
   // Priority 8: Create next story — only when no in-progress stories exist
   const hasActionable = recs.length > 0;
   const hasMorePlanned = totalPlanned > stories.length;
-  const allDone = stories.length > 0 && nonDoneStories.length === 0;
-
   if (nonDoneStories.length === 0 && (!hasActionable || hasMorePlanned)) {
     const nextNum = nextStoryNum(data);
     recs.push({
@@ -518,11 +510,8 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
   return recs;
 }
 
-function buildCompletedRecommendations(data: BmadStatusResponse): NextStepRecommendation[] {
+function buildCompletedRecommendations(_data: BmadStatusResponse): NextStepRecommendation[] {
   const recs: NextStepRecommendation[] = [];
-  const stories = allStories(data);
-  const doneCount = countByStatus(data, 'Done');
-
   recs.push({
     id: 'brainstorm-features',
     title: i18n.t('common:rec.newFeatureBrainstorm'),

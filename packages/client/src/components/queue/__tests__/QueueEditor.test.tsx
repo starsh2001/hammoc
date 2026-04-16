@@ -3,7 +3,7 @@
  * [Source: Story 15.3 - Task 7.2]
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { QueueEditor } from '../QueueEditor';
 import { useQueueStore } from '../../../stores/queueStore';
@@ -26,6 +26,21 @@ const mockRunner = {
 
 vi.mock('../../../hooks/useQueueRunner', () => ({
   useQueueRunner: () => mockRunner,
+}));
+
+vi.mock('../../../services/api/queue', () => ({
+  queueApi: {
+    getStatus: vi.fn().mockResolvedValue({}),
+    getStories: vi.fn().mockResolvedValue({ stories: [] }),
+    getTemplates: vi.fn().mockResolvedValue([]),
+    saveTemplate: vi.fn().mockResolvedValue({}),
+    updateTemplate: vi.fn().mockResolvedValue({}),
+    deleteTemplate: vi.fn().mockResolvedValue(undefined),
+    getGlobalTemplates: vi.fn().mockResolvedValue([]),
+    saveGlobalTemplate: vi.fn().mockResolvedValue({}),
+    updateGlobalTemplate: vi.fn().mockResolvedValue({}),
+    deleteGlobalTemplate: vi.fn().mockResolvedValue(undefined),
+  },
 }));
 
 vi.mock('@hammoc/shared', () => ({
@@ -151,7 +166,7 @@ describe('QueueEditor', () => {
 
     render(<QueueEditor projectSlug="test-project" />);
     await act(async () => {}); // flush mount useEffect (parseScript)
-    expect(screen.getByText('Line 1: Unknown directive: @unknown')).toBeInTheDocument();
+    expect(screen.getByText('1번째 줄: Unknown directive: @unknown')).toBeInTheDocument();
   });
 
   it('TC-QE-19: editor is hidden when queue is running (execution view shown)', () => {

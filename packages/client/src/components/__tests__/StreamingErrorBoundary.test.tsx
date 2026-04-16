@@ -168,7 +168,7 @@ describe('StreamingErrorBoundary', () => {
       );
 
       const retryButton = screen.getByRole('button', { name: '다시 시도' });
-      expect(retryButton).toHaveClass('bg-gray-100', 'dark:bg-gray-700');
+      expect(retryButton).toHaveClass('bg-gray-100', 'dark:bg-[#253040]');
     });
   });
 });

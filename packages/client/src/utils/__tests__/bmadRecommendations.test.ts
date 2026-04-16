@@ -81,7 +81,6 @@ describe('computeNextSteps — Phase 1 (pre-prd)', () => {
     const prdRec = recommendations.find((r) => r.id === 'create-prd');
     expect(prdRec).toBeDefined();
     expect(prdRec!.variant).toBe('secondary');
-    expect(prdRec!.agentCommand).toBe('/BMad:agents:pm');
   });
 
   it('recommends only brief as primary when brainstorming exists', () => {
@@ -175,13 +174,12 @@ describe('computeNextSteps — Phase 2 (pre-architecture)', () => {
     const backendRec = recommendations.find((r) => r.id === 'create-backend-arch');
     expect(backendRec).toBeDefined();
     expect(backendRec!.variant).toBe('primary');
-    expect(backendRec!.agentCommand).toBe('/BMad:agents:architect');
-    expect(backendRec!.taskCommand).toBe('*create-backend-architecture');
+    expect(backendRec!.taskCommand).toBe('%create-backend-arch');
 
     const fullstackRec = recommendations.find((r) => r.id === 'create-fullstack-arch');
     expect(fullstackRec).toBeDefined();
     expect(fullstackRec!.variant).toBe('primary');
-    expect(fullstackRec!.taskCommand).toBe('*create-full-stack-architecture');
+    expect(fullstackRec!.taskCommand).toBe('%create-fullstack-arch');
   });
 
   it('includes frontend architecture only when FE spec exists', () => {
@@ -195,7 +193,7 @@ describe('computeNextSteps — Phase 2 (pre-architecture)', () => {
     );
     const feArch = withFE.find((r) => r.id === 'create-frontend-arch');
     expect(feArch).toBeDefined();
-    expect(feArch!.taskCommand).toBe('*create-front-end-architecture');
+    expect(feArch!.taskCommand).toBe('%create-frontend-arch');
   });
 
   it('recommends FE spec when not exists', () => {
@@ -203,8 +201,7 @@ describe('computeNextSteps — Phase 2 (pre-architecture)', () => {
     const feRec = recommendations.find((r) => r.id === 'fe-spec');
     expect(feRec).toBeDefined();
     expect(feRec!.variant).toBe('secondary');
-    expect(feRec!.agentCommand).toBe('/BMad:agents:ux-expert');
-    expect(feRec!.taskCommand).toBe('*create-front-end-spec');
+    expect(feRec!.taskCommand).toBe('%create-frontend-spec');
   });
 
   it('does not recommend FE spec when it exists', () => {
@@ -227,8 +224,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const createRec = recommendations.find((r) => r.id === 'create-story');
     expect(createRec).toBeDefined();
     expect(createRec!.variant).toBe('primary');
-    expect(createRec!.agentCommand).toBe('/BMad:agents:sm');
-    expect(createRec!.taskCommand).toBe('*draft 1.1');
+    expect(createRec!.taskCommand).toBe('%draft-story 1.1');
   });
 
   it('recommends story validation when Draft stories exist', () => {
@@ -242,8 +238,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const validateFixRec = recommendations.find((r) => r.id === 'validate-fix-story');
     expect(validateFixRec).toBeDefined();
     expect(validateFixRec!.variant).toBe('primary');
-    expect(validateFixRec!.agentCommand).toBe('/BMad:agents:po');
-    expect(validateFixRec!.taskCommand).toBe('*validate-story-draft 1.1');
+    expect(validateFixRec!.taskCommand).toBe('%validate-and-fix 1.1');
 
   });
 
@@ -257,7 +252,6 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const devRec = recommendations.find((r) => r.id === 'start-dev');
     expect(devRec).toBeDefined();
     expect(devRec!.variant).toBe('primary');
-    expect(devRec!.agentCommand).toBe('/BMad:agents:dev');
   });
 
   it('recommends continuing dev when In Progress stories exist (not rejected)', () => {
@@ -270,8 +264,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const continueRec = recommendations.find((r) => r.id === 'continue-dev');
     expect(continueRec).toBeDefined();
     expect(continueRec!.variant).toBe('primary');
-    expect(continueRec!.agentCommand).toBe('/BMad:agents:dev');
-    expect(continueRec!.taskCommand).toBe('*develop-story 1.1');
+    expect(continueRec!.taskCommand).toBe('%develop-story 1.1');
 
     // qa-review and apply-qa-fixes should NOT be shown for non-rejected stories
     expect(recommendations.find((r) => r.id === 'qa-review')).toBeUndefined();
@@ -288,9 +281,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const fixRec = recommendations.find((r) => r.id === 'review-apply-fixes');
     expect(fixRec).toBeDefined();
     expect(fixRec!.variant).toBe('primary');
-    expect(fixRec!.agentCommand).toBe('/BMad:agents:dev');
-    expect(fixRec!.taskCommand).toContain('*review-qa 1.1');
-    expect(fixRec!.taskCommand).toContain('FIXED');
+    expect(fixRec!.taskCommand).toBe('%apply-qa-fixes 1.1');
   });
 
   it('recommends QA review when story is in Review status (no gate)', () => {
@@ -303,8 +294,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const reviewRec = recommendations.find((r) => r.id === 'review-story');
     expect(reviewRec).toBeDefined();
     expect(reviewRec!.variant).toBe('primary');
-    expect(reviewRec!.agentCommand).toBe('/BMad:agents:qa');
-    expect(reviewRec!.taskCommand).toBe('*review 1.1');
+    expect(reviewRec!.taskCommand).toBe('%qa-review 1.1');
   });
 
   it('recommends completing story when Review + PASS gate', () => {
@@ -322,13 +312,11 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const doneRec = recommendations.find((r) => r.id === 'mark-done');
     expect(doneRec).toBeDefined();
     expect(doneRec!.variant).toBe('secondary');
-    expect(doneRec!.agentCommand).toBe('/BMad:agents:dev');
-    expect(doneRec!.taskCommand).toContain('Done');
+    expect(doneRec!.taskCommand).toBe('%mark-done 1.1');
     // Should also include re-request QA as secondary
     const qaRec = recommendations.find((r) => r.id === 'request-qa-review');
     expect(qaRec).toBeDefined();
     expect(qaRec!.variant).toBe('secondary');
-    expect(qaRec!.agentCommand).toBe('/BMad:agents:qa');
     // Should not show review-story
     expect(recommendations.find((r) => r.id === 'review-story')).toBeUndefined();
   });
@@ -355,9 +343,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const fixRec = recommendations.find((r) => r.id === 'review-apply-fixes');
     expect(fixRec).toBeDefined();
     expect(fixRec!.variant).toBe('primary');
-    expect(fixRec!.agentCommand).toBe('/BMad:agents:dev');
-    expect(fixRec!.taskCommand).toContain('*review-qa 1.1');
-    expect(fixRec!.taskCommand).toContain('FIXED');
+    expect(fixRec!.taskCommand).toBe('%apply-qa-fixes 1.1');
   });
 
   it('recommends QA review for Ready for Review raw status (no gate)', () => {
@@ -369,8 +355,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     );
     const reviewRec = recommendations.find((r) => r.id === 'review-story');
     expect(reviewRec).toBeDefined();
-    expect(reviewRec!.agentCommand).toBe('/BMad:agents:qa');
-    expect(reviewRec!.taskCommand).toBe('*review 1.1');
+    expect(reviewRec!.taskCommand).toBe('%qa-review 1.1');
   });
 
   it('recommends completing story for Ready for Done raw status with PASS gate', () => {
@@ -382,7 +367,6 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     );
     const doneRec = recommendations.find((r) => r.id === 'mark-done');
     expect(doneRec).toBeDefined();
-    expect(doneRec!.agentCommand).toBe('/BMad:agents:dev');
     const qaRec = recommendations.find((r) => r.id === 'request-qa-review');
     expect(qaRec).toBeDefined();
   });
@@ -419,7 +403,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const createRec = recommendations.find((r) => r.id === 'create-story');
     expect(createRec).toBeDefined();
     expect(createRec!.title).toBe('다음 스토리 생성');
-    expect(createRec!.description).toContain('2');
+    expect(createRec!.description).toBe('Story 1.3');
   });
 
   it('In Progress stories take priority — Draft/Approved are secondary', () => {
@@ -495,7 +479,7 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const createRec = recommendations.find((r) => r.id === 'create-story');
     expect(createRec).toBeDefined();
     expect(createRec!.title).toBe('다음 스토리 생성');
-    expect(createRec!.description).toContain('2');
+    expect(createRec!.description).toBe('Story 1.3');
   });
 
   it('includes story file reference in recommendations', () => {
@@ -582,13 +566,11 @@ describe('computeNextSteps — Phase 4 (completed)', () => {
     const newEpic = recommendations.find((r) => r.id === 'new-epic');
     expect(newEpic).toBeDefined();
     expect(newEpic!.variant).toBe('primary');
-    expect(newEpic!.agentCommand).toBe('/BMad:agents:pm');
-    expect(newEpic!.taskCommand).toBe('*brownfield-create-epic');
+    expect(newEpic!.taskCommand).toBe('%brownfield-create-epic');
 
     const brainstorm = recommendations.find((r) => r.id === 'brainstorm-features');
     expect(brainstorm).toBeDefined();
     expect(brainstorm!.variant).toBe('primary');
-    expect(brainstorm!.agentCommand).toBe('/BMad:agents:analyst');
 
     const addStory = recommendations.find((r) => r.id === 'add-brownfield-story');
     expect(addStory).toBeDefined();
@@ -624,7 +606,7 @@ describe('computeNextSteps — Phase 4 (completed)', () => {
     const createRec = recommendations.find((r) => r.id === 'create-story');
     expect(createRec).toBeDefined();
     // Should suggest 6.1, not 5.6
-    expect(createRec!.taskCommand).toBe('*draft 6.1');
+    expect(createRec!.taskCommand).toBe('%draft-story 6.1');
   });
 
   it('stays in current epic when planned stories remain', () => {
@@ -654,7 +636,7 @@ describe('computeNextSteps — Phase 4 (completed)', () => {
     const createRec = recommendations.find((r) => r.id === 'create-story');
     expect(createRec).toBeDefined();
     // Should suggest 5.4, not 6.1
-    expect(createRec!.taskCommand).toBe('*draft 5.4');
+    expect(createRec!.taskCommand).toBe('%draft-story 5.4');
   });
 
   it('does NOT recommend creating a story with *draft command', () => {

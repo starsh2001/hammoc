@@ -61,18 +61,18 @@ describe('LoginPage', () => {
       expect(screen.getByRole('button', { name: '로그인' })).toBeInTheDocument();
     });
 
-    it('should render Hammoc title', () => {
+    it('should render Hammoc logo', () => {
       renderLoginPage();
 
-      expect(screen.getByText('Hammoc')).toBeInTheDocument();
+      expect(screen.getByAltText('Hammoc')).toBeInTheDocument();
     });
 
     it('should apply dark mode classes', () => {
       renderLoginPage();
 
       // Find the outermost container with min-h-screen class
-      const container = screen.getByText('Hammoc').closest('.min-h-screen');
-      expect(container?.className).toContain('dark:bg-gray-900');
+      const container = screen.getByAltText('Hammoc').closest('.min-h-screen');
+      expect(container?.className).toContain('dark:bg-[#1c2129]');
     });
 
     // Story 2.3 - rememberMe checkbox tests

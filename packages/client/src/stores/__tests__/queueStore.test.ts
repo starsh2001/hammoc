@@ -170,7 +170,7 @@ describe('useQueueStore', () => {
   });
 
   describe('TC-QE-6: reset', () => {
-    it('should clear execution state including isStarting but preserve script', () => {
+    it('should clear all state including script and execution state', () => {
       useQueueStore.setState({
         script: 'my script',
         parsedItems: [{ prompt: 'Hello', isNewSession: false }],
@@ -189,8 +189,8 @@ describe('useQueueStore', () => {
       useQueueStore.getState().reset();
 
       const state = useQueueStore.getState();
-      expect(state.script).toBe('my script');
-      expect(state.parsedItems).toEqual([{ prompt: 'Hello', isNewSession: false }]);
+      expect(state.script).toBe('');
+      expect(state.parsedItems).toEqual([]);
       expect(state.isRunning).toBe(false);
       expect(state.isPaused).toBe(false);
       expect(state.isStarting).toBe(false);

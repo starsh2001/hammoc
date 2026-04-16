@@ -4,6 +4,7 @@
  * [Extended: Story 3.6 - Task 7: New project dialog integration]
  */
 
+// @vitest-environment jsdom
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
@@ -38,7 +39,7 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../../stores/projectStore');
 
 // Mock NewProjectDialog - capture props for testing
-let capturedDialogProps: {
+let _capturedDialogProps: {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (projectSlug: string, isExisting: boolean) => void;
@@ -50,7 +51,7 @@ vi.mock('../../components/NewProjectDialog', () => ({
     onClose: () => void;
     onSuccess: (projectSlug: string, isExisting: boolean) => void;
   }) => {
-    capturedDialogProps = props;
+    _capturedDialogProps = props;
     return props.isOpen ? (
       <div data-testid="new-project-dialog">
         <button onClick={props.onClose}>닫기</button>
@@ -86,6 +87,7 @@ describe('ProjectListPage', () => {
   const createMockState = (overrides: Partial<ReturnType<typeof useProjectStore>> = {}) => ({
     projects: [] as ProjectInfo[],
     isLoading: false,
+    isRefreshing: false,
     error: null,
     fetchProjects: mockFetchProjects,
     clearError: mockClearError,
@@ -113,7 +115,7 @@ describe('ProjectListPage', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-02-01T12:00:00Z'));
     vi.clearAllMocks();
-    capturedDialogProps = null;
+    _capturedDialogProps = null;
     // Set default mock state
     vi.mocked(useProjectStore).mockReturnValue(createMockState());
   });
@@ -227,13 +229,9 @@ describe('ProjectListPage', () => {
 
       renderPage();
 
-      // There are two "BMad" texts: brand logo and badge. Look for the badge specifically.
+      // Only the project card badge renders "BMad" (BrandLogo no longer contains "BMad" text)
       const bmadElements = screen.getAllByText('BMad');
-      // Brand logo + 1 badge (only first mockProject has isBmadProject: true)
-      expect(bmadElements.length).toBeGreaterThanOrEqual(2);
-      // The badge has specific badge styling
-      const badge = bmadElements.find(el => el.classList.contains('bg-blue-100'));
-      expect(badge).toBeInTheDocument();
+      expect(bmadElements.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -244,15 +242,21 @@ describe('ProjectListPage', () => {
       expect(mockFetchProjects).toHaveBeenCalledTimes(1);
     });
 
-    it('calls fetchProjects on refresh button click', () => {
+    it('calls window.location.reload on refresh button click', () => {
       vi.mocked(useProjectStore).mockReturnValue(createMockState({ projects: mockProjects }));
+
+      // Mock window.location.reload
+      const reloadMock = vi.fn();
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, reload: reloadMock },
+        writable: true,
+      });
 
       renderPage();
 
       fireEvent.click(screen.getByLabelText('새로고침'));
 
-      // Called twice: once on mount, once on click
-      expect(mockFetchProjects).toHaveBeenCalledTimes(2);
+      expect(reloadMock).toHaveBeenCalledTimes(1);
     });
 
     it('navigates to project detail on card click', () => {
@@ -278,7 +282,7 @@ describe('ProjectListPage', () => {
     it('renders page title', () => {
       renderPage();
 
-      expect(screen.getByRole('heading', { name: '프로젝트' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '프로젝트 리스트' })).toBeInTheDocument();
     });
 
     it('renders settings button', () => {
@@ -342,7 +346,7 @@ describe('ProjectListPage', () => {
       // Simulate new project creation success
       fireEvent.click(screen.getByRole('button', { name: '새 프로젝트 생성' }));
 
-      expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/project/new-project-slug/session/'));
+      expect(mockNavigate).toHaveBeenCalledWith('/project/new-project-slug');
     });
 
     it('navigates to existing project session list', () => {
@@ -384,7 +388,7 @@ describe('ProjectListPage', () => {
       renderPage();
 
       // DashboardSummaryBar renders card layout with labels and values
-      const summary = screen.getByRole('status', { name: 'Dashboard summary' });
+      const summary = screen.getByRole('status', { name: '대시보드 요약' });
       expect(summary).toBeInTheDocument();
       expect(within(summary).getByText('활성')).toBeInTheDocument();
       expect(within(summary).getByText('큐')).toBeInTheDocument();
@@ -441,7 +445,7 @@ describe('ProjectListPage', () => {
       renderPage();
 
       // DashboardSummaryBar should always render
-      expect(screen.getByRole('status', { name: 'Dashboard summary' })).toBeInTheDocument();
+      expect(screen.getByRole('status', { name: '대시보드 요약' })).toBeInTheDocument();
     });
   });
 });

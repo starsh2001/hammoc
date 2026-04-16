@@ -9,6 +9,7 @@ import { QuickPanel } from '../QuickPanel';
 
 // Mock PanelTabSwitcher
 vi.mock('../PanelTabSwitcher', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   PanelTabSwitcher: ({ activePanel, onSwitchPanel }: any) => (
     <div data-testid="panel-tab-switcher" data-active-panel={activePanel}>
       <button data-testid="panel-tab-files" onClick={() => onSwitchPanel('files')}>Files</button>
@@ -21,6 +22,7 @@ vi.mock('../PanelTabSwitcher', () => ({
 
 // Mock ResizablePanel (ResizableHandle)
 vi.mock('../ResizablePanel', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ResizableHandle: ({ onWidthChange }: any) => (
     <div data-testid="panel-resize-handle" onClick={() => onWidthChange(400)} />
   ),
@@ -42,6 +44,7 @@ vi.mock('../../terminal/QuickTerminal', () => ({
 
 describe('QuickPanel', () => {
   const defaultProps = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     activePanel: null as any,
     onClose: vi.fn(),
     onSwitchPanel: vi.fn(),

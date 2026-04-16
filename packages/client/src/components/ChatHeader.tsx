@@ -80,7 +80,7 @@ export function ChatHeader({
   lastActivePanel = 'sessions',
   onTogglePanel,
   panelSide = 'right',
-  gitChangedCount,
+  gitChangedCount: _gitChangedCount,
   terminalAccessible = true,
   onRenameSession,
   activeAgent,
@@ -128,7 +128,7 @@ export function ChatHeader({
     <header
       aria-label={t('header.ariaLabel')}
       data-testid="chat-header"
-      className="flex-shrink-0 sticky top-0 z-10 bg-[#243648] dark:bg-[#171e24]
+      className="flex-shrink-0 sticky top-0 z-20 bg-[#243648] dark:bg-[#171e24]
                  border-b border-slate-200 dark:border-slate-700/50"
     >
       <div className="content-container flex items-center justify-between px-4 py-3 min-h-16">

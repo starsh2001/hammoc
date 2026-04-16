@@ -49,7 +49,7 @@ describe('GitFileList', () => {
         onFileClick={vi.fn()}
       />,
     );
-    const stageAllBtn = screen.getByTitle('Stage All');
+    const stageAllBtn = screen.getByTitle('전체 스테이지');
     fireEvent.click(stageAllBtn);
     expect(onStageAll).toHaveBeenCalledTimes(1);
   });
@@ -66,7 +66,7 @@ describe('GitFileList', () => {
         onFileClick={vi.fn()}
       />,
     );
-    const unstageAllBtn = screen.getByTitle('Unstage All');
+    const unstageAllBtn = screen.getByTitle('전체 언스테이지');
     fireEvent.click(unstageAllBtn);
     expect(onUnstageAll).toHaveBeenCalledTimes(1);
   });
@@ -83,7 +83,7 @@ describe('GitFileList', () => {
         onFileClick={vi.fn()}
       />,
     );
-    const stageButtons = screen.getAllByTitle('Stage');
+    const stageButtons = screen.getAllByTitle('스테이지');
     fireEvent.click(stageButtons[0]);
     expect(onStageFile).toHaveBeenCalledWith('src/utils.ts');
   });
@@ -100,7 +100,7 @@ describe('GitFileList', () => {
         onFileClick={vi.fn()}
       />,
     );
-    const unstageButtons = screen.getAllByTitle('Unstage');
+    const unstageButtons = screen.getAllByTitle('언스테이지');
     fireEvent.click(unstageButtons[0]);
     expect(onUnstageFile).toHaveBeenCalledWith('src/index.ts');
   });

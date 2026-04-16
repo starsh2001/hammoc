@@ -9,6 +9,7 @@ import { ResizableHandle } from '../ResizablePanel';
 
 // PointerEvent polyfill for jsdom (which only supports MouseEvent)
 if (typeof globalThis.PointerEvent === 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (globalThis as any).PointerEvent = class PointerEvent extends MouseEvent {
     constructor(type: string, params: PointerEventInit = {}) {
       super(type, params);

@@ -40,12 +40,12 @@ describe('SettingsPage', () => {
     expect(screen.getByText('설정')).toBeInTheDocument();
   });
 
-  // TC-2: All 5 sections are displayed
-  it('displays all 5 section navigation items', () => {
+  // TC-2: All section navigation items are displayed
+  it('displays all section navigation items', () => {
     renderSettingsPage();
     expect(screen.getAllByText('전역 설정').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('프로젝트 설정').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Telegram 알림').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('알림').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('도움말').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('만든이').length).toBeGreaterThanOrEqual(1);
   });
@@ -61,28 +61,28 @@ describe('SettingsPage', () => {
   // TC-4: Section navigation click navigates to section
   it('navigates to section when nav item is clicked', () => {
     renderSettingsPage();
-    // Click on "Telegram 알림" in the desktop sidebar
-    const telegramButtons = screen.getAllByText('Telegram 알림');
-    fireEvent.click(telegramButtons[0]);
-    expect(mockNavigate).toHaveBeenCalledWith('/settings/telegram');
+    // Click on "알림" in the desktop sidebar
+    const notificationButtons = screen.getAllByText('알림');
+    fireEvent.click(notificationButtons[0]);
+    expect(mockNavigate).toHaveBeenCalledWith('/settings/notifications');
   });
 
   // TC-5: URL parameter activates correct section
-  it('activates telegram section when navigated to /settings/telegram', () => {
-    renderSettingsPage('/settings/telegram');
+  it('activates notifications section when navigated to /settings/notifications', () => {
+    renderSettingsPage('/settings/notifications');
     // The desktop sidebar should show the active section with font-medium
-    const telegramButtons = screen.getAllByText('Telegram 알림');
-    const hasActiveStyle = telegramButtons.some(
+    const notificationButtons = screen.getAllByText('알림');
+    const hasActiveStyle = notificationButtons.some(
       (btn) => btn.closest('button')?.className.includes('font-medium')
     );
     expect(hasActiveStyle).toBe(true);
   });
 
-  // TC-6: Dark mode classes are applied
-  it('applies dark mode classes', () => {
+  // TC-6: Header uses CSS variable for background (supports theme switching)
+  it('applies proper header classes', () => {
     renderSettingsPage();
     const header = screen.getByText('설정').closest('header');
-    expect(header?.className).toContain('dark:bg-gray-800');
+    expect(header?.className).toContain('bg-[var(--bg-footer)]');
   });
 
   // TC-7: Mobile accordion toggle works
@@ -90,13 +90,13 @@ describe('SettingsPage', () => {
     renderSettingsPage();
     // Find accordion buttons (mobile view has buttons with aria-expanded)
     const accordionButtons = screen.getAllByRole('button', { expanded: false });
-    const telegramAccordion = accordionButtons.find((btn) =>
-      btn.textContent?.includes('Telegram 알림')
+    const notificationAccordion = accordionButtons.find((btn) =>
+      btn.textContent?.includes('알림')
     );
 
-    if (telegramAccordion) {
-      fireEvent.click(telegramAccordion);
-      expect(telegramAccordion.getAttribute('aria-expanded')).toBe('true');
+    if (notificationAccordion) {
+      fireEvent.click(notificationAccordion);
+      expect(notificationAccordion.getAttribute('aria-expanded')).toBe('true');
     }
   });
 });

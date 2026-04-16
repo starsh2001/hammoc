@@ -1,13 +1,12 @@
 /**
- * AdvancedSettingsSection Tests
- * Story 26.3: Default Effort Settings dropdown
+ * GlobalSettingsSection — Default Effort Dropdown Tests
+ * Story 26.3: Default Effort Settings dropdown (moved from AdvancedSettingsSection)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { AdvancedSettingsSection } from '../AdvancedSettingsSection';
+import { GlobalSettingsSection } from '../GlobalSettingsSection';
 import { usePreferencesStore } from '../../../stores/preferencesStore';
-import { useSessionStore } from '../../../stores/sessionStore';
 
 // Mock sonner
 vi.mock('sonner', () => ({
@@ -17,31 +16,17 @@ vi.mock('sonner', () => ({
   },
 }));
 
-// Mock API calls used by the component
-const mockGet = vi.fn().mockResolvedValue({ isDevMode: false, version: '1.0.0' });
-vi.mock('../../../services/api/client', () => ({
-  api: {
-    get: (...args: unknown[]) => mockGet(...args),
-    post: vi.fn().mockResolvedValue({}),
-  },
+// Mock useTheme hook
+vi.mock('../../../hooks/useTheme', () => ({
+  useTheme: () => ({ theme: 'dark', setTheme: vi.fn() }),
 }));
 
-vi.mock('../../../services/api/preferences', () => ({
-  preferencesApi: {
-    getSystemPromptTemplate: vi.fn().mockResolvedValue({
-      template: 'default prompt',
-      variables: [],
-    }),
-  },
+// Mock ModelSelector export
+vi.mock('../../ModelSelector', () => ({
+  MODEL_GROUPS: [{ label: 'Default', models: [{ value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' }] }],
 }));
 
-vi.mock('../../../services/api/projects', () => ({
-  projectsApi: {
-    getSystemPrompt: vi.fn().mockResolvedValue({ resolved: '' }),
-  },
-}));
-
-describe('AdvancedSettingsSection — Default Effort Dropdown', () => {
+describe('GlobalSettingsSection — Default Effort Dropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     usePreferencesStore.setState({
@@ -54,20 +39,17 @@ describe('AdvancedSettingsSection — Default Effort Dropdown', () => {
       overrides: [],
       loaded: true,
     });
-    useSessionStore.setState({
-      currentProjectSlug: 'test-project',
-    });
   });
 
   it('renders dropdown with SDK default and 4 effort options', () => {
-    render(<AdvancedSettingsSection />);
+    render(<GlobalSettingsSection />);
 
     const select = screen.getByLabelText('기본 사고 수준');
     expect(select).toBeInTheDocument();
 
     const options = select.querySelectorAll('option');
     expect(options).toHaveLength(5); // SDK default + 4 effort levels
-    expect(options[0]).toHaveTextContent('SDK 기본값');
+    expect(options[0]).toHaveTextContent('Default (High)');
     expect(options[1]).toHaveTextContent('Low');
     expect(options[2]).toHaveTextContent('Medium');
     expect(options[3]).toHaveTextContent('High');
@@ -76,7 +58,7 @@ describe('AdvancedSettingsSection — Default Effort Dropdown', () => {
 
   it('selecting "High" calls updatePreference with "high"', () => {
     const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
-    render(<AdvancedSettingsSection />);
+    render(<GlobalSettingsSection />);
 
     const select = screen.getByLabelText('기본 사고 수준');
     fireEvent.change(select, { target: { value: 'high' } });
@@ -98,7 +80,7 @@ describe('AdvancedSettingsSection — Default Effort Dropdown', () => {
     });
 
     const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
-    render(<AdvancedSettingsSection />);
+    render(<GlobalSettingsSection />);
 
     const select = screen.getByLabelText('기본 사고 수준');
     fireEvent.change(select, { target: { value: '' } });
@@ -119,7 +101,7 @@ describe('AdvancedSettingsSection — Default Effort Dropdown', () => {
       loaded: true,
     });
 
-    render(<AdvancedSettingsSection />);
+    render(<GlobalSettingsSection />);
 
     const select = screen.getByLabelText('기본 사고 수준') as HTMLSelectElement;
     expect(select.value).toBe('medium');

@@ -201,8 +201,8 @@ describe('MarkdownRenderer', () => {
     it('should escape script tags', () => {
       render(<MarkdownRenderer content="<script>alert('xss')</script>" />);
       expect(screen.queryByRole('script')).toBeNull();
-      // Script content should be rendered as escaped text
-      expect(screen.getByText(/alert/)).toBeInTheDocument();
+      // rehype-sanitize strips <script> tags entirely (content is not rendered)
+      expect(screen.queryByText(/alert/)).toBeNull();
     });
 
     it('should escape onclick attributes', () => {

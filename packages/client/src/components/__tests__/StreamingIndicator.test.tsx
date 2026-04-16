@@ -51,7 +51,7 @@ describe('StreamingIndicator', () => {
 
     const indicator = screen.getByLabelText('Claude가 응답을 생성하고 있습니다');
     expect(indicator).toHaveClass('flex', 'items-center', 'gap-1');
-    expect(indicator).toHaveClass('text-gray-500', 'dark:text-gray-400');
+    expect(indicator).toHaveClass('text-gray-500', 'dark:text-gray-300');
   });
 
   it('dots have animation delays', () => {

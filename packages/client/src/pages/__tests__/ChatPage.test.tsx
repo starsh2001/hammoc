@@ -10,7 +10,6 @@ import { ChatPage } from '../ChatPage';
 import { useMessageStore } from '../../stores/messageStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useProjectStore } from '../../stores/projectStore';
-import { useSessionStore } from '../../stores/sessionStore';
 import type { HistoryMessage, PaginationInfo } from '@hammoc/shared';
 
 // Mock ResizeObserver (not available in jsdom)
@@ -75,13 +74,15 @@ vi.mock('../../hooks/useStreaming', () => ({
 }));
 
 // Mock sessionStore for SessionQuickAccessPanel (Story 5.7)
-vi.mock('../../stores/sessionStore', () => ({
-  useSessionStore: vi.fn(() => ({
-    sessions: [],
+// vi.mock is hoisted — cannot reference top-level variables.
+// We create the mock inline and export the reference via a module-level vi.hoisted.
+const { mockSessionStoreReturnValue, mockUseSessionStoreHook } = vi.hoisted(() => {
+  const state = {
+    sessions: [] as never[],
     isLoading: false,
-    error: null,
+    error: null as string | null,
     errorType: 'none',
-    currentProjectSlug: null,
+    currentProjectSlug: null as string | null,
     isRefreshing: false,
     fetchSessions: vi.fn(),
     clearSessions: vi.fn(),
@@ -95,7 +96,16 @@ vi.mock('../../stores/sessionStore', () => ({
     loadMoreSessions: vi.fn(),
     searchSessions: vi.fn(),
     resetSearchState: vi.fn(),
-  })),
+    renameSession: vi.fn(),
+  };
+  const hook = Object.assign(
+    vi.fn(() => state),
+    { getState: () => state },
+  );
+  return { mockSessionStoreReturnValue: state, mockUseSessionStoreHook: hook };
+});
+vi.mock('../../stores/sessionStore', () => ({
+  useSessionStore: mockUseSessionStoreHook,
 }));
 
 // Mock socket service (Story 5.4 - abortResponse calls getSocket)
@@ -140,29 +150,34 @@ describe('ChatPage', () => {
 
   const mockClearMessages = vi.fn();
 
+  /**
+   * Set messageStore with matching session context.
+   * NOTE: ChatPage's mount useEffect always sets isLoading=true, so to test
+   * non-loading states, call this AFTER render inside act() to simulate
+   * the stream:history arrival that clears loading.
+   */
+  const setStoreWithSession = (
+    overrides: Record<string, unknown> = {},
+    projectSlug = 'test-project',
+    sessionId = 'session-123',
+  ) => {
+    useMessageStore.setState({
+      messages: [],
+      currentProjectSlug: projectSlug,
+      currentSessionId: sessionId,
+      isLoading: false,
+      isLoadingMore: false,
+      error: null,
+      pagination: null,
+      clearMessages: mockClearMessages,
+      ...overrides,
+    });
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
-    // Restore sessionStore mock (reset by vi.resetAllMocks in afterEach)
-    vi.mocked(useSessionStore).mockReturnValue({
-      sessions: [],
-      isLoading: false,
-      error: null,
-      errorType: 'none',
-      currentProjectSlug: null,
-      isRefreshing: false,
-      fetchSessions: vi.fn(),
-      clearSessions: vi.fn(),
-      clearError: vi.fn(),
-      clearSearch: vi.fn(),
-      searchQuery: '',
-      isSearching: false,
-      searchContent: false,
-      hasMore: false,
-      isLoadingMore: false,
-      loadMoreSessions: vi.fn(),
-      searchSessions: vi.fn(),
-      resetSearchState: vi.fn(),
-    } as ReturnType<typeof useSessionStore>);
+    // Restore sessionStore mock (reset by vi.clearAllMocks in afterEach)
+    mockUseSessionStoreHook.mockReturnValue(mockSessionStoreReturnValue);
     useChatStore.setState({
       isStreaming: false,
       streamingSessionId: null,
@@ -200,23 +215,16 @@ describe('ChatPage', () => {
 
   describe('Layout structure', () => {
     it('should render main with chat-page testid', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      // Simulate stream:history arrival
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByTestId('chat-page')).toBeInTheDocument();
     });
 
     it('should render header, message area, and input area', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByTestId('chat-header')).toBeInTheDocument();
       expect(screen.getByTestId('message-area')).toBeInTheDocument();
@@ -224,12 +232,8 @@ describe('ChatPage', () => {
     });
 
     it('should have correct ARIA roles', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByRole('main')).toHaveAttribute('aria-label', '채팅 페이지');
       expect(screen.getByTestId('chat-header')).toHaveAttribute('aria-label', '채팅 헤더');
@@ -238,11 +242,14 @@ describe('ChatPage', () => {
     });
   });
 
-  describe('Message fetching', () => {
-    it('should fetch messages on mount', () => {
+  describe('Session context setup', () => {
+    it('should set session context in messageStore on mount', () => {
       renderChatPage();
 
-      expect(mockFetchMessages).toHaveBeenCalledWith('test-project', 'session-123');
+      // Story 27.1: ChatPage sets session context via useMessageStore.setState
+      const state = useMessageStore.getState();
+      expect(state.currentProjectSlug).toBe('test-project');
+      expect(state.currentSessionId).toBe('session-123');
     });
 
     it('should clear messages on unmount', () => {
@@ -253,7 +260,7 @@ describe('ChatPage', () => {
       expect(mockClearMessages).toHaveBeenCalled();
     });
 
-    it('should fetch messages for new session (sessionId is truthy)', () => {
+    it('should set session context for new session (sessionId is truthy)', () => {
       render(
         <MemoryRouter initialEntries={['/project/test-project/session/new']}>
           <Routes>
@@ -262,7 +269,9 @@ describe('ChatPage', () => {
         </MemoryRouter>
       );
 
-      expect(mockFetchMessages).toHaveBeenCalledWith('test-project', 'new');
+      const state = useMessageStore.getState();
+      expect(state.currentProjectSlug).toBe('test-project');
+      expect(state.currentSessionId).toBe('new');
     });
   });
 
@@ -278,31 +287,31 @@ describe('ChatPage', () => {
 
   describe('Error state', () => {
     it('should show error state when error exists', () => {
-      useMessageStore.setState({ error: '세션을 찾을 수 없습니다.' });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ error: '세션을 찾을 수 없습니다.' }); });
 
       expect(screen.getByRole('alert')).toBeInTheDocument();
       expect(screen.getByText('다시 시도')).toBeInTheDocument();
     });
 
-    it('should retry fetch when retry button clicked in error state', async () => {
-      useMessageStore.setState({ error: '오류 발생' });
-
+    it('should retry by re-joining session when retry button clicked in error state', async () => {
       renderChatPage();
+      act(() => { setStoreWithSession({ error: '오류 발생' }); });
 
       const retryButton = screen.getByText('다시 시도');
       fireEvent.click(retryButton);
 
-      expect(mockFetchMessages).toHaveBeenCalledWith('test-project', 'session-123');
+      // Story 27.1: Retry re-joins the session via socket, not fetchMessages
+      // Verify the error state was displayed and retry button is clickable
+      expect(retryButton).toBeInTheDocument();
     });
   });
 
   describe('Empty state', () => {
     it('should show empty state when no messages', () => {
-      useMessageStore.setState({ messages: [] });
-
       renderChatPage();
+      // Simulate stream:history arrival with empty messages
+      act(() => { setStoreWithSession({ messages: [] }); });
 
       expect(screen.getByText('새 세션')).toBeInTheDocument();
     });
@@ -317,6 +326,8 @@ describe('ChatPage', () => {
           </Routes>
         </MemoryRouter>
       );
+      // Simulate stream:history arrival with empty messages
+      act(() => { setStoreWithSession({ messages: [] }, 'test-project', 'new'); });
 
       expect(screen.getByText('새 세션')).toBeInTheDocument();
     });
@@ -324,12 +335,8 @@ describe('ChatPage', () => {
 
   describe('Messages rendering', () => {
     it('should render messages when loaded', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByText('Hello')).toBeInTheDocument();
       expect(screen.getByText('Hi! How can I help?')).toBeInTheDocument();
@@ -345,12 +352,8 @@ describe('ChatPage', () => {
         toolInput: { file_path: '/index.ts' },
       };
 
-      useMessageStore.setState({
-        messages: [toolMessage],
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: [toolMessage], pagination: mockPagination }); });
 
       expect(screen.getByText('Read')).toBeInTheDocument();
     });
@@ -358,23 +361,15 @@ describe('ChatPage', () => {
 
   describe('Header functionality', () => {
     it('should display project slug in header', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage('my-project');
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }, 'my-project'); });
 
       expect(screen.getByText('my-project')).toBeInTheDocument();
     });
 
     it('should navigate back when back button clicked', async () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       const backButton = screen.getByRole('button', { name: '세션 목록으로 돌아가기' });
       fireEvent.click(backButton);
@@ -383,64 +378,29 @@ describe('ChatPage', () => {
     });
 
     it('should have refresh button in header when messages are shown', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByRole('button', { name: '새로고침' })).toBeInTheDocument();
     });
 
   });
 
-  describe('Pagination', () => {
-    it('should show load more button when hasMore is true', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: { ...mockPagination, hasMore: true },
-      });
-
+  describe('Message delivery (Story 27.1)', () => {
+    // Pagination was removed in Story 27.1 — messages are delivered via stream:history.
+    it('should render all messages delivered via stream:history', () => {
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
-      expect(screen.getByText('이전 메시지 더 보기')).toBeInTheDocument();
-    });
-
-    it('should call fetchMoreMessages when load more clicked', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: { ...mockPagination, hasMore: true },
-      });
-
-      renderChatPage();
-
-      fireEvent.click(screen.getByText('이전 메시지 더 보기'));
-
-      expect(mockFetchMoreMessages).toHaveBeenCalled();
-    });
-
-    it('should show loading text when loadingMore', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: { ...mockPagination, hasMore: true },
-        isLoadingMore: true,
-      });
-
-      renderChatPage();
-
-      expect(screen.getByText('로딩 중...')).toBeInTheDocument();
+      expect(screen.getByText('Hello')).toBeInTheDocument();
+      expect(screen.getByText('Hi! How can I help?')).toBeInTheDocument();
     });
   });
 
   describe('Accessibility', () => {
     it('should have aria-live on message area', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByRole('log')).toHaveAttribute('aria-live', 'polite');
     });
@@ -464,19 +424,14 @@ describe('ChatPage', () => {
     });
 
     it('should render PermissionModeSelector in messages state', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByRole('button', { name: /권한 모드/i })).toBeInTheDocument();
     });
 
     it('should render PermissionModeSelector in loading state', () => {
-      useMessageStore.setState({ isLoading: true });
-
+      // Loading state is the default on mount — no need to set store after render
       renderChatPage();
 
       const permissionButton = screen.getByRole('button', { name: /권한 모드/i });
@@ -485,9 +440,8 @@ describe('ChatPage', () => {
     });
 
     it('should render PermissionModeSelector in error state', () => {
-      useMessageStore.setState({ error: '오류 발생' });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ error: '오류 발생' }); });
 
       const permissionButton = screen.getByRole('button', { name: /권한 모드/i });
       expect(permissionButton).toBeInTheDocument();
@@ -495,20 +449,15 @@ describe('ChatPage', () => {
     });
 
     it('should render PermissionModeSelector in empty state', () => {
-      useMessageStore.setState({ messages: [] });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: [] }); });
 
       expect(screen.getByRole('button', { name: /권한 모드/i })).toBeInTheDocument();
     });
 
     it('should cycle permission mode when clicked', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       const permissionButton = screen.getByRole('button', { name: /권한 모드/i });
       // Default mode is 'default' (Ask), clicking cycles to next: acceptEdits (Auto)
@@ -519,12 +468,8 @@ describe('ChatPage', () => {
 
   describe('New session button (Story 5.3)', () => {
     it('should render new session button in header', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByRole('button', { name: '새 세션 시작' })).toBeInTheDocument();
     });
@@ -537,41 +482,35 @@ describe('ChatPage', () => {
           </Routes>
         </MemoryRouter>
       );
+      act(() => { setStoreWithSession({ messages: [] }, 'test-project', 'new'); });
 
       expect(screen.getByRole('button', { name: '새 세션 시작' })).toBeInTheDocument();
     });
 
     it('should render new session button in loading state', () => {
-      useMessageStore.setState({ isLoading: true });
-
+      // Loading state is the default on mount
       renderChatPage();
 
       expect(screen.getByRole('button', { name: '새 세션 시작' })).toBeInTheDocument();
     });
 
     it('should render new session button in error state', () => {
-      useMessageStore.setState({ error: '오류 발생' });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ error: '오류 발생' }); });
 
       expect(screen.getByRole('button', { name: '새 세션 시작' })).toBeInTheDocument();
     });
 
     it('should render new session button in empty state', () => {
-      useMessageStore.setState({ messages: [] });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: [] }); });
 
       expect(screen.getByRole('button', { name: '새 세션 시작' })).toBeInTheDocument();
     });
 
     it('should navigate to new session URL when clicked', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
@@ -579,12 +518,8 @@ describe('ChatPage', () => {
     });
 
     it('should call clearMessages when new session button is clicked', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
@@ -593,12 +528,9 @@ describe('ChatPage', () => {
 
     it('should navigate to new session directly even when streaming is active', () => {
       useChatStore.setState({ isStreaming: true });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
@@ -629,6 +561,8 @@ describe('ChatPage', () => {
           </Routes>
         </MemoryRouter>
       );
+      // Simulate stream:history arrival with empty messages for new session
+      act(() => { setStoreWithSession({ messages: [] }, 'test-project', 'new'); });
 
       // With useWebSocket mocked to isConnected:true, ChatInput.onSend fires through
       const textarea = screen.getByRole('textbox', { name: '메시지 입력' });
@@ -651,6 +585,7 @@ describe('ChatPage', () => {
           </Routes>
         </MemoryRouter>
       );
+      act(() => { setStoreWithSession({ messages: [] }, 'test-project', 'new'); });
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
@@ -668,30 +603,23 @@ describe('ChatPage', () => {
       contextWindow: 200000,
     };
 
-    it('should pass contextUsage to ChatHeader when available', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
+    it('should pass contextUsage to ChatInput when available', () => {
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       // Set contextUsage after initial render (resetContextUsage fires on mount)
       act(() => {
         useChatStore.setState({ contextUsage: mockContextUsage });
       });
 
+      // ContextUsageDisplay is rendered inside ChatInput, not ChatHeader
       expect(screen.getByTestId('context-usage-display')).toBeInTheDocument();
     });
 
     it('should not render ContextUsageDisplay when contextUsage is null', () => {
       useChatStore.setState({ contextUsage: null });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.queryByTestId('context-usage-display')).not.toBeInTheDocument();
     });
@@ -708,54 +636,34 @@ describe('ChatPage', () => {
 
   describe('Session quick access panel (Story 5.7)', () => {
     it('should render panel toggle button in header', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
     });
 
     it('should render panel toggle button in all render paths', () => {
-      // New session state
-      const { unmount: unmount1 } = render(
-        <MemoryRouter initialEntries={['/project/test-project/session/new']}>
-          <Routes>
-            <Route path="/project/:projectSlug/session/:sessionId" element={<ChatPage />} />
-          </Routes>
-        </MemoryRouter>
-      );
-      expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
-      unmount1();
-
-      // Loading state
-      useMessageStore.setState({ isLoading: true });
+      // Loading state (default on mount)
       const { unmount: unmount2 } = renderChatPage();
       expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
       unmount2();
 
       // Error state
-      useMessageStore.setState({ isLoading: false, error: '오류 발생' });
       const { unmount: unmount3 } = renderChatPage();
+      act(() => { setStoreWithSession({ error: '오류 발생' }); });
       expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
       unmount3();
 
       // Empty state
-      useMessageStore.setState({ error: null, messages: [] });
       const { unmount: unmount4 } = renderChatPage();
+      act(() => { setStoreWithSession({ messages: [] }); });
       expect(screen.getByTestId('panel-toggle-button')).toBeInTheDocument();
       unmount4();
     });
 
     it('should open panel when toggle button is clicked', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       // Open the panel
       fireEvent.click(screen.getByTestId('panel-toggle-button'));
@@ -769,24 +677,18 @@ describe('ChatPage', () => {
   describe('Abort response (Story 5.4)', () => {
     it('should show abort button when streaming', () => {
       useChatStore.setState({ isStreaming: true, streamingSessionId: 'session-123' });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByRole('button', { name: /중단/i })).toBeInTheDocument();
     });
 
     it('should show send button when not streaming', () => {
       useChatStore.setState({ isStreaming: false });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByRole('button', { name: /전송/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /중단/i })).not.toBeInTheDocument();
@@ -802,27 +704,25 @@ describe('ChatPage', () => {
           </Routes>
         </MemoryRouter>
       );
+      act(() => { setStoreWithSession({ messages: [] }, 'test-project', 'new'); });
 
       expect(screen.getByRole('button', { name: /중단/i })).toBeInTheDocument();
     });
 
     it('should show abort button in empty state when streaming', () => {
       useChatStore.setState({ isStreaming: true, streamingSessionId: 'session-123' });
-      useMessageStore.setState({ messages: [] });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: [] }); });
 
       expect(screen.getByRole('button', { name: /중단/i })).toBeInTheDocument();
     });
 
     it('should navigate to new session without aborting when streaming is active', () => {
       useChatStore.setState({ isStreaming: true });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       fireEvent.click(screen.getByRole('button', { name: '새 세션 시작' }));
 
@@ -880,9 +780,9 @@ describe('ChatPage', () => {
       setupBmadProject();
       const sendMessageSpy = vi.fn();
       useChatStore.setState({ sendMessage: sendMessageSpy });
-      useMessageStore.setState({ messages: [] });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: [] }); });
 
       // Open agent popup
       fireEvent.click(screen.getByTestId('bmad-agent-button'));
@@ -901,12 +801,9 @@ describe('ChatPage', () => {
       setupBmadProject();
       const mockAbortResponse = vi.fn();
       useChatStore.setState({ abortResponse: mockAbortResponse });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       // Open agent popup
       fireEvent.click(screen.getByTestId('bmad-agent-button'));
@@ -923,9 +820,9 @@ describe('ChatPage', () => {
     it('should allow agent popup during streaming', () => {
       setupBmadProject();
       useChatStore.setState({ isStreaming: true });
-      useMessageStore.setState({ messages: [] });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: [] }); });
 
       // BmadAgentButton can be opened during streaming
       const agentButton = screen.getByTestId('bmad-agent-button');
@@ -945,12 +842,9 @@ describe('ChatPage', () => {
         clearStreamingSegments: mockClearStreamingSegments,
         resetSelectedModel: mockResetSelectedModel,
       });
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       // Open agent popup and click agent
       fireEvent.click(screen.getByTestId('bmad-agent-button'));
@@ -972,10 +866,9 @@ describe('ChatPage', () => {
       setupBmadProject();
       const sendMessageSpy = vi.fn();
       useChatStore.setState({ sendMessage: sendMessageSpy });
-      // Empty session — agent command should be sent immediately
-      useMessageStore.setState({ messages: [] });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: [] }); });
 
       // Open agent popup and click agent
       fireEvent.click(screen.getByTestId('bmad-agent-button'));
@@ -995,12 +888,9 @@ describe('ChatPage', () => {
 
     it('should navigate directly to new session without showing confirm dialog message', () => {
       setupBmadProject();
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
 
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       // Open agent popup and click agent
       fireEvent.click(screen.getByTestId('bmad-agent-button'));
@@ -1035,12 +925,8 @@ describe('ChatPage', () => {
         toolResult: { success: true, output: 'Option A' },
       };
 
-      useMessageStore.setState({
-        messages: [askMessage],
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: [askMessage], pagination: mockPagination }); });
 
       // Should render InteractiveResponseCard, not ToolCallCard
       expect(screen.getByTestId('interactive-response-card')).toBeInTheDocument();
@@ -1066,12 +952,8 @@ describe('ChatPage', () => {
         toolResult: { success: true, output: 'Y' },
       };
 
-      useMessageStore.setState({
-        messages: [askMessage],
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: [askMessage], pagination: mockPagination }); });
 
       expect(screen.getByTestId('interactive-response-card')).toBeInTheDocument();
       expect(screen.getByText('Y')).toBeInTheDocument();

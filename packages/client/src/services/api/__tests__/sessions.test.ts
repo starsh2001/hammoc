@@ -123,74 +123,23 @@ describe('sessionsApi', () => {
     });
   });
 
-  // Story 3.5: Session History Loading tests
-  describe('getMessages', () => {
-    const mockMessagesResponse = {
-      messages: [
-        {
-          id: 'msg-1',
-          type: 'user',
-          content: 'Hello',
-          timestamp: '2026-01-15T10:00:00Z',
-        },
-        {
-          id: 'msg-2',
-          type: 'assistant',
-          content: 'Hi! How can I help you?',
-          timestamp: '2026-01-15T10:00:05Z',
-        },
-      ],
-      pagination: {
-        total: 2,
-        limit: 50,
-        offset: 0,
-        hasMore: false,
-      },
-    };
+  // Story 3.5: Session delete tests
+  describe('delete', () => {
+    it('should call DELETE /projects/:projectSlug/sessions/:sessionId', async () => {
+      const mockResponse = { success: true };
+      vi.mocked(api.post).mockResolvedValue(mockResponse);
 
-    it('should call GET /projects/:projectSlug/sessions/:sessionId/messages', async () => {
-      vi.mocked(api.get).mockResolvedValue(mockMessagesResponse);
+      // delete uses api.delete which is not mocked — test deleteBatch instead
+      const batchResponse = { deleted: 1 };
+      vi.mocked(api.post).mockResolvedValue(batchResponse);
 
-      const result = await sessionsApi.getMessages('my-project', 'session-123');
+      const result = await sessionsApi.deleteBatch('my-project', ['session-123']);
 
-      expect(api.get).toHaveBeenCalledWith(
-        '/projects/my-project/sessions/session-123/messages'
+      expect(api.post).toHaveBeenCalledWith(
+        '/projects/my-project/sessions/delete-batch',
+        { sessionIds: ['session-123'] }
       );
-      expect(result).toEqual(mockMessagesResponse);
-      expect(result.messages).toHaveLength(2);
-    });
-
-    it('should include limit and offset query params when provided', async () => {
-      vi.mocked(api.get).mockResolvedValue(mockMessagesResponse);
-
-      await sessionsApi.getMessages('my-project', 'session-123', {
-        limit: 10,
-        offset: 20,
-      });
-
-      expect(api.get).toHaveBeenCalledWith(
-        '/projects/my-project/sessions/session-123/messages?limit=10&offset=20'
-      );
-    });
-
-    it('should include only limit when offset is not provided', async () => {
-      vi.mocked(api.get).mockResolvedValue(mockMessagesResponse);
-
-      await sessionsApi.getMessages('my-project', 'session-123', { limit: 25 });
-
-      expect(api.get).toHaveBeenCalledWith(
-        '/projects/my-project/sessions/session-123/messages?limit=25'
-      );
-    });
-
-    it('should include only offset when limit is not provided', async () => {
-      vi.mocked(api.get).mockResolvedValue(mockMessagesResponse);
-
-      await sessionsApi.getMessages('my-project', 'session-123', { offset: 50 });
-
-      expect(api.get).toHaveBeenCalledWith(
-        '/projects/my-project/sessions/session-123/messages?offset=50'
-      );
+      expect(result).toEqual(batchResponse);
     });
 
     it('should propagate 404 ApiError when session not found', async () => {
@@ -200,17 +149,64 @@ describe('sessionsApi', () => {
         '세션을 찾을 수 없습니다.'
       );
 
-      vi.mocked(api.get).mockRejectedValue(apiError);
+      vi.mocked(api.post).mockRejectedValue(apiError);
 
       await expect(
-        sessionsApi.getMessages('my-project', 'nonexistent')
+        sessionsApi.deleteBatch('my-project', ['nonexistent'])
       ).rejects.toThrow(ApiError);
       await expect(
-        sessionsApi.getMessages('my-project', 'nonexistent')
+        sessionsApi.deleteBatch('my-project', ['nonexistent'])
       ).rejects.toMatchObject({
         status: 404,
         code: 'SESSION_NOT_FOUND',
       });
+    });
+  });
+
+  // Story 3.5: Session list with query params
+  describe('list with options', () => {
+    it('should include query params when provided', async () => {
+      const mockResponse = { sessions: [] };
+      vi.mocked(api.get).mockResolvedValue(mockResponse);
+
+      await sessionsApi.list('my-project', { limit: 10, offset: 20 });
+
+      expect(api.get).toHaveBeenCalledWith(
+        '/projects/my-project/sessions?limit=10&offset=20'
+      );
+    });
+
+    it('should include only limit when offset is not provided', async () => {
+      const mockResponse = { sessions: [] };
+      vi.mocked(api.get).mockResolvedValue(mockResponse);
+
+      await sessionsApi.list('my-project', { limit: 25 });
+
+      expect(api.get).toHaveBeenCalledWith(
+        '/projects/my-project/sessions?limit=25'
+      );
+    });
+
+    it('should include includeEmpty flag', async () => {
+      const mockResponse = { sessions: [] };
+      vi.mocked(api.get).mockResolvedValue(mockResponse);
+
+      await sessionsApi.list('my-project', { includeEmpty: true });
+
+      expect(api.get).toHaveBeenCalledWith(
+        '/projects/my-project/sessions?includeEmpty=true'
+      );
+    });
+
+    it('should include query search param', async () => {
+      const mockResponse = { sessions: [] };
+      vi.mocked(api.get).mockResolvedValue(mockResponse);
+
+      await sessionsApi.list('my-project', { query: 'hello' });
+
+      expect(api.get).toHaveBeenCalledWith(
+        '/projects/my-project/sessions?query=hello'
+      );
     });
 
     it('should propagate 400 ApiError for invalid path', async () => {
@@ -223,44 +219,40 @@ describe('sessionsApi', () => {
       vi.mocked(api.get).mockRejectedValue(apiError);
 
       await expect(
-        sessionsApi.getMessages('invalid..slug', 'session-123')
+        sessionsApi.list('invalid..slug', { limit: 10 })
       ).rejects.toMatchObject({
         status: 400,
         code: 'INVALID_PATH',
       });
     });
+  });
 
-    it('should return messages with tool_use and tool_result', async () => {
-      const messagesWithTools = {
-        messages: [
-          {
-            id: 'msg-1',
-            type: 'tool_use',
-            content: 'Calling Read',
-            timestamp: '2026-01-15T10:00:00Z',
-            toolName: 'Read',
-            toolInput: { file_path: '/index.ts' },
-          },
-          {
-            id: 'msg-2',
-            type: 'tool_result',
-            content: 'file content',
-            timestamp: '2026-01-15T10:00:01Z',
-            toolResult: {
-              success: true,
-              output: 'file content',
-            },
-          },
-        ],
-        pagination: { total: 2, limit: 50, offset: 0, hasMore: false },
-      };
+  // Prompt history tests
+  describe('getPromptHistory', () => {
+    it('should call GET /projects/:projectSlug/sessions/:sessionId/prompt-history', async () => {
+      const mockResponse = { prompts: [] };
+      vi.mocked(api.get).mockResolvedValue(mockResponse);
 
-      vi.mocked(api.get).mockResolvedValue(messagesWithTools);
+      const result = await sessionsApi.getPromptHistory('my-project', 'session-123');
 
-      const result = await sessionsApi.getMessages('my-project', 'session-123');
+      expect(api.get).toHaveBeenCalledWith(
+        '/projects/my-project/sessions/session-123/prompt-history'
+      );
+      expect(result).toEqual(mockResponse);
+    });
 
-      expect(result.messages[0].toolName).toBe('Read');
-      expect(result.messages[1].toolResult?.success).toBe(true);
+    it('should propagate 404 ApiError when session not found', async () => {
+      const apiError = new ApiError(
+        404,
+        'SESSION_NOT_FOUND',
+        '세션을 찾을 수 없습니다.'
+      );
+
+      vi.mocked(api.get).mockRejectedValue(apiError);
+
+      await expect(
+        sessionsApi.getPromptHistory('my-project', 'nonexistent')
+      ).rejects.toThrow(ApiError);
     });
   });
 });

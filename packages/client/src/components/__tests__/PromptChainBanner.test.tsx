@@ -76,8 +76,8 @@ describe('PromptChainBanner', () => {
       <PromptChainBanner pendingPrompts={items} onCancel={vi.fn()} />
     );
 
-    // shortLabel extracts last segment after ':'
-    expect(screen.getByText('create-next-story')).toBeInTheDocument();
+    // shortLabel returns the first line as-is
+    expect(screen.getByText('/BMad:tasks:create-next-story')).toBeInTheDocument();
   });
 
   it('shows sending status with spinner', () => {

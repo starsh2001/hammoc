@@ -8,7 +8,7 @@
 
 import { createHighlighter, type Highlighter } from 'shiki';
 import { SHIKI_CONFIG } from './config';
-import { debugLogger } from '../debugLogger';
+
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 

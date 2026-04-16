@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { ChatPage } from '../ChatPage';
@@ -68,19 +68,33 @@ vi.mock('../../hooks/useStreaming', () => ({
   useStreaming: vi.fn(),
 }));
 
-// Mock sessionStore
-vi.mock('../../stores/sessionStore', () => ({
-  useSessionStore: vi.fn(() => ({
-    sessions: [],
+// Mock sessionStore (needs getState for SessionQuickAccessPanel)
+const { mockA11ySessionStoreHook } = vi.hoisted(() => {
+  const state = {
+    sessions: [] as never[],
     isLoading: false,
-    error: null,
+    error: null as string | null,
     errorType: 'none',
-    currentProjectSlug: null,
+    currentProjectSlug: null as string | null,
     isRefreshing: false,
     fetchSessions: vi.fn(),
     clearSessions: vi.fn(),
     clearError: vi.fn(),
-  })),
+    clearSearch: vi.fn(),
+    searchQuery: '',
+    isSearching: false,
+    searchContent: false,
+    hasMore: false,
+    isLoadingMore: false,
+    loadMoreSessions: vi.fn(),
+    searchSessions: vi.fn(),
+    resetSearchState: vi.fn(),
+    renameSession: vi.fn(),
+  };
+  return { mockA11ySessionStoreHook: Object.assign(vi.fn(() => state), { getState: () => state }) };
+});
+vi.mock('../../stores/sessionStore', () => ({
+  useSessionStore: mockA11ySessionStoreHook,
 }));
 
 // Mock socket service
@@ -123,6 +137,25 @@ describe('ChatPage Accessibility', () => {
   };
 
   const mockClearMessages = vi.fn();
+
+  /** Set messageStore with matching session context, then call inside act() after render. */
+  const setStoreWithSession = (
+    overrides: Record<string, unknown> = {},
+    projectSlug = 'test-project',
+    sessionId = 'session-123',
+  ) => {
+    useMessageStore.setState({
+      messages: [],
+      currentProjectSlug: projectSlug,
+      currentSessionId: sessionId,
+      isLoading: false,
+      isLoadingMore: false,
+      error: null,
+      pagination: null,
+      clearMessages: mockClearMessages,
+      ...overrides,
+    });
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -214,12 +247,8 @@ describe('ChatPage Accessibility', () => {
 
   describe('ARIA Labels', () => {
     it('should have correct ARIA labels for screen readers', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       expect(screen.getByRole('main')).toHaveAttribute('aria-label', '채팅 페이지');
       expect(screen.getByTestId('chat-header')).toHaveAttribute('aria-label', '채팅 헤더');
@@ -230,31 +259,23 @@ describe('ChatPage Accessibility', () => {
 
   describe('Keyboard Navigation', () => {
     it('should have focusable elements with proper tab order', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       // Back button should be focusable
       const backButton = screen.getByRole('button', { name: '세션 목록으로 돌아가기' });
       expect(backButton).toHaveAttribute('class');
       expect(backButton.tabIndex).not.toBe(-1);
 
-      // Refresh button should be focusable
+      // Refresh button should be focusable (only in messages state)
       const refreshButton = screen.getByRole('button', { name: '새로고침' });
       expect(refreshButton).toHaveAttribute('class');
       expect(refreshButton.tabIndex).not.toBe(-1);
     });
 
     it('should have focus ring styles on interactive elements', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       const backButton = screen.getByRole('button', { name: '세션 목록으로 돌아가기' });
       expect(backButton.className).toContain('focus:outline-none');
@@ -264,21 +285,16 @@ describe('ChatPage Accessibility', () => {
 
   describe('Screen Reader Support', () => {
     it('should have aria-live region for new messages', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       const messageArea = screen.getByRole('log');
       expect(messageArea).toHaveAttribute('aria-live', 'polite');
     });
 
     it('should have role="alert" on error state', () => {
-      useMessageStore.setState({ error: '오류 발생' });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ error: '오류 발생' }); });
 
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
@@ -299,20 +315,16 @@ describe('ChatPage Accessibility', () => {
 
   describe('Color Contrast', () => {
     it('should have dark mode classes for sufficient contrast', () => {
-      useMessageStore.setState({
-        messages: mockMessages,
-        pagination: mockPagination,
-      });
-
       renderChatPage();
+      act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       // Check page container has dark mode background
       const pageContainer = screen.getByTestId('chat-page');
-      expect(pageContainer.className).toContain('dark:bg-gray-900');
+      expect(pageContainer.className).toContain('dark:bg-[#1c2129]');
 
       // Check header has dark mode background
       const header = screen.getByTestId('chat-header');
-      expect(header.className).toContain('dark:bg-gray-800');
+      expect(header.className).toContain('dark:bg-[#171e24]');
     });
   });
 });

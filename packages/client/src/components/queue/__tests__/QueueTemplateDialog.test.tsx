@@ -1,6 +1,8 @@
 /**
  * QueueTemplateDialog Component Tests
  * [Source: Story 15.5 - Task 8.4]
+ *
+ * Updated to match the two-tab (Load / Editor) + Apply modal layout.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -14,6 +16,10 @@ const mockGetTemplates = vi.fn();
 const mockSaveTemplate = vi.fn();
 const mockUpdateTemplate = vi.fn();
 const mockDeleteTemplate = vi.fn();
+const mockGetGlobalTemplates = vi.fn();
+const mockSaveGlobalTemplate = vi.fn();
+const mockUpdateGlobalTemplate = vi.fn();
+const mockDeleteGlobalTemplate = vi.fn();
 
 vi.mock('../../../services/api/queue', () => ({
   queueApi: {
@@ -22,6 +28,10 @@ vi.mock('../../../services/api/queue', () => ({
     saveTemplate: (...args: unknown[]) => mockSaveTemplate(...args),
     updateTemplate: (...args: unknown[]) => mockUpdateTemplate(...args),
     deleteTemplate: (...args: unknown[]) => mockDeleteTemplate(...args),
+    getGlobalTemplates: (...args: unknown[]) => mockGetGlobalTemplates(...args),
+    saveGlobalTemplate: (...args: unknown[]) => mockSaveGlobalTemplate(...args),
+    updateGlobalTemplate: (...args: unknown[]) => mockUpdateGlobalTemplate(...args),
+    deleteGlobalTemplate: (...args: unknown[]) => mockDeleteGlobalTemplate(...args),
   },
 }));
 
@@ -47,24 +57,68 @@ const defaultProps = {
   onGenerate: vi.fn(),
 };
 
+/**
+ * Helper: navigate to the Editor tab and type a template, then open the Apply modal.
+ * Returns after stories are visible in the Apply modal.
+ */
+async function openApplyFromEditor(templateText = '/dev {story_num}') {
+  // Switch to Editor tab
+  fireEvent.click(screen.getByText('에디터'));
+
+  // Type template text
+  const textarea = screen.getByPlaceholderText(/story_num/);
+  fireEvent.change(textarea, { target: { value: templateText } });
+
+  // Click "적용" (Apply) in footer
+  fireEvent.click(screen.getByText('적용'));
+
+  // Wait for stories to load in the Apply modal
+  await waitFor(() => {
+    expect(screen.getByText(/1\.1/)).toBeInTheDocument();
+  });
+}
+
+/**
+ * Helper: select a saved template in Load tab and open Apply modal.
+ */
+async function selectTemplateAndApply(templateName: string) {
+  // Wait for saved templates to load
+  await waitFor(() => screen.getByText(templateName));
+
+  // Select the template via its radio label
+  fireEvent.click(screen.getByText(templateName));
+
+  // Click "적용" (Apply) in footer
+  fireEvent.click(screen.getByText('적용'));
+
+  // Wait for stories to load in the Apply modal
+  await waitFor(() => {
+    expect(screen.getByText(/1\.1/)).toBeInTheDocument();
+  });
+}
+
 describe('QueueTemplateDialog', () => {
   beforeEach(() => {
     window.localStorage.clear();
     vi.clearAllMocks();
     mockGetStories.mockResolvedValue({ stories: mockStories });
     mockGetTemplates.mockResolvedValue(mockTemplates);
+    mockGetGlobalTemplates.mockResolvedValue([]);
     mockSaveTemplate.mockResolvedValue({ id: 'new-1', name: 'New', template: 'test', createdAt: '', updatedAt: '' });
     mockUpdateTemplate.mockResolvedValue({ id: 'tmpl-1', name: 'Updated', template: 'test', createdAt: '', updatedAt: '' });
     mockDeleteTemplate.mockResolvedValue(undefined);
+    mockSaveGlobalTemplate.mockResolvedValue({ id: 'new-g1', name: 'New Global', template: 'test', createdAt: '', updatedAt: '' });
+    mockUpdateGlobalTemplate.mockResolvedValue({ id: 'gtmpl-1', name: 'Updated Global', template: 'test', createdAt: '', updatedAt: '' });
+    mockDeleteGlobalTemplate.mockResolvedValue(undefined);
   });
 
-  // TC-QT-26
+  // TC-QT-26: renders title and Load tab by default
   it('renders when open=true', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
     expect(screen.getByText('템플릿으로 큐 생성')).toBeInTheDocument();
-    // Wait for async data fetches to settle (getStories + getTemplates)
+    // Load tab should be active with saved templates visible
     await waitFor(() => {
-      expect(screen.getByText(/1\.1/)).toBeInTheDocument();
+      expect(screen.getByText('Basic Dev')).toBeInTheDocument();
     });
   });
 
@@ -74,24 +128,23 @@ describe('QueueTemplateDialog', () => {
     expect(screen.queryByText('템플릿으로 큐 생성')).not.toBeInTheDocument();
   });
 
-  // TC-QT-28
+  // TC-QT-28: stories appear in Apply modal with checkboxes
   it('loads and displays stories with checkboxes', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByText(/1\.1/)).toBeInTheDocument();
-      expect(screen.getByText(/Auth Setup/)).toBeInTheDocument();
-    });
+    await openApplyFromEditor();
+
+    expect(screen.getByText(/Auth Setup/)).toBeInTheDocument();
     const checkboxes = screen.getAllByRole('checkbox');
-    // 3 story checkboxes + 1 pause toggle = 4
+    // 2 epic checkboxes + 3 story checkboxes + 1 pause toggle = 6
     expect(checkboxes.length).toBeGreaterThanOrEqual(3);
   });
 
-  // TC-QT-29
+  // TC-QT-29: selecting/deselecting stories in Apply modal
   it('selecting/deselecting stories updates selection', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
+    await openApplyFromEditor();
 
-    // All checkboxes should be checked initially
+    // All story checkboxes should be checked initially
     const checkboxes = screen.getAllByRole('checkbox');
     const storyCheckbox = checkboxes.find((cb) =>
       cb.closest('label')?.textContent?.includes('1.1')
@@ -104,11 +157,12 @@ describe('QueueTemplateDialog', () => {
     expect(storyCheckbox).not.toBeChecked();
   });
 
-  // TC-QT-30
+  // TC-QT-30: select all / deselect all in Apply modal
   it('"전체 선택" / "전체 해제" buttons work', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
+    await openApplyFromEditor();
 
+    // Initially all selected, button should say "전체 해제"
     const deselectBtn = screen.getByText('전체 해제');
     fireEvent.click(deselectBtn);
 
@@ -119,52 +173,51 @@ describe('QueueTemplateDialog', () => {
     );
     storyCheckboxes.forEach((cb) => expect(cb).not.toBeChecked());
 
+    // After deselecting all, button should toggle to "전체 선택"
     const selectBtn = screen.getByText('전체 선택');
     fireEvent.click(selectBtn);
     storyCheckboxes.forEach((cb) => expect(cb).toBeChecked());
   });
 
-  // TC-QT-31
+  // TC-QT-31: template text input in Editor tab updates preview in Apply modal
   it('template text input updates preview', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
-
-    const textarea = screen.getByPlaceholderText(/story_num/);
-    fireEvent.change(textarea, { target: { value: '/dev {story_num} go' } });
+    await openApplyFromEditor('/dev {story_num} go');
 
     await waitFor(() => {
       expect(screen.getByText('미리보기')).toBeInTheDocument();
     });
   });
 
-  // TC-QT-32
+  // TC-QT-32: file load populates template, then Apply shows preview
   it('file load populates template text', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
 
-    // Switch to file tab
-    fireEvent.click(screen.getByText('파일'));
-
+    // File input is in Load tab (hidden)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['/dev {story_num}'], 'template.txt', { type: 'text/plain' });
     Object.defineProperty(file, 'size', { value: 100 });
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
+    // Wait for file to be loaded and radio to appear
+    await waitFor(() => {
+      expect(screen.getByText('template.txt')).toBeInTheDocument();
+    });
+
+    // Select the uploaded file radio (should be auto-selected) and click Apply
+    fireEvent.click(screen.getByText('적용'));
+
     await waitFor(() => {
       const previewSection = screen.queryByText('미리보기');
-      // Preview should appear after file load + stories selected
       expect(previewSection).toBeInTheDocument();
     });
   });
 
-  // TC-QT-33
+  // TC-QT-33: "에디터에 로드" in Apply modal calls onGenerate
   it('"에디터에 로드" calls onGenerate with generated script', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
-
-    const textarea = screen.getByPlaceholderText(/story_num/);
-    fireEvent.change(textarea, { target: { value: '/dev {story_num}' } });
+    await openApplyFromEditor('/dev {story_num}');
 
     await waitFor(() => screen.getByText('미리보기'));
 
@@ -174,13 +227,10 @@ describe('QueueTemplateDialog', () => {
     expect(defaultProps.onGenerate).toHaveBeenCalledWith(expect.stringContaining('/dev 1.1'));
   });
 
-  // TC-QT-34
+  // TC-QT-34: @pause insertion toggle in Apply modal
   it('@pause insertion toggle works', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
-
-    const textarea = screen.getByPlaceholderText(/story_num/);
-    fireEvent.change(textarea, { target: { value: '/dev {story_num}' } });
+    await openApplyFromEditor('/dev {story_num}');
 
     await waitFor(() => screen.getByText('미리보기'));
 
@@ -198,23 +248,21 @@ describe('QueueTemplateDialog', () => {
     });
   });
 
-  // TC-QT-35
+  // TC-QT-35: save template in Editor tab
   it('save template flow calls API and refreshes list', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
+
+    // Switch to Editor tab
+    fireEvent.click(screen.getByText('에디터'));
 
     const textarea = screen.getByPlaceholderText(/story_num/);
     fireEvent.change(textarea, { target: { value: '/dev {story_num}' } });
-
-    // Click save button
-    await waitFor(() => screen.getByText('저장'));
-    fireEvent.click(screen.getByText('저장'));
 
     // Fill in template name
     const nameInput = screen.getByPlaceholderText('템플릿 이름');
     fireEvent.change(nameInput, { target: { value: 'My Template' } });
 
-    // Click save
+    // Click save button
     fireEvent.click(screen.getByText('저장'));
 
     await waitFor(() => {
@@ -222,16 +270,13 @@ describe('QueueTemplateDialog', () => {
     });
   });
 
-  // TC-QT-36
+  // TC-QT-36: delete template from Load tab
   it('delete template flow calls API with confirmation', async () => {
     window.confirm = vi.fn(() => true);
 
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
 
-    // Switch to saved templates tab
-    fireEvent.click(screen.getByText('저장됨'));
-
+    // Wait for templates to load in the Load tab
     await waitFor(() => screen.getByText('Basic Dev'));
 
     const deleteBtn = screen.getByLabelText('Basic Dev 삭제');
@@ -243,27 +288,30 @@ describe('QueueTemplateDialog', () => {
     });
   });
 
-  // TC-QT-37
+  // TC-QT-37: selecting a saved template in Load tab and applying it
   it('saved template selection loads template text', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
 
-    fireEvent.click(screen.getByText('저장됨'));
-
+    // Wait for templates to load
     await waitFor(() => screen.getByText('Basic Dev'));
+
+    // Select template radio
     fireEvent.click(screen.getByText('Basic Dev'));
 
-    // After selecting, the preview should show generated content
+    // Click Apply
+    fireEvent.click(screen.getByText('적용'));
+
+    // After applying, the preview should show generated content
     await waitFor(() => {
       expect(screen.getByText('미리보기')).toBeInTheDocument();
     });
   });
 
-  // TC-QT-38
+  // TC-QT-38: close button and Escape key
   it('close button and Escape key call onClose', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
     // Wait for async data fetches to settle
-    await waitFor(() => screen.getByText(/1\.1/));
+    await waitFor(() => screen.getByText('Basic Dev'));
 
     // Close button
     const closeBtn = screen.getByLabelText('닫기');
@@ -273,55 +321,57 @@ describe('QueueTemplateDialog', () => {
     // Re-render and test Escape
     defaultProps.onClose.mockClear();
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getAllByText(/1\.1/));
+    await waitFor(() => screen.getAllByText('Basic Dev'));
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
-  // TC-QT-39a
+  // TC-QT-39a: edit button loads template into Editor tab textarea
   it('edit button loads template into textarea and sets selectedTemplateId', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
 
-    // Go to saved tab
-    fireEvent.click(screen.getByText('저장됨'));
+    // Wait for templates in Load tab
     await waitFor(() => screen.getByText('Basic Dev'));
 
-    const editBtn = screen.getByLabelText('Basic Dev 편집');
-    fireEvent.click(editBtn);
+    // Select template radio
+    fireEvent.click(screen.getByText('Basic Dev'));
 
-    // Should switch to input tab with template loaded
+    // Click "편집" (Edit) button in footer
+    fireEvent.click(screen.getByText('편집'));
+
+    // Should switch to Editor tab with template loaded
     await waitFor(() => {
       const textarea = screen.getByPlaceholderText(/story_num/);
       expect(textarea).toHaveValue('/dev {story_num}');
     });
 
-    // Save button should now say "템플릿 업데이트"
-    await waitFor(() => {
-      expect(screen.getByText('업데이트')).toBeInTheDocument();
-    });
+    // Template name should also be populated
+    const nameInput = screen.getByPlaceholderText('템플릿 이름');
+    expect(nameInput).toHaveValue('Basic Dev');
   });
 
-  // TC-QT-39b
+  // TC-QT-39b: save in Editor tab with existing template name calls overwrite confirm + update API
   it('"템플릿 업데이트" button calls updateTemplate API when selectedTemplateId is set', async () => {
+    window.confirm = vi.fn(() => true);
+
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
 
-    // Go to saved tab and edit
-    fireEvent.click(screen.getByText('저장됨'));
+    // Load tab: select template, click Edit
     await waitFor(() => screen.getByText('Basic Dev'));
+    fireEvent.click(screen.getByText('Basic Dev'));
+    fireEvent.click(screen.getByText('편집'));
 
-    const editBtn = screen.getByLabelText('Basic Dev 편집');
-    fireEvent.click(editBtn);
+    // Wait for Editor tab with template loaded
+    await waitFor(() => {
+      const textarea = screen.getByPlaceholderText(/story_num/);
+      expect(textarea).toHaveValue('/dev {story_num}');
+    });
 
-    await waitFor(() => screen.getByText('업데이트'));
-
-    fireEvent.click(screen.getByText('업데이트'));
-
-    // Name input should appear with pre-filled name
+    // Template name should be pre-filled
     const nameInput = screen.getByPlaceholderText('템플릿 이름');
     expect(nameInput).toHaveValue('Basic Dev');
 
+    // Click save (same name triggers overwrite flow)
     fireEvent.click(screen.getByText('저장'));
 
     await waitFor(() => {
@@ -329,26 +379,21 @@ describe('QueueTemplateDialog', () => {
     });
   });
 
-  // TC-QT-39c
+  // TC-QT-39c: file input accepts correct file types
   it('file load accepts .txt and .qlaude-queue files', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
 
-    fireEvent.click(screen.getByText('파일'));
-
+    // File input is in Load tab (hidden)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput.accept).toContain('.txt');
     expect(fileInput.accept).toContain('.qlaude-queue');
   });
 
-  // TC-QT-40
+  // TC-QT-40: empty file rejected
   it('file load rejects empty files with toast message', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
-
-    fireEvent.click(screen.getByText('파일'));
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const emptyFile = new File([''], 'empty.txt', { type: 'text/plain' });
@@ -360,14 +405,11 @@ describe('QueueTemplateDialog', () => {
     alertSpy.mockRestore();
   });
 
-  // TC-QT-41
+  // TC-QT-41: large file rejected
   it('file load rejects files > 100KB with toast message', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
-
-    fireEvent.click(screen.getByText('파일'));
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const bigFile = new File(['x'.repeat(200000)], 'big.txt', { type: 'text/plain' });
@@ -378,35 +420,54 @@ describe('QueueTemplateDialog', () => {
     expect(alertSpy).toHaveBeenCalledWith('파일이 너무 큽니다 (최대 100KB)');
     alertSpy.mockRestore();
   });
-  // TC-QT-42
+
+  // TC-QT-42: wrap toggle in Editor tab syncs textarea and preview
   it('wrap toggle syncs template input and preview modes', async () => {
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
+
+    // Switch to Editor tab
+    fireEvent.click(screen.getByText('에디터'));
 
     const textarea = screen.getByPlaceholderText(/story_num/);
     fireEvent.change(textarea, { target: { value: '/dev {story_num} a-very-long-line' } });
 
+    // Open Apply modal to get preview
+    fireEvent.click(screen.getByText('적용'));
     await waitFor(() => {
       expect(document.querySelector('pre')).toBeInTheDocument();
     });
 
-    const toggle = screen.getByLabelText('Toggle template wrap mode');
     const previewEl = document.querySelector('pre');
 
+    // Default is auto-wrap (soft / pre-wrap)
+    expect(previewEl).toHaveStyle({ whiteSpace: 'pre-wrap' });
+
+    // Close Apply modal to access Editor tab's wrap toggle
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    // Find the wrap toggle button — it's in the Editor tab toolbar
+    const toggle = screen.getByLabelText('템플릿 줄 바꿈 토글');
     expect(textarea).toHaveAttribute('wrap', 'soft');
     expect(textarea).toHaveStyle({ whiteSpace: 'pre-wrap' });
-    expect(previewEl).toHaveStyle({ whiteSpace: 'pre-wrap' });
     expect(toggle).toHaveAttribute('aria-pressed', 'true');
 
+    // Toggle off
     fireEvent.click(toggle);
 
     expect(textarea).toHaveAttribute('wrap', 'off');
     expect(textarea).toHaveStyle({ whiteSpace: 'pre' });
-    expect(previewEl).toHaveStyle({ whiteSpace: 'pre' });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    // Verify preview also uses the updated wrap mode
+    fireEvent.click(screen.getByText('적용'));
+    await waitFor(() => {
+      expect(document.querySelector('pre')).toBeInTheDocument();
+    });
+    const updatedPreview = document.querySelector('pre');
+    expect(updatedPreview).toHaveStyle({ whiteSpace: 'pre' });
   });
 
-  // TC-QT-43
+  // TC-QT-43: CRLF normalization when loading a saved template via Apply
   it('normalizes CRLF when loading a saved template into the editor', async () => {
     mockGetTemplates.mockResolvedValueOnce([
       {
@@ -419,20 +480,20 @@ describe('QueueTemplateDialog', () => {
     ]);
 
     render(<QueueTemplateDialog {...defaultProps} />);
-    await waitFor(() => screen.getByText(/1\.1/));
 
-    // Open the saved templates tab without relying on localized label text.
-    for (const button of screen.getAllByRole('button')) {
-      fireEvent.click(button);
-      if (screen.queryByText('CRLF Template')) break;
-    }
+    // Wait for saved templates to load with CRLF Template
     await waitFor(() => screen.getByText('CRLF Template'));
-    fireEvent.click(screen.getByText('CRLF Template'));
 
-    // "Load to editor" is the last footer action button when preview exists.
-    const buttons = screen.getAllByRole('button');
-    const loadBtn = buttons[buttons.length - 1];
-    fireEvent.click(loadBtn);
+    // Select the CRLF template and click Apply
+    fireEvent.click(screen.getByText('CRLF Template'));
+    fireEvent.click(screen.getByText('적용'));
+
+    // Wait for stories + preview in Apply modal
+    await waitFor(() => expect(screen.getAllByText(/1\.1/).length).toBeGreaterThan(0));
+    await waitFor(() => screen.getByText('미리보기'));
+
+    // Click "에디터에 로드" to call onGenerate
+    fireEvent.click(screen.getByText('에디터에 로드'));
 
     const generated = defaultProps.onGenerate.mock.calls[0]?.[0] as string;
     expect(generated).toContain('/dev 1.1\n@pause review');

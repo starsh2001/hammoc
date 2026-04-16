@@ -408,12 +408,6 @@ export function QueueRunnerPanel({
                           {getItemSummary(innerItem, t)}
                         </span>
                       </div>
-                      {/* Pause reason inline — skip for breakpoints (summary already contains the reason) */}
-                      {isInnerCurrent && innerStatus === 'paused' && pauseReason && !innerItem.isBreakpoint && (
-                        <div className="pl-16 pr-4 py-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-900/10 border-b border-gray-100 dark:border-[#3a4d5e]/50">
-                          ↳ {pauseReason}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -553,39 +547,40 @@ export function QueueRunnerPanel({
           })
         )}
 
-        {/* Add new item form */}
-        {onAddItem && (isRunning || isPaused) && (
-          <div className="flex items-center gap-2 px-4 py-2 border-t border-gray-300 dark:border-[#3a4d5e]">
-            <input
-              type="text"
-              value={newItemText}
-              onChange={(e) => setNewItemText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleAddItem();
-                }
-              }}
-              placeholder={t('queue.addItemPlaceholder')}
-              className="flex-1 text-sm px-2 py-1.5 rounded border border-gray-300 dark:border-[#455568]
-                bg-white dark:bg-[#253040] text-gray-700 dark:text-gray-200
-                placeholder:text-gray-400 dark:placeholder:text-gray-500
-                focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <button
-              onClick={handleAddItem}
-              disabled={!newItemText.trim()}
-              aria-label={t('queue.addItem')}
-              className="inline-flex items-center justify-center w-8 h-8 rounded
-                bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400
-                hover:bg-blue-200 dark:hover:bg-blue-900/50
-                disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-        )}
       </div>
+
+      {/* Add new item form */}
+      {onAddItem && (isRunning || isPaused) && (
+        <div className="flex items-center gap-2 px-4 py-2 border-t border-gray-300 dark:border-[#3a4d5e] flex-shrink-0">
+          <input
+            type="text"
+            value={newItemText}
+            onChange={(e) => setNewItemText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddItem();
+              }
+            }}
+            placeholder={t('queue.addItemPlaceholder')}
+            className="flex-1 text-sm px-2 py-1.5 rounded border border-gray-300 dark:border-[#455568]
+              bg-white dark:bg-[#253040] text-gray-700 dark:text-gray-200
+              placeholder:text-gray-400 dark:placeholder:text-gray-500
+              focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <button
+            onClick={handleAddItem}
+            disabled={!newItemText.trim()}
+            aria-label={t('queue.addItem')}
+            className="inline-flex items-center justify-center w-8 h-8 rounded
+              bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400
+              hover:bg-blue-200 dark:hover:bg-blue-900/50
+              disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

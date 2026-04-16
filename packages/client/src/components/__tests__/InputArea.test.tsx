@@ -75,8 +75,8 @@ describe('InputArea', () => {
       render(<InputArea />);
 
       const inputArea = screen.getByTestId('input-area');
-      expect(inputArea.className).toContain('dark:border-gray-700');
-      expect(inputArea.className).toContain('dark:bg-[#151d2c]');
+      expect(inputArea.className).toContain('dark:border-slate-700/50');
+      expect(inputArea.className).toContain('bg-[var(--bg-footer)]');
     });
   });
 

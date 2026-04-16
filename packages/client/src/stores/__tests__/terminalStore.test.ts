@@ -54,6 +54,7 @@ describe('terminalStore', () => {
 
   // TC-TERM-S3: terminal:created updates state
   it('terminal:created handler adds session to terminals map', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
 
     // Find the terminal:created handler
@@ -85,6 +86,7 @@ describe('terminalStore', () => {
       activeTerminalId: 'term-1',
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
 
     const onExitCall = mockSocket.on.mock.calls.find(
@@ -106,6 +108,7 @@ describe('terminalStore', () => {
       ]),
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
 
     const onErrorCall = mockSocket.on.mock.calls.find(
@@ -122,6 +125,7 @@ describe('terminalStore', () => {
 
   // TC-TERM-S6: terminal:error without terminalId only shows toast
   it('terminal:error without terminalId only shows toast', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
 
     const onErrorCall = mockSocket.on.mock.calls.find(
@@ -174,6 +178,7 @@ describe('terminalStore', () => {
     const cb = vi.fn();
     const unregister = useTerminalStore.getState().registerDataCallback('term-1', cb);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
 
     const onDataCall = mockSocket.on.mock.calls.find(
@@ -292,12 +297,14 @@ describe('terminalStore', () => {
 
   // TC-TERM-S11: cleanupTerminalListeners removes socket handlers
   it('cleanupTerminalListeners removes all socket event handlers', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useTerminalStore.getState().setupTerminalListeners(mockSocket as any);
     expect(mockSocket.on).toHaveBeenCalledTimes(6);
 
     // Clear mock counts from setup (which internally calls cleanup first)
     mockSocket.off.mockClear();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useTerminalStore.getState().cleanupTerminalListeners(mockSocket as any);
     expect(mockSocket.off).toHaveBeenCalledTimes(6);
     expect(mockSocket.off).toHaveBeenCalledWith('terminal:list', expect.any(Function));

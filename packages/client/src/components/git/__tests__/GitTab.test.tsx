@@ -34,7 +34,7 @@ vi.mock('../../ConfirmModal', () => ({
 }));
 
 // Store mocks
-const mockFetchStatus = vi.fn();
+const _mockFetchStatus = vi.fn();
 const mockFetchLog = vi.fn();
 const mockFetchBranches = vi.fn();
 const mockStageFiles = vi.fn();
@@ -93,6 +93,7 @@ vi.mock('../../../hooks/useGitStatus', () => ({
 
 // Mock useGitStore
 vi.mock('../../../stores/gitStore', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useGitStore: (selector: (state: any) => any) =>
     selector({
       ...storeState,
@@ -159,7 +160,7 @@ describe('GitTab', () => {
   // TC-GIT-T4: Shows file list groups
   it('shows file list groups (staged, unstaged, untracked)', () => {
     renderGitTab();
-    expect(screen.getByText('Staged Changes')).toBeInTheDocument();
+    expect(screen.getByText('스테이지된 변경사항')).toBeInTheDocument();
     expect(screen.getByText('변경사항')).toBeInTheDocument();
     expect(screen.getByText('추적되지 않음')).toBeInTheDocument();
   });
@@ -171,14 +172,14 @@ describe('GitTab', () => {
       staged: [],
     };
     renderGitTab();
-    const commitBtn = screen.getByRole('button', { name: 'Commit' });
+    const commitBtn = screen.getByRole('button', { name: '커밋' });
     expect(commitBtn).toBeDisabled();
   });
 
   // TC-GIT-T6: Commit button disabled when message is empty
   it('disables commit button when message is empty', () => {
     renderGitTab();
-    const commitBtn = screen.getByRole('button', { name: 'Commit' });
+    const commitBtn = screen.getByRole('button', { name: '커밋' });
     expect(commitBtn).toBeDisabled();
   });
 
@@ -280,7 +281,7 @@ describe('GitTab', () => {
     const textarea = screen.getByPlaceholderText('커밋 메시지를 입력하세요...');
     fireEvent.change(textarea, { target: { value: 'test commit message' } });
 
-    const commitBtn = screen.getByRole('button', { name: 'Commit' });
+    const commitBtn = screen.getByRole('button', { name: '커밋' });
     expect(commitBtn).not.toBeDisabled();
     fireEvent.click(commitBtn);
 

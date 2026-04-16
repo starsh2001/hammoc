@@ -10,7 +10,7 @@ import type { GitStatusResponse, GitCommitInfo } from '@hammoc/shared';
 
 // Mock formatRelativeTime
 vi.mock('../../../utils/formatters', () => ({
-  formatRelativeTime: (date: string) => '1일 전',
+  formatRelativeTime: (_date: string) => '1일 전',
 }));
 
 // Store mocks
@@ -69,6 +69,7 @@ const mockGetState = vi.fn(() => ({ error: null }));
 
 vi.mock('../../../stores/gitStore', () => ({
   useGitStore: Object.assign(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (selector: (state: any) => any) =>
       selector({
         ...storeState,
@@ -129,7 +130,7 @@ describe('QuickGitPanel', () => {
     renderPanel();
     expect(screen.getByTestId('commit-message-input')).toBeInTheDocument();
     expect(screen.getByTestId('stage-commit-button')).toBeInTheDocument();
-    expect(screen.getByText('Stage All & Commit')).toBeInTheDocument();
+    expect(screen.getByText('전체 스테이지 & 커밋')).toBeInTheDocument();
   });
 
   it('disables commit button when message is empty', () => {
