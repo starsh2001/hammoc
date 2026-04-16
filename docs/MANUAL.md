@@ -162,6 +162,15 @@ Messages support full GitHub-flavored markdown:
 - Links (open in new tab)
 - Inline code and fenced code blocks
 
+**HTML support:**
+- Inline HTML tags are rendered alongside markdown (e.g., `<div>`, `<span>`, `<table>`)
+- Dangerous elements (`<script>`, `<iframe>`, `<style>`, event handlers) are automatically stripped for XSS protection
+
+**Relative path resolution:**
+- File links and image references in markdown resolve relative to the source file's directory
+- Parent traversal (`../`) is supported (e.g., `../../config.json` navigates up two levels)
+- Clicking resolved file links opens them in the text editor; images open in the image viewer
+
 **Code blocks** have:
 - Language-specific syntax highlighting
 - Copy button (top-right corner)
@@ -247,6 +256,7 @@ Monitor token usage in real-time:
 - **Rate limit dots** — 5h/7d utilization indicators in the input area
 - **Color thresholds** — Green (normal), Yellow (moderate), Red (high usage)
 - **Context compaction** — Click the usage donut to trigger compaction, which summarizes the conversation to free up context space. At critical usage levels, clicking instead creates a new session
+- **Auto-compact on overflow** — When message history hits the context window limit, Hammoc automatically compacts the context and retries the message instead of losing the session
 
 ### 2.11 Aborting Responses
 
@@ -284,7 +294,11 @@ When Claude uses extended thinking, the reasoning is shown in a collapsible bloc
 - Thinking content is visually distinct from the main response
 - Useful for understanding Claude's decision-making process
 
-### 2.15 Thinking Effort
+### 2.15 Model Selector
+
+The model selector button is located in the chat input toolbar. It displays the current model family name (e.g., "Opus", "Sonnet", "Haiku") directly on the button. When using the default model, it shows "Default". Click to open a dropdown for choosing a different model and adjusting thinking effort.
+
+### 2.16 Thinking Effort
 
 Control how much Claude "thinks" before responding. The intensity bar appears inside the model selector dropdown:
 
@@ -296,7 +310,7 @@ Control how much Claude "thinks" before responding. The intensity bar appears in
 
 The default thinking effort for new sessions can be configured in Settings > Global.
 
-### 2.16 Message Actions
+### 2.17 Message Actions
 
 Each message has an action bar that appears at its bottom-right corner. Available actions depend on the message type:
 
@@ -304,16 +318,16 @@ Each message has an action bar that appears at its bottom-right corner. Availabl
 - **Copy** — Copy the message text to clipboard
 
 **On user messages:**
-- **Edit** — Open an inline editor to modify the message (see §2.17)
-- **Summarize & Continue** — Generate an AI summary of the conversation up to that point (see §2.18)
-- **Rewind Code** — Restore the codebase to the state it was in when this message was sent (see §2.19)
+- **Edit** — Open an inline editor to modify the message (see §2.18)
+- **Summarize & Continue** — Generate an AI summary of the conversation up to that point (see §2.19)
+- **Rewind Code** — Restore the codebase to the state it was in when this message was sent (see §2.20)
 
 **On assistant messages:**
-- **Fork** — Create a new session branching from this response (see §2.20)
+- **Fork** — Create a new session branching from this response (see §2.21)
 
-All action buttons are disabled during streaming, and while another action (edit, rewind, summarize) is in progress. Actions are also disabled when viewing an old branch or in branch viewer mode (see §2.22).
+All action buttons are disabled during streaming, and while another action (edit, rewind, summarize) is in progress. Actions are also disabled when viewing an old branch or in branch viewer mode (see §2.23).
 
-### 2.17 Message Edit
+### 2.18 Message Edit
 
 Edit a previously sent user message to explore a different conversation path:
 
@@ -324,9 +338,9 @@ Edit a previously sent user message to explore a different conversation path:
    - **Cancel** (X button or `Escape`) — Discard changes
 4. Empty messages cannot be submitted
 
-After editing, you can navigate between the original and edited branches using branch pagination (see §2.21).
+After editing, you can navigate between the original and edited branches using branch pagination (see §2.22).
 
-### 2.18 Summarize & Continue
+### 2.19 Summarize & Continue
 
 Compress a long conversation into a summary to free up context space while continuing the session:
 
@@ -336,7 +350,7 @@ Compress a long conversation into a summary to free up context space while conti
 4. When complete, the inline edit form opens with the generated summary pre-filled
 5. Review, edit if needed, then **Accept** to continue with the summary or **Cancel** to discard
 
-### 2.19 Code Rewind
+### 2.20 Code Rewind
 
 Revert project files to a previous state in the conversation:
 
@@ -347,7 +361,7 @@ Revert project files to a previous state in the conversation:
 
 If no checkpoint is available for that message, or the code is already at that state, an error message is shown.
 
-### 2.20 Session Fork
+### 2.21 Session Fork
 
 Branch into a completely new session from any assistant response:
 
@@ -359,7 +373,7 @@ Branch into a completely new session from any assistant response:
 
 The original session remains unchanged.
 
-### 2.21 Conversation Branching
+### 2.22 Conversation Branching
 
 When you edit a message, the conversation splits into branches. Branch pagination controls appear at the bottom-left of user messages that have multiple branches:
 
@@ -370,7 +384,7 @@ When you edit a message, the conversation splits into branches. Branch paginatio
 
 Switching branches replaces all messages from that point forward with the selected branch's history.
 
-### 2.22 Branch Viewer
+### 2.23 Branch Viewer
 
 Browse all conversation branches in a read-only mode:
 
@@ -701,6 +715,7 @@ Click any text file to open it in the built-in editor:
 - **Close** — `Escape` key or the X button
 - **Unsaved changes warning** — Confirmation dialog prevents accidental data loss
 - **File size limit** — Files over 1MB are truncated and read-only
+- **Binary files** — When a binary file is opened (images, PDFs, executables, etc.), a download button is shown instead of the editor, allowing direct file download
 
 ### 6.3 Markdown Preview
 
@@ -894,7 +909,7 @@ The editor provides **syntax highlighting**:
 **Toolbar buttons:**
 - **Run** (Play icon) — Start queue execution; also available via `Ctrl+Enter` / `Cmd+Enter`
 - **Load File** (Upload icon) — Import a `.txt` or `.qlaude-queue` file (max 1MB)
-- **Template** (FileText icon) — Open the template dialog (see 9.7)
+- **Template** (FileText icon) — Open the template dialog (see §9.8)
 - **Word Wrap** (WrapText icon) — Toggle line wrapping (persisted across sessions)
 
 **Editor behavior:**
@@ -914,6 +929,9 @@ Each line is one prompt. Special commands start with `@`. Empty lines are ignore
 | `@pause [reason]` | Pause execution; optional reason text shown in the pause banner |
 | `@model <name>` | Switch Claude model (e.g., `@model opus`) |
 | `@delay <ms>` | Wait before the next prompt (positive integer in ms, e.g., `@delay 5000`) |
+| `@pauseword "<keyword>"` | Set a keyword that auto-pauses the queue when found in Claude's response. Use `@pauseword ""` to clear |
+| `@loop max=N [until="TOKEN"] [on_exceed="pause\|continue"]` | Start a loop block that repeats up to N times (see §9.5) |
+| `@end` | End a loop block |
 | `@(` | Start a multiline prompt (all lines until `@)` are treated as one prompt) |
 | `@)` | End a multiline prompt |
 | `# comment` | Comment line (not sent to Claude) |
@@ -937,14 +955,50 @@ Please review this code and check for:
 
 An unclosed multiline block (missing `@)`) produces a warning and is still sent as a single prompt.
 
-### 9.4 Response Markers
+### 9.4 Pauseword
 
-Claude's responses can contain special markers to control queue execution:
+The `@pauseword` directive lets you set a keyword that automatically pauses queue execution when found in Claude's response.
 
-- **`QUEUE_STOP`** — Queue execution pauses automatically. Useful when Claude detects an issue that needs human review.
-- **`QUEUE_PASS`** — Advances the queue silently without waiting for user interaction.
+```
+@pauseword "DONE"
+Implement the login feature
+Fix any remaining issues
+@pauseword ""
+This prompt runs without pauseword
+```
 
-### 9.5 Running the Queue
+- **Set** — `@pauseword "KEYWORD"` activates the keyword for all subsequent items
+- **Clear** — `@pauseword ""` (empty string) removes the active pauseword
+- When Claude's response contains the keyword, the queue pauses for review
+- The pauseword is snapshotted at the start of each prompt execution
+- Quotes are required around the keyword; mismatched or empty quotes produce a validation warning
+
+### 9.5 Loop Blocks
+
+The `@loop`/`@end` directives create iterative workflows that repeat a block of prompts.
+
+```
+@loop max=5 until="SUCCESS" on_exceed="pause"
+  Review the code for issues
+  Fix any problems found
+@end
+```
+
+**Parameters:**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `max=N` | Yes | Maximum number of iterations (positive integer) |
+| `until="TOKEN"` | No | Stop looping when this token appears in Claude's response |
+| `on_exceed="pause\|continue"` | No | Action when max iterations reached without the until token (default: `pause`) |
+
+**Behavior:**
+- Each iteration executes all prompts inside the block sequentially
+- If `until` token is detected in a response, the loop exits early
+- When `max` is reached without the `until` token: `pause` halts for review, `continue` moves to the next queue item
+- During execution, the banner shows loop progress (e.g., "Loop 2/5") with inner item tracking
+
+### 9.6 Running the Queue
 
 1. Write your prompts in the queue editor
 2. Click **"Run"** or press `Ctrl+Enter` to start
@@ -972,17 +1026,21 @@ Claude's responses can contain special markers to control queue execution:
 - **Delete** — Click the trash icon to remove a pending item
 - **Add** — Inline input at the bottom to add new items to the queue
 
-### 9.6 Session Locking
+### 9.7 Session Locking
 
 While the queue is running, a **sticky banner** appears at the top of chat sessions:
 
-- **Running** (blue) — Spinner + progress (current/total) + current prompt preview (desktop)
+- **Running** (blue) — Spinner + progress (current/total) + current prompt preview (desktop). Inside a `@loop` block, a loop badge shows iteration progress (e.g., "Loop 2/5")
 - **Pause requested** (amber pulse) — Pause scheduled after current item finishes; cancel pause button shown
 - **Waiting for input** (purple pulse) — Queue paused for permission approval or user question; respond in the session to continue
 - **Paused** (amber) — Pause icon + progress; pause reason shown below if provided
 - **Error-paused** (red) — Alert icon + error details
 - **Completed** (green) — Checkmark + total count; dismissible with X button
 - **Error-stopped** (red) — Error message + link to queue editor; dismissible
+
+**Expandable item list:**
+- When 2+ items exist, click the chevron to expand a scrollable list of all queue items with status indicators
+- Currently executing items are highlighted; completed items appear with strikethrough text
 
 **Banner controls:**
 - **Pause / Cancel Pause / Resume / Abort** buttons directly in the banner (icon-only on mobile, icon+text on desktop)
@@ -993,7 +1051,7 @@ While the queue is running, a **sticky banner** appears at the top of chat sessi
 - A banner shows "Queue running in another session" with a link to navigate to it
 - Other sessions remain fully accessible
 
-### 9.7 Templates
+### 9.8 Templates
 
 Templates generate queue scripts by combining a template pattern with story selections from your project's PRD.
 
@@ -1036,13 +1094,13 @@ Implement Story {story_num}: {story_title}
 - **Delete** — Remove a saved template (with confirmation)
 - Templates are saved per-project
 
-### 9.8 Queue Status Badge
+### 9.9 Queue Status Badge
 
-A badge on the project card shows queue status:
+A badge on the project card and session list shows queue status:
 
-- **Running** — Blue badge with progress
-- **Paused** — Yellow badge
-- **Error** — Red badge
+- **Running** — Blue badge with play icon
+- **Paused** — Amber badge with pause icon
+- **Error** — Red badge with alert icon
 - **Idle** — No badge shown
 
 ---
@@ -1366,7 +1424,7 @@ Recommendations follow reverse workflow order (finish what's closest to done fir
 
 ### 11.6 Queue Templates from PRD
 
-Queue templates automate story development in batch. For details, see §9.7 (Queue Templates).
+Queue templates automate story development in batch. For details, see §9.8 (Queue Templates).
 
 ---
 
@@ -1569,7 +1627,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 - **Production mode:** Shows current version number, "Check for Updates" button, and "Install Update" button (appears only when an update is available). Includes build progress with elapsed timer
 
 **File Checkpointing:**
-- **Chat sessions** — Save file snapshots during chat for rewind/restore (default: on). Disabling this prevents the Code Rewind feature (see §2.19) from working
+- **Chat sessions** — Save file snapshots during chat for rewind/restore (default: on). Disabling this prevents the Code Rewind feature (see §2.20) from working
 - **Queue runner** — Save file snapshots during queue execution (default: off). Enabling increases JSONL session file size
 
 **SDK Parameters:**

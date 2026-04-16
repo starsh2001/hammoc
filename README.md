@@ -123,7 +123,7 @@ This enables:
 Real-time conversations with Claude through a rich web UI.
 
 - **Streaming responses** — Messages appear progressively as Claude generates them
-- **Markdown rendering** — Full markdown support with syntax-highlighted code blocks and copy buttons
+- **Markdown rendering** — Full markdown support with syntax-highlighted code blocks, copy buttons, and inline HTML rendering
 - **Image attachments** — Attach up to 5 images (PNG, JPEG, GIF, WebP) per message with thumbnail display
 - **Tool call visualization** — See what tools Claude uses, with inputs, outputs, and execution time
 - **Diff viewer** — Side-by-side file diff display for code changes
@@ -136,7 +136,7 @@ Real-time conversations with Claude through a rich web UI.
 - **Prompt history** — Navigate previous inputs with arrow keys
 - **Prompt chaining** — Queue up to 10 prompts for sequential execution (server-synced, multi-browser)
 - **Voice input** — Dictate messages using browser speech recognition (Chrome, Edge, Safari)
-- **Context usage monitor** — Track token usage and cost in real-time
+- **Context usage monitor** — Track token usage and cost in real-time, with auto-compact on context overflow
 - **Abort generation** — Stop responses with the abort button or ESC key
 
 ### Session Management
@@ -159,7 +159,7 @@ Real-time conversations with Claude through a rich web UI.
 
 ### Model & Permission Control
 
-- **Model selector** — Choose between Claude Sonnet, Opus, and Haiku variants
+- **Model selector** — Choose between Claude Sonnet, Opus, and Haiku variants with model name displayed on the button
 - **Thinking effort** — Adjust reasoning intensity (Low / Medium / High / Max on Opus 4.6)
 - **Permission modes** — Plan, Ask (default), Auto, or Bypass
 - **Per-project overrides** — Different settings per project
@@ -176,7 +176,7 @@ Real-time conversations with Claude through a rich web UI.
 
 - **Grid & List views** — Finder-style grid or traditional list layout
 - **Tree navigation** — Directory hierarchy with breadcrumbs
-- **Text editor** — Syntax highlighting with save (Ctrl+S)
+- **Text editor** — Syntax highlighting with save (Ctrl+S) and binary file download
 - **Markdown preview** — Toggle between edit and preview modes
 - **Image viewer** — Full-screen image viewing with zoom controls and multi-image navigation
 - **File operations** — Create, rename, and delete files and folders
@@ -200,7 +200,7 @@ Real-time conversations with Claude through a rich web UI.
 Automate repetitive prompt sequences.
 
 - **Queue editor** — Write prompt sequences line by line
-- **Special commands** — `@new`, `@save`, `@load`, `@pause`, `@model`, `@delay`, `@(/@)`, `#` comments
+- **Special commands** — `@new`, `@save`, `@load`, `@pause`, `@model`, `@delay`, `@pauseword`, `@loop`/`@end`, `@(/@)`, `#` comments
 - **Execution control** — Start, pause (deferred), resume, abort, and edit remaining items while paused
 - **Templates** — Save and load reusable queue scripts
 - **Story-based generation** — Auto-generate queue from PRD epics and stories
