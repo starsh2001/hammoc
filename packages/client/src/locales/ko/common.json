@@ -274,9 +274,9 @@
     "refreshTooltip": "새로고침"
   },
   "queueStatus": {
-    "running": "실행 중",
-    "paused": "일시 중지",
-    "error": "오류",
+    "running": "큐 실행중",
+    "paused": "큐 일시 중지",
+    "error": "큐 오류",
     "statusLabel": "큐 상태: {{status}}"
   },
   "files": {
@@ -483,6 +483,7 @@
       "loadSession": "세션 로드:",
       "modelPrefix": "[모델:",
       "modelChange": "모델 변경:",
+      "pauseword": "정지 키워드:",
       "wait": "대기:"
     },
     "template": {
@@ -553,7 +554,9 @@
       "pauseQueue": "큐 일시정지",
       "resumeQueue": "큐 재개",
       "abortQueue": "큐 중단",
-      "queueEditor": "큐 에디터"
+      "queueEditor": "큐 에디터",
+      "expandList": "아이템 목록 펼치기",
+      "collapseList": "아이템 목록 접기"
     }
   },
   "panel": {

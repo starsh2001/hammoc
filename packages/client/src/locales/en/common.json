@@ -269,9 +269,9 @@
     "terminalsFormat": "{{count}} terminal(s)"
   },
   "queueStatus": {
-    "running": "Running",
-    "paused": "Paused",
-    "error": "Error",
+    "running": "Queue running",
+    "paused": "Queue paused",
+    "error": "Queue error",
     "statusLabel": "Queue status: {{status}}"
   },
   "files": {
@@ -474,6 +474,7 @@
       "loadSession": "Load session:",
       "modelPrefix": "[Model:",
       "modelChange": "Change model:",
+      "pauseword": "Pauseword:",
       "wait": "Wait:"
     },
     "template": {
@@ -544,7 +545,9 @@
       "pauseQueue": "Pause queue",
       "resumeQueue": "Resume queue",
       "abortQueue": "Abort queue",
-      "queueEditor": "Queue editor"
+      "queueEditor": "Queue editor",
+      "expandList": "Expand item list",
+      "collapseList": "Collapse item list"
     }
   },
   "panel": {

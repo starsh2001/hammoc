@@ -241,7 +241,7 @@ export function ChatPage() {
   const isSessionMismatch = !!sessionId && (storeSessionId !== sessionId || storeProjectSlug !== projectSlug);
   const isLoading = storeLoading || isSessionMismatch;
 
-  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult, editingMessageUuid, isBranchViewerMode, enterBranchViewer, exitBranchViewer } = useChatStore();
+  const { isStreaming, isCompacting, streamingSessionId, streamingSegments, sendMessage, abortStreaming: _abortStreaming, abortResponse, permissionMode, setPermissionMode, selectedModel, setSelectedModel, resetSelectedModel, selectedEffort, setSelectedEffort, resetSelectedEffort, resetPermissionMode, activeModel, contextUsage, resetContextUsage, clearStreamingSegments, rewindFiles, isRewinding, lastDryRunResult, setIsRewinding, clearLastDryRunResult, isSummarizing, summarizingMessageUuid, summaryResult, setSummarizing, clearSummaryResult, editingMessageUuid, isBranchViewerMode, enterBranchViewer, exitBranchViewer } = useChatStore();
   const { projects, fetchProjects } = useProjectStore();
   const { sessions, renameSession } = useSessionStore();
   // Get session name from sessionStore (populated when coming from session list)
@@ -330,8 +330,9 @@ export function ChatPage() {
   const {
     isQueueLocked, isQueueRunning, isQueuePaused, isQueueCompleted, isQueueErrored,
     isQueueOnOtherSession, queueActiveSessionId,
-    progress: queueProgress, currentPromptPreview: queuePromptPreview,
+    progress: queueProgress, parsedItems: queueParsedItems, completedItems: queueCompletedItems,
     isPauseRequested: queueIsPauseRequested, isWaitingForInput: queueIsWaitingForInput,
+    loopProgress: queueLoopProgress, currentItemSummary: queueCurrentItemSummary,
     pauseReason: queuePauseReason, errorItem: queueErrorItem,
     pause: queuePause, cancelPause: queueCancelPause, resume: queueResume, abort: queueAbort,
     dismissBanner: queueDismissBanner,
@@ -856,7 +857,7 @@ export function ChatPage() {
     window.location.reload();
   }, []);
 
-  const { displayMessages, branchPoints, navigateBranch, isBranchNavigationDisabled } = useMessageTree(messages);
+  const { displayMessages, branchPoints: _branchPoints, navigateBranch, isBranchNavigationDisabled } = useMessageTree(messages);
 
   // True when viewing a non-latest (non-active) branch via pagination.
   // SDK cannot operate on non-active branch messages, so all actions and input must be disabled.
@@ -1061,7 +1062,6 @@ export function ChatPage() {
       isOnOtherSession={isQueueOnOtherSession}
       activeSessionId={queueActiveSessionId}
       progress={queueProgress}
-      currentPromptPreview={queuePromptPreview}
       pauseReason={queuePauseReason}
       errorItem={queueErrorItem}
       projectSlug={projectSlug!}
@@ -1073,6 +1073,10 @@ export function ChatPage() {
       onAbort={queueAbort}
       onDismiss={queueDismissBanner}
       onNavigateToSession={handleSessionSelect}
+      loopProgress={queueLoopProgress}
+      currentItemSummary={queueCurrentItemSummary}
+      parsedItems={queueParsedItems}
+      completedItems={queueCompletedItems}
     />
   ) : null;
 
