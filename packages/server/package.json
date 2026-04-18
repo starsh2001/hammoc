@@ -15,7 +15,7 @@
     "test:all": "vitest run"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.34",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.112",
     "@hammoc/shared": "*",
     "bcrypt": "^6.0.0",
     "cookie-session": "^2.1.1",
