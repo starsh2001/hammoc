@@ -139,14 +139,22 @@ export const CONTEXT_TOKEN_RESERVES = {
  * Models whose native context window is 1M but SDK may under-report as 200K.
  * See: https://github.com/anthropics/claude-code/issues/24208
  */
-const NATIVE_1M_MODELS = ['claude-opus-4-6', 'claude-sonnet-4-6', 'opus', 'sonnet'];
+const NATIVE_1M_MODELS = ['claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'opus', 'sonnet'];
+
+/**
+ * True when the model is known to natively support a 1M token context window.
+ */
+function isNative1MModel(model?: string): boolean {
+  if (!model) return false;
+  return NATIVE_1M_MODELS.some(m => model === m || model.startsWith(`${m}-`));
+}
 
 /**
  * Correct SDK-reported contextWindow for known 1M models.
  * Returns max(reported, 1M) when the model is known to support 1M natively.
  */
 export function correctContextWindow(reported: number, model?: string): number {
-  if (model && NATIVE_1M_MODELS.some(m => model === m || model.startsWith(`${m}-`))) {
+  if (isNative1MModel(model)) {
     return Math.max(reported, 1_000_000);
   }
   return reported;
@@ -196,7 +204,7 @@ export const IMAGE_TOKEN_ESTIMATE = 1600;
 /**
  * Thinking effort level for the model's reasoning depth
  */
-export type ThinkingEffort = 'low' | 'medium' | 'high' | 'max';
+export type ThinkingEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 /**
  * Permission modes for tool usage

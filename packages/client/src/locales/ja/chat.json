@@ -302,11 +302,13 @@
     "low": "Lo",
     "medium": "Med",
     "high": "Hi",
+    "xhigh": "XHi",
     "max": "Max",
     "tooltipFull": {
       "low": "Low",
       "medium": "Medium",
       "high": "High",
+      "xhigh": "XHigh",
       "max": "Max"
     },
     "default": "Default",

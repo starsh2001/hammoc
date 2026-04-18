@@ -2386,10 +2386,19 @@ async function handleChatSend(
     // Load preferences early for advanced settings + timeout
     const effectivePrefs = await preferencesService.getEffectivePreferences();
 
-    // Clamp 'max' effort to 'high' for non-Opus 4.6 models
+    // Clamp unsupported effort levels:
+    //   · 'max'   → 'high' unless model supports it (Opus 4.6+, Sonnet 4.6)
+    //   · 'xhigh' → 'high' unless model supports it (Opus 4.7 only)
     const resolvedEffort = effort ?? effectivePrefs.defaultEffort;
-    const isOpus46 = model && (model === 'claude-opus-4-6' || model === 'opus' || model.includes('opus-4-6'));
-    const effectiveEffort = resolvedEffort === 'max' && !isOpus46 ? 'high' : resolvedEffort;
+    const supportsMax = !!model && (
+      model === 'opus' || model === 'sonnet' ||
+      model.includes('opus-4-6') || model.includes('opus-4-7') || model.includes('sonnet-4-6')
+    );
+    const supportsXHigh = !!model && (model === 'opus' || model.includes('opus-4-7'));
+    const effectiveEffort =
+      (resolvedEffort === 'max' && !supportsMax) || (resolvedEffort === 'xhigh' && !supportsXHigh)
+        ? 'high'
+        : resolvedEffort;
 
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : { sessionId }),

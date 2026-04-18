@@ -6,8 +6,9 @@
  * - Checkmark on currently selected model
  * - All supported Claude models grouped by generation
  * - Signal-strength bar control for thinking effort
- *   · 4 bars when Max is available (Opus 4.6)
- *   · 3 bars when Max is unavailable (non-Opus models)
+ *   · 5 bars when XHigh+Max are available (Opus 4.7)
+ *   · 4 bars when only Max is available (Opus 4.6, Sonnet 4.6)
+ *   · 3 bars when neither XHigh nor Max is available (other models)
  * - Opens upward (input area is at bottom)
  * - Outside click / Escape to close
  * - Disabled during streaming
@@ -63,7 +64,8 @@ export const MODEL_GROUPS: ModelGroup[] = [
     label: 'Claude 4.x',
     labelKey: 'model.claude4x',
     models: [
-      { value: 'claude-opus-4-6', label: 'Opus 4.6', description: 'Most capable · 1M ctx' },
+      { value: 'claude-opus-4-7', label: 'Opus 4.7', description: 'Most capable · 1M ctx' },
+      { value: 'claude-opus-4-6', label: 'Opus 4.6', description: '1M ctx' },
       { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6', description: '1M ctx' },
       { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5', description: '2025-11-01' },
       { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5', description: '2025-09-29' },
@@ -107,11 +109,29 @@ function getButtonLabel(model: string, activeModel: string | null | undefined): 
   return getModelDisplayLabel(effective).split(' ')[0];
 }
 
-/** Check if model ID indicates Opus 4.6 */
-function isOpus46(model: string | null | undefined, activeModel: string | null | undefined): boolean {
-  if (!model && !activeModel) return false;
-  const check = (m: string) => m === 'claude-opus-4-6' || m === 'opus' || m.includes('opus-4-6');
-  return (model ? check(model) : false) || (activeModel ? check(activeModel) : false);
+/**
+ * Effective model for capability checks: user's selection wins; fall back to activeModel
+ * (SDK-reported) only when selection is Default (empty).
+ */
+function effectiveModelId(model: string | null | undefined, activeModel: string | null | undefined): string {
+  return (model && model.length > 0 ? model : activeModel) ?? '';
+}
+
+/** Check if model supports 'max' effort (Opus 4.6+, Sonnet 4.6, aliases) */
+function supportsMaxEffort(model: string | null | undefined, activeModel: string | null | undefined): boolean {
+  const m = effectiveModelId(model, activeModel);
+  if (!m) return false;
+  return (
+    m === 'opus' || m === 'sonnet' ||
+    m.includes('opus-4-6') || m.includes('opus-4-7') || m.includes('sonnet-4-6')
+  );
+}
+
+/** Check if model supports 'xhigh' effort (Opus 4.7 only) */
+function supportsXHighEffort(model: string | null | undefined, activeModel: string | null | undefined): boolean {
+  const m = effectiveModelId(model, activeModel);
+  if (!m) return false;
+  return m === 'opus' || m.includes('opus-4-7');
 }
 
 /** Bar config: level + active/default gradient colors */
@@ -135,18 +155,26 @@ const BARS_4: BarDef[] = [
   { level: 'high', color: 'hsl(217,91%,50%)', defaultColor: 'hsl(152,68%,39%)' },
   { level: 'max', color: 'hsl(217,91%,44%)', defaultColor: 'hsl(152,68%,34%)' },
 ];
+const BARS_5: BarDef[] = [
+  { level: 'low', color: 'hsl(217,91%,62%)', defaultColor: 'hsl(152,68%,50%)' },
+  { level: 'medium', color: 'hsl(217,91%,57%)', defaultColor: 'hsl(152,68%,46%)' },
+  { level: 'high', color: 'hsl(217,91%,52%)', defaultColor: 'hsl(152,68%,41%)' },
+  { level: 'xhigh', color: 'hsl(217,91%,47%)', defaultColor: 'hsl(152,68%,36%)' },
+  { level: 'max', color: 'hsl(217,91%,42%)', defaultColor: 'hsl(152,68%,31%)' },
+];
 
 const BAR_HEIGHT = 14; // uniform height for all bars
 
 /** Index lookup for determining "active up to" fill */
-const LEVEL_INDEX: Record<ThinkingEffort, number> = { low: 0, medium: 1, high: 2, max: 3 };
+const LEVEL_INDEX: Record<ThinkingEffort, number> = { low: 0, medium: 1, high: 2, xhigh: 3, max: 4 };
 
 export function ModelSelector({ model, onModelChange, disabled, activeModel, effort, onEffortChange }: ModelSelectorProps) {
   const { t } = useTranslation('chat');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const maxAvailable = isOpus46(model, activeModel);
+  const maxAvailable = supportsMaxEffort(model, activeModel);
+  const xhighAvailable = supportsXHighEffort(model, activeModel);
 
   // Close on outside click
   useEffect(() => {
@@ -176,12 +204,12 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Auto-clear max effort when it becomes unavailable (model change or subscriber detection)
+  // Auto-clear effort when the selected level becomes unavailable (model change or subscriber detection)
   useEffect(() => {
-    if (effort === 'max' && !maxAvailable && onEffortChange) {
-      onEffortChange(undefined);
-    }
-  }, [effort, maxAvailable, onEffortChange]);
+    if (!onEffortChange) return;
+    if (effort === 'max' && !maxAvailable) onEffortChange(undefined);
+    else if (effort === 'xhigh' && !xhighAvailable) onEffortChange(undefined);
+  }, [effort, maxAvailable, xhighAvailable, onEffortChange]);
 
   const handleToggle = useCallback(() => {
     if (disabled) return;
@@ -213,16 +241,20 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
 
   const displayLabel = getModelDisplayLabel(model);
   const buttonLabel = getButtonLabel(model, activeModel);
-  // Clamp effort at render time: treat 'max' as undefined when unavailable (fail-closed)
-  const effectiveEffort = (effort === 'max' && !maxAvailable) ? undefined : effort;
-  // SDK default is 'high' when no effort is explicitly set
+  // Clamp effort at render time: treat unsupported levels as undefined (fail-closed)
+  const effectiveEffort =
+    (effort === 'max' && !maxAvailable) || (effort === 'xhigh' && !xhighAvailable)
+      ? undefined
+      : effort;
+  // SDK default is 'xhigh' on Opus 4.7, 'high' on other effort-capable models
+  const defaultLevel: ThinkingEffort = xhighAvailable ? 'xhigh' : 'high';
   const isDefault = !effectiveEffort;
-  const displayEffort = effectiveEffort ?? 'high';
+  const displayEffort = effectiveEffort ?? defaultLevel;
   const effortLabel = isDefault
     ? `Default (${t(`effort.tooltipFull.${displayEffort}`)})`
     : t(`effort.tooltipFull.${displayEffort}`);
   const tooltip = t('effort.tooltip', { model: displayLabel, effort: effortLabel });
-  const bars = maxAvailable ? BARS_4 : BARS_3;
+  const bars = xhighAvailable ? BARS_5 : maxAvailable ? BARS_4 : BARS_3;
   const selectedIdx = LEVEL_INDEX[displayEffort];
 
   return (
