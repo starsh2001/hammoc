@@ -268,6 +268,25 @@
     }
   },
   "account": {
+    "info": {
+      "title": "Claude Code アカウント",
+      "email": "メール",
+      "subscription": "サブスクリプション",
+      "provider": "プロバイダー",
+      "organization": "組織",
+      "fetchedAt": "最終取得日時",
+      "never": "なし",
+      "refresh": "更新",
+      "refreshing": "更新中...",
+      "refreshed": "アカウント情報を更新しました。",
+      "refreshFailed": "アカウント情報を取得できませんでした。先にチャットを開始してから再試行してください。",
+      "emptyHint": "最初のチャットを送信すると自動的に入力されます。「更新」を押して今すぐ取得することもできます。",
+      "usage": "使用量",
+      "fiveHour": "5時間枠",
+      "sevenDay": "7日間枠",
+      "resetAt": "リセット: {{reset}}",
+      "usageEmpty": "使用量情報は利用できません。Claude.ai サブスクライバー向けです。"
+    },
     "changePassword": "パスワード変更",
     "currentPassword": "現在のパスワード",
     "newPassword": "新しいパスワード",
@@ -287,7 +306,8 @@
     "telegram": "Telegram通知",
     "notifications": "通知",
     "advanced": "詳細設定",
-    "account": "アカウント",
+    "account": "Claude アカウント",
+    "user": "Hammoc ユーザー",
     "help": "ヘルプ",
     "about": "バージョン情報"
   },

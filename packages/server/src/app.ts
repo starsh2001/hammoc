@@ -20,6 +20,7 @@ import projectsRoutes from './routes/projects.js';
 import sessionsRoutes from './routes/sessions.js';
 import commandsRoutes from './routes/commands.js';
 import preferencesRoutes from './routes/preferences.js';
+import accountRoutes from './routes/account.js';
 import debugRoutes from './routes/debug.js';
 import fileSystemRoutes from './routes/fileSystem.js';
 import bmadStatusRoutes from './routes/bmadStatus.js';
@@ -157,6 +158,9 @@ export async function createApp(): Promise<Express> {
 
   // Preferences routes (global user settings)
   app.use('/api/preferences', preferencesRoutes);
+
+  // Account info routes (Claude Code subscription/provider)
+  app.use('/api/account', accountRoutes);
 
   // File System routes (Story 11.1) - file reading and directory listing
   app.use('/api/projects', fileSystemRoutes);

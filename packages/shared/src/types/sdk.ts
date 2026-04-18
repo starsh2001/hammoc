@@ -212,6 +212,28 @@ export type ThinkingEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan' | 'dontAsk';
 
 /**
+ * Claude Code authenticated account information.
+ * Mirrors the SDK's AccountInfo type from the control-initialize response.
+ */
+export interface AccountInfo {
+  email?: string;
+  organization?: string;
+  subscriptionType?: string;
+  tokenSource?: string;
+  apiKeySource?: string;
+  apiProvider?: 'firstParty' | 'bedrock' | 'vertex' | 'foundry' | 'anthropicAws' | 'mantle';
+}
+
+/**
+ * In-memory account info snapshot.
+ */
+export interface AccountInfoResponse {
+  account: AccountInfo | null;
+  /** Unix ms when the value was last fetched from the SDK, or null if never */
+  fetchedAt: number | null;
+}
+
+/**
  * Stream chunk for real-time message streaming
  */
 export interface StreamChunk {

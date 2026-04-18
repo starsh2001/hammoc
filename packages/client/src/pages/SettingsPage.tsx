@@ -7,7 +7,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Settings, FolderCog, Bell, Send, Wrench, HelpCircle, Info, UserCog } from 'lucide-react';
+import { ArrowLeft, Settings, FolderCog, Bell, Send, Wrench, HelpCircle, Info, UserCog, User } from 'lucide-react';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { SettingsSection } from '../components/SettingsSection';
 import { GlobalSettingsSection } from '../components/settings/GlobalSettingsSection';
@@ -18,12 +18,14 @@ import { HelpSection } from '../components/settings/HelpSection';
 import { AboutSection } from '../components/settings/AboutSection';
 import { AdvancedSettingsSection } from '../components/settings/AdvancedSettingsSection';
 import { AccountSettingsSection } from '../components/settings/AccountSettingsSection';
+import { UserSettingsSection } from '../components/settings/UserSettingsSection';
 
 const sectionDefs = [
   { id: 'global', titleKey: 'tabs.global', icon: Settings },
   { id: 'project', titleKey: 'tabs.project', icon: FolderCog },
   { id: 'notifications', titleKey: 'tabs.notifications', icon: Bell },
   { id: 'account', titleKey: 'tabs.account', icon: UserCog },
+  { id: 'user', titleKey: 'tabs.user', icon: User },
   { id: 'advanced', titleKey: 'tabs.advanced', icon: Wrench },
   { id: 'help', titleKey: 'tabs.help', icon: HelpCircle },
   { id: 'about', titleKey: 'tabs.about', icon: Info },
@@ -99,6 +101,8 @@ export function SettingsPage() {
         return <AdvancedSettingsSection />;
       case 'account':
         return <AccountSettingsSection />;
+      case 'user':
+        return <UserSettingsSection />;
       case 'help':
         return <HelpSection />;
       case 'about':

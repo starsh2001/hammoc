@@ -269,6 +269,25 @@
     }
   },
   "account": {
+    "info": {
+      "title": "Claude Code Account",
+      "email": "Email",
+      "subscription": "Subscription",
+      "provider": "Provider",
+      "organization": "Organization",
+      "fetchedAt": "Last fetched",
+      "never": "Never",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "refreshed": "Account info updated.",
+      "refreshFailed": "Could not fetch account info. Try starting a chat first, then retry.",
+      "emptyHint": "Account info fills in automatically after you send your first chat, or click Refresh to fetch now.",
+      "usage": "Usage",
+      "fiveHour": "5-hour window",
+      "sevenDay": "7-day window",
+      "resetAt": "Resets {{reset}}",
+      "usageEmpty": "Rate limit info not available. Available for Claude.ai subscribers."
+    },
     "changePassword": "Change Password",
     "currentPassword": "Current Password",
     "newPassword": "New Password",
@@ -288,7 +307,8 @@
     "telegram": "Telegram Notifications",
     "notifications": "Notifications",
     "advanced": "Advanced Settings",
-    "account": "Account",
+    "account": "Claude Account",
+    "user": "Hammoc User",
     "help": "Help",
     "about": "About"
   },

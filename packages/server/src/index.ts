@@ -7,6 +7,7 @@ import { initializeWebSocket } from './handlers/websocket.js';
 import { AuthConfigService } from './services/authConfigService.js';
 import { notificationService } from './services/notificationService.js';
 import { webPushService } from './services/webPushService.js';
+import { accountInfoService } from './services/accountInfoService.js';
 import { resetPassword } from './cli/passwordSetup.js';
 import { createLogger, getEffectiveLogLevel } from './utils/logger.js';
 import { ptyService } from './services/ptyService.js';
@@ -97,6 +98,9 @@ async function main() {
   webPushService.init().catch(() => {
     // Silent — web push will initialize on first use
   });
+
+  // Fetch Claude Code account info once at startup (fire-and-forget).
+  void accountInfoService.initOnStartup();
 
   // Listen with retry logic for EADDRINUSE (Windows port release delay on tsx watch restart)
   const MAX_RETRIES = 5;

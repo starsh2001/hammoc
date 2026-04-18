@@ -268,6 +268,25 @@
     }
   },
   "account": {
+    "info": {
+      "title": "Conta do Claude Code",
+      "email": "E-mail",
+      "subscription": "Assinatura",
+      "provider": "Provedor",
+      "organization": "Organização",
+      "fetchedAt": "Última atualização",
+      "never": "Nunca",
+      "refresh": "Atualizar",
+      "refreshing": "Atualizando...",
+      "refreshed": "Informações da conta atualizadas.",
+      "refreshFailed": "Não foi possível obter as informações da conta. Inicie um chat primeiro e tente novamente.",
+      "emptyHint": "As informações são preenchidas automaticamente após o primeiro chat, ou clique em Atualizar para obtê-las agora.",
+      "usage": "Uso",
+      "fiveHour": "Janela de 5 horas",
+      "sevenDay": "Janela de 7 dias",
+      "resetAt": "Reinicia: {{reset}}",
+      "usageEmpty": "Informações de uso indisponíveis. Apenas para assinantes Claude.ai."
+    },
     "changePassword": "Alterar senha",
     "currentPassword": "Senha atual",
     "newPassword": "Nova senha",
@@ -287,7 +306,8 @@
     "telegram": "Notificações do Telegram",
     "notifications": "Notificações",
     "advanced": "Configurações avançadas",
-    "account": "Conta",
+    "account": "Conta Claude",
+    "user": "Usuário Hammoc",
     "help": "Ajuda",
     "about": "Sobre"
   },

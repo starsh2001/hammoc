@@ -268,6 +268,25 @@
     }
   },
   "account": {
+    "info": {
+      "title": "Claude Code 账户",
+      "email": "邮箱",
+      "subscription": "订阅计划",
+      "provider": "提供方",
+      "organization": "组织",
+      "fetchedAt": "最后获取",
+      "never": "无",
+      "refresh": "刷新",
+      "refreshing": "刷新中...",
+      "refreshed": "账户信息已更新。",
+      "refreshFailed": "无法获取账户信息。请先开始一次聊天后重试。",
+      "emptyHint": "发送首条聊天消息后会自动填充。也可以点击“刷新”立即获取。",
+      "usage": "用量",
+      "fiveHour": "5 小时窗口",
+      "sevenDay": "7 天窗口",
+      "resetAt": "重置时间：{{reset}}",
+      "usageEmpty": "暂无用量信息。仅对 Claude.ai 订阅用户开放。"
+    },
     "changePassword": "修改密码",
     "currentPassword": "当前密码",
     "newPassword": "新密码",
@@ -287,7 +306,8 @@
     "telegram": "Telegram 通知",
     "notifications": "通知",
     "advanced": "高级设置",
-    "account": "账户",
+    "account": "Claude 账户",
+    "user": "Hammoc 用户",
     "help": "帮助",
     "about": "关于"
   },
