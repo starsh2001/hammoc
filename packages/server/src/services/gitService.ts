@@ -83,6 +83,11 @@ class GitService {
 
       return { commits };
     } catch (error) {
+      // git log exits with non-zero on repos with no commits yet — treat as empty
+      const msg = error instanceof Error ? error.message : String(error);
+      if (/does not have any commits yet|bad default revision|unknown revision/i.test(msg)) {
+        return { commits: [] };
+      }
       throw this.wrapError('log', error);
     }
   }
