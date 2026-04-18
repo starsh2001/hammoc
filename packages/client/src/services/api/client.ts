@@ -8,6 +8,24 @@
 
 import i18n from '../../i18n';
 
+// Global 401 handler — registered by authStore on app init. Fires when any
+// authenticated request returns 401 (session expired/invalidated). Auth-state
+// paths like /auth/status are exempt because they return 200 with
+// { authenticated: false } rather than 401.
+type UnauthorizedHandler = () => void;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  unauthorizedHandler = handler;
+}
+
+const AUTH_STATE_PATHS = new Set([
+  '/auth/status',
+  '/auth/login',
+  '/auth/logout',
+  '/auth/setup',
+]);
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -43,6 +61,9 @@ class ApiClient {
     });
 
     if (!response.ok) {
+      if (response.status === 401 && !AUTH_STATE_PATHS.has(path) && unauthorizedHandler) {
+        unauthorizedHandler();
+      }
       const errorData = await response.json().catch(() => null);
       if (errorData?.error?.message) {
         throw new ApiError(

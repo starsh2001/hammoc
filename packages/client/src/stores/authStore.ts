@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import type { RateLimitInfo } from '@hammoc/shared';
 import { authApi } from '../services/api/auth';
-import { ApiError } from '../services/api/client';
+import { ApiError, setUnauthorizedHandler } from '../services/api/client';
 import { disconnectSocket } from '../services/socket';
 import i18n from '../i18n';
 
@@ -158,3 +158,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ error: null, rateLimitInfo: null });
   },
 }));
+
+// Register global 401 handler: when any authenticated API call returns 401,
+// clear auth state so AuthGuard can redirect to /login. `hasCheckedAuth` is
+// reset so the next mount refetches status instead of using the stale cache.
+setUnauthorizedHandler(() => {
+  if (!useAuthStore.getState().isAuthenticated) return;
+  hasCheckedAuth = false;
+  disconnectSocket();
+  useAuthStore.setState({ isAuthenticated: false, isLoading: false });
+});

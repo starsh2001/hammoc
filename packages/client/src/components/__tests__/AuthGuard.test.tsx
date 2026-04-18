@@ -15,6 +15,12 @@ vi.mock('../../services/api/client', () => ({
   api: {
     get: vi.fn(),
   },
+  ApiError: class ApiError extends Error {
+    constructor(public status: number, public code: string, message: string) {
+      super(message);
+    }
+  },
+  setUnauthorizedHandler: vi.fn(),
 }));
 
 const mockCliStatusReady = {
