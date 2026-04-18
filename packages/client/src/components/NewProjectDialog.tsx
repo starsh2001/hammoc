@@ -70,22 +70,46 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
     }
   }, [isOpen, clearCreateError, clearPathValidation]);
 
-  // Handle path change
+  // Debounced validation timer — fires after the user stops typing so the
+  // existing-project warning appears in real time instead of only on blur.
+  const validateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handlePathChange = useCallback(
     (value: string) => {
       setPath(value);
       setLocalError(null);
       clearPathValidation();
+
+      if (validateTimerRef.current) clearTimeout(validateTimerRef.current);
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      validateTimerRef.current = setTimeout(() => {
+        validatePath(trimmed);
+      }, 400);
     },
-    [clearPathValidation]
+    [clearPathValidation, validatePath]
   );
 
-  // Handle path blur - validate
+  // Handle path blur - validate immediately (cancel pending debounce)
   const handlePathBlur = useCallback(async () => {
+    if (validateTimerRef.current) {
+      clearTimeout(validateTimerRef.current);
+      validateTimerRef.current = null;
+    }
     if (path.trim()) {
       await validatePath(path.trim());
     }
   }, [path, validatePath]);
+
+  // Clean up debounce timer on unmount/close
+  useEffect(() => {
+    return () => {
+      if (validateTimerRef.current) {
+        clearTimeout(validateTimerRef.current);
+        validateTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Handle submit
   const handleSubmit = useCallback(async () => {
@@ -119,14 +143,6 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
       onClose();
     }
   }, [path, pathValidation, validatePath, createProject, setupBmad, selectedVersion, onSuccess, onClose]);
-
-  // Handle navigate to existing project
-  const handleNavigateToExisting = useCallback(() => {
-    if (pathValidation?.projectSlug) {
-      onSuccess(pathValidation.projectSlug, true);
-      onClose();
-    }
-  }, [pathValidation, onSuccess, onClose]);
 
   // Handle cancel with confirmation if creating
   const handleCancel = useCallback(() => {
@@ -258,18 +274,9 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
                   className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5"
                   aria-hidden="true"
                 />
-                <div className="flex-1">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    {t('newProjectDialog.existingProject')}
-                  </p>
-                  <button
-                    onClick={handleNavigateToExisting}
-                    className="mt-2 text-sm text-yellow-700 dark:text-yellow-300 underline hover:no-underline
-                               min-h-[44px] py-2"
-                  >
-                    {t('newProjectDialog.navigateToExisting')}
-                  </button>
-                </div>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 flex-1">
+                  {t('newProjectDialog.existingProject')}
+                </p>
               </div>
             </div>
           )}
@@ -349,7 +356,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isCreating || isValidating || !path.trim()}
+            disabled={isCreating || isValidating || !path.trim() || !!showExistingWarning}
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700
                        disabled:opacity-50 disabled:cursor-not-allowed
                        flex items-center justify-center gap-2
