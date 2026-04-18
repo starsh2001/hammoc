@@ -838,11 +838,53 @@ class ProjectService {
       };
     }
 
+    // Slug collision check: does another project's path encode to the same slug?
+    // e.g. "C:\Users\me\my-app" and "C:\Users-me-my\app" both encode to "C-Users-me-my-app".
+    // Without this check the two would silently share one ~/.claude/projects/ directory
+    // and corrupt each other's session list.
+    const collision = await this.findSlugCollision(inputPath);
+    if (collision) {
+      return {
+        valid: false,
+        exists: true,
+        isProject: false,
+        error: `이 경로는 기존 프로젝트 "${collision.originalPath}"와 동일한 내부 디렉토리(${collision.slug})로 인코딩되어 충돌합니다. 다른 경로를 선택하세요.`,
+      };
+    }
+
     return {
       valid: true,
       exists: true,
       isProject: false,
     };
+  }
+
+  /**
+   * Detect whether `inputPath` would encode to a slug already used by a different project.
+   * Returns the conflicting project's info or null if no collision.
+   */
+  private async findSlugCollision(
+    inputPath: string,
+  ): Promise<{ slug: string; originalPath: string } | null> {
+    const slug = inputPath.replace(/[^a-zA-Z0-9-]/g, '-').replace(/^-/, '');
+    const indexPath = path.join(this.getClaudeProjectsDir(), slug, 'sessions-index.json');
+    try {
+      const content = await fs.readFile(indexPath, 'utf-8');
+      const index = JSON.parse(content) as { originalPath?: string };
+      if (!index.originalPath) return null;
+
+      const normalizedExisting = path.normalize(index.originalPath);
+      const normalizedInput = path.normalize(inputPath);
+      const isSamePath =
+        process.platform === 'win32'
+          ? normalizedExisting.toLowerCase() === normalizedInput.toLowerCase()
+          : normalizedExisting === normalizedInput;
+      if (isSamePath) return null;
+
+      return { slug, originalPath: index.originalPath };
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -973,8 +1015,10 @@ class ProjectService {
     }
 
     // Strategy 3: Fallback - use same path-encoding as Claude Code
-    // Claude Code encodes project paths by replacing path separators with hyphens
-    const projectSlug = projectPath.replace(/[/\\:]/g, '-').replace(/^-/, '');
+    // Claude Code encodes project paths by replacing all non-alphanumeric chars (except -) with hyphens.
+    // This must match the SDK's encoding exactly, otherwise the Hammoc-created directory will diverge
+    // from where the SDK writes JSONL files, causing sessions-index.json to never update.
+    const projectSlug = projectPath.replace(/[^a-zA-Z0-9-]/g, '-').replace(/^-/, '');
 
     const claudeProjectDir = path.join(this.getClaudeProjectsDir(), projectSlug);
 

@@ -71,12 +71,13 @@ export class SessionService {
   }
 
   /**
-   * Encode a project path to Claude Code's directory format
-   * /Users/username/myproject -> -Users-username-myproject
-   * C:\Users\username\myproject -> C-Users-username-myproject
+   * Encode a project path to Claude Code's directory format.
+   * Must match the SDK's encoding: all non-alphanumeric chars (except -) become hyphens.
+   * /Users/username/my_project -> Users-username-my-project
+   * C:\Users\username\.myproject -> C-Users-username--myproject
    */
   encodeProjectPath(projectPath: string): string {
-    return projectPath.replace(/[/\\:]/g, '-').replace(/^-/, '');
+    return projectPath.replace(/[^a-zA-Z0-9-]/g, '-').replace(/^-/, '');
   }
 
   /**
