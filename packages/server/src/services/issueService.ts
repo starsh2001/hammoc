@@ -608,7 +608,10 @@ class IssueService {
     const issuesDir = await this.resolveIssuesDir(projectPath);
     const [issues, statusResponse, reviewResults] = await Promise.all([
       this.listIssues(projectPath),
-      bmadStatusService.scanProject(projectPath),
+      bmadStatusService.scanProject(projectPath).catch((err: NodeJS.ErrnoException) => {
+        if (err.code === 'NOT_BMAD_PROJECT') return null;
+        throw err;
+      }),
       scanIssueReviews(issuesDir),
     ]);
 
@@ -624,6 +627,10 @@ class IssueService {
         externalRef: `${relativeIssuesDir}/${issue.id}.md`,
       };
     });
+
+    if (!statusResponse) {
+      return { items };
+    }
 
     // Resolve story directory (project-relative) for filePath
     const storyLocation = statusResponse.config.devStoryLocation || 'docs/stories';
