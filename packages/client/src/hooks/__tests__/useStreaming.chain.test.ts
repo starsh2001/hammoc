@@ -53,7 +53,7 @@ describe('useStreaming — chain:update', () => {
       error: null,
       pagination: null,
     });
-    useChainStore.setState({ chainItems: [] });
+    useChainStore.setState({ sessionId: 'session-1', chainItems: [] });
   });
 
   afterEach(() => {
@@ -82,8 +82,8 @@ describe('useStreaming — chain:update', () => {
     expect(useChainStore.getState().chainItems).toEqual([]);
   });
 
-  it('ignores chain:update event when currentSessionId is not yet set', () => {
-    useMessageStore.setState({ currentSessionId: null as unknown as string });
+  it('ignores chain:update event when chainStore is not bound to a session', () => {
+    useChainStore.setState({ sessionId: null });
     renderHook(() => useStreaming());
 
     mockSocket.trigger('chain:update', {
@@ -95,7 +95,7 @@ describe('useStreaming — chain:update', () => {
   });
 
   it('clears chain store when server sends empty items', () => {
-    useChainStore.setState({ chainItems: mockChainItems });
+    useChainStore.setState({ sessionId: 'session-1', chainItems: mockChainItems });
     renderHook(() => useStreaming());
 
     mockSocket.trigger('chain:update', {
@@ -111,7 +111,7 @@ describe('useStreaming — chain:update', () => {
     unmount();
 
     // After unmount, triggering should not update the store
-    useChainStore.setState({ chainItems: [] });
+    useChainStore.setState({ sessionId: 'session-1', chainItems: [] });
     mockSocket.trigger('chain:update', {
       sessionId: 'session-1',
       items: mockChainItems,

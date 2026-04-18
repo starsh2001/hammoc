@@ -1227,10 +1227,7 @@ export function useStreaming() {
           }
           case 'chain:update': {
             const d = eventData as { sessionId: string; items: PromptChainItem[] };
-            const viewingSessionId = useMessageStore.getState().currentSessionId;
-            if (viewingSessionId && viewingSessionId === d.sessionId) {
-              useChainStore.getState().setChainItems(d.items);
-            }
+            useChainStore.getState().applyUpdate(d.sessionId, d.items);
             break;
           }
           // Skip tool:progress during replay (only elapsed times, final state is in tool:result)
@@ -1453,11 +1450,11 @@ export function useStreaming() {
     socket.on('connect', handleReconnect);
     socket.on('error', handleError);
 
-    // Handle chain:update — server-synced prompt chain state (Story 24.2)
+    // Handle chain:update — server-synced prompt chain state (Story 24.2).
+    // Filter by chainStore's bound session so multi-tab updates are applied
+    // even when messageStore.currentSessionId briefly goes null on remount.
     const handleChainUpdate = (data: { sessionId: string; items: PromptChainItem[] }) => {
-      const viewingSessionId = useMessageStore.getState().currentSessionId;
-      if (!viewingSessionId || viewingSessionId !== data.sessionId) return;
-      useChainStore.getState().setChainItems(data.items);
+      useChainStore.getState().applyUpdate(data.sessionId, data.items);
     };
     socket.on('chain:update', handleChainUpdate);
 

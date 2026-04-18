@@ -515,6 +515,9 @@ export function ChatPage() {
   // On mount, set session context and handle auto-send from URL params.
   useEffect(() => {
     if (projectSlug && sessionId) {
+      // Bind chainStore to this session so chain:update filters correctly even
+      // if messageStore is momentarily cleared during unmount/remount cycles.
+      useChainStore.getState().bindSession(sessionId);
       // Set session context so stream:history / stream:complete-messages can match.
       // Set isLoading so a skeleton is shown until stream:history arrives.
       useMessageStore.setState({

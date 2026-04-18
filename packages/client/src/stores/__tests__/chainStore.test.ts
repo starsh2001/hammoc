@@ -14,7 +14,7 @@ const mockItems: PromptChainItem[] = [
 
 describe('chainStore', () => {
   beforeEach(() => {
-    useChainStore.setState({ chainItems: [] });
+    useChainStore.setState({ sessionId: null, chainItems: [] });
   });
 
   it('initializes with empty chainItems', () => {
@@ -38,6 +38,26 @@ describe('chainStore', () => {
   it('clearChainItems resets to empty array', () => {
     useChainStore.getState().setChainItems(mockItems);
     useChainStore.getState().clearChainItems();
+    expect(useChainStore.getState().chainItems).toEqual([]);
+  });
+
+  it('bindSession clears items when switching sessions', () => {
+    useChainStore.getState().bindSession('session-a');
+    useChainStore.getState().setChainItems(mockItems);
+    useChainStore.getState().bindSession('session-b');
+    expect(useChainStore.getState().sessionId).toBe('session-b');
+    expect(useChainStore.getState().chainItems).toEqual([]);
+  });
+
+  it('applyUpdate applies items when sessionId matches', () => {
+    useChainStore.getState().bindSession('session-a');
+    useChainStore.getState().applyUpdate('session-a', mockItems);
+    expect(useChainStore.getState().chainItems).toEqual(mockItems);
+  });
+
+  it('applyUpdate drops items when sessionId mismatches', () => {
+    useChainStore.getState().bindSession('session-a');
+    useChainStore.getState().applyUpdate('session-b', mockItems);
     expect(useChainStore.getState().chainItems).toEqual([]);
   });
 });
