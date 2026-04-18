@@ -57,9 +57,14 @@ class PreferencesService {
     await fs.mkdir(dataDir, { recursive: true });
 
     const existing = await this.readPreferences();
-    const merged = { ...existing, ...partial };
+    const merged: Record<string, unknown> = { ...existing };
+    for (const [key, value] of Object.entries(partial)) {
+      // null signals "clear this field" (JSON.stringify drops undefined, so clients send null)
+      if (value === null) delete merged[key];
+      else if (value !== undefined) merged[key] = value;
+    }
     await fs.writeFile(this.getPreferencesPath(), JSON.stringify(merged, null, 2), 'utf-8');
-    return merged;
+    return merged as UserPreferences;
   }
 
   /**

@@ -119,9 +119,13 @@ let pendingPatch: Partial<UserPreferences> = {};
 
 function flushToServer() {
   if (Object.keys(pendingPatch).length === 0) return;
-  const patch = { ...pendingPatch };
+  // Convert undefined → null so JSON.stringify preserves the "clear this field" signal
+  const patch: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(pendingPatch)) {
+    patch[k] = v === undefined ? null : v;
+  }
   pendingPatch = {};
-  preferencesApi.update(patch).catch((err) => {
+  preferencesApi.update(patch as Partial<UserPreferences>).catch((err) => {
     debugLogger.error('Failed to save preferences', { error: err instanceof Error ? err.message : String(err) });
   });
 }
