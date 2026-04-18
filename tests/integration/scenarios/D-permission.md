@@ -8,21 +8,23 @@
 ## D1. 권한 프롬프트 응답 `[SDK] [CORE]`
 
 ### D-01-01: 파일 편집 권한 Allow
-**선행 조건**: 권한 모드 = "Ask before edits".
 **절차**:
-1. "Create a file named test.txt with content: hello" 프롬프트 전송
-2. 권한 모달이 뜰 때까지 `browser_wait_for(text="Allow")`
-3. "Allow" 버튼 클릭
+1. ChatInput 포커스 → Shift+Tab 반복으로 권한 모드를 **"Ask before edits"** 로 변경 (배지 확인)
+2. "Create a file named test.txt with content: hello" 프롬프트 전송
+3. 권한 요청이 뜰 때까지 `browser_wait_for(text="도구 실행 허용")`
+4. "도구 실행 허용" 버튼 클릭
+
+**UI 구조 주의**: 권한 요청은 `role="dialog"` 모달이 아닌 **ToolCard 인라인 버튼** 방식으로 표시됨. ToolCard 내부에 `button "도구 실행 허용"` / `button "도구 실행 거절"` 이 노출되며, `PendingToolsIndicator` 바에도 동일 버튼이 함께 표시된다.
 
 **기대 결과**:
 - `permission:request` 이벤트 수신
-- 모달 내용: 툴 이름(Write), 대상 경로
-- Allow 클릭 후 `permission:respond` 전송, 파일 실제 생성
+- ToolCard 내용: 툴 이름(Write), 대상 경로, 허용/거절 버튼
+- "도구 실행 허용" 클릭 후 `permission:respond` 전송, 파일 실제 생성
 - ToolCard 상태 Running → Completed
 
 ### D-01-02: Deny 응답
-**절차**: D-01-01 과 동일하되 "Deny" 선택.
-**기대 결과**: 도구 실행 거부, 어시스턴트 메시지에 거부 안내 포함.
+**절차**: D-01-01 과 동일하되 "도구 실행 거절" 클릭.
+**기대 결과**: "도구 실패: Write" + "[Request interrupted]" 메시지가 히스토리에 기록되며 도구 실행 중단.
 
 **엣지케이스**:
 - E1. 모달 표시 중 다른 탭에서 응답: 한쪽 탭만 적용, 다른 탭 모달은 자동 닫힘 (다중 브라우저 동기화)
@@ -64,12 +66,19 @@
 
 ### D-04-01: 5분 응답 없음 → 자동 거부
 **절차**:
-1. 편집 권한 모달 등장 유도
-2. 5분 경과 (또는 테스트용으로 클라이언트 타이머 단축하여 검증)
+1. **타임아웃 단축** — `browser_evaluate`로 클라이언트 타임아웃 상수 덮어쓰기:
+   ```js
+   () => { window.__HAMMOC_PERMISSION_TIMEOUT_MS__ = 3000; return true }
+   ```
+   (프론트엔드가 해당 전역을 참조하도록 되어 있지 않다면 dev 빌드에서 주입 경로 추가 필요 — `usePermissionTimeout` 훅에서 `window.__HAMMOC_PERMISSION_TIMEOUT_MS__`를 우선 사용하도록 선행 구현)
+2. 편집 권한 요청 유도 프롬프트 전송 ("Create a file named test.txt")
+3. ToolCard에 허용/거절 버튼 노출 대기 후 응답하지 않고 4초 대기
+4. `browser_snapshot` → "권한 요청 타임아웃, 거부됨" 메시지 확인
+5. 입력창에 다음 프롬프트 입력 가능 상태 확인
 
 **기대 결과**:
-- 모달 자동 닫힘
-- 대화에 "권한 요청 타임아웃, 거부됨" 메시지 추가
-- 세션은 활성 상태 유지, 다음 프롬프트 전송 가능
+- 타이머 만료 시 모달 자동 닫힘
+- 대화 히스토리에 타임아웃 메시지
+- 세션 활성 유지, 다음 메시지 전송 가능
 
-**주의**: 실제 5분 대기 대신 `browser_evaluate` 로 타임아웃 상수를 단축하거나 서버 측 타임아웃 변수 조정으로 재현.
+> 프론트엔드에 주입 포인트가 없으면 본 시나리오는 자동 실행 전 "선행 코드 주입" 카드(인프라 작업)로 기록. 5분 실시간 대기는 금지.

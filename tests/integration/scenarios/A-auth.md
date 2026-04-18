@@ -69,5 +69,12 @@
 **기대 결과**: 재로그인 요구 없음, 동일 페이지 유지.
 
 ### A-03-02: 토큰 만료 후 보호된 경로 접근
-**유도**: `browser_evaluate` 로 토큰 쿠키 삭제 → 보호된 경로 이동.
-**기대 결과**: 로그인 페이지로 리디렉션.
+**절차**:
+> 세션 쿠키는 httpOnly여서 JS로 직접 삭제 불가. 서버 API로 무효화.
+1. 로그인 상태 확인 (`/projects` 접근 가능)
+2. `browser_evaluate("() => fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).then(r => r.status)")` → 200 확인
+3. `browser_navigate("/projects")` (보호된 경로 재접근)
+4. `browser_snapshot` → 로그인 페이지로 리디렉션 확인 (URL이 `/login` 또는 `/`)
+5. **대체 검증** — 쿠키 만료를 직접 시뮬레이션하려면 dev 서버가 `POST /api/auth/expire-now` 제공 시 해당 엔드포인트 사용
+
+**기대 결과**: 보호된 경로 접근 시 로그인 페이지로 리디렉션.

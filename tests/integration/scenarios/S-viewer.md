@@ -19,8 +19,41 @@
 **기대 결과**: 전체화면 뷰어 오픈, `imageViewerStore` 상태 설정.
 
 ### S-01-03: 모바일 터치 제스처
-**선행 조건**: 뷰포트 400px.
-**기대 결과**: 핀치 줌, 스와이프 네비게이션.
+**절차**:
+1. `browser_resize(width=400, height=800)` 모바일 뷰포트 전환
+2. 이미지 뷰어 오픈
+3. **핀치 줌** — 두 터치 포인트를 벌려 dispatch:
+   ```js
+   browser_evaluate(`() => {
+     const viewer = document.querySelector('[data-testid="image-viewer"]') || document.querySelector('img[alt]');
+     const r = viewer.getBoundingClientRect();
+     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+     const mkT = (id, x, y) => new Touch({ identifier: id, target: viewer, clientX: x, clientY: y });
+     const start = [mkT(1, cx - 20, cy), mkT(2, cx + 20, cy)];
+     const end = [mkT(1, cx - 80, cy), mkT(2, cx + 80, cy)];
+     viewer.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: start, targetTouches: start }));
+     viewer.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, touches: end, targetTouches: end }));
+     viewer.dispatchEvent(new TouchEvent('touchend', { bubbles: true, changedTouches: end }));
+     return getComputedStyle(viewer).transform;
+   }`)
+   ```
+4. 반환된 `transform`에 `scale(>1)` 포함 확인
+5. **스와이프 네비게이션** — 가로 드래그:
+   ```js
+   browser_evaluate(`() => {
+     const viewer = document.querySelector('[data-testid="image-viewer"]');
+     const r = viewer.getBoundingClientRect();
+     const mkT = (x) => new Touch({ identifier: 1, target: viewer, clientX: x, clientY: r.top + 50 });
+     viewer.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [mkT(r.right - 20)], targetTouches: [mkT(r.right - 20)] }));
+     viewer.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, touches: [mkT(r.left + 20)], targetTouches: [mkT(r.left + 20)] }));
+     viewer.dispatchEvent(new TouchEvent('touchend', { bubbles: true, changedTouches: [mkT(r.left + 20)] }));
+     return true;
+   }`)
+   ```
+6. `browser_snapshot` → 다음 이미지로 전환 확인
+7. `browser_resize(width=1280, height=800)` 복원
+
+**기대 결과**: 핀치 시 `transform: scale()` 증가, 스와이프 시 다음 이미지.
 
 ---
 

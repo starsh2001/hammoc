@@ -3,14 +3,32 @@
 **범위**: 재연결 후 스트림 복구, 히스토리/버퍼 재생, 다중 브라우저 동기화.
 **선행 도메인**: A, B, C. 전역 횡단 도메인 (타 도메인 실패 시 원인이 R일 수 있음).
 
-> 네트워크 끊김 유도 방법:
-> ```js
-> browser_evaluate(() => {
->   const ws = window.__wsInstance__ // 접근 경로 프로젝트에 따라
->   ws.close()
-> })
-> ```
-> 또는 DevTools Network throttling (offline) 사용.
+---
+
+## 네트워크 끊김 유도 표준 절차
+
+socket.io 클라이언트는 ES 모듈 클로저 내부에 캡슐화되어 `window.__wsInstance__`로 직접 접근 불가. 다음 절차를 사용:
+
+**표준: `navigator.onLine` + 이벤트 디스패치**
+```js
+browser_evaluate(`() => {
+  Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+  window.dispatchEvent(new Event('offline'));
+  return true;
+}`)
+```
+socket.io는 `offline` 이벤트를 수신하면 내부적으로 연결을 끊고 재연결을 시도한다.
+
+**복구**:
+```js
+browser_evaluate(`() => {
+  Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
+  window.dispatchEvent(new Event('online'));
+  return true;
+}`)
+```
+
+**대체 방법 (위 방법 불가 시)**: `browser_evaluate(() => fetch('/api/test/kill-ws', { method: 'POST' }))` — dev 빌드에서 서버가 해당 소켓만 선제 종료하는 엔드포인트 제공 시. 현재 미구현이면 표준 방법 사용.
 
 ---
 
@@ -18,19 +36,26 @@
 
 ### R-01-01: 스트리밍 중 WebSocket 강제 닫힘
 **절차**:
-1. 긴 응답 유도 프롬프트 전송 → 스트림 시작
-2. 수 초 후 WebSocket `close()` 강제 실행
-3. 자동 재연결 관찰
+1. 세션 진입 후 "Count slowly from 1 to 30, one number per second" 프롬프트 전송 → 스트림 시작
+2. 3초 대기 후 위 "네트워크 끊김 유도" 절차 실행 (`offline` 이벤트 디스패치)
+3. `browser_snapshot` → UI 상단에 "재연결 중" 또는 오프라인 배너 확인
+4. 2초 대기 후 "복구" 절차 실행 (`online` 이벤트 디스패치)
+5. 스트림 완료까지 대기
+6. `browser_snapshot` → 최종 응답이 1~30까지 중복 없이 수신되었는지 확인
 
 **기대 결과**:
-- UI 상단에 "재연결 중" 배너 표시
+- "재연결 중" 배너 표시
 - 재연결 후 진행 중 스트림 버퍼 재생 (`stream:buffer-replay`)
-- 최종적으로 완전한 응답 수신
-- 중복 메시지 없음
+- 최종 응답에 1~30 모두 포함, 중복 없음
 
 ### R-01-02: 오프라인 → 온라인 전환
-**절차**: Offline 모드 → 30초 대기 → Online 복귀.
-**기대 결과**: 자동 재연결, 활성 세션 복원.
+**절차**:
+1. 세션 진입 후 짧은 프롬프트 전송 → 응답 완료
+2. `offline` 이벤트 디스패치 → 30초 대기
+3. `online` 이벤트 디스패치
+4. 새 프롬프트 전송 → 정상 응답 확인
+
+**기대 결과**: 자동 재연결, 활성 세션 복원, 새 메시지 정상 전송/수신.
 
 ---
 
@@ -38,33 +63,55 @@
 
 ### R-02-01: 신규 탭에서 진행 중인 세션 접속
 **절차**:
-1. 탭 A: 긴 스트림 진행 중
-2. `browser_tabs(action="new")` → 같은 세션 URL 오픈
-3. 탭 B `browser_snapshot`
+1. 탭 A에서 긴 응답 유도 프롬프트 전송 (예: "Write a 500-word essay on recursion")
+2. 응답 시작 확인 후 `browser_tabs(action="new")` → 동일 세션 URL 열기
+3. 탭 B에서 `browser_snapshot` 즉시 수행
+4. 탭 B에서 스트림 종료까지 대기
+5. 탭 A와 탭 B 모두 `browser_snapshot` → 최종 메시지 동일성 확인
 
 **기대 결과**:
-- 탭 B에 `stream:history` 이벤트로 과거 메시지 수신
-- 현재 진행 중인 어시스턴트 메시지도 실시간 이어서 스트리밍 (탭 A와 동기)
-- 완료 시 두 탭 상태 동일
+- 탭 B에 과거 메시지 + 진행 중 어시스턴트 메시지 모두 수신
+- 두 탭 최종 메시지 내용 동일
 
 ### R-02-02: 히스토리 순서 일관성
-**기대 결과**: 재연결/재로드 시 메시지 순서와 이벤트 순서가 서버 기록과 일치.
+**절차**:
+1. 세션에서 3~4회 메시지 전송/응답 완료
+2. `browser_evaluate("() => location.reload()")`로 재로드
+3. `browser_snapshot` → 메시지 순서 기록
+4. 서버 `GET /api/sessions/:id/messages` API 호출 (browser_evaluate fetch) → 순서 비교
+
+**기대 결과**: UI 순서와 서버 기록 순서 일치.
 
 ---
 
-## R3. 다중 브라우저 동기화 `[EDGE]`
+## R3. 다중 컨텍스트 동기화 `[EDGE]`
 
-### R-03-01: 서로 다른 브라우저에서 같은 세션
-**절차**: 탭 A(크롬), 탭 B(파이어폭스/Edge) 동시 접속.
-**기대 결과**: 입력·권한·설정 변경이 양쪽에 실시간 반영.
+> 본 시나리오는 **같은 브라우저의 다중 탭**(`browser_tabs`)으로 동기화 경로를 검증한다. 크로스 엔진(Chrome↔Firefox) 차이는 별도 CI 브라우저 매트릭스에서 다룬다.
 
-### R-03-02: 권한 응답 동시 시도
-**절차**: 같은 권한 모달이 두 탭에 뜬 상태에서 동시에 Allow/Deny 클릭.
+### R-03-01: 두 탭에서 같은 세션 동기화
+**절차**:
+1. 탭 A에서 세션 진입
+2. `browser_tabs(action="new")` → 같은 세션 URL 열기 (탭 B)
+3. 탭 A에서 메시지 전송 → 응답 완료 대기
+4. `browser_tabs(action="select", index=1)` 탭 B 이동 → `browser_snapshot` → 동일 메시지 존재 확인
+
+**기대 결과**: 탭 A→B 메시지 실시간 반영.
+
+### R-03-02: 권한 응답 경합
+**절차**:
+1. 두 탭 동일 세션. 권한 필요한 도구 호출 프롬프트 전송 (예: "Read file /etc/passwd")
+2. 두 탭 모두 권한 모달/ToolCard 인라인 버튼 표시 대기
+3. 탭 A에서 "허용" 클릭 → 즉시 탭 B 전환
+4. 탭 B `browser_snapshot` → 모달 자동 닫힘 확인
+
 **기대 결과**:
-- 먼저 도착한 응답만 적용
-- 나머지 탭의 모달 자동 닫힘
-- 서버 상태 일관성 유지
+- 먼저 도착한 응답 적용
+- 나머지 탭 모달 자동 닫힘, 서버 상태 일관성
 
 ### R-03-03: 설정 변경 전파
-**절차**: 탭 A에서 권한 모드 / 모델 / 언어 변경.
-**기대 결과**: 탭 B에 즉시 반영 (`permission:mode-change` 등).
+**절차**:
+1. 두 탭 오픈 (탭 A: 설정 페이지, 탭 B: 채팅 페이지)
+2. 탭 A에서 권한 모드 토글 (예: `default` → `plan`)
+3. 2초 대기 후 탭 B 이동 → `browser_snapshot` → 헤더·UI에 변경 반영 확인
+
+**기대 결과**: `permission:mode-change` 이벤트로 탭 B 즉시 갱신.

@@ -43,11 +43,23 @@
 ## Q3. PRD → Queue `[CORE]`
 
 ### Q-03-01: PRD 파싱 & 스토리 추출
-**선행 조건**: `.bmad-core/PRD.md` 에 Epic/Story 구조 존재.
-**절차**: 큐 탭 → "Generate from PRD" → 템플릿 선택 → 생성.
+**절차**:
+1. BMad 프로젝트 준비 (B-02-02), 파일 탐색기에서 `docs/prd.md` 또는 `.bmad-core/PRD.md` 생성 후 아래 주입:
+   ```markdown
+   # PRD
+   ## Epic 1: Auth
+   ### Story 1.1: Login form
+   ### Story 1.2: Session persistence
+   ## Epic 2: Dashboard
+   ### Story 2.1: Stats summary
+   ```
+2. 큐 탭 → "Generate from PRD" 클릭
+3. 미리보기에 Story 1.1, 1.2, 2.1 노출 확인
+4. 기본 템플릿 선택 → "생성" → 큐 편집기에 스크립트 주입 확인
+
 **기대 결과**:
 - Epic/Story 리스트 미리보기
-- 템플릿 플레이스홀더 치환 확인
+- 템플릿 플레이스홀더 치환
 - 큐 편집기에 결과 주입
 
 ### Q-03-02: 템플릿 관리

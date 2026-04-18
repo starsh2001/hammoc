@@ -15,7 +15,7 @@
 - 선택 상태 저장(재진입 시 복원)
 
 ### I-01-02: 모바일 뷰
-**선행 조건**: 뷰포트 400px.
+**선행 조건**: 뷰포트 400px (`browser_resize(width=400, height=800)`).
 **기대 결과**: 컬럼 가로 스크롤, 터치 드래그 가능.
 
 ---
@@ -28,7 +28,7 @@
 2. "생성"
 
 **기대 결과**:
-- `.hammoc/issues/` 에 파일 생성
+- `docs/issues/ISSUE-<N>.md` 에 파일 생성
 - Open 컬럼에 카드 등장
 - 유효성: 제목 비어있으면 버튼 비활성
 
@@ -43,7 +43,24 @@
 ## I3. 상태 전이 드래그드롭 `[EDGE] [DnD]`
 
 ### I-03-01: 카드 이동으로 상태 변경
-**절차**: "Open" 컬럼의 카드를 "In Progress" 컬럼으로 `browser_drag`.
+**절차**:
+1. 테스트 이슈 1개 생성 (I-02-01 절차), Open 컬럼에 카드 존재 확인
+2. `browser_evaluate`로 HTML5 DnD 이벤트를 Open 카드 → In Progress 컬럼으로 디스패치:
+   ```js
+   browser_evaluate(`() => {
+     const card = document.querySelector('[data-testid="board-card"][data-status="open"]');
+     const dropCol = document.querySelector('[data-testid="board-column"][data-status="in-progress"]');
+     const dt = new DataTransfer();
+     card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+     dropCol.dispatchEvent(new DragEvent('dragover', { bubbles: true, dataTransfer: dt }));
+     dropCol.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }));
+     card.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+     return true;
+   }`)
+   ```
+3. `browser_snapshot` → 카드가 "In Progress" 컬럼에 위치 확인
+4. `fetch('/api/projects/<slug>/board/issues')` → 해당 이슈의 `status === 'in-progress'` 검증
+
 **기대 결과**:
 - 상태 자동 변경 (status=in-progress)
 - 서버 저장 및 다중 탭 동기화
@@ -62,8 +79,19 @@
 ## I4. 에픽 · 스토리 진행률 `[CORE]`
 
 ### I-04-01: 진행률 막대
-**선행 조건**: 에픽 1개, 그 아래 스토리 3개 (완료 1 / 진행중 1 / 미착수 1).
-**기대 결과**: 에픽 카드의 진행률 ≈ 33%.
+> 에픽/스토리는 BMad 프로젝트 전용 기능. BMad 프로젝트에서 실행할 것.
+
+**절차**:
+1. BMad 프로젝트의 보드 탭 진입
+2. **에픽 생성**: "+" 버튼 → 타입 "Epic" 선택 → 제목 `Test Epic` 입력 → 생성
+3. **스토리 생성 (미착수)**: "+" → 타입 "Story" → 제목 `Story A` → 에픽 `Test Epic` 연결 → 생성
+4. **스토리 생성 (진행중)**: 동일하게 `Story B` 생성 → 카드 상태를 "In Progress"로 변경
+5. **스토리 생성 (완료)**: 동일하게 `Story C` 생성 → 카드 상태를 "Done"으로 변경
+6. `browser_snapshot` → `Test Epic` 카드의 진행률 표시 확인
+
+**기대 결과**: 에픽 카드의 진행률 ≈ 33% (3개 중 1개 완료).
+
+**테스트 후 정리**: 생성한 에픽/스토리 삭제 (I-02-03 절차).
 
 ### I-04-02: 고아 이슈 / 순환 참조
 **엣지케이스**:

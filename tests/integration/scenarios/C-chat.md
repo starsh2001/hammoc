@@ -88,13 +88,18 @@
 
 ### C-05-01: 기존 세션 이어가기
 **절차**:
-1. 세션 리스트(프로젝트 탭)에서 이전 세션 선택 → "계속"
-2. 새 메시지 전송
+1. **선행 세션 확보** — 세션 리스트가 비어있는 경우 먼저 새 세션 생성 후 메시지 "Hello"를 전송하여 응답 완료까지 대기. `browser_evaluate("() => fetch('/api/projects/<slug>/sessions').then(r => r.json())")` 로 세션 1개 이상 존재 확인
+2. 프로젝트 페이지로 복귀 후 세션 리스트에서 방금 만든 세션 카드 클릭 (또는 "계속" 버튼)
+3. `browser_snapshot` → 이전 메시지 "Hello" 및 응답이 히스토리에 렌더링됨 확인
+4. "Continue." 메시지 전송 → 응답 수신
+5. `fetch('/api/projects/<slug>/sessions/<id>/messages')` → 메시지 카운트 ≥ 4 확인 (user+assistant×2)
 
 **기대 결과**:
 - `session:join` + `resume: <sessionId>` 이벤트
-- 이전 메시지 히스토리 렌더링 후 새 메시지 이어짐
+- 히스토리 렌더링 후 새 메시지 이어짐
 - 동일 세션 ID 유지
+
+> 세션 리스트가 비어있어 BLOCKED 처리 금지 — 절차 1단계로 반드시 선행 세션을 생성할 것.
 
 ### C-05-02: 특정 메시지 시점에서 Fork
 **절차**:
@@ -113,8 +118,17 @@
 ## C6. 세션 검색 & 정렬 `[CORE]`
 
 ### C-06-01: 메타데이터 검색 (제목 · 첫 프롬프트)
-**절차**: 세션 리스트 검색창에 키워드 입력.
-**기대 결과**: 해당 키워드가 제목/첫 프롬프트에 있는 세션만 필터링.
+**절차**:
+1. **선행 세션 3개 확보** — 세션 리스트에서 키워드 구분되는 3개 세션 생성:
+   - 세션 A: 첫 메시지 "Explain KEYWORD_ALPHA architecture"
+   - 세션 B: 첫 메시지 "Describe BETA pattern"
+   - 세션 C: 첫 메시지 "GAMMA overview"
+   각 응답 완료 대기
+2. 세션 리스트 검색창에 `KEYWORD_ALPHA` 입력
+3. `browser_snapshot` → 세션 A만 노출, 나머지 필터링 확인
+4. 검색어 지우고 `BETA` 입력 → 세션 B만 노출 확인
+
+**기대 결과**: 키워드가 제목/첫 프롬프트에 포함된 세션만 필터링.
 
 ### C-06-02: 콘텐츠 검색 (JSONL 라인)
 **절차**: "콘텐츠 검색" 토글 활성 후 키워드 입력.
@@ -159,10 +173,12 @@
 ## C9. Code Rewind `[SDK] [EDGE]`
 
 ### C-09-01: 파일 체크포인트로 되돌리기
-**선행 조건**: 프로젝트 설정에서 파일 체크포인팅 활성화, 세션 중 Claude가 파일 수정한 이력 존재.
 **절차**:
-1. 수정된 파일이 있는 메시지에서 "Rewind to this point" 메뉴
-2. 확인 모달 승인
+1. 테스트 프로젝트 Settings → Project → "파일 체크포인팅" 토글 활성화 (이미 활성이면 통과) → 저장
+2. 새 세션 시작 → "Create a file named rewind-test.txt with content: version-1" 프롬프트 전송 → 권한 Allow → 파일 생성 확인
+3. 이어서 "Now change rewind-test.txt content to: version-2" 전송 → 권한 Allow → 변경 확인
+4. 두 번째 수정 메시지 버블의 컨텍스트 메뉴 → "Rewind to this point" 클릭
+5. 확인 모달 승인
 **기대 결과**:
 - `session:rewind-files` 요청
 - 선택 지점 이후의 파일 변경 역순 복원

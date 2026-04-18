@@ -19,7 +19,27 @@
 - 각 항목 삭제 버튼 동작
 
 ### G-01-02: 드래그로 순서 변경 `[DnD]`
+**절차**:
+1. 체인에 3개 항목 추가 (`A`, `B`, `C` 순)
+2. HTML5 DnD 이벤트 직접 디스패치로 첫 항목을 마지막으로 이동:
+   ```js
+   browser_evaluate(`() => {
+     const items = document.querySelectorAll('[data-testid="chain-item"]');
+     const src = items[0], dst = items[items.length - 1];
+     const dt = new DataTransfer();
+     src.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+     dst.dispatchEvent(new DragEvent('dragover', { bubbles: true, dataTransfer: dt }));
+     dst.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }));
+     src.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+     return Array.from(document.querySelectorAll('[data-testid="chain-item"]')).map(el => el.textContent);
+   }`)
+   ```
+3. 반환 배열이 `B, C, A` 순인지 확인
+4. 페이지 새로고침 후 순서 유지 확인 (서버 동기화)
+
 **기대 결과**: 드래그 직후 로컬 UI 갱신 + 서버 상태 동기화.
+
+> `browser_drag` MCP 툴은 pointermove 기반이라 HTML5 DnD에서 종종 실패함. `DragEvent` 직접 디스패치가 안정적.
 
 ---
 

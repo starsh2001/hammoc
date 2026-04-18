@@ -8,8 +8,11 @@
 ## M1. 패널 토글 · 단축키 `[CORE]`
 
 ### M-01-01: Alt+1~4 단축키
-**선행 조건**: 포커스가 input/textarea 가 아닌 상태.
-**절차**: 순차로 Alt+1 / Alt+2 / Alt+3 / Alt+4.
+**절차**:
+1. 채팅 페이지에서 `browser_evaluate("() => { document.activeElement && document.activeElement.blur(); document.body.focus(); }")` 로 포커스를 body 로 이동 (input/textarea 포커스 제거)
+2. 순차로 Alt+1 / Alt+2 / Alt+3 / Alt+4 전송 → 각 키 후 `browser_snapshot` 으로 패널 상태 확인
+3. 같은 키를 다시 눌러 패널이 닫히는지 확인
+
 **기대 결과**: 각각 세션 / 파일 / Git / 터미널 패널 토글. 재누름 시 닫힘.
 
 **엣지케이스**:

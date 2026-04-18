@@ -31,50 +31,80 @@
 ## E2. Thinking Effort `[SDK]`
 
 ### E-02-01: 레벨별 thinking token 소비 차이
-**선행 조건**: 모델 = Opus 4.6+.
 **절차**:
-1. Thinking Effort Off → 동일 복잡 프롬프트 전송 → thinking 토큰 기록
-2. Medium → 동일 프롬프트 → 기록
-3. Max → 동일 프롬프트 → 기록
+1. ChatHeader 모델 드롭다운 → Opus 4.6+ 선택 (라인업에 없으면 최고 thinking 지원 모델 사용)
+2. Thinking Effort 셀렉터 → Off 선택 → "Analyze the tradeoffs between depth-first and breadth-first search with a concrete example." 전송 → 응답 완료 후 UsageStatusBar에서 thinking 토큰 수치 기록 (0 예상)
+3. Medium → 동일 프롬프트 → 수치 기록
+4. Max → 동일 프롬프트 → 수치 기록
+5. `browser_network_requests`로 `chat:send` 요청의 `maxThinkingTokens` 파라미터가 레벨별로 다른지 확인
 
 **기대 결과**:
-- `chat:send` 에 `maxThinkingTokens` 파라미터가 레벨별 값으로 전달
-- UsageStatusBar의 thinking 토큰 수치가 레벨에 비례 증가
-- Haiku 등 지원 안 하는 모델에서는 UI 비활성화 또는 무시
+- 각 레벨에서 `maxThinkingTokens` 파라미터 값이 다름
+- UsageStatusBar thinking 토큰 수치가 Off < Medium < Max
+- Haiku 등 미지원 모델에서는 셀렉터 비활성화
 
 ---
 
 ## E3. Max Turns / Max Budget `[SDK] [EDGE]`
 
 ### E-03-01: Max Budget 초과 자동 중단
-**선행 조건**: Settings → Advanced → Max Budget 를 극소값($0.01 등)으로 설정.
-**절차**: 비용이 임계를 넘길 긴 프롬프트 전송.
+**절차**:
+1. Settings → Advanced → Max Budget 필드 → `0.01` 입력 → 저장
+2. 원래 값 기록 (테스트 후 복원용)
+3. 채팅 페이지 복귀 → 긴 응답 유도 프롬프트 전송: "Write a detailed 2000-word essay on computer architecture history."
+4. 응답 진행 중 UI에 경고 배너 노출 확인
+5. 임계 초과 시 스트림 자동 중단 + "Budget exceeded" 메시지 확인
+6. **정리** — Max Budget을 원래 값으로 복원
+
 **기대 결과**:
 - 임계 근접 시 경고 배너
 - 초과 감지 순간 SDK 스트림 자동 `abort`
-- 대화에 "Budget exceeded" 시스템 메시지
+- "Budget exceeded" 시스템 메시지
 
 ### E-03-02: Max Turns 도달
-**선행 조건**: Settings → Advanced → Max Turns 를 2 등으로 설정.
-**절차**: 도구 호출이 여러 턴 필요한 프롬프트 전송.
-**기대 결과**: Max Turns 도달 시 SDK가 자연 종료, UI에 "Max turns reached" 표시.
+**절차**:
+1. Settings → Advanced → Max Turns → `2` 입력 → 저장 (원래 값 기록)
+2. 채팅 복귀 → 도구 여러 턴 필요한 프롬프트 전송: "List three files in the project, then read the first one, then summarize it."
+3. SDK가 2턴에서 자연 종료하는지 확인
+4. UI에 "Max turns reached" 표시 확인
+5. **정리** — Max Turns 원래 값 복원
+
+**기대 결과**: Max Turns 도달 시 SDK 자연 종료, UI 알림 표시.
 
 ---
 
 ## E4. 1M 컨텍스트 모델 동작 `[SDK] [EDGE]`
 
 ### E-04-01: 1M 모델 사용 시 contextWindow 표시
-**선행 조건**: 모델 = Opus 4.7 (1M 지원 모델).
 **절차**:
-1. 모델 선택 → 1M 지원 모델
-2. UsageStatusBar/ContextUsageDisplay 의 최대 컨텍스트 표기 확인
+1. ChatHeader 모델 드롭다운 오픈 → 1M 지원 모델(현재는 Opus 4.7) 선택. 드롭다운 자체에 해당 모델이 없으면 본 시나리오는 **모델 라인업에 1M 지원 모델 부재**로 판정, UI에 "1M 지원 모델 없음" 안내가 적절히 표시되는지 확인하는 경로로 전환
+2. 모델 선택 후 ContextUsageDisplay에 호버 → 최대 컨텍스트 표기 확인
+3. `browser_evaluate("() => fetch('/api/chat/model-info?model=claude-opus-4-7').then(r => r.json())")` → `contextWindow === 1000000` 검증
+4. UI 텍스트가 "1M" 또는 "1,000,000" 포함 확인
 
 **기대 결과**:
-- `contextWindow` 가 1,000,000 으로 표시 (SDK 오보 시 `correctContextWindow` 가 교정)
-- 커밋 6219883 대응: 실제 사용 중 200K 부근에서 잘못된 경고가 뜨지 않는지 확인
+- `contextWindow` 1,000,000 표시
+- SDK 오보 시 `correctContextWindow`가 교정
+- 200K 부근에서 잘못된 경고 미발생
 
 ### E-04-02: 1M 모델에서 대용량 입력 처리
-**절차**: 100K 토큰 이상 입력을 일부러 생성하여 전송 (큰 파일 포함 요청 등).
+**절차**:
+1. E-04-01 상태(1M 모델 선택)에서 대용량 입력 준비:
+   ```js
+   browser_evaluate(`() => {
+     const ta = document.querySelector('textarea[placeholder*="메시지"]');
+     const filler = 'The quick brown fox jumps over the lazy dog. '.repeat(20000);
+     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+     setter.call(ta, filler + '\n\n위 문장 개수를 숫자로만 답해.');
+     ta.dispatchEvent(new Event('input', { bubbles: true }));
+     return ta.value.length;
+   }`)
+   ```
+   (약 1MB 텍스트 ≈ 100K+ 토큰)
+2. 전송 직전 `browser_snapshot` → 토큰 추정치가 1M 기준 %로 표시되는지 확인
+3. 전송 후 응답 완료까지 대기
+4. UsageStatusBar의 누적 토큰이 1,000,000 대비 정확한 비율로 표시 확인
+
 **기대 결과**:
-- 오버플로 판정이 1M 기준으로 이뤄짐
-- 스트리밍 성공 후 토큰 집계가 모델 최대값 대비 정확한 % 로 표시
+- 오버플로 판정 1M 기준
+- 토큰 집계 정확도 확인

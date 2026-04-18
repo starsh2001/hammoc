@@ -33,12 +33,17 @@
 
 ## P3. 채팅 타임아웃 `[EDGE]`
 
-### P-03-01: 1m 설정으로 짧은 타임아웃 유도
+### P-03-01: 짧은 타임아웃 유도
 **절차**:
-1. Settings → Chat Timeout = 1m
-2. 응답이 1분 초과할 프롬프트 전송
+1. Settings → Chat Timeout을 최소값(UI가 허용하는 최소 — 예: 1분)으로 설정
+2. 실행 시간 단축을 위해 서버 환경변수 `CHAT_TIMEOUT_MS`를 테스트 런처가 10초로 주입 (`run-integration-test.mjs --chat-timeout=10000`)
+3. 응답이 10초를 초과하도록 유도: "Start replying with the word 'WAIT', then pause 15 seconds, then continue."
+4. 10초 경과 후 스트림 자동 중단 확인
+5. 메시지 히스토리에 "요청 시간 초과" 또는 abort 메시지 확인
 
-**기대 결과**: 1분 경과 시 자동 abort, 안내 메시지.
+**기대 결과**: 설정된 타임아웃 도달 시 자동 abort, 안내 메시지.
+
+> 런처 플래그가 없다면 `run-integration-test.mjs`에 `--chat-timeout` 옵션을 선행 추가. 1분 실시간 대기는 금지.
 
 **엣지케이스**:
 - E1. 서버 `CHAT_TIMEOUT_MS` 와 불일치 시 더 짧은 쪽이 우세
@@ -52,8 +57,9 @@
 **기대 결과**: 새 세션부터 SDK 파라미터로 전달됨 (E 도메인과 교차검증).
 
 ### P-04-02: 서버 재시작
-**선행 조건**: localhost 접속.
-**절차**: Advanced → "Restart Server" 버튼 → 확인.
+**절차**:
+1. 현재 접속 URL 호스트가 `localhost` 또는 `127.0.0.1` 인지 확인 (`browser_evaluate("() => location.hostname")`). 다른 값이면 브라우저를 `http://localhost:3000` 으로 재접속
+2. Settings → Advanced → "Restart Server" 버튼 클릭 → 확인 모달 승인
 **기대 결과**:
 - 서버 프로세스 재기동
 - 클라이언트: 일시 연결 끊김 후 자동 재연결 (R1과 동일)

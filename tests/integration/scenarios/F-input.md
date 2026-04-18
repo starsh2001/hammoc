@@ -14,8 +14,16 @@
 3. Enter → 전송 확인
 
 ### F-01-02: 모바일 전송 버튼
-**선행 조건**: 뷰포트 축소 (`browser_resize(width=400, height=800)`).
+**절차**:
+1. `browser_resize(width=400, height=800)`으로 뷰포트 축소
+2. ChatInput에 텍스트 입력
+3. Enter 키 → 줄바꿈만 되고 전송 안 됨 확인
+4. 우측 전송 버튼 클릭 → 전송 확인
+5. `browser_resize(width=1280, height=800)`으로 뷰포트 복원
+
 **기대 결과**: 모바일에서 Enter 는 줄바꿈, 전송은 우측 버튼으로만 가능.
+
+> `browser_resize`로 모바일 뷰포트 시뮬레이션 가능. 별도 환경 필요 없음.
 
 ### F-01-03: 초대형 입력
 **절차**: 10만 문자 텍스트 붙여넣기.
@@ -38,17 +46,34 @@
 - 응답에 이미지 관련 설명 포함
 
 ### F-02-02: 드래그 드롭 첨부 `[DnD]`
-**절차**: ChatInput 영역에 이미지 파일 드롭 (Playwright: `browser_drag` 또는 시뮬레이션).
-**기대 결과**: 첨부 성공.
+**절차**: `browser_evaluate`로 `DataTransfer`에 파일을 주입한 `drop` 이벤트를 ChatInput 영역에 디스패치:
+```js
+browser_evaluate(`async () => {
+  const resp = await fetch('/favicon.png');
+  const blob = await resp.blob();
+  const file = new File([blob], 'test.png', { type: 'image/png' });
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  const target = document.querySelector('[data-testid="chat-input-dropzone"]') ||
+                 document.querySelector('textarea[placeholder*="메시지"]').closest('div');
+  target.dispatchEvent(new DragEvent('dragenter', { bubbles: true, dataTransfer: dt }));
+  target.dispatchEvent(new DragEvent('dragover', { bubbles: true, dataTransfer: dt }));
+  target.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }));
+  return true;
+}`)
+```
+`browser_snapshot`으로 썸네일 프리뷰 등장 확인.
+
+**기대 결과**: 썸네일 등장, 전송 시 images 배열 포함.
 
 ### F-02-03: 다중 이미지 (최대 5)
 **절차**: 5개 첨부 후 6번째 시도.
-**기대 결과**: 6번째는 거부, 안내 메시지 표시.
+**기대 결과**: 6번째 첨부 버튼이 **disabled** 상태가 되어 선제 차단됨 (거부 메시지를 띄우는 방식이 아님).
 
 ### F-02-04: 잘못된 형식 / 용량 초과
 **엣지케이스**:
 - E1. .bmp (미지원) 첨부 → 거부
-- E2. 5MB 초과 파일 → 거부 + 안내
+- E2. 10MB 초과 파일 → 거부 + 안내
 - E3. 업로드 중 네트워크 끊김 → 오류 배너, 재시도 가능
 
 ---
@@ -63,11 +88,23 @@
 - 선택 시 텍스트 치환
 
 ### F-03-02: `/compact` 수동 실행
-**기대 결과**: C4 의 자동 compact 경로와 동일하게 `system:compact` 이벤트 트리거.
+**선행 조건**: 메시지가 1개 이상 있는 세션. 없으면 해당 세션에 메시지 전송 후 진행.
+**절차**:
+1. 기존 세션의 채팅 페이지 진입 (세션 리스트에서 아무 세션 선택)
+2. ChatInput에 `/` 입력 → 팔레트 오픈 확인
+3. `/compact` 항목 선택 (방향키 + Enter 또는 클릭)
+4. `browser_snapshot` → compact 진행 표시 또는 완료 메시지 확인
+5. `browser_console_messages`로 오류 없음 확인
+
+**기대 결과**: C4 의 자동 compact 경로와 동일하게 `system:compact` 이벤트 트리거, UI에 compact 결과 표시.
 
 ### F-03-03: `*` 스타 명령 팔레트
-**선행 조건**: BMad 프로젝트에서 세션 시작 후 BMad 에이전트(예: PM, SM 등) 활성화. `*` 명령 팔레트는 BMad 에이전트가 활성화된 상태에서만 동작함.
-**절차**: BMad 에이전트 응답 완료 후 `*` 입력으로 별도 팔레트 호출.
+**절차**:
+1. BMad 테스트 프로젝트(`__hammoc_test_bmad_<ts>__`) 진입. 없으면 B-02-02 절차로 BMad 옵션 체크하여 생성
+2. 새 세션 시작 → ChatHeader 에이전트 드롭다운에서 "PM" 또는 "SM" 선택 → `browser_snapshot` 으로 활성 배지 확인
+3. "Hello" 프롬프트 전송 → 응답 완료 대기 (BMad 에이전트 활성 상태 확정)
+4. ChatInput 포커스 → `*` 입력
+
 **기대 결과**: 활성 에이전트의 `*` 명령어 목록 팔레트 표시, 즐겨찾기 추가/제거 가능.
 
 ---
@@ -75,19 +112,25 @@
 ## F4. 프롬프트 스니펫 `[CORE]`
 
 ### F-04-01: `%` 로 스니펫 팔레트 호출
-**선행 조건**: 전역 또는 프로젝트 스니펫 하나 이상 정의.
 **절차**:
 1. ChatInput에 `%` 입력
-2. 팔레트에서 스니펫 선택
-3. `{arg}` 자리표시자에 값 채움
+2. 팔레트 오픈 확인 → Bundled 그룹의 스니펫 목록 표시 확인
+3. 스니펫 하나 선택 → 본문으로 치환 확인
 
 **기대 결과**:
 - 스니펫 본문으로 치환
 - 다중 스니펫 체인 (`%a %b`) 입력 시 체인으로 큐잉
 
 ### F-04-02: 프로젝트 스니펫이 전역보다 우선
-**절차**: 같은 이름의 스니펫을 전역·프로젝트 양쪽에 정의.
-**기대 결과**: 프로젝트 본문 적용.
+**절차**:
+1. **[설정 → 전역 스니펫]** 설정 페이지 → Snippets 탭 진입 → "새 스니펫" → 이름 `test-priority`, 본문 `GLOBAL CONTENT` 입력 → 저장
+2. **[설정 → 프로젝트 스니펫]** 테스트 프로젝트 설정 → Snippets 탭 → "새 스니펫" → 이름 `test-priority`, 본문 `PROJECT CONTENT` 입력 → 저장
+3. 테스트 프로젝트의 채팅 입력바로 이동 → `%test-priority` 입력
+4. 팔레트에서 선택 후 치환된 텍스트 확인
+
+**기대 결과**: `PROJECT CONTENT`가 적용됨 (전역의 `GLOBAL CONTENT`가 아님).
+
+**테스트 후 정리**: 설정에서 `test-priority` 스니펫 양쪽 모두 삭제.
 
 **엣지케이스**:
 - E1. 순환 참조 스니펫: 감지 후 경고, 무한확장 방지
@@ -101,9 +144,43 @@
 **기대 결과**: 최대 20개 칩 저장, 초과 시 안내.
 
 ### F-05-02: 칩 드래그로 재정렬 `[DnD]`
-**절차**: 칩을 드래그하여 순서 변경.
-**기대 결과**: 순서 저장 · 재로그인 후 유지.
+**절차**:
+1. 최소 3개의 즐겨찾기 칩 확보 (F-05-01 절차 활용)
+2. `browser_evaluate`로 HTML5 DragEvent 직접 디스패치하여 첫 칩을 마지막 위치로 이동:
+   ```js
+   browser_evaluate(`() => {
+     const chips = document.querySelectorAll('[data-testid="favorite-chip"]');
+     const src = chips[0], dst = chips[chips.length - 1];
+     const dt = new DataTransfer();
+     src.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+     dst.dispatchEvent(new DragEvent('dragover', { bubbles: true, dataTransfer: dt }));
+     dst.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }));
+     src.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+     return Array.from(document.querySelectorAll('[data-testid="favorite-chip"]')).map(el => el.textContent.trim());
+   }`)
+   ```
+3. 재로그인 시뮬레이션: `browser_evaluate("() => location.reload()")` → 순서 유지 확인
+
+**기대 결과**: 순서 저장, 새로고침 후 유지.
 
 ### F-05-03: 모바일 화면에서 칩 바 스크롤
-**선행 조건**: 뷰포트 400px.
-**기대 결과**: 좌우 스크롤 가능, 터치 이벤트 정상.
+**절차**:
+1. `browser_resize(width=400, height=800)` — 모바일 뷰포트
+2. 칩 10개 이상 확보 후 `browser_snapshot` → 칩 바 가로 스크롤 가능 확인
+3. `browser_evaluate`로 Touch 이벤트 디스패치:
+   ```js
+   browser_evaluate(`() => {
+     const bar = document.querySelector('[data-testid="favorites-chip-bar"]');
+     const rect = bar.getBoundingClientRect();
+     const touch = new Touch({ identifier: 1, target: bar, clientX: rect.right - 10, clientY: rect.top + 10 });
+     bar.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [touch], targetTouches: [touch] }));
+     const endTouch = new Touch({ identifier: 1, target: bar, clientX: rect.left + 10, clientY: rect.top + 10 });
+     bar.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, touches: [endTouch], targetTouches: [endTouch] }));
+     bar.dispatchEvent(new TouchEvent('touchend', { bubbles: true, changedTouches: [endTouch] }));
+     return bar.scrollLeft;
+   }`)
+   ```
+4. `scrollLeft`가 0보다 큰지 확인 → 터치 스크롤 반영
+5. `browser_resize(width=1280, height=800)` 복원
+
+**기대 결과**: 좌우 스크롤 가능, 터치 이벤트 반영.

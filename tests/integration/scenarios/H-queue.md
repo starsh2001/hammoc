@@ -79,17 +79,28 @@ Hello 2
 ## H4. PRD → Queue 자동 생성 `[CORE]`
 
 ### H-04-01: BMad PRD 파싱
-**선행 조건**: BMad 프로젝트, `.bmad-core/PRD.md` 존재 + Epic/Story 구조.
 **절차**:
-1. 큐 탭 → "PRD에서 생성" 클릭
-2. 에픽/스토리 추출 결과 확인
-3. 템플릿 선택 → 생성
+1. **BMad 프로젝트 준비** — B-02-02로 BMad 프로젝트 생성
+2. **PRD 파일 주입** — 파일 탐색기 탭에서 `docs/prd.md` 생성 후 아래 내용 저장 (또는 `browser_evaluate` fetch로 POST):
+   ```markdown
+   # PRD
+
+   ## Epic 1: Login Flow
+   ### Story 1.1: Email input validation
+   ### Story 1.2: Password strength meter
+
+   ## Epic 2: Dashboard
+   ### Story 2.1: Stats cards
+   ```
+3. 큐 탭 → "PRD에서 생성" 클릭
+4. `browser_snapshot` → Story 1.1 / 1.2 / 2.1 목록 표시 확인
+5. 기본 템플릿 선택 → "생성" → 큐 편집기에 스크립트 채워짐 확인
+6. `browser_evaluate` fetch로 `/api/projects/<slug>/fs/raw?path=.hammoc/queue-templates.json` → 저장 확인
 
 **기대 결과**:
-- Story 1.1 ~ N.M 추출
-- 템플릿의 `{story_num}`, `{epic_num}`, `{story_title}` 치환
-- 큐 편집기에 스크립트 채움
-- `.hammoc/queue-templates.json` 에 저장
+- Story 1.1 ~ 2.1 추출
+- 템플릿 치환자 `{story_num}`, `{epic_num}`, `{story_title}` 적용
+- 큐 편집기에 스크립트 채움, `queue-templates.json` 저장
 
 **엣지케이스**:
 - E1. PRD 형식 불일치(빈 에픽): 경고와 함께 빈 스토리 제외
@@ -107,8 +118,27 @@ Hello 2
 - Allow → 계속, Deny → 해당 항목 실패 기록 후 다음 진행 (설정에 따름)
 
 ### H-05-02: 큐 실행 중 Budget 초과
-**선행 조건**: Max Budget 을 작은 값으로 설정.
+**절차**:
+1. Settings → Advanced → Max Budget 원래 값 기록 → `0.01` 입력 → 저장
+2. 큐 탭으로 이동 → 긴 응답 유도 항목 3개로 구성된 큐 생성 (각 항목: "Write a detailed 1000-word essay on topic N.")
+3. 실행 시작 → 진행 상태 모니터링
+4. 초과 감지 시 큐 전체 중단 + "Budget exceeded" 사유 표시 확인
+5. **정리** — Max Budget 을 원래 값으로 복원
+
 **기대 결과**: 초과 감지 즉시 큐 전체 중단 + 명확한 사유 표시.
 
 ### H-05-03: 네트워크 끊김 & 복구
-**기대 결과**: 재연결 후 미완료 항목부터 재개 (중복 전송 방지 식별자 확인).
+**절차**:
+1. 3개 항목이 담긴 큐 실행 시작 → 1번째 항목 응답 수신 대기
+2. 1번째 완료 직후 R-websocket의 표준 끊김 절차 실행:
+   ```js
+   browser_evaluate(`() => {
+     Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+     window.dispatchEvent(new Event('offline'));
+   }`)
+   ```
+3. 3초 대기 후 `online` 이벤트 디스패치로 복구
+4. 큐 진행 상태 모니터링 → 2번째 항목부터 이어서 실행되는지 확인
+5. 완료 후 세션 히스토리 검사 → 1번째 항목이 중복 전송되지 않았는지 확인 (`messageId` 유니크)
+
+**기대 결과**: 재연결 후 미완료 항목부터 재개, 중복 전송 없음.

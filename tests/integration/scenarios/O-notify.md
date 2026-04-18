@@ -9,37 +9,66 @@
 
 ### O-01-01: 권한 요청 & 활성화
 **절차**:
-1. Settings → Notifications → "Enable Web Push"
-2. 브라우저 권한 프롬프트 → Allow
+1. **테스트 러너가 Playwright context에 `permissions: ['notifications']` 부여** — 이 전제가 있어야 브라우저 권한 프롬프트가 자동 허용됨. 런처(`scripts/run-integration-test.mjs` 등)에서 context 생성 시 옵션 주입
+2. `browser_evaluate("() => Notification.permission")` → `"granted"` 확인
+3. Settings → Notifications → "Enable Web Push" 클릭
+4. `browser_evaluate`로 서비스워커 등록 확인:
+   ```js
+   () => navigator.serviceWorker.getRegistrations().then(regs => regs.map(r => r.scope))
+   ```
+5. "테스트 알림" 버튼 클릭
+6. `browser_evaluate`로 Notification API 스파이가 받은 호출 기록 확인:
+   ```js
+   () => window.__notifications__ || []
+   ```
+   (테스트 러너가 `window.Notification`을 훅킹해 호출을 배열로 기록하도록 설정)
 
 **기대 결과**:
-- 서비스워커 등록 성공 (`browser_evaluate` 로 `navigator.serviceWorker` 확인)
-- 테스트 알림 발송 버튼으로 알림 도착
+- 서비스워커 `/sw.js` 등록됨
+- 테스트 알림 호출 1회 이상 기록
+
+> 전제가 충족되지 않으면 시나리오를 실행하지 말고 런처 설정을 선행 수정. 통합 테스트 자체에서 스킵하지 말 것.
 
 ### O-01-02: Claude 응답 완료 알림
-**선행 조건**: 알림 활성, 긴 응답 유도.
-**절차**: 프롬프트 전송 후 탭을 배경으로 전환.
-**기대 결과**: 응답 완료 시 푸시 알림 도착.
+**절차**:
+1. O-01-01 상태(알림 활성)에서 긴 응답 유도 프롬프트 전송 (예: "Count from 1 to 100 with short sentences")
+2. `browser_tabs(action="new")` 로 다른 URL 오픈 → 원 세션 탭이 배경 전환
+3. 응답 완료까지 대기 (원 탭의 DOM은 background 상태에서도 스트림 진행)
+4. `browser_tabs(action="select", index=0)` 복귀 후 `window.__notifications__` 확인 → 최소 1회 알림 호출 기록 확인
+
+**기대 결과**: 응답 완료 시 `new Notification(...)` 호출 기록 남음.
 
 **엣지케이스**:
-- E1. 브라우저 미지원 (Safari 일부 버전): 안내 메시지
-- E2. OS 알림 차단: 앱 내 상태 "비활성"으로 표시
+- E1. 브라우저 미지원: `Notification` 전역 삭제 후 UI 안내 확인
+- E2. OS 알림 차단: `Notification.permission === 'denied'` 모킹 후 UI "비활성" 표시 확인
 
 ---
 
 ## O2. Telegram 알림 `[EDGE]`
 
+> Telegram 실제 API 호출은 외부 의존. 테스트에서는 **테스트 러너가 `BOT_API_BASE_URL`을 로컬 목 서버로 주입**한다. 목 서버는 `scripts/mock-telegram.mjs`로 기동되어 `POST /bot<token>/sendMessage`를 JSON 로그로 기록한다. 목 서버가 없다면 선행 구현 필요.
+
 ### O-02-01: 설정 & 테스트 메시지
 **절차**:
-1. Settings → Notifications → Telegram: 토큰/채팅ID 입력
-2. "Send Test" 클릭
+1. 목 Telegram 서버 기동 확인 (`browser_evaluate` fetch `/mock-telegram/health` → 200)
+2. Settings → Notifications → Telegram 섹션
+3. 토큰 `test-token`, 채팅 ID `123456` 입력 → "저장"
+4. "Send Test" 클릭
+5. `browser_evaluate` fetch로 `/mock-telegram/messages` → 최근 메시지 목록에 테스트 메시지 포함 확인
+6. 설정 파일 검증: `fetch('/api/settings')` → Telegram 설정 저장 확인
 
-**기대 결과**: 해당 Telegram 채팅에 메시지 도착, 설정 저장.
+**기대 결과**: 목 서버에 `sendMessage` 호출 기록, 설정 저장.
 
 ### O-02-02: 권한 요청 & 응답 완료 알림
-**기대 결과**: Hammoc의 권한 요청 / 응답 완료 이벤트가 Telegram으로 전송.
+**절차**:
+1. O-02-01 상태에서 세션 이동 후 "Read file /etc/passwd" 같은 권한 필요 프롬프트 전송
+2. 권한 모달 발생 → `/mock-telegram/messages`에 "권한 요청" 알림 도착 확인
+3. "허용" 클릭 → 응답 완료 대기
+4. 목 서버에 "응답 완료" 알림 도착 확인
+
+**기대 결과**: 권한 요청과 응답 완료 각각 Telegram 알림 발송 기록.
 
 **엣지케이스**:
-- E1. 토큰 만료 → 명확한 오류 표시
-- E2. 채팅 ID 오기입 → 전송 실패 로깅
-- E3. Telegram API rate limit → 재시도 or 드롭 정책 확인
+- E1. 토큰 만료: 목 서버가 401 반환하도록 설정 → UI에 명확한 오류 표시 확인
+- E2. 채팅 ID 오기입: 목 서버 400 반환 → 실패 로깅 확인
+- E3. Rate limit: 목 서버 429 반환 → 재시도 또는 드롭 정책 확인
