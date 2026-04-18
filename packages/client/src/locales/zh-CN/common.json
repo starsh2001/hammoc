@@ -555,7 +555,9 @@
     "openInTab": "在终端标签页中打开",
     "disabledDescriptionShort": "请在设置中启用终端。",
     "securityDescriptionShort": "请从本地网络连接。",
-    "imeInputPlaceholder": "在此输入非英文字符后发送"
+    "imeInputPlaceholder": "在此输入非英文字符后发送",
+    "createNotConnected": "无法创建终端: 套接字未连接",
+    "createTimeout": "创建终端超时 — 请重试"
   },
   "agent": {
     "listAria": "BMad 代理列表",

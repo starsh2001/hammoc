@@ -555,7 +555,9 @@
     "openInTab": "ターミナルタブで開く",
     "disabledDescriptionShort": "設定でターミナルを有効にしてください。",
     "securityDescriptionShort": "ローカルネットワークから接続してください。",
-    "imeInputPlaceholder": "非英語文字はここで入力して送信"
+    "imeInputPlaceholder": "非英語文字はここで入力して送信",
+    "createNotConnected": "ターミナルを作成できません: ソケットが接続されていません",
+    "createTimeout": "ターミナル作成がタイムアウトしました — 再試行してください"
   },
   "agent": {
     "listAria": "BMadエージェント一覧",

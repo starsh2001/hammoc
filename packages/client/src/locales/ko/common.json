@@ -596,7 +596,9 @@
     "openInTab": "터미널 탭에서 열기",
     "disabledDescriptionShort": "설정에서 터미널을 활성화하세요.",
     "securityDescriptionShort": "로컬 네트워크에서 접속해 주세요.",
-    "imeInputPlaceholder": "비영어권 문자는 여기서 조합하여 전송"
+    "imeInputPlaceholder": "비영어권 문자는 여기서 조합하여 전송",
+    "createNotConnected": "터미널을 생성할 수 없습니다: 소켓이 연결되지 않음",
+    "createTimeout": "터미널 생성 시간이 초과되었습니다 — 다시 시도해 주세요"
   },
   "agent": {
     "listAria": "BMad 에이전트 목록",

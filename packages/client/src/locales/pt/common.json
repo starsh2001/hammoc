@@ -555,7 +555,9 @@
     "openInTab": "Abrir na aba de terminal",
     "disabledDescriptionShort": "Habilite o terminal nas configurações.",
     "securityDescriptionShort": "Por favor, conecte-se a partir de uma rede local.",
-    "imeInputPlaceholder": "Digite texto não ASCII aqui e envie"
+    "imeInputPlaceholder": "Digite texto não ASCII aqui e envie",
+    "createNotConnected": "Não é possível criar o terminal: socket não conectado",
+    "createTimeout": "Criação do terminal expirou — tente novamente"
   },
   "agent": {
     "listAria": "Lista de agentes BMad",

@@ -10,6 +10,7 @@ const mockSocket = {
   emit: vi.fn(),
   on: vi.fn(),
   off: vi.fn(),
+  connected: true,
 };
 
 vi.mock('../../services/socket', () => ({

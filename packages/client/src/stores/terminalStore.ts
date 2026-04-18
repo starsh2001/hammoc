@@ -17,6 +17,7 @@ import type {
   TerminalAccessInfo,
 } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
+import i18n from '../i18n';
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -75,6 +76,19 @@ let _onError: ((data: TerminalErrorEvent) => void) | null = null;
 let _onAccess: ((data: TerminalAccessInfo) => void) | null = null;
 let _onList: ((data: TerminalListResponse) => void) | null = null;
 
+// Safety net: if server never responds to terminal:create (dropped event,
+// disconnect between emit and ack, missing handler), reset pendingCreate so
+// the user isn't permanently locked out of the "new terminal" button.
+const PENDING_CREATE_TIMEOUT_MS = 10_000;
+let _pendingCreateTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearPendingCreateTimer() {
+  if (_pendingCreateTimer) {
+    clearTimeout(_pendingCreateTimer);
+    _pendingCreateTimer = null;
+  }
+}
+
 export const useTerminalStore = create<TerminalStore>((set, get) => ({
   // State
   terminals: new Map(),
@@ -105,8 +119,28 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
   createTerminal: (projectSlug: string) => {
     if (get().pendingCreate) return;
-    set({ pendingCreate: true });
     const socket = getSocket();
+    if (!socket.connected) {
+      toast.error(
+        i18n.t('common:terminal.createNotConnected', {
+          defaultValue: 'Cannot create terminal: socket not connected',
+        }),
+      );
+      return;
+    }
+    set({ pendingCreate: true });
+    clearPendingCreateTimer();
+    _pendingCreateTimer = setTimeout(() => {
+      _pendingCreateTimer = null;
+      if (get().pendingCreate) {
+        set({ pendingCreate: false });
+        toast.error(
+          i18n.t('common:terminal.createTimeout', {
+            defaultValue: 'Terminal create timed out — please try again',
+          }),
+        );
+      }
+    }, PENDING_CREATE_TIMEOUT_MS);
     socket.emit('terminal:create', { projectSlug });
   },
 
@@ -160,6 +194,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       for (const terminalId of terminals.keys()) {
         dataCallbacks.delete(terminalId);
       }
+      clearPendingCreateTimer();
       set({ terminals: new Map(), activeTerminalId: null, currentProjectSlug: newProjectSlug, pendingCreate: false });
     } else {
       set({ currentProjectSlug: newProjectSlug });
@@ -172,6 +207,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     get().cleanupTerminalListeners(socket);
 
     _onCreated = (data: TerminalCreatedResponse) => {
+      clearPendingCreateTimer();
       const terminals = new Map(get().terminals);
       terminals.set(data.terminalId, {
         terminalId: data.terminalId,
@@ -201,6 +237,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     };
 
     _onError = (data: TerminalErrorEvent) => {
+      clearPendingCreateTimer();
       toast.error(data.message);
       set({ pendingCreate: false });
       if (data.terminalId) {

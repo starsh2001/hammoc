@@ -587,7 +587,9 @@
     "openInTab": "Open in terminal tab",
     "disabledDescriptionShort": "Enable terminal in settings.",
     "securityDescriptionShort": "Please connect from a local network.",
-    "imeInputPlaceholder": "Type non-ASCII text here, then send"
+    "imeInputPlaceholder": "Type non-ASCII text here, then send",
+    "createNotConnected": "Cannot create terminal: socket not connected",
+    "createTimeout": "Terminal create timed out — please try again"
   },
   "agent": {
     "listAria": "BMad agent list",
