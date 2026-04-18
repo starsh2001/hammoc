@@ -16,6 +16,9 @@ ref/
 # Windows special files
 nul
 
+# Integration test run artifacts (specs are tracked, results are not)
+tests/integration/reports/
+
 # Claude Code
 .claude/
 .qlaude/
