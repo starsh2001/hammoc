@@ -319,10 +319,11 @@ function parseTaskNotification(content: string): { status: 'completed' | 'failed
 }
 
 /**
- * Clean up command tags from user messages
- * Converts "<command-message>X</command-message>\n<command-name>/Y</command-name>" to "/Y"
+ * Clean up command tags from user messages.
+ * Converts "<command-message>X</command-message>\n<command-name>/Y</command-name>\n<command-args>Z</command-args>"
+ * to "/Y Z". Empty args drop cleanly, leaving just "/Y".
  * @param content The raw message content
- * @returns Cleaned content showing just the command
+ * @returns Cleaned content showing the command and its arguments
  */
 export function cleanCommandTags(content: string): string {
   // Skip local command output (CLI-only messages like "Compacted", "Login successful")
@@ -338,10 +339,14 @@ export function cleanCommandTags(content: string): string {
   cleaned = cleaned.replace(/<ide_opened_file>[\s\S]*?<\/ide_opened_file>/g, '');
   // Remove <command-message> blocks entirely (content included)
   cleaned = cleaned.replace(/<command-message>[\s\S]*?<\/command-message>/g, '');
-  // Remove <command-args> blocks entirely (content included)
-  cleaned = cleaned.replace(/<command-args>[\s\S]*?<\/command-args>/g, '');
   // Strip <command-name> tags but keep inner text
   cleaned = cleaned.replace(/<\/?command-name>/g, '');
+  // Inline <command-args> content onto the command name line: drop the tag and any
+  // preceding whitespace, then prefix a single space so "/cmd\n<args>x</args>" -> "/cmd x".
+  cleaned = cleaned.replace(/\s*<command-args>([\s\S]*?)<\/command-args>/g, (_, args) => {
+    const trimmed = args.trim();
+    return trimmed ? ' ' + trimmed : '';
+  });
   return cleaned.trim();
 }
 
