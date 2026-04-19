@@ -144,9 +144,23 @@ const NATIVE_1M_MODELS = ['claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4
 /**
  * True when the model is known to natively support a 1M token context window.
  */
-function isNative1MModel(model?: string): boolean {
+export function isNative1MModel(model?: string): boolean {
   if (!model) return false;
-  return NATIVE_1M_MODELS.some(m => model === m || model.startsWith(`${m}-`));
+  const base = model.replace(/\[1m\]$/i, '');
+  return NATIVE_1M_MODELS.some(m => base === m || base.startsWith(`${m}-`));
+}
+
+/**
+ * Appends the `[1m]` suffix that the Claude Code CLI uses to opt a model into
+ * its native 1M context window. Without this suffix, the SDK's internal
+ * auto-compact logic caps the effective window at ~200K regardless of the
+ * model's real capacity or the `autoCompactWindow` setting.
+ */
+export function withNative1MSuffix(model?: string): string | undefined {
+  if (!model) return model;
+  if (/\[1m\]$/i.test(model)) return model;
+  if (!isNative1MModel(model)) return model;
+  return `${model}[1m]`;
 }
 
 /**

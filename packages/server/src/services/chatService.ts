@@ -7,7 +7,7 @@ import type {
   StreamCallbacks,
   ImageAttachment,
 } from '@hammoc/shared';
-import { correctContextWindow } from '@hammoc/shared';
+import { correctContextWindow, withNative1MSuffix } from '@hammoc/shared';
 import path from 'path';
 import fs from 'fs/promises';
 import { execSync } from 'child_process';
@@ -205,7 +205,10 @@ export class ChatService {
       disallowedTools: resolvedDisallowed.length > 0 ? resolvedDisallowed : undefined,
       maxTurns: options.maxTurns,
       abortController: options.abortController,
-      model: options.model || undefined,
+      // Append `[1m]` for native 1M models — the SDK caps the auto-compact
+      // window at the model's native size, and only recognizes 1M capacity
+      // when the model string carries this suffix (see `fX()` in claude.exe).
+      model: withNative1MSuffix(options.model) || undefined,
       resume: options.resume,
       sessionId: options.sessionId,
       includePartialMessages: true, // Enable real-time streaming
