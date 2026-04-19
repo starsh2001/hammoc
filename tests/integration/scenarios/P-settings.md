@@ -35,15 +35,16 @@
 
 ### P-03-01: 짧은 타임아웃 유도
 **절차**:
-1. Settings → Chat Timeout을 최소값(UI가 허용하는 최소 — 예: 1분)으로 설정
-2. 실행 시간 단축을 위해 서버 환경변수 `CHAT_TIMEOUT_MS`를 테스트 런처가 10초로 주입 (`run-integration-test.mjs --chat-timeout=10000`)
-3. 응답이 10초를 초과하도록 유도: "Start replying with the word 'WAIT', then pause 15 seconds, then continue."
-4. 10초 경과 후 스트림 자동 중단 확인
-5. 메시지 히스토리에 "요청 시간 초과" 또는 abort 메시지 확인
+1. 런처를 `--chat-timeout=10000`으로 별도 포트에서 기동 (`node scripts/run-integration-test.mjs --port=21215 --chat-timeout=10000`)
+2. 해당 포트에 접속 → `/api/preferences`에서 `chatTimeoutMs: 10000` 확인
+3. 새 세션에서 Ask 모드로 전환 → 파일 편집 권한 요청 유도 ("Create a file named test.txt")
+4. 권한 요청(ToolCard) 표시 후 응답하지 않고 15초 대기
+5. "응답 시간이 초과되었습니다. 다시 시도해 주세요." 메시지 확인
 
-**기대 결과**: 설정된 타임아웃 도달 시 자동 abort, 안내 메시지.
+**기대 결과**: SDK 활동이 10초 이상 없을 때 타임아웃 발동 → 자동 abort + "응답 시간이 초과되었습니다." 메시지.
 
-> 런처 플래그가 없다면 `run-integration-test.mjs`에 `--chat-timeout` 옵션을 선행 추가. 1분 실시간 대기는 금지.
+> **중요**: 타임아웃은 **활동 기반(activity-based)** — [websocket.ts:2556-2569](packages/server/src/handlers/websocket.ts#L2556-L2569) 참고. SDK 콜백 이벤트마다 `resetTimeout()`이 호출되므로, 단순히 긴 응답을 유도하는 것으로는 타임아웃이 발동하지 않음. 권한 요청 대기처럼 SDK 이벤트가 완전히 멈춘 상태여야 함.
+> 클램프: 5s~30min 범위 외 값은 기본값(300000ms)으로 대체됨.
 
 **엣지케이스**:
 - E1. 서버 `CHAT_TIMEOUT_MS` 와 불일치 시 더 짧은 쪽이 우세
@@ -78,11 +79,19 @@
 - 현재 버전 vs npm 레지스트리 최신 버전 표시
 - 신버전 있을 시 업데이트 버튼 활성
 
-### P-05-02: 업데이트 수행
+### P-05-02: 업데이트 수행 `[MANUAL]`
+**절차 (수동)**:
+1. 별도 머신/VM에 `npm install -g hammoc@<이전버전>` 으로 구버전 설치
+2. 해당 Hammoc 서버 기동 후 Settings → About → "Update" 버튼 클릭
+3. `/api/server/update` 호출 → npm update 실행 → 서버 자동 재시작 확인
+4. 재접속 후 버전이 최신으로 올라갔는지 확인
+
 **기대 결과**:
 - `/api/server/update` 호출 → npm update 실행
 - 완료 후 서버 재시작 플로우 진입 (P-04-02)
 - 실패 시 롤백 안내
+
+> **[MANUAL] 사유**: 개발 모드(소스 체크아웃 환경)에서는 [serverController.ts:273-275](packages/server/src/controllers/serverController.ts#L273-L275)가 `DEV_ONLY` 403을 반환함. 실제 검증은 글로벌/npx 설치 환경에서만 가능하므로 릴리즈 직전 수동 회귀에 포함.
 
 **엣지케이스**:
 - E1. 네트워크 차단 → 조용히 실패하지 말고 명확히 오류

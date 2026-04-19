@@ -63,11 +63,17 @@
 ### L-03-01: 로컬 IP 만 허용
 
 > **전제**: 이 시나리오는 반드시 `TRUST_PROXY=true` 환경에서 실행해야 한다. 브라우저의 TCP peer는 항상 `127.0.0.1`(루프백)이므로, `TRUST_PROXY=false` (기본값)에서는 `X-Forwarded-For` 헤더가 무시되어 외부 IP 위장이 불가능하다 — **이는 올바른 보안 동작**이며 버그가 아님. 필터 로직 자체의 검증은 TRUST_PROXY=true 환경에서만 유효하다.
+>
+> **런처 실행 예시** (필수):
+> ```
+> node scripts/run-integration-test.mjs --port=3000 --trust-proxy
+> ```
+> 런처의 `--trust-proxy` 플래그가 `TRUST_PROXY=true` 환경변수를 주입함 ([run-integration-test.mjs buildEnv](../../scripts/run-integration-test.mjs)). 이 플래그 없이 실행하면 **SKIP이 아니라 런처 재기동으로 해결**해야 한다 — "환경 미충족"은 런처 설정 문제지 기능 문제가 아니다.
 
 **절차**:
 1. 서버 실행 환경 확인: `fetch('/api/server/info').then(r => r.json())` 응답의 `trustProxy` 필드 또는 런처 로그로 TRUST_PROXY 설정 확인
-2. **TRUST_PROXY 비활성 시 본 시나리오는 `N/A (환경 미충족)` 로 기록하고 건너뜀**. TRUST_PROXY=true 런처 플래그(`--trust-proxy`) 없이 실행한 경우 FAIL이 아닌 SKIP 처리
-3. TRUST_PROXY=true 확인된 경우에만: `browser_evaluate`로 외부 IP를 가장한 헤더로 터미널 생성 API 직접 호출:
+2. **TRUST_PROXY 비활성이면 런처를 `--trust-proxy` 플래그로 재기동한 뒤 본 시나리오를 실행**. 런처 재기동이 불가능한 환경이면 FAIL (인프라 이슈)로 기록하고 런처 설정 수정 작업을 후속 조치로 제안.
+3. TRUST_PROXY=true 확인된 경우: `browser_evaluate`로 외부 IP를 가장한 헤더로 터미널 생성 API 직접 호출:
    ```js
    fetch('/api/terminals', {
      method: 'POST',
@@ -83,10 +89,17 @@
 > **구현 메커니즘**: `networkUtils.extractRequestIP`는 `TRUST_PROXY=true` + TCP peer가 루프백일 때만 `X-Forwarded-For`를 참조. TRUST_PROXY=false일 때는 항상 TCP peer(127.0.0.1) 사용 → 헤더 주입 무의미. 따라서 본 시나리오는 반드시 TRUST_PROXY=true 환경에서만 실행할 것.
 
 ### L-03-02: TERMINAL_ENABLED=false
+
 **선행 조건**: 런처 `--with-terminal-disabled` 플래그로 보조 서버(기본 포트+1 = 21214) 기동.
 
+**런처 실행 예시** (필수):
+```
+node scripts/run-integration-test.mjs --port=3000 --with-terminal-disabled
+```
+주 서버는 `--port`(3000 또는 21213)에서 터미널 활성 상태로, 보조 서버는 `<port>+1`에서 `TERMINAL_ENABLED=false`로 동시에 기동됨 ([run-integration-test.mjs:253](../../scripts/run-integration-test.mjs#L253)). 보조 서버가 없으면 본 시나리오는 **SKIP이 아니라 런처 재기동으로 해결**한다.
+
 **절차**:
-1. `browser_navigate("http://127.0.0.1:21214")` → 로그인 확인 (주 서버와 동일 자격증명)
+1. `browser_navigate("http://127.0.0.1:<port+1>")` → 로그인 확인 (주 서버와 동일 자격증명)
 2. 기존 프로젝트 선택 또는 생성 → 프로젝트 페이지 진입
 3. 터미널 탭 클릭
 4. `browser_wait_for(text="터미널이 비활성화되었습니다", time=10)` — 소켓 연결 후 `terminal:access` 이벤트 도착 대기

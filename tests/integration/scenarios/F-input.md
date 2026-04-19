@@ -17,17 +17,28 @@
 **절차**:
 1. `browser_resize(width=400, height=800)`으로 뷰포트 축소
 2. ChatInput에 텍스트 입력
-3. Enter 키 → 줄바꿈만 되고 전송 안 됨 확인
+3. Enter 키 → **물리 키보드 Enter (`browser_press_key`)로는 검증 불가** — 소프트 키보드 Enter는 `InputEvent { inputType: 'insertLineBreak' }`를 발생시키므로 `browser_evaluate`로 해당 이벤트를 직접 디스패치해야 함:
+   ```js
+   browser_evaluate(`() => {
+     const ta = document.querySelector('textarea');
+     ta.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertLineBreak', bubbles: true }));
+     ta.dispatchEvent(new InputEvent('input', { inputType: 'insertLineBreak', bubbles: true }));
+     return document.querySelectorAll('[aria-label^="내 메시지"]').length;
+   }`)
+   ```
+   → msgCount 변화 없음 + textarea에 `\n` 삽입 확인
 4. 우측 전송 버튼 클릭 → 전송 확인
 5. `browser_resize(width=1280, height=800)`으로 뷰포트 복원
 
 **기대 결과**: 모바일에서 Enter 는 줄바꿈, 전송은 우측 버튼으로만 가능.
 
-> `browser_resize`로 모바일 뷰포트 시뮬레이션 가능. 별도 환경 필요 없음.
+> **주의**: `browser_press_key('Enter')`는 물리 키보드 이벤트를 발생시켜 항상 전송됨. 실제 모바일 소프트 키보드 Enter는 `insertLineBreak` InputEvent 경로를 사용하므로 반드시 위 evaluate 방식으로 검증해야 함.
 
 ### F-01-03: 초대형 입력
 **절차**: 10만 문자 텍스트 붙여넣기.
-**기대 결과**: textarea 자동 크기 조정, 전송 가능, 토큰 추정 표시.
+**기대 결과**: textarea 자동 크기 조정 (`max-height: 120px`까지 확장), 전송 가능.
+
+> 토큰 추정 표시는 미구현 기능으로 검증 대상 제외.
 
 ---
 

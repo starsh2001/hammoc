@@ -79,32 +79,46 @@ Hello 2
 ## H4. PRD → Queue 자동 생성 `[CORE]`
 
 ### H-04-01: BMad PRD 파싱
+
+> **선행 조건 필수**: **BMad 초기화된 프로젝트**에서만 실행. 비-BMad 프로젝트에서는 `GET /api/projects/:slug/queue/stories`가 404 "BMad 설정을 찾을 수 없습니다" 반환. 반드시 B-02-02로 BMad 프로젝트를 먼저 생성하거나 Q-01-02("BMad 전환" 메뉴)로 기존 프로젝트를 BMad화 한 뒤 진행.
+>
+> **PRD 구조 주의**: BMad 기본 `.bmad-core/core-config.yaml`은 **sharded PRD**(`prdSharded: true`, `prdShardedLocation: docs/prd`, `epicFilePattern: epic-{n}*.md`)로 설정됨 ([번들 템플릿](../../packages/server/resources/bmad-method/4.44.3/.bmad-core/core-config.yaml)). 단일 `docs/prd.md`를 생성해도 [queueTemplateController.extractStories](../../packages/server/src/controllers/queueTemplateController.ts#L141)는 기본 설정 하에서 읽지 않습니다. 반드시 `docs/prd/epic-<N>-<slug>.md` 형태로 배치. 자세한 내용은 Q-03-01 시나리오 참조.
+
 **절차**:
-1. **BMad 프로젝트 준비** — B-02-02로 BMad 프로젝트 생성
-2. **PRD 파일 주입** — 파일 탐색기 탭에서 `docs/prd.md` 생성 후 아래 내용 저장 (또는 `browser_evaluate` fetch로 POST):
+1. **BMad 프로젝트 준비** — B-02-02로 BMad 프로젝트 생성 (또는 Q-01-02로 기존 프로젝트 BMad 전환)
+2. **PRD 파일 주입 (sharded 구조)** — 파일 탐색기에서 아래 2개 파일을 생성:
+
+   `docs/prd/epic-1-login-flow.md`:
    ```markdown
-   # PRD
+   # Epic 1: Login Flow
 
-   ## Epic 1: Login Flow
-   ### Story 1.1: Email input validation
-   ### Story 1.2: Password strength meter
+   ## Story 1.1: Email input validation
 
-   ## Epic 2: Dashboard
-   ### Story 2.1: Stats cards
+   ## Story 1.2: Password strength meter
    ```
-3. 큐 탭 → "PRD에서 생성" 클릭
-4. `browser_snapshot` → Story 1.1 / 1.2 / 2.1 목록 표시 확인
-5. 기본 템플릿 선택 → "생성" → 큐 편집기에 스크립트 채워짐 확인
-6. `browser_evaluate` fetch로 `/api/projects/<slug>/fs/raw?path=.hammoc/queue-templates.json` → 저장 확인
+
+   `docs/prd/epic-2-dashboard.md`:
+   ```markdown
+   # Epic 2: Dashboard
+
+   ## Story 2.1: Stats cards
+   ```
+
+3. 큐 탭 → "템플릿으로 생성" / "PRD에서 생성" 클릭
+4. `browser_snapshot` → Story 1.1 / 1.2 / 2.1 목록 미리보기 확인 (`GET /api/projects/:slug/queue/stories` 응답)
+5. 기본 템플릿 선택 → "생성" → 큐 편집기에 스크립트 자동 주입 확인
+6. `browser_evaluate` fetch로 `/api/projects/:slug/fs/raw?path=.hammoc/queue-templates.json` → 저장 확인
 
 **기대 결과**:
 - Story 1.1 ~ 2.1 추출
 - 템플릿 치환자 `{story_num}`, `{epic_num}`, `{story_title}` 적용
-- 큐 편집기에 스크립트 채움, `queue-templates.json` 저장
+- 큐 편집기에 스크립트 채워짐, `queue-templates.json` 저장
+- "모든 스크립트 문법이 정상입니다" 표시
 
 **엣지케이스**:
-- E1. PRD 형식 불일치(빈 에픽): 경고와 함께 빈 스토리 제외
-- E2. 특수문자/대소문자 혼용
+- E1. 비-BMad 프로젝트에서 시도: API 404 + UI 에러 토스트 ("BMad 설정을 찾을 수 없습니다")
+- E2. `prdSharded: false` 변경 후 단일 `docs/prd.md`: monolithic 경로 fallback 동작 확인 (`queueTemplateController.ts:220-228`)
+- E3. 빈 epic 파일(Epic 헤더만, Story 없음): 해당 epic의 스토리 0개로 표시, 다른 epic은 정상 파싱
 
 ---
 

@@ -38,12 +38,33 @@
 
 ## B2. 프로젝트 생성 `[CORE]`
 
+> **공통 타이밍 주의 (중요)**:
+> "생성" 버튼은 `isValidating || !path.trim() || showExistingWarning` 조건 중 하나라도 true면 disabled됩니다 ([NewProjectDialog.tsx:359](../../packages/client/src/components/NewProjectDialog.tsx#L359)). 경로 입력 후 `handlePathChange`는 400ms debounce 후 `validatePath`를 호출하고, 체크박스 클릭 등 다른 액션으로 input에서 focus가 빠지면 `onBlur` 핸들러가 validation을 즉시 실행합니다. 이 validation이 진행 중이면 버튼 클릭이 무반응처럼 보입니다.
+>
+> **권장 대기 패턴**:
+> 1. 경로 입력 직후 `browser_evaluate`로 validation 완료를 폴링:
+>    ```js
+>    // 버튼이 enabled가 될 때까지 대기 (validation 완료 신호)
+>    browser_wait_for({ text: /* 버튼이 enabled인 스냅샷 마커 */ })
+>    ```
+>    또는 직접 상태 확인:
+>    ```js
+>    await page.evaluate(() => {
+>      const btn = [...document.querySelectorAll('button')].find(b => b.textContent?.trim() === '생성');
+>      return !btn?.disabled;
+>    });
+>    ```
+> 2. 위 값이 `true`가 된 뒤에 "생성" 클릭.
+>
+> 자동화가 validation debounce보다 빨리 클릭하면 첫 클릭이 무반응처럼 보이고 두 번째 클릭에서만 성공하는 증상이 관찰됩니다 (실제 코드 버그 아님).
+
 ### B-02-01: 일반 프로젝트 생성
 **절차**:
 1. "새 프로젝트" 버튼 클릭
 2. 이름 `__hammoc_test_<timestamp>__`, 경로 `<tmp>/hammoc-test` 입력
 3. "BMad Method 초기화" 체크박스 상태 확인 → 체크된 경우 `browser_evaluate("() => document.querySelector('input[type=checkbox]').click()")` 로 해제, **`browser_evaluate("() => document.querySelector('input[type=checkbox]').checked")`로 `false` 반환 검증 후 진행** (주의: `browser_click`으로 aria role 체크박스를 클릭하면 wrapper만 클릭되어 실제 input 값이 토글 안 될 수 있음)
-4. "생성" 클릭
+4. **"생성" 버튼이 enabled가 될 때까지 대기** (위 공통 타이밍 주의 참조) — 경로 validation이 완료되어야 함
+5. "생성" 클릭
 
 **기대 결과**:
 - 프로젝트 리스트에 카드 추가
@@ -59,8 +80,9 @@
 1. "새 프로젝트" 버튼 클릭
 2. 이름 `__hammoc_test_bmad_<timestamp>__`, 경로 `<tmp>/hammoc-test-bmad` 입력
 3. "BMad Method 초기화" 체크박스 상태 확인 → 체크 해제된 경우 `browser_evaluate("() => document.querySelector('input[type=checkbox]').click()")` 로 체크, **`browser_evaluate("() => document.querySelector('input[type=checkbox]').checked")`로 `true` 반환 검증 후 진행**
-4. "생성" 클릭
-5. 생성된 프로젝트 → 파일 탐색기 탭 → `.bmad-core/` 디렉토리 존재 확인
+4. **"생성" 버튼이 enabled가 될 때까지 대기** (공통 타이밍 주의 참조) — 체크박스 클릭으로 input onBlur가 발화되어 validation이 재실행될 수 있음
+5. "생성" 클릭
+6. 생성된 프로젝트 → 파일 탐색기 탭 → `.bmad-core/` 디렉토리 존재 확인
 
 **기대 결과**: `.bmad-core/` 디렉토리 생성, 프로젝트 설정에 BMad 플래그 온.
 

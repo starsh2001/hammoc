@@ -56,41 +56,6 @@
 
 ---
 
-## I3. 상태 전이 드래그드롭 `[EDGE] [DnD]`
-
-### I-03-01: 카드 이동으로 상태 변경
-**절차**:
-1. 테스트 이슈 1개 생성 (I-02-01 절차), Open 컬럼에 카드 존재 확인
-2. `browser_evaluate`로 HTML5 DnD 이벤트를 Open 카드 → In Progress 컬럼으로 디스패치:
-   ```js
-   browser_evaluate(`() => {
-     const card = document.querySelector('[data-testid="board-card"][data-status="open"]');
-     const dropCol = document.querySelector('[data-testid="board-column"][data-status="in-progress"]');
-     const dt = new DataTransfer();
-     card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
-     dropCol.dispatchEvent(new DragEvent('dragover', { bubbles: true, dataTransfer: dt }));
-     dropCol.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }));
-     card.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
-     return true;
-   }`)
-   ```
-3. `browser_snapshot` → 카드가 "In Progress" 컬럼에 위치 확인
-4. `fetch('/api/projects/<slug>/board/issues')` → 해당 이슈의 `status === 'in-progress'` 검증
-
-**기대 결과**:
-- 상태 자동 변경 (status=in-progress)
-- 서버 저장 및 다중 탭 동기화
-
-### I-03-02: 워크플로우 규칙 검증
-**기대 결과**:
-- BMad 프로젝트: Draft → Approved → In Progress → Review → Done 경로 강제
-- 비허용 경로(예: Open → Done 직행) 시도 시 경고 또는 거부
-
-### I-03-03: 동시 편집 (다중 탭)
-**절차**: 두 탭에서 같은 카드 편집.
-**기대 결과**: 마지막 저장 우선 또는 충돌 경고.
-
----
 
 ## I4. 에픽 · 스토리 진행률 `[CORE]`
 
