@@ -36,10 +36,12 @@
 ### P-03-01: 짧은 타임아웃 유도
 **절차**:
 1. 런처를 `--chat-timeout=10000`으로 별도 포트에서 기동 (`node scripts/run-integration-test.mjs --port=21215 --chat-timeout=10000`)
-2. 해당 포트에 접속 → `/api/preferences`에서 `chatTimeoutMs: 10000` 확인
-3. 새 세션에서 Ask 모드로 전환 → 파일 편집 권한 요청 유도 ("Create a file named test.txt")
-4. 권한 요청(ToolCard) 표시 후 응답하지 않고 15초 대기
-5. "응답 시간이 초과되었습니다. 다시 시도해 주세요." 메시지 확인
+2. `browser_tabs(action="new")` → **`http://localhost:21215`** 로 접속 (반드시 `localhost` 사용; `127.0.0.1`은 주 서버와 쿠키 origin이 달라 자동 로그인 실패). 쿠키가 공유되어 재로그인 없이 접속됨
+3. `/api/preferences`에서 `chatTimeoutMs: 10000` 확인
+4. 새 세션에서 Ask 모드로 전환 → 파일 편집 권한 요청 유도 ("Create a file named test.txt")
+5. 권한 요청(ToolCard) 표시 후 응답하지 않고 15초 대기
+6. "응답 시간이 초과되었습니다. 다시 시도해 주세요." 메시지 확인
+7. 시나리오 완료 후 탭 닫기 + 별도 포트 런처 프로세스 종료
 
 **기대 결과**: SDK 활동이 10초 이상 없을 때 타임아웃 발동 → 자동 abort + "응답 시간이 초과되었습니다." 메시지.
 
@@ -73,11 +75,14 @@
 
 ## P5. 서버 업데이트 체크 & 업데이트 `[EDGE]`
 
-### P-05-01: 업데이트 확인
-**절차**: About 섹션 → "Check for Updates" 또는 백엔드 `/api/server/check-update` 호출.
+### P-05-01: 업데이트 확인 `[MANUAL]`
+**절차 (수동)**: About 섹션 → "Check for Updates" 또는 백엔드 `/api/server/check-update` 호출.
+
 **기대 결과**:
 - 현재 버전 vs npm 레지스트리 최신 버전 표시
 - 신버전 있을 시 업데이트 버튼 활성
+
+> **[MANUAL] 사유**: 개발 모드(소스 체크아웃 환경)에서는 [serverController.ts:246-249](../../packages/server/src/controllers/serverController.ts#L246-L249)가 `501 NOT_APPLICABLE`을 반환하고 About UI에도 버튼이 숨겨진다. 글로벌/npx 설치 환경에서만 동작하므로 릴리즈 직전 수동 회귀에 포함.
 
 ### P-05-02: 업데이트 수행 `[MANUAL]`
 **절차 (수동)**:

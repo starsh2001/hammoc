@@ -133,18 +133,40 @@ browser_evaluate(`async () => {
 - 다중 스니펫 체인 (`%a %b`) 입력 시 체인으로 큐잉
 
 ### F-04-02: 프로젝트 스니펫이 전역보다 우선
+**목적**: 동일 이름의 스니펫이 `{project}/.hammoc/snippets/` 와 `~/.hammoc/snippets/` 양쪽에 있을 때 프로젝트 로컬이 우선 적용되는지 검증.
+
+**중요 (구현 현황)**: Hammoc 스니펫은 **파일 기반**으로만 관리된다. 설정 페이지에 Snippets CRUD UI는 존재하지 않으며 계획도 없음 — 서버는 `snippets:list` WebSocket 이벤트로 읽기 전용 로드만 수행한다 ([snippetResolver.ts](../../packages/server/src/utils/snippetResolver.ts), [useSnippets.ts](../../packages/client/src/hooks/useSnippets.ts)). 따라서 이 시나리오는 파일 시스템에 직접 스니펫 파일을 생성해 검증한다.
+
+**선행 조건**: 테스트 프로젝트 경로 확보 (e.g. `C:\Users\...\Temp\hammoc-test-noBmad-<ts>`).
+
 **절차**:
-1. **[설정 → 전역 스니펫]** 설정 페이지 → Snippets 탭 진입 → "새 스니펫" → 이름 `test-priority`, 본문 `GLOBAL CONTENT` 입력 → 저장
-2. **[설정 → 프로젝트 스니펫]** 테스트 프로젝트 설정 → Snippets 탭 → "새 스니펫" → 이름 `test-priority`, 본문 `PROJECT CONTENT` 입력 → 저장
-3. 테스트 프로젝트의 채팅 입력바로 이동 → `%test-priority` 입력
-4. 팔레트에서 선택 후 치환된 텍스트 확인
+1. **전역 스니펫 파일 생성** — `~/.hammoc/snippets/test-priority.md`:
+   ```bash
+   # Bash 도구로 생성
+   mkdir -p ~/.hammoc/snippets
+   echo "GLOBAL CONTENT" > ~/.hammoc/snippets/test-priority.md
+   ```
+2. **프로젝트 스니펫 파일 생성** — `<projectPath>/.hammoc/snippets/test-priority.md`:
+   ```bash
+   mkdir -p <projectPath>/.hammoc/snippets
+   echo "PROJECT CONTENT" > <projectPath>/.hammoc/snippets/test-priority.md
+   ```
+3. 테스트 프로젝트 세션 진입 → ChatInput에 `%` 입력해 팔레트 오픈. `test-priority` 항목에 **"Project" 태그/그룹**이 표시되는지 확인 (전역 vs 프로젝트 구분 UI).
+4. `test-priority` 선택 → 본문이 `PROJECT CONTENT`로 치환되는지 확인.
+5. 스니펫이 다시 로드되었는지 확인용으로 `%` 팔레트에서 `test-priority` 항목 하나만 노출되는지 (중복 노출이 아닌지) 관찰.
 
-**기대 결과**: `PROJECT CONTENT`가 적용됨 (전역의 `GLOBAL CONTENT`가 아님).
+**기대 결과**:
+- 팔레트에 `test-priority` **1개** 항목만 표시 (프로젝트 스니펫이 전역을 오버라이드)
+- 선택 시 본문이 `PROJECT CONTENT`
 
-**테스트 후 정리**: 설정에서 `test-priority` 스니펫 양쪽 모두 삭제.
+**테스트 후 정리**:
+```bash
+rm -f ~/.hammoc/snippets/test-priority.md
+rm -f <projectPath>/.hammoc/snippets/test-priority.md
+```
 
 **엣지케이스**:
-- E1. 순환 참조 스니펫: 감지 후 경고, 무한확장 방지
+- E1. 순환 참조 스니펫 (`%a` 본문에 `%b`, `%b` 본문에 `%a`): 감지 후 경고, 무한 확장 방지 — 동일 방식으로 파일 2개 생성해 테스트.
 
 ---
 
@@ -163,24 +185,27 @@ browser_evaluate(`async () => {
 2. 칩 바 좌측 별(★) 버튼 클릭 → 즐겨찾기 팝업 오픈 (`browser_click("[data-testid='chip-bar-star-button']")`)
 3. `browser_snapshot` → `data-testid="favorite-item-0"` 항목들과 GripVertical 핸들 확인
 4. 첫 번째 항목 이름 기록 (재정렬 검증용)
-5. `browser_evaluate`로 DragEvent 디스패치 (팝업 내 아이템 셀렉터 사용):
+5. `browser_evaluate`로 DragEvent 디스패치 (팝업 내 아이템 셀렉터 사용). `dragenter`가 필수 — React 합성 DnD 핸들러가 hover target을 `onDragEnter`로 기록하는 경우가 많다 (G-01-02 성공 패턴 동일):
    ```js
    browser_evaluate(`() => {
-     const items = document.querySelectorAll('[data-testid^="favorite-item-"]');
+     const items = [...document.querySelectorAll('[data-testid^="favorite-item-"]')];
      if (items.length < 2) return 'not enough items: ' + items.length;
      const src = items[0], dst = items[items.length - 1];
      const dt = new DataTransfer();
      dt.setData('text/plain', '0');
      src.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
-     dst.dispatchEvent(new DragEvent('dragover', { bubbles: true, dataTransfer: dt }));
-     dst.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }));
-     src.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
-     return Array.from(document.querySelectorAll('[data-testid^="favorite-item-"]'))
+     dst.dispatchEvent(new DragEvent('dragenter', { bubbles: true, dataTransfer: dt }));
+     dst.dispatchEvent(new DragEvent('dragover',  { bubbles: true, dataTransfer: dt }));
+     dst.dispatchEvent(new DragEvent('drop',      { bubbles: true, dataTransfer: dt }));
+     src.dispatchEvent(new DragEvent('dragend',   { bubbles: true, dataTransfer: dt }));
+     return [...document.querySelectorAll('[data-testid^="favorite-item-"]')]
        .map(el => el.querySelector('span.flex-1')?.textContent?.trim() ?? el.textContent.trim().slice(0, 20));
    }`)
    ```
-6. 반환된 순서에서 원래 첫 번째 항목이 마지막으로 이동했는지 확인
-7. 팝업 닫기 후 `browser_evaluate("() => location.reload()")` → 팝업 재오픈 → 순서 유지 확인
+6. 반환된 순서에서 원래 첫 번째 항목이 마지막으로 이동했는지 확인.
+7. 팝업 닫기 후 `browser_evaluate("() => location.reload()")` → 팝업 재오픈 → 순서 유지 확인.
+
+> **이전 실패 원인**: `dragenter` 이벤트 누락. React 합성 핸들러는 native `DragEvent`를 처리하므로 native dispatch 자체는 동작하지만, `FavoritesPopup.tsx`의 `onDragEnter`에서 hover target 상태를 잡기 때문에 `dragenter` 없이 `dragover`만 보내면 drop 시 target 정보가 없어 재정렬이 안 일어난다. G-01-02 체인 DnD에서 동일 교훈으로 `dragenter`를 추가해 해결한 사례 참고.
 
 **기대 결과**: 팝업 내 항목 순서 변경 → 칩 바에도 반영 → 새로고침 후 유지.
 

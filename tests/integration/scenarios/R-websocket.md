@@ -92,15 +92,28 @@ browser_evaluate(`() => fetch('/api/debug/kill-ws', {
 **기대 결과**: 탭 A→B 메시지 실시간 반영.
 
 ### R-03-02: 권한 응답 경합
+**목적**: 두 탭이 동일 세션을 공유할 때 한 탭의 권한 응답이 다른 탭의 모달을 즉시 닫는지 검증.
+
+**도구 선택**: Bash 도구를 사용한다. Write는 "File has not been read yet" SDK 오류가 권한 모달 이전에 선행하므로 부적합. Bash는 read-before-X 제약 없이 깨끗하게 권한 모달을 발동한다 (H-05-01과 동일 패턴).
+
 **절차**:
-1. 두 탭 동일 세션. 권한 필요한 도구 호출 프롬프트 전송 (예: "Read file /etc/passwd")
-2. 두 탭 모두 권한 모달/ToolCard 인라인 버튼 표시 대기
-3. 탭 A에서 "허용" 클릭 → 즉시 탭 B 전환
-4. 탭 B `browser_snapshot` → 모달 자동 닫힘 확인
+1. `browser_tabs(action="new")`로 탭 B 오픈, 같은 세션 URL 접속 → 두 탭이 같은 `sessionId` 공유 확인
+2. Ask 모드로 전환
+3. 탭 A에서 `"Run \`echo hello\` in the shell."` 전송 → 두 탭 모두에서 Bash 권한 모달/ToolCard 허용/거절 버튼 노출 확인:
+   ```js
+   browser_evaluate(`() => !!document.querySelector('[data-testid="permission-request"], [role="dialog"][aria-label*="권한"]')`)
+   ```
+4. 탭 A에서 "도구 실행 허용" 클릭 → 즉시 `browser_tabs(action="select", index=1)`로 탭 B 전환
+5. 탭 B에서 `browser_wait_for`로 모달/인라인 버튼이 사라지고 ToolCard가 `Running` → `Completed`로 전이되는지 확인
 
 **기대 결과**:
-- 먼저 도착한 응답 적용
-- 나머지 탭 모달 자동 닫힘, 서버 상태 일관성
+- 먼저 도착한 응답이 서버 상태에 적용됨 (`permission:response` 소켓 이벤트)
+- 두 번째 탭의 모달/인라인 버튼은 자동으로 닫히거나 비활성화됨
+- 서버 상태 일관성: 동일 `toolUseId`에 대한 중복 응답은 서버에서 무시
+
+**엣지케이스**:
+- E1. 두 탭이 거의 동시에 응답 제출 → 먼저 도착한 쪽이 채택되고 나머지는 "already answered" 또는 무시 처리
+- E2. 탭 A가 허용 직후 탭 B가 거절 클릭 → 탭 B 클릭은 무시, Bash는 이미 실행된 상태
 
 ### R-03-03: 설정 변경 전파
 **절차**:

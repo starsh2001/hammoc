@@ -99,13 +99,14 @@ node scripts/run-integration-test.mjs --port=3000 --with-terminal-disabled
 주 서버는 `--port`(3000 또는 21213)에서 터미널 활성 상태로, 보조 서버는 `<port>+1`에서 `TERMINAL_ENABLED=false`로 동시에 기동됨 ([run-integration-test.mjs:253](../../scripts/run-integration-test.mjs#L253)). 보조 서버가 없으면 본 시나리오는 **SKIP이 아니라 런처 재기동으로 해결**한다.
 
 **절차**:
-1. `browser_navigate("http://127.0.0.1:<port+1>")` → 로그인 확인 (주 서버와 동일 자격증명)
+1. `browser_navigate("http://localhost:<port+1>")` → 로그인 확인 (주 서버와 동일 자격증명)
+   > **중요**: 반드시 `localhost` 사용. `127.0.0.1`은 브라우저 쿠키 관점에서 별도 origin이라 주 서버(`localhost:<port>`)의 세션 쿠키가 전달되지 않아 자동 로그인이 실패한다. 런처는 `localhost:<port>` URL을 인쇄한다.
 2. 기존 프로젝트 선택 또는 생성 → 프로젝트 페이지 진입
 3. 터미널 탭 클릭
 4. `browser_wait_for(text="터미널이 비활성화되었습니다", time=10)` — 소켓 연결 후 `terminal:access` 이벤트 도착 대기
 5. `browser_snapshot` → 안내 메시지 + ShieldAlert 아이콘 확인, "새 터미널" 버튼 없음 확인
 6. `browser_evaluate("() => fetch('/api/terminal-status').then(r=>r.status)")` — WebSocket 전용 기능이므로 404 이상 확인으로 충분
-7. `browser_navigate("http://127.0.0.1:21213")` 로 주 서버 복귀
+7. `browser_navigate("http://localhost:<port>")` 로 주 서버 복귀
 
 **기대 결과**: 터미널 탭에 "터미널이 비활성화되었습니다" 안내 + ShieldAlert 아이콘 표시, "새 터미널" 버튼 없음.
 

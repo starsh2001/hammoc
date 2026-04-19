@@ -125,21 +125,63 @@ Hello 2
 ## H5. 실행 중 권한 · 예산 이벤트 `[SDK] [EDGE]`
 
 ### H-05-01: 큐 실행 중 권한 요청 발생
-**절차**: 파일 편집 권한을 필요로 하는 큐 항목 실행.
+**목적**: Ask 모드 큐 실행 중 도구 호출이 발생하면 권한 모달이 뜨고, 모달에 응답할 때까지 큐가 대기하는지 검증.
+
+**도구 선택**: Write 도구는 SDK 계약상 Read 선행이 필수("File has not been read yet")라 처음 보는 파일에 직접 Write를 요구하면 권한 모달 이전에 SDK 오류가 선행한다. 대신 **Bash 도구**를 유도하면 read-before-X 제약 없이 권한 모달이 깨끗이 발동한다.
+
+**절차**:
+1. Ask 모드로 전환 (Shift+Tab 등으로 Ask 확인)
+2. 큐 탭 → 3개 항목 구성:
+   - `"Run \`echo hello\` in the shell."` (Bash 권한 모달 유도)
+   - `"Say 'done' and stop."` (후속 대기 확인용)
+   - `"Say 'ok' and stop."`
+3. 실행 시작 → 첫 항목에서 Bash 도구 호출 → 권한 모달 등장 확인
+4. 모달이 뜬 상태로 3초 대기 → 두 번째 항목이 `pending` 유지되는지 확인
+5. 모달에서 "도구 실행 허용" 클릭 → Bash 실행 완료 후 두 번째 항목으로 진행
+6. 두 번째 항목에서 다시 모달이 뜨면 "도구 실행 거절" 클릭 → 해당 항목의 ToolCard가 `실패` 상태, 큐는 설정에 따라 다음 항목으로 넘어가거나 중단
+
 **기대 결과**:
-- 권한 모달 등장
-- 모달 응답 전까지 다음 항목 대기
-- Allow → 계속, Deny → 해당 항목 실패 기록 후 다음 진행 (설정에 따름)
+- Allow: 해당 도구 실행 후 Claude 응답 계속, 큐 다음 항목 자동 진행
+- Deny: 해당 도구 호출은 "거절됨"으로 기록, 큐는 preferences의 `queueContinueOnError` 값에 따라 계속/중단
+- 모달이 열려있는 동안 큐 상태는 "대기 중"으로 잠금 (`queueLocked=true`)
+
+**엣지케이스**:
+- E1. Bypass 모드였다면 모달이 발동하지 않고 자동 허용 — 시작 전 반드시 Ask 모드 확인.
+- E2. 권한 타임아웃 (D-04-01과 교차): 모달에 응답하지 않고 `__HAMMOC_PERMISSION_TIMEOUT_MS__` 단축 시 자동 deny 후 큐 진행 방식 확인.
 
 ### H-05-02: 큐 실행 중 Budget 초과
-**절차**:
-1. Settings → Advanced → Max Budget 원래 값 기록 → `0.01` 입력 → 저장
-2. 큐 탭으로 이동 → 긴 응답 유도 항목 3개로 구성된 큐 생성 (각 항목: "Write a detailed 1000-word essay on topic N.")
-3. 실행 시작 → 진행 상태 모니터링
-4. 초과 감지 시 큐 전체 중단 + "Budget exceeded" 사유 표시 확인
-5. **정리** — Max Budget 을 원래 값으로 복원
+**목적**: `maxBudgetUsd` 초과 시 큐가 즉시 중단되고 명확한 사유가 표시되는지 검증.
 
-**기대 결과**: 초과 감지 즉시 큐 전체 중단 + 명확한 사유 표시.
+**중요**: Settings UI의 "Max Budget" input은 `min={0.01}`로 고정되어 있어 UI로 $0.01 미만 값을 넣을 수 없다. 현재 Sonnet/Haiku 가격에서 $0.01은 단일 짧은 응답으로 초과되지 않으므로, **UI를 우회해 `PATCH /api/preferences`로 더 작은 값(예: $0.0001)을 직접 설정**한다. 서버는 값 검증을 하지 않아 그대로 SDK에 전달된다.
+
+**절차**:
+1. 현재 `maxBudgetUsd` 값 기록:
+   ```js
+   browser_evaluate(`() => fetch('/api/preferences').then(r => r.json()).then(p => p.maxBudgetUsd)`)
+   ```
+2. UI를 우회해 아주 작은 값으로 설정 (UI min 바이패스):
+   ```js
+   browser_evaluate(`() => fetch('/api/preferences', {
+     method: 'PATCH',
+     headers: {'Content-Type':'application/json'},
+     body: JSON.stringify({ maxBudgetUsd: 0.0001 }),
+     credentials: 'include'
+   }).then(r => r.json())`)
+   ```
+3. 큐 탭 → 긴 응답을 유도하는 항목 3개 구성 (각 항목: `"Write a detailed 1000-word essay on topic N."`)
+4. 실행 시작 → 첫 응답이 1000단어 출력 시도 중 `maxBudgetUsd` 초과 → SDK가 즉시 종료
+5. 큐 러너 배너에 "Budget exceeded" 사유 표시 + 후속 항목 대기 상태 유지 확인
+6. **정리**: 원래 값 복원
+   ```js
+   browser_evaluate(`(orig) => fetch('/api/preferences', {
+     method: 'PATCH', headers: {'Content-Type':'application/json'},
+     body: JSON.stringify({ maxBudgetUsd: orig }), credentials: 'include'
+   })`, <원래값>)
+   ```
+
+**기대 결과**: SDK 집계 시점에 초과 감지 → 큐 전체 중단 + 명확한 사유 표시.
+
+> **SDK 집계 타이밍 주의**: `maxBudgetUsd` 초과는 개별 응답 완료 직전 SDK 내부 집계 시점에 확인된다. 짧은 프롬프트로는 집계가 늦어 유도 실패할 수 있으니 반드시 긴 응답 프롬프트 사용.
 
 ### H-05-03: 네트워크 끊김 & 복구
 **절차**:

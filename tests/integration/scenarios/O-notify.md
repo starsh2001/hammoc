@@ -46,7 +46,17 @@
 
 ## O2. Telegram 알림 `[EDGE]`
 
-> Telegram 실제 API 호출은 외부 의존. 테스트에서는 **테스트 러너가 `BOT_API_BASE_URL`을 로컬 목 서버로 주입**한다. 목 서버는 `scripts/mock-telegram.mjs`로 기동되어 `POST /bot<token>/sendMessage`를 JSON 로그로 기록한다. 목 서버가 없다면 선행 구현 필요.
+> **필수 런처 플래그**: O2 시나리오는 반드시 `--mock-telegram` 플래그로 기동된 테스트 런처에서 실행해야 한다. 이 플래그 없이 기동하면 `BOT_API_BASE_URL` 환경변수가 설정되지 않아 서버가 **실제 `api.telegram.org`로 요청**을 보내고, 검증용 토큰이 거부되어 `"Not Found"` 응답이 반환된다.
+>
+> ```
+> node scripts/run-integration-test.mjs --port=3000 --mock-telegram
+> ```
+>
+> 이 플래그는 `scripts/mock-telegram.mjs`를 `<port>+17`에 백그라운드로 기동하고 `BOT_API_BASE_URL=http://127.0.0.1:<mockPort>`를 주 서버 env에 주입한다. 사전 검증:
+> ```js
+> browser_evaluate(`() => fetch('/mock-telegram/health').then(r => r.ok)`)  // true 필요
+> ```
+> 주 서버 프로세스에 환경변수가 실제로 들어갔는지는 `/api/preferences`에 직접 노출되지 않으므로, O-02-01의 "Send Test" 결과를 보고 **목 서버 messages 로그에 기록이 남는지**로 확인할 것. 실 Telegram API로 빠지면 `success:false, error:"Not Found"`가 반환된다.
 
 ### O-02-01: 설정 & 테스트 메시지
 **절차**:
