@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--grant-permissions=notifications,clipboard-read,clipboard-write,geolocation"
+      ]
+    }
+  }
+}

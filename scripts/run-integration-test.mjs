@@ -97,6 +97,7 @@ function parseArgs(argv) {
       case '--permission-timeout': args.permissionTimeout = parseInt(value, 10); break;
       case '--with-notifications': args.withNotifications = true; break;
       case '--with-terminal-disabled': args.withTerminalDisabled = true; break;
+      case '--trust-proxy':      args.trustProxy = true; break;
       case '--bot-api-base':     args.botApiBase = value; break;
       case '--mock-telegram':    args.mockTelegram = true; break;
       case '--mock-telegram-port': args.mockTelegramPort = parseInt(value, 10); break;
@@ -122,6 +123,7 @@ Options:
   --permission-timeout=<ms>     Permission auto-deny timeout injected via browser_evaluate
   --with-notifications          Grants browser notification permission in Playwright context
   --with-terminal-disabled      Spawn secondary server on <port+1> with TERMINAL_ENABLED=false
+  --trust-proxy                 Set TRUST_PROXY=true so X-Forwarded-For is honored (L-03-01 requires this)
   --bot-api-base=<url>          Telegram API base URL (use with mock-telegram.mjs)
   --mock-telegram               Auto-spawn mock-telegram.mjs and inject its URL
   --mock-telegram-port=<n>      Override mock-telegram port (default: primary+17)
@@ -143,6 +145,10 @@ function buildEnv(port, opts) {
     // Enable /api/debug/* routes (kill-ws) for integration scenarios like R-01-01
     // without switching to NODE_ENV=development (which would break static file serving).
     ENABLE_TEST_ENDPOINTS: 'true',
+    // Honor X-Forwarded-For header — required for L-03-01 (simulate external-IP
+    // access via header). Off by default: without this, all requests appear as
+    // 127.0.0.1 and the IP-filter cannot be exercised.
+    ...(opts.trustProxy ? { TRUST_PROXY: 'true' } : {}),
   };
   if (opts.botApiBase) {
     env.BOT_API_BASE_URL = opts.botApiBase;
