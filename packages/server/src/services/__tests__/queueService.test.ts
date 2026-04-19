@@ -38,6 +38,7 @@ vi.mock('../../i18n.js', () => ({
         'queue.error.pausewordDetected': `Pauseword "${opts?.value || ''}" detected in response`,
         'queue.error.sessionNotFound': `Session not found: ${opts?.value || 'unknown'}`,
         'queue.error.sessionBusy': 'Session is busy',
+        'queue.loop.maxExceeded': `Loop max exceeded: ${opts?.max ?? '?'} iterations without "${opts?.until ?? '?'}"`,
       };
       return translations[key] || (opts?.value ? `${key}: ${opts.value}` : key);
     },

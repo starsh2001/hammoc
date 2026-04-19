@@ -181,7 +181,7 @@
       "sessionBusy": "Session is currently streaming — queue paused to avoid conflict"
     },
     "loop": {
-      "maxExceeded": "Loop completed {{max}} iterations without \"{{until}}\" — paused for review"
+      "maxExceeded": "Loop max exceeded: {{max}} iterations without \"{{until}}\" — paused for review"
     },
     "pause": {
       "userPaused": "User paused",

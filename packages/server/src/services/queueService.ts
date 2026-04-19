@@ -563,14 +563,13 @@ export class QueueService {
       // Had until but token never found
       if (this.loopState.onExceed === 'pause') {
         const t = i18next.getFixedT(this.lang);
-        this.isPaused = true;
-        this._isPauseRequested = false;
-        this.pauseReason = t('queue.loop.maxExceeded', {
+        const reason = t('queue.loop.maxExceeded', {
           max: this.loopState.max,
           until: this.loopState.until,
-          defaultValue: `Loop completed ${this.loopState.max} iterations without "${this.loopState.until}" — paused for review`,
+          defaultValue: `Loop max exceeded: ${this.loopState.max} iterations without "${this.loopState.until}" — paused for review`,
         });
-        this.emitProgress('paused');
+        this.pauseWithError(reason);
+        await this.notificationService.notifyQueueError(reason, this.buildSessionUrl());
         // Keep loopState with iteration >= max — on resume, the exhausted check advances past the loop
         return { shouldAdvance: false };
       }
@@ -910,13 +909,12 @@ export class QueueService {
       if (this.lastPromptResponse.includes(this.pauseword)) {
         log.info(`executePrompt: pauseword "${this.pauseword}" detected in response`);
         const tq = i18next.getFixedT(this.lang);
-        this.isPaused = true;
-        this._isPauseRequested = false;
-        this.pauseReason = tq('queue.pause.pausewordDetected', {
+        const reason = tq('queue.error.pausewordDetected', {
           value: this.pauseword,
-          defaultValue: `Pauseword "${this.pauseword}" detected — paused for review`,
+          defaultValue: `Pauseword "${this.pauseword}" detected in response`,
         });
-        this.emitProgress('paused');
+        this.pauseWithError(reason);
+        await this.notificationService.notifyQueueError(reason, this.buildSessionUrl());
         return { shouldAdvance: false };
       }
     }
