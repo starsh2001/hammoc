@@ -18,6 +18,8 @@ nul
 
 # Integration test run artifacts (specs are tracked, results are not)
 tests/integration/reports/
+.playwright-mcp/
+screenshots/
 
 # Claude Code
 .claude/
