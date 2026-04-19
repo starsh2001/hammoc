@@ -6,9 +6,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSocket } from '../services/socket';
+import { getSocket, forceReconnect } from '../services/socket';
 import type { ConnectionStatus } from '@hammoc/shared';
 import { debugLogger } from '../utils/debugLogger';
+
+// After this many consecutive reconnect_error events, assume the server
+// invalidated our session (e.g. forced disconnect(true) or server restart)
+// and the stored sid will never be accepted. Force-reset the engine so the
+// next attempt performs a fresh handshake with a new sid.
+const RECONNECT_ERROR_FORCE_RESET_THRESHOLD = 3;
 
 export interface UseWebSocketReturn {
   connectionStatus: ConnectionStatus;
@@ -41,6 +47,9 @@ export function useWebSocket(): UseWebSocketReturn {
   // Initialize based on current socket state
   const wasConnectedRef = useRef(socket.connected);
 
+  // Count consecutive reconnect_error events — resets on any successful connect.
+  const consecutiveReconnectErrorsRef = useRef(0);
+
   const connect = useCallback(() => {
     if (!socket.connected) {
       setLastError(null);
@@ -64,10 +73,19 @@ export function useWebSocket(): UseWebSocketReturn {
       setReconnectAttempt(0);
       setLastError(null);
       wasConnectedRef.current = true;
+      consecutiveReconnectErrorsRef.current = 0;
     };
 
-    const handleDisconnect = () => {
+    const handleDisconnect = (reason: string) => {
       setConnectionStatus('disconnected');
+      // socket.io does NOT auto-reconnect when the server forcibly ends the
+      // connection (reason === 'io server disconnect'). Observed in R-01
+      // scenarios and when the server restarts. Kick off a manual reconnect so
+      // the client recovers without requiring a full page reload.
+      if (reason === 'io server disconnect') {
+        debugLogger.warn('ws-manual-reconnect-after-server-disconnect');
+        socket.connect();
+      }
     };
 
     const handleReconnectAttempt = (attempt: number) => {
@@ -85,10 +103,23 @@ export function useWebSocket(): UseWebSocketReturn {
       setLastError(t('connection.connectError', { message: error.message }));
     };
 
+    const handleReconnectError = (error: Error) => {
+      consecutiveReconnectErrorsRef.current += 1;
+      if (consecutiveReconnectErrorsRef.current >= RECONNECT_ERROR_FORCE_RESET_THRESHOLD) {
+        debugLogger.warn('ws-force-reset-after-consecutive-errors', {
+          count: consecutiveReconnectErrorsRef.current,
+          lastError: error?.message,
+        });
+        consecutiveReconnectErrorsRef.current = 0;
+        forceReconnect();
+      }
+    };
+
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.io.on('reconnect_attempt', handleReconnectAttempt);
     socket.io.on('reconnect_failed', handleReconnectFailed);
+    socket.io.on('reconnect_error', handleReconnectError);
     socket.on('connect_error', handleConnectError);
 
     return () => {
@@ -96,6 +127,7 @@ export function useWebSocket(): UseWebSocketReturn {
       socket.off('disconnect', handleDisconnect);
       socket.io.off('reconnect_attempt', handleReconnectAttempt);
       socket.io.off('reconnect_failed', handleReconnectFailed);
+      socket.io.off('reconnect_error', handleReconnectError);
       socket.off('connect_error', handleConnectError);
     };
   }, [socket, t]);
