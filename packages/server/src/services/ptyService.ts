@@ -6,6 +6,7 @@
 
 import * as pty from 'node-pty';
 import { randomUUID } from 'crypto';
+import { execSync } from 'child_process';
 import { TERMINAL_ERRORS } from '@hammoc/shared';
 import { config } from '../config/index.js';
 import { createLogger } from '../utils/logger.js';
@@ -26,13 +27,34 @@ export interface PtySessionData {
 
 class PtyService {
   private sessions: Map<string, PtySessionData> = new Map();
+  // On Windows the server may be started from bash/MINGW with an incomplete PATH.
+  // Read the real Windows system PATH once at startup via cmd.exe so PTY sessions
+  // inherit a complete environment regardless of how the server was launched.
+  private readonly windowsSystemPath: string | null = (() => {
+    if (process.platform !== 'win32') return null;
+    try {
+      // Read Machine + User PATH from registry so we get the real Windows PATH
+      // regardless of how the server was started (cmd, bash, MINGW, etc.).
+      // cmd.exe /c echo %PATH% only echoes the inherited PATH, so we use PowerShell
+      // with an absolute path to call GetEnvironmentVariable from the registry.
+      const sysRoot = process.env.SystemRoot || 'C:\\Windows';
+      const ps = `${sysRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
+      const cmd = `[System.Environment]::GetEnvironmentVariable('Path','Machine')+';'+[System.Environment]::GetEnvironmentVariable('Path','User')`;
+      return execSync(`"${ps}" -NoProfile -Command "${cmd}"`, { encoding: 'utf8' }).trim();
+    } catch {
+      return null;
+    }
+  })();
 
   /**
    * Detect the default shell for the current OS
    */
   private getDefaultShell(): string {
     if (process.platform === 'win32') {
-      return 'powershell.exe';
+      // Use absolute paths so spawn succeeds regardless of the server's PATH (e.g. when started from bash/MINGW)
+      const sysRoot = process.env.SystemRoot || 'C:\\Windows';
+      const psPath = `${sysRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
+      return psPath;
     }
     return process.env.SHELL || (process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash');
   }
@@ -45,11 +67,16 @@ class PtyService {
   private normalizePathForWindows(env: Record<string, string>): Record<string, string> {
     if (process.platform !== 'win32') return env;
 
-    // Collect all PATH-like keys and merge into one canonical 'Path' key
+    // Collect all PATH-like keys and merge into one canonical 'Path' key.
+    // Also merge in the real Windows system PATH (read from cmd.exe at startup)
+    // so PTY sessions have a complete environment even when the server was started
+    // from bash/MINGW with an incomplete PATH.
     const pathKeys = Object.keys(env).filter((k) => k.toUpperCase() === 'PATH');
-    if (pathKeys.length === 0) return env;
+    const parts = pathKeys.map((k) => env[k]).filter(Boolean);
+    if (this.windowsSystemPath) parts.push(this.windowsSystemPath);
+    if (parts.length === 0) return env;
 
-    const merged = pathKeys.map((k) => env[k]).filter(Boolean).join(';');
+    const merged = parts.join(';');
     if (!merged) return env;
 
     const normalized = { ...env };
@@ -125,7 +152,8 @@ class PtyService {
           ),
         ),
       });
-    } catch {
+    } catch (spawnErr) {
+      log.error('pty.spawn failed — shell=%s cwd=%s error=%s', shell, projectPath, (spawnErr as Error).message);
       const err = new Error(TERMINAL_ERRORS.PTY_SPAWN_ERROR.message);
       (err as Error & { code: string }).code = TERMINAL_ERRORS.PTY_SPAWN_ERROR.code;
       throw err;
