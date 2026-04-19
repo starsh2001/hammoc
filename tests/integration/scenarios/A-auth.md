@@ -42,11 +42,14 @@
 
 ### A-02-01: 온보딩 항목 자동 검증
 **목적**: CLI 설치 · API 키 · MCP 상태가 체크리스트에 반영되는지.
-**선행 조건**: 로그인 직후 또는 `/onboarding` 접근.
+**선행 조건**: CLI 미인증 & API 키 미설정 상태 (초기 설치 또는 설정 초기화 후).
+
+> **설계 주의**: 설정 완료 환경(`authenticated=true` 또는 `apiKeySet=true`)에서 `/onboarding` 직접 접근 시 `OnboardingPage`가 500ms 후 `/`로 자동 리디렉션 (의도된 설계, [OnboardingPage.tsx:36-41](../../packages/client/src/pages/OnboardingPage.tsx#L36-L41)). 따라서 본 시나리오는 **미설정 상태**에서만 체크리스트 검증이 유효하다.
 
 **절차**:
-1. `browser_navigate("/onboarding")`
-2. `browser_snapshot` → 체크리스트 항목 상태 수집
+1. 설정 상태 확인: `fetch('/api/auth/cli-status').then(r => r.json())`
+2. `authenticated || apiKeySet` 이면 본 시나리오는 **N/A (설정 완료 환경)** 로 기록하고 A-02-02로 진행
+3. 미설정 상태인 경우에만: `browser_navigate("/onboarding")` → `browser_snapshot` → 체크리스트 항목 상태 수집
 
 **기대 결과**:
 - CLI 설치 상태(`claude` 실행 가능 여부) 자동 감지 표시
@@ -56,6 +59,17 @@
 **엣지케이스**:
 - E1. CLI 없음: 설치 가이드 링크 표시, "확인" 재클릭 시 재감지
 - E2. API 키 불일치: 경고 표시
+
+### A-02-02: 설정 완료 환경에서 자동 리디렉션
+**목적**: 이미 설정이 완료된 사용자가 `/onboarding` 직접 접근 시 홈으로 자동 이동.
+**선행 조건**: `authenticated=true || apiKeySet=true`.
+
+**절차**:
+1. `browser_navigate("/onboarding")`
+2. ~1초 대기 (500ms 리디렉션 타이머 + 여유)
+3. 현재 URL 확인
+
+**기대 결과**: URL이 `/`로 자동 전환.
 
 ---
 

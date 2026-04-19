@@ -173,34 +173,51 @@
 ## C9. Code Rewind `[SDK] [EDGE]`
 
 ### C-09-01: 파일 체크포인트로 되돌리기
+> **설계 원칙**: Hammoc은 Claude CLI의 세션 JSONL에 커스텀 엔트리를 주입하지 않음 (SDK 포맷 변경 리스크 회피). 되감기 완료는 toast 알림으로만 통지.
+
 **절차**:
 1. 테스트 프로젝트 Settings → Project → "파일 체크포인팅" 토글 활성화 (이미 활성이면 통과) → 저장
 2. 새 세션 시작 → "Create a file named rewind-test.txt with content: version-1" 프롬프트 전송 → 권한 Allow → 파일 생성 확인
 3. 이어서 "Now change rewind-test.txt content to: version-2" 전송 → 권한 Allow → 변경 확인
 4. 두 번째 수정 메시지 버블의 컨텍스트 메뉴 → "Rewind to this point" 클릭
-5. 확인 모달 승인
+5. 드라이런 확인 다이얼로그에서 파일 변경 내역(파일명/+삽입/-삭제) 확인 → 승인
 **기대 결과**:
-- `session:rewind-files` 요청
-- 선택 지점 이후의 파일 변경 역순 복원
-- 세션 히스토리에 "Rewound to ..." 표시
+- `session:rewind-files` 요청 (dryRun → 실제 순)
+- 선택 지점 이후의 파일 변경 역순 복원 (`rewind-test.txt` 내용이 version-1 로 복귀)
+- 성공 toast "N개 파일 되돌림" 표시
+- 변경 없음 시 info toast, 실패 시 error toast
 
 ---
 
 ## C10. 토큰 사용량 표시 `[SDK] [CORE]`
 
-### C-10-01: UsageStatusBar 집계
-**절차**: 짧은 메시지 1회 주고받은 후 UsageStatusBar 관찰.
-**기대 결과**:
-- 입력/출력/캐시 토큰 각각 표시
-- 누적 비용(USD) 표시
-- SDK 응답의 usage 필드와 정확히 일치
+> **설계 원칙**: 관심사 분리
+> - `UsageStatusBar`: 구독 요금제 Rate Limit (5h/7d) 글로우 닷 전용
+> - `ContextUsageDisplay`: 컨텍스트 사용률 도넛 + 툴팁 안에 입력/출력/캐시 토큰 및 누적 USD 비용
 
-### C-10-02: ContextUsageDisplay 도넛 차트
-**절차**: `browser_snapshot` 으로 차트 영역 확인.
+### C-10-01: UsageStatusBar 구독 요금제 표시
+**절차**: OAuth 구독 계정 로그인 상태에서 채팅 페이지 하단 `[data-testid="usage-status-bar"]` 확인.
 **기대 결과**:
-- 컨텍스트 사용률 % 수치
-- 임계값별 색상 변화 (노랑 70%+, 주황 85%+, 빨강 95%+)
-- 캐시 토큰 별도 표시
+- 5h/7d 글로우 닷 표시 (사용률 <50% 초록, 50~80% 노랑, ≥80% 빨강+펄스)
+- 각 닷에 호버 시 사용률 % 및 리셋 시각 툴팁
+- 데이터 없으면(`rateLimit` 없음) 컴포넌트 렌더링 안 됨
+- API 키 로그인 시에는 표시 안 됨
+
+### C-10-02: ContextUsageDisplay 도넛 차트 + 토큰 상세
+**절차**:
+1. 짧은 메시지 1회 주고받은 후 `[data-testid="context-usage-display"]` 확인
+2. 도넛 호버 → 툴팁 확인
+
+**기대 결과**:
+- 도넛 차트에 컨텍스트 사용률 % 표시
+- 임계값별 색상 변화 (경고 노랑, 위험 빨강)
+- 툴팁에 다음 항목 표시:
+  - 입력 토큰(uncached)
+  - 캐시 생성 / 캐시 읽기 토큰
+  - 출력 토큰
+  - 누적 비용 (USD)
+- 값들이 SDK 응답의 usage 필드와 일치
 
 **엣지케이스**:
 - E1. SDK가 `thinkingTokens` 필드 미제공 시 해당 항목 안전하게 0 표시
+- E2. 컨텍스트 데이터 없으면 컴포넌트 렌더링 안 됨 (오해 소지 있는 0% 방지)

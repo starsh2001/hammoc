@@ -38,6 +38,22 @@
 ### I-02-03: 이슈 삭제
 **기대 결과**: 파일 삭제, 보드에서 제거.
 
+### I-02-04: non-BMad 프로젝트 이슈 보드 표시 `[CORE]`
+> 회귀 방지. `issueService.getBoard`가 `bmadStatusService.scanProject`의 `NOT_BMAD_PROJECT` 에러를 catch하면서 일반 이슈까지 삭제됐던 버그 (fix 7043f83).
+
+**선행 조건**: `.bmad-core/core-config.yaml`이 없는 non-BMad 프로젝트.
+
+**절차**:
+1. non-BMad 프로젝트 보드 탭 진입
+2. I-02-01 절차로 이슈 1개 생성
+3. `browser_snapshot` → Open 컬럼에 이슈 카드 확인
+4. 페이지 새로고침 후 재확인
+5. `fetch('/api/projects/<slug>/board')` → `items` 배열에 생성한 이슈 포함 검증
+
+**기대 결과**:
+- non-BMad 프로젝트에서도 이슈가 보드에 정상 표시
+- `items` 배열이 비어있지 않음 (BMad 스캔 실패와 무관)
+
 ---
 
 ## I3. 상태 전이 드래그드롭 `[EDGE] [DnD]`
@@ -78,20 +94,41 @@
 
 ## I4. 에픽 · 스토리 진행률 `[CORE]`
 
+> **설계 원칙**: 보드 UI "+" 버튼은 이슈 전용.
+> - **non-BMad 프로젝트**: 이슈만 생성 가능, 에픽/스토리 생성 UI 없음 (의도된 설계)
+> - **BMad 프로젝트**: 에픽/스토리는 파일 기반 (`docs/stories/*.md`)으로 관리. `/sm` 에이전트 또는 파일 직접 추가로 생성하며 보드는 이를 읽어 표시
+
 ### I-04-01: 진행률 막대
-> 에픽/스토리는 BMad 프로젝트 전용 기능. BMad 프로젝트에서 실행할 것.
+> BMad 프로젝트 전용. 기존 BMad 프로젝트(예: `hammoc`)에서 실행할 것.
+
+**선행 조건**: BMad 프로젝트에 에픽 1개 + 스토리 3개(Draft/InProgress/Done 각 1개)가 `docs/stories/`에 존재해야 함. 부족하면 실제 파일 생성으로 준비.
+
+**스토리 파일 예시** (`docs/stories/99.1.story.md`):
+```markdown
+# Story 99.1: Story A
+## Status
+Draft
+```
+(99.2 = `In Progress`, 99.3 = `Done` 로 2개 더 생성)
 
 **절차**:
-1. BMad 프로젝트의 보드 탭 진입
-2. **에픽 생성**: "+" 버튼 → 타입 "Epic" 선택 → 제목 `Test Epic` 입력 → 생성
-3. **스토리 생성 (미착수)**: "+" → 타입 "Story" → 제목 `Story A` → 에픽 `Test Epic` 연결 → 생성
-4. **스토리 생성 (진행중)**: 동일하게 `Story B` 생성 → 카드 상태를 "In Progress"로 변경
-5. **스토리 생성 (완료)**: 동일하게 `Story C` 생성 → 카드 상태를 "Done"으로 변경
-6. `browser_snapshot` → `Test Epic` 카드의 진행률 표시 확인
+1. BMad 프로젝트 보드 탭 진입
+2. `browser_snapshot` → Epic 99 카드의 진행률 표시 확인
+3. 필요 시 `fetch('/api/projects/<slug>/board')` → epic 항목의 진행 관련 필드 검증
 
-**기대 결과**: 에픽 카드의 진행률 ≈ 33% (3개 중 1개 완료).
+**기대 결과**: Epic 99 카드의 진행률 ≈ 33% (3개 중 1개 완료).
 
-**테스트 후 정리**: 생성한 에픽/스토리 삭제 (I-02-03 절차).
+**테스트 후 정리**: 생성한 `docs/stories/99.*.md` 파일 삭제.
+
+### I-04-03: non-BMad 프로젝트 에픽/스토리 생성 UI 부재 (설계 검증) `[CORE]`
+**절차**:
+1. non-BMad 프로젝트 보드 탭 진입
+2. "+" 버튼 클릭 → 이슈 생성 다이얼로그 확인
+3. 타입 선택지 확인
+
+**기대 결과**:
+- 타입 선택지는 `bug`, `improvement`만 존재 (Epic/Story 없음 — 의도된 설계)
+- 에픽/스토리 생성 UI 없음
 
 ### I-04-02: 고아 이슈 / 순환 참조
 **엣지케이스**:
