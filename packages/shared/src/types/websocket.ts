@@ -91,6 +91,7 @@ export interface ClientToServerEvents {
   'chain:add': (data: { sessionId: string; content: string; workingDirectory: string; permissionMode?: PermissionMode; model?: string; effort?: ThinkingEffort }) => void;
   'chain:remove': (data: { sessionId: string; id: string }) => void;
   'chain:clear': (data: { sessionId: string }) => void;
+  'chain:reorder': (data: { sessionId: string; ids: string[] }) => void;
   // Story 25.8: Standalone file rewind
   'session:rewind-files': (data: {
     sessionId: string;

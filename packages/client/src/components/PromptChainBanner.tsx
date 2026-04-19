@@ -9,9 +9,9 @@
  * Expanded: shows all prompts with individual remove buttons on hover.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Link2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { X, Link2, ChevronDown, ChevronUp, Loader2, GripVertical } from 'lucide-react';
 import type { PromptChainItem } from '@hammoc/shared';
 
 export interface PromptChainBannerProps {
@@ -21,6 +21,8 @@ export interface PromptChainBannerProps {
   onCancel: () => void;
   /** Remove a single prompt by id */
   onRemove?: (id: string) => void;
+  /** Reorder pending prompts — receives the new ordered id array */
+  onReorder?: (ids: string[]) => void;
 }
 
 /** Extract the first line for display in the collapsed banner */
@@ -28,9 +30,11 @@ function shortLabel(prompt: string): string {
   return prompt.split('\n')[0].trim() || prompt;
 }
 
-export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: PromptChainBannerProps) {
+export function PromptChainBanner({ pendingPrompts, onCancel, onRemove, onReorder }: PromptChainBannerProps) {
   const { t } = useTranslation('chat');
   const [expanded, setExpanded] = useState(false);
+  const dragItemId = useRef<string | null>(null);
+  const dragOverItemId = useRef<string | null>(null);
 
   // Only show items that are pending or sending
   const activeItems = pendingPrompts.filter((item) => item.status === 'pending' || item.status === 'sending');
@@ -111,45 +115,78 @@ export function PromptChainBanner({ pendingPrompts, onCancel, onRemove }: Prompt
       {/* Expanded list */}
       {expanded && hasMultiple && (
         <ul className="px-4 pb-2 flex flex-col gap-1 min-w-0">
-          {activeItems.map((item, index) => (
-            <li
-              key={item.id}
-              className="group flex items-center gap-2 px-2 py-1 rounded min-w-0
-                         hover:bg-violet-100/60 dark:hover:bg-violet-900/30 transition-colors"
-            >
-              {/* Status indicator */}
-              {item.status === 'sending' ? (
-                <Loader2
-                  size={10}
-                  className="text-violet-500 dark:text-violet-400 flex-shrink-0 animate-spin w-4 text-center"
-                  aria-hidden="true"
-                />
-              ) : (
-                <span className="text-[10px] font-bold text-violet-400 dark:text-violet-500 w-4 text-right flex-shrink-0">
-                  {index + 1}
+          {activeItems.map((item, index) => {
+            const isDraggable = Boolean(onReorder) && item.status === 'pending';
+            return (
+              <li
+                key={item.id}
+                data-testid="chain-item"
+                draggable={isDraggable}
+                onDragStart={isDraggable ? () => { dragItemId.current = item.id; } : undefined}
+                onDragEnter={isDraggable ? () => { dragOverItemId.current = item.id; } : undefined}
+                onDragOver={isDraggable ? (e) => e.preventDefault() : undefined}
+                onDrop={isDraggable ? () => {
+                  if (!dragItemId.current || !dragOverItemId.current || dragItemId.current === dragOverItemId.current) return;
+                  const pendingIds = activeItems.filter(i => i.status === 'pending').map(i => i.id);
+                  const fromIdx = pendingIds.indexOf(dragItemId.current);
+                  const toIdx = pendingIds.indexOf(dragOverItemId.current);
+                  if (fromIdx === -1 || toIdx === -1) return;
+                  const reordered = [...pendingIds];
+                  reordered.splice(fromIdx, 1);
+                  reordered.splice(toIdx, 0, dragItemId.current);
+                  dragItemId.current = null;
+                  dragOverItemId.current = null;
+                  onReorder?.(reordered);
+                } : undefined}
+                onDragEnd={() => { dragItemId.current = null; dragOverItemId.current = null; }}
+                className="group flex items-center gap-2 px-2 py-1 rounded min-w-0
+                           hover:bg-violet-100/60 dark:hover:bg-violet-900/30 transition-colors"
+              >
+                {/* Drag handle — only for pending items when reorder is available */}
+                {isDraggable && (
+                  <span className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical
+                      size={12}
+                      className="text-violet-300 dark:text-violet-600"
+                      aria-hidden="true"
+                    />
+                  </span>
+                )}
+
+                {/* Status indicator */}
+                {item.status === 'sending' ? (
+                  <Loader2
+                    size={10}
+                    className="text-violet-500 dark:text-violet-400 flex-shrink-0 animate-spin w-4 text-center"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <span className="text-[10px] font-bold text-violet-400 dark:text-violet-500 w-4 text-right flex-shrink-0">
+                    {index + 1}
+                  </span>
+                )}
+
+                {/* Prompt text */}
+                <span className="text-xs text-violet-700 dark:text-violet-300 font-mono truncate min-w-0 flex-1">
+                  {shortLabel(item.content)}
                 </span>
-              )}
 
-              {/* Prompt text */}
-              <span className="text-xs text-violet-700 dark:text-violet-300 font-mono truncate min-w-0 flex-1">
-                {shortLabel(item.content)}
-              </span>
-
-              {/* Individual remove — visible on hover */}
-              {onRemove && (
-                <button
-                  onClick={() => onRemove(item.id)}
-                  className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity
-                             text-violet-400 dark:text-violet-500 hover:text-red-500 dark:hover:text-red-400
-                             hover:bg-violet-100 dark:hover:bg-violet-900/40 cursor-pointer flex-shrink-0"
-                  aria-label={t('chain.removePrompt', { index: index + 1 })}
-                  title={t('chain.removeTitle')}
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </li>
-          ))}
+                {/* Individual remove — visible on hover */}
+                {onRemove && (
+                  <button
+                    onClick={() => onRemove(item.id)}
+                    className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity
+                               text-violet-400 dark:text-violet-500 hover:text-red-500 dark:hover:text-red-400
+                               hover:bg-violet-100 dark:hover:bg-violet-900/40 cursor-pointer flex-shrink-0"
+                    aria-label={t('chain.removePrompt', { index: index + 1 })}
+                    title={t('chain.removeTitle')}
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

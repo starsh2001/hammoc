@@ -1097,6 +1097,9 @@ export function ChatPage() {
       onRemove={(id) => {
         if (sessionId) getSocket()?.emit('chain:remove', { sessionId, id });
       }}
+      onReorder={(ids) => {
+        if (sessionId) getSocket()?.emit('chain:reorder', { sessionId, ids });
+      }}
     />
   ) : null;
 

@@ -1542,6 +1542,35 @@ export async function initializeWebSocket(
       });
     });
 
+    socket.on('chain:reorder', (data) => {
+      if (!data || typeof data !== 'object') return;
+      const { sessionId, ids } = data;
+      if (!sessionId || typeof sessionId !== 'string' || !UUID_RE.test(sessionId)) return;
+      if (!Array.isArray(ids) || ids.length === 0) return;
+      if (!ids.every(id => typeof id === 'string')) return;
+      if (!socket.rooms.has(`session:${sessionId}`)) return;
+
+      const currentItems = chainState.get(sessionId);
+      if (!currentItems) return;
+
+      // Only reorder pending items — sending/sent items are already processed.
+      const nonPending = currentItems.filter(item => item.status !== 'pending');
+      const pendingById = new Map(currentItems.filter(item => item.status === 'pending').map(item => [item.id, item]));
+
+      const reordered: typeof currentItems = [];
+      for (const id of ids) {
+        const item = pendingById.get(id);
+        if (item) { reordered.push(item); pendingById.delete(id); }
+      }
+      // Append any pending items not present in ids (safety: preserve unknowns)
+      for (const item of pendingById.values()) {
+        reordered.push(item);
+      }
+
+      chainState.set(sessionId, [...nonPending, ...reordered]);
+      broadcastChainUpdate(sessionId);
+    });
+
     socket.on('chain:clear', (data) => {
       if (!data || typeof data !== 'object') return;
       const { sessionId } = data;

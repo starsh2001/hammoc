@@ -147,4 +147,102 @@ describe('PromptChainBanner', () => {
     // Only 2 active items (sending + pending), so +1
     expect(screen.getByText('+1')).toBeInTheDocument();
   });
+
+  describe('drag-and-drop reorder', () => {
+    it('renders chain-item testid for each active item when expanded', () => {
+      const items = [
+        makePendingItem('/a', 'id-a'),
+        makePendingItem('/b', 'id-b'),
+      ];
+      render(
+        <PromptChainBanner pendingPrompts={items} onCancel={vi.fn()} onReorder={vi.fn()} />
+      );
+
+      // Expand to render the list
+      fireEvent.click(screen.getByTitle('Expand'));
+
+      expect(screen.getAllByTestId('chain-item')).toHaveLength(2);
+    });
+
+    it('makes pending items draggable when onReorder is provided', () => {
+      const items = [
+        makePendingItem('/a', 'id-a'),
+        makePendingItem('/b', 'id-b'),
+      ];
+      render(
+        <PromptChainBanner pendingPrompts={items} onCancel={vi.fn()} onReorder={vi.fn()} />
+      );
+      fireEvent.click(screen.getByTitle('Expand'));
+
+      const listItems = screen.getAllByTestId('chain-item');
+      for (const li of listItems) {
+        expect(li.getAttribute('draggable')).toBe('true');
+      }
+    });
+
+    it('does not make sending items draggable', () => {
+      const items = [
+        makeSendingItem('/sending', 'id-s'),
+        makePendingItem('/b', 'id-b'),
+      ];
+      render(
+        <PromptChainBanner pendingPrompts={items} onCancel={vi.fn()} onReorder={vi.fn()} />
+      );
+      fireEvent.click(screen.getByTitle('Expand'));
+
+      const listItems = screen.getAllByTestId('chain-item');
+      expect(listItems[0].getAttribute('draggable')).toBe('false');
+      expect(listItems[1].getAttribute('draggable')).toBe('true');
+    });
+
+    it('does not make items draggable when onReorder is not provided', () => {
+      const items = [makePendingItem('/a', 'id-a'), makePendingItem('/b', 'id-b')];
+      render(
+        <PromptChainBanner pendingPrompts={items} onCancel={vi.fn()} />
+      );
+      fireEvent.click(screen.getByTitle('Expand'));
+
+      const listItems = screen.getAllByTestId('chain-item');
+      for (const li of listItems) {
+        expect(li.getAttribute('draggable')).toBe('false');
+      }
+    });
+
+    it('calls onReorder with new id order when drop completes on a different item', () => {
+      const onReorder = vi.fn();
+      const items = [
+        makePendingItem('/a', 'id-a'),
+        makePendingItem('/b', 'id-b'),
+        makePendingItem('/c', 'id-c'),
+      ];
+      render(
+        <PromptChainBanner pendingPrompts={items} onCancel={vi.fn()} onReorder={onReorder} />
+      );
+      fireEvent.click(screen.getByTitle('Expand'));
+
+      const listItems = screen.getAllByTestId('chain-item');
+      // Drag id-a over id-c and drop
+      fireEvent.dragStart(listItems[0]);
+      fireEvent.dragEnter(listItems[2]);
+      fireEvent.drop(listItems[2]);
+
+      expect(onReorder).toHaveBeenCalledWith(['id-b', 'id-c', 'id-a']);
+    });
+
+    it('does not call onReorder when dropping onto the same item', () => {
+      const onReorder = vi.fn();
+      const items = [makePendingItem('/a', 'id-a'), makePendingItem('/b', 'id-b')];
+      render(
+        <PromptChainBanner pendingPrompts={items} onCancel={vi.fn()} onReorder={onReorder} />
+      );
+      fireEvent.click(screen.getByTitle('Expand'));
+
+      const listItems = screen.getAllByTestId('chain-item');
+      fireEvent.dragStart(listItems[0]);
+      fireEvent.dragEnter(listItems[0]);
+      fireEvent.drop(listItems[0]);
+
+      expect(onReorder).not.toHaveBeenCalled();
+    });
+  });
 });
