@@ -61,6 +61,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ThinkingBlock } from '../components/ThinkingBlock';
 import { PromptChainBanner } from '../components/PromptChainBanner';
+import { BudgetWarningBanner } from '../components/BudgetWarningBanner';
 import { useEdgeSwipe } from '../hooks/useEdgeSwipe';
 import { useMessageTree } from '../hooks/useMessageTree';
 import { getBaseUuid } from '../utils/messageTree';
@@ -1123,6 +1124,7 @@ export function ChatPage() {
         <ChatHeader projectSlug={workingDirectory || projectSlug} sessionTitle={sessionId} sessionName={sessionName} onBack={handleBack} onNewSession={handleNewSession} activePanel={activePanel} lastActivePanel={lastActivePanel} onTogglePanel={togglePanel} panelSide={panelSide} gitChangedCount={changedFileCount} terminalAccessible={isTerminalAccessible}onRenameSession={handleRenameSession} activeAgent={activeAgent ? { name: activeAgent.name, command: activeAgent.command, icon: activeAgent.icon } : null} onAgentIndicatorClick={handleAgentIndicatorClick} isBmadProject={isBmadProject} />
         {queueBannerElement}
         {promptChainBannerElement}
+        <BudgetWarningBanner />
         <main
           role="main"
           aria-label={t('chatPage.ariaLabel')}
@@ -1292,6 +1294,7 @@ export function ChatPage() {
       />
       {queueBannerElement}
       {promptChainBannerElement}
+      <BudgetWarningBanner />
 
       <main
         role="main"

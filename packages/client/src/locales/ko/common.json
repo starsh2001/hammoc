@@ -621,6 +621,10 @@
     "invalidChip": "이 명령어는 더 이상 사용할 수 없습니다",
     "globalBadge": "(글로벌)"
   },
+  "budgetWarning": {
+    "warning": "예산 경고: 현재 비용 ${{cost}} / ${{budget}} ({{pct}}%) — 곧 Max Budget 한도에 도달합니다.",
+    "critical": "예산 위험: 현재 비용 ${{cost}} / ${{budget}} ({{pct}}%) — 한도 초과 시 스트림이 자동 중단됩니다."
+  },
   "contextUsage": {
     "ariaLabel": "컨텍스트 사용량 {{percent}}%",
     "criticalWarning": "⚠ 컨텍스트가 거의 찼습니다 ({{percent}}%)",

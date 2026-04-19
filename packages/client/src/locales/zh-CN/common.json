@@ -574,6 +574,10 @@
     "preparingPage": "正在准备聊天页面",
     "futureStory": "此功能将在后续 Story 中实现。"
   },
+  "budgetWarning": {
+    "warning": "预算警告: 已用 ${{cost}} / ${{budget}} ({{pct}}%) — 即将达到 Max Budget 上限。",
+    "critical": "预算危急: 已用 ${{cost}} / ${{budget}} ({{pct}}%) — 超限后流将自动停止。"
+  },
   "contextUsage": {
     "ariaLabel": "上下文使用率 {{percent}}%",
     "criticalWarning": "上下文即将用满（{{percent}}%）",

@@ -612,6 +612,10 @@
     "invalidChip": "This command is no longer available",
     "globalBadge": "(Global)"
   },
+  "budgetWarning": {
+    "warning": "Budget warning: ${{cost}} / ${{budget}} used ({{pct}}%) — approaching Max Budget limit.",
+    "critical": "Budget critical: ${{cost}} / ${{budget}} used ({{pct}}%) — stream will auto-stop when limit is exceeded."
+  },
   "contextUsage": {
     "ariaLabel": "Context usage {{percent}}%",
     "criticalWarning": "Context is almost full ({{percent}}%)",

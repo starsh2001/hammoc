@@ -580,6 +580,10 @@
     "invalidChip": "このコマンドは利用できません",
     "globalBadge": "(グローバル)"
   },
+  "budgetWarning": {
+    "warning": "予算警告: ${{cost}} / ${{budget}} 使用中 ({{pct}}%) — Max Budget 上限に近づいています。",
+    "critical": "予算危険: ${{cost}} / ${{budget}} 使用中 ({{pct}}%) — 上限を超えるとストリームが自動停止します。"
+  },
   "contextUsage": {
     "ariaLabel": "コンテキスト使用量 {{percent}}%",
     "criticalWarning": "コンテキストがほぼ一杯です（{{percent}}%）",

@@ -580,6 +580,10 @@
     "invalidChip": "Este comando ya no está disponible",
     "globalBadge": "(Global)"
   },
+  "budgetWarning": {
+    "warning": "Advertencia de presupuesto: ${{cost}} / ${{budget}} usado ({{pct}}%) — acercándose al límite de Max Budget.",
+    "critical": "Presupuesto crítico: ${{cost}} / ${{budget}} usado ({{pct}}%) — el stream se detendrá automáticamente al superar el límite."
+  },
   "contextUsage": {
     "ariaLabel": "Uso de contexto {{percent}}%",
     "criticalWarning": "El contexto está casi lleno ({{percent}}%)",
