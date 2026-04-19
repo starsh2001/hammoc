@@ -186,8 +186,10 @@ describe('Sessions Integration Tests', () => {
     it('should return 404 for non-existent project (AC6)', async () => {
       const response = await agent.get('/api/projects/nonexistent-project/sessions').expect(404);
 
+      // Code is stable; message is i18n'd and depends on the server's configured
+      // language, so assert only that a non-empty localized message is present.
       expect(response.body.error.code).toBe('PROJECT_NOT_FOUND');
-      expect(response.body.error.message).toBe('Project not found.');
+      expect(response.body.error.message).toBeTruthy();
     });
 
     it('should return 200 with empty sessions array for project with no sessions (AC1, AC2)', async () => {

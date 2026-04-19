@@ -85,7 +85,9 @@ describe('PtyService', () => {
       const result = ptyService.createSession('/test/path', 'test-project');
 
       if (process.platform === 'win32') {
-        expect(result.shell).toBe('powershell.exe');
+        // shell may be an absolute path (e.g. C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe)
+        // to bypass PATH resolution — match by suffix.
+        expect(result.shell).toMatch(/powershell\.exe$/i);
       } else {
         expect(result.shell).toBeTruthy();
       }
@@ -329,7 +331,7 @@ describe('PtyService', () => {
       Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
 
       const { shell } = ptyService.createSession('/test/path', 'proj');
-      expect(shell).toBe('powershell.exe');
+      expect(shell).toMatch(/powershell\.exe$/i);
 
       Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
