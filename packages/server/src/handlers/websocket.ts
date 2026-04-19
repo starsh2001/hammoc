@@ -2526,9 +2526,9 @@ async function handleChatSend(
 
     // Activity-based timeout: resets on every SDK callback event
     // Prevents cancellation while SDK is actively working (e.g., large Write input streaming)
-    // Timeout value from preferences (with env var override), clamped to 30s–30min range
+    // Timeout value from preferences (with env var override), clamped to 5s–30min range
     const rawTimeoutMs = effectivePrefs.chatTimeoutMs ?? config.chat.timeoutMs;
-    const timeoutMs = (rawTimeoutMs >= 30000 && rawTimeoutMs <= 1800000) ? rawTimeoutMs : 300000;
+    const timeoutMs = (rawTimeoutMs >= 5000 && rawTimeoutMs <= 1800000) ? rawTimeoutMs : 300000;
     let lastResetSource = 'initial';
     const resetTimeout = (source?: string) => {
       if (source) lastResetSource = source;
