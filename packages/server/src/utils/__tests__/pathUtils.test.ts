@@ -36,6 +36,20 @@ describe('isBinaryFile', () => {
     await fs.writeFile(filePath, 'a');
     expect(await isBinaryFile(filePath)).toBe(false);
   });
+
+  // ZIP headers (PK\x03\x04) contain no null bytes, so the null-byte
+  // heuristic alone misclassifies them as text. Extension allowlist covers it.
+  it('returns true for .zip even when contents have no null byte', async () => {
+    const filePath = path.join(tmpDir, 'archive.zip');
+    await fs.writeFile(filePath, Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]));
+    expect(await isBinaryFile(filePath)).toBe(true);
+  });
+
+  it('returns true for .pdf by extension', async () => {
+    const filePath = path.join(tmpDir, 'doc.pdf');
+    await fs.writeFile(filePath, '%PDF-1.4 no null bytes here');
+    expect(await isBinaryFile(filePath)).toBe(true);
+  });
 });
 
 describe('getMimeType', () => {

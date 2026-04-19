@@ -29,12 +29,38 @@ export const MAX_FILE_SIZE = 1 * 1024 * 1024;
 const BINARY_CHECK_BYTES = 8192;
 
 /**
- * Detect if a file is binary by reading the first 8192 bytes
- * and checking for null byte presence.
+ * Extensions whose magic bytes do not contain null (0x00) and therefore
+ * evade the null-byte heuristic below. Detected by extension up front.
+ */
+const BINARY_EXTENSIONS = new Set([
+  // Archives
+  '.zip', '.gz', '.tar', '.tgz', '.bz2', '.7z', '.rar', '.xz',
+  // Documents
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+  // Executables / libraries
+  '.exe', '.dll', '.so', '.dylib', '.class', '.jar', '.wasm',
+  // Databases
+  '.db', '.sqlite', '.sqlite3', '.mdb',
+  // Media (some already detected by null bytes, but listing for clarity)
+  '.mp3', '.mp4', '.avi', '.mov', '.wav', '.ogg', '.flac', '.webm',
+  '.webp', '.ico', '.bmp', '.tiff', '.heic',
+  // Fonts
+  '.ttf', '.otf', '.woff', '.woff2', '.eot',
+]);
+
+/**
+ * Detect if a file is binary.
+ * 1. Extension allowlist for formats whose headers lack null bytes (e.g. ZIP, PDF).
+ * 2. Fallback: read first 8192 bytes and check for null byte presence.
  * @param filePath Absolute path to the file
  * @returns true if the file appears to be binary
  */
 export async function isBinaryFile(filePath: string): Promise<boolean> {
+  const ext = path.extname(filePath).toLowerCase();
+  if (BINARY_EXTENSIONS.has(ext)) {
+    return true;
+  }
+
   const handle = await fs.open(filePath, 'r');
   try {
     const buffer = Buffer.alloc(BINARY_CHECK_BYTES);
