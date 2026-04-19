@@ -45,7 +45,7 @@ const mockPull = vi.fn();
 const mockCheckout = vi.fn();
 const mockCreateBranch = vi.fn();
 const mockInitRepo = vi.fn();
-const mockFetchDiff = vi.fn().mockResolvedValue('diff content');
+const mockFetchDiff = vi.fn().mockResolvedValue({ diff: 'diff content', isBinary: false });
 const mockClearError = vi.fn();
 
 const mockStatus: GitStatusResponse = {

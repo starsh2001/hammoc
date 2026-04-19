@@ -44,6 +44,8 @@ export interface GitDiffResponse {
   diff?: string;
   file?: string;
   staged?: boolean;
+  /** True when the file is binary (git emits "Binary files ... differ" or the file has a binary extension). */
+  isBinary?: boolean;
 }
 
 /** Generic response for Git write operations (Story 16.2, AC: 9) */

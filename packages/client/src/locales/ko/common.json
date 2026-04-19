@@ -406,6 +406,7 @@
     "minutesAgo": "{{count}}분 전",
     "hoursAgo": "{{count}}시간 전",
     "daysAgo": "{{count}}일 전",
+    "binaryFileDiffers": "바이너리 파일이 변경되었습니다",
     "notInitialized": "Git 저장소가 초기화되지 않았습니다",
     "changesCount": "{{count}} 변경",
     "commitMessagePlaceholder": "커밋 메시지 입력...",

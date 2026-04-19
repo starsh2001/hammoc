@@ -373,6 +373,7 @@
     "minutesAgo": "hace {{count}}m",
     "hoursAgo": "hace {{count}}h",
     "daysAgo": "hace {{count}}d",
+    "binaryFileDiffers": "Archivo binario modificado",
     "notInitialized": "El repositorio Git no está inicializado",
     "changesCount": "{{count}} cambios",
     "commitMessagePlaceholder": "Ingresa mensaje de commit...",

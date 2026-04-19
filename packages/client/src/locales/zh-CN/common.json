@@ -373,6 +373,7 @@
     "minutesAgo": "{{count}}分钟前",
     "hoursAgo": "{{count}}小时前",
     "daysAgo": "{{count}}天前",
+    "binaryFileDiffers": "二进制文件已更改",
     "notInitialized": "Git 仓库未初始化",
     "changesCount": "{{count}} 项更改",
     "commitMessagePlaceholder": "输入提交信息...",

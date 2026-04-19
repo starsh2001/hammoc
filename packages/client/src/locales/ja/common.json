@@ -373,6 +373,7 @@
     "minutesAgo": "{{count}}分前",
     "hoursAgo": "{{count}}時間前",
     "daysAgo": "{{count}}日前",
+    "binaryFileDiffers": "バイナリファイルが変更されました",
     "notInitialized": "Gitリポジトリが初期化されていません",
     "changesCount": "{{count}}件の変更",
     "commitMessagePlaceholder": "コミットメッセージを入力...",

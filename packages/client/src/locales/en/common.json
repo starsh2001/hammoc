@@ -401,6 +401,7 @@
     "minutesAgo": "{{count}}m ago",
     "hoursAgo": "{{count}}h ago",
     "daysAgo": "{{count}}d ago",
+    "binaryFileDiffers": "Binary file differs",
     "notInitialized": "Git repository is not initialized",
     "changesCount": "{{count}} changes",
     "commitMessagePlaceholder": "Enter commit message...",

@@ -191,7 +191,8 @@ describe('gitService.getDiff', () => {
     expect(result.diff).toContain('diff --git');
     expect(result.file).toBe('file.ts');
     expect(result.staged).toBe(false);
-    expect(mockDiff).toHaveBeenCalledWith(['--', 'file.ts']);
+    expect(mockDiff).toHaveBeenCalledWith(['--binary', '--', 'file.ts']);
+    expect(result.isBinary).toBe(false);
   });
 
   // TC-GIT-9: Returns staged diff when staged=true
@@ -202,7 +203,17 @@ describe('gitService.getDiff', () => {
     const result = await gitService.getDiff('/fake/path', 'file.ts', true);
 
     expect(result.staged).toBe(true);
-    expect(mockDiff).toHaveBeenCalledWith(['--cached', '--', 'file.ts']);
+    expect(mockDiff).toHaveBeenCalledWith(['--cached', '--binary', '--', 'file.ts']);
+  });
+
+  // Binary file detection via "Binary files … differ" marker
+  it('sets isBinary=true when git emits the binary marker', async () => {
+    mockCheckIsRepo.mockResolvedValue(true);
+    mockDiff.mockResolvedValue('Binary files a/archive.zip and b/archive.zip differ');
+
+    const result = await gitService.getDiff('/fake/path', 'archive.zip');
+
+    expect(result.isBinary).toBe(true);
   });
 
   // TC-GIT-10: Returns empty string for unchanged files

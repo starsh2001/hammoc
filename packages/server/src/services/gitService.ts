@@ -4,6 +4,7 @@
  * [Source: Story 16.1 - Task 3, Story 16.2 - Task 2]
  */
 
+import path from 'path';
 import simpleGit from 'simple-git';
 import type {
   GitStatusResponse,
@@ -12,6 +13,7 @@ import type {
   GitDiffResponse,
   GitFileStatus,
 } from '@hammoc/shared';
+import { isBinaryFile } from '../utils/pathUtils.js';
 
 class GitService {
   private wrapError(operation: string, error: unknown): Error {
@@ -123,14 +125,34 @@ class GitService {
     }
 
     try {
-      const args = staged ? ['--cached', '--', file] : ['--', file];
+      // `--binary` forces a textual "Binary files … differ" marker for binary
+      // paths; without it simple-git swallows the marker when diffing against
+      // an empty tree and the client sees an empty patch.
+      const args = staged
+        ? ['--cached', '--binary', '--', file]
+        : ['--binary', '--', file];
       const diff = await git.diff(args);
+
+      let isBinary = /^Binary files .* differ$/m.test(diff);
+
+      // Untracked or newly added files never appear in `git diff`, so the
+      // output is empty regardless of binary status. Fall back to reading the
+      // file directly (covers .zip/.pdf and friends via the extension
+      // allowlist in pathUtils.isBinaryFile).
+      if (!isBinary && !diff.trim()) {
+        try {
+          isBinary = await isBinaryFile(path.join(projectPath, file));
+        } catch {
+          // File may not exist (e.g. deleted). Leave isBinary=false.
+        }
+      }
 
       return {
         initialized: true,
         diff,
         file,
         staged,
+        isBinary,
       };
     } catch (error) {
       throw this.wrapError('diff', error);

@@ -55,6 +55,7 @@ export function GitTab() {
   const [pendingCheckout, setPendingCheckout] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<{ path: string; staged: boolean } | null>(null);
   const [diffContent, setDiffContent] = useState('');
+  const [diffIsBinary, setDiffIsBinary] = useState(false);
   const [diffLoading, setDiffLoading] = useState(false);
   const [panelVisible, setPanelVisible] = useState(false);
   const [panelAnimating, setPanelAnimating] = useState(false);
@@ -129,8 +130,9 @@ export function GitTab() {
     setDiffLoading(true);
     setPanelVisible(true);
     requestAnimationFrame(() => setPanelAnimating(true));
-    const diff = await fetchDiff(projectSlug, path, staged);
+    const { diff, isBinary } = await fetchDiff(projectSlug, path, staged);
     setDiffContent(diff);
+    setDiffIsBinary(isBinary);
     setDiffLoading(false);
   }, [projectSlug, fetchDiff]);
 
@@ -140,6 +142,7 @@ export function GitTab() {
       setPanelVisible(false);
       setSelectedFile(null);
       setDiffContent('');
+      setDiffIsBinary(false);
     }, 350);
   }, []);
 
@@ -459,6 +462,16 @@ export function GitTab() {
                 <div className="flex items-center gap-2 justify-center h-full text-sm text-gray-500 dark:text-gray-300">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>{t('loadingStatus')}</span>
+                </div>
+              ) : diffIsBinary ? (
+                <div
+                  data-testid="git-diff-binary-notice"
+                  className="flex flex-col items-center justify-center h-full gap-2 text-sm text-gray-500 dark:text-gray-300"
+                >
+                  <span className="font-medium">{t('git.binaryFileDiffers')}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    {selectedFile?.path}
+                  </span>
                 </div>
               ) : (
                 <DiffViewer

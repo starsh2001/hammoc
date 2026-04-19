@@ -240,17 +240,23 @@ describe('useGitStore', () => {
   });
 
   describe('TC-GIT-S14: fetchDiff', () => {
-    it('should call gitApi.getDiff and return diff string', async () => {
+    it('should call gitApi.getDiff and return diff with isBinary flag', async () => {
       mockedApi.getDiff.mockResolvedValue(mockDiff);
       const result = await useGitStore.getState().fetchDiff('test-project', 'src/index.ts', false);
       expect(mockedApi.getDiff).toHaveBeenCalledWith('test-project', 'src/index.ts', false);
-      expect(result).toBe('- old\n+ new');
+      expect(result).toEqual({ diff: '- old\n+ new', isBinary: false });
     });
 
-    it('should return empty string when diff is undefined', async () => {
+    it('should return empty diff when response has no diff field', async () => {
       mockedApi.getDiff.mockResolvedValue({ initialized: true });
       const result = await useGitStore.getState().fetchDiff('test-project', 'file.ts');
-      expect(result).toBe('');
+      expect(result).toEqual({ diff: '', isBinary: false });
+    });
+
+    it('should propagate isBinary=true for binary files', async () => {
+      mockedApi.getDiff.mockResolvedValue({ initialized: true, diff: '', isBinary: true });
+      const result = await useGitStore.getState().fetchDiff('test-project', 'archive.zip');
+      expect(result).toEqual({ diff: '', isBinary: true });
     });
   });
 });
