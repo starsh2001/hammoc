@@ -72,12 +72,15 @@ export function FavoritesPopup({
     [commands]
   );
 
-  const handleDragStart = useCallback((index: number) => {
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('text/plain', String(index));
+    e.dataTransfer.effectAllowed = 'move';
     setDragIndex(index);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     setDragOverIndex(index);
   }, []);
 
@@ -117,12 +120,15 @@ export function FavoritesPopup({
   );
 
   // Star favorites DnD handlers (Story 9.12)
-  const handleStarDragStart = useCallback((index: number) => {
+  const handleStarDragStart = useCallback((e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('text/plain', String(index));
+    e.dataTransfer.effectAllowed = 'move';
     setStarDragIndex(index);
   }, []);
 
   const handleStarDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     setStarDragOverIndex(index);
   }, []);
 
@@ -207,7 +213,7 @@ export function FavoritesPopup({
                 aria-selected={false}
                 tabIndex={0}
                 draggable
-                onDragStart={() => handleStarDragStart(index)}
+                onDragStart={(e) => handleStarDragStart(e, index)}
                 onDragOver={(e) => handleStarDragOver(e, index)}
                 onDrop={() => handleStarDrop(index)}
                 onDragEnd={handleStarDragEnd}
@@ -301,7 +307,7 @@ export function FavoritesPopup({
             aria-selected={false}
             tabIndex={0}
             draggable
-            onDragStart={() => handleDragStart(index)}
+            onDragStart={(e) => handleDragStart(e, index)}
             onDragOver={(e) => handleDragOver(e, index)}
             onDrop={() => handleDrop(index)}
             onDragEnd={handleDragEnd}
