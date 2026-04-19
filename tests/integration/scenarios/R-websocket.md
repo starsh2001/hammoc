@@ -7,28 +7,21 @@
 
 ## 네트워크 끊김 유도 표준 절차
 
-socket.io 클라이언트는 ES 모듈 클로저 내부에 캡슐화되어 `window.__wsInstance__`로 직접 접근 불가. 다음 절차를 사용:
+socket.io 클라이언트는 ES 모듈 클로저 내부에 캡슐화되어 `window.__wsInstance__`로 직접 접근 불가. 또한 `window.dispatchEvent(new Event('offline'))`는 OS 네트워크 레이어를 건드리지 않기 때문에 socket.io가 실제 연결을 끊지 않는다 (브라우저 테스트 환경의 설계상 한계). 따라서 서버 사이드 강제 종료 훅을 **표준 방법**으로 사용한다.
 
-**표준: `navigator.onLine` + 이벤트 디스패치**
+**표준: 서버 강제 소켓 종료** (`NODE_ENV=development` 또는 `ENABLE_TEST_ENDPOINTS=true` 환경에서만 라우트 등록. 통합 테스트 런처가 후자를 자동 설정)
 ```js
-browser_evaluate(`() => {
-  Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
-  window.dispatchEvent(new Event('offline'));
-  return true;
-}`)
+browser_evaluate(`() => fetch('/api/debug/kill-ws', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({ sessionId: '<세션ID>' })  // 생략 시 전체 소켓 종료
+}).then(r => r.json())`)
 ```
-socket.io는 `offline` 이벤트를 수신하면 내부적으로 연결을 끊고 재연결을 시도한다.
+서버가 해당 세션(또는 전체)의 소켓을 서버 측에서 강제로 disconnect → 클라이언트가 재연결 시도.
 
-**복구**:
-```js
-browser_evaluate(`() => {
-  Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
-  window.dispatchEvent(new Event('online'));
-  return true;
-}`)
-```
+**복구**: 자동. socket.io 클라이언트의 reconnection 로직이 자동으로 재연결한다.
 
-**대체 방법 (위 방법 불가 시)**: `browser_evaluate(() => fetch('/api/test/kill-ws', { method: 'POST' }))` — dev 빌드에서 서버가 해당 소켓만 선제 종료하는 엔드포인트 제공 시. 현재 미구현이면 표준 방법 사용.
+**참고 (비권장)**: `window.dispatchEvent(new Event('offline'))` 는 socket.io 동작에 영향을 주지 않는다. UI의 navigator.onLine 기반 배너 표시를 단독 검증할 때만 사용.
 
 ---
 
@@ -36,23 +29,24 @@ browser_evaluate(`() => {
 
 ### R-01-01: 스트리밍 중 WebSocket 강제 닫힘
 **절차**:
-1. 세션 진입 후 "Count slowly from 1 to 30, one number per second" 프롬프트 전송 → 스트림 시작
-2. 3초 대기 후 위 "네트워크 끊김 유도" 절차 실행 (`offline` 이벤트 디스패치)
-3. `browser_snapshot` → UI 상단에 "재연결 중" 또는 오프라인 배너 확인
-4. 2초 대기 후 "복구" 절차 실행 (`online` 이벤트 디스패치)
-5. 스트림 완료까지 대기
-6. `browser_snapshot` → 최종 응답이 1~30까지 중복 없이 수신되었는지 확인
+1. 세션 진입 후 현재 세션ID 기록 (`fetch('/api/sessions/active').then(r => r.json())` 또는 URL 파싱)
+2. "Count slowly from 1 to 30, one number per second" 프롬프트 전송 → 스트림 시작
+3. 3초 대기 후 `POST /api/debug/kill-ws` (표준 절차) 로 현재 세션 소켓 강제 종료
+4. `browser_snapshot` → UI 상단에 "재연결 중" 또는 오프라인 배너 확인
+5. socket.io 자동 재연결 대기 (수 초 이내)
+6. 스트림 완료까지 대기
+7. `browser_snapshot` → 최종 응답이 1~30까지 중복 없이 수신되었는지 확인
 
 **기대 결과**:
 - "재연결 중" 배너 표시
 - 재연결 후 진행 중 스트림 버퍼 재생 (`stream:buffer-replay`)
 - 최종 응답에 1~30 모두 포함, 중복 없음
 
-### R-01-02: 오프라인 → 온라인 전환
+### R-01-02: 연결 단절 → 재연결 후 새 메시지 전송
 **절차**:
 1. 세션 진입 후 짧은 프롬프트 전송 → 응답 완료
-2. `offline` 이벤트 디스패치 → 30초 대기
-3. `online` 이벤트 디스패치
+2. `POST /api/debug/kill-ws` (표준 절차)
+3. 수 초 대기 (자동 재연결 발생)
 4. 새 프롬프트 전송 → 정상 응답 확인
 
 **기대 결과**: 자동 재연결, 활성 세션 복원, 새 메시지 정상 전송/수신.

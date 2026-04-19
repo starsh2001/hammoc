@@ -61,31 +61,39 @@
 ## L3. 보안 `[EDGE]`
 
 ### L-03-01: 로컬 IP 만 허용
+
+> **전제**: 이 시나리오는 반드시 `TRUST_PROXY=true` 환경에서 실행해야 한다. 브라우저의 TCP peer는 항상 `127.0.0.1`(루프백)이므로, `TRUST_PROXY=false` (기본값)에서는 `X-Forwarded-For` 헤더가 무시되어 외부 IP 위장이 불가능하다 — **이는 올바른 보안 동작**이며 버그가 아님. 필터 로직 자체의 검증은 TRUST_PROXY=true 환경에서만 유효하다.
+
 **절차**:
-1. `browser_evaluate`로 외부 IP를 가장한 헤더로 터미널 생성 API 직접 호출:
+1. 서버 실행 환경 확인: `fetch('/api/server/info').then(r => r.json())` 응답의 `trustProxy` 필드 또는 런처 로그로 TRUST_PROXY 설정 확인
+2. **TRUST_PROXY 비활성 시 본 시나리오는 `N/A (환경 미충족)` 로 기록하고 건너뜀**. TRUST_PROXY=true 런처 플래그(`--trust-proxy`) 없이 실행한 경우 FAIL이 아닌 SKIP 처리
+3. TRUST_PROXY=true 확인된 경우에만: `browser_evaluate`로 외부 IP를 가장한 헤더로 터미널 생성 API 직접 호출:
    ```js
-   browser_evaluate(`() => fetch('/api/terminals', {
+   fetch('/api/terminals', {
      method: 'POST',
      headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '203.0.113.42' },
      body: JSON.stringify({ projectSlug: '<slug>' })
-   }).then(r => ({ status: r.status, body: r.statusText }))`)
+   }).then(r => ({ status: r.status }))
    ```
-2. 응답 상태코드 403 또는 에러 코드 `TERMINAL_ACCESS_DENIED` 확인
-3. 정상 요청(헤더 없음)은 생성 성공 확인
+4. 응답 상태코드 403 또는 에러 코드 `TERMINAL_ACCESS_DENIED` 확인
+5. 정상 요청(헤더 없음)은 생성 성공 확인
 
-**기대 결과**: 외부 IP 감지 경로에서 403, 로컬 요청은 정상 처리.
+**기대 결과**: TRUST_PROXY=true 환경에서 외부 IP (`X-Forwarded-For: 203.0.113.42`) 감지 시 403, 로컬 요청은 정상 처리.
 
-> 서버의 `networkUtils.extractRequestIP` + `isLocalIP`가 `X-Forwarded-For` 헤더를 참조하는지 확인 필요. 참조하지 않으면 버그로 기록하고 시나리오를 코드 경로에 맞게 조정.
+> **구현 메커니즘**: `networkUtils.extractRequestIP`는 `TRUST_PROXY=true` + TCP peer가 루프백일 때만 `X-Forwarded-For`를 참조. TRUST_PROXY=false일 때는 항상 TCP peer(127.0.0.1) 사용 → 헤더 주입 무의미. 따라서 본 시나리오는 반드시 TRUST_PROXY=true 환경에서만 실행할 것.
 
 ### L-03-02: TERMINAL_ENABLED=false
+**선행 조건**: 런처 `--with-terminal-disabled` 플래그로 보조 서버(기본 포트+1 = 21214) 기동.
+
 **절차**:
-1. **테스트 모드 환경 설정** — `scripts/run-integration-test.mjs` 또는 전용 런처가 `TERMINAL_ENABLED=false`로 보조 서버 인스턴스를 포트 N+1에 띄우도록 구성 (런처 미구현 시 신규 추가)
-2. `browser_navigate("http://localhost:<N+1>/projects/<slug>")` 로 해당 인스턴스 접근
-3. 프로젝트 진입 후 터미널 탭 클릭
-4. `browser_snapshot` → "터미널이 비활성화되었습니다" 안내 표시 확인
-5. `browser_evaluate` fetch로 `POST /api/terminals` → 403 또는 `TERMINAL_DISABLED` 오류 확인
-6. 테스트 종료 후 보조 인스턴스 종료
+1. `browser_navigate("http://127.0.0.1:21214")` → 로그인 확인 (주 서버와 동일 자격증명)
+2. 기존 프로젝트 선택 또는 생성 → 프로젝트 페이지 진입
+3. 터미널 탭 클릭
+4. `browser_wait_for(text="터미널이 비활성화되었습니다", time=10)` — 소켓 연결 후 `terminal:access` 이벤트 도착 대기
+5. `browser_snapshot` → 안내 메시지 + ShieldAlert 아이콘 확인, "새 터미널" 버튼 없음 확인
+6. `browser_evaluate("() => fetch('/api/terminal-status').then(r=>r.status)")` — WebSocket 전용 기능이므로 404 이상 확인으로 충분
+7. `browser_navigate("http://127.0.0.1:21213")` 로 주 서버 복귀
 
-**기대 결과**: 터미널 탭 비활성, API 레벨 거부, 안내 메시지 노출.
+**기대 결과**: 터미널 탭에 "터미널이 비활성화되었습니다" 안내 + ShieldAlert 아이콘 표시, "새 터미널" 버튼 없음.
 
-> 보조 인스턴스 실행 방법이 없으면 `run-integration-test.mjs`에 `--with-terminal-disabled` 플래그 추가 구현 필요 (테스트 러너 인프라 업데이트 — 별도 작업).
+> 터미널 생성은 WebSocket(`terminal:create`)으로만 가능하므로 API 레벨 거부는 WebSocket 에러 응답(`TERMINAL_DISABLED`)으로 확인. `browser_wait_for`로 소켓 연결 완료를 반드시 대기할 것.
