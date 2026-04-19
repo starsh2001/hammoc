@@ -172,6 +172,28 @@ let chainItemCounter = 0;
 const CHAIN_MAX_RETRIES = 3;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Debug hook: synthetic failure injection for chain drain (G-02-02 retry test).
+// Only consumed when ENABLE_TEST_ENDPOINTS=true; the POST /api/debug route
+// validates the flag before writing to this map.
+const chainDrainFailureInjection = new Map<string, number>();
+export function setChainDrainFailureInjection(sessionId: string, count: number): void {
+  if (count <= 0) {
+    chainDrainFailureInjection.delete(sessionId);
+  } else {
+    chainDrainFailureInjection.set(sessionId, count);
+  }
+}
+function consumeChainDrainFailureInjection(sessionId: string): boolean {
+  const remaining = chainDrainFailureInjection.get(sessionId) ?? 0;
+  if (remaining <= 0) return false;
+  if (remaining === 1) {
+    chainDrainFailureInjection.delete(sessionId);
+  } else {
+    chainDrainFailureInjection.set(sessionId, remaining - 1);
+  }
+  return true;
+}
+
 // Story 25.9: Per-socket summarizing state — requestId prevents race between cancel + new request
 const socketSummarizing = new Map<string, { activeRequestId: string | null; abortController: AbortController | null }>();
 
@@ -308,6 +330,11 @@ function scheduleChainDrain(sessionId: string, lang: string): void {
     const abortController = new AbortController();
     let stream: ActiveStream | undefined;
     try {
+      // Debug: synthetic failure injection for retry tests (G-02-02).
+      // Throws before creating the stream so the retry path is exercised cleanly.
+      if (consumeChainDrainFailureInjection(sessionId)) {
+        throw new Error('Injected chain drain failure (debug)');
+      }
       // Create headless stream inside try — if this throws, sending status is recovered below
       const headless = createHeadlessStream(sessionId, abortController);
       stream = headless.stream;

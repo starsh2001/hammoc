@@ -6,7 +6,7 @@ import { Router, Request, Response } from 'express';
 import { appendFileSync, mkdirSync, existsSync } from 'fs';
 import path from 'path';
 import { createLogger } from '../utils/logger.js';
-import { getIO } from '../handlers/websocket.js';
+import { getIO, setChainDrainFailureInjection } from '../handlers/websocket.js';
 
 const log = createLogger('debugRoute');
 
@@ -105,6 +105,24 @@ router.post('/kill-ws', async (req: Request, res: Response) => {
     log.error('kill-ws failed:', err);
     res.status(500).json({ error: String(err) });
   }
+});
+
+/**
+ * POST /api/debug/fail-next-chain-item
+ * Inject a synthetic failure into the next N chain drain attempts for a session
+ * (dev test helper for G-02-02 retry / failure-persistence scenarios).
+ * Body: { sessionId: string; count?: number }  (count defaults to 1)
+ */
+router.post('/fail-next-chain-item', (req: Request, res: Response) => {
+  const { sessionId, count } = req.body as { sessionId?: string; count?: number };
+  if (!sessionId || typeof sessionId !== 'string') {
+    res.status(400).json({ error: 'sessionId is required' });
+    return;
+  }
+  const times = typeof count === 'number' && count > 0 ? Math.floor(count) : 1;
+  setChainDrainFailureInjection(sessionId, times);
+  log.info(`fail-next-chain-item: session=${sessionId} times=${times}`);
+  res.status(200).json({ success: true, sessionId, count: times });
 });
 
 export default router;
