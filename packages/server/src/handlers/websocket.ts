@@ -872,6 +872,28 @@ export async function initializeWebSocket(
       }
     })();
 
+    // Allow clients to re-request terminal access info (e.g., after late listener registration)
+    socket.on('terminal:access:request', () => {
+      try {
+        const lang = socket.data.language || 'en';
+        const t = i18next.getFixedT(lang);
+        const clientIP = extractClientIP(socket);
+        const isLocal = isLocalIP(clientIP);
+        const terminalEnabled = preferencesService.getTerminalEnabled();
+        socket.emit('terminal:access', {
+          allowed: terminalEnabled && isLocal,
+          enabled: terminalEnabled,
+          reason: !terminalEnabled
+            ? t('ws.error.terminalDisabled')
+            : !isLocal
+            ? t('ws.error.terminalAccessDenied')
+            : undefined,
+        });
+      } catch {
+        socket.emit('terminal:access', { allowed: false, enabled: false });
+      }
+    });
+
     // Start rate limit polling on first client connection
     if (connectedClients === 1) {
       rateLimitProbeService.startPolling(

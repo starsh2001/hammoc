@@ -39,27 +39,6 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
   const increaseFontSize = useTerminalStore((s) => s.increaseFontSize);
   const decreaseFontSize = useTerminalStore((s) => s.decreaseFontSize);
   const resetFontSize = useTerminalStore((s) => s.resetFontSize);
-
-  // Story 17.5: Show warning when terminal access is denied
-  if (terminalAccess && !terminalAccess.allowed) {
-    const message = !terminalAccess.enabled
-      ? t('terminal.disabledMessage')
-      : t('terminal.securityMessage');
-    const description = !terminalAccess.enabled
-      ? t('terminal.disabledDescription')
-      : t('terminal.securityDescription');
-
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center" role="alert">
-        <div className="p-4 bg-amber-100 dark:bg-amber-900/30 rounded-2xl mb-4">
-          <ShieldAlert className="w-10 h-10 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-        </div>
-        <p className="text-base font-medium text-gray-900 dark:text-white mb-2">{message}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-300 max-w-sm">{description}</p>
-      </div>
-    );
-  }
-
   const clearTerminalsForProjectChange = useTerminalStore(
     (s) => s.clearTerminalsForProjectChange
   );
@@ -83,9 +62,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
     }
   }, [terminals.size, activeTerminalId, setActiveTerminalId]);
 
-  const activeSession = activeTerminalId ? terminals.get(activeTerminalId) ?? null : null;
-
-  // Build terminal entries array for tab bar
+  // Build terminal entries array for tab bar (needed by useCallback hooks below)
   const terminalEntries = Array.from(terminals.entries());
 
   // Shell name counter for display (e.g., "bash 1", "bash 2")
@@ -132,6 +109,28 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
     },
     [terminalEntries, activeTerminalId, switchTerminal, closeById]
   );
+
+  // Story 17.5: Show warning when terminal access is denied
+  if (terminalAccess && !terminalAccess.allowed) {
+    const message = !terminalAccess.enabled
+      ? t('terminal.disabledMessage')
+      : t('terminal.securityMessage');
+    const description = !terminalAccess.enabled
+      ? t('terminal.disabledDescription')
+      : t('terminal.securityDescription');
+
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center" role="alert">
+        <div className="p-4 bg-amber-100 dark:bg-amber-900/30 rounded-2xl mb-4">
+          <ShieldAlert className="w-10 h-10 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        </div>
+        <p className="text-base font-medium text-gray-900 dark:text-white mb-2">{message}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-300 max-w-sm">{description}</p>
+      </div>
+    );
+  }
+
+  const activeSession = activeTerminalId ? terminals.get(activeTerminalId) ?? null : null;
 
   // Status badge renderer
   const renderStatusBadge = () => {

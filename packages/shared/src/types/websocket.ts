@@ -83,6 +83,7 @@ export interface ClientToServerEvents {
   'terminal:resize': (data: TerminalResizeEvent) => void;
   'terminal:close': (data: { terminalId: string }) => void;
   'terminal:list': (data: TerminalListRequest) => void;
+  'terminal:access:request': () => void;
   // Story 20.1: Dashboard subscription events
   'dashboard:subscribe': () => void;
   'dashboard:unsubscribe': () => void;

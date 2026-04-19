@@ -286,6 +286,12 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     socket.on('terminal:data', _onData);
     socket.on('terminal:exit', _onExit);
     socket.on('terminal:error', _onError);
+
+    // If socket is already connected, the initial terminal:access event was already
+    // fired before this listener was registered. Re-request so we get current state.
+    if (socket.connected) {
+      socket.emit('terminal:access:request');
+    }
   },
 
   cleanupTerminalListeners: (socket: TypedSocket) => {
