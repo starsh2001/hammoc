@@ -1235,12 +1235,14 @@ export function ChatInput({
         {/* Subscription rate limit glow dots */}
         <UsageStatusBar rateLimit={subscriptionRateLimit} />
         {/* Context usage donut indicator (always visible) */}
-        <ContextUsageDisplay
-          contextUsage={contextUsage ?? null}
-          onNewSession={onNewSession}
-          onCompact={onCompact}
-          disabled={queueLocked || actionsDisabled}
-        />
+        <div className="ml-2">
+          <ContextUsageDisplay
+            contextUsage={contextUsage ?? null}
+            onNewSession={onNewSession}
+            onCompact={onCompact}
+            disabled={queueLocked || actionsDisabled}
+          />
+        </div>
 
         {/* Attach button (Story 5.5) */}
         <button
