@@ -293,12 +293,18 @@ try {
 }
 
 // Print connection info
+// IMPORTANT: use `localhost` (not `127.0.0.1`) so cookies issued by the primary
+// server are sent to secondary servers on the same host. `localhost:<portA>`
+// and `localhost:<portB>` share a cookie jar for cookies set without an
+// explicit domain; `127.0.0.1` is a separate origin for cookie purposes, so
+// mixing hostnames breaks auto-login on the secondary server.
 console.log('\n✓ Servers ready.\n');
 console.log('─── Playwright MCP — Connection Info ───────────────────');
-console.log(`  Primary URL:   http://127.0.0.1:${primaryPort}`);
+console.log(`  Primary URL:   http://localhost:${primaryPort}`);
 if (secondaryProc) {
-  console.log(`  Secondary URL: http://127.0.0.1:${secondaryPort}  (TERMINAL_ENABLED=false)`);
+  console.log(`  Secondary URL: http://localhost:${secondaryPort}  (TERMINAL_ENABLED=false)`);
 }
+console.log('  (Use `localhost`, not `127.0.0.1`, so session cookies are shared.)');
 
 if (opts.permissionTimeout) {
   console.log('\n─── Permission Timeout — browser_evaluate snippet ───────');
