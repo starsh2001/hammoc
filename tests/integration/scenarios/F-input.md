@@ -143,25 +143,35 @@ browser_evaluate(`async () => {
 **절차**: 명령 팔레트에서 항목의 별 아이콘 클릭 → 칩 바에 등장.
 **기대 결과**: 최대 20개 칩 저장, 초과 시 안내.
 
-### F-05-02: 칩 드래그로 재정렬 `[DnD]`
+### F-05-02: 즐겨찾기 팝업에서 드래그로 재정렬 `[DnD]`
+
+> **UI 구조 주의**: 재정렬은 **칩 바(FavoritesChipBar)**가 아니라 별 버튼을 클릭해 여는 **즐겨찾기 팝업(FavoritesPopup)** 안에서 이루어진다. 팝업 각 항목의 좌측에 GripVertical 드래그 핸들이 표시된다. 칩 바 자체에는 드래그 기능이 없다.
+
 **절차**:
 1. 최소 3개의 즐겨찾기 칩 확보 (F-05-01 절차 활용)
-2. `browser_evaluate`로 HTML5 DragEvent 직접 디스패치하여 첫 칩을 마지막 위치로 이동:
+2. 칩 바 좌측 별(★) 버튼 클릭 → 즐겨찾기 팝업 오픈 (`browser_click("[data-testid='chip-bar-star-button']")`)
+3. `browser_snapshot` → `data-testid="favorite-item-0"` 항목들과 GripVertical 핸들 확인
+4. 첫 번째 항목 이름 기록 (재정렬 검증용)
+5. `browser_evaluate`로 DragEvent 디스패치 (팝업 내 아이템 셀렉터 사용):
    ```js
    browser_evaluate(`() => {
-     const chips = document.querySelectorAll('[data-testid="favorite-chip"]');
-     const src = chips[0], dst = chips[chips.length - 1];
+     const items = document.querySelectorAll('[data-testid^="favorite-item-"]');
+     if (items.length < 2) return 'not enough items: ' + items.length;
+     const src = items[0], dst = items[items.length - 1];
      const dt = new DataTransfer();
+     dt.setData('text/plain', '0');
      src.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
      dst.dispatchEvent(new DragEvent('dragover', { bubbles: true, dataTransfer: dt }));
      dst.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }));
      src.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
-     return Array.from(document.querySelectorAll('[data-testid="favorite-chip"]')).map(el => el.textContent.trim());
+     return Array.from(document.querySelectorAll('[data-testid^="favorite-item-"]'))
+       .map(el => el.querySelector('span.flex-1')?.textContent?.trim() ?? el.textContent.trim().slice(0, 20));
    }`)
    ```
-3. 재로그인 시뮬레이션: `browser_evaluate("() => location.reload()")` → 순서 유지 확인
+6. 반환된 순서에서 원래 첫 번째 항목이 마지막으로 이동했는지 확인
+7. 팝업 닫기 후 `browser_evaluate("() => location.reload()")` → 팝업 재오픈 → 순서 유지 확인
 
-**기대 결과**: 순서 저장, 새로고침 후 유지.
+**기대 결과**: 팝업 내 항목 순서 변경 → 칩 바에도 반영 → 새로고침 후 유지.
 
 ### F-05-03: 모바일 화면에서 칩 바 스크롤
 **절차**:
