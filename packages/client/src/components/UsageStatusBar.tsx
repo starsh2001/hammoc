@@ -44,7 +44,7 @@ export function UsageStatusBar({ rateLimit }: UsageStatusBarProps) {
 
   return (
     <div
-      className="flex items-center gap-2 select-none"
+      className="flex items-center gap-2 flex-shrink-0 select-none"
       role="status"
       aria-label={t('usage.ariaLabel')}
       data-testid="usage-status-bar"

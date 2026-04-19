@@ -1162,7 +1162,7 @@ export function ChatInput({
       </div>
 
       {/* Button row */}
-      <div className="flex items-center gap-2 mt-[1px] ml-[-2px] min-w-0">
+      <div className="flex items-center gap-1 sm:gap-2 mt-[1px] ml-[-2px] min-w-0">
         {/* Permission mode selector (Story 5.2) */}
         {permissionMode && onPermissionModeChange && (
           <PermissionModeSelector
@@ -1231,7 +1231,7 @@ export function ChatInput({
         <div className="flex-1" />
 
         {/* Right-side buttons */}
-        <div className="flex items-center gap-1 sm:gap-2 mr-[-2px]">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 mr-[-2px]">
         {/* Subscription rate limit glow dots */}
         <UsageStatusBar rateLimit={subscriptionRateLimit} />
         {/* Context usage donut indicator (always visible) */}

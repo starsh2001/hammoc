@@ -79,7 +79,7 @@ export function ContextUsageDisplay({ contextUsage, onNewSession, onCompact, dis
       aria-label={t('contextUsage.ariaLabel', { percent: usagePercent })}
       title={tooltipText}
       disabled={disabled}
-      className={`flex items-center gap-2 ml-1 sm:ml-3 mr-0.5 transition-opacity ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:opacity-80'}`}
+      className={`flex items-center gap-2 flex-shrink-0 transition-opacity ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:opacity-80'}`}
       onClick={disabled ? undefined : handleClick}
       data-testid="context-usage-display"
     >

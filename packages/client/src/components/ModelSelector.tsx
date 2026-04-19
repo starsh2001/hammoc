@@ -258,7 +258,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
   const selectedIdx = LEVEL_INDEX[displayEffort];
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative flex-shrink-0">
       {/* Icon trigger button */}
       <button
         type="button"

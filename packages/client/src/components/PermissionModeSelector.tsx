@@ -109,8 +109,8 @@ export function PermissionModeSelector({ mode, onModeChange, disabled }: Permiss
       title={currentOption.description}
       aria-label={t('permissionMode.selectorAria', { label: currentOption.label, description: currentOption.description })}
       className={`
-        w-[44px] h-[28px] self-center ml-0.4 mr-1.0 text-[10px] font-semibold rounded-md transition-all
-        border-1
+        w-[44px] h-[28px] flex-shrink-0 self-center text-[10px] font-semibold rounded-md transition-all
+        border
         focus:outline-none focus:ring-2 focus:ring-offset-1
         disabled:opacity-50 disabled:cursor-not-allowed
         hover:brightness-95 dark:hover:brightness-110

@@ -205,7 +205,7 @@ export function BmadAgentButton({
   };
 
   return (
-    <div ref={containerRef} className="relative" onKeyDown={handleKeyDown}>
+    <div ref={containerRef} className="relative flex-shrink-0" onKeyDown={handleKeyDown}>
       {/* Icon trigger button (matches ModelSelector style) */}
       <button
         type="button"
