@@ -50,6 +50,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "postinstall": "node scripts/postinstall.cjs",
     "prepublishOnly": "npm run build",
+    "test:integration": "node scripts/run-integration-test.mjs",
     "bmad:refresh": "bmad-method install -f -i codex",
     "bmad:list": "bmad-method list:agents",
     "bmad:validate": "bmad-method validate"

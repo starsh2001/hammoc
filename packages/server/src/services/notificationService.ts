@@ -100,7 +100,8 @@ class NotificationService {
   private async sendTelegram(message: string): Promise<void> {
     if (!this.telegramEnabled || !this.effectiveBotToken || !this.effectiveChatId) return;
     try {
-      const apiUrl = `https://api.telegram.org/bot${this.effectiveBotToken}/sendMessage`;
+      const telegramBase = process.env.BOT_API_BASE_URL || 'https://api.telegram.org';
+      const apiUrl = `${telegramBase}/bot${this.effectiveBotToken}/sendMessage`;
       await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -323,7 +324,8 @@ class NotificationService {
     try {
       const lang = await this.resolveLanguage();
       const t = i18next.getFixedT(lang);
-      const apiUrl = `https://api.telegram.org/bot${testBotToken}/sendMessage`;
+      const telegramBase = process.env.BOT_API_BASE_URL || 'https://api.telegram.org';
+      const apiUrl = `${telegramBase}/bot${testBotToken}/sendMessage`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

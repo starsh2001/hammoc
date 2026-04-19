@@ -16,6 +16,7 @@ import { getToolIcon, getToolDisplayName, getToolDisplayInfo, formatDuration } f
 import { openProjectFile } from '../utils/fileOpenUtils';
 import { isImagePath } from '../utils/languageDetect';
 import { useProjectStore } from '../stores/projectStore';
+import { usePermissionTimeout } from '../hooks/usePermissionTimeout';
 
 export interface ToolCardProps {
   toolName: string;
@@ -200,6 +201,7 @@ export function ToolCard({
 }: ToolCardProps) {
   const { t } = useTranslation('chat');
   const { projectSlug } = useParams<{ projectSlug: string }>();
+  usePermissionTimeout(permissionStatus, onPermissionRespond);
   const output = stripXmlWrapperTags(rawOutput);
   const resultOutput = stripXmlWrapperTags(rawResultOutput);
   const [showDiffViewer, setShowDiffViewer] = useState(false);

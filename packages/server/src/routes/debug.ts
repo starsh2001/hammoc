@@ -1,11 +1,12 @@
 /**
- * Debug Routes - Server-side logging for client debugging
+ * Debug Routes - Server-side logging and test helpers (dev only)
  */
 
 import { Router, Request, Response } from 'express';
 import { appendFileSync, mkdirSync, existsSync } from 'fs';
 import path from 'path';
 import { createLogger } from '../utils/logger.js';
+import { getIO } from '../handlers/websocket.js';
 
 const log = createLogger('debugRoute');
 
@@ -62,6 +63,47 @@ router.post('/log', (req: Request, res: Response) => {
   } catch (err) {
     log.error('Failed to write log:', err);
     res.status(500).json({ error: 'Failed to write log' });
+  }
+});
+
+/**
+ * POST /api/debug/kill-ws
+ * Forcibly disconnect WebSocket sockets for a session (dev test helper for R-01-01).
+ * Body: { sessionId?: string } — if omitted, disconnects all connected sockets.
+ */
+router.post('/kill-ws', async (req: Request, res: Response) => {
+  try {
+    const io = getIO();
+    const { sessionId } = req.body as { sessionId?: string };
+
+    if (sessionId) {
+      const room = io.sockets.adapter.rooms.get(`session:${sessionId}`);
+      if (!room || room.size === 0) {
+        res.status(404).json({ error: 'No sockets found for sessionId', sessionId });
+        return;
+      }
+      let count = 0;
+      for (const socketId of room) {
+        const sock = io.sockets.sockets.get(socketId);
+        if (sock) {
+          sock.disconnect(true);
+          count++;
+        }
+      }
+      log.info(`kill-ws: disconnected ${count} socket(s) for session ${sessionId}`);
+      res.status(200).json({ success: true, disconnected: count, sessionId });
+    } else {
+      // Disconnect all connected sockets (no sessionId filter)
+      const sockets = await io.fetchSockets();
+      for (const sock of sockets) {
+        sock.disconnect(true);
+      }
+      log.info(`kill-ws: disconnected all ${sockets.length} socket(s)`);
+      res.status(200).json({ success: true, disconnected: sockets.length });
+    }
+  } catch (err) {
+    log.error('kill-ws failed:', err);
+    res.status(500).json({ error: String(err) });
   }
 });
 

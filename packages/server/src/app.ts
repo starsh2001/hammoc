@@ -186,8 +186,13 @@ export async function createApp(): Promise<Express> {
   // Server management routes (restart)
   app.use('/api/server', serverRoutes);
 
-  // Debug routes (server-side logging for client debugging) — only in development
-  if (process.env.NODE_ENV === 'development') {
+  // Debug routes (server-side logging + test helpers) — dev mode or explicit opt-in.
+  // Integration test launcher runs in production mode but sets ENABLE_TEST_ENDPOINTS=true
+  // to enable R-01-01 kill-ws test helper.
+  if (
+    process.env.NODE_ENV === 'development' ||
+    process.env.ENABLE_TEST_ENDPOINTS === 'true'
+  ) {
     app.use('/api/debug', debugRoutes);
   }
 
