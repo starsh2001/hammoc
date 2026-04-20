@@ -15,8 +15,42 @@
 - 다중 이미지 폴더의 경우 좌우 네비게이션 버튼
 
 ### S-01-02: 채팅 첨부 이미지 클릭 → 뷰어 열림
-**절차**: F-02-01 등에서 첨부한 이미지를 메시지 버블에서 클릭.
-**기대 결과**: 전체화면 뷰어 오픈, `imageViewerStore` 상태 설정.
+**목적**: 메시지 버블에 포함된 이미지를 클릭했을 때 전체화면 이미지 뷰어가 열리는지 검증.
+
+**선행 조건**: 채팅 세션에 이미지 첨부 메시지가 하나 이상 존재. 없으면 절차 1에서 생성.
+
+**절차**:
+1. 채팅 세션에 이미지 첨부 메시지 준비:
+   - 기존 메시지가 있으면 스킵
+   - 없으면 F-02-01 방식(캔버스 → PNG 업로드)으로 메시지에 이미지 포함해 전송:
+     ```js
+     browser_evaluate(`async () => {
+       const c = document.createElement('canvas'); c.width = 20; c.height = 20;
+       const ctx = c.getContext('2d'); ctx.fillStyle = '#ff8800'; ctx.fillRect(0, 0, 20, 20);
+       const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+       const file = new File([blob], 'test-s01.png', { type: 'image/png' });
+       const dt = new DataTransfer(); dt.items.add(file);
+       const ta = document.querySelector('textarea');
+       ta.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }));
+       return file.size;
+     }`)
+     ```
+     → "Describe this image briefly." 프롬프트로 전송
+2. 응답 완료 대기 후, 메시지 버블 내 이미지 요소 클릭:
+   ```js
+   browser_evaluate(`() => {
+     const img = document.querySelector('[data-testid="message-bubble"] img, .message-bubble img');
+     if (!img) return 'no image found';
+     img.click();
+     return 'clicked';
+   }`)
+   ```
+3. 전체화면 뷰어 열림 확인:
+   ```js
+   browser_evaluate(`() => !!document.querySelector('[data-testid="image-viewer"], [role="dialog"][aria-label*="이미지"]')`)
+   ```
+
+**기대 결과**: 뷰어 열림, `imageViewerStore` 상태 설정 (줌/닫기 버튼 가시).
 
 ### S-01-03: 모바일 터치 제스처
 **절차**:
@@ -59,12 +93,36 @@
 
 ## S2. 마크다운 렌더러 `[CORE]`
 
-### S2-02-01: 메시지 본문 GFM 렌더
-**절차**: 표 · 체크박스 · 링크 · 코드블록 포함 프롬프트에 대해 어시스턴트 응답 검증.
+### S-02-01: 메시지 본문 GFM 렌더
+**목적**: 어시스턴트 응답 내 GitHub Flavored Markdown(표, 코드블록 등)이 정상 렌더링되는지 검증.
+
+**절차**:
+1. 새 세션에서 다음 프롬프트 전송:
+   ```
+   Reply with ONLY this markdown (no extra text):
+   | col1 | col2 |
+   |------|------|
+   | a    | b    |
+
+   ```python
+   print("hi")
+   ```
+   ```
+2. 응답 스트리밍 완료 대기 (`browser_wait_for` 로 테이블/코드블록 DOM 감지)
+3. 메시지 버블에서 렌더 결과 확인:
+   ```js
+   browser_evaluate(`() => ({
+     tables: document.querySelectorAll('[data-testid="message-bubble"] table, .message-bubble table').length,
+     codeBlocks: document.querySelectorAll('[data-testid="message-bubble"] pre code, .message-bubble pre code').length,
+     copyBtns: document.querySelectorAll('[data-testid="message-bubble"] button[aria-label*="복사"]').length,
+   })`)
+   ```
+
 **기대 결과**:
-- GFM 테이블 렌더
-- 체크박스 클릭 가능(옵션) 또는 읽기전용
-- 코드블록 구문 강조, 복사 버튼
+- `tables >= 1` (GFM 테이블 렌더)
+- `codeBlocks >= 1` (python 코드블록)
+- `copyBtns >= 1` (코드블록당 복사 버튼)
+- 코드블록 구문 강조 토큰 클래스 (`cm-keyword`, `hljs-*` 등) 존재
 
 ### S-02-02: `.md` 파일 프리뷰
 **절차**: 파일 에디터에서 `.md` 열기 → 프리뷰 토글.
@@ -121,5 +179,39 @@
 - 파일 크기 표시
 
 **엣지케이스**:
-- E1. 매우 큰 바이너리(>100MB): 경고 또는 다운로드 스트리밍
-- E2. 감지 오판(UTF-8 BOM 등): 수동으로 "Open as text" 옵션
+- E1. 감지 오판(UTF-8 BOM 등): 수동으로 "Open as text" 옵션
+
+### S-05-02: 대용량 바이너리 다운로드 스트리밍
+**목적**: 큰 바이너리 파일이 메모리 오버헤드 없이 스트리밍 다운로드되는지 검증.
+
+**선행 조건**: 테스트 프로젝트에 임의 5MB 바이너리 파일 준비. 없으면 절차 1에서 생성.
+
+**절차**:
+1. Bash 도구로 5MB 바이너리 파일 생성:
+   ```bash
+   # PowerShell 기준
+   $bytes = New-Object byte[] 5242880
+   (New-Object Random).NextBytes($bytes)
+   [IO.File]::WriteAllBytes("<projectPath>\large-binary.bin", $bytes)
+   ```
+   또는 `dd if=/dev/urandom of=... bs=1M count=5` 계열.
+2. 파일 탐색기에서 `large-binary.bin` 클릭 → S-05-01과 동일한 Download UI 표시 확인
+3. `browser_evaluate`로 raw 다운로드 요청 + 응답 헤더 검증:
+   ```js
+   browser_evaluate(`async () => {
+     const slug = location.pathname.split('/project/')[1].split('/')[0];
+     const r = await fetch('/api/projects/' + slug + '/fs/raw?path=large-binary.bin&download=true', { credentials: 'include' });
+     return {
+       status: r.status,
+       contentType: r.headers.get('Content-Type'),
+       contentLength: r.headers.get('Content-Length'),
+       contentDisposition: r.headers.get('Content-Disposition'),
+     };
+   }`)
+   ```
+
+**기대 결과**:
+- `status: 200`
+- `contentType: application/octet-stream`
+- `contentLength: 5242880`
+- `contentDisposition`에 `attachment; filename=...` 포함

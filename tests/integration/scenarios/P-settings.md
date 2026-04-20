@@ -60,16 +60,43 @@
 **기대 결과**: 새 세션부터 SDK 파라미터로 전달됨 (E 도메인과 교차검증).
 
 ### P-04-02: 서버 재시작
+**목적**: "Restart Server" 액션이 서버 프로세스를 실제로 재기동하고, 클라이언트가 자동 재연결 후 세션을 복원하는지 검증.
+
+**선행 조건**: 스킬 인자 `password:<값>`로 자동 로그인된 상태 (재시작 후 세션 secret 재생성으로 재로그인 필요). 수동 실행 환경에서는 유저가 로그인 정보를 다시 입력해야 하므로 본 시나리오는 자동 모드에서만 PASS 가능.
+
 **절차**:
-1. 현재 접속 URL 호스트가 `localhost` 또는 `127.0.0.1` 인지 확인 (`browser_evaluate("() => location.hostname")`). 다른 값이면 브라우저를 `http://localhost:3000` 으로 재접속
-2. Settings → Advanced → "Restart Server" 버튼 클릭 → 확인 모달 승인
+1. 현재 접속 호스트가 `localhost` 또는 `127.0.0.1` 인지 확인 (`browser_evaluate("() => location.hostname")`). 다른 값이면 `http://localhost:3000` 으로 재접속 (원격 IP에서는 재시작 버튼 비활성 — E1 검증).
+2. 재시작 전 상태 기록 (서버 버전/uptime 등):
+   ```js
+   browser_evaluate(`() => fetch('/api/health').then(r => r.json())`)
+   ```
+3. Settings → Advanced → "Restart Server" 클릭 → 확인 모달 승인
+4. `browser_wait_for({ text: '로그인', time: 60 })` 또는 URL이 `/login`으로 전환되는 것 감지 — 서버 재기동으로 세션 무효화 확인
+5. 자동 로그인 재수행 (스킬 자동 모드):
+   ```js
+   browser_evaluate(`() => {
+     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+     const pw = document.querySelector('input[type="password"]');
+     setter.call(pw, '<PASSWORD_FROM_SKILL_ARG>');
+     pw.dispatchEvent(new Event('input', { bubbles: true }));
+     return true;
+   }`)
+   // 이후 로그인 버튼 클릭 또는 Enter
+   ```
+6. 로그인 후 `/api/health` 재호출 → 서버 uptime이 초기화되어 시작점 가까운 값(3초 이내 등)인지 확인
+7. 재시작 이전에 있던 세션 URL로 이동 → 세션이 히스토리와 함께 복원되는지 확인 (`stream:history` 수신)
+
 **기대 결과**:
-- 서버 프로세스 재기동
-- 클라이언트: 일시 연결 끊김 후 자동 재연결 (R1과 동일)
-- 재시작 전 진행 중 스트림은 abort 처리
+- 서버 프로세스 재기동 (uptime 리셋)
+- 클라이언트: `io server disconnect` → `useWebSocket` 복구 로직으로 자동 재연결 시도
+- 세션 secret 갱신으로 로그인 화면 노출 → 재로그인 후 세션 리스트 복원
+- 재시작 이전 세션의 메시지 히스토리 모두 보존 (JSONL에서 로드)
 
 **엣지케이스**:
-- E1. 원격 접속(비-loopback)에서 재시작 버튼 비활성
+- E1. 원격 접속(비-loopback)에서 재시작 버튼 비활성 — `location.hostname`이 로컬 IP가 아닐 때 UI 상태 검증
+- E2. 재시작 직전 활성 스트림 있음: 스트림 abort 처리되고 마지막 상태까지의 메시지 JSONL 저장 확인
+
+> **수동 로그인 환경 처리**: `password:<값>` 인자가 없으면 재로그인 단계(5)에서 유저 수동 입력 필요. 본 시나리오는 자동 모드에서만 자동으로 완결되며, 수동 모드에서는 절차 4까지만 자동 진행 후 유저 확인 대기.
 
 ---
 
