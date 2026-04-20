@@ -610,7 +610,10 @@
     "close": "ビューアーを閉じる",
     "zoomIn": "ズームイン",
     "zoomOut": "ズームアウト",
-    "resetZoom": "表示をリセット",
+    "zoom100": "原寸大 (100%)",
+    "fitScreen": "画面に合わせる",
+    "fitWidth": "幅に合わせる",
+    "fitHeight": "高さに合わせる",
     "loadingImage": "画像を読み込み中...",
     "loadFailed": "画像の読み込みに失敗しました。"
   },

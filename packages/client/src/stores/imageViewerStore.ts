@@ -13,10 +13,27 @@ export type OpenImageUrls = {
   currentIndex: number;
 };
 export type OpenImageState = OpenImageFile | OpenImageUrls | null;
+export type NaturalSize = { w: number; h: number } | null;
+
+// Pixel-based zoom bounds. The displayed long side is clamped between
+// these values so the image is always visible and never absurdly huge.
+// If 100% (scale=1) falls outside the range, 100% is still allowed.
+const MIN_DISPLAY_PX = 32;
+const MAX_DISPLAY_PX = 20000;
+
+function clampZoom(scale: number, naturalSize: NaturalSize): number {
+  if (!naturalSize) return scale;
+  const longSide = Math.max(naturalSize.w, naturalSize.h);
+  if (longSide <= 0) return scale;
+  const minScale = Math.min(MIN_DISPLAY_PX / longSide, 1);
+  const maxScale = Math.max(MAX_DISPLAY_PX / longSide, 1);
+  return Math.max(minScale, Math.min(maxScale, scale));
+}
 
 interface ImageViewerState {
   openImage: OpenImageState;
   zoomLevel: number;
+  naturalSize: NaturalSize;
 }
 
 interface ImageViewerActions {
@@ -29,6 +46,7 @@ interface ImageViewerActions {
   setZoom: (zoom: number) => void;
   zoomBy: (delta: number) => void;
   resetView: () => void;
+  setNaturalSize: (size: NaturalSize) => void;
   goNext: () => void;
   goPrev: () => void;
 }
@@ -38,6 +56,7 @@ type ImageViewerStore = ImageViewerState & ImageViewerActions;
 const initialState: ImageViewerState = {
   openImage: null,
   zoomLevel: 1,
+  naturalSize: null,
 };
 
 export const useImageViewerStore = create<ImageViewerStore>((set, get) => ({
@@ -47,6 +66,7 @@ export const useImageViewerStore = create<ImageViewerStore>((set, get) => ({
     set({
       openImage: { type: 'file', projectSlug, path },
       zoomLevel: 1,
+      naturalSize: null,
     });
   },
 
@@ -56,6 +76,7 @@ export const useImageViewerStore = create<ImageViewerStore>((set, get) => ({
     set({
       openImage: { type: 'urls', images, currentIndex: clamped },
       zoomLevel: 1,
+      naturalSize: null,
     });
   },
 
@@ -64,15 +85,19 @@ export const useImageViewerStore = create<ImageViewerStore>((set, get) => ({
   },
 
   setZoom: (zoom) => {
-    set({ zoomLevel: Math.max(0.1, Math.min(10, zoom)) });
+    set((s) => ({ zoomLevel: clampZoom(zoom, s.naturalSize) }));
   },
 
   zoomBy: (delta) => {
-    set((s) => ({ zoomLevel: Math.max(0.1, Math.min(10, s.zoomLevel + delta)) }));
+    set((s) => ({ zoomLevel: clampZoom(s.zoomLevel + delta, s.naturalSize) }));
   },
 
   resetView: () => {
     set({ zoomLevel: 1 });
+  },
+
+  setNaturalSize: (size) => {
+    set({ naturalSize: size });
   },
 
   goNext: () => {
@@ -85,6 +110,7 @@ export const useImageViewerStore = create<ImageViewerStore>((set, get) => ({
     set({
       openImage: { ...openImage, currentIndex: nextIndex },
       zoomLevel: 1,
+      naturalSize: null,
     });
   },
 
@@ -98,6 +124,7 @@ export const useImageViewerStore = create<ImageViewerStore>((set, get) => ({
     set({
       openImage: { ...openImage, currentIndex: prevIndex },
       zoomLevel: 1,
+      naturalSize: null,
     });
   },
 }));

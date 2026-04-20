@@ -379,7 +379,10 @@
     "close": "뷰어 닫기",
     "zoomIn": "확대",
     "zoomOut": "축소",
-    "resetZoom": "원래 크기로",
+    "zoom100": "원본 크기 (100%)",
+    "fitScreen": "화면에 맞춤",
+    "fitWidth": "가로에 맞춤",
+    "fitHeight": "세로에 맞춤",
     "loadingImage": "이미지 로딩 중...",
     "loadFailed": "이미지를 불러오지 못했습니다."
   },

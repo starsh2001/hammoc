@@ -610,7 +610,10 @@
     "close": "Fechar visualizador",
     "zoomIn": "Ampliar",
     "zoomOut": "Reduzir",
-    "resetZoom": "Redefinir visualização",
+    "zoom100": "Tamanho real (100%)",
+    "fitScreen": "Ajustar à tela",
+    "fitWidth": "Ajustar à largura",
+    "fitHeight": "Ajustar à altura",
     "loadingImage": "Carregando imagem...",
     "loadFailed": "Falha ao carregar imagem."
   },

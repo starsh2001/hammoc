@@ -12,7 +12,9 @@ import {
   X,
   ZoomIn,
   ZoomOut,
-  RotateCcw,
+  Maximize2,
+  StretchVertical,
+  StretchHorizontal,
   Loader2,
   ChevronLeft,
   ChevronRight,
@@ -25,17 +27,18 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { useOverlayBackHandler } from '../../hooks/useOverlayBackHandler';
 
 const ZOOM_STEP = 0.25;
-const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 10;
+
+type FitMode = 'screen' | 'width' | 'height' | null;
 
 export function ImageViewer() {
   const {
     openImage,
     zoomLevel,
+    naturalSize,
     closeViewer,
-    setZoom: _setZoom,
+    setZoom,
     zoomBy,
-    resetView,
+    setNaturalSize,
     goNext,
     goPrev,
   } = useImageViewerStore();
@@ -45,10 +48,12 @@ export function ImageViewer() {
   const [hasError, setHasError] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [fitMode, setFitMode] = useState<FitMode>(null);
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
   const lastOpenRef = useRef<OpenImageState>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageAreaRef = useRef<HTMLDivElement>(null);
 
   // Panel-aware positioning (same pattern as TextEditor)
   const isMobile = useIsMobile();
@@ -104,12 +109,14 @@ export function ImageViewer() {
       : `urls:${openImage.images[openImage.currentIndex]?.url ?? openImage.currentIndex}`
     : null;
 
-  // Reset state when a new image opens or index changes
+  // Reset state when a new image opens or index changes.
+  // `naturalSize` is owned by the store and already reset there on open/nav.
   useEffect(() => {
     if (imageKey) {
       setIsLoading(true);
       setHasError(false);
       setPosition({ x: 0, y: 0 });
+      setFitMode(null);
     }
   }, [imageKey]);
 
@@ -168,15 +175,26 @@ export function ImageViewer() {
     };
   }, [openImage]);
 
-  // Mouse wheel zoom
+  // Mouse wheel zoom (manual zoom cancels any active fit mode)
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
       zoomBy(delta);
+      setFitMode(null);
     },
     [zoomBy],
   );
+
+  const handleZoomOut = useCallback(() => {
+    zoomBy(-ZOOM_STEP);
+    setFitMode(null);
+  }, [zoomBy]);
+
+  const handleZoomIn = useCallback(() => {
+    zoomBy(ZOOM_STEP);
+    setFitMode(null);
+  }, [zoomBy]);
 
   // Drag to pan
   const handleMouseDown = useCallback(
@@ -204,10 +222,72 @@ export function ImageViewer() {
     setIsDragging(false);
   }, []);
 
-  const handleResetView = useCallback(() => {
-    resetView();
+  // Compute a zoom scale for a given fit mode against the current container/image.
+  // Returns null when measurements are unavailable.
+  const computeFitScale = useCallback(
+    (mode: Exclude<FitMode, null>): number | null => {
+      const container = imageAreaRef.current;
+      if (!container || !naturalSize) return null;
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      if (cw <= 0 || ch <= 0) return null;
+      const scaleX = cw / naturalSize.w;
+      const scaleY = ch / naturalSize.h;
+      if (mode === 'screen') return Math.min(scaleX, scaleY);
+      if (mode === 'width') return scaleX;
+      return scaleY;
+    },
+    [naturalSize],
+  );
+
+  const handleImageLoad = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      if (w > 0 && h > 0) {
+        setNaturalSize({ w, h });
+        const container = imageAreaRef.current;
+        if (container && container.clientWidth > 0 && container.clientHeight > 0) {
+          const scaleX = container.clientWidth / w;
+          const scaleY = container.clientHeight / h;
+          // Initial fit: don't upscale small images beyond 100%
+          setZoom(Math.min(scaleX, scaleY, 1));
+        }
+      }
+      setIsLoading(false);
+    },
+    [setZoom, setNaturalSize],
+  );
+
+  const handleZoom100 = useCallback(() => {
+    setZoom(1);
     setPosition({ x: 0, y: 0 });
-  }, [resetView]);
+    setFitMode(null);
+  }, [setZoom]);
+
+  const handleFit = useCallback(
+    (mode: Exclude<FitMode, null>) => {
+      const scale = computeFitScale(mode);
+      if (scale !== null) setZoom(scale);
+      setPosition({ x: 0, y: 0 });
+      setFitMode(mode);
+    },
+    [computeFitScale, setZoom],
+  );
+
+  // Re-apply active fit mode when the image area resizes (window/panel changes).
+  useEffect(() => {
+    if (!openImage || fitMode === null) return;
+    const container = imageAreaRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      const scale = computeFitScale(fitMode);
+      if (scale !== null) setZoom(scale);
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [openImage, fitMode, computeFitScale, setZoom]);
 
   if (!openImage) return null;
 
@@ -293,9 +373,8 @@ export function ImageViewer() {
             )}
             {/* Zoom controls */}
             <button
-              onClick={() => zoomBy(-ZOOM_STEP)}
-              disabled={zoomLevel <= MIN_ZOOM}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300 disabled:opacity-40"
+              onClick={handleZoomOut}
+              className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300"
               title={t('imageViewer.zoomOut')}
             >
               <ZoomOut className="w-4 h-4" />
@@ -304,19 +383,59 @@ export function ImageViewer() {
               {zoomPercent}%
             </span>
             <button
-              onClick={() => zoomBy(ZOOM_STEP)}
-              disabled={zoomLevel >= MAX_ZOOM}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300 disabled:opacity-40"
+              onClick={handleZoomIn}
+              className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300"
               title={t('imageViewer.zoomIn')}
             >
               <ZoomIn className="w-4 h-4" />
             </button>
+            <div className="w-px h-5 bg-gray-200 dark:bg-[#253040] mx-1" />
             <button
-              onClick={handleResetView}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300"
-              title={t('imageViewer.resetZoom')}
+              onClick={handleZoom100}
+              disabled={!naturalSize}
+              className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300 disabled:opacity-40"
+              title={t('imageViewer.zoom100')}
             >
-              <RotateCcw className="w-4 h-4" />
+              <span className="text-[10px] font-mono font-semibold">1:1</span>
+            </button>
+            <button
+              onClick={() => handleFit('screen')}
+              disabled={!naturalSize}
+              aria-pressed={fitMode === 'screen'}
+              className={`w-7 h-7 flex items-center justify-center rounded disabled:opacity-40 ${
+                fitMode === 'screen'
+                  ? 'bg-gray-300 dark:bg-[#3a4d5e] text-gray-800 dark:text-white'
+                  : 'hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300'
+              }`}
+              title={t('imageViewer.fitScreen')}
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleFit('width')}
+              disabled={!naturalSize}
+              aria-pressed={fitMode === 'width'}
+              className={`w-7 h-7 flex items-center justify-center rounded disabled:opacity-40 ${
+                fitMode === 'width'
+                  ? 'bg-gray-300 dark:bg-[#3a4d5e] text-gray-800 dark:text-white'
+                  : 'hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300'
+              }`}
+              title={t('imageViewer.fitWidth')}
+            >
+              <StretchHorizontal className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleFit('height')}
+              disabled={!naturalSize}
+              aria-pressed={fitMode === 'height'}
+              className={`w-7 h-7 flex items-center justify-center rounded disabled:opacity-40 ${
+                fitMode === 'height'
+                  ? 'bg-gray-300 dark:bg-[#3a4d5e] text-gray-800 dark:text-white'
+                  : 'hover:bg-gray-200 dark:hover:bg-[#253040] text-gray-500 dark:text-gray-300'
+              }`}
+              title={t('imageViewer.fitHeight')}
+            >
+              <StretchVertical className="w-4 h-4" />
             </button>
             <div className="w-px h-5 bg-gray-200 dark:bg-[#253040] mx-1" />
             <button
@@ -331,6 +450,7 @@ export function ImageViewer() {
 
         {/* Image Area */}
         <div
+          ref={imageAreaRef}
           className={`flex-1 overflow-hidden flex items-center justify-center bg-gray-100 dark:bg-gray-950 ${
             isDragging ? 'cursor-grabbing' : 'cursor-grab'
           }`}
@@ -367,7 +487,7 @@ export function ImageViewer() {
                 maxWidth: 'none',
                 maxHeight: 'none',
               }}
-              onLoad={() => setIsLoading(false)}
+              onLoad={handleImageLoad}
               onError={() => {
                 setIsLoading(false);
                 setHasError(true);

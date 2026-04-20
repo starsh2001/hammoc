@@ -374,7 +374,10 @@
     "close": "Close viewer",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
-    "resetZoom": "Reset view",
+    "zoom100": "Actual size (100%)",
+    "fitScreen": "Fit to screen",
+    "fitWidth": "Fit to width",
+    "fitHeight": "Fit to height",
     "loadingImage": "Loading image...",
     "loadFailed": "Failed to load image."
   },
