@@ -872,6 +872,19 @@ export class QueueService {
         await this.notificationService.notifyQueueError('SDK terminated unexpectedly', this.buildSessionUrl());
         return { shouldAdvance: false };
       }
+
+      // Guard: SDK returned a result but with is_error=true (e.g. error_max_budget_usd,
+      // error_max_turns). These arrive as done=true so the !done guard above misses them.
+      if (response.isError) {
+        const te = i18next.getFixedT(this.lang);
+        const reason = response.content
+          ? te('queue.error.sdkError', { value: response.content })
+          : te('queue.error.sdkError', { value: 'SDK returned error result' });
+        log.error(`executePrompt: SDK isError response — ${reason}`);
+        this.pauseWithError(reason);
+        await this.notificationService.notifyQueueError(reason, this.buildSessionUrl());
+        return { shouldAdvance: false };
+      }
     } catch (error) {
       const sdkError = parseSDKError(error);
 
