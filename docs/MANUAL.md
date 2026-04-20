@@ -1635,6 +1635,8 @@ Customize Claude's behavior with a fully editable system prompt template:
 - **Max Turns** — Limit conversation turns per query (1–100)
 - **Max Budget (USD)** — Set cost limit per query ($0.01–$100)
 
+> **Scope (as of v1.3.0)**: these SDK parameters now apply to **both** direct chat sends and Queue Runner executions. Earlier releases silently dropped them in the queue path — if your queue runs started honoring Max Turns or Max Thinking Tokens after upgrading, this is why. Adjust the values if the new behavior surprises you.
+
 ### 12.16 Help
 
 In-app usage guide within the Settings page:
