@@ -32,8 +32,11 @@ vi.mock('../../services/api/queue', () => ({
 }));
 
 import { queueApi } from '../../services/api/queue';
+import { joinProjectRoom, leaveProjectRoom } from '../../services/socket';
 
 const mockedGetStatus = vi.mocked(queueApi.getStatus);
+const mockedJoinProjectRoom = vi.mocked(joinProjectRoom);
+const mockedLeaveProjectRoom = vi.mocked(leaveProjectRoom);
 
 const defaultStatus = {
   isRunning: false,
@@ -67,17 +70,17 @@ describe('useQueueRunner', () => {
     mockedGetStatus.mockResolvedValue(defaultStatus);
   });
 
-  it('TC-QE-29: should emit project:join on mount', async () => {
+  it('TC-QE-29: should join project room on mount', async () => {
     renderHook(() => useQueueRunner('my-project'));
     await act(async () => {}); // flush pending getStatus promise
-    expect(mockSocket.emit).toHaveBeenCalledWith('project:join', 'my-project');
+    expect(mockedJoinProjectRoom).toHaveBeenCalledWith('my-project');
   });
 
-  it('TC-QE-30: should emit project:leave on unmount', async () => {
+  it('TC-QE-30: should leave project room on unmount', async () => {
     const { unmount } = renderHook(() => useQueueRunner('my-project'));
     await act(async () => {}); // flush pending getStatus promise
     unmount();
-    expect(mockSocket.emit).toHaveBeenCalledWith('project:leave', 'my-project');
+    expect(mockedLeaveProjectRoom).toHaveBeenCalledWith('my-project');
   });
 
   it('TC-QE-31: should register queue event listeners', async () => {

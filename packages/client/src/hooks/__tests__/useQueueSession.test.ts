@@ -32,8 +32,10 @@ vi.mock('../../services/api/queue', () => ({
 }));
 
 import { queueApi } from '../../services/api/queue';
+import { leaveProjectRoom } from '../../services/socket';
 
 const mockedGetStatus = vi.mocked(queueApi.getStatus);
+const mockedLeaveProjectRoom = vi.mocked(leaveProjectRoom);
 
 const defaultStoreState = {
   script: '',
@@ -272,7 +274,7 @@ describe('useQueueSession', () => {
     expect(useQueueStore.getState().completedItems.size).toBe(0);
   });
 
-  it('TC-QL-9: currentPromptPreview returns truncated prompt from parsedItems', async () => {
+  it('TC-QL-9: currentItemSummary returns truncated prompt from parsedItems', async () => {
     const longPrompt = 'A'.repeat(200);
     useQueueStore.setState({
       isRunning: true,
@@ -286,7 +288,7 @@ describe('useQueueSession', () => {
     const { result } = renderHook(() => useQueueSession('my-project', 'session-1'));
     await act(async () => {});
 
-    expect(result.current.currentPromptPreview).toBe('A'.repeat(100));
+    expect(result.current.currentItemSummary).toBe('A'.repeat(100));
   });
 
   it('TC-QL-10: initial status fetch calls syncFromStatus', async () => {
@@ -333,6 +335,6 @@ describe('useQueueSession', () => {
     expect(mockSocket.off).toHaveBeenCalledWith('queue:progress', expect.any(Function));
     expect(mockSocket.off).toHaveBeenCalledWith('queue:itemComplete', expect.any(Function));
     expect(mockSocket.off).toHaveBeenCalledWith('queue:error', expect.any(Function));
-    expect(mockSocket.emit).toHaveBeenCalledWith('project:leave', 'my-project');
+    expect(mockedLeaveProjectRoom).toHaveBeenCalledWith('my-project');
   });
 });
