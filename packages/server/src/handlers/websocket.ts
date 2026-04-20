@@ -1199,6 +1199,13 @@ export async function initializeWebSocket(
     // Handle session:join event — attach socket to active running stream (broadcast)
     // Also joins a persistent Socket.io room so future streams auto-include this socket.
     socket.on('session:join', (sessionId: string, projectSlug?: string) => {
+      // Dedup guard: if the same socket re-emits session:join for the same
+      // session it's already in, skip the history / buffer-replay emissions
+      // below. Room and stream.sockets membership are already correct, and
+      // redundant replays on every reconnect (see ea66988 client-side change)
+      // would cost extra bandwidth and trigger unnecessary client re-renders.
+      const alreadyJoinedSame = socketSessionRoom.get(socket.id) === sessionId;
+
       // Detach this socket from any previously-attached stream to prevent
       // events from the old stream leaking to a different session's listeners
       const prevSessionId = socketToSession.get(socket.id);
@@ -1217,7 +1224,8 @@ export async function initializeWebSocket(
         socket.leave(`session:${prevRoomSessionId}`);
       }
 
-      // Join persistent session room (survives beyond ActiveStream lifecycle)
+      // Join persistent session room (survives beyond ActiveStream lifecycle).
+      // socket.join() is idempotent — safe to call even if already joined.
       socket.join(`session:${sessionId}`);
       // Leave previous project room if switching projects (or if new join has no projectSlug)
       const prevProjectRoom = socketProjectRoom.get(socket.id);
@@ -1267,6 +1275,14 @@ export async function initializeWebSocket(
         // Non-UUID session: only send in-memory chain state (no disk persistence)
         const freshItems = (chainState.get(sessionId) || []).map(toPublicChainItem);
         socket.emit('chain:update', { sessionId, items: freshItems });
+      }
+
+      // Dedup: a duplicate session:join from the already-present socket for
+      // the same session doesn't need history / buffer-replay — the socket
+      // already has them. Room membership and chain:update above are idempotent
+      // and cheap, so we let those run.
+      if (alreadyJoinedSame) {
+        return;
       }
 
       if (!stream || stream.status !== 'running') {
