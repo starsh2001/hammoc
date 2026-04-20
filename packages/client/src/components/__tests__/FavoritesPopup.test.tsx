@@ -83,9 +83,11 @@ describe('FavoritesPopup', () => {
     const item0 = screen.getByTestId('favorite-item-0');
     const item1 = screen.getByTestId('favorite-item-1');
 
-    fireEvent.dragStart(item0);
-    fireEvent.dragOver(item1, { preventDefault: vi.fn() });
-    fireEvent.drop(item1);
+    const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '', dropEffect: '' };
+    fireEvent.dragStart(item0, { dataTransfer });
+    fireEvent.dragEnter(item1, { dataTransfer });
+    fireEvent.dragOver(item1, { preventDefault: vi.fn(), dataTransfer });
+    fireEvent.drop(item1, { dataTransfer });
 
     expect(onReorder).toHaveBeenCalledWith([
       { command: '/BMad:tasks:create-doc', scope: 'project' },
@@ -219,9 +221,11 @@ describe('FavoritesPopup', () => {
       const item0 = screen.getByTestId('favorite-item-0');
       const item1 = screen.getByTestId('favorite-item-1');
 
-      fireEvent.dragStart(item0);
-      fireEvent.dragOver(item1, { preventDefault: vi.fn() });
-      fireEvent.drop(item1);
+      const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '', dropEffect: '' };
+      fireEvent.dragStart(item0, { dataTransfer });
+      fireEvent.dragEnter(item1, { dataTransfer });
+      fireEvent.dragOver(item1, { preventDefault: vi.fn(), dataTransfer });
+      fireEvent.drop(item1, { dataTransfer });
 
       expect(onReorder).toHaveBeenCalledWith([
         { command: '/my-global-skill', scope: 'global' },
@@ -305,9 +309,11 @@ describe('FavoritesPopup', () => {
       const item0 = screen.getByTestId('star-favorite-item-0');
       const item1 = screen.getByTestId('star-favorite-item-1');
 
-      fireEvent.dragStart(item0);
-      fireEvent.dragOver(item1, { preventDefault: vi.fn() });
-      fireEvent.drop(item1);
+      const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '', dropEffect: '' };
+      fireEvent.dragStart(item0, { dataTransfer });
+      fireEvent.dragEnter(item1, { dataTransfer });
+      fireEvent.dragOver(item1, { preventDefault: vi.fn(), dataTransfer });
+      fireEvent.drop(item1, { dataTransfer });
 
       expect(onReorderStarFavorites).toHaveBeenCalledWith(['draft', 'help', 'story-checklist']);
     });
