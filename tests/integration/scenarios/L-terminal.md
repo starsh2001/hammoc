@@ -60,33 +60,23 @@
 
 ## L3. 보안 `[EDGE]`
 
-### L-03-01: 로컬 IP 만 허용
+### L-03-01: 로컬 IP 만 허용 `[MANUAL]`
 
-> **전제**: 이 시나리오는 반드시 `TRUST_PROXY=true` 환경에서 실행해야 한다. 브라우저의 TCP peer는 항상 `127.0.0.1`(루프백)이므로, `TRUST_PROXY=false` (기본값)에서는 `X-Forwarded-For` 헤더가 무시되어 외부 IP 위장이 불가능하다 — **이는 올바른 보안 동작**이며 버그가 아님. 필터 로직 자체의 검증은 TRUST_PROXY=true 환경에서만 유효하다.
->
-> **런처 실행 예시** (필수):
-> ```
-> node scripts/run-integration-test.mjs --port=3000 --trust-proxy
-> ```
-> 런처의 `--trust-proxy` 플래그가 `TRUST_PROXY=true` 환경변수를 주입함 ([run-integration-test.mjs buildEnv](../../scripts/run-integration-test.mjs)). 이 플래그 없이 실행하면 **SKIP이 아니라 런처 재기동으로 해결**해야 한다 — "환경 미충족"은 런처 설정 문제지 기능 문제가 아니다.
+**자동화 불가 사유**: 터미널 생성은 WebSocket `terminal:create` 이벤트 전용이며 REST 엔드포인트가 없다 (`POST /api/terminals`는 존재하지 않음). 서버는 socket.io 핸드셰이크 시점의 `extractClientIP(socket)` 결과로 필터링하는데, 브라우저 JS는 WebSocket 업그레이드 요청의 헤더(특히 `X-Forwarded-For`)를 제어할 수 없다. 외부 IP를 가장하려면 socket.io client에 `extraHeaders` 옵션을 실제 reverse-proxy 앞단에서 주입해야 하며, Playwright MCP 자동화로는 재현 불가.
 
-**절차**:
-1. 서버 실행 환경 확인: `fetch('/api/server/info').then(r => r.json())` 응답의 `trustProxy` 필드 또는 런처 로그로 TRUST_PROXY 설정 확인
-2. **TRUST_PROXY 비활성이면 런처를 `--trust-proxy` 플래그로 재기동한 뒤 본 시나리오를 실행**. 런처 재기동이 불가능한 환경이면 FAIL (인프라 이슈)로 기록하고 런처 설정 수정 작업을 후속 조치로 제안.
-3. TRUST_PROXY=true 확인된 경우: `browser_evaluate`로 외부 IP를 가장한 헤더로 터미널 생성 API 직접 호출:
-   ```js
-   fetch('/api/terminals', {
-     method: 'POST',
-     headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '203.0.113.42' },
-     body: JSON.stringify({ projectSlug: '<slug>' })
-   }).then(r => ({ status: r.status }))
+**수동 절차 (릴리즈 직전 회귀 시)**:
+1. 런처를 `--trust-proxy` 플래그로 기동
+2. `curl` 또는 외부 도구로 WebSocket 업그레이드 요청에 `X-Forwarded-For: 203.0.113.42` 헤더 주입:
+   ```bash
+   # 예: websocat + 헤더 주입
+   websocat -H "X-Forwarded-For: 203.0.113.42" ws://localhost:3000/socket.io/
    ```
-4. 응답 상태코드 403 또는 에러 코드 `TERMINAL_ACCESS_DENIED` 확인
-5. 정상 요청(헤더 없음)은 생성 성공 확인
+3. `terminal:create` 이벤트 전송 → 서버가 `terminal:error` with `TERMINAL_ACCESS_DENIED` 반환 확인
+4. 헤더 없이 동일 요청 → 정상 생성
 
-**기대 결과**: TRUST_PROXY=true 환경에서 외부 IP (`X-Forwarded-For: 203.0.113.42`) 감지 시 403, 로컬 요청은 정상 처리.
+**기대 결과**: `TRUST_PROXY=true` + 외부 IP 헤더 시 `TERMINAL_ACCESS_DENIED`, 로컬 IP는 정상 처리.
 
-> **구현 메커니즘**: `networkUtils.extractRequestIP`는 `TRUST_PROXY=true` + TCP peer가 루프백일 때만 `X-Forwarded-For`를 참조. TRUST_PROXY=false일 때는 항상 TCP peer(127.0.0.1) 사용 → 헤더 주입 무의미. 따라서 본 시나리오는 반드시 TRUST_PROXY=true 환경에서만 실행할 것.
+> **구현 참조**: `networkUtils.extractRequestIP`는 `TRUST_PROXY=true` + TCP peer가 루프백일 때만 `X-Forwarded-For`를 참조 ([networkUtils.ts](../../packages/server/src/utils/networkUtils.ts)). `packages/server/src/utils/__tests__/networkUtils.test.ts` 에 단위 테스트 커버리지 있으므로 수동 회귀 시에도 해당 유닛테스트 실행으로 1차 검증 가능.
 
 ### L-03-02: TERMINAL_ENABLED=false
 
@@ -103,7 +93,7 @@ node scripts/run-integration-test.mjs --port=3000 --with-terminal-disabled
    > **중요**: 반드시 `localhost` 사용. `127.0.0.1`은 브라우저 쿠키 관점에서 별도 origin이라 주 서버(`localhost:<port>`)의 세션 쿠키가 전달되지 않아 자동 로그인이 실패한다. 런처는 `localhost:<port>` URL을 인쇄한다.
 2. 기존 프로젝트 선택 또는 생성 → 프로젝트 페이지 진입
 3. 터미널 탭 클릭
-4. `browser_wait_for(text="터미널이 비활성화되었습니다", time=10)` — 소켓 연결 후 `terminal:access` 이벤트 도착 대기
+4. `browser_wait_for(text="터미널 기능이 비활성화되어 있습니다", time=10)` — 소켓 연결 후 `terminal:access` 이벤트 도착 대기
 5. `browser_snapshot` → 안내 메시지 + ShieldAlert 아이콘 확인, "새 터미널" 버튼 없음 확인
 6. `browser_evaluate("() => fetch('/api/terminal-status').then(r=>r.status)")` — WebSocket 전용 기능이므로 404 이상 확인으로 충분
 7. `browser_navigate("http://localhost:<port>")` 로 주 서버 복귀
