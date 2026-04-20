@@ -37,6 +37,7 @@ import { notificationService, formatAskQuestionPrompt } from '../services/notifi
 import { preferencesService } from '../services/preferencesService.js';
 import { getOrCreateQueueService, getQueueInstances } from '../controllers/queueController.js';
 import { createLogger } from '../utils/logger.js';
+import { clampEffortForModel } from '../utils/effortUtils.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
 import { rateLimitProbeService } from '../services/rateLimitProbeService.js';
 import { ptyService } from '../services/ptyService.js';
@@ -2464,19 +2465,7 @@ async function handleChatSend(
     // Load preferences early for advanced settings + timeout
     const effectivePrefs = await preferencesService.getEffectivePreferences();
 
-    // Clamp unsupported effort levels:
-    //   · 'max'   → 'high' unless model supports it (Opus 4.6+, Sonnet 4.6)
-    //   · 'xhigh' → 'high' unless model supports it (Opus 4.7 only)
-    const resolvedEffort = effort ?? effectivePrefs.defaultEffort;
-    const supportsMax = !!model && (
-      model === 'opus' || model === 'sonnet' ||
-      model.includes('opus-4-6') || model.includes('opus-4-7') || model.includes('sonnet-4-6')
-    );
-    const supportsXHigh = !!model && (model === 'opus' || model.includes('opus-4-7'));
-    const effectiveEffort =
-      (resolvedEffort === 'max' && !supportsMax) || (resolvedEffort === 'xhigh' && !supportsXHigh)
-        ? 'high'
-        : resolvedEffort;
+    const effectiveEffort = clampEffortForModel(effort ?? effectivePrefs.defaultEffort, model);
 
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : { sessionId }),

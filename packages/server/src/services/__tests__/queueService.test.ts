@@ -164,6 +164,7 @@ const mockNotificationService = {
 // Mock preferencesService
 const mockPreferencesService = {
   readPreferences: vi.fn().mockResolvedValue({}),
+  getEffectivePreferences: vi.fn().mockResolvedValue({}),
   getTelegramSettings: vi.fn().mockResolvedValue({}),
 };
 
@@ -292,6 +293,54 @@ describe('QueueService', () => {
       expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(1);
       const options = mockSendMessageWithCallbacks.mock.calls[0][2];
       expect(options.sessionId).toMatch(/^[0-9a-f-]{36}$/);
+    });
+  });
+
+  describe('buildChatOptions propagates advanced preferences', () => {
+    it('passes maxBudgetUsd, maxTurns, maxThinkingTokens, customSystemPrompt, and effort from preferences', async () => {
+      mockPreferencesService.getEffectivePreferences.mockResolvedValueOnce({
+        maxBudgetUsd: 0.5,
+        maxTurns: 10,
+        maxThinkingTokens: 8000,
+        customSystemPrompt: 'Respond tersely.',
+        defaultEffort: 'high',
+        enableQueueCheckpointing: true,
+      });
+
+      await queueService.start([createPromptItem('hi')], 'test-project');
+
+      const options = mockSendMessageWithCallbacks.mock.calls[0][2];
+      expect(options.maxBudgetUsd).toBe(0.5);
+      expect(options.maxTurns).toBe(10);
+      expect(options.maxThinkingTokens).toBe(8000);
+      expect(options.customSystemPrompt).toBe('Respond tersely.');
+      expect(options.effort).toBe('high');
+      expect(options.enableFileCheckpointing).toBe(true);
+    });
+
+    it('omits advanced fields when preferences do not define them', async () => {
+      mockPreferencesService.getEffectivePreferences.mockResolvedValueOnce({});
+
+      await queueService.start([createPromptItem('hi')], 'test-project');
+
+      const options = mockSendMessageWithCallbacks.mock.calls[0][2];
+      expect(options.maxBudgetUsd).toBeUndefined();
+      expect(options.maxTurns).toBeUndefined();
+      expect(options.maxThinkingTokens).toBeUndefined();
+      expect(options.customSystemPrompt).toBeUndefined();
+      expect(options.effort).toBeUndefined();
+    });
+
+    it('clamps unsupported max/xhigh effort to high when model does not support it', async () => {
+      mockPreferencesService.getEffectivePreferences.mockResolvedValueOnce({
+        defaultEffort: 'max',
+      });
+
+      // haiku does not support 'max' → falls back to 'high'
+      await queueService.start([createPromptItem('hi', { model: 'haiku' })], 'test-project');
+
+      const options = mockSendMessageWithCallbacks.mock.calls[0][2];
+      expect(options.effort).toBe('high');
     });
   });
 

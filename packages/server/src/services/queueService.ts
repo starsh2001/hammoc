@@ -20,6 +20,7 @@ import { ERROR_CODES, SUPPORTED_LANGUAGES } from '@hammoc/shared';
 import { ChatService } from './chatService.js';
 import { parseSDKError } from '../utils/errors.js';
 import { createLogger } from '../utils/logger.js';
+import { clampEffortForModel } from '../utils/effortUtils.js';
 import i18next from '../i18n.js';
 import { isSnippetRef, resolveSnippet, SnippetError } from '../utils/snippetResolver.js';
 
@@ -953,12 +954,23 @@ export class QueueService {
       opts.sessionId = this.currentSessionId;
     }
     if (this.currentModel) opts.model = this.currentModel;
+
+    // Propagate advanced preferences the same way the chat path does
+    // ([websocket.ts] initiateChat). Without this, queue runs ignored
+    // maxBudgetUsd, maxTurns, maxThinkingTokens, customSystemPrompt, and
+    // effort — users' advanced settings were silently dropped.
     try {
-      const prefs = await this.preferencesService.readPreferences();
+      const prefs = await this.preferencesService.getEffectivePreferences();
+      if (prefs.customSystemPrompt !== undefined) opts.customSystemPrompt = prefs.customSystemPrompt;
+      if (prefs.maxThinkingTokens !== undefined) opts.maxThinkingTokens = prefs.maxThinkingTokens;
+      if (prefs.maxTurns !== undefined) opts.maxTurns = prefs.maxTurns;
+      if (prefs.maxBudgetUsd !== undefined) opts.maxBudgetUsd = prefs.maxBudgetUsd;
+      const effort = clampEffortForModel(prefs.defaultEffort, this.currentModel);
+      if (effort !== undefined) opts.effort = effort;
       if (prefs.enableQueueCheckpointing) {
         opts.enableFileCheckpointing = true;
       }
-    } catch { /* use default (no checkpointing) */ }
+    } catch { /* use SDK defaults on read failure */ }
     return opts;
   }
 
