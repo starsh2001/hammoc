@@ -94,19 +94,13 @@ browser_evaluate(`() => fetch('/api/debug/kill-ws', {
 ### R-03-02: 권한 응답 경합
 **목적**: 두 탭이 동일 세션을 공유할 때 한 탭의 권한 응답이 다른 탭의 모달을 즉시 닫는지 검증.
 
-**도구 선택**: Bash 도구를 사용한다. Write는 "File has not been read yet" SDK 오류가 선행하므로 부적합. Bash는 read-before-X 제약 없이 권한 모달을 발동한다.
+**도구 선택**: Bash 도구를 사용한다 (Write는 "File has not been read yet" SDK 오류 선행). 단, Bash 명령은 `~/.claude/settings.json` allowlist 매치 시 SDK가 `canUseTool`을 스킵한다 — allowlist에 매치 안 되는 명령을 사용할 것 (`echo`는 일반적으로 미등록).
 
-**모드**: **`plan` 모드 필수**. `default`/`acceptEdits` 모드는 Bash를 자동 승인(canUseTool 미호출)하므로 모달이 뜨지 않는다.
+**모드**: **Ask 모드 (`permissionMode='default'`)**. `bypassPermissions`/`acceptEdits`는 자동 승인.
 
 **절차**:
 1. `browser_tabs(action="new")`로 탭 B 오픈, 같은 세션 URL 접속 → 두 탭이 같은 `sessionId` 공유 확인
-2. `plan` 모드로 전환 (PATCH /api/preferences permissionMode='plan' 또는 UI 사이클):
-   ```js
-   browser_evaluate(`() => fetch('/api/preferences', {
-     method: 'PATCH', headers: {'Content-Type':'application/json'},
-     body: JSON.stringify({ permissionMode: 'plan' }), credentials: 'include'
-   }).then(r => r.json())`)
-   ```
+2. Ask 모드 확인 (UI "Ask" 또는 `permissionMode: 'default'`)
 3. 탭 A에서 `"Run \`echo hello\` in the shell."` 전송 → 두 탭 모두에서 Bash 권한 모달/ToolCard 허용/거절 버튼 노출 확인:
    ```js
    browser_evaluate(`() => !!document.querySelector('[data-testid="permission-request"], [role="dialog"][aria-label*="권한"]')`)

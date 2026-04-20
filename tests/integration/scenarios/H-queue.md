@@ -125,32 +125,27 @@ Hello 2
 ## H5. 실행 중 권한 · 예산 이벤트 `[SDK] [EDGE]`
 
 ### H-05-01: 큐 실행 중 권한 요청 발생
-**목적**: **plan 모드** 큐 실행 중 Bash 도구 호출이 발생하면 권한 모달이 뜨고, 응답할 때까지 큐가 대기하는지 검증.
+**목적**: Ask 모드(`permissionMode='default'`) 큐 실행 중 Bash 도구 호출이 발생하면 권한 모달이 뜨고, 응답할 때까지 큐가 대기하는지 검증.
 
-**모드 선택**: `plan` 모드를 사용한다. `default` (UI의 "Ask") 모드는 CLI 설정 파일 allowlist 기반 자동 승인으로, Bash가 자동 허용될 수 있어 권한 모달이 뜨지 않는다. `plan` 모드는 모든 도구 호출에 대해 `canUseTool` 콜백을 발동하므로 Bash도 반드시 모달이 뜬다.
+**도구 선택**: Write는 "File has not been read yet" SDK 오류가 권한 모달 이전에 선행하므로 부적합. **Bash 도구**를 사용한다. 단, Bash 명령은 `~/.claude/settings.json`의 `permissions.allow` 패턴에 매치되면 SDK가 `canUseTool`을 스킵한다. 테스트에서는 allowlist에 매치 안 되는 명령을 사용해야 한다.
 
-**도구 선택**: Write 도구는 SDK 계약상 Read 선행이 필수("File has not been read yet")라 권한 모달 이전에 SDK 오류가 선행한다. **Bash 도구**를 사용한다.
+**선행 조건 확인**: Bash 명령이 유저 allowlist에 없어야 한다. 다음으로 확인:
+```bash
+# Bash 도구로 allowlist 확인
+cat ~/.claude/settings.json | grep -A 20 '"allow"'
+```
+`echo` 패턴(`Bash(echo:*)`)이 allowlist에 **없으면** `"echo hello"` 프롬프트가 안전하다. 있으면 allowlist에 없는 다른 명령(예: `"List files: ls -la"`의 `ls`)으로 대체.
 
 **절차**:
-1. `plan` 모드로 전환:
-   ```js
-   browser_evaluate(`() => fetch('/api/preferences', {
-     method: 'PATCH',
-     headers: {'Content-Type':'application/json'},
-     body: JSON.stringify({ permissionMode: 'plan' }),
-     credentials: 'include'
-   }).then(r => r.json())`)
-   ```
-   또는 UI에서 Shift+Tab으로 "Plan" 라벨이 표시될 때까지 사이클.
+1. Ask 모드로 전환 (UI 상에서 "Ask" 라벨 확인, 또는 `PATCH /api/preferences` with `permissionMode: 'default'`).
 2. 큐 탭 → 3개 항목 구성:
-   - `"Run \`echo hello\` in the shell."` (Bash 권한 모달 유도)
+   - `"Run \`echo hello\` in the shell."` (Bash 권한 모달 유도 — allowlist 미포함 명령)
    - `"Say 'done' and stop."` (후속 대기 확인용)
    - `"Say 'ok' and stop."`
 3. 실행 시작 → 첫 항목에서 Bash 도구 호출 → 권한 모달 등장 확인
 4. 모달이 뜬 상태로 3초 대기 → 두 번째 항목이 `pending` 유지되는지 확인
 5. 모달에서 "도구 실행 허용" 클릭 → Bash 실행 완료 후 두 번째 항목으로 진행
 6. 두 번째 항목에서 다시 모달이 뜨면 "도구 실행 거절" 클릭 → 해당 항목의 ToolCard가 `실패` 상태, 큐는 설정에 따라 다음 항목으로 넘어가거나 중단
-7. **정리**: `permissionMode`를 원래 값으로 복원
 
 **기대 결과**:
 - Allow: 도구 실행 후 Claude 응답 계속, 큐 다음 항목 자동 진행
@@ -158,8 +153,9 @@ Hello 2
 - 모달이 열려있는 동안 큐 상태는 "대기 중"으로 잠금 (`queueLocked=true`)
 
 **엣지케이스**:
-- E1. `bypassPermissions`나 `acceptEdits` 모드였다면 모달이 발동하지 않으므로, 시작 전 반드시 `plan` 모드인지 확인.
-- E2. 권한 타임아웃 (D-04-01과 교차): 모달에 응답하지 않고 `__HAMMOC_PERMISSION_TIMEOUT_MS__` 단축 시 자동 deny 후 큐 진행 방식 확인.
+- E1. `bypassPermissions`/`acceptEdits` 모드에서는 모달이 발동하지 않으므로, 시작 전 반드시 `default` 모드인지 확인.
+- E2. 사용 중인 Bash 명령이 `~/.claude/settings.json` allowlist에 있으면 SDK가 `canUseTool`을 스킵해 모달이 안 뜬다. 선행 조건의 allowlist 확인 단계를 스킵하지 말 것.
+- E3. 권한 타임아웃 (D-04-01과 교차): 모달에 응답하지 않고 `__HAMMOC_PERMISSION_TIMEOUT_MS__` 단축 시 자동 deny 후 큐 진행 방식 확인.
 
 ### H-05-02: 큐 실행 중 Budget 초과
 **목적**: `maxBudgetUsd` 초과 시 SDK가 `error_max_budget_usd`를 반환해 큐가 중단되는지 검증.
