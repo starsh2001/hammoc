@@ -54,18 +54,18 @@
 >
 > 이 플래그는 `scripts/mock-telegram.mjs`를 `<port>+17`에 백그라운드로 기동하고 `BOT_API_BASE_URL=http://127.0.0.1:<mockPort>`를 주 서버 env에 주입한다. 사전 검증:
 > ```js
-> browser_evaluate(`() => fetch('/mock-telegram/health').then(r => r.ok)`)  // true 필요
+> browser_evaluate(`() => fetch('http://127.0.0.1:<mockPort>/mock-telegram/health').then(r => r.ok)`)  // true 필요
 > ```
 > 주 서버 프로세스에 환경변수가 실제로 들어갔는지는 `/api/preferences`에 직접 노출되지 않으므로, O-02-01의 "Send Test" 결과를 보고 **목 서버 messages 로그에 기록이 남는지**로 확인할 것. 실 Telegram API로 빠지면 `success:false, error:"Not Found"`가 반환된다.
 
 ### O-02-01: 설정 & 테스트 메시지
 **절차**:
-1. 목 Telegram 서버 기동 확인 (`browser_evaluate` fetch `/mock-telegram/health` → 200)
+1. 목 Telegram 서버 기동 확인 (`browser_evaluate` fetch `http://127.0.0.1:<mockPort>/mock-telegram/health` (mockPort = 주 포트 + 17) → 200)
 2. Settings → Notifications → Telegram 섹션
 3. 토큰 `test-token`, 채팅 ID `123456` 입력 → "저장"
 4. "Send Test" 클릭
-5. `browser_evaluate` fetch로 `/mock-telegram/messages` → 최근 메시지 목록에 테스트 메시지 포함 확인
-6. 설정 파일 검증: `fetch('/api/settings')` → Telegram 설정 저장 확인
+5. `browser_evaluate` fetch로 `http://127.0.0.1:<mockPort>/mock-telegram/messages` (mockPort = 주 포트 + 17, 예: 3000 → 3017, 21213 → 21230) → 최근 메시지 목록에 테스트 메시지 포함 확인
+6. 설정 저장 검증: `fetch('/api/preferences/telegram', { credentials: 'include' }).then(r => r.json())` → 토큰(마스킹된 형태)과 채팅 ID가 저장되어 있는지 확인
 
 **기대 결과**: 목 서버에 `sendMessage` 호출 기록, 설정 저장.
 
@@ -74,7 +74,7 @@
 1. O-02-01 상태에서 Settings → Notifications → Telegram 섹션 → **"Always notify (even when session is visible)"** 토글 활성화 → 저장
    - 이 옵션이 없으면 세션이 활성(소켓 연결됨) 상태에서는 알림이 억제되어 테스트 불가
 2. 채팅 페이지로 이동 → "Read file /etc/passwd" 같은 권한 필요 프롬프트 전송
-3. 권한 모달 발생 → `/mock-telegram/messages`에 "권한 요청" 알림 도착 확인
+3. 권한 모달 발생 → `http://127.0.0.1:<mockPort>/mock-telegram/messages` (mockPort = 주 포트 + 17, 예: 3000 → 3017, 21213 → 21230)에 "권한 요청" 알림 도착 확인
 4. "허용" 클릭 → 응답 완료 대기
 5. 목 서버에 "응답 완료" 알림 도착 확인
 6. **정리** — Always notify 토글 비활성화 (원래 상태 복원)

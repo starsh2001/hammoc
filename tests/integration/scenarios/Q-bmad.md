@@ -29,7 +29,7 @@
 
 **설계 주의 (현재 구현)**:
 - 메뉴 항목은 `isBmadProject === false`일 때만 표시됨 ([ProjectCard.tsx](../../packages/client/src/components/ProjectCard.tsx)). 이미 BMad인 프로젝트에서는 메뉴 자체가 노출되지 않아 사용자 혼동 방지.
-- BMad 리소스는 번들 템플릿(`packages/server/resources/bmad/<version>/`)에서 로컬 복사 방식이므로 네트워크 다운로드 개념은 없다.
+- BMad 리소스는 번들 템플릿(`packages/server/resources/bmad-method/<version>/`)에서 로컬 복사 방식이므로 네트워크 다운로드 개념은 없다.
 
 **엣지케이스**:
 - E1. 이미 디스크에 `.bmad-core/`가 있지만 `isBmadProject=false`로 잘못 기록된 엣지: 서버가 `409 ALREADY_BMAD` 반환 → 클라이언트가 실패 토스트(`project.bmadSetupError`) 표시 (현재는 재요청/덮어쓰기 플로우 미구현 — future feature).

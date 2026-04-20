@@ -79,8 +79,14 @@
 **절차**:
 1. ChatHeader 모델 드롭다운 오픈 → 1M 지원 모델(현재는 Opus 4.7) 선택. 드롭다운 자체에 해당 모델이 없으면 본 시나리오는 **모델 라인업에 1M 지원 모델 부재**로 판정, UI에 "1M 지원 모델 없음" 안내가 적절히 표시되는지 확인하는 경로로 전환
 2. 모델 선택 후 ContextUsageDisplay에 호버 → 최대 컨텍스트 표기 확인
-3. `browser_evaluate("() => fetch('/api/chat/model-info?model=claude-opus-4-7').then(r => r.json())")` → `contextWindow === 1000000` 검증
-4. UI 텍스트가 "1M" 또는 "1,000,000" 포함 확인
+3. 채팅에 짧은 메시지(`"hi"`) 전송 → 스트리밍 완료 후 ContextUsageDisplay에 하단 최대치가 `1,000,000` 또는 `1M` 로 표시되는지 `browser_evaluate`로 확인:
+   ```js
+   browser_evaluate(`() => {
+     const el = document.querySelector('[data-testid="context-usage-display"], [title*="Context"]');
+     return { text: el?.textContent ?? '', title: el?.getAttribute('title') ?? '' };
+   }`)
+   ```
+   (SDK가 잘못된 `contextWindow`를 돌려줘도 `correctContextWindow` 가 교정하므로 UI 값을 truth로 본다.)
 
 **기대 결과**:
 - `contextWindow` 1,000,000 표시

@@ -92,7 +92,11 @@
 2. 프로젝트 페이지로 복귀 후 세션 리스트에서 방금 만든 세션 카드 클릭 (또는 "계속" 버튼)
 3. `browser_snapshot` → 이전 메시지 "Hello" 및 응답이 히스토리에 렌더링됨 확인
 4. "Continue." 메시지 전송 → 응답 수신
-5. `fetch('/api/projects/<slug>/sessions/<id>/messages')` → 메시지 카운트 ≥ 4 확인 (user+assistant×2)
+5. 응답 완료 후 DOM 메시지 버블 카운트 확인 (REST `sessions/:id/messages` 엔드포인트는 없음 — 히스토리는 `session:join` 시 `stream:history` 이벤트로 전달되고 클라이언트가 렌더):
+   ```js
+   browser_evaluate(`() => document.querySelectorAll('[data-testid="message-bubble"], .message-bubble').length`)
+   // ≥ 4 (user+assistant 2쌍)
+   ```
 
 **기대 결과**:
 - `session:join` + `resume: <sessionId>` 이벤트

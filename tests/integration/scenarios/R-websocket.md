@@ -72,9 +72,13 @@ browser_evaluate(`() => fetch('/api/debug/kill-ws', {
 1. 세션에서 3~4회 메시지 전송/응답 완료
 2. `browser_evaluate("() => location.reload()")`로 재로드
 3. `browser_snapshot` → 메시지 순서 기록
-4. 서버 `GET /api/sessions/:id/messages` API 호출 (browser_evaluate fetch) → 순서 비교
+4. 재로드 후 `session:join`이 서버에서 다시 발송한 `stream:history` 페이로드로 히스토리가 재렌더됨. 첫 재로드 때 수집한 DOM 순서와 두 번째 재로드(절차 2 반복) DOM 순서가 동일한지 `browser_evaluate`로 비교:
+   ```js
+   browser_evaluate(`() => [...document.querySelectorAll('[data-testid="message-bubble"], .message-bubble')]
+     .map(el => el.textContent.trim().slice(0, 40))`)
+   ```
 
-**기대 결과**: UI 순서와 서버 기록 순서 일치.
+**기대 결과**: 두 번의 재로드 후 DOM 순서가 동일 — 서버의 JSONL 기록과 일치하므로 순서 재현성이 보장됨.
 
 ---
 
@@ -109,7 +113,7 @@ browser_evaluate(`() => fetch('/api/debug/kill-ws', {
 5. 탭 B에서 `browser_wait_for`로 모달/인라인 버튼이 사라지고 ToolCard가 `Running` → `Completed`로 전이되는지 확인
 
 **기대 결과**:
-- 먼저 도착한 응답이 서버 상태에 적용됨 (`permission:response` 소켓 이벤트)
+- 먼저 도착한 응답이 서버 상태에 적용됨 (client→server `permission:respond`, server→all-session-sockets `permission:resolved`)
 - 두 번째 탭의 모달/인라인 버튼은 자동으로 닫히거나 비활성화됨
 - 서버 상태 일관성: 동일 `toolUseId`에 대한 중복 응답은 서버에서 무시
 

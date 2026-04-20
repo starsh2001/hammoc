@@ -190,7 +190,10 @@ cat ~/.claude/settings.json | grep -A 20 '"allow"'
 4. 실행 → 아이템 1 완료 후 아이템 2 시작 시점에 SDK budget 에러 기대.
 5. 큐 상태 확인:
    ```js
-   browser_evaluate(`() => fetch('/api/queue/status', { credentials: 'include' }).then(r => r.json())`)
+   browser_evaluate(`() => {
+     const slug = location.pathname.split('/project/')[1]?.split('/')[0];
+     return fetch('/api/projects/' + slug + '/queue/status', { credentials: 'include' }).then(r => r.json());
+   }`)
    // lastError.error 에 'budget' 또는 'error_max_budget_usd' 포함 기대
    ```
 6. **정리**: `maxBudgetUsd` 원래 값으로 복원.

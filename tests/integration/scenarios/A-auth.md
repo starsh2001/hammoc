@@ -47,7 +47,7 @@
 > **설계 주의**: 설정 완료 환경(`authenticated=true` 또는 `apiKeySet=true`)에서 `/onboarding` 직접 접근 시 `OnboardingPage`가 500ms 후 `/`로 자동 리디렉션 (의도된 설계, [OnboardingPage.tsx:36-41](../../packages/client/src/pages/OnboardingPage.tsx#L36-L41)). 따라서 본 시나리오는 **미설정 상태**에서만 체크리스트 검증이 유효하다.
 
 **절차**:
-1. 설정 상태 확인: `fetch('/api/auth/cli-status').then(r => r.json())`
+1. 설정 상태 확인: `fetch('/api/cli-status').then(r => r.json())`
 2. `authenticated || apiKeySet` 이면 본 시나리오는 **N/A (설정 완료 환경)** 로 기록하고 A-02-02로 진행
 3. 미설정 상태인 경우에만: `browser_navigate("/onboarding")` → `browser_snapshot` → 체크리스트 항목 상태 수집
 
