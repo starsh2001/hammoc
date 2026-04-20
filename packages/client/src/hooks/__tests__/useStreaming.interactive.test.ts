@@ -28,6 +28,11 @@ const mockSocket = {
 
 vi.mock('../../services/socket', () => ({
   getSocket: () => mockSocket,
+  joinProjectRoom: vi.fn(),
+  leaveProjectRoom: vi.fn(),
+  rejoinProjectRooms: vi.fn(),
+  forceReconnect: vi.fn(),
+  disconnectSocket: vi.fn(),
 }));
 
 // Mock messageStore

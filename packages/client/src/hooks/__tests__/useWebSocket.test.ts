@@ -6,6 +6,11 @@ import { createMockSocket, MockSocket } from '../../test-utils/mockSocket';
 // Mock the socket service
 vi.mock('../../services/socket', () => ({
   getSocket: vi.fn(),
+  joinProjectRoom: vi.fn(),
+  leaveProjectRoom: vi.fn(),
+  rejoinProjectRooms: vi.fn(),
+  forceReconnect: vi.fn(),
+  disconnectSocket: vi.fn(),
 }));
 
 import { getSocket } from '../../services/socket';

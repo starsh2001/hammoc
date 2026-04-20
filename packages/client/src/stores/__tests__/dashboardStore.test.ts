@@ -20,6 +20,11 @@ const mockSocket = {
 };
 vi.mock('../../services/socket', () => ({
   getSocket: () => mockSocket,
+  joinProjectRoom: vi.fn(),
+  leaveProjectRoom: vi.fn(),
+  rejoinProjectRooms: vi.fn(),
+  forceReconnect: vi.fn(),
+  disconnectSocket: vi.fn(),
 }));
 
 import { dashboardApi } from '../../services/api/dashboard';

@@ -14,6 +14,11 @@ vi.mock('../../services/socket', () => ({
   getSocket: () => ({
     emit: mockEmit,
   }),
+  joinProjectRoom: vi.fn(),
+  leaveProjectRoom: vi.fn(),
+  rejoinProjectRooms: vi.fn(),
+  forceReconnect: vi.fn(),
+  disconnectSocket: vi.fn(),
 }));
 
 // Mock sessions API for messageStore

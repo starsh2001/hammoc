@@ -16,6 +16,11 @@ vi.mock('../../services/socket', () => ({
     emit: mockSocketEmit,
     connected: true,
   }),
+  joinProjectRoom: vi.fn(),
+  leaveProjectRoom: vi.fn(),
+  rejoinProjectRooms: vi.fn(),
+  forceReconnect: vi.fn(),
+  disconnectSocket: vi.fn(),
 }));
 
 // Mock ResizeObserver which is not supported in jsdom

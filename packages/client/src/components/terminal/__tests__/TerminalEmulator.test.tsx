@@ -55,6 +55,11 @@ vi.mock('../../../services/socket', () => ({
     on: vi.fn(),
     off: vi.fn(),
   }),
+  joinProjectRoom: vi.fn(),
+  leaveProjectRoom: vi.fn(),
+  rejoinProjectRooms: vi.fn(),
+  forceReconnect: vi.fn(),
+  disconnectSocket: vi.fn(),
 }));
 
 vi.mock('sonner', () => ({

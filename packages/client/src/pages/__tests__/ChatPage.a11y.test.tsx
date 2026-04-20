@@ -104,6 +104,11 @@ vi.mock('../../services/socket', () => ({
     on: vi.fn(),
     off: vi.fn(),
   }),
+  joinProjectRoom: vi.fn(),
+  leaveProjectRoom: vi.fn(),
+  rejoinProjectRooms: vi.fn(),
+  forceReconnect: vi.fn(),
+  disconnectSocket: vi.fn(),
 }));
 
 // Mock queue API (Story 15.4 - useQueueSession calls queueApi.getStatus)

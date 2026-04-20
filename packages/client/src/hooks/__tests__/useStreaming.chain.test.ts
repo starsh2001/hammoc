@@ -15,6 +15,11 @@ import type { PromptChainItem } from '@hammoc/shared';
 
 vi.mock('../../services/socket', () => ({
   getSocket: vi.fn(),
+  joinProjectRoom: vi.fn(),
+  leaveProjectRoom: vi.fn(),
+  rejoinProjectRooms: vi.fn(),
+  forceReconnect: vi.fn(),
+  disconnectSocket: vi.fn(),
 }));
 
 const mockChainItems: PromptChainItem[] = [
