@@ -16,6 +16,7 @@
 | `[MOBILE]` | 모바일 전용 또는 반응형 검증 필요 | `tag:MOBILE` |
 | `[DnD]` | Drag-and-drop 동작 포함 | `tag:DnD` |
 | `[MANUAL]` | 자동화 불가 — 실행 종료 시 수동 체크리스트로 전달 | `tag:MANUAL` |
+| `[SDK_BLOCKED]` | SDK 업스트림 버그로 현재 검증 불가 — SDK 수정 시 자동 PASS로 전환 예상 | `tag:SDK_BLOCKED` |
 
 리프마다 복수 태그 가능. 예: `[SDK] [CORE] [ASYNC]`.
 
@@ -160,6 +161,9 @@ F2, F5, G1
 
 ### `[MANUAL]` (자동화 불가 — 릴리즈 직전 수동 회귀)
 P-05-01, P-05-02
+
+### `[SDK_BLOCKED]` (SDK 업스트림 미동작 — 수정 시 자동 PASS 전환)
+H-05-02
 
 ---
 

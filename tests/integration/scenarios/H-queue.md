@@ -157,8 +157,10 @@ cat ~/.claude/settings.json | grep -A 20 '"allow"'
 - E2. 사용 중인 Bash 명령이 `~/.claude/settings.json` allowlist에 있으면 SDK가 `canUseTool`을 스킵해 모달이 안 뜬다. 선행 조건의 allowlist 확인 단계를 스킵하지 말 것.
 - E3. 권한 타임아웃 (D-04-01과 교차): 모달에 응답하지 않고 `__HAMMOC_PERMISSION_TIMEOUT_MS__` 단축 시 자동 deny 후 큐 진행 방식 확인.
 
-### H-05-02: 큐 실행 중 Budget 초과
+### H-05-02: 큐 실행 중 Budget 초과 `[SDK_BLOCKED]`
 **목적**: `maxBudgetUsd` 초과 시 SDK가 `error_max_budget_usd`를 반환해 큐가 중단되는지 검증.
+
+> **현재 상태 (2026-04-20)**: `@anthropic-ai/claude-agent-sdk@0.2.114`의 CLI 단에서 `--max-budget-usd` 플래그가 실제로 강제되지 않음을 확인. 본 시나리오는 **SDK_BLOCKED**로 자동 분류되며, SDK가 수정되면 아래 절차대로 자동 PASS로 전환됨. 상세 재현 및 전달 경로 검증은 [tests/integration/sdk-upstream-issues.md](../sdk-upstream-issues.md) 참조.
 
 **SDK 동작 이해 (중요)**: SDK `maxBudgetUsd`는 **`query()` 호출 경계 사이**에서 누적 비용을 체크한다. 현재 SDK(비베타)는 유저의 대화 중간 개입(mid-stream turn)을 지원하지 않으므로, **하나의 큐 아이템 = 하나의 `query()` 호출 = 하나의 단위**이다. 단일 아이템 내부에서는 스트림이 끝날 때까지 abort되지 않는다.
 
