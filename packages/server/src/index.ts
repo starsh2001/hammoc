@@ -1,5 +1,6 @@
 import { createServer } from 'http';
 import { createServer as createHttpsServer } from 'https';
+import { createConnection } from 'net';
 import fs from 'fs';
 import os from 'os';
 import { createApp } from './app.js';
@@ -58,6 +59,48 @@ function getLocalIP(): string | null {
   return null;
 }
 
+/**
+ * Probe whether any process is already listening on `host:port`. Windows
+ * lets a process bind to `127.0.0.1:PORT` while another binds to
+ * `0.0.0.0:PORT` — EADDRINUSE never fires, but connections get split
+ * across the two listeners depending on which address the client used.
+ * This helper TCP-probes the ports that would alias ours so we can warn
+ * and refuse to start when a stale instance is still alive.
+ */
+function probePortInUse(host: string, port: number, timeoutMs = 500): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = createConnection({ host, port });
+    const done = (inUse: boolean) => {
+      socket.removeAllListeners();
+      socket.destroy();
+      resolve(inUse);
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once('connect', () => done(true));
+    socket.once('timeout', () => done(false));
+    socket.once('error', () => done(false));
+  });
+}
+
+/** Resolve all hostnames whose bindings could silently coexist with ours. */
+function conflictingHosts(bindHost: string, localIP: string | null): string[] {
+  const hosts = new Set<string>();
+  // Always probe loopback — another process on 127.0.0.1 would shadow us for localhost traffic.
+  hosts.add('127.0.0.1');
+  // If we're binding to the wildcard, also probe a real LAN IP. A specific-IP
+  // bind by another process would still let our wildcard listen() succeed on
+  // Windows, but clients hitting that IP would reach the other process.
+  if ((bindHost === '0.0.0.0' || bindHost === '::') && localIP) {
+    hosts.add(localIP);
+  }
+  // If we're binding to a specific non-loopback host, make sure no wildcard
+  // listener on 127.0.0.1 shadows localhost traffic.
+  if (bindHost !== '0.0.0.0' && bindHost !== '::' && bindHost !== '127.0.0.1') {
+    hosts.add(bindHost);
+  }
+  return [...hosts];
+}
+
 /** CLI 옵션 파싱 */
 function parseCliOptions(): { resetPassword: boolean } {
   return {
@@ -101,6 +144,30 @@ async function main() {
 
   // Fetch Claude Code account info once at startup (fire-and-forget).
   void accountInfoService.initOnStartup();
+
+  // Pre-flight port check. Windows allows `127.0.0.1:PORT` and `0.0.0.0:PORT`
+  // to coexist in separate processes (no EADDRINUSE), which silently splits
+  // traffic across two sockets — same-origin clients sync fine, but clients
+  // landing on different addresses end up on different socket.io instances.
+  // Probe competing hosts and refuse to start when anything answers.
+  const localIP = getLocalIP();
+  const probeHosts = conflictingHosts(HOST, localIP);
+  const probeResults = await Promise.all(
+    probeHosts.map(async (host) => ({ host, inUse: await probePortInUse(host, Number(PORT)) })),
+  );
+  const conflicts = probeResults.filter((r) => r.inUse);
+  if (conflicts.length > 0) {
+    log.error(
+      `✗ Port ${PORT} is already in use by another process on ${conflicts.map((c) => c.host).join(', ')}.`,
+    );
+    log.error(
+      '  Another Hammoc server (or an integration-test launcher) is probably still running. ' +
+      'Windows lets the new bind succeed silently, but connections split across instances and ' +
+      'cross-origin sync breaks. Stop the other process, then retry.',
+    );
+    log.error('  Find the owner with: netstat -ano | findstr ":' + PORT + '"');
+    process.exit(1);
+  }
 
   // Listen with retry logic for EADDRINUSE (Windows port release delay on tsx watch restart)
   const MAX_RETRIES = 5;
