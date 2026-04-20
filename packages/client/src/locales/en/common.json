@@ -268,9 +268,9 @@
     "terminalsFormat": "{{count}} terminal(s)"
   },
   "queueStatus": {
-    "running": "Queue running",
-    "paused": "Queue paused",
-    "error": "Queue error",
+    "running": "Running",
+    "paused": "Paused",
+    "error": "Error",
     "statusLabel": "Queue status: {{status}}"
   },
   "files": {

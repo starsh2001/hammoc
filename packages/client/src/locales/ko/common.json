@@ -273,9 +273,9 @@
     "refreshTooltip": "새로고침"
   },
   "queueStatus": {
-    "running": "큐 실행중",
-    "paused": "큐 일시 중지",
-    "error": "큐 오류",
+    "running": "실행 중",
+    "paused": "일시 중지",
+    "error": "오류",
     "statusLabel": "큐 상태: {{status}}"
   },
   "files": {

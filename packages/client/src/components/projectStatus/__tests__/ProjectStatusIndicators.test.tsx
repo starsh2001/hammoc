@@ -52,7 +52,7 @@ describe('ProjectStatusIndicators', () => {
 
   it('renders QueueStatusBadge with correct status prop', () => {
     render(<ProjectStatusIndicators status={makeStatus({ totalSessionCount: 3, queueStatus: 'running' })} />);
-    expect(screen.getByRole('status')).toHaveTextContent('큐 실행중');
+    expect(screen.getByRole('status')).toHaveTextContent('실행 중');
   });
 
   it('renders correct dynamic aria-label — full case', () => {
@@ -66,7 +66,7 @@ describe('ProjectStatusIndicators', () => {
         })}
       />
     );
-    const container = screen.getByLabelText('프로젝트 상태: 2/5 활성 세션, 큐 큐 실행중, 1개 터미널');
+    const container = screen.getByLabelText('프로젝트 상태: 2/5 활성 세션, 큐 실행 중, 1개 터미널');
     expect(container).toBeInTheDocument();
   });
 
