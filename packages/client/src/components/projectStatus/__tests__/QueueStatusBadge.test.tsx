@@ -11,36 +11,36 @@ describe('QueueStatusBadge', () => {
   it('renders blue badge for running status', () => {
     render(<QueueStatusBadge status="running" />);
     const badge = screen.getByRole('status');
-    expect(badge).toHaveTextContent('실행 중');
+    expect(badge).toHaveTextContent('큐 실행중');
     expect(badge.className).toContain('bg-blue-500/20');
     expect(badge.className).toContain('text-blue-400');
   });
 
-  it('renders yellow badge for paused status', () => {
+  it('renders amber badge for paused status', () => {
     render(<QueueStatusBadge status="paused" />);
     const badge = screen.getByRole('status');
-    expect(badge).toHaveTextContent('일시 중지');
-    expect(badge.className).toContain('bg-yellow-500/20');
-    expect(badge.className).toContain('text-yellow-400');
+    expect(badge).toHaveTextContent('큐 일시 중지');
+    expect(badge.className).toContain('bg-amber-500/20');
+    expect(badge.className).toContain('text-amber-400');
   });
 
   it('renders red badge for error status', () => {
     render(<QueueStatusBadge status="error" />);
     const badge = screen.getByRole('status');
-    expect(badge).toHaveTextContent('오류');
+    expect(badge).toHaveTextContent('큐 오류');
     expect(badge.className).toContain('bg-red-500/20');
     expect(badge.className).toContain('text-red-400');
   });
 
   it('contains correct status text label', () => {
     const { rerender } = render(<QueueStatusBadge status="running" />);
-    expect(screen.getByText('실행 중')).toBeInTheDocument();
+    expect(screen.getByText('큐 실행중')).toBeInTheDocument();
 
     rerender(<QueueStatusBadge status="paused" />);
-    expect(screen.getByText('일시 중지')).toBeInTheDocument();
+    expect(screen.getByText('큐 일시 중지')).toBeInTheDocument();
 
     rerender(<QueueStatusBadge status="error" />);
-    expect(screen.getByText('오류')).toBeInTheDocument();
+    expect(screen.getByText('큐 오류')).toBeInTheDocument();
   });
 
   it('renders role="status" attribute on badge element', () => {
@@ -50,12 +50,12 @@ describe('QueueStatusBadge', () => {
 
   it('renders correct aria-label for each status', () => {
     const { rerender } = render(<QueueStatusBadge status="running" />);
-    expect(screen.getByRole('status')).toHaveAttribute('aria-label', '큐 상태: 실행 중');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-label', '큐 상태: 큐 실행중');
 
     rerender(<QueueStatusBadge status="paused" />);
-    expect(screen.getByRole('status')).toHaveAttribute('aria-label', '큐 상태: 일시 중지');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-label', '큐 상태: 큐 일시 중지');
 
     rerender(<QueueStatusBadge status="error" />);
-    expect(screen.getByRole('status')).toHaveAttribute('aria-label', '큐 상태: 오류');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-label', '큐 상태: 큐 오류');
   });
 });

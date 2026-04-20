@@ -14,7 +14,7 @@ const defaultProps: QueueLockedBannerProps = {
   isCompleted: false,
   isErrored: false,
   progress: { current: 2, total: 10 },
-  currentPromptPreview: 'Hello world prompt preview',
+  currentItemSummary: 'Hello world prompt preview',
   pauseReason: undefined,
   errorItem: null,
   projectSlug: 'my-project',
