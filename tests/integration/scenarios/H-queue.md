@@ -125,12 +125,23 @@ Hello 2
 ## H5. 실행 중 권한 · 예산 이벤트 `[SDK] [EDGE]`
 
 ### H-05-01: 큐 실행 중 권한 요청 발생
-**목적**: Ask 모드 큐 실행 중 도구 호출이 발생하면 권한 모달이 뜨고, 모달에 응답할 때까지 큐가 대기하는지 검증.
+**목적**: **plan 모드** 큐 실행 중 Bash 도구 호출이 발생하면 권한 모달이 뜨고, 응답할 때까지 큐가 대기하는지 검증.
 
-**도구 선택**: Write 도구는 SDK 계약상 Read 선행이 필수("File has not been read yet")라 처음 보는 파일에 직접 Write를 요구하면 권한 모달 이전에 SDK 오류가 선행한다. 대신 **Bash 도구**를 유도하면 read-before-X 제약 없이 권한 모달이 깨끗이 발동한다.
+**모드 선택**: `plan` 모드를 사용한다. `default` (UI의 "Ask") 모드는 CLI 설정 파일 allowlist 기반 자동 승인으로, Bash가 자동 허용될 수 있어 권한 모달이 뜨지 않는다. `plan` 모드는 모든 도구 호출에 대해 `canUseTool` 콜백을 발동하므로 Bash도 반드시 모달이 뜬다.
+
+**도구 선택**: Write 도구는 SDK 계약상 Read 선행이 필수("File has not been read yet")라 권한 모달 이전에 SDK 오류가 선행한다. **Bash 도구**를 사용한다.
 
 **절차**:
-1. Ask 모드로 전환 (Shift+Tab 등으로 Ask 확인)
+1. `plan` 모드로 전환:
+   ```js
+   browser_evaluate(`() => fetch('/api/preferences', {
+     method: 'PATCH',
+     headers: {'Content-Type':'application/json'},
+     body: JSON.stringify({ permissionMode: 'plan' }),
+     credentials: 'include'
+   }).then(r => r.json())`)
+   ```
+   또는 UI에서 Shift+Tab으로 "Plan" 라벨이 표시될 때까지 사이클.
 2. 큐 탭 → 3개 항목 구성:
    - `"Run \`echo hello\` in the shell."` (Bash 권한 모달 유도)
    - `"Say 'done' and stop."` (후속 대기 확인용)
@@ -139,14 +150,15 @@ Hello 2
 4. 모달이 뜬 상태로 3초 대기 → 두 번째 항목이 `pending` 유지되는지 확인
 5. 모달에서 "도구 실행 허용" 클릭 → Bash 실행 완료 후 두 번째 항목으로 진행
 6. 두 번째 항목에서 다시 모달이 뜨면 "도구 실행 거절" 클릭 → 해당 항목의 ToolCard가 `실패` 상태, 큐는 설정에 따라 다음 항목으로 넘어가거나 중단
+7. **정리**: `permissionMode`를 원래 값으로 복원
 
 **기대 결과**:
-- Allow: 해당 도구 실행 후 Claude 응답 계속, 큐 다음 항목 자동 진행
+- Allow: 도구 실행 후 Claude 응답 계속, 큐 다음 항목 자동 진행
 - Deny: 해당 도구 호출은 "거절됨"으로 기록, 큐는 preferences의 `queueContinueOnError` 값에 따라 계속/중단
 - 모달이 열려있는 동안 큐 상태는 "대기 중"으로 잠금 (`queueLocked=true`)
 
 **엣지케이스**:
-- E1. Bypass 모드였다면 모달이 발동하지 않고 자동 허용 — 시작 전 반드시 Ask 모드 확인.
+- E1. `bypassPermissions`나 `acceptEdits` 모드였다면 모달이 발동하지 않으므로, 시작 전 반드시 `plan` 모드인지 확인.
 - E2. 권한 타임아웃 (D-04-01과 교차): 모달에 응답하지 않고 `__HAMMOC_PERMISSION_TIMEOUT_MS__` 단축 시 자동 deny 후 큐 진행 방식 확인.
 
 ### H-05-02: 큐 실행 중 Budget 초과
