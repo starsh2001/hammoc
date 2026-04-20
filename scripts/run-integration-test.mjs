@@ -177,6 +177,10 @@ function spawnServer(port, env, label) {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
+  // Emit PID on its own line so teardown scripts / wrappers can find and kill
+  // the server process without having to parse Hammoc's own startup logs.
+  console.log(`[${label}] PID ${proc.pid}`);
+
   proc.stdout.on('data', (d) => {
     process.stdout.write(`[${label}] ${d}`);
   });
