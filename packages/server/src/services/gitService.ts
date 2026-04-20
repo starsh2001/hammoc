@@ -125,14 +125,15 @@ class GitService {
     }
 
     try {
-      // `--binary` forces a textual "Binary files … differ" marker for binary
-      // paths; without it simple-git swallows the marker when diffing against
-      // an empty tree and the client sees an empty patch.
+      // Run without --binary so git emits "Binary files … differ" for binary
+      // paths. The --binary flag causes git to output a "GIT binary patch" block
+      // instead, which breaks the "Binary files" regex below.
       const args = staged
-        ? ['--cached', '--binary', '--', file]
-        : ['--binary', '--', file];
+        ? ['--cached', '--', file]
+        : ['--', file];
       const diff = await git.diff(args);
 
+      // Detect binary via the standard git marker.
       let isBinary = /^Binary files .* differ$/m.test(diff);
 
       // Untracked or newly added files never appear in `git diff`, so the

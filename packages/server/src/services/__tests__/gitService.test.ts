@@ -191,7 +191,7 @@ describe('gitService.getDiff', () => {
     expect(result.diff).toContain('diff --git');
     expect(result.file).toBe('file.ts');
     expect(result.staged).toBe(false);
-    expect(mockDiff).toHaveBeenCalledWith(['--binary', '--', 'file.ts']);
+    expect(mockDiff).toHaveBeenCalledWith(['--', 'file.ts']);
     expect(result.isBinary).toBe(false);
   });
 
@@ -203,7 +203,7 @@ describe('gitService.getDiff', () => {
     const result = await gitService.getDiff('/fake/path', 'file.ts', true);
 
     expect(result.staged).toBe(true);
-    expect(mockDiff).toHaveBeenCalledWith(['--cached', '--binary', '--', 'file.ts']);
+    expect(mockDiff).toHaveBeenCalledWith(['--cached', '--', 'file.ts']);
   });
 
   // Binary file detection via "Binary files … differ" marker
