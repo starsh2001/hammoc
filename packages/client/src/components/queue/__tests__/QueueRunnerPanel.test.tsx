@@ -406,9 +406,9 @@ describe('QueueRunnerPanel — Loop rendering', () => {
   });
 
   it('marks current inner item as paused when queue is paused', () => {
-    // When isPaused=true, pendingStart=currentIndex so the current loop item
-    // ends up in the pending (non-draggable) section which renders inner items
-    // as pending icons. Verify the paused banner appears and inner items render.
+    // When isPaused=true and innerIndex targets the current item, that inner
+    // item's status is 'paused' (amber PauseCircle); other inner items remain
+    // 'pending' (gray Clock). See queueItemUtils.getItemStatus + ItemStatusIcon.
     const { container } = render(
       <QueueRunnerPanel
         {...loopDefaultProps}
@@ -418,12 +418,13 @@ describe('QueueRunnerPanel — Loop rendering', () => {
         loopProgress={{ iteration: 0, max: 5, innerIndex: 0, innerTotal: 2 }}
       />
     );
-    // Paused state banner should be visible
     expect(screen.getByText('일시정지됨')).toBeInTheDocument();
-    // Inner items are rendered in the pending section (gray pending icons)
     const innerItems = container.querySelectorAll('[class*="pl-16"]');
     expect(innerItems.length).toBe(2);
-    expect(innerItems[0].querySelector('[class*="text-gray-400"]')).toBeInTheDocument();
+    // Current inner (index 0) is paused → amber icon
+    expect(innerItems[0].querySelector('[class*="text-amber-500"]')).toBeInTheDocument();
+    // Following inner (index 1) is still pending → gray icon
+    expect(innerItems[1].querySelector('[class*="text-gray-400"]')).toBeInTheDocument();
   });
 
   it('marks inner items after innerIndex as pending', () => {

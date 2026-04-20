@@ -231,11 +231,9 @@ describe('NewProjectDialog', () => {
       );
 
       expect(screen.getByText(/이미 프로젝트로 등록되어 있습니다/)).toBeInTheDocument();
-      expect(screen.getByText('기존 프로젝트로 이동하기')).toBeInTheDocument();
     });
 
-    it('navigates to existing project when link clicked', async () => {
-      const user = userEvent.setup();
+    it('disables "생성" button while existing-project warning is shown', () => {
       vi.mocked(useProjectStore).mockReturnValue({
         ...defaultStoreState,
         pathValidation: {
@@ -250,10 +248,8 @@ describe('NewProjectDialog', () => {
         <NewProjectDialog isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
       );
 
-      await user.click(screen.getByText('기존 프로젝트로 이동하기'));
-
-      expect(mockOnSuccess).toHaveBeenCalledWith('existing-slug', true);
-      expect(mockOnClose).toHaveBeenCalled();
+      const submit = screen.getByRole('button', { name: '생성' });
+      expect(submit).toBeDisabled();
     });
   });
 
