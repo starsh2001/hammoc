@@ -21,42 +21,37 @@
 ### G-01-02: 드래그로 순서 변경 `[DnD]`
 **목적**: pending 상태인 체인 항목을 드래그드롭으로 재정렬하고, 서버에 동기화되는지 검증.
 
-**타이밍 주의**: DnD 대상 pending 항목은 첫 항목이 `sending/sent`로 전환되지 않은 동안에만 DOM에 존재한다. `"hi"` 같은 짧은 프롬프트로 체인을 만들면 SDK 응답이 100ms 내 완료되어 drain이 즉시 끝나 pending DOM이 사라지므로, **첫 항목은 충분히 오래 스트리밍되는 프롬프트**로 구성해 DnD 조작 시간을 확보한다.
+**타이밍 전략**: 짧은 프롬프트 10개를 추가한다. 체인 drain은 한 번에 하나씩 처리하므로, 첫 번째 항목이 응답받는 짧은 시간(~2초) 동안 나머지 9개는 `pending` 상태로 DOM에 유지된다. 이 구간에 DnD를 실행한다. 긴 응답 프롬프트나 특수한 인프라 없이 **항목 수로 타이밍 창을 확보**한다.
 
 **절차**:
-1. 체인 모드 ON 후 다음 순서로 3개 항목 추가:
-   - `A`: `"Count slowly from 1 to 200, one number per line."` (긴 스트림)
-   - `B`: `"hi"`
-   - `C`: `"hi"`
-2. 첫 항목 `A`가 스트리밍 시작되어 `status="sending"`으로 전이되면 `B`, `C`는 `pending`으로 DOM에 남아있다. pending 항목이 2개 렌더링될 때까지 대기:
+1. 체인 모드 ON 후 짧은 항목 10개를 순서대로 추가 (모두 `"hi"`):
    ```js
-   browser_evaluate(`() => [...document.querySelectorAll('[data-testid="chain-item"]')]
-     .filter(el => el.getAttribute('draggable') === 'true').length`)
-   // 2가 될 때까지 재시도
+   // 체인 추가 버튼을 10회 반복하거나, 체인 입력 후 Enter로 빠르게 추가
+   // 각 항목 내용: "hi" (동일해도 무방, 순서 변경으로 검증)
    ```
-3. pending 항목(B, C) 중 B를 C 뒤로 이동 — HTML5 DnD 이벤트 직접 디스패치. `dragenter`가 필수(React가 `dragOverItemId`를 기록):
+2. 항목 추가 직후(첫 번째 drain이 시작되기 전 또는 직후) draggable 항목이 최소 5개 이상 있는지 확인:
+   ```js
+   browser_evaluate(`() => document.querySelectorAll('[data-testid="chain-item"][draggable="true"]').length`)
+   ```
+3. draggable pending 항목 중 첫 번째를 마지막으로 이동 — `dragenter` 필수:
    ```js
    browser_evaluate(`() => {
-     const pending = [...document.querySelectorAll('[data-testid="chain-item"]')]
-       .filter(el => el.getAttribute('draggable') === 'true');
-     const [src, dst] = [pending[0], pending[pending.length - 1]];
+     const pending = [...document.querySelectorAll('[data-testid="chain-item"][draggable="true"]')];
+     if (pending.length < 2) return 'not enough: ' + pending.length;
+     const src = pending[0], dst = pending[pending.length - 1];
      const dt = new DataTransfer();
      src.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
      dst.dispatchEvent(new DragEvent('dragenter', { bubbles: true, dataTransfer: dt }));
      dst.dispatchEvent(new DragEvent('dragover',  { bubbles: true, dataTransfer: dt }));
      dst.dispatchEvent(new DragEvent('drop',      { bubbles: true, dataTransfer: dt }));
      src.dispatchEvent(new DragEvent('dragend',   { bubbles: true, dataTransfer: dt }));
-     return true;
+     return [...document.querySelectorAll('[data-testid="chain-item"][draggable="true"]')]
+       .map((el, i) => i + ':' + el.textContent.trim().slice(0, 6));
    }`)
    ```
 4. `chain:reorder` 소켓 이벤트 전송 확인 (payload: `{ sessionId, ids: [...] }`)
-5. pending 텍스트 순서가 `C, B`로 바뀐 것 확인:
-   ```js
-   browser_evaluate(`() => [...document.querySelectorAll('[data-testid="chain-item"]')]
-     .filter(el => el.getAttribute('draggable') === 'true')
-     .map(el => el.textContent.trim().slice(0, 10))`)
-   ```
-6. `A` 스트림을 ESC/stop으로 중단 → drain 재개 시 C가 B보다 먼저 실행되는지 관찰 (옵션: 현재 탭 + 두 번째 탭으로 `G-03-01`과 교차검증).
+5. 반환된 배열에서 원래 첫 번째 항목 ID가 마지막으로 이동했는지 확인
+6. 현재 드레인 중인 스트림이 완료되면 큐가 재정렬 순서대로 실행되는지 관찰.
 
 **기대 결과**:
 - `chain:reorder` 소켓 이벤트 전송, 서버 `chainState` 갱신
