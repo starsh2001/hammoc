@@ -659,9 +659,13 @@ export function ChatPage() {
         msgCount: useMessageStore.getState().messages.length,
       });
       debugLog.chatpage('emitJoin', { sessionId, isStreaming });
-      // Don't probe if we're already streaming on this session (avoids duplicate buffer replay)
-      if (isStreaming) return;
-      // Prevent duplicate join for the same effect lifecycle
+      // Prevent duplicate join for the same effect lifecycle. Note: we used
+      // to also skip when isStreaming to avoid duplicate buffer replay, but
+      // that prevented re-joining the session room after a socket reconnect
+      // (mobile sleep/wake, forced server disconnect) and broke cross-device
+      // sync. stream:history and stream:buffer-replay handlers are idempotent
+      // — setMessages() replaces, buffer-replay rebuilds segments from scratch —
+      // so a redundant replay on re-join is harmless.
       if (hasJoined) return;
       hasJoined = true;
       socket.emit('session:join', sessionId, projectSlug);
