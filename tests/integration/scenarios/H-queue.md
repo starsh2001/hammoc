@@ -150,16 +150,20 @@ Hello 2
 - E2. 권한 타임아웃 (D-04-01과 교차): 모달에 응답하지 않고 `__HAMMOC_PERMISSION_TIMEOUT_MS__` 단축 시 자동 deny 후 큐 진행 방식 확인.
 
 ### H-05-02: 큐 실행 중 Budget 초과
-**목적**: `maxBudgetUsd` 초과 시 큐가 즉시 중단되고 명확한 사유가 표시되는지 검증.
+**목적**: `maxBudgetUsd` 초과 시 SDK가 `error_max_budget_usd` 결과로 종료하고 큐가 중단되는지 검증.
 
-**중요**: Settings UI의 "Max Budget" input은 `min={0.01}`로 고정되어 있어 UI로 $0.01 미만 값을 넣을 수 없다. 현재 Sonnet/Haiku 가격에서 $0.01은 단일 짧은 응답으로 초과되지 않으므로, **UI를 우회해 `PATCH /api/preferences`로 더 작은 값(예: $0.0001)을 직접 설정**한다. 서버는 값 검증을 하지 않아 그대로 SDK에 전달된다.
+**SDK 동작 이해 (중요)**: SDK의 `maxBudgetUsd`는 **turn 경계 사이**에서만 체크된다 ([claude-agent-sdk sdk.d.ts:4931](../../node_modules/@anthropic-ai/claude-agent-sdk/sdk.d.ts#L4931) "budget/retry limits checked between yields"). 단일 응답을 스트리밍하는 도중에는 mid-response abort가 일어나지 않는다. 따라서 **반드시 도구 호출로 turn을 여러 번 나누는 프롬프트**로 유도해야 두 번째 turn 시작 시점에 `error_max_budget_usd` subtype이 emit된다. 1000단어 에세이처럼 단일 턴 프롬프트는 항상 완주되므로 검증 불가.
+
+**UI min 우회**: Settings UI의 "Max Budget" input은 `min={0.01}`로 고정되어 있어 UI로 $0.01 미만 값을 넣을 수 없다. 현재 Sonnet/Haiku 가격에서 $0.01은 한두 턴으로 초과되지 않으므로, `PATCH /api/preferences`로 직접 아주 작은 값(예: $0.0001)을 설정한다. 서버는 값 검증을 하지 않아 그대로 SDK에 전달된다.
+
+**선행 조건**: `permissionMode='bypassPermissions'` 또는 `acceptEdits`로 도구 호출 자동 승인 (그렇지 않으면 권한 모달에서 멈춰 budget 검증이 의미 없어짐).
 
 **절차**:
 1. 현재 `maxBudgetUsd` 값 기록:
    ```js
    browser_evaluate(`() => fetch('/api/preferences').then(r => r.json()).then(p => p.maxBudgetUsd)`)
    ```
-2. UI를 우회해 아주 작은 값으로 설정 (UI min 바이패스):
+2. UI를 우회해 아주 작은 값으로 설정:
    ```js
    browser_evaluate(`() => fetch('/api/preferences', {
      method: 'PATCH',
@@ -168,10 +172,23 @@ Hello 2
      credentials: 'include'
    }).then(r => r.json())`)
    ```
-3. 큐 탭 → 긴 응답을 유도하는 항목 3개 구성 (각 항목: `"Write a detailed 1000-word essay on topic N."`)
-4. 실행 시작 → 첫 응답이 1000단어 출력 시도 중 `maxBudgetUsd` 초과 → SDK가 즉시 종료
-5. 큐 러너 배너에 "Budget exceeded" 사유 표시 + 후속 항목 대기 상태 유지 확인
-6. **정리**: 원래 값 복원
+3. `permissionMode='bypassPermissions'`로 전환 (Shift+Tab 반복 또는 PATCH).
+4. 큐 탭 → **multi-turn 유도 프롬프트 1개**로 큐 구성. 도구 호출 3~5회가 순차 발생해야 함. 예:
+   ```
+   Run these commands one by one, each as a separate Bash tool call:
+   1. echo "step 1"
+   2. echo "step 2"
+   3. echo "step 3"
+   4. echo "step 4"
+   ```
+   각 `echo`가 별도 Bash turn이 되어 turn 경계에서 budget 체크가 여러 번 일어난다.
+5. 실행 시작 → 첫 1~2 turn 사이 `error_max_budget_usd` subtype으로 SDK 종료 → 큐가 중단되고 배너/상태에 budget 관련 사유 표시.
+6. 서버 로그 또는 `lastError`에서 subtype 확인:
+   ```js
+   browser_evaluate(`() => fetch('/api/queue/status').then(r => r.json())`)
+   // lastError.error 가 budget / error_max_budget_usd / 'Max budget' 중 하나를 포함해야 함
+   ```
+7. **정리**: 원래 값 복원
    ```js
    browser_evaluate(`(orig) => fetch('/api/preferences', {
      method: 'PATCH', headers: {'Content-Type':'application/json'},
@@ -179,9 +196,9 @@ Hello 2
    })`, <원래값>)
    ```
 
-**기대 결과**: SDK 집계 시점에 초과 감지 → 큐 전체 중단 + 명확한 사유 표시.
+**기대 결과**: turn 경계에서 SDK가 `error_max_budget_usd`를 emit → 큐가 중단 + `lastError`에 budget 사유 기록 + 후속 항목 pending 유지.
 
-> **SDK 집계 타이밍 주의**: `maxBudgetUsd` 초과는 개별 응답 완료 직전 SDK 내부 집계 시점에 확인된다. 짧은 프롬프트로는 집계가 늦어 유도 실패할 수 있으니 반드시 긴 응답 프롬프트 사용.
+> **단일 응답 프롬프트 사용 금지**: "Write a 1000-word essay"처럼 단일 턴으로 완결되는 프롬프트는 budget이 $0.0001이어도 완주된다 (turn 경계가 없어 abort 불가). 반드시 tool-use를 여러 번 유발하는 multi-step 지시를 사용할 것.
 
 ### H-05-03: 네트워크 끊김 & 복구
 **절차**:
