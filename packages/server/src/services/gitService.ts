@@ -224,12 +224,12 @@ class GitService {
 
   async push(projectPath: string): Promise<void> {
     const git = simpleGit(projectPath);
-    const isRepo = await git.checkIsRepo();
-    if (!isRepo) {
+    if (!await git.checkIsRepo()) {
       this.throwNotInitialized();
     }
     try {
-      await git.push();
+      const { current } = await git.branch();
+      await git.push(['origin', current, '--set-upstream']);
     } catch (error) {
       throw this.wrapError('push', error);
     }
@@ -268,8 +268,8 @@ class GitService {
       this.throwNotInitialized();
     }
     try {
-      const args = startPoint ? [name, startPoint] : [name];
-      await git.branch(args);
+      const args: string[] = startPoint ? ['-b', name, startPoint] : ['-b', name];
+      await git.checkout(args);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       if (msg.toLowerCase().includes('already exists')) {

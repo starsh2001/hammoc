@@ -330,14 +330,16 @@ describe('gitService.commit', () => {
 });
 
 describe('gitService.push', () => {
-  // TC-GIT-W9: push calls git.push() successfully
-  it('calls git.push() successfully', async () => {
+  // TC-GIT-W9: push calls git.push([origin, branch, --set-upstream]) successfully
+  it('calls git.push([origin, branch, --set-upstream]) with current branch', async () => {
     mockCheckIsRepo.mockResolvedValue(true);
+    mockBranch.mockResolvedValue({ current: 'main', all: ['main'], branches: {} });
     mockPush.mockResolvedValue(undefined);
 
     await gitService.push('/fake/path');
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockBranch).toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith(['origin', 'main', '--set-upstream']);
   });
 
   // TC-GIT-W10: push throws GIT_NOT_INITIALIZED for non-git repo
@@ -351,6 +353,7 @@ describe('gitService.push', () => {
   // TC-GIT-W18: push wraps error with descriptive message on failure
   it('wraps error with descriptive message on failure', async () => {
     mockCheckIsRepo.mockResolvedValue(true);
+    mockBranch.mockResolvedValue({ current: 'feature', all: ['feature'], branches: {} });
     mockPush.mockRejectedValue(new Error('push rejected'));
 
     await expect(gitService.push('/fake/path')).rejects.toThrow('Git push failed');
@@ -406,24 +409,24 @@ describe('gitService.checkout', () => {
 });
 
 describe('gitService.createBranch', () => {
-  // TC-GIT-W15: createBranch calls git.branch([name]) for new branch
-  it('calls git.branch([name]) for new branch', async () => {
+  // TC-GIT-W15: createBranch calls git.checkout(['-b', name]) for new branch
+  it('calls git.checkout([\'-b\', name]) for new branch', async () => {
     mockCheckIsRepo.mockResolvedValue(true);
-    mockBranch.mockResolvedValue(undefined);
+    mockCheckout.mockResolvedValue(undefined);
 
     await gitService.createBranch('/fake/path', 'new-branch');
 
-    expect(mockBranch).toHaveBeenCalledWith(['new-branch']);
+    expect(mockCheckout).toHaveBeenCalledWith(['-b', 'new-branch']);
   });
 
-  // TC-GIT-W16: createBranch with startPoint calls git.branch([name, startPoint])
-  it('calls git.branch([name, startPoint]) with startPoint', async () => {
+  // TC-GIT-W16: createBranch with startPoint calls git.checkout(['-b', name, startPoint])
+  it('calls git.checkout([\'-b\', name, startPoint]) with startPoint', async () => {
     mockCheckIsRepo.mockResolvedValue(true);
-    mockBranch.mockResolvedValue(undefined);
+    mockCheckout.mockResolvedValue(undefined);
 
     await gitService.createBranch('/fake/path', 'new-branch', 'main');
 
-    expect(mockBranch).toHaveBeenCalledWith(['new-branch', 'main']);
+    expect(mockCheckout).toHaveBeenCalledWith(['-b', 'new-branch', 'main']);
   });
 
   // TC-GIT-W17: createBranch throws GIT_NOT_INITIALIZED for non-git repo
@@ -436,7 +439,7 @@ describe('gitService.createBranch', () => {
 
   it('throws GIT_BRANCH_EXISTS when branch already exists', async () => {
     mockCheckIsRepo.mockResolvedValue(true);
-    mockBranch.mockRejectedValue(new Error("fatal: a branch named 'main' already exists"));
+    mockCheckout.mockRejectedValue(new Error("fatal: a branch named 'main' already exists"));
 
     const error = await gitService.createBranch('/fake/path', 'main').catch((e) => e);
     expect(error.code).toBe('GIT_BRANCH_EXISTS');
