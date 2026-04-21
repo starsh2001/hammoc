@@ -721,8 +721,11 @@ export function ChatPage() {
   const panelDefaultSide = usePreferencesStore((s) => s.preferences.panelDefaultSide);
   const prefsLoaded = usePreferencesStore((s) => s.loaded);
   const defaultModel = usePreferencesStore((s) => s.preferences.defaultModel);
-  // Show configured default model immediately in ModelSelector; fall back to last SDK-reported model
-  const effectiveActiveModel = defaultModel || activeModel;
+  const projectModelOverride = useChatStore((s) => s.projectSettings?.modelOverride);
+  // Show configured default model immediately in ModelSelector; fall back to last SDK-reported model.
+  // Project-level modelOverride wins over global defaultModel so the selector label reflects
+  // what the server will actually send (effectiveModel = modelOverride ?? globalDefault).
+  const effectiveActiveModel = projectModelOverride || defaultModel || activeModel;
   useEffect(() => {
     if (!prefsLoaded) return;
     applyPanelDefaults({ panelDefaultOpen, panelDefaultSide });
