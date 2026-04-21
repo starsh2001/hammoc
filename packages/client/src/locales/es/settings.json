@@ -149,7 +149,9 @@
     "chatCheckpointing": "Sesiones de chat",
     "chatCheckpointingDesc": "Guardar instantáneas de archivos durante el chat para rebobinar/restaurar",
     "queueCheckpointing": "Ejecutor de cola",
-    "queueCheckpointingDesc": "Guardar instantáneas de archivos durante la ejecución de cola (aumenta el tamaño del archivo JSONL)"
+    "queueCheckpointingDesc": "Guardar instantáneas de archivos durante la ejecución de cola (aumenta el tamaño del archivo JSONL)",
+    "showThinkingBlocks": "Mostrar el proceso de pensamiento de Claude",
+    "showThinkingBlocksDesc": "Muestra bloques 'thinking' plegados sobre las respuestas en modelos recientes (Opus 4.7+). Desactívalo para obtener un primer token ligeramente más rápido (el coste no cambia)."
   },
   "confirm": {
     "serverRestart": "Esto recompilará y reiniciará el servidor. ¿Continuar?",

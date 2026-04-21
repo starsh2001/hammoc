@@ -42,6 +42,11 @@ export interface UserPreferences {
   maxTurns?: number;                // SDK maxTurns (conversation turn limit)
   maxBudgetUsd?: number;            // SDK maxBudgetUsd (cost limit per query)
   defaultEffort?: ThinkingEffort;   // SDK effort (thinking effort level)
+  // Controls SDK `thinking.display` for adaptive-thinking models (Opus 4.7+, Opus 4.6, Sonnet 4.6).
+  // true  → `display: 'summarized'` — thinking summary streams to the UI (Hammoc renders ThinkingBlock)
+  // false → `display: 'omitted'` — thinking is skipped from the stream, faster time-to-first-text
+  // Opus 4.7 API default is 'omitted'; Hammoc defaults this to true so ThinkingBlock stays visible.
+  showThinkingBlocks?: boolean;
   // i18n settings (Epic 22)
   language?: SupportedLanguage;     // User's preferred language
   // Permission sync policy across browsers
@@ -64,12 +69,13 @@ export interface UserPreferences {
 export type PermissionSyncPolicy = 'streaming' | 'always';
 
 /** Default values for global settings */
-export const DEFAULT_PREFERENCES: Required<Pick<UserPreferences, 'theme' | 'defaultModel' | 'permissionMode' | 'chatTimeoutMs' | 'fileExplorerViewMode'>> = {
+export const DEFAULT_PREFERENCES: Required<Pick<UserPreferences, 'theme' | 'defaultModel' | 'permissionMode' | 'chatTimeoutMs' | 'fileExplorerViewMode' | 'showThinkingBlocks'>> = {
   theme: 'dark',
   defaultModel: '',
   permissionMode: 'default',
   chatTimeoutMs: 300000,
   fileExplorerViewMode: 'grid',
+  showThinkingBlocks: true,
 };
 
 /** API response type — includes server-only metadata */

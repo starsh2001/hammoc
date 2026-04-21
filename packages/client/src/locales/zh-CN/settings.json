@@ -149,7 +149,9 @@
     "chatCheckpointing": "聊天会话",
     "chatCheckpointingDesc": "在聊天期间保存文件快照以支持回退/恢复",
     "queueCheckpointing": "队列执行器",
-    "queueCheckpointingDesc": "在队列执行期间保存文件快照（会增加 JSONL 文件大小）"
+    "queueCheckpointingDesc": "在队列执行期间保存文件快照（会增加 JSONL 文件大小）",
+    "showThinkingBlocks": "显示 Claude 的思考过程",
+    "showThinkingBlocksDesc": "在 Opus 4.7 等最新模型的响应上方显示折叠的“thinking”块。关闭后首个响应 token 会略快到达（费用不变）。"
   },
   "confirm": {
     "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",

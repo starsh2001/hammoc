@@ -150,7 +150,9 @@
     "chatCheckpointing": "채팅 세션",
     "chatCheckpointingDesc": "채팅 중 파일 스냅샷을 저장하여 되돌리기/복원 지원",
     "queueCheckpointing": "큐 러너",
-    "queueCheckpointingDesc": "큐 실행 중 파일 스냅샷 저장 (JSONL 파일 크기 증가)"
+    "queueCheckpointingDesc": "큐 실행 중 파일 스냅샷 저장 (JSONL 파일 크기 증가)",
+    "showThinkingBlocks": "Claude의 사고 과정 표시",
+    "showThinkingBlocksDesc": "Opus 4.7 등 최신 모델에서 응답 위에 접힌 'thinking' 블록을 표시합니다. 끄면 첫 응답 토큰이 조금 더 빨리 나옵니다 (비용은 동일)."
   },
   "confirm": {
     "serverRestart": "서버를 재빌드하고 재시작합니다. 진행할까요?",

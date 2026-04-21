@@ -217,6 +217,10 @@ export class ChatService {
       maxThinkingTokens: options.maxThinkingTokens,
       maxBudgetUsd: options.maxBudgetUsd,
       effort: options.effort,
+      // Explicit thinking config for adaptive-thinking models. On Opus 4.7 this
+      // opts back in to `display: 'summarized'` so ThinkingBlock UI stays visible
+      // (the API flipped the default to 'omitted' starting 2026-04-16).
+      ...(options.thinking ? { thinking: options.thinking as unknown as Options['thinking'] } : {}),
       resumeSessionAt: options.resumeSessionAt,
       forkSession: options.forkSession,
       enableFileCheckpointing: options.enableFileCheckpointing,

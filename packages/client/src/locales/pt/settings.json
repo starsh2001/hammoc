@@ -149,7 +149,9 @@
     "chatCheckpointing": "Sessões de chat",
     "chatCheckpointingDesc": "Salvar snapshots de arquivos durante o chat para rebobinar/restaurar",
     "queueCheckpointing": "Executor de fila",
-    "queueCheckpointingDesc": "Salvar snapshots de arquivos durante a execução da fila (aumenta o tamanho do arquivo JSONL)"
+    "queueCheckpointingDesc": "Salvar snapshots de arquivos durante a execução da fila (aumenta o tamanho do arquivo JSONL)",
+    "showThinkingBlocks": "Mostrar o processo de pensamento do Claude",
+    "showThinkingBlocksDesc": "Exibe blocos 'thinking' recolhidos acima das respostas em modelos recentes (Opus 4.7+). Desligue para obter o primeiro token ligeiramente mais rápido (o custo não muda)."
   },
   "confirm": {
     "serverRestart": "Isso irá recompilar e reiniciar o servidor. Continuar?",

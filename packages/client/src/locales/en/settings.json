@@ -150,7 +150,9 @@
     "chatCheckpointing": "Chat sessions",
     "chatCheckpointingDesc": "Save file snapshots during chat for rewind/restore",
     "queueCheckpointing": "Queue runner",
-    "queueCheckpointingDesc": "Save file snapshots during queue execution (increases JSONL file size)"
+    "queueCheckpointingDesc": "Save file snapshots during queue execution (increases JSONL file size)",
+    "showThinkingBlocks": "Show Claude's thinking blocks",
+    "showThinkingBlocksDesc": "Displays collapsed 'thinking' blocks above responses on recent models (Opus 4.7+). Turn off for slightly faster first-token latency (cost is unchanged)."
   },
   "confirm": {
     "serverRestart": "This will rebuild and restart the server. Continue?",

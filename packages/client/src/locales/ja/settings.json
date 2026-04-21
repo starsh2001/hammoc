@@ -149,7 +149,9 @@
     "chatCheckpointing": "チャットセッション",
     "chatCheckpointingDesc": "チャット中にファイルスナップショットを保存して巻き戻し/復元を可能にする",
     "queueCheckpointing": "キューランナー",
-    "queueCheckpointingDesc": "キュー実行中にファイルスナップショットを保存（JSONLファイルサイズが増加します）"
+    "queueCheckpointingDesc": "キュー実行中にファイルスナップショットを保存（JSONLファイルサイズが増加します）",
+    "showThinkingBlocks": "Claudeの思考プロセスを表示",
+    "showThinkingBlocksDesc": "Opus 4.7などの最新モデルで応答上部に折りたたまれた「thinking」ブロックを表示します。オフにすると最初の応答トークンが少し早く届きます（コストは変わりません）。"
   },
   "confirm": {
     "serverRestart": "リビルドしてサーバーを再起動します。続行しますか？",

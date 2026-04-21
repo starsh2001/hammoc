@@ -523,6 +523,25 @@ export function AdvancedSettingsSection() {
         </div>
       </div>
 
+      {/* Thinking block visibility (Opus 4.7+ flipped API default to 'omitted') */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={preferences.showThinkingBlocks ?? true}
+            onChange={(e) => {
+              updatePreference('showThinkingBlocks', e.target.checked);
+              toast.success(t('toast.settingChanged', { label: t('advanced.showThinkingBlocks') }));
+            }}
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+          />
+          <div>
+            <span className="text-sm text-gray-900 dark:text-white">{t('advanced.showThinkingBlocks')}</span>
+            <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.showThinkingBlocksDesc')}</p>
+          </div>
+        </label>
+      </div>
+
       {/* Default Thinking Effort — moved to GlobalSettingsSection */}
     </div>
   );

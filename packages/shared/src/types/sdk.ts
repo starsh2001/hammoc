@@ -43,6 +43,16 @@ export interface ChatOptions {
   maxBudgetUsd?: number;
   /** Thinking effort level for the model */
   effort?: ThinkingEffort;
+  /**
+   * Explicit thinking configuration forwarded to the Anthropic SDK.
+   * Preferred over `maxThinkingTokens` for adaptive-thinking models (Opus 4.7/4.6, Sonnet 4.6).
+   * `display: 'summarized'` keeps thinking blocks visible in the UI; `'omitted'` hides them.
+   */
+  thinking?: {
+    type: 'adaptive' | 'enabled' | 'disabled';
+    display?: 'summarized' | 'omitted';
+    budgetTokens?: number;
+  };
   /** When resuming, resume messages up to this assistant UUID — creates a new branch */
   resumeSessionAt?: string;
   /** When true, resumed sessions will fork to a new session ID rather than continuing the previous session. Use with `resume`. */
