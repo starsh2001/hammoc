@@ -219,7 +219,10 @@ class WebPushService {
   /** Send a push notification to all subscriptions */
   async sendPush(payload: WebPushPayload): Promise<void> {
     await this.ensureLoaded();
-    if (this.subscriptions.length === 0) return;
+    if (this.subscriptions.length === 0) {
+      logger.debug(`[WebPush] sendPush skipped: no subscriptions (tag=${payload.tag ?? 'none'})`);
+      return;
+    }
 
     const keys = await this.ensureVapidKeys();
     const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:hammoc@localhost';
@@ -232,6 +235,8 @@ class WebPushService {
     });
 
     const expiredEndpoints: string[] = [];
+    let successCount = 0;
+    let failureCount = 0;
 
     await Promise.allSettled(
       this.subscriptions.map(async (sub) => {
@@ -241,7 +246,9 @@ class WebPushService {
             body,
             { TTL: 60 * 60 }, // 1 hour
           );
+          successCount += 1;
         } catch (err: unknown) {
+          failureCount += 1;
           const statusCode = (err as { statusCode?: number }).statusCode;
           if (statusCode === 410 || statusCode === 404) {
             // Subscription expired or invalid — mark for removal
@@ -252,6 +259,10 @@ class WebPushService {
           }
         }
       }),
+    );
+
+    logger.info(
+      `[WebPush] sendPush tag=${payload.tag ?? 'none'} total=${this.subscriptions.length} success=${successCount} failure=${failureCount}${expiredEndpoints.length > 0 ? ` expired=${expiredEndpoints.length}` : ''}`,
     );
 
     // Clean up expired subscriptions (serialized, with rollback)

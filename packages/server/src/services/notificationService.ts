@@ -10,6 +10,9 @@ import { webPushService } from './webPushService.js';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 import type { TelegramSettings } from '@hammoc/shared';
 import i18next from '../i18n.js';
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('notificationService');
 
 class NotificationService {
   // Telegram settings
@@ -163,7 +166,11 @@ class NotificationService {
 
   /** Notify that user input is needed (permission or AskUserQuestion) */
   async notifyInputRequired(sessionId: string, toolName: string, prompt?: string): Promise<void> {
-    if (!this.shouldNotifyPermission) return;
+    if (!this.shouldNotifyPermission) {
+      logger.debug(`notifyInputRequired skipped (disabled): session=${sessionId} tool=${toolName}`);
+      return;
+    }
+    logger.info(`notifyInputRequired: session=${sessionId} tool=${toolName} telegram=${this.telegramEnabled} push=${this.webPushEnabled}`);
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
     const emoji = toolName === 'AskUserQuestion' ? '❓' : '🔐';
@@ -183,7 +190,11 @@ class NotificationService {
 
   /** Notify that streaming completed successfully, optionally including last assistant message */
   async notifyComplete(sessionId: string, lastContent?: string, queueProgress?: { current: number; total: number }): Promise<void> {
-    if (!this.shouldNotifyComplete) return;
+    if (!this.shouldNotifyComplete) {
+      logger.debug(`notifyComplete skipped (disabled): session=${sessionId}`);
+      return;
+    }
+    logger.info(`notifyComplete: session=${sessionId} telegram=${this.telegramEnabled} push=${this.webPushEnabled}`);
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
 
@@ -220,7 +231,11 @@ class NotificationService {
 
   /** Notify that an error occurred during streaming */
   async notifyError(sessionId: string, error: string): Promise<void> {
-    if (!this.shouldNotifyError) return;
+    if (!this.shouldNotifyError) {
+      logger.debug(`notifyError skipped (disabled): session=${sessionId}`);
+      return;
+    }
+    logger.info(`notifyError: session=${sessionId} telegram=${this.telegramEnabled} push=${this.webPushEnabled}`);
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
 
@@ -237,7 +252,11 @@ class NotificationService {
 
   /** Notify that queue execution has started */
   async notifyQueueStart(totalItems: number, sessionUrl: string): Promise<void> {
-    if (!this.shouldNotifyQueueStart) return;
+    if (!this.shouldNotifyQueueStart) {
+      logger.debug(`notifyQueueStart skipped (disabled): totalItems=${totalItems}`);
+      return;
+    }
+    logger.info(`notifyQueueStart: totalItems=${totalItems} telegram=${this.telegramEnabled} push=${this.webPushEnabled}`);
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
 
@@ -254,7 +273,11 @@ class NotificationService {
 
   /** Notify that queue execution completed all items */
   async notifyQueueComplete(sessionUrl: string): Promise<void> {
-    if (!this.shouldNotifyQueueComplete) return;
+    if (!this.shouldNotifyQueueComplete) {
+      logger.debug('notifyQueueComplete skipped (disabled)');
+      return;
+    }
+    logger.info(`notifyQueueComplete: telegram=${this.telegramEnabled} push=${this.webPushEnabled}`);
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
 
@@ -271,7 +294,11 @@ class NotificationService {
 
   /** Notify that queue paused due to error (QUEUE_STOP, SDK error, etc.) */
   async notifyQueueError(reason: string, sessionUrl: string): Promise<void> {
-    if (!this.shouldNotifyQueueError) return;
+    if (!this.shouldNotifyQueueError) {
+      logger.debug('notifyQueueError skipped (disabled)');
+      return;
+    }
+    logger.info(`notifyQueueError: telegram=${this.telegramEnabled} push=${this.webPushEnabled}`);
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
 
@@ -288,7 +315,11 @@ class NotificationService {
 
   /** Notify that queue is waiting for user input (permission or AskUserQuestion) */
   async notifyQueueInputRequired(sessionUrl: string): Promise<void> {
-    if (!this.shouldNotifyQueueInputRequired) return;
+    if (!this.shouldNotifyQueueInputRequired) {
+      logger.debug('notifyQueueInputRequired skipped (disabled)');
+      return;
+    }
+    logger.info(`notifyQueueInputRequired: telegram=${this.telegramEnabled} push=${this.webPushEnabled}`);
     const lang = await this.resolveLanguage();
     const t = i18next.getFixedT(lang);
 

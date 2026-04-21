@@ -28,8 +28,16 @@ router.get('/telegram', async (req: Request, res: Response) => {
 // PATCH /api/preferences/telegram — Update Telegram settings
 router.patch('/telegram', async (req: Request, res: Response) => {
   try {
-    const { botToken, chatId, enabled, notifyPermission, notifyComplete, notifyError } = req.body as UpdateTelegramSettingsRequest;
-    const update: UpdateTelegramSettingsRequest = { botToken, chatId, enabled, notifyPermission, notifyComplete, notifyError };
+    const {
+      botToken, chatId, enabled, baseUrl, alwaysNotify,
+      notifyPermission, notifyComplete, notifyError,
+      notifyQueueStart, notifyQueueComplete, notifyQueueError, notifyQueueInputRequired,
+    } = req.body as UpdateTelegramSettingsRequest;
+    const update: UpdateTelegramSettingsRequest = {
+      botToken, chatId, enabled, baseUrl, alwaysNotify,
+      notifyPermission, notifyComplete, notifyError,
+      notifyQueueStart, notifyQueueComplete, notifyQueueError, notifyQueueInputRequired,
+    };
 
     if (update.botToken !== undefined && update.botToken !== null) {
       if (typeof update.botToken !== 'string' || update.botToken.trim().length === 0) {
@@ -186,6 +194,11 @@ router.patch('/', async (req: Request, res: Response) => {
     // Invalidate cached language when preference changes
     if (req.body.language) {
       invalidateI18nCache();
+    }
+    // Reload notification service when telegram/webPush settings change via the merge endpoint,
+    // so the in-memory service state matches the newly persisted file.
+    if (req.body.telegram !== undefined || req.body.webPush !== undefined) {
+      await notificationService.reload();
     }
     res.json(updated);
   } catch {
