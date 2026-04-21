@@ -50,27 +50,54 @@ Hello 2
 - 각 항목 완료 시 `queue:itemComplete` + 세션 ID 링크
 
 ### H-02-02: 일시정지 & 편집 & 재개
+
+> **타이밍 주의** (2026-04-21 교훈): `Pause` 는 **현재 아이템 완료까지 대기** 하는 요청형 동작이다. 짧은 프롬프트(`Say 'hi'`)로만 구성된 큐는 Pause 클릭 전에 이미 완료되어 paused 상태로 전이하지 않는다. 반드시 **`@delay 15000ms` 이상의 긴 아이템** 이나 긴 응답을 유도하는 프롬프트를 포함시켜 Pause 요청이 적용될 시간 창을 확보한다.
+
 **절차**:
-1. 실행 중 "Pause" → 현재 항목 완료까지 대기
-2. 편집기에서 미실행 항목 수정 / 추가
-3. "Resume"
+1. 큐 편집기에 미실행 여유가 충분한 스크립트 구성. 예:
+   ```
+   @new
+   @model claude-haiku-4-5
+   @delay 15000
+   Say 'a' only.
+   Say 'b' only.
+   ```
+2. Ctrl+Enter 실행 → `@delay 15000ms` 진입(아이템 3) 확인 후 "Pause" 클릭
+3. 배너가 `"현재 항목 완료 후 일시정지..."` → `"일시정지됨 · 사유: 사용자가 일시정지했습니다"` 로 전이 확인. `/api/projects/:slug/queue/status` 에서 `isPaused: true`
+4. 편집기(또는 배너 내부 리스트)에서 **미실행 아이템을 수정 / 추가 / 삭제**
+5. "재개" 클릭 → 수정된 리스트로 다음 항목부터 계속
 
 **기대 결과**:
-- 상태: running → (isPauseRequested) → paused
+- 상태: running → (isPauseRequested) → paused → running
 - 편집 가능 상태 진입 (`queue:editStart`)
-- Resume 시 수정된 리스트로 다음 항목부터 계속
+- 재개 후 **미실행 아이템 = 수정된 리스트**, 재개 시점 기준 남은 아이템 전부 정상 완료
+- completed 아이템 은 재실행되지 않음(중복 전송 없음)
 
 ---
 
 ## H3. 큐 중단 & 상태 리셋 `[EDGE]`
 
-### H-03-01: 실행 중 Abort
-**절차**: 실행 중 "Abort" → 확인 → 즉시 중지.
+### H-03-01: 실행 중 Abort `[MANUAL]`
+
+> **자동화 불가 사유 (2026-04-20 확인)**: 큐가 짧은 프롬프트(예: "Say 'hello'")로 구성되면 첫 항목이 1초 미만에 완료되어 Abort 버튼 포착 타이밍을 자동화로 확보하기 어렵다. 긴 응답 프롬프트로 시도해도 `browser_wait_for`로 버튼을 잡는 순간 이미 다음 항목으로 넘어가거나 큐가 완료되는 경우가 관찰됨. 자동화는 FAIL-negative(false FAIL)가 잦아 신뢰도가 낮음 — **릴리즈 직전 수동 회귀에서 확인**한다.
+
+**수동 절차**:
+1. 큐 편집기에 3개 항목 구성 (각 항목이 오래 걸리도록 긴 응답 유도):
+   ```
+   Write a detailed 2000-word essay on topic A.
+   Write a detailed 2000-word essay on topic B.
+   Write a detailed 2000-word essay on topic C.
+   ```
+2. "실행" 버튼 클릭
+3. 1번 항목 스트리밍 진행 확인 → QueueLockedBanner에 "Abort" 버튼 가시 확인
+4. "Abort" 버튼 클릭 → 확인 다이얼로그 "예"
+5. 즉시 스트림 중지 확인 + 현재 어시스턴트 메시지에 부분 텍스트 + "중단됨" 표시 확인
+
 **기대 결과**:
-- `queue:abort` → 현재 스트림도 함께 abort
+- `queue:abort` 이벤트 → 현재 스트림도 함께 abort
 - 배너 닫기 가능, 편집기 원상 복귀
 
-**엣지케이스**:
+**엣지케이스** (수동으로 함께 확인):
 - E1. 권한 프롬프트 대기 중 abort: 모달 닫히고 권한 요청 취소
 - E2. `@delay` 대기 중 abort: 즉시 해제
 
@@ -127,46 +154,65 @@ Hello 2
 ### H-05-01: 큐 실행 중 권한 요청 발생
 **목적**: Ask 모드(`permissionMode='default'`) 큐 실행 중 Bash 도구 호출이 발생하면 권한 모달이 뜨고, 응답할 때까지 큐가 대기하는지 검증.
 
-**도구 선택**: Write는 "File has not been read yet" SDK 오류가 권한 모달 이전에 선행하므로 부적합. **Bash 도구**를 사용한다. 단, Bash 명령은 `~/.claude/settings.json`의 `permissions.allow` 패턴에 매치되면 SDK가 `canUseTool`을 스킵한다. 테스트에서는 allowlist에 매치 안 되는 명령을 사용해야 한다.
+**도구 선택 — 함정 주의** (2026-04-21 교훈): Write/Edit 는 "File has not been read yet" SDK 오류가 권한 모달 이전에 선행하므로 부적합. **Bash 도구**를 사용하되, **SDK 가 `canUseTool` 을 스킵하는 3 가지 우회 경로**를 모두 피해야 한다:
 
-**선행 조건 확인**: Bash 명령이 유저 allowlist에 없어야 한다. 다음으로 확인:
+1. `~/.claude/settings.json` 의 `permissions.allow` 패턴 매치
+2. `~/.claude/settings.local.json` 의 `permissions.allow` 패턴 매치 *(과거에 빠졌던 항목 — settingSources = ['user', 'project', 'local'] 로 **둘 다** 로드됨)*
+3. Claude Code / Agent SDK 번들 내장 **read-only safe-bash 기본 허용** — `whoami`, `ls`, `pwd`, `date`, `env`, `cat` 등은 어느 allowlist 에도 없어도 모달이 안 뜸. 번들 내부 목록이라 외부에서 비가시
+
+→ 안전한 선택은 **allowlist 매치가 없고 read-only 가 아닌 쓰기 명령**: `mkdir /tmp/<unique>`, `touch /tmp/<unique>`, `rm /tmp/<unique>` 같은 파일시스템 변경 명령. 아래 선행 조건 체크리스트로 최종 확인.
+
+**선행 조건 확인** (모두 통과해야 실제 모달 등장 보장):
+
 ```bash
-# Bash 도구로 allowlist 확인
-cat ~/.claude/settings.json | grep -A 20 '"allow"'
+# 1) 유저 전역 allowlist
+cat ~/.claude/settings.json | grep -A 40 '"allow"'
+# 2) 유저 로컬 allowlist (2026-04-21 이후 필수)
+cat ~/.claude/settings.local.json | grep -A 40 '"allow"'
+# 3) 프로젝트 scope (있는 경우만)
+cat <projectDir>/.claude/settings.json 2>/dev/null
 ```
-`echo` 패턴(`Bash(echo:*)`)이 allowlist에 **없으면** `"echo hello"` 프롬프트가 안전하다. 있으면 allowlist에 없는 다른 명령(예: `"List files: ls -la"`의 `ls`)으로 대체.
+- 사용할 Bash 명령(예: `mkdir`, `touch`)이 세 allowlist 어디에도 매치되지 않는지 확인
+- **read-only 명령(`echo`, `whoami`, `ls`, `pwd`, `date`, `cat`)은 SDK 번들 safe-bash 에 걸려 모달이 안 뜨므로 선택 금지**
 
 **절차**:
-1. Ask 모드로 전환 (UI 상에서 "Ask" 라벨 확인, 또는 `PATCH /api/preferences` with `permissionMode: 'default'`).
-2. 큐 탭 → 3개 항목 구성:
-   - `"Run \`echo hello\` in the shell."` (Bash 권한 모달 유도 — allowlist 미포함 명령)
-   - `"Say 'done' and stop."` (후속 대기 확인용)
-   - `"Say 'ok' and stop."`
-3. 실행 시작 → 첫 항목에서 Bash 도구 호출 → 권한 모달 등장 확인
-4. 모달이 뜬 상태로 3초 대기 → 두 번째 항목이 `pending` 유지되는지 확인
-5. 모달에서 "도구 실행 허용" 클릭 → Bash 실행 완료 후 두 번째 항목으로 진행
-6. 두 번째 항목에서 다시 모달이 뜨면 "도구 실행 거절" 클릭 → 해당 항목의 ToolCard가 `실패` 상태, 큐는 설정에 따라 다음 항목으로 넘어가거나 중단
+1. Ask 모드로 전환 — `PATCH /api/preferences { permissionMode: 'default' }` **+ 세션 입력바의 권한 모드 칩 클릭해서 "Ask" 표시 확인**. preferences 값은 초기값일 뿐 실제 큐가 참조하는 것은 `useChatStore.permissionMode` (세션 UI 에서 변경되는 값)이다. 두 값이 어긋날 수 있으니 UI 칩 확인이 최종.
+2. 큐 탭 → 3개 항목 구성 (명령의 경로는 **runtime-unique** 접미사로 충돌 회피):
+   ```
+   @new
+   @model claude-haiku-4-5
+   Use the Bash tool to create a directory: mkdir /tmp/hammoc-h0501-<random-6char>
+   Say 'done' and stop.
+   Say 'ok' and stop.
+   ```
+3. 실행 시작 → 첫 Bash 호출 시 큐 배너에 **"입력 대기 중..."** + 에디터 버튼들 disabled + 세션 화면에 **"허용/거부" 버튼** 노출
+4. 모달이 뜬 상태로 3초 대기 → 두 번째 항목(`Say 'done'`)이 `pending` 유지 확인 (`/api/projects/:slug/queue/status` 로 `isPaused:true` + `currentIndex` 정체 확인)
+5. **"허용"** 클릭 → Bash 실행 완료 후 두 번째 항목으로 진행
+6. 두 번째 항목에서 모달이 다시 뜨면 (또는 쓰기 명령을 하나 더 추가해서 강제) **"거부"** 클릭 → ToolCard `실패` 상태, 큐는 preferences 의 `queueContinueOnError` 값에 따라 계속/중단
 
 **기대 결과**:
 - Allow: 도구 실행 후 Claude 응답 계속, 큐 다음 항목 자동 진행
-- Deny: 해당 도구 호출은 "거절됨"으로 기록, 큐는 preferences의 `queueContinueOnError` 값에 따라 계속/중단
-- 모달이 열려있는 동안 큐 상태는 "대기 중"으로 잠금 (`queueLocked=true`)
+- Deny: 해당 도구 호출은 "거절됨" 기록, 큐는 `queueContinueOnError` 에 따라 계속/중단
+- 모달이 열린 동안 `/api/projects/:slug/queue/status` 는 `isPaused: true`, `isWaitingForInput: true`, `pauseReason: "…permission…"` 반환
 
 **엣지케이스**:
-- E1. `bypassPermissions`/`acceptEdits` 모드에서는 모달이 발동하지 않으므로, 시작 전 반드시 `default` 모드인지 확인.
-- E2. 사용 중인 Bash 명령이 `~/.claude/settings.json` allowlist에 있으면 SDK가 `canUseTool`을 스킵해 모달이 안 뜬다. 선행 조건의 allowlist 확인 단계를 스킵하지 말 것.
-- E3. 권한 타임아웃 (D-04-01과 교차): 모달에 응답하지 않고 `__HAMMOC_PERMISSION_TIMEOUT_MS__` 단축 시 자동 deny 후 큐 진행 방식 확인.
+- E1. `bypassPermissions` / `acceptEdits` 모드에서는 모달이 발동하지 않는다. 시작 전 반드시 `default` 모드인지 확인.
+- E2. Bash 명령이 allowlist 에 있거나 SDK 번들 safe-bash 에 해당하면 `canUseTool` 이 호출되지 않는다. **둘 중 어느 쪽에 걸려도 동일한 증상**이므로 선행 조건 체크리스트를 스킵하지 말 것.
+- E3. 권한 타임아웃 (D-04-01 과 교차): 모달에 응답하지 않고 `__HAMMOC_PERMISSION_TIMEOUT_MS__` 단축 시 자동 deny 후 큐 진행 방식 확인.
+- E4. 테스트 프로젝트에 `/tmp/hammoc-h0501-*` 가 누적되지 않게 teardown 에서 정리(`rm -rf /tmp/hammoc-h0501-*`).
 
-### H-05-02: 큐 실행 중 Budget 초과 `[SDK_BLOCKED]`
-**목적**: `maxBudgetUsd` 초과 시 SDK가 `error_max_budget_usd`를 반환해 큐가 중단되는지 검증.
+### H-05-02: 큐 실행 중 Budget 초과 `[SDK] [EDGE]`
+**목적**: `maxBudgetUsd` 초과 시 SDK가 `isError=true` 결과(`error_max_budget_usd` subtype)를 반환해 큐가 자동 일시정지되는지 검증.
 
-> **현재 상태 (2026-04-20)**: `@anthropic-ai/claude-agent-sdk@0.2.114`의 CLI 단에서 `--max-budget-usd` 플래그가 실제로 강제되지 않음을 확인. 본 시나리오는 **SDK_BLOCKED**로 자동 분류되며, SDK가 수정되면 아래 절차대로 자동 PASS로 전환됨. 상세 재현 및 전달 경로 검증은 [tests/integration/sdk-upstream-issues.md](../sdk-upstream-issues.md) 참조.
+> **상태 변경 기록**:
+> - 2026-04-20: SDK 0.2.114에서 budget이 enforce되지 않는다고 관찰 → `[SDK_BLOCKED]` 분류.
+> - **2026-04-21: 3개 모델(`claude-haiku-4-5` / `claude-sonnet-4-6` / `claude-opus-4-7`) 모두에서 enforce 작동 확인. `[SDK_BLOCKED]` 태그 제거, 정상 시나리오로 복귀.** 당시 관찰이 전파 경로 버그(`aff86d9` 이전 상태) 시기와 겹쳤던 것으로 추정. 자세한 재검증 기록은 [tests/integration/reports/2026-04-21T02-52-02Z-domain-H.md](../reports/2026-04-21T02-52-02Z-domain-H.md) 참조.
 
-**SDK 동작 이해 (중요)**: SDK `maxBudgetUsd`는 **`query()` 호출 경계 사이**에서 누적 비용을 체크한다. 현재 SDK(비베타)는 유저의 대화 중간 개입(mid-stream turn)을 지원하지 않으므로, **하나의 큐 아이템 = 하나의 `query()` 호출 = 하나의 단위**이다. 단일 아이템 내부에서는 스트림이 끝날 때까지 abort되지 않는다.
+**SDK 동작 이해**: SDK `maxBudgetUsd`는 **`query()` 호출 경계 사이**에서 누적 비용을 체크한다. 현재 SDK(비베타)는 유저의 대화 중간 개입(mid-stream turn)을 지원하지 않으므로, **하나의 큐 아이템 = 하나의 `query()` 호출 = 하나의 단위**다. 단일 아이템 내부에서는 스트림이 끝날 때까지 abort되지 않고, 다음 아이템으로 넘어가기 직전에 `isError` 응답으로 떨어진다.
 
-따라서 budget 차단을 관찰하려면 **아이템이 2개 이상**이어야 한다:
+따라서 budget 차단을 관찰하려면 **아이템이 2개 이상** 필요하다:
 - 아이템 1이 실행되어 누적 비용 > `maxBudgetUsd` 발생
-- 아이템 2 시작 전 SDK가 누적 비용 확인 → `error_max_budget_usd` emit → 큐 중단
+- 아이템 2 시작 시점에 SDK가 `isError=true` 응답 → Hammoc `queueService.executePrompt` 가 `pauseWithError` 호출 → 큐 일시정지
 
 **UI min 우회**: Settings UI는 `min={0.01}` 고정. `PATCH /api/preferences`로 직접 작은 값을 설정한다 (서버 검증 없음).
 
@@ -184,36 +230,71 @@ cat ~/.claude/settings.json | grep -A 20 '"allow"'
      credentials: 'include'
    }).then(r => r.json())`)
    ```
-3. 큐 탭 → **아이템 2개** 구성 (같은 세션 resume, `@new` 미사용):
-   - 아이템 1: `"Say 'hello'."` (짧은 응답, 비용 발생 — $0.0001 초과)
-   - 아이템 2: `"Say 'world'."` (budget 소진으로 차단되어야 함)
-4. 실행 → 아이템 1 완료 후 아이템 2 시작 시점에 SDK budget 에러 기대.
+3. 큐 탭 → **아이템 4개** 구성 (`@new` + `@model` + 2개 프롬프트):
+   ```
+   @new
+   @model claude-haiku-4-5
+   Say 'hello' only.
+   Say 'world' only.
+   ```
+4. 실행 → 아이템 3(`Say 'hello'`) 실행 후 아이템 3 경계에서 SDK가 `isError=true` 응답. 아이템 4(`Say 'world'`)는 미실행으로 남음.
 5. 큐 상태 확인:
    ```js
    browser_evaluate(`() => {
      const slug = location.pathname.split('/project/')[1]?.split('/')[0];
      return fetch('/api/projects/' + slug + '/queue/status', { credentials: 'include' }).then(r => r.json());
    }`)
-   // lastError.error 에 'budget' 또는 'error_max_budget_usd' 포함 기대
+   // 기대:
+   //   isPaused: true
+   //   currentIndex: 2 (아이템 3)
+   //   pauseReason 과 lastError.error 에 "SDK 오류:" 프리픽스 (현재 response.content만 포함 — 개선 필요)
    ```
-6. **정리**: `maxBudgetUsd` 원래 값으로 복원.
+6. **정리**: `maxBudgetUsd` 를 원래 값(없었다면 `null`)으로 복원. 실행 중이면 "중단" 버튼 클릭 후 확인 다이얼로그 수락.
 
-**기대 결과**: 아이템 2 시작 전 `error_max_budget_usd` → 큐 중단 + `lastError`에 budget 사유 기록.
+**기대 결과**: 아이템 3 완료 직후 `isError=true` → 큐 `isPaused=true`, `lastError.itemIndex=2`, 아이템 4 미실행. 모델별 차이 없음(Haiku/Sonnet/Opus 동일).
 
-> **현재 SDK 한계**: 테스트 2026-04-20 기준 SDK 0.2.114에서 `maxBudgetUsd`가 실제로 차단을 emit하지 않는 동작이 관찰됨. 이 경우 FAIL이 아닌 **BLOCKED(SDK)** 로 기록하고 SDK 업스트림 버그로 분류한다. Hammoc 측 전파 경로(`queueService.buildChatOptions → chatOptions.maxBudgetUsd → SDK`)는 `aff86d9` 수정으로 정상임이 단위 테스트로 확인됨.
+**엣지케이스**:
+- E1. 에러 메시지 품질: 현재 [queueService.ts:880-882](../../packages/server/src/services/queueService.ts#L880-L882) 가 `response.content` 만 에러 사유로 사용하여 `pauseReason` 이 `"SDK 오류: hello"` (부분 응답 텍스트) 처럼 보임. SDK `subtype` (예: `error_max_budget_usd`) 를 메시지에 합쳐 `"SDK 오류: error_max_budget_usd — hello"` 처럼 표시하도록 개선 후 기대값 업데이트 필요.
+- E2. 대용량 `maxBudgetUsd` 로 되돌릴 때 "첫 아이템 2번 반복 실행" 이 가능한지(session resume 후 중복 prompt 전송 금지) 확인.
 
 ### H-05-03: 네트워크 끊김 & 복구
+
+> **타이밍 주의** (2026-04-21 교훈): offline/online 이벤트를 **큐 실행 중간 구간** 에 정확히 주입해야 의미 있는 회귀가 된다. Haiku 의 짧은 프롬프트만 있으면 전 아이템이 수 초 내 끝나 주입 창을 놓친다. `@delay 15000ms` 같은 긴 대기 아이템을 끼워넣어 확실한 offline 창을 만든다.
+
 **절차**:
-1. 3개 항목이 담긴 큐 실행 시작 → 1번째 항목 응답 수신 대기
-2. 1번째 완료 직후 R-websocket의 표준 끊김 절차 실행:
+1. 큐 편집기에 offline 창을 포함한 5-아이템 스크립트 구성:
+   ```
+   @new
+   @model claude-haiku-4-5
+   @delay 15000
+   Say 'first' only.
+   Say 'second' only.
+   ```
+2. Ctrl+Enter 실행 → `대기: 15000ms` 배너 확인 후 즉시 offline 이벤트 주입:
    ```js
    browser_evaluate(`() => {
      Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
      window.dispatchEvent(new Event('offline'));
    }`)
    ```
-3. 3초 대기 후 `online` 이벤트 디스패치로 복구
-4. 큐 진행 상태 모니터링 → 2번째 항목부터 이어서 실행되는지 확인
-5. 완료 후 세션 히스토리 검사 → 1번째 항목이 중복 전송되지 않았는지 확인 (`messageId` 유니크)
+3. 3초 대기 후 online 복구:
+   ```js
+   browser_evaluate(`() => {
+     Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
+     window.dispatchEvent(new Event('online'));
+   }`)
+   ```
+4. `완료 (5개 아이템 실행됨)` 배너 대기 (최대 60s) → `/api/projects/:slug/queue/status` 로 완료 확인
+5. 세션 연속성 검증 — **모든 `completedSessionIds` 값이 동일** 하고 아이템 결과 링크의 `href` 들이 같은 세션 UUID 를 가리키는지 확인:
+   ```js
+   browser_evaluate(`() => {
+     const links = [...document.querySelectorAll('a[href*="/session/"]')].map(a => a.href.split('/session/')[1]);
+     return { count: links.length, unique: [...new Set(links)] };
+   }`)
+   // 기대: unique.length === 1 (모든 아이템이 같은 세션에 연속 기록)
+   ```
 
-**기대 결과**: 재연결 후 미완료 항목부터 재개, 중복 전송 없음.
+**기대 결과**:
+- 재연결 후 미완료 항목부터 재개 → 5/5 완료
+- 동일 세션 ID 로 연속 기록 (중복 세션 생성 없음)
+- 동일 유저 프롬프트가 중복 전송되지 않음 (세션 히스토리에서 messageId 유니크 확인)

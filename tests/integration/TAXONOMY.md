@@ -160,10 +160,17 @@ F5, I1, S1
 F2, F5, G1
 
 ### `[MANUAL]` (자동화 불가 — 릴리즈 직전 수동 회귀)
-P-05-01, P-05-02
+P-05-01, P-05-02, F-02-02, F-05-02, G-01-02, H-03-01, C-04-01
+
+- P-05-01/02: 실제 최신 릴리즈 패키지 환경 필요
+- F-02-02: HTML5 native DnD 파일 drop — JS `DragEvent` 디스패치로 재현 불가
+- F-05-02: React DnD 핸들러가 Playwright 디스패치 이벤트로 재정렬 미반영
+- G-01-02: idle 세션에서 체인 즉시 drain + React DnD 한계 이중 제약
+- H-03-01: 큐 실행 중 Abort 버튼 포착 타이밍 확보 실패 (false FAIL 잦음)
+- C-04-01: 1M 컨텍스트 모델에서 90% 토큰 도달이 비용·시간상 비현실적 (런처 compact 임계값 주입 훅 추가 시 자동화 전환 가능)
 
 ### `[SDK_BLOCKED]` (SDK 업스트림 미동작 — 수정 시 자동 PASS 전환)
-H-05-02
+_(현재 없음 — H-05-02는 2026-04-21 SDK 0.2.114 재검증으로 PASS 복귀. 자세한 맥락은 [sdk-upstream-issues.md](sdk-upstream-issues.md) 참조.)_
 
 ---
 
