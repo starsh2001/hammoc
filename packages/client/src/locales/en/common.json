@@ -368,7 +368,15 @@
     "unsavedCloseMessage": "You have unsaved changes. Close anyway?",
     "closeWithoutSaving": "Close without saving",
     "unsavedOpenMessage": "You have unsaved changes. Open '{{path}}'?",
-    "openWithoutSaving": "Open without saving"
+    "openWithoutSaving": "Open without saving",
+    "externalChanged": "This file was changed on disk by another process.",
+    "externalChangedDirty": "This file was changed on disk. Saving now will overwrite those changes.",
+    "externalDeleted": "This file was deleted on disk.",
+    "saveConflict": "Save failed — the file changed on disk since you opened it.",
+    "reloadFromDisk": "Reload",
+    "saveOverwrite": "Overwrite",
+    "dismiss": "Dismiss",
+    "reloadedFromDisk": "Reloaded from disk."
   },
   "imageViewer": {
     "close": "Close viewer",

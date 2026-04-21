@@ -112,6 +112,7 @@
       "slugRequired": "プロジェクト識別子が必要です。",
       "pathRequired": "pathクエリパラメータが必要です",
       "contentRequired": "リクエストボディのcontentは文字列である必要があります",
+      "expectedMtimeType": "expectedMtimeは文字列である必要があります。",
       "typeRequired": "typeは\"file\"または\"directory\"である必要があります",
       "newPathRequired": "newPathクエリパラメータが必要です",
       "queryRequired": "queryパラメータが必要です"
@@ -126,7 +127,8 @@
       "fileAlreadyExists": "ファイルは既に存在します。",
       "protectedPath": "保護されたパスです。",
       "renameTargetExists": "リネーム先が既に存在します。",
-      "parentNotFound": "親ディレクトリが見つかりません。"
+      "parentNotFound": "親ディレクトリが見つかりません。",
+      "staleWrite": "ファイルを開いた後、ディスク上で変更されました。再読み込みするか、上書きしてください。"
     }
   },
   "git": {

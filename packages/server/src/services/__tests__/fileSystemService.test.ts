@@ -404,3 +404,45 @@ describe('fileSystemService.renameEntry', () => {
     }
   });
 });
+
+describe('fileSystemService.searchFiles', () => {
+  // Baseline: a reachable match is found once.
+  it('returns matches by case-insensitive name substring', async () => {
+    const result = await fileSystemService.searchFiles(tmpDir, 'readme');
+    const paths = result.results.map(r => r.path).sort();
+    expect(paths).toContain('readme.md');
+    expect(result.query).toBe('readme');
+  });
+
+  // Cycle guard: a symlink that points back at the project root must not
+  // produce duplicate entries or blow past maxResults.
+  //
+  // Before the realpath-keyed visited set was added, this shape yielded
+  // ~96 duplicates of the same 3 files (`loop/loop/loop/.../readme.md`, etc.)
+  // because fs.stat follows the symlink and the recursion only stopped when
+  // the OS finally refused the path length.
+  it('breaks symlink cycles and reports each target only once', async () => {
+    // Symlinks require admin/developer mode on Windows — use 'junction' which
+    // does not, and is functionally equivalent for directory targets.
+    const loopPath = path.join(tmpDir, 'loop');
+    try {
+      await fs.symlink(tmpDir, loopPath, 'junction');
+    } catch (err) {
+      // Skip the test when the runner can't create symlinks (restricted CI).
+      if ((err as NodeJS.ErrnoException).code === 'EPERM') return;
+      throw err;
+    }
+
+    const result = await fileSystemService.searchFiles(tmpDir, 'readme');
+
+    // Before the fix: > 1 because every loop/loop/... path matched.
+    // After the fix: exactly one hit for the real readme.md.
+    const readmeHits = result.results.filter(r => r.name === 'readme.md');
+    expect(readmeHits.length).toBe(1);
+
+    // And no path should contain 'loop/loop' — that only happens when the
+    // recursion re-entered the cycle at least twice.
+    const cycled = result.results.filter(r => r.path.includes('loop/loop'));
+    expect(cycled.length).toBe(0);
+  });
+});

@@ -190,6 +190,16 @@ export interface ServerToClientEvents {
     summary?: string;
     error?: string;
   }) => void;
+  // File watcher: external modification/deletion detected in project
+  'file:external-change': (data: {
+    projectSlug: string;
+    /** Project-relative POSIX path */
+    path: string;
+    /** 'modified' — file content/metadata changed on disk; 'deleted' — file removed */
+    type: 'modified' | 'deleted';
+    /** New mtime (ISO 8601); absent for 'deleted' */
+    mtime?: string;
+  }) => void;
 }
 
 // ===== Inter-server Events =====

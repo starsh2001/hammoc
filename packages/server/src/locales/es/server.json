@@ -112,6 +112,7 @@
       "slugRequired": "El identificador del proyecto es obligatorio.",
       "pathRequired": "El parámetro de consulta path es obligatorio",
       "contentRequired": "content debe ser una cadena en el cuerpo de la solicitud",
+      "expectedMtimeType": "expectedMtime debe ser una cadena.",
       "typeRequired": "type debe ser \"file\" o \"directory\"",
       "newPathRequired": "El parámetro de consulta newPath es obligatorio",
       "queryRequired": "El parámetro query es obligatorio"
@@ -126,7 +127,8 @@
       "fileAlreadyExists": "El archivo ya existe.",
       "protectedPath": "Ruta protegida.",
       "renameTargetExists": "El destino del renombrado ya existe.",
-      "parentNotFound": "Directorio padre no encontrado."
+      "parentNotFound": "Directorio padre no encontrado.",
+      "staleWrite": "El archivo cambió en el disco después de abrirlo. Recarga para ver los cambios o sobrescribe para conservar los tuyos."
     }
   },
   "git": {

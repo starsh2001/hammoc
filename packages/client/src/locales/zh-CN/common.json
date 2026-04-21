@@ -348,7 +348,15 @@
     "unsavedCloseMessage": "您有未保存的更改。确定要关闭吗？",
     "closeWithoutSaving": "不保存并关闭",
     "unsavedOpenMessage": "您有未保存的更改。打开 '{{path}}' 吗？",
-    "openWithoutSaving": "不保存并打开"
+    "openWithoutSaving": "不保存并打开",
+    "externalChanged": "该文件已被外部修改。",
+    "externalChangedDirty": "该文件已被外部修改。现在保存将覆盖这些更改。",
+    "externalDeleted": "该文件已被外部删除。",
+    "saveConflict": "保存失败 — 文件在您打开后已在磁盘上被修改。",
+    "reloadFromDisk": "重新加载",
+    "saveOverwrite": "覆盖保存",
+    "dismiss": "忽略",
+    "reloadedFromDisk": "已从磁盘重新加载。"
   },
   "git": {
     "initTitle": "初始化 Git 仓库",

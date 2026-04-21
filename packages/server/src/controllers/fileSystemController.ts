@@ -263,12 +263,16 @@ export const fileSystemController = {
   /**
    * PUT /api/projects/:projectSlug/fs/write?path=
    * Write content to a file within a project.
+   * Body: { content: string; expectedMtime?: string }
+   *   expectedMtime — the ISO 8601 mtime the client last observed. When supplied and the
+   *   file has been modified on disk since, the controller returns 409 STALE_WRITE
+   *   (with the current mtime) so the UI can surface a conflict dialog.
    */
   async writeFile(req: Request, res: Response): Promise<void> {
     try {
       const { projectSlug } = req.params;
       const filePath = req.query.path as string;
-      const { content } = req.body || {};
+      const { content, expectedMtime } = req.body || {};
 
       if (!projectSlug) {
         res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.slugRequired') } });
@@ -282,12 +286,16 @@ export const fileSystemController = {
         res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.contentRequired') } });
         return;
       }
+      if (expectedMtime !== undefined && typeof expectedMtime !== 'string') {
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: req.t!('fs.validation.expectedMtimeType') } });
+        return;
+      }
 
       const projectRoot = await projectService.resolveOriginalPath(projectSlug);
-      const result = await fileSystemService.writeFile(projectRoot, filePath, content);
+      const result = await fileSystemService.writeFile(projectRoot, filePath, content, expectedMtime);
       res.json(result);
     } catch (error) {
-      const nodeError = error as NodeJS.ErrnoException;
+      const nodeError = error as NodeJS.ErrnoException & { currentMtime?: string };
       if (nodeError.code === 'PROJECT_NOT_FOUND') {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
@@ -301,6 +309,16 @@ export const fileSystemController = {
       if (nodeError.code === FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code) {
         res.status(FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.httpStatus).json({
           error: { code: FILE_SYSTEM_ERRORS.PARENT_NOT_FOUND.code, message: req.t!('fs.error.parentNotFound') },
+        });
+        return;
+      }
+      if (nodeError.code === FILE_SYSTEM_ERRORS.STALE_WRITE.code) {
+        res.status(FILE_SYSTEM_ERRORS.STALE_WRITE.httpStatus).json({
+          error: {
+            code: FILE_SYSTEM_ERRORS.STALE_WRITE.code,
+            message: req.t!('fs.error.staleWrite'),
+            details: { currentMtime: nodeError.currentMtime ?? '' },
+          },
         });
         return;
       }

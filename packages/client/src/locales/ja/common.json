@@ -348,7 +348,15 @@
     "unsavedCloseMessage": "未保存の変更があります。閉じてもよろしいですか？",
     "closeWithoutSaving": "保存せずに閉じる",
     "unsavedOpenMessage": "未保存の変更があります。'{{path}}'を開きますか？",
-    "openWithoutSaving": "保存せずに開く"
+    "openWithoutSaving": "保存せずに開く",
+    "externalChanged": "このファイルは外部で変更されました。",
+    "externalChangedDirty": "このファイルは外部で変更されました。今保存すると外部の変更が上書きされます。",
+    "externalDeleted": "このファイルは外部で削除されました。",
+    "saveConflict": "保存失敗 — ファイルを開いた後にディスク上で変更されました。",
+    "reloadFromDisk": "リロード",
+    "saveOverwrite": "上書き",
+    "dismiss": "無視",
+    "reloadedFromDisk": "ディスクから再読み込みしました。"
   },
   "git": {
     "initTitle": "Gitリポジトリを初期化",

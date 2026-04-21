@@ -348,7 +348,15 @@
     "unsavedCloseMessage": "Tienes cambios sin guardar. ¿Cerrar de todos modos?",
     "closeWithoutSaving": "Cerrar sin guardar",
     "unsavedOpenMessage": "Tienes cambios sin guardar. ¿Abrir '{{path}}'?",
-    "openWithoutSaving": "Abrir sin guardar"
+    "openWithoutSaving": "Abrir sin guardar",
+    "externalChanged": "Este archivo fue modificado externamente.",
+    "externalChangedDirty": "Este archivo fue modificado externamente. Guardar ahora sobrescribirá esos cambios.",
+    "externalDeleted": "Este archivo fue eliminado externamente.",
+    "saveConflict": "Error al guardar — el archivo cambió en el disco después de abrirlo.",
+    "reloadFromDisk": "Recargar",
+    "saveOverwrite": "Sobrescribir",
+    "dismiss": "Descartar",
+    "reloadedFromDisk": "Recargado desde el disco."
   },
   "git": {
     "initTitle": "Inicializar repositorio Git",

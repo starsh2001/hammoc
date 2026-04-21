@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { FileText, X, Loader2, Eye, Pencil, Download } from 'lucide-react';
+import { FileText, X, Loader2, Eye, Pencil, Download, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useFileStore } from '../../stores/fileStore';
@@ -18,6 +18,7 @@ import { usePanelStore } from '../../stores/panelStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useOverlayBackHandler } from '../../hooks/useOverlayBackHandler';
 import { useTheme } from '../../hooks/useTheme';
+import { useFileWatcher } from '../../hooks/useFileWatcher';
 import { ConfirmModal } from '../ConfirmModal';
 import { MarkdownPreview } from './MarkdownPreview';
 import { getLanguageExtension, isMarkdownPath } from '../../utils/languageDetect';
@@ -34,6 +35,7 @@ export function TextEditor() {
     isTruncated,
     error,
     isMarkdownPreview,
+    externalStatus,
     saveFile,
     closeEditor,
     setContent,
@@ -43,7 +45,11 @@ export function TextEditor() {
     pendingNavigation,
     confirmPendingNavigation,
     cancelPendingNavigation,
+    reloadFromDisk,
+    dismissExternalChange,
   } = useFileStore();
+
+  useFileWatcher();
 
   const { t } = useTranslation('common');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -85,15 +91,24 @@ export function TextEditor() {
     return exts;
   }, [openFile, isTruncated]);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (options?: { overwrite?: boolean }) => {
     if (!isDirty || isSaving) return;
-    const success = await saveFile();
+    const success = await saveFile(options);
     if (success) {
       toast.success(t('editor.fileSaved'));
-    } else {
+      return;
+    }
+    // Let the inline banner communicate stale-write conflicts — avoid a
+    // duplicate toast so the user only sees one prompt.
+    if (useFileStore.getState().externalStatus !== 'saveConflict') {
       toast.error(t('editor.fileSaveFailed'));
     }
-  }, [isDirty, isSaving, saveFile]);
+  }, [isDirty, isSaving, saveFile, t]);
+
+  const handleReload = useCallback(async () => {
+    await reloadFromDisk();
+    toast.success(t('editor.reloadedFromDisk'));
+  }, [reloadFromDisk, t]);
 
   const handleClose = useCallback(() => {
     if (pendingNavigation) {
@@ -240,7 +255,7 @@ export function TextEditor() {
               </button>
             )}
             <button
-              onClick={handleSave}
+              onClick={() => handleSave()}
               disabled={!isDirty || isSaving}
               title={t('editor.saveShortcut')}
               className="px-3 py-1 text-sm font-medium whitespace-nowrap text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -294,6 +309,61 @@ export function TextEditor() {
             {isTruncated && (
               <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs border-b border-amber-200 dark:border-amber-800">
                 {t('editor.fileTruncated')}
+              </div>
+            )}
+            {externalStatus !== 'synced' && (
+              <div
+                role="alert"
+                className={
+                  externalStatus === 'saveConflict' || externalStatus === 'externalDelete'
+                    ? 'flex items-center gap-3 px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs border-b border-red-200 dark:border-red-800'
+                    : 'flex items-center gap-3 px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs border-b border-amber-200 dark:border-amber-800'
+                }
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span className="flex-1">
+                  {externalStatus === 'externalDelete'
+                    ? t('editor.externalDeleted')
+                    : externalStatus === 'saveConflict'
+                    ? t('editor.saveConflict')
+                    : isDirty
+                    ? t('editor.externalChangedDirty')
+                    : t('editor.externalChanged')}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {externalStatus !== 'externalDelete' && (
+                    <button
+                      onClick={handleReload}
+                      className="px-2 py-1 rounded text-xs font-medium bg-white dark:bg-[#253040] hover:bg-gray-100 dark:hover:bg-[#2d3a4a] text-gray-700 dark:text-gray-200 transition-colors"
+                    >
+                      {t('editor.reloadFromDisk')}
+                    </button>
+                  )}
+                  {externalStatus === 'saveConflict' && (
+                    <button
+                      onClick={() => handleSave({ overwrite: true })}
+                      className="px-2 py-1 rounded text-xs font-medium bg-red-600 hover:bg-red-700 text-white transition-colors"
+                    >
+                      {t('editor.saveOverwrite')}
+                    </button>
+                  )}
+                  {externalStatus === 'externalChange' && (
+                    <button
+                      onClick={dismissExternalChange}
+                      className="px-2 py-1 rounded text-xs font-medium bg-white dark:bg-[#253040] hover:bg-gray-100 dark:hover:bg-[#2d3a4a] text-gray-700 dark:text-gray-200 transition-colors"
+                    >
+                      {t('editor.dismiss')}
+                    </button>
+                  )}
+                  {externalStatus === 'externalDelete' && (
+                    <button
+                      onClick={dismissExternalChange}
+                      className="px-2 py-1 rounded text-xs font-medium bg-white dark:bg-[#253040] hover:bg-gray-100 dark:hover:bg-[#2d3a4a] text-gray-700 dark:text-gray-200 transition-colors"
+                    >
+                      {t('editor.dismiss')}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
             {isMarkdownPreview && isMarkdownFile ? (

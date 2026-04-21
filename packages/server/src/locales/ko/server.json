@@ -112,6 +112,7 @@
       "slugRequired": "프로젝트 식별자가 필요합니다.",
       "pathRequired": "path 쿼리 파라미터가 필요합니다",
       "contentRequired": "요청 본문에 content 문자열이 필요합니다",
+      "expectedMtimeType": "expectedMtime은 문자열이어야 합니다.",
       "typeRequired": "type은 \"file\" 또는 \"directory\"이어야 합니다",
       "newPathRequired": "newPath 쿼리 파라미터가 필요합니다",
       "queryRequired": "query 파라미터가 필요합니다",
@@ -133,7 +134,8 @@
       "uploadError": "파일 업로드 중 오류가 발생했습니다.",
       "uploadLimitFileSize": "파일 크기가 10MB 제한을 초과합니다.",
       "uploadLimitFileCount": "파일이 너무 많습니다 (최대 10개).",
-      "uploadLimitUnexpectedFile": "예상하지 못한 파일 필드입니다."
+      "uploadLimitUnexpectedFile": "예상하지 못한 파일 필드입니다.",
+      "staleWrite": "파일을 연 이후 디스크에서 변경되었습니다. 다시 불러오거나 덮어쓰기를 선택하세요."
     }
   },
   "git": {

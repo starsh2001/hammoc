@@ -18,6 +18,8 @@ export interface FileReadResponse {
   size: number;
   /** MIME type */
   mimeType: string;
+  /** Last modification time as ISO 8601 — used by client as baseline for stale-write detection */
+  mtime: string;
 }
 
 /**
@@ -51,6 +53,19 @@ export interface FileWriteResponse {
   success: boolean;
   /** File size in bytes after write */
   size: number;
+  /** New last-modification time (ISO 8601) — client stores this as the next stale-write baseline */
+  mtime: string;
+}
+
+/**
+ * 409 response body when expectedMtime doesn't match the file's current mtime.
+ * Client shows a conflict banner and offers overwrite or reload.
+ */
+export interface StaleWriteErrorPayload {
+  code: typeof FILE_SYSTEM_ERRORS.STALE_WRITE.code;
+  message: string;
+  /** Current on-disk mtime (ISO 8601) — client uses this to reload */
+  currentMtime: string;
 }
 
 /**
@@ -176,6 +191,11 @@ export const FILE_SYSTEM_ERRORS = {
     code: 'COPY_TOO_LARGE',
     message: '복사할 디렉토리가 너무 큽니다.',
     httpStatus: 413,
+  },
+  STALE_WRITE: {
+    code: 'STALE_WRITE',
+    message: '파일이 외부에서 변경되어 저장할 수 없습니다.',
+    httpStatus: 409,
   },
 } as const;
 

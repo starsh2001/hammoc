@@ -112,6 +112,7 @@
       "slugRequired": "请输入项目标识。",
       "pathRequired": "path查询参数为必填项",
       "contentRequired": "请求体中content必须为字符串",
+      "expectedMtimeType": "expectedMtime 必须为字符串。",
       "typeRequired": "type必须为\"file\"或\"directory\"",
       "newPathRequired": "newPath查询参数为必填项",
       "queryRequired": "query参数为必填项"
@@ -126,7 +127,8 @@
       "fileAlreadyExists": "文件已存在。",
       "protectedPath": "受保护的路径。",
       "renameTargetExists": "重命名目标已存在。",
-      "parentNotFound": "未找到父目录。"
+      "parentNotFound": "未找到父目录。",
+      "staleWrite": "打开文件后磁盘上的内容已被修改。请重新加载或覆盖保存。"
     }
   },
   "git": {

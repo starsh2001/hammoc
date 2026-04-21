@@ -15,6 +15,7 @@ import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { ConnectionStatusIndicator } from '../components/ConnectionStatusIndicator';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { joinProjectRoom, leaveProjectRoom } from '../services/socket';
 
 const tabs: Array<{ id: string; labelKey: string; icon: typeof LayoutDashboard; path: string }> = [
   { id: 'overview', labelKey: 'tabs.overview', icon: LayoutDashboard, path: '' },
@@ -45,6 +46,19 @@ export function ProjectTabLayout() {
       fetchProjects();
     }
   }, [projects.length, fetchProjects]);
+
+  // Join the project's socket.io room for the whole project scope. The server's
+  // join-room adapter starts a chokidar file watcher on first join, so every
+  // in-project tab (files, editor, git, terminal, etc.) gets external-change
+  // notifications. Uses ref-counted join — tab-specific hooks that also join
+  // (sessions/queue) stack cleanly.
+  useEffect(() => {
+    if (!projectSlug) return;
+    joinProjectRoom(projectSlug);
+    return () => {
+      leaveProjectRoom(projectSlug);
+    };
+  }, [projectSlug]);
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   useClickOutside(overflowMenuRef, () => setOverflowMenuOpen(false));

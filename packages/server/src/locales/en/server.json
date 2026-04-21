@@ -112,6 +112,7 @@
       "slugRequired": "Project identifier is required.",
       "pathRequired": "path query parameter is required",
       "contentRequired": "content must be a string in request body",
+      "expectedMtimeType": "expectedMtime must be a string when provided.",
       "typeRequired": "type must be \"file\" or \"directory\"",
       "newPathRequired": "newPath query parameter is required",
       "queryRequired": "query parameter is required",
@@ -133,7 +134,8 @@
       "uploadError": "File upload error.",
       "uploadLimitFileSize": "File size exceeds the 10MB limit.",
       "uploadLimitFileCount": "Too many files (max 10).",
-      "uploadLimitUnexpectedFile": "Unexpected file field."
+      "uploadLimitUnexpectedFile": "Unexpected file field.",
+      "staleWrite": "The file was modified on disk since you opened it. Reload to see the changes, or overwrite to keep yours."
     }
   },
   "git": {

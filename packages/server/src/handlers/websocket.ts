@@ -37,12 +37,13 @@ import { notificationService, formatAskQuestionPrompt } from '../services/notifi
 import { preferencesService } from '../services/preferencesService.js';
 import { getOrCreateQueueService, getQueueInstances } from '../controllers/queueController.js';
 import { createLogger } from '../utils/logger.js';
-import { clampEffortForModel } from '../utils/effortUtils.js';
+import { clampEffortForModel, supportsAdaptiveThinking } from '../utils/effortUtils.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
 import { rateLimitProbeService } from '../services/rateLimitProbeService.js';
 import { ptyService } from '../services/ptyService.js';
 import { projectService } from '../services/projectService.js';
 import { dashboardService } from '../services/dashboardService.js';
+import { fileWatcherService } from '../services/fileWatcherService.js';
 import { summarize } from '../services/summarizeService.js';
 import { parseJSONLFile, transformToHistoryMessages } from '../services/historyParser.js';
 import { buildRawMessageTree, getActiveRawBranch, getDefaultRawBranchSelections, findBranchSelectionsForUuid } from '../utils/messageTree.js';
@@ -827,6 +828,28 @@ export async function initializeWebSocket(
   io = new SocketIOServer(httpServer, {
     cors: config.cors,
     maxHttpBufferSize: 100 * 1024 * 1024, // 100MB for base64 image payloads
+  });
+
+  // Mirror project-room membership into fileWatcherService so every code path
+  // that calls socket.join/leave with a `project:<slug>` room transparently
+  // starts or stops the chokidar watcher for that project. socket.io emits
+  // join-room/leave-room exactly once per (socket, room) transition, so the
+  // service's ref count aligns with the number of sockets currently in the room.
+  const projectRoomAdapter = io.of('/').adapter;
+  projectRoomAdapter.on('join-room', (room, _id) => {
+    if (!room.startsWith('project:')) return;
+    const slug = room.slice('project:'.length);
+    projectService
+      .resolveOriginalPath(slug)
+      .then((projectRoot) => fileWatcherService.ensureWatcher(slug, projectRoot))
+      .catch(() => {
+        // Project not found — nothing to watch; silently skip.
+      });
+  });
+  projectRoomAdapter.on('leave-room', (room, _id) => {
+    if (!room.startsWith('project:')) return;
+    const slug = room.slice('project:'.length);
+    fileWatcherService.releaseWatcher(slug);
   });
 
   // Session middleware for WebSocket (Story 2.5 - Task 4)
@@ -2483,6 +2506,17 @@ async function handleChatSend(
 
     const effectiveEffort = clampEffortForModel(effort ?? effectivePrefs.defaultEffort, model);
 
+    // Opus 4.7 flipped `thinking.display` default to 'omitted' — ThinkingBlock UI stays blank
+    // unless we explicitly opt in. For adaptive-thinking models, forward an explicit `thinking`
+    // config based on the user's showThinkingBlocks preference (Hammoc default: true).
+    // Legacy models (Sonnet 4.5, Opus 4.5, Haiku, Sonnet 4) keep the `maxThinkingTokens` path
+    // since they don't accept `thinking.type: 'adaptive'`.
+    const adaptiveCapable = supportsAdaptiveThinking(model);
+    const showThinkingBlocks = effectivePrefs.showThinkingBlocks ?? true;
+    const thinkingConfig = adaptiveCapable
+      ? { type: 'adaptive' as const, display: (showThinkingBlocks ? 'summarized' : 'omitted') as 'summarized' | 'omitted' }
+      : undefined;
+
     const chatOptions = {
       ...(isResuming ? { resume: sessionId } : { sessionId }),
       abortController,
@@ -2490,7 +2524,11 @@ async function handleChatSend(
       images,
       // Advanced settings from preferences
       customSystemPrompt: effectivePrefs.customSystemPrompt,
-      maxThinkingTokens: effectivePrefs.maxThinkingTokens,
+      // maxThinkingTokens: legacy path; SDK docs say it takes precedence for backward-compat,
+      // which conflicts with adaptive mode on Opus 4.7 (rejects enabled+budget). Skip on
+      // adaptive-capable models so the explicit `thinking` field governs.
+      ...(!adaptiveCapable && { maxThinkingTokens: effectivePrefs.maxThinkingTokens }),
+      ...(thinkingConfig && { thinking: thinkingConfig }),
       maxTurns: effectivePrefs.maxTurns,
       maxBudgetUsd: effectivePrefs.maxBudgetUsd,
       effort: effectiveEffort,

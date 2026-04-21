@@ -11,6 +11,7 @@ import path from 'path';
 import os from 'os';
 import { validateProjectPath, validateReadPath } from '../middleware/pathGuard.js';
 import { preferencesService } from './preferencesService.js';
+import { fileWatcherService } from './fileWatcherService.js';
 import { isBinaryFile, getMimeType, MAX_FILE_SIZE, isProtectedPath } from '../utils/pathUtils.js';
 import type {
   FileReadResponse,
@@ -97,12 +98,13 @@ class FileSystemService {
 
     const size = stat.size;
     const mimeType = getMimeType(absolutePath);
+    const mtime = stat.mtime.toISOString();
 
     // 3. Check if binary
     if (size > 0) {
       const binary = await isBinaryFile(absolutePath);
       if (binary) {
-        return { content: null, isBinary: true, isTruncated: false, size, mimeType };
+        return { content: null, isBinary: true, isTruncated: false, size, mimeType, mtime };
       }
     }
 
@@ -113,7 +115,7 @@ class FileSystemService {
         const buffer = Buffer.alloc(MAX_FILE_SIZE);
         await handle.read(buffer, 0, MAX_FILE_SIZE, 0);
         const content = buffer.toString('utf-8');
-        return { content, isBinary: false, isTruncated: true, size, mimeType };
+        return { content, isBinary: false, isTruncated: true, size, mimeType, mtime };
       } finally {
         await handle.close();
       }
@@ -121,7 +123,7 @@ class FileSystemService {
 
     // 5. Normal read
     const content = await fs.readFile(absolutePath, 'utf-8');
-    return { content, isBinary: false, isTruncated: false, size, mimeType };
+    return { content, isBinary: false, isTruncated: false, size, mimeType, mtime };
   }
 
   /**
@@ -253,6 +255,8 @@ class FileSystemService {
    * Recursively searches directories for files matching the query.
    * When includeHidden is false (default), SKIP_DIRS are not recursed into.
    * When includeHidden is true, all directories are searched.
+   * Symlink cycles are guarded by a realpath-keyed visited set: a directory
+   * is recursed into at most once regardless of how many symlinks point at it.
    * @param projectRoot Absolute path to the project root
    * @param query Search query (case-insensitive name match)
    * @param maxResults Maximum number of results to return
@@ -262,7 +266,16 @@ class FileSystemService {
   async searchFiles(projectRoot: string, query: string, maxResults: number = 100, includeHidden: boolean = false): Promise<FileSearchResponse> {
     const lowerQuery = query.toLowerCase();
     const results: FileSearchResult[] = [];
-    await this.searchRecursive(projectRoot, '', lowerQuery, results, maxResults, includeHidden);
+    const visited = new Set<string>();
+    // Seed visited with the project root's realpath so any symlink that loops
+    // back to the root is rejected on first encounter.
+    try {
+      visited.add(await fs.realpath(projectRoot));
+    } catch {
+      // If realpath fails, fall through — the regular traversal still runs and
+      // the visited set accumulates from here on.
+    }
+    await this.searchRecursive(projectRoot, '', lowerQuery, results, maxResults, includeHidden, visited);
     return { query, results };
   }
 
@@ -273,6 +286,7 @@ class FileSystemService {
     results: FileSearchResult[],
     maxResults: number,
     includeHidden: boolean,
+    visited: Set<string>,
   ): Promise<void> {
     if (results.length >= maxResults) return;
 
@@ -301,7 +315,18 @@ class FileSystemService {
         }
 
         if (entryStat.isDirectory() && (includeHidden || !FileSystemService.SKIP_DIRS.has(name))) {
-          await this.searchRecursive(absoluteBase, entryRelative, query, results, maxResults, includeHidden);
+          // Cycle guard: resolve to canonical inode path and skip if seen.
+          // A normal symlink to a fresh directory is still followed once;
+          // only second-and-later encounters of the same target are dropped.
+          let realEntry: string;
+          try {
+            realEntry = await fs.realpath(entryAbsolute);
+          } catch {
+            continue;
+          }
+          if (visited.has(realEntry)) continue;
+          visited.add(realEntry);
+          await this.searchRecursive(absoluteBase, entryRelative, query, results, maxResults, includeHidden, visited);
         }
       } catch {
         continue;
@@ -312,12 +337,21 @@ class FileSystemService {
   /**
    * Write content to a file within a project root.
    * Creates the file if it doesn't exist, overwrites if it does.
+   * When expectedMtime is provided and matches a pre-existing file, the on-disk
+   * mtime is compared first — a mismatch throws STALE_WRITE so the caller can
+   * surface a conflict UI instead of silently overwriting external changes.
    * @param projectRoot Absolute path to the project root
    * @param relativePath Relative path to the file
    * @param content File content to write
+   * @param expectedMtime ISO 8601 mtime the caller last observed; omit to force overwrite
    * @returns FileWriteResponse
    */
-  async writeFile(projectRoot: string, relativePath: string, content: string): Promise<FileWriteResponse> {
+  async writeFile(
+    projectRoot: string,
+    relativePath: string,
+    content: string,
+    expectedMtime?: string,
+  ): Promise<FileWriteResponse> {
     const absolutePath = validateProjectPath(projectRoot, relativePath);
 
     // Check parent directory exists
@@ -343,10 +377,37 @@ class FileSystemService {
       throw err;
     }
 
+    // Stale-write guard: if caller supplied an expected mtime and the file exists,
+    // compare before overwriting. New-file writes skip the check.
+    if (expectedMtime) {
+      try {
+        const existing = await fs.stat(absolutePath);
+        const currentMtime = existing.mtime.toISOString();
+        if (currentMtime !== expectedMtime) {
+          const err = new Error('File changed on disk since it was last read') as NodeJS.ErrnoException & { currentMtime: string };
+          err.code = 'STALE_WRITE';
+          err.currentMtime = currentMtime;
+          throw err;
+        }
+      } catch (error) {
+        // ENOENT just means the file was deleted externally — still treat as stale.
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          const err = new Error('File was deleted on disk') as NodeJS.ErrnoException & { currentMtime: string };
+          err.code = 'STALE_WRITE';
+          err.currentMtime = '';
+          throw err;
+        }
+        if ((error as NodeJS.ErrnoException).code === 'STALE_WRITE') throw error;
+        // Any other stat failure falls through to the write (best-effort)
+      }
+    }
+
     try {
       await fs.writeFile(absolutePath, content, 'utf-8');
       const stat = await fs.stat(absolutePath);
-      return { success: true, size: stat.size };
+      // Suppress the watcher echo for this self-write before any chokidar event fires
+      fileWatcherService.noteLocalWrite(absolutePath);
+      return { success: true, size: stat.size, mtime: stat.mtime.toISOString() };
     } catch {
       const err = new Error('File system write error');
       (err as NodeJS.ErrnoException).code = 'FS_WRITE_ERROR';

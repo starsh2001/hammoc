@@ -21,8 +21,11 @@ export const fileSystemApi = {
   readFile: (projectSlug: string, path: string) =>
     api.get<FileReadResponse>(`/projects/${projectSlug}/fs/read?path=${encodeURIComponent(path)}`),
 
-  writeFile: (projectSlug: string, path: string, content: string) =>
-    api.put<FileWriteResponse>(`/projects/${projectSlug}/fs/write?path=${encodeURIComponent(path)}`, { content }),
+  writeFile: (projectSlug: string, path: string, content: string, expectedMtime?: string) =>
+    api.put<FileWriteResponse>(
+      `/projects/${projectSlug}/fs/write?path=${encodeURIComponent(path)}`,
+      expectedMtime ? { content, expectedMtime } : { content },
+    ),
 
   listDirectory: (projectSlug: string, path: string = '.') =>
     api.get<DirectoryListResponse>(`/projects/${projectSlug}/fs/list?path=${encodeURIComponent(path)}`),
