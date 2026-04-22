@@ -24,7 +24,7 @@ interface GitStore {
   fetchStatus: (projectSlug: string) => Promise<void>;
   fetchLog: (projectSlug: string, limit?: number) => Promise<void>;
   fetchBranches: (projectSlug: string) => Promise<void>;
-  fetchDiff: (projectSlug: string, file: string, staged?: boolean) => Promise<{ diff: string; isBinary: boolean }>;
+  fetchDiff: (projectSlug: string, file: string, staged?: boolean) => Promise<{ before: string; after: string; diff: string; isBinary: boolean }>;
   stageFiles: (projectSlug: string, files: string[]) => Promise<void>;
   unstageFiles: (projectSlug: string, files: string[]) => Promise<void>;
   commit: (projectSlug: string, message: string) => Promise<void>;
@@ -93,10 +93,15 @@ export const useGitStore = create<GitStore>((set, get) => ({
   fetchDiff: async (projectSlug: string, file: string, staged = false) => {
     try {
       const response = await gitApi.getDiff(projectSlug, file, staged);
-      return { diff: response.diff ?? '', isBinary: response.isBinary ?? false };
+      return {
+        before: response.before ?? '',
+        after: response.after ?? '',
+        diff: response.diff ?? '',
+        isBinary: response.isBinary ?? false,
+      };
     } catch (err) {
       setErrorWithAutoClear(set, getErrorMessage(err));
-      return { diff: '', isBinary: false };
+      return { before: '', after: '', diff: '', isBinary: false };
     }
   },
 

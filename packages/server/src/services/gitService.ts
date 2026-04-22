@@ -4,6 +4,7 @@
  * [Source: Story 16.1 - Task 3, Story 16.2 - Task 2]
  */
 
+import { promises as fs } from 'fs';
 import path from 'path';
 import simpleGit from 'simple-git';
 import type {
@@ -148,9 +149,39 @@ class GitService {
         }
       }
 
+      let before = '';
+      let after = '';
+      if (!isBinary) {
+        // Staged view: compare HEAD blob (before) against index blob (after).
+        // Unstaged view: compare index blob (before) against working copy (after).
+        // Any `git show` failure (missing blob — new/untracked file) collapses to ''.
+        const beforeRef = staged ? `HEAD:${file}` : `:${file}`;
+        try {
+          before = await git.show([beforeRef]);
+        } catch {
+          before = '';
+        }
+        if (staged) {
+          try {
+            after = await git.show([`:${file}`]);
+          } catch {
+            after = '';
+          }
+        } else {
+          try {
+            after = await fs.readFile(path.join(projectPath, file), 'utf8');
+          } catch {
+            // Deleted file — working copy missing.
+            after = '';
+          }
+        }
+      }
+
       return {
         initialized: true,
         diff,
+        before,
+        after,
         file,
         staged,
         isBinary,

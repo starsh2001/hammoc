@@ -41,7 +41,12 @@ export interface GitBranchesResponse {
 /** Git diff response */
 export interface GitDiffResponse {
   initialized: boolean;
+  /** Raw `git diff` output. Kept for debugging; clients should prefer before/after for rendering. */
   diff?: string;
+  /** Base-side file contents (index for unstaged view, HEAD for staged view). Empty when file is absent on that side. */
+  before?: string;
+  /** New-side file contents (working copy for unstaged view, index for staged view). Empty when file is deleted. */
+  after?: string;
   file?: string;
   staged?: boolean;
   /** True when the file is binary (git emits "Binary files ... differ" or the file has a binary extension). */

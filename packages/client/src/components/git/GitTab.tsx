@@ -54,7 +54,8 @@ export function GitTab() {
   const [activeBranchIndex, setActiveBranchIndex] = useState(-1);
   const [pendingCheckout, setPendingCheckout] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<{ path: string; staged: boolean } | null>(null);
-  const [diffContent, setDiffContent] = useState('');
+  const [diffBefore, setDiffBefore] = useState('');
+  const [diffAfter, setDiffAfter] = useState('');
   const [diffIsBinary, setDiffIsBinary] = useState(false);
   const [diffLoading, setDiffLoading] = useState(false);
   const [panelVisible, setPanelVisible] = useState(false);
@@ -130,8 +131,9 @@ export function GitTab() {
     setDiffLoading(true);
     setPanelVisible(true);
     requestAnimationFrame(() => setPanelAnimating(true));
-    const { diff, isBinary } = await fetchDiff(projectSlug, path, staged);
-    setDiffContent(diff);
+    const { before, after, isBinary } = await fetchDiff(projectSlug, path, staged);
+    setDiffBefore(before);
+    setDiffAfter(after);
     setDiffIsBinary(isBinary);
     setDiffLoading(false);
   }, [projectSlug, fetchDiff]);
@@ -141,7 +143,8 @@ export function GitTab() {
     setTimeout(() => {
       setPanelVisible(false);
       setSelectedFile(null);
-      setDiffContent('');
+      setDiffBefore('');
+      setDiffAfter('');
       setDiffIsBinary(false);
     }, 350);
   }, []);
@@ -476,8 +479,8 @@ export function GitTab() {
               ) : (
                 <DiffViewer
                   filePath={selectedFile?.path ?? ''}
-                  original=""
-                  modified={diffContent}
+                  original={diffBefore}
+                  modified={diffAfter}
                   layout="inline"
                   responsiveLayout={false}
                 />
