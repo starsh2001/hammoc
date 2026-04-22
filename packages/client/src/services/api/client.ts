@@ -82,6 +82,12 @@ class ApiClient {
       );
     }
 
+    // 204 No Content (or Content-Length: 0): body is empty — skip JSON parse.
+    // Callers of api.delete<void> / api.post<void> rely on this path.
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return undefined as T;
+    }
+
     return response.json();
   }
 
