@@ -44,7 +44,21 @@ export interface DiffViewerProps {
   _testForceError?: boolean;
 }
 
-const LARGE_FILE_THRESHOLD = 5000;
+// Threshold above which the diff panel shows an opt-in "Load all" gate
+// instead of rendering immediately. CodeMirror MergeView's virtual scroller
+// keeps the visible-row cost roughly flat regardless of file size, so the
+// older 5000-line bar was firing on files that actually render without any
+// interaction blocking.
+//
+// Frame-lag benchmark (Windows + Chrome 147, Playwright MCP browser, 5s of
+// samples per file, RAF interval = 16.67ms baseline):
+//   10k lines  → max frame lag 26ms, no frames >50ms
+//   30k lines  → max frame lag 21ms, no frames >50ms
+//   50k lines  → max frame lag 20ms, no frames >50ms
+//   100k lines → max frame lag 47ms, no frames >50ms
+// 50k is comfortably below any perceivable jank. 100k shows one ~3-frame
+// stutter; keep it behind the gate so slower devices aren't surprised.
+const LARGE_FILE_THRESHOLD = 50000;
 
 function countLines(text: string): number {
   if (!text) return 0;
