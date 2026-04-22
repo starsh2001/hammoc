@@ -57,6 +57,7 @@ build/
 .next/
 out/
 coverage/
+*.tsbuildinfo
 
 # Debug
 .ai/debug-log.md
