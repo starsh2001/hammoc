@@ -179,7 +179,6 @@ class GitService {
 
       return {
         initialized: true,
-        diff,
         before,
         after,
         file,

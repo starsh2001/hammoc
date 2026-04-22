@@ -52,7 +52,8 @@ const mockLog = {
 
 const mockDiff = {
   initialized: true,
-  diff: '- old\n+ new',
+  before: 'old\n',
+  after: 'new\n',
   file: 'src/index.ts',
   staged: false,
 };
@@ -240,23 +241,23 @@ describe('useGitStore', () => {
   });
 
   describe('TC-GIT-S14: fetchDiff', () => {
-    it('should call gitApi.getDiff and return diff with isBinary flag', async () => {
+    it('should call gitApi.getDiff and return before/after with isBinary flag', async () => {
       mockedApi.getDiff.mockResolvedValue(mockDiff);
       const result = await useGitStore.getState().fetchDiff('test-project', 'src/index.ts', false);
       expect(mockedApi.getDiff).toHaveBeenCalledWith('test-project', 'src/index.ts', false);
-      expect(result).toEqual({ diff: '- old\n+ new', isBinary: false });
+      expect(result).toEqual({ before: 'old\n', after: 'new\n', isBinary: false });
     });
 
-    it('should return empty diff when response has no diff field', async () => {
+    it('should return empty before/after when response omits the fields', async () => {
       mockedApi.getDiff.mockResolvedValue({ initialized: true });
       const result = await useGitStore.getState().fetchDiff('test-project', 'file.ts');
-      expect(result).toEqual({ diff: '', isBinary: false });
+      expect(result).toEqual({ before: '', after: '', isBinary: false });
     });
 
     it('should propagate isBinary=true for binary files', async () => {
-      mockedApi.getDiff.mockResolvedValue({ initialized: true, diff: '', isBinary: true });
+      mockedApi.getDiff.mockResolvedValue({ initialized: true, isBinary: true });
       const result = await useGitStore.getState().fetchDiff('test-project', 'archive.zip');
-      expect(result).toEqual({ diff: '', isBinary: true });
+      expect(result).toEqual({ before: '', after: '', isBinary: true });
     });
   });
 });

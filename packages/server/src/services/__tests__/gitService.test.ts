@@ -12,6 +12,7 @@ const mockLog = vi.fn();
 const mockBranchLocal = vi.fn();
 const mockBranch = vi.fn();
 const mockDiff = vi.fn();
+const mockShow = vi.fn();
 const mockInit = vi.fn();
 const mockAdd = vi.fn();
 const mockReset = vi.fn();
@@ -28,6 +29,7 @@ vi.mock('simple-git', () => ({
     branchLocal: mockBranchLocal,
     branch: mockBranch,
     diff: mockDiff,
+    show: mockShow,
     init: mockInit,
     add: mockAdd,
     reset: mockReset,
@@ -37,6 +39,20 @@ vi.mock('simple-git', () => ({
     checkout: mockCheckout,
   })),
 }));
+
+// gitService.getDiff reads the working copy via fs.promises.readFile for the
+// unstaged "after" side. Mock it so tests don't depend on a real filesystem.
+const mockReadFile = vi.fn();
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  return {
+    ...actual,
+    promises: {
+      ...actual.promises,
+      readFile: (...args: unknown[]) => mockReadFile(...args),
+    },
+  };
+});
 
 import { gitService } from '../gitService.js';
 
@@ -180,50 +196,69 @@ describe('gitService.getBranches', () => {
 });
 
 describe('gitService.getDiff', () => {
-  // TC-GIT-8: Returns unstaged diff by default
-  it('returns unstaged diff by default', async () => {
+  // TC-GIT-8: Returns unstaged before/after by default (index blob vs working copy)
+  it('returns unstaged before/after by default', async () => {
     mockCheckIsRepo.mockResolvedValue(true);
     mockDiff.mockResolvedValue('diff --git a/file.ts b/file.ts\n--- a/file.ts\n+++ b/file.ts');
+    mockShow.mockResolvedValue('index-side content');
+    mockReadFile.mockResolvedValue('working-copy content');
 
     const result = await gitService.getDiff('/fake/path', 'file.ts');
 
     expect(result.initialized).toBe(true);
-    expect(result.diff).toContain('diff --git');
+    expect(result.before).toBe('index-side content');
+    expect(result.after).toBe('working-copy content');
     expect(result.file).toBe('file.ts');
     expect(result.staged).toBe(false);
     expect(mockDiff).toHaveBeenCalledWith(['--', 'file.ts']);
+    expect(mockShow).toHaveBeenCalledWith([':file.ts']);
     expect(result.isBinary).toBe(false);
   });
 
-  // TC-GIT-9: Returns staged diff when staged=true
-  it('returns staged diff when staged=true', async () => {
+  // TC-GIT-9: Returns staged before/after (HEAD blob vs index blob)
+  it('returns staged before/after when staged=true', async () => {
     mockCheckIsRepo.mockResolvedValue(true);
     mockDiff.mockResolvedValue('staged diff content');
+    mockShow
+      .mockResolvedValueOnce('head-blob content')
+      .mockResolvedValueOnce('index-blob content');
 
     const result = await gitService.getDiff('/fake/path', 'file.ts', true);
 
     expect(result.staged).toBe(true);
+    expect(result.before).toBe('head-blob content');
+    expect(result.after).toBe('index-blob content');
     expect(mockDiff).toHaveBeenCalledWith(['--cached', '--', 'file.ts']);
+    expect(mockShow).toHaveBeenNthCalledWith(1, ['HEAD:file.ts']);
+    expect(mockShow).toHaveBeenNthCalledWith(2, [':file.ts']);
   });
 
-  // Binary file detection via "Binary files … differ" marker
-  it('sets isBinary=true when git emits the binary marker', async () => {
+  // Binary file detection via "Binary files … differ" marker — skips show/readFile.
+  it('sets isBinary=true when git emits the binary marker and leaves before/after empty', async () => {
     mockCheckIsRepo.mockResolvedValue(true);
     mockDiff.mockResolvedValue('Binary files a/archive.zip and b/archive.zip differ');
 
     const result = await gitService.getDiff('/fake/path', 'archive.zip');
 
     expect(result.isBinary).toBe(true);
+    expect(result.before).toBe('');
+    expect(result.after).toBe('');
+    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockReadFile).not.toHaveBeenCalled();
   });
 
-  // TC-GIT-10: Returns empty string for unchanged files
-  it('returns empty string for unchanged files', async () => {
+  // TC-GIT-10: Empty diff still resolves before/after from the filesystem so the
+  // panel can render identical content (no change highlight) instead of blanks.
+  it('returns empty before/after when the file is unchanged and matches on both sides', async () => {
     mockCheckIsRepo.mockResolvedValue(true);
     mockDiff.mockResolvedValue('');
+    mockShow.mockResolvedValue('shared content');
+    mockReadFile.mockResolvedValue('shared content');
 
     const result = await gitService.getDiff('/fake/path', 'unchanged.ts');
 
-    expect(result.diff).toBe('');
+    expect(result.before).toBe('shared content');
+    expect(result.after).toBe('shared content');
   });
 
   // TC-GIT-10a: Non-git repo returns { initialized: false }

@@ -198,13 +198,15 @@ describe('gitController.getBranches', () => {
 });
 
 describe('gitController.getDiff', () => {
-  // TC-GIT-17: Returns 200 with diff content
+  // TC-GIT-17: Returns 200 with diff content (before/after blobs)
   it('returns 200 with diff content', async () => {
     const diffResult = {
       initialized: true,
-      diff: 'diff content',
+      before: 'before content',
+      after: 'after content',
       file: 'src/index.ts',
       staged: false,
+      isBinary: false,
     };
     mockGetDiff.mockResolvedValue(diffResult);
 
