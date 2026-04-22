@@ -277,7 +277,7 @@ export function ToolCard({
           isDenied || isError
             ? 'bg-gray-100 dark:bg-[#263240] border-red-200 dark:border-red-800'
             : isBackgroundFlow
-              ? 'bg-gray-100 dark:bg-[#263240] border-amber-200 dark:border-amber-800/60 border-l-2 border-l-amber-400 dark:border-l-amber-600'
+              ? 'bg-teal-50/70 dark:bg-[#22333a] border-teal-300/70 dark:border-teal-900/70'
               : 'bg-gray-100 dark:bg-[#263240] border-gray-300 dark:border-[#3a4d5e]'
         }`}>
           {/* Header: icon + name + status + duration */}

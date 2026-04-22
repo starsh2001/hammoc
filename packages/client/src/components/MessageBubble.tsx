@@ -117,7 +117,7 @@ export function MessageBubble({
           isUser
             ? 'bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-l-lg rounded-tr-lg'
             : isBackgroundFlow
-              ? 'bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-amber-200 dark:border-amber-800/60 border-l-2 border-l-amber-400 dark:border-l-amber-600'
+              ? 'bg-teal-50/70 dark:bg-[#22333a] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-teal-300/70 dark:border-teal-900/70'
               : 'bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e]'
         } p-3 shadow-sm${isEditing ? ' ring-2 ring-blue-400 dark:ring-blue-500' : ''}`}
       >
@@ -128,7 +128,7 @@ export function MessageBubble({
             <span>{t('messageBubble.assistantName')}</span>
             {isBackgroundFlow && (
               <span
-                className="ml-1 rounded border border-amber-300 dark:border-amber-700/70 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+                className="ml-1 rounded border border-teal-300 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/30 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 dark:text-teal-300"
                 title="Reply to an SDK-injected <task-notification> message (e.g. Bash run_in_background result)"
               >
                 task-notification
