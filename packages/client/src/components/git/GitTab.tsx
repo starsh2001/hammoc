@@ -17,6 +17,8 @@ import {
   AlertCircle,
   Plus,
   X,
+  Columns2,
+  AlignJustify,
 } from 'lucide-react';
 
 import { useGitStatus } from '../../hooks/useGitStatus';
@@ -58,6 +60,16 @@ export function GitTab() {
   const [diffAfter, setDiffAfter] = useState('');
   const [diffIsBinary, setDiffIsBinary] = useState(false);
   const [diffLoading, setDiffLoading] = useState(false);
+  // Diff layout persists in localStorage so the user's pick survives reloads.
+  // Default stays 'inline' because the slide panel is narrow (600px / 80vw).
+  const [diffLayout, setDiffLayout] = useState<'side-by-side' | 'inline'>(() => {
+    const stored = typeof window !== 'undefined' ? window.localStorage.getItem('git-diff-layout') : null;
+    return stored === 'side-by-side' ? 'side-by-side' : 'inline';
+  });
+  const changeDiffLayout = useCallback((layout: 'side-by-side' | 'inline') => {
+    setDiffLayout(layout);
+    try { window.localStorage.setItem('git-diff-layout', layout); } catch { /* quota/privacy */ }
+  }, []);
   const [panelVisible, setPanelVisible] = useState(false);
   const [panelAnimating, setPanelAnimating] = useState(false);
 
@@ -447,14 +459,50 @@ export function GitTab() {
             }`}
           >
             {/* Panel header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-300 dark:border-[#3a4d5e]">
-              <span className="text-sm font-mono text-gray-700 dark:text-gray-200 truncate">
+            <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-300 dark:border-[#3a4d5e]">
+              <span className="text-sm font-mono text-gray-700 dark:text-gray-200 truncate flex-1 min-w-0">
                 {selectedFile?.path}
               </span>
+              {!diffIsBinary && (
+                <div
+                  role="group"
+                  aria-label={t('diff.layoutGroup', 'Diff layout')}
+                  className="flex items-center rounded border border-gray-300 dark:border-[#3a4d5e] overflow-hidden shrink-0"
+                >
+                  <button
+                    type="button"
+                    onClick={() => changeDiffLayout('inline')}
+                    aria-pressed={diffLayout === 'inline'}
+                    aria-label={t('diff.switchToInline')}
+                    title={t('diff.switchToInline')}
+                    className={`p-1 ${
+                      diffLayout === 'inline'
+                        ? 'bg-gray-200 dark:bg-[#253040] text-gray-700 dark:text-gray-100'
+                        : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-[#253040]'
+                    }`}
+                  >
+                    <AlignJustify className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changeDiffLayout('side-by-side')}
+                    aria-pressed={diffLayout === 'side-by-side'}
+                    aria-label={t('diff.switchToSideBySide')}
+                    title={t('diff.switchToSideBySide')}
+                    className={`p-1 ${
+                      diffLayout === 'side-by-side'
+                        ? 'bg-gray-200 dark:bg-[#253040] text-gray-700 dark:text-gray-100'
+                        : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-[#253040]'
+                    }`}
+                  >
+                    <Columns2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={closeDiffPanel}
-                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040]"
+                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-[#253040] shrink-0"
               >
                 <X className="w-5 h-5 text-gray-500" />
               </button>
@@ -481,7 +529,7 @@ export function GitTab() {
                   filePath={selectedFile?.path ?? ''}
                   original={diffBefore}
                   modified={diffAfter}
-                  layout="inline"
+                  layout={diffLayout}
                   responsiveLayout={false}
                 />
               )}
