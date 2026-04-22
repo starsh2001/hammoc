@@ -201,11 +201,15 @@ export function ImageViewer() {
   // would cross the container's opposite edge. transform-origin is the
   // image's own center, so the allowed half-range on each axis is simply
   // (displayedSize - containerSize) / 2, floored at 0 when the image fits.
-  const clampPosition = useCallback((x: number, y: number): { x: number; y: number } => {
+  // `zoomOverride` lets callers clamp against a zoom that hasn't been
+  // committed to state yet (e.g. pinch zoom updates position + zoom in the
+  // same React render, where closure-captured zoomLevel is stale).
+  const clampPosition = useCallback((x: number, y: number, zoomOverride?: number): { x: number; y: number } => {
     const container = imageAreaRef.current;
     if (!container || !naturalSize) return { x, y };
-    const halfExcessX = Math.max(0, (naturalSize.w * zoomLevel - container.clientWidth) / 2);
-    const halfExcessY = Math.max(0, (naturalSize.h * zoomLevel - container.clientHeight) / 2);
+    const z = zoomOverride ?? zoomLevel;
+    const halfExcessX = Math.max(0, (naturalSize.w * z - container.clientWidth) / 2);
+    const halfExcessY = Math.max(0, (naturalSize.h * z - container.clientHeight) / 2);
     return {
       x: Math.max(-halfExcessX, Math.min(halfExcessX, x)),
       y: Math.max(-halfExcessY, Math.min(halfExcessY, y)),
@@ -254,7 +258,18 @@ export function ImageViewer() {
   }, [naturalSize, zoomLevel]);
   const gestureRef = useRef<
     | null
-    | { kind: 'pinch'; initialDistance: number; initialZoom: number }
+    | {
+        kind: 'pinch';
+        initialDistance: number;
+        initialZoom: number;
+        // Pinch midpoint relative to the container's center (container-local coords),
+        // captured at gesture start. Used to anchor the zoom around the two-finger
+        // midpoint instead of the image center.
+        anchorX: number;
+        anchorY: number;
+        // Image position at pinch start (current translate offset).
+        positionAtStart: { x: number; y: number };
+      }
     | { kind: 'swipe'; startX: number; startY: number }
     | { kind: 'pan'; startX: number; startY: number; origin: { x: number; y: number } }
   >(null);
@@ -266,10 +281,20 @@ export function ImageViewer() {
     (e: React.TouchEvent) => {
       if (e.touches.length === 2) {
         e.preventDefault();
+        const container = imageAreaRef.current;
+        const rect = container?.getBoundingClientRect();
+        const midClientX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const midClientY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        // anchor = midpoint (in container coords) relative to container center
+        const anchorX = rect ? midClientX - rect.left - container!.clientWidth / 2 : 0;
+        const anchorY = rect ? midClientY - rect.top - container!.clientHeight / 2 : 0;
         gestureRef.current = {
           kind: 'pinch',
           initialDistance: distanceBetween(e.touches[0], e.touches[1]),
           initialZoom: zoomLevel,
+          anchorX,
+          anchorY,
+          positionAtStart: { ...position },
         };
         return;
       }
@@ -303,7 +328,19 @@ export function ImageViewer() {
         const current = distanceBetween(e.touches[0], e.touches[1]);
         if (g.initialDistance > 0) {
           const ratio = current / g.initialDistance;
-          setZoom(g.initialZoom * ratio);
+          const newZoom = g.initialZoom * ratio;
+          // Anchor the scale around the finger-midpoint so the image point
+          // under the fingers stays put on screen as the image grows/shrinks.
+          // Derivation: after the scale change, the same pre-scale offset P
+          // from the image's center must still project to the midpoint M.
+          //   P = (M - container_center - position_start) / zoom_start
+          //   position_new = (M - container_center) − P × zoom_new
+          //                = anchor × (1 - r) + position_start × r
+          const r = newZoom / g.initialZoom;
+          const newX = g.anchorX * (1 - r) + g.positionAtStart.x * r;
+          const newY = g.anchorY * (1 - r) + g.positionAtStart.y * r;
+          setZoom(newZoom);
+          setPosition(clampPosition(newX, newY, newZoom));
         }
         return;
       }
