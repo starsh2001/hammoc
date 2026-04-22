@@ -197,6 +197,21 @@ export function ImageViewer() {
   }, [zoomBy]);
 
   // Drag to pan
+  // Keep the image from being dragged past the point where its far edge
+  // would cross the container's opposite edge. transform-origin is the
+  // image's own center, so the allowed half-range on each axis is simply
+  // (displayedSize - containerSize) / 2, floored at 0 when the image fits.
+  const clampPosition = useCallback((x: number, y: number): { x: number; y: number } => {
+    const container = imageAreaRef.current;
+    if (!container || !naturalSize) return { x, y };
+    const halfExcessX = Math.max(0, (naturalSize.w * zoomLevel - container.clientWidth) / 2);
+    const halfExcessY = Math.max(0, (naturalSize.h * zoomLevel - container.clientHeight) / 2);
+    return {
+      x: Math.max(-halfExcessX, Math.min(halfExcessX, x)),
+      y: Math.max(-halfExcessY, Math.min(halfExcessY, y)),
+    };
+  }, [naturalSize, zoomLevel]);
+
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (e.button !== 0) return;
@@ -210,12 +225,12 @@ export function ImageViewer() {
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (!isDragging) return;
-      setPosition({
-        x: posStart.current.x + (e.clientX - dragStart.current.x),
-        y: posStart.current.y + (e.clientY - dragStart.current.y),
-      });
+      setPosition(clampPosition(
+        posStart.current.x + (e.clientX - dragStart.current.x),
+        posStart.current.y + (e.clientY - dragStart.current.y),
+      ));
     },
-    [isDragging],
+    [isDragging, clampPosition],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -294,14 +309,14 @@ export function ImageViewer() {
       }
       if (g.kind === 'pan' && e.touches.length === 1) {
         const t0 = e.touches[0];
-        setPosition({
-          x: g.origin.x + (t0.clientX - g.startX),
-          y: g.origin.y + (t0.clientY - g.startY),
-        });
+        setPosition(clampPosition(
+          g.origin.x + (t0.clientX - g.startX),
+          g.origin.y + (t0.clientY - g.startY),
+        ));
       }
       // Swipe: no per-move work — decision happens in touchend.
     },
-    [setZoom],
+    [setZoom, clampPosition],
   );
 
   const handleTouchEnd = useCallback(
@@ -332,6 +347,16 @@ export function ImageViewer() {
     },
     [hasMultipleImages, goNext, goPrev, position, imageOverflowsContainer],
   );
+
+  // Re-clamp the current position whenever zoom or the natural size changes,
+  // so zooming out past the current offset snaps the image back inside the
+  // container instead of leaving it stuck offscreen.
+  useEffect(() => {
+    setPosition((prev) => {
+      const clamped = clampPosition(prev.x, prev.y);
+      return clamped.x === prev.x && clamped.y === prev.y ? prev : clamped;
+    });
+  }, [zoomLevel, naturalSize, clampPosition]);
 
   // React registers onTouchMove/onTouchStart as passive listeners at the root,
   // so e.preventDefault() inside the synthetic handlers is a no-op. On mobile
