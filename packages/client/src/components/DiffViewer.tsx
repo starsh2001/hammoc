@@ -46,19 +46,25 @@ export interface DiffViewerProps {
 
 // Threshold above which the diff panel shows an opt-in "Load all" gate
 // instead of rendering immediately. CodeMirror MergeView's virtual scroller
-// keeps the visible-row cost roughly flat regardless of file size, so the
-// older 5000-line bar was firing on files that actually render without any
-// interaction blocking.
+// keeps the visible-row cost roughly flat regardless of file size, so a low
+// bar fires on files that actually render with no interaction blocking.
 //
-// Frame-lag benchmark (Windows + Chrome 147, Playwright MCP browser, 5s of
-// samples per file, RAF interval = 16.67ms baseline):
-//   10k lines  → max frame lag 26ms, no frames >50ms
-//   30k lines  → max frame lag 21ms, no frames >50ms
-//   50k lines  → max frame lag 20ms, no frames >50ms
-//   100k lines → max frame lag 47ms, no frames >50ms
-// 50k is comfortably below any perceivable jank. 100k shows one ~3-frame
-// stutter; keep it behind the gate so slower devices aren't surprised.
-const LARGE_FILE_THRESHOLD = 50000;
+// Frame-lag benchmark (Windows + Chrome 147, Playwright MCP browser; RAF
+// sampling for 5–20s post-click, 16.67ms is the 60fps baseline):
+//
+//    file size  | max frame lag | frames >50ms | frames >100ms
+//    -----------+---------------+--------------+--------------
+//    10k–100k   |  20–47 ms     |  0           |  0
+//    200k       |     83 ms     |  1           |  0
+//    500k       |    154 ms     |  2           |  1
+//    1M         |    270 ms     |  2           |  2
+//
+// Through 100k there is no perceivable jank. 200k is where "noticeable"
+// starts. Bar is set at 200k: real refactors and generated-file diffs pass
+// without a modal, and only the extreme cases (minified bundles, snapshot
+// fixtures) hit the gate. Slower devices may see 2× these figures, so this
+// still leaves headroom under the 300ms "clearly sluggish" line.
+const LARGE_FILE_THRESHOLD = 200000;
 
 function countLines(text: string): number {
   if (!text) return 0;
