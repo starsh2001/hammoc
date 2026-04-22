@@ -12,9 +12,9 @@ import { ChevronRight, Search, X, Eye, EyeOff, File, Folder, FolderRoot, Loader2
 
 import type { FileSearchResult } from '@hammoc/shared';
 import { useFileStore } from '../../stores/fileStore.js';
-import { useImageViewerStore } from '../../stores/imageViewerStore.js';
 import { usePreferencesStore } from '../../stores/preferencesStore.js';
 import { isImagePath } from '../../utils/languageDetect.js';
+import { openImageWithSiblings } from '../../utils/fileOpenUtils.js';
 
 const HIDDEN_PATTERNS = ['.env', '.git', 'node_modules', '.next', '.cache', '__pycache__', '.DS_Store', 'dist', '.turbo'];
 import { useToast } from '../../hooks/useToast.js';
@@ -103,7 +103,7 @@ export function FileExplorerTab() {
   const handleFileSelect = useCallback(
     (path: string) => {
       if (isImagePath(path)) {
-        useImageViewerStore.getState().openImageViewer(projectSlug!, path);
+        void openImageWithSiblings(projectSlug!, path);
       } else {
         useFileStore.getState().requestFileNavigation(projectSlug!, path);
       }
@@ -115,7 +115,7 @@ export function FileExplorerTab() {
     (result: FileSearchResult) => {
       if (result.type === 'file') {
         if (isImagePath(result.path)) {
-          useImageViewerStore.getState().openImageViewer(projectSlug!, result.path);
+          void openImageWithSiblings(projectSlug!, result.path);
         } else {
           useFileStore.getState().requestFileNavigation(projectSlug!, result.path);
         }

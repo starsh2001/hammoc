@@ -11,7 +11,7 @@ import type { FileSearchResult } from '@hammoc/shared';
 
 import { FileTree } from './FileTree.js';
 import { useFileStore } from '../../stores/fileStore.js';
-import { useImageViewerStore } from '../../stores/imageViewerStore.js';
+import { openImageWithSiblings } from '../../utils/fileOpenUtils.js';
 import { fileSystemApi } from '../../services/api/fileSystem.js';
 import { projectsApi } from '../../services/api/projects.js';
 import { isImagePath } from '../../utils/languageDetect.js';
@@ -71,7 +71,7 @@ export function QuickFileExplorer({
   const handleFileSelect = useCallback(
     (path: string) => {
       if (isImagePath(path)) {
-        useImageViewerStore.getState().openImageViewer(projectSlug, path);
+        void openImageWithSiblings(projectSlug, path);
       } else {
         useFileStore.getState().requestFileNavigation(projectSlug, path);
       }
@@ -86,7 +86,7 @@ export function QuickFileExplorer({
     (result: FileSearchResult) => {
       if (result.type === 'file') {
         if (isImagePath(result.path)) {
-          useImageViewerStore.getState().openImageViewer(projectSlug, result.path);
+          void openImageWithSiblings(projectSlug, result.path);
         } else {
           useFileStore.getState().requestFileNavigation(projectSlug, result.path);
         }
