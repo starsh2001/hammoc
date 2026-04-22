@@ -5,7 +5,7 @@
  * URL-based image arrays (chat attachments with ← → navigation).
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ImageIcon,
@@ -221,6 +221,138 @@ export function ImageViewer() {
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
   }, []);
+
+  // ── Touch gestures (mobile): pinch-zoom + horizontal swipe navigation ──
+  // Pinch: 2 fingers → scale from initial distance × initial zoom.
+  // Swipe: 1 finger while the image fits the container → horizontal delta > threshold fires goPrev/goNext.
+  // Pan:   1 finger while the image overflows the container (displayed size > container) → drag the image.
+  //   The right discriminator is overflow, not zoom==1 — a large natural image at zoom=0.5 can still overflow,
+  //   and a small image at zoom=0.8 may fit entirely.
+  const SWIPE_THRESHOLD_PX = 50;
+  const imageOverflowsContainer = useCallback(() => {
+    const container = imageAreaRef.current;
+    if (!container || !naturalSize) return false;
+    return (
+      naturalSize.w * zoomLevel > container.clientWidth ||
+      naturalSize.h * zoomLevel > container.clientHeight
+    );
+  }, [naturalSize, zoomLevel]);
+  const gestureRef = useRef<
+    | null
+    | { kind: 'pinch'; initialDistance: number; initialZoom: number }
+    | { kind: 'swipe'; startX: number; startY: number }
+    | { kind: 'pan'; startX: number; startY: number; origin: { x: number; y: number } }
+  >(null);
+
+  const distanceBetween = (a: React.Touch, b: React.Touch) =>
+    Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        gestureRef.current = {
+          kind: 'pinch',
+          initialDistance: distanceBetween(e.touches[0], e.touches[1]),
+          initialZoom: zoomLevel,
+        };
+        return;
+      }
+      if (e.touches.length === 1) {
+        const t0 = e.touches[0];
+        if (imageOverflowsContainer()) {
+          gestureRef.current = {
+            kind: 'pan',
+            startX: t0.clientX,
+            startY: t0.clientY,
+            origin: { ...position },
+          };
+        } else {
+          gestureRef.current = {
+            kind: 'swipe',
+            startX: t0.clientX,
+            startY: t0.clientY,
+          };
+        }
+      }
+    },
+    [zoomLevel, position, imageOverflowsContainer],
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      const g = gestureRef.current;
+      if (!g) return;
+      if (g.kind === 'pinch' && e.touches.length === 2) {
+        e.preventDefault();
+        const current = distanceBetween(e.touches[0], e.touches[1]);
+        if (g.initialDistance > 0) {
+          const ratio = current / g.initialDistance;
+          setZoom(g.initialZoom * ratio);
+        }
+        return;
+      }
+      if (g.kind === 'pan' && e.touches.length === 1) {
+        const t0 = e.touches[0];
+        setPosition({
+          x: g.origin.x + (t0.clientX - g.startX),
+          y: g.origin.y + (t0.clientY - g.startY),
+        });
+      }
+      // Swipe: no per-move work — decision happens in touchend.
+    },
+    [setZoom],
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const g = gestureRef.current;
+      if (!g) return;
+      if (g.kind === 'swipe') {
+        const t0 = e.changedTouches[0];
+        if (t0) {
+          const dx = t0.clientX - g.startX;
+          const dy = t0.clientY - g.startY;
+          if (Math.abs(dx) >= SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) && hasMultipleImages) {
+            if (dx < 0) goNext();
+            else goPrev();
+          }
+        }
+      }
+      // If fingers remain on screen, transition to the next gesture rather
+      // than wiping state — e.g. pinch → lift one finger → continue panning.
+      if (e.touches.length === 1) {
+        const t0 = e.touches[0];
+        gestureRef.current = imageOverflowsContainer()
+          ? { kind: 'pan', startX: t0.clientX, startY: t0.clientY, origin: { ...position } }
+          : { kind: 'swipe', startX: t0.clientX, startY: t0.clientY };
+        return;
+      }
+      gestureRef.current = null;
+    },
+    [hasMultipleImages, goNext, goPrev, position, imageOverflowsContainer],
+  );
+
+  // React registers onTouchMove/onTouchStart as passive listeners at the root,
+  // so e.preventDefault() inside the synthetic handlers is a no-op. On mobile
+  // Chrome the visual-viewport pinch-zoom still runs in parallel with our
+  // pinch handler. Attach native non-passive listeners directly to the image
+  // area so preventDefault actually blocks the browser gesture.
+  useEffect(() => {
+    const el = imageAreaRef.current;
+    if (!el) return;
+    const block = (e: TouchEvent) => {
+      // Any touch inside the viewer should route exclusively to our handlers —
+      // no native pinch/pan/double-tap zoom, no page scroll.
+      if (e.cancelable) e.preventDefault();
+    };
+    el.addEventListener('touchstart', block, { passive: false });
+    el.addEventListener('touchmove', block, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', block);
+      el.removeEventListener('touchmove', block);
+    };
+  }, [openImage]);
 
   // Compute a zoom scale for a given fit mode against the current container/image.
   // Returns null when measurements are unavailable.
@@ -454,11 +586,20 @@ export function ImageViewer() {
           className={`flex-1 overflow-hidden flex items-center justify-center bg-gray-100 dark:bg-gray-950 ${
             isDragging ? 'cursor-grabbing' : 'cursor-grab'
           }`}
+          // Disable the browser's native pinch-zoom / pan / double-tap-zoom in this
+          // region so our pinch + swipe handlers are the sole consumer of touch
+          // gestures (otherwise mobile Chrome visual-viewport zoom runs in parallel).
+          // Only scoped to the image area — page-level accessibility zoom remains intact.
+          style={{ touchAction: 'none' }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
         >
           {isLoading && !hasError && (
             <div className="absolute flex items-center gap-2">
