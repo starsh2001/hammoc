@@ -109,6 +109,13 @@ export interface HistoryMessage {
   taskToolUseId?: string;
   /** Branch info attached directly by server — client renders as-is */
   branchInfo?: { total: number; current: number; selectionKey: string };
+  /**
+   * True when this message belongs to a side thread triggered by an SDK
+   * background task-notification (e.g. `Bash run_in_background: true` results),
+   * i.e. it runs in parallel to the main user conversation. Rendered with a
+   * subtle card-color difference so the reader can tell the two threads apart.
+   */
+  isBackgroundFlow?: boolean;
 }
 
 /**

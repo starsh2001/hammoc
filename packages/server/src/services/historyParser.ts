@@ -361,10 +361,54 @@ export function cleanCommandTags(content: string): string {
  * @param raw Array of raw messages (sorted)
  * @returns Array of transformed HistoryMessages for display
  */
+function computeBackgroundFlowUuids(raw: RawJSONLMessage[]): Set<string> {
+  const byUuid = new Map<string, RawJSONLMessage>();
+  for (const m of raw) byUuid.set(m.uuid, m);
+
+  function isTaskNotificationUser(m: RawJSONLMessage): boolean {
+    if (m.type !== 'user') return false;
+    const content = m.message?.content;
+    if (typeof content === 'string') {
+      return content.trimStart().startsWith('<task-notification>');
+    }
+    if (Array.isArray(content)) {
+      const first = content.find((c): c is { type: 'text'; text: string } => c.type === 'text');
+      return first?.text?.trimStart().startsWith('<task-notification>') ?? false;
+    }
+    return false;
+  }
+
+  const backgroundFlow = new Set<string>();
+  for (const m of raw) {
+    if (m.type !== 'assistant') continue;
+    // Walk up to the nearest user-type ancestor
+    const visited = new Set<string>();
+    let cursor: string | undefined = m.parentUuid ?? undefined;
+    while (cursor && !visited.has(cursor)) {
+      visited.add(cursor);
+      const anc = byUuid.get(cursor);
+      if (!anc) break;
+      if (anc.type === 'user') {
+        if (isTaskNotificationUser(anc)) backgroundFlow.add(m.uuid);
+        break;
+      }
+      cursor = anc.parentUuid ?? undefined;
+    }
+  }
+  return backgroundFlow;
+}
+
 export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?: string, sessionId?: string): HistoryMessage[] {
   const results: HistoryMessage[] = [];
   // Map tool_use block id → index in results (for merging tool_results)
   const toolUseIndexMap = new Map<string, number>();
+
+  // Precompute: UUIDs of messages whose nearest user-type ancestor is a
+  // task-notification injected by the SDK (e.g. Bash run_in_background results).
+  // Assistant replies that descend from such a task-notification run in parallel
+  // to the main user conversation — client paints them in a different card color
+  // so the reader can tell the threads apart.
+  const backgroundFlowUuids = computeBackgroundFlowUuids(raw);
 
   // Redirect map: when a message is skipped (non-display type, isMeta, empty
   // content), record uuid → parentUuid so that its children's parentId resolves
@@ -438,6 +482,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
 
     if (m.type === 'assistant') {
       const messageContent = m.message?.content;
+      const isBackgroundFlow = backgroundFlowUuids.has(m.uuid) ? true : undefined;
 
       if (Array.isArray(messageContent)) {
         // Split content blocks into separate HistoryMessages.
@@ -462,6 +507,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
                 timestamp: m.timestamp,
                 parentId,
                 thinking: thinkingContent,
+                isBackgroundFlow,
               });
               thinkingContent = undefined;
             }
@@ -479,6 +525,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
               toolName: toolBlock.name,
               toolInput: toolBlock.input,
               thinking: thinkingContent,
+              isBackgroundFlow,
             });
             toolUseIndexMap.set(toolBlock.id, idx);
             thinkingContent = undefined;
@@ -495,6 +542,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
             timestamp: m.timestamp,
             parentId,
             thinking: thinkingContent,
+            isBackgroundFlow,
           });
         }
       } else {
@@ -507,6 +555,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
             content: text,
             timestamp: m.timestamp,
             parentId,
+            isBackgroundFlow,
           });
         }
       }

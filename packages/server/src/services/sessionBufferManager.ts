@@ -17,6 +17,25 @@ import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('sessionBufferManager');
 
+/**
+ * Stable-sort messages in place by ISO timestamp ascending.
+ * Messages without a timestamp are pinned to their current position by using
+ * a neighbour's timestamp fallback, so metadata-only nodes never jump to the
+ * front or back of the list.
+ */
+function sortHistoryMessagesByTimestamp(messages: HistoryMessage[]): void {
+  const indexed = messages.map((m, i) => ({ m, i, ts: m.timestamp || '' }));
+  indexed.sort((a, b) => {
+    if (a.ts === b.ts) return a.i - b.i;
+    if (!a.ts) return a.i - b.i;
+    if (!b.ts) return a.i - b.i;
+    return a.ts < b.ts ? -1 : 1;
+  });
+  for (let i = 0; i < indexed.length; i++) {
+    messages[i] = indexed[i].m;
+  }
+}
+
 export interface SessionBuffer {
   sessionId: string;
   messages: HistoryMessage[];
@@ -89,6 +108,11 @@ export class SessionBufferManager {
       : defaults;
     const { messages: branchMessages, branchPoints } = getActiveRawBranch(tree.roots, selections);
     const historyMessages = transformToHistoryMessages(branchMessages, projectSlug, sessionId);
+    // Stable-sort by timestamp so that sibling subtrees (e.g. real-user flow
+    // interleaved with task-notification injections from the queue runner)
+    // interleave chronologically instead of the tree-DFS order, which could
+    // place a newer subtree entirely before an older one.
+    sortHistoryMessagesByTimestamp(historyMessages);
     // Attach branchInfo to individual messages so the client can render branch navigation
     if (Object.keys(branchPoints).length > 0) {
       const idIndex = new Map<string, HistoryMessage>();

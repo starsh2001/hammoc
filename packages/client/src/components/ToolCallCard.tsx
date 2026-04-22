@@ -36,6 +36,7 @@ export function ToolCallCard({ message, resultOutput }: ToolCallCardProps) {
         output={failed && !isUserDenied ? errorMessage : undefined}
         isUserDenied={isUserDenied}
         duration={message.toolDuration}
+        isBackgroundFlow={message.isBackgroundFlow}
       />
     );
   }

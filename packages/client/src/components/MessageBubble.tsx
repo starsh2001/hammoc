@@ -101,6 +101,7 @@ export function MessageBubble({
   const [failedImages, setFailedImages] = useState<Set<number>>(() => new Set());
   useEffect(() => { setFailedImages(new Set()); }, [message.id]);
   const isUser = message.type === 'user';
+  const isBackgroundFlow = message.isBackgroundFlow === true;
   const formattedTime = formatRelativeTime(message.timestamp);
 
   return (
@@ -115,7 +116,9 @@ export function MessageBubble({
         className={`relative group ${isEditing ? 'w-full' : 'max-w-[90%] md:max-w-[80%]'} ${
           isUser
             ? 'bg-blue-100 dark:bg-blue-600 text-gray-900 dark:text-white rounded-l-lg rounded-tr-lg'
-            : 'bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e]'
+            : isBackgroundFlow
+              ? 'bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-amber-200 dark:border-amber-800/60 border-l-2 border-l-amber-400 dark:border-l-amber-600'
+              : 'bg-gray-50 dark:bg-[#263240] text-gray-900 dark:text-white rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e]'
         } p-3 shadow-sm${isEditing ? ' ring-2 ring-blue-400 dark:ring-blue-500' : ''}`}
       >
         {/* Icon for assistant */}
@@ -123,6 +126,14 @@ export function MessageBubble({
           <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 dark:text-gray-300">
             <Bot className="w-4 h-4" aria-hidden="true" />
             <span>{t('messageBubble.assistantName')}</span>
+            {isBackgroundFlow && (
+              <span
+                className="ml-1 rounded border border-amber-300 dark:border-amber-700/70 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+                title="Reply to an SDK-injected <task-notification> message (e.g. Bash run_in_background result)"
+              >
+                task-notification
+              </span>
+            )}
           </div>
         )}
 
