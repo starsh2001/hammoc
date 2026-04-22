@@ -24,7 +24,7 @@
  */
 
 import { spawn } from 'child_process';
-import { existsSync, copyFileSync, unlinkSync } from 'fs';
+import { existsSync, copyFileSync, unlinkSync, readdirSync, statSync } from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -46,7 +46,26 @@ const BACKUP_PATH = path.join(
 
 let snapshotState = { captured: false, originalExisted: false };
 
+// Warn about orphan backups from prior runs that force-kill killed before restore.
+// Do not auto-delete — the user may need to inspect them manually. Exclude our own PID.
+function warnOrphanBackups() {
+  const dir = path.dirname(PREFS_PATH);
+  if (!existsSync(dir)) return;
+  const prefix = 'preferences.json.integration-backup-';
+  const orphans = readdirSync(dir)
+    .filter((n) => n.startsWith(prefix) && n !== path.basename(BACKUP_PATH))
+    .map((n) => ({ name: n, mtime: statSync(path.join(dir, n)).mtime }));
+  if (orphans.length === 0) return;
+  console.log(`⚠ Orphan backups detected in ${dir} — ${orphans.length} file(s):`);
+  for (const o of orphans) {
+    console.log(`   ${o.name}  (mtime: ${o.mtime.toISOString()})`);
+  }
+  console.log('   These are leftovers from prior launchers that did not restore cleanly.');
+  console.log('   Inspect and delete manually once you confirm they are not needed.');
+}
+
 function snapshotPreferences() {
+  warnOrphanBackups();
   if (existsSync(PREFS_PATH)) {
     copyFileSync(PREFS_PATH, BACKUP_PATH);
     snapshotState = { captured: true, originalExisted: true };
