@@ -36,18 +36,18 @@
      }`)
      ```
      → "Describe this image briefly." 프롬프트로 전송
-2. 응답 완료 대기 후, 메시지 버블 내 이미지 요소 클릭:
+2. 응답 완료 대기 후, 메시지 영역 내 이미지 요소 클릭 (렌더는 `[data-testid="message-area"]` 하위 `img` 로 내려옴):
    ```js
    browser_evaluate(`() => {
-     const img = document.querySelector('[data-testid="message-bubble"] img, .message-bubble img');
+     const img = document.querySelector('[data-testid="message-area"] img');
      if (!img) return 'no image found';
      img.click();
      return 'clicked';
    }`)
    ```
-3. 전체화면 뷰어 열림 확인:
+3. 전체화면 뷰어 열림 확인 (실제 aria-label 은 `Image viewer`):
    ```js
-   browser_evaluate(`() => !!document.querySelector('[data-testid="image-viewer"], [role="dialog"][aria-label*="이미지"]')`)
+   browser_evaluate(`() => !!document.querySelector('[role="dialog"][aria-label="Image viewer"]')`)
    ```
 
 **기대 결과**: 뷰어 열림, `imageViewerStore` 상태 설정 (줌/닫기 버튼 가시).
@@ -96,20 +96,24 @@
    ```
    ```
 2. 응답 스트리밍 완료 대기 (`browser_wait_for` 로 테이블/코드블록 DOM 감지)
-3. 메시지 버블에서 렌더 결과 확인:
+3. 메시지 영역에서 렌더 결과 확인 (어시스턴트 메시지는 `[data-testid="message-area"]` 하위에 렌더됨 — `message-bubble` testid 는 현재 DOM에 존재하지 않음):
    ```js
-   browser_evaluate(`() => ({
-     tables: document.querySelectorAll('[data-testid="message-bubble"] table, .message-bubble table').length,
-     codeBlocks: document.querySelectorAll('[data-testid="message-bubble"] pre code, .message-bubble pre code').length,
-     copyBtns: document.querySelectorAll('[data-testid="message-bubble"] button[aria-label*="복사"]').length,
-   })`)
+   browser_evaluate(`() => {
+     const area = document.querySelector('[data-testid="message-area"]');
+     return {
+       tables: area.querySelectorAll('table').length,
+       codeBlocks: area.querySelectorAll('pre code').length,
+       copyBtns: area.querySelectorAll('button[aria-label*="복사"]').length,
+       styledCodeSpans: area.querySelectorAll('pre code span[style], pre code span[class]').length,
+     };
+   }`)
    ```
 
 **기대 결과**:
 - `tables >= 1` (GFM 테이블 렌더)
 - `codeBlocks >= 1` (python 코드블록)
 - `copyBtns >= 1` (코드블록당 복사 버튼)
-- 코드블록 구문 강조 토큰 클래스 (`cm-keyword`, `hljs-*` 등) 존재
+- `styledCodeSpans >= 1` — 코드블록 span 에 Shiki inline `style="color:..."` (또는 언어별 테마 토큰) 적용. 기존 `cm-keyword` / `hljs-*` 클래스 기반 기대는 현재 렌더링 경로(Shiki)와 맞지 않아 제거됨.
 
 ### S-02-02: `.md` 파일 프리뷰
 **절차**: 파일 에디터에서 `.md` 열기 → 프리뷰 토글.
