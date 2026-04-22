@@ -61,7 +61,9 @@ export async function createApp(): Promise<Express> {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
+        // 'wasm-unsafe-eval' permits WebAssembly.instantiate without allowing
+        // JS eval. Required by Shiki's oniguruma-to-es WASM highlighter.
+        scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:', 'blob:'],
         connectSrc: ["'self'", 'ws:', 'wss:'],
