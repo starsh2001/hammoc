@@ -40,6 +40,8 @@ interface FileState {
   externalStatus: ExternalChangeStatus;
   /** Mtime seen from the most recent external-change signal (server event or save conflict) */
   externalMtime: string | null;
+  /** Size in bytes for the currently open file (known for binary and text) */
+  fileSize: number | null;
 }
 
 interface FileActions {
@@ -85,6 +87,7 @@ const initialState: FileState = {
   recentFiles: {},
   externalStatus: 'synced',
   externalMtime: null,
+  fileSize: null,
 };
 
 export const useFileStore = create<FileStore>((set, get) => ({
@@ -106,11 +109,16 @@ export const useFileStore = create<FileStore>((set, get) => ({
       targetLine: targetLine ?? null,
       externalStatus: 'synced',
       externalMtime: null,
+      fileSize: null,
     });
     try {
       const response = await fileSystemApi.readFile(projectSlug, path);
       if (response.isBinary) {
-        set({ error: i18n.t('notification:file.binaryNotEditable'), isLoading: false });
+        set({
+          error: i18n.t('notification:file.binaryNotEditable'),
+          isLoading: false,
+          fileSize: response.size,
+        });
         return;
       }
       const fileContent = response.content ?? '';
@@ -120,6 +128,7 @@ export const useFileStore = create<FileStore>((set, get) => ({
         mtime: response.mtime,
         isLoading: false,
         isTruncated: response.isTruncated,
+        fileSize: response.size,
       });
     } catch (err) {
       set({ error: (err as Error).message, isLoading: false });

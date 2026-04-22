@@ -25,6 +25,20 @@ import { getLanguageExtension, isMarkdownPath } from '../../utils/languageDetect
 
 const LazyCodeMirror = lazy(() => import('@uiw/react-codemirror'));
 
+// Compact human-readable byte size (1024-base): "104 B", "5.0 MB", "1.2 GB".
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let value = bytes / 1024;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i++;
+  }
+  return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${units[i]}`;
+}
+
 export function TextEditor() {
   const {
     openFile,
@@ -36,6 +50,7 @@ export function TextEditor() {
     error,
     isMarkdownPreview,
     externalStatus,
+    fileSize,
     saveFile,
     closeEditor,
     setContent,
@@ -284,14 +299,21 @@ export function TextEditor() {
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-500 dark:text-gray-400">
             <p>{error}</p>
             {error === t('notification:file.binaryNotEditable') ? (
-              <a
-                href={fileSystemApi.getDownloadUrl(openFile.projectSlug, openFile.path)}
-                download
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                {t('files.download')}
-              </a>
+              <>
+                {fileSize !== null && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500" data-testid="binary-file-size">
+                    {formatBytes(fileSize)}
+                  </p>
+                )}
+                <a
+                  href={fileSystemApi.getDownloadUrl(openFile.projectSlug, openFile.path)}
+                  download
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  {t('files.download')}
+                </a>
+              </>
             ) : (
               <button
                 onClick={() => {
