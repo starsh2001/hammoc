@@ -141,14 +141,19 @@ node scripts/run-integration-test.mjs --port=<PORT> --with-notifications --mock-
    - (B) API: `PATCH /api/preferences/telegram { alwaysNotify: true }` (응답 수신 시점에 서버 메모리 반영 완료)
    - 직후 `fetch('/api/preferences/telegram').then(r=>r.json())` 로 `alwaysNotify: true` 반영 확인. false 면 라우트 핸들러 구조분해 문제 재발 의심 ([preferences.ts:31-40](../../packages/server/src/routes/preferences.ts#L31-L40))
    - **(B) 권장** — API 경로가 UI 이벤트 순서에 영향받지 않고 명확함
-3. 새 세션 시작 → `Use the Bash tool to create a directory: mkdir /tmp/hammoc-o-02-probe` 같은 권한 필요 프롬프트 전송
-   - 참고: [`settings.local.json`](../../../.claude/settings.local.json) 에 `Bash(mkdir:*)` 허용 있으면 모달 없이 자동 실행될 수 있음. 그래도 `notifyInputRequired` 는 SDK `canUseTool` 훅 경로로 호출됨. 모달이 안 떠도 Telegram 권한 알림은 발송되어야 함.
+3. 새 세션 시작 → 권한 필요 프롬프트 전송. 경로 충돌을 피하려면 **매 run 고유한 디렉토리명** 사용 (예: `Use the Bash tool to create a directory: mkdir /tmp/hammoc-o0202-<YYYYMMDD-HHMMSS>`). 이미 존재하는 경로면 mkdir 이 실패해 `notifyError` 경로로 빠질 수 있음 — 본 시나리오는 `notifyInputRequired` + `notifyComplete` 를 검증하므로 성공 경로를 만들어야 한다.
+   - 권한 모드가 **Ask** 인 경우 Bash ToolCard 아래에 권한 모달(허용/거부 버튼)이 등장한다. `browser_evaluate` 로 `Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === '허용').click()` 호출해 진행시킨다. 모달 등장 시점과 관계없이 `notifyInputRequired` 는 SDK `canUseTool` 훅 진입 시 이미 발송됨 (모달은 UX, 알림은 별개 경로).
+   - 참고: [`settings.local.json`](../../../.claude/settings.local.json) 에 `Bash(mkdir:*)` 매치가 있으면 모달 없이 자동 허용되어 바로 실행된다. 이 경우 절차 5 의 "허용 클릭" 을 건너뛰고 바로 완료 대기.
 4. 30초 이내 mock-telegram messages 확인:
    ```bash
    curl -s http://127.0.0.1:<mockPort>/mock-telegram/messages
    ```
    → `text` 에 `🔐 <b>권한 필요</b>\nSession: <code>...</code>\nBash` 포함된 메시지 1건
-5. 응답 완료까지 대기 (`browser_wait_for text="OK"` 또는 ESC 로 abort 후 짧은 프롬프트 재시도)
+5. 권한 모달이 떠 있으면 "허용" 클릭. 응답 완료 대기는 **입력바 placeholder 복귀** 로 판정한다 (mkdir 응답에는 고정된 텍스트가 없으므로 `text="OK"` 대기는 사용 금지):
+   ```js
+   () => document.querySelector('textarea')?.placeholder  // "메시지를 입력하세요..." 면 완료, "응답 중..." 이면 대기
+   ```
+   또는 전송 버튼 `aria-label === '전송'` (실행 중에는 `'중단'`). 최대 90초 대기, 그 안에 복귀 못 하면 FAIL.
 6. 응답 완료 후 mock-telegram messages 재확인 → `✅ <b>완료</b>` 포함 메시지 1건 추가
 7. 서버 로그 확인 (보조 검증):
    ```
