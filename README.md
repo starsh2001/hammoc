@@ -134,7 +134,7 @@ Real-time conversations with Claude through a rich web UI.
 - **Session fork** — Branch into a new session from any assistant response
 - **Conversation branching** — Navigate between branches with pagination controls, and browse all branches in a read-only viewer
 - **Prompt history** — Navigate previous inputs with arrow keys
-- **Prompt chaining** — Queue up to 10 prompts for sequential execution (server-synced, multi-browser)
+- **Prompt chaining** — Queue up to 10 prompts for sequential execution (server-synced, multi-browser, drag-to-reorder)
 - **Voice input** — Dictate messages using browser speech recognition (Chrome, Edge, Safari)
 - **Context usage monitor** — Track token usage and cost in real-time, with auto-compact on context overflow
 - **Abort generation** — Stop responses with the abort button or ESC key
@@ -159,8 +159,8 @@ Real-time conversations with Claude through a rich web UI.
 
 ### Model & Permission Control
 
-- **Model selector** — Choose between Claude Sonnet, Opus, and Haiku variants with model name displayed on the button
-- **Thinking effort** — Adjust reasoning intensity (Low / Medium / High / Max on Opus 4.6)
+- **Model selector** — Choose between Claude Sonnet, Opus, and Haiku variants (including Opus 4.7 with 1M context) with model name displayed on the button
+- **Thinking effort** — Adjust reasoning intensity (Low / Medium / High, plus Max on 4.6 models and XHigh on Opus 4.7)
 - **Permission modes** — Plan, Ask (default), Auto, or Bypass
 - **Per-project overrides** — Different settings per project
 
@@ -178,7 +178,8 @@ Real-time conversations with Claude through a rich web UI.
 - **Tree navigation** — Directory hierarchy with breadcrumbs
 - **Text editor** — Syntax highlighting with save (Ctrl+S) and binary file download
 - **Markdown preview** — Toggle between edit and preview modes
-- **Image viewer** — Full-screen image viewing with zoom controls and multi-image navigation
+- **Image viewer** — Full-screen viewer with zoom, fit-to-screen/width/height and 1:1 toggles, touch gestures (pinch, swipe, pan), and multi-image navigation across attachments or folder siblings
+- **External change detection** — Editor alerts you when an open file is modified or deleted on disk, with reload / overwrite options for stale-write conflicts
 - **File operations** — Create, rename, and delete files and folders
 
 ### Git Integration
@@ -221,8 +222,9 @@ Automate repetitive prompt sequences.
 - **Language** — English, 中文, 日本語, 한국어, Español, Português
 - **Chat timeout** — 1m, 3m, 5m (default), 10m, 30m
 - **Web Push & Telegram notifications** — Get notified on permission requests, completions, and errors
+- **Claude account & usage** — Inspect the linked Claude Code account plus 5h / 7d usage quotas with live refresh
 - **System prompt editing** — Customize Claude's behavior per project
-- **Advanced** — Server restart, software updates, SDK parameters (thinking tokens, turns, budget)
+- **Advanced** — Server restart, software updates, SDK parameters (thinking tokens, turns, budget — now applied to both chat and queue runs)
 
 ---
 

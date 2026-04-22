@@ -216,7 +216,8 @@ When Claude modifies files, a diff viewer shows the changes:
 - **Syntax highlighting** — Language-aware coloring
 - **Diff navigation** — `F7` next change, `Shift+F7` previous change
 - **Large file handling** — Very large files are handled with optimized rendering
-- **Responsive layout** — Automatically switches between side-by-side and inline modes
+- **Responsive layout** — Automatically switches between side-by-side and inline modes based on screen width (768px breakpoint)
+- **Manual layout toggle** — A toggle button in the viewer header (Columns2 / Rows2 icon) lets you force side-by-side or inline. The choice is persisted per user and overrides the responsive default until reset
 
 ### 2.8 Permission Requests
 
@@ -238,6 +239,7 @@ Queue multiple prompts for sequential execution. Chain state is managed server-s
 5. A **violet banner** shows the chain status:
    - **Collapsed mode** — First prompt preview + "+N" count indicator
    - **Expanded mode** — Full list with individual **Remove** buttons (click to expand when 2+ items)
+   - **Drag-and-drop reorder** — In the expanded list, grab the grip handle (GripVertical icon) on the left of any pending item to drag it up or down. Items that are actively sending show a spinner instead of a grip and cannot be moved
    - **Cancel all** — Clear the entire chain
 6. Each prompt auto-executes when the previous one completes
 
@@ -300,13 +302,17 @@ The model selector button is located in the chat input toolbar. It displays the 
 
 ### 2.16 Thinking Effort
 
-Control how much Claude "thinks" before responding. The intensity bar appears inside the model selector dropdown:
+Control how much Claude "thinks" before responding. The intensity bar appears inside the model selector dropdown. The number of bars depends on the selected model:
 
-- **Low / Medium / High** — 3 levels available for all models
-- **Max** — Additional level available when using Opus 4.6
-- Click the currently active level again to reset to default (High)
+- **Low / Medium / High** — 3 levels, available for all models
+- **Max** — 4th level, added for Opus 4.6 / Sonnet 4.6
+- **XHigh** — 5th level, added only for **Opus 4.7** (the default effort for this model is XHigh)
+
+Behavior:
+
+- Click the currently active level again to reset to default
 - Cannot be changed while Claude is responding
-- If you switch from Opus 4.6 to another model while Max is selected, the effort automatically resets
+- If you switch to a model that doesn't support the current level (e.g., XHigh → non-Opus-4.7, or Max → model without Max), the effort automatically resets to the highest supported level
 
 The default thinking effort for new sessions can be configured in Settings > Global.
 
@@ -395,6 +401,17 @@ Browse all conversation branches in a read-only mode:
    - The input area shows "Branch viewer mode (read-only)"
    - All message actions (edit, rewind, summarize, fork) are disabled
 3. Click **"Exit branch viewer"** in the header to return to the active conversation
+
+### 2.24 Max Budget Warning Banner
+
+When the **Max Budget (USD)** advanced setting (see §12.16) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
+
+- **Yellow warning** (80% threshold) — "Budget warning: $X.XXXX / $Y.YYYY used (ZZ%) — approaching Max Budget limit."
+- **Red critical warning** (95% threshold) — "Budget critical: $X.XXXX / $Y.YYYY used (ZZ%) — stream will auto-stop when limit is exceeded."
+- Cost is shown to 4 decimal places
+- The banner is informational; the SDK auto-stops the stream once the limit is actually crossed
+
+The banner disappears automatically once the running cost falls back below the warning threshold (for example, after starting a new session).
 
 ---
 
@@ -629,10 +646,11 @@ Each card has a **kebab menu** (⋮) with:
 
 1. Click **"New Project"** on the project list page
 2. Enter the project directory path
-3. The path is validated automatically (must exist, must be a valid directory)
-4. If the path already belongs to an existing project, a warning with "Navigate to existing" link appears
-5. Optionally enable BMad Method initialization with version selection
-6. Rate limited to prevent abuse
+3. The path is validated automatically with a short debounce while you type (`"Validating path..."` helper text is shown). Blurring the field validates immediately
+4. Path collision detection — if the path already belongs to an existing project, an amber warning appears with a **"Navigate to existing"** link and the **Create** button is disabled until you pick a different path
+5. Invalid paths show the server's validation message in red below the input, and also disable **Create**
+6. Optionally enable BMad Method initialization with version selection
+7. Rate limited to prevent abuse
 
 ### 5.3 Project Settings
 
@@ -715,7 +733,16 @@ Click any text file to open it in the built-in editor:
 - **Close** — `Escape` key or the X button
 - **Unsaved changes warning** — Confirmation dialog prevents accidental data loss
 - **File size limit** — Files over 1MB are truncated and read-only
-- **Binary files** — When a binary file is opened (images, PDFs, executables, etc.), a download button is shown instead of the editor, allowing direct file download
+- **Binary files** — When a binary file is opened (images, PDFs, executables, etc.), the editor body shows the file's human-readable size (e.g., `104 B`, `5.0 MB`) together with a **Download** button for direct download
+
+**External change detection**
+
+The server watches open files and pushes a notification if the file changes on disk outside Hammoc. An alert banner appears above the editor:
+
+- **File modified on disk (clean editor)** — Amber banner with **Reload** (re-read from disk) and **Dismiss** (keep current view)
+- **File modified on disk (with unsaved edits)** — Amber banner warning that saving will overwrite the external changes; same Reload / Dismiss buttons
+- **File deleted on disk** — Red banner with a **Dismiss** button (no reload is possible)
+- **Stale-write conflict** — If you try to save a file that was modified on disk since you opened it, the save is rejected and a red banner offers **Reload** (discard your edits) or **Overwrite** (force-save over the external changes)
 
 ### 6.3 Markdown Preview
 
@@ -729,11 +756,15 @@ For `.md` files:
 
 Click any image file to open the viewer in a fullscreen overlay:
 
-- **Zoom in/out** — Button controls or mouse wheel scroll
-- **Drag to pan** — Click and drag to move the image
+- **Zoom in/out** — Button controls or mouse wheel scroll (wheel zoom cancels any active fit mode)
+- **Drag to pan** — Click and drag to move the image. Pan position is clamped so the zoomed image cannot be dragged completely off-screen
 - **Zoom percentage** — Displayed between zoom buttons
-- **Reset view** — Return to original size and position
-- **Multi-image navigation** — When multiple images are available (e.g., from a chat message with several attachments), left/right arrow buttons appear in the header. Use arrow keys or click to browse. The current position is shown as "filename (2/5)"
+- **Fit controls** — Header buttons for **Actual size (100%)**, **Fit to screen**, **Fit to width**, and **Fit to height**. The active fit mode is cleared when you manually zoom with the wheel
+- **Touch gestures** (mobile / touchscreen):
+  - **Pinch** with two fingers to zoom. The zoom is anchored at the midpoint between the two fingers so the content under your fingers stays put
+  - **One-finger drag** pans the image when it's zoomed in (with edge clamping)
+  - **One-finger horizontal swipe** (when the image fits on screen) navigates to the previous / next image in the set. A swipe needs to exceed roughly 50 px horizontally and be more horizontal than vertical to trigger
+- **Multi-image navigation** — When multiple images are available (a chat message with multiple attachments, **or a file-explorer image opened from a folder containing other images**), they form a navigable set. Left/right arrow keys move between images and zoom resets to fit on each change. The header shows the current position (e.g., `filename (2/5)`)
 - **Close** — `Escape` key or the X button
 - Supports PNG, JPEG, GIF, WebP, SVG, BMP, ICO
 
@@ -818,7 +849,8 @@ Lightweight Git access from the quick panel side bar:
 ### 7.8 Diff Viewer
 
 - Clicking a file in the Git tab opens a **slide panel** from the right side
-- Shows the unified diff for the selected file
+- Shows the diff for the selected file, using side-by-side or inline layout based on screen width
+- **Layout toggle** — A button in the viewer header switches between side-by-side and inline layout. The choice is persisted per user (see §2.7)
 - **Close** — Click X button, click the backdrop, or press Escape
 
 ### 7.9 Git Repository Initialization
@@ -1430,7 +1462,7 @@ Queue templates automate story development in batch. For details, see §9.8 (Que
 
 ## 12. Settings
 
-Access settings via the gear icon or the Settings page. The page has **7 tabs**: Global, Project, Notifications, Account, Advanced, Help, and About. On desktop, tabs appear as a sidebar; on mobile, they use an accordion layout.
+Access settings via the gear icon or the Settings page. The page has **8 tabs**: Global, Project, Notifications, Claude Account, Hammoc User, Advanced, Help, and About. On desktop, tabs appear as a sidebar; on mobile, they use an accordion layout.
 
 ### 12.1 Theme
 
@@ -1464,7 +1496,7 @@ Choose the default Claude model:
 - **Haiku** — Latest Haiku
 
 **Claude 4.x:**
-- Opus 4.6, 4.5, 4.1, 4
+- Opus 4.7 (most capable, 1M context), 4.6, 4.5, 4.1, 4
 - Sonnet 4.5, 4
 - Haiku 4.5
 
@@ -1543,8 +1575,9 @@ The timeout resets on every activity. If overridden by an environment variable, 
 
 Set the default thinking effort for new sessions:
 
-- **SDK Default** (High) / Low / Medium / High / Max
-- Max is only available when using Opus 4.6
+- **SDK Default** / Low / Medium / High / Max / XHigh
+- Max is available on Opus 4.6 / Sonnet 4.6
+- XHigh is available only on Opus 4.7 (and is the SDK default for that model)
 
 ### 12.11 Quick Panel Defaults
 
@@ -1602,12 +1635,23 @@ Get notified on your phone when Claude needs attention:
 
 **Environment Variables:** Bot Token and Chat ID can be set via environment variables, which take priority over saved values (shown with an amber "Env" indicator).
 
-### 12.13 Account
+### 12.13 Claude Account
+
+Shows the Claude Code account that Hammoc is using, plus live subscription usage:
+
+- **Account info** — Email, Subscription plan, Provider (e.g., Claude API / Claude.ai), Organization (if applicable), and the timestamp of the last fetch
+- **Usage bars** — Two progress bars showing consumption of the **5-hour window** and **7-day window** quotas, with color thresholds (green / yellow / red at 50% / 80%) and reset times
+- **Refresh** — Manually fetch the latest account info and usage from the API (spinner shown while refreshing). Toast confirms success or failure
+- If no data has been fetched yet, a helper line explains that account info fills in automatically after the first chat or after clicking Refresh
+
+### 12.14 Hammoc User
+
+Local Hammoc authentication (independent of your Claude Code account):
 
 - **Change password** — Enter your current password, new password, and confirm. Minimum 4 characters. After changing, you'll be signed out and redirected to the login page.
 - **Logout** — Sign out immediately.
 
-### 12.14 System Prompt
+### 12.15 System Prompt
 
 Customize Claude's behavior with a fully editable system prompt template:
 
@@ -1619,7 +1663,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 - **Template variables** — Listed below the editor with descriptions (e.g., `{gitBranch}`, `{gitMainBranch}`, `{gitStatus}`); variables are resolved at runtime
 - **Resolved preview** — Toggle to see the fully rendered prompt with variables replaced for the current project
 
-### 12.15 Advanced Settings
+### 12.16 Advanced Settings
 
 **Server Management (mode-dependent):**
 
@@ -1637,7 +1681,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 > **Scope (as of v1.3.0)**: these SDK parameters now apply to **both** direct chat sends and Queue Runner executions. Earlier releases silently dropped them in the queue path — if your queue runs started honoring Max Turns or Max Thinking Tokens after upgrading, this is why. Adjust the values if the new behavior surprises you.
 
-### 12.16 Help
+### 12.17 Help
 
 In-app usage guide within the Settings page:
 
@@ -1647,7 +1691,7 @@ In-app usage guide within the Settings page:
 - **BMad Method** — Quick guide to the BMad workflow
 - **Keyboard shortcuts** — Key bindings table (Enter, Shift+Enter, Escape, Ctrl+C, F7/Shift+F7, /)
 
-### 12.17 About
+### 12.18 About
 
 Displays app information:
 
@@ -1712,6 +1756,13 @@ Note: Quick panel shortcuts are disabled when an input or textarea is focused.
 | `F7` | Next change |
 | `Shift+F7` | Previous change |
 | `ESC` | Close diff viewer (fullscreen mode) |
+
+### Image Viewer
+
+| Shortcut | Action |
+|----------|--------|
+| `←` / `→` | Previous / next image (when multiple images form a set) |
+| `ESC` | Close image viewer |
 
 ### Terminal
 
