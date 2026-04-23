@@ -135,3 +135,6 @@ export * from './types/board.js';
 
 // Logger types (shared between server and client)
 export { LogLevel, parseLogLevel } from './types/logger.js';
+
+// Story 28.0.5: Harness workbench shared types (Epic 28 common infra)
+export * from './types/harness.js';

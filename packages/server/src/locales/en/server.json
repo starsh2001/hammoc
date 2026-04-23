@@ -138,6 +138,19 @@
       "staleWrite": "The file was modified on disk since you opened it. Reload to see the changes, or overwrite to keep yours."
     }
   },
+  "harness": {
+    "error": {
+      "pathDenied": "Harness path traversal detected.",
+      "forbidden": "Read-only environment: permission denied.",
+      "fileNotFound": "Harness file not found.",
+      "notAFile": "Harness path is not a file.",
+      "rootMissing": "Harness root directory not found.",
+      "parentNotFound": "Harness parent directory not found.",
+      "staleWrite": "The harness file was modified on disk since you opened it. Reload to see the changes, or overwrite to keep yours.",
+      "parseError": "Failed to parse YAML/JSONC source.",
+      "writeError": "Harness file write error."
+    }
+  },
   "git": {
     "validation": {
       "slugRequired": "projectSlug is required",

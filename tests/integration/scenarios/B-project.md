@@ -151,3 +151,127 @@
 
 **엣지케이스 (B-03-02 공통)**:
 - E1. 활성 세션/터미널이 있는 프로젝트 삭제 시도: 경고 또는 PTY 선제 종료 필요. 현재는 경고 없이 삭제되며 PTY가 오펀화되어 디렉토리 삭제를 차단함.
+
+---
+
+## B4. 프로젝트 설정 탭 `[CORE]`
+
+**범위**: 프로젝트 페이지 내부 "설정" 탭 (`/project/<slug>/settings`). 모델 오버라이드 · Permission Mode 오버라이드 · 사이드바 숨김 토글 · 전역 기본값 초기화.
+
+> **이관 이력 (2026-04-22)**: 이 기능은 이전까지 **전역 설정 페이지** 의 "프로젝트 설정" 섹션 (`/settings/project`) 에 있었고 드롭다운으로 편집 대상 프로젝트를 고르는 방식이었다. 프로젝트 페이지 탭으로 이관되면서 URL 의 `projectSlug` 가 편집 대상을 고정하고 드롭다운이 제거됐다. 전역 설정 페이지에는 더 이상 프로젝트 섹션이 없다 — 옛 시나리오가 `/settings/project` 를 열려고 하면 존재하지 않는 탭이다.
+
+### B-04-01: 프로젝트 설정 탭 진입 & 오버라이드 변경
+
+> **탭 바 스크롤 동작**: 탭 바는 가로 `overflow-x-auto` 로 동작하고 스크롤바는 시각적으로 숨겨져 있다. 좁은 뷰포트(모바일 / 사이드 패널 뷰)에서는 설정 탭이 화면 우측 밖에 있을 수 있으므로 **좌측으로 스와이프 / 가로 스크롤**하여 드러내야 한다. 활성 탭이 보이지 않는 위치로 바뀌면 `scrollIntoView` 로 자동 정렬된다 — URL 로 `/project/<slug>/settings` 를 직접 열면 설정 탭이 자동으로 보이도록 스크롤된다.
+>
+> **엣지 페이드 인디케이터**: 탭 바가 한쪽 방향으로 더 스크롤 가능하면 그 끝에 헤더 배경색에서 투명색으로 전환되는 그라데이션이 표시된다 — 스크롤 위치에 따라 좌/우 각각 독립적으로 on/off 된다 (왼쪽 끝이면 우측 페이드만, 우측 끝이면 좌측 페이드만, 중간이면 양쪽). 검증하려면 `browser_evaluate` 로 탭 바 컨테이너의 `scrollLeft`, `scrollWidth`, `clientWidth` 를 읽어 그라데이션 DOM 존재 여부와 일치하는지 확인.
+
+**절차**:
+1. 임의의 기존 프로젝트를 열어 `/project/<slug>` 진입
+2. 탭 바 맨 오른쪽의 "프로젝트 설정" 탭 클릭 — URL 이 `/project/<slug>/settings` 로 변경되는지 확인 (탭 아이콘은 `FolderCog`). 좁은 화면에선 탭 바 가로 스크롤이 필요할 수 있음
+3. `browser_evaluate` 로 `GET /api/projects/<slug>/settings` 가 한 번 호출됐는지 네트워크 로그 확인 (또는 화면에 "모델 오버라이드" / "Permission Mode 오버라이드" 섹션이 노출되면 fetch 성공으로 판정)
+4. "모델 오버라이드" select 에서 현재 전역 모델과 다른 값 선택 (예: 전역이 sonnet 이면 opus)
+   ```js
+   const select = document.getElementById('project-model');
+   const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+   setter.call(select, 'claude-opus-4-7');
+   select.dispatchEvent(new Event('change', { bubbles: true }));
+   ```
+5. 1초 대기 후 토스트 "설정이 저장되었습니다." 노출 및 `(프로젝트 오버라이드)` 인디케이터가 해당 필드 옆에 표시되는지 확인
+6. `GET /api/projects/<slug>/settings` 재호출 (페이지 새로고침 또는 직접 fetch) → `modelOverride: 'claude-opus-4-7'`, `_overrides` 에 `modelOverride` 포함 여부 확인
+
+**기대 결과**:
+- PATCH `/api/projects/<slug>/settings` 가 `{ modelOverride: 'claude-opus-4-7' }` 바디로 호출됨
+- 서버 응답에서 `_overrides` 에 `modelOverride` 포함
+- 새 세션을 이 프로젝트에서 시작하면 SDK 호출에 해당 모델이 사용됨 (E 도메인과 교차검증 가능)
+- 종료 시 select 를 "전역 기본값 사용" 으로 되돌려 오버라이드 해제
+
+**엣지케이스**:
+- E1. Permission Mode 라디오 (globally / plan / default / acceptEdits) 도 동일 경로로 작동 — `projectPermissionMode` name 의 `input[type=radio]` 를 클릭하면 해당 값으로 PATCH
+- E2. "사이드바에서 숨기기" 체크박스 토글은 프로젝트 리스트 카드 상태와 즉시 동기화 (B-03-01 의 카드 메뉴 "숨기기" 와 동일 결과 — 토글 후 `/projects` 로 복귀해 카운터 확인)
+
+### B-04-02: 전역 기본값으로 초기화
+**선행 조건**: B-04-01 의 4단계를 수행해 최소 한 개의 오버라이드가 존재하거나, 별도로 modelOverride / permissionModeOverride 중 하나를 세팅해 둔다.
+
+**절차**:
+1. 설정 탭 하단의 "전역 기본값으로 초기화" 버튼이 enabled 상태인지 확인 (오버라이드가 있을 때만 활성)
+2. 버튼 클릭 → `window.confirm` 모달 발생. `browser_handle_dialog(accept=true)` 로 승인
+3. 토스트 "전역 설정으로 초기화되었습니다" 확인
+4. 화면의 모델 select 가 "전역 기본값 사용 (현재: ...)" 로 되돌아가고 `(프로젝트 오버라이드)` 인디케이터가 사라졌는지 확인
+5. `GET /api/projects/<slug>/settings` 재호출 → `_overrides: []`, `modelOverride / permissionModeOverride` 필드가 `undefined`, `hidden: false`
+
+**기대 결과**:
+- PATCH `/api/projects/<slug>/settings` 가 `{ modelOverride: null, permissionModeOverride: null, hidden: false }` 로 호출됨
+- 재조회 시 `_overrides` 가 빈 배열
+- 버튼이 다시 disabled 상태로 전환되고 하단에 "현재 프로젝트 오버라이드가 없습니다." 안내 문구 표시
+
+**엣지케이스**:
+- E1. 확인 모달에서 `accept=false` (취소) 시 어떤 API 호출도 발생하지 않아야 함 — 단일 `PATCH` 요청 카운터로 검증
+
+---
+
+## B5. 하네스 파일 API · 외부 변경 이벤트 · YAML/JSONC 라운드트립 `[CORE]`
+
+**범위**: Story 28.0.5 가 추가한 서버 선행 인프라(`/api/harness/*` · `harness:subscribe/unsubscribe` · `harness:external-change`). UI 를 거치지 않고 **REST + WebSocket 계약 자체**를 검증한다. 후속 스토리(28.1·28.4·28.5·28.6·28.8·28.9)가 이 계약을 신뢰하며 UI 를 구축할 수 있도록 하는 인프라 스모크.
+
+### B-05-01: 프로젝트 스코프 하네스 API 정상 경로
+
+**전제**: 테스트 프로젝트가 생성되어 있고, `.claude/` 디렉토리가 존재한다(없다면 첫 단계에서 `ensureDir` 로 생성).
+
+**절차**:
+1. `PUT /api/harness/write?scope=project&projectSlug=<slug>&path=skills/test.md` body `{ "content": "# test" }` → 200 `{ success: true, size, mtime }`
+2. `GET /api/harness/list?scope=project&projectSlug=<slug>&path=skills` → `entries` 에 `test.md` 포함, `modifiedAt` 은 ISO 8601
+3. `GET /api/harness/read?scope=project&projectSlug=<slug>&path=skills/test.md` → `content === "# test"`, `isBinary: false`, `isTruncated: false`, `mtime` 값 기록
+
+**기대 결과**:
+- 응답 스키마가 `HarnessListResponse` · `HarnessReadResponse` · `HarnessWriteResponse` 를 정확히 충족
+- `resolvedRoot` 가 `<projectRoot>/.claude` 의 절대 경로
+
+### B-05-02: ETag/mtime 충돌 감지 (AC5)
+
+**절차**:
+1. 기존 `skills/test.md` 의 mtime 을 기록해 두고, 파일시스템에서 임의로 내용을 바꿔 mtime 을 갱신 (예: `fs.writeFile(path, 'external edit')`)
+2. 옛 mtime 을 `expectedMtime` 으로 붙여 `PUT /api/harness/write` 재호출
+
+**기대 결과**:
+- HTTP **409** 응답
+- 바디 envelope: `{ "error": { "code": "HARNESS_STALE_WRITE", "message": ..., "details": { "currentMtime": "<ISO 8601>" } } }`
+- `details.currentMtime` 값이 실제 on-disk mtime 과 일치 (클라이언트가 reload/덮어쓰기 UX 를 트리거할 수 있는 근거)
+
+### B-05-03: path traversal 차단 (AC1)
+
+**절차**:
+- `GET /api/harness/list?scope=project&projectSlug=<slug>&path=../../etc`
+
+**기대 결과**:
+- HTTP **403** 응답
+- 바디 envelope: `{ "error": { "code": "HARNESS_PATH_DENIED", "message": ... } }` — `details` 는 없어도 됨
+
+### B-05-04: YAML 라운드트립 — 주석 유지 (AC4)
+
+**절차**:
+1. `PUT /api/harness/write` 로 다음 YAML 을 저장:
+   ```yaml
+   # keep me
+   name: old
+   ```
+2. `POST /api/harness/patch-structured?...&path=<같은 경로>` body `{ "format": "yaml", "ops": [{ "path": ["name"], "value": "new" }] }` → 200
+3. `GET /api/harness/read` 로 재조회
+
+**기대 결과**:
+- `content` 에 `# keep me` 주석이 그대로 남아있고, `name: new` 로 바뀌어 있음
+
+### B-05-05: 외부 변경 WebSocket 이벤트 (AC3)
+
+**절차**:
+1. 소켓 연결 후 `emit('harness:subscribe', { scope: 'project', projectSlug: '<slug>' })`
+2. `.claude/skills/watcher-demo.md` 를 서버 외부(터미널 / 별도 프로세스) 에서 생성
+3. 이벤트 수신 대기 (chokidar 안정화 + 이벤트 루프 여유 감안해 최소 **500ms**, 최대 1s)
+
+**기대 결과**:
+- `harness:external-change` 이벤트 수신, 페이로드 `{ scope: 'project', projectSlug, path: 'skills/watcher-demo.md', type: 'created', mtime: '<ISO 8601>' }`
+- 자체 저장(`PUT /api/harness/write`) 경로에서는 동일 경로에 대해 이벤트가 발생하지 않아야 함 (self-write suppression)
+
+**엣지케이스**:
+- E1. `scope=user` 로 호출해도 동일한 스키마 (AC2) — `~/.claude` 가 테스트 환경에 존재하지 않으면 `list` 가 빈 배열로 응답해야 함 (404 금지)
+- E2. `patch-structured` 에 깨진 YAML 을 넣으면 422 `HARNESS_PARSE_ERROR` — 원본 파일은 보존되어 있어야 함

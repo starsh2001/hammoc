@@ -30,6 +30,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import boardRoutes from './routes/board.js';
 import imageRoutes from './routes/images.js';
 import serverRoutes from './routes/server.js';
+import harnessRoutes from './routes/harness.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 import { i18nMiddleware } from './middleware/i18n.js';
@@ -184,6 +185,10 @@ export async function createApp(): Promise<Express> {
 
   // Image serving routes (Story 27.2)
   app.use('/api/projects', imageRoutes);
+
+  // Harness workbench routes (Story 28.0.5) — independent of /api/projects
+  // because the user scope (~/.claude) is not nested under any project.
+  app.use('/api/harness', harnessRoutes);
 
   // Server management routes (restart)
   app.use('/api/server', serverRoutes);

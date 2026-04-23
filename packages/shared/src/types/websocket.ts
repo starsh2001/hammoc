@@ -12,6 +12,7 @@ import type { TerminalCreateRequest, TerminalListRequest, TerminalListResponse, 
 import type { DashboardStatusChangeEvent } from './dashboard.js';
 import type { HistoryMessage } from './history.js';
 import type { SnippetItem } from './command.js';
+import type { HarnessScope, HarnessExternalChangeEvent } from './harness.js';
 
 // ===== Prompt Chain =====
 
@@ -111,6 +112,9 @@ export interface ClientToServerEvents {
   'messages:switch-branch': (data: { sessionId: string; branchSelections: Record<string, number> }) => void;
   // ISSUE-54: Snippet autocomplete — request available snippets list
   'snippets:list': (data: { workingDirectory: string }) => void;
+  // Story 28.0.5: Harness workbench external-change subscription (Epic 28)
+  'harness:subscribe': (data: { scope: HarnessScope; projectSlug?: string }) => void;
+  'harness:unsubscribe': (data: { scope: HarnessScope; projectSlug?: string }) => void;
 }
 
 // ===== Server to Client Events =====
@@ -200,6 +204,11 @@ export interface ServerToClientEvents {
     /** New mtime (ISO 8601); absent for 'deleted' */
     mtime?: string;
   }) => void;
+  // Story 28.0.5: Harness workbench external-change (Epic 28)
+  // Emits for user-scope (~/.claude) or project-scope (.claude) subtree mutations.
+  // Intentionally a separate channel from 'file:external-change' so the editor
+  // and file-explorer panels do not over-react to harness edits.
+  'harness:external-change': (data: HarnessExternalChangeEvent) => void;
 }
 
 // ===== Inter-server Events =====

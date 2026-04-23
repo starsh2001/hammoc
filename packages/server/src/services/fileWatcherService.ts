@@ -11,12 +11,19 @@
  * cause an "external change" banner on their own save. Callers must invoke
  * noteLocalWrite(absolutePath) immediately after writing — events for paths
  * noted within the last SELF_WRITE_WINDOW_MS are silently dropped.
+ *
+ * Story 28.0.5: extended with harness-scope watchers over ~/.claude (user) and
+ * <project>/.claude (project). Harness watchers emit `harness:external-change`
+ * on dedicated rooms and share the same self-write-suppression map so writes
+ * coming out of harnessService do not echo back to the originating client.
  */
 
 import chokidar, { type FSWatcher } from 'chokidar';
 import path from 'path';
+import type { HarnessScope, HarnessExternalChangeEvent } from '@hammoc/shared';
 import { getIO } from '../handlers/websocket.js';
 import { createLogger } from '../utils/logger.js';
+import { getUserHarnessRoot, getProjectHarnessRoot } from '../utils/harnessPaths.js';
 
 const log = createLogger('fileWatcher');
 
@@ -26,13 +33,37 @@ interface ProjectWatcher {
   projectRoot: string;
 }
 
+interface HarnessWatcher {
+  watcher: FSWatcher;
+  refCount: number;
+  resolvedRoot: string;
+  scope: HarnessScope;
+  projectSlug?: string;
+}
+
+interface HarnessRef {
+  scope: HarnessScope;
+  projectSlug?: string;
+}
+
 /** Directories where we never recurse — mirrors fileSystemService.SKIP_DIRS. */
 const SKIP_DIRS = new Set([
   'node_modules', '.git', '.next', '.cache', '__pycache__', 'dist', '.turbo',
 ]);
 
+function harnessKey(ref: HarnessRef): string {
+  return ref.scope === 'user'
+    ? 'harness:user'
+    : `harness:project:${ref.projectSlug ?? ''}`;
+}
+
+function harnessRoom(ref: HarnessRef): string {
+  return harnessKey(ref);
+}
+
 class FileWatcherService {
   private watchers = new Map<string, ProjectWatcher>();
+  private harnessWatchers = new Map<string, HarnessWatcher>();
   /** absolute path → timestamp (ms) of the last local write */
   private pendingLocalWrites = new Map<string, number>();
 
@@ -128,6 +159,113 @@ class FileWatcherService {
     }
   }
 
+  /**
+   * Start (or increment the ref count of) a harness watcher for the given scope.
+   * - `scope='user'`     → ~/.claude (via `getUserHarnessRoot()`)
+   * - `scope='project'`  → <project>/.claude (via `getProjectHarnessRoot()`)
+   *
+   * Idempotent + reference-counted so concurrent subscribers share one chokidar.
+   * Unlike the project watcher, harness watchers subscribe to `add` in addition
+   * to `change`/`unlink` so they can fire the `'created'` type required by
+   * HarnessExternalChangeEvent.
+   */
+  async ensureHarnessWatcher(ref: HarnessRef): Promise<void> {
+    const key = harnessKey(ref);
+    const existing = this.harnessWatchers.get(key);
+    if (existing) {
+      existing.refCount++;
+      return;
+    }
+
+    let resolvedRoot: string;
+    try {
+      resolvedRoot = ref.scope === 'user'
+        ? getUserHarnessRoot()
+        : await getProjectHarnessRoot(ref.projectSlug ?? '');
+    } catch (err) {
+      log.warn(`failed to resolve harness root for ${key}: ${String(err)}`);
+      return;
+    }
+
+    const watcher = chokidar.watch(resolvedRoot, {
+      ignoreInitial: true,
+      ignored: (target: string): boolean => {
+        const rel = path.relative(resolvedRoot, target).replace(/\\/g, '/');
+        if (!rel || rel === '.') return false;
+        const segments = rel.split('/');
+        for (const seg of segments) {
+          if (SKIP_DIRS.has(seg)) return true;
+        }
+        return false;
+      },
+      awaitWriteFinish: {
+        stabilityThreshold: 200,
+        pollInterval: 50,
+      },
+      persistent: true,
+      followSymlinks: false,
+    });
+
+    const emit = (type: HarnessExternalChangeEvent['type']) =>
+      (absolutePath: string, stats?: { mtime?: Date }) => {
+        try {
+          const noteTs = this.pendingLocalWrites.get(absolutePath);
+          if (noteTs !== undefined && Date.now() - noteTs < FileWatcherService.SELF_WRITE_WINDOW_MS) {
+            this.pendingLocalWrites.delete(absolutePath);
+            return;
+          }
+
+          const rel = path.relative(resolvedRoot, absolutePath).replace(/\\/g, '/');
+          if (!rel || rel === '.' || rel.startsWith('..')) return;
+
+          const payload: HarnessExternalChangeEvent = {
+            scope: ref.scope,
+            projectSlug: ref.projectSlug,
+            path: rel,
+            type,
+            mtime: type !== 'deleted' && stats?.mtime ? stats.mtime.toISOString() : undefined,
+          };
+
+          try {
+            getIO().to(harnessRoom(ref)).emit('harness:external-change', payload);
+          } catch {
+            // Socket.io not initialized yet — drop silently.
+          }
+        } catch (err) {
+          log.warn(`failed to emit harness:external-change for ${key}: ${String(err)}`);
+        }
+      };
+
+    watcher.on('add', emit('created'));
+    watcher.on('change', emit('modified'));
+    watcher.on('unlink', emit('deleted'));
+    watcher.on('error', (err) => {
+      log.warn(`chokidar harness watcher error (${key}): ${String(err)}`);
+    });
+
+    this.harnessWatchers.set(key, {
+      watcher,
+      refCount: 1,
+      resolvedRoot,
+      scope: ref.scope,
+      projectSlug: ref.projectSlug,
+    });
+    log.info(`started harness watcher for ${key} at ${resolvedRoot}`);
+  }
+
+  /** Decrement the harness watcher ref count, closing when it reaches zero. */
+  releaseHarnessWatcher(ref: HarnessRef): void {
+    const key = harnessKey(ref);
+    const existing = this.harnessWatchers.get(key);
+    if (!existing) return;
+    existing.refCount--;
+    if (existing.refCount <= 0) {
+      existing.watcher.close().catch(() => { /* best-effort */ });
+      this.harnessWatchers.delete(key);
+      log.info(`stopped harness watcher for ${key}`);
+    }
+  }
+
   /** Mark an absolute path as just-written so the next watcher event is ignored. */
   noteLocalWrite(absolutePath: string): void {
     this.pendingLocalWrites.set(absolutePath, Date.now());
@@ -144,10 +282,16 @@ class FileWatcherService {
 
   /** Close every active watcher. Called on server shutdown. */
   async shutdown(): Promise<void> {
-    const closers = Array.from(this.watchers.values()).map(({ watcher }) =>
-      watcher.close().catch(() => { /* best-effort */ })
-    );
+    const closers = [
+      ...Array.from(this.watchers.values()).map(({ watcher }) =>
+        watcher.close().catch(() => { /* best-effort */ })
+      ),
+      ...Array.from(this.harnessWatchers.values()).map(({ watcher }) =>
+        watcher.close().catch(() => { /* best-effort */ })
+      ),
+    ];
     this.watchers.clear();
+    this.harnessWatchers.clear();
     this.pendingLocalWrites.clear();
     await Promise.all(closers);
   }

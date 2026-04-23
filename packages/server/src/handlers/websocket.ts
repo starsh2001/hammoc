@@ -156,6 +156,10 @@ const socketToSession = new Map<string, string>();
 const socketSessionRoom = new Map<string, string>();
 // Track which project room each socket joined (for leave on session switch)
 const socketProjectRoom = new Map<string, string>();
+// Story 28.0.5: Track harness rooms each socket has subscribed to, so we can
+// release watcher ref counts on disconnect without leaking chokidar instances.
+// Key: socket.id → Set of "harness:user" | "harness:project:<slug>" room strings.
+const socketHarnessRooms = new Map<string, Set<string>>();
 
 // Story 24.1: Per-session prompt chain state
 // Internal chain item with per-item execution context (not sent to clients)
@@ -1957,6 +1961,36 @@ export async function initializeWebSocket(
       }
     });
 
+    // Story 28.0.5: Harness workbench subscription — one room per scope.
+    socket.on('harness:subscribe', async ({ scope, projectSlug }) => {
+      const room = scope === 'user' ? 'harness:user' : `harness:project:${projectSlug ?? ''}`;
+      await socket.join(room);
+      let rooms = socketHarnessRooms.get(socket.id);
+      if (!rooms) {
+        rooms = new Set<string>();
+        socketHarnessRooms.set(socket.id, rooms);
+      }
+      // Idempotent subscribe: increment the watcher ref count only on the
+      // first join so disconnect cleanup matches exactly.
+      if (!rooms.has(room)) {
+        rooms.add(room);
+        try {
+          await fileWatcherService.ensureHarnessWatcher({ scope, projectSlug });
+        } catch (err) {
+          log.warn(`harness:subscribe watcher failed for ${room}: ${String(err)}`);
+        }
+      }
+    });
+    socket.on('harness:unsubscribe', async ({ scope, projectSlug }) => {
+      const room = scope === 'user' ? 'harness:user' : `harness:project:${projectSlug ?? ''}`;
+      await socket.leave(room);
+      const rooms = socketHarnessRooms.get(socket.id);
+      if (rooms && rooms.delete(room)) {
+        fileWatcherService.releaseHarnessWatcher({ scope, projectSlug });
+        if (rooms.size === 0) socketHarnessRooms.delete(socket.id);
+      }
+    });
+
     // Handle queue events via WebSocket (Story 15.2)
     socket.on('queue:start', async (data) => {
       const { items, sessionId, projectSlug, permissionMode } = data;
@@ -2234,6 +2268,21 @@ export async function initializeWebSocket(
         }
       }
       socketProjectRoom.delete(socket.id);
+
+      // Story 28.0.5: Release any harness watcher refs held by this socket so
+      // chokidar instances don't leak when a client drops without unsubscribing.
+      const harnessRooms = socketHarnessRooms.get(socket.id);
+      if (harnessRooms) {
+        for (const room of harnessRooms) {
+          if (room === 'harness:user') {
+            fileWatcherService.releaseHarnessWatcher({ scope: 'user' });
+          } else if (room.startsWith('harness:project:')) {
+            const slug = room.slice('harness:project:'.length);
+            fileWatcherService.releaseHarnessWatcher({ scope: 'project', projectSlug: slug });
+          }
+        }
+        socketHarnessRooms.delete(socket.id);
+      }
 
       // Story 25.9: Cleanup summarizing state on disconnect
       const sumState = socketSummarizing.get(socket.id);
