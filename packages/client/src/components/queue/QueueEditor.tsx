@@ -352,44 +352,103 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           </div>
         )}
 
-        <div style={{ position: 'relative', minHeight: '100%' }}>
-          <pre
-            aria-hidden="true"
-            style={{
-              ...sharedTextStyle,
-              whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
-              overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
-              pointerEvents: 'none',
-            }}
-            dangerouslySetInnerHTML={{ __html: highlightedHtml + '\n' }}
-          />
-          <textarea
-            ref={textareaRef}
-            value={script}
-            onChange={(e) => setScript(e.target.value)}
-            onKeyDown={handleKeyDown}
-            wrap={isAutoWrap ? 'soft' : 'off'}
-            readOnly={isLocked}
-            aria-label={t('queue.scriptEditorAria')}
-            aria-describedby={warnings.length > 0 ? 'queue-warnings' : undefined}
-            className="queue-editor-textarea"
-            spellCheck={false}
-            style={{
-              ...sharedTextStyle,
-              whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
-              overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              resize: 'none',
-              background: 'none',
-              WebkitTextFillColor: 'transparent',
-              outline: 'none',
-            }}
-          />
-        </div>
+        {(() => {
+          const scriptLines = script.split('\n');
+          const highlightedLines = highlightedHtml.split('\n');
+          const gutterDigits = Math.max(2, String(scriptLines.length).length);
+          const gutterWidthCh = `${gutterDigits}ch`;
+          const gutterPadX = 12;
+          const textareaPaddingLeft = `calc(${gutterWidthCh} + ${gutterPadX * 2}px)`;
+          return (
+            <div
+              style={{
+                position: 'relative',
+                minHeight: '100%',
+                minWidth: '100%',
+                width: isAutoWrap ? '100%' : 'max-content',
+              }}
+            >
+              <pre
+                aria-hidden="true"
+                style={{
+                  ...sharedTextStyle,
+                  padding: 0,
+                  overflow: 'visible',
+                  whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
+                  overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
+                  pointerEvents: 'none',
+                }}
+              >
+                <span style={{ display: 'block', paddingTop: '16px', paddingBottom: '16px' }}>
+                  {script !== '' && scriptLines.map((_, idx) => (
+                    <span
+                      key={idx}
+                      style={{ display: 'flex', alignItems: 'flex-start', minHeight: '21px' }}
+                    >
+                      <span
+                        style={{
+                          position: 'sticky',
+                          left: 0,
+                          zIndex: 2,
+                          flexShrink: 0,
+                          width: gutterWidthCh,
+                          paddingLeft: `${gutterPadX}px`,
+                          paddingRight: `${gutterPadX}px`,
+                          textAlign: 'right',
+                          color: '#9ca3af',
+                          userSelect: 'none',
+                          boxSizing: 'content-box',
+                          whiteSpace: 'nowrap',
+                        }}
+                        className="queue-editor-line-number bg-gray-50 dark:bg-[#1c2129]"
+                      >
+                        {idx + 1}
+                      </span>
+                      <span
+                        style={{
+                          flex: 1,
+                          paddingRight: '16px',
+                          whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
+                          overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
+                        }}
+                        dangerouslySetInnerHTML={{
+                          __html: (highlightedLines[idx] ?? '') || '&#8203;',
+                        }}
+                      />
+                    </span>
+                  ))}
+                </span>
+              </pre>
+              <textarea
+                ref={textareaRef}
+                value={script}
+                onChange={(e) => setScript(e.target.value)}
+                onKeyDown={handleKeyDown}
+                wrap={isAutoWrap ? 'soft' : 'off'}
+                readOnly={isLocked}
+                aria-label={t('queue.scriptEditorAria')}
+                aria-describedby={warnings.length > 0 ? 'queue-warnings' : undefined}
+                className="queue-editor-textarea"
+                spellCheck={false}
+                style={{
+                  ...sharedTextStyle,
+                  paddingLeft: textareaPaddingLeft,
+                  whiteSpace: isAutoWrap ? 'pre-wrap' : 'pre',
+                  overflowWrap: isAutoWrap ? 'anywhere' : 'normal',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  resize: 'none',
+                  background: 'none',
+                  WebkitTextFillColor: 'transparent',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          );
+        })()}
       </div>
       )}
 
