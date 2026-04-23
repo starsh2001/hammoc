@@ -137,6 +137,54 @@ echo "hello" > "$PROJ/k-01-untracked.txt"
 
 ---
 
+### K-02-03: AI 분할 커밋 제안 칩 `[EDGE]`
+**선행 조건**: 테스트 프로젝트에 변경사항(staged/unstaged/untracked 중 최소 1개) 존재. K-02-01 상태 그대로 사용 가능.
+
+**절차**:
+1. Git 탭 진입 → 파일 리스트와 커밋 영역 사이에 점선 테두리 purple 칩 노출 확인:
+   ```js
+   browser_evaluate(`() => {
+     const chip = document.querySelector('[data-testid="git-split-commit-chip"]');
+     return { visible: !!chip, title: chip?.querySelector('p')?.textContent?.trim() || null };
+   }`)
+   ```
+   → `visible: true`, `title` 에 "변경사항을 논리 단위로 나눠 커밋" 포함
+
+2. 칩 클릭 → 새 세션으로 navigate 확인:
+   ```js
+   browser_evaluate(`() => {
+     document.querySelector('[data-testid="git-split-commit-chip"]').click();
+   }`)
+   ```
+   이후 `browser_wait_for` → URL 이 `/project/<slug>/session/<uuid>?task=%25split-commit` 형태로 바뀌는지 확인 (task 쿼리 파라미터는 ChatPage 가 소비 후 URL 에서 제거하므로 이동 직후에만 관찰 가능).
+
+3. 새 세션에서 Claude 로 `%split-commit` 스니펫이 자동 전송되는지 확인 — 메시지 리스트에서 "Review the current working tree" 로 시작하는 user 메시지 존재:
+   ```js
+   browser_evaluate(`() => {
+     const msgs = document.querySelectorAll('[data-message-role="user"]');
+     return Array.from(msgs).map(m => m.textContent?.slice(0, 60));
+   }`)
+   ```
+
+4. **빈 상태에서 비표시** — Bash 로 변경사항을 모두 정리:
+   ```bash
+   git -C <프로젝트경로> reset --hard HEAD
+   git -C <프로젝트경로> clean -fd
+   ```
+   Git 탭 새로고침(또는 30 초 폴링 대기) 후 `data-testid="git-split-commit-chip"` 가 DOM 에 없어야 함.
+
+**기대 결과**:
+- 변경사항 있을 때만 점선 테두리 칩 노출 (discoverability 확보)
+- 클릭 시 새 세션 생성 + `%split-commit` 번들 스니펫 자동 전송
+- Claude 가 diff 분석 후 논리 단위로 분할 커밋 수행 (실제 커밋 동작은 AI 응답이므로 본 시나리오 범위 외)
+
+**테스트 함정 (Pitfall)**:
+- 칩은 `!allEmpty` 조건부 렌더링 — `git status` 가 정확히 깨끗할 때만 사라짐
+- task 파라미터는 `%` 가 `%25` 로 URL 인코딩되어 전달됨
+- 번들 스니펫 파일(`packages/server/src/snippets/split-commit`) 누락 시 새 세션에서 스니펫 resolve 실패 에러가 표시됨
+
+---
+
 ## K3. 브랜치 · Push / Pull `[EDGE]`
 
 ### K-03-01: 브랜치 전환

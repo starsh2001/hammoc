@@ -394,7 +394,9 @@
     "stageAll": "すべてステージ",
     "all": "すべて",
     "unstage": "アンステージ",
-    "stage": "ステージ"
+    "stage": "ステージ",
+    "splitCommitTitle": "変更を論理単位で分割してコミット",
+    "splitCommitSubtitle": "Claude が新しいセッションで処理します"
   },
   "queue": {
     "fileTooLarge": "ファイルサイズが1MBを超えています",

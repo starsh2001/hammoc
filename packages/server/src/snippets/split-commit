@@ -1,0 +1,9 @@
+Review the current working tree with `git status` and `git diff` (both staged and unstaged). Group the changes into logically coherent units so that each commit represents a single concern (one feature, one fix, one refactor, etc.). For each group:
+
+1. Stage only the files (or hunks, via `git add -p`, when a single file mixes concerns) that belong to the group.
+2. Commit with a clear conventional-commit style message that explains *why* the change exists, not just *what* changed.
+3. Move on to the next group.
+
+Do not push. Do not amend existing commits. If the changes are already coherent as a single commit, say so and make one commit instead of forcing a split.
+
+When you finish, list the resulting commits (hash + subject line) as a summary.

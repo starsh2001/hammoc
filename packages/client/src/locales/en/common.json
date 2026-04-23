@@ -425,7 +425,9 @@
     "stageAll": "Stage All",
     "all": "All",
     "unstage": "Unstage",
-    "stage": "Stage"
+    "stage": "Stage",
+    "splitCommitTitle": "Split changes into logical commits",
+    "splitCommitSubtitle": "Claude handles it in a new session"
   },
   "queue": {
     "fileTooLarge": "File size exceeds 1MB",

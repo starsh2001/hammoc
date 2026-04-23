@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GitFileStatus } from '@hammoc/shared';
 import {
@@ -19,6 +19,8 @@ import {
   X,
   Columns2,
   AlignJustify,
+  Sparkles,
+  ChevronRight,
 } from 'lucide-react';
 
 import { useGitStatus } from '../../hooks/useGitStatus';
@@ -26,10 +28,12 @@ import { useGitStore } from '../../stores/gitStore';
 import { GitFileList } from './GitFileList';
 import { DiffViewer } from '../DiffViewer';
 import { ConfirmModal } from '../ConfirmModal';
+import { generateUUID } from '../../utils/uuid';
 
 export function GitTab() {
   const { t } = useTranslation('common');
   const { projectSlug } = useParams<{ projectSlug: string }>();
+  const navigate = useNavigate();
   const { status, isLoading: _statusLoading } = useGitStatus(projectSlug);
 
   const commits = useGitStore((s) => s.commits);
@@ -184,6 +188,16 @@ export function GitTab() {
     setNewBranchName('');
     setBranchDropdownOpen(false);
   }, [projectSlug, newBranchName, createBranchAction]);
+
+  // Delegate "split into logical commits" to Claude in a fresh session.
+  // Navigates to a new session with the %split-commit snippet auto-sent via ChatPage's
+  // task search-param handler; ChatPage resolves it server-side.
+  const handleSplitCommit = useCallback(() => {
+    if (!projectSlug) return;
+    const newSessionId = generateUUID();
+    const params = new URLSearchParams({ task: '%split-commit' });
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(newSessionId)}?${params.toString()}`);
+  }, [projectSlug, navigate]);
 
   if (!projectSlug) return null;
 
@@ -374,6 +388,28 @@ export function GitTab() {
                 isLoading={isLoading}
               />
             </>
+          )}
+
+          {/* AI assist: delegate split commit to Claude in a new session.
+              Only visible when there are actual changes to commit. */}
+          {!allEmpty && (
+            <button
+              type="button"
+              onClick={handleSplitCommit}
+              data-testid="git-split-commit-chip"
+              className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-purple-300/80 dark:border-purple-400/30 bg-purple-50/40 dark:bg-purple-500/[0.06] hover:bg-purple-50 dark:hover:bg-purple-500/10 hover:border-purple-400 dark:hover:border-purple-400/60 transition-colors text-left"
+            >
+              <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-800 dark:text-gray-100 truncate">
+                  {t('git.splitCommitTitle')}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {t('git.splitCommitSubtitle')}
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-purple-500 dark:text-purple-400 flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
+            </button>
           )}
 
           {/* Commit area */}

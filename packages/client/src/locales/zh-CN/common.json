@@ -394,7 +394,9 @@
     "stageAll": "全部暂存",
     "all": "全部",
     "unstage": "取消暂存",
-    "stage": "暂存"
+    "stage": "暂存",
+    "splitCommitTitle": "将变更拆分为逻辑提交",
+    "splitCommitSubtitle": "Claude 在新会话中处理"
   },
   "queue": {
     "fileTooLarge": "文件大小超过 1MB",

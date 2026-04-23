@@ -394,7 +394,9 @@
     "stageAll": "Preparar todo",
     "all": "Todo",
     "unstage": "Quitar del área",
-    "stage": "Preparar"
+    "stage": "Preparar",
+    "splitCommitTitle": "Dividir cambios en commits lógicos",
+    "splitCommitSubtitle": "Claude lo gestiona en una nueva sesión"
   },
   "queue": {
     "fileTooLarge": "El tamaño del archivo excede 1MB",

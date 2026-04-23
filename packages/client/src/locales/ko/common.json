@@ -434,7 +434,9 @@
     "stageAllAndCommit": "전체 스테이지 & 커밋",
     "loading": "로딩 중...",
     "error": "오류",
-    "refreshTooltip": "새로고침"
+    "refreshTooltip": "새로고침",
+    "splitCommitTitle": "변경사항을 논리 단위로 나눠 커밋",
+    "splitCommitSubtitle": "Claude 가 새 세션에서 처리합니다"
   },
   "queue": {
     "fileTooLarge": "파일 크기가 1MB를 초과합니다",
