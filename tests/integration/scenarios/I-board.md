@@ -69,8 +69,11 @@
 **기대 결과**:
 - 제목 공란 시 제출 버튼 `disabled`
 - 제목 입력 후 제출 버튼 활성, 클릭 시 Open 컬럼에 카드 추가
+- 생성된 카드 제목 앞에 `#<N>` 형식의 번호 prefix(mono font, 회색)가 표시됨 (ID 가 `ISSUE-<N>` 패턴일 때만 렌더)
 - `<projectRoot>/docs/issues/ISSUE-<증가하는 정수>.md` 파일 생성
 - 보드 API 응답의 `items` 배열에 `{ id: "ISSUE-N", type: "issue", status: "Open", title, severity?, type? }` 포함
+
+**엣지케이스**: 마이그레이션 대상인 레거시 이슈 파일(ID 가 `ISSUE-N` 패턴을 따르지 않음)은 카드에 번호 prefix 가 **노출되지 않는다** — 마이그레이션 배너를 통해 `ISSUE-N` 으로 변환된 뒤에야 번호가 붙는다.
 
 ### I-02-02: 이슈 편집 (제목·심각도·설명)
 

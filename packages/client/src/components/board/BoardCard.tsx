@@ -102,6 +102,11 @@ export function BoardCard({
                 : item.id.replace(/^story-/, '')}
             </span>
           )}
+          {item.type === 'issue' && /^ISSUE-\d+$/.test(item.id) && (
+            <span className="text-gray-500 dark:text-gray-300 mr-1.5 font-mono">
+              #{item.id.replace(/^ISSUE-/, '')}
+            </span>
+          )}
           {item.type === 'epic' && /^Epic\s+\d+$/.test(item.title)
             ? null
             : item.title}
