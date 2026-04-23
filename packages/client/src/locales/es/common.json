@@ -145,7 +145,8 @@
     "queue": "Ejecutor de cola",
     "files": "Archivos",
     "git": "Git",
-    "terminal": "Terminal"
+    "terminal": "Terminal",
+    "projectSettings": "Configuración del proyecto"
   },
   "layout": {
     "back": "Volver",

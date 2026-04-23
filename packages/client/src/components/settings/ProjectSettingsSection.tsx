@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
-import { useSessionStore } from '../../stores/sessionStore';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { projectsApi } from '../../services/api/projects';
 import { MODEL_GROUPS } from '../ModelSelector';
@@ -43,41 +42,30 @@ function getPermissionLabel(mode: PermissionMode, t: (key: string) => string): s
   return found ? t(found.labelKey) : mode;
 }
 
-export function ProjectSettingsSection() {
+interface ProjectSettingsSectionProps {
+  projectSlug: string;
+}
+
+export function ProjectSettingsSection({ projectSlug }: ProjectSettingsSectionProps) {
   const { t } = useTranslation('settings');
-  const projects = useProjectStore((s) => s.projects);
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
-  const currentProjectSlug = useSessionStore((s) => s.currentProjectSlug);
   const globalPrefs = usePreferencesStore((s) => s.preferences);
 
-  const [selectedProjectSlug, setSelectedProjectSlug] = useState<string>('');
   const [settings, setSettings] = useState<ProjectSettingsApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
 
-  // Set initial project selection
-  useEffect(() => {
-    if (projects.length === 0) return;
-    if (selectedProjectSlug && projects.some((p) => p.projectSlug === selectedProjectSlug)) return;
-
-    // Priority: current active project > first in list
-    const initial = currentProjectSlug && projects.some((p) => p.projectSlug === currentProjectSlug)
-      ? currentProjectSlug
-      : projects[0].projectSlug;
-    setSelectedProjectSlug(initial);
-  }, [projects, currentProjectSlug, selectedProjectSlug]);
-
   // Fetch settings when project changes
   useEffect(() => {
-    if (!selectedProjectSlug) return;
+    if (!projectSlug) return;
 
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    projectsApi.getSettings(selectedProjectSlug)
+    projectsApi.getSettings(projectSlug)
       .then((data) => {
         if (!cancelled) {
           setSettings(data);
@@ -93,13 +81,13 @@ export function ProjectSettingsSection() {
       });
 
     return () => { cancelled = true; };
-  }, [selectedProjectSlug, fetchKey]);
+  }, [projectSlug, fetchKey, t]);
 
   const handleUpdateSetting = useCallback(async (update: UpdateProjectSettingsRequest, toastMessage?: string) => {
-    if (!selectedProjectSlug) return;
+    if (!projectSlug) return;
     try {
       setUpdating(true);
-      const updated = await projectsApi.updateSettings(selectedProjectSlug, update);
+      const updated = await projectsApi.updateSettings(projectSlug, update);
       setSettings(updated);
       toast.success(toastMessage ?? t('toast.settingSaved'));
 
@@ -112,7 +100,7 @@ export function ProjectSettingsSection() {
     } finally {
       setUpdating(false);
     }
-  }, [selectedProjectSlug, fetchProjects]);
+  }, [projectSlug, fetchProjects, t]);
 
   const handleModelChange = useCallback((value: string) => {
     handleUpdateSetting({
@@ -140,16 +128,7 @@ export function ProjectSettingsSection() {
       permissionModeOverride: null,
       hidden: false,
     }, t('toast.resetToGlobal'));
-  }, [handleUpdateSetting]);
-
-  // No projects state
-  if (projects.length === 0) {
-    return (
-      <div className="text-gray-500 dark:text-gray-300 text-sm">
-        {t('project.noProjects')}
-      </div>
-    );
-  }
+  }, [handleUpdateSetting, t]);
 
   const overrides = settings?._overrides ?? [];
   const hasOverrides = overrides.length > 0 || settings?.hidden === true;
@@ -168,32 +147,6 @@ export function ProjectSettingsSection() {
 
   return (
     <div className="space-y-8">
-      {/* Project Selector */}
-      <div>
-        <label
-          htmlFor="project-select"
-          className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
-        >
-          {t('project.selectProject')}
-        </label>
-        <select
-          id="project-select"
-          value={selectedProjectSlug}
-          onChange={(e) => setSelectedProjectSlug(e.target.value)}
-          disabled={updating}
-          className="w-full max-w-md px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
-                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
-                     focus:outline-none focus:ring-2 focus:ring-blue-500
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {projects.map((p) => (
-            <option key={p.projectSlug} value={p.projectSlug}>
-              {p.originalPath}{p.hidden ? t('project.hidden') : ''}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* Loading State */}
       {loading && (
         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-300">

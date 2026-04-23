@@ -41,10 +41,12 @@ describe('SettingsPage', () => {
   });
 
   // TC-2: All section navigation items are displayed
+  // Note: project settings section moved to project page tab (`/project/:slug/settings`)
+  // and is no longer part of the global Settings page.
   it('displays all section navigation items', () => {
     renderSettingsPage();
     expect(screen.getAllByText('전역 설정').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('프로젝트 설정').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('프로젝트 설정')).not.toBeInTheDocument();
     expect(screen.getAllByText('알림').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('도움말').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('만든이').length).toBeGreaterThanOrEqual(1);

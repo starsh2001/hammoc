@@ -24,6 +24,7 @@ import { ProjectQueuePage } from './pages/ProjectBatchPage';
 import { ProjectGitPage } from './pages/ProjectGitPage';
 import { ProjectTerminalPage } from './pages/ProjectTerminalPage';
 import { ProjectBoardPage } from './pages/ProjectBoardPage';
+import { ProjectSettingsPage } from './pages/ProjectSettingsPage';
 import { ChatPage } from './pages/ChatPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ProjectTabLayout } from './layouts/ProjectTabLayout';
@@ -83,6 +84,7 @@ function AppContent() {
         <Route path="git" element={<ProjectGitPage />} />
         <Route path="terminal" element={<ProjectTerminalPage />} />
         <Route path="board" element={<ProjectBoardPage />} />
+        <Route path="settings" element={<ProjectSettingsPage />} />
       </Route>
       <Route
         path="/settings"

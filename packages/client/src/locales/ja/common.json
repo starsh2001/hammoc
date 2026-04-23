@@ -145,7 +145,8 @@
     "queue": "キューランナー",
     "files": "ファイル",
     "git": "Git",
-    "terminal": "ターミナル"
+    "terminal": "ターミナル",
+    "projectSettings": "プロジェクト設定"
   },
   "layout": {
     "back": "戻る",

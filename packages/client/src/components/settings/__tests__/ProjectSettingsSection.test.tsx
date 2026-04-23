@@ -7,7 +7,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ProjectSettingsSection } from '../ProjectSettingsSection';
 import { useProjectStore } from '../../../stores/projectStore';
-import { useSessionStore } from '../../../stores/sessionStore';
 import { usePreferencesStore } from '../../../stores/preferencesStore';
 import type { ProjectInfo, ProjectSettingsApiResponse } from '@hammoc/shared';
 
@@ -57,7 +56,6 @@ describe('ProjectSettingsSection', () => {
     mockUpdateSettings.mockResolvedValue(mockSettingsNoOverride);
 
     useProjectStore.setState({ projects: mockProjects });
-    useSessionStore.setState({ currentProjectSlug: 'project-a' });
     usePreferencesStore.setState({
       preferences: {
         theme: 'dark',
@@ -70,25 +68,15 @@ describe('ProjectSettingsSection', () => {
     });
   });
 
-  it('TC-1: renders project selector with project list', async () => {
-    render(<ProjectSettingsSection />);
-    await waitFor(() => {
-      expect(screen.getByLabelText('프로젝트 선택')).toBeInTheDocument();
-    });
-    const select = screen.getByLabelText('프로젝트 선택') as HTMLSelectElement;
-    expect(select.options.length).toBe(2);
-    expect(select.value).toBe('project-a');
-  });
-
-  it('TC-2: fetches settings when project is selected', async () => {
-    render(<ProjectSettingsSection />);
+  it('TC-1: fetches settings for the provided projectSlug on mount', async () => {
+    render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
       expect(mockGetSettings).toHaveBeenCalledWith('project-a');
     });
   });
 
-  it('TC-3: model override dropdown has "use global default" as first option', async () => {
-    render(<ProjectSettingsSection />);
+  it('TC-2: model override dropdown has "use global default" as first option', async () => {
+    render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
       expect(screen.getByLabelText(/모델 오버라이드/)).toBeInTheDocument();
     });
@@ -96,14 +84,14 @@ describe('ProjectSettingsSection', () => {
     expect(modelSelect.options[0].text).toContain('전역 기본값 사용');
   });
 
-  it('TC-4: model change calls updateSettings', async () => {
+  it('TC-3: model change calls updateSettings', async () => {
     mockUpdateSettings.mockResolvedValue({
       ...mockSettingsNoOverride,
       modelOverride: 'opus',
       effectiveModel: 'opus',
       _overrides: ['modelOverride'],
     });
-    render(<ProjectSettingsSection />);
+    render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
       expect(screen.getByLabelText(/모델 오버라이드/)).toBeInTheDocument();
     });
@@ -114,10 +102,10 @@ describe('ProjectSettingsSection', () => {
     });
   });
 
-  it('TC-5: permission mode "use global" sends null', async () => {
+  it('TC-4: permission mode "use global" sends null', async () => {
     mockGetSettings.mockResolvedValue(mockSettingsWithOverride);
     mockUpdateSettings.mockResolvedValue(mockSettingsNoOverride);
-    render(<ProjectSettingsSection />);
+    render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
       expect(screen.getByRole('radio', { name: /전역 기본값 사용/ })).toBeInTheDocument();
     });
@@ -128,21 +116,21 @@ describe('ProjectSettingsSection', () => {
     });
   });
 
-  it('TC-6: override indicator is shown when overrides exist', async () => {
+  it('TC-5: override indicator is shown when overrides exist', async () => {
     mockGetSettings.mockResolvedValue(mockSettingsWithOverride);
-    render(<ProjectSettingsSection />);
+    render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
       const indicators = screen.getAllByText('(프로젝트 오버라이드)');
       expect(indicators.length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it('TC-7: reset button clears all overrides after confirmation', async () => {
+  it('TC-6: reset button clears all overrides after confirmation', async () => {
     mockGetSettings.mockResolvedValue(mockSettingsWithOverride);
     mockUpdateSettings.mockResolvedValue(mockSettingsNoOverride);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    render(<ProjectSettingsSection />);
+    render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
       expect(screen.getByText('전역 기본값으로 초기화')).toBeInTheDocument();
     });
@@ -157,8 +145,8 @@ describe('ProjectSettingsSection', () => {
     });
   });
 
-  it('TC-8: reset button is disabled when no overrides', async () => {
-    render(<ProjectSettingsSection />);
+  it('TC-7: reset button is disabled when no overrides', async () => {
+    render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
       expect(screen.getByText('전역 기본값으로 초기화')).toBeInTheDocument();
     });
@@ -166,34 +154,26 @@ describe('ProjectSettingsSection', () => {
     expect(resetButton.disabled).toBe(true);
   });
 
-  it('TC-9: shows "no projects" message when project list is empty', () => {
-    useProjectStore.setState({ projects: [] });
-    render(<ProjectSettingsSection />);
-    expect(screen.getByText('프로젝트가 없습니다.')).toBeInTheDocument();
-  });
-
-  it('TC-10: dark mode styles are applied', async () => {
-    render(<ProjectSettingsSection />);
+  it('TC-8: dark mode styles are applied', async () => {
+    render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
-      expect(screen.getByLabelText('프로젝트 선택')).toBeInTheDocument();
+      expect(screen.getByText(/모델 오버라이드/)).toBeInTheDocument();
     });
-    // Component renders without errors in dark mode context
-    expect(screen.getByText(/모델 오버라이드/)).toBeInTheDocument();
     expect(screen.getByText(/Permission Mode 오버라이드/)).toBeInTheDocument();
   });
 
-  it('TC-11: shows error message when settings fetch fails', async () => {
+  it('TC-9: shows error message when settings fetch fails', async () => {
     mockGetSettings.mockRejectedValue(new Error('Network error'));
-    render(<ProjectSettingsSection />);
+    render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
       expect(screen.getByText('설정을 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument();
     });
     expect(screen.getByText('재시도')).toBeInTheDocument();
   });
 
-  it('TC-12: retry button re-fetches settings after error', async () => {
+  it('TC-10: retry button re-fetches settings after error', async () => {
     mockGetSettings.mockRejectedValueOnce(new Error('Network error'));
-    render(<ProjectSettingsSection />);
+    render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
       expect(screen.getByText('재시도')).toBeInTheDocument();
     });
@@ -206,5 +186,17 @@ describe('ProjectSettingsSection', () => {
     });
     // getSettings called twice: initial fail + retry success
     expect(mockGetSettings).toHaveBeenCalledTimes(2);
+  });
+
+  it('TC-11: refetches when projectSlug prop changes', async () => {
+    const { rerender } = render(<ProjectSettingsSection projectSlug="project-a" />);
+    await waitFor(() => {
+      expect(mockGetSettings).toHaveBeenCalledWith('project-a');
+    });
+
+    rerender(<ProjectSettingsSection projectSlug="project-b" />);
+    await waitFor(() => {
+      expect(mockGetSettings).toHaveBeenCalledWith('project-b');
+    });
   });
 });

@@ -145,7 +145,8 @@
     "queue": "Queue Runner",
     "files": "Files",
     "git": "Git",
-    "terminal": "Terminal"
+    "terminal": "Terminal",
+    "projectSettings": "Project Settings"
   },
   "layout": {
     "back": "Go back",

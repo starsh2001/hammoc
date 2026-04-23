@@ -145,7 +145,8 @@
     "queue": "Executor de filas",
     "files": "Arquivos",
     "git": "Git",
-    "terminal": "Terminal"
+    "terminal": "Terminal",
+    "projectSettings": "Configurações do projeto"
   },
   "layout": {
     "back": "Voltar",

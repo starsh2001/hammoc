@@ -7,11 +7,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Settings, FolderCog, Bell, Send, Wrench, HelpCircle, Info, UserCog, User } from 'lucide-react';
+import { ArrowLeft, Settings, Bell, Send, Wrench, HelpCircle, Info, UserCog, User } from 'lucide-react';
 import { LayoutToggleButton } from '../components/LayoutToggleButton';
 import { SettingsSection } from '../components/SettingsSection';
 import { GlobalSettingsSection } from '../components/settings/GlobalSettingsSection';
-import { ProjectSettingsSection } from '../components/settings/ProjectSettingsSection';
 import { TelegramSettingsSection } from '../components/settings/TelegramSettingsSection';
 import { WebPushSettingsSection } from '../components/settings/WebPushSettingsSection';
 import { HelpSection } from '../components/settings/HelpSection';
@@ -22,7 +21,6 @@ import { UserSettingsSection } from '../components/settings/UserSettingsSection'
 
 const sectionDefs = [
   { id: 'global', titleKey: 'tabs.global', icon: Settings },
-  { id: 'project', titleKey: 'tabs.project', icon: FolderCog },
   { id: 'notifications', titleKey: 'tabs.notifications', icon: Bell },
   { id: 'account', titleKey: 'tabs.account', icon: UserCog },
   { id: 'user', titleKey: 'tabs.user', icon: User },
@@ -79,8 +77,6 @@ export function SettingsPage() {
     switch (sectionId) {
       case 'global':
         return <GlobalSettingsSection />;
-      case 'project':
-        return <ProjectSettingsSection />;
       case 'notifications':
         return (
           <>

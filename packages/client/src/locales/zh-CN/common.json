@@ -145,7 +145,8 @@
     "queue": "队列运行器",
     "files": "文件",
     "git": "Git",
-    "terminal": "终端"
+    "terminal": "终端",
+    "projectSettings": "项目设置"
   },
   "layout": {
     "back": "返回",

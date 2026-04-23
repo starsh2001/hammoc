@@ -4,10 +4,10 @@
  * Tabs: Overview, Board, Sessions, Queue, Files, Git, Terminal
  */
 
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, GitBranch, Terminal, Kanban, Settings, MoreVertical, RefreshCw } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, FolderOpen, MessageSquare, ListOrdered, GitBranch, Terminal, Kanban, Settings, FolderCog, MoreVertical, RefreshCw } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useTerminalStore } from '../stores/terminalStore';
 import { BrandLogo } from '../components/BrandLogo';
@@ -25,6 +25,7 @@ const tabs: Array<{ id: string; labelKey: string; icon: typeof LayoutDashboard; 
   { id: 'files', labelKey: 'tabs.files', icon: FolderOpen, path: '/files' },
   { id: 'git', labelKey: 'tabs.git', icon: GitBranch, path: '/git' },
   { id: 'terminal', labelKey: 'tabs.terminal', icon: Terminal, path: '/terminal' },
+  { id: 'settings', labelKey: 'tabs.projectSettings', icon: FolderCog, path: '/settings' },
 ];
 
 export function ProjectTabLayout() {
@@ -63,6 +64,11 @@ export function ProjectTabLayout() {
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   useClickOutside(overflowMenuRef, () => setOverflowMenuOpen(false));
 
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+  const tabBarRef = useRef<HTMLElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
   const projectFullPath = useMemo(() => {
     const project = projects.find((p) => p.projectSlug === projectSlug);
     return project?.originalPath || projectSlug || '';
@@ -89,6 +95,36 @@ export function ProjectTabLayout() {
   const handleTabClick = (tabPath: string) => {
     navigate(`/project/${projectSlug}${tabPath}`);
   };
+
+  // Keep the active tab in view when it changes or on deep-link entry
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }, [activeTabId]);
+
+  // Track horizontal scroll position so edge fade indicators know whether more tabs exist in that direction
+  const updateScrollIndicators = useCallback(() => {
+    const el = tabBarRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    updateScrollIndicators();
+    const el = tabBarRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateScrollIndicators, { passive: true });
+    window.addEventListener('resize', updateScrollIndicators);
+    return () => {
+      el.removeEventListener('scroll', updateScrollIndicators);
+      window.removeEventListener('resize', updateScrollIndicators);
+    };
+  }, [updateScrollIndicators]);
+
+  // Re-measure when the visible tab set or active tab changes (terminal hide, activeTab change that triggers scrollIntoView)
+  useEffect(() => {
+    updateScrollIndicators();
+  }, [activeTabId, isTerminalEnabled, updateScrollIndicators]);
 
   return (
     <div className="h-dvh flex flex-col bg-[var(--bg-page)] transition-colors duration-200">
@@ -176,7 +212,25 @@ export function ProjectTabLayout() {
         </div>
 
         {/* Tab bar */}
-        <nav className="content-container flex px-4" aria-label={t('layout.projectTabs')}>
+        <div className="content-container relative">
+          {/* Edge fade indicators — signal that more tabs exist beyond the viewport */}
+          {canScrollLeft && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-0 w-12 z-10 bg-gradient-to-r from-[#243648] via-[#243648]/90 dark:from-[#171e24] dark:via-[#171e24]/90 to-transparent"
+            />
+          )}
+          {canScrollRight && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 w-12 z-10 bg-gradient-to-l from-[#243648] via-[#243648]/90 dark:from-[#171e24] dark:via-[#171e24]/90 to-transparent"
+            />
+          )}
+          <nav
+            ref={tabBarRef}
+            className="flex px-2 sm:px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label={t('layout.projectTabs')}
+          >
           {tabs.map((tab) => {
             // Story 17.5: AC1 — hide terminal tab when disabled
             if (tab.id === 'terminal' && !isTerminalEnabled) return null;
@@ -190,9 +244,10 @@ export function ProjectTabLayout() {
             return (
               <button
                 key={tab.id}
+                ref={isActive ? activeTabRef : undefined}
                 onClick={isDisabled ? undefined : () => handleTabClick(tab.path)}
                 disabled={isDisabled}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-2 px-[13px] sm:px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isDisabled
                     ? 'border-transparent opacity-50 cursor-not-allowed text-gray-500 dark:text-gray-400'
                     : isActive
@@ -208,7 +263,8 @@ export function ProjectTabLayout() {
               </button>
             );
           })}
-        </nav>
+          </nav>
+        </div>
       </header>
 
       {/* Tab content */}

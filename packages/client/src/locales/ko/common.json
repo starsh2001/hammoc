@@ -145,7 +145,8 @@
     "queue": "큐 러너",
     "files": "파일",
     "git": "Git",
-    "terminal": "터미널"
+    "terminal": "터미널",
+    "projectSettings": "프로젝트 설정"
   },
   "layout": {
     "back": "뒤로 가기",
