@@ -325,7 +325,8 @@ class BmadStatusService {
         const latestGatePerStory = new Map<string, { file: string; mtime: number }>();
         for (const gf of gateFiles) {
           // Match regular (1.1-slug.yml) or standalone (BS-1-slug.yml)
-          const gateMatch = gf.match(/^(\d+\.\d+|BS-\d+)-.*\.yml$/);
+          // Story id may have an optional patch segment (e.g. 28.0.5 for inserted prerequisite stories)
+          const gateMatch = gf.match(/^(\d+\.\d+(?:\.\d+)?|BS-\d+)-.*\.yml$/);
           if (!gateMatch) continue;
           const storyId = gateMatch[1];
           try {
@@ -360,8 +361,8 @@ class BmadStatusService {
     // Apply gate results to stories
     for (const stories of storyMap.values()) {
       for (const story of stories) {
-        // Match regular (1.1) or standalone (BS-1) story IDs
-        const num = story.file.match(/^(\d+\.\d+)/)?.[1]
+        // Match regular (1.1), patch-versioned (28.0.5), or standalone (BS-1) story IDs
+        const num = story.file.match(/^(\d+\.\d+(?:\.\d+)?)/)?.[1]
           ?? story.file.match(/^(BS-\d+)/)?.[1];
         if (!num) continue;
         const gate = gateResults.get(num);

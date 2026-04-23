@@ -470,6 +470,52 @@ describe('bmadStatusService', () => {
     expect(result.epics[1]).toEqual({ number: 2, name: 'Authentication', stories: [], filePath: 'docs/prd/6-epic-details.md' });
   });
 
+  // TC-BS-13b: 3-세그먼트 패치 번호(예: 28.0.5) 스토리에 대해 QA 게이트를 매칭한다
+  // Inserted prerequisite stories use {epic}.{story}.{patch} naming (e.g. 28.0.5)
+  // and gate files use the same prefix (28.0.5-{slug}.yml).
+  it('matches QA gate for patch-versioned story files (e.g. 28.0.5)', async () => {
+    (yaml.load as ReturnType<typeof vi.fn>).mockImplementation((content: string) => {
+      if (typeof content === 'string' && content.includes('gate:')) {
+        // Gate YAML payload
+        return { gate: 'PASS', story: '28.0.5' };
+      }
+      return {
+        prd: { prdFile: 'docs/prd.md', prdSharded: false },
+        architecture: { architectureFile: 'docs/architecture.md', architectureSharded: false },
+        devStoryLocation: 'docs/stories',
+        qa: { qaLocation: 'docs/qa' },
+      };
+    });
+    mockReadFile.mockImplementation(async (filePath: string) => {
+      if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
+      if (filePath.includes('prd.md')) return '## Epic 28: Harness Workbench\n';
+      if (filePath.endsWith('28.0.5-harness-filesystem.yml')) {
+        return 'schema: 1\nstory: \'28.0.5\'\ngate: PASS\n';
+      }
+      throw makeEnoent();
+    });
+    mockStat.mockImplementation(async (p: string) => {
+      if (p.endsWith('28.0.5-harness-filesystem.yml')) return { mtimeMs: 1000 };
+      throw makeEnoent();
+    });
+    mockReaddir.mockImplementation(async (dir: string) => {
+      if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return ['28.0.5.story.md'];
+      if (dir === path.join(PROJECT_ROOT, 'docs/qa', 'gates')) return ['28.0.5-harness-filesystem.yml'];
+      throw makeEnoent();
+    });
+    setupOpenMock('# Story 28.0.5\n\n## Status\n\nReady for Review\n');
+
+    const result = await bmadStatusService.scanProject(PROJECT_ROOT);
+
+    const epic28 = result.epics.find((e) => e.number === 28);
+    expect(epic28).toBeDefined();
+    expect(epic28!.stories).toHaveLength(1);
+    expect(epic28!.stories[0].file).toBe('28.0.5.story.md');
+    expect(epic28!.stories[0].status).toBe('Ready for Review');
+    // Without the patch-segment regex fix, gateResult would be undefined here
+    expect(epic28!.stories[0].gateResult).toBe('PASS');
+  });
+
   // TC-BS-14: 스토리 파일이 없는 에픽도 빈 stories 배열로 반환한다
   it('returns epics with empty stories when no story files exist', async () => {
     (yaml.load as ReturnType<typeof vi.fn>).mockReturnValue({

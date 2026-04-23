@@ -648,7 +648,8 @@ class IssueService {
           let epicNumber: number | string | undefined;
 
           const bfStandaloneMatch = story.file.match(/^BS-(\d+)/);
-          const regularMatch = story.file.match(/^(\d+\.\d+)/);
+          // Allow optional patch segment (e.g. 28.0.5) for inserted prerequisite stories
+          const regularMatch = story.file.match(/^(\d+\.\d+(?:\.\d+)?)/);
 
           if (bfStandaloneMatch) {
             storyId = `BS-${bfStandaloneMatch[1]}`;

@@ -321,6 +321,25 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     expect(recommendations.find((r) => r.id === 'review-story')).toBeUndefined();
   });
 
+  it('preserves patch segment in task command for 3-segment story IDs (e.g. 28.0.5)', () => {
+    // Inserted prerequisite stories use {epic}.{story}.{patch} naming.
+    // The task command must carry the full id so BMad agents target the right file.
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{ number: 28, name: 'E28', stories: [{ file: '28.0.5.story.md', status: 'Ready for Review', gateResult: 'PASS' }] }],
+      }),
+    );
+    const doneRec = recommendations.find((r) => r.id === 'mark-done');
+    expect(doneRec).toBeDefined();
+    expect(doneRec!.taskCommand).toBe('%mark-done 28.0.5');
+    const commitRec = recommendations.find((r) => r.id === 'commit-and-mark-done');
+    expect(commitRec).toBeDefined();
+    expect(commitRec!.taskCommand).toBe('%commit-and-done 28.0.5');
+    // Must not fall through to "review pending" for a passed story
+    expect(recommendations.find((r) => r.id === 'review-story')).toBeUndefined();
+  });
+
   it('recommends completing story when Review + WAIVED gate', () => {
     const { recommendations } = computeNextSteps(
       makeData({

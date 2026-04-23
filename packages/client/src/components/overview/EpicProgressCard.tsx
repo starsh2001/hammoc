@@ -127,7 +127,7 @@ export function EpicProgressCard({ epics, projectSlug, storyBasePath }: EpicProg
                 <div className="mt-2 ml-4 space-y-1">
                   {writtenCount > 0 ? (
                     epic.stories.map((story) => {
-                      const storyNum = story.file.match(/^(?:BE-)?(\d+\.\d+)/)?.[1]
+                      const storyNum = story.file.match(/^(?:BE-)?(\d+\.\d+(?:\.\d+)?)/)?.[1]
                         ?? story.file.match(/^BS-(\d+)/)?.[1]
                         ?? null;
                       const storyPrefix = story.file.startsWith('BE-') ? 'BE-' : story.file.startsWith('BS-') ? 'BS-' : '';

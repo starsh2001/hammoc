@@ -77,9 +77,9 @@ function firstStoryByStatus(data: BmadStatusResponse, ...statuses: string[]): Bm
   return undefined;
 }
 
-/** Extract story number (e.g. "1.1") from file name (e.g. "1.1.story.md") */
+/** Extract story number (e.g. "1.1" or "28.0.5") from file name (e.g. "1.1.story.md", "28.0.5.story.md") */
 function storyNum(file: string): string {
-  return file.match(/^(\d+\.\d+)/)?.[1] ?? file;
+  return file.match(/^(\d+\.\d+(?:\.\d+)?)/)?.[1] ?? file;
 }
 
 /** Compute the next story number to draft based on existing stories */
