@@ -175,7 +175,7 @@ function ExitPlanModeContent({
             {allowedPrompts.map((ap, i) => (
               <li key={i} className="flex items-start gap-1.5">
                 <span className="flex-shrink-0 mt-0.5">·</span>
-                <span>
+                <span className="min-w-0 break-all">
                   <span className="font-mono text-blue-600 dark:text-blue-400">{ap.tool}</span>
                   {ap.prompt && <span className="ml-1 text-gray-500">— {ap.prompt}</span>}
                 </span>
@@ -369,7 +369,7 @@ export function ToolCard({
                   <span className="flex-shrink-0 mt-0.5">
                     {todo.status === 'completed' ? '✓' : todo.status === 'in_progress' ? '▸' : '○'}
                   </span>
-                  <span className={todo.status === 'completed' ? 'line-through opacity-60' : ''}>
+                  <span className={`min-w-0 break-all ${todo.status === 'completed' ? 'line-through opacity-60' : ''}`}>
                     {todo.content}
                   </span>
                 </li>
