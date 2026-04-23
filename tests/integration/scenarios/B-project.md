@@ -212,7 +212,7 @@
 
 ## B5. 하네스 파일 API · 외부 변경 이벤트 · YAML/JSONC 라운드트립 `[CORE]`
 
-**범위**: Story 28.0.5 가 추가한 서버 선행 인프라(`/api/harness/*` · `harness:subscribe/unsubscribe` · `harness:external-change`). UI 를 거치지 않고 **REST + WebSocket 계약 자체**를 검증한다. 후속 스토리(28.1·28.4·28.5·28.6·28.8·28.9)가 이 계약을 신뢰하며 UI 를 구축할 수 있도록 하는 인프라 스모크.
+**범위**: Story 28.0.5 가 추가한 서버 선행 인프라(`/api/harness/*` · `harness:subscribe/unsubscribe` · `harness:external-change`). UI 를 거치지 않고 **REST + WebSocket 계약 자체**를 검증한다. 후속 스토리(28.1·28.2·28.3·28.4·28.5·28.6)가 이 계약을 신뢰하며 UI 를 구축할 수 있도록 하는 인프라 스모크.
 
 ### B-05-01: 프로젝트 스코프 하네스 API 정상 경로
 

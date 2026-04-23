@@ -1,5 +1,5 @@
 // Story 28.0.5: Harness workbench shared types (Epic 28)
-// Single source of truth for harness tree file I/O used by Story 28.1/28.4/28.5/28.6/28.8/28.9.
+// Single source of truth for harness tree file I/O used by Story 28.1/28.2/28.3/28.4/28.5/28.6.
 
 export type HarnessScope = 'user' | 'project';
 
