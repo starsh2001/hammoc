@@ -11,52 +11,46 @@ import { projectController } from '../controllers/projectController.js';
 const router = Router();
 
 /**
- * Simple in-memory rate limiter for project endpoints
- * [Source: Story 3.6 - Task 3]
+ * Per-endpoint in-memory rate limiter.
+ *
+ * Why: Hammoc runs locally for a single user, so this is not a DoS defense
+ * (that belongs upstream of the app). The only legitimate purpose here is to
+ * backstop a runaway client (infinite retry loop, debounce gone wild) so it
+ * cannot pin the server. Limits are therefore set well above any human-reachable
+ * rate but low enough to trip a true polling loop within seconds.
  */
 interface RateLimitRecord {
   count: number;
   windowStart: number;
 }
 
-const rateLimitStore = new Map<string, RateLimitRecord>();
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+const RECORD_TTL_MS = 2 * 60 * 1000;
 
-/**
- * Cleanup expired rate limit records periodically
- * Runs every 5 minutes to prevent memory growth
- */
-const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-const RECORD_TTL_MS = 2 * 60 * 1000; // Keep records for 2 minutes after window expires
+function createRateLimiter(maxRequests: number, windowMs: number, messageKey: string) {
+  // Each limiter owns its own store — sharing one Map across endpoints lets
+  // bursts on a noisy endpoint (e.g. debounced path validation) eat the quota
+  // of an unrelated endpoint (project create).
+  const store = new Map<string, RateLimitRecord>();
 
-function cleanupExpiredRecords(): void {
-  const now = Date.now();
-  for (const [ip, record] of rateLimitStore.entries()) {
-    // Remove records that are older than TTL
-    if (now - record.windowStart > RECORD_TTL_MS) {
-      rateLimitStore.delete(ip);
+  // unref() so the cleanup timer never blocks process exit on its own —
+  // otherwise the event loop stays "busy" forever and `beforeExit` never fires.
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, record] of store.entries()) {
+      if (now - record.windowStart > RECORD_TTL_MS) {
+        store.delete(ip);
+      }
     }
-  }
-}
+  }, CLEANUP_INTERVAL_MS).unref();
 
-// Start periodic cleanup
-const cleanupInterval = setInterval(cleanupExpiredRecords, CLEANUP_INTERVAL_MS);
-
-// Cleanup on process exit (for graceful shutdown)
-if (typeof process !== 'undefined' && process.on) {
-  process.on('beforeExit', () => {
-    clearInterval(cleanupInterval);
-  });
-}
-
-function createRateLimiter(maxRequests: number, windowMs: number) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const now = Date.now();
-    const record = rateLimitStore.get(ip);
+    const record = store.get(ip);
 
     if (!record || now - record.windowStart > windowMs) {
-      // New window
-      rateLimitStore.set(ip, { count: 1, windowStart: now });
+      store.set(ip, { count: 1, windowStart: now });
       next();
       return;
     }
@@ -66,10 +60,7 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
       res.status(429).json({
         error: {
           code: 'RATE_LIMIT_EXCEEDED',
-          message:
-            maxRequests === 10
-              ? req.t!('preferences.rateLimit.projectCreate')
-              : req.t!('preferences.rateLimit.pathValidation'),
+          message: req.t!(messageKey),
           details: { retryAfter },
         },
       });
@@ -81,9 +72,18 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
   };
 }
 
-// Rate limiters
-const createProjectLimiter = createRateLimiter(10, 60 * 1000); // 10 requests per minute
-const validatePathLimiter = createRateLimiter(30, 60 * 1000); // 30 requests per minute
+// Limits target "client bug backstop" only — humans cannot reach 1000/min,
+// but a tight retry loop will trip within ~1s.
+const createProjectLimiter = createRateLimiter(
+  1000,
+  60 * 1000,
+  'preferences.rateLimit.projectCreate',
+);
+const validatePathLimiter = createRateLimiter(
+  1000,
+  60 * 1000,
+  'preferences.rateLimit.pathValidation',
+);
 
 // GET /api/projects - List all projects
 router.get('/', projectController.list);
