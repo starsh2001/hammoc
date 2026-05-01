@@ -313,6 +313,50 @@
     "help": "ヘルプ",
     "about": "バージョン情報"
   },
+  "harness": {
+    "workbench": {
+      "title": "ハーネス ワークベンチ",
+      "nav": {
+        "general": "一般",
+        "plugins": "プラグイン"
+      }
+    },
+    "plugin": {
+      "empty": "インストール済みのプラグインはありません。",
+      "emptyHint": "Claude Code CLI で `/plugin install` を実行してからここに戻ってください。",
+      "scope": {
+        "user": "グローバル",
+        "project": "プロジェクト"
+      },
+      "type": {
+        "standard": "標準",
+        "externalMcp": "外部 MCP"
+      },
+      "counts": {
+        "skills": "スキル",
+        "commands": "コマンド",
+        "agents": "エージェント",
+        "hooks": "フック",
+        "mcpServers": "MCP サーバー"
+      },
+      "toggle": {
+        "on": "有効",
+        "off": "無効"
+      },
+      "banner": {
+        "freshSpawn": "次のユーザー入力から反映されます。",
+        "longStream": "現在の会話終了後、新しいセッションで反映されます。すぐに適用するには新規セッションを開始してください。",
+        "newSession": "新しいセッション開始",
+        "dismiss": "閉じる"
+      },
+      "projectScopeDisabled": "別プロジェクト専用",
+      "projectScopeAmbiguous": "プロジェクトパス不明 — 読み取り専用",
+      "scopeHint": "グローバル設定を編集します",
+      "readonly": {
+        "forbidden": "読み取り専用環境: 権限がありません。"
+      }
+    }
+  },
   "permissionMode": {
     "planDescription": "Claudeはプランのみ作成し、ファイルを変更しません",
     "askDescription": "ファイル変更前に承認を求めます",

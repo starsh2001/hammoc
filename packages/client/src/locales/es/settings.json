@@ -313,6 +313,50 @@
     "help": "Ayuda",
     "about": "Acerca de"
   },
+  "harness": {
+    "workbench": {
+      "title": "Banco de trabajo del Harness",
+      "nav": {
+        "general": "General",
+        "plugins": "Plugins"
+      }
+    },
+    "plugin": {
+      "empty": "No hay plugins instalados.",
+      "emptyHint": "Instala plugins con `/plugin install` en el Claude Code CLI y vuelve aquí.",
+      "scope": {
+        "user": "Global",
+        "project": "Proyecto"
+      },
+      "type": {
+        "standard": "Estándar",
+        "externalMcp": "MCP externo"
+      },
+      "counts": {
+        "skills": "Habilidades",
+        "commands": "Comandos",
+        "agents": "Agentes",
+        "hooks": "Hooks",
+        "mcpServers": "Servidores MCP"
+      },
+      "toggle": {
+        "on": "Activado",
+        "off": "Desactivado"
+      },
+      "banner": {
+        "freshSpawn": "Se aplicará en tu próximo mensaje.",
+        "longStream": "Se aplicará tras cerrar la conversación actual. Inicia una sesión nueva para aplicar de inmediato.",
+        "newSession": "Iniciar sesión nueva",
+        "dismiss": "Cerrar"
+      },
+      "projectScopeDisabled": "Exclusivo de otro proyecto",
+      "projectScopeAmbiguous": "Ruta del proyecto ausente — solo lectura",
+      "scopeHint": "Modifica la configuración global",
+      "readonly": {
+        "forbidden": "Entorno de solo lectura: permiso denegado."
+      }
+    }
+  },
   "permissionMode": {
     "planDescription": "Claude solo planifica y no modifica archivos",
     "askDescription": "Pide aprobación antes de modificar archivos",

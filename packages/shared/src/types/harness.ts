@@ -94,14 +94,121 @@ export interface HarnessExternalChangeEvent {
  * IS the single source of truth for (code → HTTP status) mapping.
  */
 export const HARNESS_ERRORS = {
-  HARNESS_PATH_DENIED:      { code: 'HARNESS_PATH_DENIED',      httpStatus: 403 },
-  HARNESS_FORBIDDEN:        { code: 'HARNESS_FORBIDDEN',        httpStatus: 403 },
-  HARNESS_FILE_NOT_FOUND:   { code: 'HARNESS_FILE_NOT_FOUND',   httpStatus: 404 },
-  HARNESS_NOT_A_FILE:       { code: 'HARNESS_NOT_A_FILE',       httpStatus: 400 },
-  HARNESS_ROOT_MISSING:     { code: 'HARNESS_ROOT_MISSING',     httpStatus: 404 },
-  HARNESS_PARENT_NOT_FOUND: { code: 'HARNESS_PARENT_NOT_FOUND', httpStatus: 404 },
-  HARNESS_STALE_WRITE:      { code: 'HARNESS_STALE_WRITE',      httpStatus: 409 },
-  HARNESS_PARSE_ERROR:      { code: 'HARNESS_PARSE_ERROR',      httpStatus: 422 },
-  HARNESS_WRITE_ERROR:      { code: 'HARNESS_WRITE_ERROR',      httpStatus: 500 },
+  HARNESS_PATH_DENIED:         { code: 'HARNESS_PATH_DENIED',         httpStatus: 403 },
+  HARNESS_FORBIDDEN:           { code: 'HARNESS_FORBIDDEN',           httpStatus: 403 },
+  HARNESS_PLUGIN_SCOPE_DENIED: { code: 'HARNESS_PLUGIN_SCOPE_DENIED', httpStatus: 403 },
+  HARNESS_FILE_NOT_FOUND:      { code: 'HARNESS_FILE_NOT_FOUND',      httpStatus: 404 },
+  HARNESS_NOT_A_FILE:          { code: 'HARNESS_NOT_A_FILE',          httpStatus: 404 },
+  HARNESS_ROOT_MISSING:        { code: 'HARNESS_ROOT_MISSING',        httpStatus: 404 },
+  HARNESS_PARENT_NOT_FOUND:    { code: 'HARNESS_PARENT_NOT_FOUND',    httpStatus: 404 },
+  HARNESS_PLUGIN_NOT_FOUND:    { code: 'HARNESS_PLUGIN_NOT_FOUND',    httpStatus: 404 },
+  HARNESS_STALE_WRITE:         { code: 'HARNESS_STALE_WRITE',         httpStatus: 409 },
+  HARNESS_PARSE_ERROR:         { code: 'HARNESS_PARSE_ERROR',         httpStatus: 422 },
+  HARNESS_WRITE_ERROR:         { code: 'HARNESS_WRITE_ERROR',         httpStatus: 500 },
 } as const;
 export type HarnessErrorCode = typeof HARNESS_ERRORS[keyof typeof HARNESS_ERRORS]['code'];
+
+// ---------------------------------------------------------------------------
+// Story 28.1 — Plugin list / toggle types
+// ---------------------------------------------------------------------------
+
+/** Raw ~/.claude/plugins/installed_plugins.json entry. */
+export interface HarnessInstalledPluginEntry {
+  scope: HarnessScope;
+  installPath: string;
+  version: string;
+  installedAt: string;
+  lastUpdated: string;
+  gitCommitSha: string;
+  /** Present when scope === 'project'. */
+  projectPath?: string;
+}
+
+/** Minimal shape of <installPath>/.claude-plugin/plugin.json. */
+export interface HarnessPluginManifest {
+  name: string;
+  description?: string;
+  author?: { name?: string; email?: string } | string;
+  version?: string;
+}
+
+/** Marketplace catalog entry (marketplace.json · plugins[]). */
+export interface HarnessMarketplacePluginMeta {
+  name: string;
+  description?: string;
+  category?: string;
+  strict?: boolean;
+  source?: string;
+}
+
+export type HarnessPluginType = 'standard' | 'external-mcp';
+
+export interface HarnessPluginComponentCounts {
+  skills: number;
+  commands: number;
+  agents: number;
+  hooks: number;
+  mcpServers: number;
+}
+
+export interface HarnessPluginCard {
+  /** "<name>@<marketplace>" — matches enabledPlugins key space. */
+  key: string;
+  name: string;
+  marketplace: string;
+  /** Short commit sha (first 7 chars of gitCommitSha). */
+  version: string;
+  scope: HarnessScope;
+  category?: string;
+  projectPath?: string;
+  enabled: boolean;
+  pluginType: HarnessPluginType;
+  componentCounts: HarnessPluginComponentCounts;
+  manifest?: HarnessPluginManifest;
+  /**
+   * Which settings.json this card's enable/disable toggle writes to. Matches
+   * the CLI's `/plugin install --scope` semantics:
+   *   - 'user'     → ~/.claude/settings.json
+   *   - 'project'  → <currentProjectPath>/.claude/settings.json
+   * Cards whose installed_plugins.json entry is `scope:project` but whose
+   * `projectPath` does not match the current session's project still report
+   * `'user'` here (their toggle is gated by `HARNESS_PLUGIN_SCOPE_DENIED` so
+   * the field is informational only in that case).
+   */
+  settingsScope: HarnessScope;
+  /**
+   * ISO mtime of the settings.json indicated by `settingsScope`. Used as the
+   * `expectedMtime` value the client should send with the next toggle for this
+   * card — keeps STALE_WRITE detection accurate when user/project settings.json
+   * mtimes diverge.
+   */
+  settingsMtime: string;
+}
+
+export type HarnessEnabledPluginsFormat = 'array' | 'object';
+
+export interface HarnessPluginListResponse {
+  cards: HarnessPluginCard[];
+  enabledPluginsFormat: HarnessEnabledPluginsFormat;
+  currentProjectPath?: string;
+  /**
+   * ISO mtime of ~/.claude/settings.json at read time. Empty string when the
+   * file did not yet exist. Consumed by the client store so that the next
+   * toggle request carries a fresh `expectedMtime` — prevents a STALE_WRITE
+   * → reload → STALE_WRITE loop after external edits.
+   */
+  settingsMtime: string;
+}
+
+export interface HarnessPluginToggleRequest {
+  key: string;
+  enabled: boolean;
+  expectedMtime?: string;
+}
+
+export interface HarnessPluginToggleResponse {
+  success: true;
+  mtime: string;
+  /** Informational echo of the format the server actually wrote. */
+  appliedFormat: HarnessEnabledPluginsFormat;
+}

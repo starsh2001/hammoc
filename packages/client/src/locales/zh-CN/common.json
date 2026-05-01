@@ -146,7 +146,8 @@
     "files": "文件",
     "git": "Git",
     "terminal": "终端",
-    "projectSettings": "项目设置"
+    "projectSettings": "项目设置",
+    "harnessWorkbench": "Harness 工作台"
   },
   "layout": {
     "back": "返回",

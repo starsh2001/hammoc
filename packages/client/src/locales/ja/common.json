@@ -146,7 +146,8 @@
     "files": "ファイル",
     "git": "Git",
     "terminal": "ターミナル",
-    "projectSettings": "プロジェクト設定"
+    "projectSettings": "プロジェクト設定",
+    "harnessWorkbench": "ハーネス ワークベンチ"
   },
   "layout": {
     "back": "戻る",

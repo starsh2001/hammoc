@@ -313,6 +313,50 @@
     "help": "帮助",
     "about": "关于"
   },
+  "harness": {
+    "workbench": {
+      "title": "Harness 工作台",
+      "nav": {
+        "general": "通用",
+        "plugins": "插件"
+      }
+    },
+    "plugin": {
+      "empty": "未安装任何插件。",
+      "emptyHint": "请在 Claude Code CLI 中使用 `/plugin install` 安装后返回此处。",
+      "scope": {
+        "user": "全局",
+        "project": "项目"
+      },
+      "type": {
+        "standard": "标准",
+        "externalMcp": "外部 MCP"
+      },
+      "counts": {
+        "skills": "技能",
+        "commands": "命令",
+        "agents": "代理",
+        "hooks": "钩子",
+        "mcpServers": "MCP 服务器"
+      },
+      "toggle": {
+        "on": "已启用",
+        "off": "已停用"
+      },
+      "banner": {
+        "freshSpawn": "下一次用户输入后生效。",
+        "longStream": "当前会话结束后在新会话中生效。若要立即应用，请开启新会话。",
+        "newSession": "开启新会话",
+        "dismiss": "关闭"
+      },
+      "projectScopeDisabled": "属于其他项目",
+      "projectScopeAmbiguous": "缺少项目路径 — 只读",
+      "scopeHint": "将修改全局设置",
+      "readonly": {
+        "forbidden": "只读环境：无写入权限。"
+      }
+    }
+  },
   "permissionMode": {
     "planDescription": "Claude 只制定计划，不修改文件",
     "askDescription": "修改文件前请求批准",

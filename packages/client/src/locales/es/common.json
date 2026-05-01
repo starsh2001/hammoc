@@ -146,7 +146,8 @@
     "files": "Archivos",
     "git": "Git",
     "terminal": "Terminal",
-    "projectSettings": "Configuración del proyecto"
+    "projectSettings": "Configuración del proyecto",
+    "harnessWorkbench": "Banco de trabajo del Harness"
   },
   "layout": {
     "back": "Volver",

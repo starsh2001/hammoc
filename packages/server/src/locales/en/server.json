@@ -146,6 +146,8 @@
       "notAFile": "Harness path is not a file.",
       "rootMissing": "Harness root directory not found.",
       "parentNotFound": "Harness parent directory not found.",
+      "pluginNotFound": "Plugin is not installed.",
+      "pluginScopeDenied": "This plugin is scoped to a different project.",
       "staleWrite": "The harness file was modified on disk since you opened it. Reload to see the changes, or overwrite to keep yours.",
       "parseError": "Failed to parse YAML/JSONC source.",
       "writeError": "Harness file write error."

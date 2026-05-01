@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import express from 'express';
 import { harnessController } from '../controllers/harnessController.js';
+import { harnessPluginController } from '../controllers/harnessPluginController.js';
 
 const router = Router();
 
@@ -17,5 +18,9 @@ router.get('/list', harnessController.list);
 router.get('/read', harnessController.read);
 router.put('/write', largeBodyParser, harnessController.write);
 router.post('/patch-structured', largeBodyParser, harnessController.patchStructured);
+
+// Story 28.1 — plugin list / toggle (user scope only)
+router.get('/plugins', harnessPluginController.list);
+router.post('/plugins/toggle', express.json({ limit: '32kb' }), harnessPluginController.toggle);
 
 export default router;

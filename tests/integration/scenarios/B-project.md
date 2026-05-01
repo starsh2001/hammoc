@@ -275,3 +275,65 @@
 **엣지케이스**:
 - E1. `scope=user` 로 호출해도 동일한 스키마 (AC2) — `~/.claude` 가 테스트 환경에 존재하지 않으면 `list` 가 빈 배열로 응답해야 함 (404 금지)
 - E2. `patch-structured` 에 깨진 YAML 을 넣으면 422 `HARNESS_PARSE_ERROR` — 원본 파일은 보존되어 있어야 함
+
+## B6. 하네스 플러그인 조회 · 활성 토글 `[CORE] [EDGE]`
+
+### B-06-01: 플러그인 목록 조회 정상 경로 (AC1)
+
+**절차**:
+1. `~/.claude/plugins/installed_plugins.json` 에 실측 포맷 (`{ version: 2, plugins: { "context7@claude-plugins-official": [{ scope:"user", ... }] } }`) 으로 1개 이상의 엔트리 준비
+2. 같은 번들 디렉토리에 `.claude-plugin/plugin.json` (manifest) · `skills/*/SKILL.md` · `commands/*.md` 등을 배치
+3. `GET /api/harness/plugins` 호출
+
+**기대 결과**:
+- 200 응답 + `HarnessPluginListResponse` 스키마
+- `cards[]` 의 각 카드가 번들 내부 실제 개수와 일치하는 `componentCounts` 를 가진다
+- `enabledPluginsFormat` 값이 실제 `settings.json.enabledPlugins` 의 형태(`array` / `object`)와 일치
+- `currentProjectPath` 는 쿼리로 `projectSlug` 를 넘겼을 때만 세팅되고, slug 해석 실패 시 `undefined`
+
+### B-06-02: 포맷 양립 파싱 (AC1) `[EDGE]`
+
+**절차**:
+1. `settings.json` 에 `enabledPlugins: ["foo@market"]` (배열) 로 설정 → `GET /api/harness/plugins`
+2. 같은 파일을 `enabledPlugins: { "foo@market": true }` (객체) 로 바꾸고 다시 조회
+3. `enabledPlugins` 필드 자체를 제거한 상태로 한 번 더 조회
+
+**기대 결과**:
+- 각각 `enabledPluginsFormat` 이 `array` / `object` / `object`(기본값)
+- 세 케이스 모두 200 응답 + cards 배열에 설치된 플러그인 카드가 그대로 노출
+
+### B-06-03: 토글 성공 + 배너 (AC2)
+
+**절차**:
+1. 프로젝트 설정 탭 → "하네스 워크벤치" → "플러그인" 서브 섹션 진입
+2. 아무 카드의 토글을 On 으로 클릭
+
+**기대 결과**:
+- 네트워크 패널에 `POST /api/harness/plugins/toggle` 요청 + 200 응답 (`{ success:true, mtime, appliedFormat }`)
+- 응답 이후 상단에 배너 렌더링(`role=status`), 메시지 키: `harness.plugin.banner.freshSpawn`
+- 배너의 "새 세션 시작" 버튼 클릭 시 `/project/<slug>/session/<uuid>` 경로로 네비게이션 발생
+- 배너는 유저가 ✕ 로 dismiss 할 때까지 상주 (추가 토글이 있어도 중복 배너 표시 금지)
+
+### B-06-04: scope=project 게이팅 (AC3)
+
+**절차**:
+1. `installed_plugins.json` 의 엔트리 중 하나를 `scope: "project"`, `projectPath: "D:/other"` 로 설정
+2. 현재 프로젝트 경로가 `C:/project` 인 상태에서 "플러그인" 패널 진입
+
+**기대 결과**:
+- 해당 카드의 토글이 `disabled` 상태로 렌더링
+- 카드 label 의 `title` 속성(툴팁) 이 `harness.plugin.projectScopeDisabled` 키의 번역 문자열과 일치
+- 클릭해도 API 요청이 발생하지 않음 (네트워크 패널에 `POST /toggle` 없음)
+- 반대로 `projectPath` 가 현재 프로젝트와 일치하면 토글 가능
+
+### B-06-05: STALE_WRITE 낙관적 동시성 (AC2) `[EDGE]`
+
+**절차**:
+1. 패널을 열어 카드 리스트를 로드(초기 `settingsMtime` 확보)
+2. 외부에서 `~/.claude/settings.json` 을 수정해 mtime 을 바꿈
+3. 같은 탭에서 토글 클릭
+
+**기대 결과**:
+- `POST /api/harness/plugins/toggle` 가 409 + envelope `{ error: { code: "HARNESS_STALE_WRITE", message, details: { currentMtime } } }`
+- 스토어가 자동으로 `GET /api/harness/plugins` 재호출 → 카드 상태가 디스크 최신 상태에 맞춰 복구
+- 유저에게 "외부 변경 감지" 류의 통지가 한 번 표시 (에러 상태가 세팅됨)

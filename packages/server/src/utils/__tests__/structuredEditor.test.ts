@@ -96,3 +96,49 @@ describe('applyJsoncPatch (AC4)', () => {
     expect(() => applyJsoncPatch('{ "a": }', [{ path: ['a'], value: 1 }])).toThrow();
   });
 });
+
+// Regression coverage for intermediate-path operations. Story 28.5 (MCP) and
+// 28.6 (hooks) drive deep structured edits into config files whose parents may
+// not yet exist — pinning the current auto-create behavior here prevents a
+// silent regression from a future parser upgrade.
+describe('intermediate-path operations (regression)', () => {
+  it('YAML setIn creates missing intermediate maps while preserving existing keys', () => {
+    const src = `name: keeper
+`;
+    const out = applyYamlPatch(src, [{ path: ['parent', 'child', 'leaf'], value: 42 }]);
+    expect(out).toMatch(/name:\s*keeper/);
+    expect(out).toMatch(/parent:/);
+    expect(out).toMatch(/child:/);
+    expect(out).toMatch(/leaf:\s*42/);
+  });
+
+  it('JSONC modify creates missing intermediate objects while preserving existing keys', () => {
+    const src = `{
+  "name": "keeper"
+}
+`;
+    const out = applyJsoncPatch(src, [{ path: ['parent', 'child', 'leaf'], value: 42 }]);
+    expect(out).toContain('"name": "keeper"');
+    expect(out).toContain('"parent"');
+    expect(out).toContain('"child"');
+    expect(out).toContain('"leaf": 42');
+  });
+
+  it('YAML delete on a missing intermediate path is a no-op (does not corrupt source)', () => {
+    const src = `a: 1
+`;
+    const out = applyYamlPatch(src, [{ path: ['missing', 'child'], value: undefined }]);
+    expect(out).toMatch(/a:\s*1/);
+    expect(out).not.toContain('missing');
+  });
+
+  it('JSONC delete on a missing intermediate path is a no-op', () => {
+    const src = `{
+  "a": 1
+}
+`;
+    const out = applyJsoncPatch(src, [{ path: ['missing', 'child'], value: undefined }]);
+    expect(out).toContain('"a": 1');
+    expect(out).not.toContain('missing');
+  });
+});

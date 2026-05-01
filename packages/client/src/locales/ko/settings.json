@@ -314,6 +314,50 @@
     "help": "도움말",
     "about": "만든이"
   },
+  "harness": {
+    "workbench": {
+      "title": "하네스 워크벤치",
+      "nav": {
+        "general": "일반",
+        "plugins": "플러그인"
+      }
+    },
+    "plugin": {
+      "empty": "설치된 플러그인이 없습니다.",
+      "emptyHint": "Claude Code CLI 에서 `/plugin install` 로 설치 후 여기로 돌아오세요.",
+      "scope": {
+        "user": "전역",
+        "project": "프로젝트"
+      },
+      "type": {
+        "standard": "정식",
+        "externalMcp": "External MCP"
+      },
+      "counts": {
+        "skills": "스킬",
+        "commands": "커맨드",
+        "agents": "에이전트",
+        "hooks": "훅",
+        "mcpServers": "MCP 서버"
+      },
+      "toggle": {
+        "on": "활성",
+        "off": "비활성"
+      },
+      "banner": {
+        "freshSpawn": "다음 유저 입력부터 새 플러그인 상태가 반영됩니다.",
+        "longStream": "현재 대화 종료 후 새 세션에서 적용됩니다. 지금 적용하려면 새 세션을 시작하세요.",
+        "newSession": "새 세션 시작",
+        "dismiss": "닫기"
+      },
+      "projectScopeDisabled": "다른 프로젝트 전용",
+      "projectScopeAmbiguous": "프로젝트 경로 누락 — 읽기 전용",
+      "scopeHint": "전역 설정 수정됨",
+      "readonly": {
+        "forbidden": "읽기 전용 환경: 쓰기 권한이 없습니다."
+      }
+    }
+  },
   "permissionMode": {
     "planDescription": "Claude가 계획만 세우고 파일을 수정하지 않습니다",
     "askDescription": "파일 수정 전 승인을 요청합니다",

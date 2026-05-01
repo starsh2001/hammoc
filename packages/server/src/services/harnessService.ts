@@ -125,7 +125,7 @@ class HarnessService {
     const base = {
       scope: ref.scope,
       projectSlug: ref.projectSlug,
-      path: ref.relativePath,
+      path: ref.relativePath ?? '',
       size,
       mtime,
       mimeType,

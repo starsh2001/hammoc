@@ -314,6 +314,50 @@
     "help": "Help",
     "about": "About"
   },
+  "harness": {
+    "workbench": {
+      "title": "Harness Workbench",
+      "nav": {
+        "general": "General",
+        "plugins": "Plugins"
+      }
+    },
+    "plugin": {
+      "empty": "No plugins installed.",
+      "emptyHint": "Install plugins with `/plugin install` in the Claude Code CLI, then return here.",
+      "scope": {
+        "user": "Global",
+        "project": "Project"
+      },
+      "type": {
+        "standard": "Standard",
+        "externalMcp": "External MCP"
+      },
+      "counts": {
+        "skills": "Skills",
+        "commands": "Commands",
+        "agents": "Agents",
+        "hooks": "Hooks",
+        "mcpServers": "MCP servers"
+      },
+      "toggle": {
+        "on": "Enabled",
+        "off": "Disabled"
+      },
+      "banner": {
+        "freshSpawn": "Takes effect on your next user message.",
+        "longStream": "Takes effect after the current chat ends. Start a new session to apply immediately.",
+        "newSession": "Start new session",
+        "dismiss": "Dismiss"
+      },
+      "projectScopeDisabled": "Scoped to another project",
+      "projectScopeAmbiguous": "Project path missing — read-only",
+      "scopeHint": "Edits the global settings",
+      "readonly": {
+        "forbidden": "Read-only environment: permission denied."
+      }
+    }
+  },
   "permissionMode": {
     "planDescription": "Claude only plans and does not modify files",
     "askDescription": "Asks for approval before modifying files",

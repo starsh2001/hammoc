@@ -146,7 +146,8 @@
     "files": "파일",
     "git": "Git",
     "terminal": "터미널",
-    "projectSettings": "프로젝트 설정"
+    "projectSettings": "프로젝트 설정",
+    "harnessWorkbench": "하네스 워크벤치"
   },
   "layout": {
     "back": "뒤로 가기",

@@ -21,7 +21,16 @@
  */
 
 import { parseDocument, type Document } from 'yaml';
-import { modify, applyEdits, parse, printParseErrorCode, type FormattingOptions, type ParseError } from 'jsonc-parser';
+import {
+  modify,
+  applyEdits,
+  parse,
+  parseTree,
+  findNodeAtLocation,
+  printParseErrorCode,
+  type FormattingOptions,
+  type ParseError,
+} from 'jsonc-parser';
 import { HARNESS_ERRORS, type HarnessStructuredPatchOp } from '@hammoc/shared';
 
 function parseError(format: 'yaml' | 'jsonc', cause: unknown): NodeJS.ErrnoException {
@@ -56,7 +65,10 @@ export function applyYamlPatch(source: string, ops: HarnessStructuredPatchOp[]):
       throw parseError('yaml', new Error('patch op requires a non-empty path'));
     }
     if (op.value === undefined) {
-      // deleteIn silently no-ops on missing keys — matches JSONC's modify(…, undefined).
+      // Idempotent delete: if any segment (including intermediates) is already
+      // absent, the target is effectively deleted — skip. `doc.deleteIn`
+      // itself only no-ops on a missing leaf; a missing intermediate throws.
+      if (!doc.hasIn(op.path)) continue;
       doc.deleteIn(op.path);
     } else {
       doc.setIn(op.path, op.value);
@@ -96,6 +108,13 @@ export function applyJsoncPatch(source: string, ops: HarnessStructuredPatchOp[])
   for (const op of ops) {
     if (!op.path || op.path.length === 0) {
       throw parseError('jsonc', new Error('patch op requires a non-empty path'));
+    }
+    // Idempotent delete: `modify(undefined)` throws "Can not delete…" when the
+    // target (or any intermediate) does not exist; treat that as a no-op so
+    // callers can apply delete patches without first probing state.
+    if (op.value === undefined) {
+      const tree = parseTree(current, [], { allowTrailingComma: true, disallowComments: false });
+      if (!tree || !findNodeAtLocation(tree, op.path)) continue;
     }
     // `modify` takes `undefined` to mean "remove", matching HarnessStructuredPatchOp.value semantics.
     const edits = modify(current, op.path, op.value, { formattingOptions });
