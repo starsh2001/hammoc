@@ -319,7 +319,8 @@
       "nav": {
         "general": "通用",
         "plugins": "插件",
-        "skills": "技能"
+        "skills": "技能",
+        "mcps": "MCP"
       }
     },
     "skill": {
@@ -399,6 +400,109 @@
         "title": "因 frontmatter 无效,以下技能未显示:"
       },
       "cardOpen": "打开 {{name}}"
+    },
+    "mcp": {
+      "empty": {
+        "title": "尚未配置 MCP 服务器。",
+        "description": "在 <projectRoot>/.mcp.json 或 ~/.claude/.mcp.json 中添加 mcpServers 条目，或安装包含 MCP 服务器的插件包。",
+        "noGlobalSupport": "此版本的 Claude Code 不识别全局 MCP 文件 — 仅显示项目范围和插件包内的 MCP。"
+      },
+      "scopeBadge": {
+        "project": "项目",
+        "user": "全局",
+        "plugin": "插件",
+        "pluginWithKey": "插件: {{key}}"
+      },
+      "type": { "stdio": "stdio", "sse": "sse", "http": "http", "ws": "ws" },
+      "toggle": {
+        "on": "已启用",
+        "off": "已禁用",
+        "disabledByBackup": "已禁用 (移至备份)"
+      },
+      "banner": {
+        "freshSpawn": "将在下一条用户消息中生效。",
+        "newSession": "开始新会话",
+        "dismiss": "关闭"
+      },
+      "activeSourceTooltip": "{{active}} 已生效 — {{shadowed}} 被遮蔽。",
+      "copy": {
+        "menuLabel": "复制操作",
+        "toUser":            { "label": "复制到全局 →" },
+        "toProject":         { "label": "拉取到项目 ←" },
+        "overrideToProject": { "label": "覆盖克隆 (项目)" },
+        "overrideToUser":    { "label": "覆盖克隆 (全局)" },
+        "secret": {
+          "title": "检测到疑似密钥的值",
+          "intro": "以下字段看起来像密钥，将以明文形式被复制:",
+          "ack": "我了解并希望在包含密钥的情况下复制。",
+          "submit": "包含密钥复制",
+          "cancel": "取消"
+        },
+        "conflict": {
+          "title": "服务器名称冲突",
+          "intro": "将 {{name}} 复制到 {{targetScope}}。",
+          "overwrite": "覆盖现有服务器",
+          "skip": "跳过 — 保留现有",
+          "rename": "重命名后添加",
+          "renameLabel": "新服务器名称",
+          "renameInvalid": "无效名称 — 为空、未变更或包含保留字符。",
+          "submit": "继续",
+          "cancel": "取消",
+          "close": "关闭",
+          "success": "已将 {{name}} 复制到 {{targetScope}}。",
+          "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 引用在插件包外可能无法解析。"
+        },
+        "error": {
+          "crossDevice": "此服务器跨越挂载边界，无法自动复制 — 请使用外部文件管理器。"
+        }
+      },
+      "editor": {
+        "close": "关闭",
+        "loading": "加载中…",
+        "loadingEditor": "正在加载编辑器…",
+        "modeForm": "表单",
+        "modeRaw": "Raw",
+        "type": "Type",
+        "command": "Command",
+        "args": "Arguments (每行一个)",
+        "url": "URL",
+        "headers": "Headers",
+        "env": "环境变量",
+        "headersKey": "Header 名称",
+        "headersValue": "Header 值",
+        "envKey": "变量名",
+        "envValue": "变量值",
+        "addRow": "+ 添加",
+        "removeRow": "删除行",
+        "maskToggle": "显示 / 隐藏值",
+        "required": {
+          "command": "stdio 类型要求 command 字段。",
+          "url": "{{type}} 类型要求 url 字段。"
+        },
+        "typeChange": {
+          "title": "更改 Type 将丢弃部分字段",
+          "intro": "从 {{from}} 切换到 {{to}} 会移除不适用于新类型的字段。",
+          "submit": "继续",
+          "cancel": "取消"
+        },
+        "rawParseError": "无法解析服务器配置 — 修正 JSON 以返回到表单模式。",
+        "staleBanner": "此服务器配置已被外部修改。请选择从磁盘重新加载，或用当前编辑内容覆盖磁盘版本。",
+        "staleReload": "从磁盘重新加载",
+        "staleOverwrite": "覆盖磁盘版本",
+        "delete": {
+          "label": "删除服务器",
+          "confirm": "从 {{scope}} 删除 {{name}}?",
+          "submit": "删除"
+        }
+      },
+      "malformed": {
+        "title": "由于配置无效，部分 MCP 服务器已被排除:"
+      },
+      "cardOpen": "打开 {{name}}",
+      "secret": {
+        "marker": "疑似密钥的值",
+        "envRefMarker": "环境变量引用"
+      }
     },
     "plugin": {
       "empty": "未安装任何插件。",

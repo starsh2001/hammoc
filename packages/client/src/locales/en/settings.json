@@ -320,7 +320,8 @@
       "nav": {
         "general": "General",
         "plugins": "Plugins",
-        "skills": "Skills"
+        "skills": "Skills",
+        "mcps": "MCP"
       }
     },
     "skill": {
@@ -400,6 +401,109 @@
         "title": "Some skills were skipped because their frontmatter is invalid:"
       },
       "cardOpen": "Open {{name}}"
+    },
+    "mcp": {
+      "empty": {
+        "title": "No MCP servers configured.",
+        "description": "Add an mcpServers entry to <projectRoot>/.mcp.json or your global ~/.claude/.mcp.json, or install a plugin bundle that includes MCP servers.",
+        "noGlobalSupport": "Claude Code does not recognise a global MCP file on this version — only project-scope and plugin-bundle MCPs are visible."
+      },
+      "scopeBadge": {
+        "project": "Project",
+        "user": "Global",
+        "plugin": "Plugin",
+        "pluginWithKey": "Plugin: {{key}}"
+      },
+      "type": { "stdio": "stdio", "sse": "sse", "http": "http", "ws": "ws" },
+      "toggle": {
+        "on": "Enabled",
+        "off": "Disabled",
+        "disabledByBackup": "Disabled (moved to backup)"
+      },
+      "banner": {
+        "freshSpawn": "Takes effect on your next user message.",
+        "newSession": "Start new session",
+        "dismiss": "Dismiss"
+      },
+      "activeSourceTooltip": "{{active}} is active — {{shadowed}} is shadowed.",
+      "copy": {
+        "menuLabel": "Copy actions",
+        "toUser":            { "label": "Copy to global →" },
+        "toProject":         { "label": "Copy to project ←" },
+        "overrideToProject": { "label": "Override-clone (project)" },
+        "overrideToUser":    { "label": "Override-clone (global)" },
+        "secret": {
+          "title": "Secret-looking values detected",
+          "intro": "The following fields look like secrets and will be copied as plain text:",
+          "ack": "I understand and want to copy with secrets.",
+          "submit": "Copy with secrets",
+          "cancel": "Cancel"
+        },
+        "conflict": {
+          "title": "Server name conflict",
+          "intro": "Copy {{name}} into {{targetScope}}.",
+          "overwrite": "Overwrite the existing server",
+          "skip": "Skip — leave existing as-is",
+          "rename": "Rename and add",
+          "renameLabel": "New server name",
+          "renameInvalid": "Invalid name — empty, unchanged, or contains reserved characters.",
+          "submit": "Continue",
+          "cancel": "Cancel",
+          "close": "Close",
+          "success": "Copied {{name}} to {{targetScope}}.",
+          "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} reference will not resolve outside the plugin bundle."
+        },
+        "error": {
+          "crossDevice": "This server lives across a mount boundary — copy with an external file manager."
+        }
+      },
+      "editor": {
+        "close": "Close",
+        "loading": "Loading…",
+        "loadingEditor": "Loading editor…",
+        "modeForm": "Form",
+        "modeRaw": "Raw",
+        "type": "Type",
+        "command": "Command",
+        "args": "Arguments (one per line)",
+        "url": "URL",
+        "headers": "Headers",
+        "env": "Environment variables",
+        "headersKey": "Header name",
+        "headersValue": "Header value",
+        "envKey": "Variable name",
+        "envValue": "Variable value",
+        "addRow": "+ Add",
+        "removeRow": "Remove row",
+        "maskToggle": "Show / hide value",
+        "required": {
+          "command": "command is required for stdio.",
+          "url": "url is required for {{type}}."
+        },
+        "typeChange": {
+          "title": "Type change will discard fields",
+          "intro": "Switching from {{from}} to {{to}} will remove fields that don't apply to the new type.",
+          "submit": "Continue",
+          "cancel": "Cancel"
+        },
+        "rawParseError": "Server config cannot be parsed — fix the JSON to return to Form mode.",
+        "staleBanner": "This server config was changed externally. Reload from disk or overwrite with your edits.",
+        "staleReload": "Reload from disk",
+        "staleOverwrite": "Overwrite disk version",
+        "delete": {
+          "label": "Delete server",
+          "confirm": "Delete {{name}} from {{scope}}?",
+          "submit": "Delete"
+        }
+      },
+      "malformed": {
+        "title": "Some MCP servers were skipped because their config is invalid:"
+      },
+      "cardOpen": "Open {{name}}",
+      "secret": {
+        "marker": "Secret-looking value",
+        "envRefMarker": "Environment variable reference"
+      }
     },
     "plugin": {
       "empty": "No plugins installed.",

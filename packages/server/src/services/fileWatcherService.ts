@@ -187,9 +187,26 @@ class FileWatcherService {
       return;
     }
 
-    const watcher = chokidar.watch(resolvedRoot, {
+    // Story 28.3: project scope must also surface external edits to
+    // `<projectRoot>/.mcp.json`. The file is the SIBLING of `.claude/`, so
+    // the standard root-only watcher cannot pick it up. We add it as a second
+    // path in the same chokidar instance and emit `path: '.mcp.json'`
+    // (hard-coded relative form) when the event lands on that file.
+    const projectMcpFilePath = ref.scope === 'project'
+      ? path.join(path.dirname(resolvedRoot), '.mcp.json')
+      : null;
+    const watchTargets = projectMcpFilePath
+      ? [resolvedRoot, projectMcpFilePath]
+      : resolvedRoot;
+
+    const watcher = chokidar.watch(watchTargets, {
       ignoreInitial: true,
       ignored: (target: string): boolean => {
+        // Always allow the .mcp.json sibling — chokidar would otherwise drop
+        // it because it sits outside `resolvedRoot`.
+        if (projectMcpFilePath && path.resolve(target) === path.resolve(projectMcpFilePath)) {
+          return false;
+        }
         const rel = path.relative(resolvedRoot, target).replace(/\\/g, '/');
         if (!rel || rel === '.') return false;
         const segments = rel.split('/');
@@ -215,8 +232,14 @@ class FileWatcherService {
             return;
           }
 
-          const rel = path.relative(resolvedRoot, absolutePath).replace(/\\/g, '/');
-          if (!rel || rel === '.' || rel.startsWith('..')) return;
+          let rel: string;
+          if (projectMcpFilePath
+            && path.resolve(absolutePath) === path.resolve(projectMcpFilePath)) {
+            rel = '.mcp.json';
+          } else {
+            rel = path.relative(resolvedRoot, absolutePath).replace(/\\/g, '/');
+            if (!rel || rel === '.' || rel.startsWith('..')) return;
+          }
 
           const payload: HarnessExternalChangeEvent = {
             scope: ref.scope,

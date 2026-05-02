@@ -12,10 +12,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PluginPanel } from './harness/PluginPanel';
 import { SkillPanel } from './harness/SkillPanel';
+import { McpPanel } from './harness/McpPanel';
 
-type HarnessSubSection = 'plugins' | 'skills';
+type HarnessSubSection = 'plugins' | 'skills' | 'mcps';
 
-const SUB_SECTIONS: readonly HarnessSubSection[] = ['plugins', 'skills'] as const;
+const SUB_SECTIONS: readonly HarnessSubSection[] = ['plugins', 'skills', 'mcps'] as const;
 
 interface Props {
   projectSlug: string;
@@ -50,6 +51,7 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
       <div className="flex-1 min-w-0">
         {active === 'plugins' && <PluginPanel projectSlug={projectSlug} />}
         {active === 'skills' && <SkillPanel projectSlug={projectSlug} />}
+        {active === 'mcps' && <McpPanel projectSlug={projectSlug} />}
       </div>
     </div>
   );

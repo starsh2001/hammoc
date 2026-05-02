@@ -319,7 +319,8 @@
       "nav": {
         "general": "Geral",
         "plugins": "Plugins",
-        "skills": "Skills"
+        "skills": "Skills",
+        "mcps": "MCP"
       }
     },
     "skill": {
@@ -399,6 +400,109 @@
         "title": "Algumas skills não foram exibidas porque o frontmatter é inválido:"
       },
       "cardOpen": "Abrir {{name}}"
+    },
+    "mcp": {
+      "empty": {
+        "title": "Nenhum servidor MCP configurado.",
+        "description": "Adicione uma entrada mcpServers em <projectRoot>/.mcp.json ou ~/.claude/.mcp.json, ou instale um plugin que inclua servidores MCP.",
+        "noGlobalSupport": "Esta versão do Claude Code não reconhece um arquivo MCP global — apenas MCPs de projeto e do plugin são exibidos."
+      },
+      "scopeBadge": {
+        "project": "Projeto",
+        "user": "Global",
+        "plugin": "Plugin",
+        "pluginWithKey": "Plugin: {{key}}"
+      },
+      "type": { "stdio": "stdio", "sse": "sse", "http": "http", "ws": "ws" },
+      "toggle": {
+        "on": "Ativado",
+        "off": "Desativado",
+        "disabledByBackup": "Desativado (movido para backup)"
+      },
+      "banner": {
+        "freshSpawn": "Terá efeito na próxima mensagem do usuário.",
+        "newSession": "Iniciar nova sessão",
+        "dismiss": "Fechar"
+      },
+      "activeSourceTooltip": "{{active}} está ativo — {{shadowed}} está oculto.",
+      "copy": {
+        "menuLabel": "Ações de cópia",
+        "toUser":            { "label": "Copiar para global →" },
+        "toProject":         { "label": "Trazer para projeto ←" },
+        "overrideToProject": { "label": "Clonar como override (projeto)" },
+        "overrideToUser":    { "label": "Clonar como override (global)" },
+        "secret": {
+          "title": "Detectados valores parecidos com segredos",
+          "intro": "Os campos abaixo parecem segredos e serão copiados em texto puro:",
+          "ack": "Entendo e quero copiar com os segredos.",
+          "submit": "Copiar com segredos",
+          "cancel": "Cancelar"
+        },
+        "conflict": {
+          "title": "Conflito de nome de servidor",
+          "intro": "Copiar {{name}} para {{targetScope}}.",
+          "overwrite": "Sobrescrever o servidor existente",
+          "skip": "Pular — manter existente",
+          "rename": "Renomear e adicionar",
+          "renameLabel": "Novo nome do servidor",
+          "renameInvalid": "Nome inválido — vazio, sem alteração ou com caracteres reservados.",
+          "submit": "Continuar",
+          "cancel": "Cancelar",
+          "close": "Fechar",
+          "success": "{{name}} copiado para {{targetScope}}.",
+          "pluginRootWarning": "A referência ${CLAUDE_PLUGIN_ROOT} não será resolvida fora do plugin."
+        },
+        "error": {
+          "crossDevice": "Este servidor está em outro ponto de montagem — copie com um gerenciador externo."
+        }
+      },
+      "editor": {
+        "close": "Fechar",
+        "loading": "Carregando…",
+        "loadingEditor": "Carregando editor…",
+        "modeForm": "Form",
+        "modeRaw": "Raw",
+        "type": "Type",
+        "command": "Command",
+        "args": "Arguments (um por linha)",
+        "url": "URL",
+        "headers": "Headers",
+        "env": "Variáveis de ambiente",
+        "headersKey": "Nome do header",
+        "headersValue": "Valor do header",
+        "envKey": "Nome da variável",
+        "envValue": "Valor da variável",
+        "addRow": "+ Adicionar",
+        "removeRow": "Remover linha",
+        "maskToggle": "Mostrar / ocultar valor",
+        "required": {
+          "command": "command é obrigatório em stdio.",
+          "url": "url é obrigatório em {{type}}."
+        },
+        "typeChange": {
+          "title": "Mudar Type descartará campos",
+          "intro": "Trocar de {{from}} para {{to}} removerá campos que não se aplicam ao novo tipo.",
+          "submit": "Continuar",
+          "cancel": "Cancelar"
+        },
+        "rawParseError": "Não foi possível analisar a configuração — corrija o JSON para voltar ao modo Form.",
+        "staleBanner": "Esta configuração foi alterada externamente. Recarregue do disco ou sobrescreva com suas edições.",
+        "staleReload": "Recarregar do disco",
+        "staleOverwrite": "Sobrescrever versão do disco",
+        "delete": {
+          "label": "Remover servidor",
+          "confirm": "Remover {{name}} de {{scope}}?",
+          "submit": "Remover"
+        }
+      },
+      "malformed": {
+        "title": "Alguns servidores MCP foram pulados por configuração inválida:"
+      },
+      "cardOpen": "Abrir {{name}}",
+      "secret": {
+        "marker": "Valor parecido com segredo",
+        "envRefMarker": "Referência a variável de ambiente"
+      }
     },
     "plugin": {
       "empty": "Nenhum plugin instalado.",

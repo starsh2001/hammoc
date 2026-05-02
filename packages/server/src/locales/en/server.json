@@ -150,6 +150,8 @@
       "pluginScopeDenied": "This plugin is scoped to a different project.",
       "skillNotFound": "Skill not found.",
       "skillNameConflict": "A skill with that name already exists.",
+      "mcpNotFound": "MCP server not found.",
+      "mcpNameConflict": "An MCP server with that name already exists.",
       "staleWrite": "The harness file was modified on disk since you opened it. Reload to see the changes, or overwrite to keep yours.",
       "parseError": "Failed to parse YAML/JSONC source.",
       "writeError": "Harness file write error."

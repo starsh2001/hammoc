@@ -404,3 +404,69 @@
 **기대 결과**:
 - 플러그인 출처에 대한 PUT 요청은 항상 403 `HARNESS_FORBIDDEN`
 - 오버라이드 복제 후 동일 이름 카드의 활성 출처가 더 높은 우선순위 스코프로 자동 전환되어 표시
+
+---
+
+## B-08: 하네스 MCP 섹션 (Story 28.3)
+
+### B-08-01: 카드 리스트 + 출처/타입 배지 정확성 (AC1) `[CORE]`
+
+**절차**:
+1. 프로젝트의 `<projectRoot>/.mcp.json` 에 stdio · sse · http · ws 4 종 type 의 서버 4개를 등록 (한 항목은 type 키 자체를 생략하고 `command`/`args` 만 두어 stdio default 검증)
+2. 전역 `~/.claude/.mcp.json` 에 같은 이름의 서버 1개 추가하여 우선순위(프로젝트 > 전역) 검증용 케이스를 만듦
+3. 설정 → 하네스 워크벤치 → "MCP" 좌측 nav 클릭
+
+**기대 결과**:
+- 4개 type 카드가 모두 노출되며 `stdio` / `sse` / `http` / `ws` 배지가 각각 정확히 표시됨
+- type 생략 엔트리는 `stdio` 배지로 표시
+- 같은 이름 카드는 1장으로 묶이고 `프로젝트(기본)` 배지만 진하게, `전역(기본)` 배지는 흐리게 + 호버 툴팁
+- 응답 `userFileKind: 'mcp.json'` / `disableStrategy: 'backup'` 가 store 에 들어가 빈 상태/토글 라벨에 일관되게 사용됨
+
+### B-08-02: stdio 신규 서버 생성 + 새 세션에서 도구 노출 `[CORE] [SDK]`
+
+**절차**:
+1. McpEditor 모달의 Type 드롭다운을 `stdio` 로 두고 `command`= `node`, `args`= `index.js` 입력
+2. 300ms debounce 가 지나 PUT `/api/harness/mcps/:name` 가 200 으로 끝나는지 확인
+3. 새 채팅 세션 시작 (Story 28.1 spike A 결과로 fresh-spawn 라우팅 확정) → 응답에서 등록한 mcp 도구가 노출되는지 SDK 응답으로 확인
+
+**기대 결과**:
+- 디스크의 `mcpServers.<name>` 객체가 새 값으로 round-trip 보존되어 저장 (주석 · 키 순서 유지)
+- 새 세션에서 SDK 가 새로운 MCP 서버를 인식하고 도구가 노출됨
+
+### B-08-03: 양방향 카피 + 시크릿 모달 + 동일 이름 충돌 3-way `[CORE]`
+
+**절차**:
+1. user-scope 카드 우상단 `⋮` 메뉴에서 "프로젝트로 가져오기 ←" 클릭
+2. 소스 객체의 `headers.Authorization` 에 평문 `Bearer ghp_...` 가 있어 시크릿 휴리스틱이 매치되면 1차로 시크릿 확인 모달이 노출됨
+3. 모달에서 체크박스 동의 → "시크릿 포함하여 복사" → 다음 단계로 동일 이름 충돌 모달이 자동 노출
+4. `이름 변경` 라디오 → 새 이름 입력 → "계속" → POST `/api/harness/mcps/copy` 가 200 으로 종료되고 카드 리스트가 즉시 갱신
+
+**기대 결과**:
+- 시크릿 미동의 상태로 직접 POST 시 서버는 403 `HARNESS_FORBIDDEN` (`details.cause: 'secret-not-acknowledged'`) 으로 거부
+- `${TOKEN}` 같은 환경변수 참조는 시크릿 휴리스틱에서 제외되므로 모달 미노출
+- 카피 후 디스크의 환경변수 참조 토큰 (`Bearer ${GH_TOKEN}` 등) 이 평문으로 치환되지 않고 원문 보존
+
+### B-08-04: 활성/비활성 토글 (Spike A 결과 — 백업 파일 이동) `[CORE]`
+
+**절차**:
+1. 활성 user-scope 카드의 토글 버튼 클릭 → PUT `/api/harness/mcps/:name` `{enabled: false}` 호출
+2. 디스크에서 `~/.claude/.mcp.json` 의 해당 서버 객체가 사라지고 `~/.claude/mcp.disabled.json` 의 `mcpServers.<name>` 으로 이동했는지 확인
+3. 카드는 그대로 표시되며 `disabled` 라벨 + `disabledByBackup` 마커가 노출
+4. 다시 토글 → 백업에서 main 으로 되돌아오고 `enabled` 상태 복원
+
+**기대 결과**:
+- 토글 결과 배너 `harness.mcp.banner.freshSpawn` ("새 세션부터 적용됩니다") 와 "새 세션 시작" CTA 가 노출 (28.1 spike A 답습)
+- 두 파일 patch 가 트랜잭션으로 묶여 부분 실패 시 첫 단계가 롤백됨 (단위 테스트 회귀 보호)
+
+### B-08-05: type 전환 시 confirm 모달 + 필수 필드 실시간 검증 `[SDK]`
+
+**절차**:
+1. stdio 서버의 McpEditor 에서 Type 드롭다운을 `sse` 로 변경 시도
+2. 기존 `command`/`args` 가 새 type 에서 무효화되므로 confirm 모달 ("이 type 으로 바꾸면 …가 제거됩니다") 노출
+3. "계속" 클릭 → 폼이 sse 모드로 전환되고 `url` 필드가 비어 있어 인라인 에러 + 저장 비활성
+4. `url` 입력 → debounce 후 PUT 200, 디스크의 객체가 `{type:"sse",url:...}` 로 교체됨
+
+**기대 결과**:
+- `command` / `args` / `url` / `headers` 의 type 별 인라인 에러가 100ms 안에 표시
+- type 전환 confirm 을 취소하면 원래 type 으로 복구되며 디스크는 변경 없음
+- Raw 모드에서 JSON 파싱 실패 시 폼 모드 토글이 비활성화되고 상단 배너가 안내

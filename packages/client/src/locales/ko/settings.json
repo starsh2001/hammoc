@@ -320,7 +320,8 @@
       "nav": {
         "general": "일반",
         "plugins": "플러그인",
-        "skills": "스킬"
+        "skills": "스킬",
+        "mcps": "MCP"
       }
     },
     "skill": {
@@ -400,6 +401,109 @@
         "title": "frontmatter 가 무효한 스킬은 표시에서 제외됐습니다:"
       },
       "cardOpen": "{{name}} 열기"
+    },
+    "mcp": {
+      "empty": {
+        "title": "설정된 MCP 서버가 없습니다.",
+        "description": "<projectRoot>/.mcp.json 또는 ~/.claude/.mcp.json 에 mcpServers 항목을 추가하거나 MCP 서버가 포함된 플러그인 번들을 설치하세요.",
+        "noGlobalSupport": "이 버전의 Claude Code 는 전역 MCP 파일을 인식하지 않습니다 — 프로젝트 스코프와 플러그인 번들 MCP 만 표시됩니다."
+      },
+      "scopeBadge": {
+        "project": "프로젝트",
+        "user": "전역",
+        "plugin": "플러그인",
+        "pluginWithKey": "플러그인: {{key}}"
+      },
+      "type": { "stdio": "stdio", "sse": "sse", "http": "http", "ws": "ws" },
+      "toggle": {
+        "on": "활성",
+        "off": "비활성",
+        "disabledByBackup": "비활성 (백업으로 이동됨)"
+      },
+      "banner": {
+        "freshSpawn": "다음 사용자 메시지부터 적용됩니다.",
+        "newSession": "새 세션 시작",
+        "dismiss": "닫기"
+      },
+      "activeSourceTooltip": "{{active}} 가 적용되어 {{shadowed}} 는 가려집니다.",
+      "copy": {
+        "menuLabel": "복사 액션",
+        "toUser":            { "label": "전역으로 복사 →" },
+        "toProject":         { "label": "프로젝트로 가져오기 ←" },
+        "overrideToProject": { "label": "오버라이드로 복제 (프로젝트)" },
+        "overrideToUser":    { "label": "오버라이드로 복제 (전역)" },
+        "secret": {
+          "title": "시크릿으로 보이는 값이 감지되었습니다",
+          "intro": "다음 필드는 시크릿처럼 보이며 평문으로 복사됩니다:",
+          "ack": "시크릿이 포함된 채로 복사하는 것에 동의합니다.",
+          "submit": "시크릿 포함하여 복사",
+          "cancel": "취소"
+        },
+        "conflict": {
+          "title": "서버 이름 충돌",
+          "intro": "{{name}} 을(를) {{targetScope}} 로 복사합니다.",
+          "overwrite": "기존 서버를 덮어쓰기",
+          "skip": "스킵 — 기존 유지",
+          "rename": "이름 변경 후 추가",
+          "renameLabel": "새 서버 이름",
+          "renameInvalid": "잘못된 이름 — 비었거나 동일하거나 예약 문자가 포함됐습니다.",
+          "submit": "계속",
+          "cancel": "취소",
+          "close": "닫기",
+          "success": "{{name}} 을(를) {{targetScope}} 로 복사했습니다.",
+          "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 참조는 플러그인 번들 외부에서 동작하지 않을 수 있습니다."
+        },
+        "error": {
+          "crossDevice": "이 서버는 마운트 경계를 넘는 위치에 있어 자동 복사할 수 없습니다 — 외부 파일 탐색기로 복사하세요."
+        }
+      },
+      "editor": {
+        "close": "닫기",
+        "loading": "불러오는 중…",
+        "loadingEditor": "에디터 로딩 중…",
+        "modeForm": "폼",
+        "modeRaw": "Raw",
+        "type": "Type",
+        "command": "Command",
+        "args": "Arguments (한 줄에 하나)",
+        "url": "URL",
+        "headers": "Headers",
+        "env": "환경 변수",
+        "headersKey": "헤더 이름",
+        "headersValue": "헤더 값",
+        "envKey": "변수 이름",
+        "envValue": "변수 값",
+        "addRow": "+ 추가",
+        "removeRow": "행 제거",
+        "maskToggle": "값 표시 / 숨김",
+        "required": {
+          "command": "stdio 에서는 command 가 필수입니다.",
+          "url": "{{type}} 에서는 url 이 필수입니다."
+        },
+        "typeChange": {
+          "title": "Type 변경 시 일부 필드가 제거됩니다",
+          "intro": "{{from}} → {{to}} 로 바꾸면 새 type 에 적용되지 않는 필드가 제거됩니다.",
+          "submit": "계속",
+          "cancel": "취소"
+        },
+        "rawParseError": "서버 설정을 파싱할 수 없습니다 — JSON 을 수정해야 폼 모드로 돌아갈 수 있습니다.",
+        "staleBanner": "이 서버 설정이 외부에서 변경됐습니다. 디스크 내용을 다시 불러올지, 현재 편집 내용으로 덮어쓸지 선택하세요.",
+        "staleReload": "디스크에서 다시 불러오기",
+        "staleOverwrite": "디스크 내용 덮어쓰기",
+        "delete": {
+          "label": "서버 삭제",
+          "confirm": "{{name}} 을(를) {{scope}} 에서 삭제하시겠습니까?",
+          "submit": "삭제"
+        }
+      },
+      "malformed": {
+        "title": "config 가 무효한 MCP 서버는 표시에서 제외됐습니다:"
+      },
+      "cardOpen": "{{name}} 열기",
+      "secret": {
+        "marker": "시크릿으로 보이는 값",
+        "envRefMarker": "환경 변수 참조"
+      }
     },
     "plugin": {
       "empty": "설치된 플러그인이 없습니다.",

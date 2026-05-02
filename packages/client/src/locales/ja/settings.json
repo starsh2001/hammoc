@@ -319,7 +319,8 @@
       "nav": {
         "general": "一般",
         "plugins": "プラグイン",
-        "skills": "スキル"
+        "skills": "スキル",
+        "mcps": "MCP"
       }
     },
     "skill": {
@@ -399,6 +400,109 @@
         "title": "frontmatter が無効なスキルは一覧から除外されました:"
       },
       "cardOpen": "{{name}} を開く"
+    },
+    "mcp": {
+      "empty": {
+        "title": "MCP サーバーが設定されていません。",
+        "description": "<projectRoot>/.mcp.json または ~/.claude/.mcp.json に mcpServers エントリを追加するか、MCP サーバーを含むプラグインバンドルをインストールしてください。",
+        "noGlobalSupport": "このバージョンの Claude Code はグローバル MCP ファイルを認識しません — プロジェクトスコープとプラグインバンドルの MCP のみ表示されます。"
+      },
+      "scopeBadge": {
+        "project": "プロジェクト",
+        "user": "グローバル",
+        "plugin": "プラグイン",
+        "pluginWithKey": "プラグイン: {{key}}"
+      },
+      "type": { "stdio": "stdio", "sse": "sse", "http": "http", "ws": "ws" },
+      "toggle": {
+        "on": "有効",
+        "off": "無効",
+        "disabledByBackup": "無効 (バックアップに移動)"
+      },
+      "banner": {
+        "freshSpawn": "次のユーザーメッセージから適用されます。",
+        "newSession": "新しいセッションを開始",
+        "dismiss": "閉じる"
+      },
+      "activeSourceTooltip": "{{active}} が有効 — {{shadowed}} は隠れています。",
+      "copy": {
+        "menuLabel": "コピー操作",
+        "toUser":            { "label": "グローバルへコピー →" },
+        "toProject":         { "label": "プロジェクトへ取り込み ←" },
+        "overrideToProject": { "label": "オーバーライド複製 (プロジェクト)" },
+        "overrideToUser":    { "label": "オーバーライド複製 (グローバル)" },
+        "secret": {
+          "title": "シークレット風の値が検出されました",
+          "intro": "次のフィールドはシークレットのように見え、平文でコピーされます:",
+          "ack": "シークレットを含めてコピーすることに同意します。",
+          "submit": "シークレットを含めてコピー",
+          "cancel": "キャンセル"
+        },
+        "conflict": {
+          "title": "サーバー名の競合",
+          "intro": "{{name}} を {{targetScope}} にコピーします。",
+          "overwrite": "既存のサーバーを上書き",
+          "skip": "スキップ — 既存を維持",
+          "rename": "名前を変更して追加",
+          "renameLabel": "新しいサーバー名",
+          "renameInvalid": "無効な名前 — 空、変更なし、または予約文字を含みます。",
+          "submit": "続行",
+          "cancel": "キャンセル",
+          "close": "閉じる",
+          "success": "{{name}} を {{targetScope}} にコピーしました。",
+          "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 参照はプラグインバンドルの外では動作しない可能性があります。"
+        },
+        "error": {
+          "crossDevice": "このサーバーはマウント境界をまたいでいるため自動コピーできません — 外部のファイルマネージャーを使用してください。"
+        }
+      },
+      "editor": {
+        "close": "閉じる",
+        "loading": "読み込み中…",
+        "loadingEditor": "エディタ読み込み中…",
+        "modeForm": "フォーム",
+        "modeRaw": "Raw",
+        "type": "Type",
+        "command": "Command",
+        "args": "Arguments (1行に1つ)",
+        "url": "URL",
+        "headers": "Headers",
+        "env": "環境変数",
+        "headersKey": "ヘッダー名",
+        "headersValue": "ヘッダー値",
+        "envKey": "変数名",
+        "envValue": "変数値",
+        "addRow": "+ 追加",
+        "removeRow": "行を削除",
+        "maskToggle": "値を表示 / 隠す",
+        "required": {
+          "command": "stdio では command が必須です。",
+          "url": "{{type}} では url が必須です。"
+        },
+        "typeChange": {
+          "title": "Type を変更すると一部のフィールドが削除されます",
+          "intro": "{{from}} から {{to}} へ切り替えると、新しい type に当てはまらないフィールドが削除されます。",
+          "submit": "続行",
+          "cancel": "キャンセル"
+        },
+        "rawParseError": "サーバー設定をパースできません — JSON を修正するとフォームモードに戻れます。",
+        "staleBanner": "このサーバー設定は外部で変更されました。ディスクの内容を再読み込みするか、現在の編集内容で上書きするかを選択してください。",
+        "staleReload": "ディスクから再読み込み",
+        "staleOverwrite": "ディスクの内容を上書き",
+        "delete": {
+          "label": "サーバーを削除",
+          "confirm": "{{scope}} から {{name}} を削除しますか？",
+          "submit": "削除"
+        }
+      },
+      "malformed": {
+        "title": "config が無効な MCP サーバーは表示から除外されました:"
+      },
+      "cardOpen": "{{name}} を開く",
+      "secret": {
+        "marker": "シークレット風の値",
+        "envRefMarker": "環境変数参照"
+      }
     },
     "plugin": {
       "empty": "インストール済みのプラグインはありません。",

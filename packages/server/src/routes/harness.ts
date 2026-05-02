@@ -9,6 +9,7 @@ import express from 'express';
 import { harnessController } from '../controllers/harnessController.js';
 import { harnessPluginController } from '../controllers/harnessPluginController.js';
 import { harnessSkillController } from '../controllers/harnessSkillController.js';
+import { harnessMcpController } from '../controllers/harnessMcpController.js';
 
 const router = Router();
 
@@ -34,5 +35,13 @@ router.get('/skills/:name/bundle/*', harnessSkillController.readBundle);
 router.put('/skills/:name/bundle/*', largeBodyParser, harnessSkillController.writeBundle);
 router.get('/skills/:name', harnessSkillController.read);
 router.put('/skills/:name', largeBodyParser, harnessSkillController.update);
+
+// Story 28.3 — MCP list / read / update / copy / delete.
+// `copy` lives above `/mcps/:name` so Express prefers the literal segment.
+router.post('/mcps/copy', largeBodyParser, harnessMcpController.copy);
+router.get('/mcps', harnessMcpController.list);
+router.get('/mcps/:name', harnessMcpController.read);
+router.put('/mcps/:name', largeBodyParser, harnessMcpController.update);
+router.delete('/mcps/:name', largeBodyParser, harnessMcpController.delete);
 
 export default router;

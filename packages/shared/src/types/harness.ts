@@ -103,8 +103,10 @@ export const HARNESS_ERRORS = {
   HARNESS_PARENT_NOT_FOUND:    { code: 'HARNESS_PARENT_NOT_FOUND',    httpStatus: 404 },
   HARNESS_PLUGIN_NOT_FOUND:    { code: 'HARNESS_PLUGIN_NOT_FOUND',    httpStatus: 404 },
   HARNESS_SKILL_NOT_FOUND:     { code: 'HARNESS_SKILL_NOT_FOUND',     httpStatus: 404 },
+  HARNESS_MCP_NOT_FOUND:       { code: 'HARNESS_MCP_NOT_FOUND',       httpStatus: 404 },
   HARNESS_STALE_WRITE:         { code: 'HARNESS_STALE_WRITE',         httpStatus: 409 },
   HARNESS_SKILL_NAME_CONFLICT: { code: 'HARNESS_SKILL_NAME_CONFLICT', httpStatus: 409 },
+  HARNESS_MCP_NAME_CONFLICT:   { code: 'HARNESS_MCP_NAME_CONFLICT',   httpStatus: 409 },
   HARNESS_PARSE_ERROR:         { code: 'HARNESS_PARSE_ERROR',         httpStatus: 422 },
   HARNESS_WRITE_ERROR:         { code: 'HARNESS_WRITE_ERROR',         httpStatus: 500 },
 } as const;
@@ -365,4 +367,164 @@ export interface HarnessSkillCopyResponse {
   skipped: boolean;
   /** Final directory name actually created (may differ from the request when renaming). */
   finalName: string;
+}
+
+// ---------------------------------------------------------------------------
+// Story 28.3 — MCP section types
+// ---------------------------------------------------------------------------
+
+export type HarnessMcpSourceScope = 'project' | 'user' | 'plugin';
+/** Stdio default per official MCP schema; explicit when set. */
+export type HarnessMcpServerType = 'stdio' | 'sse' | 'http' | 'ws';
+
+/** Common shape — all four type variants. type=stdio when omitted on disk. */
+export interface HarnessMcpServerConfig {
+  type?: HarnessMcpServerType;
+  // stdio
+  command?: string;
+  args?: string[];
+  // sse / http / ws
+  url?: string;
+  // http only
+  headers?: Record<string, string>;
+  // common
+  env?: Record<string, string>;
+  /**
+   * Disk-level enabled flag. Spike A 경로 1 (flag honored) 채택 시에만 디스크에
+   * 등장 — 명시 false 가 비활성, 키 부재(또는 true) 가 활성. 경로 2 (backup
+   * file) 채택 시 디스크에는 절대 나타나지 않으며 비활성은 entry 를
+   * mcp.disabled.json 백업 파일로 이동시켜 표현한다. 응답 측
+   * HarnessMcpCard.enabled 가 두 경로의 의미 차이를 흡수해 UI 토글에 단일
+   * boolean 으로 노출한다.
+   */
+  enabled?: boolean;
+}
+
+/** File kind hosting the server entry — informs server-side path/parsing. */
+export type HarnessMcpSourceFileKind = 'mcp.json' | 'settings.json' | 'plugin.json';
+
+export interface HarnessMcpSourceLocation {
+  scope: HarnessMcpSourceScope;
+  /** Absolute path of the file holding this server's entry. */
+  absoluteFile: string;
+  /** scope === 'plugin' → "<pluginName>@<marketplace>". */
+  pluginKey?: string;
+  /** scope === 'project' → the active project's slug. */
+  projectSlug?: string;
+  /** Spike B 후보 2 채택 시 'settings.json' / 후보 1 채택 시 'mcp.json' / plugin 은 'mcp.json' 또는 'plugin.json'. */
+  sourceFileKind: HarnessMcpSourceFileKind;
+}
+
+export interface HarnessMcpSource extends HarnessMcpSourceLocation {
+  config: HarnessMcpServerConfig;
+  /** ISO mtime of `absoluteFile` — STALE_WRITE ETag. */
+  mtime: string;
+  /** True when this entry currently lives in the disabled-backup file (Spike A 경로 2). */
+  disabledByBackup: boolean;
+}
+
+export interface HarnessMcpCard {
+  /** Server name = `mcpServers.<name>` key. */
+  name: string;
+  /** Active source's `type` field after default-stdio resolution. */
+  activeType: HarnessMcpServerType;
+  /**
+   * Resolved active state — UI uses this directly for the toggle.
+   * 경로 1 (Spike A flag 지원): true ⇔ active source 의 HarnessMcpServerConfig.enabled !== false.
+   * 경로 2 (Spike A backup 우회): true ⇔ active source 가 main 파일에 살아 있음
+   *                                (= !sources[activeIndex].disabledByBackup).
+   */
+  enabled: boolean;
+  /** 1–N entries — one per existing scope×file. Sorted by priority (project > user > plugin). */
+  sources: HarnessMcpSource[];
+  activeScope: HarnessMcpSourceScope;
+}
+
+export interface HarnessMcpMalformedEntry {
+  scope: HarnessMcpSourceScope;
+  absoluteFile: string;
+  serverName: string;
+  pluginKey?: string;
+  projectSlug?: string;
+  reason: string;
+}
+
+export interface HarnessMcpListResponse {
+  cards: HarnessMcpCard[];
+  /**
+   * Servers whose JSON object failed schema validation. Surfaced separately so
+   * the UI shows a "shadowed by malformed config" badge without the card list
+   * silently growing.
+   */
+  malformed: HarnessMcpMalformedEntry[];
+  /**
+   * Spike B outcome cached so the client UI can render the right empty-state.
+   * `null` means Claude Code does not recognise a global MCP file at all.
+   */
+  userFileKind: 'mcp.json' | 'settings.json' | null;
+  /**
+   * Spike A outcome cached. 'flag' = enabled flag honored (경로 1).
+   * 'backup' = disabled-backup file (경로 2).
+   */
+  disableStrategy: 'flag' | 'backup';
+}
+
+export interface HarnessMcpReadResponse {
+  source: HarnessMcpSourceLocation;
+  config: HarnessMcpServerConfig;
+  /** Raw JSON/JSONC text of the entire `mcpServers.<name>` object — used by the Raw editor toggle. */
+  raw: string;
+  mtime: string;
+  disabledByBackup: boolean;
+}
+
+/**
+ * Update request — exactly one of `config`, `raw`, or `enabled` is required.
+ * `enabled` is a no-arg toggle that routes through `disableStrategy` (see Spike A):
+ *   - 'flag'  → patches `mcpServers.<name>.enabled` true/false
+ *   - 'backup' → moves the entry between main file and `mcp.disabled.json`
+ */
+export interface HarnessMcpUpdateRequest {
+  config?: HarnessMcpServerConfig;
+  raw?: string;
+  enabled?: boolean;
+  expectedMtime?: string;
+}
+
+export interface HarnessMcpUpdateResponse {
+  success: true;
+  mtime: string;
+}
+
+export interface HarnessMcpCopyRequest {
+  sourceScope: HarnessMcpSourceScope;
+  sourceProjectSlug?: string;
+  sourcePluginKey?: string;
+  /** plugin sources may live in either .mcp.json or plugin.json — must be echoed. */
+  sourceFileKind?: HarnessMcpSourceFileKind;
+  sourceName: string;
+  /** plugin destinations forbidden — only project/user are allowed. */
+  targetScope: 'project' | 'user';
+  targetProjectSlug?: string;
+  targetName: string;
+  onConflict: 'overwrite' | 'skip' | 'rename';
+  /** Client must echo `true` after showing the secret-confirmation modal when heuristics matched. */
+  acknowledgedSecret?: boolean;
+}
+
+export interface HarnessMcpCopyResponse {
+  success: true;
+  finalName: string;
+  skipped: boolean;
+  /**
+   * Optional warnings the client surfaces as toasts. Currently only
+   * `'plugin-root-reference'` (the source contained `${CLAUDE_PLUGIN_ROOT}`).
+   */
+  warnings?: string[];
+}
+
+export interface HarnessMcpDeleteRequest {
+  scope: 'project' | 'user';
+  projectSlug?: string;
+  expectedMtime?: string;
 }
