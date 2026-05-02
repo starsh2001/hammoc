@@ -319,8 +319,87 @@
       "title": "Harness Workbench",
       "nav": {
         "general": "General",
-        "plugins": "Plugins"
+        "plugins": "Plugins",
+        "skills": "Skills"
       }
+    },
+    "skill": {
+      "empty": {
+        "title": "No skills installed.",
+        "description": "Add skills under <projectRoot>/.claude/skills/ or ~/.claude/skills/, or install a plugin bundle."
+      },
+      "scopeBadge": {
+        "project": "Project",
+        "user": "Global",
+        "plugin": "Plugin",
+        "pluginWithKey": "Plugin: {{key}}"
+      },
+      "activeSourceTooltip": "{{active}} is active — {{shadowed}} is shadowed.",
+      "bundle": {
+        "title": "Bundle resources",
+        "references": { "count": "{{count}} references" },
+        "examples":   { "count": "{{count}} examples" },
+        "scripts":    { "count": "{{count}} scripts" },
+        "assets":     { "count": "{{count}} assets" },
+        "binaryReadOnly": "Binary file — Hammoc UI cannot edit it.",
+        "truncated": "Truncated (>1 MB).",
+        "truncatedAtDepth": "Bundle tree truncated at the depth limit."
+      },
+      "copy": {
+        "menuLabel": "Copy actions",
+        "toUser":             { "label": "Copy to global →" },
+        "toProject":          { "label": "Copy to project ←" },
+        "overrideToProject":  { "label": "Override-clone (project)" },
+        "overrideToUser":     { "label": "Override-clone (global)" },
+        "conflict": {
+          "title": "Skill name conflict",
+          "intro": "Copy {{name}} into {{targetScope}}.",
+          "overwrite": "Overwrite the existing skill",
+          "skip": "Skip — leave existing as-is",
+          "rename": "Rename and add",
+          "renameLabel": "New skill name",
+          "renameInvalid": "Invalid name — empty, unchanged, or contains reserved characters.",
+          "submit": "Continue",
+          "cancel": "Cancel",
+          "close": "Close",
+          "success": "Copied {{name}} to {{targetScope}}."
+        },
+        "error": {
+          "crossDevice": "This skill lives across a mount boundary — copy with an external file manager."
+        }
+      },
+      "editor": {
+        "close": "Close",
+        "loading": "Loading…",
+        "loadingEditor": "Loading editor…",
+        "saving": "Saving…",
+        "modeForm": "Form",
+        "modeRaw": "Raw",
+        "frontmatter": {
+          "title": "Frontmatter",
+          "name": "Name",
+          "description": "Description",
+          "version": "Version",
+          "versionPlaceholder": "0.1.0"
+        },
+        "body": {
+          "title": "Body",
+          "editLabel": "Edit",
+          "previewLabel": "Preview"
+        },
+        "raw": { "title": "Raw SKILL.md" },
+        "preview": { "title": "Preview" },
+        "required": {
+          "name": "Name is required.",
+          "description": "Description is required."
+        },
+        "rawParseError": "Frontmatter cannot be parsed — fix the fenced YAML to return to Form mode.",
+        "staleBanner": "This skill was changed externally — your save was rejected. Latest contents loaded."
+      },
+      "malformed": {
+        "title": "Some skills were skipped because their frontmatter is invalid:"
+      },
+      "cardOpen": "Open {{name}}"
     },
     "plugin": {
       "empty": "No plugins installed.",

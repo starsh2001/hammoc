@@ -318,8 +318,87 @@
       "title": "Harness 工作台",
       "nav": {
         "general": "通用",
-        "plugins": "插件"
+        "plugins": "插件",
+        "skills": "技能"
       }
+    },
+    "skill": {
+      "empty": {
+        "title": "未安装任何技能。",
+        "description": "请在 <projectRoot>/.claude/skills/ 或 ~/.claude/skills/ 下添加技能,或安装一个插件包。"
+      },
+      "scopeBadge": {
+        "project": "项目",
+        "user": "全局",
+        "plugin": "插件",
+        "pluginWithKey": "插件: {{key}}"
+      },
+      "activeSourceTooltip": "{{active}} 已生效 — {{shadowed}} 被遮挡。",
+      "bundle": {
+        "title": "捆绑资源",
+        "references": { "count": "参考文件 {{count}}" },
+        "examples":   { "count": "示例 {{count}}" },
+        "scripts":    { "count": "脚本 {{count}}" },
+        "assets":     { "count": "资源 {{count}}" },
+        "binaryReadOnly": "二进制文件 — Hammoc UI 无法编辑。",
+        "truncated": "已截断 (>1MB)。",
+        "truncatedAtDepth": "更深的目录层级不再显示。"
+      },
+      "copy": {
+        "menuLabel": "复制操作",
+        "toUser":             { "label": "复制到全局 →" },
+        "toProject":          { "label": "拉取到项目 ←" },
+        "overrideToProject":  { "label": "覆盖克隆 (项目)" },
+        "overrideToUser":     { "label": "覆盖克隆 (全局)" },
+        "conflict": {
+          "title": "技能名称冲突",
+          "intro": "将 {{name}} 复制到 {{targetScope}}。",
+          "overwrite": "覆盖现有技能",
+          "skip": "跳过 — 保留现有",
+          "rename": "重命名并添加",
+          "renameLabel": "新技能名称",
+          "renameInvalid": "无效的名称 — 为空、未更改或包含保留字符。",
+          "submit": "继续",
+          "cancel": "取消",
+          "close": "关闭",
+          "success": "已将 {{name}} 复制到 {{targetScope}}。"
+        },
+        "error": {
+          "crossDevice": "该技能位于跨挂载点的位置,无法自动复制 — 请使用外部文件管理器。"
+        }
+      },
+      "editor": {
+        "close": "关闭",
+        "loading": "加载中…",
+        "loadingEditor": "加载编辑器…",
+        "saving": "保存中…",
+        "modeForm": "表单",
+        "modeRaw": "Raw",
+        "frontmatter": {
+          "title": "Frontmatter",
+          "name": "名称",
+          "description": "描述",
+          "version": "版本",
+          "versionPlaceholder": "0.1.0"
+        },
+        "body": {
+          "title": "正文",
+          "editLabel": "编辑",
+          "previewLabel": "预览"
+        },
+        "raw": { "title": "Raw SKILL.md" },
+        "preview": { "title": "预览" },
+        "required": {
+          "name": "名称为必填项。",
+          "description": "描述为必填项。"
+        },
+        "rawParseError": "无法解析 frontmatter — 请修复 YAML 围栏后再返回表单模式。",
+        "staleBanner": "该技能在外部被修改 — 你的保存被拒绝。已重新加载最新内容。"
+      },
+      "malformed": {
+        "title": "因 frontmatter 无效,以下技能未显示:"
+      },
+      "cardOpen": "打开 {{name}}"
     },
     "plugin": {
       "empty": "未安装任何插件。",

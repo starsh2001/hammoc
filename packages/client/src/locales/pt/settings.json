@@ -318,8 +318,87 @@
       "title": "Bancada do Harness",
       "nav": {
         "general": "Geral",
-        "plugins": "Plugins"
+        "plugins": "Plugins",
+        "skills": "Skills"
       }
+    },
+    "skill": {
+      "empty": {
+        "title": "Nenhuma skill instalada.",
+        "description": "Adicione skills em <projectRoot>/.claude/skills/ ou ~/.claude/skills/, ou instale um bundle de plugin."
+      },
+      "scopeBadge": {
+        "project": "Projeto",
+        "user": "Global",
+        "plugin": "Plugin",
+        "pluginWithKey": "Plugin: {{key}}"
+      },
+      "activeSourceTooltip": "{{active}} está ativo — {{shadowed}} foi obscurecido.",
+      "bundle": {
+        "title": "Recursos do bundle",
+        "references": { "count": "{{count}} referências" },
+        "examples":   { "count": "{{count}} exemplos" },
+        "scripts":    { "count": "{{count}} scripts" },
+        "assets":     { "count": "{{count}} assets" },
+        "binaryReadOnly": "Arquivo binário — a UI do Hammoc não consegue editar.",
+        "truncated": "Truncado (>1 MB).",
+        "truncatedAtDepth": "Pastas mais profundas não são exibidas."
+      },
+      "copy": {
+        "menuLabel": "Ações de cópia",
+        "toUser":             { "label": "Copiar para Global →" },
+        "toProject":          { "label": "Trazer para o Projeto ←" },
+        "overrideToProject":  { "label": "Clonar como override (projeto)" },
+        "overrideToUser":     { "label": "Clonar como override (global)" },
+        "conflict": {
+          "title": "Conflito de nome de skill",
+          "intro": "Copiar {{name}} para {{targetScope}}.",
+          "overwrite": "Sobrescrever a skill existente",
+          "skip": "Pular — manter a atual",
+          "rename": "Renomear e adicionar",
+          "renameLabel": "Novo nome da skill",
+          "renameInvalid": "Nome inválido — vazio, idêntico ou com caracteres reservados.",
+          "submit": "Continuar",
+          "cancel": "Cancelar",
+          "close": "Fechar",
+          "success": "{{name}} copiada para {{targetScope}}."
+        },
+        "error": {
+          "crossDevice": "Esta skill cruza um ponto de montagem — copie com um gerenciador de arquivos externo."
+        }
+      },
+      "editor": {
+        "close": "Fechar",
+        "loading": "Carregando…",
+        "loadingEditor": "Carregando editor…",
+        "saving": "Salvando…",
+        "modeForm": "Formulário",
+        "modeRaw": "Raw",
+        "frontmatter": {
+          "title": "Frontmatter",
+          "name": "Nome",
+          "description": "Descrição",
+          "version": "Versão",
+          "versionPlaceholder": "0.1.0"
+        },
+        "body": {
+          "title": "Corpo",
+          "editLabel": "Editar",
+          "previewLabel": "Pré-visualização"
+        },
+        "raw": { "title": "SKILL.md cru" },
+        "preview": { "title": "Pré-visualização" },
+        "required": {
+          "name": "O nome é obrigatório.",
+          "description": "A descrição é obrigatória."
+        },
+        "rawParseError": "Não foi possível analisar o frontmatter — corrija o bloco YAML para voltar ao modo Formulário.",
+        "staleBanner": "Esta skill mudou externamente — sua gravação foi rejeitada. O conteúdo mais recente foi recarregado."
+      },
+      "malformed": {
+        "title": "Algumas skills não foram exibidas porque o frontmatter é inválido:"
+      },
+      "cardOpen": "Abrir {{name}}"
     },
     "plugin": {
       "empty": "Nenhum plugin instalado.",

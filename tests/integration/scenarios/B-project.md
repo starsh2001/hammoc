@@ -337,3 +337,70 @@
 - `POST /api/harness/plugins/toggle` 가 409 + envelope `{ error: { code: "HARNESS_STALE_WRITE", message, details: { currentMtime } } }`
 - 스토어가 자동으로 `GET /api/harness/plugins` 재호출 → 카드 상태가 디스크 최신 상태에 맞춰 복구
 - 유저에게 "외부 변경 감지" 류의 통지가 한 번 표시 (에러 상태가 세팅됨)
+
+
+## B-07: 하네스 스킬 섹션 (Story 28.2)
+
+> **선행 조건**: Story 28.0.5 (`harnessService` · `harness:external-change`) 와 Story 28.1 (플러그인 catalog) 이 적용된 환경. 시나리오 5건 모두 `[CORE]` — 28.2 는 SDK 의존이 없다.
+
+### B-07-01: 카드 리스트 렌더 + 출처 배지 정확성 (AC1) `[CORE]`
+
+**절차**:
+1. 프로젝트 설정 → "하네스 워크벤치" 탭 → 좌측 네비에서 "스킬" 선택
+2. `<projectRoot>/.claude/skills/<name>/SKILL.md`, `~/.claude/skills/<name>/SKILL.md`, 그리고 설치된 플러그인 번들의 `<installPath>/skills/<name>/SKILL.md` 가 모두 존재하는 동일 이름 스킬을 미리 준비
+3. 카드 리스트가 로드된 직후의 카드 1장을 관찰
+
+**기대 결과**:
+- 카드 1장에 출처 배지가 3개(`프로젝트 / 전역 / 플러그인: <key>`) 표시되며, 활성 출처(`프로젝트`) 만 진하게 / 가려진 두 출처는 흐리게(opacity-50) 렌더
+- 가려진 출처에 마우스 호버 시 "<프로젝트> 가 적용되어 <전역|플러그인> 는 가려짐" 류 툴팁이 표시
+- 번들 카운트 배지가 `references` / `examples` / `scripts` / `assets` 디렉토리에 파일이 있는 경우에만 표시되고, 0 인 디렉토리 배지는 생략
+
+### B-07-02: frontmatter 폼 편집 → 디스크 round-trip 보존 (AC2) `[CORE]`
+
+**절차**:
+1. 임의의 user-scope 스킬을 선택해 카드 클릭 → SkillEditor 모달 진입
+2. `description` 필드를 비웠다가 다시 채움 → 비었을 때 빨간 인라인 에러 + 저장 비활성, 채우면 에러 해제
+3. `description` 의 끝에 임의 텍스트 추가 → 입력 종료 후 약 300ms 뒤 자동 저장 토스트 (또는 "Saving…" 인디케이터 사라짐)
+4. 외부 파일 시스템에서 SKILL.md 를 직접 열어 frontmatter 영역의 주석 / 빈 줄 / 키 순서가 보존됐는지 확인
+
+**기대 결과**:
+- 폼 입력은 디스크에 `harnessService.patchStructured` (YAML round-trip) 로 반영되어 주석 · 인용 스타일이 깨지지 않음
+- 본문(body) 영역은 그대로 유지
+- `name` 또는 `description` 가 빈 상태에서는 PUT 요청이 발생하지 않음
+
+### B-07-03: 본문 markdown 에디터 + 미리보기 토글 (AC3) `[CORE]`
+
+**절차**:
+1. SkillEditor 의 본문 영역에서 markdown 텍스트를 편집
+2. "Preview" 토글 클릭 → 동일 모달 안에서 MarkdownRenderer 가 그 텍스트를 렌더
+3. "Edit" 토글로 돌아온 뒤 추가 편집 → 약 300ms 후 자동 저장
+
+**기대 결과**:
+- 편집 중에는 CodeMirror 6 markdown 모드가 표시
+- 미리보기에서는 코드블록 / 헤딩 / 리스트 등이 정상 렌더 (이미지 상대경로는 `projectSlug` + `basePath` props 로 해석)
+- 저장 후 디스크의 SKILL.md 본문이 새 텍스트로 교체되고 frontmatter 블록(`---`...`---`) 은 그대로 유지
+
+### B-07-04: 폴더 단위 카피 + 동일 이름 충돌 3-way 모달 (AC4) `[CORE]`
+
+**절차**:
+1. user-scope 카드 우상단 `⋮` 메뉴에서 "프로젝트로 가져오기 ←" 클릭 → 충돌 모달 자동 노출
+2. `덮어쓰기` / `스킵` / `이름 변경` 3-way 라디오 중 `이름 변경` 선택 → 신규 이름 입력 텍스트박스 노출
+3. 빈 이름 / 동일 이름 / `inva|lid` 등 OS 예약문자 포함 이름 입력 시 인라인 에러 + 제출 비활성
+4. 유효한 새 이름 입력 → "계속" 클릭 → POST `/api/harness/skills/copy` 가 200 으로 끝나고 카드 리스트가 즉시 갱신
+
+**기대 결과**:
+- 카피 성공 시 토스트 또는 인라인 안내가 한 번 노출
+- 카드 리스트가 새 카드를 즉시 포함 (스토어가 `load()` 재호출)
+- `이름 변경` 모드에서 대상도 충돌하면 409 `HARNESS_SKILL_NAME_CONFLICT` 응답이 와서 `harness.skill.copy.conflict.renameInvalid` 류 안내가 다시 모달에 표시
+
+### B-07-05: 플러그인 출처 읽기 전용 + 오버라이드로 복제 (AC2, AC4) `[CORE]`
+
+**절차**:
+1. 플러그인 출처가 활성인 카드(`scope:plugin` 만 존재) 를 SkillEditor 로 연다
+2. frontmatter 폼 / 본문 / Raw 토글이 모두 비활성(disabled) 인지 확인
+3. 카드 `⋮` 메뉴의 "오버라이드로 복제 (프로젝트)" 또는 "(전역)" 클릭 → 충돌 모달 → `이름 변경` 으로 새 이름 부여 후 제출
+4. 카드 리스트가 새 출처(프로젝트 또는 전역) 를 포함하도록 갱신되며 우선순위(프로젝트 > 전역 > 플러그인) 에 따라 활성 출처가 자동 전환
+
+**기대 결과**:
+- 플러그인 출처에 대한 PUT 요청은 항상 403 `HARNESS_FORBIDDEN`
+- 오버라이드 복제 후 동일 이름 카드의 활성 출처가 더 높은 우선순위 스코프로 자동 전환되어 표시

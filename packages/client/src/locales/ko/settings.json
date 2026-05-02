@@ -319,8 +319,87 @@
       "title": "하네스 워크벤치",
       "nav": {
         "general": "일반",
-        "plugins": "플러그인"
+        "plugins": "플러그인",
+        "skills": "스킬"
       }
+    },
+    "skill": {
+      "empty": {
+        "title": "설치된 스킬이 없습니다.",
+        "description": "<projectRoot>/.claude/skills/ 또는 ~/.claude/skills/ 에 스킬을 추가하거나 플러그인 번들을 설치하세요."
+      },
+      "scopeBadge": {
+        "project": "프로젝트",
+        "user": "전역",
+        "plugin": "플러그인",
+        "pluginWithKey": "플러그인: {{key}}"
+      },
+      "activeSourceTooltip": "{{active}} 가 적용되어 {{shadowed}} 는 가려집니다.",
+      "bundle": {
+        "title": "번들 리소스",
+        "references": { "count": "참고 자료 {{count}}개" },
+        "examples":   { "count": "예제 {{count}}개" },
+        "scripts":    { "count": "스크립트 {{count}}개" },
+        "assets":     { "count": "에셋 {{count}}개" },
+        "binaryReadOnly": "바이너리 파일 — Hammoc UI 에서 편집할 수 없습니다.",
+        "truncated": "잘림 (1MB 초과).",
+        "truncatedAtDepth": "더 깊은 디렉토리는 표시되지 않습니다."
+      },
+      "copy": {
+        "menuLabel": "복사 액션",
+        "toUser":             { "label": "전역으로 복사 →" },
+        "toProject":          { "label": "프로젝트로 가져오기 ←" },
+        "overrideToProject":  { "label": "오버라이드로 복제 (프로젝트)" },
+        "overrideToUser":     { "label": "오버라이드로 복제 (전역)" },
+        "conflict": {
+          "title": "스킬 이름 충돌",
+          "intro": "{{name}} 을(를) {{targetScope}} 로 복사합니다.",
+          "overwrite": "기존 스킬을 덮어쓰기",
+          "skip": "스킵 — 기존 유지",
+          "rename": "이름 변경 후 추가",
+          "renameLabel": "새 스킬 이름",
+          "renameInvalid": "잘못된 이름 — 비었거나 동일하거나 예약 문자가 포함됐습니다.",
+          "submit": "계속",
+          "cancel": "취소",
+          "close": "닫기",
+          "success": "{{name}} 을(를) {{targetScope}} 로 복사했습니다."
+        },
+        "error": {
+          "crossDevice": "이 스킬은 마운트 경계를 넘는 위치에 있어 자동 복사할 수 없습니다 — 외부 파일 탐색기로 복사하세요."
+        }
+      },
+      "editor": {
+        "close": "닫기",
+        "loading": "불러오는 중…",
+        "loadingEditor": "에디터 로딩 중…",
+        "saving": "저장 중…",
+        "modeForm": "폼",
+        "modeRaw": "Raw",
+        "frontmatter": {
+          "title": "Frontmatter",
+          "name": "이름",
+          "description": "설명",
+          "version": "버전",
+          "versionPlaceholder": "0.1.0"
+        },
+        "body": {
+          "title": "본문",
+          "editLabel": "편집",
+          "previewLabel": "미리보기"
+        },
+        "raw": { "title": "Raw SKILL.md" },
+        "preview": { "title": "미리보기" },
+        "required": {
+          "name": "이름은 필수입니다.",
+          "description": "설명은 필수입니다."
+        },
+        "rawParseError": "Frontmatter 를 파싱할 수 없습니다. YAML 펜스를 수정해야 폼 모드로 돌아갈 수 있습니다.",
+        "staleBanner": "이 스킬이 외부에서 변경되어 저장이 거부됐습니다. 최신 내용을 다시 불러왔습니다."
+      },
+      "malformed": {
+        "title": "frontmatter 가 무효한 스킬은 표시에서 제외됐습니다:"
+      },
+      "cardOpen": "{{name}} 열기"
     },
     "plugin": {
       "empty": "설치된 플러그인이 없습니다.",

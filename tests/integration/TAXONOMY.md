@@ -36,6 +36,7 @@
 - B4. 프로젝트 설정 탭 (모델 오버라이드 · 권한 모드 오버라이드 · 숨김 토글 · 전역 초기화) `[CORE]`
 - B5. 하네스 파일 API · 외부 변경 이벤트 · YAML/JSONC 라운드트립 (Story 28.0.5 선행 인프라) `[CORE]`
 - B6. 하네스 플러그인 조회 · 활성 토글 (Story 28.1) `[CORE]` `[EDGE]`
+- B7. 하네스 스킬 섹션 (Story 28.2) `[CORE]`
 
 ### C. 채팅 · 세션 ★ SDK 핵심
 - C1. 새 세션 시작 · 첫 메시지 송신 `[CORE] [SDK] [ASYNC]`
@@ -148,7 +149,7 @@
 C1, C2, C3, C4, C5, C7, C8, C9, C10, D1, D2, D3, E1, E2, E3, E4, F2, H2, H5, P4, R1, R2
 
 ### `[CORE]` (smoke 모드)
-A1, A2, B1, B2, B4, B5, C1, C2, C6, C10, D1, E1, F1, F3, F4, G1, H1, H4, I1, I2, I4, J1, J2, J5, K1, K2, L1, M1, M2, N1, P1, P2, Q1, Q2, Q3, S1, S2, S3, S4
+A1, A2, B1, B2, B4, B5, B7, C1, C2, C6, C10, D1, E1, F1, F3, F4, G1, H1, H4, I1, I2, I4, J1, J2, J5, K1, K2, L1, M1, M2, N1, P1, P2, Q1, Q2, Q3, S1, S2, S3, S4
 
 ### `[EDGE]` (심층 회귀)
 A3, B3, C3, C4, C8, C9, D3, D4, E3, E4, F2, G2, G3, H3, H5, J4, K3, L2, L3, N2, O1, O2, P3, P4, P5, Q4, R3, S5

@@ -8,6 +8,7 @@ import { Router } from 'express';
 import express from 'express';
 import { harnessController } from '../controllers/harnessController.js';
 import { harnessPluginController } from '../controllers/harnessPluginController.js';
+import { harnessSkillController } from '../controllers/harnessSkillController.js';
 
 const router = Router();
 
@@ -22,5 +23,16 @@ router.post('/patch-structured', largeBodyParser, harnessController.patchStructu
 // Story 28.1 — plugin list / toggle (user scope only)
 router.get('/plugins', harnessPluginController.list);
 router.post('/plugins/toggle', express.json({ limit: '32kb' }), harnessPluginController.toggle);
+
+// Story 28.2 — skill list / read / update / copy + per-skill bundle file edit.
+// The bundle routes are mounted *before* `/skills/:name` so the splat segment
+// (`/bundle/*`) is matched first; otherwise Express would treat "bundle" as a
+// `:name` value.
+router.post('/skills/copy', largeBodyParser, harnessSkillController.copy);
+router.get('/skills', harnessSkillController.list);
+router.get('/skills/:name/bundle/*', harnessSkillController.readBundle);
+router.put('/skills/:name/bundle/*', largeBodyParser, harnessSkillController.writeBundle);
+router.get('/skills/:name', harnessSkillController.read);
+router.put('/skills/:name', largeBodyParser, harnessSkillController.update);
 
 export default router;

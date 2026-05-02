@@ -102,7 +102,9 @@ export const HARNESS_ERRORS = {
   HARNESS_ROOT_MISSING:        { code: 'HARNESS_ROOT_MISSING',        httpStatus: 404 },
   HARNESS_PARENT_NOT_FOUND:    { code: 'HARNESS_PARENT_NOT_FOUND',    httpStatus: 404 },
   HARNESS_PLUGIN_NOT_FOUND:    { code: 'HARNESS_PLUGIN_NOT_FOUND',    httpStatus: 404 },
+  HARNESS_SKILL_NOT_FOUND:     { code: 'HARNESS_SKILL_NOT_FOUND',     httpStatus: 404 },
   HARNESS_STALE_WRITE:         { code: 'HARNESS_STALE_WRITE',         httpStatus: 409 },
+  HARNESS_SKILL_NAME_CONFLICT: { code: 'HARNESS_SKILL_NAME_CONFLICT', httpStatus: 409 },
   HARNESS_PARSE_ERROR:         { code: 'HARNESS_PARSE_ERROR',         httpStatus: 422 },
   HARNESS_WRITE_ERROR:         { code: 'HARNESS_WRITE_ERROR',         httpStatus: 500 },
 } as const;
@@ -211,4 +213,156 @@ export interface HarnessPluginToggleResponse {
   mtime: string;
   /** Informational echo of the format the server actually wrote. */
   appliedFormat: HarnessEnabledPluginsFormat;
+}
+
+// ---------------------------------------------------------------------------
+// Story 28.2 — Skill section types
+// ---------------------------------------------------------------------------
+
+export type HarnessSkillSourceScope = 'project' | 'user' | 'plugin';
+
+/** YAML frontmatter shape inside <skillDir>/SKILL.md. */
+export interface HarnessSkillFrontmatter {
+  name: string;
+  description: string;
+  version?: string;
+}
+
+/** File counts under each well-known bundle directory of a skill. */
+export interface HarnessSkillBundleCounts {
+  references: number;
+  examples: number;
+  scripts: number;
+  assets: number;
+}
+
+/**
+ * Identifies one source location that holds a particular skill name. The same
+ * `name` (directory name) may exist in 1–3 places (project, user, plugin) and
+ * each gets a separate `HarnessSkillSourceLocation`.
+ */
+export interface HarnessSkillSourceLocation {
+  scope: HarnessSkillSourceScope;
+  /**
+   * Absolute path of the skill folder root. For project / user this is
+   * `<scopeRoot>/.claude/skills/<name>/`; for plugin this is
+   * `<installPath>/skills/<name>/`.
+   */
+  absoluteRoot: string;
+  /** scope === 'plugin' → "<pluginName>@<marketplace>". */
+  pluginKey?: string;
+  /** scope === 'project' → the active project's slug. */
+  projectSlug?: string;
+}
+
+/**
+ * Card-level DTO. Even when the same skill name exists in all three sources,
+ * the UI shows a single card with `sources[]` populated; `activeScope`
+ * reflects the priority resolution (project > user > plugin).
+ */
+export interface HarnessSkillCard {
+  /** Skill directory name; matches the `name` frontmatter field. */
+  name: string;
+  /** Active source's frontmatter description (if present). */
+  description?: string;
+  /** Active source's frontmatter version (if present). */
+  version?: string;
+  /** 1–3 entries — one per existing scope. Sorted by priority. */
+  sources: HarnessSkillSource[];
+  /** Resolved priority (project > user > plugin). */
+  activeScope: HarnessSkillSourceScope;
+}
+
+/** A single source entry attached to a card. */
+export interface HarnessSkillSource extends HarnessSkillSourceLocation {
+  /** Validated frontmatter — sources whose frontmatter failed parse are excluded. */
+  frontmatter: HarnessSkillFrontmatter;
+  bundleCounts: HarnessSkillBundleCounts;
+  /** ISO mtime of SKILL.md — used as STALE_WRITE ETag. */
+  skillMdMtime: string;
+}
+
+export interface HarnessSkillListResponse {
+  cards: HarnessSkillCard[];
+  /**
+   * SKILL.md files that failed frontmatter validation. Surfaced separately so
+   * the UI can render a "shadowed by malformed frontmatter" badge without the
+   * card list silently growing.
+   */
+  malformed: HarnessSkillMalformedEntry[];
+}
+
+export interface HarnessSkillMalformedEntry {
+  scope: HarnessSkillSourceScope;
+  absoluteRoot: string;
+  pluginKey?: string;
+  projectSlug?: string;
+  /** Raw failure reason — UI maps to an i18n key. */
+  reason: string;
+}
+
+export interface HarnessSkillReadResponse {
+  source: HarnessSkillSourceLocation;
+  frontmatter: HarnessSkillFrontmatter;
+  /** SKILL.md body — content after the closing `---` of the frontmatter block. */
+  body: string;
+  /** Full SKILL.md text (frontmatter + body) — used by the Raw editor toggle. */
+  raw: string;
+  bundleCounts: HarnessSkillBundleCounts;
+  skillMdMtime: string;
+  bundleEntries: HarnessSkillBundleEntry[];
+  /** True when the bundle tree was clipped at the configured depth limit. */
+  truncatedAtDepth: boolean;
+}
+
+export interface HarnessSkillBundleEntry {
+  /** Path relative to the skill root, e.g. "references/foo.md". */
+  relativePath: string;
+  isBinary: boolean;
+  isTruncated: boolean;
+  size: number;
+  mtime: string;
+}
+
+export interface HarnessSkillUpdateRequest {
+  /** Frontmatter form save — translated into a YAML round-trip on disk. */
+  frontmatter?: Partial<HarnessSkillFrontmatter>;
+  /** Body-only replace — keeps the existing frontmatter block intact. */
+  body?: string;
+  /** Raw replace — overwrites the entire SKILL.md with the supplied text. */
+  raw?: string;
+  /** STALE_WRITE guard — most recent skillMdMtime the client saw. */
+  expectedMtime?: string;
+}
+
+export interface HarnessSkillUpdateResponse {
+  success: true;
+  mtime: string;
+}
+
+export interface HarnessSkillCopyRequest {
+  sourceScope: HarnessSkillSourceScope;
+  /** Required when sourceScope === 'project'. */
+  sourceProjectSlug?: string;
+  /** Required when sourceScope === 'plugin'. */
+  sourcePluginKey?: string;
+  /** Skill directory name on the source side. */
+  sourceName: string;
+  /** Plugin destinations are forbidden — only project/user are allowed. */
+  targetScope: 'project' | 'user';
+  /** Required when targetScope === 'project'. */
+  targetProjectSlug?: string;
+  /** Final directory name on the target side; equal to `sourceName` for non-rename copies. */
+  targetName: string;
+  onConflict: 'overwrite' | 'skip' | 'rename';
+}
+
+export interface HarnessSkillCopyResponse {
+  success: true;
+  /** Number of files written under the new tree. */
+  copied: number;
+  /** True when onConflict === 'skip' and a conflict was actually hit. */
+  skipped: boolean;
+  /** Final directory name actually created (may differ from the request when renaming). */
+  finalName: string;
 }
