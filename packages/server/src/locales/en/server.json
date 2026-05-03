@@ -152,6 +152,8 @@
       "skillNameConflict": "A skill with that name already exists.",
       "mcpNotFound": "MCP server not found.",
       "mcpNameConflict": "An MCP server with that name already exists.",
+      "hookNotFound": "Hook not found.",
+      "hookInvalidEvent": "Unknown hook event.",
       "staleWrite": "The harness file was modified on disk since you opened it. Reload to see the changes, or overwrite to keep yours.",
       "parseError": "Failed to parse YAML/JSONC source.",
       "writeError": "Harness file write error."

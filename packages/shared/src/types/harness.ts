@@ -104,6 +104,8 @@ export const HARNESS_ERRORS = {
   HARNESS_PLUGIN_NOT_FOUND:    { code: 'HARNESS_PLUGIN_NOT_FOUND',    httpStatus: 404 },
   HARNESS_SKILL_NOT_FOUND:     { code: 'HARNESS_SKILL_NOT_FOUND',     httpStatus: 404 },
   HARNESS_MCP_NOT_FOUND:       { code: 'HARNESS_MCP_NOT_FOUND',       httpStatus: 404 },
+  HARNESS_HOOK_NOT_FOUND:      { code: 'HARNESS_HOOK_NOT_FOUND',      httpStatus: 404 },
+  HARNESS_HOOK_INVALID_EVENT:  { code: 'HARNESS_HOOK_INVALID_EVENT',  httpStatus: 400 },
   HARNESS_STALE_WRITE:         { code: 'HARNESS_STALE_WRITE',         httpStatus: 409 },
   HARNESS_SKILL_NAME_CONFLICT: { code: 'HARNESS_SKILL_NAME_CONFLICT', httpStatus: 409 },
   HARNESS_MCP_NAME_CONFLICT:   { code: 'HARNESS_MCP_NAME_CONFLICT',   httpStatus: 409 },
@@ -527,4 +529,209 @@ export interface HarnessMcpDeleteRequest {
   scope: 'project' | 'user';
   projectSlug?: string;
   expectedMtime?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Story 28.4 — Hook section types
+// ---------------------------------------------------------------------------
+
+export type HarnessHookSourceScope = 'project' | 'user' | 'plugin';
+export type HarnessHookType = 'command' | 'prompt';
+
+export const HARNESS_HOOK_EVENTS = [
+  'PreToolUse',
+  'PostToolUse',
+  'Stop',
+  'SubagentStop',
+  'SessionStart',
+  'SessionEnd',
+  'UserPromptSubmit',
+  'PreCompact',
+  'Notification',
+] as const;
+export type HarnessHookEvent = (typeof HARNESS_HOOK_EVENTS)[number];
+
+/** Single hook entry — what one card represents. */
+export interface HarnessHookConfig {
+  type: HarnessHookType;
+  /** Required when type === 'command'. */
+  command?: string;
+  /** Required when type === 'prompt'. */
+  prompt?: string;
+  /** Seconds (official spec); omit = Claude Code default. */
+  timeout?: number;
+}
+
+export interface HarnessHookSourceLocation {
+  scope: HarnessHookSourceScope;
+  /** Absolute path of the file holding this hook. */
+  absoluteFile: string;
+  /** scope === 'plugin' → "<pluginName>@<marketplace>". */
+  pluginKey?: string;
+  /** scope === 'project' → the active project's slug. */
+  projectSlug?: string;
+  /** Hook event name. */
+  event: HarnessHookEvent;
+  /** Index within `hooks.<event>` array (the matcher group index). */
+  groupIndex: number;
+  /** Index within `hooks.<event>[groupIndex].hooks` array. */
+  hookIndex: number;
+  /** True when this entry currently lives in the disabled-backup file (AC5). */
+  disabledByBackup: boolean;
+}
+
+export interface HarnessHookCard extends HarnessHookSourceLocation {
+  /** Group-level matcher (may be undefined or empty string). */
+  matcher?: string;
+  config: HarnessHookConfig;
+  /** ISO mtime of `absoluteFile` — STALE_WRITE ETag. */
+  mtime: string;
+  /**
+   * Resolved active state — UI uses this directly for the toggle.
+   * true ⇔ this entry currently lives in the main settings/hooks file.
+   * false ⇔ disabledByBackup === true.
+   */
+  enabled: boolean;
+}
+
+export interface HarnessHookMalformedEntry {
+  scope: HarnessHookSourceScope;
+  absoluteFile: string;
+  event?: HarnessHookEvent;
+  pluginKey?: string;
+  projectSlug?: string;
+  reason: string;
+}
+
+export interface HarnessHookListResponse {
+  /** Cards keyed by event for fast UI grouping; each list sorted by (scope, groupIndex, hookIndex). */
+  cardsByEvent: Record<HarnessHookEvent, HarnessHookCard[]>;
+  malformed: HarnessHookMalformedEntry[];
+  /**
+   * Spike outcome cached. 'supported' = `prompt` type works ⇒ UI radio enabled.
+   * 'unsupported' = `prompt` rejected ⇒ UI radio disabled (existing prompt cards still listed read-only).
+   * 'unknown' = pre-impl path, dev agent has not yet run the spike.
+   */
+  promptTypeSupport: 'supported' | 'unsupported' | 'unknown';
+  /**
+   * AC5 two-file STALE_WRITE guard support — current mtime of `hooks.disabled.json`
+   * for each writable scope. Absent key ⇔ backup file does not exist yet (server will
+   * create it on first disable). Clients must echo this back as
+   * `HarnessHookUpdateRequest.expectedBackupMtime` whenever toggling `enabled`.
+   */
+  backupMtimeByScope: { project?: string; user?: string };
+}
+
+export interface HarnessHookReadResponse {
+  source: HarnessHookSourceLocation;
+  matcher?: string;
+  config: HarnessHookConfig;
+  /** Raw JSONC text of `{ matcher?, hooks: [<this>] }` — used by the Raw editor toggle. */
+  raw: string;
+  mtime: string;
+  disabledByBackup: boolean;
+}
+
+/**
+ * Update request — exactly one of `config`/`matcher`/`raw`/`enabled` is required.
+ * `enabled` toggles backup-file movement (AC5 path).
+ * `matcher` updates the parent matcher group's matcher field; if `splitFromGroup` is true
+ *   the hook is first extracted into a new single-hook group and the matcher applies to
+ *   only that new group (sibling hooks keep the original matcher untouched).
+ */
+export interface HarnessHookUpdateRequest {
+  config?: HarnessHookConfig;
+  /** null = unset (omit the field on disk). */
+  matcher?: string | null;
+  raw?: string;
+  enabled?: boolean;
+  /** STALE_WRITE guard for the main settings.json file. */
+  expectedMtime?: string;
+  /**
+   * AC5 two-file guard — STALE_WRITE guard for `hooks.disabled.json`. Required when
+   * `enabled` is being toggled AND the backup file already exists (per
+   * HarnessHookListResponse.backupMtimeByScope). Server returns 409 with
+   * `details.staleFile: 'main' | 'backup'` to disambiguate which file conflicted.
+   */
+  expectedBackupMtime?: string;
+  /**
+   * AC3 sibling protection — only meaningful when `matcher` is also set. When true and
+   * the parent group contains 2+ hooks, server first extracts this hook into a new
+   * single-hook group (preserving the original group for siblings) and then applies the
+   * new matcher to the extracted group only. False (default) keeps the existing behavior
+   * — matcher updates the parent group and affects all sibling hooks.
+   */
+  splitFromGroup?: boolean;
+}
+
+export interface HarnessHookUpdateResponse {
+  success: true;
+  mtime: string;
+  /**
+   * Present only when AC5 enabled-toggle path was taken — the backup file's new mtime
+   * after the two-file transaction. Clients persist this back into
+   * `HarnessHookListResponse.backupMtimeByScope` so the next toggle has the freshest guard.
+   */
+  backupMtime?: string;
+  /**
+   * Present only when `matcher` was updated AND server affected sibling hooks
+   * (group had 2+ hooks AND splitFromGroup was false/omitted). Tells the client how
+   * many other hooks now share the new matcher so it can show the post-save banner.
+   */
+  affectedSiblings?: number;
+  /**
+   * Present only when `matcher + splitFromGroup:true` extracted this hook to a new
+   * group; the new (groupIndex, hookIndex) replaces the request coordinates.
+   */
+  newGroupIndex?: number;
+  newHookIndex?: number;
+}
+
+export interface HarnessHookCopyRequest {
+  sourceScope: HarnessHookSourceScope;
+  sourceProjectSlug?: string;
+  sourcePluginKey?: string;
+  sourceEvent: HarnessHookEvent;
+  sourceGroupIndex: number;
+  sourceHookIndex: number;
+  /** plugin destinations forbidden — only project/user are allowed. */
+  targetScope: 'project' | 'user';
+  targetProjectSlug?: string;
+  onConflict: 'overwrite' | 'skip' | 'duplicate';
+  /** Client must echo `true` after showing the type-warning modal. */
+  acknowledgedWarning: boolean;
+}
+
+export interface HarnessHookCopyResponse {
+  success: true;
+  newGroupIndex: number;
+  newHookIndex: number;
+  skipped: boolean;
+  /** Returned when ${CLAUDE_PLUGIN_ROOT} appeared in source body. */
+  warnings?: Array<'plugin-root-reference'>;
+}
+
+export interface HarnessHookDeleteRequest {
+  scope: 'project' | 'user';
+  projectSlug?: string;
+  event: HarnessHookEvent;
+  groupIndex: number;
+  hookIndex: number;
+  expectedMtime?: string;
+}
+
+export interface HarnessHookCreateRequest {
+  scope: 'project' | 'user';
+  projectSlug?: string;
+  event: HarnessHookEvent;
+  matcher?: string;
+  config: HarnessHookConfig;
+  expectedMtime?: string;
+}
+
+export interface HarnessHookCreateResponse {
+  success: true;
+  newGroupIndex: number;
+  newHookIndex: number;
+  mtime: string;
 }

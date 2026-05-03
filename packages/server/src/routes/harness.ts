@@ -10,6 +10,7 @@ import { harnessController } from '../controllers/harnessController.js';
 import { harnessPluginController } from '../controllers/harnessPluginController.js';
 import { harnessSkillController } from '../controllers/harnessSkillController.js';
 import { harnessMcpController } from '../controllers/harnessMcpController.js';
+import { harnessHookController } from '../controllers/harnessHookController.js';
 
 const router = Router();
 
@@ -43,5 +44,15 @@ router.get('/mcps', harnessMcpController.list);
 router.get('/mcps/:name', harnessMcpController.read);
 router.put('/mcps/:name', largeBodyParser, harnessMcpController.update);
 router.delete('/mcps/:name', largeBodyParser, harnessMcpController.delete);
+
+// Story 28.4 — Hook list / read / create / update / copy / delete.
+// `copy` and the splat-free POST live above `/hooks/:event/...` so Express
+// prefers the literal segments.
+router.post('/hooks/copy', largeBodyParser, harnessHookController.copy);
+router.post('/hooks', largeBodyParser, harnessHookController.create);
+router.get('/hooks', harnessHookController.list);
+router.get('/hooks/:event/:groupIndex/:hookIndex', harnessHookController.read);
+router.put('/hooks/:event/:groupIndex/:hookIndex', largeBodyParser, harnessHookController.update);
+router.delete('/hooks/:event/:groupIndex/:hookIndex', largeBodyParser, harnessHookController.delete);
 
 export default router;

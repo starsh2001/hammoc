@@ -1,591 +1,784 @@
 {
-  "global": {
-    "theme": "테마",
-    "themeOption": {
-      "dark": "다크",
-      "light": "라이트",
-      "system": "시스템"
-    },
-    "themeSystemUnsupported": "삼성 인터넷은 시스템 테마 감지를 지원하지 않습니다. 다크 또는 라이트를 직접 선택해 주세요.",
-    "defaultModel": "기본 모델",
-    "language": "언어",
-    "permissionMode": "권한 모드",
-    "permissionModeLabel": {
-      "latest": "Last Used",
-      "plan": "Plan",
-      "default": "Ask before edits",
-      "acceptEdits": "Edit Automatically",
-      "bypass": "Bypass"
-    },
-    "permissionDesc": {
-      "latest": "새 세션에서 이전 세션의 권한 모드를 유지합니다",
-      "plan": "코드 변경 전 계획을 먼저 제안합니다",
-      "default": "파일 수정 전 항상 확인을 요청합니다",
-      "acceptEdits": "파일 수정을 자동으로 수행합니다",
-      "bypass": "모든 권한 확인을 건너뜁니다 (Bash 포함)"
-    },
-    "autoApproveSafetyChecks": "Bypass 모드에서 안전 검사 자동 승인",
-    "autoApproveSafetyChecksDesc": "활성화하면 Bypass 모드에서 CLI 안전 검사 프롬프트를 사용자 확인 없이 자동 승인합니다.",
-    "permissionSync": "권한 모드 동기화",
-    "permissionSyncOption": {
-      "streaming": "스트리밍 중에만",
-      "always": "항상 동기화"
-    },
-    "permissionSyncDesc": {
-      "streaming": "스트리밍 중일 때만 다른 브라우저에 동기화합니다 (기본값)",
-      "always": "항상 동기화하고 세션별 권한 모드를 기억합니다"
-    },
-    "markdownMode": "마크다운 파일 열기 모드",
-    "markdownOption": {
-      "edit": "편집",
-      "preview": "미리보기"
-    },
-    "markdownDesc": "마크다운 파일을 열 때 기본으로 사용할 모드입니다.",
-    "fileExplorerView": "파일 탐색기 기본 뷰",
-    "fileExplorerOption": {
-      "grid": "파인더 뷰",
-      "list": "리스트 뷰"
-    },
-    "fileExplorerDesc": "파일 탐색기를 열 때 기본으로 사용할 뷰 모드입니다.",
-    "panelDefaultOpen": "퀵 패널 자동 열기",
-    "panelOpenOption": {
-      "on": "데스크톱에서 자동 열기",
-      "off": "기본적으로 닫힘"
-    },
-    "panelDefaultOpenDesc": "데스크톱에서 세션 진입 시 퀵 패널을 자동으로 엽니다.",
-    "panelDefaultSide": "퀵 패널 기본 위치",
-    "panelSideOption": {
-      "left": "왼쪽",
-      "right": "오른쪽",
-      "last": "마지막 위치"
-    },
-    "panelDefaultSideDesc": "퀵 패널의 기본 표시 위치입니다. '마지막 위치'를 선택하면 이전 세션에서 사용한 위치를 유지합니다.",
-    "chatTimeout": "채팅 타임아웃",
-    "chatTimeoutOverride": "(환경변수로 설정됨)",
-    "chatTimeoutDesc": "응답이 없을 때 자동으로 요청을 중단하는 시간입니다.",
-    "timeoutOption": {
-      "1m": "1분",
-      "3m": "3분",
-      "5mDefault": "5분 (기본)",
-      "10m": "10분",
-      "30m": "30분"
-    }
-  },
-  "toast": {
-    "themeChanged": "테마가 변경되었습니다",
-    "modelChanged": "기본 모델이 변경되었습니다",
-    "permissionChanged": "Permission Mode가 변경되었습니다",
-    "timeoutChanged": "채팅 타임아웃이 변경되었습니다",
-    "markdownModeChanged": "마크다운 기본 모드가 변경되었습니다",
-    "fileExplorerViewChanged": "파일 탐색기 기본 뷰가 변경되었습니다",
-    "languageChanged": "언어가 변경되었습니다",
-    "systemPromptSaved": "시스템 프롬프트가 저장되었습니다",
-    "systemPromptRestored": "기본 시스템 프롬프트로 복원되었습니다",
-    "settingChanged": "{{label}}이(가) 변경되었습니다",
-    "buildFailed": "실패: {{error}}",
-    "buildFailedUnknown": "알 수 없는 오류",
-    "serverTimeout": "서버 응답 시간이 초과되었습니다. 수동으로 확인해주세요.",
-    "buildComplete": "빌드 완료! 페이지를 새로고침합니다...",
-    "serverRestartFailed": "서버 재시작 요청에 실패했습니다.",
-    "alreadyLatest": "이미 최신 버전입니다.",
-    "updateCheckFailed": "업데이트 확인에 실패했습니다.",
-    "updateComplete": "업데이트 완료! 페이지를 새로고침합니다...",
-    "updateFailed": "업데이트 요청에 실패했습니다.",
-    "settingSaved": "설정이 저장되었습니다.",
-    "settingSaveFailed": "설정 저장에 실패했습니다.",
-    "botTokenSaved": "Bot Token이 저장되었습니다.",
-    "botTokenDeleted": "Bot Token이 삭제되었습니다.",
-    "chatIdSaved": "Chat ID가 저장되었습니다.",
-    "chatIdDeleted": "Chat ID가 삭제되었습니다.",
-    "telegramEnabled": "Telegram 알림이 활성화되었습니다.",
-    "telegramDisabled": "Telegram 알림이 비활성화되었습니다.",
-    "testSent": "테스트 알림이 전송되었습니다!",
-    "testFailed": "테스트 알림 전송 실패",
-    "testServerError": "서버 연결 오류",
-    "resetToGlobal": "전역 설정으로 초기화되었습니다",
-    "settingSavedFailed": "설정 저장에 실패했습니다. 다시 시도해 주세요."
-  },
-  "advanced": {
-    "serverRestart": "서버 재시작",
-    "serverRestartDesc": "전체 프로젝트를 빌드하고 서버를 프로덕션 모드로 재시작합니다",
-    "softwareUpdate": "소프트웨어 업데이트",
-    "currentVersion": "현재 버전: v{{version}}",
-    "building": "빌드 중... ({{elapsed}}초)",
-    "restarting": "재시작 중... ({{elapsed}}초)",
-    "serverRebuild": "서버 재빌드 & 재시작",
-    "checking": "확인 중...",
-    "checkUpdate": "업데이트 확인",
-    "updateTo": "v{{version}}으로 업데이트",
-    "updating": "업데이트 중... ({{elapsed}}초)",
-    "latestVersion": "최신 버전입니다",
-    "systemPrompt": "시스템 프롬프트",
-    "restoreDefault": "기본값으로 복원",
-    "systemPromptWarning": "주의:",
-    "systemPromptWarningDetail": "시스템 프롬프트를 잘못 수정하면 응답 퀄리티가 크게 저하될 수 있습니다. 수정 내용에 확신이 없다면 기본값을 유지하세요.",
-    "customPromptActive": "사용자 정의 프롬프트 사용 중",
-    "promptLoading": "프롬프트 로딩 중...",
-    "promptNoProject": "프로젝트를 선택하면 현재 시스템 프롬프트를 확인할 수 있습니다.",
-    "charCount": "{{count}}자",
-    "templateVariables": "사용 가능한 시스템 변수 (런타임에 자동 치환)",
-    "previewClose": "미리보기 닫기",
-    "previewOpen": "현재 프로젝트 기준 미리보기",
-    "maxThinkingTokens": "최대 사고 토큰 수",
-    "maxThinkingTokensDesc": "모델의 사고(reasoning) 과정에 사용할 최대 토큰 수 (1,024 ~ 128,000)",
-    "maxTurns": "최대 턴 수",
-    "maxTurnsDesc": "한 번의 대화에서 허용할 최대 턴 수 (1 ~ 100)",
-    "maxBudget": "최대 예산",
-    "maxBudgetDesc": "한 번의 쿼리당 최대 비용 제한 (USD, 0.01 ~ 100)",
-    "sdkDefault": "Default (High)",
-    "unlimited": "무제한",
-    "defaultEffort": "기본 사고 수준",
-    "defaultEffortDesc": "새 세션에 적용되는 기본 사고 수준입니다. 설정하지 않으면 SDK 기본값(High)이 사용됩니다.",
-    "effortOption": {
-      "low": "Low",
-      "medium": "Medium",
-      "high": "High",
-      "max": "Max"
-    },
-    "effortMaxSubscriber": "구독자 사용 불가",
-    "fileCheckpointing": "파일 체크포인트",
-    "chatCheckpointing": "채팅 세션",
-    "chatCheckpointingDesc": "채팅 중 파일 스냅샷을 저장하여 되돌리기/복원 지원",
-    "queueCheckpointing": "큐 러너",
-    "queueCheckpointingDesc": "큐 실행 중 파일 스냅샷 저장 (JSONL 파일 크기 증가)",
-    "showThinkingBlocks": "Claude의 사고 과정 표시",
-    "showThinkingBlocksDesc": "Opus 4.7 등 최신 모델에서 응답 위에 접힌 'thinking' 블록을 표시합니다. 끄면 첫 응답 토큰이 조금 더 빨리 나옵니다 (비용은 동일)."
-  },
-  "confirm": {
-    "serverRestart": "서버를 재빌드하고 재시작합니다. 진행할까요?",
-    "updateVersion": "v{{version}}으로 업데이트하고 서버를 재시작합니다. 진행할까요?",
-    "resetAllSettings": "모든 프로젝트 설정을 초기화합니다.\n\n• 모델/Permission Mode 오버라이드가 제거됩니다\n• 프로젝트 숨기기가 해제됩니다\n\n계속하시겠습니까?"
-  },
-  "telegram": {
-    "loadError": "Telegram 설정을 불러오는 중 오류가 발생했습니다.",
-    "retry": "재시도",
-    "setupGuide": "Telegram 알림을 설정하려면:",
-    "setupStep1Suffix": "에서 봇을 생성하고 Bot Token을 받으세요",
-    "setupStep2Suffix": "에서 Chat ID를 확인하세요",
-    "botTokenAriaLabel": "Telegram BotFather 열기 (새 탭)",
-    "chatIdAriaLabel": "Telegram userinfobot 열기 (새 탭)",
-    "botToken": "Bot Token",
-    "chatId": "Chat ID",
-    "envOverride": "(환경변수로 설정됨)",
-    "envPriority": "preferences 설정이 환경변수보다 우선됩니다.",
-    "enterBotToken": "Bot Token을 입력하세요",
-    "enterChatId": "Chat ID를 입력하세요",
-    "notConfigured": "설정되지 않음",
-    "change": "변경",
-    "baseUrl": "접속 URL",
-    "baseUrlPlaceholder": "예: http://192.168.1.100:3000",
-    "baseUrlHint": "알림에 포함될 접속 링크입니다. localhost 대신 사내 IP를 입력하세요.",
-    "enableNotifications": "Telegram 알림 활성화",
-    "enableHint": "Bot Token과 Chat ID를 먼저 설정하세요.",
-    "notificationType": "알림 유형",
-    "notifyPermission": "권한 요청 알림 — 🔐 권한 확인이나 ❓ 질문이 필요할 때",
-    "notifyComplete": "완료 알림 — ✅ 스트리밍이 완료되었을 때",
-    "notifyError": "에러 알림 — ❌ 스트리밍 중 에러가 발생했을 때",
-    "queueNotificationType": "큐 알림 유형",
-    "notifyQueueStart": "큐 시작 알림 — 큐 실행이 시작될 때",
-    "notifyQueueComplete": "큐 완료 알림 — 모든 항목이 처리된 후",
-    "notifyQueueError": "큐 에러 알림 — @pauseword 감지 또는 SDK 에러 시",
-    "notifyQueueInput": "큐 입력 요청 알림 — 사용자 응답이 필요할 때",
-    "alwaysNotify": "항상 알림 — 세션을 보고 있을 때에도 알림 전송",
-    "alwaysNotifyHint": "기본적으로 세션을 보고 있으면 알림이 억제됩니다.",
-    "testSending": "전송 중...",
-    "testSend": "테스트 알림 보내기",
-    "testSuccess": "✅ 성공",
-    "testFailure": "❌ 실패: {{error}}"
-  },
-  "project": {
-    "selectProject": "프로젝트 선택",
-    "hidden": " (숨김)",
-    "loading": "설정을 불러오는 중...",
-    "loadError": "설정을 불러오는 중 오류가 발생했습니다.",
-    "retry": "재시도",
-    "noProjects": "프로젝트가 없습니다.",
-    "modelOverride": "모델 오버라이드",
-    "projectOverride": "(프로젝트 오버라이드)",
-    "useGlobalDefault": "전역 기본값 사용 (현재: {{value}})",
-    "permissionOverride": "Permission Mode 오버라이드",
-    "hideInSidebar": "이 프로젝트를 사이드바에서 숨기기",
-    "resetToGlobal": "전역 기본값으로 초기화",
-    "noOverrides": "현재 프로젝트 오버라이드가 없습니다."
-  },
-  "about": {
-    "issuesAndSuggestions": "문제 신고 및 기능 제안",
-    "githubIssuesAriaLabel": "GitHub Issues 페이지로 이동 (새 탭)",
-    "serverStatus": "서버 상태",
-    "checking": "확인 중...",
-    "connectionFailed": "서버 연결 실패",
-    "retryCheckAriaLabel": "서버 상태 재확인",
-    "retry": "재시도",
-    "status": "상태",
-    "statusHealthy": "정상",
-    "statusUnhealthy": "비정상",
-    "version": "버전",
-    "serverTime": "서버 시간",
-    "madeBy": "제작자:",
-    "license": "{{name}} 라이선스",
-    "githubIssuesLink": "GitHub Issues"
-  },
-  "help": {
-    "basicChat": "기본 채팅 사용법",
-    "basicChatItems": [
-      "채팅 입력창에 메시지를 입력하고 Enter(데스크톱) 또는 전송 버튼(모바일)으로 전송",
-      "이미지 첨부: 클립 아이콘 또는 붙여넣기(Ctrl+V)로 이미지 업로드 가능",
-      "새 세션: 헤더의 \"+\" 버튼으로 새 채팅 세션 시작",
-      "세션 전환: 시계 아이콘으로 이전 대화 세션에 접근"
-    ],
-    "slashCommands": "슬래시 커맨드",
-    "slashCommandItems": [
-      "채팅 입력창에 /를 입력하면 사용 가능한 명령어 목록이 표시됨",
-      "프로젝트에 설정된 커맨드 중 자주 사용하는 것은 ★ 즐겨찾기로 등록 가능",
-      "즐겨찾기 등록: 커맨드 팔레트에서 ★ 클릭 또는 길게 누르기",
-      "등록된 즐겨찾기는 입력창 상단에 빠른 접근 버튼으로 표시됨"
-    ],
-    "permissionMode": "권한 모드",
-    "permissionPlanLabel": "Plan",
-    "permissionPlanDesc": "코드 변경 전 계획을 먼저 제안합니다",
-    "permissionDefaultLabel": "Ask before edits (기본)",
-    "permissionDefaultDesc": "파일 수정 전 항상 확인을 요청합니다",
-    "permissionAutoLabel": "Edit Automatically",
-    "permissionAutoDesc": "파일 수정을 자동으로 수행합니다",
-    "permissionNote": "설정 > 전역 설정 또는 프로젝트 설정에서 기본 Permission Mode를 변경할 수 있습니다.",
-    "bmadMethod": "BMad Method 연동",
-    "bmadMethodItems": [
-      "BMad Method는 AI 기반 개발 워크플로우 프레임워크입니다",
-      "프로젝트 페이지에서 \"BMad 설정\" 버튼으로 프로젝트에 BMad Core를 설치할 수 있습니다",
-      "설치 후 BMad 에이전트 버튼(채팅 화면 우측 하단)에서 전문 에이전트를 빠르게 호출할 수 있습니다",
-      "에이전트: SM(스크럼 마스터), PM(프로젝트 매니저), Dev(개발자), QA(품질 보증) 등"
-    ],
-    "keyboardShortcuts": "키보드 단축키",
-    "shortcutKey": "단축키",
-    "shortcutAction": "기능",
-    "shortcuts": {
-      "enter": "메시지 전송 (데스크톱)",
-      "shiftEnter": "줄바꿈 (데스크톱)",
-      "escape": "스트리밍 중단 / 팝업 닫기",
-      "ctrlC": "스트리밍 중단 (텍스트 미선택 시)",
-      "f7": "Diff 뷰어 변경점 탐색 (다음/이전)",
-      "slash": "슬래시 커맨드 팔레트 열기"
-    }
-  },
-  "account": {
-    "info": {
-      "title": "Claude Code 계정",
-      "email": "이메일",
-      "subscription": "구독 플랜",
-      "provider": "제공자",
-      "organization": "조직",
-      "fetchedAt": "마지막 확인",
-      "never": "없음",
-      "refresh": "새로고침",
-      "refreshing": "새로고침 중...",
-      "refreshed": "계정 정보를 갱신했습니다.",
-      "refreshFailed": "계정 정보를 가져오지 못했습니다. 채팅을 한 번 시작한 뒤 다시 시도해보세요.",
-      "emptyHint": "채팅을 한 번 보내면 계정 정보가 자동으로 채워집니다. 또는 '새로고침'을 눌러 즉시 가져올 수 있습니다.",
-      "usage": "사용량",
-      "fiveHour": "5시간 한도",
-      "sevenDay": "7일 한도",
-      "resetAt": "초기화: {{reset}}",
-      "usageEmpty": "사용량 정보가 없습니다. Claude.ai 구독자에게만 제공됩니다."
-    },
-    "changePassword": "비밀번호 변경",
-    "currentPassword": "현재 비밀번호",
-    "newPassword": "새 비밀번호",
-    "confirmNewPassword": "새 비밀번호 확인",
-    "passwordMismatch": "새 비밀번호가 일치하지 않습니다.",
-    "changePasswordButton": "비밀번호 변경",
-    "changing": "변경 중...",
-    "changeSuccess": "비밀번호가 변경되었습니다. 다시 로그인해주세요.",
-    "changeFailed": "비밀번호 변경에 실패했습니다.",
-    "session": "세션",
-    "logout": "로그아웃",
-    "logoutDesc": "이 기기에서 로그아웃합니다."
-  },
-  "tabs": {
-    "global": "전역 설정",
-    "project": "프로젝트 설정",
-    "telegram": "Telegram 알림",
-    "notifications": "알림",
-    "advanced": "고급 설정",
-    "account": "Claude 계정",
-    "user": "Hammoc 사용자",
-    "help": "도움말",
-    "about": "만든이"
-  },
-  "harness": {
-    "workbench": {
-      "title": "하네스 워크벤치",
-      "nav": {
-        "general": "일반",
-        "plugins": "플러그인",
-        "skills": "스킬",
-        "mcps": "MCP"
-      }
-    },
-    "skill": {
-      "empty": {
-        "title": "설치된 스킬이 없습니다.",
-        "description": "<projectRoot>/.claude/skills/ 또는 ~/.claude/skills/ 에 스킬을 추가하거나 플러그인 번들을 설치하세요."
-      },
-      "scopeBadge": {
-        "project": "프로젝트",
-        "user": "전역",
-        "plugin": "플러그인",
-        "pluginWithKey": "플러그인: {{key}}"
-      },
-      "activeSourceTooltip": "{{active}} 가 적용되어 {{shadowed}} 는 가려집니다.",
-      "bundle": {
-        "title": "번들 리소스",
-        "references": { "count": "참고 자료 {{count}}개" },
-        "examples":   { "count": "예제 {{count}}개" },
-        "scripts":    { "count": "스크립트 {{count}}개" },
-        "assets":     { "count": "에셋 {{count}}개" },
-        "binaryReadOnly": "바이너리 파일 — Hammoc UI 에서 편집할 수 없습니다.",
-        "truncated": "잘림 (1MB 초과).",
-        "truncatedAtDepth": "더 깊은 디렉토리는 표시되지 않습니다."
-      },
-      "copy": {
-        "menuLabel": "복사 액션",
-        "toUser":             { "label": "전역으로 복사 →" },
-        "toProject":          { "label": "프로젝트로 가져오기 ←" },
-        "overrideToProject":  { "label": "오버라이드로 복제 (프로젝트)" },
-        "overrideToUser":     { "label": "오버라이드로 복제 (전역)" },
-        "conflict": {
-          "title": "스킬 이름 충돌",
-          "intro": "{{name}} 을(를) {{targetScope}} 로 복사합니다.",
-          "overwrite": "기존 스킬을 덮어쓰기",
-          "skip": "스킵 — 기존 유지",
-          "rename": "이름 변경 후 추가",
-          "renameLabel": "새 스킬 이름",
-          "renameInvalid": "잘못된 이름 — 비었거나 동일하거나 예약 문자가 포함됐습니다.",
-          "submit": "계속",
-          "cancel": "취소",
-          "close": "닫기",
-          "success": "{{name}} 을(를) {{targetScope}} 로 복사했습니다."
+    "global": {
+        "theme": "테마",
+        "themeOption": {
+            "dark": "다크",
+            "light": "라이트",
+            "system": "시스템"
         },
-        "error": {
-          "crossDevice": "이 스킬은 마운트 경계를 넘는 위치에 있어 자동 복사할 수 없습니다 — 외부 파일 탐색기로 복사하세요."
+        "themeSystemUnsupported": "삼성 인터넷은 시스템 테마 감지를 지원하지 않습니다. 다크 또는 라이트를 직접 선택해 주세요.",
+        "defaultModel": "기본 모델",
+        "language": "언어",
+        "permissionMode": "권한 모드",
+        "permissionModeLabel": {
+            "latest": "Last Used",
+            "plan": "Plan",
+            "default": "Ask before edits",
+            "acceptEdits": "Edit Automatically",
+            "bypass": "Bypass"
+        },
+        "permissionDesc": {
+            "latest": "새 세션에서 이전 세션의 권한 모드를 유지합니다",
+            "plan": "코드 변경 전 계획을 먼저 제안합니다",
+            "default": "파일 수정 전 항상 확인을 요청합니다",
+            "acceptEdits": "파일 수정을 자동으로 수행합니다",
+            "bypass": "모든 권한 확인을 건너뜁니다 (Bash 포함)"
+        },
+        "autoApproveSafetyChecks": "Bypass 모드에서 안전 검사 자동 승인",
+        "autoApproveSafetyChecksDesc": "활성화하면 Bypass 모드에서 CLI 안전 검사 프롬프트를 사용자 확인 없이 자동 승인합니다.",
+        "permissionSync": "권한 모드 동기화",
+        "permissionSyncOption": {
+            "streaming": "스트리밍 중에만",
+            "always": "항상 동기화"
+        },
+        "permissionSyncDesc": {
+            "streaming": "스트리밍 중일 때만 다른 브라우저에 동기화합니다 (기본값)",
+            "always": "항상 동기화하고 세션별 권한 모드를 기억합니다"
+        },
+        "markdownMode": "마크다운 파일 열기 모드",
+        "markdownOption": {
+            "edit": "편집",
+            "preview": "미리보기"
+        },
+        "markdownDesc": "마크다운 파일을 열 때 기본으로 사용할 모드입니다.",
+        "fileExplorerView": "파일 탐색기 기본 뷰",
+        "fileExplorerOption": {
+            "grid": "파인더 뷰",
+            "list": "리스트 뷰"
+        },
+        "fileExplorerDesc": "파일 탐색기를 열 때 기본으로 사용할 뷰 모드입니다.",
+        "panelDefaultOpen": "퀵 패널 자동 열기",
+        "panelOpenOption": {
+            "on": "데스크톱에서 자동 열기",
+            "off": "기본적으로 닫힘"
+        },
+        "panelDefaultOpenDesc": "데스크톱에서 세션 진입 시 퀵 패널을 자동으로 엽니다.",
+        "panelDefaultSide": "퀵 패널 기본 위치",
+        "panelSideOption": {
+            "left": "왼쪽",
+            "right": "오른쪽",
+            "last": "마지막 위치"
+        },
+        "panelDefaultSideDesc": "퀵 패널의 기본 표시 위치입니다. '마지막 위치'를 선택하면 이전 세션에서 사용한 위치를 유지합니다.",
+        "chatTimeout": "채팅 타임아웃",
+        "chatTimeoutOverride": "(환경변수로 설정됨)",
+        "chatTimeoutDesc": "응답이 없을 때 자동으로 요청을 중단하는 시간입니다.",
+        "timeoutOption": {
+            "1m": "1분",
+            "3m": "3분",
+            "5mDefault": "5분 (기본)",
+            "10m": "10분",
+            "30m": "30분"
         }
-      },
-      "editor": {
-        "close": "닫기",
-        "loading": "불러오는 중…",
-        "loadingEditor": "에디터 로딩 중…",
-        "saving": "저장 중…",
-        "modeForm": "폼",
-        "modeRaw": "Raw",
-        "frontmatter": {
-          "title": "Frontmatter",
-          "name": "이름",
-          "description": "설명",
-          "version": "버전",
-          "versionPlaceholder": "0.1.0"
-        },
-        "body": {
-          "title": "본문",
-          "editLabel": "편집",
-          "previewLabel": "미리보기"
-        },
-        "raw": { "title": "Raw SKILL.md" },
-        "preview": { "title": "미리보기" },
-        "required": {
-          "name": "이름은 필수입니다.",
-          "description": "설명은 필수입니다."
-        },
-        "rawParseError": "Frontmatter 를 파싱할 수 없습니다. YAML 펜스를 수정해야 폼 모드로 돌아갈 수 있습니다.",
-        "staleBanner": "이 스킬이 외부에서 변경되어 저장이 거부됐습니다. 최신 내용을 다시 불러왔습니다."
-      },
-      "malformed": {
-        "title": "frontmatter 가 무효한 스킬은 표시에서 제외됐습니다:"
-      },
-      "cardOpen": "{{name}} 열기"
     },
-    "mcp": {
-      "empty": {
-        "title": "설정된 MCP 서버가 없습니다.",
-        "description": "<projectRoot>/.mcp.json 또는 ~/.claude/.mcp.json 에 mcpServers 항목을 추가하거나 MCP 서버가 포함된 플러그인 번들을 설치하세요.",
-        "noGlobalSupport": "이 버전의 Claude Code 는 전역 MCP 파일을 인식하지 않습니다 — 프로젝트 스코프와 플러그인 번들 MCP 만 표시됩니다."
-      },
-      "scopeBadge": {
-        "project": "프로젝트",
-        "user": "전역",
-        "plugin": "플러그인",
-        "pluginWithKey": "플러그인: {{key}}"
-      },
-      "type": { "stdio": "stdio", "sse": "sse", "http": "http", "ws": "ws" },
-      "toggle": {
-        "on": "활성",
-        "off": "비활성",
-        "disabledByBackup": "비활성 (백업으로 이동됨)"
-      },
-      "banner": {
-        "freshSpawn": "다음 사용자 메시지부터 적용됩니다.",
-        "newSession": "새 세션 시작",
-        "dismiss": "닫기"
-      },
-      "activeSourceTooltip": "{{active}} 가 적용되어 {{shadowed}} 는 가려집니다.",
-      "copy": {
-        "menuLabel": "복사 액션",
-        "toUser":            { "label": "전역으로 복사 →" },
-        "toProject":         { "label": "프로젝트로 가져오기 ←" },
-        "overrideToProject": { "label": "오버라이드로 복제 (프로젝트)" },
-        "overrideToUser":    { "label": "오버라이드로 복제 (전역)" },
-        "secret": {
-          "title": "시크릿으로 보이는 값이 감지되었습니다",
-          "intro": "다음 필드는 시크릿처럼 보이며 평문으로 복사됩니다:",
-          "ack": "시크릿이 포함된 채로 복사하는 것에 동의합니다.",
-          "submit": "시크릿 포함하여 복사",
-          "cancel": "취소"
-        },
-        "conflict": {
-          "title": "서버 이름 충돌",
-          "intro": "{{name}} 을(를) {{targetScope}} 로 복사합니다.",
-          "overwrite": "기존 서버를 덮어쓰기",
-          "skip": "스킵 — 기존 유지",
-          "rename": "이름 변경 후 추가",
-          "renameLabel": "새 서버 이름",
-          "renameInvalid": "잘못된 이름 — 비었거나 동일하거나 예약 문자가 포함됐습니다.",
-          "submit": "계속",
-          "cancel": "취소",
-          "close": "닫기",
-          "success": "{{name}} 을(를) {{targetScope}} 로 복사했습니다.",
-          "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 참조는 플러그인 번들 외부에서 동작하지 않을 수 있습니다."
-        },
-        "error": {
-          "crossDevice": "이 서버는 마운트 경계를 넘는 위치에 있어 자동 복사할 수 없습니다 — 외부 파일 탐색기로 복사하세요."
-        }
-      },
-      "editor": {
-        "close": "닫기",
-        "loading": "불러오는 중…",
-        "loadingEditor": "에디터 로딩 중…",
-        "modeForm": "폼",
-        "modeRaw": "Raw",
-        "type": "Type",
-        "command": "Command",
-        "args": "Arguments (한 줄에 하나)",
-        "url": "URL",
-        "headers": "Headers",
-        "env": "환경 변수",
-        "headersKey": "헤더 이름",
-        "headersValue": "헤더 값",
-        "envKey": "변수 이름",
-        "envValue": "변수 값",
-        "addRow": "+ 추가",
-        "removeRow": "행 제거",
-        "maskToggle": "값 표시 / 숨김",
-        "required": {
-          "command": "stdio 에서는 command 가 필수입니다.",
-          "url": "{{type}} 에서는 url 이 필수입니다."
-        },
-        "typeChange": {
-          "title": "Type 변경 시 일부 필드가 제거됩니다",
-          "intro": "{{from}} → {{to}} 로 바꾸면 새 type 에 적용되지 않는 필드가 제거됩니다.",
-          "submit": "계속",
-          "cancel": "취소"
-        },
-        "rawParseError": "서버 설정을 파싱할 수 없습니다 — JSON 을 수정해야 폼 모드로 돌아갈 수 있습니다.",
-        "staleBanner": "이 서버 설정이 외부에서 변경됐습니다. 디스크 내용을 다시 불러올지, 현재 편집 내용으로 덮어쓸지 선택하세요.",
-        "staleReload": "디스크에서 다시 불러오기",
-        "staleOverwrite": "디스크 내용 덮어쓰기",
-        "delete": {
-          "label": "서버 삭제",
-          "confirm": "{{name}} 을(를) {{scope}} 에서 삭제하시겠습니까?",
-          "submit": "삭제"
-        }
-      },
-      "malformed": {
-        "title": "config 가 무효한 MCP 서버는 표시에서 제외됐습니다:"
-      },
-      "cardOpen": "{{name}} 열기",
-      "secret": {
-        "marker": "시크릿으로 보이는 값",
-        "envRefMarker": "환경 변수 참조"
-      }
+    "toast": {
+        "themeChanged": "테마가 변경되었습니다",
+        "modelChanged": "기본 모델이 변경되었습니다",
+        "permissionChanged": "Permission Mode가 변경되었습니다",
+        "timeoutChanged": "채팅 타임아웃이 변경되었습니다",
+        "markdownModeChanged": "마크다운 기본 모드가 변경되었습니다",
+        "fileExplorerViewChanged": "파일 탐색기 기본 뷰가 변경되었습니다",
+        "languageChanged": "언어가 변경되었습니다",
+        "systemPromptSaved": "시스템 프롬프트가 저장되었습니다",
+        "systemPromptRestored": "기본 시스템 프롬프트로 복원되었습니다",
+        "settingChanged": "{{label}}이(가) 변경되었습니다",
+        "buildFailed": "실패: {{error}}",
+        "buildFailedUnknown": "알 수 없는 오류",
+        "serverTimeout": "서버 응답 시간이 초과되었습니다. 수동으로 확인해주세요.",
+        "buildComplete": "빌드 완료! 페이지를 새로고침합니다...",
+        "serverRestartFailed": "서버 재시작 요청에 실패했습니다.",
+        "alreadyLatest": "이미 최신 버전입니다.",
+        "updateCheckFailed": "업데이트 확인에 실패했습니다.",
+        "updateComplete": "업데이트 완료! 페이지를 새로고침합니다...",
+        "updateFailed": "업데이트 요청에 실패했습니다.",
+        "settingSaved": "설정이 저장되었습니다.",
+        "settingSaveFailed": "설정 저장에 실패했습니다.",
+        "botTokenSaved": "Bot Token이 저장되었습니다.",
+        "botTokenDeleted": "Bot Token이 삭제되었습니다.",
+        "chatIdSaved": "Chat ID가 저장되었습니다.",
+        "chatIdDeleted": "Chat ID가 삭제되었습니다.",
+        "telegramEnabled": "Telegram 알림이 활성화되었습니다.",
+        "telegramDisabled": "Telegram 알림이 비활성화되었습니다.",
+        "testSent": "테스트 알림이 전송되었습니다!",
+        "testFailed": "테스트 알림 전송 실패",
+        "testServerError": "서버 연결 오류",
+        "resetToGlobal": "전역 설정으로 초기화되었습니다",
+        "settingSavedFailed": "설정 저장에 실패했습니다. 다시 시도해 주세요."
     },
-    "plugin": {
-      "empty": "설치된 플러그인이 없습니다.",
-      "emptyHint": "Claude Code CLI 에서 `/plugin install` 로 설치 후 여기로 돌아오세요.",
-      "scope": {
-        "user": "전역",
-        "project": "프로젝트"
-      },
-      "type": {
-        "standard": "정식",
-        "externalMcp": "External MCP"
-      },
-      "counts": {
-        "skills": "스킬",
-        "commands": "커맨드",
-        "agents": "에이전트",
-        "hooks": "훅",
-        "mcpServers": "MCP 서버"
-      },
-      "toggle": {
-        "on": "활성",
-        "off": "비활성"
-      },
-      "banner": {
-        "freshSpawn": "다음 유저 입력부터 새 플러그인 상태가 반영됩니다.",
-        "longStream": "현재 대화 종료 후 새 세션에서 적용됩니다. 지금 적용하려면 새 세션을 시작하세요.",
-        "newSession": "새 세션 시작",
-        "dismiss": "닫기"
-      },
-      "projectScopeDisabled": "다른 프로젝트 전용",
-      "projectScopeAmbiguous": "프로젝트 경로 누락 — 읽기 전용",
-      "scopeHint": "전역 설정 수정됨",
-      "readonly": {
-        "forbidden": "읽기 전용 환경: 쓰기 권한이 없습니다."
-      }
+    "advanced": {
+        "serverRestart": "서버 재시작",
+        "serverRestartDesc": "전체 프로젝트를 빌드하고 서버를 프로덕션 모드로 재시작합니다",
+        "softwareUpdate": "소프트웨어 업데이트",
+        "currentVersion": "현재 버전: v{{version}}",
+        "building": "빌드 중... ({{elapsed}}초)",
+        "restarting": "재시작 중... ({{elapsed}}초)",
+        "serverRebuild": "서버 재빌드 & 재시작",
+        "checking": "확인 중...",
+        "checkUpdate": "업데이트 확인",
+        "updateTo": "v{{version}}으로 업데이트",
+        "updating": "업데이트 중... ({{elapsed}}초)",
+        "latestVersion": "최신 버전입니다",
+        "systemPrompt": "시스템 프롬프트",
+        "restoreDefault": "기본값으로 복원",
+        "systemPromptWarning": "주의:",
+        "systemPromptWarningDetail": "시스템 프롬프트를 잘못 수정하면 응답 퀄리티가 크게 저하될 수 있습니다. 수정 내용에 확신이 없다면 기본값을 유지하세요.",
+        "customPromptActive": "사용자 정의 프롬프트 사용 중",
+        "promptLoading": "프롬프트 로딩 중...",
+        "promptNoProject": "프로젝트를 선택하면 현재 시스템 프롬프트를 확인할 수 있습니다.",
+        "charCount": "{{count}}자",
+        "templateVariables": "사용 가능한 시스템 변수 (런타임에 자동 치환)",
+        "previewClose": "미리보기 닫기",
+        "previewOpen": "현재 프로젝트 기준 미리보기",
+        "maxThinkingTokens": "최대 사고 토큰 수",
+        "maxThinkingTokensDesc": "모델의 사고(reasoning) 과정에 사용할 최대 토큰 수 (1,024 ~ 128,000)",
+        "maxTurns": "최대 턴 수",
+        "maxTurnsDesc": "한 번의 대화에서 허용할 최대 턴 수 (1 ~ 100)",
+        "maxBudget": "최대 예산",
+        "maxBudgetDesc": "한 번의 쿼리당 최대 비용 제한 (USD, 0.01 ~ 100)",
+        "sdkDefault": "Default (High)",
+        "unlimited": "무제한",
+        "defaultEffort": "기본 사고 수준",
+        "defaultEffortDesc": "새 세션에 적용되는 기본 사고 수준입니다. 설정하지 않으면 SDK 기본값(High)이 사용됩니다.",
+        "effortOption": {
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High",
+            "max": "Max"
+        },
+        "effortMaxSubscriber": "구독자 사용 불가",
+        "fileCheckpointing": "파일 체크포인트",
+        "chatCheckpointing": "채팅 세션",
+        "chatCheckpointingDesc": "채팅 중 파일 스냅샷을 저장하여 되돌리기/복원 지원",
+        "queueCheckpointing": "큐 러너",
+        "queueCheckpointingDesc": "큐 실행 중 파일 스냅샷 저장 (JSONL 파일 크기 증가)",
+        "showThinkingBlocks": "Claude의 사고 과정 표시",
+        "showThinkingBlocksDesc": "Opus 4.7 등 최신 모델에서 응답 위에 접힌 'thinking' 블록을 표시합니다. 끄면 첫 응답 토큰이 조금 더 빨리 나옵니다 (비용은 동일)."
+    },
+    "confirm": {
+        "serverRestart": "서버를 재빌드하고 재시작합니다. 진행할까요?",
+        "updateVersion": "v{{version}}으로 업데이트하고 서버를 재시작합니다. 진행할까요?",
+        "resetAllSettings": "모든 프로젝트 설정을 초기화합니다.\n\n• 모델/Permission Mode 오버라이드가 제거됩니다\n• 프로젝트 숨기기가 해제됩니다\n\n계속하시겠습니까?"
+    },
+    "telegram": {
+        "loadError": "Telegram 설정을 불러오는 중 오류가 발생했습니다.",
+        "retry": "재시도",
+        "setupGuide": "Telegram 알림을 설정하려면:",
+        "setupStep1Suffix": "에서 봇을 생성하고 Bot Token을 받으세요",
+        "setupStep2Suffix": "에서 Chat ID를 확인하세요",
+        "botTokenAriaLabel": "Telegram BotFather 열기 (새 탭)",
+        "chatIdAriaLabel": "Telegram userinfobot 열기 (새 탭)",
+        "botToken": "Bot Token",
+        "chatId": "Chat ID",
+        "envOverride": "(환경변수로 설정됨)",
+        "envPriority": "preferences 설정이 환경변수보다 우선됩니다.",
+        "enterBotToken": "Bot Token을 입력하세요",
+        "enterChatId": "Chat ID를 입력하세요",
+        "notConfigured": "설정되지 않음",
+        "change": "변경",
+        "baseUrl": "접속 URL",
+        "baseUrlPlaceholder": "예: http://192.168.1.100:3000",
+        "baseUrlHint": "알림에 포함될 접속 링크입니다. localhost 대신 사내 IP를 입력하세요.",
+        "enableNotifications": "Telegram 알림 활성화",
+        "enableHint": "Bot Token과 Chat ID를 먼저 설정하세요.",
+        "notificationType": "알림 유형",
+        "notifyPermission": "권한 요청 알림 — 🔐 권한 확인이나 ❓ 질문이 필요할 때",
+        "notifyComplete": "완료 알림 — ✅ 스트리밍이 완료되었을 때",
+        "notifyError": "에러 알림 — ❌ 스트리밍 중 에러가 발생했을 때",
+        "queueNotificationType": "큐 알림 유형",
+        "notifyQueueStart": "큐 시작 알림 — 큐 실행이 시작될 때",
+        "notifyQueueComplete": "큐 완료 알림 — 모든 항목이 처리된 후",
+        "notifyQueueError": "큐 에러 알림 — @pauseword 감지 또는 SDK 에러 시",
+        "notifyQueueInput": "큐 입력 요청 알림 — 사용자 응답이 필요할 때",
+        "alwaysNotify": "항상 알림 — 세션을 보고 있을 때에도 알림 전송",
+        "alwaysNotifyHint": "기본적으로 세션을 보고 있으면 알림이 억제됩니다.",
+        "testSending": "전송 중...",
+        "testSend": "테스트 알림 보내기",
+        "testSuccess": "✅ 성공",
+        "testFailure": "❌ 실패: {{error}}"
+    },
+    "project": {
+        "selectProject": "프로젝트 선택",
+        "hidden": " (숨김)",
+        "loading": "설정을 불러오는 중...",
+        "loadError": "설정을 불러오는 중 오류가 발생했습니다.",
+        "retry": "재시도",
+        "noProjects": "프로젝트가 없습니다.",
+        "modelOverride": "모델 오버라이드",
+        "projectOverride": "(프로젝트 오버라이드)",
+        "useGlobalDefault": "전역 기본값 사용 (현재: {{value}})",
+        "permissionOverride": "Permission Mode 오버라이드",
+        "hideInSidebar": "이 프로젝트를 사이드바에서 숨기기",
+        "resetToGlobal": "전역 기본값으로 초기화",
+        "noOverrides": "현재 프로젝트 오버라이드가 없습니다."
+    },
+    "about": {
+        "issuesAndSuggestions": "문제 신고 및 기능 제안",
+        "githubIssuesAriaLabel": "GitHub Issues 페이지로 이동 (새 탭)",
+        "serverStatus": "서버 상태",
+        "checking": "확인 중...",
+        "connectionFailed": "서버 연결 실패",
+        "retryCheckAriaLabel": "서버 상태 재확인",
+        "retry": "재시도",
+        "status": "상태",
+        "statusHealthy": "정상",
+        "statusUnhealthy": "비정상",
+        "version": "버전",
+        "serverTime": "서버 시간",
+        "madeBy": "제작자:",
+        "license": "{{name}} 라이선스",
+        "githubIssuesLink": "GitHub Issues"
+    },
+    "help": {
+        "basicChat": "기본 채팅 사용법",
+        "basicChatItems": [
+            "채팅 입력창에 메시지를 입력하고 Enter(데스크톱) 또는 전송 버튼(모바일)으로 전송",
+            "이미지 첨부: 클립 아이콘 또는 붙여넣기(Ctrl+V)로 이미지 업로드 가능",
+            "새 세션: 헤더의 \"+\" 버튼으로 새 채팅 세션 시작",
+            "세션 전환: 시계 아이콘으로 이전 대화 세션에 접근"
+        ],
+        "slashCommands": "슬래시 커맨드",
+        "slashCommandItems": [
+            "채팅 입력창에 /를 입력하면 사용 가능한 명령어 목록이 표시됨",
+            "프로젝트에 설정된 커맨드 중 자주 사용하는 것은 ★ 즐겨찾기로 등록 가능",
+            "즐겨찾기 등록: 커맨드 팔레트에서 ★ 클릭 또는 길게 누르기",
+            "등록된 즐겨찾기는 입력창 상단에 빠른 접근 버튼으로 표시됨"
+        ],
+        "permissionMode": "권한 모드",
+        "permissionPlanLabel": "Plan",
+        "permissionPlanDesc": "코드 변경 전 계획을 먼저 제안합니다",
+        "permissionDefaultLabel": "Ask before edits (기본)",
+        "permissionDefaultDesc": "파일 수정 전 항상 확인을 요청합니다",
+        "permissionAutoLabel": "Edit Automatically",
+        "permissionAutoDesc": "파일 수정을 자동으로 수행합니다",
+        "permissionNote": "설정 > 전역 설정 또는 프로젝트 설정에서 기본 Permission Mode를 변경할 수 있습니다.",
+        "bmadMethod": "BMad Method 연동",
+        "bmadMethodItems": [
+            "BMad Method는 AI 기반 개발 워크플로우 프레임워크입니다",
+            "프로젝트 페이지에서 \"BMad 설정\" 버튼으로 프로젝트에 BMad Core를 설치할 수 있습니다",
+            "설치 후 BMad 에이전트 버튼(채팅 화면 우측 하단)에서 전문 에이전트를 빠르게 호출할 수 있습니다",
+            "에이전트: SM(스크럼 마스터), PM(프로젝트 매니저), Dev(개발자), QA(품질 보증) 등"
+        ],
+        "keyboardShortcuts": "키보드 단축키",
+        "shortcutKey": "단축키",
+        "shortcutAction": "기능",
+        "shortcuts": {
+            "enter": "메시지 전송 (데스크톱)",
+            "shiftEnter": "줄바꿈 (데스크톱)",
+            "escape": "스트리밍 중단 / 팝업 닫기",
+            "ctrlC": "스트리밍 중단 (텍스트 미선택 시)",
+            "f7": "Diff 뷰어 변경점 탐색 (다음/이전)",
+            "slash": "슬래시 커맨드 팔레트 열기"
+        }
+    },
+    "account": {
+        "info": {
+            "title": "Claude Code 계정",
+            "email": "이메일",
+            "subscription": "구독 플랜",
+            "provider": "제공자",
+            "organization": "조직",
+            "fetchedAt": "마지막 확인",
+            "never": "없음",
+            "refresh": "새로고침",
+            "refreshing": "새로고침 중...",
+            "refreshed": "계정 정보를 갱신했습니다.",
+            "refreshFailed": "계정 정보를 가져오지 못했습니다. 채팅을 한 번 시작한 뒤 다시 시도해보세요.",
+            "emptyHint": "채팅을 한 번 보내면 계정 정보가 자동으로 채워집니다. 또는 '새로고침'을 눌러 즉시 가져올 수 있습니다.",
+            "usage": "사용량",
+            "fiveHour": "5시간 한도",
+            "sevenDay": "7일 한도",
+            "resetAt": "초기화: {{reset}}",
+            "usageEmpty": "사용량 정보가 없습니다. Claude.ai 구독자에게만 제공됩니다."
+        },
+        "changePassword": "비밀번호 변경",
+        "currentPassword": "현재 비밀번호",
+        "newPassword": "새 비밀번호",
+        "confirmNewPassword": "새 비밀번호 확인",
+        "passwordMismatch": "새 비밀번호가 일치하지 않습니다.",
+        "changePasswordButton": "비밀번호 변경",
+        "changing": "변경 중...",
+        "changeSuccess": "비밀번호가 변경되었습니다. 다시 로그인해주세요.",
+        "changeFailed": "비밀번호 변경에 실패했습니다.",
+        "session": "세션",
+        "logout": "로그아웃",
+        "logoutDesc": "이 기기에서 로그아웃합니다."
+    },
+    "tabs": {
+        "global": "전역 설정",
+        "project": "프로젝트 설정",
+        "telegram": "Telegram 알림",
+        "notifications": "알림",
+        "advanced": "고급 설정",
+        "account": "Claude 계정",
+        "user": "Hammoc 사용자",
+        "help": "도움말",
+        "about": "만든이"
+    },
+    "harness": {
+        "workbench": {
+            "title": "하네스 워크벤치",
+            "nav": {
+                "general": "일반",
+                "plugins": "플러그인",
+                "skills": "스킬",
+                "mcps": "MCP",
+                "hooks": "훅"
+            }
+        },
+        "skill": {
+            "empty": {
+                "title": "설치된 스킬이 없습니다.",
+                "description": "<projectRoot>/.claude/skills/ 또는 ~/.claude/skills/ 에 스킬을 추가하거나 플러그인 번들을 설치하세요."
+            },
+            "scopeBadge": {
+                "project": "프로젝트",
+                "user": "전역",
+                "plugin": "플러그인",
+                "pluginWithKey": "플러그인: {{key}}"
+            },
+            "activeSourceTooltip": "{{active}} 가 적용되어 {{shadowed}} 는 가려집니다.",
+            "bundle": {
+                "title": "번들 리소스",
+                "references": {
+                    "count": "참고 자료 {{count}}개"
+                },
+                "examples": {
+                    "count": "예제 {{count}}개"
+                },
+                "scripts": {
+                    "count": "스크립트 {{count}}개"
+                },
+                "assets": {
+                    "count": "에셋 {{count}}개"
+                },
+                "binaryReadOnly": "바이너리 파일 — Hammoc UI 에서 편집할 수 없습니다.",
+                "truncated": "잘림 (1MB 초과).",
+                "truncatedAtDepth": "더 깊은 디렉토리는 표시되지 않습니다."
+            },
+            "copy": {
+                "menuLabel": "복사 액션",
+                "toUser": {
+                    "label": "전역으로 복사 →"
+                },
+                "toProject": {
+                    "label": "프로젝트로 가져오기 ←"
+                },
+                "overrideToProject": {
+                    "label": "오버라이드로 복제 (프로젝트)"
+                },
+                "overrideToUser": {
+                    "label": "오버라이드로 복제 (전역)"
+                },
+                "conflict": {
+                    "title": "스킬 이름 충돌",
+                    "intro": "{{name}} 을(를) {{targetScope}} 로 복사합니다.",
+                    "overwrite": "기존 스킬을 덮어쓰기",
+                    "skip": "스킵 — 기존 유지",
+                    "rename": "이름 변경 후 추가",
+                    "renameLabel": "새 스킬 이름",
+                    "renameInvalid": "잘못된 이름 — 비었거나 동일하거나 예약 문자가 포함됐습니다.",
+                    "submit": "계속",
+                    "cancel": "취소",
+                    "close": "닫기",
+                    "success": "{{name}} 을(를) {{targetScope}} 로 복사했습니다."
+                },
+                "error": {
+                    "crossDevice": "이 스킬은 마운트 경계를 넘는 위치에 있어 자동 복사할 수 없습니다 — 외부 파일 탐색기로 복사하세요."
+                }
+            },
+            "editor": {
+                "close": "닫기",
+                "loading": "불러오는 중…",
+                "loadingEditor": "에디터 로딩 중…",
+                "saving": "저장 중…",
+                "modeForm": "폼",
+                "modeRaw": "Raw",
+                "frontmatter": {
+                    "title": "Frontmatter",
+                    "name": "이름",
+                    "description": "설명",
+                    "version": "버전",
+                    "versionPlaceholder": "0.1.0"
+                },
+                "body": {
+                    "title": "본문",
+                    "editLabel": "편집",
+                    "previewLabel": "미리보기"
+                },
+                "raw": {
+                    "title": "Raw SKILL.md"
+                },
+                "preview": {
+                    "title": "미리보기"
+                },
+                "required": {
+                    "name": "이름은 필수입니다.",
+                    "description": "설명은 필수입니다."
+                },
+                "rawParseError": "Frontmatter 를 파싱할 수 없습니다. YAML 펜스를 수정해야 폼 모드로 돌아갈 수 있습니다.",
+                "staleBanner": "이 스킬이 외부에서 변경되어 저장이 거부됐습니다. 최신 내용을 다시 불러왔습니다."
+            },
+            "malformed": {
+                "title": "frontmatter 가 무효한 스킬은 표시에서 제외됐습니다:"
+            },
+            "cardOpen": "{{name}} 열기"
+        },
+        "mcp": {
+            "empty": {
+                "title": "설정된 MCP 서버가 없습니다.",
+                "description": "<projectRoot>/.mcp.json 또는 ~/.claude/.mcp.json 에 mcpServers 항목을 추가하거나 MCP 서버가 포함된 플러그인 번들을 설치하세요.",
+                "noGlobalSupport": "이 버전의 Claude Code 는 전역 MCP 파일을 인식하지 않습니다 — 프로젝트 스코프와 플러그인 번들 MCP 만 표시됩니다."
+            },
+            "scopeBadge": {
+                "project": "프로젝트",
+                "user": "전역",
+                "plugin": "플러그인",
+                "pluginWithKey": "플러그인: {{key}}"
+            },
+            "type": {
+                "stdio": "stdio",
+                "sse": "sse",
+                "http": "http",
+                "ws": "ws"
+            },
+            "toggle": {
+                "on": "활성",
+                "off": "비활성",
+                "disabledByBackup": "비활성 (백업으로 이동됨)"
+            },
+            "banner": {
+                "freshSpawn": "다음 사용자 메시지부터 적용됩니다.",
+                "newSession": "새 세션 시작",
+                "dismiss": "닫기"
+            },
+            "activeSourceTooltip": "{{active}} 가 적용되어 {{shadowed}} 는 가려집니다.",
+            "copy": {
+                "menuLabel": "복사 액션",
+                "toUser": {
+                    "label": "전역으로 복사 →"
+                },
+                "toProject": {
+                    "label": "프로젝트로 가져오기 ←"
+                },
+                "overrideToProject": {
+                    "label": "오버라이드로 복제 (프로젝트)"
+                },
+                "overrideToUser": {
+                    "label": "오버라이드로 복제 (전역)"
+                },
+                "secret": {
+                    "title": "시크릿으로 보이는 값이 감지되었습니다",
+                    "intro": "다음 필드는 시크릿처럼 보이며 평문으로 복사됩니다:",
+                    "ack": "시크릿이 포함된 채로 복사하는 것에 동의합니다.",
+                    "submit": "시크릿 포함하여 복사",
+                    "cancel": "취소"
+                },
+                "conflict": {
+                    "title": "서버 이름 충돌",
+                    "intro": "{{name}} 을(를) {{targetScope}} 로 복사합니다.",
+                    "overwrite": "기존 서버를 덮어쓰기",
+                    "skip": "스킵 — 기존 유지",
+                    "rename": "이름 변경 후 추가",
+                    "renameLabel": "새 서버 이름",
+                    "renameInvalid": "잘못된 이름 — 비었거나 동일하거나 예약 문자가 포함됐습니다.",
+                    "submit": "계속",
+                    "cancel": "취소",
+                    "close": "닫기",
+                    "success": "{{name}} 을(를) {{targetScope}} 로 복사했습니다.",
+                    "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 참조는 플러그인 번들 외부에서 동작하지 않을 수 있습니다."
+                },
+                "error": {
+                    "crossDevice": "이 서버는 마운트 경계를 넘는 위치에 있어 자동 복사할 수 없습니다 — 외부 파일 탐색기로 복사하세요."
+                }
+            },
+            "editor": {
+                "close": "닫기",
+                "loading": "불러오는 중…",
+                "loadingEditor": "에디터 로딩 중…",
+                "modeForm": "폼",
+                "modeRaw": "Raw",
+                "type": "Type",
+                "command": "Command",
+                "args": "Arguments (한 줄에 하나)",
+                "url": "URL",
+                "headers": "Headers",
+                "env": "환경 변수",
+                "headersKey": "헤더 이름",
+                "headersValue": "헤더 값",
+                "envKey": "변수 이름",
+                "envValue": "변수 값",
+                "addRow": "+ 추가",
+                "removeRow": "행 제거",
+                "maskToggle": "값 표시 / 숨김",
+                "required": {
+                    "command": "stdio 에서는 command 가 필수입니다.",
+                    "url": "{{type}} 에서는 url 이 필수입니다."
+                },
+                "typeChange": {
+                    "title": "Type 변경 시 일부 필드가 제거됩니다",
+                    "intro": "{{from}} → {{to}} 로 바꾸면 새 type 에 적용되지 않는 필드가 제거됩니다.",
+                    "submit": "계속",
+                    "cancel": "취소"
+                },
+                "rawParseError": "서버 설정을 파싱할 수 없습니다 — JSON 을 수정해야 폼 모드로 돌아갈 수 있습니다.",
+                "staleBanner": "이 서버 설정이 외부에서 변경됐습니다. 디스크 내용을 다시 불러올지, 현재 편집 내용으로 덮어쓸지 선택하세요.",
+                "staleReload": "디스크에서 다시 불러오기",
+                "staleOverwrite": "디스크 내용 덮어쓰기",
+                "delete": {
+                    "label": "서버 삭제",
+                    "confirm": "{{name}} 을(를) {{scope}} 에서 삭제하시겠습니까?",
+                    "submit": "삭제"
+                }
+            },
+            "malformed": {
+                "title": "config 가 무효한 MCP 서버는 표시에서 제외됐습니다:"
+            },
+            "cardOpen": "{{name}} 열기",
+            "secret": {
+                "marker": "시크릿으로 보이는 값",
+                "envRefMarker": "환경 변수 참조"
+            }
+        },
+        "hook": {
+            "empty": {
+                "title": "등록된 훅이 없습니다.",
+                "description": "<projectRoot>/.claude/settings.json 또는 ~/.claude/settings.json 의 hooks 필드에 훅을 추가하거나, 훅을 등록하는 플러그인 번들을 설치하세요.",
+                "perEvent": "{{event}} 이벤트에 등록된 훅이 없습니다. + 추가 버튼으로 새 훅을 만드세요."
+            },
+            "events": {
+                "PreToolUse": "PreToolUse",
+                "PostToolUse": "PostToolUse",
+                "Stop": "Stop",
+                "SubagentStop": "SubagentStop",
+                "SessionStart": "SessionStart",
+                "SessionEnd": "SessionEnd",
+                "UserPromptSubmit": "UserPromptSubmit",
+                "PreCompact": "PreCompact",
+                "Notification": "Notification"
+            },
+            "scopeBadge": {
+                "project": "프로젝트",
+                "user": "전역",
+                "plugin": "플러그인",
+                "pluginWithKey": "플러그인: {{key}}"
+            },
+            "type": {
+                "command": "command",
+                "prompt": "prompt"
+            },
+            "toggle": {
+                "on": "활성",
+                "off": "비활성",
+                "disabledByBackup": "비활성 (백업으로 이동)",
+                "readOnly": "읽기 전용 (플러그인)"
+            },
+            "banner": {
+                "freshSpawn": "다음 사용자 메시지부터 적용됩니다.",
+                "newSession": "새 세션 시작",
+                "dismiss": "닫기",
+                "promptCost": "prompt 타입 훅은 매 트리거마다 LLM 을 호출하여 비용·지연이 발생합니다."
+            },
+            "parallelExecutionBadge_one": "다른 출처의 훅 1개와 병렬 실행됩니다.",
+            "parallelExecutionBadge_other": "다른 출처의 훅 {{count}}개와 병렬 실행됩니다.",
+            "matcher": {
+                "empty": "(모든 호출에 매치)"
+            },
+            "add": "추가",
+            "copy": {
+                "menuLabel": "복사 동작",
+                "toUser": {
+                    "label": "전역으로 복사 →"
+                },
+                "toProject": {
+                    "label": "프로젝트로 복사 ←"
+                },
+                "overrideToProject": {
+                    "label": "오버라이드로 복제 (프로젝트)"
+                },
+                "overrideToUser": {
+                    "label": "오버라이드로 복제 (전역)"
+                },
+                "warning": {
+                    "title": "복사 전에 훅 본문을 확인하세요",
+                    "commandIntro": "이 훅은 임의 셸 명령을 실행합니다. 신뢰하지 않는 출처의 훅은 가져오지 마세요.",
+                    "promptIntro": "이 훅은 매 트리거마다 LLM 을 호출하여 비용·지연이 발생합니다. 본문을 검토하고 진행하세요.",
+                    "bodyPreview": "본문:",
+                    "secretPaths": "시크릿으로 보이는 값이 다음 위치에서 감지되었습니다: {{paths}}.",
+                    "ack": "본문을 검토했고 복사를 진행합니다.",
+                    "submit": "복사",
+                    "cancel": "취소"
+                },
+                "conflict": {
+                    "title": "동일한 훅이 이미 존재합니다",
+                    "intro": "{{targetScope}} 에 같은 matcher · 본문의 훅이 이미 있습니다.",
+                    "overwrite": "기존 훅을 덮어쓰기",
+                    "skip": "스킵 — 기존 항목 유지",
+                    "duplicate": "중복 추가 (둘 다 유지)",
+                    "submit": "계속",
+                    "cancel": "취소",
+                    "close": "닫기",
+                    "success": "{{event}} 훅을 {{targetScope}} 로 복사 완료",
+                    "duplicateInfo": "중복 추가됨 — 두 훅이 모두 병렬 실행됩니다.",
+                    "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 토큰은 플러그인 번들 외부에서 동작하지 않습니다."
+                }
+            },
+            "editor": {
+                "close": "닫기",
+                "loading": "로딩 중…",
+                "loadingEditor": "에디터 로딩 중…",
+                "modeForm": "폼",
+                "modeRaw": "Raw",
+                "event": "이벤트",
+                "matcher": {
+                    "matchAllHint": "(빈 matcher = 모든 호출에 매치)",
+                    "invalidRegex": "matcher 가 정규식으로 파싱되지 않습니다.",
+                    "ignoredOnEvent": "{{event}} 이벤트에서는 matcher 가 무시됩니다.",
+                    "sharedWithSiblings": "이 matcher 는 같은 그룹의 다른 {{count}}개 훅과 공유됩니다.",
+                    "saveButton": "matcher 저장",
+                    "applyOption": {
+                        "title": "matcher 변경 적용 범위:",
+                        "sharedWithSiblings": "그룹 내 모든 {{count}}개 훅에 적용 (기본 — 그룹 유지)",
+                        "splitFromGroup": "이 훅만 분리해 새 matcher 적용",
+                        "afterSplitToast": "이 훅이 새 그룹으로 이동했습니다 — 형제 훅은 기존 matcher 를 유지합니다."
+                    }
+                },
+                "type": "타입",
+                "command": "Command",
+                "prompt": "Prompt",
+                "timeout": "타임아웃 (초)",
+                "saving": "저장 중…",
+                "create": "훅 생성",
+                "createTitle": "{{event}} 훅 새로 생성",
+                "editTitle": "{{event}} 훅 편집",
+                "matcherHelp": "Matcher 안내 — 정규식 / 와일드카드 / 파이프 허용. 빈 칸 = 모든 호출 매치.",
+                "timeoutHint": "0 또는 빈 칸 = Claude Code 기본값 위임.",
+                "promptTypeUnsupported": "이 CLI 버전은 prompt 타입 훅을 지원하지 않습니다.",
+                "secretMarker": "시크릿으로 보이는 값",
+                "required": {
+                    "command": "type=command 일 때 command 본문은 필수입니다.",
+                    "prompt": "type=prompt 일 때 prompt 본문은 필수입니다."
+                },
+                "rawParseError": "JSON 파싱 실패 — 폼 모드로 돌아가려면 JSON 을 수정하세요.",
+                "rawSaveButton": "Raw JSON 저장",
+                "staleBanner": "외부에서 훅이 변경되었습니다 — 처리 방식을 선택하세요.",
+                "staleReload": "디스크에서 다시 로드",
+                "staleOverwrite": "디스크 버전 덮어쓰기",
+                "delete": {
+                    "label": "훅 삭제",
+                    "confirm": "이 {{event}} 훅을 삭제하시겠습니까?",
+                    "submit": "삭제"
+                },
+                "decisionTemplate": {
+                    "label": "PreToolUse 결정 템플릿 삽입",
+                    "allow": "허용",
+                    "deny": "거부",
+                    "ask": "사용자 확인"
+                },
+                "decisionForm": {
+                    "title": "PreToolUse 결정 폼 빌더",
+                    "collapsedHint": "폼으로 permissionDecision JSON 을 생성하거나 아래 빠른 템플릿을 사용하세요.",
+                    "decisionLabel": "결정",
+                    "decisionAllow": "허용",
+                    "decisionDeny": "거부",
+                    "decisionAsk": "사용자 확인",
+                    "systemMessageLabel": "사용자 메시지 (선택)",
+                    "systemMessagePlaceholder": "거부 / 사용자 확인 사유. 비우면 생략됩니다.",
+                    "updatedInputLabel": "Updated input JSON (allow 일 때만 — 선택)",
+                    "updatedInputPlaceholder": "{ \"file_path\": \"…\" }",
+                    "updatedInputInvalid": "Updated input 은 유효한 JSON 이어야 합니다.",
+                    "insertModeLabel": "삽입 모드",
+                    "insertModePrepend": "본문 위에 추가",
+                    "insertModeReplace": "본문 전체 교체",
+                    "generateButton": "폼에서 셸 스니펫 생성"
+                },
+                "matcherLabel": "Matcher"
+            },
+            "malformed": {
+                "title": "config 가 무효한 훅은 표시에서 제외됐습니다:"
+            },
+            "cardOpen": "훅 열기"
+        },
+        "plugin": {
+            "empty": "설치된 플러그인이 없습니다.",
+            "emptyHint": "Claude Code CLI 에서 `/plugin install` 로 설치 후 여기로 돌아오세요.",
+            "scope": {
+                "user": "전역",
+                "project": "프로젝트"
+            },
+            "type": {
+                "standard": "정식",
+                "externalMcp": "External MCP"
+            },
+            "counts": {
+                "skills": "스킬",
+                "commands": "커맨드",
+                "agents": "에이전트",
+                "hooks": "훅",
+                "mcpServers": "MCP 서버"
+            },
+            "toggle": {
+                "on": "활성",
+                "off": "비활성"
+            },
+            "banner": {
+                "freshSpawn": "다음 유저 입력부터 새 플러그인 상태가 반영됩니다.",
+                "longStream": "현재 대화 종료 후 새 세션에서 적용됩니다. 지금 적용하려면 새 세션을 시작하세요.",
+                "newSession": "새 세션 시작",
+                "dismiss": "닫기"
+            },
+            "projectScopeDisabled": "다른 프로젝트 전용",
+            "projectScopeAmbiguous": "프로젝트 경로 누락 — 읽기 전용",
+            "scopeHint": "전역 설정 수정됨",
+            "readonly": {
+                "forbidden": "읽기 전용 환경: 쓰기 권한이 없습니다."
+            }
+        }
+    },
+    "permissionMode": {
+        "planDescription": "Claude가 계획만 세우고 파일을 수정하지 않습니다",
+        "askDescription": "파일 수정 전 승인을 요청합니다",
+        "autoDescription": "파일 수정을 자동으로 승인합니다",
+        "bypassDescription": "모든 권한 요청을 건너뜁니다",
+        "selectorAria": "권한 모드: {{label}}. {{description}}. 클릭하여 다음 모드로 전환"
+    },
+    "layout": {
+        "narrowAria": "좁은 레이아웃으로 전환",
+        "wideAria": "넓은 레이아웃으로 전환",
+        "narrowTitle": "좁은 레이아웃",
+        "wideTitle": "넓은 레이아웃"
+    },
+    "theme": {
+        "lightAria": "라이트 모드로 전환",
+        "darkAria": "다크 모드로 전환"
+    },
+    "webPush": {
+        "title": "웹 푸시 알림",
+        "description": "이 기기에서 브라우저 푸시 알림을 받습니다. Android, 데스크톱 브라우저, iOS PWA(16.4+)에서 동작합니다.",
+        "iosHint": "iOS에서는 Hammoc을 PWA로 설치(홈 화면에 추가)해야 웹 푸시가 동작합니다.",
+        "notSupported": "웹 푸시를 사용할 수 없습니다. 보안 접속(HTTPS)이 필요하며 브라우저가 웹 푸시를 지원해야 합니다.",
+        "permissionDenied": "알림 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.",
+        "enableNotifications": "웹 푸시 알림 활성화",
+        "enableHint": "활성화하면 Telegram과 함께 푸시 알림이 발송됩니다.",
+        "subscribed": "이 브라우저가 구독 중입니다",
+        "notSubscribed": "이 브라우저가 구독되지 않았습니다",
+        "subscribe": "이 브라우저 구독",
+        "unsubscribe": "구독 해제",
+        "subscribedDevices": "{{count}}개 기기 구독 중",
+        "testSend": "테스트 푸시 보내기",
+        "testSending": "전송 중...",
+        "testSuccess": "테스트 푸시 알림이 전송되었습니다!",
+        "testFailure": "전송 실패: {{error}}",
+        "subscribeSuccess": "이 브라우저에서 푸시 알림이 활성화되었습니다.",
+        "subscribeError": "구독에 실패했습니다. 다시 시도해주세요.",
+        "unsubscribeSuccess": "이 브라우저에서 푸시 알림이 비활성화되었습니다.",
+        "unsubscribeError": "구독 해제에 실패했습니다. 다시 시도해주세요.",
+        "enabled": "웹 푸시 알림이 활성화되었습니다",
+        "disabled": "웹 푸시 알림이 비활성화되었습니다",
+        "loadError": "웹 푸시 설정을 불러오는데 실패했습니다.",
+        "retry": "다시 시도"
+    },
+    "page": {
+        "title": "설정",
+        "backAriaLabel": "뒤로 가기"
     }
-  },
-  "permissionMode": {
-    "planDescription": "Claude가 계획만 세우고 파일을 수정하지 않습니다",
-    "askDescription": "파일 수정 전 승인을 요청합니다",
-    "autoDescription": "파일 수정을 자동으로 승인합니다",
-    "bypassDescription": "모든 권한 요청을 건너뜁니다",
-    "selectorAria": "권한 모드: {{label}}. {{description}}. 클릭하여 다음 모드로 전환"
-  },
-  "layout": {
-    "narrowAria": "좁은 레이아웃으로 전환",
-    "wideAria": "넓은 레이아웃으로 전환",
-    "narrowTitle": "좁은 레이아웃",
-    "wideTitle": "넓은 레이아웃"
-  },
-  "theme": {
-    "lightAria": "라이트 모드로 전환",
-    "darkAria": "다크 모드로 전환"
-  },
-  "webPush": {
-    "title": "웹 푸시 알림",
-    "description": "이 기기에서 브라우저 푸시 알림을 받습니다. Android, 데스크톱 브라우저, iOS PWA(16.4+)에서 동작합니다.",
-    "iosHint": "iOS에서는 Hammoc을 PWA로 설치(홈 화면에 추가)해야 웹 푸시가 동작합니다.",
-    "notSupported": "웹 푸시를 사용할 수 없습니다. 보안 접속(HTTPS)이 필요하며 브라우저가 웹 푸시를 지원해야 합니다.",
-    "permissionDenied": "알림 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.",
-    "enableNotifications": "웹 푸시 알림 활성화",
-    "enableHint": "활성화하면 Telegram과 함께 푸시 알림이 발송됩니다.",
-    "subscribed": "이 브라우저가 구독 중입니다",
-    "notSubscribed": "이 브라우저가 구독되지 않았습니다",
-    "subscribe": "이 브라우저 구독",
-    "unsubscribe": "구독 해제",
-    "subscribedDevices": "{{count}}개 기기 구독 중",
-    "testSend": "테스트 푸시 보내기",
-    "testSending": "전송 중...",
-    "testSuccess": "테스트 푸시 알림이 전송되었습니다!",
-    "testFailure": "전송 실패: {{error}}",
-    "subscribeSuccess": "이 브라우저에서 푸시 알림이 활성화되었습니다.",
-    "subscribeError": "구독에 실패했습니다. 다시 시도해주세요.",
-    "unsubscribeSuccess": "이 브라우저에서 푸시 알림이 비활성화되었습니다.",
-    "unsubscribeError": "구독 해제에 실패했습니다. 다시 시도해주세요.",
-    "enabled": "웹 푸시 알림이 활성화되었습니다",
-    "disabled": "웹 푸시 알림이 비활성화되었습니다",
-    "loadError": "웹 푸시 설정을 불러오는데 실패했습니다.",
-    "retry": "다시 시도"
-  },
-  "page": {
-    "title": "설정",
-    "backAriaLabel": "뒤로 가기"
-  }
 }

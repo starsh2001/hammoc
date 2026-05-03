@@ -55,4 +55,27 @@ when touching queue error surfaces.
 
 ---
 
+## 2. `prompt` 타입 훅의 GA 여부 미확인 (Story 28.4 spike, 2026-05-03)
+
+**정적 증거 (디스크 실측, 2026-05-02)**: 공식 마켓플레이스 카탈로그
+`~/.claude/plugins/marketplaces/claude-plugins-official/plugins/` 의 모든 5개
+번들 (`hookify` · `security-guidance` · `ralph-loop` · `learning-output-style` ·
+`explanatory-output-style`) 의 `hooks/hooks.json` 어디에도 `"type": "prompt"`
+가 등장하지 않음 (전수 5/5 미사용 — 총 8개 hook 모두 `command` 타입). 단
+`plugin-dev/skills/hook-development/references/patterns.md` 의 공식 예제는 `prompt`
+타입을 명시 (Pattern 1: Security Validation, Pattern 2: Test Enforcement).
+
+**현재 상태**: Hammoc 의 `harnessHookService.PROMPT_TYPE_SUPPORT` 상수는
+`'unsupported'` 가 default — HookEditor 의 type 라디오에서 prompt 옵션은 비활성
+상태이며 툴팁 안내 ("This CLI version does not support prompt-type hooks.") 가
+노출된다. 이미 디스크에 prompt 카드를 갖고 있는 사용자도 카드 자체는 정상 노출되며
+(spike 결과와 무관) 편집은 command 로의 type 변경 후에만 가능.
+
+**런타임 실측 미수행**: spike 의 실측 단계 (임시 prompt 타입 PreToolUse hook 을
+`~/.claude/settings.json` 에 등록 → 새 세션에서 매칭 도구 호출 → hook 실행 결과
+확인) 는 본 작업 환경에서 수행하지 못함. 실측 시 prompt 타입이 정상 동작으로
+확인되면 service 의 상수를 `'supported'` 로 1줄 변경하면 라디오가 자동 활성화
+된다 (i18n 키 `harness.hook.editor.promptTypeUnsupported` 는 카탈로그에 보존 —
+CLI 다운그레이드 시나리오 또는 응답이 다시 `'unsupported'` 로 돌아갈 경우 대비).
+
 <!-- Add new upstream issues above this line as they are discovered. -->

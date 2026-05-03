@@ -1,590 +1,783 @@
 {
-  "global": {
-    "theme": "主题",
-    "themeOption": {
-      "dark": "深色",
-      "light": "浅色",
-      "system": "跟随系统"
-    },
-    "defaultModel": "默认模型",
-    "language": "语言",
-    "permissionMode": "权限模式",
-    "permissionModeLabel": {
-      "plan": "Plan",
-      "default": "Ask before edits",
-      "acceptEdits": "Edit Automatically",
-      "bypass": "Bypass",
-      "latest": "Last Used"
-    },
-    "permissionDesc": {
-      "plan": "在修改代码前先建议计划",
-      "default": "编辑文件前始终请求确认",
-      "acceptEdits": "自动执行文件编辑",
-      "bypass": "跳过所有权限检查（包括 Bash）",
-      "latest": "新会话保持上一个会话的权限模式"
-    },
-    "autoApproveSafetyChecks": "在Bypass模式下自动批准安全检查",
-    "autoApproveSafetyChecksDesc": "启用后，在Bypass模式下CLI安全检查提示将自动批准，无需用户确认。",
-    "permissionSync": "权限模式同步",
-    "permissionSyncOption": {
-      "streaming": "仅在流式传输期间",
-      "always": "始终同步"
-    },
-    "permissionSyncDesc": {
-      "streaming": "仅在流式传输时同步到其他浏览器（默认）",
-      "always": "始终同步并记住每个会话的权限模式"
-    },
-    "markdownMode": "Markdown 文件打开模式",
-    "markdownOption": {
-      "edit": "编辑",
-      "preview": "预览"
-    },
-    "markdownDesc": "打开 Markdown 文件时的默认模式。",
-    "fileExplorerView": "文件浏览器默认视图",
-    "fileExplorerOption": {
-      "grid": "网格视图",
-      "list": "列表视图"
-    },
-    "fileExplorerDesc": "打开文件浏览器时的默认视图模式。",
-    "panelDefaultOpen": "快捷面板自动打开",
-    "panelOpenOption": {
-      "on": "桌面端自动打开",
-      "off": "默认关闭"
-    },
-    "panelDefaultOpenDesc": "在桌面端进入会话时自动打开快捷面板。",
-    "panelDefaultSide": "快捷面板默认位置",
-    "panelSideOption": {
-      "left": "左侧",
-      "right": "右侧",
-      "last": "上次位置"
-    },
-    "panelDefaultSideDesc": "快捷面板的默认显示位置。选择「上次位置」将保持上一个会话中使用的位置。",
-    "chatTimeout": "聊天超时",
-    "chatTimeoutOverride": "（由环境变量设置）",
-    "chatTimeoutDesc": "未收到响应时自动中止请求的时间。",
-    "timeoutOption": {
-      "1m": "1 分钟",
-      "3m": "3 分钟",
-      "5mDefault": "5 分钟（默认）",
-      "10m": "10 分钟",
-      "30m": "30 分钟"
-    }
-  },
-  "toast": {
-    "themeChanged": "主题已更改",
-    "modelChanged": "默认模型已更改",
-    "permissionChanged": "权限模式已更改",
-    "timeoutChanged": "聊天超时已更改",
-    "markdownModeChanged": "Markdown 默认模式已更改",
-    "fileExplorerViewChanged": "文件浏览器默认视图已更改",
-    "languageChanged": "语言已更改",
-    "systemPromptSaved": "系统提示词已保存",
-    "systemPromptRestored": "已恢复为默认系统提示词",
-    "settingChanged": "{{label}} 已更改",
-    "buildFailed": "失败：{{error}}",
-    "buildFailedUnknown": "未知错误",
-    "serverTimeout": "服务器响应超时。请手动检查。",
-    "buildComplete": "构建完成！正在刷新页面...",
-    "serverRestartFailed": "服务器重启请求失败。",
-    "alreadyLatest": "已是最新版本。",
-    "updateCheckFailed": "检查更新失败。",
-    "updateComplete": "更新完成！正在刷新页面...",
-    "updateFailed": "更新请求失败。",
-    "settingSaved": "设置已保存。",
-    "settingSaveFailed": "保存设置失败。",
-    "botTokenSaved": "Bot Token 已保存。",
-    "botTokenDeleted": "Bot Token 已删除。",
-    "chatIdSaved": "Chat ID 已保存。",
-    "chatIdDeleted": "Chat ID 已删除。",
-    "telegramEnabled": "Telegram 通知已启用。",
-    "telegramDisabled": "Telegram 通知已禁用。",
-    "testSent": "测试通知已发送！",
-    "testFailed": "测试通知发送失败",
-    "testServerError": "服务器连接错误",
-    "resetToGlobal": "已重置为全局默认值",
-    "settingSavedFailed": "保存设置失败。请重试。"
-  },
-  "advanced": {
-    "serverRestart": "服务器重启",
-    "serverRestartDesc": "构建整个项目并以生产模式重启服务器",
-    "softwareUpdate": "软件更新",
-    "currentVersion": "当前版本：v{{version}}",
-    "building": "正在构建...（{{elapsed}}秒）",
-    "restarting": "正在重启...（{{elapsed}}秒）",
-    "serverRebuild": "重新构建并重启服务器",
-    "checking": "正在检查...",
-    "checkUpdate": "检查更新",
-    "updateTo": "更新到 v{{version}}",
-    "updating": "正在更新...（{{elapsed}}秒）",
-    "latestVersion": "已是最新版本",
-    "systemPrompt": "系统提示词",
-    "restoreDefault": "恢复默认",
-    "systemPromptWarning": "警告：",
-    "systemPromptWarningDetail": "不正确的系统提示词修改可能会显著降低响应质量。如不确定，请保持默认设置。",
-    "customPromptActive": "正在使用自定义提示词",
-    "promptLoading": "正在加载提示词...",
-    "promptNoProject": "选择一个项目以查看当前系统提示词。",
-    "charCount": "{{count}} 个字符",
-    "templateVariables": "可用系统变量（运行时自动替换）",
-    "previewClose": "关闭预览",
-    "previewOpen": "预览当前项目",
-    "maxThinkingTokens": "最大思考 Token 数",
-    "maxThinkingTokensDesc": "模型推理过程的最大 Token 数（1,024 ~ 128,000）",
-    "maxTurns": "最大轮次",
-    "maxTurnsDesc": "每次对话允许的最大轮次（1 ~ 100）",
-    "maxBudget": "最大预算（美元）",
-    "maxBudgetDesc": "每次查询的最大费用限额（美元，0.01 ~ 100）",
-    "sdkDefault": "Default (High)",
-    "unlimited": "无限制",
-    "defaultEffort": "默认思考级别",
-    "defaultEffortDesc": "新会话的默认思考级别。未设置时，使用 SDK 默认值（High）。",
-    "effortOption": {
-      "low": "Low",
-      "medium": "Medium",
-      "high": "High",
-      "max": "Max"
-    },
-    "effortMaxSubscriber": "订阅用户不可用",
-    "fileCheckpointing": "文件检查点",
-    "chatCheckpointing": "聊天会话",
-    "chatCheckpointingDesc": "在聊天期间保存文件快照以支持回退/恢复",
-    "queueCheckpointing": "队列执行器",
-    "queueCheckpointingDesc": "在队列执行期间保存文件快照（会增加 JSONL 文件大小）",
-    "showThinkingBlocks": "显示 Claude 的思考过程",
-    "showThinkingBlocksDesc": "在 Opus 4.7 等最新模型的响应上方显示折叠的“thinking”块。关闭后首个响应 token 会略快到达（费用不变）。"
-  },
-  "confirm": {
-    "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",
-    "updateVersion": "这将更新到 v{{version}} 并重启服务器。确定要继续吗？",
-    "resetAllSettings": "重置所有项目设置。\n\n• 模型/权限模式覆盖将被移除\n• 项目隐藏将被禁用\n\n确定要继续吗？"
-  },
-  "telegram": {
-    "loadError": "加载 Telegram 设置时发生了错误。",
-    "retry": "重试",
-    "setupGuide": "设置 Telegram 通知：",
-    "setupStep1Suffix": " 创建机器人并获取 Bot Token",
-    "setupStep2Suffix": " 获取您的 Chat ID",
-    "botTokenAriaLabel": "打开 Telegram BotFather（新标签页）",
-    "chatIdAriaLabel": "打开 Telegram userinfobot（新标签页）",
-    "botToken": "Bot Token",
-    "chatId": "Chat ID",
-    "envOverride": "（由环境变量设置）",
-    "envPriority": "偏好设置优先于环境变量。",
-    "enterBotToken": "输入 Bot Token",
-    "enterChatId": "输入 Chat ID",
-    "notConfigured": "未配置",
-    "change": "更改",
-    "baseUrl": "访问 URL",
-    "baseUrlPlaceholder": "例如: http://192.168.1.100:3000",
-    "baseUrlHint": "通知中包含的访问链接。请使用内网 IP 而非 localhost。",
-    "enableNotifications": "启用 Telegram 通知",
-    "enableHint": "请先设置 Bot Token 和 Chat ID。",
-    "notificationType": "通知类型",
-    "notifyPermission": "权限请求 — 当需要确认权限或回答问题时",
-    "notifyComplete": "完成 — 当流式响应完成时",
-    "notifyError": "错误 — 当流式传输过程中发生错误时",
-    "queueNotificationType": "队列通知类型",
-    "notifyQueueStart": "队列开始 — 当队列开始执行时",
-    "notifyQueueComplete": "队列完成 — 当所有项目处理完毕时",
-    "notifyQueueError": "队列错误 — 当 @pauseword 匹配或发生 SDK 错误时",
-    "notifyQueueInput": "队列输入请求 — 当需要用户响应时",
-    "alwaysNotify": "始终通知 — 即使会话可见时也发送通知",
-    "alwaysNotifyHint": "默认情况下，当您正在查看会话时，通知会被抑制。",
-    "testSending": "正在发送...",
-    "testSend": "发送测试通知",
-    "testSuccess": "成功",
-    "testFailure": "失败：{{error}}"
-  },
-  "project": {
-    "selectProject": "选择项目",
-    "hidden": "（已隐藏）",
-    "loading": "正在加载设置...",
-    "loadError": "加载设置时发生了错误。",
-    "retry": "重试",
-    "noProjects": "未找到项目。",
-    "modelOverride": "模型覆盖",
-    "projectOverride": "（项目覆盖）",
-    "useGlobalDefault": "使用全局默认值（当前：{{value}}）",
-    "permissionOverride": "权限模式覆盖",
-    "hideInSidebar": "在侧边栏中隐藏此项目",
-    "resetToGlobal": "重置为全局默认值",
-    "noOverrides": "当前没有项目覆盖设置。"
-  },
-  "about": {
-    "issuesAndSuggestions": "错误报告和功能请求",
-    "githubIssuesAriaLabel": "前往 GitHub Issues（新标签页）",
-    "serverStatus": "服务器状态",
-    "checking": "正在检查...",
-    "connectionFailed": "服务器连接失败",
-    "retryCheckAriaLabel": "重新检查服务器状态",
-    "retry": "重试",
-    "status": "状态",
-    "statusHealthy": "正常",
-    "statusUnhealthy": "异常",
-    "version": "版本",
-    "serverTime": "服务器时间",
-    "madeBy": "开发者：",
-    "license": "{{name}} 许可证",
-    "githubIssuesLink": "GitHub Issues"
-  },
-  "help": {
-    "basicChat": "基本聊天用法",
-    "basicChatItems": [
-      "在聊天输入框中输入消息，按 Enter（桌面端）或发送按钮（移动端）发送",
-      "图片附件：通过回形针图标上传图片或粘贴（Ctrl+V）",
-      "新建会话：点击标题栏中的「+」按钮开始新的聊天会话",
-      "切换会话：通过时钟图标访问之前的会话"
-    ],
-    "slashCommands": "斜杠命令",
-    "slashCommandItems": [
-      "在聊天输入框中输入 / 查看可用命令",
-      "常用命令可以添加到收藏夹",
-      "添加收藏：在命令面板中点击星标或长按",
-      "收藏的命令将作为快捷按钮显示在输入区域上方"
-    ],
-    "permissionMode": "权限模式",
-    "permissionPlanLabel": "Plan",
-    "permissionPlanDesc": "在修改代码前先建议计划",
-    "permissionDefaultLabel": "Ask before edits (默认)",
-    "permissionDefaultDesc": "编辑文件前始终请求确认",
-    "permissionAutoLabel": "Edit Automatically",
-    "permissionAutoDesc": "自动执行文件编辑",
-    "permissionNote": "您可以在设置 > 全局设置或项目设置中更改默认权限模式。",
-    "bmadMethod": "BMad Method 集成",
-    "bmadMethodItems": [
-      "BMad Method 是一个 AI 驱动的开发工作流框架",
-      "通过项目页面的「BMad 设置」按钮将 BMad Core 安装到项目中",
-      "安装后，可通过聊天右下角的 BMad 代理按钮快速调用专业代理",
-      "代理包括：SM（Scrum Master）、PM（项目经理）、Dev（开发者）、QA（质量保证）等"
-    ],
-    "keyboardShortcuts": "键盘快捷键",
-    "shortcutKey": "快捷键",
-    "shortcutAction": "操作",
-    "shortcuts": {
-      "enter": "发送消息（桌面端）",
-      "shiftEnter": "换行（桌面端）",
-      "escape": "停止流式响应 / 关闭弹窗",
-      "ctrlC": "停止流式响应（未选中文本时）",
-      "f7": "在 Diff 查看器中导航更改（上一个/下一个）",
-      "slash": "打开斜杠命令面板"
-    }
-  },
-  "account": {
-    "info": {
-      "title": "Claude Code 账户",
-      "email": "邮箱",
-      "subscription": "订阅计划",
-      "provider": "提供方",
-      "organization": "组织",
-      "fetchedAt": "最后获取",
-      "never": "无",
-      "refresh": "刷新",
-      "refreshing": "刷新中...",
-      "refreshed": "账户信息已更新。",
-      "refreshFailed": "无法获取账户信息。请先开始一次聊天后重试。",
-      "emptyHint": "发送首条聊天消息后会自动填充。也可以点击“刷新”立即获取。",
-      "usage": "用量",
-      "fiveHour": "5 小时窗口",
-      "sevenDay": "7 天窗口",
-      "resetAt": "重置时间：{{reset}}",
-      "usageEmpty": "暂无用量信息。仅对 Claude.ai 订阅用户开放。"
-    },
-    "changePassword": "修改密码",
-    "currentPassword": "当前密码",
-    "newPassword": "新密码",
-    "confirmNewPassword": "确认新密码",
-    "passwordMismatch": "两次输入的新密码不一致。",
-    "changePasswordButton": "修改密码",
-    "changing": "修改中...",
-    "changeSuccess": "密码已更改。请重新登录。",
-    "changeFailed": "修改密码失败。",
-    "session": "会话",
-    "logout": "退出登录",
-    "logoutDesc": "从此设备退出登录。"
-  },
-  "tabs": {
-    "global": "全局设置",
-    "project": "项目设置",
-    "telegram": "Telegram 通知",
-    "notifications": "通知",
-    "advanced": "高级设置",
-    "account": "Claude 账户",
-    "user": "Hammoc 用户",
-    "help": "帮助",
-    "about": "关于"
-  },
-  "harness": {
-    "workbench": {
-      "title": "Harness 工作台",
-      "nav": {
-        "general": "通用",
-        "plugins": "插件",
-        "skills": "技能",
-        "mcps": "MCP"
-      }
-    },
-    "skill": {
-      "empty": {
-        "title": "未安装任何技能。",
-        "description": "请在 <projectRoot>/.claude/skills/ 或 ~/.claude/skills/ 下添加技能,或安装一个插件包。"
-      },
-      "scopeBadge": {
-        "project": "项目",
-        "user": "全局",
-        "plugin": "插件",
-        "pluginWithKey": "插件: {{key}}"
-      },
-      "activeSourceTooltip": "{{active}} 已生效 — {{shadowed}} 被遮挡。",
-      "bundle": {
-        "title": "捆绑资源",
-        "references": { "count": "参考文件 {{count}}" },
-        "examples":   { "count": "示例 {{count}}" },
-        "scripts":    { "count": "脚本 {{count}}" },
-        "assets":     { "count": "资源 {{count}}" },
-        "binaryReadOnly": "二进制文件 — Hammoc UI 无法编辑。",
-        "truncated": "已截断 (>1MB)。",
-        "truncatedAtDepth": "更深的目录层级不再显示。"
-      },
-      "copy": {
-        "menuLabel": "复制操作",
-        "toUser":             { "label": "复制到全局 →" },
-        "toProject":          { "label": "拉取到项目 ←" },
-        "overrideToProject":  { "label": "覆盖克隆 (项目)" },
-        "overrideToUser":     { "label": "覆盖克隆 (全局)" },
-        "conflict": {
-          "title": "技能名称冲突",
-          "intro": "将 {{name}} 复制到 {{targetScope}}。",
-          "overwrite": "覆盖现有技能",
-          "skip": "跳过 — 保留现有",
-          "rename": "重命名并添加",
-          "renameLabel": "新技能名称",
-          "renameInvalid": "无效的名称 — 为空、未更改或包含保留字符。",
-          "submit": "继续",
-          "cancel": "取消",
-          "close": "关闭",
-          "success": "已将 {{name}} 复制到 {{targetScope}}。"
+    "global": {
+        "theme": "主题",
+        "themeOption": {
+            "dark": "深色",
+            "light": "浅色",
+            "system": "跟随系统"
         },
-        "error": {
-          "crossDevice": "该技能位于跨挂载点的位置,无法自动复制 — 请使用外部文件管理器。"
+        "defaultModel": "默认模型",
+        "language": "语言",
+        "permissionMode": "权限模式",
+        "permissionModeLabel": {
+            "plan": "Plan",
+            "default": "Ask before edits",
+            "acceptEdits": "Edit Automatically",
+            "bypass": "Bypass",
+            "latest": "Last Used"
+        },
+        "permissionDesc": {
+            "plan": "在修改代码前先建议计划",
+            "default": "编辑文件前始终请求确认",
+            "acceptEdits": "自动执行文件编辑",
+            "bypass": "跳过所有权限检查（包括 Bash）",
+            "latest": "新会话保持上一个会话的权限模式"
+        },
+        "autoApproveSafetyChecks": "在Bypass模式下自动批准安全检查",
+        "autoApproveSafetyChecksDesc": "启用后，在Bypass模式下CLI安全检查提示将自动批准，无需用户确认。",
+        "permissionSync": "权限模式同步",
+        "permissionSyncOption": {
+            "streaming": "仅在流式传输期间",
+            "always": "始终同步"
+        },
+        "permissionSyncDesc": {
+            "streaming": "仅在流式传输时同步到其他浏览器（默认）",
+            "always": "始终同步并记住每个会话的权限模式"
+        },
+        "markdownMode": "Markdown 文件打开模式",
+        "markdownOption": {
+            "edit": "编辑",
+            "preview": "预览"
+        },
+        "markdownDesc": "打开 Markdown 文件时的默认模式。",
+        "fileExplorerView": "文件浏览器默认视图",
+        "fileExplorerOption": {
+            "grid": "网格视图",
+            "list": "列表视图"
+        },
+        "fileExplorerDesc": "打开文件浏览器时的默认视图模式。",
+        "panelDefaultOpen": "快捷面板自动打开",
+        "panelOpenOption": {
+            "on": "桌面端自动打开",
+            "off": "默认关闭"
+        },
+        "panelDefaultOpenDesc": "在桌面端进入会话时自动打开快捷面板。",
+        "panelDefaultSide": "快捷面板默认位置",
+        "panelSideOption": {
+            "left": "左侧",
+            "right": "右侧",
+            "last": "上次位置"
+        },
+        "panelDefaultSideDesc": "快捷面板的默认显示位置。选择「上次位置」将保持上一个会话中使用的位置。",
+        "chatTimeout": "聊天超时",
+        "chatTimeoutOverride": "（由环境变量设置）",
+        "chatTimeoutDesc": "未收到响应时自动中止请求的时间。",
+        "timeoutOption": {
+            "1m": "1 分钟",
+            "3m": "3 分钟",
+            "5mDefault": "5 分钟（默认）",
+            "10m": "10 分钟",
+            "30m": "30 分钟"
         }
-      },
-      "editor": {
-        "close": "关闭",
-        "loading": "加载中…",
-        "loadingEditor": "加载编辑器…",
-        "saving": "保存中…",
-        "modeForm": "表单",
-        "modeRaw": "Raw",
-        "frontmatter": {
-          "title": "Frontmatter",
-          "name": "名称",
-          "description": "描述",
-          "version": "版本",
-          "versionPlaceholder": "0.1.0"
-        },
-        "body": {
-          "title": "正文",
-          "editLabel": "编辑",
-          "previewLabel": "预览"
-        },
-        "raw": { "title": "Raw SKILL.md" },
-        "preview": { "title": "预览" },
-        "required": {
-          "name": "名称为必填项。",
-          "description": "描述为必填项。"
-        },
-        "rawParseError": "无法解析 frontmatter — 请修复 YAML 围栏后再返回表单模式。",
-        "staleBanner": "该技能在外部被修改 — 你的保存被拒绝。已重新加载最新内容。"
-      },
-      "malformed": {
-        "title": "因 frontmatter 无效,以下技能未显示:"
-      },
-      "cardOpen": "打开 {{name}}"
     },
-    "mcp": {
-      "empty": {
-        "title": "尚未配置 MCP 服务器。",
-        "description": "在 <projectRoot>/.mcp.json 或 ~/.claude/.mcp.json 中添加 mcpServers 条目，或安装包含 MCP 服务器的插件包。",
-        "noGlobalSupport": "此版本的 Claude Code 不识别全局 MCP 文件 — 仅显示项目范围和插件包内的 MCP。"
-      },
-      "scopeBadge": {
-        "project": "项目",
-        "user": "全局",
-        "plugin": "插件",
-        "pluginWithKey": "插件: {{key}}"
-      },
-      "type": { "stdio": "stdio", "sse": "sse", "http": "http", "ws": "ws" },
-      "toggle": {
-        "on": "已启用",
-        "off": "已禁用",
-        "disabledByBackup": "已禁用 (移至备份)"
-      },
-      "banner": {
-        "freshSpawn": "将在下一条用户消息中生效。",
-        "newSession": "开始新会话",
-        "dismiss": "关闭"
-      },
-      "activeSourceTooltip": "{{active}} 已生效 — {{shadowed}} 被遮蔽。",
-      "copy": {
-        "menuLabel": "复制操作",
-        "toUser":            { "label": "复制到全局 →" },
-        "toProject":         { "label": "拉取到项目 ←" },
-        "overrideToProject": { "label": "覆盖克隆 (项目)" },
-        "overrideToUser":    { "label": "覆盖克隆 (全局)" },
-        "secret": {
-          "title": "检测到疑似密钥的值",
-          "intro": "以下字段看起来像密钥，将以明文形式被复制:",
-          "ack": "我了解并希望在包含密钥的情况下复制。",
-          "submit": "包含密钥复制",
-          "cancel": "取消"
-        },
-        "conflict": {
-          "title": "服务器名称冲突",
-          "intro": "将 {{name}} 复制到 {{targetScope}}。",
-          "overwrite": "覆盖现有服务器",
-          "skip": "跳过 — 保留现有",
-          "rename": "重命名后添加",
-          "renameLabel": "新服务器名称",
-          "renameInvalid": "无效名称 — 为空、未变更或包含保留字符。",
-          "submit": "继续",
-          "cancel": "取消",
-          "close": "关闭",
-          "success": "已将 {{name}} 复制到 {{targetScope}}。",
-          "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 引用在插件包外可能无法解析。"
-        },
-        "error": {
-          "crossDevice": "此服务器跨越挂载边界，无法自动复制 — 请使用外部文件管理器。"
-        }
-      },
-      "editor": {
-        "close": "关闭",
-        "loading": "加载中…",
-        "loadingEditor": "正在加载编辑器…",
-        "modeForm": "表单",
-        "modeRaw": "Raw",
-        "type": "Type",
-        "command": "Command",
-        "args": "Arguments (每行一个)",
-        "url": "URL",
-        "headers": "Headers",
-        "env": "环境变量",
-        "headersKey": "Header 名称",
-        "headersValue": "Header 值",
-        "envKey": "变量名",
-        "envValue": "变量值",
-        "addRow": "+ 添加",
-        "removeRow": "删除行",
-        "maskToggle": "显示 / 隐藏值",
-        "required": {
-          "command": "stdio 类型要求 command 字段。",
-          "url": "{{type}} 类型要求 url 字段。"
-        },
-        "typeChange": {
-          "title": "更改 Type 将丢弃部分字段",
-          "intro": "从 {{from}} 切换到 {{to}} 会移除不适用于新类型的字段。",
-          "submit": "继续",
-          "cancel": "取消"
-        },
-        "rawParseError": "无法解析服务器配置 — 修正 JSON 以返回到表单模式。",
-        "staleBanner": "此服务器配置已被外部修改。请选择从磁盘重新加载，或用当前编辑内容覆盖磁盘版本。",
-        "staleReload": "从磁盘重新加载",
-        "staleOverwrite": "覆盖磁盘版本",
-        "delete": {
-          "label": "删除服务器",
-          "confirm": "从 {{scope}} 删除 {{name}}?",
-          "submit": "删除"
-        }
-      },
-      "malformed": {
-        "title": "由于配置无效，部分 MCP 服务器已被排除:"
-      },
-      "cardOpen": "打开 {{name}}",
-      "secret": {
-        "marker": "疑似密钥的值",
-        "envRefMarker": "环境变量引用"
-      }
+    "toast": {
+        "themeChanged": "主题已更改",
+        "modelChanged": "默认模型已更改",
+        "permissionChanged": "权限模式已更改",
+        "timeoutChanged": "聊天超时已更改",
+        "markdownModeChanged": "Markdown 默认模式已更改",
+        "fileExplorerViewChanged": "文件浏览器默认视图已更改",
+        "languageChanged": "语言已更改",
+        "systemPromptSaved": "系统提示词已保存",
+        "systemPromptRestored": "已恢复为默认系统提示词",
+        "settingChanged": "{{label}} 已更改",
+        "buildFailed": "失败：{{error}}",
+        "buildFailedUnknown": "未知错误",
+        "serverTimeout": "服务器响应超时。请手动检查。",
+        "buildComplete": "构建完成！正在刷新页面...",
+        "serverRestartFailed": "服务器重启请求失败。",
+        "alreadyLatest": "已是最新版本。",
+        "updateCheckFailed": "检查更新失败。",
+        "updateComplete": "更新完成！正在刷新页面...",
+        "updateFailed": "更新请求失败。",
+        "settingSaved": "设置已保存。",
+        "settingSaveFailed": "保存设置失败。",
+        "botTokenSaved": "Bot Token 已保存。",
+        "botTokenDeleted": "Bot Token 已删除。",
+        "chatIdSaved": "Chat ID 已保存。",
+        "chatIdDeleted": "Chat ID 已删除。",
+        "telegramEnabled": "Telegram 通知已启用。",
+        "telegramDisabled": "Telegram 通知已禁用。",
+        "testSent": "测试通知已发送！",
+        "testFailed": "测试通知发送失败",
+        "testServerError": "服务器连接错误",
+        "resetToGlobal": "已重置为全局默认值",
+        "settingSavedFailed": "保存设置失败。请重试。"
     },
-    "plugin": {
-      "empty": "未安装任何插件。",
-      "emptyHint": "请在 Claude Code CLI 中使用 `/plugin install` 安装后返回此处。",
-      "scope": {
-        "user": "全局",
-        "project": "项目"
-      },
-      "type": {
-        "standard": "标准",
-        "externalMcp": "外部 MCP"
-      },
-      "counts": {
-        "skills": "技能",
-        "commands": "命令",
-        "agents": "代理",
-        "hooks": "钩子",
-        "mcpServers": "MCP 服务器"
-      },
-      "toggle": {
-        "on": "已启用",
-        "off": "已停用"
-      },
-      "banner": {
-        "freshSpawn": "下一次用户输入后生效。",
-        "longStream": "当前会话结束后在新会话中生效。若要立即应用，请开启新会话。",
-        "newSession": "开启新会话",
-        "dismiss": "关闭"
-      },
-      "projectScopeDisabled": "属于其他项目",
-      "projectScopeAmbiguous": "缺少项目路径 — 只读",
-      "scopeHint": "将修改全局设置",
-      "readonly": {
-        "forbidden": "只读环境：无写入权限。"
-      }
+    "advanced": {
+        "serverRestart": "服务器重启",
+        "serverRestartDesc": "构建整个项目并以生产模式重启服务器",
+        "softwareUpdate": "软件更新",
+        "currentVersion": "当前版本：v{{version}}",
+        "building": "正在构建...（{{elapsed}}秒）",
+        "restarting": "正在重启...（{{elapsed}}秒）",
+        "serverRebuild": "重新构建并重启服务器",
+        "checking": "正在检查...",
+        "checkUpdate": "检查更新",
+        "updateTo": "更新到 v{{version}}",
+        "updating": "正在更新...（{{elapsed}}秒）",
+        "latestVersion": "已是最新版本",
+        "systemPrompt": "系统提示词",
+        "restoreDefault": "恢复默认",
+        "systemPromptWarning": "警告：",
+        "systemPromptWarningDetail": "不正确的系统提示词修改可能会显著降低响应质量。如不确定，请保持默认设置。",
+        "customPromptActive": "正在使用自定义提示词",
+        "promptLoading": "正在加载提示词...",
+        "promptNoProject": "选择一个项目以查看当前系统提示词。",
+        "charCount": "{{count}} 个字符",
+        "templateVariables": "可用系统变量（运行时自动替换）",
+        "previewClose": "关闭预览",
+        "previewOpen": "预览当前项目",
+        "maxThinkingTokens": "最大思考 Token 数",
+        "maxThinkingTokensDesc": "模型推理过程的最大 Token 数（1,024 ~ 128,000）",
+        "maxTurns": "最大轮次",
+        "maxTurnsDesc": "每次对话允许的最大轮次（1 ~ 100）",
+        "maxBudget": "最大预算（美元）",
+        "maxBudgetDesc": "每次查询的最大费用限额（美元，0.01 ~ 100）",
+        "sdkDefault": "Default (High)",
+        "unlimited": "无限制",
+        "defaultEffort": "默认思考级别",
+        "defaultEffortDesc": "新会话的默认思考级别。未设置时，使用 SDK 默认值（High）。",
+        "effortOption": {
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High",
+            "max": "Max"
+        },
+        "effortMaxSubscriber": "订阅用户不可用",
+        "fileCheckpointing": "文件检查点",
+        "chatCheckpointing": "聊天会话",
+        "chatCheckpointingDesc": "在聊天期间保存文件快照以支持回退/恢复",
+        "queueCheckpointing": "队列执行器",
+        "queueCheckpointingDesc": "在队列执行期间保存文件快照（会增加 JSONL 文件大小）",
+        "showThinkingBlocks": "显示 Claude 的思考过程",
+        "showThinkingBlocksDesc": "在 Opus 4.7 等最新模型的响应上方显示折叠的“thinking”块。关闭后首个响应 token 会略快到达（费用不变）。"
+    },
+    "confirm": {
+        "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",
+        "updateVersion": "这将更新到 v{{version}} 并重启服务器。确定要继续吗？",
+        "resetAllSettings": "重置所有项目设置。\n\n• 模型/权限模式覆盖将被移除\n• 项目隐藏将被禁用\n\n确定要继续吗？"
+    },
+    "telegram": {
+        "loadError": "加载 Telegram 设置时发生了错误。",
+        "retry": "重试",
+        "setupGuide": "设置 Telegram 通知：",
+        "setupStep1Suffix": " 创建机器人并获取 Bot Token",
+        "setupStep2Suffix": " 获取您的 Chat ID",
+        "botTokenAriaLabel": "打开 Telegram BotFather（新标签页）",
+        "chatIdAriaLabel": "打开 Telegram userinfobot（新标签页）",
+        "botToken": "Bot Token",
+        "chatId": "Chat ID",
+        "envOverride": "（由环境变量设置）",
+        "envPriority": "偏好设置优先于环境变量。",
+        "enterBotToken": "输入 Bot Token",
+        "enterChatId": "输入 Chat ID",
+        "notConfigured": "未配置",
+        "change": "更改",
+        "baseUrl": "访问 URL",
+        "baseUrlPlaceholder": "例如: http://192.168.1.100:3000",
+        "baseUrlHint": "通知中包含的访问链接。请使用内网 IP 而非 localhost。",
+        "enableNotifications": "启用 Telegram 通知",
+        "enableHint": "请先设置 Bot Token 和 Chat ID。",
+        "notificationType": "通知类型",
+        "notifyPermission": "权限请求 — 当需要确认权限或回答问题时",
+        "notifyComplete": "完成 — 当流式响应完成时",
+        "notifyError": "错误 — 当流式传输过程中发生错误时",
+        "queueNotificationType": "队列通知类型",
+        "notifyQueueStart": "队列开始 — 当队列开始执行时",
+        "notifyQueueComplete": "队列完成 — 当所有项目处理完毕时",
+        "notifyQueueError": "队列错误 — 当 @pauseword 匹配或发生 SDK 错误时",
+        "notifyQueueInput": "队列输入请求 — 当需要用户响应时",
+        "alwaysNotify": "始终通知 — 即使会话可见时也发送通知",
+        "alwaysNotifyHint": "默认情况下，当您正在查看会话时，通知会被抑制。",
+        "testSending": "正在发送...",
+        "testSend": "发送测试通知",
+        "testSuccess": "成功",
+        "testFailure": "失败：{{error}}"
+    },
+    "project": {
+        "selectProject": "选择项目",
+        "hidden": "（已隐藏）",
+        "loading": "正在加载设置...",
+        "loadError": "加载设置时发生了错误。",
+        "retry": "重试",
+        "noProjects": "未找到项目。",
+        "modelOverride": "模型覆盖",
+        "projectOverride": "（项目覆盖）",
+        "useGlobalDefault": "使用全局默认值（当前：{{value}}）",
+        "permissionOverride": "权限模式覆盖",
+        "hideInSidebar": "在侧边栏中隐藏此项目",
+        "resetToGlobal": "重置为全局默认值",
+        "noOverrides": "当前没有项目覆盖设置。"
+    },
+    "about": {
+        "issuesAndSuggestions": "错误报告和功能请求",
+        "githubIssuesAriaLabel": "前往 GitHub Issues（新标签页）",
+        "serverStatus": "服务器状态",
+        "checking": "正在检查...",
+        "connectionFailed": "服务器连接失败",
+        "retryCheckAriaLabel": "重新检查服务器状态",
+        "retry": "重试",
+        "status": "状态",
+        "statusHealthy": "正常",
+        "statusUnhealthy": "异常",
+        "version": "版本",
+        "serverTime": "服务器时间",
+        "madeBy": "开发者：",
+        "license": "{{name}} 许可证",
+        "githubIssuesLink": "GitHub Issues"
+    },
+    "help": {
+        "basicChat": "基本聊天用法",
+        "basicChatItems": [
+            "在聊天输入框中输入消息，按 Enter（桌面端）或发送按钮（移动端）发送",
+            "图片附件：通过回形针图标上传图片或粘贴（Ctrl+V）",
+            "新建会话：点击标题栏中的「+」按钮开始新的聊天会话",
+            "切换会话：通过时钟图标访问之前的会话"
+        ],
+        "slashCommands": "斜杠命令",
+        "slashCommandItems": [
+            "在聊天输入框中输入 / 查看可用命令",
+            "常用命令可以添加到收藏夹",
+            "添加收藏：在命令面板中点击星标或长按",
+            "收藏的命令将作为快捷按钮显示在输入区域上方"
+        ],
+        "permissionMode": "权限模式",
+        "permissionPlanLabel": "Plan",
+        "permissionPlanDesc": "在修改代码前先建议计划",
+        "permissionDefaultLabel": "Ask before edits (默认)",
+        "permissionDefaultDesc": "编辑文件前始终请求确认",
+        "permissionAutoLabel": "Edit Automatically",
+        "permissionAutoDesc": "自动执行文件编辑",
+        "permissionNote": "您可以在设置 > 全局设置或项目设置中更改默认权限模式。",
+        "bmadMethod": "BMad Method 集成",
+        "bmadMethodItems": [
+            "BMad Method 是一个 AI 驱动的开发工作流框架",
+            "通过项目页面的「BMad 设置」按钮将 BMad Core 安装到项目中",
+            "安装后，可通过聊天右下角的 BMad 代理按钮快速调用专业代理",
+            "代理包括：SM（Scrum Master）、PM（项目经理）、Dev（开发者）、QA（质量保证）等"
+        ],
+        "keyboardShortcuts": "键盘快捷键",
+        "shortcutKey": "快捷键",
+        "shortcutAction": "操作",
+        "shortcuts": {
+            "enter": "发送消息（桌面端）",
+            "shiftEnter": "换行（桌面端）",
+            "escape": "停止流式响应 / 关闭弹窗",
+            "ctrlC": "停止流式响应（未选中文本时）",
+            "f7": "在 Diff 查看器中导航更改（上一个/下一个）",
+            "slash": "打开斜杠命令面板"
+        }
+    },
+    "account": {
+        "info": {
+            "title": "Claude Code 账户",
+            "email": "邮箱",
+            "subscription": "订阅计划",
+            "provider": "提供方",
+            "organization": "组织",
+            "fetchedAt": "最后获取",
+            "never": "无",
+            "refresh": "刷新",
+            "refreshing": "刷新中...",
+            "refreshed": "账户信息已更新。",
+            "refreshFailed": "无法获取账户信息。请先开始一次聊天后重试。",
+            "emptyHint": "发送首条聊天消息后会自动填充。也可以点击“刷新”立即获取。",
+            "usage": "用量",
+            "fiveHour": "5 小时窗口",
+            "sevenDay": "7 天窗口",
+            "resetAt": "重置时间：{{reset}}",
+            "usageEmpty": "暂无用量信息。仅对 Claude.ai 订阅用户开放。"
+        },
+        "changePassword": "修改密码",
+        "currentPassword": "当前密码",
+        "newPassword": "新密码",
+        "confirmNewPassword": "确认新密码",
+        "passwordMismatch": "两次输入的新密码不一致。",
+        "changePasswordButton": "修改密码",
+        "changing": "修改中...",
+        "changeSuccess": "密码已更改。请重新登录。",
+        "changeFailed": "修改密码失败。",
+        "session": "会话",
+        "logout": "退出登录",
+        "logoutDesc": "从此设备退出登录。"
+    },
+    "tabs": {
+        "global": "全局设置",
+        "project": "项目设置",
+        "telegram": "Telegram 通知",
+        "notifications": "通知",
+        "advanced": "高级设置",
+        "account": "Claude 账户",
+        "user": "Hammoc 用户",
+        "help": "帮助",
+        "about": "关于"
+    },
+    "harness": {
+        "workbench": {
+            "title": "Harness 工作台",
+            "nav": {
+                "general": "通用",
+                "plugins": "插件",
+                "skills": "技能",
+                "mcps": "MCP",
+                "hooks": "钩子"
+            }
+        },
+        "skill": {
+            "empty": {
+                "title": "未安装任何技能。",
+                "description": "请在 <projectRoot>/.claude/skills/ 或 ~/.claude/skills/ 下添加技能,或安装一个插件包。"
+            },
+            "scopeBadge": {
+                "project": "项目",
+                "user": "全局",
+                "plugin": "插件",
+                "pluginWithKey": "插件: {{key}}"
+            },
+            "activeSourceTooltip": "{{active}} 已生效 — {{shadowed}} 被遮挡。",
+            "bundle": {
+                "title": "捆绑资源",
+                "references": {
+                    "count": "参考文件 {{count}}"
+                },
+                "examples": {
+                    "count": "示例 {{count}}"
+                },
+                "scripts": {
+                    "count": "脚本 {{count}}"
+                },
+                "assets": {
+                    "count": "资源 {{count}}"
+                },
+                "binaryReadOnly": "二进制文件 — Hammoc UI 无法编辑。",
+                "truncated": "已截断 (>1MB)。",
+                "truncatedAtDepth": "更深的目录层级不再显示。"
+            },
+            "copy": {
+                "menuLabel": "复制操作",
+                "toUser": {
+                    "label": "复制到全局 →"
+                },
+                "toProject": {
+                    "label": "拉取到项目 ←"
+                },
+                "overrideToProject": {
+                    "label": "覆盖克隆 (项目)"
+                },
+                "overrideToUser": {
+                    "label": "覆盖克隆 (全局)"
+                },
+                "conflict": {
+                    "title": "技能名称冲突",
+                    "intro": "将 {{name}} 复制到 {{targetScope}}。",
+                    "overwrite": "覆盖现有技能",
+                    "skip": "跳过 — 保留现有",
+                    "rename": "重命名并添加",
+                    "renameLabel": "新技能名称",
+                    "renameInvalid": "无效的名称 — 为空、未更改或包含保留字符。",
+                    "submit": "继续",
+                    "cancel": "取消",
+                    "close": "关闭",
+                    "success": "已将 {{name}} 复制到 {{targetScope}}。"
+                },
+                "error": {
+                    "crossDevice": "该技能位于跨挂载点的位置,无法自动复制 — 请使用外部文件管理器。"
+                }
+            },
+            "editor": {
+                "close": "关闭",
+                "loading": "加载中…",
+                "loadingEditor": "加载编辑器…",
+                "saving": "保存中…",
+                "modeForm": "表单",
+                "modeRaw": "Raw",
+                "frontmatter": {
+                    "title": "Frontmatter",
+                    "name": "名称",
+                    "description": "描述",
+                    "version": "版本",
+                    "versionPlaceholder": "0.1.0"
+                },
+                "body": {
+                    "title": "正文",
+                    "editLabel": "编辑",
+                    "previewLabel": "预览"
+                },
+                "raw": {
+                    "title": "Raw SKILL.md"
+                },
+                "preview": {
+                    "title": "预览"
+                },
+                "required": {
+                    "name": "名称为必填项。",
+                    "description": "描述为必填项。"
+                },
+                "rawParseError": "无法解析 frontmatter — 请修复 YAML 围栏后再返回表单模式。",
+                "staleBanner": "该技能在外部被修改 — 你的保存被拒绝。已重新加载最新内容。"
+            },
+            "malformed": {
+                "title": "因 frontmatter 无效,以下技能未显示:"
+            },
+            "cardOpen": "打开 {{name}}"
+        },
+        "mcp": {
+            "empty": {
+                "title": "尚未配置 MCP 服务器。",
+                "description": "在 <projectRoot>/.mcp.json 或 ~/.claude/.mcp.json 中添加 mcpServers 条目，或安装包含 MCP 服务器的插件包。",
+                "noGlobalSupport": "此版本的 Claude Code 不识别全局 MCP 文件 — 仅显示项目范围和插件包内的 MCP。"
+            },
+            "scopeBadge": {
+                "project": "项目",
+                "user": "全局",
+                "plugin": "插件",
+                "pluginWithKey": "插件: {{key}}"
+            },
+            "type": {
+                "stdio": "stdio",
+                "sse": "sse",
+                "http": "http",
+                "ws": "ws"
+            },
+            "toggle": {
+                "on": "已启用",
+                "off": "已禁用",
+                "disabledByBackup": "已禁用 (移至备份)"
+            },
+            "banner": {
+                "freshSpawn": "将在下一条用户消息中生效。",
+                "newSession": "开始新会话",
+                "dismiss": "关闭"
+            },
+            "activeSourceTooltip": "{{active}} 已生效 — {{shadowed}} 被遮蔽。",
+            "copy": {
+                "menuLabel": "复制操作",
+                "toUser": {
+                    "label": "复制到全局 →"
+                },
+                "toProject": {
+                    "label": "拉取到项目 ←"
+                },
+                "overrideToProject": {
+                    "label": "覆盖克隆 (项目)"
+                },
+                "overrideToUser": {
+                    "label": "覆盖克隆 (全局)"
+                },
+                "secret": {
+                    "title": "检测到疑似密钥的值",
+                    "intro": "以下字段看起来像密钥，将以明文形式被复制:",
+                    "ack": "我了解并希望在包含密钥的情况下复制。",
+                    "submit": "包含密钥复制",
+                    "cancel": "取消"
+                },
+                "conflict": {
+                    "title": "服务器名称冲突",
+                    "intro": "将 {{name}} 复制到 {{targetScope}}。",
+                    "overwrite": "覆盖现有服务器",
+                    "skip": "跳过 — 保留现有",
+                    "rename": "重命名后添加",
+                    "renameLabel": "新服务器名称",
+                    "renameInvalid": "无效名称 — 为空、未变更或包含保留字符。",
+                    "submit": "继续",
+                    "cancel": "取消",
+                    "close": "关闭",
+                    "success": "已将 {{name}} 复制到 {{targetScope}}。",
+                    "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 引用在插件包外可能无法解析。"
+                },
+                "error": {
+                    "crossDevice": "此服务器跨越挂载边界，无法自动复制 — 请使用外部文件管理器。"
+                }
+            },
+            "editor": {
+                "close": "关闭",
+                "loading": "加载中…",
+                "loadingEditor": "正在加载编辑器…",
+                "modeForm": "表单",
+                "modeRaw": "Raw",
+                "type": "Type",
+                "command": "Command",
+                "args": "Arguments (每行一个)",
+                "url": "URL",
+                "headers": "Headers",
+                "env": "环境变量",
+                "headersKey": "Header 名称",
+                "headersValue": "Header 值",
+                "envKey": "变量名",
+                "envValue": "变量值",
+                "addRow": "+ 添加",
+                "removeRow": "删除行",
+                "maskToggle": "显示 / 隐藏值",
+                "required": {
+                    "command": "stdio 类型要求 command 字段。",
+                    "url": "{{type}} 类型要求 url 字段。"
+                },
+                "typeChange": {
+                    "title": "更改 Type 将丢弃部分字段",
+                    "intro": "从 {{from}} 切换到 {{to}} 会移除不适用于新类型的字段。",
+                    "submit": "继续",
+                    "cancel": "取消"
+                },
+                "rawParseError": "无法解析服务器配置 — 修正 JSON 以返回到表单模式。",
+                "staleBanner": "此服务器配置已被外部修改。请选择从磁盘重新加载，或用当前编辑内容覆盖磁盘版本。",
+                "staleReload": "从磁盘重新加载",
+                "staleOverwrite": "覆盖磁盘版本",
+                "delete": {
+                    "label": "删除服务器",
+                    "confirm": "从 {{scope}} 删除 {{name}}?",
+                    "submit": "删除"
+                }
+            },
+            "malformed": {
+                "title": "由于配置无效，部分 MCP 服务器已被排除:"
+            },
+            "cardOpen": "打开 {{name}}",
+            "secret": {
+                "marker": "疑似密钥的值",
+                "envRefMarker": "环境变量引用"
+            }
+        },
+        "hook": {
+            "empty": {
+                "title": "尚未配置任何钩子。",
+                "description": "请在 <projectRoot>/.claude/settings.json 或 ~/.claude/settings.json 的 hooks 字段下添加钩子，或安装包含钩子的插件包。",
+                "perEvent": "{{event}} 事件下没有钩子。点击 + 添加 创建一个。"
+            },
+            "events": {
+                "PreToolUse": "PreToolUse",
+                "PostToolUse": "PostToolUse",
+                "Stop": "Stop",
+                "SubagentStop": "SubagentStop",
+                "SessionStart": "SessionStart",
+                "SessionEnd": "SessionEnd",
+                "UserPromptSubmit": "UserPromptSubmit",
+                "PreCompact": "PreCompact",
+                "Notification": "Notification"
+            },
+            "scopeBadge": {
+                "project": "项目",
+                "user": "全局",
+                "plugin": "插件",
+                "pluginWithKey": "插件: {{key}}"
+            },
+            "type": {
+                "command": "command",
+                "prompt": "prompt"
+            },
+            "toggle": {
+                "on": "已启用",
+                "off": "已禁用",
+                "disabledByBackup": "已禁用 (移到备份)",
+                "readOnly": "只读 (插件)"
+            },
+            "banner": {
+                "freshSpawn": "在下一条用户消息后生效。",
+                "newSession": "开始新会话",
+                "dismiss": "关闭",
+                "promptCost": "prompt 类型钩子每次触发都会调用 LLM, 产生费用与延迟。"
+            },
+            "parallelExecutionBadge_one": "将与另一来源的 1 个钩子并行执行。",
+            "parallelExecutionBadge_other": "将与其他来源的 {{count}} 个钩子并行执行。",
+            "matcher": {
+                "empty": "(匹配所有调用)"
+            },
+            "add": "添加",
+            "copy": {
+                "menuLabel": "复制操作",
+                "toUser": {
+                    "label": "复制到全局 →"
+                },
+                "toProject": {
+                    "label": "复制到项目 ←"
+                },
+                "overrideToProject": {
+                    "label": "覆盖克隆 (项目)"
+                },
+                "overrideToUser": {
+                    "label": "覆盖克隆 (全局)"
+                },
+                "warning": {
+                    "title": "复制前请检查钩子内容",
+                    "commandIntro": "此钩子会执行任意 Shell 命令。请勿从不可信来源复制钩子。",
+                    "promptIntro": "此钩子每次触发都会调用 LLM, 产生费用与延迟。请审阅内容后再继续。",
+                    "bodyPreview": "内容:",
+                    "secretPaths": "在以下位置检测到疑似密钥: {{paths}}.",
+                    "ack": "我已审阅内容并确认复制。",
+                    "submit": "复制",
+                    "cancel": "取消"
+                },
+                "conflict": {
+                    "title": "已存在相同的钩子",
+                    "intro": "{{targetScope}} 中已存在相同 matcher 与内容的钩子。",
+                    "overwrite": "覆盖现有钩子",
+                    "skip": "跳过 — 保留现有",
+                    "duplicate": "继续添加 (重复)",
+                    "submit": "继续",
+                    "cancel": "取消",
+                    "close": "关闭",
+                    "success": "已将 {{event}} 钩子复制到 {{targetScope}}.",
+                    "duplicateInfo": "已添加重复 — 两条钩子将并行执行。",
+                    "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 在插件包外不会解析。"
+                }
+            },
+            "editor": {
+                "close": "关闭",
+                "loading": "加载中…",
+                "loadingEditor": "加载编辑器…",
+                "modeForm": "表单",
+                "modeRaw": "Raw",
+                "event": "事件",
+                "matcher": {
+                    "matchAllHint": "(空 matcher = 匹配所有调用)",
+                    "invalidRegex": "matcher 不是有效的正则表达式。",
+                    "ignoredOnEvent": "{{event}} 事件下 matcher 会被忽略。",
+                    "sharedWithSiblings": "此 matcher 与同组的另外 {{count}} 个钩子共享。",
+                    "saveButton": "保存 matcher",
+                    "applyOption": {
+                        "title": "matcher 变更应用范围:",
+                        "sharedWithSiblings": "同组所有 {{count}} 个钩子 (默认 — 保持组完整)",
+                        "splitFromGroup": "仅此钩子 (拆分为新组)",
+                        "afterSplitToast": "此钩子已移到新组 — 同组钩子保持原 matcher 不变。"
+                    }
+                },
+                "type": "类型",
+                "command": "Command",
+                "prompt": "Prompt",
+                "timeout": "超时 (秒)",
+                "saving": "保存中…",
+                "create": "创建钩子",
+                "createTitle": "新建 {{event}} 钩子",
+                "editTitle": "编辑 {{event}} 钩子",
+                "matcherHelp": "Matcher 说明 — 允许正则 / 通配符 / 管道。空 = 匹配所有。",
+                "timeoutHint": "0 或留空 = 使用 Claude Code 默认值。",
+                "promptTypeUnsupported": "此 CLI 版本不支持 prompt 类型钩子。",
+                "secretMarker": "疑似密钥的值",
+                "required": {
+                    "command": "type=command 时 command 内容必填。",
+                    "prompt": "type=prompt 时 prompt 内容必填。"
+                },
+                "rawParseError": "无法解析 JSON — 修复后才能返回表单模式。",
+                "rawSaveButton": "保存原始 JSON",
+                "staleBanner": "外部已修改此钩子 — 请选择处理方式。",
+                "staleReload": "从磁盘重新加载",
+                "staleOverwrite": "覆盖磁盘版本",
+                "delete": {
+                    "label": "删除钩子",
+                    "confirm": "删除此 {{event}} 钩子?",
+                    "submit": "删除"
+                },
+                "decisionTemplate": {
+                    "label": "插入 PreToolUse 决定模板",
+                    "allow": "允许",
+                    "deny": "拒绝",
+                    "ask": "询问用户"
+                },
+                "decisionForm": {
+                    "title": "PreToolUse 决定生成器",
+                    "collapsedHint": "通过表单生成 permissionDecision JSON, 或使用下方快速模板。",
+                    "decisionLabel": "决定",
+                    "decisionAllow": "允许",
+                    "decisionDeny": "拒绝",
+                    "decisionAsk": "询问用户",
+                    "systemMessageLabel": "系统消息 (可选)",
+                    "systemMessagePlaceholder": "拒绝 / 询问的原因。留空表示忽略。",
+                    "updatedInputLabel": "Updated input JSON (仅 allow — 可选)",
+                    "updatedInputPlaceholder": "{ \"file_path\": \"…\" }",
+                    "updatedInputInvalid": "Updated input 必须是有效的 JSON.",
+                    "insertModeLabel": "插入模式",
+                    "insertModePrepend": "添加到内容开头",
+                    "insertModeReplace": "替换全部内容",
+                    "generateButton": "从表单生成 Shell 代码片段"
+                },
+                "matcherLabel": "Matcher"
+            },
+            "malformed": {
+                "title": "因配置无效, 以下钩子已被跳过:"
+            },
+            "cardOpen": "打开钩子"
+        },
+        "plugin": {
+            "empty": "未安装任何插件。",
+            "emptyHint": "请在 Claude Code CLI 中使用 `/plugin install` 安装后返回此处。",
+            "scope": {
+                "user": "全局",
+                "project": "项目"
+            },
+            "type": {
+                "standard": "标准",
+                "externalMcp": "外部 MCP"
+            },
+            "counts": {
+                "skills": "技能",
+                "commands": "命令",
+                "agents": "代理",
+                "hooks": "钩子",
+                "mcpServers": "MCP 服务器"
+            },
+            "toggle": {
+                "on": "已启用",
+                "off": "已停用"
+            },
+            "banner": {
+                "freshSpawn": "下一次用户输入后生效。",
+                "longStream": "当前会话结束后在新会话中生效。若要立即应用，请开启新会话。",
+                "newSession": "开启新会话",
+                "dismiss": "关闭"
+            },
+            "projectScopeDisabled": "属于其他项目",
+            "projectScopeAmbiguous": "缺少项目路径 — 只读",
+            "scopeHint": "将修改全局设置",
+            "readonly": {
+                "forbidden": "只读环境：无写入权限。"
+            }
+        }
+    },
+    "permissionMode": {
+        "planDescription": "Claude 只制定计划，不修改文件",
+        "askDescription": "修改文件前请求批准",
+        "autoDescription": "自动批准文件修改",
+        "bypassDescription": "跳过所有权限请求",
+        "selectorAria": "权限模式：{{label}}。{{description}}。点击切换到下一个模式"
+    },
+    "layout": {
+        "narrowAria": "切换到窄布局",
+        "wideAria": "切换到宽布局",
+        "narrowTitle": "窄布局",
+        "wideTitle": "宽布局"
+    },
+    "theme": {
+        "lightAria": "切换到浅色模式",
+        "darkAria": "切换到深色模式"
+    },
+    "webPush": {
+        "title": "Web推送通知",
+        "description": "在此设备上接收浏览器推送通知。支持Android、桌面浏览器和iOS PWA（16.4+）。",
+        "iosHint": "在iOS上，需要将Hammoc安装为PWA（添加到主屏幕）才能使用Web推送。",
+        "notSupported": "此浏览器不支持Web推送。",
+        "permissionDenied": "通知权限被拒绝。请在浏览器设置中允许。",
+        "enableNotifications": "启用Web推送通知",
+        "enableHint": "启用后，推送通知将与Telegram一起发送。",
+        "subscribed": "此浏览器已订阅",
+        "notSubscribed": "此浏览器未订阅",
+        "subscribe": "订阅此浏览器",
+        "unsubscribe": "取消订阅",
+        "subscribedDevices": "{{count}}个设备已订阅",
+        "testSend": "发送测试推送",
+        "testSending": "发送中...",
+        "testSuccess": "测试推送通知已发送！",
+        "testFailure": "发送失败：{{error}}",
+        "subscribeSuccess": "此浏览器已启用推送通知。",
+        "subscribeError": "订阅失败，请重试。",
+        "unsubscribeSuccess": "此浏览器已禁用推送通知。",
+        "unsubscribeError": "取消订阅失败，请重试。",
+        "enabled": "Web推送通知已启用",
+        "disabled": "Web推送通知已禁用",
+        "loadError": "加载Web推送设置失败。",
+        "retry": "重试"
+    },
+    "page": {
+        "title": "设置",
+        "backAriaLabel": "返回"
     }
-  },
-  "permissionMode": {
-    "planDescription": "Claude 只制定计划，不修改文件",
-    "askDescription": "修改文件前请求批准",
-    "autoDescription": "自动批准文件修改",
-    "bypassDescription": "跳过所有权限请求",
-    "selectorAria": "权限模式：{{label}}。{{description}}。点击切换到下一个模式"
-  },
-  "layout": {
-    "narrowAria": "切换到窄布局",
-    "wideAria": "切换到宽布局",
-    "narrowTitle": "窄布局",
-    "wideTitle": "宽布局"
-  },
-  "theme": {
-    "lightAria": "切换到浅色模式",
-    "darkAria": "切换到深色模式"
-  },
-  "webPush": {
-    "title": "Web推送通知",
-    "description": "在此设备上接收浏览器推送通知。支持Android、桌面浏览器和iOS PWA（16.4+）。",
-    "iosHint": "在iOS上，需要将Hammoc安装为PWA（添加到主屏幕）才能使用Web推送。",
-    "notSupported": "此浏览器不支持Web推送。",
-    "permissionDenied": "通知权限被拒绝。请在浏览器设置中允许。",
-    "enableNotifications": "启用Web推送通知",
-    "enableHint": "启用后，推送通知将与Telegram一起发送。",
-    "subscribed": "此浏览器已订阅",
-    "notSubscribed": "此浏览器未订阅",
-    "subscribe": "订阅此浏览器",
-    "unsubscribe": "取消订阅",
-    "subscribedDevices": "{{count}}个设备已订阅",
-    "testSend": "发送测试推送",
-    "testSending": "发送中...",
-    "testSuccess": "测试推送通知已发送！",
-    "testFailure": "发送失败：{{error}}",
-    "subscribeSuccess": "此浏览器已启用推送通知。",
-    "subscribeError": "订阅失败，请重试。",
-    "unsubscribeSuccess": "此浏览器已禁用推送通知。",
-    "unsubscribeError": "取消订阅失败，请重试。",
-    "enabled": "Web推送通知已启用",
-    "disabled": "Web推送通知已禁用",
-    "loadError": "加载Web推送设置失败。",
-    "retry": "重试"
-  },
-  "page": {
-    "title": "设置",
-    "backAriaLabel": "返回"
-  }
 }

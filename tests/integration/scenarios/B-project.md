@@ -470,3 +470,78 @@
 - `command` / `args` / `url` / `headers` 의 type 별 인라인 에러가 100ms 안에 표시
 - type 전환 confirm 을 취소하면 원래 type 으로 복구되며 디스크는 변경 없음
 - Raw 모드에서 JSON 파싱 실패 시 폼 모드 토글이 비활성화되고 상단 배너가 안내
+
+---
+
+## B9. 하네스 Hook 섹션 (Story 28.4) `[SDK] [EDGE]`
+
+설정 → 하네스 워크벤치 → "Hooks" 좌측 네비를 통해 9개 Claude Code 이벤트 (`PreToolUse` · `PostToolUse` · `Stop` · `SubagentStop` · `SessionStart` · `SessionEnd` · `UserPromptSubmit` · `PreCompact` · `Notification`) 의 훅을 한 화면에서 조회·편집·복사·활성토글 한다. 출처는 프로젝트 `<projectRoot>/.claude/settings.json`, 전역 `~/.claude/settings.json`, 그리고 모든 설치된 플러그인 번들의 `<installPath>/hooks/hooks.json` 세 곳을 모두 스캔하며 플러그인 카드는 읽기 전용이다.
+
+### B-09-01: 9개 이벤트 카드 리스트 + 출처 배지 + matcher 미리보기 `[SDK]`
+
+**절차**:
+1. "하네스 Hooks" 패널 진입 → GET `/api/harness/hooks?projectSlug=<slug>` 호출
+2. 응답의 `cardsByEvent` 9개 키가 모두 존재하는지 확인 (등록된 훅이 없으면 빈 배열)
+3. 사전 시드된 프로젝트·전역·플러그인 훅 (각 1개씩, 같은 PreToolUse 이벤트) 이 카드 리스트에 노출되는지 확인
+4. 각 카드에 출처 배지 (프로젝트 / 전역 / 플러그인:<key>) + 타입 배지 (command / prompt) + matcher 미리보기 (mono-text, 빈 matcher 는 "(모든 호출에 매치)" 라벨) 가 표시됨
+
+**기대 결과**:
+- 9개 이벤트 섹션이 항상 표시되고, 빈 이벤트는 "+ 추가" CTA 가 노출
+- 같은 이벤트에 여러 출처의 훅이 있으면 `parallelExecutionBadge` 안내 배지가 모든 카드에 표시됨 (병렬 실행 안내)
+- 플러그인 카드는 토글 자리에 "🔒 읽기 전용" 마커, 카피 메뉴에는 "오버라이드로 복제 (프로젝트)" / "오버라이드로 복제 (전역)" 두 항목만 노출
+
+### B-09-02: command 타입 훅 신규 생성 → 새 세션에서 실행 확인 `[SDK]`
+
+**절차**:
+1. PreToolUse 섹션 헤더의 "+ 추가" 클릭 → HookEditor 모달이 create 모드로 열림
+2. matcher = `Bash`, type = `command`, command = `echo '{"hookSpecificOutput":{"permissionDecision":"deny","systemMessage":"blocked"}}'` 입력 후 "훅 생성" 클릭
+3. POST `/api/harness/hooks` 200 → `<projectRoot>/.claude/settings.json` 의 `hooks.PreToolUse` 배열에 새 matcher 그룹이 append 됨
+4. `harness.hook.banner.freshSpawn` 배너 + "새 세션 시작" CTA 노출
+5. CTA 클릭 → 새 세션이 열리고, 채팅에서 Bash 도구 호출 시 hook 이 실행되어 거부 결정이 반영되는지 확인
+
+**기대 결과**:
+- 28.1 spike A 의 fresh-spawn 모델: settings.json 변경은 다음 user 메시지부터 SDK 에 반영됨
+- 디스크의 JSON 이 jsonc-parser 의 modify 로 patch 되어 주석·키 순서·트레일링 콤마가 보존됨
+
+### B-09-03: 양방향 카피 + 타입별 경고 모달 + 동일 좌표 충돌 모달 `[SDK]`
+
+**절차**:
+1. 프로젝트 카드의 ⋮ → "전역으로 복사 →" 클릭
+2. (1차) 타입 경고 모달 노출 — `command` 타입 문구 ("이 훅은 임의 셸 명령을 실행합니다…") + 본문 마스킹 없는 미리보기 + 확인 체크박스
+3. 체크박스 + "복사" 클릭 → (2차) 동일 좌표 충돌 모달 (대상 스코프에 같은 matcher+본문이 이미 있을 때만)
+4. `덮어쓰기` / `스킵` / `중복 추가` 3-way 라디오 중 `중복 추가` 선택 → POST `/api/harness/hooks/copy` 200 with `acknowledgedWarning:true, onConflict:'duplicate'`
+5. 전역 settings.json 의 `hooks.<event>` 에 새 matcher 그룹이 append 됨
+
+**기대 결과**:
+- 타입 경고 모달은 모든 카피에서 필수 (acknowledgedWarning=false 시 서버가 `HARNESS_FORBIDDEN.cause:'type-warning-not-acknowledged'` 로 거부)
+- prompt 타입은 "LLM 비용 발생" 문구 + 시크릿 휴리스틱 매치 시 시크릿 라벨 추가
+- duplicate 시 토스트 "중복 추가됨 — 두 훅이 모두 병렬 실행됩니다" 안내
+
+### B-09-04: 활성/비활성 토글 + 백업 파일 우회 트랜잭션 + STALE_WRITE 인버스 op `[EDGE]`
+
+**절차**:
+1. 활성 user-scope 카드의 토글 버튼 클릭 → PUT `/api/harness/hooks/:event/:gi/:hi` `{enabled: false, expectedMtime, expectedBackupMtime}` 호출
+2. 디스크에서 `~/.claude/settings.json` 의 해당 hook 객체가 사라지고 `~/.claude/hooks.disabled.json` 의 `hooks.<event>` 에 새 matcher 그룹으로 이동
+3. 카드의 `disabledByBackup` 마커가 노출되고 토글이 OFF 상태로 표시
+4. 다시 토글 → 백업에서 main 으로 되돌아옴
+5. 외부에서 settings.json 을 수정해 mtime 충돌 → 토글 시 STALE_WRITE 409 + `details.staleFile: 'main'` 응답, 백업 추가가 인버스 op 로 롤백됨
+
+**기대 결과**:
+- 두 파일 patch 가 트랜잭션으로 묶여 부분 실패 시 첫 단계가 롤백됨 (단위 테스트 회귀 보호)
+- `details.staleFile` 이 어느 파일이 충돌했는지 명시 — 클라이언트가 적절한 staleBanner i18n 키로 분기
+- 그룹의 hooks[] 가 비면 그룹 자체도 자동 제거되어 빈 그룹이 남지 않음
+
+### B-09-05: matcher 정규식 무효 처리 + PreToolUse 결정 빌더 + 빠른 템플릿 `[SDK]`
+
+**절차**:
+1. 프로젝트 PreToolUse + command 카드의 HookEditor 진입
+2. matcher 입력란에 `(unclosed` 입력 → 100ms 디바운스 후 인라인 에러 ("matcher 가 정규식으로 파싱되지 않습니다") 노출 + 저장 비활성
+3. matcher 를 `Write|Edit` 로 정정 → 에러 사라지고 저장 가능
+4. PreToolUse 결정 빌더 panel 펼치기 → `decision: deny` 라디오 + systemMessage 입력 + insert mode `replace` → "폼에서 셸 스니펫 생성" 클릭
+5. 본문이 `echo '{"hookSpecificOutput":{"permissionDecision":"deny","systemMessage":"…"}}'` 로 교체되고 panel 자동 collapse
+6. "허용" 빠른 템플릿 클릭 → 본문이 `echo '{"hookSpecificOutput":{"permissionDecision":"allow"}}'` + 기존 본문으로 prepend
+
+**기대 결과**:
+- matcher 검증은 `new RegExp()` 만 사용 (false-negative 허용 — CLI 실측 정합성은 후속 spike 또는 Epic 31 범위)
+- 결정 빌더의 `updatedInput` JSON 도 100ms 안에 파싱 시도하며 실패 시 generate 버튼 비활성화
+- PreToolUse 외 이벤트로 변경하면 결정 빌더 panel 이 자동으로 사라짐

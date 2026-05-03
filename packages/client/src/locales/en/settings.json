@@ -1,591 +1,784 @@
 {
-  "global": {
-    "theme": "Theme",
-    "themeOption": {
-      "dark": "Dark",
-      "light": "Light",
-      "system": "System"
-    },
-    "themeSystemUnsupported": "Samsung Internet does not support system theme detection. Please select Dark or Light manually.",
-    "defaultModel": "Default Model",
-    "language": "Language",
-    "permissionMode": "Permission Mode",
-    "permissionModeLabel": {
-      "latest": "Last Used",
-      "plan": "Plan",
-      "default": "Ask before edits",
-      "acceptEdits": "Edit Automatically",
-      "bypass": "Bypass"
-    },
-    "permissionDesc": {
-      "latest": "New sessions keep the permission mode from the previous session",
-      "plan": "Suggests a plan before code changes",
-      "default": "Always asks for confirmation before editing files",
-      "acceptEdits": "Automatically performs file edits",
-      "bypass": "Skips all permission checks (including Bash)"
-    },
-    "autoApproveSafetyChecks": "Auto-approve safety checks in Bypass mode",
-    "autoApproveSafetyChecksDesc": "When enabled, CLI safety check prompts are automatically approved without user confirmation in Bypass mode.",
-    "permissionSync": "Permission Mode Sync",
-    "permissionSyncOption": {
-      "streaming": "During streaming only",
-      "always": "Always sync"
-    },
-    "permissionSyncDesc": {
-      "streaming": "Syncs only while actively streaming (default)",
-      "always": "Always syncs and remembers per-session permission mode"
-    },
-    "markdownMode": "Markdown File Open Mode",
-    "markdownOption": {
-      "edit": "Edit",
-      "preview": "Preview"
-    },
-    "markdownDesc": "Default mode when opening markdown files.",
-    "fileExplorerView": "File Explorer Default View",
-    "fileExplorerOption": {
-      "grid": "Finder View",
-      "list": "List View"
-    },
-    "fileExplorerDesc": "Default view mode when opening the file explorer.",
-    "panelDefaultOpen": "Quick Panel Auto-Open",
-    "panelOpenOption": {
-      "on": "Auto-open on desktop",
-      "off": "Closed by default"
-    },
-    "panelDefaultOpenDesc": "Automatically open the quick panel when entering a session on desktop.",
-    "panelDefaultSide": "Quick Panel Default Side",
-    "panelSideOption": {
-      "left": "Left",
-      "right": "Right",
-      "last": "Last used"
-    },
-    "panelDefaultSideDesc": "Default side for the quick panel. 'Last used' keeps the side from the previous session.",
-    "chatTimeout": "Chat Timeout",
-    "chatTimeoutOverride": "(Set by environment variable)",
-    "chatTimeoutDesc": "Time to automatically abort request when no response is received.",
-    "timeoutOption": {
-      "1m": "1 min",
-      "3m": "3 min",
-      "5mDefault": "5 min (default)",
-      "10m": "10 min",
-      "30m": "30 min"
-    }
-  },
-  "toast": {
-    "themeChanged": "Theme changed",
-    "modelChanged": "Default model changed",
-    "permissionChanged": "Permission Mode changed",
-    "timeoutChanged": "Chat timeout changed",
-    "markdownModeChanged": "Markdown default mode changed",
-    "fileExplorerViewChanged": "File explorer default view changed",
-    "languageChanged": "Language changed",
-    "systemPromptSaved": "System prompt saved",
-    "systemPromptRestored": "Restored to default system prompt",
-    "settingChanged": "{{label}} changed",
-    "buildFailed": "Failed: {{error}}",
-    "buildFailedUnknown": "Unknown error",
-    "serverTimeout": "Server response timed out. Please check manually.",
-    "buildComplete": "Build complete! Refreshing page...",
-    "serverRestartFailed": "Server restart request failed.",
-    "alreadyLatest": "Already on the latest version.",
-    "updateCheckFailed": "Update check failed.",
-    "updateComplete": "Update complete! Refreshing page...",
-    "updateFailed": "Update request failed.",
-    "settingSaved": "Settings saved.",
-    "settingSaveFailed": "Failed to save settings.",
-    "botTokenSaved": "Bot Token saved.",
-    "botTokenDeleted": "Bot Token deleted.",
-    "chatIdSaved": "Chat ID saved.",
-    "chatIdDeleted": "Chat ID deleted.",
-    "telegramEnabled": "Telegram notifications enabled.",
-    "telegramDisabled": "Telegram notifications disabled.",
-    "testSent": "Test notification sent!",
-    "testFailed": "Test notification failed",
-    "testServerError": "Server connection error",
-    "resetToGlobal": "Reset to global defaults",
-    "settingSavedFailed": "Failed to save settings. Please try again."
-  },
-  "advanced": {
-    "serverRestart": "Server Restart",
-    "serverRestartDesc": "Builds the entire project and restarts the server in production mode",
-    "softwareUpdate": "Software Update",
-    "currentVersion": "Current version: v{{version}}",
-    "building": "Building... ({{elapsed}}s)",
-    "restarting": "Restarting... ({{elapsed}}s)",
-    "serverRebuild": "Rebuild & Restart Server",
-    "checking": "Checking...",
-    "checkUpdate": "Check for Update",
-    "updateTo": "Update to v{{version}}",
-    "updating": "Updating... ({{elapsed}}s)",
-    "latestVersion": "Already on the latest version",
-    "systemPrompt": "System Prompt",
-    "restoreDefault": "Restore Default",
-    "systemPromptWarning": "Warning:",
-    "systemPromptWarningDetail": "Incorrect system prompt modifications can significantly degrade response quality. Keep the default if you're unsure.",
-    "customPromptActive": "Custom prompt in use",
-    "promptLoading": "Loading prompt...",
-    "promptNoProject": "Select a project to view the current system prompt.",
-    "charCount": "{{count}} chars",
-    "templateVariables": "Available system variables (auto-substituted at runtime)",
-    "previewClose": "Close preview",
-    "previewOpen": "Preview for current project",
-    "maxThinkingTokens": "Max Thinking Tokens",
-    "maxThinkingTokensDesc": "Maximum tokens for model reasoning process (1,024 ~ 128,000)",
-    "maxTurns": "Max Turns",
-    "maxTurnsDesc": "Maximum turns allowed per conversation (1 ~ 100)",
-    "maxBudget": "Max Budget (USD)",
-    "maxBudgetDesc": "Maximum cost limit per query (USD, 0.01 ~ 100)",
-    "sdkDefault": "Default (High)",
-    "unlimited": "Unlimited",
-    "defaultEffort": "Default Thinking Effort",
-    "defaultEffortDesc": "Default thinking effort level for new sessions. When not set, the SDK default (High) is used.",
-    "effortOption": {
-      "low": "Low",
-      "medium": "Medium",
-      "high": "High",
-      "max": "Max"
-    },
-    "effortMaxSubscriber": "subscribers only",
-    "fileCheckpointing": "File Checkpointing",
-    "chatCheckpointing": "Chat sessions",
-    "chatCheckpointingDesc": "Save file snapshots during chat for rewind/restore",
-    "queueCheckpointing": "Queue runner",
-    "queueCheckpointingDesc": "Save file snapshots during queue execution (increases JSONL file size)",
-    "showThinkingBlocks": "Show Claude's thinking blocks",
-    "showThinkingBlocksDesc": "Displays collapsed 'thinking' blocks above responses on recent models (Opus 4.7+). Turn off for slightly faster first-token latency (cost is unchanged)."
-  },
-  "confirm": {
-    "serverRestart": "This will rebuild and restart the server. Continue?",
-    "updateVersion": "This will update to v{{version}} and restart the server. Continue?",
-    "resetAllSettings": "Reset all project settings.\n\n• Model/Permission Mode overrides will be removed\n• Project hiding will be disabled\n\nContinue?"
-  },
-  "telegram": {
-    "loadError": "An error occurred while loading Telegram settings.",
-    "retry": "Retry",
-    "setupGuide": "To set up Telegram notifications:",
-    "setupStep1Suffix": " to create a bot and get the Bot Token",
-    "setupStep2Suffix": " to get your Chat ID",
-    "botTokenAriaLabel": "Open Telegram BotFather (new tab)",
-    "chatIdAriaLabel": "Open Telegram userinfobot (new tab)",
-    "botToken": "Bot Token",
-    "chatId": "Chat ID",
-    "envOverride": "(Set by environment variable)",
-    "envPriority": "Preferences setting takes priority over environment variable.",
-    "enterBotToken": "Enter Bot Token",
-    "enterChatId": "Enter Chat ID",
-    "notConfigured": "Not configured",
-    "change": "Change",
-    "baseUrl": "Access URL",
-    "baseUrlPlaceholder": "e.g. http://192.168.1.100:3000",
-    "baseUrlHint": "URL included in notifications for quick access. Use your internal IP instead of localhost.",
-    "enableNotifications": "Enable Telegram Notifications",
-    "enableHint": "Please set Bot Token and Chat ID first.",
-    "notificationType": "Notification Types",
-    "notifyPermission": "Permission request — When 🔐 permission confirmation or ❓ question is needed",
-    "notifyComplete": "Completion — When ✅ streaming is complete",
-    "notifyError": "Error — When ❌ an error occurs during streaming",
-    "queueNotificationType": "Queue Notification Types",
-    "notifyQueueStart": "Queue start — When queue execution starts",
-    "notifyQueueComplete": "Queue complete — After all items are processed",
-    "notifyQueueError": "Queue error — On @pauseword match or SDK error",
-    "notifyQueueInput": "Queue input request — When user response is needed",
-    "alwaysNotify": "Always notify — Send even when session is visible",
-    "alwaysNotifyHint": "By default, notifications are suppressed when you're viewing the session.",
-    "testSending": "Sending...",
-    "testSend": "Send Test Notification",
-    "testSuccess": "✅ Success",
-    "testFailure": "❌ Failed: {{error}}"
-  },
-  "project": {
-    "selectProject": "Select Project",
-    "hidden": " (hidden)",
-    "loading": "Loading settings...",
-    "loadError": "An error occurred while loading settings.",
-    "retry": "Retry",
-    "noProjects": "No projects found.",
-    "modelOverride": "Model Override",
-    "projectOverride": "(project override)",
-    "useGlobalDefault": "Use global default (current: {{value}})",
-    "permissionOverride": "Permission Mode Override",
-    "hideInSidebar": "Hide this project from sidebar",
-    "resetToGlobal": "Reset to Global Defaults",
-    "noOverrides": "No project overrides currently set."
-  },
-  "about": {
-    "issuesAndSuggestions": "Bug Reports & Feature Requests",
-    "githubIssuesAriaLabel": "Go to GitHub Issues (new tab)",
-    "serverStatus": "Server Status",
-    "checking": "Checking...",
-    "connectionFailed": "Server connection failed",
-    "retryCheckAriaLabel": "Recheck server status",
-    "retry": "Retry",
-    "status": "Status",
-    "statusHealthy": "Healthy",
-    "statusUnhealthy": "Unhealthy",
-    "version": "Version",
-    "serverTime": "Server Time",
-    "madeBy": "Made by",
-    "license": "{{name}} License",
-    "githubIssuesLink": "GitHub Issues"
-  },
-  "help": {
-    "basicChat": "Basic Chat Usage",
-    "basicChatItems": [
-      "Type a message in the chat input and press Enter (desktop) or the send button (mobile) to send",
-      "Image attachment: Upload images via the clip icon or paste (Ctrl+V)",
-      "New session: Start a new chat session with the \"+\" button in the header",
-      "Switch sessions: Access previous sessions via the clock icon"
-    ],
-    "slashCommands": "Slash Commands",
-    "slashCommandItems": [
-      "Type / in the chat input to see available commands",
-      "Frequently used commands can be added to ★ favorites",
-      "Add favorites: Click ★ or long-press in the command palette",
-      "Favorites appear as quick access buttons above the input area"
-    ],
-    "permissionMode": "Permission Mode",
-    "permissionPlanLabel": "Plan",
-    "permissionPlanDesc": "Suggests a plan before code changes",
-    "permissionDefaultLabel": "Ask before edits (default)",
-    "permissionDefaultDesc": "Always asks for confirmation before editing files",
-    "permissionAutoLabel": "Edit Automatically",
-    "permissionAutoDesc": "Automatically performs file edits",
-    "permissionNote": "You can change the default Permission Mode in Settings > Global Settings or Project Settings.",
-    "bmadMethod": "BMad Method Integration",
-    "bmadMethodItems": [
-      "BMad Method is an AI-powered development workflow framework",
-      "Install BMad Core to a project via the \"BMad Setup\" button on the project page",
-      "After installation, quickly invoke specialized agents from the BMad agent button (bottom-right of chat)",
-      "Agents: SM (Scrum Master), PM (Project Manager), Dev (Developer), QA (Quality Assurance), etc."
-    ],
-    "keyboardShortcuts": "Keyboard Shortcuts",
-    "shortcutKey": "Shortcut",
-    "shortcutAction": "Action",
-    "shortcuts": {
-      "enter": "Send message (desktop)",
-      "shiftEnter": "New line (desktop)",
-      "escape": "Stop streaming / Close popup",
-      "ctrlC": "Stop streaming (when no text selected)",
-      "f7": "Navigate Diff viewer changes (next/previous)",
-      "slash": "Open slash command palette"
-    }
-  },
-  "account": {
-    "info": {
-      "title": "Claude Code Account",
-      "email": "Email",
-      "subscription": "Subscription",
-      "provider": "Provider",
-      "organization": "Organization",
-      "fetchedAt": "Last fetched",
-      "never": "Never",
-      "refresh": "Refresh",
-      "refreshing": "Refreshing...",
-      "refreshed": "Account info updated.",
-      "refreshFailed": "Could not fetch account info. Try starting a chat first, then retry.",
-      "emptyHint": "Account info fills in automatically after you send your first chat, or click Refresh to fetch now.",
-      "usage": "Usage",
-      "fiveHour": "5-hour window",
-      "sevenDay": "7-day window",
-      "resetAt": "Resets {{reset}}",
-      "usageEmpty": "Rate limit info not available. Available for Claude.ai subscribers."
-    },
-    "changePassword": "Change Password",
-    "currentPassword": "Current Password",
-    "newPassword": "New Password",
-    "confirmNewPassword": "Confirm New Password",
-    "passwordMismatch": "New passwords do not match.",
-    "changePasswordButton": "Change Password",
-    "changing": "Changing...",
-    "changeSuccess": "Password changed. Please sign in again.",
-    "changeFailed": "Failed to change password.",
-    "session": "Session",
-    "logout": "Sign Out",
-    "logoutDesc": "Sign out from this device."
-  },
-  "tabs": {
-    "global": "Global Settings",
-    "project": "Project Settings",
-    "telegram": "Telegram Notifications",
-    "notifications": "Notifications",
-    "advanced": "Advanced Settings",
-    "account": "Claude Account",
-    "user": "Hammoc User",
-    "help": "Help",
-    "about": "About"
-  },
-  "harness": {
-    "workbench": {
-      "title": "Harness Workbench",
-      "nav": {
-        "general": "General",
-        "plugins": "Plugins",
-        "skills": "Skills",
-        "mcps": "MCP"
-      }
-    },
-    "skill": {
-      "empty": {
-        "title": "No skills installed.",
-        "description": "Add skills under <projectRoot>/.claude/skills/ or ~/.claude/skills/, or install a plugin bundle."
-      },
-      "scopeBadge": {
-        "project": "Project",
-        "user": "Global",
-        "plugin": "Plugin",
-        "pluginWithKey": "Plugin: {{key}}"
-      },
-      "activeSourceTooltip": "{{active}} is active — {{shadowed}} is shadowed.",
-      "bundle": {
-        "title": "Bundle resources",
-        "references": { "count": "{{count}} references" },
-        "examples":   { "count": "{{count}} examples" },
-        "scripts":    { "count": "{{count}} scripts" },
-        "assets":     { "count": "{{count}} assets" },
-        "binaryReadOnly": "Binary file — Hammoc UI cannot edit it.",
-        "truncated": "Truncated (>1 MB).",
-        "truncatedAtDepth": "Bundle tree truncated at the depth limit."
-      },
-      "copy": {
-        "menuLabel": "Copy actions",
-        "toUser":             { "label": "Copy to global →" },
-        "toProject":          { "label": "Copy to project ←" },
-        "overrideToProject":  { "label": "Override-clone (project)" },
-        "overrideToUser":     { "label": "Override-clone (global)" },
-        "conflict": {
-          "title": "Skill name conflict",
-          "intro": "Copy {{name}} into {{targetScope}}.",
-          "overwrite": "Overwrite the existing skill",
-          "skip": "Skip — leave existing as-is",
-          "rename": "Rename and add",
-          "renameLabel": "New skill name",
-          "renameInvalid": "Invalid name — empty, unchanged, or contains reserved characters.",
-          "submit": "Continue",
-          "cancel": "Cancel",
-          "close": "Close",
-          "success": "Copied {{name}} to {{targetScope}}."
+    "global": {
+        "theme": "Theme",
+        "themeOption": {
+            "dark": "Dark",
+            "light": "Light",
+            "system": "System"
         },
-        "error": {
-          "crossDevice": "This skill lives across a mount boundary — copy with an external file manager."
+        "themeSystemUnsupported": "Samsung Internet does not support system theme detection. Please select Dark or Light manually.",
+        "defaultModel": "Default Model",
+        "language": "Language",
+        "permissionMode": "Permission Mode",
+        "permissionModeLabel": {
+            "latest": "Last Used",
+            "plan": "Plan",
+            "default": "Ask before edits",
+            "acceptEdits": "Edit Automatically",
+            "bypass": "Bypass"
+        },
+        "permissionDesc": {
+            "latest": "New sessions keep the permission mode from the previous session",
+            "plan": "Suggests a plan before code changes",
+            "default": "Always asks for confirmation before editing files",
+            "acceptEdits": "Automatically performs file edits",
+            "bypass": "Skips all permission checks (including Bash)"
+        },
+        "autoApproveSafetyChecks": "Auto-approve safety checks in Bypass mode",
+        "autoApproveSafetyChecksDesc": "When enabled, CLI safety check prompts are automatically approved without user confirmation in Bypass mode.",
+        "permissionSync": "Permission Mode Sync",
+        "permissionSyncOption": {
+            "streaming": "During streaming only",
+            "always": "Always sync"
+        },
+        "permissionSyncDesc": {
+            "streaming": "Syncs only while actively streaming (default)",
+            "always": "Always syncs and remembers per-session permission mode"
+        },
+        "markdownMode": "Markdown File Open Mode",
+        "markdownOption": {
+            "edit": "Edit",
+            "preview": "Preview"
+        },
+        "markdownDesc": "Default mode when opening markdown files.",
+        "fileExplorerView": "File Explorer Default View",
+        "fileExplorerOption": {
+            "grid": "Finder View",
+            "list": "List View"
+        },
+        "fileExplorerDesc": "Default view mode when opening the file explorer.",
+        "panelDefaultOpen": "Quick Panel Auto-Open",
+        "panelOpenOption": {
+            "on": "Auto-open on desktop",
+            "off": "Closed by default"
+        },
+        "panelDefaultOpenDesc": "Automatically open the quick panel when entering a session on desktop.",
+        "panelDefaultSide": "Quick Panel Default Side",
+        "panelSideOption": {
+            "left": "Left",
+            "right": "Right",
+            "last": "Last used"
+        },
+        "panelDefaultSideDesc": "Default side for the quick panel. 'Last used' keeps the side from the previous session.",
+        "chatTimeout": "Chat Timeout",
+        "chatTimeoutOverride": "(Set by environment variable)",
+        "chatTimeoutDesc": "Time to automatically abort request when no response is received.",
+        "timeoutOption": {
+            "1m": "1 min",
+            "3m": "3 min",
+            "5mDefault": "5 min (default)",
+            "10m": "10 min",
+            "30m": "30 min"
         }
-      },
-      "editor": {
-        "close": "Close",
-        "loading": "Loading…",
-        "loadingEditor": "Loading editor…",
-        "saving": "Saving…",
-        "modeForm": "Form",
-        "modeRaw": "Raw",
-        "frontmatter": {
-          "title": "Frontmatter",
-          "name": "Name",
-          "description": "Description",
-          "version": "Version",
-          "versionPlaceholder": "0.1.0"
-        },
-        "body": {
-          "title": "Body",
-          "editLabel": "Edit",
-          "previewLabel": "Preview"
-        },
-        "raw": { "title": "Raw SKILL.md" },
-        "preview": { "title": "Preview" },
-        "required": {
-          "name": "Name is required.",
-          "description": "Description is required."
-        },
-        "rawParseError": "Frontmatter cannot be parsed — fix the fenced YAML to return to Form mode.",
-        "staleBanner": "This skill was changed externally — your save was rejected. Latest contents loaded."
-      },
-      "malformed": {
-        "title": "Some skills were skipped because their frontmatter is invalid:"
-      },
-      "cardOpen": "Open {{name}}"
     },
-    "mcp": {
-      "empty": {
-        "title": "No MCP servers configured.",
-        "description": "Add an mcpServers entry to <projectRoot>/.mcp.json or your global ~/.claude/.mcp.json, or install a plugin bundle that includes MCP servers.",
-        "noGlobalSupport": "Claude Code does not recognise a global MCP file on this version — only project-scope and plugin-bundle MCPs are visible."
-      },
-      "scopeBadge": {
-        "project": "Project",
-        "user": "Global",
-        "plugin": "Plugin",
-        "pluginWithKey": "Plugin: {{key}}"
-      },
-      "type": { "stdio": "stdio", "sse": "sse", "http": "http", "ws": "ws" },
-      "toggle": {
-        "on": "Enabled",
-        "off": "Disabled",
-        "disabledByBackup": "Disabled (moved to backup)"
-      },
-      "banner": {
-        "freshSpawn": "Takes effect on your next user message.",
-        "newSession": "Start new session",
-        "dismiss": "Dismiss"
-      },
-      "activeSourceTooltip": "{{active}} is active — {{shadowed}} is shadowed.",
-      "copy": {
-        "menuLabel": "Copy actions",
-        "toUser":            { "label": "Copy to global →" },
-        "toProject":         { "label": "Copy to project ←" },
-        "overrideToProject": { "label": "Override-clone (project)" },
-        "overrideToUser":    { "label": "Override-clone (global)" },
-        "secret": {
-          "title": "Secret-looking values detected",
-          "intro": "The following fields look like secrets and will be copied as plain text:",
-          "ack": "I understand and want to copy with secrets.",
-          "submit": "Copy with secrets",
-          "cancel": "Cancel"
-        },
-        "conflict": {
-          "title": "Server name conflict",
-          "intro": "Copy {{name}} into {{targetScope}}.",
-          "overwrite": "Overwrite the existing server",
-          "skip": "Skip — leave existing as-is",
-          "rename": "Rename and add",
-          "renameLabel": "New server name",
-          "renameInvalid": "Invalid name — empty, unchanged, or contains reserved characters.",
-          "submit": "Continue",
-          "cancel": "Cancel",
-          "close": "Close",
-          "success": "Copied {{name}} to {{targetScope}}.",
-          "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} reference will not resolve outside the plugin bundle."
-        },
-        "error": {
-          "crossDevice": "This server lives across a mount boundary — copy with an external file manager."
-        }
-      },
-      "editor": {
-        "close": "Close",
-        "loading": "Loading…",
-        "loadingEditor": "Loading editor…",
-        "modeForm": "Form",
-        "modeRaw": "Raw",
-        "type": "Type",
-        "command": "Command",
-        "args": "Arguments (one per line)",
-        "url": "URL",
-        "headers": "Headers",
-        "env": "Environment variables",
-        "headersKey": "Header name",
-        "headersValue": "Header value",
-        "envKey": "Variable name",
-        "envValue": "Variable value",
-        "addRow": "+ Add",
-        "removeRow": "Remove row",
-        "maskToggle": "Show / hide value",
-        "required": {
-          "command": "command is required for stdio.",
-          "url": "url is required for {{type}}."
-        },
-        "typeChange": {
-          "title": "Type change will discard fields",
-          "intro": "Switching from {{from}} to {{to}} will remove fields that don't apply to the new type.",
-          "submit": "Continue",
-          "cancel": "Cancel"
-        },
-        "rawParseError": "Server config cannot be parsed — fix the JSON to return to Form mode.",
-        "staleBanner": "This server config was changed externally. Reload from disk or overwrite with your edits.",
-        "staleReload": "Reload from disk",
-        "staleOverwrite": "Overwrite disk version",
-        "delete": {
-          "label": "Delete server",
-          "confirm": "Delete {{name}} from {{scope}}?",
-          "submit": "Delete"
-        }
-      },
-      "malformed": {
-        "title": "Some MCP servers were skipped because their config is invalid:"
-      },
-      "cardOpen": "Open {{name}}",
-      "secret": {
-        "marker": "Secret-looking value",
-        "envRefMarker": "Environment variable reference"
-      }
+    "toast": {
+        "themeChanged": "Theme changed",
+        "modelChanged": "Default model changed",
+        "permissionChanged": "Permission Mode changed",
+        "timeoutChanged": "Chat timeout changed",
+        "markdownModeChanged": "Markdown default mode changed",
+        "fileExplorerViewChanged": "File explorer default view changed",
+        "languageChanged": "Language changed",
+        "systemPromptSaved": "System prompt saved",
+        "systemPromptRestored": "Restored to default system prompt",
+        "settingChanged": "{{label}} changed",
+        "buildFailed": "Failed: {{error}}",
+        "buildFailedUnknown": "Unknown error",
+        "serverTimeout": "Server response timed out. Please check manually.",
+        "buildComplete": "Build complete! Refreshing page...",
+        "serverRestartFailed": "Server restart request failed.",
+        "alreadyLatest": "Already on the latest version.",
+        "updateCheckFailed": "Update check failed.",
+        "updateComplete": "Update complete! Refreshing page...",
+        "updateFailed": "Update request failed.",
+        "settingSaved": "Settings saved.",
+        "settingSaveFailed": "Failed to save settings.",
+        "botTokenSaved": "Bot Token saved.",
+        "botTokenDeleted": "Bot Token deleted.",
+        "chatIdSaved": "Chat ID saved.",
+        "chatIdDeleted": "Chat ID deleted.",
+        "telegramEnabled": "Telegram notifications enabled.",
+        "telegramDisabled": "Telegram notifications disabled.",
+        "testSent": "Test notification sent!",
+        "testFailed": "Test notification failed",
+        "testServerError": "Server connection error",
+        "resetToGlobal": "Reset to global defaults",
+        "settingSavedFailed": "Failed to save settings. Please try again."
     },
-    "plugin": {
-      "empty": "No plugins installed.",
-      "emptyHint": "Install plugins with `/plugin install` in the Claude Code CLI, then return here.",
-      "scope": {
-        "user": "Global",
-        "project": "Project"
-      },
-      "type": {
-        "standard": "Standard",
-        "externalMcp": "External MCP"
-      },
-      "counts": {
-        "skills": "Skills",
-        "commands": "Commands",
-        "agents": "Agents",
-        "hooks": "Hooks",
-        "mcpServers": "MCP servers"
-      },
-      "toggle": {
-        "on": "Enabled",
-        "off": "Disabled"
-      },
-      "banner": {
-        "freshSpawn": "Takes effect on your next user message.",
-        "longStream": "Takes effect after the current chat ends. Start a new session to apply immediately.",
-        "newSession": "Start new session",
-        "dismiss": "Dismiss"
-      },
-      "projectScopeDisabled": "Scoped to another project",
-      "projectScopeAmbiguous": "Project path missing — read-only",
-      "scopeHint": "Edits the global settings",
-      "readonly": {
-        "forbidden": "Read-only environment: permission denied."
-      }
+    "advanced": {
+        "serverRestart": "Server Restart",
+        "serverRestartDesc": "Builds the entire project and restarts the server in production mode",
+        "softwareUpdate": "Software Update",
+        "currentVersion": "Current version: v{{version}}",
+        "building": "Building... ({{elapsed}}s)",
+        "restarting": "Restarting... ({{elapsed}}s)",
+        "serverRebuild": "Rebuild & Restart Server",
+        "checking": "Checking...",
+        "checkUpdate": "Check for Update",
+        "updateTo": "Update to v{{version}}",
+        "updating": "Updating... ({{elapsed}}s)",
+        "latestVersion": "Already on the latest version",
+        "systemPrompt": "System Prompt",
+        "restoreDefault": "Restore Default",
+        "systemPromptWarning": "Warning:",
+        "systemPromptWarningDetail": "Incorrect system prompt modifications can significantly degrade response quality. Keep the default if you're unsure.",
+        "customPromptActive": "Custom prompt in use",
+        "promptLoading": "Loading prompt...",
+        "promptNoProject": "Select a project to view the current system prompt.",
+        "charCount": "{{count}} chars",
+        "templateVariables": "Available system variables (auto-substituted at runtime)",
+        "previewClose": "Close preview",
+        "previewOpen": "Preview for current project",
+        "maxThinkingTokens": "Max Thinking Tokens",
+        "maxThinkingTokensDesc": "Maximum tokens for model reasoning process (1,024 ~ 128,000)",
+        "maxTurns": "Max Turns",
+        "maxTurnsDesc": "Maximum turns allowed per conversation (1 ~ 100)",
+        "maxBudget": "Max Budget (USD)",
+        "maxBudgetDesc": "Maximum cost limit per query (USD, 0.01 ~ 100)",
+        "sdkDefault": "Default (High)",
+        "unlimited": "Unlimited",
+        "defaultEffort": "Default Thinking Effort",
+        "defaultEffortDesc": "Default thinking effort level for new sessions. When not set, the SDK default (High) is used.",
+        "effortOption": {
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High",
+            "max": "Max"
+        },
+        "effortMaxSubscriber": "subscribers only",
+        "fileCheckpointing": "File Checkpointing",
+        "chatCheckpointing": "Chat sessions",
+        "chatCheckpointingDesc": "Save file snapshots during chat for rewind/restore",
+        "queueCheckpointing": "Queue runner",
+        "queueCheckpointingDesc": "Save file snapshots during queue execution (increases JSONL file size)",
+        "showThinkingBlocks": "Show Claude's thinking blocks",
+        "showThinkingBlocksDesc": "Displays collapsed 'thinking' blocks above responses on recent models (Opus 4.7+). Turn off for slightly faster first-token latency (cost is unchanged)."
+    },
+    "confirm": {
+        "serverRestart": "This will rebuild and restart the server. Continue?",
+        "updateVersion": "This will update to v{{version}} and restart the server. Continue?",
+        "resetAllSettings": "Reset all project settings.\n\n• Model/Permission Mode overrides will be removed\n• Project hiding will be disabled\n\nContinue?"
+    },
+    "telegram": {
+        "loadError": "An error occurred while loading Telegram settings.",
+        "retry": "Retry",
+        "setupGuide": "To set up Telegram notifications:",
+        "setupStep1Suffix": " to create a bot and get the Bot Token",
+        "setupStep2Suffix": " to get your Chat ID",
+        "botTokenAriaLabel": "Open Telegram BotFather (new tab)",
+        "chatIdAriaLabel": "Open Telegram userinfobot (new tab)",
+        "botToken": "Bot Token",
+        "chatId": "Chat ID",
+        "envOverride": "(Set by environment variable)",
+        "envPriority": "Preferences setting takes priority over environment variable.",
+        "enterBotToken": "Enter Bot Token",
+        "enterChatId": "Enter Chat ID",
+        "notConfigured": "Not configured",
+        "change": "Change",
+        "baseUrl": "Access URL",
+        "baseUrlPlaceholder": "e.g. http://192.168.1.100:3000",
+        "baseUrlHint": "URL included in notifications for quick access. Use your internal IP instead of localhost.",
+        "enableNotifications": "Enable Telegram Notifications",
+        "enableHint": "Please set Bot Token and Chat ID first.",
+        "notificationType": "Notification Types",
+        "notifyPermission": "Permission request — When 🔐 permission confirmation or ❓ question is needed",
+        "notifyComplete": "Completion — When ✅ streaming is complete",
+        "notifyError": "Error — When ❌ an error occurs during streaming",
+        "queueNotificationType": "Queue Notification Types",
+        "notifyQueueStart": "Queue start — When queue execution starts",
+        "notifyQueueComplete": "Queue complete — After all items are processed",
+        "notifyQueueError": "Queue error — On @pauseword match or SDK error",
+        "notifyQueueInput": "Queue input request — When user response is needed",
+        "alwaysNotify": "Always notify — Send even when session is visible",
+        "alwaysNotifyHint": "By default, notifications are suppressed when you're viewing the session.",
+        "testSending": "Sending...",
+        "testSend": "Send Test Notification",
+        "testSuccess": "✅ Success",
+        "testFailure": "❌ Failed: {{error}}"
+    },
+    "project": {
+        "selectProject": "Select Project",
+        "hidden": " (hidden)",
+        "loading": "Loading settings...",
+        "loadError": "An error occurred while loading settings.",
+        "retry": "Retry",
+        "noProjects": "No projects found.",
+        "modelOverride": "Model Override",
+        "projectOverride": "(project override)",
+        "useGlobalDefault": "Use global default (current: {{value}})",
+        "permissionOverride": "Permission Mode Override",
+        "hideInSidebar": "Hide this project from sidebar",
+        "resetToGlobal": "Reset to Global Defaults",
+        "noOverrides": "No project overrides currently set."
+    },
+    "about": {
+        "issuesAndSuggestions": "Bug Reports & Feature Requests",
+        "githubIssuesAriaLabel": "Go to GitHub Issues (new tab)",
+        "serverStatus": "Server Status",
+        "checking": "Checking...",
+        "connectionFailed": "Server connection failed",
+        "retryCheckAriaLabel": "Recheck server status",
+        "retry": "Retry",
+        "status": "Status",
+        "statusHealthy": "Healthy",
+        "statusUnhealthy": "Unhealthy",
+        "version": "Version",
+        "serverTime": "Server Time",
+        "madeBy": "Made by",
+        "license": "{{name}} License",
+        "githubIssuesLink": "GitHub Issues"
+    },
+    "help": {
+        "basicChat": "Basic Chat Usage",
+        "basicChatItems": [
+            "Type a message in the chat input and press Enter (desktop) or the send button (mobile) to send",
+            "Image attachment: Upload images via the clip icon or paste (Ctrl+V)",
+            "New session: Start a new chat session with the \"+\" button in the header",
+            "Switch sessions: Access previous sessions via the clock icon"
+        ],
+        "slashCommands": "Slash Commands",
+        "slashCommandItems": [
+            "Type / in the chat input to see available commands",
+            "Frequently used commands can be added to ★ favorites",
+            "Add favorites: Click ★ or long-press in the command palette",
+            "Favorites appear as quick access buttons above the input area"
+        ],
+        "permissionMode": "Permission Mode",
+        "permissionPlanLabel": "Plan",
+        "permissionPlanDesc": "Suggests a plan before code changes",
+        "permissionDefaultLabel": "Ask before edits (default)",
+        "permissionDefaultDesc": "Always asks for confirmation before editing files",
+        "permissionAutoLabel": "Edit Automatically",
+        "permissionAutoDesc": "Automatically performs file edits",
+        "permissionNote": "You can change the default Permission Mode in Settings > Global Settings or Project Settings.",
+        "bmadMethod": "BMad Method Integration",
+        "bmadMethodItems": [
+            "BMad Method is an AI-powered development workflow framework",
+            "Install BMad Core to a project via the \"BMad Setup\" button on the project page",
+            "After installation, quickly invoke specialized agents from the BMad agent button (bottom-right of chat)",
+            "Agents: SM (Scrum Master), PM (Project Manager), Dev (Developer), QA (Quality Assurance), etc."
+        ],
+        "keyboardShortcuts": "Keyboard Shortcuts",
+        "shortcutKey": "Shortcut",
+        "shortcutAction": "Action",
+        "shortcuts": {
+            "enter": "Send message (desktop)",
+            "shiftEnter": "New line (desktop)",
+            "escape": "Stop streaming / Close popup",
+            "ctrlC": "Stop streaming (when no text selected)",
+            "f7": "Navigate Diff viewer changes (next/previous)",
+            "slash": "Open slash command palette"
+        }
+    },
+    "account": {
+        "info": {
+            "title": "Claude Code Account",
+            "email": "Email",
+            "subscription": "Subscription",
+            "provider": "Provider",
+            "organization": "Organization",
+            "fetchedAt": "Last fetched",
+            "never": "Never",
+            "refresh": "Refresh",
+            "refreshing": "Refreshing...",
+            "refreshed": "Account info updated.",
+            "refreshFailed": "Could not fetch account info. Try starting a chat first, then retry.",
+            "emptyHint": "Account info fills in automatically after you send your first chat, or click Refresh to fetch now.",
+            "usage": "Usage",
+            "fiveHour": "5-hour window",
+            "sevenDay": "7-day window",
+            "resetAt": "Resets {{reset}}",
+            "usageEmpty": "Rate limit info not available. Available for Claude.ai subscribers."
+        },
+        "changePassword": "Change Password",
+        "currentPassword": "Current Password",
+        "newPassword": "New Password",
+        "confirmNewPassword": "Confirm New Password",
+        "passwordMismatch": "New passwords do not match.",
+        "changePasswordButton": "Change Password",
+        "changing": "Changing...",
+        "changeSuccess": "Password changed. Please sign in again.",
+        "changeFailed": "Failed to change password.",
+        "session": "Session",
+        "logout": "Sign Out",
+        "logoutDesc": "Sign out from this device."
+    },
+    "tabs": {
+        "global": "Global Settings",
+        "project": "Project Settings",
+        "telegram": "Telegram Notifications",
+        "notifications": "Notifications",
+        "advanced": "Advanced Settings",
+        "account": "Claude Account",
+        "user": "Hammoc User",
+        "help": "Help",
+        "about": "About"
+    },
+    "harness": {
+        "workbench": {
+            "title": "Harness Workbench",
+            "nav": {
+                "general": "General",
+                "plugins": "Plugins",
+                "skills": "Skills",
+                "mcps": "MCP",
+                "hooks": "Hooks"
+            }
+        },
+        "skill": {
+            "empty": {
+                "title": "No skills installed.",
+                "description": "Add skills under <projectRoot>/.claude/skills/ or ~/.claude/skills/, or install a plugin bundle."
+            },
+            "scopeBadge": {
+                "project": "Project",
+                "user": "Global",
+                "plugin": "Plugin",
+                "pluginWithKey": "Plugin: {{key}}"
+            },
+            "activeSourceTooltip": "{{active}} is active — {{shadowed}} is shadowed.",
+            "bundle": {
+                "title": "Bundle resources",
+                "references": {
+                    "count": "{{count}} references"
+                },
+                "examples": {
+                    "count": "{{count}} examples"
+                },
+                "scripts": {
+                    "count": "{{count}} scripts"
+                },
+                "assets": {
+                    "count": "{{count}} assets"
+                },
+                "binaryReadOnly": "Binary file — Hammoc UI cannot edit it.",
+                "truncated": "Truncated (>1 MB).",
+                "truncatedAtDepth": "Bundle tree truncated at the depth limit."
+            },
+            "copy": {
+                "menuLabel": "Copy actions",
+                "toUser": {
+                    "label": "Copy to global →"
+                },
+                "toProject": {
+                    "label": "Copy to project ←"
+                },
+                "overrideToProject": {
+                    "label": "Override-clone (project)"
+                },
+                "overrideToUser": {
+                    "label": "Override-clone (global)"
+                },
+                "conflict": {
+                    "title": "Skill name conflict",
+                    "intro": "Copy {{name}} into {{targetScope}}.",
+                    "overwrite": "Overwrite the existing skill",
+                    "skip": "Skip — leave existing as-is",
+                    "rename": "Rename and add",
+                    "renameLabel": "New skill name",
+                    "renameInvalid": "Invalid name — empty, unchanged, or contains reserved characters.",
+                    "submit": "Continue",
+                    "cancel": "Cancel",
+                    "close": "Close",
+                    "success": "Copied {{name}} to {{targetScope}}."
+                },
+                "error": {
+                    "crossDevice": "This skill lives across a mount boundary — copy with an external file manager."
+                }
+            },
+            "editor": {
+                "close": "Close",
+                "loading": "Loading…",
+                "loadingEditor": "Loading editor…",
+                "saving": "Saving…",
+                "modeForm": "Form",
+                "modeRaw": "Raw",
+                "frontmatter": {
+                    "title": "Frontmatter",
+                    "name": "Name",
+                    "description": "Description",
+                    "version": "Version",
+                    "versionPlaceholder": "0.1.0"
+                },
+                "body": {
+                    "title": "Body",
+                    "editLabel": "Edit",
+                    "previewLabel": "Preview"
+                },
+                "raw": {
+                    "title": "Raw SKILL.md"
+                },
+                "preview": {
+                    "title": "Preview"
+                },
+                "required": {
+                    "name": "Name is required.",
+                    "description": "Description is required."
+                },
+                "rawParseError": "Frontmatter cannot be parsed — fix the fenced YAML to return to Form mode.",
+                "staleBanner": "This skill was changed externally — your save was rejected. Latest contents loaded."
+            },
+            "malformed": {
+                "title": "Some skills were skipped because their frontmatter is invalid:"
+            },
+            "cardOpen": "Open {{name}}"
+        },
+        "mcp": {
+            "empty": {
+                "title": "No MCP servers configured.",
+                "description": "Add an mcpServers entry to <projectRoot>/.mcp.json or your global ~/.claude/.mcp.json, or install a plugin bundle that includes MCP servers.",
+                "noGlobalSupport": "Claude Code does not recognise a global MCP file on this version — only project-scope and plugin-bundle MCPs are visible."
+            },
+            "scopeBadge": {
+                "project": "Project",
+                "user": "Global",
+                "plugin": "Plugin",
+                "pluginWithKey": "Plugin: {{key}}"
+            },
+            "type": {
+                "stdio": "stdio",
+                "sse": "sse",
+                "http": "http",
+                "ws": "ws"
+            },
+            "toggle": {
+                "on": "Enabled",
+                "off": "Disabled",
+                "disabledByBackup": "Disabled (moved to backup)"
+            },
+            "banner": {
+                "freshSpawn": "Takes effect on your next user message.",
+                "newSession": "Start new session",
+                "dismiss": "Dismiss"
+            },
+            "activeSourceTooltip": "{{active}} is active — {{shadowed}} is shadowed.",
+            "copy": {
+                "menuLabel": "Copy actions",
+                "toUser": {
+                    "label": "Copy to global →"
+                },
+                "toProject": {
+                    "label": "Copy to project ←"
+                },
+                "overrideToProject": {
+                    "label": "Override-clone (project)"
+                },
+                "overrideToUser": {
+                    "label": "Override-clone (global)"
+                },
+                "secret": {
+                    "title": "Secret-looking values detected",
+                    "intro": "The following fields look like secrets and will be copied as plain text:",
+                    "ack": "I understand and want to copy with secrets.",
+                    "submit": "Copy with secrets",
+                    "cancel": "Cancel"
+                },
+                "conflict": {
+                    "title": "Server name conflict",
+                    "intro": "Copy {{name}} into {{targetScope}}.",
+                    "overwrite": "Overwrite the existing server",
+                    "skip": "Skip — leave existing as-is",
+                    "rename": "Rename and add",
+                    "renameLabel": "New server name",
+                    "renameInvalid": "Invalid name — empty, unchanged, or contains reserved characters.",
+                    "submit": "Continue",
+                    "cancel": "Cancel",
+                    "close": "Close",
+                    "success": "Copied {{name}} to {{targetScope}}.",
+                    "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} reference will not resolve outside the plugin bundle."
+                },
+                "error": {
+                    "crossDevice": "This server lives across a mount boundary — copy with an external file manager."
+                }
+            },
+            "editor": {
+                "close": "Close",
+                "loading": "Loading…",
+                "loadingEditor": "Loading editor…",
+                "modeForm": "Form",
+                "modeRaw": "Raw",
+                "type": "Type",
+                "command": "Command",
+                "args": "Arguments (one per line)",
+                "url": "URL",
+                "headers": "Headers",
+                "env": "Environment variables",
+                "headersKey": "Header name",
+                "headersValue": "Header value",
+                "envKey": "Variable name",
+                "envValue": "Variable value",
+                "addRow": "+ Add",
+                "removeRow": "Remove row",
+                "maskToggle": "Show / hide value",
+                "required": {
+                    "command": "command is required for stdio.",
+                    "url": "url is required for {{type}}."
+                },
+                "typeChange": {
+                    "title": "Type change will discard fields",
+                    "intro": "Switching from {{from}} to {{to}} will remove fields that don't apply to the new type.",
+                    "submit": "Continue",
+                    "cancel": "Cancel"
+                },
+                "rawParseError": "Server config cannot be parsed — fix the JSON to return to Form mode.",
+                "staleBanner": "This server config was changed externally. Reload from disk or overwrite with your edits.",
+                "staleReload": "Reload from disk",
+                "staleOverwrite": "Overwrite disk version",
+                "delete": {
+                    "label": "Delete server",
+                    "confirm": "Delete {{name}} from {{scope}}?",
+                    "submit": "Delete"
+                }
+            },
+            "malformed": {
+                "title": "Some MCP servers were skipped because their config is invalid:"
+            },
+            "cardOpen": "Open {{name}}",
+            "secret": {
+                "marker": "Secret-looking value",
+                "envRefMarker": "Environment variable reference"
+            }
+        },
+        "hook": {
+            "empty": {
+                "title": "No hooks configured.",
+                "description": "Add a hook entry to <projectRoot>/.claude/settings.json or your global ~/.claude/settings.json under the hooks field, or install a plugin bundle that registers hooks.",
+                "perEvent": "No hooks for {{event}}. Click + Add to create one."
+            },
+            "events": {
+                "PreToolUse": "PreToolUse",
+                "PostToolUse": "PostToolUse",
+                "Stop": "Stop",
+                "SubagentStop": "SubagentStop",
+                "SessionStart": "SessionStart",
+                "SessionEnd": "SessionEnd",
+                "UserPromptSubmit": "UserPromptSubmit",
+                "PreCompact": "PreCompact",
+                "Notification": "Notification"
+            },
+            "scopeBadge": {
+                "project": "Project",
+                "user": "Global",
+                "plugin": "Plugin",
+                "pluginWithKey": "Plugin: {{key}}"
+            },
+            "type": {
+                "command": "command",
+                "prompt": "prompt"
+            },
+            "toggle": {
+                "on": "Enabled",
+                "off": "Disabled",
+                "disabledByBackup": "Disabled (moved to backup)",
+                "readOnly": "Read-only (plugin)"
+            },
+            "banner": {
+                "freshSpawn": "Takes effect on your next user message.",
+                "newSession": "Start new session",
+                "dismiss": "Dismiss",
+                "promptCost": "Prompt-type hooks invoke the LLM each time and incur cost/latency."
+            },
+            "parallelExecutionBadge_one": "Runs in parallel with 1 hook from another source.",
+            "parallelExecutionBadge_other": "Runs in parallel with {{count}} hooks from other sources.",
+            "matcher": {
+                "empty": "(matches all calls)"
+            },
+            "add": "Add",
+            "copy": {
+                "menuLabel": "Copy actions",
+                "toUser": {
+                    "label": "Copy to global →"
+                },
+                "toProject": {
+                    "label": "Copy to project ←"
+                },
+                "overrideToProject": {
+                    "label": "Override-clone (project)"
+                },
+                "overrideToUser": {
+                    "label": "Override-clone (global)"
+                },
+                "warning": {
+                    "title": "Review hook before copying",
+                    "commandIntro": "This hook runs an arbitrary shell command on every trigger. Make sure you trust the source.",
+                    "promptIntro": "This hook invokes the LLM on every trigger and incurs cost and latency.",
+                    "bodyPreview": "Body:",
+                    "secretPaths": "Secret-looking values detected at: {{paths}}.",
+                    "ack": "I have reviewed the body and want to copy.",
+                    "submit": "Copy",
+                    "cancel": "Cancel"
+                },
+                "conflict": {
+                    "title": "An identical hook already exists",
+                    "intro": "An entry with the same matcher and body already exists in {{targetScope}}.",
+                    "overwrite": "Overwrite the existing hook",
+                    "skip": "Skip — leave existing as-is",
+                    "duplicate": "Add anyway (creates a duplicate)",
+                    "submit": "Continue",
+                    "cancel": "Cancel",
+                    "close": "Close",
+                    "success": "Copied {{event}} hook to {{targetScope}}.",
+                    "duplicateInfo": "Duplicate added — both entries will run in parallel.",
+                    "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} reference will not resolve outside the plugin bundle."
+                }
+            },
+            "editor": {
+                "close": "Close",
+                "loading": "Loading…",
+                "loadingEditor": "Loading editor…",
+                "modeForm": "Form",
+                "modeRaw": "Raw",
+                "event": "Event",
+                "matcher": {
+                    "matchAllHint": "(Empty matcher = match all calls.)",
+                    "invalidRegex": "Matcher must be a valid regex.",
+                    "ignoredOnEvent": "{{event}} ignores matcher — leave empty.",
+                    "sharedWithSiblings": "This matcher is shared with {{count}} other hook(s) in the same group.",
+                    "saveButton": "Save matcher",
+                    "applyOption": {
+                        "title": "Apply matcher change to:",
+                        "sharedWithSiblings": "All {{count}} hook(s) in this group (default — keeps the group intact)",
+                        "splitFromGroup": "Only this hook (extract it into its own group)",
+                        "afterSplitToast": "This hook moved to a new group — sibling hooks kept the original matcher."
+                    }
+                },
+                "type": "Type",
+                "command": "Command",
+                "prompt": "Prompt",
+                "timeout": "Timeout (seconds)",
+                "saving": "Saving…",
+                "create": "Create hook",
+                "createTitle": "New {{event}} hook",
+                "editTitle": "Edit {{event}} hook",
+                "matcherHelp": "Matcher info — regex/pipes/wildcards allowed. Empty = match all.",
+                "timeoutHint": "0 or empty = use Claude Code default.",
+                "promptTypeUnsupported": "This CLI version does not support prompt-type hooks.",
+                "secretMarker": "Secret-looking value",
+                "required": {
+                    "command": "command body is required for type=command.",
+                    "prompt": "prompt body is required for type=prompt."
+                },
+                "rawParseError": "Hook config cannot be parsed — fix the JSON to return to Form mode.",
+                "rawSaveButton": "Save raw JSON",
+                "staleBanner": "This hook was changed externally — choose how to resolve.",
+                "staleReload": "Reload from disk",
+                "staleOverwrite": "Overwrite disk version",
+                "delete": {
+                    "label": "Delete hook",
+                    "confirm": "Delete this {{event}} hook?",
+                    "submit": "Delete"
+                },
+                "decisionTemplate": {
+                    "label": "Insert PreToolUse decision template",
+                    "allow": "allow",
+                    "deny": "deny",
+                    "ask": "ask"
+                },
+                "decisionForm": {
+                    "title": "PreToolUse decision builder",
+                    "collapsedHint": "Build a permissionDecision JSON via form, or use a quick template below.",
+                    "decisionLabel": "Decision",
+                    "decisionAllow": "allow",
+                    "decisionDeny": "deny",
+                    "decisionAsk": "ask",
+                    "systemMessageLabel": "System message (shown to user — optional)",
+                    "systemMessagePlaceholder": "Reason for deny / ask. Leave empty to omit.",
+                    "updatedInputLabel": "Updated input JSON (allow only — optional)",
+                    "updatedInputPlaceholder": "{ \"file_path\": \"…\" }",
+                    "updatedInputInvalid": "Updated input must be valid JSON.",
+                    "insertModeLabel": "Insert mode",
+                    "insertModePrepend": "Prepend to body",
+                    "insertModeReplace": "Replace body",
+                    "generateButton": "Generate shell snippet from form"
+                },
+                "matcherLabel": "Matcher"
+            },
+            "malformed": {
+                "title": "Some hooks were skipped because their config is invalid:"
+            },
+            "cardOpen": "Open hook"
+        },
+        "plugin": {
+            "empty": "No plugins installed.",
+            "emptyHint": "Install plugins with `/plugin install` in the Claude Code CLI, then return here.",
+            "scope": {
+                "user": "Global",
+                "project": "Project"
+            },
+            "type": {
+                "standard": "Standard",
+                "externalMcp": "External MCP"
+            },
+            "counts": {
+                "skills": "Skills",
+                "commands": "Commands",
+                "agents": "Agents",
+                "hooks": "Hooks",
+                "mcpServers": "MCP servers"
+            },
+            "toggle": {
+                "on": "Enabled",
+                "off": "Disabled"
+            },
+            "banner": {
+                "freshSpawn": "Takes effect on your next user message.",
+                "longStream": "Takes effect after the current chat ends. Start a new session to apply immediately.",
+                "newSession": "Start new session",
+                "dismiss": "Dismiss"
+            },
+            "projectScopeDisabled": "Scoped to another project",
+            "projectScopeAmbiguous": "Project path missing — read-only",
+            "scopeHint": "Edits the global settings",
+            "readonly": {
+                "forbidden": "Read-only environment: permission denied."
+            }
+        }
+    },
+    "permissionMode": {
+        "planDescription": "Claude only plans and does not modify files",
+        "askDescription": "Asks for approval before modifying files",
+        "autoDescription": "Automatically approves file modifications",
+        "bypassDescription": "Skips all permission requests",
+        "selectorAria": "Permission mode: {{label}}. {{description}}. Click to switch to next mode"
+    },
+    "layout": {
+        "narrowAria": "Switch to narrow layout",
+        "wideAria": "Switch to wide layout",
+        "narrowTitle": "Narrow layout",
+        "wideTitle": "Wide layout"
+    },
+    "theme": {
+        "lightAria": "Switch to light mode",
+        "darkAria": "Switch to dark mode"
+    },
+    "webPush": {
+        "title": "Web Push Notifications",
+        "description": "Receive browser push notifications on this device. Works on Android, desktop browsers, and iOS PWA (16.4+).",
+        "iosHint": "On iOS, Web Push only works when Hammoc is installed as a PWA (Add to Home Screen).",
+        "notSupported": "Web Push is not available. A secure connection (HTTPS) is required and your browser must support Web Push.",
+        "permissionDenied": "Notification permission was denied. Please enable it in your browser settings.",
+        "enableNotifications": "Enable Web Push notifications",
+        "enableHint": "When enabled, push notifications are sent alongside Telegram (if configured).",
+        "subscribed": "This browser is subscribed",
+        "notSubscribed": "This browser is not subscribed",
+        "subscribe": "Subscribe this browser",
+        "unsubscribe": "Unsubscribe",
+        "subscribedDevices": "{{count}} device(s) subscribed",
+        "testSend": "Send Test Push",
+        "testSending": "Sending...",
+        "testSuccess": "Test push notification sent!",
+        "testFailure": "Failed to send: {{error}}",
+        "subscribeSuccess": "Push notifications enabled for this browser.",
+        "subscribeError": "Failed to subscribe. Please try again.",
+        "unsubscribeSuccess": "Push notifications disabled for this browser.",
+        "unsubscribeError": "Failed to unsubscribe. Please try again.",
+        "enabled": "Web Push notifications enabled",
+        "disabled": "Web Push notifications disabled",
+        "loadError": "Failed to load Web Push settings.",
+        "retry": "Retry"
+    },
+    "page": {
+        "title": "Settings",
+        "backAriaLabel": "Go back"
     }
-  },
-  "permissionMode": {
-    "planDescription": "Claude only plans and does not modify files",
-    "askDescription": "Asks for approval before modifying files",
-    "autoDescription": "Automatically approves file modifications",
-    "bypassDescription": "Skips all permission requests",
-    "selectorAria": "Permission mode: {{label}}. {{description}}. Click to switch to next mode"
-  },
-  "layout": {
-    "narrowAria": "Switch to narrow layout",
-    "wideAria": "Switch to wide layout",
-    "narrowTitle": "Narrow layout",
-    "wideTitle": "Wide layout"
-  },
-  "theme": {
-    "lightAria": "Switch to light mode",
-    "darkAria": "Switch to dark mode"
-  },
-  "webPush": {
-    "title": "Web Push Notifications",
-    "description": "Receive browser push notifications on this device. Works on Android, desktop browsers, and iOS PWA (16.4+).",
-    "iosHint": "On iOS, Web Push only works when Hammoc is installed as a PWA (Add to Home Screen).",
-    "notSupported": "Web Push is not available. A secure connection (HTTPS) is required and your browser must support Web Push.",
-    "permissionDenied": "Notification permission was denied. Please enable it in your browser settings.",
-    "enableNotifications": "Enable Web Push notifications",
-    "enableHint": "When enabled, push notifications are sent alongside Telegram (if configured).",
-    "subscribed": "This browser is subscribed",
-    "notSubscribed": "This browser is not subscribed",
-    "subscribe": "Subscribe this browser",
-    "unsubscribe": "Unsubscribe",
-    "subscribedDevices": "{{count}} device(s) subscribed",
-    "testSend": "Send Test Push",
-    "testSending": "Sending...",
-    "testSuccess": "Test push notification sent!",
-    "testFailure": "Failed to send: {{error}}",
-    "subscribeSuccess": "Push notifications enabled for this browser.",
-    "subscribeError": "Failed to subscribe. Please try again.",
-    "unsubscribeSuccess": "Push notifications disabled for this browser.",
-    "unsubscribeError": "Failed to unsubscribe. Please try again.",
-    "enabled": "Web Push notifications enabled",
-    "disabled": "Web Push notifications disabled",
-    "loadError": "Failed to load Web Push settings.",
-    "retry": "Retry"
-  },
-  "page": {
-    "title": "Settings",
-    "backAriaLabel": "Go back"
-  }
 }

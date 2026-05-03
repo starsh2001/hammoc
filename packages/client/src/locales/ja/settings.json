@@ -1,590 +1,783 @@
 {
-  "global": {
-    "theme": "テーマ",
-    "themeOption": {
-      "dark": "ダーク",
-      "light": "ライト",
-      "system": "システム"
-    },
-    "defaultModel": "デフォルトモデル",
-    "language": "言語",
-    "permissionMode": "権限モード",
-    "permissionModeLabel": {
-      "plan": "Plan",
-      "default": "Ask before edits",
-      "acceptEdits": "Edit Automatically",
-      "bypass": "Bypass",
-      "latest": "Last Used"
-    },
-    "permissionDesc": {
-      "plan": "コード変更前にプランを提案します",
-      "default": "ファイル編集前に必ず確認を求めます",
-      "acceptEdits": "ファイル編集を自動的に実行します",
-      "bypass": "すべての権限チェックをスキップします（Bashを含む）",
-      "latest": "新しいセッションは前回のセッションの権限モードを引き継ぎます"
-    },
-    "autoApproveSafetyChecks": "Bypassモードで安全チェックを自動承認",
-    "autoApproveSafetyChecksDesc": "有効にすると、Bypassモードで安全チェックプロンプトをユーザー確認なしで自動承認します。",
-    "permissionSync": "権限モード同期",
-    "permissionSyncOption": {
-      "streaming": "ストリーミング中のみ",
-      "always": "常に同期"
-    },
-    "permissionSyncDesc": {
-      "streaming": "ストリーミング中のみ他のブラウザに同期します（デフォルト）",
-      "always": "常に同期し、セッションごとの権限モードを記憶します"
-    },
-    "markdownMode": "Markdownファイルの表示モード",
-    "markdownOption": {
-      "edit": "編集",
-      "preview": "プレビュー"
-    },
-    "markdownDesc": "Markdownファイルを開く際のデフォルトモードです。",
-    "fileExplorerView": "ファイルエクスプローラーの既定表示",
-    "fileExplorerOption": {
-      "grid": "Finder表示",
-      "list": "リスト表示"
-    },
-    "fileExplorerDesc": "ファイルエクスプローラーを開く際のデフォルト表示モードです。",
-    "panelDefaultOpen": "クイックパネル自動オープン",
-    "panelOpenOption": {
-      "on": "デスクトップで自動オープン",
-      "off": "デフォルトで閉じる"
-    },
-    "panelDefaultOpenDesc": "デスクトップでセッション開始時にクイックパネルを自動的に開きます。",
-    "panelDefaultSide": "クイックパネルのデフォルト位置",
-    "panelSideOption": {
-      "left": "左",
-      "right": "右",
-      "last": "前回の位置"
-    },
-    "panelDefaultSideDesc": "クイックパネルのデフォルト表示位置です。「前回の位置」を選択すると、前回のセッションで使用した位置を維持します。",
-    "chatTimeout": "チャットタイムアウト",
-    "chatTimeoutOverride": "（環境変数で設定済み）",
-    "chatTimeoutDesc": "応答がない場合にリクエストを自動中止するまでの時間です。",
-    "timeoutOption": {
-      "1m": "1分",
-      "3m": "3分",
-      "5mDefault": "5分（デフォルト）",
-      "10m": "10分",
-      "30m": "30分"
-    }
-  },
-  "toast": {
-    "themeChanged": "テーマが変更されました",
-    "modelChanged": "デフォルトモデルが変更されました",
-    "permissionChanged": "権限モードが変更されました",
-    "timeoutChanged": "チャットタイムアウトが変更されました",
-    "markdownModeChanged": "Markdownの既定モードが変更されました",
-    "fileExplorerViewChanged": "ファイルエクスプローラーの既定表示が変更されました",
-    "languageChanged": "言語が変更されました",
-    "systemPromptSaved": "システムプロンプトが保存されました",
-    "systemPromptRestored": "デフォルトのシステムプロンプトに復元されました",
-    "settingChanged": "{{label}}が変更されました",
-    "buildFailed": "失敗：{{error}}",
-    "buildFailedUnknown": "不明なエラー",
-    "serverTimeout": "サーバーの応答がタイムアウトしました。手動で確認してください。",
-    "buildComplete": "ビルド完了！ページを更新しています...",
-    "serverRestartFailed": "サーバー再起動のリクエストに失敗しました。",
-    "alreadyLatest": "既に最新バージョンです。",
-    "updateCheckFailed": "アップデートの確認に失敗しました。",
-    "updateComplete": "アップデート完了！ページを更新しています...",
-    "updateFailed": "アップデートのリクエストに失敗しました。",
-    "settingSaved": "設定が保存されました。",
-    "settingSaveFailed": "設定の保存に失敗しました。",
-    "botTokenSaved": "Bot Tokenが保存されました。",
-    "botTokenDeleted": "Bot Tokenが削除されました。",
-    "chatIdSaved": "Chat IDが保存されました。",
-    "chatIdDeleted": "Chat IDが削除されました。",
-    "telegramEnabled": "Telegram通知が有効になりました。",
-    "telegramDisabled": "Telegram通知が無効になりました。",
-    "testSent": "テスト通知を送信しました！",
-    "testFailed": "テスト通知に失敗しました",
-    "testServerError": "サーバー接続エラー",
-    "resetToGlobal": "グローバルデフォルトにリセット",
-    "settingSavedFailed": "設定の保存に失敗しました。もう一度お試しください。"
-  },
-  "advanced": {
-    "serverRestart": "サーバー再起動",
-    "serverRestartDesc": "プロジェクト全体をビルドし、サーバーを本番モードで再起動します",
-    "softwareUpdate": "ソフトウェアアップデート",
-    "currentVersion": "現在のバージョン：v{{version}}",
-    "building": "ビルド中...（{{elapsed}}秒）",
-    "restarting": "再起動中...（{{elapsed}}秒）",
-    "serverRebuild": "リビルド＆サーバー再起動",
-    "checking": "確認中...",
-    "checkUpdate": "アップデートを確認",
-    "updateTo": "v{{version}}にアップデート",
-    "updating": "アップデート中...（{{elapsed}}秒）",
-    "latestVersion": "既に最新バージョンです",
-    "systemPrompt": "システムプロンプト",
-    "restoreDefault": "デフォルトに復元",
-    "systemPromptWarning": "警告：",
-    "systemPromptWarningDetail": "システムプロンプトを不適切に変更すると、応答品質が大幅に低下する可能性があります。不明な場合はデフォルトのままにしてください。",
-    "customPromptActive": "カスタムプロンプト使用中",
-    "promptLoading": "プロンプトを読み込み中...",
-    "promptNoProject": "プロジェクトを選択すると、現在のシステムプロンプトが表示されます。",
-    "charCount": "{{count}}文字",
-    "templateVariables": "利用可能なシステム変数（実行時に自動置換されます）",
-    "previewClose": "プレビューを閉じる",
-    "previewOpen": "現在のプロジェクトでプレビュー",
-    "maxThinkingTokens": "最大思考トークン数",
-    "maxThinkingTokensDesc": "モデルの推論プロセスの最大トークン数（1,024 ～ 128,000）",
-    "maxTurns": "最大ターン数",
-    "maxTurnsDesc": "1回の会話で許可される最大ターン数（1 ～ 100）",
-    "maxBudget": "最大予算（USD）",
-    "maxBudgetDesc": "1クエリあたりの最大コスト制限（USD、0.01 ～ 100）",
-    "sdkDefault": "Default (High)",
-    "unlimited": "無制限",
-    "defaultEffort": "デフォルト思考レベル",
-    "defaultEffortDesc": "新しいセッションに適用されるデフォルトの思考レベルです。未設定の場合、SDKデフォルト（High）が使用されます。",
-    "effortOption": {
-      "low": "Low",
-      "medium": "Medium",
-      "high": "High",
-      "max": "Max"
-    },
-    "effortMaxSubscriber": "サブスクライバー利用不可",
-    "fileCheckpointing": "ファイルチェックポイント",
-    "chatCheckpointing": "チャットセッション",
-    "chatCheckpointingDesc": "チャット中にファイルスナップショットを保存して巻き戻し/復元を可能にする",
-    "queueCheckpointing": "キューランナー",
-    "queueCheckpointingDesc": "キュー実行中にファイルスナップショットを保存（JSONLファイルサイズが増加します）",
-    "showThinkingBlocks": "Claudeの思考プロセスを表示",
-    "showThinkingBlocksDesc": "Opus 4.7などの最新モデルで応答上部に折りたたまれた「thinking」ブロックを表示します。オフにすると最初の応答トークンが少し早く届きます（コストは変わりません）。"
-  },
-  "confirm": {
-    "serverRestart": "リビルドしてサーバーを再起動します。続行しますか？",
-    "updateVersion": "v{{version}}にアップデートしてサーバーを再起動します。続行しますか？",
-    "resetAllSettings": "プロジェクト設定をすべてリセットします。\n\n• モデル/権限モードのオーバーライドが削除されます\n• プロジェクトの非表示設定が解除されます\n\n続行しますか？"
-  },
-  "telegram": {
-    "loadError": "Telegram設定の読み込み中にエラーが発生しました。",
-    "retry": "再試行",
-    "setupGuide": "Telegram通知を設定するには：",
-    "setupStep1Suffix": " でボットを作成し、Bot Tokenを取得してください",
-    "setupStep2Suffix": " でChat IDを取得してください",
-    "botTokenAriaLabel": "Telegram BotFatherを開く（新しいタブ）",
-    "chatIdAriaLabel": "Telegram userinfobot を開く（新しいタブ）",
-    "botToken": "Bot Token",
-    "chatId": "Chat ID",
-    "envOverride": "（環境変数で設定済み）",
-    "envPriority": "設定画面の値が環境変数より優先されます。",
-    "enterBotToken": "Bot Tokenを入力",
-    "enterChatId": "Chat IDを入力",
-    "notConfigured": "未設定",
-    "change": "変更",
-    "baseUrl": "アクセスURL",
-    "baseUrlPlaceholder": "例: http://192.168.1.100:3000",
-    "baseUrlHint": "通知に含まれるアクセスリンクです。localhostの代わりに内部IPを入力してください。",
-    "enableNotifications": "Telegram通知を有効にする",
-    "enableHint": "先にBot TokenとChat IDを設定してください。",
-    "notificationType": "通知タイプ",
-    "notifyPermission": "権限リクエスト — 🔐 権限確認や ❓ 質問が必要な場合",
-    "notifyComplete": "完了 — ✅ ストリーミングが完了した場合",
-    "notifyError": "エラー — ❌ ストリーミング中にエラーが発生した場合",
-    "queueNotificationType": "キュー通知タイプ",
-    "notifyQueueStart": "キュー開始 — キューの実行が開始された場合",
-    "notifyQueueComplete": "キュー完了 — すべてのアイテムが処理された後",
-    "notifyQueueError": "キューエラー — @pauseword一致またはSDKエラーの場合",
-    "notifyQueueInput": "キュー入力リクエスト — ユーザーの応答が必要な場合",
-    "alwaysNotify": "常に通知 — セッション表示中でも通知を送信",
-    "alwaysNotifyHint": "デフォルトでは、セッションを表示中は通知が抑制されます。",
-    "testSending": "送信中...",
-    "testSend": "テスト通知を送信",
-    "testSuccess": "✅ 成功",
-    "testFailure": "❌ 失敗：{{error}}"
-  },
-  "project": {
-    "selectProject": "プロジェクトを選択",
-    "hidden": "（非表示）",
-    "loading": "設定を読み込み中...",
-    "loadError": "設定の読み込み中にエラーが発生しました。",
-    "retry": "再試行",
-    "noProjects": "プロジェクトが見つかりません。",
-    "modelOverride": "モデルオーバーライド",
-    "projectOverride": "（プロジェクトオーバーライド）",
-    "useGlobalDefault": "グローバルデフォルトを使用（現在：{{value}}）",
-    "permissionOverride": "権限モードオーバーライド",
-    "hideInSidebar": "このプロジェクトをサイドバーから非表示にする",
-    "resetToGlobal": "グローバルデフォルトにリセット",
-    "noOverrides": "現在、プロジェクトのオーバーライドは設定されていません。"
-  },
-  "about": {
-    "issuesAndSuggestions": "バグ報告と機能リクエスト",
-    "githubIssuesAriaLabel": "GitHub Issuesに移動（新しいタブ）",
-    "serverStatus": "サーバーステータス",
-    "checking": "確認中...",
-    "connectionFailed": "サーバーへの接続に失敗しました",
-    "retryCheckAriaLabel": "サーバーステータスを再確認",
-    "retry": "再試行",
-    "status": "ステータス",
-    "statusHealthy": "正常",
-    "statusUnhealthy": "異常",
-    "version": "バージョン",
-    "serverTime": "サーバー時刻",
-    "madeBy": "開発者：",
-    "license": "{{name}} ライセンス",
-    "githubIssuesLink": "GitHub Issues"
-  },
-  "help": {
-    "basicChat": "基本的なチャットの使い方",
-    "basicChatItems": [
-      "チャット入力欄にメッセージを入力し、Enter（デスクトップ）または送信ボタン（モバイル）で送信します",
-      "画像の添付：クリップアイコンまたはペースト（Ctrl+V）で画像をアップロード",
-      "新しいセッション：ヘッダーの「+」ボタンで新しいチャットセッションを開始",
-      "セッションの切り替え：時計アイコンから以前のセッションにアクセス"
-    ],
-    "slashCommands": "スラッシュコマンド",
-    "slashCommandItems": [
-      "チャット入力欄で / を入力すると、利用可能なコマンドが表示されます",
-      "よく使うコマンドは ★ お気に入りに追加できます",
-      "お気に入りの追加：コマンドパレットで ★ をクリックまたは長押し",
-      "お気に入りは入力エリアの上にクイックアクセスボタンとして表示されます"
-    ],
-    "permissionMode": "権限モード",
-    "permissionPlanLabel": "Plan",
-    "permissionPlanDesc": "コード変更前にプランを提案します",
-    "permissionDefaultLabel": "Ask before edits (デフォルト)",
-    "permissionDefaultDesc": "ファイル編集前に必ず確認を求めます",
-    "permissionAutoLabel": "Edit Automatically",
-    "permissionAutoDesc": "ファイル編集を自動的に実行します",
-    "permissionNote": "デフォルトの権限モードは、設定 > グローバル設定またはプロジェクト設定で変更できます。",
-    "bmadMethod": "BMad Method連携",
-    "bmadMethodItems": [
-      "BMad MethodはAIを活用した開発ワークフローフレームワークです",
-      "プロジェクトページの「BMadセットアップ」ボタンからBMad Coreをインストールできます",
-      "インストール後、チャット画面右下のBMadエージェントボタンから専門エージェントを素早く呼び出せます",
-      "エージェント：SM（スクラムマスター）、PM（プロジェクトマネージャー）、Dev（開発者）、QA（品質保証）など"
-    ],
-    "keyboardShortcuts": "キーボードショートカット",
-    "shortcutKey": "ショートカット",
-    "shortcutAction": "動作",
-    "shortcuts": {
-      "enter": "メッセージを送信（デスクトップ）",
-      "shiftEnter": "改行（デスクトップ）",
-      "escape": "ストリーミングを停止 / ポップアップを閉じる",
-      "ctrlC": "ストリーミングを停止（テキスト未選択時）",
-      "f7": "Diffビューアーの変更箇所を移動（次/前）",
-      "slash": "スラッシュコマンドパレットを開く"
-    }
-  },
-  "account": {
-    "info": {
-      "title": "Claude Code アカウント",
-      "email": "メール",
-      "subscription": "サブスクリプション",
-      "provider": "プロバイダー",
-      "organization": "組織",
-      "fetchedAt": "最終取得日時",
-      "never": "なし",
-      "refresh": "更新",
-      "refreshing": "更新中...",
-      "refreshed": "アカウント情報を更新しました。",
-      "refreshFailed": "アカウント情報を取得できませんでした。先にチャットを開始してから再試行してください。",
-      "emptyHint": "最初のチャットを送信すると自動的に入力されます。「更新」を押して今すぐ取得することもできます。",
-      "usage": "使用量",
-      "fiveHour": "5時間枠",
-      "sevenDay": "7日間枠",
-      "resetAt": "リセット: {{reset}}",
-      "usageEmpty": "使用量情報は利用できません。Claude.ai サブスクライバー向けです。"
-    },
-    "changePassword": "パスワード変更",
-    "currentPassword": "現在のパスワード",
-    "newPassword": "新しいパスワード",
-    "confirmNewPassword": "新しいパスワードの確認",
-    "passwordMismatch": "新しいパスワードが一致しません。",
-    "changePasswordButton": "パスワードを変更",
-    "changing": "変更中...",
-    "changeSuccess": "パスワードが変更されました。再度ログインしてください。",
-    "changeFailed": "パスワードの変更に失敗しました。",
-    "session": "セッション",
-    "logout": "ログアウト",
-    "logoutDesc": "このデバイスからログアウトします。"
-  },
-  "tabs": {
-    "global": "グローバル設定",
-    "project": "プロジェクト設定",
-    "telegram": "Telegram通知",
-    "notifications": "通知",
-    "advanced": "詳細設定",
-    "account": "Claude アカウント",
-    "user": "Hammoc ユーザー",
-    "help": "ヘルプ",
-    "about": "バージョン情報"
-  },
-  "harness": {
-    "workbench": {
-      "title": "ハーネス ワークベンチ",
-      "nav": {
-        "general": "一般",
-        "plugins": "プラグイン",
-        "skills": "スキル",
-        "mcps": "MCP"
-      }
-    },
-    "skill": {
-      "empty": {
-        "title": "インストール済みのスキルはありません。",
-        "description": "<projectRoot>/.claude/skills/ または ~/.claude/skills/ にスキルを追加するか、プラグインバンドルをインストールしてください。"
-      },
-      "scopeBadge": {
-        "project": "プロジェクト",
-        "user": "グローバル",
-        "plugin": "プラグイン",
-        "pluginWithKey": "プラグイン: {{key}}"
-      },
-      "activeSourceTooltip": "{{active}} が有効 — {{shadowed}} は隠れています。",
-      "bundle": {
-        "title": "バンドルリソース",
-        "references": { "count": "参照ファイル {{count}}件" },
-        "examples":   { "count": "サンプル {{count}}件" },
-        "scripts":    { "count": "スクリプト {{count}}件" },
-        "assets":     { "count": "アセット {{count}}件" },
-        "binaryReadOnly": "バイナリファイル — Hammoc UI では編集できません。",
-        "truncated": "切り詰め (>1MB)。",
-        "truncatedAtDepth": "深い階層は表示されません。"
-      },
-      "copy": {
-        "menuLabel": "コピー操作",
-        "toUser":             { "label": "グローバルへコピー →" },
-        "toProject":          { "label": "プロジェクトに取り込み ←" },
-        "overrideToProject":  { "label": "オーバーライド複製 (プロジェクト)" },
-        "overrideToUser":     { "label": "オーバーライド複製 (グローバル)" },
-        "conflict": {
-          "title": "スキル名の競合",
-          "intro": "{{name}} を {{targetScope}} へコピー。",
-          "overwrite": "既存を上書き",
-          "skip": "スキップ — 既存を維持",
-          "rename": "名前を変更して追加",
-          "renameLabel": "新しいスキル名",
-          "renameInvalid": "無効な名前 — 空、重複、または予約文字を含みます。",
-          "submit": "続行",
-          "cancel": "キャンセル",
-          "close": "閉じる",
-          "success": "{{name}} を {{targetScope}} へコピーしました。"
+    "global": {
+        "theme": "テーマ",
+        "themeOption": {
+            "dark": "ダーク",
+            "light": "ライト",
+            "system": "システム"
         },
-        "error": {
-          "crossDevice": "このスキルはマウント境界をまたぐ場所にあり、自動コピーできません。外部ファイルマネージャをご利用ください。"
+        "defaultModel": "デフォルトモデル",
+        "language": "言語",
+        "permissionMode": "権限モード",
+        "permissionModeLabel": {
+            "plan": "Plan",
+            "default": "Ask before edits",
+            "acceptEdits": "Edit Automatically",
+            "bypass": "Bypass",
+            "latest": "Last Used"
+        },
+        "permissionDesc": {
+            "plan": "コード変更前にプランを提案します",
+            "default": "ファイル編集前に必ず確認を求めます",
+            "acceptEdits": "ファイル編集を自動的に実行します",
+            "bypass": "すべての権限チェックをスキップします（Bashを含む）",
+            "latest": "新しいセッションは前回のセッションの権限モードを引き継ぎます"
+        },
+        "autoApproveSafetyChecks": "Bypassモードで安全チェックを自動承認",
+        "autoApproveSafetyChecksDesc": "有効にすると、Bypassモードで安全チェックプロンプトをユーザー確認なしで自動承認します。",
+        "permissionSync": "権限モード同期",
+        "permissionSyncOption": {
+            "streaming": "ストリーミング中のみ",
+            "always": "常に同期"
+        },
+        "permissionSyncDesc": {
+            "streaming": "ストリーミング中のみ他のブラウザに同期します（デフォルト）",
+            "always": "常に同期し、セッションごとの権限モードを記憶します"
+        },
+        "markdownMode": "Markdownファイルの表示モード",
+        "markdownOption": {
+            "edit": "編集",
+            "preview": "プレビュー"
+        },
+        "markdownDesc": "Markdownファイルを開く際のデフォルトモードです。",
+        "fileExplorerView": "ファイルエクスプローラーの既定表示",
+        "fileExplorerOption": {
+            "grid": "Finder表示",
+            "list": "リスト表示"
+        },
+        "fileExplorerDesc": "ファイルエクスプローラーを開く際のデフォルト表示モードです。",
+        "panelDefaultOpen": "クイックパネル自動オープン",
+        "panelOpenOption": {
+            "on": "デスクトップで自動オープン",
+            "off": "デフォルトで閉じる"
+        },
+        "panelDefaultOpenDesc": "デスクトップでセッション開始時にクイックパネルを自動的に開きます。",
+        "panelDefaultSide": "クイックパネルのデフォルト位置",
+        "panelSideOption": {
+            "left": "左",
+            "right": "右",
+            "last": "前回の位置"
+        },
+        "panelDefaultSideDesc": "クイックパネルのデフォルト表示位置です。「前回の位置」を選択すると、前回のセッションで使用した位置を維持します。",
+        "chatTimeout": "チャットタイムアウト",
+        "chatTimeoutOverride": "（環境変数で設定済み）",
+        "chatTimeoutDesc": "応答がない場合にリクエストを自動中止するまでの時間です。",
+        "timeoutOption": {
+            "1m": "1分",
+            "3m": "3分",
+            "5mDefault": "5分（デフォルト）",
+            "10m": "10分",
+            "30m": "30分"
         }
-      },
-      "editor": {
-        "close": "閉じる",
-        "loading": "読み込み中…",
-        "loadingEditor": "エディタ読み込み中…",
-        "saving": "保存中…",
-        "modeForm": "フォーム",
-        "modeRaw": "Raw",
-        "frontmatter": {
-          "title": "Frontmatter",
-          "name": "名前",
-          "description": "説明",
-          "version": "バージョン",
-          "versionPlaceholder": "0.1.0"
-        },
-        "body": {
-          "title": "本文",
-          "editLabel": "編集",
-          "previewLabel": "プレビュー"
-        },
-        "raw": { "title": "Raw SKILL.md" },
-        "preview": { "title": "プレビュー" },
-        "required": {
-          "name": "名前は必須です。",
-          "description": "説明は必須です。"
-        },
-        "rawParseError": "Frontmatter を解析できません — YAML フェンスを修正してフォームモードに戻れます。",
-        "staleBanner": "このスキルは外部で変更されたため保存できません。最新の内容を再読み込みしました。"
-      },
-      "malformed": {
-        "title": "frontmatter が無効なスキルは一覧から除外されました:"
-      },
-      "cardOpen": "{{name}} を開く"
     },
-    "mcp": {
-      "empty": {
-        "title": "MCP サーバーが設定されていません。",
-        "description": "<projectRoot>/.mcp.json または ~/.claude/.mcp.json に mcpServers エントリを追加するか、MCP サーバーを含むプラグインバンドルをインストールしてください。",
-        "noGlobalSupport": "このバージョンの Claude Code はグローバル MCP ファイルを認識しません — プロジェクトスコープとプラグインバンドルの MCP のみ表示されます。"
-      },
-      "scopeBadge": {
-        "project": "プロジェクト",
-        "user": "グローバル",
-        "plugin": "プラグイン",
-        "pluginWithKey": "プラグイン: {{key}}"
-      },
-      "type": { "stdio": "stdio", "sse": "sse", "http": "http", "ws": "ws" },
-      "toggle": {
-        "on": "有効",
-        "off": "無効",
-        "disabledByBackup": "無効 (バックアップに移動)"
-      },
-      "banner": {
-        "freshSpawn": "次のユーザーメッセージから適用されます。",
-        "newSession": "新しいセッションを開始",
-        "dismiss": "閉じる"
-      },
-      "activeSourceTooltip": "{{active}} が有効 — {{shadowed}} は隠れています。",
-      "copy": {
-        "menuLabel": "コピー操作",
-        "toUser":            { "label": "グローバルへコピー →" },
-        "toProject":         { "label": "プロジェクトへ取り込み ←" },
-        "overrideToProject": { "label": "オーバーライド複製 (プロジェクト)" },
-        "overrideToUser":    { "label": "オーバーライド複製 (グローバル)" },
-        "secret": {
-          "title": "シークレット風の値が検出されました",
-          "intro": "次のフィールドはシークレットのように見え、平文でコピーされます:",
-          "ack": "シークレットを含めてコピーすることに同意します。",
-          "submit": "シークレットを含めてコピー",
-          "cancel": "キャンセル"
-        },
-        "conflict": {
-          "title": "サーバー名の競合",
-          "intro": "{{name}} を {{targetScope}} にコピーします。",
-          "overwrite": "既存のサーバーを上書き",
-          "skip": "スキップ — 既存を維持",
-          "rename": "名前を変更して追加",
-          "renameLabel": "新しいサーバー名",
-          "renameInvalid": "無効な名前 — 空、変更なし、または予約文字を含みます。",
-          "submit": "続行",
-          "cancel": "キャンセル",
-          "close": "閉じる",
-          "success": "{{name}} を {{targetScope}} にコピーしました。",
-          "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 参照はプラグインバンドルの外では動作しない可能性があります。"
-        },
-        "error": {
-          "crossDevice": "このサーバーはマウント境界をまたいでいるため自動コピーできません — 外部のファイルマネージャーを使用してください。"
-        }
-      },
-      "editor": {
-        "close": "閉じる",
-        "loading": "読み込み中…",
-        "loadingEditor": "エディタ読み込み中…",
-        "modeForm": "フォーム",
-        "modeRaw": "Raw",
-        "type": "Type",
-        "command": "Command",
-        "args": "Arguments (1行に1つ)",
-        "url": "URL",
-        "headers": "Headers",
-        "env": "環境変数",
-        "headersKey": "ヘッダー名",
-        "headersValue": "ヘッダー値",
-        "envKey": "変数名",
-        "envValue": "変数値",
-        "addRow": "+ 追加",
-        "removeRow": "行を削除",
-        "maskToggle": "値を表示 / 隠す",
-        "required": {
-          "command": "stdio では command が必須です。",
-          "url": "{{type}} では url が必須です。"
-        },
-        "typeChange": {
-          "title": "Type を変更すると一部のフィールドが削除されます",
-          "intro": "{{from}} から {{to}} へ切り替えると、新しい type に当てはまらないフィールドが削除されます。",
-          "submit": "続行",
-          "cancel": "キャンセル"
-        },
-        "rawParseError": "サーバー設定をパースできません — JSON を修正するとフォームモードに戻れます。",
-        "staleBanner": "このサーバー設定は外部で変更されました。ディスクの内容を再読み込みするか、現在の編集内容で上書きするかを選択してください。",
-        "staleReload": "ディスクから再読み込み",
-        "staleOverwrite": "ディスクの内容を上書き",
-        "delete": {
-          "label": "サーバーを削除",
-          "confirm": "{{scope}} から {{name}} を削除しますか？",
-          "submit": "削除"
-        }
-      },
-      "malformed": {
-        "title": "config が無効な MCP サーバーは表示から除外されました:"
-      },
-      "cardOpen": "{{name}} を開く",
-      "secret": {
-        "marker": "シークレット風の値",
-        "envRefMarker": "環境変数参照"
-      }
+    "toast": {
+        "themeChanged": "テーマが変更されました",
+        "modelChanged": "デフォルトモデルが変更されました",
+        "permissionChanged": "権限モードが変更されました",
+        "timeoutChanged": "チャットタイムアウトが変更されました",
+        "markdownModeChanged": "Markdownの既定モードが変更されました",
+        "fileExplorerViewChanged": "ファイルエクスプローラーの既定表示が変更されました",
+        "languageChanged": "言語が変更されました",
+        "systemPromptSaved": "システムプロンプトが保存されました",
+        "systemPromptRestored": "デフォルトのシステムプロンプトに復元されました",
+        "settingChanged": "{{label}}が変更されました",
+        "buildFailed": "失敗：{{error}}",
+        "buildFailedUnknown": "不明なエラー",
+        "serverTimeout": "サーバーの応答がタイムアウトしました。手動で確認してください。",
+        "buildComplete": "ビルド完了！ページを更新しています...",
+        "serverRestartFailed": "サーバー再起動のリクエストに失敗しました。",
+        "alreadyLatest": "既に最新バージョンです。",
+        "updateCheckFailed": "アップデートの確認に失敗しました。",
+        "updateComplete": "アップデート完了！ページを更新しています...",
+        "updateFailed": "アップデートのリクエストに失敗しました。",
+        "settingSaved": "設定が保存されました。",
+        "settingSaveFailed": "設定の保存に失敗しました。",
+        "botTokenSaved": "Bot Tokenが保存されました。",
+        "botTokenDeleted": "Bot Tokenが削除されました。",
+        "chatIdSaved": "Chat IDが保存されました。",
+        "chatIdDeleted": "Chat IDが削除されました。",
+        "telegramEnabled": "Telegram通知が有効になりました。",
+        "telegramDisabled": "Telegram通知が無効になりました。",
+        "testSent": "テスト通知を送信しました！",
+        "testFailed": "テスト通知に失敗しました",
+        "testServerError": "サーバー接続エラー",
+        "resetToGlobal": "グローバルデフォルトにリセット",
+        "settingSavedFailed": "設定の保存に失敗しました。もう一度お試しください。"
     },
-    "plugin": {
-      "empty": "インストール済みのプラグインはありません。",
-      "emptyHint": "Claude Code CLI で `/plugin install` を実行してからここに戻ってください。",
-      "scope": {
-        "user": "グローバル",
-        "project": "プロジェクト"
-      },
-      "type": {
-        "standard": "標準",
-        "externalMcp": "外部 MCP"
-      },
-      "counts": {
-        "skills": "スキル",
-        "commands": "コマンド",
-        "agents": "エージェント",
-        "hooks": "フック",
-        "mcpServers": "MCP サーバー"
-      },
-      "toggle": {
-        "on": "有効",
-        "off": "無効"
-      },
-      "banner": {
-        "freshSpawn": "次のユーザー入力から反映されます。",
-        "longStream": "現在の会話終了後、新しいセッションで反映されます。すぐに適用するには新規セッションを開始してください。",
-        "newSession": "新しいセッション開始",
-        "dismiss": "閉じる"
-      },
-      "projectScopeDisabled": "別プロジェクト専用",
-      "projectScopeAmbiguous": "プロジェクトパス不明 — 読み取り専用",
-      "scopeHint": "グローバル設定を編集します",
-      "readonly": {
-        "forbidden": "読み取り専用環境: 権限がありません。"
-      }
+    "advanced": {
+        "serverRestart": "サーバー再起動",
+        "serverRestartDesc": "プロジェクト全体をビルドし、サーバーを本番モードで再起動します",
+        "softwareUpdate": "ソフトウェアアップデート",
+        "currentVersion": "現在のバージョン：v{{version}}",
+        "building": "ビルド中...（{{elapsed}}秒）",
+        "restarting": "再起動中...（{{elapsed}}秒）",
+        "serverRebuild": "リビルド＆サーバー再起動",
+        "checking": "確認中...",
+        "checkUpdate": "アップデートを確認",
+        "updateTo": "v{{version}}にアップデート",
+        "updating": "アップデート中...（{{elapsed}}秒）",
+        "latestVersion": "既に最新バージョンです",
+        "systemPrompt": "システムプロンプト",
+        "restoreDefault": "デフォルトに復元",
+        "systemPromptWarning": "警告：",
+        "systemPromptWarningDetail": "システムプロンプトを不適切に変更すると、応答品質が大幅に低下する可能性があります。不明な場合はデフォルトのままにしてください。",
+        "customPromptActive": "カスタムプロンプト使用中",
+        "promptLoading": "プロンプトを読み込み中...",
+        "promptNoProject": "プロジェクトを選択すると、現在のシステムプロンプトが表示されます。",
+        "charCount": "{{count}}文字",
+        "templateVariables": "利用可能なシステム変数（実行時に自動置換されます）",
+        "previewClose": "プレビューを閉じる",
+        "previewOpen": "現在のプロジェクトでプレビュー",
+        "maxThinkingTokens": "最大思考トークン数",
+        "maxThinkingTokensDesc": "モデルの推論プロセスの最大トークン数（1,024 ～ 128,000）",
+        "maxTurns": "最大ターン数",
+        "maxTurnsDesc": "1回の会話で許可される最大ターン数（1 ～ 100）",
+        "maxBudget": "最大予算（USD）",
+        "maxBudgetDesc": "1クエリあたりの最大コスト制限（USD、0.01 ～ 100）",
+        "sdkDefault": "Default (High)",
+        "unlimited": "無制限",
+        "defaultEffort": "デフォルト思考レベル",
+        "defaultEffortDesc": "新しいセッションに適用されるデフォルトの思考レベルです。未設定の場合、SDKデフォルト（High）が使用されます。",
+        "effortOption": {
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High",
+            "max": "Max"
+        },
+        "effortMaxSubscriber": "サブスクライバー利用不可",
+        "fileCheckpointing": "ファイルチェックポイント",
+        "chatCheckpointing": "チャットセッション",
+        "chatCheckpointingDesc": "チャット中にファイルスナップショットを保存して巻き戻し/復元を可能にする",
+        "queueCheckpointing": "キューランナー",
+        "queueCheckpointingDesc": "キュー実行中にファイルスナップショットを保存（JSONLファイルサイズが増加します）",
+        "showThinkingBlocks": "Claudeの思考プロセスを表示",
+        "showThinkingBlocksDesc": "Opus 4.7などの最新モデルで応答上部に折りたたまれた「thinking」ブロックを表示します。オフにすると最初の応答トークンが少し早く届きます（コストは変わりません）。"
+    },
+    "confirm": {
+        "serverRestart": "リビルドしてサーバーを再起動します。続行しますか？",
+        "updateVersion": "v{{version}}にアップデートしてサーバーを再起動します。続行しますか？",
+        "resetAllSettings": "プロジェクト設定をすべてリセットします。\n\n• モデル/権限モードのオーバーライドが削除されます\n• プロジェクトの非表示設定が解除されます\n\n続行しますか？"
+    },
+    "telegram": {
+        "loadError": "Telegram設定の読み込み中にエラーが発生しました。",
+        "retry": "再試行",
+        "setupGuide": "Telegram通知を設定するには：",
+        "setupStep1Suffix": " でボットを作成し、Bot Tokenを取得してください",
+        "setupStep2Suffix": " でChat IDを取得してください",
+        "botTokenAriaLabel": "Telegram BotFatherを開く（新しいタブ）",
+        "chatIdAriaLabel": "Telegram userinfobot を開く（新しいタブ）",
+        "botToken": "Bot Token",
+        "chatId": "Chat ID",
+        "envOverride": "（環境変数で設定済み）",
+        "envPriority": "設定画面の値が環境変数より優先されます。",
+        "enterBotToken": "Bot Tokenを入力",
+        "enterChatId": "Chat IDを入力",
+        "notConfigured": "未設定",
+        "change": "変更",
+        "baseUrl": "アクセスURL",
+        "baseUrlPlaceholder": "例: http://192.168.1.100:3000",
+        "baseUrlHint": "通知に含まれるアクセスリンクです。localhostの代わりに内部IPを入力してください。",
+        "enableNotifications": "Telegram通知を有効にする",
+        "enableHint": "先にBot TokenとChat IDを設定してください。",
+        "notificationType": "通知タイプ",
+        "notifyPermission": "権限リクエスト — 🔐 権限確認や ❓ 質問が必要な場合",
+        "notifyComplete": "完了 — ✅ ストリーミングが完了した場合",
+        "notifyError": "エラー — ❌ ストリーミング中にエラーが発生した場合",
+        "queueNotificationType": "キュー通知タイプ",
+        "notifyQueueStart": "キュー開始 — キューの実行が開始された場合",
+        "notifyQueueComplete": "キュー完了 — すべてのアイテムが処理された後",
+        "notifyQueueError": "キューエラー — @pauseword一致またはSDKエラーの場合",
+        "notifyQueueInput": "キュー入力リクエスト — ユーザーの応答が必要な場合",
+        "alwaysNotify": "常に通知 — セッション表示中でも通知を送信",
+        "alwaysNotifyHint": "デフォルトでは、セッションを表示中は通知が抑制されます。",
+        "testSending": "送信中...",
+        "testSend": "テスト通知を送信",
+        "testSuccess": "✅ 成功",
+        "testFailure": "❌ 失敗：{{error}}"
+    },
+    "project": {
+        "selectProject": "プロジェクトを選択",
+        "hidden": "（非表示）",
+        "loading": "設定を読み込み中...",
+        "loadError": "設定の読み込み中にエラーが発生しました。",
+        "retry": "再試行",
+        "noProjects": "プロジェクトが見つかりません。",
+        "modelOverride": "モデルオーバーライド",
+        "projectOverride": "（プロジェクトオーバーライド）",
+        "useGlobalDefault": "グローバルデフォルトを使用（現在：{{value}}）",
+        "permissionOverride": "権限モードオーバーライド",
+        "hideInSidebar": "このプロジェクトをサイドバーから非表示にする",
+        "resetToGlobal": "グローバルデフォルトにリセット",
+        "noOverrides": "現在、プロジェクトのオーバーライドは設定されていません。"
+    },
+    "about": {
+        "issuesAndSuggestions": "バグ報告と機能リクエスト",
+        "githubIssuesAriaLabel": "GitHub Issuesに移動（新しいタブ）",
+        "serverStatus": "サーバーステータス",
+        "checking": "確認中...",
+        "connectionFailed": "サーバーへの接続に失敗しました",
+        "retryCheckAriaLabel": "サーバーステータスを再確認",
+        "retry": "再試行",
+        "status": "ステータス",
+        "statusHealthy": "正常",
+        "statusUnhealthy": "異常",
+        "version": "バージョン",
+        "serverTime": "サーバー時刻",
+        "madeBy": "開発者：",
+        "license": "{{name}} ライセンス",
+        "githubIssuesLink": "GitHub Issues"
+    },
+    "help": {
+        "basicChat": "基本的なチャットの使い方",
+        "basicChatItems": [
+            "チャット入力欄にメッセージを入力し、Enter（デスクトップ）または送信ボタン（モバイル）で送信します",
+            "画像の添付：クリップアイコンまたはペースト（Ctrl+V）で画像をアップロード",
+            "新しいセッション：ヘッダーの「+」ボタンで新しいチャットセッションを開始",
+            "セッションの切り替え：時計アイコンから以前のセッションにアクセス"
+        ],
+        "slashCommands": "スラッシュコマンド",
+        "slashCommandItems": [
+            "チャット入力欄で / を入力すると、利用可能なコマンドが表示されます",
+            "よく使うコマンドは ★ お気に入りに追加できます",
+            "お気に入りの追加：コマンドパレットで ★ をクリックまたは長押し",
+            "お気に入りは入力エリアの上にクイックアクセスボタンとして表示されます"
+        ],
+        "permissionMode": "権限モード",
+        "permissionPlanLabel": "Plan",
+        "permissionPlanDesc": "コード変更前にプランを提案します",
+        "permissionDefaultLabel": "Ask before edits (デフォルト)",
+        "permissionDefaultDesc": "ファイル編集前に必ず確認を求めます",
+        "permissionAutoLabel": "Edit Automatically",
+        "permissionAutoDesc": "ファイル編集を自動的に実行します",
+        "permissionNote": "デフォルトの権限モードは、設定 > グローバル設定またはプロジェクト設定で変更できます。",
+        "bmadMethod": "BMad Method連携",
+        "bmadMethodItems": [
+            "BMad MethodはAIを活用した開発ワークフローフレームワークです",
+            "プロジェクトページの「BMadセットアップ」ボタンからBMad Coreをインストールできます",
+            "インストール後、チャット画面右下のBMadエージェントボタンから専門エージェントを素早く呼び出せます",
+            "エージェント：SM（スクラムマスター）、PM（プロジェクトマネージャー）、Dev（開発者）、QA（品質保証）など"
+        ],
+        "keyboardShortcuts": "キーボードショートカット",
+        "shortcutKey": "ショートカット",
+        "shortcutAction": "動作",
+        "shortcuts": {
+            "enter": "メッセージを送信（デスクトップ）",
+            "shiftEnter": "改行（デスクトップ）",
+            "escape": "ストリーミングを停止 / ポップアップを閉じる",
+            "ctrlC": "ストリーミングを停止（テキスト未選択時）",
+            "f7": "Diffビューアーの変更箇所を移動（次/前）",
+            "slash": "スラッシュコマンドパレットを開く"
+        }
+    },
+    "account": {
+        "info": {
+            "title": "Claude Code アカウント",
+            "email": "メール",
+            "subscription": "サブスクリプション",
+            "provider": "プロバイダー",
+            "organization": "組織",
+            "fetchedAt": "最終取得日時",
+            "never": "なし",
+            "refresh": "更新",
+            "refreshing": "更新中...",
+            "refreshed": "アカウント情報を更新しました。",
+            "refreshFailed": "アカウント情報を取得できませんでした。先にチャットを開始してから再試行してください。",
+            "emptyHint": "最初のチャットを送信すると自動的に入力されます。「更新」を押して今すぐ取得することもできます。",
+            "usage": "使用量",
+            "fiveHour": "5時間枠",
+            "sevenDay": "7日間枠",
+            "resetAt": "リセット: {{reset}}",
+            "usageEmpty": "使用量情報は利用できません。Claude.ai サブスクライバー向けです。"
+        },
+        "changePassword": "パスワード変更",
+        "currentPassword": "現在のパスワード",
+        "newPassword": "新しいパスワード",
+        "confirmNewPassword": "新しいパスワードの確認",
+        "passwordMismatch": "新しいパスワードが一致しません。",
+        "changePasswordButton": "パスワードを変更",
+        "changing": "変更中...",
+        "changeSuccess": "パスワードが変更されました。再度ログインしてください。",
+        "changeFailed": "パスワードの変更に失敗しました。",
+        "session": "セッション",
+        "logout": "ログアウト",
+        "logoutDesc": "このデバイスからログアウトします。"
+    },
+    "tabs": {
+        "global": "グローバル設定",
+        "project": "プロジェクト設定",
+        "telegram": "Telegram通知",
+        "notifications": "通知",
+        "advanced": "詳細設定",
+        "account": "Claude アカウント",
+        "user": "Hammoc ユーザー",
+        "help": "ヘルプ",
+        "about": "バージョン情報"
+    },
+    "harness": {
+        "workbench": {
+            "title": "ハーネス ワークベンチ",
+            "nav": {
+                "general": "一般",
+                "plugins": "プラグイン",
+                "skills": "スキル",
+                "mcps": "MCP",
+                "hooks": "フック"
+            }
+        },
+        "skill": {
+            "empty": {
+                "title": "インストール済みのスキルはありません。",
+                "description": "<projectRoot>/.claude/skills/ または ~/.claude/skills/ にスキルを追加するか、プラグインバンドルをインストールしてください。"
+            },
+            "scopeBadge": {
+                "project": "プロジェクト",
+                "user": "グローバル",
+                "plugin": "プラグイン",
+                "pluginWithKey": "プラグイン: {{key}}"
+            },
+            "activeSourceTooltip": "{{active}} が有効 — {{shadowed}} は隠れています。",
+            "bundle": {
+                "title": "バンドルリソース",
+                "references": {
+                    "count": "参照ファイル {{count}}件"
+                },
+                "examples": {
+                    "count": "サンプル {{count}}件"
+                },
+                "scripts": {
+                    "count": "スクリプト {{count}}件"
+                },
+                "assets": {
+                    "count": "アセット {{count}}件"
+                },
+                "binaryReadOnly": "バイナリファイル — Hammoc UI では編集できません。",
+                "truncated": "切り詰め (>1MB)。",
+                "truncatedAtDepth": "深い階層は表示されません。"
+            },
+            "copy": {
+                "menuLabel": "コピー操作",
+                "toUser": {
+                    "label": "グローバルへコピー →"
+                },
+                "toProject": {
+                    "label": "プロジェクトに取り込み ←"
+                },
+                "overrideToProject": {
+                    "label": "オーバーライド複製 (プロジェクト)"
+                },
+                "overrideToUser": {
+                    "label": "オーバーライド複製 (グローバル)"
+                },
+                "conflict": {
+                    "title": "スキル名の競合",
+                    "intro": "{{name}} を {{targetScope}} へコピー。",
+                    "overwrite": "既存を上書き",
+                    "skip": "スキップ — 既存を維持",
+                    "rename": "名前を変更して追加",
+                    "renameLabel": "新しいスキル名",
+                    "renameInvalid": "無効な名前 — 空、重複、または予約文字を含みます。",
+                    "submit": "続行",
+                    "cancel": "キャンセル",
+                    "close": "閉じる",
+                    "success": "{{name}} を {{targetScope}} へコピーしました。"
+                },
+                "error": {
+                    "crossDevice": "このスキルはマウント境界をまたぐ場所にあり、自動コピーできません。外部ファイルマネージャをご利用ください。"
+                }
+            },
+            "editor": {
+                "close": "閉じる",
+                "loading": "読み込み中…",
+                "loadingEditor": "エディタ読み込み中…",
+                "saving": "保存中…",
+                "modeForm": "フォーム",
+                "modeRaw": "Raw",
+                "frontmatter": {
+                    "title": "Frontmatter",
+                    "name": "名前",
+                    "description": "説明",
+                    "version": "バージョン",
+                    "versionPlaceholder": "0.1.0"
+                },
+                "body": {
+                    "title": "本文",
+                    "editLabel": "編集",
+                    "previewLabel": "プレビュー"
+                },
+                "raw": {
+                    "title": "Raw SKILL.md"
+                },
+                "preview": {
+                    "title": "プレビュー"
+                },
+                "required": {
+                    "name": "名前は必須です。",
+                    "description": "説明は必須です。"
+                },
+                "rawParseError": "Frontmatter を解析できません — YAML フェンスを修正してフォームモードに戻れます。",
+                "staleBanner": "このスキルは外部で変更されたため保存できません。最新の内容を再読み込みしました。"
+            },
+            "malformed": {
+                "title": "frontmatter が無効なスキルは一覧から除外されました:"
+            },
+            "cardOpen": "{{name}} を開く"
+        },
+        "mcp": {
+            "empty": {
+                "title": "MCP サーバーが設定されていません。",
+                "description": "<projectRoot>/.mcp.json または ~/.claude/.mcp.json に mcpServers エントリを追加するか、MCP サーバーを含むプラグインバンドルをインストールしてください。",
+                "noGlobalSupport": "このバージョンの Claude Code はグローバル MCP ファイルを認識しません — プロジェクトスコープとプラグインバンドルの MCP のみ表示されます。"
+            },
+            "scopeBadge": {
+                "project": "プロジェクト",
+                "user": "グローバル",
+                "plugin": "プラグイン",
+                "pluginWithKey": "プラグイン: {{key}}"
+            },
+            "type": {
+                "stdio": "stdio",
+                "sse": "sse",
+                "http": "http",
+                "ws": "ws"
+            },
+            "toggle": {
+                "on": "有効",
+                "off": "無効",
+                "disabledByBackup": "無効 (バックアップに移動)"
+            },
+            "banner": {
+                "freshSpawn": "次のユーザーメッセージから適用されます。",
+                "newSession": "新しいセッションを開始",
+                "dismiss": "閉じる"
+            },
+            "activeSourceTooltip": "{{active}} が有効 — {{shadowed}} は隠れています。",
+            "copy": {
+                "menuLabel": "コピー操作",
+                "toUser": {
+                    "label": "グローバルへコピー →"
+                },
+                "toProject": {
+                    "label": "プロジェクトへ取り込み ←"
+                },
+                "overrideToProject": {
+                    "label": "オーバーライド複製 (プロジェクト)"
+                },
+                "overrideToUser": {
+                    "label": "オーバーライド複製 (グローバル)"
+                },
+                "secret": {
+                    "title": "シークレット風の値が検出されました",
+                    "intro": "次のフィールドはシークレットのように見え、平文でコピーされます:",
+                    "ack": "シークレットを含めてコピーすることに同意します。",
+                    "submit": "シークレットを含めてコピー",
+                    "cancel": "キャンセル"
+                },
+                "conflict": {
+                    "title": "サーバー名の競合",
+                    "intro": "{{name}} を {{targetScope}} にコピーします。",
+                    "overwrite": "既存のサーバーを上書き",
+                    "skip": "スキップ — 既存を維持",
+                    "rename": "名前を変更して追加",
+                    "renameLabel": "新しいサーバー名",
+                    "renameInvalid": "無効な名前 — 空、変更なし、または予約文字を含みます。",
+                    "submit": "続行",
+                    "cancel": "キャンセル",
+                    "close": "閉じる",
+                    "success": "{{name}} を {{targetScope}} にコピーしました。",
+                    "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} 参照はプラグインバンドルの外では動作しない可能性があります。"
+                },
+                "error": {
+                    "crossDevice": "このサーバーはマウント境界をまたいでいるため自動コピーできません — 外部のファイルマネージャーを使用してください。"
+                }
+            },
+            "editor": {
+                "close": "閉じる",
+                "loading": "読み込み中…",
+                "loadingEditor": "エディタ読み込み中…",
+                "modeForm": "フォーム",
+                "modeRaw": "Raw",
+                "type": "Type",
+                "command": "Command",
+                "args": "Arguments (1行に1つ)",
+                "url": "URL",
+                "headers": "Headers",
+                "env": "環境変数",
+                "headersKey": "ヘッダー名",
+                "headersValue": "ヘッダー値",
+                "envKey": "変数名",
+                "envValue": "変数値",
+                "addRow": "+ 追加",
+                "removeRow": "行を削除",
+                "maskToggle": "値を表示 / 隠す",
+                "required": {
+                    "command": "stdio では command が必須です。",
+                    "url": "{{type}} では url が必須です。"
+                },
+                "typeChange": {
+                    "title": "Type を変更すると一部のフィールドが削除されます",
+                    "intro": "{{from}} から {{to}} へ切り替えると、新しい type に当てはまらないフィールドが削除されます。",
+                    "submit": "続行",
+                    "cancel": "キャンセル"
+                },
+                "rawParseError": "サーバー設定をパースできません — JSON を修正するとフォームモードに戻れます。",
+                "staleBanner": "このサーバー設定は外部で変更されました。ディスクの内容を再読み込みするか、現在の編集内容で上書きするかを選択してください。",
+                "staleReload": "ディスクから再読み込み",
+                "staleOverwrite": "ディスクの内容を上書き",
+                "delete": {
+                    "label": "サーバーを削除",
+                    "confirm": "{{scope}} から {{name}} を削除しますか？",
+                    "submit": "削除"
+                }
+            },
+            "malformed": {
+                "title": "config が無効な MCP サーバーは表示から除外されました:"
+            },
+            "cardOpen": "{{name}} を開く",
+            "secret": {
+                "marker": "シークレット風の値",
+                "envRefMarker": "環境変数参照"
+            }
+        },
+        "hook": {
+            "empty": {
+                "title": "登録されているフックがありません。",
+                "description": "<projectRoot>/.claude/settings.json または ~/.claude/settings.json の hooks フィールドにフックを追加するか、フックを登録するプラグインバンドルをインストールしてください。",
+                "perEvent": "{{event}} に登録されたフックがありません。+ 追加で新規作成できます。"
+            },
+            "events": {
+                "PreToolUse": "PreToolUse",
+                "PostToolUse": "PostToolUse",
+                "Stop": "Stop",
+                "SubagentStop": "SubagentStop",
+                "SessionStart": "SessionStart",
+                "SessionEnd": "SessionEnd",
+                "UserPromptSubmit": "UserPromptSubmit",
+                "PreCompact": "PreCompact",
+                "Notification": "Notification"
+            },
+            "scopeBadge": {
+                "project": "プロジェクト",
+                "user": "グローバル",
+                "plugin": "プラグイン",
+                "pluginWithKey": "プラグイン: {{key}}"
+            },
+            "type": {
+                "command": "command",
+                "prompt": "prompt"
+            },
+            "toggle": {
+                "on": "有効",
+                "off": "無効",
+                "disabledByBackup": "無効 (バックアップへ移動)",
+                "readOnly": "読み取り専用 (プラグイン)"
+            },
+            "banner": {
+                "freshSpawn": "次のユーザーメッセージから適用されます。",
+                "newSession": "新しいセッションを開始",
+                "dismiss": "閉じる",
+                "promptCost": "prompt タイプのフックは毎回 LLM を呼び出すため、コストとレイテンシが発生します。"
+            },
+            "parallelExecutionBadge_one": "別のソースのフック 1 件と並列実行されます。",
+            "parallelExecutionBadge_other": "別のソースのフック {{count}} 件と並列実行されます。",
+            "matcher": {
+                "empty": "(すべての呼び出しにマッチ)"
+            },
+            "add": "追加",
+            "copy": {
+                "menuLabel": "コピー操作",
+                "toUser": {
+                    "label": "グローバルへコピー →"
+                },
+                "toProject": {
+                    "label": "プロジェクトへコピー ←"
+                },
+                "overrideToProject": {
+                    "label": "オーバーライド複製 (プロジェクト)"
+                },
+                "overrideToUser": {
+                    "label": "オーバーライド複製 (グローバル)"
+                },
+                "warning": {
+                    "title": "コピー前にフック本文を確認してください",
+                    "commandIntro": "このフックは任意のシェルコマンドを実行します。信頼できないソースのフックはコピーしないでください。",
+                    "promptIntro": "このフックは毎回 LLM を呼び出すため、コストとレイテンシが発生します。本文を確認のうえ進めてください。",
+                    "bodyPreview": "本文:",
+                    "secretPaths": "シークレット風の値が次の場所で検出されました: {{paths}}.",
+                    "ack": "本文を確認したのでコピーします。",
+                    "submit": "コピー",
+                    "cancel": "キャンセル"
+                },
+                "conflict": {
+                    "title": "同一のフックが既に存在します",
+                    "intro": "{{targetScope}} に同じ matcher と本文のフックが既にあります。",
+                    "overwrite": "既存フックを上書き",
+                    "skip": "スキップ — 既存をそのまま",
+                    "duplicate": "重複追加 (両方を維持)",
+                    "submit": "続行",
+                    "cancel": "キャンセル",
+                    "close": "閉じる",
+                    "success": "{{event}} フックを {{targetScope}} へコピーしました。",
+                    "duplicateInfo": "重複追加 — 両方が並列実行されます。",
+                    "pluginRootWarning": "${CLAUDE_PLUGIN_ROOT} はプラグインバンドル外では解決されません。"
+                }
+            },
+            "editor": {
+                "close": "閉じる",
+                "loading": "読み込み中…",
+                "loadingEditor": "エディタを読み込み中…",
+                "modeForm": "フォーム",
+                "modeRaw": "Raw",
+                "event": "イベント",
+                "matcher": {
+                    "matchAllHint": "(空の matcher = すべての呼び出しにマッチ)",
+                    "invalidRegex": "matcher が正規表現として解釈できません。",
+                    "ignoredOnEvent": "{{event}} イベントでは matcher は無視されます。",
+                    "sharedWithSiblings": "この matcher はグループ内の他 {{count}} 件のフックと共有されています。",
+                    "saveButton": "matcher を保存",
+                    "applyOption": {
+                        "title": "matcher 変更の適用範囲:",
+                        "sharedWithSiblings": "グループ内すべての {{count}} 件のフックに適用 (デフォルト — グループ維持)",
+                        "splitFromGroup": "このフックだけを分離して新しい matcher を適用",
+                        "afterSplitToast": "このフックは新しいグループに移動しました — 兄弟フックは元の matcher のままです。"
+                    }
+                },
+                "type": "タイプ",
+                "command": "Command",
+                "prompt": "Prompt",
+                "timeout": "タイムアウト (秒)",
+                "saving": "保存中…",
+                "create": "フックを作成",
+                "createTitle": "{{event}} フックを新規作成",
+                "editTitle": "{{event}} フックを編集",
+                "matcherHelp": "Matcher について — 正規表現 / ワイルドカード / パイプを許可。空 = すべての呼び出しにマッチ。",
+                "timeoutHint": "0 または空 = Claude Code のデフォルトに委ねる。",
+                "promptTypeUnsupported": "この CLI バージョンは prompt タイプのフックをサポートしていません。",
+                "secretMarker": "シークレット風の値",
+                "required": {
+                    "command": "type=command の場合 command 本文は必須です。",
+                    "prompt": "type=prompt の場合 prompt 本文は必須です。"
+                },
+                "rawParseError": "JSON の解析に失敗しました — フォームモードに戻るには JSON を修正してください。",
+                "rawSaveButton": "Raw JSON を保存",
+                "staleBanner": "外部でフックが変更されました — 解決方法を選択してください。",
+                "staleReload": "ディスクから再読み込み",
+                "staleOverwrite": "ディスクの内容を上書き",
+                "delete": {
+                    "label": "フックを削除",
+                    "confirm": "この {{event}} フックを削除しますか?",
+                    "submit": "削除"
+                },
+                "decisionTemplate": {
+                    "label": "PreToolUse 決定テンプレートを挿入",
+                    "allow": "許可",
+                    "deny": "拒否",
+                    "ask": "ユーザー確認"
+                },
+                "decisionForm": {
+                    "title": "PreToolUse 決定フォームビルダー",
+                    "collapsedHint": "フォームで permissionDecision JSON を生成、または下のクイックテンプレートを使用。",
+                    "decisionLabel": "決定",
+                    "decisionAllow": "許可",
+                    "decisionDeny": "拒否",
+                    "decisionAsk": "ユーザー確認",
+                    "systemMessageLabel": "ユーザーへのメッセージ (任意)",
+                    "systemMessagePlaceholder": "拒否 / 確認の理由。空欄で省略。",
+                    "updatedInputLabel": "Updated input JSON (allow 時のみ — 任意)",
+                    "updatedInputPlaceholder": "{ \"file_path\": \"…\" }",
+                    "updatedInputInvalid": "Updated input は有効な JSON である必要があります。",
+                    "insertModeLabel": "挿入モード",
+                    "insertModePrepend": "本文の前に追加",
+                    "insertModeReplace": "本文を置換",
+                    "generateButton": "フォームからシェルスニペットを生成"
+                },
+                "matcherLabel": "Matcher"
+            },
+            "malformed": {
+                "title": "config が無効なフックは表示から除外されました:"
+            },
+            "cardOpen": "フックを開く"
+        },
+        "plugin": {
+            "empty": "インストール済みのプラグインはありません。",
+            "emptyHint": "Claude Code CLI で `/plugin install` を実行してからここに戻ってください。",
+            "scope": {
+                "user": "グローバル",
+                "project": "プロジェクト"
+            },
+            "type": {
+                "standard": "標準",
+                "externalMcp": "外部 MCP"
+            },
+            "counts": {
+                "skills": "スキル",
+                "commands": "コマンド",
+                "agents": "エージェント",
+                "hooks": "フック",
+                "mcpServers": "MCP サーバー"
+            },
+            "toggle": {
+                "on": "有効",
+                "off": "無効"
+            },
+            "banner": {
+                "freshSpawn": "次のユーザー入力から反映されます。",
+                "longStream": "現在の会話終了後、新しいセッションで反映されます。すぐに適用するには新規セッションを開始してください。",
+                "newSession": "新しいセッション開始",
+                "dismiss": "閉じる"
+            },
+            "projectScopeDisabled": "別プロジェクト専用",
+            "projectScopeAmbiguous": "プロジェクトパス不明 — 読み取り専用",
+            "scopeHint": "グローバル設定を編集します",
+            "readonly": {
+                "forbidden": "読み取り専用環境: 権限がありません。"
+            }
+        }
+    },
+    "permissionMode": {
+        "planDescription": "Claudeはプランのみ作成し、ファイルを変更しません",
+        "askDescription": "ファイル変更前に承認を求めます",
+        "autoDescription": "ファイルの変更を自動的に承認します",
+        "bypassDescription": "すべての権限リクエストをスキップします",
+        "selectorAria": "権限モード：{{label}}。{{description}}。クリックして次のモードに切り替え"
+    },
+    "layout": {
+        "narrowAria": "狭いレイアウトに切り替え",
+        "wideAria": "広いレイアウトに切り替え",
+        "narrowTitle": "狭いレイアウト",
+        "wideTitle": "広いレイアウト"
+    },
+    "theme": {
+        "lightAria": "ライトモードに切り替え",
+        "darkAria": "ダークモードに切り替え"
+    },
+    "webPush": {
+        "title": "Webプッシュ通知",
+        "description": "このデバイスでブラウザプッシュ通知を受信します。Android、デスクトップブラウザ、iOS PWA（16.4+）で動作します。",
+        "iosHint": "iOSでは、HammocをPWAとしてインストール（ホーム画面に追加）する必要があります。",
+        "notSupported": "このブラウザはWebプッシュをサポートしていません。",
+        "permissionDenied": "通知の許可が拒否されました。ブラウザの設定で許可してください。",
+        "enableNotifications": "Webプッシュ通知を有効にする",
+        "enableHint": "有効にすると、Telegramと併せてプッシュ通知が送信されます。",
+        "subscribed": "このブラウザは購読中です",
+        "notSubscribed": "このブラウザは購読されていません",
+        "subscribe": "このブラウザを購読",
+        "unsubscribe": "購読解除",
+        "subscribedDevices": "{{count}}台のデバイスが購読中",
+        "testSend": "テストプッシュを送信",
+        "testSending": "送信中...",
+        "testSuccess": "テストプッシュ通知が送信されました！",
+        "testFailure": "送信失敗: {{error}}",
+        "subscribeSuccess": "このブラウザでプッシュ通知が有効になりました。",
+        "subscribeError": "購読に失敗しました。もう一度お試しください。",
+        "unsubscribeSuccess": "このブラウザでプッシュ通知が無効になりました。",
+        "unsubscribeError": "購読解除に失敗しました。もう一度お試しください。",
+        "enabled": "Webプッシュ通知が有効になりました",
+        "disabled": "Webプッシュ通知が無効になりました",
+        "loadError": "Webプッシュ設定の読み込みに失敗しました。",
+        "retry": "再試行"
+    },
+    "page": {
+        "title": "設定",
+        "backAriaLabel": "戻る"
     }
-  },
-  "permissionMode": {
-    "planDescription": "Claudeはプランのみ作成し、ファイルを変更しません",
-    "askDescription": "ファイル変更前に承認を求めます",
-    "autoDescription": "ファイルの変更を自動的に承認します",
-    "bypassDescription": "すべての権限リクエストをスキップします",
-    "selectorAria": "権限モード：{{label}}。{{description}}。クリックして次のモードに切り替え"
-  },
-  "layout": {
-    "narrowAria": "狭いレイアウトに切り替え",
-    "wideAria": "広いレイアウトに切り替え",
-    "narrowTitle": "狭いレイアウト",
-    "wideTitle": "広いレイアウト"
-  },
-  "theme": {
-    "lightAria": "ライトモードに切り替え",
-    "darkAria": "ダークモードに切り替え"
-  },
-  "webPush": {
-    "title": "Webプッシュ通知",
-    "description": "このデバイスでブラウザプッシュ通知を受信します。Android、デスクトップブラウザ、iOS PWA（16.4+）で動作します。",
-    "iosHint": "iOSでは、HammocをPWAとしてインストール（ホーム画面に追加）する必要があります。",
-    "notSupported": "このブラウザはWebプッシュをサポートしていません。",
-    "permissionDenied": "通知の許可が拒否されました。ブラウザの設定で許可してください。",
-    "enableNotifications": "Webプッシュ通知を有効にする",
-    "enableHint": "有効にすると、Telegramと併せてプッシュ通知が送信されます。",
-    "subscribed": "このブラウザは購読中です",
-    "notSubscribed": "このブラウザは購読されていません",
-    "subscribe": "このブラウザを購読",
-    "unsubscribe": "購読解除",
-    "subscribedDevices": "{{count}}台のデバイスが購読中",
-    "testSend": "テストプッシュを送信",
-    "testSending": "送信中...",
-    "testSuccess": "テストプッシュ通知が送信されました！",
-    "testFailure": "送信失敗: {{error}}",
-    "subscribeSuccess": "このブラウザでプッシュ通知が有効になりました。",
-    "subscribeError": "購読に失敗しました。もう一度お試しください。",
-    "unsubscribeSuccess": "このブラウザでプッシュ通知が無効になりました。",
-    "unsubscribeError": "購読解除に失敗しました。もう一度お試しください。",
-    "enabled": "Webプッシュ通知が有効になりました",
-    "disabled": "Webプッシュ通知が無効になりました",
-    "loadError": "Webプッシュ設定の読み込みに失敗しました。",
-    "retry": "再試行"
-  },
-  "page": {
-    "title": "設定",
-    "backAriaLabel": "戻る"
-  }
 }
