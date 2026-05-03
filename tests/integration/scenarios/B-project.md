@@ -545,3 +545,81 @@
 - matcher 검증은 `new RegExp()` 만 사용 (false-negative 허용 — CLI 실측 정합성은 후속 spike 또는 Epic 31 범위)
 - 결정 빌더의 `updatedInput` JSON 도 100ms 안에 파싱 시도하며 실패 시 generate 버튼 비활성화
 - PreToolUse 외 이벤트로 변경하면 결정 빌더 panel 이 자동으로 사라짐
+
+---
+
+## B10. 하네스 슬래시 커맨드 섹션 (Story 28.5) `[CORE]`
+
+설정 → 하네스 워크벤치 → "Commands" 좌측 네비를 통해 프로젝트 `<projectRoot>/.claude/commands/**/*.md`, 전역 `~/.claude/commands/**/*.md`, 그리고 모든 설치된 플러그인 번들의 `<installPath>/commands/**/*.md` 를 한 트리에서 조회·편집·복사·생성·삭제한다. 슬래시 명은 디렉토리 구분자 `/` 를 `:` 로 자동 변환해 SDK 가 인식하는 형식 (`/A:B:foo`) 으로 노출하며, 워크벤치 변경 직후 `useSlashCommands` 캐시가 무효화되어 다음 채팅 슬래시 팔레트 오픈 시 새 커맨드가 즉시 보인다. 플러그인 카드는 읽기 전용이며 BMad 미러 (`.claude/commands/BMad/agents/*.md` 등) 는 휴리스틱으로 감지해 안내 마커를 표시하되 강제 차단은 하지 않는다.
+
+### B-10-01: 트리 형태 커맨드 리스트 + 출처 배지 + paletteVisibleCount `[CORE]`
+
+**절차**:
+1. 프로젝트 `<projectRoot>/.claude/commands/` 에 `foo.md` (flat) + `mytools/sub/bar.md` (2-deep 중첩) 사전 시드
+2. 전역 `~/.claude/commands/` 에 `global-cmd.md` 사전 시드
+3. 설정 → 하네스 워크벤치 → "Commands" 좌측 nav 클릭 → GET `/api/harness/commands?projectSlug=<slug>` 호출
+4. 응답의 `cards` 배열 + `paletteVisibleCount` 배지가 패널 상단에 노출되는지 확인 (셀렉터: `[data-testid="cmd-palette-count"]`)
+
+**기대 결과**:
+- 프로젝트 트리는 디렉토리 노드 + 잎 카드로 표현되며 `mytools/sub/bar.md` 는 `mytools` → `sub` → `bar.md` 3 단 펼침/접힘 구조로 렌더됨
+- 각 잎 노드의 슬래시 명은 `/foo`, `/mytools:sub:bar`, `/global-cmd` 로 콜론 변환되어 mono-text 배지로 표시
+- 출처 배지는 프로젝트(주황) / 전역(회색) / 플러그인(보라) 3 색으로 시각 구분 + scope 텍스트 라벨 병기 (색맹 대비)
+- `paletteVisibleCount` 배지가 BMad 미러 dedup 후 실제 채팅 팔레트 노출 개수를 반영 (예: BMad 33개 미러가 있어도 카운트는 그대로 BMad 카드만 큐레이션해서 1번 카운트)
+
+### B-10-02: 새 커맨드 생성 (flat) → 즉시 채팅 슬래시 팔레트 노출 `[CORE]`
+
+**절차**:
+1. CommandPanel 의 "+ 새 커맨드" CTA 클릭 → CreateCommandDialog 모달 열림
+2. scope = `project`, fileName = `quickstart` 입력 → 슬래시 명 미리보기 `/quickstart` 가 모달 본문에 표시 (셀렉터: `[data-testid="cmd-create-preview"]`)
+3. "만들기" 클릭 → POST `/api/harness/commands` 200 → `<projectRoot>/.claude/commands/quickstart.md` 가 빈 본문으로 생성됨
+4. CommandPanel 으로 돌아오면 새 카드가 즉시 트리에 노출 (자동 reload)
+5. 채팅 입력에서 `/` 입력 → 팔레트 자동완성에 `/quickstart` 가 즉시 노출되어야 함 (워크벤치 → 팔레트 캐시 무효화 통합)
+
+**기대 결과**:
+- 디스크에 새 .md 파일이 생기고 frontmatter 가 모두 비어 있어 frontmatter 블록 자체가 생략된 빈 markdown 파일로 저장됨
+- `useSlashCommands` 모듈 캐시가 `invalidateSlashCommandsCache(slug)` 로 즉시 비워지고 `hammoc:slashCommandsChanged` 이벤트가 발화되어 채팅측 hook 이 다음 팔레트 오픈에 fresh fetch 를 수행
+- 28.1 spike A 의 fresh-spawn 모델에 따라 SDK 도 다음 사용자 메시지부터 새 커맨드를 인식 (별도 서버 reload 트리거 없이)
+
+### B-10-03: 새 커맨드 생성 (중첩 디렉토리) → /A:B:foo 슬래시 명 미리보기 `[CORE]`
+
+**절차**:
+1. "+ 새 커맨드" 모달에서 directoryPath = `mytools/sub`, fileName = `foo` 입력
+2. 모달 안의 미리보기 영역 (`[data-testid="cmd-create-preview"]`) 가 실시간으로 `Will be invoked as /mytools:sub:foo` 를 표시
+3. "만들기" 클릭 → POST `/api/harness/commands` 가 `relativePath: "mytools/sub/foo.md"` 로 호출됨
+4. 디스크에 `<projectRoot>/.claude/commands/mytools/sub/foo.md` 가 생성되고 (디렉토리 자동 mkdir) 트리에 즉시 반영
+
+**기대 결과**:
+- 슬래시 명 미리보기는 디렉토리 입력 변경마다 100ms 안에 갱신
+- OS 예약문자 (`<`, `>`, `:`, `"`, `|`, `?`, `*`, 컨트롤문자) 가 directoryPath 또는 fileName 에 들어가면 인라인 에러 + 제출 비활성
+- 생성 실패 시 (예: 동명 파일 존재) 서버는 `HARNESS_COMMAND_NAME_CONFLICT` 409 로 거부하고 모달이 인라인 에러 노출
+
+### B-10-04: 양방향 카피 + 시크릿 모달 + 동일 좌표 충돌 모달 (rename) `[CORE]`
+
+**절차**:
+1. 프로젝트 카드의 ⋮ 카피 메뉴에서 "전역으로 복사 →" 클릭
+2. 본문에 `Bearer ghp_abcdef0123456789abcdef` 같은 시크릿이 있어 첫 시도가 403 (`HARNESS_FORBIDDEN`, `details.cause: 'secret-not-acknowledged'`) 으로 거부됨
+3. CommandCopyConflictDialog 가 시크릿 안내와 함께 자동 노출 → 사용자가 ack 하고 "계속" 클릭
+4. 대상 스코프에 같은 슬래시 명 파일이 이미 있으면 `덮어쓰기` / `스킵` / `이름 변경 후 추가` 3-way 라디오 노출
+5. `이름 변경` 라디오 → 새 상대 경로 입력 (예: `forked-foo.md`) → "계속" → POST `/api/harness/commands/copy` 200 with `targetRelativePath, acknowledgedSecret:true`
+6. 카피 직후 채팅 슬래시 팔레트가 새로운 `/forked-foo` 도 즉시 노출 (캐시 무효화 통합)
+
+**기대 결과**:
+- `${ENV_NAME}` · `${CLAUDE_PLUGIN_ROOT}` 같은 환경변수 참조는 시크릿 휴리스틱에서 제외되며 카피 시 원문 그대로 보존
+- 플러그인 → 프로젝트 카피 시 본문에 `${CLAUDE_PLUGIN_ROOT}` 가 포함돼 있으면 응답 `details.warnings: ['plugin-root-reference']` 가 동봉되어 클라이언트가 경고 토스트를 띄움
+- rename 입력 검증은 OS 예약문자 정규식과 `.md` 확장자 강제를 동일하게 적용
+
+### B-10-05: frontmatter 폼 편집 + 본문 동적 토큰 하이라이트 검증 `[CORE]`
+
+**절차**:
+1. 카드 클릭 → CommandEditor 모달이 열리고 frontmatter 4개 필드 (description / argument-hint / allowed-tools / model) 와 본문 markdown 에디터가 분리 노출
+2. description 입력란에 256자 초과 텍스트 입력 → `[data-testid="cmd-description-too-long"]` 경고 배지 노출 (저장은 가능)
+3. argument-hint 입력란에 `[topic` (대괄호 닫지 않음) 입력 → 100ms 디바운스 후 `[data-testid="cmd-argument-hint-invalid"]` 인라인 에러 노출
+4. 본문에 `$1` 과 `!`echo`` 토큰을 입력 → `[data-testid="cmd-body-tokens"]` 의 `data-uses-args="true"` / `data-uses-bash-exec="true"` 속성이 즉시 갱신
+5. allowed-tools 가 비어 있으므로 친화적 검증 배지 (`[data-testid="cmd-consistency-warnings"]` 안의 `data-warning="bashWithoutAllowedTool"`) 노출 — 저장은 막지 않음
+6. Raw 모드 토글 → 단일 textarea 에 frontmatter + 본문 전체가 노출됨; YAML 무효 입력 시 Form 토글이 비활성화되고 `cmd-mode-form` 버튼 disabled
+
+**기대 결과 (시각 검증 정책 — flaky 회피)**:
+- Playwright snapshot 단독 의존 금지 — 토큰 5종 (`$1` · `$ARGUMENTS` · `@path` · `` !`cmd` `` · `${CLAUDE_PLUGIN_ROOT}`) 의 사용 여부는 `data-uses-*` 속성으로 직접 단언
+- WCAG AA contrast 검증은 별도 단위 테스트 (CSS 변수 contrast ratio ≥ 4.5) 가 책임
+- frontmatter 편집은 300ms 디바운스로 PUT `/api/harness/commands/:relPath` 호출 → `applyYamlFrontmatterPatch` 헬퍼가 본문 markdown 영역을 byte-for-byte 보존하면서 `--- ... ---` 블록만 round-trip
+- BMad 미러 카드 (예: `.claude/commands/BMad/agents/sm.md`) 는 모든 입력이 disabled + 상단 안내 배너 (`harness.command.editor.bmadMirrorReadOnly`) 노출

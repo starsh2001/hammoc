@@ -25,6 +25,33 @@ const cache = new Map<string, { commands: SlashCommand[]; starCommands: Record<s
 const warnedProjects = new Set<string>();
 
 /**
+ * Story 28.5: Externally invalidate the slash-command response cache.
+ *
+ * The harness command workbench mutates `.claude/commands/**\/*.md` files via
+ * REST. Without explicit invalidation those mutations would not show up in the
+ * chat slash palette until the next visibility-change trigger (1.5s) or page
+ * reload. Pair this call with the global `hammoc:slashCommandsChanged` event
+ * (dispatched by `harnessCommandStore` and the workbench components) so any
+ * mounted `useSlashCommands` hook re-fetches fresh data on the next palette
+ * open.
+ *
+ * @param slug Project slug to invalidate. Pass `undefined` to clear everything.
+ */
+export function invalidateSlashCommandsCache(slug?: string): void {
+  if (slug === undefined) {
+    cache.clear();
+    return;
+  }
+  cache.delete(slug);
+}
+
+export const SLASH_COMMANDS_CHANGED_EVENT = 'hammoc:slashCommandsChanged';
+
+interface SlashCommandsChangedDetail {
+  projectSlug?: string;
+}
+
+/**
  * Fetch slash commands for a project
  * Falls back to empty array on error (graceful degradation)
  *
@@ -115,6 +142,24 @@ export function useSlashCommands(projectSlug?: string): UseSlashCommandsResult {
   const refresh = useCallback(() => {
     const slug = slugRef.current;
     if (slug) fetchCommands(slug);
+  }, [fetchCommands]);
+
+  // Story 28.5: react to harness workbench mutations dispatched by the
+  // harnessCommandStore (load / copy / external file change) — `cache` is
+  // cleared by the dispatcher via `invalidateSlashCommandsCache`, so this
+  // handler just kicks a fresh fetch when the slug matches.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<SlashCommandsChangedDetail>).detail ?? {};
+      const slug = slugRef.current;
+      if (!slug) return;
+      if (detail.projectSlug !== undefined && detail.projectSlug !== slug) return;
+      fetchCommands(slug);
+    };
+    window.addEventListener(SLASH_COMMANDS_CHANGED_EVENT, handler as EventListener);
+    return () => {
+      window.removeEventListener(SLASH_COMMANDS_CHANGED_EVENT, handler as EventListener);
+    };
   }, [fetchCommands]);
 
   return { commands, starCommands, isLoading, refresh };

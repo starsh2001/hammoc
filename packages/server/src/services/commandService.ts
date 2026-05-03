@@ -25,6 +25,14 @@ interface AgentYaml {
   commands?: Array<Record<string, string>> | Record<string, string>;
 }
 
+interface InstalledPluginEntry {
+  installPath?: string;
+}
+
+interface InstalledPluginsFile {
+  plugins?: Record<string, InstalledPluginEntry[] | InstalledPluginEntry>;
+}
+
 /** Built-in Claude Code system commands that work via SDK programmatic API.
  * Most built-in commands (e.g. /cost, /help, /model) are CLI-only interactive
  * commands and do NOT work through the SDK conversation API.
@@ -77,12 +85,16 @@ class CommandService {
     if (!bmadCorePath) return [...BUILTIN_COMMANDS, ...skills];
 
     const slashPrefix = await this.getSlashPrefix(bmadCorePath);
-    const [agents, tasks] = await Promise.all([
+    const [agents, tasks, claudeCommands] = await Promise.all([
       this.scanAgents(bmadCorePath, slashPrefix),
       this.scanTasks(bmadCorePath, slashPrefix),
+      this.scanClaudeCommands(projectPath),
     ]);
 
-    return [...BUILTIN_COMMANDS, ...agents, ...tasks, ...skills];
+    const existingNames = new Set([...agents, ...tasks].map((c) => c.command));
+    const filteredClaudeCommands = claudeCommands.filter((c) => !existingNames.has(c.command));
+
+    return [...BUILTIN_COMMANDS, ...agents, ...tasks, ...skills, ...filteredClaudeCommands];
   }
 
   /**
@@ -104,17 +116,26 @@ class CommandService {
 
     const slashPrefix = await this.getSlashPrefix(bmadCorePath);
 
-    const [agents, tasks, starCommands] = await Promise.all([
+    const [agents, tasks, starCommands, claudeCommands] = await Promise.all([
       this.scanAgents(bmadCorePath, slashPrefix),
       this.scanTasks(bmadCorePath, slashPrefix),
       this.scanStarCommands(bmadCorePath),
+      this.scanClaudeCommands(projectPath),
     ]);
 
     // Warn if BMad agents exist but .claude/commands/ is missing
     const warnings = await this.checkClaudeCommandsDir(projectPath, agents, slashPrefix);
 
+    // De-dup the slash-command results against BMad agents/tasks. BMad
+    // already exposes /<prefix>:agents:<id> and /<prefix>:tasks:<name>
+    // commands with rich metadata (title, icon); the mirror .md file under
+    // .claude/commands/<prefix>/{agents,tasks}/<id>.md must not appear twice
+    // in the chat palette.
+    const existingNames = new Set([...agents, ...tasks].map((c) => c.command));
+    const filteredClaudeCommands = claudeCommands.filter((c) => !existingNames.has(c.command));
+
     return {
-      commands: [...BUILTIN_COMMANDS, ...agents, ...tasks, ...skills],
+      commands: [...BUILTIN_COMMANDS, ...agents, ...tasks, ...skills, ...filteredClaudeCommands],
       starCommands,
       ...(warnings.length > 0 && { warnings }),
     };
@@ -321,6 +342,128 @@ class CommandService {
     }
 
     return commands;
+  }
+
+  /**
+   * Story 28.5: Scan `.claude/commands/**\/*.md` from project / global / installed
+   * plugin sources and return a unified SlashCommand[] list. Nested directory
+   * paths are converted to the colon-separated slash form Claude Code's SDK
+   * already recognizes (e.g. `commands/A/B/foo.md` → `/A:B:foo`).
+   */
+  async scanClaudeCommands(projectPath: string): Promise<SlashCommand[]> {
+    const projectRoot = path.join(projectPath, '.claude', 'commands');
+    const userRoot = path.join(os.homedir(), '.claude', 'commands');
+
+    const [projectCommands, userCommands, pluginCommands] = await Promise.all([
+      this.scanCommandsDir(projectRoot, 'project'),
+      this.scanCommandsDir(userRoot, 'global'),
+      this.scanPluginCommands(),
+    ]);
+
+    return [...projectCommands, ...userCommands, ...pluginCommands];
+  }
+
+  private async scanCommandsDir(
+    dir: string,
+    scope: 'project' | 'global' | 'plugin',
+    pluginInstallRoot?: string,
+  ): Promise<SlashCommand[]> {
+    let stat;
+    try {
+      stat = await fs.stat(dir);
+    } catch {
+      return [];
+    }
+    if (!stat.isDirectory()) return [];
+
+    const files = await this.walkMd(dir);
+    const out: SlashCommand[] = [];
+    for (const abs of files) {
+      // Plugin containment guard.
+      if (pluginInstallRoot) {
+        const resolvedAbs = path.resolve(abs);
+        const resolvedRoot = path.resolve(pluginInstallRoot);
+        if (
+          resolvedAbs !== resolvedRoot &&
+          !resolvedAbs.startsWith(resolvedRoot + path.sep)
+        ) {
+          continue;
+        }
+      }
+      const relPosix = path.relative(dir, abs).replace(/\\/g, '/');
+      const noExt = relPosix.replace(/\.md$/i, '');
+      const slashName = `/${noExt.split('/').join(':')}`;
+      let description: string | undefined;
+      try {
+        const content = await fs.readFile(abs, 'utf-8');
+        const fm = this.parseSkillFrontmatter(content);
+        if (fm && typeof fm.description === 'string') {
+          description = fm.description;
+        }
+      } catch {
+        // ignore — surface the command without description
+      }
+      out.push({
+        command: slashName,
+        name: noExt.split('/').pop() ?? noExt,
+        description: description ?? `${slashName} command`,
+        category: 'command',
+        scope,
+      });
+    }
+    return out;
+  }
+
+  private async walkMd(root: string, depth = 0): Promise<string[]> {
+    if (depth > 32) return [];
+    let entries;
+    try {
+      entries = await fs.readdir(root, { withFileTypes: true });
+    } catch {
+      return [];
+    }
+    const promises = entries.map(async (entry) => {
+      const abs = path.join(root, entry.name);
+      if (entry.isDirectory()) {
+        return this.walkMd(abs, depth + 1);
+      }
+      if (entry.isFile() && entry.name.endsWith('.md')) {
+        return [abs];
+      }
+      return [];
+    });
+    const nested = await Promise.all(promises);
+    return nested.flat();
+  }
+
+  private async scanPluginCommands(): Promise<SlashCommand[]> {
+    let installedFile;
+    try {
+      installedFile = await fs.readFile(
+        path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json'),
+        'utf-8',
+      );
+    } catch {
+      return [];
+    }
+    let parsed: InstalledPluginsFile;
+    try {
+      parsed = JSON.parse(installedFile) as InstalledPluginsFile;
+    } catch {
+      return [];
+    }
+    const plugins = parsed.plugins ?? {};
+    const tasks: Promise<SlashCommand[]>[] = [];
+    for (const value of Object.values(plugins)) {
+      const entries = Array.isArray(value) ? value : [value];
+      for (const entry of entries) {
+        if (!entry?.installPath) continue;
+        const dir = path.join(entry.installPath, 'commands');
+        tasks.push(this.scanCommandsDir(dir, 'plugin', entry.installPath));
+      }
+    }
+    const settled = await Promise.all(tasks);
+    return settled.flat();
   }
 
   /**

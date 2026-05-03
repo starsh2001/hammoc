@@ -322,7 +322,8 @@
                 "plugins": "플러그인",
                 "skills": "스킬",
                 "mcps": "MCP",
-                "hooks": "훅"
+                "hooks": "훅",
+                "commands": "커맨드"
             }
         },
         "skill": {
@@ -697,6 +698,138 @@
                 "title": "config 가 무효한 훅은 표시에서 제외됐습니다:"
             },
             "cardOpen": "훅 열기"
+        },
+        "command": {
+            "empty": {
+                "title": "구성된 슬래시 커맨드가 없습니다.",
+                "description": "<projectRoot>/.claude/commands/ 또는 ~/.claude/commands/ 에 .md 파일을 추가하거나, 커맨드를 제공하는 플러그인 번들을 설치하세요.",
+                "perDirectory": "이 디렉토리에는 아직 커맨드가 없습니다."
+            },
+            "scopeBadge": {
+                "project": "프로젝트",
+                "user": "전역",
+                "plugin": "플러그인",
+                "pluginWithKey": "플러그인: {{key}}"
+            },
+            "tokens": {
+                "args": "args",
+                "argumentsAll": "$ARGUMENTS",
+                "fileRefs": "@path",
+                "bashExec": "!cmd",
+                "pluginRoot": "${CLAUDE_PLUGIN_ROOT}"
+            },
+            "bmadMirrorMarker": ".bmad-core 미러 — BMad 가 관리",
+            "banner": {
+                "appliesNextMessage": "저장됐습니다. 다음 사용자 메시지부터 적용됩니다.",
+                "paletteCount_one": "채팅 / 팔레트에서 사용할 수 있는 커맨드 1개.",
+                "paletteCount_other": "채팅 / 팔레트에서 사용할 수 있는 커맨드 {{count}}개."
+            },
+            "create": {
+                "title": "새 슬래시 커맨드",
+                "directoryLabel": "디렉토리 (선택)",
+                "directoryPlaceholder": "예: mytools/sub",
+                "fileNameLabel": "파일 이름",
+                "fileNamePlaceholder": "my-command",
+                "scopeLabel": "스코프",
+                "scopeProject": "프로젝트",
+                "scopeUser": "전역",
+                "preview": "{{slashName}} 으로 호출됩니다",
+                "submit": "만들기",
+                "cancel": "취소",
+                "errors": {
+                    "fileNameRequired": "파일 이름은 필수입니다.",
+                    "reservedChars": "OS 예약문자가 포함되어 있습니다.",
+                    "trailingSpace": "경로 세그먼트 끝에 공백/점은 사용할 수 없습니다.",
+                    "extensionInvalid": "파일 이름은 자동으로 .md 확장자가 부착됩니다."
+                }
+            },
+            "editor": {
+                "frontmatterTitle": "Frontmatter",
+                "descriptionLabel": "Description",
+                "descriptionTooLong": "256자를 초과한 description 은 팔레트 미리보기에서 잘릴 수 있습니다.",
+                "argumentHintLabel": "argument-hint",
+                "argumentHintPlaceholder": "[arg1] [arg2]",
+                "argumentHint": {
+                    "invalidPlaceholder": "[name] 형식의 placeholder 만 사용하세요 — 대괄호가 닫히지 않았습니다."
+                },
+                "allowedToolsLabel": "allowed-tools",
+                "allowedToolsPlaceholder": "Read, Edit, Bash(git:*)",
+                "modelLabel": "Model",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "bodyTitle": "본문 (Markdown)",
+                "tokenGuide": {
+                    "title": "동적 치환 토큰",
+                    "positionalArgs": "$1, $2 — 슬래시 커맨드의 1번째/2번째 위치 인수",
+                    "argumentsAll": "$ARGUMENTS — 커맨드에 전달된 전체 인수 문자열",
+                    "fileRefs": "@path/to/file — 런타임에 파일 내용을 인라인 삽입",
+                    "bashExec": "!`command` — 셸 명령을 실행하고 stdout 을 인라인 삽입",
+                    "pluginRoot": "${CLAUDE_PLUGIN_ROOT} — 플러그인 번들 루트 (플러그인 커맨드에서만 의미)",
+                    "docsLink": "공식 문서"
+                },
+                "warnings": {
+                    "argumentsWithoutHint": "이 커맨드는 $1 / $ARGUMENTS 를 사용하지만 argument-hint 가 비어 있어 팔레트에서 인수 안내가 표시되지 않습니다.",
+                    "bashWithoutAllowedTool": "이 커맨드는 !`...` 셸 실행을 사용하지만 allowed-tools 에 Bash 가 포함되지 않아 SDK 가 실행을 차단합니다.",
+                    "pluginRootInNonPlugin": "${CLAUDE_PLUGIN_ROOT} 는 플러그인 번들 안에서만 의미가 있으며, 프로젝트/전역 커맨드에서는 빈 문자열로 치환됩니다."
+                },
+                "rawToggle": "Raw",
+                "rawParseError": "frontmatter 를 파싱할 수 없습니다 — YAML 을 수정하면 Form 모드로 돌아갈 수 있습니다.",
+                "staleBanner": "이 커맨드가 외부에서 변경되어 저장이 거부됐습니다. 최신 내용을 불러왔습니다.",
+                "staleReload": "다시 불러오기",
+                "staleOverwrite": "내 수정으로 덮어쓰기",
+                "bmadMirrorReadOnly": "이 파일은 .bmad-core 의 미러입니다 — /BMad 에이전트 명령으로 수정하세요.",
+                "delete": {
+                    "label": "커맨드 삭제",
+                    "confirm": "{{scope}} 의 {{slashName}} 을(를) 삭제할까요?",
+                    "submit": "삭제"
+                }
+            },
+            "copy": {
+                "menuLabel": "카피 액션",
+                "toUser": { "label": "전역으로 복사 →" },
+                "toProject": { "label": "프로젝트로 복사 ←" },
+                "overrideToProject": { "label": "오버라이드로 복제 (프로젝트)" },
+                "overrideToUser": { "label": "오버라이드로 복제 (전역)" },
+                "secret": {
+                    "title": "민감한 내용 감지됨",
+                    "intro": "본문 또는 frontmatter 에 API 키 / 토큰처럼 보이는 값이 있습니다. 그래도 복사를 진행하시겠습니까?",
+                    "linePreview": "{{line}} 행: {{snippet}}",
+                    "ack": "내용을 검토했고, 복사를 진행하길 원합니다.",
+                    "submit": "복사",
+                    "cancel": "취소"
+                },
+                "conflict": {
+                    "title": "대상 위치에 동일 커맨드가 이미 있습니다",
+                    "intro": "{{scope}} 에 이미 {{slashName}} 이(가) 있습니다. 어떻게 처리할까요?",
+                    "overwrite": "덮어쓰기",
+                    "skip": "스킵",
+                    "rename": "이름 변경 후 추가",
+                    "renamePathLabel": "새 상대 경로",
+                    "submit": "계속",
+                    "cancel": "취소"
+                },
+                "directory": {
+                    "title": "디렉토리 전체 복사",
+                    "intro": "{{sourceScope}} 에서 {{targetScope}} 으로 커맨드 {{count}}개를 복사합니다.",
+                    "overwriteAll": "충돌 모두 덮어쓰기",
+                    "skipAll": "충돌 모두 스킵",
+                    "perFile": "파일별로 결정",
+                    "perFileTable": { "file": "파일", "decision": "처리" }
+                },
+                "result": {
+                    "success": "{{slashName}} 을(를) {{scope}} 로 복사했습니다.",
+                    "directorySuccess": "커맨드 {{count}}개를 복사했습니다 ({{skipped}}개 스킵).",
+                    "pluginRootWarning": "일부 커맨드가 ${CLAUDE_PLUGIN_ROOT} 를 참조합니다 — {{scope}} 스코프에서는 동작하지 않을 수 있습니다."
+                }
+            },
+            "malformed": {
+                "title": "frontmatter 가 무효한 커맨드는 표시에서 제외됐습니다:"
+            },
+            "cardOpen": "{{slashName}} 열기"
         },
         "plugin": {
             "empty": "설치된 플러그인이 없습니다.",

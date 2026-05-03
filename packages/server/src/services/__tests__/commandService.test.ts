@@ -717,4 +717,152 @@ description: A shared skill
       expect(scopes).toContain('global');
     });
   });
+
+  describe('scanClaudeCommands (Story 28.5)', () => {
+    function setupCommandsReaddir(
+      tree: Record<string, Array<{ name: string; isFile: boolean }>>,
+    ): void {
+      mockFs.readdir.mockImplementation(async (dirPath: unknown, opts?: unknown) => {
+        const p = String(dirPath).replace(/\\/g, '/');
+        const entries = tree[p] ?? [];
+        // Caller passes { withFileTypes: true } in scanClaudeCommands.
+        const optsObj = opts as { withFileTypes?: boolean } | undefined;
+        if (optsObj?.withFileTypes) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return entries.map((e) => ({
+            name: e.name,
+            isFile: () => e.isFile,
+            isDirectory: () => !e.isFile,
+          })) as any;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return entries.map((e) => e.name) as any;
+      });
+    }
+
+    it('flat .claude/commands/foo.md → /foo with category=command', async () => {
+      mockFs.stat.mockImplementation(async (p: unknown) => {
+        const s = String(p);
+        if (s.endsWith('.claude/commands') || s.endsWith('.claude\\commands')) {
+          return { isDirectory: () => true } as import('fs').Stats;
+        }
+        return { isDirectory: () => false } as import('fs').Stats;
+      });
+      setupCommandsReaddir({
+        '/fake/project/.claude/commands': [{ name: 'foo.md', isFile: true }],
+        '/Users/test/.claude/commands': [],
+      });
+      mockFs.readFile.mockResolvedValue('---\ndescription: hi\n---\n\nbody\n');
+
+      const result = await commandService.scanClaudeCommands('/fake/project');
+      const command = result.find((c) => c.command === '/foo');
+      expect(command).toBeDefined();
+      expect(command!.category).toBe('command');
+      expect(command!.scope).toBe('project');
+    });
+
+    it('nested .claude/commands/sub/foo.md → /sub:foo (colon converted)', async () => {
+      mockFs.stat.mockImplementation(async (p: unknown) => {
+        const s = String(p);
+        if (s.endsWith('.claude/commands') || s.endsWith('.claude\\commands')) {
+          return { isDirectory: () => true } as import('fs').Stats;
+        }
+        return { isDirectory: () => false } as import('fs').Stats;
+      });
+      setupCommandsReaddir({
+        '/fake/project/.claude/commands': [{ name: 'sub', isFile: false }],
+        '/fake/project/.claude/commands/sub': [{ name: 'foo.md', isFile: true }],
+        '/Users/test/.claude/commands': [],
+      });
+      mockFs.readFile.mockResolvedValue('# body\n');
+
+      const result = await commandService.scanClaudeCommands('/fake/project');
+      const command = result.find((c) => c.command === '/sub:foo');
+      expect(command).toBeDefined();
+      expect(command!.category).toBe('command');
+    });
+
+    it('getCommandsWithStarCommands de-dups BMad mirror against scanned commands', async () => {
+      mockScanProjects.mockResolvedValue([mockProject]);
+      mockFs.stat.mockImplementation(async (p: unknown) => {
+        const s = String(p).replace(/\\/g, '/');
+        if (s.endsWith('.bmad-core') || s.endsWith('.claude/commands')) {
+          return { isDirectory: () => true } as import('fs').Stats;
+        }
+        return { isDirectory: () => false } as import('fs').Stats;
+      });
+      mockFs.readFile.mockImplementation(async (p: unknown) => {
+        const s = String(p).replace(/\\/g, '/');
+        if (s.endsWith('core-config.yaml')) return 'slashPrefix: BMad\n';
+        if (s.endsWith('agents/sm.md') && s.includes('.bmad-core')) return agentMdWithCommands;
+        if (s.endsWith('BMad/agents/sm.md')) return '# /sm Command\n\n<!-- Powered by BMAD™ Core -->\n';
+        return '';
+      });
+      setupCommandsReaddir({
+        '/Users/test/my-project/.bmad-core/agents': [],
+        '/Users/test/my-project/.bmad-core/tasks': [],
+        '/Users/test/my-project/.claude/commands': [{ name: 'BMad', isFile: false }],
+        '/Users/test/my-project/.claude/commands/BMad': [{ name: 'agents', isFile: false }],
+        '/Users/test/my-project/.claude/commands/BMad/agents': [{ name: 'sm.md', isFile: true }],
+        '/Users/test/my-project/.claude/skills': [],
+        '/Users/test/.claude/skills': [],
+        '/Users/test/.claude/commands': [],
+      });
+      // The BMad sm agent that scanAgents() will return.
+      mockFs.readdir.mockImplementation(async (dirPath: unknown, opts?: unknown) => {
+        const s = String(dirPath).replace(/\\/g, '/');
+        if (opts && (opts as { withFileTypes?: boolean }).withFileTypes) {
+          if (s === '/Users/test/my-project/.claude/commands') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return [{ name: 'BMad', isFile: () => false, isDirectory: () => true }] as any;
+          }
+          if (s === '/Users/test/my-project/.claude/commands/BMad') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return [{ name: 'agents', isFile: () => false, isDirectory: () => true }] as any;
+          }
+          if (s === '/Users/test/my-project/.claude/commands/BMad/agents') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return [{ name: 'sm.md', isFile: () => true, isDirectory: () => false }] as any;
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return [] as any;
+        }
+        // Fallback for skills + bmad scans (not withFileTypes)
+        if (s.endsWith('.bmad-core/agents')) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return ['sm.md'] as any;
+        }
+        if (s.endsWith('.bmad-core/tasks')) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return [] as any;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return [] as any;
+      });
+
+      const result = await commandService.getCommandsWithStarCommands('test-slug');
+      const matching = result.commands.filter((c) => c.command === '/BMad:agents:sm');
+      // After de-dup, only one /BMad:agents:sm entry should remain (the BMad agent
+      // metadata wins over the .claude/commands/BMad/agents/sm.md mirror).
+      expect(matching).toHaveLength(1);
+      expect(matching[0].category).toBe('agent');
+    });
+
+    it('returns empty array when no .claude/commands/ exists at any scope', async () => {
+      mockFs.stat.mockResolvedValue({ isDirectory: () => false } as import('fs').Stats);
+      setupCommandsReaddir({});
+      const result = await commandService.scanClaudeCommands('/fake/project');
+      expect(result).toEqual([]);
+    });
+
+    const agentMdWithCommands = `# Agent SM
+\`\`\`yaml
+agent:
+  name: Bob
+  id: sm
+  title: Scrum Master
+  icon: "🏃"
+\`\`\`
+`;
+  });
 });

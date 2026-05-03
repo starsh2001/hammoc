@@ -321,7 +321,8 @@
                 "plugins": "插件",
                 "skills": "技能",
                 "mcps": "MCP",
-                "hooks": "钩子"
+                "hooks": "钩子",
+                "commands": "命令"
             }
         },
         "skill": {
@@ -696,6 +697,149 @@
                 "title": "因配置无效, 以下钩子已被跳过:"
             },
             "cardOpen": "打开钩子"
+        },
+        "command": {
+            "empty": {
+                "title": "尚未配置斜杠命令。",
+                "description": "请在 <projectRoot>/.claude/commands/ 或 ~/.claude/commands/ 下添加命令文件, 或安装提供命令的插件包。",
+                "perDirectory": "此目录中尚无命令。"
+            },
+            "scopeBadge": {
+                "project": "项目",
+                "user": "全局",
+                "plugin": "插件",
+                "pluginWithKey": "插件: {{key}}"
+            },
+            "tokens": {
+                "args": "参数",
+                "argumentsAll": "$ARGUMENTS",
+                "fileRefs": "@path",
+                "bashExec": "!cmd",
+                "pluginRoot": "${CLAUDE_PLUGIN_ROOT}"
+            },
+            "bmadMirrorMarker": ".bmad-core 镜像 — 由 BMad 管理",
+            "banner": {
+                "appliesNextMessage": "已保存。将在您下一次发送消息时生效。",
+                "paletteCount_one": "聊天 / 命令面板中可用 1 个命令。",
+                "paletteCount_other": "聊天 / 命令面板中可用 {{count}} 个命令。"
+            },
+            "create": {
+                "title": "新建斜杠命令",
+                "directoryLabel": "目录 (可选)",
+                "directoryPlaceholder": "例如 mytools/sub",
+                "fileNameLabel": "文件名",
+                "fileNamePlaceholder": "my-command",
+                "scopeLabel": "范围",
+                "scopeProject": "项目",
+                "scopeUser": "全局",
+                "preview": "将以 {{slashName}} 调用",
+                "submit": "创建",
+                "cancel": "取消",
+                "errors": {
+                    "fileNameRequired": "文件名为必填项。",
+                    "reservedChars": "路径包含 OS 保留字符。",
+                    "trailingSpace": "路径的各段不能以空格或点结尾。",
+                    "extensionInvalid": "文件名将自动以 .md 扩展名保存。"
+                }
+            },
+            "editor": {
+                "frontmatterTitle": "Frontmatter",
+                "descriptionLabel": "描述",
+                "descriptionTooLong": "超过 256 个字符的描述可能在命令面板预览中被截断。",
+                "argumentHintLabel": "参数提示",
+                "argumentHintPlaceholder": "[arg1] [arg2]",
+                "argumentHint": {
+                    "invalidPlaceholder": "请仅使用 [name] 占位符格式 — 检测到方括号不匹配。"
+                },
+                "allowedToolsLabel": "允许的工具",
+                "allowedToolsPlaceholder": "Read, Edit, Bash(git:*)",
+                "modelLabel": "模型",
+                "modelOptions": {
+                    "inherit": "继承",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "bodyTitle": "正文 (markdown)",
+                "tokenGuide": {
+                    "title": "动态替换 Token",
+                    "positionalArgs": "$1, $2 — 斜杠命令的第一个 / 第二个位置参数",
+                    "argumentsAll": "$ARGUMENTS — 传给命令的完整参数字符串",
+                    "fileRefs": "@path/to/file — 在运行时插入文件内容",
+                    "bashExec": "!`command` — 执行 shell 命令并插入输出",
+                    "pluginRoot": "${CLAUDE_PLUGIN_ROOT} — 插件包根目录 (仅插件命令)",
+                    "docsLink": "官方文档"
+                },
+                "warnings": {
+                    "argumentsWithoutHint": "此命令使用了 $1 / $ARGUMENTS, 但未设置 argument-hint — 命令面板用户将看不到参数指引。",
+                    "bashWithoutAllowedTool": "此命令使用了 !`...` shell 执行, 但 allowed-tools 中未包含 Bash — SDK 将阻止执行。",
+                    "pluginRootInNonPlugin": "${CLAUDE_PLUGIN_ROOT} 仅在插件包中可解析 — 在 project/user 命令中将展开为空字符串。"
+                },
+                "rawToggle": "Raw",
+                "rawParseError": "无法解析 Frontmatter — 请修正 YAML 后返回 Form 模式。",
+                "staleBanner": "此命令已被外部修改 — 您的保存被拒绝。已加载最新内容。",
+                "staleReload": "重新加载",
+                "staleOverwrite": "覆盖",
+                "bmadMirrorReadOnly": "此文件是 .bmad-core 的镜像 — 请改用 /BMad 智能体命令进行编辑。",
+                "delete": {
+                    "label": "删除命令",
+                    "confirm": "确定要从 {{scope}} 中删除 {{slashName}} 吗?",
+                    "submit": "删除"
+                }
+            },
+            "copy": {
+                "menuLabel": "复制操作",
+                "toUser": {
+                    "label": "复制到全局 →"
+                },
+                "toProject": {
+                    "label": "复制到项目 ←"
+                },
+                "overrideToProject": {
+                    "label": "覆盖式克隆 (项目)"
+                },
+                "overrideToUser": {
+                    "label": "覆盖式克隆 (全局)"
+                },
+                "secret": {
+                    "title": "检测到敏感内容",
+                    "intro": "此命令正文或 frontmatter 中包含可能是 API 密钥或令牌的值。继续复制吗?",
+                    "linePreview": "第 {{line}} 行: {{snippet}}",
+                    "ack": "我已审阅内容并希望继续。",
+                    "submit": "复制",
+                    "cancel": "取消"
+                },
+                "conflict": {
+                    "title": "目标位置已存在同名命令",
+                    "intro": "{{slashName}} 在 {{scope}} 中已存在。请选择如何处理:",
+                    "overwrite": "覆盖",
+                    "skip": "跳过",
+                    "rename": "重命名后添加",
+                    "renamePathLabel": "新的相对路径",
+                    "submit": "继续",
+                    "cancel": "取消"
+                },
+                "directory": {
+                    "title": "复制整个目录",
+                    "intro": "正在将 {{count}} 个命令从 {{sourceScope}} 复制到 {{targetScope}}。",
+                    "overwriteAll": "全部覆盖冲突",
+                    "skipAll": "全部跳过冲突",
+                    "perFile": "逐个文件决定",
+                    "perFileTable": {
+                        "file": "文件",
+                        "decision": "操作"
+                    }
+                },
+                "result": {
+                    "success": "已将 {{slashName}} 复制到 {{scope}}。",
+                    "directorySuccess": "已复制 {{count}} 个命令 ({{skipped}} 个已跳过)。",
+                    "pluginRootWarning": "部分命令引用了 ${CLAUDE_PLUGIN_ROOT} — 在 {{scope}} 范围中可能无法工作。"
+                }
+            },
+            "malformed": {
+                "title": "由于 frontmatter 无效, 已跳过部分命令:"
+            },
+            "cardOpen": "打开 {{slashName}}"
         },
         "plugin": {
             "empty": "未安装任何插件。",

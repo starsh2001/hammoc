@@ -636,6 +636,11 @@
     "removeFavorite": "Remover dos favoritos",
     "addFavorite": "Adicionar aos favoritos"
   },
+  "commandPalette": {
+    "category": {
+      "command": "Comandos slash"
+    }
+  },
   "snippet": {
     "noMatch": "Nenhum snippet correspondente",
     "listAria": "Lista de snippets"

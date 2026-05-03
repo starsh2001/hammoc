@@ -39,6 +39,7 @@
 - B7. 하네스 스킬 섹션 (Story 28.2) `[CORE]`
 - B8. 하네스 MCP 섹션 (Story 28.3) `[CORE]` `[SDK]`
 - B9. 하네스 Hook 섹션 (Story 28.4) `[SDK] [EDGE]`
+- B10. 하네스 슬래시 커맨드 섹션 (Story 28.5) `[CORE]`
 
 ### C. 채팅 · 세션 ★ SDK 핵심
 - C1. 새 세션 시작 · 첫 메시지 송신 `[CORE] [SDK] [ASYNC]`

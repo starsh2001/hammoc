@@ -321,7 +321,8 @@
                 "plugins": "プラグイン",
                 "skills": "スキル",
                 "mcps": "MCP",
-                "hooks": "フック"
+                "hooks": "フック",
+                "commands": "コマンド"
             }
         },
         "skill": {
@@ -696,6 +697,149 @@
                 "title": "config が無効なフックは表示から除外されました:"
             },
             "cardOpen": "フックを開く"
+        },
+        "command": {
+            "empty": {
+                "title": "スラッシュコマンドが設定されていません。",
+                "description": "<projectRoot>/.claude/commands/ または ~/.claude/commands/ にコマンドファイルを追加するか、コマンドを提供するプラグインバンドルをインストールしてください。",
+                "perDirectory": "このディレクトリにはまだコマンドがありません。"
+            },
+            "scopeBadge": {
+                "project": "プロジェクト",
+                "user": "グローバル",
+                "plugin": "プラグイン",
+                "pluginWithKey": "プラグイン: {{key}}"
+            },
+            "tokens": {
+                "args": "引数",
+                "argumentsAll": "$ARGUMENTS",
+                "fileRefs": "@path",
+                "bashExec": "!cmd",
+                "pluginRoot": "${CLAUDE_PLUGIN_ROOT}"
+            },
+            "bmadMirrorMarker": ".bmad-core ミラー — BMad が管理",
+            "banner": {
+                "appliesNextMessage": "保存しました。次のユーザーメッセージから有効になります。",
+                "paletteCount_one": "チャット / パレットで 1 件のコマンドが利用可能です。",
+                "paletteCount_other": "チャット / パレットで {{count}} 件のコマンドが利用可能です。"
+            },
+            "create": {
+                "title": "新しいスラッシュコマンド",
+                "directoryLabel": "ディレクトリ (任意)",
+                "directoryPlaceholder": "例: mytools/sub",
+                "fileNameLabel": "ファイル名",
+                "fileNamePlaceholder": "my-command",
+                "scopeLabel": "スコープ",
+                "scopeProject": "プロジェクト",
+                "scopeUser": "グローバル",
+                "preview": "{{slashName}} として呼び出されます",
+                "submit": "作成",
+                "cancel": "キャンセル",
+                "errors": {
+                    "fileNameRequired": "ファイル名は必須です。",
+                    "reservedChars": "OS の予約文字が含まれています。",
+                    "trailingSpace": "パスの各セグメントは空白やドットで終わってはいけません。",
+                    "extensionInvalid": "ファイル名は自動的に .md として保存されます。"
+                }
+            },
+            "editor": {
+                "frontmatterTitle": "Frontmatter",
+                "descriptionLabel": "説明",
+                "descriptionTooLong": "256 文字を超える説明はパレットのプレビューで切り詰められる可能性があります。",
+                "argumentHintLabel": "引数ヒント",
+                "argumentHintPlaceholder": "[arg1] [arg2]",
+                "argumentHint": {
+                    "invalidPlaceholder": "[name] のプレースホルダー形式のみを使用してください — 角括弧の対応が取れていません。"
+                },
+                "allowedToolsLabel": "許可するツール",
+                "allowedToolsPlaceholder": "Read, Edit, Bash(git:*)",
+                "modelLabel": "モデル",
+                "modelOptions": {
+                    "inherit": "継承",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "bodyTitle": "本文 (markdown)",
+                "tokenGuide": {
+                    "title": "動的置換トークン",
+                    "positionalArgs": "$1, $2 — スラッシュコマンドの 1 番目 / 2 番目の位置引数",
+                    "argumentsAll": "$ARGUMENTS — コマンドに渡される引数文字列全体",
+                    "fileRefs": "@path/to/file — 実行時にファイルの内容を挿入",
+                    "bashExec": "!`command` — シェルコマンドを実行して出力を挿入",
+                    "pluginRoot": "${CLAUDE_PLUGIN_ROOT} — プラグインバンドルのルート (プラグインコマンドのみ)",
+                    "docsLink": "公式ドキュメント"
+                },
+                "warnings": {
+                    "argumentsWithoutHint": "このコマンドは $1 / $ARGUMENTS を使用していますが、argument-hint が未設定です — パレット利用者に引数の案内が表示されません。",
+                    "bashWithoutAllowedTool": "このコマンドは !`...` シェル実行を使用していますが、allowed-tools に Bash が含まれていません — SDK が実行をブロックします。",
+                    "pluginRootInNonPlugin": "${CLAUDE_PLUGIN_ROOT} はプラグインバンドルでのみ解決されます — project/user コマンドでは空文字列に展開されます。"
+                },
+                "rawToggle": "Raw",
+                "rawParseError": "Frontmatter を解析できません — Form モードに戻すには YAML を修正してください。",
+                "staleBanner": "このコマンドは外部で変更されました — 保存はキャンセルされました。最新の内容を読み込みました。",
+                "staleReload": "再読み込み",
+                "staleOverwrite": "上書き",
+                "bmadMirrorReadOnly": "このファイルは .bmad-core のミラーです — 代わりに /BMad エージェントコマンドで編集してください。",
+                "delete": {
+                    "label": "コマンドを削除",
+                    "confirm": "{{slashName}} を {{scope}} から削除しますか?",
+                    "submit": "削除"
+                }
+            },
+            "copy": {
+                "menuLabel": "コピー操作",
+                "toUser": {
+                    "label": "グローバルへコピー →"
+                },
+                "toProject": {
+                    "label": "プロジェクトへコピー ←"
+                },
+                "overrideToProject": {
+                    "label": "オーバーライド複製 (プロジェクト)"
+                },
+                "overrideToUser": {
+                    "label": "オーバーライド複製 (グローバル)"
+                },
+                "secret": {
+                    "title": "機密情報を検出しました",
+                    "intro": "このコマンドの本文または frontmatter に API キーやトークンと思われる値が含まれています。コピーを続行しますか?",
+                    "linePreview": "{{line}} 行目: {{snippet}}",
+                    "ack": "内容を確認したうえで続行します。",
+                    "submit": "コピー",
+                    "cancel": "キャンセル"
+                },
+                "conflict": {
+                    "title": "コピー先に同名のコマンドが既に存在します",
+                    "intro": "{{slashName}} は {{scope}} に既に存在します。次の操作を選択してください:",
+                    "overwrite": "上書き",
+                    "skip": "スキップ",
+                    "rename": "名前を変更して追加",
+                    "renamePathLabel": "新しい相対パス",
+                    "submit": "続行",
+                    "cancel": "キャンセル"
+                },
+                "directory": {
+                    "title": "ディレクトリ全体をコピー",
+                    "intro": "{{count}} 件のコマンドを {{sourceScope}} から {{targetScope}} にコピーします。",
+                    "overwriteAll": "すべての競合を上書き",
+                    "skipAll": "すべての競合をスキップ",
+                    "perFile": "ファイルごとに決定",
+                    "perFileTable": {
+                        "file": "ファイル",
+                        "decision": "操作"
+                    }
+                },
+                "result": {
+                    "success": "{{slashName}} を {{scope}} にコピーしました。",
+                    "directorySuccess": "{{count}} 件のコマンドをコピーしました ({{skipped}} 件スキップ)。",
+                    "pluginRootWarning": "一部のコマンドが ${CLAUDE_PLUGIN_ROOT} を参照しています — {{scope}} スコープでは動作しない可能性があります。"
+                }
+            },
+            "malformed": {
+                "title": "frontmatter が無効なため、一部のコマンドはスキップされました:"
+            },
+            "cardOpen": "{{slashName}} を開く"
         },
         "plugin": {
             "empty": "インストール済みのプラグインはありません。",

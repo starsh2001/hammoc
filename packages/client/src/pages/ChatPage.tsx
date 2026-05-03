@@ -320,7 +320,11 @@ export function ChatPage() {
       }
       // Look up scope from loaded commands
       const cmd = commands.find((c) => c.command === command);
-      addFavorite(command, cmd?.scope);
+      // Plugin-scope slash commands (Story 28.5) are stored as 'global' favorites —
+      // the favorites table only carries project/global, and plugin overrides are
+      // user-installed bundles which conceptually live alongside global commands.
+      const favScope = cmd?.scope === 'plugin' ? 'global' : cmd?.scope;
+      addFavorite(command, favScope);
     }
   }, [isFavorite, addFavorite, removeFavorite, favoriteCommands, commands, t]);
 

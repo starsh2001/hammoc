@@ -54,13 +54,20 @@ function filterCommands(commands: SlashCommand[], query: string): SlashCommand[]
   });
 }
 
+type CategoryLabelResolver = (category: SlashCommand['category']) => string;
+
 /**
- * Group commands by category
+ * Group commands by category. Story 28.5 introduced a `'command'` category for
+ * slash commands sourced from `.claude/commands/**\/*.md` (project, global, and
+ * plugin scopes). Its label is i18n-resolved via `commandPalette.category.command`.
  */
-function groupCommands(commands: SlashCommand[]): Map<string, SlashCommand[]> {
+function groupCommands(
+  commands: SlashCommand[],
+  resolveLabel: CategoryLabelResolver,
+): Map<string, SlashCommand[]> {
   const groups = new Map<string, SlashCommand[]>();
   for (const cmd of commands) {
-    const key = cmd.category === 'agent' ? 'Agents' : cmd.category === 'task' ? 'Tasks' : cmd.category === 'skill' ? 'Skills' : 'Commands';
+    const key = resolveLabel(cmd.category);
     const group = groups.get(key) ?? [];
     group.push(cmd);
     groups.set(key, group);
@@ -81,7 +88,22 @@ export function CommandPalette({
   const listRef = useRef<HTMLUListElement>(null);
 
   const filtered = useMemo(() => filterCommands(commands, filter), [commands, filter]);
-  const grouped = useMemo(() => groupCommands(filtered), [filtered]);
+  const resolveLabel = useMemo<CategoryLabelResolver>(
+    () => (category) => {
+      if (category === 'agent') return 'Agents';
+      if (category === 'task') return 'Tasks';
+      if (category === 'skill') return 'Skills';
+      if (category === 'command') {
+        return t('commandPalette.category.command', { defaultValue: 'Slash Commands' });
+      }
+      return 'Commands';
+    },
+    [t],
+  );
+  const grouped = useMemo(
+    () => groupCommands(filtered, resolveLabel),
+    [filtered, resolveLabel],
+  );
 
   // Scroll selected item into view
   useEffect(() => {

@@ -106,9 +106,11 @@ export const HARNESS_ERRORS = {
   HARNESS_MCP_NOT_FOUND:       { code: 'HARNESS_MCP_NOT_FOUND',       httpStatus: 404 },
   HARNESS_HOOK_NOT_FOUND:      { code: 'HARNESS_HOOK_NOT_FOUND',      httpStatus: 404 },
   HARNESS_HOOK_INVALID_EVENT:  { code: 'HARNESS_HOOK_INVALID_EVENT',  httpStatus: 400 },
+  HARNESS_COMMAND_NOT_FOUND:   { code: 'HARNESS_COMMAND_NOT_FOUND',   httpStatus: 404 },
   HARNESS_STALE_WRITE:         { code: 'HARNESS_STALE_WRITE',         httpStatus: 409 },
   HARNESS_SKILL_NAME_CONFLICT: { code: 'HARNESS_SKILL_NAME_CONFLICT', httpStatus: 409 },
   HARNESS_MCP_NAME_CONFLICT:   { code: 'HARNESS_MCP_NAME_CONFLICT',   httpStatus: 409 },
+  HARNESS_COMMAND_NAME_CONFLICT: { code: 'HARNESS_COMMAND_NAME_CONFLICT', httpStatus: 409 },
   HARNESS_PARSE_ERROR:         { code: 'HARNESS_PARSE_ERROR',         httpStatus: 422 },
   HARNESS_WRITE_ERROR:         { code: 'HARNESS_WRITE_ERROR',         httpStatus: 500 },
 } as const;
@@ -734,4 +736,176 @@ export interface HarnessHookCreateResponse {
   newGroupIndex: number;
   newHookIndex: number;
   mtime: string;
+}
+
+// ---------------------------------------------------------------------------
+// Story 28.5 — Slash command section types
+// ---------------------------------------------------------------------------
+
+export type HarnessCommandSourceScope = 'project' | 'user' | 'plugin';
+export type HarnessCommandModel = 'inherit' | 'sonnet' | 'opus' | 'haiku';
+
+/** Frontmatter — all four fields optional per official spec. */
+export interface HarnessCommandFrontmatter {
+  description?: string;
+  'argument-hint'?: string;
+  'allowed-tools'?: string;
+  model?: HarnessCommandModel;
+}
+
+export interface HarnessCommandSourceLocation {
+  scope: HarnessCommandSourceScope;
+  /** Absolute path of the .md file. */
+  absoluteFile: string;
+  /** scope === 'plugin' → "<pluginName>@<marketplace>". */
+  pluginKey?: string;
+  /** scope === 'project' → the active project's slug. */
+  projectSlug?: string;
+  /** Path under the commands root, with `/` separator. e.g. "BMad/agents/sm.md". */
+  relativePath: string;
+  /** Slash-name derived from relativePath. e.g. "/BMad:agents:sm". */
+  slashName: string;
+}
+
+export interface HarnessCommandTokens {
+  usesPositionalArgs: boolean; // $1 / $2 / $N
+  usesArgumentsAll: boolean; // $ARGUMENTS
+  usesFileRefs: boolean; // @path
+  usesBashExec: boolean; // !`cmd`
+  usesPluginRoot: boolean; // ${CLAUDE_PLUGIN_ROOT}
+}
+
+export interface HarnessCommandCard extends HarnessCommandSourceLocation {
+  frontmatter: HarnessCommandFrontmatter;
+  /** Token usage flags — driven by simple regex over body, used by AC1(c) badges. */
+  tokens: HarnessCommandTokens;
+  /** ISO mtime of `absoluteFile` — STALE_WRITE ETag. */
+  mtime: string;
+  /**
+   * True when the file body's first 10 lines contain `<!-- Powered by BMAD™ Core -->`
+   * (AC5.b). Real BMad mirrors place the marker at line 5, not line 1, so a
+   * leading-window substring match — not a "starts with" check — is required.
+   */
+  isBmadMirror: boolean;
+}
+
+export interface HarnessCommandMalformedEntry {
+  scope: HarnessCommandSourceScope;
+  absoluteFile: string;
+  pluginKey?: string;
+  projectSlug?: string;
+  reason: string;
+}
+
+export interface HarnessCommandListResponse {
+  cards: HarnessCommandCard[];
+  malformed: HarnessCommandMalformedEntry[];
+  /**
+   * Total count after de-dup with scanAgents/scanTasks (the chat slash palette merge layer).
+   * Used by the workbench panel header badge ("N개 커맨드가 채팅의 / 팔레트에 노출됩니다").
+   */
+  paletteVisibleCount: number;
+}
+
+export interface HarnessCommandReadResponse {
+  source: HarnessCommandSourceLocation;
+  frontmatter: HarnessCommandFrontmatter;
+  /** Body markdown after the closing `---` (frontmatter stripped). */
+  body: string;
+  /** Raw text of the entire file (frontmatter + body) — used by Raw editor toggle. */
+  raw: string;
+  mtime: string;
+  isBmadMirror: boolean;
+}
+
+/**
+ * Update request — exactly one of `frontmatter`/`body`/`raw` is required.
+ * `frontmatter` and `body` patch separately (frontmatter via yaml round-trip,
+ * body as plain text replacement). `raw` replaces the whole file.
+ */
+export interface HarnessCommandUpdateRequest {
+  frontmatter?: HarnessCommandFrontmatter;
+  body?: string;
+  raw?: string;
+  /** STALE_WRITE guard. */
+  expectedMtime?: string;
+}
+
+export interface HarnessCommandUpdateResponse {
+  success: true;
+  mtime: string;
+  slashName: string;
+  tokens: HarnessCommandTokens;
+}
+
+export interface HarnessCommandCreateRequest {
+  scope: 'project' | 'user';
+  projectSlug?: string;
+  /** Relative path under commands root. Must end in `.md`. */
+  relativePath: string;
+  frontmatter?: HarnessCommandFrontmatter;
+  body?: string;
+}
+
+export interface HarnessCommandCreateResponse {
+  success: true;
+  source: HarnessCommandSourceLocation;
+  mtime: string;
+}
+
+export interface HarnessCommandCopyRequest {
+  sourceScope: HarnessCommandSourceScope;
+  sourceProjectSlug?: string;
+  sourcePluginKey?: string;
+  sourceRelativePath: string;
+  /** plugin destinations forbidden — only project/user allowed. */
+  targetScope: 'project' | 'user';
+  targetProjectSlug?: string;
+  /** When undefined, server uses sourceRelativePath. */
+  targetRelativePath?: string;
+  onConflict: 'overwrite' | 'skip' | 'rename';
+  /** Required when sensitive content is detected by the secret heuristic. */
+  acknowledgedSecret?: boolean;
+}
+
+export interface HarnessCommandCopyResponse {
+  success: true;
+  target: HarnessCommandSourceLocation;
+  skipped: boolean;
+  /** Returned when ${CLAUDE_PLUGIN_ROOT} appeared in source. */
+  warnings?: Array<'plugin-root-reference'>;
+}
+
+export interface HarnessCommandDirectoryCopyRequest {
+  sourceScope: HarnessCommandSourceScope;
+  sourceProjectSlug?: string;
+  sourcePluginKey?: string;
+  /** Directory path under commands root. e.g. "BMad/agents". */
+  sourceDirectoryPath: string;
+  targetScope: 'project' | 'user';
+  targetProjectSlug?: string;
+  targetDirectoryPath?: string;
+  onConflict: 'overwrite-all' | 'skip-all' | 'per-file';
+  /**
+   * When onConflict === 'per-file', the server returns 409 with a `details.conflicts`
+   * payload listing the relative paths. The client populates this map and re-issues.
+   */
+  perFileChoices?: Record<string, 'overwrite' | 'skip' | 'rename'>;
+  /** Renamed targets when 'rename' is chosen for any file. */
+  perFileRenames?: Record<string, string>;
+  acknowledgedSecret?: boolean;
+}
+
+export interface HarnessCommandDirectoryCopyResponse {
+  success: true;
+  copied: HarnessCommandSourceLocation[];
+  skipped: string[];
+  warnings?: Array<'plugin-root-reference'>;
+}
+
+export interface HarnessCommandDeleteRequest {
+  scope: 'project' | 'user';
+  projectSlug?: string;
+  relativePath: string;
+  expectedMtime?: string;
 }

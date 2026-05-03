@@ -660,6 +660,11 @@
     "removeFavorite": "Remove from favorites",
     "addFavorite": "Add to favorites"
   },
+  "commandPalette": {
+    "category": {
+      "command": "Slash Commands"
+    }
+  },
   "snippet": {
     "noMatch": "No matching snippets",
     "listAria": "Snippet list"

@@ -669,6 +669,11 @@
     "removeFavorite": "즐겨찾기 제거",
     "addFavorite": "즐겨찾기 추가"
   },
+  "commandPalette": {
+    "category": {
+      "command": "슬래시 커맨드"
+    }
+  },
   "snippet": {
     "noMatch": "일치하는 스니펫이 없습니다",
     "listAria": "스니펫 목록"

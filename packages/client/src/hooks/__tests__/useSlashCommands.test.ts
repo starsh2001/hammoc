@@ -136,4 +136,46 @@ describe('useSlashCommands', () => {
       expect(mockList).toHaveBeenCalledWith('slug-2');
     });
   });
+
+  // Story 28.5: cache invalidation infrastructure
+  describe('cache invalidation (Story 28.5)', () => {
+    it('invalidateSlashCommandsCache(slug) clears the slug entry so a new mount re-fetches', async () => {
+      const { invalidateSlashCommandsCache } = await import('../useSlashCommands');
+      const { unmount } = renderHook(() => useSlashCommands('slug-invalidate-1'));
+      await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1));
+      unmount();
+      invalidateSlashCommandsCache('slug-invalidate-1');
+      // Second mount with the same slug should hit the cache MISS path.
+      renderHook(() => useSlashCommands('slug-invalidate-1'));
+      await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
+    });
+
+    it('hammoc:slashCommandsChanged event with matching slug forces a re-fetch', async () => {
+      const { SLASH_COMMANDS_CHANGED_EVENT } = await import('../useSlashCommands');
+      const { result } = renderHook(() => useSlashCommands('slug-event-match'));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      const before = mockList.mock.calls.length;
+      window.dispatchEvent(
+        new CustomEvent(SLASH_COMMANDS_CHANGED_EVENT, {
+          detail: { projectSlug: 'slug-event-match' },
+        }),
+      );
+      await waitFor(() => expect(mockList.mock.calls.length).toBeGreaterThan(before));
+    });
+
+    it('hammoc:slashCommandsChanged event for a different slug is ignored', async () => {
+      const { SLASH_COMMANDS_CHANGED_EVENT } = await import('../useSlashCommands');
+      const { result } = renderHook(() => useSlashCommands('slug-event-iso'));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      const before = mockList.mock.calls.length;
+      window.dispatchEvent(
+        new CustomEvent(SLASH_COMMANDS_CHANGED_EVENT, {
+          detail: { projectSlug: 'completely-different-slug' },
+        }),
+      );
+      // Wait briefly — there should still only be the original load call.
+      await new Promise((r) => setTimeout(r, 30));
+      expect(mockList.mock.calls.length).toBe(before);
+    });
+  });
 });

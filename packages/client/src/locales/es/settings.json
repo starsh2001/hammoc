@@ -321,7 +321,8 @@
                 "plugins": "Plugins",
                 "skills": "Skills",
                 "mcps": "MCP",
-                "hooks": "Hooks"
+                "hooks": "Hooks",
+                "commands": "Comandos"
             }
         },
         "skill": {
@@ -696,6 +697,149 @@
                 "title": "Algunos hooks fueron omitidos por configuración inválida:"
             },
             "cardOpen": "Abrir hook"
+        },
+        "command": {
+            "empty": {
+                "title": "No hay comandos slash configurados.",
+                "description": "Añade un archivo de comando en <projectRoot>/.claude/commands/ o en ~/.claude/commands/, o instala un paquete de plugin que incluya comandos.",
+                "perDirectory": "Aún no hay comandos en este directorio."
+            },
+            "scopeBadge": {
+                "project": "Proyecto",
+                "user": "Global",
+                "plugin": "Plugin",
+                "pluginWithKey": "Plugin: {{key}}"
+            },
+            "tokens": {
+                "args": "args",
+                "argumentsAll": "$ARGUMENTS",
+                "fileRefs": "@path",
+                "bashExec": "!cmd",
+                "pluginRoot": "${CLAUDE_PLUGIN_ROOT}"
+            },
+            "bmadMirrorMarker": "Espejo .bmad-core — gestionado por BMad",
+            "banner": {
+                "appliesNextMessage": "Guardado. Tendrá efecto en tu próximo mensaje.",
+                "paletteCount_one": "1 comando disponible en el chat / paleta.",
+                "paletteCount_other": "{{count}} comandos disponibles en el chat / paleta."
+            },
+            "create": {
+                "title": "Nuevo comando slash",
+                "directoryLabel": "Directorio (opcional)",
+                "directoryPlaceholder": "p. ej. mytools/sub",
+                "fileNameLabel": "Nombre del archivo",
+                "fileNamePlaceholder": "mi-comando",
+                "scopeLabel": "Ámbito",
+                "scopeProject": "Proyecto",
+                "scopeUser": "Global",
+                "preview": "Se invocará como {{slashName}}",
+                "submit": "Crear",
+                "cancel": "Cancelar",
+                "errors": {
+                    "fileNameRequired": "El nombre del archivo es obligatorio.",
+                    "reservedChars": "La ruta contiene caracteres reservados del SO.",
+                    "trailingSpace": "Los segmentos de la ruta no pueden terminar en espacio o punto.",
+                    "extensionInvalid": "El nombre del archivo se guardará automáticamente como .md."
+                }
+            },
+            "editor": {
+                "frontmatterTitle": "Frontmatter",
+                "descriptionLabel": "Descripción",
+                "descriptionTooLong": "Una descripción mayor de 256 caracteres puede aparecer truncada en la vista previa de la paleta.",
+                "argumentHintLabel": "Pista de argumento",
+                "argumentHintPlaceholder": "[arg1] [arg2]",
+                "argumentHint": {
+                    "invalidPlaceholder": "Usa solo el formato [name] — corchetes desbalanceados detectados."
+                },
+                "allowedToolsLabel": "Herramientas permitidas",
+                "allowedToolsPlaceholder": "Read, Edit, Bash(git:*)",
+                "modelLabel": "Modelo",
+                "modelOptions": {
+                    "inherit": "Heredar",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "bodyTitle": "Cuerpo (markdown)",
+                "tokenGuide": {
+                    "title": "Tokens de sustitución dinámica",
+                    "positionalArgs": "$1, $2 — primer / segundo argumento posicional del comando slash",
+                    "argumentsAll": "$ARGUMENTS — cadena completa de argumentos pasada al comando",
+                    "fileRefs": "@path/to/file — inserta el contenido del archivo en tiempo de ejecución",
+                    "bashExec": "!`command` — ejecuta un comando shell e inserta su salida",
+                    "pluginRoot": "${CLAUDE_PLUGIN_ROOT} — raíz del paquete del plugin (solo comandos de plugin)",
+                    "docsLink": "Documentación oficial"
+                },
+                "warnings": {
+                    "argumentsWithoutHint": "Este comando usa $1 / $ARGUMENTS pero argument-hint no está definido — los usuarios de la paleta no verán guía de argumentos.",
+                    "bashWithoutAllowedTool": "Este comando usa ejecución shell !`...` pero allowed-tools no incluye Bash — el SDK bloqueará la ejecución.",
+                    "pluginRootInNonPlugin": "${CLAUDE_PLUGIN_ROOT} solo se resuelve en paquetes de plugin — en comandos project/user se expande a una cadena vacía."
+                },
+                "rawToggle": "Raw",
+                "rawParseError": "No se puede analizar el frontmatter — corrige el YAML para volver al modo Form.",
+                "staleBanner": "Este comando fue modificado externamente — tu guardado se rechazó. Se cargó el contenido más reciente.",
+                "staleReload": "Recargar",
+                "staleOverwrite": "Sobrescribir",
+                "bmadMirrorReadOnly": "Este archivo es un espejo de .bmad-core — edítalo mediante los comandos del agente /BMad.",
+                "delete": {
+                    "label": "Eliminar comando",
+                    "confirm": "¿Eliminar {{slashName}} de {{scope}}?",
+                    "submit": "Eliminar"
+                }
+            },
+            "copy": {
+                "menuLabel": "Acciones de copia",
+                "toUser": {
+                    "label": "Copiar a global →"
+                },
+                "toProject": {
+                    "label": "Copiar a proyecto ←"
+                },
+                "overrideToProject": {
+                    "label": "Clonar como override (proyecto)"
+                },
+                "overrideToUser": {
+                    "label": "Clonar como override (global)"
+                },
+                "secret": {
+                    "title": "Contenido sensible detectado",
+                    "intro": "Este cuerpo o frontmatter de comando contiene valores que parecen claves API o tokens. ¿Continuar copiando?",
+                    "linePreview": "Línea {{line}}: {{snippet}}",
+                    "ack": "He revisado el contenido y deseo continuar.",
+                    "submit": "Copiar",
+                    "cancel": "Cancelar"
+                },
+                "conflict": {
+                    "title": "El comando ya existe en el destino",
+                    "intro": "{{slashName}} ya existe en {{scope}}. Elige qué hacer:",
+                    "overwrite": "Sobrescribir",
+                    "skip": "Omitir",
+                    "rename": "Renombrar y añadir",
+                    "renamePathLabel": "Nueva ruta relativa",
+                    "submit": "Continuar",
+                    "cancel": "Cancelar"
+                },
+                "directory": {
+                    "title": "Copiar directorio completo",
+                    "intro": "Copiando {{count}} comandos de {{sourceScope}} a {{targetScope}}.",
+                    "overwriteAll": "Sobrescribir todos los conflictos",
+                    "skipAll": "Omitir todos los conflictos",
+                    "perFile": "Decidir por archivo",
+                    "perFileTable": {
+                        "file": "Archivo",
+                        "decision": "Decisión"
+                    }
+                },
+                "result": {
+                    "success": "{{slashName}} copiado a {{scope}}.",
+                    "directorySuccess": "Copiados {{count}} comandos ({{skipped}} omitidos).",
+                    "pluginRootWarning": "Algunos comandos referencian ${CLAUDE_PLUGIN_ROOT} — pueden no funcionar en el ámbito {{scope}}."
+                }
+            },
+            "malformed": {
+                "title": "Algunos comandos fueron omitidos por frontmatter inválido:"
+            },
+            "cardOpen": "Abrir {{slashName}}"
         },
         "plugin": {
             "empty": "No hay plugins instalados.",

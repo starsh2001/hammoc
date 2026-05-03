@@ -636,6 +636,11 @@
     "removeFavorite": "从收藏中移除",
     "addFavorite": "添加到收藏"
   },
+  "commandPalette": {
+    "category": {
+      "command": "斜杠命令"
+    }
+  },
   "snippet": {
     "noMatch": "没有匹配的代码片段",
     "listAria": "代码片段列表"

@@ -322,7 +322,8 @@
                 "plugins": "Plugins",
                 "skills": "Skills",
                 "mcps": "MCP",
-                "hooks": "Hooks"
+                "hooks": "Hooks",
+                "commands": "Commands"
             }
         },
         "skill": {
@@ -697,6 +698,149 @@
                 "title": "Some hooks were skipped because their config is invalid:"
             },
             "cardOpen": "Open hook"
+        },
+        "command": {
+            "empty": {
+                "title": "No slash commands configured.",
+                "description": "Add a command file under <projectRoot>/.claude/commands/ or your global ~/.claude/commands/ directory, or install a plugin bundle that ships commands.",
+                "perDirectory": "No commands in this directory yet."
+            },
+            "scopeBadge": {
+                "project": "Project",
+                "user": "Global",
+                "plugin": "Plugin",
+                "pluginWithKey": "Plugin: {{key}}"
+            },
+            "tokens": {
+                "args": "args",
+                "argumentsAll": "$ARGUMENTS",
+                "fileRefs": "@path",
+                "bashExec": "!cmd",
+                "pluginRoot": "${CLAUDE_PLUGIN_ROOT}"
+            },
+            "bmadMirrorMarker": ".bmad-core mirror — managed by BMad",
+            "banner": {
+                "appliesNextMessage": "Saved. Takes effect on your next user message.",
+                "paletteCount_one": "1 command available in the chat / palette.",
+                "paletteCount_other": "{{count}} commands available in the chat / palette."
+            },
+            "create": {
+                "title": "New slash command",
+                "directoryLabel": "Directory (optional)",
+                "directoryPlaceholder": "e.g. mytools/sub",
+                "fileNameLabel": "File name",
+                "fileNamePlaceholder": "my-command",
+                "scopeLabel": "Scope",
+                "scopeProject": "Project",
+                "scopeUser": "Global",
+                "preview": "Will be invoked as {{slashName}}",
+                "submit": "Create",
+                "cancel": "Cancel",
+                "errors": {
+                    "fileNameRequired": "File name is required.",
+                    "reservedChars": "Path contains OS-reserved characters.",
+                    "trailingSpace": "Path segments cannot end with space or dot.",
+                    "extensionInvalid": "File name will be saved as .md automatically."
+                }
+            },
+            "editor": {
+                "frontmatterTitle": "Frontmatter",
+                "descriptionLabel": "Description",
+                "descriptionTooLong": "Description longer than 256 characters may be truncated in the palette preview.",
+                "argumentHintLabel": "Argument hint",
+                "argumentHintPlaceholder": "[arg1] [arg2]",
+                "argumentHint": {
+                    "invalidPlaceholder": "Use [name] placeholder format only — unbalanced brackets detected."
+                },
+                "allowedToolsLabel": "Allowed tools",
+                "allowedToolsPlaceholder": "Read, Edit, Bash(git:*)",
+                "modelLabel": "Model",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "bodyTitle": "Body (markdown)",
+                "tokenGuide": {
+                    "title": "Dynamic substitution tokens",
+                    "positionalArgs": "$1, $2 — first/second positional argument from the slash command",
+                    "argumentsAll": "$ARGUMENTS — full argument string passed to the command",
+                    "fileRefs": "@path/to/file — inserts file contents at runtime",
+                    "bashExec": "!`command` — executes a shell command and inserts the output",
+                    "pluginRoot": "${CLAUDE_PLUGIN_ROOT} — plugin bundle root (plugin commands only)",
+                    "docsLink": "Official documentation"
+                },
+                "warnings": {
+                    "argumentsWithoutHint": "This command uses $1 / $ARGUMENTS but argument-hint is unset — palette users will not see argument guidance.",
+                    "bashWithoutAllowedTool": "This command uses !`...` shell execution but allowed-tools does not include Bash — the SDK will block execution.",
+                    "pluginRootInNonPlugin": "${CLAUDE_PLUGIN_ROOT} only resolves in plugin bundles — in project/user commands it expands to an empty string."
+                },
+                "rawToggle": "Raw",
+                "rawParseError": "Frontmatter cannot be parsed — fix the YAML to return to Form mode.",
+                "staleBanner": "This command was changed externally — your save was rejected. Latest contents loaded.",
+                "staleReload": "Reload",
+                "staleOverwrite": "Overwrite",
+                "bmadMirrorReadOnly": "This file is a .bmad-core mirror — edit via /BMad agent commands instead.",
+                "delete": {
+                    "label": "Delete command",
+                    "confirm": "Delete {{slashName}} from {{scope}}?",
+                    "submit": "Delete"
+                }
+            },
+            "copy": {
+                "menuLabel": "Copy actions",
+                "toUser": {
+                    "label": "Copy to global →"
+                },
+                "toProject": {
+                    "label": "Copy to project ←"
+                },
+                "overrideToProject": {
+                    "label": "Override-clone (project)"
+                },
+                "overrideToUser": {
+                    "label": "Override-clone (global)"
+                },
+                "secret": {
+                    "title": "Sensitive content detected",
+                    "intro": "This command body or frontmatter contains values that look like API keys or tokens. Continue copying?",
+                    "linePreview": "Line {{line}}: {{snippet}}",
+                    "ack": "I have reviewed the content and want to proceed.",
+                    "submit": "Copy",
+                    "cancel": "Cancel"
+                },
+                "conflict": {
+                    "title": "Command already exists at target",
+                    "intro": "{{slashName}} already exists in {{scope}}. Choose what to do:",
+                    "overwrite": "Overwrite",
+                    "skip": "Skip",
+                    "rename": "Rename and add",
+                    "renamePathLabel": "New relative path",
+                    "submit": "Continue",
+                    "cancel": "Cancel"
+                },
+                "directory": {
+                    "title": "Copy entire directory",
+                    "intro": "Copying {{count}} commands from {{sourceScope}} to {{targetScope}}.",
+                    "overwriteAll": "Overwrite all conflicts",
+                    "skipAll": "Skip all conflicts",
+                    "perFile": "Decide per file",
+                    "perFileTable": {
+                        "file": "File",
+                        "decision": "Decision"
+                    }
+                },
+                "result": {
+                    "success": "Copied {{slashName}} to {{scope}}.",
+                    "directorySuccess": "Copied {{count}} commands ({{skipped}} skipped).",
+                    "pluginRootWarning": "Some commands reference ${CLAUDE_PLUGIN_ROOT} — they may not work in {{scope}} scope."
+                }
+            },
+            "malformed": {
+                "title": "Some commands were skipped due to invalid frontmatter:"
+            },
+            "cardOpen": "Open {{slashName}}"
         },
         "plugin": {
             "empty": "No plugins installed.",

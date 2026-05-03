@@ -11,6 +11,7 @@ import { harnessPluginController } from '../controllers/harnessPluginController.
 import { harnessSkillController } from '../controllers/harnessSkillController.js';
 import { harnessMcpController } from '../controllers/harnessMcpController.js';
 import { harnessHookController } from '../controllers/harnessHookController.js';
+import { harnessCommandController } from '../controllers/harnessCommandController.js';
 
 const router = Router();
 
@@ -54,5 +55,17 @@ router.get('/hooks', harnessHookController.list);
 router.get('/hooks/:event/:groupIndex/:hookIndex', harnessHookController.read);
 router.put('/hooks/:event/:groupIndex/:hookIndex', largeBodyParser, harnessHookController.update);
 router.delete('/hooks/:event/:groupIndex/:hookIndex', largeBodyParser, harnessHookController.delete);
+
+// Story 28.5 — Slash command list / read / create / update / copy / copy-directory / delete.
+// path-as-glob — params[0] holds the full relative path (e.g. "BMad/agents/sm.md").
+// Literal segments (`/commands/copy`, `/commands/copy-directory`) live above the
+// splat so Express prefers them.
+router.post('/commands/copy-directory', largeBodyParser, harnessCommandController.copyDirectory);
+router.post('/commands/copy', largeBodyParser, harnessCommandController.copy);
+router.post('/commands', largeBodyParser, harnessCommandController.create);
+router.get('/commands', harnessCommandController.list);
+router.get('/commands/*', harnessCommandController.read);
+router.put('/commands/*', largeBodyParser, harnessCommandController.update);
+router.delete('/commands/*', largeBodyParser, harnessCommandController.delete);
 
 export default router;

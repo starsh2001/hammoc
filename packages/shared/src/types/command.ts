@@ -11,11 +11,11 @@ export interface SlashCommand {
   /** Brief description of what this command does */
   description?: string;
   /** Command category for grouping */
-  category: 'agent' | 'task' | 'builtin' | 'skill';
+  category: 'agent' | 'task' | 'builtin' | 'skill' | 'command';
   /** Agent icon emoji if available (from agent YAML) */
   icon?: string;
-  /** Skill scope — project-level or global (~/.claude/skills/) */
-  scope?: 'project' | 'global';
+  /** Source scope — project / global / plugin (skills + Story 28.5 commands). */
+  scope?: 'project' | 'global' | 'plugin';
 }
 
 /**
