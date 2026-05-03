@@ -12,6 +12,7 @@ import { harnessSkillController } from '../controllers/harnessSkillController.js
 import { harnessMcpController } from '../controllers/harnessMcpController.js';
 import { harnessHookController } from '../controllers/harnessHookController.js';
 import { harnessCommandController } from '../controllers/harnessCommandController.js';
+import { harnessAgentController } from '../controllers/harnessAgentController.js';
 
 const router = Router();
 
@@ -67,5 +68,16 @@ router.get('/commands', harnessCommandController.list);
 router.get('/commands/*', harnessCommandController.read);
 router.put('/commands/*', largeBodyParser, harnessCommandController.update);
 router.delete('/commands/*', largeBodyParser, harnessCommandController.delete);
+
+// Story 28.6 — Sub-agent list / read / create / update / copy / delete.
+// Single-segment :name path param (flat-only — no recursive subdirectories per AC1.a).
+// Literal `/agents/copy` and the splat-free POST live above the dynamic
+// `:name` segment so Express prefers them.
+router.post('/agents/copy', largeBodyParser, harnessAgentController.copy);
+router.post('/agents', largeBodyParser, harnessAgentController.create);
+router.get('/agents', harnessAgentController.list);
+router.get('/agents/:name', harnessAgentController.read);
+router.put('/agents/:name', largeBodyParser, harnessAgentController.update);
+router.delete('/agents/:name', largeBodyParser, harnessAgentController.delete);
 
 export default router;

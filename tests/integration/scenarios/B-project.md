@@ -623,3 +623,80 @@
 - WCAG AA contrast 검증은 별도 단위 테스트 (CSS 변수 contrast ratio ≥ 4.5) 가 책임
 - frontmatter 편집은 300ms 디바운스로 PUT `/api/harness/commands/:relPath` 호출 → `applyYamlFrontmatterPatch` 헬퍼가 본문 markdown 영역을 byte-for-byte 보존하면서 `--- ... ---` 블록만 round-trip
 - BMad 미러 카드 (예: `.claude/commands/BMad/agents/sm.md`) 는 모든 입력이 disabled + 상단 안내 배너 (`harness.command.editor.bmadMirrorReadOnly`) 노출
+
+## B11. 하네스 서브에이전트 섹션 (Story 28.6)
+
+> 프로젝트 / 전역 / 플러그인 세 출처의 `.claude/agents/*.md` 를 한 화면에서 카드 그리드로 보고, 4 필수 + 1 선택 frontmatter 폼과 markdown 시스템 프롬프트 본문 에디터로 편집할 수 있어야 함. 양방향 카피 + 시크릿 휴리스틱 + 환경변수 보존 + 플러그인 출처 읽기 전용 정책. agents 는 Task tool 로만 호출되며 채팅 슬래시 팔레트와는 무관 — fresh-spawn 모델로 다음 사용자 메시지부터 자동 반영.
+
+### B-11-01: 카드 그리드 표시 + 출처 배지 + color 칩 + tools 3-상태 배지 `[CORE]`
+
+**절차**:
+1. 프로젝트 `<projectRoot>/.claude/agents/` 에 `code-reviewer.md` (frontmatter `name=code-reviewer`, `model=sonnet`, `color=green`, `tools` 키 부재) 사전 시드
+2. 전역 `~/.claude/agents/` 에 `summarizer.md` (`color=cyan`, `tools: []`) 사전 시드
+3. 플러그인 fixture: 6개 agent-제공 번들 (`agent-sdk-dev` / `code-simplifier` / `feature-dev` / `hookify` / `plugin-dev` / `pr-review-toolkit`) 의 `installed_plugins.json` 주입 → 직접 agents 16개 노출
+4. 설정 → 하네스 워크벤치 → "Agents" 좌측 nav 클릭 → GET `/api/harness/agents?projectSlug=<slug>` 호출
+5. 응답 `cards` 가 우선순위 (project > user > plugin) 로 정렬되어 카드 그리드로 노출됨
+
+**기대 결과**:
+- 각 카드에 출처 배지 (project=주황 / user=회색 / plugin=보라) + color 칩 (6색 팔레트 중 frontmatter 값) + model 배지 (inherit/sonnet/opus/haiku) + tools 3-상태 배지 동시 표시
+- `tools` 키 부재 카드 → 회색 "전체 허용" 배지 / `tools: []` 카드 → 붉은색 `[data-testid="agent-tools-empty"]` "비활성" 배지 / `tools: ['Read', ...]` 카드 → 파란색 `[data-testid="agent-tools-populated"]` "N개 도구" 배지
+- 6개 fixture 번들 환경에서는 정확히 16개 플러그인 카드 노출 (마켓플레이스 카탈로그는 walk 하지 않으며 `skill-creator` 번들은 agents 폴더 미보유라 포함되지 않음 — 회귀 가드)
+- 스킬 번들 안 agents (`<installPath>/skills/<skill>/agents/*.md`) 는 카드 그리드에 미노출 (28.2 out-of-scope 정책)
+- 모바일 (≤640px) 에서는 카드 그리드가 단일 컬럼으로 자동 축약
+
+### B-11-02: 새 에이전트 생성 (5 필수 필드 + tools 'omitted') → 디스크에 tools 키 부재 + 안내 토스트 `[CORE]`
+
+**절차**:
+1. AgentPanel 의 `[data-testid="agent-create-cta"]` 클릭 → CreateAgentDialog 모달 열림
+2. scope=`project`, name=`my-helper`, description=`Helps with X.`, model=`inherit`, color=`blue`, toolsState=`omitted` 입력
+3. "Create" 클릭 → POST `/api/harness/agents` 200 → `<projectRoot>/.claude/agents/my-helper.md` 가 생성됨
+4. AgentPanel 으로 돌아오면 새 카드가 즉시 그리드에 노출 (자동 reload — `harness:external-change` 와처가 `agents/my-helper.md` 를 매치)
+5. 생성된 카드 클릭 → AgentEditor 모달이 열리고 description 저장 후 `[data-testid="agent-saved-toast"]` 가 "Saved. Available via Task tool from your next message." 안내 노출
+
+**기대 결과**:
+- 디스크의 새 .md 파일은 frontmatter 4 필수 필드 (name/description/model/color) 만 emit, `tools` 키는 부재 (omitted state — AC5.a 기준 SDK 가 모든 도구 사용 허용)
+- name 정규식 `^[a-z][a-z0-9-]{1,48}[a-z0-9]$` 검증을 통과해야 제출 가능 — 시작/끝 하이픈, 대문자, 51자, 2자 이하 모두 인라인 에러로 차단
+- 28.1 spike A 의 fresh-spawn 모델에 따라 SDK 는 다음 사용자 메시지부터 새 에이전트를 Task tool 호출 후보로 자동 등록 (별도 reload 트리거 없이)
+
+### B-11-03: tools 3-상태 토글 round-trip — omitted ↔ empty ↔ populated `[CORE]`
+
+**절차**:
+1. AgentEditor 모달의 tools 라디오 그룹 (`[data-testid="agent-tools-radio"]`) 에서 "전체 허용 (생략)" → "비활성 (빈 배열)" 으로 전환
+2. 디바운스 300ms 후 PUT `/api/harness/agents/:name` 가 `frontmatter.tools` 미설정 + `toolsState='empty'` 로 호출되어 디스크에 `tools: []` 직렬화됨
+3. 라디오를 "사용자 정의" 로 전환 → "+ Add tool" 버튼 (`[data-testid="agent-add-tool"]`) 으로 `Read`, `Edit` 두 도구 추가 → 디스크에 `tools: ['Read', 'Edit']` (인라인 배열) 로 직렬화
+4. 다시 "전체 허용 (생략)" 으로 복귀 → 디스크에서 `tools` 키 자체가 제거됨 (yaml round-trip 이 다른 키 / 주석 / 빈 줄을 보존)
+
+**기대 결과**:
+- 3 상태가 디스크 ↔ 폼 1:1 round-trip 보장 — `applyYamlFrontmatterPatch` 헬퍼 위에 본 스토리가 도입한 `serializeAgentFrontmatter(prevRaw, frontmatter, toolsState)` 가 toolsState 분기 처리
+- 카드 그리드의 tools 배지가 라디오 변경 후 다음 reload 에 즉시 갱신 (회색 "전체 허용" → 붉은색 "비활성" → 파란색 "2개 도구")
+- "비활성 (빈 배열)" 라디오 선택 시 `[data-testid="agent-tools-empty-warning"]` 경고 배지가 사용자에게 의도 확인 ("어떤 도구도 사용하지 않는 에이전트를 만듭니다 — 의도한 게 맞나요?")
+
+### B-11-04: 양방향 카피 + 시크릿 모달 + 동일 name 충돌 모달 (rename + name 정규식 검증) `[CORE]`
+
+**절차**:
+1. 프로젝트 카드의 ⋮ 카피 메뉴 (`[data-testid="agent-copy-action-toUser"]`) 에서 "전역으로 복사 →" 클릭
+2. description 또는 본문에 `Bearer ghp_abcdef0123456789abcdef` 같은 시크릿이 있어 첫 시도가 403 (`HARNESS_FORBIDDEN`, `details.cause: 'secret-not-acknowledged'`) 으로 거부됨
+3. AgentCopyConflictDialog 가 시크릿 안내와 함께 자동 노출 → 사용자가 ack 하고 "계속" 클릭
+4. 대상 스코프에 같은 name 파일이 이미 있으면 `덮어쓰기` / `스킵` / `이름 변경 후 추가` 3-way 라디오 노출
+5. `이름 변경` 라디오 → 새 agent name 입력 (`[data-testid="agent-rename-input"]`, 예: `forked-reviewer`) → name 정규식을 인라인 검증 ("BAD" 같은 대문자 입력 시 즉시 에러) → "계속" → POST `/api/harness/agents/copy` 200 with `targetName, acknowledgedSecret:true`
+6. 서버는 카피 시 새 파일의 `frontmatter.name` 도 자동 patch 해 file stem 과 일관성을 유지 (본 스토리 특유의 동작 — 28.5 슬래시 명에는 없는 단계)
+
+**기대 결과**:
+- `${ENV_NAME}` · `${CLAUDE_PLUGIN_ROOT}` 같은 환경변수 참조는 시크릿 휴리스틱에서 제외되며 카피 시 원문 그대로 보존
+- 플러그인 → 프로젝트 카피 시 본문 또는 frontmatter 어디든 `${CLAUDE_PLUGIN_ROOT}` 가 포함돼 있으면 응답 `details.warnings: ['plugin-root-reference']` 동봉
+- rename 입력 검증은 agent name 정규식 (3–50 소문자/숫자/하이픈, 시작·끝 하이픈 금지) + OS 예약문자 정규식을 동시에 적용
+- 플러그인 → 프로젝트/전역 카피만 허용되며 프로젝트/전역 → 플러그인 카피는 UI 메뉴 자체에 등장하지 않음 (AC6.d 정책)
+
+### B-11-05: `<example>` 템플릿 삽입 버튼 + 친화적 경고 배지 `[CORE]`
+
+**절차**:
+1. AgentEditor 모달에서 description 텍스트박스에 커서 위치 → "+ Add example" 버튼 (`[data-testid="agent-insert-example"]`) 클릭
+2. 디바운스 후 description 본문에 `<example>...</example>` 스켈레톤이 자동 삽입되며 `[data-testid="agent-example-inserted-toast"]` 안내 토스트 노출
+3. 본문에 `<example>` 매치 0건 상태에서는 친화적 경고 배지 `[data-testid="agent-no-example-warning"]` 가 본문 에디터 위에 노출 ("auto-selection quality may suffer — 템플릿을 삽입하세요")
+4. `<example>` 블록을 본문에 직접 입력 (또는 템플릿 삽입) → 100ms 디바운스 후 경고 배지가 사라짐
+5. CodeMirror 본문 에디터의 `<example>` 블록이 `agentExampleHighlight` ViewPlugin 으로 별도 색상 띠 + 4px left border 로 시각 구분되어 식별 가능
+
+**기대 결과 (시각 검증 정책 — flaky 회피, 28.5 답습)**:
+- Playwright snapshot 단독 의존 금지 — `<example>` 블록의 데코레이션 적용은 `data-decoration-class="cm-agent-example"` DOM 속성 + `getComputedStyle(...).backgroundColor` 직접 단언으로 검증
+- WCAG AA contrast 검증은 별도 단위 테스트가 책임 (배경 컬러 + left border 4px 다채널)
+- description 에 `<example>` 없을 때 친화적 경고 배지 (`harness.agent.editor.warnings.noExampleBlock`) 가 노출되지만 저장은 막지 않음 — AC4.c 친화적 가드

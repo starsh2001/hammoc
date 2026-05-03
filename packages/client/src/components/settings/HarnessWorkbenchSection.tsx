@@ -15,8 +15,9 @@ import { SkillPanel } from './harness/SkillPanel';
 import { McpPanel } from './harness/McpPanel';
 import { HookPanel } from './harness/HookPanel';
 import { CommandPanel } from './harness/CommandPanel';
+import { AgentPanel } from './harness/AgentPanel';
 
-type HarnessSubSection = 'plugins' | 'skills' | 'mcps' | 'hooks' | 'commands';
+type HarnessSubSection = 'plugins' | 'skills' | 'mcps' | 'hooks' | 'commands' | 'agents';
 
 const SUB_SECTIONS: readonly HarnessSubSection[] = [
   'plugins',
@@ -24,6 +25,7 @@ const SUB_SECTIONS: readonly HarnessSubSection[] = [
   'mcps',
   'hooks',
   'commands',
+  'agents',
 ] as const;
 
 interface Props {
@@ -62,6 +64,7 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
         {active === 'mcps' && <McpPanel projectSlug={projectSlug} />}
         {active === 'hooks' && <HookPanel projectSlug={projectSlug} />}
         {active === 'commands' && <CommandPanel projectSlug={projectSlug} />}
+        {active === 'agents' && <AgentPanel projectSlug={projectSlug} />}
       </div>
     </div>
   );

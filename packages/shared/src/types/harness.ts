@@ -111,6 +111,8 @@ export const HARNESS_ERRORS = {
   HARNESS_SKILL_NAME_CONFLICT: { code: 'HARNESS_SKILL_NAME_CONFLICT', httpStatus: 409 },
   HARNESS_MCP_NAME_CONFLICT:   { code: 'HARNESS_MCP_NAME_CONFLICT',   httpStatus: 409 },
   HARNESS_COMMAND_NAME_CONFLICT: { code: 'HARNESS_COMMAND_NAME_CONFLICT', httpStatus: 409 },
+  HARNESS_AGENT_NOT_FOUND:      { code: 'HARNESS_AGENT_NOT_FOUND',      httpStatus: 404 },
+  HARNESS_AGENT_NAME_CONFLICT:  { code: 'HARNESS_AGENT_NAME_CONFLICT',  httpStatus: 409 },
   HARNESS_PARSE_ERROR:         { code: 'HARNESS_PARSE_ERROR',         httpStatus: 422 },
   HARNESS_WRITE_ERROR:         { code: 'HARNESS_WRITE_ERROR',         httpStatus: 500 },
 } as const;
@@ -908,4 +910,184 @@ export interface HarnessCommandDeleteRequest {
   projectSlug?: string;
   relativePath: string;
   expectedMtime?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Story 28.6 — Sub-agent section types
+// ---------------------------------------------------------------------------
+
+export type HarnessAgentSourceScope = 'project' | 'user' | 'plugin';
+export type HarnessAgentModel = 'inherit' | 'sonnet' | 'opus' | 'haiku';
+export type HarnessAgentColor = 'blue' | 'cyan' | 'green' | 'yellow' | 'magenta' | 'red';
+
+/**
+ * Frontmatter — name/description/model/color are required per official spec.
+ * `tools` is optional and uses a 3-state model:
+ *   - key absent      → all tools allowed (omit on disk)
+ *   - empty array     → no tools allowed (preserved as `tools: []`)
+ *   - populated array → explicit allowlist
+ * The discriminated `toolsState` field on the read response surfaces the
+ * three states explicitly so the form can render the right radio option
+ * without ambiguity.
+ */
+export interface HarnessAgentFrontmatter {
+  name: string;
+  description: string;
+  model: HarnessAgentModel;
+  color: HarnessAgentColor;
+  /** undefined = key absent (state A), [] = state B, ['Read', ...] = state C. */
+  tools?: string[];
+}
+
+export type HarnessAgentToolsState = 'omitted' | 'empty' | 'populated';
+
+export interface HarnessAgentSourceLocation {
+  scope: HarnessAgentSourceScope;
+  /** Absolute path of the .md file. */
+  absoluteFile: string;
+  /** scope === 'plugin' → "<pluginName>@<marketplace>". */
+  pluginKey?: string;
+  /** scope === 'project' → the active project's slug. */
+  projectSlug?: string;
+  /** Agent name = file stem (with .md stripped) — must equal frontmatter.name. */
+  name: string;
+}
+
+export interface HarnessAgentCard extends HarnessAgentSourceLocation {
+  /** Required frontmatter fields. */
+  description: string;
+  model: HarnessAgentModel;
+  color: HarnessAgentColor;
+  /** Resolved 3-state tools indicator — drives the AC1.c list badge. */
+  toolsState: HarnessAgentToolsState;
+  /** Tool names when toolsState === 'populated'; empty otherwise. */
+  tools: string[];
+  /** True when the body contains at least one `<example>` block — drives AC4.c warning badge. */
+  hasExampleBlock: boolean;
+  /** ISO mtime of `absoluteFile` — STALE_WRITE ETag. */
+  mtime: string;
+}
+
+export interface HarnessAgentMalformedEntry {
+  scope: HarnessAgentSourceScope;
+  absoluteFile: string;
+  pluginKey?: string;
+  projectSlug?: string;
+  /**
+   * Reason category — UI maps to an i18n key:
+   *   'invalid-frontmatter'   — YAML parse failure or missing required field
+   *   'name-mismatch'         — frontmatter.name !== file stem
+   *   'invalid-name-pattern'  — frontmatter.name fails the lowercase-hyphen regex
+   *   'invalid-model'         — model not in enum
+   *   'invalid-color'         — color not in enum
+   *   'nested-directory'      — file located under a subdirectory (flat-only policy, AC1.a)
+   */
+  reason:
+    | 'invalid-frontmatter'
+    | 'name-mismatch'
+    | 'invalid-name-pattern'
+    | 'invalid-model'
+    | 'invalid-color'
+    | 'nested-directory';
+  /** Free-form detail (e.g. the offending value) — appended to the i18n message in tooltips. */
+  detail?: string;
+}
+
+export interface HarnessAgentListResponse {
+  cards: HarnessAgentCard[];
+  malformed: HarnessAgentMalformedEntry[];
+}
+
+export interface HarnessAgentReadResponse {
+  source: HarnessAgentSourceLocation;
+  frontmatter: HarnessAgentFrontmatter;
+  /** Body markdown after the closing `---` (frontmatter stripped) — the system prompt. */
+  body: string;
+  /** Raw text of the entire file (frontmatter + body) — used by Raw editor toggle. */
+  raw: string;
+  mtime: string;
+  /** Discriminated tools state for the form radio. */
+  toolsState: HarnessAgentToolsState;
+  /** True when body contains at least one <example>...</example> block. */
+  hasExampleBlock: boolean;
+}
+
+/**
+ * Update request — exactly one of `frontmatter`/`body`/`raw` is required.
+ * `frontmatter` and `body` patch separately (frontmatter via yaml round-trip
+ * with explicit tools-state preservation, body as plain text replacement).
+ * `raw` replaces the whole file.
+ */
+export interface HarnessAgentUpdateRequest {
+  frontmatter?: HarnessAgentFrontmatter;
+  /**
+   * When `frontmatter` is present and `tools` is undefined in the object,
+   * the server uses this discriminator to decide between state A (omit on disk)
+   * and state B (write `tools: []`). When `tools` is a non-empty array this
+   * field is ignored and state C is implied.
+   */
+  toolsState?: HarnessAgentToolsState;
+  body?: string;
+  raw?: string;
+  /** STALE_WRITE guard. */
+  expectedMtime?: string;
+}
+
+export interface HarnessAgentUpdateResponse {
+  success: true;
+  mtime: string;
+  toolsState: HarnessAgentToolsState;
+  hasExampleBlock: boolean;
+}
+
+export interface HarnessAgentCreateRequest {
+  scope: 'project' | 'user';
+  projectSlug?: string;
+  /** File stem — must match frontmatter.name and pass the agent name regex. */
+  name: string;
+  frontmatter: HarnessAgentFrontmatter;
+  body?: string;
+  /** State A vs B discriminator — same semantics as update. */
+  toolsState?: HarnessAgentToolsState;
+}
+
+export interface HarnessAgentCreateResponse {
+  success: true;
+  source: HarnessAgentSourceLocation;
+  mtime: string;
+}
+
+export interface HarnessAgentCopyRequest {
+  sourceScope: HarnessAgentSourceScope;
+  sourceProjectSlug?: string;
+  sourcePluginKey?: string;
+  /** Source agent name = file stem. */
+  sourceName: string;
+  /** plugin destinations forbidden — only project/user allowed. */
+  targetScope: 'project' | 'user';
+  targetProjectSlug?: string;
+  /** When undefined, server uses sourceName. Must pass agent name regex. */
+  targetName?: string;
+  onConflict: 'overwrite' | 'skip' | 'rename';
+  /** Required when sensitive content is detected by the secret heuristic. */
+  acknowledgedSecret?: boolean;
+}
+
+export interface HarnessAgentCopyResponse {
+  success: true;
+  target: HarnessAgentSourceLocation;
+  skipped: boolean;
+  /** Returned when ${CLAUDE_PLUGIN_ROOT} appeared in source. */
+  warnings?: Array<'plugin-root-reference'>;
+}
+
+export interface HarnessAgentDeleteRequest {
+  scope: 'project' | 'user';
+  projectSlug?: string;
+  name: string;
+  expectedMtime?: string;
+}
+
+export interface HarnessAgentDeleteResponse {
+  success: true;
 }

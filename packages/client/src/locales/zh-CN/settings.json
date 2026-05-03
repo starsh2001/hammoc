@@ -322,7 +322,8 @@
                 "skills": "技能",
                 "mcps": "MCP",
                 "hooks": "钩子",
-                "commands": "命令"
+                "commands": "命令",
+                "agents": "代理"
             }
         },
         "skill": {
@@ -840,6 +841,170 @@
                 "title": "由于 frontmatter 无效, 已跳过部分命令:"
             },
             "cardOpen": "打开 {{slashName}}"
+        },
+        "agent": {
+            "empty": {
+                "title": "未配置任何子代理。",
+                "description": "请在 <projectRoot>/.claude/agents/ 或 ~/.claude/agents/ 下添加代理文件, 或安装一个包含代理的插件包。"
+            },
+            "scopeBadge": {
+                "project": "项目",
+                "user": "全局",
+                "plugin": "插件",
+                "pluginWithKey": "插件: {{key}}"
+            },
+            "filter": {
+                "all": "全部"
+            },
+            "color": {
+                "blue": "蓝",
+                "cyan": "青",
+                "green": "绿",
+                "yellow": "黄",
+                "magenta": "品红",
+                "red": "红"
+            },
+            "tools": {
+                "omitted": "全部允许",
+                "empty": "已禁用",
+                "populated_one": "1 个工具",
+                "populated_other": "{{count}} 个工具"
+            },
+            "shadowedTooltip": "存在同名的更高优先级代理。",
+            "banner": {
+                "appliesNextMessage": "已保存。从下一条消息开始可通过 Task tool 调用。",
+                "pluginReadOnly": "这是插件提供的代理 — 请使用「以覆盖方式克隆」进行自定义。"
+            },
+            "create": {
+                "title": "新建子代理",
+                "scopeLabel": "范围",
+                "scopeProject": "项目",
+                "scopeUser": "全局",
+                "nameLabel": "名称",
+                "nameHelp": "小写字母、数字、连字符 3–50 字符。首尾不能为连字符。",
+                "namePlaceholder": "例如: code-reviewer",
+                "descriptionLabel": "描述",
+                "descriptionHelp": "描述此代理应在何种情境下被自动选择。包含 <example> 块可提升自动选择质量。",
+                "modelLabel": "模型",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "colorLabel": "颜色",
+                "toolsLabel": "工具",
+                "toolsHelp": "创建后可在编辑器中切换为自定义允许列表。",
+                "submit": "创建",
+                "cancel": "取消",
+                "errors": {
+                    "nameRequired": "名称为必填项。",
+                    "namePattern": "仅允许小写字母 / 数字 / 连字符 3–50 字符。首尾不能为连字符。",
+                    "nameUnchanged": "新名称必须与源名称不同。",
+                    "descriptionRequired": "描述为必填项。"
+                }
+            },
+            "editor": {
+                "frontmatterTitle": "Frontmatter",
+                "nameLabel": "名称",
+                "nameReadOnlyHint": "重命名需通过「复制后删除」流程。可通过 ⋮ 菜单打开源代理。",
+                "name": {
+                    "invalidPattern": "仅允许小写字母 / 数字 / 连字符 3–50 字符。首尾不能为连字符。"
+                },
+                "descriptionLabel": "描述",
+                "description": {
+                    "required": "描述为必填项。"
+                },
+                "modelLabel": "模型",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "colorLabel": "颜色",
+                "colorPicker": {
+                    "label": "选择代理卡片颜色"
+                },
+                "toolsLabel": "工具",
+                "toolsRadio": {
+                    "label": "工具访问权限",
+                    "omitted": "全部允许 (省略键)",
+                    "empty": "已禁用 (空数组)",
+                    "populated": "自定义允许列表",
+                    "emptyWarning": "此选项创建一个不允许任何工具的代理 — 是您本意吗?",
+                    "addTool": "添加工具",
+                    "removeTool": "移除 {{tool}}"
+                },
+                "bodyTitle": "系统提示 (markdown)",
+                "exampleTemplate": {
+                    "button": "+ 添加示例",
+                    "inserted": "示例模板已插入到光标位置。"
+                },
+                "warnings": {
+                    "noExampleBlock": "此代理没有 <example> 块 — 自动选择质量可能下降。请使用「+ 添加示例」按钮插入模板。"
+                },
+                "rawToggle": "Raw",
+                "rawParseError": "Frontmatter 解析失败 — 请修复 YAML 后才能返回 Form 模式。",
+                "staleBanner": "此代理已被外部修改 — 您的保存被拒绝。已加载最新内容。",
+                "staleReload": "重新加载",
+                "staleOverwrite": "覆盖",
+                "frontmatterHelp": "子代理 frontmatter 规范",
+                "delete": {
+                    "label": "删除代理",
+                    "confirm": "从 {{scope}} 删除 {{name}}?",
+                    "submit": "删除"
+                }
+            },
+            "copy": {
+                "menuLabel": "复制操作",
+                "toUser": {
+                    "label": "复制到全局 →"
+                },
+                "toProject": {
+                    "label": "复制到项目 ←"
+                },
+                "overrideToProject": {
+                    "label": "以覆盖方式克隆 (项目)"
+                },
+                "overrideToUser": {
+                    "label": "以覆盖方式克隆 (全局)"
+                },
+                "secret": {
+                    "title": "检测到敏感内容",
+                    "intro": "此代理的 frontmatter 或系统提示中包含疑似 API 密钥或令牌的值。是否继续复制?",
+                    "linePreview": "行 {{line}}: {{snippet}}",
+                    "ack": "我已审阅内容并希望继续。",
+                    "submit": "复制",
+                    "cancel": "取消"
+                },
+                "conflict": {
+                    "title": "目标位置已存在同名代理",
+                    "intro": "{{scope}} 中已存在 {{name}}。请选择处理方式:",
+                    "overwrite": "覆盖",
+                    "skip": "跳过",
+                    "rename": "重命名后添加",
+                    "renameNameLabel": "新代理名称",
+                    "submit": "继续",
+                    "cancel": "取消"
+                },
+                "result": {
+                    "success": "已将 {{name}} 复制到 {{scope}}。",
+                    "pluginRootWarning": "此代理引用了 ${CLAUDE_PLUGIN_ROOT} — 在 {{scope}} 范围中可能无法工作。"
+                }
+            },
+            "malformed": {
+                "title": "已跳过部分代理文件:",
+                "reason": {
+                    "invalidFrontmatter": "{{name}} — 无效的 YAML frontmatter ({{detail}})",
+                    "nameMismatch": "{{name}} — frontmatter.name 与文件名不匹配",
+                    "invalidNamePattern": "{{name}} — 名称必须为 3–50 字符的小写字母 / 数字 / 连字符",
+                    "invalidModel": "{{name}} — model 必须为 inherit / sonnet / opus / haiku 之一",
+                    "invalidColor": "{{name}} — color 必须为六个允许值之一",
+                    "nestedDirectory": "{{name}} — 子代理必须为 .claude/agents/ 下的扁平结构 (不支持子目录)"
+                }
+            },
+            "cardOpen": "打开 {{name}}"
         },
         "plugin": {
             "empty": "未安装任何插件。",

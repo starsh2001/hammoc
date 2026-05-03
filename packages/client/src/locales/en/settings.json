@@ -323,7 +323,8 @@
                 "skills": "Skills",
                 "mcps": "MCP",
                 "hooks": "Hooks",
-                "commands": "Commands"
+                "commands": "Commands",
+                "agents": "Agents"
             }
         },
         "skill": {
@@ -841,6 +842,170 @@
                 "title": "Some commands were skipped due to invalid frontmatter:"
             },
             "cardOpen": "Open {{slashName}}"
+        },
+        "agent": {
+            "empty": {
+                "title": "No sub-agents configured.",
+                "description": "Add an agent file under <projectRoot>/.claude/agents/ or your global ~/.claude/agents/ directory, or install a plugin bundle that ships agents."
+            },
+            "scopeBadge": {
+                "project": "Project",
+                "user": "Global",
+                "plugin": "Plugin",
+                "pluginWithKey": "Plugin: {{key}}"
+            },
+            "filter": {
+                "all": "All"
+            },
+            "color": {
+                "blue": "Blue",
+                "cyan": "Cyan",
+                "green": "Green",
+                "yellow": "Yellow",
+                "magenta": "Magenta",
+                "red": "Red"
+            },
+            "tools": {
+                "omitted": "All allowed",
+                "empty": "Disabled",
+                "populated_one": "1 tool",
+                "populated_other": "{{count}} tools"
+            },
+            "shadowedTooltip": "A higher-priority agent with the same name is active.",
+            "banner": {
+                "appliesNextMessage": "Saved. Available via Task tool from your next message.",
+                "pluginReadOnly": "This is a plugin-provided agent — use Override-clone to customize."
+            },
+            "create": {
+                "title": "New sub-agent",
+                "scopeLabel": "Scope",
+                "scopeProject": "Project",
+                "scopeUser": "Global",
+                "nameLabel": "Name",
+                "nameHelp": "Lowercase letters, digits, hyphens. 3–50 characters. Cannot start or end with a hyphen.",
+                "namePlaceholder": "e.g. code-reviewer",
+                "descriptionLabel": "Description",
+                "descriptionHelp": "Describe when this agent should be auto-selected. Including <example> blocks improves auto-selection quality.",
+                "modelLabel": "Model",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "colorLabel": "Color",
+                "toolsLabel": "Tools",
+                "toolsHelp": "Use the editor after creation to switch to a custom allow-list.",
+                "submit": "Create",
+                "cancel": "Cancel",
+                "errors": {
+                    "nameRequired": "Name is required.",
+                    "namePattern": "Use 3–50 lowercase letters, digits, hyphens. Cannot start or end with hyphen.",
+                    "nameUnchanged": "New name must differ from the source.",
+                    "descriptionRequired": "Description is required."
+                }
+            },
+            "editor": {
+                "frontmatterTitle": "Frontmatter",
+                "nameLabel": "Name",
+                "nameReadOnlyHint": "Renaming requires copy + delete. Open the source via the ⋮ menu.",
+                "name": {
+                    "invalidPattern": "Use 3–50 lowercase letters, digits, hyphens. Cannot start or end with hyphen."
+                },
+                "descriptionLabel": "Description",
+                "description": {
+                    "required": "Description is required."
+                },
+                "modelLabel": "Model",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "colorLabel": "Color",
+                "colorPicker": {
+                    "label": "Choose agent card color"
+                },
+                "toolsLabel": "Tools",
+                "toolsRadio": {
+                    "label": "Tool access",
+                    "omitted": "All allowed (key omitted)",
+                    "empty": "Disabled (empty array)",
+                    "populated": "Custom allow-list",
+                    "emptyWarning": "This option creates an agent with no tool access — was that intentional?",
+                    "addTool": "Add tool",
+                    "removeTool": "Remove {{tool}}"
+                },
+                "bodyTitle": "System prompt (markdown)",
+                "exampleTemplate": {
+                    "button": "+ Add example",
+                    "inserted": "Example template inserted at cursor."
+                },
+                "warnings": {
+                    "noExampleBlock": "This agent has no <example> blocks — auto-selection quality may suffer. Use the + Add example button to insert a template."
+                },
+                "rawToggle": "Raw",
+                "rawParseError": "Frontmatter cannot be parsed — fix the YAML to return to Form mode.",
+                "staleBanner": "This agent was changed externally — your save was rejected. Latest contents loaded.",
+                "staleReload": "Reload",
+                "staleOverwrite": "Overwrite",
+                "frontmatterHelp": "Sub-agent frontmatter spec",
+                "delete": {
+                    "label": "Delete agent",
+                    "confirm": "Delete {{name}} from {{scope}}?",
+                    "submit": "Delete"
+                }
+            },
+            "copy": {
+                "menuLabel": "Copy actions",
+                "toUser": {
+                    "label": "Copy to global →"
+                },
+                "toProject": {
+                    "label": "Copy to project ←"
+                },
+                "overrideToProject": {
+                    "label": "Override-clone (project)"
+                },
+                "overrideToUser": {
+                    "label": "Override-clone (global)"
+                },
+                "secret": {
+                    "title": "Sensitive content detected",
+                    "intro": "This agent's frontmatter or system prompt contains values that look like API keys or tokens. Continue copying?",
+                    "linePreview": "Line {{line}}: {{snippet}}",
+                    "ack": "I have reviewed the content and want to proceed.",
+                    "submit": "Copy",
+                    "cancel": "Cancel"
+                },
+                "conflict": {
+                    "title": "Agent already exists at target",
+                    "intro": "{{name}} already exists in {{scope}}. Choose what to do:",
+                    "overwrite": "Overwrite",
+                    "skip": "Skip",
+                    "rename": "Rename and add",
+                    "renameNameLabel": "New agent name",
+                    "submit": "Continue",
+                    "cancel": "Cancel"
+                },
+                "result": {
+                    "success": "Copied {{name}} to {{scope}}.",
+                    "pluginRootWarning": "This agent references ${CLAUDE_PLUGIN_ROOT} — it may not work in {{scope}} scope."
+                }
+            },
+            "malformed": {
+                "title": "Some agent files were skipped:",
+                "reason": {
+                    "invalidFrontmatter": "{{name}} — invalid YAML frontmatter ({{detail}})",
+                    "nameMismatch": "{{name}} — frontmatter.name does not match the file stem",
+                    "invalidNamePattern": "{{name}} — name must be 3–50 lowercase letters, digits, hyphens",
+                    "invalidModel": "{{name}} — model must be inherit / sonnet / opus / haiku",
+                    "invalidColor": "{{name}} — color must be one of the six allowed values",
+                    "nestedDirectory": "{{name}} — sub-agents must be flat under .claude/agents/ (no subdirectories)"
+                }
+            },
+            "cardOpen": "Open {{name}}"
         },
         "plugin": {
             "empty": "No plugins installed.",

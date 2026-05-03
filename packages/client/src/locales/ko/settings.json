@@ -323,7 +323,8 @@
                 "skills": "스킬",
                 "mcps": "MCP",
                 "hooks": "훅",
-                "commands": "커맨드"
+                "commands": "커맨드",
+                "agents": "에이전트"
             }
         },
         "skill": {
@@ -830,6 +831,170 @@
                 "title": "frontmatter 가 무효한 커맨드는 표시에서 제외됐습니다:"
             },
             "cardOpen": "{{slashName}} 열기"
+        },
+        "agent": {
+            "empty": {
+                "title": "구성된 서브에이전트가 없습니다.",
+                "description": "<projectRoot>/.claude/agents/ 또는 ~/.claude/agents/ 디렉토리에 에이전트 파일을 추가하거나, 에이전트가 포함된 플러그인 번들을 설치하세요."
+            },
+            "scopeBadge": {
+                "project": "프로젝트",
+                "user": "전역",
+                "plugin": "플러그인",
+                "pluginWithKey": "플러그인: {{key}}"
+            },
+            "filter": {
+                "all": "전체"
+            },
+            "color": {
+                "blue": "파랑",
+                "cyan": "청록",
+                "green": "초록",
+                "yellow": "노랑",
+                "magenta": "자홍",
+                "red": "빨강"
+            },
+            "tools": {
+                "omitted": "전체 허용",
+                "empty": "비활성",
+                "populated_one": "도구 1개",
+                "populated_other": "도구 {{count}}개"
+            },
+            "shadowedTooltip": "같은 이름의 우선순위 높은 에이전트가 활성 상태입니다.",
+            "banner": {
+                "appliesNextMessage": "저장됐습니다. 다음 메시지부터 Task tool 에서 호출 가능합니다.",
+                "pluginReadOnly": "플러그인이 제공하는 에이전트입니다 — 커스터마이즈하려면 오버라이드로 복제를 사용하세요."
+            },
+            "create": {
+                "title": "새 서브에이전트",
+                "scopeLabel": "스코프",
+                "scopeProject": "프로젝트",
+                "scopeUser": "전역",
+                "nameLabel": "이름",
+                "nameHelp": "소문자, 숫자, 하이픈 3–50자. 시작과 끝에 하이픈은 사용할 수 없습니다.",
+                "namePlaceholder": "예: code-reviewer",
+                "descriptionLabel": "설명",
+                "descriptionHelp": "이 에이전트가 자동 선택되어야 하는 상황을 설명하세요. <example> 블록을 포함하면 자동 선택 품질이 향상됩니다.",
+                "modelLabel": "모델",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "colorLabel": "색상",
+                "toolsLabel": "도구",
+                "toolsHelp": "생성 후 에디터에서 사용자 정의 허용 목록으로 전환할 수 있습니다.",
+                "submit": "생성",
+                "cancel": "취소",
+                "errors": {
+                    "nameRequired": "이름은 필수입니다.",
+                    "namePattern": "소문자/숫자/하이픈 3–50자만 가능합니다. 시작·끝 하이픈은 금지.",
+                    "nameUnchanged": "원본과 다른 이름을 입력하세요.",
+                    "descriptionRequired": "설명은 필수입니다."
+                }
+            },
+            "editor": {
+                "frontmatterTitle": "Frontmatter",
+                "nameLabel": "이름",
+                "nameReadOnlyHint": "이름 변경은 카피 후 삭제 워크플로로 진행하세요. ⋮ 메뉴를 통해 원본을 여세요.",
+                "name": {
+                    "invalidPattern": "소문자/숫자/하이픈 3–50자만 가능합니다. 시작·끝 하이픈은 금지."
+                },
+                "descriptionLabel": "설명",
+                "description": {
+                    "required": "설명은 필수입니다."
+                },
+                "modelLabel": "모델",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "colorLabel": "색상",
+                "colorPicker": {
+                    "label": "에이전트 카드 색상 선택"
+                },
+                "toolsLabel": "도구",
+                "toolsRadio": {
+                    "label": "도구 접근",
+                    "omitted": "전체 허용 (키 생략)",
+                    "empty": "비활성 (빈 배열)",
+                    "populated": "사용자 정의 허용 목록",
+                    "emptyWarning": "이 옵션은 어떤 도구도 사용하지 않는 에이전트를 만듭니다 — 의도한 게 맞나요?",
+                    "addTool": "도구 추가",
+                    "removeTool": "{{tool}} 제거"
+                },
+                "bodyTitle": "시스템 프롬프트 (markdown)",
+                "exampleTemplate": {
+                    "button": "+ 예시 추가",
+                    "inserted": "예시 템플릿이 커서 위치에 삽입됐습니다."
+                },
+                "warnings": {
+                    "noExampleBlock": "이 에이전트에 <example> 블록이 없습니다 — 자동 선택 품질이 떨어질 수 있습니다. + 예시 추가 버튼으로 템플릿을 삽입하세요."
+                },
+                "rawToggle": "Raw",
+                "rawParseError": "Frontmatter 를 파싱할 수 없습니다 — YAML 을 수정한 뒤 Form 모드로 돌아갈 수 있습니다.",
+                "staleBanner": "이 에이전트가 외부에서 변경되어 저장이 거부됐습니다. 최신 내용이 로드됐습니다.",
+                "staleReload": "다시 로드",
+                "staleOverwrite": "덮어쓰기",
+                "frontmatterHelp": "서브에이전트 frontmatter 명세",
+                "delete": {
+                    "label": "에이전트 삭제",
+                    "confirm": "{{scope}} 에서 {{name}} 을(를) 삭제할까요?",
+                    "submit": "삭제"
+                }
+            },
+            "copy": {
+                "menuLabel": "카피 액션",
+                "toUser": {
+                    "label": "전역으로 카피 →"
+                },
+                "toProject": {
+                    "label": "프로젝트로 카피 ←"
+                },
+                "overrideToProject": {
+                    "label": "오버라이드로 복제 (프로젝트)"
+                },
+                "overrideToUser": {
+                    "label": "오버라이드로 복제 (전역)"
+                },
+                "secret": {
+                    "title": "민감한 콘텐츠가 감지됐습니다",
+                    "intro": "이 에이전트의 frontmatter 또는 시스템 프롬프트에 API 키나 토큰처럼 보이는 값이 있습니다. 카피를 계속할까요?",
+                    "linePreview": "라인 {{line}}: {{snippet}}",
+                    "ack": "내용을 확인했고 진행하겠습니다.",
+                    "submit": "카피",
+                    "cancel": "취소"
+                },
+                "conflict": {
+                    "title": "대상에 같은 이름의 에이전트가 이미 있습니다",
+                    "intro": "{{scope}} 에 {{name}} 이(가) 이미 있습니다. 어떻게 처리할까요:",
+                    "overwrite": "덮어쓰기",
+                    "skip": "스킵",
+                    "rename": "이름 변경 후 추가",
+                    "renameNameLabel": "새 에이전트 이름",
+                    "submit": "계속",
+                    "cancel": "취소"
+                },
+                "result": {
+                    "success": "{{scope}} 로 {{name}} 을(를) 카피했습니다.",
+                    "pluginRootWarning": "이 에이전트가 ${CLAUDE_PLUGIN_ROOT} 를 참조합니다 — {{scope}} 스코프에서는 동작하지 않을 수 있습니다."
+                }
+            },
+            "malformed": {
+                "title": "일부 에이전트 파일이 표시에서 제외됐습니다:",
+                "reason": {
+                    "invalidFrontmatter": "{{name}} — 잘못된 YAML frontmatter ({{detail}})",
+                    "nameMismatch": "{{name}} — frontmatter.name 이 파일 이름과 일치하지 않습니다",
+                    "invalidNamePattern": "{{name}} — 이름은 3–50자 소문자/숫자/하이픈이어야 합니다",
+                    "invalidModel": "{{name}} — model 은 inherit / sonnet / opus / haiku 중 하나여야 합니다",
+                    "invalidColor": "{{name}} — color 는 6개 허용 값 중 하나여야 합니다",
+                    "nestedDirectory": "{{name}} — 서브에이전트는 .claude/agents/ 아래 평면 구조여야 합니다 (하위 디렉토리 금지)"
+                }
+            },
+            "cardOpen": "{{name}} 열기"
         },
         "plugin": {
             "empty": "설치된 플러그인이 없습니다.",

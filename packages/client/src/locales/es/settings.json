@@ -322,7 +322,8 @@
                 "skills": "Skills",
                 "mcps": "MCP",
                 "hooks": "Hooks",
-                "commands": "Comandos"
+                "commands": "Comandos",
+                "agents": "Agentes"
             }
         },
         "skill": {
@@ -840,6 +841,170 @@
                 "title": "Algunos comandos fueron omitidos por frontmatter inválido:"
             },
             "cardOpen": "Abrir {{slashName}}"
+        },
+        "agent": {
+            "empty": {
+                "title": "No hay sub-agentes configurados.",
+                "description": "Añade un archivo de agente bajo <projectRoot>/.claude/agents/ o ~/.claude/agents/, o instala un bundle de plugin que incluya agentes."
+            },
+            "scopeBadge": {
+                "project": "Proyecto",
+                "user": "Global",
+                "plugin": "Plugin",
+                "pluginWithKey": "Plugin: {{key}}"
+            },
+            "filter": {
+                "all": "Todos"
+            },
+            "color": {
+                "blue": "Azul",
+                "cyan": "Cian",
+                "green": "Verde",
+                "yellow": "Amarillo",
+                "magenta": "Magenta",
+                "red": "Rojo"
+            },
+            "tools": {
+                "omitted": "Todas permitidas",
+                "empty": "Deshabilitado",
+                "populated_one": "1 herramienta",
+                "populated_other": "{{count}} herramientas"
+            },
+            "shadowedTooltip": "Hay un agente con el mismo nombre y mayor prioridad activo.",
+            "banner": {
+                "appliesNextMessage": "Guardado. Disponible vía Task tool desde tu próximo mensaje.",
+                "pluginReadOnly": "Este es un agente proporcionado por un plugin — usa «Clonar como override» para personalizar."
+            },
+            "create": {
+                "title": "Nuevo sub-agente",
+                "scopeLabel": "Ámbito",
+                "scopeProject": "Proyecto",
+                "scopeUser": "Global",
+                "nameLabel": "Nombre",
+                "nameHelp": "Letras minúsculas, dígitos y guiones. 3–50 caracteres. No puede empezar ni terminar con guion.",
+                "namePlaceholder": "p. ej. code-reviewer",
+                "descriptionLabel": "Descripción",
+                "descriptionHelp": "Describe cuándo este agente debe seleccionarse automáticamente. Incluir bloques <example> mejora la calidad de auto-selección.",
+                "modelLabel": "Modelo",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "colorLabel": "Color",
+                "toolsLabel": "Herramientas",
+                "toolsHelp": "Después de crear, usa el editor para cambiar a una lista personalizada.",
+                "submit": "Crear",
+                "cancel": "Cancelar",
+                "errors": {
+                    "nameRequired": "El nombre es obligatorio.",
+                    "namePattern": "Usa 3–50 caracteres de letras minúsculas, dígitos y guiones. No puede empezar ni terminar con guion.",
+                    "nameUnchanged": "El nuevo nombre debe diferir del original.",
+                    "descriptionRequired": "La descripción es obligatoria."
+                }
+            },
+            "editor": {
+                "frontmatterTitle": "Frontmatter",
+                "nameLabel": "Nombre",
+                "nameReadOnlyHint": "Renombrar requiere copiar y luego eliminar. Abre la fuente vía menú ⋮.",
+                "name": {
+                    "invalidPattern": "Usa 3–50 caracteres de letras minúsculas, dígitos y guiones. No puede empezar ni terminar con guion."
+                },
+                "descriptionLabel": "Descripción",
+                "description": {
+                    "required": "La descripción es obligatoria."
+                },
+                "modelLabel": "Modelo",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "colorLabel": "Color",
+                "colorPicker": {
+                    "label": "Elegir color de tarjeta del agente"
+                },
+                "toolsLabel": "Herramientas",
+                "toolsRadio": {
+                    "label": "Acceso a herramientas",
+                    "omitted": "Todas permitidas (clave omitida)",
+                    "empty": "Deshabilitado (array vacío)",
+                    "populated": "Lista personalizada",
+                    "emptyWarning": "Esta opción crea un agente sin acceso a herramientas — ¿es intencional?",
+                    "addTool": "Añadir herramienta",
+                    "removeTool": "Eliminar {{tool}}"
+                },
+                "bodyTitle": "Prompt del sistema (markdown)",
+                "exampleTemplate": {
+                    "button": "+ Añadir ejemplo",
+                    "inserted": "Plantilla de ejemplo insertada en el cursor."
+                },
+                "warnings": {
+                    "noExampleBlock": "Este agente no tiene bloques <example> — la calidad de auto-selección puede verse afectada. Usa «+ Añadir ejemplo» para insertar una plantilla."
+                },
+                "rawToggle": "Raw",
+                "rawParseError": "El frontmatter no se puede parsear — corrige el YAML para volver al modo Form.",
+                "staleBanner": "Este agente fue cambiado externamente — tu guardado fue rechazado. Se cargó el contenido más reciente.",
+                "staleReload": "Recargar",
+                "staleOverwrite": "Sobrescribir",
+                "frontmatterHelp": "Especificación frontmatter del sub-agente",
+                "delete": {
+                    "label": "Eliminar agente",
+                    "confirm": "¿Eliminar {{name}} de {{scope}}?",
+                    "submit": "Eliminar"
+                }
+            },
+            "copy": {
+                "menuLabel": "Acciones de copia",
+                "toUser": {
+                    "label": "Copiar a global →"
+                },
+                "toProject": {
+                    "label": "Copiar a proyecto ←"
+                },
+                "overrideToProject": {
+                    "label": "Clonar como override (proyecto)"
+                },
+                "overrideToUser": {
+                    "label": "Clonar como override (global)"
+                },
+                "secret": {
+                    "title": "Contenido sensible detectado",
+                    "intro": "Este agente contiene valores que parecen claves API o tokens. ¿Continuar con la copia?",
+                    "linePreview": "Línea {{line}}: {{snippet}}",
+                    "ack": "He revisado el contenido y quiero continuar.",
+                    "submit": "Copiar",
+                    "cancel": "Cancelar"
+                },
+                "conflict": {
+                    "title": "Ya existe un agente en el destino",
+                    "intro": "{{name}} ya existe en {{scope}}. Elige qué hacer:",
+                    "overwrite": "Sobrescribir",
+                    "skip": "Omitir",
+                    "rename": "Renombrar y añadir",
+                    "renameNameLabel": "Nuevo nombre del agente",
+                    "submit": "Continuar",
+                    "cancel": "Cancelar"
+                },
+                "result": {
+                    "success": "Copiado {{name}} a {{scope}}.",
+                    "pluginRootWarning": "Este agente referencia ${CLAUDE_PLUGIN_ROOT} — puede no funcionar en el ámbito {{scope}}."
+                }
+            },
+            "malformed": {
+                "title": "Algunos archivos de agente fueron omitidos:",
+                "reason": {
+                    "invalidFrontmatter": "{{name}} — YAML frontmatter inválido ({{detail}})",
+                    "nameMismatch": "{{name}} — frontmatter.name no coincide con el nombre del archivo",
+                    "invalidNamePattern": "{{name}} — el nombre debe ser 3–50 letras minúsculas, dígitos, guiones",
+                    "invalidModel": "{{name}} — model debe ser inherit / sonnet / opus / haiku",
+                    "invalidColor": "{{name}} — color debe ser uno de los seis valores permitidos",
+                    "nestedDirectory": "{{name}} — los sub-agentes deben ser planos bajo .claude/agents/ (sin subdirectorios)"
+                }
+            },
+            "cardOpen": "Abrir {{name}}"
         },
         "plugin": {
             "empty": "No hay plugins instalados.",

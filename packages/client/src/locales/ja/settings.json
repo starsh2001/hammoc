@@ -322,7 +322,8 @@
                 "skills": "スキル",
                 "mcps": "MCP",
                 "hooks": "フック",
-                "commands": "コマンド"
+                "commands": "コマンド",
+                "agents": "エージェント"
             }
         },
         "skill": {
@@ -840,6 +841,170 @@
                 "title": "frontmatter が無効なため、一部のコマンドはスキップされました:"
             },
             "cardOpen": "{{slashName}} を開く"
+        },
+        "agent": {
+            "empty": {
+                "title": "サブエージェントが構成されていません。",
+                "description": "<projectRoot>/.claude/agents/ または ~/.claude/agents/ にエージェントファイルを追加するか、エージェントを含むプラグインバンドルをインストールしてください。"
+            },
+            "scopeBadge": {
+                "project": "プロジェクト",
+                "user": "グローバル",
+                "plugin": "プラグイン",
+                "pluginWithKey": "プラグイン: {{key}}"
+            },
+            "filter": {
+                "all": "すべて"
+            },
+            "color": {
+                "blue": "青",
+                "cyan": "シアン",
+                "green": "緑",
+                "yellow": "黄",
+                "magenta": "マゼンタ",
+                "red": "赤"
+            },
+            "tools": {
+                "omitted": "すべて許可",
+                "empty": "無効",
+                "populated_one": "ツール 1 個",
+                "populated_other": "ツール {{count}} 個"
+            },
+            "shadowedTooltip": "同じ名前のより優先度の高いエージェントが有効です。",
+            "banner": {
+                "appliesNextMessage": "保存されました。次のメッセージから Task tool で呼び出せます。",
+                "pluginReadOnly": "プラグイン提供のエージェントです — カスタマイズには「オーバーライドで複製」を使用してください。"
+            },
+            "create": {
+                "title": "新しいサブエージェント",
+                "scopeLabel": "スコープ",
+                "scopeProject": "プロジェクト",
+                "scopeUser": "グローバル",
+                "nameLabel": "名前",
+                "nameHelp": "小文字・数字・ハイフンの 3–50 文字。先頭末尾のハイフンは不可。",
+                "namePlaceholder": "例: code-reviewer",
+                "descriptionLabel": "説明",
+                "descriptionHelp": "このエージェントが自動選択されるべき状況を記述してください。<example> ブロックを含めると自動選択の品質が向上します。",
+                "modelLabel": "モデル",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "colorLabel": "色",
+                "toolsLabel": "ツール",
+                "toolsHelp": "作成後にエディタからカスタム許可リストへ切り替えできます。",
+                "submit": "作成",
+                "cancel": "キャンセル",
+                "errors": {
+                    "nameRequired": "名前は必須です。",
+                    "namePattern": "小文字・数字・ハイフンの 3–50 文字のみ。先頭末尾のハイフン不可。",
+                    "nameUnchanged": "元の名前と異なる名前を入力してください。",
+                    "descriptionRequired": "説明は必須です。"
+                }
+            },
+            "editor": {
+                "frontmatterTitle": "Frontmatter",
+                "nameLabel": "名前",
+                "nameReadOnlyHint": "名前変更はコピー後削除のワークフローで行ってください。⋮ メニューから元のソースを開きます。",
+                "name": {
+                    "invalidPattern": "小文字・数字・ハイフンの 3–50 文字のみ。先頭末尾のハイフン不可。"
+                },
+                "descriptionLabel": "説明",
+                "description": {
+                    "required": "説明は必須です。"
+                },
+                "modelLabel": "モデル",
+                "modelOptions": {
+                    "inherit": "Inherit",
+                    "sonnet": "Sonnet",
+                    "opus": "Opus",
+                    "haiku": "Haiku"
+                },
+                "colorLabel": "色",
+                "colorPicker": {
+                    "label": "エージェントカードの色を選択"
+                },
+                "toolsLabel": "ツール",
+                "toolsRadio": {
+                    "label": "ツールアクセス",
+                    "omitted": "すべて許可 (キー省略)",
+                    "empty": "無効 (空配列)",
+                    "populated": "カスタム許可リスト",
+                    "emptyWarning": "このオプションはツールアクセスのないエージェントを作成します — 意図したものですか?",
+                    "addTool": "ツールを追加",
+                    "removeTool": "{{tool}} を削除"
+                },
+                "bodyTitle": "システムプロンプト (markdown)",
+                "exampleTemplate": {
+                    "button": "+ サンプル追加",
+                    "inserted": "サンプルテンプレートをカーソル位置に挿入しました。"
+                },
+                "warnings": {
+                    "noExampleBlock": "このエージェントには <example> ブロックがありません — 自動選択の品質が低下する可能性があります。+ サンプル追加 ボタンでテンプレートを挿入してください。"
+                },
+                "rawToggle": "Raw",
+                "rawParseError": "Frontmatter を解析できません — YAML を修正すると Form モードに戻れます。",
+                "staleBanner": "このエージェントは外部で変更されたため保存が拒否されました。最新の内容が読み込まれました。",
+                "staleReload": "再読み込み",
+                "staleOverwrite": "上書き",
+                "frontmatterHelp": "サブエージェント frontmatter 仕様",
+                "delete": {
+                    "label": "エージェントを削除",
+                    "confirm": "{{scope}} から {{name}} を削除しますか?",
+                    "submit": "削除"
+                }
+            },
+            "copy": {
+                "menuLabel": "コピーアクション",
+                "toUser": {
+                    "label": "グローバルへコピー →"
+                },
+                "toProject": {
+                    "label": "プロジェクトへコピー ←"
+                },
+                "overrideToProject": {
+                    "label": "オーバーライドで複製 (プロジェクト)"
+                },
+                "overrideToUser": {
+                    "label": "オーバーライドで複製 (グローバル)"
+                },
+                "secret": {
+                    "title": "機密性の高いコンテンツが検出されました",
+                    "intro": "このエージェントの frontmatter または システムプロンプトに API キーやトークンに見える値が含まれています。コピーを続行しますか?",
+                    "linePreview": "行 {{line}}: {{snippet}}",
+                    "ack": "内容を確認したので続行します。",
+                    "submit": "コピー",
+                    "cancel": "キャンセル"
+                },
+                "conflict": {
+                    "title": "ターゲットに同名のエージェントが既に存在します",
+                    "intro": "{{scope}} に {{name}} が既に存在します。どうしますか:",
+                    "overwrite": "上書き",
+                    "skip": "スキップ",
+                    "rename": "名前を変えて追加",
+                    "renameNameLabel": "新しいエージェント名",
+                    "submit": "続行",
+                    "cancel": "キャンセル"
+                },
+                "result": {
+                    "success": "{{name}} を {{scope}} へコピーしました。",
+                    "pluginRootWarning": "このエージェントは ${CLAUDE_PLUGIN_ROOT} を参照しています — {{scope}} スコープでは動作しない可能性があります。"
+                }
+            },
+            "malformed": {
+                "title": "一部のエージェントファイルがスキップされました:",
+                "reason": {
+                    "invalidFrontmatter": "{{name}} — 無効な YAML frontmatter ({{detail}})",
+                    "nameMismatch": "{{name}} — frontmatter.name がファイル名と一致しません",
+                    "invalidNamePattern": "{{name}} — 名前は 3–50 文字の小文字・数字・ハイフンである必要があります",
+                    "invalidModel": "{{name}} — model は inherit / sonnet / opus / haiku のいずれかである必要があります",
+                    "invalidColor": "{{name}} — color は 6 つの許可値のいずれかである必要があります",
+                    "nestedDirectory": "{{name}} — サブエージェントは .claude/agents/ 直下のフラット構造である必要があります (サブディレクトリ不可)"
+                }
+            },
+            "cardOpen": "{{name}} を開く"
         },
         "plugin": {
             "empty": "インストール済みのプラグインはありません。",
