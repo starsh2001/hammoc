@@ -80,7 +80,6 @@ function sampleCard(): HarnessSkillCard {
         scope: 'user',
         absoluteRoot: '/tmp/demo',
         frontmatter: { name: 'demo', description: 'demo desc' },
-        bundleCounts: { references: 1, examples: 0, scripts: 0, assets: 0 },
         skillMdMtime: '2026-04-24T00:00:00Z',
       },
     ],

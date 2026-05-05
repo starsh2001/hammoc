@@ -452,11 +452,13 @@ class HarnessSkillService {
       return;
     }
 
-    const bundleCounts = await this.countBundle(location.absoluteRoot);
+    // List path intentionally skips bundle file counting — counting four
+    // bundle directories per skill via recursive readdir is the dominant
+    // server cost for the panel. The detail view (`readSkill()`) still
+    // reports bundle counts for the editor modal.
     const source: HarnessSkillSource = {
       ...location,
       frontmatter,
-      bundleCounts,
       skillMdMtime: stat.mtime.toISOString(),
     };
     const list = sources.get(skillName);

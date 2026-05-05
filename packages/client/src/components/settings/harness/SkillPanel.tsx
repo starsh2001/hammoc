@@ -273,7 +273,6 @@ export function SkillPanel({ projectSlug }: Props) {
                   <span className="text-gray-500 dark:text-gray-400 font-mono">{card.version}</span>
                 )}
               </div>
-              <BundleCounts source={card.sources.find((s) => s.scope === card.activeScope) ?? card.sources[0]} t={t} />
             </div>
           );
         })}
@@ -346,32 +345,3 @@ function ScopeBadge({
   );
 }
 
-function BundleCounts({
-  source,
-  t,
-}: {
-  source: HarnessSkillSource | undefined;
-  t: (key: string, opts?: Record<string, unknown>) => string;
-}) {
-  if (!source) return null;
-  const entries: ('references' | 'examples' | 'scripts' | 'assets')[] = [
-    'references',
-    'examples',
-    'scripts',
-    'assets',
-  ];
-  const visible = entries.filter((k) => source.bundleCounts[k] > 0);
-  if (visible.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-1.5 text-[11px]">
-      {visible.map((k) => (
-        <span
-          key={k}
-          className="inline-flex rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5"
-        >
-          {t(`harness.skill.bundle.${k}.count`, { count: source.bundleCounts[k] })}
-        </span>
-      ))}
-    </div>
-  );
-}

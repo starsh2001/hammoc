@@ -64,7 +64,6 @@ function sampleCard(overrides: Partial<HarnessSkillCard> = {}): HarnessSkillCard
         scope: 'user',
         absoluteRoot: '/tmp/foo',
         frontmatter: { name: 'foo', description: 'a foo skill' },
-        bundleCounts: { references: 2, examples: 0, scripts: 0, assets: 0 },
         skillMdMtime: '2026-04-24T00:00:00Z',
       },
     ],
@@ -102,11 +101,13 @@ describe('SkillPanel', () => {
     expect(screen.getByText('harness.skill.empty.description')).toBeInTheDocument();
   });
 
-  it('renders a card with bundle count badge', async () => {
+  it('renders a card without bundle count badges (counts moved to read path)', async () => {
     mockedList.mockResolvedValueOnce({ cards: [sampleCard()], malformed: [] });
     await renderPanel();
     expect(screen.getByText('foo')).toBeInTheDocument();
-    expect(screen.getByText(/harness\.skill\.bundle\.references\.count/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/harness\.skill\.bundle\.references\.count/),
+    ).not.toBeInTheDocument();
   });
 
   it('opens the copy menu and triggers the conflict dialog', async () => {

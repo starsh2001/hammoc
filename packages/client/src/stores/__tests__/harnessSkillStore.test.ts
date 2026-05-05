@@ -33,7 +33,6 @@ function sampleCard(name: string, overrides: Partial<HarnessSkillCard> = {}): Ha
         scope: 'user',
         absoluteRoot: `/tmp/${name}`,
         frontmatter: { name, description: `desc for ${name}` },
-        bundleCounts: { references: 0, examples: 0, scripts: 0, assets: 0 },
         skillMdMtime: '2026-04-24T00:00:00Z',
       },
     ],

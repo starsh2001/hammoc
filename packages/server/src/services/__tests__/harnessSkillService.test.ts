@@ -134,7 +134,7 @@ describe('harnessSkillService', () => {
       expect(res.malformed[0].scope).toBe('user');
     });
 
-    it('counts bundle files recursively across nested folders', async () => {
+    it('omits bundle counts from list response and reports them via readSkill', async () => {
       await writeSkill(path.join(userRoot), 'bundled', {
         bundle: {
           'references/foo.md': 'foo',
@@ -143,13 +143,23 @@ describe('harnessSkillService', () => {
         },
       });
 
+      // list path skips bundle counting for performance; the panel UI no
+      // longer renders bundle badges per card.
       const res = await harnessSkillService.listCards();
       const card = res.cards.find((c) => c.name === 'bundled');
       expect(card).toBeDefined();
       const userSource = card!.sources.find((s) => s.scope === 'user')!;
-      expect(userSource.bundleCounts.references).toBe(2);
-      expect(userSource.bundleCounts.examples).toBe(1);
-      expect(userSource.bundleCounts.scripts).toBe(0);
+      expect(userSource).not.toHaveProperty('bundleCounts');
+
+      // The detail (read) path still walks the four bundle directories so
+      // the editor modal can show counts and the file tree.
+      const readRes = await harnessSkillService.readSkill({
+        scope: userSource.scope,
+        absoluteRoot: userSource.absoluteRoot,
+      });
+      expect(readRes.bundleCounts.references).toBe(2);
+      expect(readRes.bundleCounts.examples).toBe(1);
+      expect(readRes.bundleCounts.scripts).toBe(0);
     });
 
     it('falls back to user activeScope when project source is absent', async () => {

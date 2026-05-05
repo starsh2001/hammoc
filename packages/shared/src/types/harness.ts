@@ -292,7 +292,6 @@ export interface HarnessSkillCard {
 export interface HarnessSkillSource extends HarnessSkillSourceLocation {
   /** Validated frontmatter — sources whose frontmatter failed parse are excluded. */
   frontmatter: HarnessSkillFrontmatter;
-  bundleCounts: HarnessSkillBundleCounts;
   /** ISO mtime of SKILL.md — used as STALE_WRITE ETag. */
   skillMdMtime: string;
 }
