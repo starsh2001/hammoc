@@ -41,19 +41,20 @@ describe('GlobalSettingsSection — Default Effort Dropdown', () => {
     });
   });
 
-  it('renders dropdown with SDK default and 4 effort options', () => {
+  it('renders dropdown with SDK default and 5 effort options', () => {
     render(<GlobalSettingsSection />);
 
     const select = screen.getByLabelText('기본 사고 수준');
     expect(select).toBeInTheDocument();
 
     const options = select.querySelectorAll('option');
-    expect(options).toHaveLength(5); // SDK default + 4 effort levels
+    expect(options).toHaveLength(6); // SDK default + 5 effort levels (Low/Medium/High/XHigh/Max)
     expect(options[0]).toHaveTextContent('Default (High)');
     expect(options[1]).toHaveTextContent('Low');
     expect(options[2]).toHaveTextContent('Medium');
     expect(options[3]).toHaveTextContent('High');
-    expect(options[4]).toHaveTextContent('Max');
+    expect(options[4]).toHaveTextContent('XHigh');
+    expect(options[5]).toHaveTextContent('Max');
   });
 
   it('selecting "High" calls updatePreference with "high"', () => {

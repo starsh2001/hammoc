@@ -138,11 +138,12 @@
         "sdkDefault": "Default (High)",
         "unlimited": "무제한",
         "defaultEffort": "기본 사고 수준",
-        "defaultEffortDesc": "새 세션에 적용되는 기본 사고 수준입니다. 설정하지 않으면 SDK 기본값(High)이 사용됩니다.",
+        "defaultEffortDesc": "새 세션에 적용되는 기본 사고 수준입니다. 설정하지 않으면 SDK 기본값(High)이 사용됩니다. XHigh와 Max는 지원 모델에서만 적용되며, 미지원 모델에서는 High로 자동 폴백됩니다.",
         "effortOption": {
             "low": "Low",
             "medium": "Medium",
             "high": "High",
+            "xhigh": "XHigh",
             "max": "Max"
         },
         "effortMaxSubscriber": "구독자 사용 불가",

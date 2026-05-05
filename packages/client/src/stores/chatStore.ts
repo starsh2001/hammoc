@@ -359,7 +359,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingStartedAt: null,
   lastResultError: null,
   selectedModel: '',
-  selectedEffort: undefined,
+  // Seed from cached preferences so a fresh chatStore (page reload, first mount) immediately
+  // reflects the user's saved default. Without this, selectedEffort starts as undefined and
+  // the model selector falls back to the SDK default (e.g. XHigh on Opus 4.7) until something
+  // explicitly calls resetSelectedEffort. preferencesStore.init() also re-syncs after the
+  // server fetch completes — see usePreferencesStore.init.
+  selectedEffort: usePreferencesStore.getState().preferences.defaultEffort,
   activeModel: null,
   thinkingExpanded: false,
   isCompacting: false,

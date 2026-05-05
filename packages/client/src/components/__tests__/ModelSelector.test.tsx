@@ -15,6 +15,7 @@ vi.mock('react-i18next', () => ({
       if (key === 'effort.tooltipFull.low') return 'Low';
       if (key === 'effort.tooltipFull.medium') return 'Medium';
       if (key === 'effort.tooltipFull.high') return 'High';
+      if (key === 'effort.tooltipFull.xhigh') return 'XHigh';
       if (key === 'effort.tooltipFull.max') return 'Max';
       if (key === 'effort.low') return 'Lo';
       if (key === 'effort.medium') return 'Med';
@@ -124,6 +125,62 @@ describe('ModelSelector', () => {
       expect(screen.getByRole('listbox')).toBeInTheDocument();
     });
 
+  });
+
+  describe('effort preservation when model is unknown', () => {
+    it('does not auto-clear Max while model and activeModel are both unknown', () => {
+      const onEffortChange = vi.fn();
+      render(
+        <ModelSelector
+          {...defaultProps}
+          effort="max"
+          onEffortChange={onEffortChange}
+        />
+      );
+      expect(onEffortChange).not.toHaveBeenCalled();
+    });
+
+    it('clears unsupported effort once activeModel becomes known', () => {
+      const onEffortChange = vi.fn();
+      const { rerender } = render(
+        <ModelSelector
+          {...defaultProps}
+          effort="max"
+          onEffortChange={onEffortChange}
+        />
+      );
+      expect(onEffortChange).not.toHaveBeenCalled();
+
+      rerender(
+        <ModelSelector
+          {...defaultProps}
+          activeModel="claude-haiku-4-5-20251001"
+          effort="max"
+          onEffortChange={onEffortChange}
+        />
+      );
+      expect(onEffortChange).toHaveBeenCalledWith(undefined);
+    });
+
+    it('keeps Max selected when activeModel reports Opus 4.7', () => {
+      const onEffortChange = vi.fn();
+      const { rerender } = render(
+        <ModelSelector
+          {...defaultProps}
+          effort="max"
+          onEffortChange={onEffortChange}
+        />
+      );
+      rerender(
+        <ModelSelector
+          {...defaultProps}
+          activeModel="claude-opus-4-7"
+          effort="max"
+          onEffortChange={onEffortChange}
+        />
+      );
+      expect(onEffortChange).not.toHaveBeenCalled();
+    });
   });
 
   describe('tooltip', () => {

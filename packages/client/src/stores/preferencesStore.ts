@@ -156,11 +156,13 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
         if (prefs.language) {
           i18n.changeLanguage(prefs.language);
         }
-        // Sync permission mode from server preferences to chat store
-        // (handles origin change where localStorage cache is empty)
+        // Sync chat-store fields that derive from preferences (handles origin change
+        // where the localStorage cache was empty when chatStore was first created).
         try {
           const { useChatStore } = await import('./chatStore');
-          useChatStore.getState().resetPermissionMode();
+          const chat = useChatStore.getState();
+          chat.resetPermissionMode();
+          chat.resetSelectedEffort();
         } catch { /* chatStore may not be initialized yet */ }
       } else {
         // Server empty — migrate from localStorage
@@ -171,6 +173,12 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
           const saved = await preferencesApi.update(legacy);
           set({ preferences: saved, loaded: true });
           writeCache(saved);
+          try {
+            const { useChatStore } = await import('./chatStore');
+            const chat = useChatStore.getState();
+            chat.resetPermissionMode();
+            chat.resetSelectedEffort();
+          } catch { /* chatStore may not be initialized yet */ }
         } else {
           set({ loaded: true });
         }

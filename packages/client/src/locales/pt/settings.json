@@ -137,11 +137,12 @@
         "sdkDefault": "Default (High)",
         "unlimited": "Ilimitado",
         "defaultEffort": "Nível de raciocínio padrão",
-        "defaultEffortDesc": "Nível de raciocínio padrão para novas sessões. Quando não definido, o padrão do SDK (High) é utilizado.",
+        "defaultEffortDesc": "Nível de raciocínio padrão para novas sessões. Quando não definido, o padrão do SDK (High) é utilizado. XHigh e Max só se aplicam em modelos compatíveis; em modelos não compatíveis, fazem fallback para High.",
         "effortOption": {
             "low": "Low",
             "medium": "Medium",
             "high": "High",
+            "xhigh": "XHigh",
             "max": "Max"
         },
         "effortMaxSubscriber": "indisponível para assinantes",

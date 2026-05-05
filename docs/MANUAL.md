@@ -1618,9 +1618,10 @@ The timeout resets on every activity. If overridden by an environment variable, 
 
 Set the default thinking effort for new sessions:
 
-- **SDK Default** / Low / Medium / High / Max / XHigh
-- Max is available on Opus 4.6 / Sonnet 4.6
+- **SDK Default** / Low / Medium / High / XHigh / Max
+- Max is available on Opus 4.6, Sonnet 4.6, and Opus 4.7
 - XHigh is available only on Opus 4.7 (and is the SDK default for that model)
+- If the active model does not support the configured level, it falls back to High automatically — the saved preference is kept, only the request to the SDK is clamped
 
 ### 12.11 Quick Panel Defaults
 

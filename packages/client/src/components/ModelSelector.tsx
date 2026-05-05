@@ -204,12 +204,16 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Auto-clear effort when the selected level becomes unavailable (model change or subscriber detection)
+  // Auto-clear effort when the selected level becomes unavailable (model change or subscriber detection).
+  // Skip while the model is still unknown (Default selection + activeModel not yet reported by the SDK):
+  // otherwise the user's saved preference (e.g. Max) would be wiped on first render and the UI would
+  // fall back to the SDK default for whichever model eventually arrives.
   useEffect(() => {
     if (!onEffortChange) return;
+    if (!effectiveModelId(model, activeModel)) return;
     if (effort === 'max' && !maxAvailable) onEffortChange(undefined);
     else if (effort === 'xhigh' && !xhighAvailable) onEffortChange(undefined);
-  }, [effort, maxAvailable, xhighAvailable, onEffortChange]);
+  }, [effort, maxAvailable, xhighAvailable, onEffortChange, model, activeModel]);
 
   const handleToggle = useCallback(() => {
     if (disabled) return;
@@ -241,11 +245,13 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
 
   const displayLabel = getModelDisplayLabel(model);
   const buttonLabel = getButtonLabel(model, activeModel);
-  // Clamp effort at render time: treat unsupported levels as undefined (fail-closed)
-  const effectiveEffort =
-    (effort === 'max' && !maxAvailable) || (effort === 'xhigh' && !xhighAvailable)
-      ? undefined
-      : effort;
+  // Clamp effort at render time: treat unsupported levels as undefined (fail-closed),
+  // but only when the model is concrete - otherwise keep the user's selection visible
+  // until activeModel arrives so we don't briefly flash the SDK default.
+  const knownModel = !!effectiveModelId(model, activeModel);
+  const effectiveEffort = knownModel
+    ? ((effort === 'max' && !maxAvailable) || (effort === 'xhigh' && !xhighAvailable) ? undefined : effort)
+    : effort;
   // SDK default is 'xhigh' on Opus 4.7, 'high' on other effort-capable models
   const defaultLevel: ThinkingEffort = xhighAvailable ? 'xhigh' : 'high';
   const isDefault = !effectiveEffort;

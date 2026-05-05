@@ -137,11 +137,12 @@
         "sdkDefault": "Default (High)",
         "unlimited": "無制限",
         "defaultEffort": "デフォルト思考レベル",
-        "defaultEffortDesc": "新しいセッションに適用されるデフォルトの思考レベルです。未設定の場合、SDKデフォルト（High）が使用されます。",
+        "defaultEffortDesc": "新しいセッションに適用されるデフォルトの思考レベルです。未設定の場合、SDKデフォルト（High）が使用されます。XHighとMaxは対応モデルのみで適用され、非対応モデルではHighにフォールバックされます。",
         "effortOption": {
             "low": "Low",
             "medium": "Medium",
             "high": "High",
+            "xhigh": "XHigh",
             "max": "Max"
         },
         "effortMaxSubscriber": "サブスクライバー利用不可",

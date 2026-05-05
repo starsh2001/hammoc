@@ -137,11 +137,12 @@
         "sdkDefault": "Default (High)",
         "unlimited": "无限制",
         "defaultEffort": "默认思考级别",
-        "defaultEffortDesc": "新会话的默认思考级别。未设置时，使用 SDK 默认值（High）。",
+        "defaultEffortDesc": "新会话的默认思考级别。未设置时，使用 SDK 默认值（High）。XHigh 和 Max 仅在支持的模型上生效，不支持的模型会自动回退到 High。",
         "effortOption": {
             "low": "Low",
             "medium": "Medium",
             "high": "High",
+            "xhigh": "XHigh",
             "max": "Max"
         },
         "effortMaxSubscriber": "订阅用户不可用",

@@ -138,11 +138,12 @@
         "sdkDefault": "Default (High)",
         "unlimited": "Unlimited",
         "defaultEffort": "Default Thinking Effort",
-        "defaultEffortDesc": "Default thinking effort level for new sessions. When not set, the SDK default (High) is used.",
+        "defaultEffortDesc": "Default thinking effort level for new sessions. When not set, the SDK default (High) is used. XHigh and Max only apply on supported models; on unsupported models they fall back to High.",
         "effortOption": {
             "low": "Low",
             "medium": "Medium",
             "high": "High",
+            "xhigh": "XHigh",
             "max": "Max"
         },
         "effortMaxSubscriber": "subscribers only",

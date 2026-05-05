@@ -19,6 +19,7 @@ const EFFORT_OPTIONS: { value: ThinkingEffort; labelKey: string }[] = [
   { value: 'low', labelKey: 'advanced.effortOption.low' },
   { value: 'medium', labelKey: 'advanced.effortOption.medium' },
   { value: 'high', labelKey: 'advanced.effortOption.high' },
+  { value: 'xhigh', labelKey: 'advanced.effortOption.xhigh' },
   { value: 'max', labelKey: 'advanced.effortOption.max' },
 ];
 

@@ -137,11 +137,12 @@
         "sdkDefault": "Default (High)",
         "unlimited": "Ilimitado",
         "defaultEffort": "Nivel de razonamiento predeterminado",
-        "defaultEffortDesc": "Nivel de razonamiento predeterminado para nuevas sesiones. Si no se establece, se utiliza el predeterminado del SDK (High).",
+        "defaultEffortDesc": "Nivel de razonamiento predeterminado para nuevas sesiones. Si no se establece, se utiliza el predeterminado del SDK (High). XHigh y Max solo se aplican en modelos compatibles; en modelos no compatibles se reducen automáticamente a High.",
         "effortOption": {
             "low": "Low",
             "medium": "Medium",
             "high": "High",
+            "xhigh": "XHigh",
             "max": "Max"
         },
         "effortMaxSubscriber": "no disponible para suscriptores",
