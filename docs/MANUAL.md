@@ -1955,4 +1955,5 @@ If you need to find or back up your data:
 | Web Push VAPID keys | `~/.hammoc/vapid-keys.json` |
 | Web Push subscriptions | `~/.hammoc/push-subscriptions.json` |
 | TLS certificates | `~/.hammoc/key.pem`, `~/.hammoc/cert.pem` |
+| Manual shards (synced) | `~/.hammoc/docs/manual/` and `~/.hammoc/docs/.manual-version` (auto-synced from the npm package on server boot; agents read these via the absolute path embedded in the system prompt) |
 | Server logs | `./logs/server-YYYY-MM-DD.log` (daily log files in working directory) |

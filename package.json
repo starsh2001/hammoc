@@ -49,8 +49,9 @@
     "format": "prettier --write packages/*/src",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "postinstall": "node scripts/postinstall.cjs",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run build:manual-shards && npm run build",
     "test:integration": "node scripts/run-integration-test.mjs",
+    "build:manual-shards": "node scripts/build-manual-shards.mjs",
     "bmad:refresh": "bmad-method install -f -i codex",
     "bmad:list": "bmad-method list:agents",
     "bmad:validate": "bmad-method validate"

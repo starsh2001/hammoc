@@ -9,6 +9,7 @@ import type {
 } from '@hammoc/shared';
 import { correctContextWindow, withNative1MSuffix } from '@hammoc/shared';
 import path from 'path';
+import os from 'os';
 import fs from 'fs/promises';
 import { execSync } from 'child_process';
 import { InvalidPathError, parseSDKError } from '../utils/errors.js';
@@ -26,7 +27,7 @@ export const DEFAULT_WORKSPACE_TEMPLATE = [
   '',
   '# Hammoc Context',
   '',
-  'You are running inside Hammoc, a web-based IDE.',
+  'You are running inside Hammoc, a web-based IDE for AI-driven development workflows. Hammoc is built on Claude Code with first-class BMAD-METHOD V4 support, fully responsive (the user may instruct from a phone with very short messages), and delegates implementation work to you while the user reviews via the UI.',
   '',
   '## Code References in Text',
   'IMPORTANT: When referencing files or code locations, use markdown link syntax to make them clickable:',
@@ -37,13 +38,28 @@ export const DEFAULT_WORKSPACE_TEMPLATE = [
   'Unless explicitly asked for by the user, DO NOT USE backticks ` or HTML tags like code for file references - always use markdown [text](link) format.',
   "The URL links should be relative paths from the root of the user's workspace.",
   '',
-  'gitStatus: This is the git status at the start of the conversation. Note that this status is a snapshot in time, and will not update during the conversation.',
-  'Current branch: {gitBranch}',
+  '## Hammoc-Specific Features the User May Invoke',
+  'When the user mentions any of these Hammoc concepts and you are unsure how the feature behaves, read the matching manual chapter (see Manual Reference below) before guessing:',
+  '- **Snippets** (`%name`) — reusable prompt templates with arguments. Files in <project-root>/.hammoc/snippets/ and {homeDir}/.hammoc/snippets/',
+  '- **Queue Runner** — batch script of prompts with `@`-prefixed commands (@new, @save, @load, @pause, @model, @delay, @pauseword, @loop/@end, @(/@), # comments)',
+  '- **Project Board** — Kanban with Bug/Improvement issues, severity Low/Medium/High/Critical, status workflow Open → Draft → Approved → In Progress → Blocked → Review → Done → Closed',
+  '- **BMAD-METHOD V4** — agile workflow with agents (SM, PM, Architect, Dev, QA, PO, etc.); .bmad-core directory holds the methodology files',
+  '- **Permission Modes** — Plan / Ask (default) / Auto / Bypass, per-project overridable',
+  '- **Sessions** — fork, rewind, summarize & continue, conversation branching',
   '',
-  'Main branch (you will usually use this for PRs): {gitMainBranch}',
+  '## Manual Reference',
+  'The full Hammoc user manual is sharded by chapter and synced to:',
+  '  {homeDir}/.hammoc/docs/manual/',
+  'Always start by reading the index — it maps each chapter to its trigger keywords and tags chapters as [agent] (worth reading) or [user-setup] (skip):',
+  '  {homeDir}/.hammoc/docs/manual/INDEX.md',
+  'Read only the chapters you actually need. Do not load the full manual at once. The Read tool does not expand `~` so always use the absolute path above.',
   '',
-  'Status:',
-  '{gitStatus}',
+  '## Internals Reference',
+  'Hammoc internal mechanisms that the user does not need to see but the agent may need to read or correlate (e.g. on-disk location of attached images) live separately at:',
+  '  {homeDir}/.hammoc/docs/internals/',
+  'Index:',
+  '  {homeDir}/.hammoc/docs/internals/INDEX.md',
+  'Read individual files only when the user request requires the underlying mechanism. Do not pre-load.',
 ].join('\n');
 
 /** Available template variables and their descriptions */
@@ -51,6 +67,7 @@ export const TEMPLATE_VARIABLES = [
   { name: 'gitBranch', description: 'Current git branch name' },
   { name: 'gitMainBranch', description: 'Main branch name (main or master)' },
   { name: 'gitStatus', description: 'git status --short output (truncated to 30 lines)' },
+  { name: 'homeDir', description: 'Absolute path to the user home directory' },
 ] as const;
 
 /**
@@ -58,6 +75,11 @@ export const TEMPLATE_VARIABLES = [
  */
 export function resolveTemplateVariables(template: string, cwd: string): string {
   const vars: Record<string, string> = {};
+
+  // Home directory is OS-level and always resolvable, independent of git state.
+  // The agent needs the absolute path to read ~/.hammoc/docs/manual/INDEX.md
+  // via Read/Edit tools, which do not perform shell-style ~ expansion.
+  vars.homeDir = os.homedir();
 
   try {
     const stdio: ['pipe', 'pipe', 'pipe'] = ['pipe', 'pipe', 'pipe'];

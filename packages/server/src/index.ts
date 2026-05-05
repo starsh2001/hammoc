@@ -9,6 +9,7 @@ import { AuthConfigService } from './services/authConfigService.js';
 import { notificationService } from './services/notificationService.js';
 import { webPushService } from './services/webPushService.js';
 import { accountInfoService } from './services/accountInfoService.js';
+import { syncBundledDocs } from './services/manualSyncService.js';
 import { resetPassword } from './cli/passwordSetup.js';
 import { createLogger, getEffectiveLogLevel } from './utils/logger.js';
 import { ptyService } from './services/ptyService.js';
@@ -144,6 +145,11 @@ async function main() {
 
   // Fetch Claude Code account info once at startup (fire-and-forget).
   void accountInfoService.initOnStartup();
+
+  // Sync bundled Hammoc agent-facing docs (manual shards + internals) into
+  // ~/.hammoc/docs/ so the agent can reference them via absolute path from
+  // any project, regardless of cwd (fire-and-forget).
+  void syncBundledDocs();
 
   // Pre-flight port check. Windows allows `127.0.0.1:PORT` and `0.0.0.0:PORT`
   // to coexist in separate processes (no EADDRINUSE), which silently splits

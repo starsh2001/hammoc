@@ -315,6 +315,7 @@ npm run dev
 | Snippets (global) | `~/.hammoc/snippets/` (shared across projects) |
 | Snippets (project) | `<project-root>/.hammoc/snippets/` (per project) |
 | TLS certificates | `~/.hammoc/cert.pem`, `~/.hammoc/key.pem` |
+| Manual shards (synced) | `~/.hammoc/docs/manual/` and `~/.hammoc/docs/.manual-version` (auto-synced from package on server boot) |
 | Session data | `~/.claude/projects/` (managed by Claude Code CLI) |
 
 ---
