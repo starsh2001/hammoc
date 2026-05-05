@@ -38,6 +38,38 @@ Hello 2
 - E1. 존재하지 않는 이름 참조 → 실행 시 명확한 오류
 - E2. `@loop` 중첩 또는 비대칭 `@end` → 파싱 단계에서 오류
 
+### H-01-03: `@label` / `@jumpif` 조건부 점프 `[CORE]`
+
+**목적**: 직전 응답에 토큰이 포함되면 큐 항목을 통째로 건너뛰는 forward jump 가 정상 동작하는지 검증.
+
+**절차**:
+1. 큐 편집기에 다음 스크립트 입력 → 실행:
+   ```
+   @new
+   @model claude-haiku-4-5
+   Say only the single word: PASS
+   @jumpif "PASS" done
+   Say only the single word: skipped
+   @label done
+   Say only the single word: final
+   ```
+2. 큐 완료 배너 대기
+3. 세션 화면 또는 `/api/projects/:slug/queue/status` 의 `completedSessionIds` 로 어떤 항목이 실제로 실행됐는지 확인
+
+**기대 결과**:
+- 첫 프롬프트 응답이 `PASS` 포함 → `@jumpif` 가 매치되어 `@label done` 위치로 점프
+- `"Say only the single word: skipped"` 항목은 모델에 전송되지 않음 (세션 히스토리에서 발견되지 않아야 함)
+- `"Say only the single word: final"` 항목은 정상 실행
+- 큐는 정상 완료 (`isCompleted: true`), `currentIndex` 가 마지막 항목까지 도달
+
+**엣지케이스**:
+- E1. 첫 응답에 `PASS` 가 포함되지 않으면 `@jumpif` 가 통과 → 3개 프롬프트 모두 정상 실행
+- E2. **Backward jump** — `@label x` 를 먼저 두고 그 뒤에 `@jumpif "T" x` 를 배치하면 파서 경고("backward jumps are not allowed") + 해당 `@jumpif` 항목이 큐에 추가되지 않음
+- E3. **미존재 라벨** — 정의되지 않은 라벨로 점프하면 파서 경고("is not defined") + 런타임에 매치되더라도 점프 스킵하고 다음 항목으로 falls through
+- E4. **`@loop` 안 사용 금지** — `@loop` 블록 내부의 `@label` / `@jumpif` 는 파서 경고와 함께 거부 (loop 의 `until` 을 사용해야 함)
+- E5. **빈 토큰 / 비-quoted 토큰** — `@jumpif "" x`, `@jumpif PASS x` 모두 파서 경고
+- E6. **중복 라벨 정의** — 같은 이름의 `@label` 두 번 정의하면 두 번째에 경고 + 무시 (첫 정의만 유효)
+
 ---
 
 ## H2. 큐 실행 / 일시정지 / 재개 `[ASYNC] [SDK]`

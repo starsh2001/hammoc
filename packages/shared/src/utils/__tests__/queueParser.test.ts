@@ -611,4 +611,135 @@ describe('parseQueueScript — @loop/@end', () => {
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0].message).toContain('@pauseword keyword "HALT" matches until token');
   });
+
+  // ---- @label / @jumpif ----------------------------------------------------
+
+  it('parses a basic @jumpif + @label pair', () => {
+    const script = [
+      'first prompt',
+      '@jumpif "PASS" done',
+      'fallback prompt',
+      '@label done',
+      'final prompt',
+    ].join('\n');
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items).toHaveLength(5);
+    expect(result.items[1]).toEqual({
+      prompt: '',
+      isNewSession: false,
+      jumpIf: { token: 'PASS', target: 'done' },
+    });
+    expect(result.items[3]).toEqual({
+      prompt: '',
+      isNewSession: false,
+      label: 'done',
+    });
+  });
+
+  it('warns when @label name is missing', () => {
+    const result = parseQueueScript('@label');
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toContain('@label requires a name');
+    expect(result.items).toHaveLength(0);
+  });
+
+  it('warns when @label name is invalid', () => {
+    const result = parseQueueScript('@label 1bad-start');
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toContain('is invalid');
+    expect(result.items).toHaveLength(0);
+  });
+
+  it('warns and ignores duplicate @label definitions', () => {
+    const script = '@label a\n@label a';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toContain('already defined');
+    // Only the first label survives
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].label).toBe('a');
+  });
+
+  it('warns when @jumpif target is not defined anywhere', () => {
+    const script = '@jumpif "T" missing\n@label other';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toContain('"missing" is not defined');
+  });
+
+  it('warns when @jumpif target was already defined earlier (backward jump)', () => {
+    const script = '@label early\n@jumpif "T" early';
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].message).toContain('backward jumps are not allowed');
+    // jumpif rejected — only the label item remains
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].label).toBe('early');
+  });
+
+  it('warns when @jumpif token has mismatched quotes', () => {
+    const result = parseQueueScript('@jumpif "open name');
+    expect(result.warnings.some(w => w.message.includes('mismatched quotes'))).toBe(true);
+  });
+
+  it('warns when @jumpif token is not double-quoted', () => {
+    const result = parseQueueScript('@jumpif PASS done\n@label done');
+    expect(result.warnings.some(w => w.message.includes('must be wrapped in double quotes'))).toBe(true);
+  });
+
+  it('warns when @jumpif token is empty', () => {
+    const result = parseQueueScript('@jumpif "" done\n@label done');
+    expect(result.warnings.some(w => w.message.includes('cannot be empty'))).toBe(true);
+  });
+
+  it('warns when @jumpif target name is invalid', () => {
+    const result = parseQueueScript('@jumpif "T" 1bad\n@label other');
+    expect(result.warnings.some(w => w.message.includes('is not a valid label name'))).toBe(true);
+  });
+
+  it('rejects @label inside @loop block', () => {
+    const script = '@loop max=2\n@label x\nitem\n@end';
+    const result = parseQueueScript(script);
+    expect(result.warnings.some(w => w.message.includes('@label is not allowed inside @loop'))).toBe(true);
+    // Loop should still be created with only the inner regular prompt
+    expect(result.items[0].loop!.items).toHaveLength(1);
+    expect(result.items[0].loop!.items[0].prompt).toBe('item');
+  });
+
+  it('rejects @jumpif inside @loop block', () => {
+    const script = '@loop max=2\n@jumpif "PASS" out\nitem\n@end\n@label out';
+    const result = parseQueueScript(script);
+    expect(result.warnings.some(w => w.message.includes('@jumpif is not allowed inside @loop'))).toBe(true);
+  });
+
+  it('parses @LABEL and @JUMPIF case-insensitively', () => {
+    const script = [
+      'first',
+      '@JUMPIF "PASS" done',
+      'middle',
+      '@LABEL done',
+      'last',
+    ].join('\n');
+    const result = parseQueueScript(script);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.items[1].jumpIf).toEqual({ token: 'PASS', target: 'done' });
+    expect(result.items[3].label).toBe('done');
+  });
+
+  it('round-trips @label and @jumpif through serializeQueueItems', () => {
+    const original = [
+      'before',
+      '@jumpif "PASS" done',
+      'middle',
+      '@label done',
+      'after',
+    ].join('\n');
+    const parsed = parseQueueScript(original);
+    expect(parsed.warnings).toHaveLength(0);
+    const serialized = serializeQueueItems(parsed.items);
+    const reparsed = parseQueueScript(serialized);
+    expect(reparsed.warnings).toHaveLength(0);
+    expect(reparsed.items).toEqual(parsed.items);
+  });
 });

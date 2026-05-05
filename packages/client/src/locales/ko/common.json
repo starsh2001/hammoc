@@ -499,7 +499,9 @@
       "modelPrefix": "[모델:",
       "modelChange": "모델 변경:",
       "pauseword": "정지 키워드:",
-      "wait": "대기:"
+      "wait": "대기:",
+      "label": "라벨:",
+      "jumpIf": "조건 점프:"
     },
     "template": {
       "title": "템플릿으로 큐 생성",

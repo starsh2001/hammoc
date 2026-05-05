@@ -1120,4 +1120,71 @@ describe('QueueService', () => {
       expect(mockNotificationService.notifyQueueComplete).toHaveBeenCalled();
     });
   });
+
+  describe('@label / @jumpif (forward jump)', () => {
+    it('skips items between @jumpif and @label when token matches the previous response', async () => {
+      setupMockChat('PASS');
+      const items: QueueItem[] = [
+        createPromptItem('check'),
+        { prompt: '', isNewSession: false, jumpIf: { token: 'PASS', target: 'done' } },
+        createPromptItem('skipped-1'),
+        createPromptItem('skipped-2'),
+        { prompt: '', isNewSession: false, label: 'done' },
+        createPromptItem('after'),
+      ];
+      await queueService.start(items, 'test-project');
+
+      // Only "check" and "after" should have been sent
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(2);
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('check');
+      expect(mockSendMessageWithCallbacks.mock.calls[1][0]).toBe('after');
+      expect(queueService.getState().isCompleted).toBe(true);
+    });
+
+    it('falls through to the next item when token does not match', async () => {
+      setupMockChat('FAIL');
+      const items: QueueItem[] = [
+        createPromptItem('check'),
+        { prompt: '', isNewSession: false, jumpIf: { token: 'PASS', target: 'done' } },
+        createPromptItem('between'),
+        { prompt: '', isNewSession: false, label: 'done' },
+        createPromptItem('after'),
+      ];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(3);
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('check');
+      expect(mockSendMessageWithCallbacks.mock.calls[1][0]).toBe('between');
+      expect(mockSendMessageWithCallbacks.mock.calls[2][0]).toBe('after');
+      expect(queueService.getState().isCompleted).toBe(true);
+    });
+
+    it('skips a jumpif whose target label is missing at runtime, falling through', async () => {
+      setupMockChat('PASS');
+      const items: QueueItem[] = [
+        createPromptItem('check'),
+        { prompt: '', isNewSession: false, jumpIf: { token: 'PASS', target: 'nowhere' } },
+        createPromptItem('after'),
+      ];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(2);
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('check');
+      expect(mockSendMessageWithCallbacks.mock.calls[1][0]).toBe('after');
+    });
+
+    it('treats @label as a no-op marker and continues to the next item', async () => {
+      setupMockChat();
+      const items: QueueItem[] = [
+        { prompt: '', isNewSession: false, label: 'start' },
+        createPromptItem('one'),
+        createPromptItem('two'),
+      ];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(2);
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('one');
+      expect(mockSendMessageWithCallbacks.mock.calls[1][0]).toBe('two');
+    });
+  });
 });

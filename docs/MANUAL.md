@@ -941,7 +941,7 @@ The editor provides **syntax highlighting**:
 **Toolbar buttons:**
 - **Run** (Play icon) — Start queue execution; also available via `Ctrl+Enter` / `Cmd+Enter`
 - **Load File** (Upload icon) — Import a `.txt` or `.qlaude-queue` file (max 1MB)
-- **Template** (FileText icon) — Open the template dialog (see §9.8)
+- **Template** (FileText icon) — Open the template dialog (see §9.9)
 - **Word Wrap** (WrapText icon) — Toggle line wrapping (persisted across sessions)
 
 **Editor behavior:**
@@ -964,6 +964,8 @@ Each line is one prompt. Special commands start with `@`. Empty lines are ignore
 | `@pauseword "<keyword>"` | Set a keyword that auto-pauses the queue when found in Claude's response. Use `@pauseword ""` to clear |
 | `@loop max=N [until="TOKEN"] [on_exceed="pause\|continue"]` | Start a loop block that repeats up to N times (see §9.5) |
 | `@end` | End a loop block |
+| `@label <name>` | Define a forward jump target (see §9.6) |
+| `@jumpif "<token>" <label>` | Jump to `<label>` if the previous prompt response contains `<token>` (see §9.6) |
 | `@(` | Start a multiline prompt (all lines until `@)` are treated as one prompt) |
 | `@)` | End a multiline prompt |
 | `# comment` | Comment line (not sent to Claude) |
@@ -1030,7 +1032,48 @@ The `@loop`/`@end` directives create iterative workflows that repeat a block of 
 - When `max` is reached without the `until` token: `pause` halts for review, `continue` moves to the next queue item
 - During execution, the banner shows loop progress (e.g., "Loop 2/5") with inner item tracking
 
-### 9.6 Running the Queue
+### 9.6 Conditional Jump
+
+The `@label` and `@jumpif` directives let you skip a range of queue items based on the previous prompt response. They are designed for fast-paths such as "if the QA gate already passed, skip the fix loop".
+
+```
+%qa-review {story_num}
+@(
+If the QA gate is PASS, write exactly QA_GATE_PASS as the last line.
+@)
+@jumpif "QA_GATE_PASS" qa_done
+
+@loop max=5 until="QA_GATE_PASS" on_exceed="pause"
+  %apply-qa-fixes {story_num}
+  %qa-review {story_num}
+  @(...QA_GATE_PASS check...@)
+@end
+
+@label qa_done
+
+@new
+%commit-and-done {story_num}
+```
+
+**`@label <name>`** — declares a jump target. The name must start with a letter or underscore and contain only letters, digits, underscore, or hyphen.
+
+**`@jumpif "<token>" <label>`** — when reached, looks for `<token>` (substring match) in the response of the immediately preceding prompt. If found, the executor jumps directly to the matching `@label`, skipping every item in between. If not found, execution falls through to the next item.
+
+**Rules:**
+- **Forward only** — the target `@label` must appear later in the script than the `@jumpif`. Backward jumps are rejected with a parse warning.
+- **Not allowed inside `@loop`** — both `@label` and `@jumpif` are rejected with a parse warning when nested inside a loop block. Use `until` for loop exit conditions instead.
+- **Quoted token** — the token must be wrapped in double quotes and cannot contain spaces or be empty. Mismatched or missing quotes produce a parse warning.
+- **Unique label names** — duplicate `@label` definitions emit a warning; only the first one is registered.
+- **Missing target at parse time** — if the target label is never defined later in the script, a parse warning is emitted.
+- **Missing target at runtime** — if the script is edited mid-run and the label disappears, the jump is silently skipped and execution falls through.
+
+The token search uses a plain substring match against the previous prompt's complete response text, so prefer artificial single-word tokens like `QA_GATE_PASS` over natural phrases.
+
+**`@new` boundary** — the "previous prompt response" buffer is **not** cleared by `@new`. It only updates when the next prompt actually runs. So a `@jumpif` placed immediately after `@new` (with no prompt in between) will still see the *previous* session's last prompt response. Place a real prompt between `@new` and `@jumpif` if you need a fresh evaluation.
+
+**UI display of skipped items** — when a jump fires, the items between the `@jumpif` and its `@label` are not executed, but the runner panel currently shows them with the same green check icon as completed items. This is a cosmetic limitation; the items did not run and their session-link slots remain empty. The progress bar still advances correctly to the post-label position.
+
+### 9.7 Running the Queue
 
 1. Write your prompts in the queue editor
 2. Click **"Run"** or press `Ctrl+Enter` to start
@@ -1058,7 +1101,7 @@ The `@loop`/`@end` directives create iterative workflows that repeat a block of 
 - **Delete** — Click the trash icon to remove a pending item
 - **Add** — Inline input at the bottom to add new items to the queue
 
-### 9.7 Session Locking
+### 9.8 Session Locking
 
 While the queue is running, a **sticky banner** appears at the top of chat sessions:
 
@@ -1083,7 +1126,7 @@ While the queue is running, a **sticky banner** appears at the top of chat sessi
 - A banner shows "Queue running in another session" with a link to navigate to it
 - Other sessions remain fully accessible
 
-### 9.8 Templates
+### 9.9 Templates
 
 Templates generate queue scripts by combining a template pattern with story selections from your project's PRD.
 
@@ -1126,7 +1169,7 @@ Implement Story {story_num}: {story_title}
 - **Delete** — Remove a saved template (with confirmation)
 - Templates are saved per-project
 
-### 9.9 Queue Status Badge
+### 9.10 Queue Status Badge
 
 A badge on the project card and session list shows queue status:
 
@@ -1456,7 +1499,7 @@ Recommendations follow reverse workflow order (finish what's closest to done fir
 
 ### 11.6 Queue Templates from PRD
 
-Queue templates automate story development in batch. For details, see §9.8 (Queue Templates).
+Queue templates automate story development in batch. For details, see §9.9 (Queue Templates).
 
 ---
 

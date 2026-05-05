@@ -490,7 +490,9 @@
       "modelPrefix": "[Model:",
       "modelChange": "Change model:",
       "pauseword": "Pauseword:",
-      "wait": "Wait:"
+      "wait": "Wait:",
+      "label": "Label:",
+      "jumpIf": "Jump if:"
     },
     "template": {
       "title": "Create queue from template",

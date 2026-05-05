@@ -457,7 +457,9 @@
       "loadSession": "セッションを読み込み：",
       "modelPrefix": "[モデル：",
       "modelChange": "モデルを変更：",
-      "wait": "待機："
+      "wait": "待機：",
+      "label": "ラベル：",
+      "jumpIf": "条件ジャンプ："
     },
     "template": {
       "title": "テンプレートからキューを作成",

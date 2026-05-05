@@ -457,7 +457,9 @@
       "loadSession": "Cargar sesión:",
       "modelPrefix": "[Modelo:",
       "modelChange": "Cambiar modelo:",
-      "wait": "Esperar:"
+      "wait": "Esperar:",
+      "label": "Etiqueta:",
+      "jumpIf": "Saltar si:"
     },
     "template": {
       "title": "Crear cola desde plantilla",

@@ -24,6 +24,15 @@ export interface QueueItem {
     onExceed: 'pause' | 'continue';
     items: QueueItem[];
   };
+  /** @label: declare a jump target. Holds the label name. */
+  label?: string;
+  /** @jumpif: conditional forward jump — if the previous prompt response contains the token, jump to the target label. */
+  jumpIf?: {
+    /** Token searched in the previous prompt response (substring match) */
+    token: string;
+    /** Target label name (must be defined later in the script) */
+    target: string;
+  };
 }
 
 export interface QueueParseWarning {

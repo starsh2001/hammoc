@@ -28,6 +28,8 @@ export function getItemSummary(item: QueueItem, t: (key: string, opts?: Record<s
   if (item.modelName) return `${t('queue.itemSummary.modelChange')} ${item.modelName}`;
   if (item.pauseword != null) return `${t('queue.itemSummary.pauseword')} "${item.pauseword}"`;
   if (item.delayMs) return `${t('queue.itemSummary.wait')} ${item.delayMs}ms`;
+  if (item.label) return `${t('queue.itemSummary.label')} ${item.label}`;
+  if (item.jumpIf) return `${t('queue.itemSummary.jumpIf')} "${item.jumpIf.token}" → ${item.jumpIf.target}`;
   return item.prompt.slice(0, 80) + (item.prompt.length > 80 ? '...' : '');
 }
 

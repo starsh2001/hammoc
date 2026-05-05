@@ -20,6 +20,8 @@ export function serializeQueueItems(items: QueueItem[]): string {
     if (item.saveSessionName) return `@save ${item.saveSessionName}`;
     if (item.loadSessionName) return `@load ${item.loadSessionName}`;
     if (item.delayMs != null) return `@delay ${item.delayMs}`;
+    if (item.label) return `@label ${item.label}`;
+    if (item.jumpIf) return `@jumpif "${item.jumpIf.token}" ${item.jumpIf.target}`;
     const parts: string[] = [];
     if (item.isNewSession) parts.push('@new');
     if (item.modelName) parts.push(`@model ${item.modelName}`);
@@ -60,6 +62,12 @@ export function parseQueueScript(script: string): QueueParseResult {
 
   // Track active pauseword for cross-validation
   let activePauseword: string | undefined;
+
+  // Track defined labels and pending @jumpif targets for forward-only / missing-label validation
+  const definedLabels = new Set<string>();
+  const pendingJumpIfTargets: { line: number; target: string }[] = [];
+
+  const LABEL_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
 
   // Helper to push items to the correct target (top-level or loop inner)
   const pushItem = (item: QueueItem) => {
@@ -344,6 +352,93 @@ export function parseQueueScript(script: string): QueueParseResult {
           multilineContent = [];
           break;
 
+        case '@label': {
+          if (inLoopBlock) {
+            warnings.push({ line: lineNum, message: '@label is not allowed inside @loop blocks' });
+            break;
+          }
+          if (!argStr) {
+            warnings.push({ line: lineNum, message: '@label requires a name' });
+            break;
+          }
+          if (!LABEL_NAME_RE.test(argStr)) {
+            warnings.push({
+              line: lineNum,
+              message: `@label name "${argStr}" is invalid (must start with a letter or underscore and contain only letters, digits, underscore, or hyphen)`,
+            });
+            break;
+          }
+          if (definedLabels.has(argStr)) {
+            warnings.push({ line: lineNum, message: `@label "${argStr}" is already defined — duplicate ignored` });
+            break;
+          }
+          definedLabels.add(argStr);
+          items.push({
+            prompt: '',
+            isNewSession: false,
+            label: argStr,
+          });
+          break;
+        }
+
+        case '@jumpif': {
+          if (inLoopBlock) {
+            warnings.push({ line: lineNum, message: '@jumpif is not allowed inside @loop blocks' });
+            break;
+          }
+          // Parse: "TOKEN" target
+          const tokens = argStr.split(/\s+/).filter(t => t !== '');
+          if (tokens.length < 2) {
+            warnings.push({
+              line: lineNum,
+              message: '@jumpif requires a quoted token and a target label: @jumpif "TOKEN" name',
+            });
+            break;
+          }
+          const tokenPart = tokens[0];
+          const targetName = tokens[1];
+
+          let parsedToken: string | undefined;
+          if (tokenPart.startsWith('"') && tokenPart.endsWith('"') && tokenPart.length > 1) {
+            const inner = tokenPart.slice(1, -1);
+            if (inner) parsedToken = inner;
+          } else if (tokenPart.startsWith('"')) {
+            warnings.push({ line: lineNum, message: '@jumpif token has mismatched quotes' });
+            break;
+          } else {
+            warnings.push({ line: lineNum, message: '@jumpif token must be wrapped in double quotes' });
+            break;
+          }
+          if (!parsedToken) {
+            warnings.push({ line: lineNum, message: '@jumpif token cannot be empty' });
+            break;
+          }
+          if (!LABEL_NAME_RE.test(targetName)) {
+            warnings.push({
+              line: lineNum,
+              message: `@jumpif target "${targetName}" is not a valid label name`,
+            });
+            break;
+          }
+          if (definedLabels.has(targetName)) {
+            warnings.push({
+              line: lineNum,
+              message: `@jumpif target "${targetName}" is already defined earlier — backward jumps are not allowed`,
+            });
+            break;
+          }
+          pendingJumpIfTargets.push({ line: lineNum, target: targetName });
+          items.push({
+            prompt: '',
+            isNewSession: false,
+            jumpIf: {
+              token: parsedToken,
+              target: targetName,
+            },
+          });
+          break;
+        }
+
         default:
           // Unknown directive
           warnings.push({ line: lineNum, message: `Unknown directive: ${directive}` });
@@ -374,6 +469,16 @@ export function parseQueueScript(script: string): QueueParseResult {
       isNewSession: false,
       isMultiline: true,
     });
+  }
+
+  // Validate that all @jumpif targets were eventually defined as labels
+  for (const pending of pendingJumpIfTargets) {
+    if (!definedLabels.has(pending.target)) {
+      warnings.push({
+        line: pending.line,
+        message: `@jumpif target "${pending.target}" is not defined — the jump will be skipped at runtime`,
+      });
+    }
   }
 
   // Unclosed loop block

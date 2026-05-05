@@ -457,7 +457,9 @@
       "loadSession": "加载会话：",
       "modelPrefix": "[模型：",
       "modelChange": "更改模型：",
-      "wait": "等待："
+      "wait": "等待：",
+      "label": "标签：",
+      "jumpIf": "条件跳转："
     },
     "template": {
       "title": "从模板创建队列",

@@ -45,6 +45,8 @@ type SocketIOServer4 = SocketIOServer<ClientToServerEvents, ServerToClientEvents
 
 interface ExecuteItemResult {
   shouldAdvance: boolean;
+  /** When set, the executor jumps currentIndex to this value instead of advancing by 1. */
+  jumpTo?: number;
 }
 
 export class QueueService {
@@ -307,6 +309,7 @@ export class QueueService {
   addItem(item: QueueItem): boolean {
     if (!this._isRunning && !this.isPaused) return false;
     if (item.loop) return false; // Block directives cannot be added via addItem
+    if (item.label != null || item.jumpIf != null) return false; // Jump-related directives must be added via script edit
 
     this.items.push(item);
     this.emitItemsUpdated();
@@ -420,7 +423,14 @@ export class QueueService {
         // Process advancement FIRST, then check pause.
         // @pause: shouldAdvance=true (advance past breakpoint), isPaused=true (break after)
         // @pauseword/error/@load failure: shouldAdvance=false (stay for retry), isPaused=true (break)
-        if (result.shouldAdvance) {
+        // @jumpif (matched): jumpTo set, advance currentIndex to the label position instead of incrementing
+        if (result.jumpTo !== undefined) {
+          this.emitItemComplete(this.currentIndex);
+          this.currentIndex = result.jumpTo;
+          if (!this.isPaused && this._isRunning && this.currentIndex < this.items.length) {
+            this.emitProgress('running');
+          }
+        } else if (result.shouldAdvance) {
           this.emitItemComplete(this.currentIndex);
           this.currentIndex++;
           // Emit progress after advancing so clients update currentIndex and sessionId in real-time
@@ -651,6 +661,32 @@ export class QueueService {
       this._isPauseRequested = false; // clear deferred request since we're pausing now
       this.pauseReason = item.prompt || 'Breakpoint';
       this.emitProgress('paused');
+      return { shouldAdvance: true };
+    }
+
+    // Step 2.1: Label — pure marker, advance past it without affecting state
+    if (item.label) {
+      log.debug(`executeItem: LABEL "${item.label}"`);
+      return { shouldAdvance: true };
+    }
+
+    // Step 2.2: Conditional jump — if the previous prompt response contains the token, jump to the target label
+    if (item.jumpIf) {
+      const { token, target } = item.jumpIf;
+      if (this.lastPromptResponse.includes(token)) {
+        const targetIdx = this.items.findIndex((it) => it.label === target);
+        if (targetIdx === -1) {
+          log.warn(`JUMPIF: target label "${target}" not found in current items — skipping jump`);
+          return { shouldAdvance: true };
+        }
+        if (targetIdx <= this.currentIndex) {
+          log.warn(`JUMPIF: target "${target}" at index ${targetIdx} is not forward of current ${this.currentIndex} — skipping jump`);
+          return { shouldAdvance: true };
+        }
+        log.info(`JUMPIF: token "${token}" matched, jumping from ${this.currentIndex} to ${targetIdx} (label "${target}")`);
+        return { shouldAdvance: false, jumpTo: targetIdx };
+      }
+      log.debug(`executeItem: JUMPIF token "${token}" not found in last response — falling through`);
       return { shouldAdvance: true };
     }
 

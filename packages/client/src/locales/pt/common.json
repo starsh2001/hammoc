@@ -457,7 +457,9 @@
       "loadSession": "Carregar sessão:",
       "modelPrefix": "[Modelo:",
       "modelChange": "Alterar modelo:",
-      "wait": "Aguardar:"
+      "wait": "Aguardar:",
+      "label": "Rótulo:",
+      "jumpIf": "Saltar se:"
     },
     "template": {
       "title": "Criar fila a partir de modelo",
