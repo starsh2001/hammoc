@@ -179,8 +179,9 @@ function buildPrePrdRecommendations(data: BmadStatusResponse): NextStepRecommend
   // PRD is promoted to primary only after project brief exists
   const prdVariant: ActionVariant = hasBrief ? 'primary' : 'secondary';
 
-  // Brainstorming & Brief are primary until their prerequisites are met
-  if (!hasBrainstorming) {
+  // Brainstorming is only suggested when no Brief exists yet — once a Brief is
+  // present, the discovery phase is considered done (or intentionally skipped).
+  if (!hasBrainstorming && !hasBrief) {
     recs.push({
       id: 'brainstorming',
       title: i18n.t('common:rec.brainstorming'),
