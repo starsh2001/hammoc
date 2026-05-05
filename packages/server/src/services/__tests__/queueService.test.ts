@@ -855,6 +855,84 @@ describe('QueueService', () => {
       expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(1);
       expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('regular prompt');
     });
+
+    it('expands a multi-prompt snippet into the loop inner items when used inside @loop', async () => {
+      setupMockChat();
+      mockIsSnippetRef.mockImplementation((text: string) => text?.startsWith('%') ?? false);
+      mockResolveSnippet.mockResolvedValue(['agent-switch', 'task-call arg']);
+
+      // One iteration loop containing only the snippet item — both expanded prompts
+      // must run within that single iteration before the loop completes.
+      const innerSnippet: QueueItem = { prompt: '%my-snippet arg', isNewSession: false };
+      const items: QueueItem[] = [
+        {
+          prompt: '',
+          isNewSession: false,
+          loop: { max: 1, onExceed: 'pause', items: [innerSnippet] },
+        },
+        createPromptItem('after loop'),
+      ];
+      await queueService.start(items, 'test-project');
+
+      // Expected: 'agent-switch' and 'task-call arg' run inside the loop, then 'after loop'
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(3);
+      expect(mockSendMessageWithCallbacks.mock.calls[0][0]).toBe('agent-switch');
+      expect(mockSendMessageWithCallbacks.mock.calls[1][0]).toBe('task-call arg');
+      expect(mockSendMessageWithCallbacks.mock.calls[2][0]).toBe('after loop');
+      expect(queueService.getState().isCompleted).toBe(true);
+    });
+
+    it('reuses expanded inner items across multiple loop iterations (no re-resolution)', async () => {
+      setupMockChat();
+      mockIsSnippetRef.mockImplementation((text: string) => text?.startsWith('%') ?? false);
+      mockResolveSnippet.mockResolvedValue(['agent-switch', 'task-call arg']);
+
+      const innerSnippet: QueueItem = { prompt: '%my-snippet arg', isNewSession: false };
+      const items: QueueItem[] = [
+        {
+          prompt: '',
+          isNewSession: false,
+          loop: { max: 2, onExceed: 'pause', items: [innerSnippet] },
+        },
+      ];
+      await queueService.start(items, 'test-project');
+
+      // The snippet must be resolved exactly once even though the loop runs twice
+      expect(mockResolveSnippet).toHaveBeenCalledTimes(1);
+      // Both iterations replay the expanded prompts → 4 SDK calls total
+      expect(mockSendMessageWithCallbacks).toHaveBeenCalledTimes(4);
+      expect(mockSendMessageWithCallbacks.mock.calls.map(c => c[0])).toEqual([
+        'agent-switch', 'task-call arg', 'agent-switch', 'task-call arg',
+      ]);
+    });
+
+    it('preserves order of mixed inner items when a snippet is followed by a normal prompt', async () => {
+      setupMockChat();
+      mockIsSnippetRef.mockImplementation((text: string) => text?.startsWith('%') ?? false);
+      mockResolveSnippet.mockResolvedValue(['expanded-1', 'expanded-2']);
+
+      // [snippet, normal_prompt] — splice must insert expanded items between them,
+      // not after normal_prompt.
+      const items: QueueItem[] = [
+        {
+          prompt: '',
+          isNewSession: false,
+          loop: {
+            max: 1,
+            onExceed: 'pause',
+            items: [
+              { prompt: '%snippet arg', isNewSession: false },
+              createPromptItem('tail'),
+            ],
+          },
+        },
+      ];
+      await queueService.start(items, 'test-project');
+
+      expect(mockSendMessageWithCallbacks.mock.calls.map(c => c[0])).toEqual([
+        'expanded-1', 'expanded-2', 'tail',
+      ]);
+    });
   });
 
   // ===== BS-4: @loop execution tests =====

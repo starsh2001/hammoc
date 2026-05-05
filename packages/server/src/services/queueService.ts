@@ -702,7 +702,15 @@ export class QueueService {
             this.snippetExpandedItems.add(qi);
             return qi;
           });
-          this.items.splice(this.currentIndex + 1, 0, ...newItems);
+          // Splice into the correct items array depending on context:
+          // inside a @loop block the inner items live on loopState.items, not this.items.
+          // Without this branch, expanded prompts would leak out of the loop and skip
+          // execution within the current iteration.
+          if (this.loopState) {
+            this.loopState.items.splice(this.loopState.innerIndex + 1, 0, ...newItems);
+          } else {
+            this.items.splice(this.currentIndex + 1, 0, ...newItems);
+          }
           this.emitItemsUpdated();
         }
       } catch (error) {
