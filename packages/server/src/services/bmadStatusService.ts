@@ -12,6 +12,9 @@ import type {
   BmadStoryStatus,
   DirEntry,
 } from '@hammoc/shared';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('bmadStatusService');
 
 /**
  * Matches epic headers in various Markdown formats:
@@ -348,8 +351,14 @@ class BmadStatusService {
             if (gate) {
               gateResults.set(storyId, gate);
             }
-          } catch {
-            // Skip unparseable gate files
+          } catch (err) {
+            // Skip unparseable gate files but warn so the operator can spot
+            // a malformed YAML (e.g. unescaped quotes) instead of silently
+            // missing the gate decision in the BMad overview.
+            log.warn(
+              `Failed to parse QA gate file ${file} (story ${storyId}); ` +
+              `gate decision will be missing in the overview. Reason: ${(err as Error)?.message ?? String(err)}`,
+            );
           }
         }
       } catch (err: unknown) {
