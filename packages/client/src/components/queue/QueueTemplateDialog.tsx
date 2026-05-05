@@ -412,7 +412,7 @@ export function QueueTemplateDialog({ projectSlug, open, onClose, onGenerate }: 
                     <Upload className="w-3.5 h-3.5" />
                     {t('queue.template.chooseFile')}
                   </button>
-                  <input ref={fileInputRef} type="file" accept=".txt,.qlaude-queue" onChange={handleFileChange} className="hidden" />
+                  <input ref={fileInputRef} type="file" accept=".txt,.qlaude-queue,text/plain,*/*" onChange={handleFileChange} className="hidden" />
                 </div>
 
                 {uploadedFile && (

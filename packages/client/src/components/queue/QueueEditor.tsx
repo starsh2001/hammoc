@@ -178,7 +178,7 @@ export function QueueEditor({ projectSlug }: QueueEditorProps) {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt,.qlaude-queue,*"
+            accept=".txt,.qlaude-queue,text/plain,*/*"
             onChange={handleFileChange}
             className="hidden"
           />
