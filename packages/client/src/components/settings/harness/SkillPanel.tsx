@@ -103,10 +103,10 @@ export function SkillPanel({ projectSlug }: Props) {
   const [copyError, setCopyError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Keep cached cards alive after this panel unmounts so re-entering the
+    // workbench renders instantly while the store revalidates in the
+    // background. `load()` is stale-while-revalidate.
     void load(projectSlug);
-    return () => {
-      useHarnessSkillStore.getState().reset();
-    };
   }, [load, projectSlug]);
 
   useEffect(() => {

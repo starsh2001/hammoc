@@ -196,10 +196,10 @@ export function CommandPanel({ projectSlug }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Keep cached cards alive after this panel unmounts so re-entering the
+    // workbench renders instantly while the store revalidates in the
+    // background. `load()` is stale-while-revalidate.
     void load(projectSlug);
-    return () => {
-      useHarnessCommandStore.getState().reset();
-    };
   }, [load, projectSlug]);
 
   useEffect(() => {

@@ -61,10 +61,12 @@ export function PluginPanel({ projectSlug }: Props) {
   const handleExternalChange = useHarnessPluginStore((s) => s.handleExternalChange);
 
   useEffect(() => {
+    // Keep cached cards alive after this panel unmounts so re-entering the
+    // workbench (e.g. switching to Skills and back) renders instantly while
+    // the store revalidates in the background. The store's `load()` is
+    // stale-while-revalidate, and `handleExternalChange` invalidates on file
+    // edits.
     void load(projectSlug);
-    return () => {
-      useHarnessPluginStore.getState().reset();
-    };
   }, [load, projectSlug]);
 
   useEffect(() => {

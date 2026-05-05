@@ -138,10 +138,10 @@ export function AgentPanel({ projectSlug }: Props) {
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all');
 
   useEffect(() => {
+    // Keep cached cards alive after this panel unmounts so re-entering the
+    // workbench renders instantly while the store revalidates in the
+    // background. `load()` is stale-while-revalidate.
     void load(projectSlug);
-    return () => {
-      useHarnessAgentStore.getState().reset();
-    };
   }, [load, projectSlug]);
 
   useEffect(() => {

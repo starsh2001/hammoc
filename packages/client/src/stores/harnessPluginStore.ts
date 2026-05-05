@@ -57,7 +57,26 @@ export const useHarnessPluginStore = create<HarnessPluginStoreState>((set, get) 
   bannerVisible: false,
 
   async load(projectSlug?: string) {
-    set({ isLoading: true, error: undefined, lastProjectSlug: projectSlug });
+    // Stale-while-revalidate: keep cached cards on screen when re-entering the
+    // panel for the same project; only show the loading skeleton on first load,
+    // project change, or recovery from an error. The server response always
+    // refreshes `settingsMtime` so STALE_WRITE recovery still works after a
+    // background revalidation.
+    const state = get();
+    const isWarmCache = state.lastProjectSlug === projectSlug && !state.error;
+    if (isWarmCache) {
+      set({ error: undefined, lastProjectSlug: projectSlug });
+    } else {
+      set({
+        cards: [],
+        enabledPluginsFormat: 'object',
+        currentProjectPath: undefined,
+        settingsMtime: undefined,
+        isLoading: true,
+        error: undefined,
+        lastProjectSlug: projectSlug,
+      });
+    }
     try {
       const res = await listPlugins(projectSlug);
       set({

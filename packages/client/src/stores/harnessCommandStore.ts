@@ -73,7 +73,23 @@ export const useHarnessCommandStore = create<HarnessCommandStoreState>((set, get
   isLoading: false,
 
   async load(projectSlug?: string) {
-    set({ isLoading: true, error: undefined, lastProjectSlug: projectSlug });
+    // Stale-while-revalidate: keep cached tree on screen when re-entering the
+    // panel for the same project; only show the loading skeleton on first load,
+    // project change, or recovery from an error.
+    const state = get();
+    const isWarmCache = state.lastProjectSlug === projectSlug && !state.error;
+    if (isWarmCache) {
+      set({ error: undefined, lastProjectSlug: projectSlug });
+    } else {
+      set({
+        cards: [],
+        malformed: [],
+        paletteVisibleCount: 0,
+        isLoading: true,
+        error: undefined,
+        lastProjectSlug: projectSlug,
+      });
+    }
     try {
       const res: HarnessCommandListResponse = await listCommands(projectSlug);
       set({

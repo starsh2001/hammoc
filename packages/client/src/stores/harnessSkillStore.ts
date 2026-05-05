@@ -60,7 +60,23 @@ export const useHarnessSkillStore = create<HarnessSkillStoreState>((set, get) =>
   isLoading: false,
 
   async load(projectSlug?: string) {
-    set({ isLoading: true, error: undefined, lastProjectSlug: projectSlug });
+    // Stale-while-revalidate: if we already have data for the same project and
+    // the previous load did not error, keep the cached cards visible and refetch
+    // silently in the background. Otherwise (first load, project changed, or
+    // recovery from error) clear stale data and show the loading skeleton.
+    const state = get();
+    const isWarmCache = state.lastProjectSlug === projectSlug && !state.error;
+    if (isWarmCache) {
+      set({ error: undefined, lastProjectSlug: projectSlug });
+    } else {
+      set({
+        cards: [],
+        malformed: [],
+        isLoading: true,
+        error: undefined,
+        lastProjectSlug: projectSlug,
+      });
+    }
     try {
       const res = await listSkills(projectSlug);
       set({
