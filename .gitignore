@@ -65,6 +65,7 @@ coverage/
 .bmad-core/
 .bmad-*/
 
-# Docs (except MANUAL)
+# Docs (except MANUAL and curated queue templates)
 docs/*
 !docs/MANUAL.md
+!docs/queue-templates/
