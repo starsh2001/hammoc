@@ -104,3 +104,38 @@ export async function resolveHarnessPath(ref: HarnessPathRef): Promise<ResolvedH
 
   return { resolvedRoot, absolutePath };
 }
+
+/**
+ * Story 29.1 (AC6): resolve the project-root `<projectRoot>/CLAUDE.md` path —
+ * the single file in the harness workbench whose location sits OUTSIDE the
+ * project's `.claude/` subtree, so `resolveHarnessPath` would reject it as a
+ * traversal. This helper accepts only `projectSlug` (no caller-supplied
+ * relative path) and returns the canonical CLAUDE.md location alongside the
+ * project root, so traversal is impossible by construction.
+ */
+export async function resolveProjectClaudeMdPath(projectSlug: string): Promise<ResolvedHarnessPath> {
+  if (!projectSlug || projectSlug.includes('\0')) {
+    const err = new Error('invalid projectSlug') as NodeJS.ErrnoException;
+    err.code = HARNESS_ERRORS.HARNESS_PATH_DENIED.code;
+    throw err;
+  }
+  // Reject traversal-bearing slugs before they reach projectService — defense in depth.
+  if (projectSlug.includes('..') || projectSlug.includes('/') || projectSlug.includes('\\')) {
+    const err = new Error('projectSlug must not contain path separators') as NodeJS.ErrnoException;
+    err.code = HARNESS_ERRORS.HARNESS_PATH_DENIED.code;
+    throw err;
+  }
+  let projectRoot: string;
+  try {
+    projectRoot = await projectService.resolveOriginalPath(projectSlug);
+  } catch (error) {
+    const wrapped = new Error(
+      `Unable to resolve project root for "${projectSlug}": ${(error as Error).message}`,
+    ) as NodeJS.ErrnoException;
+    wrapped.code = HARNESS_ERRORS.HARNESS_ROOT_MISSING.code;
+    throw wrapped;
+  }
+  const resolvedRoot = path.resolve(projectRoot);
+  const absolutePath = path.join(resolvedRoot, 'CLAUDE.md');
+  return { resolvedRoot, absolutePath };
+}

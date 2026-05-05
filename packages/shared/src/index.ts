@@ -138,3 +138,10 @@ export { LogLevel, parseLogLevel } from './types/logger.js';
 
 // Story 28.0.5: Harness workbench shared types (Epic 28 common infra)
 export * from './types/harness.js';
+
+// Story 29.1: Markdown H2 split/append helpers (shared by server & client)
+export {
+  splitMarkdownByH2,
+  appendMarkdownSections,
+  MarkdownH2Section,
+} from './utils/markdownSections.js';

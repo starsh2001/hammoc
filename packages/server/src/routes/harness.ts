@@ -13,6 +13,7 @@ import { harnessMcpController } from '../controllers/harnessMcpController.js';
 import { harnessHookController } from '../controllers/harnessHookController.js';
 import { harnessCommandController } from '../controllers/harnessCommandController.js';
 import { harnessAgentController } from '../controllers/harnessAgentController.js';
+import { claudeMdController } from '../controllers/claudeMdController.js';
 
 const router = Router();
 
@@ -79,5 +80,13 @@ router.get('/agents', harnessAgentController.list);
 router.get('/agents/:name', harnessAgentController.read);
 router.put('/agents/:name', largeBodyParser, harnessAgentController.update);
 router.delete('/agents/:name', largeBodyParser, harnessAgentController.delete);
+
+// Story 29.1 — CLAUDE.md (free-edit memory layer): two files only
+// (project root + global). POST is a distinct create-empty path that fails
+// with 409 if the file already exists (PUT-with-empty-content overwrite is
+// intentionally a separate code path so client intent is preserved).
+router.get('/claude-md', claudeMdController.read);
+router.put('/claude-md', largeBodyParser, claudeMdController.write);
+router.post('/claude-md', largeBodyParser, claudeMdController.create);
 
 export default router;

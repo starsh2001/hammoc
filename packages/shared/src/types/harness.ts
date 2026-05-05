@@ -42,6 +42,12 @@ export interface HarnessReadResponse {
   /** ISO 8601 — ETag for conflict detection */
   mtime: string;
   mimeType: string;
+  /**
+   * Optional resolved absolute path of the file on disk. Populated by services
+   * (e.g. claudeMdService) that need the UI to display the canonical location
+   * in confirmation dialogs. Other harness services may leave this unset.
+   */
+  absolutePath?: string;
 }
 
 export interface HarnessWriteRequest {
@@ -108,6 +114,7 @@ export const HARNESS_ERRORS = {
   HARNESS_HOOK_INVALID_EVENT:  { code: 'HARNESS_HOOK_INVALID_EVENT',  httpStatus: 400 },
   HARNESS_COMMAND_NOT_FOUND:   { code: 'HARNESS_COMMAND_NOT_FOUND',   httpStatus: 404 },
   HARNESS_STALE_WRITE:         { code: 'HARNESS_STALE_WRITE',         httpStatus: 409 },
+  HARNESS_FILE_EXISTS:         { code: 'HARNESS_FILE_EXISTS',         httpStatus: 409 },
   HARNESS_SKILL_NAME_CONFLICT: { code: 'HARNESS_SKILL_NAME_CONFLICT', httpStatus: 409 },
   HARNESS_MCP_NAME_CONFLICT:   { code: 'HARNESS_MCP_NAME_CONFLICT',   httpStatus: 409 },
   HARNESS_COMMAND_NAME_CONFLICT: { code: 'HARNESS_COMMAND_NAME_CONFLICT', httpStatus: 409 },

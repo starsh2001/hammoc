@@ -324,7 +324,8 @@
                 "mcps": "MCP",
                 "hooks": "훅",
                 "commands": "커맨드",
-                "agents": "에이전트"
+                "agents": "에이전트",
+                "claudeMd": "CLAUDE.md"
             }
         },
         "skill": {
@@ -1029,6 +1030,67 @@
             "scopeHint": "전역 설정 수정됨",
             "readonly": {
                 "forbidden": "읽기 전용 환경: 쓰기 권한이 없습니다."
+            }
+        },
+        "claudeMd": {
+            "panelHelp": "두 파일은 모두 매 Claude Code 세션에 컨텍스트로 포함됩니다 — 전역이 먼저, 프로젝트가 마지막에 읽혀 프로젝트가 우선합니다. 서브디렉토리 CLAUDE.md 는 Claude 가 해당 디렉토리의 파일을 읽을 때 자동 포함되며, 본 화면은 최상위 두 파일만 다룹니다.",
+            "userColumn": {
+                "title": "전역 CLAUDE.md"
+            },
+            "projectColumn": {
+                "title": "프로젝트 CLAUDE.md"
+            },
+            "mobileTabs": "CLAUDE.md 스코프 전환",
+            "savedToast": "저장됨",
+            "empty": {
+                "title": "이 위치에 CLAUDE.md 가 아직 없습니다.",
+                "userHint": "전역 CLAUDE.md 는 모든 프로젝트의 Claude Code 세션에 공통으로 포함됩니다.",
+                "projectHint": "프로젝트 CLAUDE.md 는 이 프로젝트의 Claude Code 세션에 자동 포함됩니다."
+            },
+            "create": {
+                "cta": "CLAUDE.md 만들기",
+                "confirmTitle": "빈 CLAUDE.md 를 생성할까요?",
+                "confirmBody": "이 위치에 빈 CLAUDE.md 파일을 생성합니다. 생성 후 자유롭게 편집하세요.",
+                "pathLabel": "위치",
+                "cancel": "취소",
+                "submit": "만들기"
+            },
+            "staleBanner": {
+                "message": "외부에서 변경되었습니다. 디스크 내용을 다시 읽어올까요? (현재 편집 중인 변경은 사라집니다) — 또는 내 변경을 유지하고 덮어쓸까요?",
+                "reload": "다시 읽기",
+                "overwrite": "내 변경 유지"
+            },
+            "copy": {
+                "modeLabel": "카피 모드",
+                "toUser": {
+                    "label": "전역으로 카피",
+                    "tooltip": "프로젝트 → 전역으로 복사",
+                    "dialogTitle": "프로젝트 → 전역 CLAUDE.md 카피"
+                },
+                "toProject": {
+                    "label": "프로젝트로 카피",
+                    "tooltip": "전역 → 프로젝트로 복사",
+                    "dialogTitle": "전역 → 프로젝트 CLAUDE.md 카피"
+                },
+                "mode": {
+                    "append": "섹션 append (## H2 단위)",
+                    "appendHint": "선택한 H2 섹션을 대상 파일 끝에 추가합니다.",
+                    "overwrite": "전체 덮어쓰기 (파괴적)",
+                    "overwriteHint": "대상 파일 전체를 소스 내용으로 교체합니다."
+                },
+                "noH2Banner": "이 파일에는 ## H2 헤딩이 없어 섹션 append 가 불가능합니다. 전체 덮어쓰기를 선택하거나 헤딩을 먼저 추가하세요.",
+                "appendInstruction": "추가할 섹션을 선택하세요:",
+                "alreadyExists": "이미 있음",
+                "overwriteWarning": "대상 파일의 현재 내용 전체가 사라집니다. 계속하시겠습니까?",
+                "targetPreview": "대상 미리보기 (첫 5줄)",
+                "confirmAppend": "선택 섹션 카피",
+                "confirmOverwrite": "덮어쓰기 확인",
+                "errors": {
+                    "noSelection": "최소 한 섹션 이상을 선택하세요."
+                }
+            },
+            "error": {
+                "fileExists": "이 위치에 CLAUDE.md 가 이미 존재합니다."
             }
         }
     },

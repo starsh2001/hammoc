@@ -41,6 +41,7 @@
 - B9. 하네스 Hook 섹션 (Story 28.4) `[SDK] [EDGE]`
 - B10. 하네스 슬래시 커맨드 섹션 (Story 28.5) `[CORE]`
 - B11. 하네스 서브에이전트 섹션 (Story 28.6) `[CORE]`
+- B12. 하네스 CLAUDE.md 편집기 섹션 (Story 29.1) `[CORE] [EDGE]`
 
 ### C. 채팅 · 세션 ★ SDK 핵심
 - C1. 새 세션 시작 · 첫 메시지 송신 `[CORE] [SDK] [ASYNC]`

@@ -323,7 +323,8 @@
                 "mcps": "MCP",
                 "hooks": "Hooks",
                 "commands": "Comandos",
-                "agents": "Agentes"
+                "agents": "Agentes",
+                "claudeMd": "CLAUDE.md"
             }
         },
         "skill": {
@@ -1040,6 +1041,59 @@
             "readonly": {
                 "forbidden": "Entorno de solo lectura: permiso denegado."
             }
+        },
+        "claudeMd": {
+            "panelHelp": "Ambos archivos se cargan en cada sesión de Claude Code — el global primero, el del proyecto al final (el del proyecto tiene prioridad). Los CLAUDE.md de subdirectorios se cargan bajo demanda cuando Claude lee archivos en ellos; este panel solo gestiona los dos archivos de nivel superior.",
+            "userColumn": { "title": "CLAUDE.md global" },
+            "projectColumn": { "title": "CLAUDE.md del proyecto" },
+            "mobileTabs": "Cambiar ámbito de CLAUDE.md",
+            "savedToast": "Guardado",
+            "empty": {
+                "title": "Aún no existe CLAUDE.md en esta ubicación.",
+                "userHint": "El CLAUDE.md global se incluye en cada sesión de Claude Code de cualquier proyecto.",
+                "projectHint": "El CLAUDE.md del proyecto se incluye automáticamente en las sesiones de Claude Code de este proyecto."
+            },
+            "create": {
+                "cta": "Crear CLAUDE.md",
+                "confirmTitle": "¿Crear un CLAUDE.md vacío?",
+                "confirmBody": "Se creará un archivo CLAUDE.md vacío en esta ubicación. Podrás editarlo después.",
+                "pathLabel": "Ubicación",
+                "cancel": "Cancelar",
+                "submit": "Crear"
+            },
+            "staleBanner": {
+                "message": "El archivo cambió externamente. ¿Recargar desde disco (se perderán tus cambios) o sobrescribir manteniendo tus cambios?",
+                "reload": "Recargar",
+                "overwrite": "Sobrescribir"
+            },
+            "copy": {
+                "modeLabel": "Modo de copia",
+                "toUser": {
+                    "label": "Copiar a global",
+                    "tooltip": "Proyecto → global",
+                    "dialogTitle": "Proyecto → CLAUDE.md global"
+                },
+                "toProject": {
+                    "label": "Copiar al proyecto",
+                    "tooltip": "Global → proyecto",
+                    "dialogTitle": "Global → CLAUDE.md del proyecto"
+                },
+                "mode": {
+                    "append": "Anexar secciones (unidades ## H2)",
+                    "appendHint": "Anexa las secciones H2 seleccionadas al final del archivo destino.",
+                    "overwrite": "Sobrescribir todo (destructivo)",
+                    "overwriteHint": "Reemplaza por completo el archivo destino con el contenido fuente."
+                },
+                "noH2Banner": "El archivo fuente no tiene encabezados ## H2, así que no se puede anexar por sección. Usa sobrescribir o añade encabezados primero.",
+                "appendInstruction": "Selecciona las secciones a anexar:",
+                "alreadyExists": "ya existe",
+                "overwriteWarning": "Se perderá todo el contenido actual del archivo destino. ¿Continuar?",
+                "targetPreview": "Vista previa del destino (primeras 5 líneas)",
+                "confirmAppend": "Anexar selección",
+                "confirmOverwrite": "Confirmar sobrescritura",
+                "errors": { "noSelection": "Selecciona al menos una sección." }
+            },
+            "error": { "fileExists": "Ya existe un CLAUDE.md en esta ubicación." }
         }
     },
     "permissionMode": {

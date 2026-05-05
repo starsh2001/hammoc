@@ -323,7 +323,8 @@
                 "mcps": "MCP",
                 "hooks": "フック",
                 "commands": "コマンド",
-                "agents": "エージェント"
+                "agents": "エージェント",
+                "claudeMd": "CLAUDE.md"
             }
         },
         "skill": {
@@ -1040,6 +1041,59 @@
             "readonly": {
                 "forbidden": "読み取り専用環境: 権限がありません。"
             }
+        },
+        "claudeMd": {
+            "panelHelp": "両方のファイルがすべての Claude Code セッションに読み込まれます — グローバルが先、プロジェクトが後で読み込まれ、プロジェクトが優先されます。サブディレクトリの CLAUDE.md は Claude がそのディレクトリのファイルを読み込むときにオンデマンドで読み込まれます。本パネルは最上位の 2 ファイルのみを管理します。",
+            "userColumn": { "title": "グローバル CLAUDE.md" },
+            "projectColumn": { "title": "プロジェクト CLAUDE.md" },
+            "mobileTabs": "CLAUDE.md スコープ切替",
+            "savedToast": "保存しました",
+            "empty": {
+                "title": "この場所にはまだ CLAUDE.md がありません。",
+                "userHint": "グローバル CLAUDE.md はすべてのプロジェクトの Claude Code セッションに含まれます。",
+                "projectHint": "プロジェクト CLAUDE.md はこのプロジェクトの Claude Code セッションに自動的に含まれます。"
+            },
+            "create": {
+                "cta": "CLAUDE.md を作成",
+                "confirmTitle": "空の CLAUDE.md を作成しますか?",
+                "confirmBody": "この場所に空の CLAUDE.md ファイルを作成します。作成後に編集できます。",
+                "pathLabel": "場所",
+                "cancel": "キャンセル",
+                "submit": "作成"
+            },
+            "staleBanner": {
+                "message": "外部から変更されました。ディスクから再読み込みしますか? (現在の編集は失われます) または編集内容を保持して上書きしますか?",
+                "reload": "再読み込み",
+                "overwrite": "上書き"
+            },
+            "copy": {
+                "modeLabel": "コピーモード",
+                "toUser": {
+                    "label": "グローバルへコピー",
+                    "tooltip": "プロジェクト → グローバル",
+                    "dialogTitle": "プロジェクト → グローバル CLAUDE.md コピー"
+                },
+                "toProject": {
+                    "label": "プロジェクトへコピー",
+                    "tooltip": "グローバル → プロジェクト",
+                    "dialogTitle": "グローバル → プロジェクト CLAUDE.md コピー"
+                },
+                "mode": {
+                    "append": "セクション追加 (## H2 単位)",
+                    "appendHint": "選択した H2 セクションを対象ファイルの末尾に追加します。",
+                    "overwrite": "全体上書き (破壊的)",
+                    "overwriteHint": "対象ファイル全体をソースの内容で置き換えます。"
+                },
+                "noH2Banner": "ソースに ## H2 見出しがないため、セクション追加は使用できません。全体上書きを選ぶか、見出しを追加してください。",
+                "appendInstruction": "追加するセクションを選択:",
+                "alreadyExists": "既に存在",
+                "overwriteWarning": "対象ファイルの現在の内容がすべて失われます。続行しますか?",
+                "targetPreview": "対象プレビュー (最初の 5 行)",
+                "confirmAppend": "選択セクションを追加",
+                "confirmOverwrite": "上書きを確認",
+                "errors": { "noSelection": "少なくとも 1 つのセクションを選択してください。" }
+            },
+            "error": { "fileExists": "この場所には CLAUDE.md が既に存在します。" }
         }
     },
     "permissionMode": {

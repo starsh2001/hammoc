@@ -192,19 +192,34 @@ class FileWatcherService {
     // the standard root-only watcher cannot pick it up. We add it as a second
     // path in the same chokidar instance and emit `path: '.mcp.json'`
     // (hard-coded relative form) when the event lands on that file.
+    //
+    // Story 29.1 (AC2.b): same pattern is used to watch `<projectRoot>/CLAUDE.md`,
+    // a second sibling of `.claude/`. Its emitted path is normalized to
+    // `'../CLAUDE.md'` so it cannot collide with `<projectRoot>/.claude/CLAUDE.md`
+    // (which would also normalize to `'CLAUDE.md'`). Using the `..` prefix —
+    // a string that path-resolver would otherwise reject as traversal — guarantees
+    // a unique discriminator since no path going through the standard harness
+    // API can ever match it. Client matching rule (AC2.b) is `path === '../CLAUDE.md'`.
     const projectMcpFilePath = ref.scope === 'project'
       ? path.join(path.dirname(resolvedRoot), '.mcp.json')
       : null;
-    const watchTargets = projectMcpFilePath
-      ? [resolvedRoot, projectMcpFilePath]
+    const projectClaudeMdPath = ref.scope === 'project'
+      ? path.join(path.dirname(resolvedRoot), 'CLAUDE.md')
+      : null;
+    const watchTargets: string | string[] = ref.scope === 'project'
+      ? [resolvedRoot, projectMcpFilePath as string, projectClaudeMdPath as string]
       : resolvedRoot;
 
     const watcher = chokidar.watch(watchTargets, {
       ignoreInitial: true,
       ignored: (target: string): boolean => {
-        // Always allow the .mcp.json sibling — chokidar would otherwise drop
-        // it because it sits outside `resolvedRoot`.
+        // Always allow the sibling files (`.mcp.json`, `CLAUDE.md`) —
+        // chokidar would otherwise drop them because they sit outside
+        // `resolvedRoot`.
         if (projectMcpFilePath && path.resolve(target) === path.resolve(projectMcpFilePath)) {
+          return false;
+        }
+        if (projectClaudeMdPath && path.resolve(target) === path.resolve(projectClaudeMdPath)) {
           return false;
         }
         const rel = path.relative(resolvedRoot, target).replace(/\\/g, '/');
@@ -236,6 +251,13 @@ class FileWatcherService {
           if (projectMcpFilePath
             && path.resolve(absolutePath) === path.resolve(projectMcpFilePath)) {
             rel = '.mcp.json';
+          } else if (projectClaudeMdPath
+            && path.resolve(absolutePath) === path.resolve(projectClaudeMdPath)) {
+            // Story 29.1 (AC2.b): `<projectRoot>/CLAUDE.md` emits as
+            // `'../CLAUDE.md'` to namespace-separate it from a hypothetical
+            // `<projectRoot>/.claude/CLAUDE.md` that would otherwise share
+            // the relative path `'CLAUDE.md'`.
+            rel = '../CLAUDE.md';
           } else {
             rel = path.relative(resolvedRoot, absolutePath).replace(/\\/g, '/');
             if (!rel || rel === '.' || rel.startsWith('..')) return;

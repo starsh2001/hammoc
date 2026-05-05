@@ -12,6 +12,7 @@ import {
   getUserHarnessRoot,
   getProjectHarnessRoot,
   resolveHarnessPath,
+  resolveProjectClaudeMdPath,
 } from '../harnessPaths.js';
 import { projectService } from '../../services/projectService.js';
 
@@ -128,5 +129,48 @@ describe('resolveHarnessPath', () => {
     await expect(
       resolveHarnessPath({ scope: 'user', relativePath: 'foo\0bar' }),
     ).rejects.toMatchObject({ code: HARNESS_ERRORS.HARNESS_PATH_DENIED.code });
+  });
+});
+
+describe('resolveProjectClaudeMdPath (Story 29.1)', () => {
+  let tmpProject: string;
+
+  beforeEach(async () => {
+    tmpProject = await fs.mkdtemp(path.join(os.tmpdir(), 'claudemd-proj-'));
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(tmpProject, { recursive: true, force: true });
+  });
+
+  it('returns <projectRoot>/CLAUDE.md (sibling of .claude/) for an existing slug', async () => {
+    vi.spyOn(projectService, 'resolveOriginalPath').mockResolvedValue(tmpProject);
+    const { resolvedRoot, absolutePath } = await resolveProjectClaudeMdPath('my-slug');
+    expect(resolvedRoot).toBe(path.resolve(tmpProject));
+    expect(absolutePath).toBe(path.join(path.resolve(tmpProject), 'CLAUDE.md'));
+  });
+
+  it('wraps unknown slug errors as HARNESS_ROOT_MISSING', async () => {
+    vi.spyOn(projectService, 'resolveOriginalPath').mockRejectedValue(
+      Object.assign(new Error('not found'), { code: 'PROJECT_NOT_FOUND' }),
+    );
+    await expect(resolveProjectClaudeMdPath('unknown')).rejects.toMatchObject({
+      code: HARNESS_ERRORS.HARNESS_ROOT_MISSING.code,
+    });
+  });
+
+  it('rejects empty projectSlug with HARNESS_PATH_DENIED', async () => {
+    await expect(resolveProjectClaudeMdPath('')).rejects.toMatchObject({
+      code: HARNESS_ERRORS.HARNESS_PATH_DENIED.code,
+    });
+  });
+
+  it('rejects projectSlug containing "..", path separators, or null byte', async () => {
+    for (const evil of ['..', '../escape', 'a/b', 'a\\b', 'a\0b']) {
+      await expect(resolveProjectClaudeMdPath(evil)).rejects.toMatchObject({
+        code: HARNESS_ERRORS.HARNESS_PATH_DENIED.code,
+      });
+    }
   });
 });

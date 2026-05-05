@@ -78,4 +78,24 @@ when touching queue error surfaces.
 된다 (i18n 키 `harness.hook.editor.promptTypeUnsupported` 는 카탈로그에 보존 —
 CLI 다운그레이드 시나리오 또는 응답이 다시 `'unsupported'` 로 돌아갈 경우 대비).
 
+---
+
+## 3. Claude Code 메모리 계층 — Story 29.1 선행 spike (2026-05-06)
+
+**확인 방법**: 공식 Memory 문서 https://code.claude.com/docs/en/memory (구 URL `docs.claude.com/en/docs/claude-code/memory` → 301 redirect) 직접 fetch (2026-05-06).
+
+| spike 항목 | 결과 | 근거 인용 |
+|---|---|---|
+| (1) 프로젝트 서브디렉토리 CLAUDE.md 자동 로딩 | **지원 — 단, 세션 시작 시점 로딩이 아닌 "Claude 가 해당 서브디렉토리의 파일을 읽을 때" 온디맨드 로딩** | "Claude also discovers `CLAUDE.md` and `CLAUDE.local.md` files in subdirectories under your current working directory. Instead of loading them at launch, they are included when Claude reads files in those subdirectories." |
+| (2) 프로젝트+전역 병합/우선순위 | **둘 다 컨텍스트에 포함 (덮어쓰기 없음, 순수 concat)**. 순서는 `~/.claude/CLAUDE.md` (user) → 디렉토리 트리 root → cwd (project) — **cwd 에 가까운 것이 마지막에 읽힘 = 우선순위 높음** | "All discovered files are concatenated into context rather than overriding each other. Across the directory tree, content is ordered from the filesystem root down to your working directory." + "More specific locations take precedence over broader ones." |
+| (3) `@path` import 지원 | **지원**. 상대/절대 경로 모두 가능, 재귀 최대 5 hop. 외부 import 첫 사용 시 1회 approval 다이얼로그 | "CLAUDE.md files can import additional files using `@path/to/import` syntax. ... Both relative and absolute paths are allowed. ... Imported files can recursively import other files, with a maximum depth of five hops." |
+
+### Story 29.1 본 스토리 반영
+
+- **AC4 헬프 텍스트**: (1) 결과로 "프로젝트 서브디렉토리 CLAUDE.md 도 Claude Code 가 해당 디렉토리의 파일을 읽을 때 자동 포함됩니다 — 단 본 화면은 다루지 않습니다 (File Explorer 로 직접 편집)" 문구 채택
+- **패널 헤더 헬프 툴팁**: (2) 결과로 "전역 + 프로젝트 두 파일 모두 세션에 포함되며, 프로젝트가 전역보다 뒤에 읽혀 우선합니다" 문구 채택
+- **`@path` import**: (3) 지원이지만 본 스토리 범위 밖 — Epic § Out of Scope 가 사전 결정한 대로 추적/검증 UI 미도입. 후행 스토리 후보로 보류 (현 시점에 별도 ISSUE 신설은 보류)
+
+본 spike 는 본 스토리 범위(2 파일 고정)를 변경하지 않는다 — Epic § Out of Scope 가 "CLAUDE.md 중첩 로딩 지원" 을 본 에픽 외로 명시.
+
 <!-- Add new upstream issues above this line as they are discovered. -->

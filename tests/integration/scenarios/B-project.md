@@ -700,3 +700,86 @@
 - Playwright snapshot 단독 의존 금지 — `<example>` 블록의 데코레이션 적용은 `data-decoration-class="cm-agent-example"` DOM 속성 + `getComputedStyle(...).backgroundColor` 직접 단언으로 검증
 - WCAG AA contrast 검증은 별도 단위 테스트가 책임 (배경 컬러 + left border 4px 다채널)
 - description 에 `<example>` 없을 때 친화적 경고 배지 (`harness.agent.editor.warnings.noExampleBlock`) 가 노출되지만 저장은 막지 않음 — AC4.c 친화적 가드
+
+## B12. 하네스 CLAUDE.md 편집기 섹션 (Story 29.1)
+
+> 프로젝트 루트 `<projectRoot>/CLAUDE.md` 와 전역 `~/.claude/CLAUDE.md` 두 파일을 좌우 병치 markdown 에디터로 동시에 보고, 각각 독립적으로 편집(debounce 자동 저장)하며, 외부 디스크 변경은 staleBanner 로 알림 + reload/overwrite 선택, 한쪽 파일의 `## H2` 섹션을 다른 쪽으로 append 또는 전체 덮어쓰기 카피, 미존재 파일은 명시적 "생성하기" CTA 로만 생성.
+
+### B-12-01: 좌우 병치 두 에디터 + 독립 편집 + 모바일 탭 축약 `[CORE]`
+
+**절차**:
+1. 프로젝트 루트 `<projectRoot>/CLAUDE.md` 에 `# project memory\n\n## 언어 설정\nKorean.\n` 사전 시드
+2. 전역 `~/.claude/CLAUDE.md` 에 `# global\n\n## 코드 스타일\nPrettier.\n` 사전 시드
+3. 설정 → 하네스 워크벤치 → "CLAUDE.md" 좌측 nav 클릭 → 두 GET `/api/harness/claude-md?scope=user` / `?scope=project&projectSlug=<slug>` 호출
+4. 데스크톱 (≥640px) 에서 좌측 컬럼은 `[data-testid="claude-md-user-column"]` (전역 + 회색 배지), 오른쪽은 `[data-testid="claude-md-project-column"]` (프로젝트 + 주황 배지) 좌우 병치 노출
+5. 왼쪽 CodeMirror 에 `## 추가\nNew global section\n` 입력 → 300ms 디바운스 후 PUT `/api/harness/claude-md` (scope=user) 호출되고 `[data-testid="claude-md-user-saved-toast"]` "Saved." 노출
+6. 오른쪽 컬럼은 변경 없음 — PUT 호출도 발생하지 않음 (독립 저장)
+7. 뷰포트를 ≤640px 로 축소 → 좌우 병치가 사라지고 상단 탭 토글 (`[data-testid="claude-md-mobile-tab-user"]` / `claude-md-mobile-tab-project`) 노출. 한 번에 한 컬럼만 표시
+
+**기대 결과**:
+- 두 에디터 인스턴스가 완전히 독립적으로 동작 — 한 컬럼 입력이 다른 컬럼 store 에 누설되지 않음
+- CodeMirror 가 패널 mount 시점이 아니라 첫 포커스 후에 lazy-load 되어 패널 초기 렌더 비용 0 (28.5/28.6 답습)
+- 모바일 탭 전환 후에도 store 상태가 유지되어 직전에 입력한 미저장 draft 가 사라지지 않음
+- 패널 상단에 spike 결과 기반 헬프 안내 (`[data-testid="claude-md-panel-help"]`) 노출 — "전역 + 프로젝트 두 파일 모두 세션에 포함되며 프로젝트가 우선합니다"
+
+### B-12-02: 외부 변경 staleBanner — reload vs overwrite 두 경로 `[EDGE]`
+
+**절차**:
+1. 프로젝트 루트 `<projectRoot>/CLAUDE.md` 사전 존재 + 패널이 정상 상태 (편집 가능)
+2. 외부 프로세스가 `<projectRoot>/CLAUDE.md` 를 직접 수정 (예: `echo "external" >> CLAUDE.md`) → fileWatcherService 가 `harness:external-change` 이벤트 emit (`scope='project'`, `path='../CLAUDE.md'`)
+3. 클라이언트 store `handleExternalChange` 는 path `'../CLAUDE.md'` 를 프로젝트 컬럼으로 라우팅 (path 가 `'CLAUDE.md'` 였으면 `<projectRoot>/.claude/CLAUDE.md` sibling 로 오해되므로 ignore — 별도 회귀 케이스 B-12-02b 로 검증)
+4. 사용자가 미저장 draft 를 갖고 있으면 `[data-testid="claude-md-project-stale-banner"]` 가 노출되어 reload 또는 overwrite 두 버튼 활성
+5. **(reload 경로)** `[data-testid="claude-md-project-stale-reload"]` 클릭 → store 가 디스크 콘텐츠를 에디터 텍스트로 교체 + 배너 닫힘. 사용자 draft 는 사라짐
+6. **(overwrite 경로)** `[data-testid="claude-md-project-stale-overwrite"]` 클릭 → store 가 expectedMtime 을 디스크 현재 mtime 으로 갱신 후 즉시 PUT 재시도 → 200 응답 + 배너 닫힘. draft 가 디스크에 반영됨
+
+**기대 결과**:
+- 두 버튼은 동시에 활성, 자동 선택 없음 — 유저 명시적 클릭 필수
+- self-write echo 무시: 본 패널이 PUT 직후 와처가 같은 path 에 대한 modified 이벤트를 보고해도 staleBanner 가 뜨지 않음 (`fileWatcherService.noteLocalWrite` 가 본 path 에서도 자동 동작)
+- **회귀 가드 (B-12-02b)**: `<projectRoot>/.claude/CLAUDE.md` (서브트리 안쪽) 가 우연히 만들어져 외부 변경되어도 프로젝트 컬럼 staleBanner 가 발동하지 않음 — path discriminator (`'CLAUDE.md'` vs `'../CLAUDE.md'`) 가 두 케이스를 구분
+
+### B-12-03: 섹션 append 카피 — H2 체크박스 + 이미 있음 경고 + 디스크 round-trip `[CORE]`
+
+**절차**:
+1. 두 컬럼 모두 정상 상태 — 전역에 `## 코드 스타일\n...\n## 도구 선호\n...`, 프로젝트에 `## 코드 스타일\nKorean.\n`
+2. 전역 컬럼 헤더의 카피 버튼 (`[data-testid="claude-md-copy-toProject"]`) 클릭 → ClaudeMdCopyDialog (`[data-testid="claude-md-copy-dialog"]`) 모달 열림
+3. 모드 라디오는 default 가 "섹션 append" (`[data-testid="claude-md-copy-mode-append"]`)
+4. 모달 본문에 전역의 H2 두 개 (`## 코드 스타일`, `## 도구 선호`) 가 체크박스 리스트로 노출. `## 코드 스타일` 행은 프로젝트에 동명 H2 가 이미 있으므로 `data-already-exists="true"` + "이미 있음" 배지 노출
+5. `## 도구 선호` 만 체크 → "선택 섹션 카피" 버튼 (`[data-testid="claude-md-copy-submit"]`) 클릭
+6. 클라이언트가 `appendMarkdownSections` 헬퍼로 머지 → PUT `/api/harness/claude-md` (scope=project, content=합쳐진 텍스트) → 200 응답 + 모달 닫힘 + 프로젝트 컬럼이 갱신된 디스크 mtime 으로 동기화
+
+**기대 결과**:
+- "이미 있음" 배지에도 불구하고 진행 가능 — Hammoc 은 자동 머지하지 않으며 카피 시 동일 헤딩이 두 번 등장하는 결과를 그대로 받아들임 (유저 의사 존중)
+- 코드펜스(```...```) 안에 흉내 `## ` 가 있어도 H2 로 인식하지 않아 체크박스 리스트에 등장하지 않음 (회귀 가드)
+- 단일 round-trip — 클라이언트가 split + append 를 수행하여 PUT 1회로 끝나며 별도 서버 splice API 가 도입되지 않음 (라이브러리/엔드포인트 0건 회귀 가드)
+
+### B-12-04: 전체 덮어쓰기 카피 — destructive 확인 + 대상 미리보기 `[CORE]`
+
+**절차**:
+1. 두 컬럼 모두 정상 상태 — 전역은 짧은 텍스트, 프로젝트는 7줄 이상의 본문
+2. 프로젝트 컬럼 헤더의 카피 버튼 (`[data-testid="claude-md-copy-toUser"]`) 클릭 → 카피 모달 열림
+3. 모드 라디오를 "전체 덮어쓰기 (overwrite)" (`[data-testid="claude-md-copy-mode-overwrite"]`) 로 전환
+4. 모달 본문에 destructive 경고 + 대상 (전역) 파일의 첫 5줄 미리보기 노출
+5. 빨간색 "덮어쓰기 확인" 버튼 (`[data-testid="claude-md-copy-submit"]`, label = `harness.claudeMd.copy.confirmOverwrite`) 클릭
+6. PUT `/api/harness/claude-md` (scope=user, content = 프로젝트 전체 본문) → 200 응답 + 모달 닫힘 + 전역 컬럼이 프로젝트 본문으로 갱신
+
+**기대 결과**:
+- 소스 파일에 H2 헤딩이 0개 인 케이스 (회귀): 모드 라디오는 자동으로 "전체 덮어쓰기" 로 전환되며 `[data-testid="claude-md-copy-no-h2-banner"]` 안내 + append 라디오 비활성
+- 전체 덮어쓰기 버튼은 시각적으로 destructive (붉은색) — 사용자가 클릭 의사를 가시적으로 확인하도록 강제
+- 미리보기는 첫 5줄 — 이는 정보 제공일 뿐 선택 가능한 부분 카피가 아님 (모달은 항상 전체 카피)
+
+### B-12-05: 미존재 파일 "생성하기" CTA — 자동 생성 0건 + 확인 다이얼로그 `[CORE]`
+
+**절차**:
+1. **(전제)** 프로젝트 루트 `<projectRoot>/CLAUDE.md` 미존재 + 전역 `~/.claude/CLAUDE.md` 미존재 (또는 `~/.claude/` 자체가 미존재)
+2. 패널 mount → 두 GET 모두 404 (HARNESS_FILE_NOT_FOUND) → 두 컬럼 모두 빈 상태 진입
+3. **(자동 생성 0건 검증)** 패널 mount 시점에 어떤 POST 도 발생하지 않음 — 디스크에는 여전히 두 파일 미존재
+4. 두 컬럼 모두 `[data-testid="claude-md-{user|project}-empty"]` 빈 상태 UI 노출 (안내 문구 + `[data-testid="claude-md-create-cta"]` "+ CLAUDE.md 만들기" 버튼)
+5. 한쪽 (예: 전역) 의 만들기 버튼 클릭 → 작은 확인 다이얼로그 (`[data-testid="claude-md-create-confirm"]`) 노출 + 절대경로 표시
+6. 다이얼로그의 "만들기" (`[data-testid="claude-md-create-confirm-submit"]`) 클릭 → POST `/api/harness/claude-md` (scope=user) 201 응답 → 컬럼이 정상 상태로 전환되며 빈 에디터 활성
+7. **(전역 부모 디렉토리 자동 생성 검증)** `~/.claude/` 가 사전에 미존재여도 POST 가 자동 mkdir 후 빈 파일 생성 성공
+8. 다른 컬럼 (프로젝트) 은 여전히 빈 상태 + CTA — 한 컬럼 생성이 다른 컬럼에 누설되지 않음
+
+**기대 결과**:
+- POST 단일 경로만 사용 — PUT-with-empty-content 우회 경로는 등장하지 않음 (서버 라우트 자체가 두 행위를 분리)
+- 이미 파일이 있는 상태에서 같은 POST 가 재호출되면 409 (`HARNESS_FILE_EXISTS`) — 이중 생성 방지 (회귀 가드)
+- 빈 상태에서도 카피 버튼은 활성 — 다른 컬럼이 채워져 있으면 카피로 초기 콘텐츠를 채워 넣는 흐름이 가능 (다만 카피 모달 안에서 PUT 가 빈 컬럼에 대해 expectedMtime 없이 진행되어 자동 생성과 동일 효과)

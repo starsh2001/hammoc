@@ -323,7 +323,8 @@
                 "mcps": "MCP",
                 "hooks": "钩子",
                 "commands": "命令",
-                "agents": "代理"
+                "agents": "代理",
+                "claudeMd": "CLAUDE.md"
             }
         },
         "skill": {
@@ -1040,6 +1041,59 @@
             "readonly": {
                 "forbidden": "只读环境：无写入权限。"
             }
+        },
+        "claudeMd": {
+            "panelHelp": "两个文件都会被加载到每个 Claude Code 会话中 — 全局先读，项目后读（项目优先）。子目录中的 CLAUDE.md 在 Claude 读取该目录文件时按需加载；本面板只管理两个顶层文件。",
+            "userColumn": { "title": "全局 CLAUDE.md" },
+            "projectColumn": { "title": "项目 CLAUDE.md" },
+            "mobileTabs": "切换 CLAUDE.md 范围",
+            "savedToast": "已保存",
+            "empty": {
+                "title": "此位置尚无 CLAUDE.md。",
+                "userHint": "全局 CLAUDE.md 会包含在所有项目的 Claude Code 会话中。",
+                "projectHint": "项目 CLAUDE.md 会自动包含在此项目的 Claude Code 会话中。"
+            },
+            "create": {
+                "cta": "创建 CLAUDE.md",
+                "confirmTitle": "创建空的 CLAUDE.md？",
+                "confirmBody": "将在此位置创建空的 CLAUDE.md 文件。创建后可继续编辑。",
+                "pathLabel": "位置",
+                "cancel": "取消",
+                "submit": "创建"
+            },
+            "staleBanner": {
+                "message": "文件已被外部修改。从磁盘重新加载（您的编辑将丢失）或保留您的编辑并覆盖？",
+                "reload": "重新加载",
+                "overwrite": "覆盖"
+            },
+            "copy": {
+                "modeLabel": "复制模式",
+                "toUser": {
+                    "label": "复制到全局",
+                    "tooltip": "项目 → 全局",
+                    "dialogTitle": "项目 → 全局 CLAUDE.md 复制"
+                },
+                "toProject": {
+                    "label": "复制到项目",
+                    "tooltip": "全局 → 项目",
+                    "dialogTitle": "全局 → 项目 CLAUDE.md 复制"
+                },
+                "mode": {
+                    "append": "追加章节（## H2 单位）",
+                    "appendHint": "把所选 H2 章节追加到目标文件末尾。",
+                    "overwrite": "整体覆盖（破坏性）",
+                    "overwriteHint": "用源内容完全替换目标文件。"
+                },
+                "noH2Banner": "源文件没有 ## H2 标题，无法使用章节追加。请选择整体覆盖或先添加标题。",
+                "appendInstruction": "选择要追加的章节：",
+                "alreadyExists": "已存在",
+                "overwriteWarning": "目标文件当前的所有内容都将丢失。是否继续？",
+                "targetPreview": "目标预览（前 5 行）",
+                "confirmAppend": "追加所选章节",
+                "confirmOverwrite": "确认覆盖",
+                "errors": { "noSelection": "请至少选择一个章节。" }
+            },
+            "error": { "fileExists": "此位置已存在 CLAUDE.md。" }
         }
     },
     "permissionMode": {

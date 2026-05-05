@@ -324,7 +324,8 @@
                 "mcps": "MCP",
                 "hooks": "Hooks",
                 "commands": "Commands",
-                "agents": "Agents"
+                "agents": "Agents",
+                "claudeMd": "CLAUDE.md"
             }
         },
         "skill": {
@@ -1040,6 +1041,67 @@
             "scopeHint": "Edits the global settings",
             "readonly": {
                 "forbidden": "Read-only environment: permission denied."
+            }
+        },
+        "claudeMd": {
+            "panelHelp": "Both files are loaded into every Claude Code session — global first, project last (project takes precedence). Subdirectory CLAUDE.md files are loaded on demand when Claude reads files there; this panel only manages the two top-level files.",
+            "userColumn": {
+                "title": "Global CLAUDE.md"
+            },
+            "projectColumn": {
+                "title": "Project CLAUDE.md"
+            },
+            "mobileTabs": "Switch CLAUDE.md scope",
+            "savedToast": "Saved.",
+            "empty": {
+                "title": "No CLAUDE.md exists yet at this location.",
+                "userHint": "Global CLAUDE.md is included in every Claude Code session across all projects.",
+                "projectHint": "Project CLAUDE.md is included in every Claude Code session for this project."
+            },
+            "create": {
+                "cta": "Create CLAUDE.md",
+                "confirmTitle": "Create empty CLAUDE.md?",
+                "confirmBody": "An empty CLAUDE.md will be created at this location. You can fill it in afterwards.",
+                "pathLabel": "Location",
+                "cancel": "Cancel",
+                "submit": "Create"
+            },
+            "staleBanner": {
+                "message": "This file changed externally. Reload from disk (your edits will be lost) or overwrite to keep your edits?",
+                "reload": "Reload",
+                "overwrite": "Overwrite"
+            },
+            "copy": {
+                "modeLabel": "Copy mode",
+                "toUser": {
+                    "label": "Copy to global",
+                    "tooltip": "Copy from project to global",
+                    "dialogTitle": "Copy → global CLAUDE.md"
+                },
+                "toProject": {
+                    "label": "Copy to project",
+                    "tooltip": "Copy from global to project",
+                    "dialogTitle": "Copy → project CLAUDE.md"
+                },
+                "mode": {
+                    "append": "Append sections (## H2 units)",
+                    "appendHint": "Pick the H2 sections to append to the end of the target file.",
+                    "overwrite": "Overwrite (destructive)",
+                    "overwriteHint": "Replace the target file entirely with the source content."
+                },
+                "noH2Banner": "The source file has no ## H2 headings, so section append is unavailable. Use overwrite or add headings first.",
+                "appendInstruction": "Select the sections to append:",
+                "alreadyExists": "already exists",
+                "overwriteWarning": "All current content of the target file will be replaced. Continue?",
+                "targetPreview": "Target preview (first 5 lines)",
+                "confirmAppend": "Append selected",
+                "confirmOverwrite": "Confirm overwrite",
+                "errors": {
+                    "noSelection": "Pick at least one section to append."
+                }
+            },
+            "error": {
+                "fileExists": "CLAUDE.md already exists at this location."
             }
         }
     },
