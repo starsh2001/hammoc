@@ -98,4 +98,36 @@ CLI 다운그레이드 시나리오 또는 응답이 다시 `'unsupported'` 로 
 
 본 spike 는 본 스토리 범위(2 파일 고정)를 변경하지 않는다 — Epic § Out of Scope 가 "CLAUDE.md 중첩 로딩 지원" 을 본 에픽 외로 명시.
 
+---
+
+## 4. Story 29.2 선행 spike — 즐겨찾기 persistence + snippetResolver 캐시 (2026-05-07)
+
+**확인 방법**: Hammoc 코드 직접 read + 구조 grep. 외부 SDK 가 아닌 Hammoc 내부 인프라이지만, Story 29.2 가 "구현 착수 전 결과를 기록" 이라 명시했으므로 본 파일에 함께 보관.
+
+### spike #1 — 즐겨찾기 데이터 persistence
+
+| 항목 | 결과 | 근거 |
+|---|---|---|
+| 필드명 | `commandFavorites` | [packages/shared/src/types/preferences.ts:31](../../packages/shared/src/types/preferences.ts#L31) |
+| 타입 | `Array<string \| CommandFavoriteEntry>` (mixed — legacy 문자열 또는 `{ command, scope?: 'project' \| 'global' }`) | [packages/shared/src/types/preferences.ts:16-19, 31](../../packages/shared/src/types/preferences.ts#L16-L31) |
+| 저장 경로 | `~/.hammoc/preferences.json` 의 단일 키 | UserPreferences 직렬화 (preferencesService) |
+| 스코프 | **유저 전역 1개 배열, 프로젝트별 격리 없음**. entry 의 `scope` 필드는 "가리키는 슬래시 커맨드의 출처 스코프" 일 뿐 entry 자체 저장 위치와는 무관 | [packages/client/src/hooks/useFavoriteCommands.ts:13-43](../../packages/client/src/hooks/useFavoriteCommands.ts#L13-L43) + [packages/client/src/stores/preferencesStore.ts:20-27](../../packages/client/src/stores/preferencesStore.ts#L20-L27) `normalizeCommandFavorites` |
+| 정렬 의미 | 배열 순서 = 칩 바 노출 순서 (선두 = 좌측 첫 번째) | `useFavoriteCommands.reorderFavorites` |
+| MAX_FAVORITES | 20 | [packages/client/src/hooks/useFavoriteCommands.ts:11](../../packages/client/src/hooks/useFavoriteCommands.ts#L11) |
+
+### spike #2 — `snippetResolver` 캐시 동작
+
+| 항목 | 결과 | 근거 |
+|---|---|---|
+| 서버 측 캐시 | **0건** — `tryResolveFromDir` (`fs.stat` + `fs.readFile` 직접 호출) 와 `scanSnippetDir` (`fs.readdir` 직접 호출) 모두 매 호출 fresh disk read. 모듈 레벨 / 클로저 캐시 grep 0건 | [packages/server/src/utils/snippetResolver.ts:113-142](../../packages/server/src/utils/snippetResolver.ts#L113-L142), [snippetResolver.ts:214-247](../../packages/server/src/utils/snippetResolver.ts#L214-L247), [snippetResolver.ts:253-275](../../packages/server/src/utils/snippetResolver.ts#L253-L275) |
+| 클라이언트 측 캐시 | `useSnippets` 가 React state `useState<SnippetItem[]>([])` 로 1회 캐시. 자동 무효화 0 — `refresh()` 명시 호출 또는 `workingDirectory` 변경 시에만 갱신 | [packages/client/src/hooks/useSnippets.ts:11-41](../../packages/client/src/hooks/useSnippets.ts#L11-L41) |
+
+### Story 29.2 본 스토리 반영
+
+- **AC1 (e) "즉시 치환" 흐름 확정**: 서버 측 추가 캐시 무효화 0건 (자연 fresh). 클라이언트 측은 SnippetPanel CRUD 후 (1) local snippetStore.load() 재호출 + (2) snippetController 가 `snippets:list` socket emit 으로 broadcast 하여 다른 컴포넌트의 `useSnippets` 가 자동 갱신.
+- **AC3 (c) 즐겨찾기 카피 0건 확정**: 즐겨찾기는 전역 1개 배열이므로 "프로젝트 ↔ 글로벌 카피" 개념이 성립 안 함 — 즐겨찾기 섹션에 카피 액션 미도입.
+- **AC1 (e) Phase 1 broadcast 범위**: mutation 을 일으킨 originSocket 한정 emit. `project:${slug}` room fan-out 은 Phase 2 (멀티-탭 동시 편집 신고 ≥ 3건 충족 시) 로 미룸.
+
+본 spike 는 외부 SDK 가 아닌 Hammoc 내부 인프라 확인이라 SDK 업스트림 행동 변경은 없음.
+
 <!-- Add new upstream issues above this line as they are discovered. -->

@@ -122,6 +122,10 @@ export const HARNESS_ERRORS = {
   HARNESS_AGENT_NAME_CONFLICT:  { code: 'HARNESS_AGENT_NAME_CONFLICT',  httpStatus: 409 },
   HARNESS_PARSE_ERROR:         { code: 'HARNESS_PARSE_ERROR',         httpStatus: 422 },
   HARNESS_WRITE_ERROR:         { code: 'HARNESS_WRITE_ERROR',         httpStatus: 500 },
+  // Story 29.2: bundled snippet scope is read-only — `create`/`update`/`delete`
+  // against `bundled` source/target are rejected with this code. `copy` from
+  // `bundled` to `project`/`user` remains allowed (one-way clone).
+  HARNESS_BUNDLED_READONLY:    { code: 'HARNESS_BUNDLED_READONLY',    httpStatus: 409 },
 } as const;
 export type HarnessErrorCode = typeof HARNESS_ERRORS[keyof typeof HARNESS_ERRORS]['code'];
 
@@ -1096,4 +1100,98 @@ export interface HarnessAgentDeleteRequest {
 
 export interface HarnessAgentDeleteResponse {
   success: true;
+}
+
+// ---------------------------------------------------------------------------
+// Story 29.2 — Snippet management (`%name%` reusable prompts)
+//
+// The snippet system is Hammoc-native (NOT a Claude Code harness primitive)
+// but reuses the same I/O patterns (mtime/STALE_WRITE/HARNESS_FILE_EXISTS),
+// so its DTOs sit alongside the harness DTOs for type-system locality.
+// ---------------------------------------------------------------------------
+
+/**
+ * Snippet scope:
+ *   - project   → `<projectRoot>/.hammoc/snippets/<name>.md`
+ *   - user      → `~/.hammoc/snippets/<name>.md`
+ *   - bundled   → server-bundled snippet directory (read-only)
+ */
+export type SnippetScope = 'project' | 'user' | 'bundled';
+
+export interface SnippetCard {
+  scope: SnippetScope;
+  name: string;
+  /** First non-empty line of the body, capped to 80 chars. */
+  preview?: string;
+  /** ISO 8601 mtime — empty string for bundled snippets that lack a stat (rare). */
+  mtime: string;
+  /** Bytes on disk. */
+  size: number;
+}
+
+export interface SnippetListResponse {
+  snippets: SnippetCard[];
+}
+
+export interface SnippetReadResponse {
+  scope: SnippetScope;
+  name: string;
+  content: string;
+  mtime: string;
+  size: number;
+  /** Resolved absolute path on disk. */
+  absolutePath: string;
+}
+
+export interface SnippetWriteRequest {
+  content: string;
+  /** Omit to force overwrite (new file creation or explicit bypass). */
+  expectedMtime?: string;
+}
+
+export interface SnippetWriteResponse {
+  success: true;
+  size: number;
+  mtime: string;
+}
+
+export interface SnippetDeleteRequest {
+  expectedMtime?: string;
+}
+
+export interface SnippetDeleteResponse {
+  success: true;
+}
+
+/**
+ * 4-direction copy matrix:
+ *   project ↔ user      → bi-directional
+ *   bundled → project   → one-way clone (bundled is read-only)
+ *   bundled → user      → one-way clone
+ *
+ * `targetName` defaults to `sourceName`. When the target file already exists
+ * the request fails with HARNESS_FILE_EXISTS unless `onConflict` is set:
+ *   - 'abort'      → 409 (default — client renders SnippetCopyConflictDialog)
+ *   - 'overwrite'  → replace target body
+ *   - 'rename'     → caller MUST supply a fresh `targetName` distinct from any existing target file
+ */
+export interface SnippetCopyRequest {
+  sourceScope: SnippetScope;
+  sourceName: string;
+  /** Required when sourceScope === 'project'. */
+  sourceProjectSlug?: string;
+  targetScope: 'project' | 'user';
+  targetName?: string;
+  /** Required when targetScope === 'project'. */
+  targetProjectSlug?: string;
+  onConflict?: 'abort' | 'overwrite' | 'rename';
+}
+
+export interface SnippetCopyResponse {
+  success: true;
+  target: {
+    scope: 'project' | 'user';
+    name: string;
+    absolutePath: string;
+  };
 }

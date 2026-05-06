@@ -161,6 +161,17 @@
       "staleWrite": "The harness file was modified on disk since you opened it. Reload to see the changes, or overwrite to keep yours.",
       "parseError": "Failed to parse YAML/JSONC source.",
       "writeError": "Harness file write error."
+    },
+    "claudeMd": {
+      "error": {
+        "fileExists": "CLAUDE.md already exists at this location."
+      }
+    },
+    "snippets": {
+      "error": {
+        "fileExists": "A snippet with this name already exists at the target location.",
+        "bundledReadOnly": "Bundled snippets are read-only. Clone to project or global scope to customize."
+      }
     }
   },
   "git": {

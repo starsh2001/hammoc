@@ -17,6 +17,7 @@ import { HookPanel } from './harness/HookPanel';
 import { CommandPanel } from './harness/CommandPanel';
 import { AgentPanel } from './harness/AgentPanel';
 import { ClaudeMdPanel } from './harness/ClaudeMdPanel';
+import { SnippetPanel } from './harness/SnippetPanel';
 import { useHarnessPluginStore } from '../../stores/harnessPluginStore';
 import { useHarnessSkillStore } from '../../stores/harnessSkillStore';
 import { useHarnessMcpStore } from '../../stores/harnessMcpStore';
@@ -24,6 +25,7 @@ import { useHarnessHookStore } from '../../stores/harnessHookStore';
 import { useHarnessCommandStore } from '../../stores/harnessCommandStore';
 import { useHarnessAgentStore } from '../../stores/harnessAgentStore';
 import { useClaudeMdStore } from '../../stores/claudeMdStore';
+import { useSnippetStore } from '../../stores/snippetStore';
 
 type HarnessSubSection =
   | 'plugins'
@@ -32,7 +34,8 @@ type HarnessSubSection =
   | 'hooks'
   | 'commands'
   | 'agents'
-  | 'claudeMd';
+  | 'claudeMd'
+  | 'snippets';
 
 const SUB_SECTIONS: readonly HarnessSubSection[] = [
   'plugins',
@@ -42,6 +45,7 @@ const SUB_SECTIONS: readonly HarnessSubSection[] = [
   'commands',
   'agents',
   'claudeMd',
+  'snippets',
 ] as const;
 
 interface Props {
@@ -66,6 +70,8 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
     // Story 29.1: prefetch both CLAUDE.md columns in parallel.
     void useClaudeMdStore.getState().load('user');
     void useClaudeMdStore.getState().load('project', projectSlug);
+    // Story 29.2: prefetch the snippet card grid for the active project.
+    void useSnippetStore.getState().load(projectSlug);
   }, [projectSlug]);
 
   return (
@@ -106,6 +112,7 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
         {active === 'commands' && <CommandPanel projectSlug={projectSlug} />}
         {active === 'agents' && <AgentPanel projectSlug={projectSlug} />}
         {active === 'claudeMd' && <ClaudeMdPanel projectSlug={projectSlug} />}
+        {active === 'snippets' && <SnippetPanel projectSlug={projectSlug} />}
       </div>
     </div>
   );

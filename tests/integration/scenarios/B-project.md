@@ -783,3 +783,129 @@
 - POST 단일 경로만 사용 — PUT-with-empty-content 우회 경로는 등장하지 않음 (서버 라우트 자체가 두 행위를 분리)
 - 이미 파일이 있는 상태에서 같은 POST 가 재호출되면 409 (`HARNESS_FILE_EXISTS`) — 이중 생성 방지 (회귀 가드)
 - 빈 상태에서도 카피 버튼은 활성 — 다른 컬럼이 채워져 있으면 카피로 초기 콘텐츠를 채워 넣는 흐름이 가능 (다만 카피 모달 안에서 PUT 가 빈 컬럼에 대해 expectedMtime 없이 진행되어 자동 생성과 동일 효과)
+
+## B13. 하네스 스니펫 / 즐겨찾기 칩 섹션 (Story 29.2)
+
+> 채팅 입력의 `%name%` 참조에 쓰이는 **스니펫** (Hammoc 고유) 과 입력창 위 칩 바에 노출되는 **즐겨찾기 슬래시 커맨드** (Claude Code) 를 한 화면에서 관리. 스니펫은 프로젝트 `.hammoc/snippets/*.md` + 사용자 전역 `~/.hammoc/snippets/*.md` + 서버 번들 3-스코프 카드 그리드로 노출되며 폼 기반 CRUD + 4-방향 카피 매트릭스를 제공. 즐겨찾기 섹션은 `useFavoriteCommands` 의 호출 사이트만 추가 — 별 표시 토글 + 드래그 reorder + ★ 추가 모달이 `~/.hammoc/preferences.json` 의 단일 전역 배열에 round-trip 되며 [FavoritesChipBar](../../packages/client/src/components/FavoritesChipBar.tsx) 가 즉시 새 순서로 리렌더. 두 시스템(`%snippet%` = Hammoc 고유, `/slash` = Claude Code 표준) 은 **시스템 배지** 로 시각 구분.
+
+### B-13-01: 카드 그리드 + 출처 배지 + 시스템 배지 + 채팅 즉시 치환 `[CORE]`
+
+**절차**:
+1. **(전제)** `<projectRoot>/.hammoc/snippets/` 미존재, `~/.hammoc/snippets/foo.md` 사전 시드 (`global foo body\n`), 서버 번들에 `commit-and-done` 사전 존재
+2. 설정 → 하네스 워크벤치 → "Snippets" 좌측 nav 클릭 → GET `/api/snippets?projectSlug=<slug>` 호출
+3. 카드 그리드 (`[data-testid^="snippet-card-"]`) 에 두 개 이상의 카드 노출 — `bundled:commit-and-done` + `user:foo` 가 각각 출처 배지 (Bundled 보라 / Global 회색) 와 함께
+4. 섹션 헤더에 시스템 배지 (`[data-testid="system-badge-hammoc"]`, label="Snippets (Hammoc)" 또는 native) + `?` 헬프 아이콘
+5. `+ New snippet` 버튼 (`[data-testid="snippet-create-cta"]`) 클릭 → `[data-testid="snippet-create-dialog"]` 모달 열림. scope=Project, name=`my-test`, content=`hello %commit-and-done%` 입력 후 `[data-testid="snippet-create-submit"]` 클릭
+6. POST `/api/snippets/project/my-test` 201 응답 → 모달 닫힘 → 카드 그리드 갱신, 새 `[data-testid="snippet-card-project-my-test"]` 카드 노출
+7. **(즉시 치환 검증)** 채팅 입력에 `%my-test%` 입력 → SDK 호출 시 서버의 `snippetResolver.resolveSnippet` 가 디스크에서 fresh read → "hello {commit-and-done body}" 로 치환되어 chat 으로 전달
+
+**기대 결과**:
+- 카드 그리드의 카드 수 = 디스크 파일 수와 동일 — dedupe 없음 (같은 이름이라도 다른 scope 면 두 카드)
+- 신규 카드는 그리드 상단에 추가되지 않고 알파벳순으로 정렬 (`localeCompare`)
+- 서버 측 추가 캐시 무효화 0건 — 새 스니펫이 디스크에 저장된 직후 다음 채팅 메시지의 `%name%` 치환에 즉시 반영 (회귀 가드)
+- 시스템 배지 색상 = 보라/인디고 계열 (Hammoc 브랜드)
+
+### B-13-02a: bundled → project 일방향 복제 `[CORE]`
+
+**절차**:
+1. **(전제)** 서버 번들에 `commit-and-done` 사전 존재, `<projectRoot>/.hammoc/snippets/` 비어 있음
+2. 카드 `bundled:commit-and-done` 의 케밥 메뉴 (`⋯`) 클릭 → "Clone to project" 액션 (`[data-testid="snippet-copy-action-bundled-commit-and-done-project"]`) 클릭
+3. POST `/api/snippets/copy` (sourceScope=bundled, targetScope=project) 200 응답 → 카드 그리드 갱신
+4. 새 `[data-testid="snippet-card-project-commit-and-done"]` 카드 노출 — 기존 bundled 카드는 그대로 유지
+
+**기대 결과**:
+- bundled 카드의 케밥 메뉴에는 "Clone to project" / "Clone to global" 두 액션만 노출 — bundled 자기 자신으로의 카피는 차단
+- 디스크 파일 `<projectRoot>/.hammoc/snippets/commit-and-done.md` 가 새로 생성되며 bundled 본문과 동일 내용
+- 이후 같은 이름 PUT 시 STALE_WRITE 가드는 project 카피본 mtime 기반 (회귀 가드)
+
+### B-13-02b: project ↔ user 양방향 카피 + 동일 이름 충돌 3 옵션 모달 `[CORE]`
+
+**절차**:
+1. **(전제)** `<projectRoot>/.hammoc/snippets/dup.md` (`project body`), `~/.hammoc/snippets/dup.md` (`user body`) 둘 다 사전 시드
+2. project 카드의 케밥 → "Copy to global" 클릭 → POST `/api/snippets/copy` 호출 → 409 HARNESS_FILE_EXISTS 응답
+3. `[data-testid="snippet-copy-conflict-dialog"]` 모달 열림 (3 옵션 라디오 노출)
+4. **케이스 A — overwrite**: `[data-testid="snippet-conflict-overwrite"]` 선택 → submit → POST `/api/snippets/copy` (onConflict=overwrite) 200 → 모달 닫힘 + global 본문이 project 본문으로 교체
+5. **케이스 B — rename**: 다시 카피 시도 → `[data-testid="snippet-conflict-rename"]` 선택 + 새 이름 `dup-from-project` 입력 → submit → POST 200 → 모달 닫힘 + 새 카드 `user:dup-from-project` 노출 (원본 `user:dup` 보존)
+6. **케이스 C — abort**: 다시 카피 시도 → `[data-testid="snippet-conflict-abort"]` 선택 → submit → 모달 닫힘 + 디스크 변경 0
+
+**기대 결과**:
+- 충돌 감지는 서버 측 — abort 가 default 라 첫 호출이 자동으로 충돌 모달을 트리거
+- rename 입력 시 NAME_RE 검증 (`[A-Za-z0-9._-]+`) — `..`, `/`, 빈 문자열, 공백, `+` 등 입력 시 인라인 에러 (`[data-testid="snippet-conflict-rename-error"]`)
+- 카피 후 카드 그리드는 자동 갱신 — broadcast 헬퍼 (`X-Hammoc-Socket-Id` 헤더) 가 origin socket 에만 새 list emit (회귀 가드)
+
+### B-13-03: 즐겨찾기 ★ 추가 모달 → 칩 바 즉시 반영 `[CORE]`
+
+**절차**:
+1. **(전제)** `~/.hammoc/preferences.json` 의 `commandFavorites` 가 빈 배열, 프로젝트의 `.claude/commands/` 에 `/foo`, `/bar`, `/baz` 사전 존재
+2. SnippetPanel 의 즐겨찾기 섹션 헤더에 시스템 배지 (`[data-testid="system-badge-claudeCode"]`) 노출, 본문은 `[data-testid="favorites-section"]` 안 빈 상태 안내
+3. `[data-testid="favorites-add-cta"]` 버튼 클릭 → `[data-testid="favorites-add-dialog"]` 모달 열림. 후보 리스트에 `/foo`, `/bar`, `/baz` 노출
+4. `[data-testid="favorite-add-foo"]` 클릭 → modal 닫힘 + preferences 갱신 (PATCH `/api/preferences`) + 즐겨찾기 섹션의 첫 행에 `/foo` 노출 (`[data-testid="favorite-row-0"]`)
+5. **(즉시 반영 검증)** 채팅 입력 화면으로 전환 → 입력창 위 [FavoritesChipBar](../../packages/client/src/components/FavoritesChipBar.tsx) 에 `/foo` 칩 즉시 노출 (세션 reload 0)
+
+**기대 결과**:
+- preferencesStore round-trip — store 의 state 변경 → FavoritesChipBar 가 같은 store 를 구독하므로 즉시 리렌더
+- 추가 후 모달의 후보 리스트가 갱신되면서 `/foo` 가 사라짐 (`isFavorite()` 로 필터링됨)
+- 새 hook/store 도입 0 — 본 스토리는 호출 사이트만 추가 (회귀 가드)
+
+### B-13-04a: 즐겨찾기 드래그 reorder → 칩 바 순서 즉시 반영 `[CORE]`
+
+**절차**:
+1. **(전제)** `commandFavorites = ['/foo', '/bar', '/baz']` 사전 시드 (3 entry)
+2. SnippetPanel 의 즐겨찾기 섹션에 3 row (`[data-testid="favorite-row-0"]` ~ `favorite-row-2`) 노출
+3. row-2 (`/baz`) 의 그립 핸들을 드래그하여 row-0 위치로 drop (`onDragStart` / `onDragOver` / `onDrop`)
+4. preferencesStore 의 reorder 호출 → debounced PATCH `/api/preferences` (commandFavorites=`['/baz', '/foo', '/bar']`) → `~/.hammoc/preferences.json` round-trip
+5. **(즉시 반영 검증)** 채팅 입력 화면으로 전환 → FavoritesChipBar 의 칩 순서가 `/baz`, `/foo`, `/bar` 로 변경
+
+**기대 결과**:
+- 드래그 시각 피드백 (`opacity-50`) 동안 다른 row 가 모두 활성 (다중 드래그 차단)
+- 모바일 (`<sm`) 폭에서는 드래그 핸들이 사라지고 chevron-up/down 버튼 (`[aria-label="Move up/down"]`) 노출 — 두 입력 모드가 동일 reorder 결과를 보장
+- 라이브러리 신규 도입 0 — HTML5 native drag/drop API 만 사용 (회귀 가드)
+
+### B-13-04b: `MAX_FAVORITES=20` 제한 차단 `[EDGE]`
+
+**절차**:
+1. **(전제)** `commandFavorites` 에 20 entry 사전 시드 (한도 도달)
+2. 즐겨찾기 섹션의 `+ Add favorite` 버튼이 disabled 상태 (`disabled` attribute) 노출
+3. 버튼을 클릭해도 `[data-testid="favorites-add-dialog"]` 모달이 열리지 않음 (또는 열리더라도 인라인 경고 `harness.snippets.favorites.maxReached` 노출)
+4. 21번째 추가 시도가 store 레이어에서 무시 — 디스크 파일에는 21번째 entry 가 추가되지 않음
+
+**기대 결과**:
+- 한도는 클라이언트 측 가드 (`MAX_FAVORITES = 20` in `useFavoriteCommands.ts`) — 서버는 별도 한도 적용 0
+- 한 entry 제거 후 다시 버튼이 활성으로 전환 (회귀 가드)
+
+### B-13-05a: `%ref%` 자기 참조 + 1-depth 순환 참조 경고 `[EDGE]`
+
+**절차**:
+1. **(전제)** `<projectRoot>/.hammoc/snippets/recursive.md` (`echo %recursive%`) 사전 시드
+2. SnippetPanel 카드 그리드의 `recursive` 카드를 열어 SnippetEditor (`[data-testid="snippet-editor"]`) 진입
+3. `[data-testid="snippet-cycle-warning"]` 인라인 경고 노출 ("This snippet references itself (%recursive%) — runtime expansion will loop.")
+4. 본문을 그대로 두고 잠시 대기 → 300ms 후 PUT `/api/snippets/project/recursive` 자동 호출 → 200 응답 (저장 차단 0)
+5. **(1-depth 순환 케이스)** `<projectRoot>/.hammoc/snippets/a.md` (`%b%`) + `<projectRoot>/.hammoc/snippets/b.md` (`%a%`) 사전 시드 → `a` 편집기에 진입 → cycleRef 경고 노출
+
+**기대 결과**:
+- 휴리스틱 차단 없음 — 저장은 성공 (Hammoc 의 자유도 존중) + 경고만 인라인 표시
+- preview 가 첫 줄만 표시하므로 본문 전체에 걸친 다중 hop 순환은 감지하지 못할 수 있음 (의도된 한계)
+- Epic § Out of Scope 가 명시한 "스니펫 lint (참조 누락 · 순환 참조) 는 Epic 30 Story 11 범위" 준수 (회귀 가드)
+
+### B-13-05b: bundled scope mutation 거부 (HARNESS_BUNDLED_READONLY 409) `[EDGE]`
+
+**절차**:
+1. 서버 번들의 `commit-and-done` 카드를 열어 SnippetEditor 진입
+2. `[data-testid="snippet-editor"]` 헤더에 read-only 안내 배지 + 본문 textarea 가 disabled
+3. 직접 PUT `/api/snippets/bundled/commit-and-done` API 를 호출 → 409 HARNESS_BUNDLED_READONLY 응답
+4. 같은 방식으로 POST / DELETE / `/copy` (targetScope=bundled) 도 모두 409 차단
+
+**기대 결과**:
+- 클라 UI 와 서버 가드가 이중 보호 (회귀 가드)
+- bundled → project / bundled → user 카피는 정상 동작 — 읽기 전용은 mutation 만 차단
+
+### B-13-05c: path traversal 거부 (NAME_RE 400/403) `[EDGE]`
+
+**절차**:
+1. **(NAME_RE 위반)** GET `/api/snippets/user/foo%2Bbar` (URL-encoded `+`) → 403 HARNESS_PATH_DENIED
+2. **(공백 포함)** POST `/api/snippets/user/foo%20bar` (URL-encoded space) → 403 HARNESS_PATH_DENIED
+3. 클라이언트의 SnippetCreate 모달에서 name 에 `..`, `/`, 빈 문자열 입력 → 인라인 에러 (POST 호출 자체가 발생하지 않음)
+
+**기대 결과**:
+- 서버 측 NAME_RE (`[A-Za-z0-9._-]+`) + `..`/`/`/`\` traversal 거부의 이중 가드 통과 (회귀 가드)
+- 디스크 파일은 항상 `<root>/.hammoc/snippets/` 안에만 생성되며 `path.resolve` 후 root 외부 path 는 reject

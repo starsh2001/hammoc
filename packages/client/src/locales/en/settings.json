@@ -326,7 +326,8 @@
                 "hooks": "Hooks",
                 "commands": "Commands",
                 "agents": "Agents",
-                "claudeMd": "CLAUDE.md"
+                "claudeMd": "CLAUDE.md",
+                "snippets": "Snippets"
             }
         },
         "skill": {
@@ -1103,6 +1104,108 @@
             },
             "error": {
                 "fileExists": "CLAUDE.md already exists at this location."
+            }
+        },
+        "snippets": {
+            "sections": {
+                "snippets": "Snippets",
+                "favorites": "Command favorites"
+            },
+            "systemBadge": {
+                "hammoc": "Snippets (Hammoc)",
+                "claudeCode": "Command Favorites (Claude Code)",
+                "hammoc.help": "Hammoc-native asset. Stored under <projectRoot>/.hammoc/snippets/, ~/.hammoc/snippets/, or the server bundle, and substituted as %name% in chat input. Claude Code CLI does NOT recognize these files.",
+                "claudeCode.help": "Stores starring + ordering metadata for Claude Code /slash commands at ~/.hammoc/preferences.json. Edit the underlying command bodies under Slash commands."
+            },
+            "scope": {
+                "project": "Project",
+                "user": "Global",
+                "bundled": "Bundled"
+            },
+            "filter": {
+                "all": "All"
+            },
+            "readOnly": "read-only",
+            "cardOpen": "Open {{name}}",
+            "create": {
+                "cta": "New snippet",
+                "title": "New snippet",
+                "scopeLabel": "Scope",
+                "nameLabel": "Name",
+                "contentLabel": "Body (optional)",
+                "submit": "Create",
+                "errors": {
+                    "nameRequired": "Name is required.",
+                    "namePattern": "Use letters, digits, dots, underscores, and hyphens only.",
+                    "nameTaken": "A snippet with this name already exists."
+                }
+            },
+            "copy": {
+                "menuLabel": "Copy actions",
+                "toUser": "Copy to global →",
+                "toProject": "Copy to project ←",
+                "conflict": {
+                    "title": "Snippet already exists at target",
+                    "description": "A snippet named \"{{name}}\" already exists in {{scope}}.",
+                    "submit": "Confirm",
+                    "overwrite": {
+                        "label": "Overwrite",
+                        "help": "Replace the target body with the source body."
+                    },
+                    "rename": {
+                        "label": "Copy with new name",
+                        "help": "Save the source body under a different name."
+                    },
+                    "abort": {
+                        "label": "Cancel copy",
+                        "help": "Leave the target unchanged."
+                    },
+                    "renameError": {
+                        "required": "Name is required.",
+                        "unchanged": "Pick a name distinct from the original.",
+                        "reserved": "Name cannot contain path separators.",
+                        "pattern": "Use letters, digits, dots, underscores, and hyphens only."
+                    }
+                }
+            },
+            "editor": {
+                "title": "Edit snippet",
+                "bodyLabel": "Body (markdown)",
+                "bodyHint": "Use %name% to reference other snippets, {arg1}/{arg2}/… for positional arguments, and {context} for the trailing context block.",
+                "bundledReadOnly": "This is a bundled snippet — clone it to project or global scope to customize.",
+                "staleBanner": "This snippet was changed externally — your save was rejected.",
+                "staleReload": "Reload",
+                "staleOverwrite": "Overwrite",
+                "savedToast": "Saved. Available via %name% in your next chat message.",
+                "warnings": {
+                    "selfRef": "This snippet references itself (%{{name}}%) — runtime expansion will loop.",
+                    "cycleRef": "Cycle: %{{name}}% references %{{ref}}% which references back."
+                },
+                "delete": {
+                    "label": "Delete snippet",
+                    "confirm": "Delete snippet \"{{name}}\"?"
+                }
+            },
+            "favorites": {
+                "addCta": "Add favorite",
+                "addTitle": "Add favorite slash command",
+                "remove": "Remove favorite",
+                "moveUp": "Move up",
+                "moveDown": "Move down",
+                "dragHandle": "Drag to reorder",
+                "rowAria": "Favorite {{command}}, position {{index}} of {{total}}. Use Arrow Up or Arrow Down to reorder.",
+                "notFound": "Not found",
+                "empty": "No favorites yet — pick frequently used /slash commands to surface them in the chip bar above the chat input.",
+                "noCandidates": "No more commands available — every visible /slash command is already starred.",
+                "maxReached": "You can star at most {{max}} commands. Remove one to add another."
+            },
+            "empty": {
+                "title": "No snippets configured.",
+                "description": "Create a snippet to expand %name% references in chat input."
+            },
+            "error": {
+                "fileExists": "A snippet with this name already exists at the target location.",
+                "bundledReadOnly": "Bundled snippets are read-only. Clone to project or global scope to customize."
             }
         }
     },

@@ -325,7 +325,8 @@
                 "hooks": "钩子",
                 "commands": "命令",
                 "agents": "代理",
-                "claudeMd": "CLAUDE.md"
+                "claudeMd": "CLAUDE.md",
+                "snippets": "代码片段"
             }
         },
         "skill": {
@@ -1045,8 +1046,12 @@
         },
         "claudeMd": {
             "panelHelp": "两个文件都会被加载到每个 Claude Code 会话中 — 全局先读，项目后读（项目优先）。子目录中的 CLAUDE.md 在 Claude 读取该目录文件时按需加载；本面板只管理两个顶层文件。",
-            "userColumn": { "title": "全局 CLAUDE.md" },
-            "projectColumn": { "title": "项目 CLAUDE.md" },
+            "userColumn": {
+                "title": "全局 CLAUDE.md"
+            },
+            "projectColumn": {
+                "title": "项目 CLAUDE.md"
+            },
             "mobileTabs": "切换 CLAUDE.md 范围",
             "savedToast": "已保存",
             "empty": {
@@ -1092,9 +1097,115 @@
                 "targetPreview": "目标预览（前 5 行）",
                 "confirmAppend": "追加所选章节",
                 "confirmOverwrite": "确认覆盖",
-                "errors": { "noSelection": "请至少选择一个章节。" }
+                "errors": {
+                    "noSelection": "请至少选择一个章节。"
+                }
             },
-            "error": { "fileExists": "此位置已存在 CLAUDE.md。" }
+            "error": {
+                "fileExists": "此位置已存在 CLAUDE.md。"
+            }
+        },
+        "snippets": {
+            "sections": {
+                "snippets": "代码片段",
+                "favorites": "命令收藏夹"
+            },
+            "systemBadge": {
+                "hammoc": "代码片段 (Hammoc)",
+                "claudeCode": "命令收藏夹 (Claude Code)",
+                "hammoc.help": "Hammoc 专属资源。保存于项目 .hammoc/snippets/、用户全局 ~/.hammoc/snippets/ 或服务器内置目录,在聊天输入中以 %name% 引用展开。Claude Code CLI 不识别这些文件。",
+                "claudeCode.help": "在 ~/.hammoc/preferences.json 中保存 Claude Code /slash 命令的星标和排序信息。芯片所指向的命令源文件请在 Slash commands 中编辑。"
+            },
+            "scope": {
+                "project": "项目",
+                "user": "全局",
+                "bundled": "内置"
+            },
+            "filter": {
+                "all": "全部"
+            },
+            "readOnly": "只读",
+            "cardOpen": "打开 {{name}}",
+            "create": {
+                "cta": "新建片段",
+                "title": "新建片段",
+                "scopeLabel": "作用域",
+                "nameLabel": "名称",
+                "contentLabel": "正文 (可选)",
+                "submit": "创建",
+                "errors": {
+                    "nameRequired": "请输入名称。",
+                    "namePattern": "仅允许字母、数字、点、下划线和连字符。",
+                    "nameTaken": "已存在同名的代码片段。"
+                }
+            },
+            "copy": {
+                "menuLabel": "复制操作",
+                "toUser": "复制到全局 →",
+                "toProject": "复制到项目 ←",
+                "conflict": {
+                    "title": "目标位置已存在同名片段",
+                    "description": "在 {{scope}} 中已存在名为 \"{{name}}\" 的片段。",
+                    "submit": "确认",
+                    "overwrite": {
+                        "label": "覆盖",
+                        "help": "用源正文替换目标正文。"
+                    },
+                    "rename": {
+                        "label": "改名复制",
+                        "help": "用其他名称保存源正文。"
+                    },
+                    "abort": {
+                        "label": "取消复制",
+                        "help": "保持目标不变。"
+                    },
+                    "renameError": {
+                        "required": "请输入名称。",
+                        "unchanged": "请使用与原名不同的名称。",
+                        "reserved": "名称不能包含路径分隔符。",
+                        "pattern": "仅允许字母、数字、点、下划线和连字符。"
+                    }
+                }
+            },
+            "editor": {
+                "title": "编辑片段",
+                "bodyLabel": "正文 (markdown)",
+                "bodyHint": "使用 %name% 引用其他片段;{arg1}/{arg2}/… 表示位置参数;{context} 表示尾部上下文块。",
+                "bundledReadOnly": "此为内置片段 — 请先克隆到项目或全局再进行自定义。",
+                "staleBanner": "该片段已被外部修改 — 您的保存被拒绝。",
+                "staleReload": "重新加载",
+                "staleOverwrite": "覆盖",
+                "savedToast": "已保存。下一条聊天消息中可通过 %name% 引用。",
+                "warnings": {
+                    "selfRef": "该片段引用了自身 (%{{name}}%) — 运行时展开会进入循环。",
+                    "cycleRef": "循环引用:%{{name}}% 引用了 %{{ref}}%,而 %{{ref}}% 又反向引用。"
+                },
+                "delete": {
+                    "label": "删除片段",
+                    "confirm": "确定删除片段 \"{{name}}\" 吗?"
+                }
+            },
+            "favorites": {
+                "addCta": "添加收藏",
+                "addTitle": "添加收藏的斜杠命令",
+                "remove": "移除收藏",
+                "moveUp": "上移",
+                "moveDown": "下移",
+                "dragHandle": "拖动以重新排序",
+                "rowAria": "收藏 {{command}},第 {{index}} 项,共 {{total}} 项。使用上下箭头键可重新排序。",
+                "notFound": "未找到",
+                "empty": "尚无收藏 — 选择常用的 /slash 命令,以在聊天输入上方的芯片栏中显示。",
+                "noCandidates": "没有更多可添加的命令 — 所有可见的 /slash 命令均已星标。",
+                "maxReached": "最多可星标 {{max}} 个命令。请先移除一个再添加。"
+            },
+            "empty": {
+                "title": "尚未配置任何片段。",
+                "description": "创建片段以在聊天输入中展开 %name% 引用。"
+            },
+            "error": {
+                "fileExists": "目标位置已存在同名片段。",
+                "bundledReadOnly": "内置片段为只读。请克隆到项目或全局再进行自定义。"
+            }
         }
     },
     "permissionMode": {

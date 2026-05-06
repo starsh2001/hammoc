@@ -325,7 +325,8 @@
                 "hooks": "Hooks",
                 "commands": "Comandos",
                 "agents": "Agentes",
-                "claudeMd": "CLAUDE.md"
+                "claudeMd": "CLAUDE.md",
+                "snippets": "Snippets"
             }
         },
         "skill": {
@@ -1045,8 +1046,12 @@
         },
         "claudeMd": {
             "panelHelp": "Ambos os arquivos são carregados em toda sessão do Claude Code — global primeiro, projeto por último (projeto tem prioridade). CLAUDE.md em subdiretórios são carregados sob demanda quando Claude lê arquivos lá; este painel só gerencia os dois arquivos de nível superior.",
-            "userColumn": { "title": "CLAUDE.md global" },
-            "projectColumn": { "title": "CLAUDE.md do projeto" },
+            "userColumn": {
+                "title": "CLAUDE.md global"
+            },
+            "projectColumn": {
+                "title": "CLAUDE.md do projeto"
+            },
             "mobileTabs": "Alternar escopo de CLAUDE.md",
             "savedToast": "Salvo",
             "empty": {
@@ -1092,9 +1097,115 @@
                 "targetPreview": "Pré-visualização do destino (primeiras 5 linhas)",
                 "confirmAppend": "Acrescentar seleção",
                 "confirmOverwrite": "Confirmar sobrescrita",
-                "errors": { "noSelection": "Selecione pelo menos uma seção." }
+                "errors": {
+                    "noSelection": "Selecione pelo menos uma seção."
+                }
             },
-            "error": { "fileExists": "Já existe um CLAUDE.md neste local." }
+            "error": {
+                "fileExists": "Já existe um CLAUDE.md neste local."
+            }
+        },
+        "snippets": {
+            "sections": {
+                "snippets": "Snippets",
+                "favorites": "Comandos favoritos"
+            },
+            "systemBadge": {
+                "hammoc": "Snippets (Hammoc)",
+                "claudeCode": "Comandos favoritos (Claude Code)",
+                "hammoc.help": "Recurso nativo do Hammoc. Armazenado em .hammoc/snippets/ do projeto, em ~/.hammoc/snippets/ do usuário ou no pacote do servidor, e substituído como %name% na entrada do chat. O Claude Code CLI NÃO reconhece esses arquivos.",
+                "claudeCode.help": "Armazena os metadados de marcação por estrela e de ordenação dos comandos /slash do Claude Code em ~/.hammoc/preferences.json. Edite o corpo original do comando na seção Slash commands."
+            },
+            "scope": {
+                "project": "Projeto",
+                "user": "Global",
+                "bundled": "Incluído"
+            },
+            "filter": {
+                "all": "Todos"
+            },
+            "readOnly": "somente leitura",
+            "cardOpen": "Abrir {{name}}",
+            "create": {
+                "cta": "Novo snippet",
+                "title": "Novo snippet",
+                "scopeLabel": "Escopo",
+                "nameLabel": "Nome",
+                "contentLabel": "Corpo (opcional)",
+                "submit": "Criar",
+                "errors": {
+                    "nameRequired": "O nome é obrigatório.",
+                    "namePattern": "Use apenas letras, dígitos, pontos, sublinhados e hifens.",
+                    "nameTaken": "Já existe um snippet com este nome."
+                }
+            },
+            "copy": {
+                "menuLabel": "Ações de cópia",
+                "toUser": "Copiar para global →",
+                "toProject": "Copiar para o projeto ←",
+                "conflict": {
+                    "title": "Já existe um snippet com este nome no destino",
+                    "description": "Já existe um snippet chamado \"{{name}}\" em {{scope}}.",
+                    "submit": "Confirmar",
+                    "overwrite": {
+                        "label": "Sobrescrever",
+                        "help": "Substituir o corpo do destino pelo corpo da origem."
+                    },
+                    "rename": {
+                        "label": "Copiar com novo nome",
+                        "help": "Salvar o corpo da origem com um nome diferente."
+                    },
+                    "abort": {
+                        "label": "Cancelar cópia",
+                        "help": "Deixar o destino inalterado."
+                    },
+                    "renameError": {
+                        "required": "O nome é obrigatório.",
+                        "unchanged": "Escolha um nome diferente do original.",
+                        "reserved": "O nome não pode conter separadores de caminho.",
+                        "pattern": "Use apenas letras, dígitos, pontos, sublinhados e hifens."
+                    }
+                }
+            },
+            "editor": {
+                "title": "Editar snippet",
+                "bodyLabel": "Corpo (markdown)",
+                "bodyHint": "Use %name% para referenciar outros snippets, {arg1}/{arg2}/… para argumentos posicionais e {context} para o bloco de contexto final.",
+                "bundledReadOnly": "Este é um snippet incluído — clone-o para o projeto ou escopo global para personalizá-lo.",
+                "staleBanner": "Este snippet foi alterado externamente — seu salvamento foi rejeitado.",
+                "staleReload": "Recarregar",
+                "staleOverwrite": "Sobrescrever",
+                "savedToast": "Salvo. Disponível via %name% na sua próxima mensagem de chat.",
+                "warnings": {
+                    "selfRef": "Este snippet referencia a si mesmo (%{{name}}%) — a expansão em tempo de execução entrará em loop.",
+                    "cycleRef": "Ciclo: %{{name}}% referencia %{{ref}}% e este referencia de volta."
+                },
+                "delete": {
+                    "label": "Excluir snippet",
+                    "confirm": "Excluir o snippet \"{{name}}\"?"
+                }
+            },
+            "favorites": {
+                "addCta": "Adicionar favorito",
+                "addTitle": "Adicionar comando slash favorito",
+                "remove": "Remover favorito",
+                "moveUp": "Mover para cima",
+                "moveDown": "Mover para baixo",
+                "dragHandle": "Arraste para reordenar",
+                "rowAria": "Favorito {{command}}, posição {{index}} de {{total}}. Use as setas Para Cima ou Para Baixo para reordenar.",
+                "notFound": "Não encontrado",
+                "empty": "Ainda não há favoritos — escolha comandos /slash usados com frequência para exibi-los na barra de chips acima do chat.",
+                "noCandidates": "Não há mais comandos disponíveis — todos os comandos /slash visíveis já estão marcados como favoritos.",
+                "maxReached": "Você pode marcar no máximo {{max}} comandos. Remova um para adicionar outro."
+            },
+            "empty": {
+                "title": "Nenhum snippet configurado.",
+                "description": "Crie um snippet para expandir referências %name% na entrada do chat."
+            },
+            "error": {
+                "fileExists": "Já existe um snippet com este nome no local de destino.",
+                "bundledReadOnly": "Snippets incluídos são somente leitura. Clone-os para o projeto ou para o escopo global para personalizá-los."
+            }
         }
     },
     "permissionMode": {

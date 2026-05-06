@@ -1948,6 +1948,11 @@ export async function initializeWebSocket(
       }
     });
 
+    // Story 29.2: re-emit `snippets:list` after a snippet CRUD so the
+    // originating client's autocomplete surfaces stay in sync without an
+    // explicit refresh round-trip. This is the same channel the existing
+    // listener above answers, so consumers don't need a new event handler.
+
     // Handle project:join/leave — room for queue event delivery (Story 15.2)
     socket.on('project:join', (projectSlug: string) => {
       socket.join(`project:${projectSlug}`);
@@ -2328,6 +2333,33 @@ export function getIO(): SocketIOServer<
     throw new Error('Socket.io not initialized');
   }
   return io;
+}
+
+/**
+ * Story 29.2 (AC1.e Phase 1): emit a fresh `snippets:list` payload to the
+ * single socket that triggered a mutation, so the originating client's
+ * SnippetPalette / useSnippets cache picks up the new state without an
+ * explicit refresh round-trip.
+ *
+ * Phase-1 limitation: only the origin socket is notified. Other tabs / browsers
+ * connected to the same project see stale data until their next user action
+ * (panel open, page reload). The Phase-2 `project:${slug}` room fan-out is
+ * deferred until ≥ 3 user reports of multi-tab divergence.
+ *
+ * Failures are swallowed — broadcast is best-effort and must not affect the
+ * REST mutation's success/failure semantics.
+ */
+export async function broadcastSnippetList(
+  workingDirectory: string | undefined,
+  originSocketId: string | undefined,
+): Promise<void> {
+  if (!workingDirectory || !originSocketId || !io) return;
+  try {
+    const snippets = await listSnippets(workingDirectory);
+    io.to(originSocketId).emit('snippets:list', { snippets });
+  } catch (err) {
+    log.warn(`broadcastSnippetList failed for socket ${originSocketId}: ${String(err)}`);
+  }
 }
 
 /**

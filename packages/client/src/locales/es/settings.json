@@ -325,7 +325,8 @@
                 "hooks": "Hooks",
                 "commands": "Comandos",
                 "agents": "Agentes",
-                "claudeMd": "CLAUDE.md"
+                "claudeMd": "CLAUDE.md",
+                "snippets": "Fragmentos"
             }
         },
         "skill": {
@@ -1045,8 +1046,12 @@
         },
         "claudeMd": {
             "panelHelp": "Ambos archivos se cargan en cada sesión de Claude Code — el global primero, el del proyecto al final (el del proyecto tiene prioridad). Los CLAUDE.md de subdirectorios se cargan bajo demanda cuando Claude lee archivos en ellos; este panel solo gestiona los dos archivos de nivel superior.",
-            "userColumn": { "title": "CLAUDE.md global" },
-            "projectColumn": { "title": "CLAUDE.md del proyecto" },
+            "userColumn": {
+                "title": "CLAUDE.md global"
+            },
+            "projectColumn": {
+                "title": "CLAUDE.md del proyecto"
+            },
             "mobileTabs": "Cambiar ámbito de CLAUDE.md",
             "savedToast": "Guardado",
             "empty": {
@@ -1092,9 +1097,115 @@
                 "targetPreview": "Vista previa del destino (primeras 5 líneas)",
                 "confirmAppend": "Anexar selección",
                 "confirmOverwrite": "Confirmar sobrescritura",
-                "errors": { "noSelection": "Selecciona al menos una sección." }
+                "errors": {
+                    "noSelection": "Selecciona al menos una sección."
+                }
             },
-            "error": { "fileExists": "Ya existe un CLAUDE.md en esta ubicación." }
+            "error": {
+                "fileExists": "Ya existe un CLAUDE.md en esta ubicación."
+            }
+        },
+        "snippets": {
+            "sections": {
+                "snippets": "Fragmentos",
+                "favorites": "Comandos favoritos"
+            },
+            "systemBadge": {
+                "hammoc": "Fragmentos (Hammoc)",
+                "claudeCode": "Comandos favoritos (Claude Code)",
+                "hammoc.help": "Recurso propio de Hammoc. Se guarda en .hammoc/snippets/ del proyecto, en ~/.hammoc/snippets/ del usuario o en el paquete del servidor, y se sustituye como %name% en la entrada del chat. Claude Code CLI NO reconoce estos archivos.",
+                "claudeCode.help": "Guarda los metadatos de marcado y ordenación de los comandos /slash de Claude Code en ~/.hammoc/preferences.json. El cuerpo original del comando se edita en la sección de Slash commands."
+            },
+            "scope": {
+                "project": "Proyecto",
+                "user": "Global",
+                "bundled": "Incluido"
+            },
+            "filter": {
+                "all": "Todos"
+            },
+            "readOnly": "solo lectura",
+            "cardOpen": "Abrir {{name}}",
+            "create": {
+                "cta": "Nuevo fragmento",
+                "title": "Nuevo fragmento",
+                "scopeLabel": "Ámbito",
+                "nameLabel": "Nombre",
+                "contentLabel": "Cuerpo (opcional)",
+                "submit": "Crear",
+                "errors": {
+                    "nameRequired": "El nombre es obligatorio.",
+                    "namePattern": "Solo se permiten letras, dígitos, puntos, guiones bajos y guiones.",
+                    "nameTaken": "Ya existe un fragmento con este nombre."
+                }
+            },
+            "copy": {
+                "menuLabel": "Acciones de copia",
+                "toUser": "Copiar a global →",
+                "toProject": "Copiar al proyecto ←",
+                "conflict": {
+                    "title": "Ya existe un fragmento con este nombre en el destino",
+                    "description": "Ya existe un fragmento llamado \"{{name}}\" en {{scope}}.",
+                    "submit": "Confirmar",
+                    "overwrite": {
+                        "label": "Sobrescribir",
+                        "help": "Reemplazar el cuerpo del destino con el del origen."
+                    },
+                    "rename": {
+                        "label": "Copiar con nuevo nombre",
+                        "help": "Guardar el cuerpo del origen con un nombre diferente."
+                    },
+                    "abort": {
+                        "label": "Cancelar copia",
+                        "help": "Dejar el destino sin cambios."
+                    },
+                    "renameError": {
+                        "required": "El nombre es obligatorio.",
+                        "unchanged": "Elija un nombre distinto del original.",
+                        "reserved": "El nombre no puede contener separadores de ruta.",
+                        "pattern": "Solo se permiten letras, dígitos, puntos, guiones bajos y guiones."
+                    }
+                }
+            },
+            "editor": {
+                "title": "Editar fragmento",
+                "bodyLabel": "Cuerpo (markdown)",
+                "bodyHint": "Use %name% para referenciar otros fragmentos, {arg1}/{arg2}/… para argumentos posicionales y {context} para el bloque de contexto final.",
+                "bundledReadOnly": "Este es un fragmento incluido — clónelo al proyecto o al ámbito global para personalizarlo.",
+                "staleBanner": "Este fragmento se modificó externamente — su guardado fue rechazado.",
+                "staleReload": "Recargar",
+                "staleOverwrite": "Sobrescribir",
+                "savedToast": "Guardado. Disponible mediante %name% en su próximo mensaje de chat.",
+                "warnings": {
+                    "selfRef": "Este fragmento se referencia a sí mismo (%{{name}}%) — la expansión en ejecución entrará en un bucle.",
+                    "cycleRef": "Ciclo: %{{name}}% referencia a %{{ref}}% y este último vuelve a referenciar."
+                },
+                "delete": {
+                    "label": "Eliminar fragmento",
+                    "confirm": "¿Eliminar el fragmento \"{{name}}\"?"
+                }
+            },
+            "favorites": {
+                "addCta": "Añadir favorito",
+                "addTitle": "Añadir comando slash favorito",
+                "remove": "Quitar favorito",
+                "moveUp": "Subir",
+                "moveDown": "Bajar",
+                "dragHandle": "Arrastrar para reordenar",
+                "rowAria": "Favorito {{command}}, posición {{index}} de {{total}}. Use las flechas Arriba o Abajo para reordenar.",
+                "notFound": "No encontrado",
+                "empty": "Aún no hay favoritos — elija comandos /slash de uso frecuente para mostrarlos en la barra de chips encima del chat.",
+                "noCandidates": "No hay más comandos disponibles — todos los comandos /slash visibles ya están marcados como favoritos.",
+                "maxReached": "Puede marcar como máximo {{max}} comandos. Quite uno para añadir otro."
+            },
+            "empty": {
+                "title": "No hay fragmentos configurados.",
+                "description": "Cree un fragmento para expandir las referencias %name% en la entrada del chat."
+            },
+            "error": {
+                "fileExists": "Ya existe un fragmento con este nombre en la ubicación de destino.",
+                "bundledReadOnly": "Los fragmentos incluidos son de solo lectura. Clónelos al proyecto o al ámbito global para personalizarlos."
+            }
         }
     },
     "permissionMode": {

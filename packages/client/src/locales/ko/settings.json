@@ -326,7 +326,8 @@
                 "hooks": "훅",
                 "commands": "커맨드",
                 "agents": "에이전트",
-                "claudeMd": "CLAUDE.md"
+                "claudeMd": "CLAUDE.md",
+                "snippets": "스니펫"
             }
         },
         "skill": {
@@ -793,10 +794,18 @@
             },
             "copy": {
                 "menuLabel": "카피 액션",
-                "toUser": { "label": "전역으로 복사 →" },
-                "toProject": { "label": "프로젝트로 복사 ←" },
-                "overrideToProject": { "label": "오버라이드로 복제 (프로젝트)" },
-                "overrideToUser": { "label": "오버라이드로 복제 (전역)" },
+                "toUser": {
+                    "label": "전역으로 복사 →"
+                },
+                "toProject": {
+                    "label": "프로젝트로 복사 ←"
+                },
+                "overrideToProject": {
+                    "label": "오버라이드로 복제 (프로젝트)"
+                },
+                "overrideToUser": {
+                    "label": "오버라이드로 복제 (전역)"
+                },
                 "secret": {
                     "title": "민감한 내용 감지됨",
                     "intro": "본문 또는 frontmatter 에 API 키 / 토큰처럼 보이는 값이 있습니다. 그래도 복사를 진행하시겠습니까?",
@@ -821,7 +830,10 @@
                     "overwriteAll": "충돌 모두 덮어쓰기",
                     "skipAll": "충돌 모두 스킵",
                     "perFile": "파일별로 결정",
-                    "perFileTable": { "file": "파일", "decision": "처리" }
+                    "perFileTable": {
+                        "file": "파일",
+                        "decision": "처리"
+                    }
                 },
                 "result": {
                     "success": "{{slashName}} 을(를) {{scope}} 로 복사했습니다.",
@@ -1092,6 +1104,108 @@
             },
             "error": {
                 "fileExists": "이 위치에 CLAUDE.md 가 이미 존재합니다."
+            }
+        },
+        "snippets": {
+            "sections": {
+                "snippets": "스니펫",
+                "favorites": "커맨드 즐겨찾기"
+            },
+            "systemBadge": {
+                "hammoc": "스니펫 (Hammoc)",
+                "claudeCode": "커맨드 즐겨찾기 (Claude Code)",
+                "hammoc.help": "Hammoc 고유 자산입니다. 프로젝트 .hammoc/snippets/, 사용자 전역 ~/.hammoc/snippets/, 또는 서버 번들에 저장되며 채팅 입력의 %name% 참조로 치환됩니다. Claude Code CLI 는 이 파일들을 인식하지 않습니다.",
+                "claudeCode.help": "Claude Code /slash 커맨드 중 별 표시한 항목의 메타데이터(별 표시 + 순서) 를 ~/.hammoc/preferences.json 에 저장합니다. 칩이 가리키는 원본 커맨드 본문은 Slash commands 섹션에서 편집하세요."
+            },
+            "scope": {
+                "project": "프로젝트",
+                "user": "전역",
+                "bundled": "번들"
+            },
+            "filter": {
+                "all": "전체"
+            },
+            "readOnly": "읽기 전용",
+            "cardOpen": "{{name}} 열기",
+            "create": {
+                "cta": "새 스니펫",
+                "title": "새 스니펫",
+                "scopeLabel": "스코프",
+                "nameLabel": "이름",
+                "contentLabel": "본문 (선택)",
+                "submit": "생성",
+                "errors": {
+                    "nameRequired": "이름을 입력하세요.",
+                    "namePattern": "영문/숫자/마침표/언더스코어/하이픈만 사용할 수 있습니다.",
+                    "nameTaken": "같은 이름의 스니펫이 이미 존재합니다."
+                }
+            },
+            "copy": {
+                "menuLabel": "카피 액션",
+                "toUser": "전역으로 카피 →",
+                "toProject": "프로젝트로 카피 ←",
+                "conflict": {
+                    "title": "대상에 같은 이름의 스니펫이 이미 존재합니다",
+                    "description": "\"{{name}}\" 스니펫이 {{scope}}에 이미 있습니다.",
+                    "submit": "확인",
+                    "overwrite": {
+                        "label": "덮어쓰기",
+                        "help": "대상 본문을 출발지 본문으로 교체합니다."
+                    },
+                    "rename": {
+                        "label": "이름 바꿠 카피",
+                        "help": "다른 이름으로 출발지 본문을 저장합니다."
+                    },
+                    "abort": {
+                        "label": "카피 취소",
+                        "help": "대상을 변경하지 않고 종료합니다."
+                    },
+                    "renameError": {
+                        "required": "이름을 입력하세요.",
+                        "unchanged": "원본과 다른 이름을 사용하세요.",
+                        "reserved": "이름에 경로 구분자를 사용할 수 없습니다.",
+                        "pattern": "영문/숫자/마침표/언더스코어/하이픈만 사용할 수 있습니다."
+                    }
+                }
+            },
+            "editor": {
+                "title": "스니펫 편집",
+                "bodyLabel": "본문 (markdown)",
+                "bodyHint": "다른 스니펫 참조는 %name%, 위치 인자는 {arg1}/{arg2}/…, 컨텍스트 블록은 {context} 로 사용합니다.",
+                "bundledReadOnly": "번들 스니펫은 읽기 전용입니다 — 프로젝트 또는 전역으로 복제한 뒤 편집하세요.",
+                "staleBanner": "이 스니펫이 외부에서 변경되어 저장이 거부되었습니다.",
+                "staleReload": "다시 불러오기",
+                "staleOverwrite": "덮어쓰기",
+                "savedToast": "저장되었습니다. 다음 채팅 입력의 %name% 참조에 즉시 반영됩니다.",
+                "warnings": {
+                    "selfRef": "이 스니펫이 자기 자신을 참조하고 있습니다 (%{{name}}%) — 실행 시 무한 루프가 발생합니다.",
+                    "cycleRef": "순환 참조: %{{name}}% 가 %{{ref}}% 를 참조하고 그 반대도 성립합니다."
+                },
+                "delete": {
+                    "label": "스니펫 삭제",
+                    "confirm": "스니펫 \"{{name}}\" 을(를) 삭제할까요?"
+                }
+            },
+            "favorites": {
+                "addCta": "즐겨찾기 추가",
+                "addTitle": "즐겨찾기 슬래시 커맨드 추가",
+                "remove": "즐겨찾기 제거",
+                "moveUp": "위로 이동",
+                "moveDown": "아래로 이동",
+                "dragHandle": "드래그로 순서 변경",
+                "rowAria": "즐겨찾기 {{command}}, {{total}}개 중 {{index}}번째. 위/아래 화살표 키로 순서를 변경할 수 있습니다.",
+                "notFound": "찾을 수 없음",
+                "empty": "즐겨찾기가 비어 있습니다 — 자주 쓰는 /slash 커맨드를 추가해 채팅 입력 위 칩 바에 노출하세요.",
+                "noCandidates": "추가 가능한 커맨드가 없습니다 — 표시되는 모든 커맨드가 이미 즐겨찾기에 등록되었습니다.",
+                "maxReached": "즐겨찾기는 최대 {{max}}개까지 등록할 수 있습니다. 기존 항목을 제거하세요."
+            },
+            "empty": {
+                "title": "등록된 스니펫이 없습니다.",
+                "description": "스니펫을 만들면 채팅 입력의 %name% 참조가 자동으로 확장됩니다."
+            },
+            "error": {
+                "fileExists": "대상 위치에 같은 이름의 스니펫이 이미 존재합니다.",
+                "bundledReadOnly": "번들 스니펫은 읽기 전용입니다. 프로젝트 또는 전역으로 복제하세요."
             }
         }
     },

@@ -325,7 +325,8 @@
                 "hooks": "フック",
                 "commands": "コマンド",
                 "agents": "エージェント",
-                "claudeMd": "CLAUDE.md"
+                "claudeMd": "CLAUDE.md",
+                "snippets": "スニペット"
             }
         },
         "skill": {
@@ -1045,8 +1046,12 @@
         },
         "claudeMd": {
             "panelHelp": "両方のファイルがすべての Claude Code セッションに読み込まれます — グローバルが先、プロジェクトが後で読み込まれ、プロジェクトが優先されます。サブディレクトリの CLAUDE.md は Claude がそのディレクトリのファイルを読み込むときにオンデマンドで読み込まれます。本パネルは最上位の 2 ファイルのみを管理します。",
-            "userColumn": { "title": "グローバル CLAUDE.md" },
-            "projectColumn": { "title": "プロジェクト CLAUDE.md" },
+            "userColumn": {
+                "title": "グローバル CLAUDE.md"
+            },
+            "projectColumn": {
+                "title": "プロジェクト CLAUDE.md"
+            },
             "mobileTabs": "CLAUDE.md スコープ切替",
             "savedToast": "保存しました",
             "empty": {
@@ -1092,9 +1097,115 @@
                 "targetPreview": "対象プレビュー (最初の 5 行)",
                 "confirmAppend": "選択セクションを追加",
                 "confirmOverwrite": "上書きを確認",
-                "errors": { "noSelection": "少なくとも 1 つのセクションを選択してください。" }
+                "errors": {
+                    "noSelection": "少なくとも 1 つのセクションを選択してください。"
+                }
             },
-            "error": { "fileExists": "この場所には CLAUDE.md が既に存在します。" }
+            "error": {
+                "fileExists": "この場所には CLAUDE.md が既に存在します。"
+            }
+        },
+        "snippets": {
+            "sections": {
+                "snippets": "スニペット",
+                "favorites": "コマンドのお気に入り"
+            },
+            "systemBadge": {
+                "hammoc": "スニペット (Hammoc)",
+                "claudeCode": "コマンドお気に入り (Claude Code)",
+                "hammoc.help": "Hammoc 固有のリソースです。プロジェクトの .hammoc/snippets/、ユーザーグローバルの ~/.hammoc/snippets/、またはサーバーバンドルに保存され、チャット入力の %name% 参照として展開されます。Claude Code CLI はこれらのファイルを認識しません。",
+                "claudeCode.help": "Claude Code の /slash コマンドのうちスター付き項目のメタデータ(スター + 並び順)を ~/.hammoc/preferences.json に保存します。チップが指すコマンド本体は Slash コマンドのセクションで編集してください。"
+            },
+            "scope": {
+                "project": "プロジェクト",
+                "user": "グローバル",
+                "bundled": "バンドル"
+            },
+            "filter": {
+                "all": "すべて"
+            },
+            "readOnly": "読み取り専用",
+            "cardOpen": "{{name}} を開く",
+            "create": {
+                "cta": "新規スニペット",
+                "title": "新規スニペット",
+                "scopeLabel": "スコープ",
+                "nameLabel": "名前",
+                "contentLabel": "本文 (任意)",
+                "submit": "作成",
+                "errors": {
+                    "nameRequired": "名前を入力してください。",
+                    "namePattern": "英字・数字・ドット・アンダースコア・ハイフンのみ使用できます。",
+                    "nameTaken": "同名のスニペットが既に存在します。"
+                }
+            },
+            "copy": {
+                "menuLabel": "コピー操作",
+                "toUser": "グローバルへコピー →",
+                "toProject": "プロジェクトへコピー ←",
+                "conflict": {
+                    "title": "対象に同名のスニペットが既に存在します",
+                    "description": "\"{{name}}\" という名前のスニペットが {{scope}} に既に存在します。",
+                    "submit": "確認",
+                    "overwrite": {
+                        "label": "上書き",
+                        "help": "対象の本文を出発側の本文で置き換えます。"
+                    },
+                    "rename": {
+                        "label": "別名でコピー",
+                        "help": "別の名前で出発側の本文を保存します。"
+                    },
+                    "abort": {
+                        "label": "コピーをキャンセル",
+                        "help": "対象を変更せずに終了します。"
+                    },
+                    "renameError": {
+                        "required": "名前を入力してください。",
+                        "unchanged": "元と異なる名前を入力してください。",
+                        "reserved": "名前にパス区切り文字を使用できません。",
+                        "pattern": "英字・数字・ドット・アンダースコア・ハイフンのみ使用できます。"
+                    }
+                }
+            },
+            "editor": {
+                "title": "スニペットを編集",
+                "bodyLabel": "本文 (markdown)",
+                "bodyHint": "他のスニペット参照は %name%、位置引数は {arg1}/{arg2}/…、コンテキストブロックは {context} を使用します。",
+                "bundledReadOnly": "バンドルスニペットは読み取り専用です — プロジェクトまたはグローバルへ複製してから編集してください。",
+                "staleBanner": "このスニペットは外部で変更されたため、保存が拒否されました。",
+                "staleReload": "再読み込み",
+                "staleOverwrite": "上書き",
+                "savedToast": "保存しました。次のチャットメッセージから %name% で利用できます。",
+                "warnings": {
+                    "selfRef": "このスニペットは自分自身を参照しています (%{{name}}%) — 実行時に無限ループします。",
+                    "cycleRef": "循環参照: %{{name}}% が %{{ref}}% を参照し、その逆も成立しています。"
+                },
+                "delete": {
+                    "label": "スニペットを削除",
+                    "confirm": "スニペット \"{{name}}\" を削除しますか?"
+                }
+            },
+            "favorites": {
+                "addCta": "お気に入りを追加",
+                "addTitle": "お気に入りスラッシュコマンドを追加",
+                "remove": "お気に入りから削除",
+                "moveUp": "上へ移動",
+                "moveDown": "下へ移動",
+                "dragHandle": "ドラッグで並び替え",
+                "rowAria": "お気に入り {{command}}、{{total}} 件中 {{index}} 番目。上下の矢印キーで並び替えできます。",
+                "notFound": "見つかりません",
+                "empty": "お気に入りはまだありません — よく使う /slash コマンドを追加してチャット入力上のチップバーに表示しましょう。",
+                "noCandidates": "追加可能なコマンドがありません — 表示中の /slash コマンドはすべてスター済みです。",
+                "maxReached": "お気に入りは最大 {{max}} 件まで登録できます。既存の項目を削除してください。"
+            },
+            "empty": {
+                "title": "登録済みのスニペットはありません。",
+                "description": "スニペットを作成すると、チャット入力の %name% 参照が展開されます。"
+            },
+            "error": {
+                "fileExists": "対象の場所に同名のスニペットが既に存在します。",
+                "bundledReadOnly": "バンドルスニペットは読み取り専用です。プロジェクトまたはグローバルへ複製してください。"
+            }
         }
     },
     "permissionMode": {
