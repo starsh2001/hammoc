@@ -185,7 +185,7 @@ export function ClaudeMdEditor({ scope, projectSlug, headerSlot, disableAutoSave
       {!column.isLoading && column.exists && (
         <div
           data-testid={`${dataTestidPrefix}-editor`}
-          className="rounded border border-gray-300 dark:border-gray-700 overflow-hidden"
+          className="rounded border border-gray-300 dark:border-gray-700 overflow-hidden [&_.cm-scroller]:!overflow-auto"
         >
           <Suspense fallback={<div className="p-3 text-xs text-gray-500">Loading editor…</div>}>
             <LazyCodeMirror

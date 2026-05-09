@@ -55,7 +55,7 @@ export function ClaudeMdPanel({ projectSlug }: Props) {
   }, [handleExternalChange, projectSlug]);
 
   const userHeader = (
-    <header className="flex items-center justify-between gap-2">
+    <header className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
       <div className="flex items-center gap-2 min-w-0">
         <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
           {t('harness.claudeMd.userColumn.title', { defaultValue: 'Global CLAUDE.md' })}
@@ -74,10 +74,10 @@ export function ClaudeMdPanel({ projectSlug }: Props) {
         title={t('harness.claudeMd.copy.toProject.tooltip', {
           defaultValue: 'Copy from global to project',
         })}
-        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
+        className="self-start sm:self-auto shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
       >
         <ArrowRight className="w-3 h-3" />
-        <span className="hidden sm:inline">
+        <span>
           {t('harness.claudeMd.copy.toProject.label', { defaultValue: 'Copy to project' })}
         </span>
       </button>
@@ -85,25 +85,8 @@ export function ClaudeMdPanel({ projectSlug }: Props) {
   );
 
   const projectHeader = (
-    <header className="flex items-center justify-between gap-2">
+    <header className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
       <div className="flex items-center gap-2 min-w-0">
-        <button
-          type="button"
-          data-testid="claude-md-copy-toUser"
-          onClick={() => setCopyDirection('toUser')}
-          title={t('harness.claudeMd.copy.toUser.tooltip', {
-            defaultValue: 'Copy from project to global',
-          })}
-          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 sm:order-last"
-        >
-          <ArrowLeft className="w-3 h-3 sm:hidden" />
-          <ArrowLeft className="w-3 h-3 hidden sm:inline" />
-          <span className="hidden sm:inline">
-            {t('harness.claudeMd.copy.toUser.label', { defaultValue: 'Copy to global' })}
-          </span>
-        </button>
-      </div>
-      <div className="flex items-center gap-2 min-w-0 flex-1 sm:order-first">
         <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
           {t('harness.claudeMd.projectColumn.title', { defaultValue: 'Project CLAUDE.md' })}
         </span>
@@ -114,6 +97,20 @@ export function ClaudeMdPanel({ projectSlug }: Props) {
           &lt;projectRoot&gt;/CLAUDE.md
         </span>
       </div>
+      <button
+        type="button"
+        data-testid="claude-md-copy-toUser"
+        onClick={() => setCopyDirection('toUser')}
+        title={t('harness.claudeMd.copy.toUser.tooltip', {
+          defaultValue: 'Copy from project to global',
+        })}
+        className="self-start sm:self-auto shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
+      >
+        <ArrowLeft className="w-3 h-3" />
+        <span>
+          {t('harness.claudeMd.copy.toUser.label', { defaultValue: 'Copy to global' })}
+        </span>
+      </button>
     </header>
   );
 
@@ -166,11 +163,23 @@ export function ClaudeMdPanel({ projectSlug }: Props) {
         </button>
       </nav>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className={mobileTab === 'user' ? 'flex-1' : 'hidden sm:flex sm:flex-1'}>
+      <div className="flex flex-col sm:flex-row gap-4 min-w-0">
+        <div
+          className={
+            mobileTab === 'user'
+              ? 'flex-1 min-w-0'
+              : 'hidden sm:flex sm:flex-1 sm:min-w-0'
+          }
+        >
           <ClaudeMdEditor scope="user" headerSlot={userHeader} />
         </div>
-        <div className={mobileTab === 'project' ? 'flex-1' : 'hidden sm:flex sm:flex-1'}>
+        <div
+          className={
+            mobileTab === 'project'
+              ? 'flex-1 min-w-0'
+              : 'hidden sm:flex sm:flex-1 sm:min-w-0'
+          }
+        >
           <ClaudeMdEditor scope="project" projectSlug={projectSlug} headerSlot={projectHeader} />
         </div>
       </div>
