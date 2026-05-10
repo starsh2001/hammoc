@@ -26,9 +26,25 @@ import { CommandEditor } from './CommandEditor';
 import { CommandCopyConflictDialog } from './CommandCopyConflictDialog';
 import { CommandDirectoryCopyDialog } from './CommandDirectoryCopyDialog';
 import { CardShareBadge } from './CardShareBadge';
+import { LintMarker } from './LintMarker';
+import { LintIssueList } from './LintIssueList';
+import { useCardLintIssues, useDomainLintIssues } from '../../../hooks/useCardLintIssues';
+import type { LintIssue } from '@hammoc/shared';
+
+function CommandLintMarker({
+  name,
+  onActivate,
+}: {
+  name: string;
+  onActivate: (issue: LintIssue) => void;
+}) {
+  const issues = useCardLintIssues('command', name);
+  return <LintMarker issues={issues} onActivate={onActivate} />;
+}
 
 interface Props {
   projectSlug: string;
+  onOpenLintPreferences?: () => void;
 }
 
 interface CopyAction {
@@ -167,7 +183,7 @@ function buildTrees(cards: HarnessCommandCard[]): ScopedTree[] {
   return Array.from(buckets.values());
 }
 
-export function CommandPanel({ projectSlug }: Props) {
+export function CommandPanel({ projectSlug, onOpenLintPreferences }: Props) {
   const { t } = useTranslation('settings');
 
   const cards = useHarnessCommandStore((s) => s.cards);
@@ -180,9 +196,17 @@ export function CommandPanel({ projectSlug }: Props) {
   const handleExternalChange = useHarnessCommandStore((s) => s.handleExternalChange);
   const notifyChanged = useHarnessCommandStore((s) => s.notifySlashCommandsChanged);
 
+  const lintIssues = useDomainLintIssues('command');
+
   const [openCard, setOpenCard] = useState<HarnessCommandCard | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [pendingCopy, setPendingCopy] = useState<CopyAction | null>(null);
+
+  const handleActivateLintIssue = (issue: LintIssue) => {
+    // Lint cardName for commands === slashName.
+    const target = cards.find((c) => c.slashName === issue.cardName);
+    if (target) setOpenCard(target);
+  };
   const [pendingConflict, setPendingConflict] = useState<{ action: CopyAction; errorMessage?: string } | null>(null);
   const [pendingDirCopy, setPendingDirCopy] = useState<{
     sourceScope: HarnessCommandSourceScope;
@@ -470,6 +494,7 @@ export function CommandPanel({ projectSlug }: Props) {
               scope={card.scope}
               relativePath={card.scope === 'project' ? `.claude/commands/${card.relativePath}` : null}
             />
+            <CommandLintMarker name={card.slashName} onActivate={handleActivateLintIssue} />
           </button>
           <div className="flex items-center gap-1">
             {(card.tokens.usesPositionalArgs || card.tokens.usesArgumentsAll) && (
@@ -568,6 +593,14 @@ export function CommandPanel({ projectSlug }: Props) {
         <div role="alert" className="rounded-md border border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/30 px-3 py-2 text-xs text-red-900 dark:text-red-100">
           {error.message}
         </div>
+      )}
+
+      {lintIssues.length > 0 && (
+        <LintIssueList
+          issues={lintIssues}
+          onActivate={handleActivateLintIssue}
+          onOpenRulePreferences={onOpenLintPreferences}
+        />
       )}
 
       {isLoading && trees.length === 0 && (

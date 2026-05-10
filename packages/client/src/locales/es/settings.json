@@ -1236,6 +1236,78 @@
                 "autoCreateSiblingNotice": "Se creará un nuevo archivo `{{path}}`.",
                 "errorMessage": "Secreto en texto plano detectado. Guardado bloqueado.",
                 "localBadgeLockTooltip": "Contiene tokens Bearer u otros valores sensibles — este archivo es local y no se incluye en git."
+            },
+            "lint": {
+                "count": {
+                    "error": "{{count}} error(es)",
+                    "warn": "{{count}} aviso(s)",
+                    "errorAndWarn": "{{error}} error · {{warn}} aviso"
+                },
+                "listTitle": "{{count}} problema(s) de lint",
+                "listEmpty": "Sin problemas de lint en esta sección.",
+                "rule": {
+                    "namingDuplicate": {
+                        "title": "Nombre duplicado entre fuentes",
+                        "description": "El mismo nombre aparece en más de un alcance (project / user / plugin) o dos veces en el mismo alcance.",
+                        "message": "«{{name}}» queda oculto en el alcance {{scope}} (activo: {{activeScope}})."
+                    },
+                    "hookMatcherRegexInvalid": {
+                        "title": "RegExp inválido en hook matcher",
+                        "description": "El campo matcher se compila como JavaScript RegExp; las expresiones inválidas nunca se disparan.",
+                        "message": "Matcher «{{matcher}}» no compila: {{reason}}"
+                    },
+                    "parseYamlJsonError": {
+                        "title": "Error de análisis",
+                        "description": "El frontmatter o JSON no se pudo analizar; la entrada queda oculta hasta que se corrija.",
+                        "message": "Análisis fallido: {{reason}}"
+                    },
+                    "mcpCommandNotOnPath": {
+                        "title": "Comando MCP no encontrado en PATH",
+                        "description": "El command del servidor MCP stdio no está en el PATH del proceso del servidor Hammoc.",
+                        "message": "El comando «{{command}}» del servidor {{name}} no se puede resolver en el PATH del servidor.",
+                        "serverPathNotice": "Esta comprobación usa el PATH del proceso del servidor Hammoc — tu sesión CLI (otra shell, contenedor, o Windows vs WSL) puede resolverlo de forma distinta. Para desactivar esta regla, abre *Reglas de lint* en la mesa de trabajo."
+                    },
+                    "mcpUrlInvalid": {
+                        "title": "URL MCP inválida",
+                        "description": "El campo url para los transportes sse / http / ws debe ser una URL analizable con un protocolo permitido (http / https / ws / wss).",
+                        "message": "La URL de {{name}} no es válida ({{reason}})."
+                    },
+                    "agentToolsNonStandard": {
+                        "title": "Herramienta no estándar en agent.tools",
+                        "description": "El nombre de herramienta no está en la lista estándar de Claude Code. La documentación oficial no clarifica si los sub-agentes pueden referenciar herramientas MCP (mcp__servidor__herramienta) directamente; por eso esta regla solo emite avisos.",
+                        "message": "La herramienta «{{tool}}» en el agente {{agent}} no está en la lista estándar — la referencia directa a herramientas MCP no está verificada, por eso aparece como aviso, nunca como error."
+                    },
+                    "hookEnvVarUndefined": {
+                        "title": "Variable de entorno no definida en hook",
+                        "description": "El command o prompt del hook referencia ${VAR} que no está definida en el process.env del servidor Hammoc.",
+                        "message": "La variable {{variable}} referenciada por el hook «{{hook}}» no está definida en el servidor Hammoc."
+                    }
+                },
+                "preferences": {
+                    "title": "Reglas de lint",
+                    "restoreDefaults": "Restaurar predeterminados",
+                    "close": "Cerrar",
+                    "toggleErrorToast": "No se pudo actualizar la regla de lint. Inténtalo de nuevo.",
+                    "disableRule": "Desactivar esta regla",
+                    "ruleLabel": {
+                        "namingDuplicate": "Nombres duplicados entre fuentes",
+                        "hookMatcherRegexInvalid": "Validez de RegExp del hook matcher",
+                        "parseYamlJsonError": "Errores de análisis YAML / JSON",
+                        "mcpCommandNotOnPath": "Comando MCP en el PATH del servidor (opt-in)",
+                        "mcpUrlInvalid": "Validez de URL MCP",
+                        "agentToolsNonStandard": "Herramienta no estándar en agent.tools",
+                        "hookEnvVarUndefined": "Variable de entorno no definida en hooks"
+                    },
+                    "ruleDescription": {
+                        "namingDuplicate": "Avisa cuando el mismo nombre se resuelve en más de un alcance o aparece dos veces en el mismo alcance.",
+                        "hookMatcherRegexInvalid": "Reporta como error cuando un hook matcher no se puede compilar como JavaScript RegExp.",
+                        "parseYamlJsonError": "Reporta como error cuando falla el análisis de frontmatter / JSON en cualquiera de los 5 dominios.",
+                        "mcpCommandNotOnPath": "Avisa cuando el command de un servidor MCP stdio no está en el PATH del servidor Hammoc. Desactivado por defecto — el PATH del servidor y de tu CLI pueden diferir legítimamente.",
+                        "mcpUrlInvalid": "Reporta como error cuando una URL de servidor sse / http / ws no se puede analizar o usa un protocolo no permitido.",
+                        "agentToolsNonStandard": "Avisa cuando un sub-agente lista una herramienta fuera del conjunto estándar. Las referencias directas a herramientas MCP siempre se muestran como aviso, nunca como error.",
+                        "hookEnvVarUndefined": "Avisa cuando una referencia ${VAR} en un command de hook no está definida en el process.env del servidor Hammoc."
+                    }
+                }
             }
         }
     },

@@ -1237,6 +1237,78 @@
                 "autoCreateSiblingNotice": "A new file `{{path}}` will be created.",
                 "errorMessage": "Plaintext secret detected. Save was blocked.",
                 "localBadgeLockTooltip": "Bearer tokens or other secrets are present — this file is local-only and is not committed to git."
+            },
+            "lint": {
+                "count": {
+                    "error": "{{count}} error",
+                    "warn": "{{count}} warn",
+                    "errorAndWarn": "{{error}} error · {{warn}} warn"
+                },
+                "listTitle": "{{count}} lint issue(s)",
+                "listEmpty": "No lint issues in this section.",
+                "rule": {
+                    "namingDuplicate": {
+                        "title": "Duplicate name across sources",
+                        "description": "The same name exists in more than one scope (project / user / plugin) or twice in the same scope.",
+                        "message": "\"{{name}}\" is shadowed in scope {{scope}} (active: {{activeScope}})."
+                    },
+                    "hookMatcherRegexInvalid": {
+                        "title": "Invalid hook matcher regex",
+                        "description": "The matcher field is parsed as a JavaScript RegExp; invalid expressions never fire.",
+                        "message": "Matcher \"{{matcher}}\" failed to compile: {{reason}}"
+                    },
+                    "parseYamlJsonError": {
+                        "title": "Parse error",
+                        "description": "Frontmatter or JSON could not be parsed; the entry is shadowed until fixed.",
+                        "message": "Parse failed: {{reason}}"
+                    },
+                    "mcpCommandNotOnPath": {
+                        "title": "MCP command not on PATH",
+                        "description": "The stdio MCP server's command was not found on the Hammoc server's PATH.",
+                        "message": "Command \"{{command}}\" for server {{name}} could not be resolved on the server PATH.",
+                        "serverPathNotice": "This check uses the Hammoc server process's PATH — your CLI shell (different shell, container, or Windows vs WSL) may resolve it differently. To turn off this rule, open Lint rules in the workbench."
+                    },
+                    "mcpUrlInvalid": {
+                        "title": "Invalid MCP URL",
+                        "description": "The url field for sse / http / ws transports must be a parseable URL with an allowed protocol (http / https / ws / wss).",
+                        "message": "URL for {{name}} is invalid ({{reason}})."
+                    },
+                    "agentToolsNonStandard": {
+                        "title": "Non-standard tool in agent.tools",
+                        "description": "The tool name is not in the standard Claude Code tool list. Whether sub-agents may reference MCP tools (mcp__server__tool) directly is not officially documented; we surface this as a warning only.",
+                        "message": "Tool \"{{tool}}\" on agent {{agent}} is not in the standard list — direct MCP-tool references are unverified, so this surfaces as a warning, never an error."
+                    },
+                    "hookEnvVarUndefined": {
+                        "title": "Undefined environment variable in hook",
+                        "description": "The hook command or prompt references ${VAR} that is not defined on the Hammoc server's process.env.",
+                        "message": "Variable {{variable}} referenced by hook \"{{hook}}\" is not set on the Hammoc server."
+                    }
+                },
+                "preferences": {
+                    "title": "Lint rules",
+                    "restoreDefaults": "Restore defaults",
+                    "close": "Close",
+                    "toggleErrorToast": "Failed to update lint rule. Please retry.",
+                    "disableRule": "Disable this rule",
+                    "ruleLabel": {
+                        "namingDuplicate": "Duplicate names across sources",
+                        "hookMatcherRegexInvalid": "Hook matcher regex validity",
+                        "parseYamlJsonError": "YAML / JSON parse errors",
+                        "mcpCommandNotOnPath": "MCP command on server PATH (opt-in)",
+                        "mcpUrlInvalid": "MCP URL validity",
+                        "agentToolsNonStandard": "Non-standard tool in agent.tools",
+                        "hookEnvVarUndefined": "Undefined env variable in hooks"
+                    },
+                    "ruleDescription": {
+                        "namingDuplicate": "Warn when the same name resolves to more than one scope or appears twice in the same scope.",
+                        "hookMatcherRegexInvalid": "Error when a hook matcher cannot be compiled as a JavaScript RegExp.",
+                        "parseYamlJsonError": "Error when frontmatter / JSON parsing failed in any of the 5 harness domains.",
+                        "mcpCommandNotOnPath": "Warn when an MCP stdio server's command is not on the Hammoc server's PATH. Off by default — Hammoc server PATH and your CLI PATH may legitimately differ.",
+                        "mcpUrlInvalid": "Error when a sse / http / ws server's URL cannot be parsed or uses a disallowed protocol.",
+                        "agentToolsNonStandard": "Warn when a sub-agent lists a tool name outside the standard set. Direct MCP-tool references are surfaced as warnings, never errors.",
+                        "hookEnvVarUndefined": "Warn when a ${VAR} reference in a hook command is not defined on the Hammoc server's process.env."
+                    }
+                }
             }
         }
     },

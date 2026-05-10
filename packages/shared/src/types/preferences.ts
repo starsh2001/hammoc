@@ -4,6 +4,7 @@
  */
 
 import type { PermissionMode, ThinkingEffort } from './sdk.js';
+import type { LintRuleId } from './harness.js';
 
 /** Supported i18n languages (Epic 22) */
 export const SUPPORTED_LANGUAGES = ['en', 'ko', 'zh-CN', 'ja', 'es', 'pt'] as const;
@@ -63,6 +64,10 @@ export interface UserPreferences {
   // File checkpointing (enables rewind/restore of file changes)
   enableChatCheckpointing?: boolean;   // default: true (browser chat sessions)
   enableQueueCheckpointing?: boolean;  // default: false (queue runner — can increase JSONL size)
+  // Story 30.2 — per-rule on/off toggles for the static harness lint.
+  // Keys absent from disk fall back to LINT_RULE_DEFAULTS (mcp/command-not-on-path
+  // is opt-in OFF; the other six rules default ON).
+  harnessLintRules?: Partial<Record<LintRuleId, boolean>>;
 }
 
 /** Controls when permission mode changes are broadcast to other browsers viewing the same session */

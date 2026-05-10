@@ -981,3 +981,60 @@
 
 <!-- T-domain migration trigger: re-evaluate after Story 30.2 (B15) and Story 30.3 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
 
+## B15. 정적 하네스 Lint (Story 30.2) `[EDGE]`
+
+**대상 동작**: 프로젝트 설정 → 하네스 워크벤치의 5 sub-section (skills / mcps / hooks / commands / agents) 에 7가지 정적 lint 규칙이 자동 평가되어 (1) sub-section nav 라벨 옆에 경고 / 에러 카운트 배지, (2) 카드 헤더 인라인 마커, (3) 워크벤치 메타 라인의 *"Lint 규칙"* 진입점에서 규칙별 on/off, (4) 와처 발화 시 300ms debounce 후 자동 재계산이 동작하는지 검증.
+
+### B-15-01: 7 규칙 각각이 의도한 입력에서 1회 발화 `[EDGE]`
+
+**시나리오**:
+- 픽스처 프로젝트의 `.claude/` 트리에 7 규칙 각각을 위반하는 항목 1개씩 배치 (skill 동일 이름 user/project 양쪽 / hook matcher `(unclosed` / 깨진 yaml frontmatter agent / `.mcp.json` stdio command `no-such-bin` / `.mcp.json` http url `not a url` / agent.tools `["mcp__custom__tool"]` / hook command `${UNDEFINED_VAR}`)
+- 모든 lint 규칙을 ON 으로 설정 후 워크벤치 진입
+
+**기대 결과**:
+- `GET /api/harness/lint` 응답의 `issues` 배열에 7건 (또는 그 이상의 분기 케이스) 발화
+- 각 sub-section nav 의 카운트 배지 합계 = 해당 도메인의 (error, warn) 합
+- `mcp/url-invalid` · `hook/matcher-regex-invalid` · `parse/yaml-json-error` 는 severity = `error` (red), 나머지는 `warn` (amber)
+
+### B-15-02: 카드 인라인 마커 hover/click `[EDGE]`
+
+**시나리오**:
+- B-15-01 의 픽스처에서 mcp 패널 진입 → 카드 헤더의 `LintMarker` hover 후 클릭
+
+**기대 결과**:
+- hover / keyboard focus 양쪽에서 `role="tooltip"` + `aria-describedby` 로 첫 이슈의 규칙 title + message 노출
+- 클릭 시 매칭 카드의 **에디터 모달이 open** — 5 패널에는 인라인 expand state 가 존재하지 않으므로 본 시나리오의 *"카드 expand"* 는 *"카드 에디터 모달 open"* 으로 해석. 필드 dot-path 까지의 per-field focus 는 후속 스토리 확장 항목
+
+### B-15-03: 규칙 토글 → 카운트 즉시 반영 + 영속화 `[EDGE]`
+
+**시나리오**:
+1. 워크벤치 메타 라인의 *"Lint 규칙"* 버튼 클릭 → `LintRulePreferencesDialog` open
+2. `mcp/command-not-on-path` 토글을 ON 으로 변경 (디폴트 OFF)
+3. mcp 카운트 배지 변화 관찰 후 페이지 새로고침
+
+**기대 결과**:
+- 토글 즉시 mcp 섹션 카운트 배지에 warn 추가 노출 (`no-such-bin` 케이스가 잡힘)
+- `~/.hammoc/preferences.json` 에 `harnessLintRules: { "mcp/command-not-on-path": true }` 영속화
+- 새로고침 후에도 토글 ON 유지 + 카운트 배지 그대로 노출
+
+### B-15-04: `.mcp.json` 외부 변경 → 와처 트리거 → debounce 재계산 `[EDGE]`
+
+**시나리오**:
+- Playwright 가 `fs.writeFile` 로 `.mcp.json` 의 `mcpServers.remote.url` 을 valid → invalid 로 직접 변경
+- `waitForFunction` 으로 카운트 변화 대기 (chokidar awaitWriteFinish 200ms + 클라 debounce 300ms = 명목 500ms, 안전 margin 1500ms)
+
+**기대 결과**:
+- "sleep 후 단언" 패턴 금지 — store state 가 새 issue 를 갖는 것을 직접 확인
+- mcp 섹션 카운트 배지에 error +1 (mcp/url-invalid 발화)
+
+### B-15-05: MCP PATH 안내 툴팁 + AC4 진입점 CTA `[EDGE]`
+
+**시나리오**:
+1. `mcp/command-not-on-path` 규칙 ON 상태에서 mcp 카드의 LintMarker hover/focus → 툴팁 안내 노출 확인
+2. 동일 도메인의 `LintIssueList` 행에 표시되는 *"이 규칙 끄기"* (`harness.tools.lint.preferences.disableRule`) CTA 클릭 → `LintRulePreferencesDialog` open 확인 (단일 진입점)
+
+**기대 결과**:
+- 툴팁이 hover 와 keyboard focus 양쪽에서 발화 (a11y 가드: `role="tooltip"` + `aria-describedby` 파리티)
+- 안내 본문에 *"Hammoc 서버 프로세스의 PATH 기준입니다 — 유저 CLI 세션과 일치하지 않을 수 있습니다"* 가 i18n 키 `harness.tools.lint.rule.mcpCommandNotOnPath.serverPathNotice` 로 표시
+- *"이 규칙 끄기"* CTA 클릭 시 `LintRulePreferencesDialog` 가 열려 해당 규칙 토글이 즉시 가능
+

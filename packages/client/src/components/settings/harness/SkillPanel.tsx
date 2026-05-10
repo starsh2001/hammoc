@@ -26,9 +26,25 @@ import { ApiError } from '../../../services/api/client';
 import { SkillEditor } from './SkillEditor';
 import { SkillCopyConflictDialog } from './SkillCopyConflictDialog';
 import { CardShareBadge } from './CardShareBadge';
+import { LintMarker } from './LintMarker';
+import { LintIssueList } from './LintIssueList';
+import { useCardLintIssues, useDomainLintIssues } from '../../../hooks/useCardLintIssues';
+import type { LintIssue } from '@hammoc/shared';
+
+function SkillLintMarker({
+  name,
+  onActivate,
+}: {
+  name: string;
+  onActivate: (issue: LintIssue) => void;
+}) {
+  const issues = useCardLintIssues('skill', name);
+  return <LintMarker issues={issues} onActivate={onActivate} />;
+}
 
 interface Props {
   projectSlug: string;
+  onOpenLintPreferences?: () => void;
 }
 
 interface CopyMenuAction {
@@ -87,7 +103,7 @@ function buildCopyActions(card: HarnessSkillCard, projectSlug: string): CopyMenu
   return actions;
 }
 
-export function SkillPanel({ projectSlug }: Props) {
+export function SkillPanel({ projectSlug, onOpenLintPreferences }: Props) {
   const { t } = useTranslation('settings');
 
   const cards = useHarnessSkillStore((s) => s.cards);
@@ -98,10 +114,17 @@ export function SkillPanel({ projectSlug }: Props) {
   const copy = useHarnessSkillStore((s) => s.copy);
   const handleExternalChange = useHarnessSkillStore((s) => s.handleExternalChange);
 
+  const lintIssues = useDomainLintIssues('skill');
+
   const [openCard, setOpenCard] = useState<HarnessSkillCard | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [conflictAction, setConflictAction] = useState<CopyMenuAction | null>(null);
   const [copyError, setCopyError] = useState<string | null>(null);
+
+  const handleActivateLintIssue = (issue: LintIssue) => {
+    const target = cards.find((c) => c.name === issue.cardName);
+    if (target) setOpenCard(target);
+  };
 
   useEffect(() => {
     // Keep cached cards alive after this panel unmounts so re-entering the
@@ -208,6 +231,14 @@ export function SkillPanel({ projectSlug }: Props) {
         </div>
       )}
 
+      {lintIssues.length > 0 && (
+        <LintIssueList
+          issues={lintIssues}
+          onActivate={handleActivateLintIssue}
+          onOpenRulePreferences={onOpenLintPreferences}
+        />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {cards.map((card, idx) => {
           const actions = buildCopyActions(card, projectSlug);
@@ -277,6 +308,7 @@ export function SkillPanel({ projectSlug }: Props) {
                     relativePath={`.claude/skills/${card.name}/SKILL.md`}
                   />
                 )}
+                <SkillLintMarker name={card.name} onActivate={handleActivateLintIssue} />
                 {card.version && (
                   <span className="text-gray-500 dark:text-gray-400 font-mono">{card.version}</span>
                 )}

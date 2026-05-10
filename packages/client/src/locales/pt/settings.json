@@ -1236,6 +1236,78 @@
                 "autoCreateSiblingNotice": "Um novo arquivo `{{path}}` será criado.",
                 "errorMessage": "Segredo em texto puro detectado. Salvamento bloqueado.",
                 "localBadgeLockTooltip": "Contém tokens Bearer ou outros valores sensíveis — este arquivo é local e não é incluído no git."
+            },
+            "lint": {
+                "count": {
+                    "error": "{{count}} erro(s)",
+                    "warn": "{{count}} aviso(s)",
+                    "errorAndWarn": "{{error}} erro · {{warn}} aviso"
+                },
+                "listTitle": "{{count}} problema(s) de lint",
+                "listEmpty": "Nenhum problema de lint nesta seção.",
+                "rule": {
+                    "namingDuplicate": {
+                        "title": "Nome duplicado entre fontes",
+                        "description": "O mesmo nome existe em mais de um escopo (project / user / plugin) ou duas vezes no mesmo escopo.",
+                        "message": "«{{name}}» fica oculto no escopo {{scope}} (ativo: {{activeScope}})."
+                    },
+                    "hookMatcherRegexInvalid": {
+                        "title": "RegExp inválido no hook matcher",
+                        "description": "O campo matcher é compilado como JavaScript RegExp; expressões inválidas nunca disparam.",
+                        "message": "Matcher «{{matcher}}» falhou ao compilar: {{reason}}"
+                    },
+                    "parseYamlJsonError": {
+                        "title": "Erro de análise",
+                        "description": "Frontmatter ou JSON não pôde ser analisado; a entrada fica oculta até ser corrigida.",
+                        "message": "Análise falhou: {{reason}}"
+                    },
+                    "mcpCommandNotOnPath": {
+                        "title": "Comando MCP não está no PATH",
+                        "description": "O command do servidor MCP stdio não foi encontrado no PATH do processo do servidor Hammoc.",
+                        "message": "Comando «{{command}}» do servidor {{name}} não pôde ser resolvido no PATH do servidor.",
+                        "serverPathNotice": "Esta verificação usa o PATH do processo do servidor Hammoc — sua sessão CLI (outra shell, contêiner, ou Windows vs WSL) pode resolvê-lo de forma diferente. Para desativar esta regra, abra *Regras de lint* na bancada de trabalho."
+                    },
+                    "mcpUrlInvalid": {
+                        "title": "URL MCP inválida",
+                        "description": "O campo url para os transportes sse / http / ws deve ser uma URL analisável com protocolo permitido (http / https / ws / wss).",
+                        "message": "A URL de {{name}} é inválida ({{reason}})."
+                    },
+                    "agentToolsNonStandard": {
+                        "title": "Ferramenta não padrão em agent.tools",
+                        "description": "O nome da ferramenta não está na lista padrão do Claude Code. A documentação oficial não esclarece se sub-agentes podem referenciar ferramentas MCP (mcp__servidor__ferramenta) diretamente; por isso esta regra apenas avisa.",
+                        "message": "A ferramenta «{{tool}}» no agente {{agent}} não está na lista padrão — referência direta a ferramentas MCP não é verificada, por isso aparece como aviso, nunca como erro."
+                    },
+                    "hookEnvVarUndefined": {
+                        "title": "Variável de ambiente não definida em hook",
+                        "description": "O command ou prompt do hook referencia ${VAR} que não está definida no process.env do servidor Hammoc.",
+                        "message": "A variável {{variable}} referenciada pelo hook «{{hook}}» não está definida no servidor Hammoc."
+                    }
+                },
+                "preferences": {
+                    "title": "Regras de lint",
+                    "restoreDefaults": "Restaurar padrões",
+                    "close": "Fechar",
+                    "toggleErrorToast": "Falha ao atualizar a regra de lint. Tente novamente.",
+                    "disableRule": "Desativar esta regra",
+                    "ruleLabel": {
+                        "namingDuplicate": "Nomes duplicados entre fontes",
+                        "hookMatcherRegexInvalid": "Validade de RegExp do hook matcher",
+                        "parseYamlJsonError": "Erros de análise YAML / JSON",
+                        "mcpCommandNotOnPath": "Comando MCP no PATH do servidor (opt-in)",
+                        "mcpUrlInvalid": "Validade de URL MCP",
+                        "agentToolsNonStandard": "Ferramenta não padrão em agent.tools",
+                        "hookEnvVarUndefined": "Variável de ambiente não definida em hooks"
+                    },
+                    "ruleDescription": {
+                        "namingDuplicate": "Avisa quando o mesmo nome se resolve em mais de um escopo ou aparece duas vezes no mesmo escopo.",
+                        "hookMatcherRegexInvalid": "Reporta como erro quando um hook matcher não pode ser compilado como JavaScript RegExp.",
+                        "parseYamlJsonError": "Reporta como erro quando a análise de frontmatter / JSON falhou em qualquer um dos 5 domínios.",
+                        "mcpCommandNotOnPath": "Avisa quando o command de um servidor MCP stdio não está no PATH do servidor Hammoc. Desativado por padrão — o PATH do servidor e de sua CLI podem diferir legitimamente.",
+                        "mcpUrlInvalid": "Reporta como erro quando uma URL de servidor sse / http / ws não pode ser analisada ou usa um protocolo não permitido.",
+                        "agentToolsNonStandard": "Avisa quando um sub-agente lista uma ferramenta fora do conjunto padrão. Referências diretas a ferramentas MCP sempre aparecem como aviso, nunca como erro.",
+                        "hookEnvVarUndefined": "Avisa quando uma referência ${VAR} em um command de hook não está definida no process.env do servidor Hammoc."
+                    }
+                }
             }
         }
     },

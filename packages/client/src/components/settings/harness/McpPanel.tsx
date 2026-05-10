@@ -34,9 +34,25 @@ import { McpEditor } from './McpEditor';
 import { McpCopyConflictDialog } from './McpCopyConflictDialog';
 import { McpSecretConfirmDialog } from './McpSecretConfirmDialog';
 import { CardShareBadge } from './CardShareBadge';
+import { LintMarker } from './LintMarker';
+import { LintIssueList } from './LintIssueList';
+import { useCardLintIssues, useDomainLintIssues } from '../../../hooks/useCardLintIssues';
+import type { LintIssue } from '@hammoc/shared';
+
+function McpLintMarker({
+  name,
+  onActivate,
+}: {
+  name: string;
+  onActivate: (issue: LintIssue) => void;
+}) {
+  const issues = useCardLintIssues('mcp', name);
+  return <LintMarker issues={issues} onActivate={onActivate} />;
+}
 
 interface Props {
   projectSlug: string;
+  onOpenLintPreferences?: () => void;
 }
 
 interface CopyMenuAction {
@@ -129,7 +145,7 @@ function buildCopyActions(card: HarnessMcpCard, projectSlug: string): CopyMenuAc
   return actions;
 }
 
-export function McpPanel({ projectSlug }: Props) {
+export function McpPanel({ projectSlug, onOpenLintPreferences }: Props) {
   const { t } = useTranslation('settings');
   const navigate = useNavigate();
 
@@ -145,6 +161,8 @@ export function McpPanel({ projectSlug }: Props) {
   const dismissBanner = useHarnessMcpStore((s) => s.dismissBanner);
   const handleExternalChange = useHarnessMcpStore((s) => s.handleExternalChange);
 
+  const lintIssues = useDomainLintIssues('mcp');
+
   const [openCard, setOpenCard] = useState<HarnessMcpCard | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<CopyMenuAction | null>(null);
@@ -153,6 +171,11 @@ export function McpPanel({ projectSlug }: Props) {
   const [acknowledgedSecret, setAcknowledgedSecret] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
   const [pluginRootWarning, setPluginRootWarning] = useState<string | null>(null);
+
+  const handleActivateLintIssue = (issue: LintIssue) => {
+    const target = cards.find((c) => c.name === issue.cardName);
+    if (target) setOpenCard(target);
+  };
 
   useEffect(() => {
     // Keep cached cards alive after this panel unmounts so re-entering the
@@ -379,6 +402,14 @@ export function McpPanel({ projectSlug }: Props) {
         </div>
       )}
 
+      {lintIssues.length > 0 && (
+        <LintIssueList
+          issues={lintIssues}
+          onActivate={handleActivateLintIssue}
+          onOpenRulePreferences={onOpenLintPreferences}
+        />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {cards.map((card) => {
           const actions = buildCopyActions(card, projectSlug);
@@ -466,6 +497,7 @@ export function McpPanel({ projectSlug }: Props) {
                     relativePath=".mcp.json"
                   />
                 )}
+                <McpLintMarker name={card.name} onActivate={handleActivateLintIssue} />
                 <TypeBadge type={card.activeType} />
                 {card.sources.some((s) => s.disabledByBackup) && !card.enabled && (
                   <span className="text-[10px] text-gray-500 dark:text-gray-400 italic">

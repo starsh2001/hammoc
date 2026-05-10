@@ -1237,6 +1237,78 @@
                 "autoCreateSiblingNotice": "새 파일 `{{path}}` 이 생성됩니다.",
                 "errorMessage": "평문 시크릿이 감지되어 저장이 차단되었습니다.",
                 "localBadgeLockTooltip": "Bearer 토큰 등이 포함되어 있습니다 — 로컬 파일이라 git 에 포함되지 않습니다."
+            },
+            "lint": {
+                "count": {
+                    "error": "에러 {{count}}건",
+                    "warn": "경고 {{count}}건",
+                    "errorAndWarn": "에러 {{error}} · 경고 {{warn}}"
+                },
+                "listTitle": "Lint 이슈 {{count}}건",
+                "listEmpty": "이 섹션에는 lint 이슈가 없습니다.",
+                "rule": {
+                    "namingDuplicate": {
+                        "title": "여러 소스에 같은 이름이 중복",
+                        "description": "동일한 이름이 여러 스코프(project / user / plugin)에 있거나 같은 스코프에 두 번 등장합니다.",
+                        "message": "\"{{name}}\" 이 {{scope}} 스코프에서 가려져 있습니다 (활성: {{activeScope}})."
+                    },
+                    "hookMatcherRegexInvalid": {
+                        "title": "훅 matcher 정규식 오류",
+                        "description": "matcher 필드는 JavaScript RegExp 로 컴파일됩니다. 잘못된 식은 절대 발화하지 않습니다.",
+                        "message": "Matcher \"{{matcher}}\" 컴파일 실패: {{reason}}"
+                    },
+                    "parseYamlJsonError": {
+                        "title": "파싱 오류",
+                        "description": "프론트매터 또는 JSON 파싱이 실패해 항목이 가려져 있습니다.",
+                        "message": "파싱 실패: {{reason}}"
+                    },
+                    "mcpCommandNotOnPath": {
+                        "title": "MCP 커맨드가 PATH 에 없음",
+                        "description": "stdio MCP 서버의 command 가 Hammoc 서버 PATH 에서 발견되지 않습니다.",
+                        "message": "{{name}} 서버의 command \"{{command}}\" 이 서버 PATH 에서 해석되지 않습니다.",
+                        "serverPathNotice": "이 검사는 Hammoc 서버 프로세스의 PATH 기준입니다 — 유저 CLI 세션(다른 쉘·컨테이너·Windows vs WSL)과 일치하지 않을 수 있습니다. 이 규칙을 끄려면 워크벤치의 *Lint 규칙* 에서 비활성화하세요."
+                    },
+                    "mcpUrlInvalid": {
+                        "title": "MCP URL 오류",
+                        "description": "sse / http / ws 전송의 url 필드는 파싱 가능한 URL 이어야 하고 허용 프로토콜(http / https / ws / wss)이어야 합니다.",
+                        "message": "{{name}} 의 URL 이 유효하지 않습니다 ({{reason}})."
+                    },
+                    "agentToolsNonStandard": {
+                        "title": "agent.tools 의 비표준 도구",
+                        "description": "표준 Claude Code 도구 목록에 없는 이름입니다. 서브에이전트가 MCP 도구(mcp__server__tool)를 직접 참조할 수 있는지는 공식 문서에 명시되어 있지 않아 본 규칙은 경고만 발화합니다.",
+                        "message": "에이전트 {{agent}} 의 \"{{tool}}\" 은 표준 도구 목록에 없습니다 — MCP 도구 직접 참조의 공식 지원 여부가 불확실하여 warn 으로만 표시됩니다."
+                    },
+                    "hookEnvVarUndefined": {
+                        "title": "훅의 미정의 환경변수",
+                        "description": "훅 command 또는 prompt 의 ${VAR} 참조가 Hammoc 서버 process.env 에 정의되어 있지 않습니다.",
+                        "message": "훅 \"{{hook}}\" 이 참조하는 변수 {{variable}} 이 Hammoc 서버에 설정되어 있지 않습니다."
+                    }
+                },
+                "preferences": {
+                    "title": "Lint 규칙",
+                    "restoreDefaults": "기본값 복원",
+                    "close": "닫기",
+                    "toggleErrorToast": "Lint 규칙 변경에 실패했습니다. 다시 시도해주세요.",
+                    "disableRule": "이 규칙 끄기",
+                    "ruleLabel": {
+                        "namingDuplicate": "여러 소스 간 이름 중복",
+                        "hookMatcherRegexInvalid": "훅 matcher 정규식 유효성",
+                        "parseYamlJsonError": "YAML / JSON 파싱 오류",
+                        "mcpCommandNotOnPath": "MCP 커맨드가 서버 PATH 에 있는지 (opt-in)",
+                        "mcpUrlInvalid": "MCP URL 유효성",
+                        "agentToolsNonStandard": "agent.tools 의 비표준 도구",
+                        "hookEnvVarUndefined": "훅의 미정의 환경변수"
+                    },
+                    "ruleDescription": {
+                        "namingDuplicate": "동일한 이름이 여러 스코프에 있거나 같은 스코프에 중복으로 등장하면 경고합니다.",
+                        "hookMatcherRegexInvalid": "훅 matcher 가 JavaScript RegExp 로 컴파일되지 않으면 에러로 표시합니다.",
+                        "parseYamlJsonError": "5 도메인의 프론트매터·JSON 파싱이 실패한 경우 에러로 표시합니다.",
+                        "mcpCommandNotOnPath": "stdio MCP 서버의 command 가 Hammoc 서버 PATH 에 없을 때 경고합니다. 디폴트 OFF — 서버 PATH 와 유저 CLI PATH 가 다를 수 있어 false-positive 가능성이 있습니다.",
+                        "mcpUrlInvalid": "sse / http / ws 서버의 URL 이 파싱되지 않거나 허용되지 않은 프로토콜일 때 에러로 표시합니다.",
+                        "agentToolsNonStandard": "서브에이전트의 tools 에 표준 도구 외 이름이 있으면 경고합니다. MCP 도구 직접 참조는 항상 warn 으로만 표시되며 error 차단은 하지 않습니다.",
+                        "hookEnvVarUndefined": "훅 command 의 ${VAR} 참조가 Hammoc 서버 process.env 에 없을 때 경고합니다."
+                    }
+                }
             }
         }
     },

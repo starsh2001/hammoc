@@ -44,6 +44,7 @@
 - B12. 하네스 CLAUDE.md 편집기 섹션 (Story 29.1) `[CORE] [EDGE]`
 - B13. 하네스 스니펫 / 즐겨찾기 칩 섹션 (Story 29.2) `[CORE] [EDGE]`
 - B14. 하네스 공유/로컬 배지 + Mode 배너 + 시크릿 차단 (Story 30.1) `[EDGE]` <!-- T-domain migration trigger: re-evaluate after Story 30.2 (B15) and Story 30.3 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
+- B15. 정적 하네스 Lint (Story 30.2) `[EDGE]` <!-- T-domain migration trigger: re-evaluate after Story 30.3 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
 
 ### C. 채팅 · 세션 ★ SDK 핵심
 - C1. 새 세션 시작 · 첫 메시지 송신 `[CORE] [SDK] [ASYNC]`

@@ -1236,6 +1236,78 @@
                 "autoCreateSiblingNotice": "新しいファイル `{{path}}` が作成されます。",
                 "errorMessage": "平文のシークレットが検出されたため保存をブロックしました。",
                 "localBadgeLockTooltip": "Bearer トークンなどが含まれています — ローカルファイルなので git には含まれません。"
+            },
+            "lint": {
+                "count": {
+                    "error": "エラー {{count}} 件",
+                    "warn": "警告 {{count}} 件",
+                    "errorAndWarn": "エラー {{error}} · 警告 {{warn}}"
+                },
+                "listTitle": "Lint 問題 {{count}} 件",
+                "listEmpty": "このセクションには lint 問題はありません。",
+                "rule": {
+                    "namingDuplicate": {
+                        "title": "複数のソースで名前が重複",
+                        "description": "同じ名前が複数のスコープ（project / user / plugin）にあるか、同一スコープ内で 2 回登場します。",
+                        "message": "「{{name}}」 はスコープ {{scope}} で隠されています（アクティブ：{{activeScope}}）。"
+                    },
+                    "hookMatcherRegexInvalid": {
+                        "title": "フック matcher 正規表現エラー",
+                        "description": "matcher は JavaScript RegExp としてコンパイルされます。無効な式は決して発火しません。",
+                        "message": "Matcher 「{{matcher}}」 のコンパイル失敗：{{reason}}"
+                    },
+                    "parseYamlJsonError": {
+                        "title": "パース エラー",
+                        "description": "フロントマターまたは JSON のパースに失敗し、エントリは隠されています。",
+                        "message": "パース失敗：{{reason}}"
+                    },
+                    "mcpCommandNotOnPath": {
+                        "title": "MCP コマンドが PATH 上にない",
+                        "description": "stdio MCP サーバーの command が Hammoc サーバー PATH で見つかりません。",
+                        "message": "{{name}} サーバーの command 「{{command}}」 がサーバー PATH で解決できません。",
+                        "serverPathNotice": "このチェックは Hammoc サーバープロセスの PATH を基準にしています — ユーザー CLI セッション（別シェル・コンテナ・Windows vs WSL）と一致しない場合があります。このルールを無効化するには、ワークベンチの *Lint ルール* から切り替えてください。"
+                    },
+                    "mcpUrlInvalid": {
+                        "title": "MCP URL が無効",
+                        "description": "sse / http / ws トランスポートの url はパース可能で、許可されたプロトコル（http / https / ws / wss）でなければなりません。",
+                        "message": "{{name}} の URL が無効です（{{reason}}）。"
+                    },
+                    "agentToolsNonStandard": {
+                        "title": "agent.tools の非標準ツール",
+                        "description": "標準の Claude Code ツール一覧にない名前です。サブエージェントが MCP ツール（mcp__server__tool）を直接参照できるかは公式に明記されておらず、本ルールは警告のみを発します。",
+                        "message": "エージェント {{agent}} の 「{{tool}}」 は標準ツール一覧にありません — MCP ツール直接参照の公式サポートは不確かなため、警告のみで表示されます。"
+                    },
+                    "hookEnvVarUndefined": {
+                        "title": "フック内の未定義環境変数",
+                        "description": "フックの command または prompt の ${VAR} 参照が Hammoc サーバーの process.env に定義されていません。",
+                        "message": "フック 「{{hook}}」 が参照する変数 {{variable}} が Hammoc サーバーに設定されていません。"
+                    }
+                },
+                "preferences": {
+                    "title": "Lint ルール",
+                    "restoreDefaults": "既定値に戻す",
+                    "close": "閉じる",
+                    "toggleErrorToast": "Lint ルールの変更に失敗しました。再試行してください。",
+                    "disableRule": "このルールを無効化",
+                    "ruleLabel": {
+                        "namingDuplicate": "複数ソース間の名前重複",
+                        "hookMatcherRegexInvalid": "フック matcher 正規表現の妥当性",
+                        "parseYamlJsonError": "YAML / JSON パースエラー",
+                        "mcpCommandNotOnPath": "MCP コマンドがサーバー PATH 上にあるか（opt-in）",
+                        "mcpUrlInvalid": "MCP URL の妥当性",
+                        "agentToolsNonStandard": "agent.tools の非標準ツール",
+                        "hookEnvVarUndefined": "フック内の未定義環境変数"
+                    },
+                    "ruleDescription": {
+                        "namingDuplicate": "同じ名前が複数スコープに存在するか、同一スコープで重複した場合に警告します。",
+                        "hookMatcherRegexInvalid": "フック matcher が JavaScript RegExp としてコンパイルできない場合にエラーとして表示します。",
+                        "parseYamlJsonError": "5 ドメインのフロントマター・JSON パースが失敗した場合にエラーとして表示します。",
+                        "mcpCommandNotOnPath": "stdio MCP サーバーの command が Hammoc サーバー PATH 上にない場合に警告します。既定 OFF — サーバー PATH と CLI PATH は正当な理由で異なる場合があります。",
+                        "mcpUrlInvalid": "sse / http / ws サーバーの URL がパースできないか、許可されないプロトコルの場合にエラーとして表示します。",
+                        "agentToolsNonStandard": "サブエージェントの tools に標準外の名前があると警告します。MCP ツール直接参照は常に警告として表示され、エラー扱いにはしません。",
+                        "hookEnvVarUndefined": "フック command の ${VAR} 参照が Hammoc サーバーの process.env にない場合に警告します。"
+                    }
+                }
             }
         }
     },

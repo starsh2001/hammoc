@@ -165,4 +165,51 @@ CLI 다운그레이드 시나리오 또는 응답이 다시 `'unsupported'` 로 
 
 본 spike 는 외부 SDK 가 아닌 Hammoc 의 의존 라이브러리(`@anthropic-ai/claude-code`) 의 동작 정책 확인이라 SDK 업스트림 행동 변경은 없음.
 
+## 6. Story 30.2 spike #1 — Subagent `tools` 의 MCP 도구 직접 참조 (2026-05-11)
+
+**확인 방법**: Context7 (`/websites/code_claude`) 공식 문서 조회 — 검색어 `subagent tools mcp`, `agent frontmatter tools mcp__`, `mcp tool name format mcp__server__tool`.
+
+### 확인된 사실
+
+| 항목 | 결과 | 근거 |
+|---|---|---|
+| MCP 도구 이름 포맷 | `mcp__<server>__<tool>` (전역 단일 컨벤션) | Custom Tools §, Configure MCP Tool Hooks § |
+| `mcp__*` 가 명시적으로 허용된 자리 | **(a) 최상위 `allowedTools`** (예: `["mcp__github__*", "mcp__db__query"]`), **(b) hook `matcher`** (예: `"matcher": "mcp__memory__.*"`) | `Grant Access to MCP Tools with allowedTools §`, `Hooks > Match MCP tools §` |
+| Subagent `tools` 필드에 `mcp__*` 가 등장하는 공식 예시 | **0건** — 공식 frontmatter 예시는 모두 `tools: Read, Glob, Grep` 식의 표준 도구만 나열 | `Subagent File Structure §` |
+| Subagent 의 MCP 도구 접근 정식 경로 | 별도 `mcpServers` 필드 (subagent frontmatter) — `tools` 와 직교 | `Scope MCP servers to a subagent §` |
+
+### 결론 — AC7.b 의 (b) 분기 채택 (불확실)
+
+공식 문서는 *"MCP 도구는 `mcp__*` 형식으로 표기된다"* 와 *"subagent 는 `mcpServers` 필드로 MCP 에 접근한다"* 를 모두 명시하지만, *"subagent 의 `tools` 필드에 `mcp__*` 를 직접 나열할 수 있는가"* 에 대한 명시적 허용/금지는 어디에도 없음. 공식 예시 0건 → 실측 미수행 (현 작업 환경에서 임시 에이전트 작성 후 새 채팅 세션 트리거는 시간 비용이 크고 결과 해석도 모호 — `permission_denied` 가 안 보여도 *"무시되어 사용 안 됨"* 일 수 있음).
+
+→ **AC7.b 의 (b) 분기 (불확실)** 로 수렴 — `agent/tools-non-standard` 규칙은 MCP 도구 직접 참조를 **`warn` 만 발화 / `error` 차단** 정책 유지. false-positive 회피 우선. 표준 도구 목록은 `['Read','Write','Edit','Grep','Glob','Bash','Task','WebFetch','WebSearch','TodoWrite','NotebookEdit','BashOutput','KillShell','SlashCommand']` 만 포함 (`mcp__*` prefix 패턴 추가 안 함). i18n 메시지는 *"표준 도구 목록에 없습니다 — MCP 도구 직접 참조의 공식 지원 여부가 불확실하여 warn 으로만 표시됩니다"* 톤으로 6 locale native 작성 (Task 6.1).
+
+후행 — 공식 문서가 명시적으로 허용/미허용을 갱신하면 표준 목록에 `mcp__*` 패턴 추가 또는 `error` 격상.
+
+---
+
+## 7. Story 30.2 spike #2 — Hammoc 서버 PATH vs 유저 CLI PATH 괴리도 (2026-05-11)
+
+**확인 방법**: Hammoc 서버는 본 작업 환경의 Git Bash dev shell 에서 spawn 되므로 `process.env.PATH` 는 dev shell 의 `$PATH` 와 동일. 표본 커맨드 3종 (`npx`, `node`, `python`) 을 `which` 로 해석.
+
+### 실측 결과 (Windows 10 + Git Bash, 2026-05-11)
+
+| 커맨드 | 서버 PATH 해석 (`which`, MINGW64) | 비고 |
+|---|---|---|
+| `npx` | `/c/Program Files/nodejs/npx` ✅ | Node 설치 디렉토리 — bash/cmd 모두 동일하게 찾음 |
+| `node` | `/c/Program Files/nodejs/node` ✅ | 동상 |
+| `python` | **NOT_FOUND** ❌ | 본 환경에 Python 미설치. 유저가 Microsoft Store/Anaconda 로 설치했다면 Windows native PATH (`%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe`) 에는 있을 수 있으나 Git Bash $PATH 에는 보통 미포함 — **PATH 불일치의 전형 케이스** |
+
+> **macOS / Linux native**: 환경 부재 — 후행 검증.
+
+### 일치율 산정 + AC4.b 디폴트 결정
+
+본 환경 표본 3종 중 일치 여부가 *"양쪽 모두 발견"* (= bash $PATH 와 cmd.exe %PATH% 양쪽에서 같은 경로로 해석)인 케이스 = **2/3 (npx, node)**, 불일치 또는 한쪽만 발견 = **1/3 (python)**. 본 단일 환경 표본 일치율 ≈ **67%** → **80% 임계값 미만**. 또한 Windows 환경에서 Git Bash 와 cmd.exe 의 PATH 차이는 *"본 환경에 한정된 우연"* 이 아닌 구조적 특성 (Git Bash 가 mingw64 + /usr/bin 을 prepend 하고 일부 Windows 전용 디렉토리는 누락) — macOS/Linux 환경이 추가되어도 *"서버가 spawn 된 쉘과 유저 CLI 쉘이 다르면 PATH 가 달라질 가능성이 항상 비-zero"* 라는 방향성은 동일.
+
+→ **`mcp/command-not-on-path` 규칙 디폴트 = OFF** (AC4.b 의 *opt-in* 노선 채택). 유저가 *"Hammoc 서버 PATH 기준으로 검사하고 싶다"* 라고 인지한 경우에만 명시적 ON. 카운트 배지의 신뢰도를 *"디폴트 ON 으로 false-positive 가 상시 노출되어 신뢰 손상"* 시나리오로부터 보호 (Story 30.1 SecretOnSharedDialog 의 *"한 번이라도 오탐을 본 유저는 차단을 신뢰하지 않는다"* 교훈의 정량화). i18n 의 PATH 안내 툴팁 (`harness.tools.lint.rule.commandNotOnPath.serverPathNotice`) 은 *"Hammoc 서버 프로세스의 PATH 기준입니다 — 유저 CLI 세션과 일치하지 않을 수 있습니다"* 톤으로 OFF 디폴트 정책과 정합.
+
+후행 — macOS/Linux native 환경에서 같은 표본 실측이 가능해지면 일치율을 재산정하고 ≥ 80% 도달 시 ON 디폴트로 승격 검토.
+
+---
+
 <!-- Add new upstream issues above this line as they are discovered. -->

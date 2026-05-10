@@ -1236,6 +1236,78 @@
                 "autoCreateSiblingNotice": "将创建新文件 `{{path}}`。",
                 "errorMessage": "检测到明文密钥，保存已被阻止。",
                 "localBadgeLockTooltip": "包含 Bearer 令牌等敏感值 — 此为本地文件，不会被 git 追踪。"
+            },
+            "lint": {
+                "count": {
+                    "error": "错误 {{count}} 个",
+                    "warn": "警告 {{count}} 个",
+                    "errorAndWarn": "错误 {{error}} · 警告 {{warn}}"
+                },
+                "listTitle": "Lint 问题 {{count}} 个",
+                "listEmpty": "此区段没有 lint 问题。",
+                "rule": {
+                    "namingDuplicate": {
+                        "title": "多源名称重复",
+                        "description": "同一名称同时出现在多个作用域（project / user / plugin），或在同一作用域中出现两次。",
+                        "message": "「{{name}}」 在作用域 {{scope}} 中被遮蔽（活动：{{activeScope}}）。"
+                    },
+                    "hookMatcherRegexInvalid": {
+                        "title": "Hook matcher 正则错误",
+                        "description": "matcher 字段会作为 JavaScript RegExp 编译，无效表达式永远不会触发。",
+                        "message": "Matcher 「{{matcher}}」 编译失败：{{reason}}"
+                    },
+                    "parseYamlJsonError": {
+                        "title": "解析错误",
+                        "description": "前置元数据或 JSON 解析失败，该项被遮蔽直至修复。",
+                        "message": "解析失败：{{reason}}"
+                    },
+                    "mcpCommandNotOnPath": {
+                        "title": "MCP 命令不在 PATH 中",
+                        "description": "stdio MCP 服务器的 command 在 Hammoc 服务进程 PATH 中找不到。",
+                        "message": "服务器 {{name}} 的 command 「{{command}}」 无法在服务 PATH 中解析。",
+                        "serverPathNotice": "此检查基于 Hammoc 服务进程的 PATH — 与你的 CLI 会话（不同 shell、容器或 Windows vs WSL）可能不一致。要关闭此规则，请打开工作台的 *Lint 规则*。"
+                    },
+                    "mcpUrlInvalid": {
+                        "title": "MCP URL 无效",
+                        "description": "sse / http / ws 传输的 url 必须是可解析的 URL 并使用允许的协议（http / https / ws / wss）。",
+                        "message": "{{name}} 的 URL 无效（{{reason}}）。"
+                    },
+                    "agentToolsNonStandard": {
+                        "title": "agent.tools 中的非标准工具",
+                        "description": "工具名称不在 Claude Code 标准工具列表中。子代理是否可以直接引用 MCP 工具（mcp__server__tool）官方未明确，因此本规则仅以警告呈现。",
+                        "message": "代理 {{agent}} 的 「{{tool}}」 不在标准工具列表中 — MCP 工具直接引用是否官方支持不确定，因此仅显示为警告。"
+                    },
+                    "hookEnvVarUndefined": {
+                        "title": "Hook 中的未定义环境变量",
+                        "description": "Hook 的 command 或 prompt 引用了 Hammoc 服务进程 process.env 未定义的 ${VAR}。",
+                        "message": "Hook 「{{hook}}」 引用的变量 {{variable}} 在 Hammoc 服务上未设置。"
+                    }
+                },
+                "preferences": {
+                    "title": "Lint 规则",
+                    "restoreDefaults": "恢复默认",
+                    "close": "关闭",
+                    "toggleErrorToast": "Lint 规则更新失败。请重试。",
+                    "disableRule": "禁用此规则",
+                    "ruleLabel": {
+                        "namingDuplicate": "跨源名称重复",
+                        "hookMatcherRegexInvalid": "Hook matcher 正则有效性",
+                        "parseYamlJsonError": "YAML / JSON 解析错误",
+                        "mcpCommandNotOnPath": "MCP 命令是否在服务 PATH 中（opt-in）",
+                        "mcpUrlInvalid": "MCP URL 有效性",
+                        "agentToolsNonStandard": "agent.tools 的非标准工具",
+                        "hookEnvVarUndefined": "Hook 中的未定义环境变量"
+                    },
+                    "ruleDescription": {
+                        "namingDuplicate": "同一名称出现在多个作用域或同一作用域中重复出现时发出警告。",
+                        "hookMatcherRegexInvalid": "Hook matcher 无法编译为 JavaScript RegExp 时报告为错误。",
+                        "parseYamlJsonError": "5 个领域中的前置元数据 / JSON 解析失败时报告为错误。",
+                        "mcpCommandNotOnPath": "stdio MCP 服务器的 command 不在 Hammoc 服务 PATH 时发出警告。默认关闭 — 服务 PATH 和 CLI PATH 可能合理地不同。",
+                        "mcpUrlInvalid": "sse / http / ws 服务器的 URL 无法解析或使用了不允许的协议时报告为错误。",
+                        "agentToolsNonStandard": "子代理的 tools 包含标准之外的名称时发出警告。MCP 工具直接引用始终显示为警告，永远不会作为错误阻断。",
+                        "hookEnvVarUndefined": "Hook command 中的 ${VAR} 引用未在 Hammoc 服务 process.env 中定义时发出警告。"
+                    }
+                }
             }
         }
     },

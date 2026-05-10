@@ -1236,3 +1236,120 @@ export interface HarnessShareScopeResponse {
   /** Per-path verdict — keys mirror the `paths` request, values are `ShareScope`. */
   cards: Record<string, ShareScope>;
 }
+
+// ---------------------------------------------------------------------------
+// Story 30.2 — Static harness lint (7 rules across 5 domains)
+// ---------------------------------------------------------------------------
+
+/**
+ * Discriminated rule identifiers — 7 rules total. Each is also the i18n key
+ * fragment under `harness.tools.lint.rule.<id>.{title,description,message}`
+ * and the preferences toggle under `harness.tools.lint.preferences.ruleLabel.<id>`.
+ */
+export type LintRuleId =
+  | 'naming/duplicate-across-sources'
+  | 'hook/matcher-regex-invalid'
+  | 'parse/yaml-json-error'
+  | 'mcp/command-not-on-path'
+  | 'mcp/url-invalid'
+  | 'agent/tools-non-standard'
+  | 'hook/env-var-undefined';
+
+export const LINT_RULE_IDS: readonly LintRuleId[] = [
+  'naming/duplicate-across-sources',
+  'hook/matcher-regex-invalid',
+  'parse/yaml-json-error',
+  'mcp/command-not-on-path',
+  'mcp/url-invalid',
+  'agent/tools-non-standard',
+  'hook/env-var-undefined',
+] as const;
+
+/**
+ * JSON-safe rule id used in i18n keys. The canonical `LintRuleId` contains
+ * `/` which collides with i18next's default `.` key separator, so we map to
+ * camelCase segments for the locale files. The mapping is one-to-one and
+ * the inverse is rarely needed (the rule id always travels with the issue
+ * payload).
+ */
+export const LINT_RULE_I18N_KEY: Readonly<Record<LintRuleId, string>> = {
+  'naming/duplicate-across-sources': 'namingDuplicate',
+  'hook/matcher-regex-invalid': 'hookMatcherRegexInvalid',
+  'parse/yaml-json-error': 'parseYamlJsonError',
+  'mcp/command-not-on-path': 'mcpCommandNotOnPath',
+  'mcp/url-invalid': 'mcpUrlInvalid',
+  'agent/tools-non-standard': 'agentToolsNonStandard',
+  'hook/env-var-undefined': 'hookEnvVarUndefined',
+} as const;
+
+export type LintSeverity = 'warn' | 'error';
+
+/**
+ * Default ON/OFF state per rule. `mcp/command-not-on-path` is opt-in (default
+ * OFF) per Story 30.2 AC4.b — the spike #2 (2026-05-11) measured ~67% server-
+ * vs-CLI PATH match rate, below the 80% threshold for ON-by-default. The
+ * other six rules default to ON.
+ */
+export const LINT_RULE_DEFAULTS: Readonly<Record<LintRuleId, boolean>> = {
+  'naming/duplicate-across-sources': true,
+  'hook/matcher-regex-invalid': true,
+  'parse/yaml-json-error': true,
+  'mcp/command-not-on-path': false,
+  'mcp/url-invalid': true,
+  'agent/tools-non-standard': true,
+  'hook/env-var-undefined': true,
+} as const;
+
+/** The 5 lint domains — matches the 5 sub-section nav slots that surface a count badge. */
+export type LintCardDomain = 'skill' | 'mcp' | 'hook' | 'command' | 'agent';
+
+export const LINT_CARD_DOMAINS: readonly LintCardDomain[] = [
+  'skill',
+  'mcp',
+  'hook',
+  'command',
+  'agent',
+] as const;
+
+/**
+ * Issue location — discriminated by source kind. `'line'` is used by parser
+ * errors that already have a file/line position from the parser wrapper;
+ * `'path'` is a dot/bracket path the panel resolves to a DOM ref via
+ * `useCardFieldFocus()` (e.g. `['mcpServers', 'context7', 'command']`,
+ * `['tools', '2']`, `['matcher']`).
+ */
+export type LintIssueLocation =
+  | { kind: 'line'; line: number }
+  | { kind: 'path'; path: string[] };
+
+/**
+ * One lint finding. Severity collapses into the `(error, warn)` count badge
+ * for the section nav and the inline marker on the card header. The
+ * `messageI18nKey` is fully resolved (already includes the `harness.tools.lint`
+ * prefix) so the client just calls `t(key, vars)`.
+ */
+export interface LintIssue {
+  ruleId: LintRuleId;
+  severity: LintSeverity;
+  cardScope: 'project' | 'user' | 'plugin';
+  /** Card name — `HarnessSkillCard.name`, `HarnessMcpCard.name`, etc. May be empty for parser errors that never produced a card. */
+  cardName: string;
+  cardDomain: LintCardDomain;
+  /**
+   * For hook issues only — the event group the matcher/config lives under.
+   * Lets the marker uniquely identify a card when the same hook command appears
+   * across multiple events.
+   */
+  hookEvent?: HarnessHookEvent;
+  location: LintIssueLocation;
+  messageI18nKey: string;
+  messageI18nVars?: Record<string, string | number>;
+}
+
+export interface HarnessLintResponse {
+  issues: LintIssue[];
+  /** Rule preferences after server-side defaults are applied to the user's stored toggles. */
+  rulePreferences: Record<LintRuleId, boolean>;
+  /** ISO timestamp the evaluation completed — clients can show staleness if needed. */
+  evaluatedAt: string;
+}

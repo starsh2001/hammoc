@@ -31,9 +31,39 @@ import { HookEditor } from './HookEditor';
 import { HookCopyTypeWarningDialog } from './HookCopyTypeWarningDialog';
 import { HookCopyConflictDialog } from './HookCopyConflictDialog';
 import { CardShareBadge } from './CardShareBadge';
+import { LintMarker } from './LintMarker';
+import { LintIssueList } from './LintIssueList';
+import { useCardLintIssues, useDomainLintIssues } from '../../../hooks/useCardLintIssues';
+import type { LintIssue } from '@hammoc/shared';
+
+/**
+ * Mirror the server-side `hookCardName` (harnessLintService.ts) so the
+ * marker lookup keys match for hook commands/prompts longer than 80 chars.
+ * Without the truncation parity the marker never resolves and AC2.a fails
+ * silently for long-body hooks.
+ */
+function hookLintName(card: HarnessHookCard): string {
+  const body =
+    card.config.type === 'command'
+      ? (card.config.command ?? '')
+      : (card.config.prompt ?? '');
+  return body.length > 80 ? `${body.slice(0, 77)}…` : body;
+}
+
+function HookLintMarker({
+  name,
+  onActivate,
+}: {
+  name: string;
+  onActivate: (issue: LintIssue) => void;
+}) {
+  const issues = useCardLintIssues('hook', name);
+  return <LintMarker issues={issues} onActivate={onActivate} />;
+}
 
 interface Props {
   projectSlug: string;
+  onOpenLintPreferences?: () => void;
 }
 
 interface CopyMenuAction {
@@ -132,7 +162,7 @@ function buildCopyActions(card: HarnessHookCard, projectSlug: string): CopyMenuA
   return actions;
 }
 
-export function HookPanel({ projectSlug }: Props) {
+export function HookPanel({ projectSlug, onOpenLintPreferences }: Props) {
   const { t } = useTranslation('settings');
   const navigate = useNavigate();
 
@@ -146,6 +176,8 @@ export function HookPanel({ projectSlug }: Props) {
   const toggleEnabled = useHarnessHookStore((s) => s.toggleEnabled);
   const dismissBanner = useHarnessHookStore((s) => s.dismissBanner);
   const handleExternalChange = useHarnessHookStore((s) => s.handleExternalChange);
+
+  const lintIssues = useDomainLintIssues('hook');
 
   const [openCard, setOpenCard] = useState<HarnessHookCard | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -199,6 +231,28 @@ export function HookPanel({ projectSlug }: Props) {
     () => HARNESS_HOOK_EVENTS.reduce((acc, e) => acc + (cardsByEvent[e]?.length ?? 0), 0),
     [cardsByEvent],
   );
+
+  const handleActivateLintIssue = (issue: LintIssue) => {
+    // Hook lint cardName is the truncated body of card.config.command/prompt
+    // (server-side `hookCardName`). Scan all events to find a match — there
+    // is no separate map keyed by name.
+    for (const event of HARNESS_HOOK_EVENTS) {
+      const list = cardsByEvent[event] ?? [];
+      const target = list.find((c) => hookLintName(c) === issue.cardName);
+      if (target) {
+        // Make sure the event section is expanded before opening the editor
+        // so the card is visible behind the modal.
+        setCollapsedEvents((prev) => {
+          if (!prev.has(event)) return prev;
+          const next = new Set(prev);
+          next.delete(event);
+          return next;
+        });
+        setOpenCard(target);
+        return;
+      }
+    }
+  };
 
   const toggleCollapse = (event: HarnessHookEvent) => {
     setCollapsedEvents((prev) => {
@@ -319,6 +373,14 @@ export function HookPanel({ projectSlug }: Props) {
             ))}
           </ul>
         </div>
+      )}
+
+      {lintIssues.length > 0 && (
+        <LintIssueList
+          issues={lintIssues}
+          onActivate={handleActivateLintIssue}
+          onOpenRulePreferences={onOpenLintPreferences}
+        />
       )}
 
       {isLoading && totalHooks === 0 && (
@@ -481,6 +543,7 @@ export function HookPanel({ projectSlug }: Props) {
                               scope={card.scope}
                               relativePath={card.scope === 'project' ? '.claude/settings.json' : null}
                             />
+                            <HookLintMarker name={hookLintName(card)} onActivate={handleActivateLintIssue} />
                             <TypeBadge type={card.config.type} />
                             {card.disabledByBackup && (
                               <span className="text-[10px] text-gray-500 dark:text-gray-400 italic">

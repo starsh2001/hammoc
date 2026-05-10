@@ -27,9 +27,27 @@ import { getSocket } from '../../../services/socket';
 import { AgentEditor } from './AgentEditor';
 import { AgentCopyConflictDialog } from './AgentCopyConflictDialog';
 import { CardShareBadge } from './CardShareBadge';
+import { LintMarker } from './LintMarker';
+import { LintIssueList } from './LintIssueList';
+import { useCardLintIssues, useDomainLintIssues } from '../../../hooks/useCardLintIssues';
+import type { LintIssue } from '@hammoc/shared';
+
+/** Wrapper that calls the hook per card — necessary because hooks can't be called inside `.map`. */
+function AgentLintMarker({
+  name,
+  onActivate,
+}: {
+  name: string;
+  onActivate: (issue: LintIssue) => void;
+}) {
+  const issues = useCardLintIssues('agent', name);
+  return <LintMarker issues={issues} onActivate={onActivate} />;
+}
 
 interface Props {
   projectSlug: string;
+  /** Opens the workbench-level Lint rules dialog (AC3.c CTA). */
+  onOpenLintPreferences?: () => void;
 }
 
 interface CopyAction {
@@ -118,7 +136,7 @@ function buildCopyActions(card: HarnessAgentCard, projectSlug: string): CopyActi
   return actions;
 }
 
-export function AgentPanel({ projectSlug }: Props) {
+export function AgentPanel({ projectSlug, onOpenLintPreferences }: Props) {
   const { t } = useTranslation('settings');
 
   const cards = useHarnessAgentStore((s) => s.cards);
@@ -129,8 +147,29 @@ export function AgentPanel({ projectSlug }: Props) {
   const copy = useHarnessAgentStore((s) => s.copy);
   const handleExternalChange = useHarnessAgentStore((s) => s.handleExternalChange);
 
+  const lintIssues = useDomainLintIssues('agent');
+
   const [openCard, setOpenCard] = useState<HarnessAgentCard | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  /**
+   * Open the editor for the card whose name matches the lint issue (AC2.b).
+   * Falls back to scrolling the matching card root into view when the name
+   * lookup fails (e.g. card was deleted between lint evaluation and click).
+   */
+  const handleActivateLintIssue = (issue: LintIssue) => {
+    const target = cards.find((c) => c.name === issue.cardName);
+    if (target) {
+      setOpenCard(target);
+      return;
+    }
+    const el = document.querySelector(
+      `[data-testid^="agent-card-"][data-testid$="-${issue.cardName}"]`,
+    );
+    if (el instanceof HTMLElement) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
   const [pendingConflict, setPendingConflict] = useState<{
     action: CopyAction;
     errorMessage?: string;
@@ -300,6 +339,14 @@ export function AgentPanel({ projectSlug }: Props) {
         <MalformedBanner malformed={malformed} />
       )}
 
+      {lintIssues.length > 0 && (
+        <LintIssueList
+          issues={lintIssues}
+          onActivate={handleActivateLintIssue}
+          onOpenRulePreferences={onOpenLintPreferences}
+        />
+      )}
+
       {error && (
         <div role="alert" className="rounded-md border border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/30 px-3 py-2 text-xs text-red-900 dark:text-red-100">
           {error.message}
@@ -431,6 +478,7 @@ export function AgentPanel({ projectSlug }: Props) {
                     scope={card.scope}
                     relativePath={card.scope === 'project' ? `.claude/agents/${card.name}.md` : null}
                   />
+                  <AgentLintMarker name={card.name} onActivate={handleActivateLintIssue} />
                   <span
                     className={
                       'px-1.5 py-0.5 rounded text-xs font-medium ' +

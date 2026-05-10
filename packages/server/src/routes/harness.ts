@@ -15,6 +15,7 @@ import { harnessCommandController } from '../controllers/harnessCommandControlle
 import { harnessAgentController } from '../controllers/harnessAgentController.js';
 import { claudeMdController } from '../controllers/claudeMdController.js';
 import { harnessShareScopeController } from '../controllers/harnessShareScopeController.js';
+import { harnessLintController } from '../controllers/harnessLintController.js';
 
 const router = Router();
 
@@ -95,5 +96,10 @@ router.post('/claude-md', largeBodyParser, claudeMdController.create);
 // Mode A/B verdict. Project scope only — `.gitignore` is irrelevant for
 // the user-scope (`~/.claude`) tree.
 router.get('/share-scope', harnessShareScopeController.evaluate);
+
+// Story 30.2 — Static harness lint: 7 rules across the 5 harness domains
+// (skill / mcp / hook / command / agent). Returns LintIssue[] + the user's
+// effective rule preferences (defaults merged with ~/.hammoc/preferences.json).
+router.get('/lint', harnessLintController.evaluate);
 
 export default router;
