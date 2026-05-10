@@ -36,6 +36,7 @@ import {
 } from '../../../services/api/harnessAgentsApi';
 import { useHarnessAgentStore } from '../../../stores/harnessAgentStore';
 import { getSocket } from '../../../services/socket';
+import { useSecretOnSharedDialogStore } from '../../../stores/secretOnSharedDialogStore';
 
 const LazyCodeMirror = lazy(() => import('@uiw/react-codemirror'));
 const lazyBodyExtensions = (): Promise<Extension[]> =>
@@ -241,10 +242,44 @@ export function AgentEditor({ card, projectSlug, onClose }: Props) {
           setRawParseError(true);
           return;
         }
+        // Story 30.1 (AC4.b): the server hard-blocked the save because the
+        // agent file is git-tracked and contains a plaintext secret. Surface
+        // the cross-panel dialog instead of a flat error toast.
+        if (err instanceof ApiError && err.code === 'HARNESS_SECRET_ON_SHARED') {
+          const details = (err.details ?? {}) as {
+            relativePath?: string;
+            lines?: number[];
+            paths?: string[];
+          };
+          const locations = [
+            ...(details.lines?.map((n) => `line ${n}`) ?? []),
+            ...(details.paths ?? []),
+          ];
+          useSecretOnSharedDialogStore.getState().open({
+            origin: 'agent',
+            targetPath: details.relativePath ?? `.claude/agents/${card.name}.md`,
+            secretLocations: locations,
+            onMoveToLocal: () => {
+              // Routing the agent save to a `.local.md` sibling requires
+              // a copy + delete dance that does not exist yet in the
+              // domain API; surface a guidance toast for now so the user
+              // knows the next step. (Story 30.3 polishes this.)
+              setError(t('harness.tools.secretOnShared.body'));
+            },
+            onMarkNotSecret: () => {
+              // Single-save opt-out is a server-policy escape hatch the
+              // backend does not currently honor — surface guidance so the
+              // user understands why the save still fails. The proper
+              // implementation lives behind the Story 30.3 polish.
+              setError(t('harness.tools.secretOnShared.body'));
+            },
+          });
+          return;
+        }
         setError(err instanceof ApiError ? err.message : (err as Error).message);
       }
     },
-    [card, isReadOnly, mtime, projectSlug, reload],
+    [card, isReadOnly, mtime, projectSlug, reload, t],
   );
 
   const scheduleFormSave = useCallback(() => {

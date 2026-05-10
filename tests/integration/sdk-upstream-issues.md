@@ -130,4 +130,39 @@ CLI 다운그레이드 시나리오 또는 응답이 다시 `'unsupported'` 로 
 
 본 spike 는 외부 SDK 가 아닌 Hammoc 내부 인프라 확인이라 SDK 업스트림 행동 변경은 없음.
 
+---
+
+## 5. Story 30.1 선행 spike — `settings.json` vs `settings.local.json` 병합 정책 (2026-05-10)
+
+**확인 방법**: Context7 (`/anthropics/claude-code`) 공식 문서 조회 — `MDM deployment README`, `claude-code/CHANGELOG`, `plugins/plugin-dev/skills/plugin-settings/SKILL.md`, `examples/example-settings.md`.
+
+### 확인된 사실
+
+| 항목 | 결과 | 근거 |
+|---|---|---|
+| 우선순위 hierarchy (high → low) | `managed-settings.json` (enterprise) → `.claude/settings.json` (project shared) → `.claude/settings.local.json` (project local) → `~/.claude/settings.json` (user) | MDM deployment README — *"settings hierarchy from highest to lowest precedence"* |
+| `*.local.*` 의 git 위치 | 공식 권고 `.gitignore` 패턴 = `.claude/*.local.md` + `.claude/*.local.json` | plugin-settings example-settings.md — *"Plugin settings (user-local, not committed)"* |
+| MCP scope 명명 변경 (참고) | 0.2.49 에서 기존 "project" → "local", "global" → "user" 로 리네임. 0.2.50 에서 새로운 "project" scope 가 git committable shared config 로 별도 도입 | claude-code CHANGELOG `0.2.49`, `0.2.50` |
+| Env var / SDK 옵션 우선 경로 | `ANTHROPIC_DEFAULT_{SONNET,OPUS,HAIKU}_MODEL`, `ANTHROPIC_CUSTOM_MODEL_OPTION`, `modelOverrides` 가 model 선택에 영향 — 단, settings.local.json 위에서 동작하는지 아래에서 동작하는지 명시되지 않음 | claude-code CHANGELOG |
+
+### 미확인 (불명확) 항목
+
+- **머지 vs 덮어쓰기**: 두 파일이 동일 키를 가질 때 (a) 키 단위 deep-merge 인지 (b) 파일 단위 wholesale replace 인지 공식 문서에 명시 없음
+- **배열 머지 (`permissions.allow`, hooks event 배열)**: union/concat 인지 higher-precedence 가 wholesale 우선인지 명시 없음
+
+### Story 30.1 본 스토리 반영 결정 — AC6.d 폴백 채택
+
+공식 문서가 우선순위 hierarchy 는 명시했지만 머지 메커니즘(파일 단위 vs 키 단위)에 대한 결정적 근거가 없음. AC6.d 의 *"불명확하면 보수적으로 파일 단위만 유지(AC1.b), 키 단위 오버라이드 안내는 후행 스토리"* 폴백을 채택:
+
+- **AC1.b 그대로 유효**: 배지 의미는 **파일 단위** — `.gitignore` 가 파일 경로를 ignore 하면 `로컬`, 무시하지 않으면 `공유`
+- **AC1.f 미구현**: 키별 오버라이드 안내 툴팁은 본 스토리 범위 밖. 후행 스토리에서 실측 spike 후 추가
+- **`settings.local.json` 의 의미적 위치**: 공식 hierarchy 에서 shared > local 순으로 명시되어 있지만, `.gitignore` 권고 패턴(`.claude/*.local.json`) 은 *"committed 되지 않는 user-local 설정"* 으로 일관 — 본 스토리의 배지는 **git 추적 여부 (= `.gitignore` 평가 결과)** 만 표현하므로 키 우선순위 문제와 직교한다. 즉 *"공유 / 로컬 / ignored (전체)"* 배지의 의미는 *"이 파일이 팀 저장소로 함께 가는가"* 이지 *"이 파일의 키가 다른 파일을 덮어쓰는가"* 가 아니다 → 우선순위 hierarchy 의 모호함이 본 스토리의 배지 의미에는 영향 없음
+
+### 후행 스토리에 인입할 사항
+
+- 머지 메커니즘 실측이 필요하면 후행 스토리에서 임시 프로젝트로 (a) 동일 `permissions.allow` 배열 (b) 동일 `model` 단일 값 (c) 동일 hook matcher 가 두 파일에 있을 때 어느 쪽이 발화하는지 직접 관찰
+- 머지가 **키 단위** 로 확인되면 AC1.f 의 툴팁(*"이 파일은 공유되지만 일부 키는 동일 디렉토리의 `settings.local.json` 으로 오버라이드될 수 있습니다"*) 추가
+
+본 spike 는 외부 SDK 가 아닌 Hammoc 의 의존 라이브러리(`@anthropic-ai/claude-code`) 의 동작 정책 확인이라 SDK 업스트림 행동 변경은 없음.
+
 <!-- Add new upstream issues above this line as they are discovered. -->

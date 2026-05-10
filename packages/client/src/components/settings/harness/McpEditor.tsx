@@ -30,6 +30,7 @@ import { useTheme } from '../../../hooks/useTheme';
 import { ApiError } from '../../../services/api/client';
 import { readMcp, updateMcp } from '../../../services/api/harnessMcpsApi';
 import { useHarnessMcpStore } from '../../../stores/harnessMcpStore';
+import { useSecretOnSharedDialogStore } from '../../../stores/secretOnSharedDialogStore';
 import { getSocket } from '../../../services/socket';
 
 const LazyCodeMirror = lazy(() => import('@uiw/react-codemirror'));
@@ -154,6 +155,41 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Story 30.1 (AC4.b/c): when the server hard-blocks the save with
+  // `HARNESS_SECRET_ON_SHARED`, surface the cross-panel dialog instead of the
+  // flat error toast. Returns true when the error was the secret block, so
+  // the caller can short-circuit its generic error path. Until the auto-route
+  // implementation lands (deferred to Story 30.3 polish), the dialog actions
+  // fall back to a guidance message that mirrors the dialog body.
+  const handleSecretOnSharedError = useCallback((err: unknown): boolean => {
+    if (!(err instanceof ApiError) || err.code !== 'HARNESS_SECRET_ON_SHARED') {
+      return false;
+    }
+    const details = (err.details ?? {}) as {
+      relativePath?: string;
+      lines?: number[];
+      paths?: string[];
+    };
+    const locations = [
+      ...(details.lines?.map((n) => `line ${n}`) ?? []),
+      ...(details.paths ?? []),
+    ];
+    const fileName = selectedSource.sourceFileKind === 'mcp.json'
+      ? '.mcp.json'
+      : '.claude/settings.json';
+    const fallbackPath = selectedSource.scope === 'project'
+      ? fileName
+      : `~/${fileName}`;
+    useSecretOnSharedDialogStore.getState().open({
+      origin: 'mcp',
+      targetPath: details.relativePath ?? fallbackPath,
+      secretLocations: locations,
+      onMoveToLocal: () => setError(t('harness.tools.secretOnShared.body')),
+      onMarkNotSecret: () => setError(t('harness.tools.secretOnShared.body')),
+    });
+    return true;
+  }, [selectedSource.scope, selectedSource.sourceFileKind, t]);
+
   const scheduleFormSave = useCallback(
     (cfg: HarnessMcpServerConfig) => {
       if (isReadOnly) return;
@@ -190,13 +226,13 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
               fileKind: selectedSource.sourceFileKind,
             });
             setSave((s) => ({ ...s, staleBanner: true, freshFromDisk: fresh }));
-          } else {
+          } else if (!handleSecretOnSharedError(err)) {
             setError(err instanceof ApiError ? err.message : (err as Error).message);
           }
         }
       }, DEBOUNCE_MS);
     },
-    [card.name, isReadOnly, projectSlug, reload, save.mtime, selectedSource],
+    [card.name, handleSecretOnSharedError, isReadOnly, projectSlug, reload, save.mtime, selectedSource],
   );
 
   const scheduleRawSave = useCallback(
@@ -240,13 +276,13 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
               fileKind: selectedSource.sourceFileKind,
             });
             setSave((s) => ({ ...s, staleBanner: true, freshFromDisk: fresh }));
-          } else {
+          } else if (!handleSecretOnSharedError(err)) {
             setError(err instanceof ApiError ? err.message : (err as Error).message);
           }
         }
       }, DEBOUNCE_MS);
     },
-    [card.name, isReadOnly, projectSlug, reload, save.mtime, selectedSource],
+    [card.name, handleSecretOnSharedError, isReadOnly, projectSlug, reload, save.mtime, selectedSource],
   );
 
   useEffect(
@@ -332,9 +368,21 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
       void reload(projectSlug);
     } catch (err) {
       setSave((s) => ({ ...s, isSaving: false }));
-      setError(err instanceof ApiError ? err.message : (err as Error).message);
+      if (!handleSecretOnSharedError(err)) {
+        setError(err instanceof ApiError ? err.message : (err as Error).message);
+      }
     }
-  }, [buildConfig, card.name, isReadOnly, mode, projectSlug, rawDraft, reload, selectedSource]);
+  }, [
+    buildConfig,
+    card.name,
+    handleSecretOnSharedError,
+    isReadOnly,
+    mode,
+    projectSlug,
+    rawDraft,
+    reload,
+    selectedSource,
+  ]);
 
   // Type switching warns when changing would discard fields.
   const handleTypeRequest = (next: HarnessMcpServerType) => {

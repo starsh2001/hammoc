@@ -61,6 +61,8 @@ import { fileWatcherService } from './fileWatcherService.js';
 import { getUserHarnessRoot } from '../utils/harnessPaths.js';
 import { applyJsoncPatch } from '../utils/structuredEditor.js';
 import { createLogger } from '../utils/logger.js';
+import { detectSecretsInValue } from '../utils/secretHeuristic.js';
+import { assertNoSecretOnShared } from '../utils/assertNoSecretOnShared.js';
 
 const log = createLogger('harnessMcpService');
 
@@ -95,50 +97,25 @@ function isFileNotFound(err: unknown): boolean {
 }
 
 /**
- * Heuristic-based secret detector. Walks every string leaf of an arbitrary
- * value and returns matched dot-paths so the modal can list them. Environment
- * variable references (`${...}`) are excluded — they are not literal secrets.
+ * Story 30.1 (Task 1.2): the previous SECRET_PATTERNS / ENV_REF_RE /
+ * `detectSecretsInConfig` walker have moved to `utils/secretHeuristic.ts`
+ * (`detectSecretsInValue`). MCP's old patterns were stricter than the other
+ * three services (40-char anchored base64, anchored bearer); the canonical
+ * resolution adopts the looser 32-char unanchored shape so detection is
+ * unified across the four harness services. The wrapper below preserves
+ * MCP's `{ matched, paths }` external signature.
  */
-const SECRET_PATTERNS: { name: string; re: RegExp }[] = [
-  { name: 'bearer', re: /^Bearer\s+[A-Za-z0-9._-]{16,}$/ },
-  { name: 'sk', re: /sk-[A-Za-z0-9]{20,}/ },
-  { name: 'aws', re: /AKIA[0-9A-Z]{16}/ },
-  { name: 'slack', re: /xox[baprs]-[A-Za-z0-9-]{10,}/ },
-  { name: 'base64', re: /^[A-Za-z0-9+/=]{40,}$/ },
-];
-
-const ENV_REF_RE = /\$\{[A-Za-z_][A-Za-z0-9_]*\}/;
-
 export interface DetectSecretsResult {
   matched: boolean;
   paths: string[];
 }
 
-export function detectSecretsInConfig(value: unknown, basePath: string[] = []): DetectSecretsResult {
-  const paths: string[] = [];
-  const walk = (v: unknown, p: string[]): void => {
-    if (typeof v === 'string') {
-      if (ENV_REF_RE.test(v)) return;
-      for (const { re } of SECRET_PATTERNS) {
-        if (re.test(v)) {
-          paths.push(p.join('.'));
-          return;
-        }
-      }
-      return;
-    }
-    if (Array.isArray(v)) {
-      v.forEach((item, i) => walk(item, [...p, String(i)]));
-      return;
-    }
-    if (v && typeof v === 'object') {
-      for (const [k, child] of Object.entries(v as Record<string, unknown>)) {
-        walk(child, [...p, k]);
-      }
-    }
-  };
-  walk(value, basePath);
-  return { matched: paths.length > 0, paths };
+export function detectSecretsInConfig(
+  value: unknown,
+  basePath: string[] = [],
+): DetectSecretsResult {
+  const { matched, paths } = detectSecretsInValue(value, basePath);
+  return { matched, paths };
 }
 
 const PLUGIN_ROOT_TOKEN = '${CLAUDE_PLUGIN_ROOT}';
@@ -218,6 +195,20 @@ function buildHarnessRefAccessor(ref: HarnessPathRef, absolutePath: string): Mai
           currentMtime: current.mtime,
         });
       }
+      // Story 30.1 (AC4.b): block writes that would land plaintext secrets
+      // in any git-tracked harness-ref MCP file (including the project-scope
+      // `mcp.disabled.json` backup). User-scope refs are no-op (guard
+      // short-circuits when scope !== 'project').
+      if (ref.scope === 'project' && ref.projectSlug) {
+        const secrets = detectSecretsInValue(value);
+        await assertNoSecretOnShared({
+          scope: 'project',
+          projectSlug: ref.projectSlug,
+          relativePath: `.claude/${ref.relativePath ?? ''}`,
+          secretDetected: secrets.matched,
+          detectedAt: { paths: secrets.paths },
+        });
+      }
       const sourceText = current.rawText.length === 0 ? '{}' : current.rawText;
       const patched = applyJsoncPatch(sourceText, [{ path: ['mcpServers', name], value }]);
       const written = await harnessService.write(ref, {
@@ -272,6 +263,19 @@ async function buildProjectMcpAccessor(projectSlug: string): Promise<MainFile> {
           currentMtime: current.mtime,
         });
       }
+      // Story 30.1 (AC4.b): block writes that would land plaintext secrets
+      // in a git-tracked `.mcp.json`. The MCP project file lives at
+      // `<projectRoot>/.mcp.json` (sibling of `.claude/`) which is the
+      // canonical relative path the share-scope service expects.
+      const secrets = detectSecretsInValue(value);
+      await assertNoSecretOnShared({
+        scope: 'project',
+        projectSlug,
+        relativePath: '.mcp.json',
+        secretDetected: secrets.matched,
+        detectedAt: { paths: secrets.paths },
+      });
+
       const sourceText = current.rawText.length === 0 ? '{}' : current.rawText;
       const patched = applyJsoncPatch(sourceText, [{ path: ['mcpServers', name], value }]);
       try {

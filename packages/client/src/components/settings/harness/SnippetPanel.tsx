@@ -35,6 +35,7 @@ import { SystemBadge } from './SystemBadge';
 import { SnippetEditor } from './SnippetEditor';
 import { SnippetCopyConflictDialog } from './SnippetCopyConflictDialog';
 import { ScopePill, SNIPPET_NAME_RE } from './snippetShared';
+import { CardShareBadge } from './CardShareBadge';
 
 interface Props {
   projectSlug: string;
@@ -330,6 +331,11 @@ export function SnippetPanel({ projectSlug }: Props) {
 
                   <div className="flex items-center gap-1.5 flex-wrap text-xs">
                     <ScopePill scope={card.scope} />
+                    <CardShareBadge
+                      projectSlug={projectSlug}
+                      scope={card.scope === 'project' ? 'project' : 'user'}
+                      relativePath={card.scope === 'project' ? `.claude/snippets/${card.name}.md` : null}
+                    />
                     {card.scope === 'bundled' && (
                       <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
                         {t('harness.snippets.readOnly', { defaultValue: 'read-only' })}

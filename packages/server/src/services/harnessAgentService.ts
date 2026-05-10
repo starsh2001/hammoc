@@ -51,6 +51,8 @@ import {
 import { harnessService } from './harnessService.js';
 import { projectService } from './projectService.js';
 import { getUserHarnessRoot } from '../utils/harnessPaths.js';
+import { detectSecretsInText as detectSecretsInTextCanonical } from '../utils/secretHeuristic.js';
+import { assertNoSecretOnShared } from '../utils/assertNoSecretOnShared.js';
 import { splitFrontmatterAndBody } from './utils/applyYamlFrontmatterPatch.js';
 
 const SCOPE_PRIORITY: Record<HarnessAgentSourceScope, number> = {
@@ -77,14 +79,9 @@ const ALLOWED_COLORS: ReadonlySet<string> = new Set<HarnessAgentColor>([
 
 const AGENTS_DIR = 'agents';
 
-const SECRET_PATTERNS: RegExp[] = [
-  /Bearer\s+[A-Za-z0-9._-]{16,}/,
-  /sk-[A-Za-z0-9]{20,}/,
-  /AKIA[0-9A-Z]{16}/,
-  /xox[baprs]-[A-Za-z0-9-]{10,}/,
-  /[A-Za-z0-9+/=]{32,}/,
-];
-const ENV_REF_RE = /\$\{[A-Za-z_][A-Za-z0-9_]*\}/g;
+// Story 30.1 (Task 1.2): SECRET_PATTERNS / ENV_REF_RE moved to
+// `utils/secretHeuristic.ts`. The wrapper below adapts the canonical entry
+// point to this service's existing `{ matched, lines }` shape.
 const PLUGIN_ROOT_RE = /\$\{CLAUDE_PLUGIN_ROOT\}/;
 const EXAMPLE_BLOCK_RE = /<example[\s>][\s\S]*?<\/example>/i;
 
@@ -155,27 +152,7 @@ function detectExampleBlock(body: string): boolean {
 }
 
 function detectSecretsInText(text: string): { matched: boolean; lines: number[] } {
-  if (!text) return { matched: false, lines: [] };
-  const stripped = text.replace(ENV_REF_RE, '');
-  let matched = false;
-  for (const re of SECRET_PATTERNS) {
-    if (re.test(stripped)) {
-      matched = true;
-      break;
-    }
-  }
-  if (!matched) return { matched: false, lines: [] };
-  const lines: number[] = [];
-  const split = text.split(/\r?\n/);
-  for (let i = 0; i < split.length; i += 1) {
-    const lineStripped = split[i].replace(ENV_REF_RE, '');
-    for (const re of SECRET_PATTERNS) {
-      if (re.test(lineStripped)) {
-        lines.push(i + 1);
-        break;
-      }
-    }
-  }
+  const { matched, lines } = detectSecretsInTextCanonical(text);
   return { matched, lines };
 }
 
@@ -981,6 +958,21 @@ class HarnessAgentService {
         );
       }
       nextText = body.raw!;
+    }
+
+    // Story 30.1 (AC4.b): block writes to git-tracked agent files when the
+    // body or frontmatter contains a plaintext secret. The hard block
+    // overrides any client-side acknowledgement — server is the last
+    // line of defence per AC4.b.
+    if (editableScope === 'project') {
+      const secrets = detectSecretsInText(nextText);
+      await assertNoSecretOnShared({
+        scope: 'project',
+        projectSlug: loc.projectSlug,
+        relativePath: `.claude/agents/${loc.name}.md`,
+        secretDetected: secrets.matched,
+        detectedAt: { lines: secrets.lines },
+      });
     }
 
     const written = await harnessService.write(ref, {

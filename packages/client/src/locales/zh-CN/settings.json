@@ -1206,6 +1206,37 @@
                 "fileExists": "目标位置已存在同名片段。",
                 "bundledReadOnly": "内置片段为只读。请克隆到项目或全局再进行自定义。"
             }
+        },
+        "tools": {
+            "shareBadge": {
+                "shared": "共享",
+                "local": "本地",
+                "fullyIgnored": "整体忽略"
+            },
+            "modeBanner": {
+                "modeA": {
+                    "title": "团队共享 harness 项目",
+                    "detail": "`.claude/settings.json` 等文件会被 git 追踪。"
+                },
+                "modeB": {
+                    "title": "非共享模式",
+                    "detail": "`.claude/` 已从 git 中排除。要与团队共享，请使用打包导出。",
+                    "exportCta": "导出捆绑包"
+                },
+                "exportFallbackToast": "Story 30.3 导出工具尚未提供。"
+            },
+            "secretOnShared": {
+                "title": "检测到明文密钥",
+                "body": "该文件由 git 与团队共享，但内容中含有疑似令牌的值，因此保存已被阻止。请将该值移动到同目录下的 `*.local.*` 兄弟文件，避免被提交。",
+                "action": {
+                    "moveToLocal": "移动到本地文件",
+                    "markNotSecret": "标记此值不是密钥",
+                    "cancel": "取消"
+                },
+                "autoCreateSiblingNotice": "将创建新文件 `{{path}}`。",
+                "errorMessage": "检测到明文密钥，保存已被阻止。",
+                "localBadgeLockTooltip": "包含 Bearer 令牌等敏感值 — 此为本地文件，不会被 git 追踪。"
+            }
         }
     },
     "permissionMode": {

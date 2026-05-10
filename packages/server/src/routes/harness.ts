@@ -14,6 +14,7 @@ import { harnessHookController } from '../controllers/harnessHookController.js';
 import { harnessCommandController } from '../controllers/harnessCommandController.js';
 import { harnessAgentController } from '../controllers/harnessAgentController.js';
 import { claudeMdController } from '../controllers/claudeMdController.js';
+import { harnessShareScopeController } from '../controllers/harnessShareScopeController.js';
 
 const router = Router();
 
@@ -88,5 +89,11 @@ router.delete('/agents/:name', largeBodyParser, harnessAgentController.delete);
 router.get('/claude-md', claudeMdController.read);
 router.put('/claude-md', largeBodyParser, claudeMdController.write);
 router.post('/claude-md', largeBodyParser, claudeMdController.create);
+
+// Story 30.1 — Share-scope evaluator: classifies harness files as
+// shared / local / fullyIgnored from `.gitignore` and derives the project
+// Mode A/B verdict. Project scope only — `.gitignore` is irrelevant for
+// the user-scope (`~/.claude`) tree.
+router.get('/share-scope', harnessShareScopeController.evaluate);
 
 export default router;

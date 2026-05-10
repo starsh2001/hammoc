@@ -25,6 +25,7 @@ import { getSocket } from '../../../services/socket';
 import { ApiError } from '../../../services/api/client';
 import { SkillEditor } from './SkillEditor';
 import { SkillCopyConflictDialog } from './SkillCopyConflictDialog';
+import { CardShareBadge } from './CardShareBadge';
 
 interface Props {
   projectSlug: string;
@@ -269,6 +270,13 @@ export function SkillPanel({ projectSlug }: Props) {
                     tooltipKey="harness.skill.activeSourceTooltip"
                   />
                 ))}
+                {card.sources.some((s) => s.scope === 'project') && (
+                  <CardShareBadge
+                    projectSlug={projectSlug}
+                    scope="project"
+                    relativePath={`.claude/skills/${card.name}/SKILL.md`}
+                  />
+                )}
                 {card.version && (
                   <span className="text-gray-500 dark:text-gray-400 font-mono">{card.version}</span>
                 )}

@@ -15,6 +15,7 @@ import { useClaudeMdStore } from '../../../stores/claudeMdStore';
 import { getSocket } from '../../../services/socket';
 import { ClaudeMdEditor } from './ClaudeMdEditor';
 import { ClaudeMdCopyDialog } from './ClaudeMdCopyDialog';
+import { CardShareBadge } from './CardShareBadge';
 
 interface Props {
   projectSlug: string;
@@ -93,6 +94,11 @@ export function ClaudeMdPanel({ projectSlug }: Props) {
         <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200">
           {t('harness.agent.scopeBadge.project', { defaultValue: 'Project' })}
         </span>
+        <CardShareBadge
+          projectSlug={projectSlug}
+          scope="project"
+          relativePath="CLAUDE.md"
+        />
         <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400 truncate">
           &lt;projectRoot&gt;/CLAUDE.md
         </span>

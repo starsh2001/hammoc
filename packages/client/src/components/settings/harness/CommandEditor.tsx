@@ -31,6 +31,7 @@ import {
   updateCommand,
 } from '../../../services/api/harnessCommandsApi';
 import { useHarnessCommandStore } from '../../../stores/harnessCommandStore';
+import { useSecretOnSharedDialogStore } from '../../../stores/secretOnSharedDialogStore';
 import { getSocket } from '../../../services/socket';
 
 const LazyCodeMirror = lazy(() => import('@uiw/react-codemirror'));
@@ -208,10 +209,44 @@ export function CommandEditor({ card, projectSlug, onClose }: Props) {
           setRawParseError(true);
           return;
         }
+        // Story 30.1 (AC4.b/c): server hard-blocked the save because the
+        // command file is git-tracked and contains a plaintext secret.
+        // Surface the cross-panel dialog (Move-to-local / Mark-not-secret /
+        // Cancel) instead of the flat error toast. Until the auto-route
+        // implementation lands (deferred to Story 30.3), the two action
+        // callbacks fall back to a guidance message that explains the next
+        // manual step.
+        if (err instanceof ApiError && err.code === 'HARNESS_SECRET_ON_SHARED') {
+          const details = (err.details ?? {}) as {
+            relativePath?: string;
+            lines?: number[];
+            paths?: string[];
+          };
+          const locations = [
+            ...(details.lines?.map((n) => `line ${n}`) ?? []),
+            ...(details.paths ?? []),
+          ];
+          useSecretOnSharedDialogStore.getState().open({
+            origin: 'command',
+            targetPath:
+              details.relativePath
+              ?? (card.scope === 'project'
+                ? `.claude/commands/${card.relativePath}`
+                : `~/.claude/commands/${card.relativePath}`),
+            secretLocations: locations,
+            onMoveToLocal: () => {
+              setError(t('harness.tools.secretOnShared.body'));
+            },
+            onMarkNotSecret: () => {
+              setError(t('harness.tools.secretOnShared.body'));
+            },
+          });
+          return;
+        }
         setError(err instanceof ApiError ? err.message : (err as Error).message);
       }
     },
-    [card, isReadOnly, mtime, notifyChanged, projectSlug, reload],
+    [card, isReadOnly, mtime, notifyChanged, projectSlug, reload, t],
   );
 
   const scheduleFormSave = useCallback(() => {

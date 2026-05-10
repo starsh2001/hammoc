@@ -1,13 +1,12 @@
-/* istanbul ignore file */
 /**
  * Story 28.0.5 (Task 5): thin wrapper around `ignore` (kaelzhang/node-ignore).
  *
- * Intentionally introduced as preemptive infrastructure — Epic 30 Story 10
- * will consume this to drive the "shared vs. local" badge on the harness
- * workbench tree. The current story only adds the dependency, the entry
- * point, and a smoke test. Internal branches remain effectively dead code
- * until Epic 30 Story 10 fills the call-sites, which is why this file is
- * excluded from coverage with the istanbul directive above.
+ * Originally introduced as preemptive infrastructure under the placeholder
+ * label "Epic 30 Story 10" (the pre-BMad-renumbering forward reference);
+ * Story 30.1 fills the call-sites (`harnessShareScopeService` + the
+ * client-side `ShareBadge` / `ModeBanner`) by consuming `loadGitignore()` +
+ * `isIgnored()` to drive the "shared vs. local vs. fully-ignored" badges on
+ * the harness workbench tree.
  */
 
 import fs from 'fs/promises';

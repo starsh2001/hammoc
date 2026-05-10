@@ -909,3 +909,75 @@
 **기대 결과**:
 - 서버 측 NAME_RE (`[A-Za-z0-9._-]+`) + `..`/`/`/`\` traversal 거부의 이중 가드 통과 (회귀 가드)
 - 디스크 파일은 항상 `<root>/.hammoc/snippets/` 안에만 생성되며 `path.resolve` 후 root 외부 path 는 reject
+
+## B14. 하네스 공유/로컬 배지 + Mode 배너 + 시크릿 차단 (Story 30.1) `[EDGE]`
+
+> **시나리오 출처**: [Story 30.1 Task 8](../../docs/stories/30.1.story.md) — `.gitignore` 평가에 따라 워크벤치의 각 하네스 파일에 `공유/로컬/ignored(전체)` 배지를 표시하고, `.claude/` 가 통째로 ignore 되는 Mode B 프로젝트는 워크벤치 상단에 모드 배너로 표시한다. 평문 시크릿이 공유 파일에 저장되려는 순간 차단 모달이 발화한다.
+
+### B-14-01: Mode A 프로젝트의 파일별 배지 `[EDGE]`
+
+**전제**:
+- 프로젝트 루트의 `.gitignore` 가 `.claude/*.local.*` 패턴을 갖는 일반(Mode A) 프로젝트
+- `.claude/settings.json` · `.claude/settings.local.json` · `.claude/skills/foo/SKILL.md` 가 미리 시드되어 있음
+
+**절차**:
+1. 워크벤치 진입 → `[data-testid="mode-banner-A"]` 가 nav 바로 위에 렌더된다 (배너 톤 = gray)
+2. 각 sub-section 패널로 이동 → 카드 헤더에 `[data-testid="share-badge-shared"]` (블루) 또는 `[data-testid="share-badge-local"]` (그레이) 배지가 출처 배지 옆에 표시된다
+3. `settings.json` → 공유 / `settings.local.json` → 로컬 / `SKILL.md` → 공유 인지 확인
+
+**기대 결과**:
+- 배지의 verdict 는 `harnessShareScopeService.evaluate` 의 `.gitignore` 단일 평가 결과와 정확히 일치
+- Mode B 배너(`mode-banner-B`) 는 렌더되지 않는다 (Mode A 프로젝트이므로)
+- 플러그인 패널의 카드에는 ShareBadge 가 표시되지 않는다 (AC5 — 플러그인은 다른 출처 축)
+
+### B-14-02: Mode B 프로젝트(Hammoc) 의 모드 배너 + Export CTA `[EDGE]`
+
+**전제**:
+- 프로젝트 루트의 `.gitignore` 가 `.claude/` 디렉토리 자체를 ignore (Mode B — Hammoc 자체 프로젝트가 대표 사례)
+
+**절차**:
+1. 워크벤치 진입 → `[data-testid="mode-banner-B"]` 가 amber 톤으로 렌더된다
+2. 배너 우측의 `[data-testid="mode-banner-export-cta"]` ([번들 내보내기]) 버튼이 표시된다
+3. 버튼 클릭 → Story 30.3 Export 도구가 미머지 상태이면 `harness.tools.modeBanner.exportFallbackToast` 메시지가 alert/toast 로 표시된다
+4. 모든 하네스 파일 카드에 `[data-testid="share-badge-fullyIgnored"]` (amber) 배지가 표시된다
+
+**기대 결과**:
+- Mode 판정은 `.claude/settings.json` 가상 경로의 `isIgnored()` 결과 단일 분기점만 사용 (파일 물리 존재 여부와 무관)
+- Story 30.3 머지 전이라도 CTA 가 죽지 않고 fallback 안내가 작동 (회귀 가드)
+
+### B-14-03: `.gitignore` 외부 변경 → 배지·배너 자동 재계산 `[EDGE]`
+
+**전제**:
+- Mode A 프로젝트 (`.gitignore` 에 `.claude/*.local.*` 만 존재)
+
+**절차**:
+1. 워크벤치를 마운트하고 `mode-banner-A` 가 보이는 상태로 둠
+2. 통합 테스트 러너가 터미널에서 `.gitignore` 끝에 `.claude/` 한 줄을 append (외부 변경)
+3. **수동 새로고침 0회** 로 워크벤치가 재계산되는지 관찰 — `harness:external-change` socket 이벤트의 `path: '../.gitignore'` 가 클라이언트의 `harnessShareScopeStore.handleExternalChange` 를 통해 전체 reload 를 트리거
+4. 약 300ms~1s 내에 `mode-banner-B` 로 전환 + 모든 카드의 배지가 `fullyIgnored` 로 갱신
+
+**기대 결과**:
+- 새 socket 이벤트 도입 0건 — 기존 `harness:external-change` 의 payload `path` 만 namespace 확장 (`'../.gitignore'`) 사용 (Story 28.0.5 기존 인프라 답습)
+- 기존 `pendingLocalWrites` 자기-쓰기 억제 윈도우가 자기 발화를 자연 흡수 (새 self-write 가드 추가 0)
+
+### B-14-04: 시크릿 차단 모달 → "로컬 파일로 이동" `[EDGE]`
+
+**전제**:
+- Mode A 프로젝트, `.claude/settings.json` 이 `공유` 배지를 가짐
+- 프로젝트 루트 `.gitignore` 가 `.claude/*.local.*` 패턴을 가지고 있음 (auto-create 형제 파일이 즉시 `로컬` 배지를 받기 위한 선결 조건)
+
+**절차**:
+1. Hooks 또는 MCP 패널에서 `settings.json` 의 어떤 hook 의 `command`/`prompt` 에 `Bearer ghp_AbcdefghIJKLMNOPQRST...` 같은 평문 시크릿을 입력
+2. 저장 시도 → 서버가 `HARNESS_SECRET_ON_SHARED` (HTTP 409) 반환 + 클라이언트의 `[data-testid="secret-on-shared-dialog"]` 모달 발화
+3. 모달은 검출된 시크릿 위치(라인 번호 또는 dot-path) 와 자동 생성될 `*.local.*` 형제 파일명을 표시
+4. **(1차 액션)** "로컬 파일로 이동" 클릭 → 같은 디렉토리의 `settings.local.json` 으로 저장 라우팅, 형제 파일이 없으면 자동 생성, 신규 파일에 즉시 `로컬` 배지가 표시
+5. **(2차 액션 — 별도 시도)** "이 값을 시크릿이 아니라고 표시" 클릭 → 단일 저장 통과 (Story 30.3 후속 폴리시 이전 단계는 안내 토스트로 fallback)
+6. **(3차 액션)** "취소" 클릭 → 저장하지 않고 에디터로 복귀
+
+**기대 결과**:
+- 서버 가드 (`assertNoSecretOnShared`) 와 클라 모달 양쪽 다 발화 — API 직접 호출에도 동일 정책 (회귀 가드)
+- `로컬` / `ignored (전체)` 배지 파일에 같은 시크릿을 입력하면 저장이 통과 (AC4.e — 자물쇠 툴팁만 표시)
+- 환경변수 참조 (`Authorization: Bearer ${GH_TOKEN}`) 는 `${...}` strip 후 검사하므로 차단되지 않음 (AC4.f false-positive 방지)
+
+<!-- T-domain migration trigger: re-evaluate after Story 30.2 (B15) and Story 30.3 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
+

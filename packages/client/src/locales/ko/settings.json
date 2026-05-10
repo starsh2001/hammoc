@@ -1207,6 +1207,37 @@
                 "fileExists": "대상 위치에 같은 이름의 스니펫이 이미 존재합니다.",
                 "bundledReadOnly": "번들 스니펫은 읽기 전용입니다. 프로젝트 또는 전역으로 복제하세요."
             }
+        },
+        "tools": {
+            "shareBadge": {
+                "shared": "공유",
+                "local": "로컬",
+                "fullyIgnored": "ignored (전체)"
+            },
+            "modeBanner": {
+                "modeA": {
+                    "title": "팀 공유 하네스 프로젝트",
+                    "detail": "`.claude/settings.json` 등은 git 으로 추적됩니다."
+                },
+                "modeB": {
+                    "title": "비공유 모드",
+                    "detail": "`.claude/` 가 git 에서 제외됩니다. 팀과 공유하려면 번들 내보내기를 사용하세요.",
+                    "exportCta": "번들 내보내기"
+                },
+                "exportFallbackToast": "Story 30.3 Export 도구는 아직 준비 중입니다."
+            },
+            "secretOnShared": {
+                "title": "평문 시크릿이 감지되었습니다",
+                "body": "이 파일은 git 으로 팀과 공유되는데 본문에 토큰처럼 보이는 값이 있어 저장이 차단되었습니다. 같은 디렉토리의 `*.local.*` 형제 파일로 옮겨 git 에 포함되지 않게 하세요.",
+                "action": {
+                    "moveToLocal": "로컬 파일로 이동",
+                    "markNotSecret": "이 값을 시크릿이 아니라고 표시",
+                    "cancel": "취소"
+                },
+                "autoCreateSiblingNotice": "새 파일 `{{path}}` 이 생성됩니다.",
+                "errorMessage": "평문 시크릿이 감지되어 저장이 차단되었습니다.",
+                "localBadgeLockTooltip": "Bearer 토큰 등이 포함되어 있습니다 — 로컬 파일이라 git 에 포함되지 않습니다."
+            }
         }
     },
     "permissionMode": {

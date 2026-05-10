@@ -41,6 +41,8 @@ import {
 import { harnessService } from './harnessService.js';
 import { projectService } from './projectService.js';
 import { getUserHarnessRoot } from '../utils/harnessPaths.js';
+import { detectSecretsInText as detectSecretsInTextCanonical } from '../utils/secretHeuristic.js';
+import { assertNoSecretOnShared } from '../utils/assertNoSecretOnShared.js';
 import {
   applyYamlFrontmatterPatch,
   splitFrontmatterAndBody,
@@ -62,14 +64,9 @@ const ALLOWED_MODELS: ReadonlySet<string> = new Set<HarnessCommandModel>([
 const COMMANDS_DIR = 'commands';
 const MAX_WALK_DEPTH = 32;
 
-const SECRET_PATTERNS: RegExp[] = [
-  /Bearer\s+[A-Za-z0-9._-]{16,}/,
-  /sk-[A-Za-z0-9]{20,}/,
-  /AKIA[0-9A-Z]{16}/,
-  /xox[baprs]-[A-Za-z0-9-]{10,}/,
-  /[A-Za-z0-9+/=]{32,}/,
-];
-const ENV_REF_RE = /\$\{[A-Za-z_][A-Za-z0-9_]*\}/g;
+// Story 30.1 (Task 1.2): SECRET_PATTERNS / ENV_REF_RE moved to
+// `utils/secretHeuristic.ts`. The wrappers below adapt the canonical entry
+// point to this service's existing `{ matched, lines }` shape.
 
 const POSITIONAL_ARG_RE = /\$([1-9]\d*)\b/;
 const ARGUMENTS_ALL_RE = /\$ARGUMENTS\b/;
@@ -170,27 +167,7 @@ function detectBmadMirror(body: string): boolean {
 }
 
 function detectSecretsInText(text: string): { matched: boolean; lines: number[] } {
-  if (!text) return { matched: false, lines: [] };
-  const stripped = text.replace(ENV_REF_RE, '');
-  let matched = false;
-  for (const re of SECRET_PATTERNS) {
-    if (re.test(stripped)) {
-      matched = true;
-      break;
-    }
-  }
-  if (!matched) return { matched: false, lines: [] };
-  const lines: number[] = [];
-  const split = text.split(/\r?\n/);
-  for (let i = 0; i < split.length; i += 1) {
-    const lineStripped = split[i].replace(ENV_REF_RE, '');
-    for (const re of SECRET_PATTERNS) {
-      if (re.test(lineStripped)) {
-        lines.push(i + 1);
-        break;
-      }
-    }
-  }
+  const { matched, lines } = detectSecretsInTextCanonical(text);
   return { matched, lines };
 }
 
@@ -731,6 +708,20 @@ class HarnessCommandService {
     } else {
       // raw — replace the entire file (frontmatter + body in one pass).
       nextText = body.raw!;
+    }
+
+    // Story 30.1 (AC4.b): block writes to git-tracked command files when
+    // a plaintext secret is detected (matches the existing copy-flow
+    // detection scope — full-text scan).
+    if (editableScope === 'project') {
+      const secrets = detectSecretsInText(nextText);
+      await assertNoSecretOnShared({
+        scope: 'project',
+        projectSlug: loc.projectSlug,
+        relativePath: `.claude/commands/${loc.relativePath}`,
+        secretDetected: secrets.matched,
+        detectedAt: { lines: secrets.lines },
+      });
     }
 
     const written = await harnessService.write(ref, {

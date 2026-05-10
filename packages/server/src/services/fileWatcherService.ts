@@ -206,20 +206,36 @@ class FileWatcherService {
     const projectClaudeMdPath = ref.scope === 'project'
       ? path.join(path.dirname(resolvedRoot), 'CLAUDE.md')
       : null;
+    // Story 30.1 (AC2.b): the project's `.gitignore` lives at <projectRoot>/.gitignore,
+    // a sibling of `.claude/`. We watch it on the same chokidar instance as
+    // `.mcp.json` and `CLAUDE.md` and emit a discriminated path
+    // (`'../.gitignore'`) so the client can route the event to the
+    // share-scope store without a new socket event.
+    const projectGitignorePath = ref.scope === 'project'
+      ? path.join(path.dirname(resolvedRoot), '.gitignore')
+      : null;
     const watchTargets: string | string[] = ref.scope === 'project'
-      ? [resolvedRoot, projectMcpFilePath as string, projectClaudeMdPath as string]
+      ? [
+          resolvedRoot,
+          projectMcpFilePath as string,
+          projectClaudeMdPath as string,
+          projectGitignorePath as string,
+        ]
       : resolvedRoot;
 
     const watcher = chokidar.watch(watchTargets, {
       ignoreInitial: true,
       ignored: (target: string): boolean => {
-        // Always allow the sibling files (`.mcp.json`, `CLAUDE.md`) —
+        // Always allow the sibling files (`.mcp.json`, `CLAUDE.md`, `.gitignore`) —
         // chokidar would otherwise drop them because they sit outside
         // `resolvedRoot`.
         if (projectMcpFilePath && path.resolve(target) === path.resolve(projectMcpFilePath)) {
           return false;
         }
         if (projectClaudeMdPath && path.resolve(target) === path.resolve(projectClaudeMdPath)) {
+          return false;
+        }
+        if (projectGitignorePath && path.resolve(target) === path.resolve(projectGitignorePath)) {
           return false;
         }
         const rel = path.relative(resolvedRoot, target).replace(/\\/g, '/');
@@ -258,6 +274,12 @@ class FileWatcherService {
             // `<projectRoot>/.claude/CLAUDE.md` that would otherwise share
             // the relative path `'CLAUDE.md'`.
             rel = '../CLAUDE.md';
+          } else if (projectGitignorePath
+            && path.resolve(absolutePath) === path.resolve(projectGitignorePath)) {
+            // Story 30.1 (AC2.b): same trick — `'../.gitignore'` is the
+            // discriminated path the client store keys on to trigger a full
+            // share-scope reload (everything depends on `.gitignore`).
+            rel = '../.gitignore';
           } else {
             rel = path.relative(resolvedRoot, absolutePath).replace(/\\/g, '/');
             if (!rel || rel === '.' || rel.startsWith('..')) return;

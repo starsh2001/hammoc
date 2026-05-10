@@ -30,6 +30,7 @@ import { generateUUID } from '../../../utils/uuid';
 import { HookEditor } from './HookEditor';
 import { HookCopyTypeWarningDialog } from './HookCopyTypeWarningDialog';
 import { HookCopyConflictDialog } from './HookCopyConflictDialog';
+import { CardShareBadge } from './CardShareBadge';
 
 interface Props {
   projectSlug: string;
@@ -475,6 +476,11 @@ export function HookPanel({ projectSlug }: Props) {
                           </div>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
                             <ScopeBadge card={card} />
+                            <CardShareBadge
+                              projectSlug={projectSlug}
+                              scope={card.scope}
+                              relativePath={card.scope === 'project' ? '.claude/settings.json' : null}
+                            />
                             <TypeBadge type={card.config.type} />
                             {card.disabledByBackup && (
                               <span className="text-[10px] text-gray-500 dark:text-gray-400 italic">

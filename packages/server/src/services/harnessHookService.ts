@@ -44,6 +44,8 @@ import { projectService } from './projectService.js';
 import { getUserHarnessRoot } from '../utils/harnessPaths.js';
 import { applyJsoncPatch } from '../utils/structuredEditor.js';
 import { createLogger } from '../utils/logger.js';
+import { detectSecretsInText as detectSecretsInTextCanonical } from '../utils/secretHeuristic.js';
+import { assertNoSecretOnShared } from '../utils/assertNoSecretOnShared.js';
 
 const log = createLogger('harnessHookService');
 
@@ -83,31 +85,18 @@ function isStaleWrite(err: unknown): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Secret detection — mirrors harnessMcpService.detectSecretsInConfig but walks
-// the textual command/prompt body. Environment variable references (`${ENV}`)
-// are filtered out so they do not raise false positives.
+// Secret detection — Story 30.1 (Task 1.2) routed through
+// `utils/secretHeuristic.ts` (canonical patterns shared with the agent /
+// command / mcp services). The hook-specific shape (one matched-path string
+// per scanned field) is preserved so the existing modal wiring needs no
+// change.
 // ---------------------------------------------------------------------------
-
-const SECRET_PATTERNS: { name: string; re: RegExp }[] = [
-  { name: 'bearer', re: /Bearer\s+[A-Za-z0-9._-]{16,}/ },
-  { name: 'sk', re: /sk-[A-Za-z0-9]{20,}/ },
-  { name: 'aws', re: /AKIA[0-9A-Z]{16}/ },
-  { name: 'slack', re: /xox[baprs]-[A-Za-z0-9-]{10,}/ },
-  { name: 'base64', re: /[A-Za-z0-9+/=]{32,}/ },
-];
-
-const ENV_REF_RE = /\$\{[A-Za-z_][A-Za-z0-9_]*\}/g;
 
 export interface DetectSecretsResult {
   matched: boolean;
   paths: string[];
 }
 
-/**
- * Walk a hook config's textual body fields and report secret-looking
- * substrings. Environment variable tokens are stripped first so `${API_KEY}`
- * style references stay clean.
- */
 export function detectSecretsInHook(config: HarnessHookConfig): DetectSecretsResult {
   const paths: string[] = [];
   const fields: Array<['command' | 'prompt', string | undefined]> = [
@@ -116,12 +105,8 @@ export function detectSecretsInHook(config: HarnessHookConfig): DetectSecretsRes
   ];
   for (const [name, value] of fields) {
     if (typeof value !== 'string' || value.length === 0) continue;
-    const stripped = value.replace(ENV_REF_RE, '');
-    for (const { re } of SECRET_PATTERNS) {
-      if (re.test(stripped)) {
-        paths.push(name);
-        break;
-      }
+    if (detectSecretsInTextCanonical(value).matched) {
+      paths.push(name);
     }
   }
   return { matched: paths.length > 0, paths };
@@ -377,6 +362,21 @@ function ensureHooksWrapper(source: string): string {
 }
 
 async function writePatched(target: PatchTarget, patched: string): Promise<{ mtime: string }> {
+  // Story 30.1 (AC4.b): block writes that would land plaintext secrets in
+  // a git-tracked `settings.json`. The harness path-ref carries
+  // `relativePath: 'settings.json'` (relative to `.claude/`); the share-scope
+  // service expects the project-relative form, so we prefix.
+  if (target.ref.scope === 'project' && target.ref.projectSlug) {
+    const secrets = detectSecretsInTextCanonical(patched);
+    await assertNoSecretOnShared({
+      scope: 'project',
+      projectSlug: target.ref.projectSlug,
+      relativePath: `.claude/${target.ref.relativePath ?? 'settings.json'}`,
+      secretDetected: secrets.matched,
+      detectedAt: { lines: secrets.lines },
+    });
+  }
+
   // expectedMtime '' (file missing) → omit so harnessService.write does not refuse the create path.
   const expectedMtime = target.expectedMtime || undefined;
   const written = await harnessService.write(target.ref, {

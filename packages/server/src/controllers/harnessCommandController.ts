@@ -200,6 +200,7 @@ const MAPPED_CODES = [
   'HARNESS_MCP_NAME_CONFLICT',
   'HARNESS_COMMAND_NAME_CONFLICT',
   'HARNESS_PARSE_ERROR',
+  'HARNESS_SECRET_ON_SHARED',
 ] as const;
 
 const MESSAGE_KEY: Record<typeof MAPPED_CODES[number], string> = {
@@ -221,6 +222,7 @@ const MESSAGE_KEY: Record<typeof MAPPED_CODES[number], string> = {
   HARNESS_MCP_NAME_CONFLICT: 'harness.error.mcpNameConflict',
   HARNESS_COMMAND_NAME_CONFLICT: 'harness.error.commandNameConflict',
   HARNESS_PARSE_ERROR: 'harness.error.parseError',
+  HARNESS_SECRET_ON_SHARED: 'harness.error.secretOnShared',
 };
 
 function handleError(req: Request, res: Response, error: unknown): void {
@@ -228,6 +230,9 @@ function handleError(req: Request, res: Response, error: unknown): void {
     currentMtime?: string;
     cause?: string;
     details?: Record<string, unknown>;
+    relativePath?: string;
+    lines?: number[];
+    paths?: string[];
   };
   for (const key of MAPPED_CODES) {
     const entry = HARNESS_ERRORS[key];
@@ -244,6 +249,13 @@ function handleError(req: Request, res: Response, error: unknown): void {
       }
       if (key === 'HARNESS_COMMAND_NAME_CONFLICT' && nodeError.details) {
         body.details = { ...nodeError.details };
+      }
+      if (key === 'HARNESS_SECRET_ON_SHARED') {
+        body.details = {
+          relativePath: nodeError.relativePath ?? '',
+          ...(nodeError.lines ? { lines: nodeError.lines } : {}),
+          ...(nodeError.paths ? { paths: nodeError.paths } : {}),
+        };
       }
       res.status(entry.httpStatus).json({ error: body });
       return;

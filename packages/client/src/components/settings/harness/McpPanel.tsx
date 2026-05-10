@@ -33,6 +33,7 @@ import { generateUUID } from '../../../utils/uuid';
 import { McpEditor } from './McpEditor';
 import { McpCopyConflictDialog } from './McpCopyConflictDialog';
 import { McpSecretConfirmDialog } from './McpSecretConfirmDialog';
+import { CardShareBadge } from './CardShareBadge';
 
 interface Props {
   projectSlug: string;
@@ -458,6 +459,13 @@ export function McpPanel({ projectSlug }: Props) {
                     shadowedScopeLabel={t(`harness.mcp.scopeBadge.${src.scope}`)}
                   />
                 ))}
+                {card.sources.some((s) => s.scope === 'project') && (
+                  <CardShareBadge
+                    projectSlug={projectSlug}
+                    scope="project"
+                    relativePath=".mcp.json"
+                  />
+                )}
                 <TypeBadge type={card.activeType} />
                 {card.sources.some((s) => s.disabledByBackup) && !card.enabled && (
                   <span className="text-[10px] text-gray-500 dark:text-gray-400 italic">

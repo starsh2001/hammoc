@@ -1206,6 +1206,37 @@
                 "fileExists": "対象の場所に同名のスニペットが既に存在します。",
                 "bundledReadOnly": "バンドルスニペットは読み取り専用です。プロジェクトまたはグローバルへ複製してください。"
             }
+        },
+        "tools": {
+            "shareBadge": {
+                "shared": "共有",
+                "local": "ローカル",
+                "fullyIgnored": "全体除外"
+            },
+            "modeBanner": {
+                "modeA": {
+                    "title": "チーム共有ハーネスプロジェクト",
+                    "detail": "`.claude/settings.json` などは git で追跡されます。"
+                },
+                "modeB": {
+                    "title": "非共有モード",
+                    "detail": "`.claude/` は git から除外されています。チームと共有するにはバンドルエクスポートを使用してください。",
+                    "exportCta": "バンドルをエクスポート"
+                },
+                "exportFallbackToast": "Story 30.3 のエクスポート機能はまだ提供されていません。"
+            },
+            "secretOnShared": {
+                "title": "平文のシークレットが検出されました",
+                "body": "このファイルは git でチームと共有されますが、本文中にトークンらしき値が含まれているため保存をブロックしました。同じディレクトリの `*.local.*` 兄弟ファイルへ移して git に含めないでください。",
+                "action": {
+                    "moveToLocal": "ローカルファイルへ移動",
+                    "markNotSecret": "この値はシークレットではないとマーク",
+                    "cancel": "キャンセル"
+                },
+                "autoCreateSiblingNotice": "新しいファイル `{{path}}` が作成されます。",
+                "errorMessage": "平文のシークレットが検出されたため保存をブロックしました。",
+                "localBadgeLockTooltip": "Bearer トークンなどが含まれています — ローカルファイルなので git には含まれません。"
+            }
         }
     },
     "permissionMode": {

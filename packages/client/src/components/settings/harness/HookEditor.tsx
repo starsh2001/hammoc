@@ -34,6 +34,7 @@ import {
   updateHook,
 } from '../../../services/api/harnessHooksApi';
 import { useHarnessHookStore } from '../../../stores/harnessHookStore';
+import { useSecretOnSharedDialogStore } from '../../../stores/secretOnSharedDialogStore';
 import { getSocket } from '../../../services/socket';
 
 interface ExistingProps {
@@ -204,6 +205,42 @@ export function HookEditor(props: Props) {
 
   // --- Auto-save (existing card) -------------------------------------------
 
+  // Story 30.1 (AC4.b/c): when the server hard-blocks a save with
+  // `HARNESS_SECRET_ON_SHARED`, surface the cross-panel dialog instead of the
+  // flat error toast. Returns true when the error was the secret block, so
+  // the caller can short-circuit its generic error path. Until the auto-route
+  // implementation lands (deferred to Story 30.3 polish), the two action
+  // callbacks fall back to a guidance message that mirrors the dialog body.
+  const handleSecretOnSharedError = useCallback((err: unknown): boolean => {
+    if (!(err instanceof ApiError) || err.code !== 'HARNESS_SECRET_ON_SHARED') {
+      return false;
+    }
+    const details = (err.details ?? {}) as {
+      relativePath?: string;
+      lines?: number[];
+      paths?: string[];
+    };
+    const locations = [
+      ...(details.lines?.map((n) => `line ${n}`) ?? []),
+      ...(details.paths ?? []),
+    ];
+    const fallbackPath = card
+      ? card.scope === 'project'
+        ? '.claude/settings.json'
+        : '~/.claude/settings.json'
+      : isCreateMode
+        ? '.claude/settings.json'
+        : '.claude/settings.json';
+    useSecretOnSharedDialogStore.getState().open({
+      origin: 'hook',
+      targetPath: details.relativePath ?? fallbackPath,
+      secretLocations: locations,
+      onMoveToLocal: () => setSaveError(t('harness.tools.secretOnShared.body')),
+      onMarkNotSecret: () => setSaveError(t('harness.tools.secretOnShared.body')),
+    });
+    return true;
+  }, [card, isCreateMode, t]);
+
   const buildConfigFromDraft = useCallback((): HarnessHookConfig | null => {
     if (!bodyDraft) return null;
     const config: HarnessHookConfig = { type };
@@ -230,14 +267,14 @@ export function HookEditor(props: Props) {
       } catch (err) {
         if (err instanceof ApiError && err.code === 'HARNESS_STALE_WRITE') {
           await loadFreshFromDisk();
-        } else {
+        } else if (!handleSecretOnSharedError(err)) {
           setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
         }
       } finally {
         setIsSaving(false);
       }
     },
-    [card, isReadOnly, mtime],
+    [card, handleSecretOnSharedError, isReadOnly, mtime],
   );
 
   const saveMatcher = useCallback(
@@ -264,14 +301,14 @@ export function HookEditor(props: Props) {
       } catch (err) {
         if (err instanceof ApiError && err.code === 'HARNESS_STALE_WRITE') {
           await loadFreshFromDisk();
-        } else {
+        } else if (!handleSecretOnSharedError(err)) {
           setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
         }
       } finally {
         setIsSaving(false);
       }
     },
-    [card, isReadOnly, mtime, splitFromGroup],
+    [card, handleSecretOnSharedError, isReadOnly, mtime, splitFromGroup],
   );
 
   const saveRaw = useCallback(
@@ -288,14 +325,14 @@ export function HookEditor(props: Props) {
       } catch (err) {
         if (err instanceof ApiError && err.code === 'HARNESS_STALE_WRITE') {
           await loadFreshFromDisk();
-        } else {
+        } else if (!handleSecretOnSharedError(err)) {
           setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
         }
       } finally {
         setIsSaving(false);
       }
     },
-    [card, isReadOnly, mtime],
+    [card, handleSecretOnSharedError, isReadOnly, mtime],
   );
 
   const loadFreshFromDisk = useCallback(async () => {
@@ -378,7 +415,9 @@ export function HookEditor(props: Props) {
       props.onClose();
       void res; // res unused but documents the contract
     } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
+      if (!handleSecretOnSharedError(err)) {
+        setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -386,6 +425,7 @@ export function HookEditor(props: Props) {
     isCreateMode,
     matcherError,
     buildConfigFromDraft,
+    handleSecretOnSharedError,
     props,
     event,
     matcher,
@@ -420,7 +460,9 @@ export function HookEditor(props: Props) {
       setStaleBanner(false);
       setFreshFromDisk(null);
     } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
+      if (!handleSecretOnSharedError(err)) {
+        setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
+      }
     } finally {
       setIsSaving(false);
     }

@@ -160,7 +160,8 @@
       "agentNameConflict": "A sub-agent with that name already exists.",
       "staleWrite": "The harness file was modified on disk since you opened it. Reload to see the changes, or overwrite to keep yours.",
       "parseError": "Failed to parse YAML/JSONC source.",
-      "writeError": "Harness file write error."
+      "writeError": "Harness file write error.",
+      "secretOnShared": "A plaintext token was detected in a file that is tracked by git. Move the value to a `*.local.*` sibling so it is not committed."
     },
     "claudeMd": {
       "error": {

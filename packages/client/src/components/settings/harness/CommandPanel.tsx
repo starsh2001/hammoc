@@ -25,6 +25,7 @@ import { getSocket } from '../../../services/socket';
 import { CommandEditor } from './CommandEditor';
 import { CommandCopyConflictDialog } from './CommandCopyConflictDialog';
 import { CommandDirectoryCopyDialog } from './CommandDirectoryCopyDialog';
+import { CardShareBadge } from './CardShareBadge';
 
 interface Props {
   projectSlug: string;
@@ -464,6 +465,11 @@ export function CommandPanel({ projectSlug }: Props) {
                 {card.frontmatter.model}
               </span>
             )}
+            <CardShareBadge
+              projectSlug={projectSlug}
+              scope={card.scope}
+              relativePath={card.scope === 'project' ? `.claude/commands/${card.relativePath}` : null}
+            />
           </button>
           <div className="flex items-center gap-1">
             {(card.tokens.usesPositionalArgs || card.tokens.usesArgumentsAll) && (

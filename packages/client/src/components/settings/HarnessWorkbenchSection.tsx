@@ -18,6 +18,7 @@ import { CommandPanel } from './harness/CommandPanel';
 import { AgentPanel } from './harness/AgentPanel';
 import { ClaudeMdPanel } from './harness/ClaudeMdPanel';
 import { SnippetPanel } from './harness/SnippetPanel';
+import { ModeBanner } from './harness/ModeBanner';
 import { useHarnessPluginStore } from '../../stores/harnessPluginStore';
 import { useHarnessSkillStore } from '../../stores/harnessSkillStore';
 import { useHarnessMcpStore } from '../../stores/harnessMcpStore';
@@ -26,6 +27,14 @@ import { useHarnessCommandStore } from '../../stores/harnessCommandStore';
 import { useHarnessAgentStore } from '../../stores/harnessAgentStore';
 import { useClaudeMdStore } from '../../stores/claudeMdStore';
 import { useSnippetStore } from '../../stores/snippetStore';
+import { useHarnessShareScopeStore } from '../../stores/harnessShareScopeStore';
+import { getSocket } from '../../services/socket';
+import type { HarnessExternalChangeEvent } from '@hammoc/shared';
+import {
+  useSecretOnSharedDialogStore,
+  deriveLocalSiblingPath,
+} from '../../stores/secretOnSharedDialogStore';
+import { SecretOnSharedDialog } from './harness/SecretOnSharedDialog';
 
 type HarnessSubSection =
   | 'plugins'
@@ -55,6 +64,9 @@ interface Props {
 export function HarnessWorkbenchSection({ projectSlug }: Props) {
   const { t } = useTranslation('settings');
   const [active, setActive] = useState<HarnessSubSection>('plugins');
+  const shareMode = useHarnessShareScopeStore((s) => s.mode);
+  const secretDialogPayload = useSecretOnSharedDialogStore((s) => s.payload);
+  const closeSecretDialog = useSecretOnSharedDialogStore((s) => s.close);
 
   // Prefetch every sub-section's data in parallel as soon as the user enters
   // the workbench, so switching between sub-sections feels instant. Each
@@ -72,9 +84,33 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
     void useClaudeMdStore.getState().load('project', projectSlug);
     // Story 29.2: prefetch the snippet card grid for the active project.
     void useSnippetStore.getState().load(projectSlug);
+    // Story 30.1: prefetch the project's share-scope verdicts (drives the
+    // ShareBadge on every panel + the ModeBanner above the nav).
+    void useHarnessShareScopeStore.getState().load(projectSlug);
+  }, [projectSlug]);
+
+  // Story 30.1 (AC2): subscribe to harness:external-change at the workbench
+  // level so a single watcher event reaches the share-scope store. Sub-panels
+  // already manage their own subscriptions for their own data; the Mode
+  // verdict is workbench-wide, so it lives here.
+  useEffect(() => {
+    const socket = getSocket();
+    socket.emit('harness:subscribe', { scope: 'project', projectSlug });
+    const handler = (payload: HarnessExternalChangeEvent) => {
+      useHarnessShareScopeStore.getState().handleExternalChange(payload, projectSlug);
+    };
+    socket.on('harness:external-change', handler);
+    return () => {
+      socket.off('harness:external-change', handler);
+      socket.emit('harness:unsubscribe', { scope: 'project', projectSlug });
+    };
   }, [projectSlug]);
 
   return (
+    <div className="flex flex-col gap-3">
+      {/* Story 30.1 (AC3.b): Mode banner sits above the sub-section nav so
+          the verdict is workbench-wide and not duplicated per panel. */}
+      <ModeBanner mode={shareMode} />
     <div className="flex flex-col sm:flex-row gap-4">
       {/* Sub-section nav: pill row on mobile (horizontal scroll, no wrap),
           sticky vertical sidebar on >=sm. The negative horizontal margin lets
@@ -114,6 +150,24 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
         {active === 'claudeMd' && <ClaudeMdPanel projectSlug={projectSlug} />}
         {active === 'snippets' && <SnippetPanel projectSlug={projectSlug} />}
       </div>
+    </div>
+    {secretDialogPayload && (
+      <SecretOnSharedDialog
+        targetPath={secretDialogPayload.targetPath}
+        siblingLocalPath={deriveLocalSiblingPath(secretDialogPayload.targetPath) ?? secretDialogPayload.targetPath}
+        willAutoCreateSibling
+        secretLocations={secretDialogPayload.secretLocations}
+        onMoveToLocal={() => {
+          secretDialogPayload.onMoveToLocal();
+          closeSecretDialog();
+        }}
+        onMarkNotSecret={() => {
+          secretDialogPayload.onMarkNotSecret();
+          closeSecretDialog();
+        }}
+        onCancel={closeSecretDialog}
+      />
+    )}
     </div>
   );
 }

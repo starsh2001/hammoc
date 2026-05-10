@@ -70,6 +70,7 @@ const MAPPED_CODES = [
   'HARNESS_PARENT_NOT_FOUND',
   'HARNESS_STALE_WRITE',
   'HARNESS_PARSE_ERROR',
+  'HARNESS_SECRET_ON_SHARED',
 ] as const;
 
 const MESSAGE_KEY: Record<typeof MAPPED_CODES[number], string> = {
@@ -81,10 +82,16 @@ const MESSAGE_KEY: Record<typeof MAPPED_CODES[number], string> = {
   HARNESS_PARENT_NOT_FOUND: 'harness.error.parentNotFound',
   HARNESS_STALE_WRITE: 'harness.error.staleWrite',
   HARNESS_PARSE_ERROR: 'harness.error.parseError',
+  HARNESS_SECRET_ON_SHARED: 'harness.error.secretOnShared',
 };
 
 function handleError(req: Request, res: Response, error: unknown): void {
-  const nodeError = error as NodeJS.ErrnoException & { currentMtime?: string };
+  const nodeError = error as NodeJS.ErrnoException & {
+    currentMtime?: string;
+    relativePath?: string;
+    lines?: number[];
+    paths?: string[];
+  };
   for (const key of MAPPED_CODES) {
     const entry = HARNESS_ERRORS[key];
     if (nodeError.code === entry.code) {
@@ -94,6 +101,16 @@ function handleError(req: Request, res: Response, error: unknown): void {
       };
       if (key === 'HARNESS_STALE_WRITE') {
         body.details = { currentMtime: nodeError.currentMtime ?? '' };
+      }
+      // Story 30.1 (AC4.c): surface the secret locations + the offending path
+      // so the client dialog can list them and compute the `*.local.<ext>`
+      // sibling without a second round trip.
+      if (key === 'HARNESS_SECRET_ON_SHARED') {
+        body.details = {
+          relativePath: nodeError.relativePath ?? '',
+          ...(nodeError.lines ? { lines: nodeError.lines } : {}),
+          ...(nodeError.paths ? { paths: nodeError.paths } : {}),
+        };
       }
       res.status(entry.httpStatus).json({ error: body });
       return;

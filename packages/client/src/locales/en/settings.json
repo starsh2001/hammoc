@@ -1207,6 +1207,37 @@
                 "fileExists": "A snippet with this name already exists at the target location.",
                 "bundledReadOnly": "Bundled snippets are read-only. Clone to project or global scope to customize."
             }
+        },
+        "tools": {
+            "shareBadge": {
+                "shared": "Shared",
+                "local": "Local",
+                "fullyIgnored": "Ignored"
+            },
+            "modeBanner": {
+                "modeA": {
+                    "title": "Team-shared harness project",
+                    "detail": "Files like `.claude/settings.json` are tracked by git."
+                },
+                "modeB": {
+                    "title": "Private harness mode",
+                    "detail": "`.claude/` is excluded from git. To share with the team, use the bundle export.",
+                    "exportCta": "Export bundle"
+                },
+                "exportFallbackToast": "The Story 30.3 export tool is not yet available."
+            },
+            "secretOnShared": {
+                "title": "Plaintext secret detected",
+                "body": "The save was blocked because this file is tracked by git and contains what looks like a secret token. Move the value to a `*.local.*` sibling so it is not committed.",
+                "action": {
+                    "moveToLocal": "Move to local file",
+                    "markNotSecret": "Mark this value as not a secret",
+                    "cancel": "Cancel"
+                },
+                "autoCreateSiblingNotice": "A new file `{{path}}` will be created.",
+                "errorMessage": "Plaintext secret detected. Save was blocked.",
+                "localBadgeLockTooltip": "Bearer tokens or other secrets are present — this file is local-only and is not committed to git."
+            }
         }
     },
     "permissionMode": {

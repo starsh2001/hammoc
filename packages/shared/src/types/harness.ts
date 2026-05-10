@@ -126,6 +126,11 @@ export const HARNESS_ERRORS = {
   // against `bundled` source/target are rejected with this code. `copy` from
   // `bundled` to `project`/`user` remains allowed (one-way clone).
   HARNESS_BUNDLED_READONLY:    { code: 'HARNESS_BUNDLED_READONLY',    httpStatus: 409 },
+  // Story 30.1 (AC4.b): secret heuristic detected a plaintext token in a file
+  // whose share-scope badge is `shared` (i.e. tracked by git). Both the client
+  // dialog and the server-side write guard raise this code so direct API
+  // callers also hit the same policy.
+  HARNESS_SECRET_ON_SHARED:    { code: 'HARNESS_SECRET_ON_SHARED',    httpStatus: 409 },
 } as const;
 export type HarnessErrorCode = typeof HARNESS_ERRORS[keyof typeof HARNESS_ERRORS]['code'];
 
@@ -1194,4 +1199,40 @@ export interface SnippetCopyResponse {
     name: string;
     absolutePath: string;
   };
+}
+
+// ---------------------------------------------------------------------------
+// Story 30.1 — Harness share-scope (shared / local / fully-ignored) types
+// ---------------------------------------------------------------------------
+
+/**
+ * Share-scope of a single harness file as inferred from `.gitignore`.
+ *
+ * - `shared`        — file is tracked by git (committed to the team repo)
+ * - `local`         — file path is matched by `.gitignore` (personal-only)
+ * - `fullyIgnored`  — the project's `.claude/` directory itself is ignored
+ *                     (Mode B project — nothing in `.claude/` reaches git)
+ */
+export type ShareScope = 'shared' | 'local' | 'fullyIgnored';
+
+/**
+ * Project-mode classification derived from running `.gitignore` against the
+ * virtual `.claude/settings.json` path. Mode A = team-shared harness; Mode B =
+ * private (the entire `.claude/` is ignored).
+ */
+export type ShareMode = 'A' | 'B' | 'unknown';
+
+export interface HarnessShareScopeRequest {
+  /** Currently always `'project'` — `.gitignore` does not apply to user scope. */
+  scope: 'project';
+  projectSlug: string;
+  /** Project-relative POSIX paths inside `.claude/` (or sibling files like `.mcp.json`). */
+  paths: string[];
+}
+
+export interface HarnessShareScopeResponse {
+  /** Mode classification (derived from `.claude/settings.json` virtual path). */
+  mode: ShareMode;
+  /** Per-path verdict — keys mirror the `paths` request, values are `ShareScope`. */
+  cards: Record<string, ShareScope>;
 }

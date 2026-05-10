@@ -26,6 +26,7 @@ import { createAgent } from '../../../services/api/harnessAgentsApi';
 import { getSocket } from '../../../services/socket';
 import { AgentEditor } from './AgentEditor';
 import { AgentCopyConflictDialog } from './AgentCopyConflictDialog';
+import { CardShareBadge } from './CardShareBadge';
 
 interface Props {
   projectSlug: string;
@@ -425,6 +426,11 @@ export function AgentPanel({ projectSlug }: Props) {
 
                 <div className="flex items-center gap-1.5 flex-wrap text-xs">
                   <ScopeBadge card={card} />
+                  <CardShareBadge
+                    projectSlug={projectSlug}
+                    scope={card.scope}
+                    relativePath={card.scope === 'project' ? `.claude/agents/${card.name}.md` : null}
+                  />
                   <span
                     className={
                       'px-1.5 py-0.5 rounded text-xs font-medium ' +

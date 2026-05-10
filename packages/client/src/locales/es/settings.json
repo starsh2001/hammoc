@@ -1206,6 +1206,37 @@
                 "fileExists": "Ya existe un fragmento con este nombre en la ubicación de destino.",
                 "bundledReadOnly": "Los fragmentos incluidos son de solo lectura. Clónelos al proyecto o al ámbito global para personalizarlos."
             }
+        },
+        "tools": {
+            "shareBadge": {
+                "shared": "Compartido",
+                "local": "Local",
+                "fullyIgnored": "Ignorado"
+            },
+            "modeBanner": {
+                "modeA": {
+                    "title": "Proyecto harness compartido en equipo",
+                    "detail": "Archivos como `.claude/settings.json` están rastreados por git."
+                },
+                "modeB": {
+                    "title": "Modo privado",
+                    "detail": "`.claude/` está excluido de git. Para compartir con el equipo, usa la exportación de paquete.",
+                    "exportCta": "Exportar paquete"
+                },
+                "exportFallbackToast": "La herramienta de exportación de Story 30.3 aún no está disponible."
+            },
+            "secretOnShared": {
+                "title": "Secreto en texto plano detectado",
+                "body": "Este archivo se comparte con el equipo a través de git, pero contiene un valor que parece un token. La operación se ha bloqueado. Mueve el valor a un archivo hermano `*.local.*` para que no se incluya en commits.",
+                "action": {
+                    "moveToLocal": "Mover a archivo local",
+                    "markNotSecret": "Marcar este valor como no secreto",
+                    "cancel": "Cancelar"
+                },
+                "autoCreateSiblingNotice": "Se creará un nuevo archivo `{{path}}`.",
+                "errorMessage": "Secreto en texto plano detectado. Guardado bloqueado.",
+                "localBadgeLockTooltip": "Contiene tokens Bearer u otros valores sensibles — este archivo es local y no se incluye en git."
+            }
         }
     },
     "permissionMode": {

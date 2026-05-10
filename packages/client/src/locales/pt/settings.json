@@ -1206,6 +1206,37 @@
                 "fileExists": "Já existe um snippet com este nome no local de destino.",
                 "bundledReadOnly": "Snippets incluídos são somente leitura. Clone-os para o projeto ou para o escopo global para personalizá-los."
             }
+        },
+        "tools": {
+            "shareBadge": {
+                "shared": "Compartilhado",
+                "local": "Local",
+                "fullyIgnored": "Ignorado"
+            },
+            "modeBanner": {
+                "modeA": {
+                    "title": "Projeto harness compartilhado em equipe",
+                    "detail": "Arquivos como `.claude/settings.json` são rastreados pelo git."
+                },
+                "modeB": {
+                    "title": "Modo privado",
+                    "detail": "`.claude/` está excluído do git. Para compartilhar com a equipe, use a exportação de pacote.",
+                    "exportCta": "Exportar pacote"
+                },
+                "exportFallbackToast": "A ferramenta de exportação da Story 30.3 ainda não está disponível."
+            },
+            "secretOnShared": {
+                "title": "Segredo em texto puro detectado",
+                "body": "Este arquivo é compartilhado com a equipe via git, mas contém um valor que parece um token. A operação foi bloqueada. Mova o valor para um arquivo irmão `*.local.*` para que não seja incluído em commits.",
+                "action": {
+                    "moveToLocal": "Mover para arquivo local",
+                    "markNotSecret": "Marcar este valor como não-segredo",
+                    "cancel": "Cancelar"
+                },
+                "autoCreateSiblingNotice": "Um novo arquivo `{{path}}` será criado.",
+                "errorMessage": "Segredo em texto puro detectado. Salvamento bloqueado.",
+                "localBadgeLockTooltip": "Contém tokens Bearer ou outros valores sensíveis — este arquivo é local e não é incluído no git."
+            }
         }
     },
     "permissionMode": {
