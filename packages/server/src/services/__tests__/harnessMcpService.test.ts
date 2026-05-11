@@ -406,7 +406,7 @@ describe('harnessMcpService', () => {
           STRIPE: 'sk-aaaaaaaaaaaaaaaaaaaaaaaa',
           AWS: 'AKIAABCDEFGHIJKLMNOP',
           SLACK: 'xoxb-1234567890-abcdefghij',
-          BIG: 'A'.repeat(45),
+          BIG: 'aGVsbG93b3JsZHRoaXNpc2FzZWNyZXR0b2tlbg==',
         },
       });
       expect(res.matched).toBe(true);

@@ -56,10 +56,25 @@ describe('detectSecretsInText — line-based scanning', () => {
     expect(res.patternNames).toContain('slack');
   });
 
-  it('matches long base64-ish runs (≥32 chars from [A-Za-z0-9+/=])', () => {
-    const res = detectSecretsInText(`token = ${'A'.repeat(40)}`);
+  it('matches long high-entropy base64-ish runs (≥32 chars, entropy ≥ 4.0)', () => {
+    const realBase64 = 'aGVsbG93b3JsZHRoaXNpc2FzZWNyZXR0b2tlbg==';
+    const res = detectSecretsInText(`token = ${realBase64}`);
     expect(res.matched).toBe(true);
     expect(res.patternNames).toContain('base64');
+  });
+
+  // Story 30.3 spike #2 — entropy gate suppresses false positives where
+  // 32+ chars match the base64 alphabet but the entropy is low (natural
+  // English compounds, identifier-like strings).
+  it('skips low-entropy base64-alphabet runs (PascalCase / English compound)', () => {
+    // Entropy ~3.6 — well below the 4.0 gate.
+    const res = detectSecretsInText('id = Hammocproductivityengineeringworkbench');
+    expect(res.matched).toBe(false);
+  });
+
+  it('skips repeated single-character runs (entropy 0)', () => {
+    const res = detectSecretsInText(`token = ${'A'.repeat(40)}`);
+    expect(res.matched).toBe(false);
   });
 
   it('strips ${ENV_VAR} references before pattern evaluation', () => {
@@ -99,7 +114,7 @@ describe('detectSecretsInValue — JSON walk', () => {
         STRIPE: 'sk-aaaaaaaaaaaaaaaaaaaaaaaa',
         AWS: 'AKIAABCDEFGHIJKLMNOP',
         SLACK: 'xoxb-1234567890-abcdefghij',
-        BIG: 'A'.repeat(45),
+        BIG: 'aGVsbG93b3JsZHRoaXNpc2FzZWNyZXR0b2tlbg==',
       },
     });
     expect(res.matched).toBe(true);

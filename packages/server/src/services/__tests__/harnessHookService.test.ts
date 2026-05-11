@@ -582,7 +582,7 @@ describe('harnessHookService', () => {
       expect(
         detectSecretsInHook({
           type: 'command',
-          command: `padding ${'a'.repeat(40)} padding`,
+          command: 'padding aGVsbG93b3JsZHRoaXNpc2FzZWNyZXR0b2tlbg== padding',
         }).matched,
       ).toBe(true);
     });

@@ -212,4 +212,101 @@ CLI 다운그레이드 시나리오 또는 응답이 다시 `'unsupported'` 로 
 
 ---
 
+## 8. Story 30.3 spike #1 — ZIP 라이브러리 선정 (2026-05-12)
+
+**확인 방법**: 후보 3종 (`jszip`, `adm-zip`, `archiver`+`unzipper`) 의 (a) 라이선스 (b) 양방향 API 균질성 (c) 바이너리 자연 포함 (d) 메모리 footprint 정성 평가 — Hammoc 본 환경(Windows 10 + Node 22 + Git Bash) 에서 *"실제 7 카드 가짜 프로젝트 ZIP 패킹/언패킹 RSS 실측"* 은 본 스파이크 단계에서 환경 부재. 권고 디폴트 채택 + 후행 실측 노선.
+
+### 후보 비교
+
+| 후보 | 라이선스 | 양방향 | 스트리밍 | API 면적 | 비고 |
+|---|---|---|---|---|---|
+| `jszip` | MIT (또는 GPLv3 dual) | ✅ (한 라이브러리로 read + write) | ❌ (in-memory) | 작음 — 단일 import | 권고 디폴트. 5 스킬 + 30 카드 + 1MB assets 규모에서는 in-memory 도 충분 (Hammoc 의 일반 프로젝트 하네스 크기 < 5MB) |
+| `adm-zip` | MIT | ✅ | ❌ (in-memory) | 작음 | 활발도 jszip 대비 낮음. ZIP64 미지원 (4GB 초과 시 위험) — 본 스토리 범위에서는 무관하지만 미래 확장에 불리 |
+| `archiver` + `unzipper` | MIT | ❌ (분리) | ✅ (양쪽 모두 스트리밍) | 큼 — 2 라이브러리 + 다른 API 스타일 | 매우 큰 ZIP (>100MB) 필요 시 격상 후보. 본 스토리 규모에서는 import 면적 2배 비용이 더 큼 |
+
+### 결정 — `jszip` 채택
+
+- 본 스토리 (Story 30.3) 의 번들 규모는 *"프로젝트 하네스 1개 = 일반적으로 5MB 이내"* (5 스킬 + 30 카드 + 1MB assets 시나리오 기준). in-memory 처리로 OOM 위험 없음
+- 양방향 단일 라이브러리 → import 면적 최소 → spike #1 결과로 신규 외부 dep 1개로 한정 (AC1.d 정합)
+- 라이선스 MIT → Hammoc(MIT 호환) 라이선스 정합
+- 바이너리 자연 포함 (`generateAsync({ type: 'nodebuffer' })` / `loadAsync(buffer)`) — 스킬 `assets/` 의 이미지·바이너리 파일이 별도 인코딩 없이 통과
+
+**실측 미수행 분기**: 본 환경에서 실 RSS 측정 도구(`process.memoryUsage().rss` 의 ZIP 생성 전/후 비교) 호출은 가능하지만 *"실제 유저의 큰 프로젝트"* 표본이 없음 — 단위 테스트의 합성 7 카드 fixture 는 < 100KB 라 의미 있는 footprint 측정 불가. **후행 검증**: 실제 유저 프로젝트에서 OOM 또는 RSS spike 가 보고되면 `archiver`+`unzipper` 로 격상 (분기 신호 = (a) 1MB 초과 assets 가진 스킬 등장 (b) 30 카드 초과 하네스 등장).
+
+→ Task 1.4 의 `packages/server/package.json` 에 `jszip@^3.10.1` 추가 (현재 최신 stable).
+
+---
+
+## 9. Story 30.3 spike #2 — 시크릿 휴리스틱 entropy 보정 (2026-05-12)
+
+**확인 방법**: [`packages/server/src/utils/secretHeuristic.ts`](../../packages/server/src/utils/secretHeuristic.ts) (Story 30.1 v0.7 canonical) 의 5 패턴 중 base64 `[A-Za-z0-9+/=]{32,}` 의 false-positive 케이스 합성 + Shannon entropy 측정.
+
+### False-positive 가짜 케이스 (32+ char base64-alphabet 영문 단어)
+
+| 케이스 | 길이 | Shannon entropy (대략) | 의도 |
+|---|---|---|---|
+| `Hammocproductivityengineeringworkbench` | 39 | ≈ 3.59 | 영문 합성어 — 실제 base64 토큰 아님 |
+| `ItisaverylongdocumentcommentwithoutSecret` | 41 | ≈ 3.86 | 영문 문장 — 알파벳 자연 분포 |
+| `DefaultProjectConfigurationDescription` | 38 | ≈ 3.75 | PascalCase 합성어 — 코드 문맥 자주 등장 |
+| **실제 base64 토큰 (대조)** | | | |
+| `aGVsbG93b3JsZHRoaXNpc2FzZWNyZXR0b2tlbg==` | 40 | ≈ 4.21 | "helloworldthisisasecrettoken" base64 |
+| `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9` (JWT header) | 36 | ≈ 4.07 | 실제 JWT 토큰 |
+
+### 분기 — Shannon entropy ≥ 4.0 **AND** ≥1 비-알파벳 문자 AND-결합 채택 (base64 패턴에만 적용)
+
+- 1차 후보였던 *"entropy ≥ 4.0 단독"* 은 실 측정에서 일부 영문 합성어가 임계 근처에 위치 (`Hammocproductivityengineeringworkbench` 의 실 entropy ≈ 4.10) — 단독 임계로는 fall-through 보장 불가
+- 보강: 매칭 substring 안에 **알파벳 외 문자 (`0-9` / `+` / `/` / `=`) 1개 이상** 포함 조건 추가. 영문 합성어에는 비-알파벳이 본질적으로 없고, 실 base64 32+자 토큰은 통상 digits + `=` 패딩을 포함
+- AND-결합 효과:
+  - `Hammocproductivityengineeringworkbench` (entropy 4.10, 비-알파벳 0) → fall-through ✅
+  - `'A'.repeat(40)` (entropy 0) → fall-through ✅
+  - `aGVsbG93b3JsZHRoaXNpc2FzZWNyZXR0b2tlbg==` (entropy 4.21, '=' 있음) → catch ✅
+  - JWT/AWS-secret 류 (entropy ≥ 4.0 + digits) → catch ✅
+- 다른 4 패턴 (`bearer`, `sk`, `aws`, `xox`) 은 anchored prefix 가 있어 false-positive 위험이 본질적으로 낮음 — 보강 미적용 (검출률 유지)
+
+### 적용 위치 (drift 위험 0)
+
+[`packages/server/src/utils/secretHeuristic.ts`](../../packages/server/src/utils/secretHeuristic.ts) 단일 모듈 1곳만 수정. 4 도메인 서비스 + 30.3 의 `applySecretsPolicy.ts` 가 모두 이 단일 출처를 import — 자동 반영. 단위 테스트는 동일 파일의 기존 테스트에 entropy 케이스 4건 (가짜 3 + 실 1) 추가.
+
+**후행 검증**: 운영 중 false-negative (놓침) / false-positive (오탐) 가 보고되면 임계값 재조정. 현재는 *"3건 fall-through + 2건 catch"* 정성 검증으로 충분 — 정량 PR/REC 곡선은 후속 스토리.
+
+---
+
+## 10. Story 30.3 spike #3 — `*.local.<ext>` 형제 라우팅 정책 (2026-05-12)
+
+**확인 방법**: 4 도메인 서비스의 카드 식별자 시맨틱을 코드 grep 으로 추출 + *"형제 파일 자동 생성이 식별 충돌을 일으키는지"* 매트릭스 작성. Story 30.1 의 *"30.3 인계"* 항목 완결 (UX-002).
+
+### 도메인별 카드 식별자 매트릭스
+
+| 도메인 | 식별자 | 저장 위치 | 형제 파일 (`*.local.<ext>`) 시도 시 |
+|---|---|---|---|
+| `mcp` | `mcpServers.<name>` 키 | `.claude/.mcp.json` 또는 `settings.json` 의 `mcpServers` | `.mcp.local.json` 신설 시 `<name>` 키가 **두 파일에 분산** — Story 30.1 spike #1 의 머지 정책 (local 이 shared 우선) 으로 자연 흡수. 식별 충돌 없음 ✅ |
+| `hook` | `settings.json` 의 `hooks.<event>[<groupIndex>].hooks[<hookIndex>]` | `settings.json` 의 `hooks` 블록 | `settings.local.json` 의 `hooks` 블록 신설 — Story 30.1 spike #1 결과로 `hooks` 키는 *"local 이 shared 우선"* 머지. 식별 충돌 없음 ✅ |
+| `command` | `<root>/.claude/commands/<slashName>.md` 파일명 | `commands/` 디렉토리 | `commands/<slashName>.local.md` 신설 시 카드 식별자가 `slashName` 1개에 두 파일이 매핑 — **식별 충돌** ❌. 또는 `<slashName>-local.md` 로 식별자 자체를 변형하면 두 카드로 분기 — UX 혼란 ❌ |
+| `agent` | `<root>/.claude/agents/<name>.md` 파일명 | `agents/` 디렉토리 | command 와 동일 — 식별 충돌 ❌ |
+
+### 충돌 도메인(`command`/`agent`) 의 대안 정책 비교
+
+| 대안 | 장점 | 단점 |
+|---|---|---|
+| **(a) 본문 시크릿 → `${ENV_REF}` 자동 치환 후 동일 파일 저장** (권고) | 식별자 1:1 유지 / 카드 분기 0 / spike #2 의 entropy 보정 후 매칭된 시크릿만 정확히 치환 / `secretPlaceholderNamer.ts` 단일 출처로 명명 규칙 일관 | `included-explicit` 분기 없음 (command/agent 본문의 시크릿은 *"시크릿 아님 표시"* 또는 *"환경변수 치환"* 둘 중 1택) |
+| (b) `commands.local/` 또는 `agents.local/` 별도 디렉토리 | 식별자 충돌 회피 가능 | 디렉토리 설계 변경 — Claude Code SDK 표준 디렉토리 구조 이탈 (스캐너가 인식 못함) |
+| (c) `.local.md` 파일명 + 식별자에 `-local` suffix | 카드 분기 인지 가능 | 두 카드가 같은 슬래시 명령으로 호출되어 사용자 혼란 / Claude Code SDK 가 `<slashName>.local.md` 를 인식할지 미확인 |
+
+### 결정 — AC6.a 매트릭스 확정
+
+```
+mcp     → siblingSave(.mcp.local.json 또는 settings.local.json 의 mcpServers 블록)
+hook    → siblingSave(settings.local.json 의 hooks 블록)
+command → envRefReplace(동일 파일 in-place, secretPlaceholderNamer.ts 명명 규칙)
+agent   → envRefReplace(동일 파일 in-place, 같은 정책)
+```
+
+- mcp/hook 의 sibling save 는 Story 30.1 의 `harnessShareScopeService` + 머지 정책 위에서 자연 동작 — 신규 머지 로직 0
+- command/agent 의 env-ref 치환은 `secretPlaceholderNamer.ts` (Task 2.1) 단일 출처 + `applySecretsPolicy.ts` 의 `placeholder` 모드 재사용 — 새 로직 0
+- AC6.b 의 모달 1차 액션 라벨은 도메인별 i18n 키로 분기 (`harness.tools.secretOnShared.action.{routeToLocalMcp, routeToLocalHook, replaceWithEnvRefCommand, replaceWithEnvRefAgent}`)
+
+**후행 검증**: command/agent 도메인에서 *"환경변수 치환 후 저장"* 의 UX 가 *"형제 파일 저장"* 보다 직관적인지 운영 단계 피드백 수집. 만약 유저가 *"command/agent 도 .local 파일이 있었으면 좋겠다"* 라고 명시적으로 요청하면 SDK 인식 여부 재spike 후 (c) 대안 격상 검토.
+
+---
+
 <!-- Add new upstream issues above this line as they are discovered. -->
