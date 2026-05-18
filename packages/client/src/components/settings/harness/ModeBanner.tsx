@@ -6,9 +6,11 @@
  *                    `ShareBadge.local` so the blue `shared` chip stays the
  *                    only blue accent on the page)
  *   Mode B — amber : "비공유 모드 — `.claude/` 가 git 에서 제외됩니다."
- *                    Optional [번들 내보내기] button on the right (Story 30.3
- *                    Export trigger). When `onExportClick` is undefined the
- *                    button still renders but pops a fallback toast — Task 7.1.
+ *                    [번들 내보내기] CTA — Story 30.3 Export trigger. While
+ *                    `onExportClick` is `null` the entry point is not rendered
+ *                    so a fake promise is never shown. Once Story 30.3's real
+ *                    implementation wires `HarnessWorkbenchSection` to pass a
+ *                    callback, the button reappears naturally.
  *
  * The banner is mounted exactly once per workbench (above the sub-section
  * nav) — sub-section components never render their own banner so the verdict
@@ -21,8 +23,12 @@ import type { ShareMode } from '@hammoc/shared';
 
 interface Props {
   mode: ShareMode;
-  /** Story 30.3 Export modal trigger. When omitted, button shows fallback toast. */
-  onExportClick?: () => void;
+  /**
+   * Story 30.3 Export modal trigger. Pass `null` to explicitly hide the CTA
+   * (the entry point is not rendered) — this surfaces "intentionally hidden"
+   * vs "forgot to pass" as a compile error at the call site.
+   */
+  onExportClick: (() => void) | null;
   className?: string;
 }
 
@@ -44,12 +50,6 @@ export function ModeBanner({ mode, onExportClick, className }: Props) {
   const handleExport = () => {
     if (onExportClick) {
       onExportClick();
-      return;
-    }
-    // Task 7.1 fallback — Story 30.3 not yet merged. Render an alert so the
-    // user understands the CTA is wired but the destination isn't ready.
-    if (typeof window !== 'undefined') {
-      window.alert(t('harness.tools.modeBanner.exportFallbackToast'));
     }
   };
 
@@ -69,7 +69,7 @@ export function ModeBanner({ mode, onExportClick, className }: Props) {
         <span className="hidden sm:inline"> — </span>
         <span className="block sm:inline opacity-90">{t(detailKey)}</span>
       </div>
-      {isB && (
+      {isB && onExportClick !== null && (
         <button
           type="button"
           data-testid="mode-banner-export-cta"

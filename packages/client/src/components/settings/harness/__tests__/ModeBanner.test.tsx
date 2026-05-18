@@ -1,12 +1,11 @@
 /**
  * Story 30.1 (Task 4.5): ModeBanner tests.
  *
- * Covers Mode A vs Mode B rendering, the Mode B export CTA callback wiring,
- * and the Story 30.3-not-yet-merged fallback (window.alert with the
- * `exportFallbackToast` key).
+ * Covers Mode A vs Mode B rendering and the Mode B export CTA callback
+ * wiring (the CTA is gated on `onExportClick !== null` — Story 30.4).
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ModeBanner } from '../ModeBanner';
 
@@ -22,30 +21,26 @@ vi.mock('react-i18next', async (orig) => {
 });
 
 describe('ModeBanner', () => {
-  let alertSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    alertSpy.mockRestore();
-  });
-
   it('renders the Mode A banner without an export CTA', () => {
-    render(<ModeBanner mode="A" />);
+    render(<ModeBanner mode="A" onExportClick={null} />);
     expect(screen.getByTestId('mode-banner-A')).toBeInTheDocument();
     expect(screen.queryByTestId('mode-banner-export-cta')).not.toBeInTheDocument();
   });
 
-  it('renders the Mode B banner WITH an export CTA', () => {
-    render(<ModeBanner mode="B" />);
+  it('renders the Mode B banner WITHOUT an export CTA when onExportClick is null', () => {
+    render(<ModeBanner mode="B" onExportClick={null} />);
+    expect(screen.getByTestId('mode-banner-B')).toBeInTheDocument();
+    expect(screen.queryByTestId('mode-banner-export-cta')).not.toBeInTheDocument();
+  });
+
+  it('renders the Mode B banner WITH an export CTA when onExportClick is provided', () => {
+    render(<ModeBanner mode="B" onExportClick={vi.fn()} />);
     expect(screen.getByTestId('mode-banner-B')).toBeInTheDocument();
     expect(screen.getByTestId('mode-banner-export-cta')).toBeInTheDocument();
   });
 
   it('does not render anything when mode is unknown', () => {
-    const { container } = render(<ModeBanner mode="unknown" />);
+    const { container } = render(<ModeBanner mode="unknown" onExportClick={null} />);
     expect(container.firstChild).toBeNull();
   });
 
@@ -54,12 +49,5 @@ describe('ModeBanner', () => {
     render(<ModeBanner mode="B" onExportClick={onExportClick} />);
     fireEvent.click(screen.getByTestId('mode-banner-export-cta'));
     expect(onExportClick).toHaveBeenCalledTimes(1);
-    expect(alertSpy).not.toHaveBeenCalled();
-  });
-
-  it('falls back to a toast/alert when Story 30.3 export trigger is undefined', () => {
-    render(<ModeBanner mode="B" />);
-    fireEvent.click(screen.getByTestId('mode-banner-export-cta'));
-    expect(alertSpy).toHaveBeenCalledWith('harness.tools.modeBanner.exportFallbackToast');
   });
 });

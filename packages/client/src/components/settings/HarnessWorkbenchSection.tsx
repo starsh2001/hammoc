@@ -150,7 +150,10 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
     <div className="flex flex-col gap-3">
       {/* Story 30.1 (AC3.b): Mode banner sits above the sub-section nav so
           the verdict is workbench-wide and not duplicated per panel. */}
-      <ModeBanner mode={shareMode} />
+      {/* Story 30.4: onExportClick={null} hides the CTA while Story 30.3 is
+          unimplemented — replace with the ExportBundleDialog open handler when
+          Story 30.3 (Task 4) lands. */}
+      <ModeBanner mode={shareMode} onExportClick={null} />
       {/* Story 30.2 (AC4.a): "lint 규칙" entry point sits above the sub-section
           nav as a workbench-wide meta line — same level as ModeBanner. */}
       <div className="flex justify-end">

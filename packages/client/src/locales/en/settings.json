@@ -1223,8 +1223,7 @@
                     "title": "Private harness mode",
                     "detail": "`.claude/` is excluded from git. To share with the team, use the bundle export.",
                     "exportCta": "Export bundle"
-                },
-                "exportFallbackToast": "The Story 30.3 export tool is not yet available."
+                }
             },
             "secretOnShared": {
                 "title": "Plaintext secret detected",

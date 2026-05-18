@@ -1222,8 +1222,7 @@
                     "title": "Modo privado",
                     "detail": "`.claude/` está excluído do git. Para compartilhar com a equipe, use a exportação de pacote.",
                     "exportCta": "Exportar pacote"
-                },
-                "exportFallbackToast": "A ferramenta de exportação da Story 30.3 ainda não está disponível."
+                }
             },
             "secretOnShared": {
                 "title": "Segredo em texto puro detectado",

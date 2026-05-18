@@ -1222,8 +1222,7 @@
                     "title": "非共享模式",
                     "detail": "`.claude/` 已从 git 中排除。要与团队共享，请使用打包导出。",
                     "exportCta": "导出捆绑包"
-                },
-                "exportFallbackToast": "Story 30.3 导出工具尚未提供。"
+                }
             },
             "secretOnShared": {
                 "title": "检测到明文密钥",

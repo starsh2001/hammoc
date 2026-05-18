@@ -937,13 +937,12 @@
 
 **절차**:
 1. 워크벤치 진입 → `[data-testid="mode-banner-B"]` 가 amber 톤으로 렌더된다
-2. 배너 우측의 `[data-testid="mode-banner-export-cta"]` ([번들 내보내기]) 버튼이 표시된다
-3. 버튼 클릭 → Story 30.3 Export 도구가 미머지 상태이면 `harness.tools.modeBanner.exportFallbackToast` 메시지가 alert/toast 로 표시된다
-4. 모든 하네스 파일 카드에 `[data-testid="share-badge-fullyIgnored"]` (amber) 배지가 표시된다
+2. 배너 우측에 `[data-testid="mode-banner-export-cta"]` 요소가 **존재하지 않음** — Story 30.3 (진짜 구현) 미완료 동안 `HarnessWorkbenchSection` 이 `onExportClick={null}` 을 명시적으로 전달하기 때문 (Story 30.4)
+3. 모든 하네스 파일 카드에 `[data-testid="share-badge-fullyIgnored"]` (amber) 배지가 표시된다
 
 **기대 결과**:
 - Mode 판정은 `.claude/settings.json` 가상 경로의 `isIgnored()` 결과 단일 분기점만 사용 (파일 물리 존재 여부와 무관)
-- Story 30.3 머지 전이라도 CTA 가 죽지 않고 fallback 안내가 작동 (회귀 가드)
+- Story 30.3 (진짜 구현) 완료 전까지 가짜 진입점이 노출되지 않음 (회귀 가드) — Story 30.3 머지 시 `HarnessWorkbenchSection` 이 `onExportClick` 을 실 다이얼로그 open 콜백으로 교체하면 CTA 가 자연 부활
 
 ### B-14-03: `.gitignore` 외부 변경 → 배지·배너 자동 재계산 `[EDGE]`
 

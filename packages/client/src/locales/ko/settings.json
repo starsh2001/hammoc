@@ -1223,8 +1223,7 @@
                     "title": "비공유 모드",
                     "detail": "`.claude/` 가 git 에서 제외됩니다. 팀과 공유하려면 번들 내보내기를 사용하세요.",
                     "exportCta": "번들 내보내기"
-                },
-                "exportFallbackToast": "Story 30.3 Export 도구는 아직 준비 중입니다."
+                }
             },
             "secretOnShared": {
                 "title": "평문 시크릿이 감지되었습니다",

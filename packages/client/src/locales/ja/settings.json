@@ -1222,8 +1222,7 @@
                     "title": "非共有モード",
                     "detail": "`.claude/` は git から除外されています。チームと共有するにはバンドルエクスポートを使用してください。",
                     "exportCta": "バンドルをエクスポート"
-                },
-                "exportFallbackToast": "Story 30.3 のエクスポート機能はまだ提供されていません。"
+                }
             },
             "secretOnShared": {
                 "title": "平文のシークレットが検出されました",
