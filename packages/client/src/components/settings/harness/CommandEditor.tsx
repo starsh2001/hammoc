@@ -16,7 +16,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HelpCircle, Loader2, X } from 'lucide-react';
+import { HelpCircle, Loader2, Maximize2, X } from 'lucide-react';
 import type { Extension } from '@codemirror/state';
 import type {
   HarnessCommandCard,
@@ -32,6 +32,7 @@ import {
 } from '../../../services/api/harnessCommandsApi';
 import { useHarnessCommandStore } from '../../../stores/harnessCommandStore';
 import { useSecretOnSharedDialogStore } from '../../../stores/secretOnSharedDialogStore';
+import { useTextExpansionStore } from '../../../stores/textExpansionStore';
 import { getSocket } from '../../../services/socket';
 
 const LazyCodeMirror = lazy(() => import('@uiw/react-codemirror'));
@@ -279,6 +280,43 @@ export function CommandEditor({ card, projectSlug, onClose }: Props) {
     },
     [flushSave, isReadOnly],
   );
+
+  // Close any expansion overlay this editor opened when the modal unmounts.
+  useEffect(() => {
+    return () => {
+      if (useTextExpansionStore.getState().isOpen) {
+        useTextExpansionStore.getState().close();
+      }
+    };
+  }, []);
+
+  const expandBody = () => {
+    useTextExpansionStore.getState().open({
+      label: `${card.slashName} — ${t('harness.command.editor.bodyTitle', { defaultValue: 'Body (markdown)' })}`,
+      content: bodyDraft,
+      isMarkdown: true,
+      readOnly: isReadOnly,
+      projectSlug,
+      onChange: (value) => {
+        setBodyDraft(value);
+        scheduleBodySave(value);
+      },
+    });
+  };
+
+  const expandRaw = () => {
+    useTextExpansionStore.getState().open({
+      label: `${card.slashName} — ${t('harness.command.editor.rawTitle', { defaultValue: 'Raw' })}`,
+      content: rawDraft,
+      isMarkdown: true,
+      readOnly: isReadOnly,
+      projectSlug,
+      onChange: (value) => {
+        setRawDraft(value);
+        scheduleRawSave(value);
+      },
+    });
+  };
 
   const handleArgHintChange = (value: string) => {
     setArgHintDraft(value);
@@ -584,24 +622,37 @@ export function CommandEditor({ card, projectSlug, onClose }: Props) {
                 <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                   {t('harness.command.editor.bodyTitle', { defaultValue: 'Body (markdown)' })}
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowTokenGuide((v) => !v)}
-                  aria-expanded={showTokenGuide}
-                  aria-controls="cmd-token-guide-drawer"
-                  data-testid="cmd-token-guide-toggle"
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded text-gray-600 hover:text-blue-700 dark:text-gray-300 dark:hover:text-blue-300"
-                  title={t('harness.command.editor.tokenGuide.title', {
-                    defaultValue: 'Dynamic substitution tokens',
-                  })}
-                >
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  <span>
-                    {t('harness.command.editor.tokenGuide.title', {
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={expandBody}
+                    aria-label={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                    title={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                    data-testid="cmd-body-expand"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                    {t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowTokenGuide((v) => !v)}
+                    aria-expanded={showTokenGuide}
+                    aria-controls="cmd-token-guide-drawer"
+                    data-testid="cmd-token-guide-toggle"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded text-gray-600 hover:text-blue-700 dark:text-gray-300 dark:hover:text-blue-300"
+                    title={t('harness.command.editor.tokenGuide.title', {
                       defaultValue: 'Dynamic substitution tokens',
                     })}
-                  </span>
-                </button>
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    <span>
+                      {t('harness.command.editor.tokenGuide.title', {
+                        defaultValue: 'Dynamic substitution tokens',
+                      })}
+                    </span>
+                  </button>
+                </div>
               </div>
               {showTokenGuide && (
                 <div
@@ -695,21 +746,36 @@ export function CommandEditor({ card, projectSlug, onClose }: Props) {
         )}
 
         {!isLoading && data && mode === 'raw' && (
-          <div className="rounded border border-gray-300 dark:border-gray-700 overflow-hidden">
-            <Suspense fallback={<div className="p-3 text-xs text-gray-500">Loading editor…</div>}>
-              <LazyCodeMirror
-                value={rawDraft}
-                onChange={(next) => {
-                  setRawDraft(next);
-                  scheduleRawSave(next);
-                }}
-                extensions={bodyExtensions ?? []}
-                editable={!isReadOnly}
-                height="360px"
-                basicSetup={{ lineNumbers: true }}
-                data-testid="cmd-raw-editor"
-              />
-            </Suspense>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={expandRaw}
+                aria-label={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                title={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                data-testid="cmd-raw-expand"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <Maximize2 className="w-3 h-3" />
+                {t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+              </button>
+            </div>
+            <div className="rounded border border-gray-300 dark:border-gray-700 overflow-hidden">
+              <Suspense fallback={<div className="p-3 text-xs text-gray-500">Loading editor…</div>}>
+                <LazyCodeMirror
+                  value={rawDraft}
+                  onChange={(next) => {
+                    setRawDraft(next);
+                    scheduleRawSave(next);
+                  }}
+                  extensions={bodyExtensions ?? []}
+                  editable={!isReadOnly}
+                  height="360px"
+                  basicSetup={{ lineNumbers: true }}
+                  data-testid="cmd-raw-editor"
+                />
+              </Suspense>
+            </div>
           </div>
         )}
 

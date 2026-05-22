@@ -13,10 +13,11 @@
 
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Maximize2, Plus } from 'lucide-react';
 import type { Extension } from '@codemirror/state';
 import type { HarnessScope } from '@hammoc/shared';
 import { useClaudeMdStore } from '../../../stores/claudeMdStore';
+import { useTextExpansionStore } from '../../../stores/textExpansionStore';
 
 const LazyCodeMirror = lazy(() => import('@uiw/react-codemirror'));
 const lazyMarkdownExtensions = (): Promise<Extension[]> =>
@@ -75,6 +76,35 @@ export function ClaudeMdEditor({ scope, projectSlug, headerSlot, disableAutoSave
     },
     [scheduleSave, scope, setDraft],
   );
+
+  // Mirror the host draft into the expansion overlay so external mutations
+  // (stale reload, scope swap) don't get clobbered by stale text the user
+  // typed into the expanded editor.
+  const expansionIsOpen = useTextExpansionStore((s) => s.isOpen);
+  useEffect(() => {
+    if (!expansionIsOpen) return;
+    useTextExpansionStore.setState({ content: column.content });
+  }, [column.content, expansionIsOpen]);
+
+  // Close any expansion this column opened when it unmounts (e.g. parent
+  // panel switches scopes or closes).
+  useEffect(() => {
+    return () => {
+      if (useTextExpansionStore.getState().isOpen) {
+        useTextExpansionStore.getState().close();
+      }
+    };
+  }, []);
+
+  const openExpansion = () => {
+    useTextExpansionStore.getState().open({
+      label: `CLAUDE.md — ${scope === 'project' ? 'project' : 'user'}`,
+      content: column.content,
+      onChange: handleChange,
+      isMarkdown: true,
+      projectSlug: scope === 'project' ? projectSlug ?? null : null,
+    });
+  };
 
   const handleCreate = async () => {
     setShowCreateConfirm(false);
@@ -183,20 +213,35 @@ export function ClaudeMdEditor({ scope, projectSlug, headerSlot, disableAutoSave
       )}
 
       {!column.isLoading && column.exists && (
-        <div
-          data-testid={`${dataTestidPrefix}-editor`}
-          className="rounded border border-gray-300 dark:border-gray-700 overflow-hidden [&_.cm-scroller]:!overflow-auto"
-        >
-          <Suspense fallback={<div className="p-3 text-xs text-gray-500">Loading editor…</div>}>
-            <LazyCodeMirror
-              value={column.content}
-              onChange={handleChange}
-              extensions={extensions ?? []}
-              height="360px"
-              basicSetup={{ lineNumbers: false }}
-            />
-          </Suspense>
-        </div>
+        <>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={openExpansion}
+              aria-label={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+              title={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+              data-testid={`${dataTestidPrefix}-expand`}
+              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              <Maximize2 className="w-3 h-3" />
+              {t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+            </button>
+          </div>
+          <div
+            data-testid={`${dataTestidPrefix}-editor`}
+            className="rounded border border-gray-300 dark:border-gray-700 overflow-hidden [&_.cm-scroller]:!overflow-auto"
+          >
+            <Suspense fallback={<div className="p-3 text-xs text-gray-500">Loading editor…</div>}>
+              <LazyCodeMirror
+                value={column.content}
+                onChange={handleChange}
+                extensions={extensions ?? []}
+                height="360px"
+                basicSetup={{ lineNumbers: false }}
+              />
+            </Suspense>
+          </div>
+        </>
       )}
 
       {showCreateConfirm && (

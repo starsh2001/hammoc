@@ -383,7 +383,9 @@
     "reloadFromDisk": "리로드",
     "saveOverwrite": "덮어쓰기",
     "dismiss": "무시",
-    "reloadedFromDisk": "디스크에서 다시 불러왔습니다."
+    "reloadedFromDisk": "디스크에서 다시 불러왔습니다.",
+    "expand": "확장",
+    "readOnly": "읽기 전용"
   },
   "imageViewer": {
     "close": "뷰어 닫기",

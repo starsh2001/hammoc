@@ -18,7 +18,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, Maximize2, X } from 'lucide-react';
 import type { Extension } from '@codemirror/state';
 import type {
   HarnessAgentCard,
@@ -37,6 +37,7 @@ import {
 import { useHarnessAgentStore } from '../../../stores/harnessAgentStore';
 import { getSocket } from '../../../services/socket';
 import { useSecretOnSharedDialogStore } from '../../../stores/secretOnSharedDialogStore';
+import { useTextExpansionStore } from '../../../stores/textExpansionStore';
 
 const LazyCodeMirror = lazy(() => import('@uiw/react-codemirror'));
 const lazyBodyExtensions = (): Promise<Extension[]> =>
@@ -316,6 +317,43 @@ export function AgentEditor({ card, projectSlug, onClose }: Props) {
     },
     [flushSave, isReadOnly],
   );
+
+  // Close any expansion overlay this editor opened when the modal unmounts.
+  useEffect(() => {
+    return () => {
+      if (useTextExpansionStore.getState().isOpen) {
+        useTextExpansionStore.getState().close();
+      }
+    };
+  }, []);
+
+  const expandBody = () => {
+    useTextExpansionStore.getState().open({
+      label: `${card.name} — ${t('harness.agent.editor.bodyTitle', { defaultValue: 'System prompt (markdown)' })}`,
+      content: bodyDraft,
+      isMarkdown: true,
+      readOnly: isReadOnly,
+      projectSlug,
+      onChange: (value) => {
+        setBodyDraft(value);
+        scheduleBodySave(value);
+      },
+    });
+  };
+
+  const expandRaw = () => {
+    useTextExpansionStore.getState().open({
+      label: `${card.name} — ${t('harness.agent.editor.rawToggle', { defaultValue: 'Raw' })}`,
+      content: rawDraft,
+      isMarkdown: true,
+      readOnly: isReadOnly,
+      projectSlug,
+      onChange: (value) => {
+        setRawDraft(value);
+        scheduleRawSave(value);
+      },
+    });
+  };
 
   const handleInsertExample = () => {
     const ta = descriptionRef.current;
@@ -788,11 +826,24 @@ export function AgentEditor({ card, projectSlug, onClose }: Props) {
             </fieldset>
 
             <div className="flex flex-col gap-2">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                {t('harness.agent.editor.bodyTitle', {
-                  defaultValue: 'System prompt (markdown)',
-                })}
-              </h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  {t('harness.agent.editor.bodyTitle', {
+                    defaultValue: 'System prompt (markdown)',
+                  })}
+                </h3>
+                <button
+                  type="button"
+                  onClick={expandBody}
+                  aria-label={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                  title={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                  data-testid="agent-body-expand"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <Maximize2 className="w-3 h-3" />
+                  {t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                </button>
+              </div>
               {showNoExampleWarning && (
                 <div role="status" data-testid="agent-no-example-warning" className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
                   {t('harness.agent.editor.warnings.noExampleBlock', {
@@ -825,7 +876,21 @@ export function AgentEditor({ card, projectSlug, onClose }: Props) {
         )}
 
         {!isLoading && data && mode === 'raw' && (
-          <div className="rounded border border-gray-300 dark:border-gray-700 overflow-hidden">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={expandRaw}
+                aria-label={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                title={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                data-testid="agent-raw-expand"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <Maximize2 className="w-3 h-3" />
+                {t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+              </button>
+            </div>
+            <div className="rounded border border-gray-300 dark:border-gray-700 overflow-hidden">
             <Suspense fallback={<div className="p-3 text-xs text-gray-500">Loading editor…</div>}>
               <LazyCodeMirror
                 value={rawDraft}
@@ -840,6 +905,7 @@ export function AgentEditor({ card, projectSlug, onClose }: Props) {
                 data-testid="agent-raw-editor"
               />
             </Suspense>
+            </div>
           </div>
         )}
 

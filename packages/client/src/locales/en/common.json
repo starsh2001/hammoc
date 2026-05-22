@@ -378,7 +378,9 @@
     "reloadFromDisk": "Reload",
     "saveOverwrite": "Overwrite",
     "dismiss": "Dismiss",
-    "reloadedFromDisk": "Reloaded from disk."
+    "reloadedFromDisk": "Reloaded from disk.",
+    "expand": "Expand",
+    "readOnly": "read-only"
   },
   "imageViewer": {
     "close": "Close viewer",

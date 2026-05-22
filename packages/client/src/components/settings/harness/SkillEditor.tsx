@@ -15,7 +15,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X, Eye, Pencil } from 'lucide-react';
+import { Loader2, Maximize2, X, Eye, Pencil } from 'lucide-react';
 import type { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -35,6 +35,7 @@ import {
   writeBundleFile,
 } from '../../../services/api/harnessSkillsApi';
 import { useHarnessSkillStore } from '../../../stores/harnessSkillStore';
+import { useTextExpansionStore } from '../../../stores/textExpansionStore';
 import { MarkdownRenderer } from '../../MarkdownRenderer';
 
 const LazyCodeMirror = lazy(() => import('@uiw/react-codemirror'));
@@ -226,6 +227,62 @@ export function SkillEditor({ card, projectSlug, onClose }: Props) {
   useEffect(() => () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
   }, []);
+
+  // Close any expansion overlay opened from this editor when the modal
+  // unmounts (e.g. close button or backdrop click).
+  useEffect(() => {
+    return () => {
+      if (useTextExpansionStore.getState().isOpen) {
+        useTextExpansionStore.getState().close();
+      }
+    };
+  }, []);
+
+  const expandBody = () => {
+    useTextExpansionStore.getState().open({
+      label: `${card.name} — ${t('harness.skill.editor.body.title', { defaultValue: 'Body' })}`,
+      content: bodyDraft,
+      isMarkdown: true,
+      readOnly: isReadOnly,
+      projectSlug: selectedSource.scope === 'project' ? projectSlug : null,
+      basePath: selectedSource.absoluteRoot,
+      onChange: (value) => {
+        setBodyDraft(value);
+        scheduleFormSave({ name: nameDraft, description: descDraft, version: versionDraft, body: value });
+      },
+    });
+  };
+
+  const expandRaw = () => {
+    useTextExpansionStore.getState().open({
+      label: `${card.name} — ${t('harness.skill.editor.raw.title', { defaultValue: 'Raw' })}`,
+      content: rawDraft,
+      isMarkdown: true,
+      readOnly: isReadOnly,
+      projectSlug: selectedSource.scope === 'project' ? projectSlug : null,
+      basePath: selectedSource.absoluteRoot,
+      onChange: (value) => {
+        setRawDraft(value);
+        scheduleRawSave(value);
+      },
+    });
+  };
+
+  const expandBundle = () => {
+    if (!openBundle || bundleIsBinary) return;
+    useTextExpansionStore.getState().open({
+      label: `${card.name} — ${openBundle.relativePath}`,
+      content: bundleContent,
+      isMarkdown: openBundle.relativePath.toLowerCase().endsWith('.md'),
+      readOnly: isReadOnly,
+      projectSlug: selectedSource.scope === 'project' ? projectSlug : null,
+      basePath: selectedSource.absoluteRoot,
+      onChange: (value) => {
+        setBundleContent(value);
+        scheduleBundleSave(value);
+      },
+    });
+  };
 
   // Sync drafts between form and raw modes when the user toggles. Without this
   // each side keeps its own copy and the inactive mode shows stale text — e.g.
@@ -471,17 +528,30 @@ export function SkillEditor({ card, projectSlug, onClose }: Props) {
                   <h3 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     {t('harness.skill.editor.body.title')}
                   </h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowPreview((p) => !p)}
-                    className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    aria-pressed={showPreview}
-                  >
-                    {showPreview ? <Pencil className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    {showPreview
-                      ? t('harness.skill.editor.body.editLabel', { defaultValue: 'Edit' })
-                      : t('harness.skill.editor.body.previewLabel', { defaultValue: 'Preview' })}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={expandBody}
+                      aria-label={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                      title={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                      data-testid="skill-body-expand"
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                      {t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPreview((p) => !p)}
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      aria-pressed={showPreview}
+                    >
+                      {showPreview ? <Pencil className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {showPreview
+                        ? t('harness.skill.editor.body.editLabel', { defaultValue: 'Edit' })
+                        : t('harness.skill.editor.body.previewLabel', { defaultValue: 'Preview' })}
+                    </button>
+                  </div>
                 </div>
                 <div className="border border-gray-200 dark:border-gray-700 rounded min-h-[200px]">
                   {showPreview ? (
@@ -532,6 +602,7 @@ export function SkillEditor({ card, projectSlug, onClose }: Props) {
                   setBundleContent(value);
                   scheduleBundleSave(value);
                 }}
+                onExpand={expandBundle}
                 t={t}
               />
             </>
@@ -539,9 +610,22 @@ export function SkillEditor({ card, projectSlug, onClose }: Props) {
 
           {!isLoading && data && mode === 'raw' && (
             <section className="space-y-2">
-              <h3 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                {t('harness.skill.editor.raw.title')}
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  {t('harness.skill.editor.raw.title')}
+                </h3>
+                <button
+                  type="button"
+                  onClick={expandRaw}
+                  aria-label={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                  title={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                  data-testid="skill-raw-expand"
+                  className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <Maximize2 className="w-3 h-3" />
+                  {t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                </button>
+              </div>
               <div className="border border-gray-200 dark:border-gray-700 rounded min-h-[400px]">
                 <Suspense fallback={<EditorFallback t={t} />}>
                   <LazyCodeMirror
@@ -701,6 +785,7 @@ function BundleSection({
   codeMirrorTheme,
   onOpen,
   onChange,
+  onExpand,
   t,
 }: {
   entries: HarnessSkillBundleEntry[];
@@ -714,6 +799,7 @@ function BundleSection({
   codeMirrorTheme: 'light' | typeof oneDark;
   onOpen(entry: HarnessSkillBundleEntry): void;
   onChange(value: string): void;
+  onExpand(): void;
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   if (entries.length === 0 && !truncatedAtDepth) return null;
@@ -756,19 +842,34 @@ function BundleSection({
         })}
       </ul>
       {openBundle && !bundleIsBinary && (
-        <div className="border border-gray-200 dark:border-gray-700 rounded min-h-[200px]">
-          <Suspense fallback={<EditorFallback t={t} />}>
-            <LazyCodeMirror
-              value={bundleContent}
-              extensions={codeMirrorExtensions}
-              theme={codeMirrorTheme}
-              readOnly={isReadOnly}
-              height="200px"
-              onChange={(value: string) => onChange(value)}
-              basicSetup={{ lineNumbers: true, foldGutter: false, tabSize: 2 }}
-            />
-          </Suspense>
-        </div>
+        <>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onExpand}
+              aria-label={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+              title={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+              data-testid="skill-bundle-expand"
+              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              <Maximize2 className="w-3 h-3" />
+              {t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+            </button>
+          </div>
+          <div className="border border-gray-200 dark:border-gray-700 rounded min-h-[200px]">
+            <Suspense fallback={<EditorFallback t={t} />}>
+              <LazyCodeMirror
+                value={bundleContent}
+                extensions={codeMirrorExtensions}
+                theme={codeMirrorTheme}
+                readOnly={isReadOnly}
+                height="200px"
+                onChange={(value: string) => onChange(value)}
+                basicSetup={{ lineNumbers: true, foldGutter: false, tabSize: 2 }}
+              />
+            </Suspense>
+          </div>
+        </>
       )}
       {openBundle && bundleIsBinary && (
         <p className="text-xs text-gray-500 dark:text-gray-400">

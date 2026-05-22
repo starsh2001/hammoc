@@ -358,7 +358,9 @@
     "reloadFromDisk": "リロード",
     "saveOverwrite": "上書き",
     "dismiss": "無視",
-    "reloadedFromDisk": "ディスクから再読み込みしました。"
+    "reloadedFromDisk": "ディスクから再読み込みしました。",
+    "expand": "拡大表示",
+    "readOnly": "読み取り専用"
   },
   "git": {
     "initTitle": "Gitリポジトリを初期化",

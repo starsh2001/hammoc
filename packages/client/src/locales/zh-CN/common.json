@@ -358,7 +358,9 @@
     "reloadFromDisk": "重新加载",
     "saveOverwrite": "覆盖保存",
     "dismiss": "忽略",
-    "reloadedFromDisk": "已从磁盘重新加载。"
+    "reloadedFromDisk": "已从磁盘重新加载。",
+    "expand": "展开",
+    "readOnly": "只读"
   },
   "git": {
     "initTitle": "初始化 Git 仓库",

@@ -358,7 +358,9 @@
     "reloadFromDisk": "Recargar",
     "saveOverwrite": "Sobrescribir",
     "dismiss": "Descartar",
-    "reloadedFromDisk": "Recargado desde el disco."
+    "reloadedFromDisk": "Recargado desde el disco.",
+    "expand": "Expandir",
+    "readOnly": "solo lectura"
   },
   "git": {
     "initTitle": "Inicializar repositorio Git",

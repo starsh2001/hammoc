@@ -16,10 +16,11 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, Maximize2, X } from 'lucide-react';
 import type { Extension } from '@codemirror/state';
 import type { SnippetCard } from '@hammoc/shared';
 import { useSnippetStore } from '../../../stores/snippetStore';
+import { useTextExpansionStore } from '../../../stores/textExpansionStore';
 import { SystemBadge } from './SystemBadge';
 import { ScopePill } from './snippetShared';
 
@@ -106,6 +107,36 @@ export function SnippetEditor({ card, projectSlug, workingDirectory, onClose }: 
   const handleBodyChange = (next: string) => {
     setActiveDraft(next);
     scheduleSave();
+  };
+
+  // Keep the expansion overlay in sync if the host draft is mutated externally
+  // (stale reload, scope change). The overlay's own `setContent` already calls
+  // back into `handleBodyChange`, so the loop is idempotent.
+  const expansionIsOpen = useTextExpansionStore((s) => s.isOpen);
+  useEffect(() => {
+    if (!expansionIsOpen) return;
+    useTextExpansionStore.setState({ content: active?.draft ?? '' });
+  }, [active?.draft, expansionIsOpen]);
+
+  // Close any expansion this editor opened when the snippet modal unmounts.
+  useEffect(() => {
+    return () => {
+      if (useTextExpansionStore.getState().isOpen) {
+        useTextExpansionStore.getState().close();
+      }
+    };
+  }, []);
+
+  const openExpansion = () => {
+    if (!active) return;
+    useTextExpansionStore.getState().open({
+      label: `${card.name} — ${t('harness.snippets.editor.bodyLabel', { defaultValue: 'Body (markdown)' })}`,
+      content: active.draft,
+      onChange: handleBodyChange,
+      isMarkdown: true,
+      readOnly: isReadOnly,
+      projectSlug: card.scope === 'project' ? projectSlug : null,
+    });
   };
 
   const handleOverwrite = async () => {
@@ -275,9 +306,22 @@ export function SnippetEditor({ card, projectSlug, workingDirectory, onClose }: 
 
         {!isOpening && active && (
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-              {t('harness.snippets.editor.bodyLabel', { defaultValue: 'Body (markdown)' })}
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                {t('harness.snippets.editor.bodyLabel', { defaultValue: 'Body (markdown)' })}
+              </h3>
+              <button
+                type="button"
+                onClick={openExpansion}
+                aria-label={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                title={t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+                data-testid="snippet-body-expand"
+                className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <Maximize2 className="w-3 h-3" />
+                {t('editor.expand', { ns: 'common', defaultValue: 'Expand' })}
+              </button>
+            </div>
             <p className="text-xs text-gray-600 dark:text-gray-400">
               {t('harness.snippets.editor.bodyHint', {
                 defaultValue:
