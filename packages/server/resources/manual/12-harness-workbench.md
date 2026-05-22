@@ -27,9 +27,11 @@ When the workbench loads, every section's data is fetched in parallel and cached
 A workbench-wide banner just above the navigator tells you how the project shares its `.claude/` configuration:
 
 - **Team-shared** (gray banner) — `.claude/` is **not** ignored by git. Files committed here (skills, hook definitions, the project `CLAUDE.md`, etc.) ship with the repo and reach every teammate.
-- **Private** (amber banner) — `.claude/` (or a parent path) is excluded by `.gitignore`. Files here stay on your machine. An **"Export bundle"** button lets you ship the current harness state to a teammate as a single bundle file when you want to.
+- **Private** (amber banner) — `.claude/` (or a parent path) is excluded by `.gitignore`. Files here stay on your machine, so a teammate cloning the repo gets none of them.
 
 The banner is derived from the project root's `.gitignore`. Edit the rules and the banner updates the next time the workbench refreshes.
+
+> An **Export bundle** action is planned for the Private mode banner so you can ship the current harness state to a teammate as a single file. The button is intentionally hidden until the export/import flow is fully wired — until then, copy individual files by hand or via the workbench's Project ↔ Global copy actions.
 
 ### 12.3 Share Badges
 
@@ -169,5 +171,5 @@ The dialog lists exactly which values were flagged (line numbers for text files,
 
 ### 12.14 Fullscreen Editor
 
-Every body field (skill body, command body, agent prompt, CLAUDE.md, snippet body) shows a **Maximize** button (⤢ icon) next to the editor's close button. Clicking it opens a fullscreen overlay with the same CodeMirror editor and Markdown preview toggle, so you can write long content without scrolling inside a narrow modal. Edits in the overlay sync back to the host panel through the same debounce auto-save — there is no separate save button. Close the overlay with **X** or `Escape`.
+Every Markdown body in the workbench — skill body and raw view, skill bundle files, command body and raw view, agent system prompt and raw view, `CLAUDE.md` (both columns), snippet body — shows a small **Expand** button (⤢ icon) above the editor area. Clicking it opens a fullscreen overlay with the same CodeMirror instance, line wrapping, and a Markdown edit / preview toggle, so you can write long content without scrolling inside a narrow modal. Edits in the overlay sync back to the host panel through the same 300 ms debounce auto-save — there is no separate save button. Close the overlay with **X** or `Escape`. Read-only buffers (a plugin-scope file, a bundled snippet) show a small "read-only" chip in the overlay header.
 

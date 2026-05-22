@@ -180,7 +180,7 @@ Edit the `.claude/` configuration tree from inside Hammoc — no need to hand-ed
 - **Plugins, Skills, MCP, Hooks, Slash Commands, Sub-agents** — Card-grid panels for each, with project ↔ global copy actions and conflict dialogs
 - **CLAUDE.md editor** — Two-column edit of project and global instruction documents with live Markdown preview
 - **Snippets & Favorites** — Manage Hammoc `%snippets` (project / global / bundled) alongside Claude Code slash-command favorites in a single panel
-- **Share badges + mode banner** — See at a glance which files are git-tracked vs local, with an export-bundle workflow for private setups
+- **Share badges + mode banner** — See at a glance which files are git-tracked vs local, so you know which edits will reach teammates
 - **Static lint (7 rules)** — Surfaces duplicate names, invalid hook regex, missing env vars, malformed MCP URLs, non-standard agent tools, etc.; per-rule on/off preferences
 - **Secret-on-shared guard** — Blocks plaintext API keys / tokens from sneaking into committed config files, with one-click "move to local sibling" remediation
 - **Fullscreen editor overlay** — Maximize any body field (skill, command, agent, CLAUDE.md, snippet) into a fullscreen CodeMirror

@@ -46,7 +46,7 @@ The Settings tab has a two-pane layout:
 - **Hidden toggle** — Hide the project from the project list
 - **Reset to Global Defaults** — Remove all overrides at once
 
-On narrow screens, the left nav becomes a horizontally-scrolling pill row above the right panel.
+On narrow screens, the left nav collapses into a row of buttons above the right panel (the inner Harness Workbench navigator beneath it becomes the horizontally-scrolling pill row — see §12.1).
 
 ### 5.4 Hiding Projects
 
