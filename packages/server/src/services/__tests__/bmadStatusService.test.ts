@@ -9,7 +9,7 @@ import path from 'path';
 const mockReadFile = vi.fn();
 const mockReaddir = vi.fn();
 const mockStat = vi.fn();
-const mockClose = vi.fn();
+const mockClose = vi.fn().mockResolvedValue(undefined);
 const mockOpen = vi.fn();
 
 vi.mock('fs/promises', () => ({
@@ -75,17 +75,14 @@ const VALID_CONFIG_PARSED = {
 };
 
 function setupOpenMock(content: string) {
-  const buf = Buffer.from(content);
-  mockOpen.mockResolvedValue({
-    read: vi.fn().mockResolvedValue({ bytesRead: Math.min(buf.length, 500) }),
-    close: mockClose,
-  });
-  // Override the read to actually fill the buffer
   mockOpen.mockImplementation(async () => ({
-    read: async (buffer: Buffer, _offset: number, length: number, _position: number) => {
-      const bytes = Math.min(buf.length, length);
-      buf.copy(buffer, 0, 0, bytes);
-      return { bytesRead: bytes };
+    readLines: () => {
+      const lines = content.split(/\r?\n/);
+      // Mirror Node's FileHandle.readLines: trailing newline yields no empty last line
+      if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+      return (async function* () {
+        for (const line of lines) yield line;
+      })();
     },
     close: mockClose,
   }));
@@ -378,6 +375,44 @@ describe('bmadStatusService', () => {
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
 
     expect(result.epics[0].stories[0].status).toBe('Unknown');
+  });
+
+  // TC-BS-12b: Long blockquote with the word "Status" must not shadow the
+  // real ## Status heading further down (regression for Story 30.3 where
+  // a multi-paragraph Korean "status journey" note pushed the heading
+  // past the old 500-byte read window).
+  it('reads past a long blockquote that mentions Status before the heading', async () => {
+    (yaml.load as ReturnType<typeof vi.fn>).mockReturnValue({
+      prd: { prdFile: 'docs/prd.md', prdSharded: false },
+      architecture: { architectureFile: 'docs/architecture.md', architectureSharded: false },
+      devStoryLocation: 'docs/stories',
+    });
+    mockReadFile.mockImplementation(async (filePath: string) => {
+      if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
+      if (filePath.includes('prd.md')) return '## Epic 30: Harness\n';
+      throw makeEnoent();
+    });
+    mockStat.mockRejectedValue(makeEnoent());
+    mockReaddir.mockImplementation(async (dir: string) => {
+      if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return ['30.3.story.md'];
+      throw makeEnoent();
+    });
+
+    // Quote line ~600 bytes in UTF-8 (Korean chars are 3 bytes each)
+    // and contains the literal word "Status" to verify the regex does
+    // not match content inside `>` blockquotes.
+    const journeyNote =
+      '한국어로 작성된 매우 긴 Status journey 주석 — '.repeat(20);
+    const content =
+      '# Story 30.3: 하네스 Export/Import 번들\n\n' +
+      `> **Status journey** — ${journeyNote}\n\n` +
+      '## Status\n\nApproved\n\n## Story\n';
+    setupOpenMock(content);
+
+    const result = await bmadStatusService.scanProject(PROJECT_ROOT);
+
+    expect(result.epics[0].stories[0].status).toBe('Approved');
+    expect(result.epics[0].stories[0].title).toBe('하네스 Export/Import 번들');
   });
 
   // TC-BS-13: monolithic PRD에서 에픽 이름을 추출한다

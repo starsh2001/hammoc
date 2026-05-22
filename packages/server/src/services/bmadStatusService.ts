@@ -452,42 +452,88 @@ class BmadStatusService {
   }
 
   /**
-   * Extract Status field from a story file header.
-   * Reads only the first 500 bytes for performance.
+   * Extract Status and title from a story file header.
+   * Reads line-by-line up to MAX_LINES so long Markdown blockquotes
+   * (e.g. multi-paragraph "status journey" notes in CJK text where each
+   * char is 3 bytes in UTF-8) cannot push the Status heading past a
+   * fixed byte buffer. Blockquote lines are skipped so a `> **Status ...`
+   * note never shadows the real `## Status` heading.
    */
   private async extractStoryMeta(filePath: string): Promise<{ status: string; title?: string }> {
-    let header: string;
+    const MAX_LINES = 200;
+    let status = 'Unknown';
+    let title: string | undefined;
+    let awaitingStatusValue = false;
+    let linesRead = 0;
+
+    let fh: Awaited<ReturnType<typeof open>>;
     try {
-      const fh = await open(filePath, 'r');
-      try {
-        const buf = Buffer.alloc(500);
-        const { bytesRead } = await fh.read(buf, 0, 500, 0);
-        header = buf.subarray(0, bytesRead).toString('utf-8');
-      } finally {
-        await fh.close();
-      }
+      fh = await open(filePath, 'r');
     } catch {
       return { status: 'Unknown' };
     }
 
-    // Match status in multiple formats:
-    //   1. "## Status\n\nDone"       (heading + blank line + value)
-    //   2. "## Status\nDone"         (heading + value, no blank line)
-    //   3. "## Status: Done"         (heading with inline value)
-    //   4. "Status: Done"            (key-value, no heading)
-    //   5. "**Status:** Done"        (bold key-value)
-    const statusMatch =
-      header.match(/^## Status\s*\n\s*\n\s*(.+)/m) ||      // format 1
-      header.match(/^## Status\s*\n\s*([^\n#].+)/m) ||      // format 2
-      header.match(/^## Status\s*:\s*(.+)/m) ||              // format 3
-      header.match(/^\*{0,2}Status\*{0,2}\s*:\s*(.+)/m);    // format 4 & 5
-    const status = statusMatch ? statusMatch[1].trim() : 'Unknown';
+    try {
+      for await (const rawLine of fh.readLines({ encoding: 'utf-8' })) {
+        if (++linesRead > MAX_LINES) break;
+        const line = rawLine.replace(/\r$/, '');
 
-    // Match: "# Story 1.1: Title", "# Story BS-1: Title", "# Story: Title"
-    const titleMatch = header.match(/^#\s+Story(?:\s+(?:BS-)?[\d]+(?:\.\d+)?)?[:\s–-]+(.+)/m);
-    const title = titleMatch ? titleMatch[1].trim() : undefined;
+        // Skip Markdown blockquote lines so prose mentioning "Status" does
+        // not shadow the real heading.
+        if (/^\s*>/.test(line)) continue;
 
-    return { status, title };
+        if (awaitingStatusValue) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          // Stop hunting if we hit another heading before a value (malformed file)
+          if (trimmed.startsWith('#')) {
+            awaitingStatusValue = false;
+            continue;
+          }
+          status = trimmed;
+          awaitingStatusValue = false;
+          if (title) break;
+          continue;
+        }
+
+        // Format 3: "## Status: Done"
+        const inlineHeading = line.match(/^## Status\s*:\s*(.+)/);
+        if (inlineHeading) {
+          status = inlineHeading[1].trim();
+          if (title) break;
+          continue;
+        }
+
+        // Formats 1 & 2: "## Status" followed by value on next non-empty line
+        if (/^## Status\s*$/.test(line)) {
+          awaitingStatusValue = true;
+          continue;
+        }
+
+        // Formats 4 & 5: "Status: Done" or "**Status:** Done"
+        const inlineKv = line.match(/^\*{0,2}Status\*{0,2}\s*:\s*(.+)/);
+        if (inlineKv) {
+          status = inlineKv[1].trim();
+          if (title) break;
+          continue;
+        }
+
+        // Title: "# Story 1.1: Title", "# Story BS-1: Title", "# Story: Title"
+        if (!title) {
+          const titleMatch = line.match(/^#\s+Story(?:\s+(?:BS-)?[\d]+(?:\.\d+)?)?[:\s–-]+(.+)/);
+          if (titleMatch) {
+            title = titleMatch[1].trim();
+            if (status !== 'Unknown') break;
+          }
+        }
+      }
+    } catch {
+      // fall through with whatever we collected
+    } finally {
+      await fh.close().catch(() => {});
+    }
+
+    return { status, ...(title && { title }) };
   }
 
   /**
