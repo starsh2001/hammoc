@@ -4,7 +4,7 @@
  * [Extended: Story 3.6 - Task 3: Project creation tests]
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import type { ProjectInfo, ValidatePathResponse } from '@hammoc/shared';
@@ -39,22 +39,14 @@ import projectsRoutes from '../projects';
 
 describe('Projects Routes', () => {
   let app: express.Express;
-  // Increment Date.now per test to reset the in-memory rate limiter window (shared Map, 60s window)
-  let fakeTime = Date.now();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    fakeTime += 120_000; // 2-minute gap ensures a fresh rate limit window
-    vi.spyOn(Date, 'now').mockReturnValue(fakeTime);
     app = express();
     app.use(express.json());
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     app.use((req: any, _res: any, next: any) => { req.t = (key: string) => key; req.language = 'en'; next(); });
     app.use('/api/projects', projectsRoutes);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('GET /api/projects', () => {

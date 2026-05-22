@@ -28,7 +28,6 @@ if (args.includes('--help') || args.includes('-h')) {
     --host <string>        Host to bind to (default: 0.0.0.0, env: HOST)
     --trust-proxy          Enable reverse proxy support (env: TRUST_PROXY)
     --cors-origin <url>    Restrict CORS to specific origin (env: CORS_ORIGIN)
-    --rate-limit <number>  Requests per minute per IP (default: 200, env: RATE_LIMIT)
     --reset-password       Reset the admin password
     -h, --help             Show this help message
     -v, --version          Show version number
@@ -61,11 +60,6 @@ if (args.includes('--trust-proxy')) {
 const corsIndex = args.indexOf('--cors-origin');
 if (corsIndex !== -1 && args[corsIndex + 1]) {
   process.env.CORS_ORIGIN = args[corsIndex + 1];
-}
-
-const rateLimitIndex = args.indexOf('--rate-limit');
-if (rateLimitIndex !== -1 && args[rateLimitIndex + 1]) {
-  process.env.RATE_LIMIT = args[rateLimitIndex + 1];
 }
 
 // Always run in production mode

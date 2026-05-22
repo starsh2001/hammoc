@@ -81,7 +81,6 @@ hammoc --port 8080          # Custom port
 hammoc --host localhost     # Bind to localhost only
 hammoc --trust-proxy        # Enable reverse proxy support
 hammoc --cors-origin <url>  # Restrict CORS to specific origin
-hammoc --rate-limit 1000    # Requests per minute per IP
 hammoc --reset-password     # Reset admin password
 hammoc --version            # Show version
 hammoc --help               # Show help
@@ -98,7 +97,7 @@ npx hammoc --trust-proxy --cors-origin https://hammoc.yourdomain.com
 ```
 
 **What `--trust-proxy` enables:**
-- Reads real client IP from proxy headers for correct rate limiting and access control
+- Reads real client IP from proxy headers for access control (e.g. localhost-only endpoints)
 - Sets session cookies with `Secure` flag (HTTPS-only)
 
 **What `--cors-origin` does:**
@@ -109,9 +108,9 @@ npx hammoc --trust-proxy --cors-origin https://hammoc.yourdomain.com
 - Security headers (CSP, X-Frame-Options, HSTS, etc.)
 - Server management APIs (restart, update) restricted to localhost only
 - Terminal access restricted to local network IPs
-- Rate limiting (200 req/min/IP by default, adjustable via `--rate-limit`)
+- Login brute-force protection (5 failed attempts → 30s lockout per IP)
 
-> **Note:** For multi-hop proxy setups (CDN → Load Balancer → nginx → Hammoc), increase the rate limit with `--rate-limit 1000` since multiple users may share the same proxy IP.
+> **Note:** Hammoc does not apply request-level rate limiting itself — traffic shaping is an infrastructure concern. Configure it at your reverse proxy / WAF / API gateway (nginx `limit_req`, Cloudflare WAF rules, etc.).
 
 ### 1.7 HTTPS / TLS
 
@@ -650,7 +649,6 @@ Each card has a **kebab menu** (⋮) with:
 4. Path collision detection — if the path already belongs to an existing project, an amber warning appears with a **"Navigate to existing"** link and the **Create** button is disabled until you pick a different path
 5. Invalid paths show the server's validation message in red below the input, and also disable **Create**
 6. Optionally enable BMad Method initialization with version selection
-7. Rate limited to prevent abuse
 
 ### 5.3 Project Settings
 
@@ -1831,7 +1829,6 @@ Note: Quick panel shortcuts are disabled when an input or textarea is focused.
 | `NODE_ENV` | — | Set to `production` for optimized mode |
 | `TRUST_PROXY` | `false` | Enable reverse proxy support. Set to `true` when behind Cloudflare Tunnel, nginx, etc. |
 | `CORS_ORIGIN` | `true` | CORS origin policy. `true` allows any origin (local/VPN use). Set a specific URL (e.g., `https://hammoc.example.com`) to restrict |
-| `RATE_LIMIT` | `200` | Max requests per minute per IP. Increase for multi-hop proxy setups where users share a proxy IP |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key (required for Claude Code to function) |
 | `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout in milliseconds (5 minutes). Overrides the Settings UI value |
 | `LOG_LEVEL` | `INFO` (prod) / `DEBUG` (dev) | Logging level: ERROR, WARN, INFO, DEBUG, VERBOSE |

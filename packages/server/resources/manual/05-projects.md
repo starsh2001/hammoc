@@ -29,7 +29,6 @@ Each card has a **kebab menu** (⋮) with:
 4. Path collision detection — if the path already belongs to an existing project, an amber warning appears with a **"Navigate to existing"** link and the **Create** button is disabled until you pick a different path
 5. Invalid paths show the server's validation message in red below the input, and also disable **Create**
 6. Optionally enable BMad Method initialization with version selection
-7. Rate limited to prevent abuse
 
 ### 5.3 Project Settings
 

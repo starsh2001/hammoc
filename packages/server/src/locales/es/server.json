@@ -307,10 +307,6 @@
       "invalidChatId": "Chat ID inválido.",
       "writeError": "Error al guardar la configuración de Telegram.",
       "testError": "Error del servidor al enviar la notificación de prueba."
-    },
-    "rateLimit": {
-      "projectCreate": "Demasiadas solicitudes de creación de proyecto. Inténtelo de nuevo más tarde.",
-      "pathValidation": "Demasiadas solicitudes de validación de ruta. Inténtelo de nuevo más tarde."
     }
   }
 }

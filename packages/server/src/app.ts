@@ -12,8 +12,6 @@ import { existsSync } from 'fs';
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import { extractRequestIP } from './utils/networkUtils.js';
 import cliRoutes from './routes/cli.js';
 import authRoutes from './routes/auth.js';
 import projectsRoutes from './routes/projects.js';
@@ -91,26 +89,10 @@ export async function createApp(): Promise<Express> {
     })
   );
 
-  // General rate limiting per IP (skip health endpoints)
-  // Default 200/min — increase via RATE_LIMIT env var for multi-hop proxy setups
-  // where multiple users share the same proxy IP
-  app.use(rateLimit({
-    windowMs: 60_000,
-    limit: parseInt(process.env.RATE_LIMIT || '200', 10),
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    keyGenerator: (req) => extractRequestIP(req),
-    skip: (req) => req.path === '/health' || req.path === '/api/health' || req.path === '/api/debug/log',
-  }));
-
-  // Dedicated rate limiter for debug log endpoint (more permissive, prevents abuse)
-  app.use('/api/debug/log', rateLimit({
-    windowMs: 60_000,
-    limit: 600,
-    standardHeaders: false,
-    legacyHeaders: false,
-    keyGenerator: (req) => extractRequestIP(req),
-  }));
+  // Request rate limiting is an infrastructure concern (reverse proxy / WAF /
+  // API gateway), not the application's. Operators control traffic shaping at
+  // the edge where they own the topology (real client IPs, multi-instance
+  // accounting, policy rollout) — the app must not duplicate it.
 
   app.use(express.json());
 

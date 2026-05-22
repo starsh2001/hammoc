@@ -355,10 +355,6 @@
       "invalidChatId": "Invalid Chat ID.",
       "writeError": "Failed to save Telegram settings.",
       "testError": "Server error while sending test notification."
-    },
-    "rateLimit": {
-      "projectCreate": "Too many project creation requests. Please try again later.",
-      "pathValidation": "Too many path validation requests. Please try again later."
     }
   }
 }

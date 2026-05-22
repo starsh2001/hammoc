@@ -318,10 +318,6 @@
       "invalidChatId": "유효하지 않은 Chat ID입니다.",
       "writeError": "Telegram 설정 저장에 실패했습니다.",
       "testError": "테스트 알림 전송 중 서버 오류가 발생했습니다."
-    },
-    "rateLimit": {
-      "projectCreate": "프로젝트 생성 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
-      "pathValidation": "경로 검증 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."
     }
   }
 }

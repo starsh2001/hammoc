@@ -644,17 +644,5 @@ describe('Projects Integration Tests', () => {
         expect(response.body.error.code).toBe('INVALID_REQUEST');
       });
     });
-
-    describe('Rate Limiting', () => {
-      it('should allow requests within rate limit', async () => {
-        // Make a few requests - should all succeed
-        for (let i = 0; i < 5; i++) {
-          await agent
-            .post('/api/projects/validate-path')
-            .send({ path: `/test/path/${i}` })
-            .expect(200);
-        }
-      });
-    });
   });
 });

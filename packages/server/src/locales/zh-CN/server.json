@@ -307,10 +307,6 @@
       "invalidChatId": "无效的Chat ID。",
       "writeError": "保存Telegram设置失败。",
       "testError": "发送测试通知时服务器出错。"
-    },
-    "rateLimit": {
-      "projectCreate": "项目创建请求过多。请稍后再试。",
-      "pathValidation": "路径验证请求过多。请稍后再试。"
     }
   }
 }

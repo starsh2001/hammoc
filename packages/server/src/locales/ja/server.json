@@ -307,10 +307,6 @@
       "invalidChatId": "無効なChat IDです。",
       "writeError": "Telegram設定の保存に失敗しました。",
       "testError": "テスト通知の送信中にサーバーエラーが発生しました。"
-    },
-    "rateLimit": {
-      "projectCreate": "プロジェクト作成リクエストが多すぎます。しばらくしてから再試行してください。",
-      "pathValidation": "パス検証リクエストが多すぎます。しばらくしてから再試行してください。"
     }
   }
 }

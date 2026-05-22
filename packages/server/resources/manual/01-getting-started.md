@@ -57,7 +57,6 @@ hammoc --port 8080          # Custom port
 hammoc --host localhost     # Bind to localhost only
 hammoc --trust-proxy        # Enable reverse proxy support
 hammoc --cors-origin <url>  # Restrict CORS to specific origin
-hammoc --rate-limit 1000    # Requests per minute per IP
 hammoc --reset-password     # Reset admin password
 hammoc --version            # Show version
 hammoc --help               # Show help
@@ -74,7 +73,7 @@ npx hammoc --trust-proxy --cors-origin https://hammoc.yourdomain.com
 ```
 
 **What `--trust-proxy` enables:**
-- Reads real client IP from proxy headers for correct rate limiting and access control
+- Reads real client IP from proxy headers for access control (e.g. localhost-only endpoints)
 - Sets session cookies with `Secure` flag (HTTPS-only)
 
 **What `--cors-origin` does:**
@@ -85,9 +84,9 @@ npx hammoc --trust-proxy --cors-origin https://hammoc.yourdomain.com
 - Security headers (CSP, X-Frame-Options, HSTS, etc.)
 - Server management APIs (restart, update) restricted to localhost only
 - Terminal access restricted to local network IPs
-- Rate limiting (200 req/min/IP by default, adjustable via `--rate-limit`)
+- Login brute-force protection (5 failed attempts → 30s lockout per IP)
 
-> **Note:** For multi-hop proxy setups (CDN → Load Balancer → nginx → Hammoc), increase the rate limit with `--rate-limit 1000` since multiple users may share the same proxy IP.
+> **Note:** Hammoc does not apply request-level rate limiting itself — traffic shaping is an infrastructure concern. Configure it at your reverse proxy / WAF / API gateway (nginx `limit_req`, Cloudflare WAF rules, etc.).
 
 ### 1.7 HTTPS / TLS
 

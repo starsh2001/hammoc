@@ -92,14 +92,6 @@ tests/integration/
 | 증거 스크린샷 | `browser_take_screenshot` (pass/fail 모두) |
 | JS 상태 조회 | `browser_evaluate` (예: Zustand store 값) |
 
-### 3.2.1 API 병렬 호출 주의 (rate limit)
-
-서버는 `express-rate-limit` 으로 동일 IP 의 과도한 요청을 차단한다. 특히 사전 점검 단계(`/api/preferences`, `/api/debug/kill-ws`, `/api/cli-status` 등)를 **같은 메시지에서 병렬 `browser_evaluate` 로 동시 호출**하면 429 (`Too many requests, please try again later.`) 가 발생해 응답이 JSON 파싱 실패로 이어진다.
-
-- **규칙**: 인증·설정·헬스체크류 API는 **순차 호출**한다. 한 번에 1개씩, 응답을 받은 뒤 다음 호출로 진행한다.
-- **429 를 만났을 때**: 30초 이상 대기 후 순차 재시도. 시나리오 본절차가 아닌 사전 점검은 재시도 후 통과하면 문제없다.
-- 시나리오가 병렬 호출을 꼭 필요로 한다면(예: 동시성 검증) 해당 시나리오 절차에 "rate limit 단일 IP 완화 훅" 설치 절차를 포함시킨다.
-
 ### 3.3 공통 Setup / Teardown
 
 **Setup (테스트 세션 시작 시 1회) — Interactive 모드**

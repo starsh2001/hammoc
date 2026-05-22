@@ -61,7 +61,6 @@ Options:
   --host <string>        Host to bind to (default: 0.0.0.0, env: HOST)
   --trust-proxy          Enable reverse proxy support (env: TRUST_PROXY)
   --cors-origin <url>    Restrict CORS to specific origin (env: CORS_ORIGIN)
-  --rate-limit <number>  Requests per minute per IP (default: 200, env: RATE_LIMIT)
   --reset-password       Reset the admin password
   -h, --help             Show this help message
   -v, --version          Show version number
@@ -91,15 +90,17 @@ npx hammoc --trust-proxy --cors-origin https://hammoc.yourdomain.com
 ```
 
 This enables:
-- **Proxy header support** — Correctly identifies client IPs behind the proxy (CF-Connecting-IP, X-Forwarded-For, X-Real-IP)
+- **Proxy header support** — Correctly identifies client IPs behind the proxy (CF-Connecting-IP, X-Forwarded-For, X-Real-IP) for localhost/local-network access checks
 - **Secure cookies** — Session cookies are set with `Secure` flag for HTTPS
 - **CORS restriction** — Only the specified origin can make authenticated requests
-- **Rate limiting** — 200 requests/min per IP (adjust with `--rate-limit`)
+
+> Hammoc does not apply request rate limiting itself. Configure traffic shaping at your reverse proxy / WAF (e.g. nginx `limit_req`, Cloudflare WAF) — the layer that owns the real client IP and topology.
 
 **Security features (always active):**
 - Helmet.js security headers (CSP, X-Frame-Options, HSTS, X-Content-Type-Options)
 - Server management APIs restricted to loopback only (127.0.0.1)
 - Terminal access restricted to local network IPs
+- Login brute-force protection (5 failed attempts → 30s lockout per IP)
 - IP validation with strict format checking and `net.isIP()` verification
 - XFF spoofing protection (rightmost IP parsing)
 - Debug endpoints disabled in production
@@ -385,7 +386,6 @@ If you already have a reverse proxy (Nginx, Caddy, etc.) handling HTTPS, simply 
 | `NODE_ENV` | — | Set to `production` for optimized mode |
 | `TRUST_PROXY` | `false` | Enable reverse proxy support (Cloudflare Tunnel, nginx, etc.) |
 | `CORS_ORIGIN` | `true` | CORS origin (`true` allows any; set a URL to restrict) |
-| `RATE_LIMIT` | `200` | Max requests per minute per IP |
 | `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout (ms) |
 | `LOG_LEVEL` | `INFO`/`DEBUG` | ERROR, WARN, INFO, DEBUG, VERBOSE |
 | `TERMINAL_ENABLED` | `true` | Enable/disable terminal feature |
