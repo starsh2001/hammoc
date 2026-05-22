@@ -453,6 +453,17 @@ export const projectController = {
       }
 
       const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+      // Without an 'error' listener, an async spawn failure (ENOENT, EACCES,
+      // Windows CreateProcess failure, antivirus block) bypasses try/catch and
+      // crashes the server with an uncaughtException.
+      child.on('error', (err) => {
+        log.error('Failed to spawn file explorer', {
+          cmd,
+          args,
+          platform,
+          error: err,
+        });
+      });
       child.unref();
       res.json({ success: true });
     } catch (error) {
