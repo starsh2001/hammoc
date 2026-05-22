@@ -145,3 +145,6 @@ export {
   appendMarkdownSections,
   MarkdownH2Section,
 } from './utils/markdownSections.js';
+
+// Story 30.3: Harness Export/Import bundle DTOs
+export * from './types/harnessBundle.js';
