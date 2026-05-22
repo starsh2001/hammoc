@@ -1,6 +1,6 @@
-## 15. Troubleshooting
+## 16. Troubleshooting
 
-### 15.1 "Claude Code CLI not found"
+### 16.1 "Claude Code CLI not found"
 
 Claude Code CLI must be installed and in your PATH:
 
@@ -10,7 +10,7 @@ claude --version
 
 If not installed, follow the [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code). The Onboarding page shows CLI installation, authentication, and API key status at a glance.
 
-### 15.2 "Authentication required" / `claude login`
+### 16.2 "Authentication required" / `claude login`
 
 If the chat displays an authentication error, Claude Code CLI needs to be logged in:
 
@@ -20,7 +20,7 @@ claude login
 
 The Onboarding page (shown when CLI is not authenticated) displays the current auth status and provides setup commands.
 
-### 15.3 API rate limit exceeded
+### 16.3 API rate limit exceeded
 
 When Anthropic API rate limits are reached, the chat shows a rate limit error with a retry delay. Solutions:
 
@@ -29,7 +29,7 @@ When Anthropic API rate limits are reached, the chat shows a rate limit error wi
 3. Check your API usage / plan limits on the Anthropic console
 4. The header status indicator shows API health (yellow triangle = API unavailable)
 
-### 15.4 "Connection lost" / Reconnecting
+### 16.4 "Connection lost" / Reconnecting
 
 Hammoc automatically reconnects when the connection is lost. The header shows a status indicator: green (connected), yellow spinning (reconnecting), or red (disconnected with manual Reconnect button).
 
@@ -42,7 +42,7 @@ If the connection doesn't recover:
 3. Refresh the browser
 4. Restart the server: `hammoc` or `npm start`
 
-### 15.5 Port already in use
+### 16.5 Port already in use
 
 The server automatically retries when the port is in use. If it still fails:
 
@@ -52,7 +52,7 @@ hammoc --port 3001
 
 Or set the environment variable: `PORT=3001 hammoc`
 
-### 15.6 Terminal not available
+### 16.6 Terminal not available
 
 Terminal may be disabled when:
 
@@ -60,7 +60,7 @@ Terminal may be disabled when:
 - `TERMINAL_ENABLED=false` is set in environment
 - Maximum terminal sessions reached (default 10, configurable via `MAX_TERMINAL_SESSIONS`)
 
-### 15.7 Reset password
+### 16.7 Reset password
 
 If you forgot your password:
 
@@ -70,7 +70,7 @@ hammoc --reset-password
 
 This prompts you to set a new password. Alternatively, delete `~/.hammoc/config.json` and restart the server to re-trigger the password setup flow in the browser.
 
-### 15.8 Chat timeout
+### 16.8 Chat timeout
 
 If Claude's responses are timing out:
 
@@ -79,7 +79,7 @@ If Claude's responses are timing out:
 3. Complex tasks (large codebases, multi-file edits) may need longer timeouts
 4. If the `CHAT_TIMEOUT_MS` environment variable is set, it overrides the UI setting (shown with an indicator)
 
-### 15.9 Large file warning
+### 16.9 Large file warning
 
 Files over 1 MB display a truncation warning. Consider:
 
@@ -87,7 +87,7 @@ Files over 1 MB display a truncation warning. Consider:
 - Opening in an external editor
 - Breaking large files into smaller ones
 
-### 15.10 Data locations
+### 16.10 Data locations
 
 If you need to find or back up your data:
 
@@ -99,9 +99,12 @@ If you need to find or back up your data:
 | Chain failures | `~/.hammoc/chain-failures/<sessionId>.json` (per session) |
 | Global snippets | `~/.hammoc/snippets/` (shared across all projects) |
 | Project snippets | `<project-root>/.hammoc/snippets/` (per project) |
+| Global harness items | `~/.claude/` (skills, agents, commands, hooks, `CLAUDE.md`, `.mcp.json`, `settings.json`) |
+| Project harness items | `<project-root>/.claude/` (same layout as global; project takes precedence) |
 | Session data | `~/.claude/projects/` |
 | Web Push VAPID keys | `~/.hammoc/vapid-keys.json` |
 | Web Push subscriptions | `~/.hammoc/push-subscriptions.json` |
 | TLS certificates | `~/.hammoc/key.pem`, `~/.hammoc/cert.pem` |
 | Manual shards (synced) | `~/.hammoc/docs/manual/` and `~/.hammoc/docs/.manual-version` (auto-synced from the npm package on server boot; agents read these via the absolute path embedded in the system prompt) |
+| Internals docs (synced) | `~/.hammoc/docs/internals/` (agent-only mechanism reference; also re-synced when the package version changes) |
 | Server logs | `./logs/server-YYYY-MM-DD.log` (daily log files in working directory) |

@@ -153,6 +153,7 @@ Cards display information based on their type:
 - **Type badge** — [I], [S], or [E] with color coding
 - **Severity badge** — For issues only, color-coded by level
 - **Status badge** — Color-coded status indicator (stories also show QA gate badges such as QA Passed, QA Failed, etc.)
+- **Issue number prefix** — Issues now show a short `#N` prefix (e.g., `#1`, `#42`) in monospace gray immediately before the title, so a board card and a chat mention or filename like `ISSUE-42.md` can be matched at a glance. Legacy issues without an `ISSUE-N` ID do not get a prefix
 - **Epic progress bar** — On epic cards, shows completion percentage with done/total count
 - **Story epic number** — Shows the parent epic reference
 - **Unmapped status warning** — ⚠ triangle icon when a card's status doesn't map to any column

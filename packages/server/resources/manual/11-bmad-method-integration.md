@@ -98,6 +98,7 @@ The Next Step Recommender analyzes the project state and suggests actions based 
 **Phase 1: Pre-PRD** (PRD does not exist)
 - **Primary:** Create PRD → PM agent
 - **Secondary:** Brainstorming, Market Research, Competitor Analysis, Project Brief → Analyst agent
+- Once a Project Brief already exists, the **Brainstorming** suggestion is hidden — the recommender treats the Brief as the brainstorm output and stops nagging
 
 **Phase 2: Pre-Architecture** (PRD exists, Architecture does not)
 - **Primary:** Create Backend / Frontend / Full-stack Architecture → Architect agent

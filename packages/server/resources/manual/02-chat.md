@@ -182,6 +182,7 @@ Behavior:
 - Click the currently active level again to reset to default
 - Cannot be changed while Claude is responding
 - If you switch to a model that doesn't support the current level (e.g., XHigh → non-Opus-4.7, or Max → model without Max), the effort automatically resets to the highest supported level
+- When the active model is temporarily unknown (e.g., right after switching projects before the resolved model arrives), the dropdown keeps your saved choice instead of resetting it. As soon as the model is known, the effort is reclamped if necessary
 
 The default thinking effort for new sessions can be configured in Settings > Global.
 
@@ -273,7 +274,7 @@ Browse all conversation branches in a read-only mode:
 
 ### 2.24 Max Budget Warning Banner
 
-When the **Max Budget (USD)** advanced setting (see §12.16) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
+When the **Max Budget (USD)** advanced setting (see §13.16) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
 
 - **Yellow warning** (80% threshold) — "Budget warning: $X.XXXX / $Y.YYYY used (ZZ%) — approaching Max Budget limit."
 - **Red critical warning** (95% threshold) — "Budget critical: $X.XXXX / $Y.YYYY used (ZZ%) — stream will auto-stop when limit is exceeded."

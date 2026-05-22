@@ -32,12 +32,21 @@ Each card has a **kebab menu** (⋮) with:
 
 ### 5.3 Project Settings
 
-Configure per-project overrides (accessible from the Settings page):
+Per-project settings live in their own tab inside each project (Overview / Queue / Git / Files / Terminal / Board / **Settings**), no longer under the global Settings page. Opening the tab takes you directly to that project's configuration — there is no project dropdown to disambiguate.
+
+The Settings tab has a two-pane layout:
+
+- **Left nav** — Two top-level groups: **General** and **Harness Workbench** (see §12)
+- **Right panel** — Form contents for the selected group
+
+**General group** (per-project override fields):
 
 - **Default model** — Override the global model selection
 - **Permission mode** — Override the global permission mode (Plan, Ask before edits, Edit automatically). Note: Bypass permissions is not available at project level
 - **Hidden toggle** — Hide the project from the project list
 - **Reset to Global Defaults** — Remove all overrides at once
+
+On narrow screens, the left nav becomes a horizontally-scrolling pill row above the right panel.
 
 ### 5.4 Hiding Projects
 

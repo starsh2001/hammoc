@@ -25,10 +25,11 @@ When the user mentions a Hammoc-specific concept (queue, snippet, board, BMad ag
 - 9. [Queue Runner](./09-queue-runner.md)
 - 10. [Project Board](./10-project-board.md)
 - 11. [BMAD-METHOD Integration](./11-bmad-method-integration.md)
-- 12. [Settings](./12-settings.md)
-- 13. [Keyboard Shortcuts](./13-keyboard-shortcuts.md)
-- 14. [Environment Variables](./14-environment-variables.md)
-- 15. [Troubleshooting](./15-troubleshooting.md)
+- 12. [Harness Workbench](./12-harness-workbench.md)
+- 13. [Settings](./13-settings.md)
+- 14. [Keyboard Shortcuts](./14-keyboard-shortcuts.md)
+- 15. [Environment Variables](./15-environment-variables.md)
+- 16. [Troubleshooting](./16-troubleshooting.md)
 <!-- chapter-list:end -->
 
 ## Audience and trigger keywords
@@ -46,10 +47,11 @@ When the user mentions a Hammoc-specific concept (queue, snippet, board, BMad ag
 | 9 | Queue Runner | `[agent]` **(important)** | queue editor, special commands (`@new`, `@save`, `@load`, `@pause`, `@model`, `@delay`, `@pauseword`, `@loop` / `@end`, `@(` / `@)`, `#` comments), multiline prompts, pauseword, loop blocks, templates, session locking, story-based generation, variable substitution |
 | 10 | Project Board | `[agent]` | Kanban / list view, issue types (Bug / Improvement), severity (Low / Medium / High / Critical), status workflow (Open → Draft → Approved → In Progress → Blocked → Review → Done → Closed), card context menu, attachments |
 | 11 | BMAD-METHOD Integration | `[agent]` **(important)** | BMad agents (SM, PM, Architect, Dev, QA, PO, etc.), agent switching, `.bmad-core` setup, PRD → Queue automation, project overview dashboard, workflow phases, story workflows |
-| 12 | Settings | `[mixed]` | Read individual subsections only. `[agent]`-relevant: System Prompt (12.15), Project Settings (12.8), Default Permission Mode (12.4), Default Model (12.3), Default Thinking Effort (12.10), Advanced Settings (12.16). The rest is `[user-setup]`. |
-| 13 | Keyboard Shortcuts | `[user-setup]` | Reference table for the human operator. The agent does not press keys. |
-| 14 | Environment Variables | `[user-setup]` | Server / Vite env vars for operator configuration. |
-| 15 | Troubleshooting | `[user-setup]` | Operator-facing diagnosis recipes (CLI not found, auth, port in use, etc.). |
+| 12 | Harness Workbench | `[agent]` **(important)** | Editing `.claude/` items (skills, MCP, hooks, slash commands, sub-agents, `CLAUDE.md`), Hammoc `%snippets` and command favorites, share badges / mode banner, static lint, secret-on-shared guard. Also see the on-disk layout in `~/.hammoc/docs/internals/harness-files.md`. |
+| 13 | Settings | `[mixed]` | Read individual subsections only. `[agent]`-relevant: System Prompt (13.15), Default Permission Mode (13.4), Default Model (13.3), Default Thinking Effort (13.10), Advanced Settings (13.16). Per-project overrides now live with the project (see chapter 5.3 / chapter 12). The rest is `[user-setup]`. |
+| 14 | Keyboard Shortcuts | `[user-setup]` | Reference table for the human operator. The agent does not press keys. |
+| 15 | Environment Variables | `[user-setup]` | Server / Vite env vars for operator configuration. |
+| 16 | Troubleshooting | `[user-setup]` | Operator-facing diagnosis recipes (CLI not found, auth, port in use, etc.). |
 
 ## Notes for maintainers
 

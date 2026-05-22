@@ -12,14 +12,16 @@ The editor provides **syntax highlighting**:
 - **Comments** (`#`) — gray
 - **Regular prompts** — default text color
 
+A non-selectable **line-number gutter** runs down the left side, sticky during both vertical and horizontal scroll, so error messages like "parse error at line 47" become directly clickable without manual counting.
+
 **Toolbar buttons:**
 - **Run** (Play icon) — Start queue execution; also available via `Ctrl+Enter` / `Cmd+Enter`
-- **Load File** (Upload icon) — Import a `.txt` or `.qlaude-queue` file (max 1MB)
+- **Load File** (Upload icon) — Import a `.txt`, `.qlaude-queue`, or similar script file (max 1 MB). Useful for loading shipped sample templates such as the BMad story workflow (see §9.9)
 - **Template** (FileText icon) — Open the template dialog (see §9.9)
 - **Word Wrap** (WrapText icon) — Toggle line wrapping (persisted across sessions)
 
 **Editor behavior:**
-- **Validation warnings** displayed above the editor (e.g., missing arguments, unclosed multiline blocks, unknown directives)
+- **Validation warnings** displayed above the editor (e.g., missing arguments, unclosed multiline blocks, unknown directives). When more than one warning exists, only the **most recent** is shown with a `(+N)` count badge for the others — keeps the warning area from pushing the editor down on scripts with many issues
 - **Empty state** shows a visual command reference overlay listing all available directives
 - Editor is hidden during queue execution, replaced by the runner panel
 
@@ -143,6 +145,8 @@ If the QA gate is PASS, write exactly QA_GATE_PASS as the last line.
 
 The token search uses a plain substring match against the previous prompt's complete response text, so prefer artificial single-word tokens like `QA_GATE_PASS` over natural phrases.
 
+**Runner panel display** — In the queue runner item list, `@label` items show as `Label: <name>` and `@jumpif` items show as `Jump if: "<token>" → <target>`, so the control flow is easy to follow at a glance while the queue runs.
+
 **`@new` boundary** — the "previous prompt response" buffer is **not** cleared by `@new`. It only updates when the next prompt actually runs. So a `@jumpif` placed immediately after `@new` (with no prompt in between) will still see the *previous* session's last prompt response. Place a real prompt between `@new` and `@jumpif` if you need a fresh evaluation.
 
 **UI display of skipped items** — when a jump fires, the items between the `@jumpif` and its `@label` are not executed, but the runner panel currently shows them with the same green check icon as completed items. This is a cosmetic limitation; the items did not run and their session-link slots remain empty. The progress bar still advances correctly to the post-label position.
@@ -242,6 +246,10 @@ Implement Story {story_num}: {story_title}
 - **Update** — Overwrite a previously saved template
 - **Delete** — Remove a saved template (with confirmation)
 - Templates are saved per-project
+
+**Bundled sample template:**
+
+The Hammoc git repository ships a ready-to-use BMad story workflow template at `docs/queue-templates/bmad-story-workflow.qlaude-queue`. It drives a single story through Draft → Validate → Develop → QA Review → Commit and uses `@label` / `@jumpif` (see §9.6) so a first-pass QA PASS skips the fix loop entirely. To use it, download the file from the GitHub repository and import it via the **Load File** toolbar button, or paste its contents into the editor. The `{story_num}` placeholder must be replaced before running.
 
 ### 9.10 Queue Status Badge
 

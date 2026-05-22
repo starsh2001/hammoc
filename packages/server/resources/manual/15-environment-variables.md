@@ -1,4 +1,4 @@
-## 14. Environment Variables
+## 15. Environment Variables
 
 ### Server
 
@@ -9,7 +9,6 @@
 | `NODE_ENV` | — | Set to `production` for optimized mode |
 | `TRUST_PROXY` | `false` | Enable reverse proxy support. Set to `true` when behind Cloudflare Tunnel, nginx, etc. |
 | `CORS_ORIGIN` | `true` | CORS origin policy. `true` allows any origin (local/VPN use). Set a specific URL (e.g., `https://hammoc.example.com`) to restrict |
-| `RATE_LIMIT` | `200` | Max requests per minute per IP. Increase for multi-hop proxy setups where users share a proxy IP |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key (required for Claude Code to function) |
 | `CHAT_TIMEOUT_MS` | `300000` | Chat response timeout in milliseconds (5 minutes). Overrides the Settings UI value |
 | `LOG_LEVEL` | `INFO` (prod) / `DEBUG` (dev) | Logging level: ERROR, WARN, INFO, DEBUG, VERBOSE |

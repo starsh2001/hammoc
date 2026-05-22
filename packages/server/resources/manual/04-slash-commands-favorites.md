@@ -4,7 +4,7 @@
 
 Type `/` in the chat input to open the command palette:
 
-- Browse available commands grouped by category (Agents, Tasks, Skills, Commands)
+- Browse available commands grouped by category — **Agents**, **Tasks**, **Skills**, **Slash Commands** (project / global / plugin `.claude/commands/*.md` files), and **Commands** (everything else)
 - Filter by typing: `/test` shows commands containing "test"
 - Commands are project-specific — loaded from the project's configured agents and tasks
 - **Real-time refresh** — The command and skill list is fetched from the server each time the palette opens, reflecting newly added or removed commands

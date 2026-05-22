@@ -80,3 +80,15 @@ If the project directory is not a Git repository:
 - **Quick Git panel** — Shows a message and init button
 - After initialization, the Git status refreshes automatically
 
+### 7.10 AI-Assisted Split Commit
+
+A purple dashed chip — **"Split changes into logical commits / Claude handles it in a new session"** — appears in the Git tab below the file list whenever there are uncommitted changes (staged, unstaged, or untracked). The chip is hidden on a clean working tree.
+
+Clicking it:
+
+1. Creates a fresh chat session
+2. Auto-sends the bundled `%split-commit` snippet, which asks Claude to inspect the working tree (`git status` / `git diff`), group changes into coherent units, and produce one conventional-style commit per group
+3. Navigates you into that session so you can watch the work and approve each commit
+
+The chip lives only on the full Git tab — the Quick Git panel keeps its single "Stage All & Commit" action for fast manual commits.
+

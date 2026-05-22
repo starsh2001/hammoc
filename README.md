@@ -170,8 +170,20 @@ Real-time conversations with Claude through a rich web UI.
 - **Project list** — Browse all projects with session counts and last activity
 - **Project dashboard** — Real-time status: active chats, queue runners, terminals
 - **Project creation** — Create new projects with optional BMad Method initialization
-- **Project settings** — Per-project model, permission, system prompt, and budget configuration
+- **Per-project Settings tab** — Each project carries its own Settings tab (model, permission, budget) plus the Harness Workbench (see below). No more switching to the global Settings page and picking a project from a dropdown
 - **Hide/unhide projects** — Keep the list clean
+
+### Harness Workbench
+
+Edit the `.claude/` configuration tree from inside Hammoc — no need to hand-edit JSON or Markdown on disk.
+
+- **Plugins, Skills, MCP, Hooks, Slash Commands, Sub-agents** — Card-grid panels for each, with project ↔ global copy actions and conflict dialogs
+- **CLAUDE.md editor** — Two-column edit of project and global instruction documents with live Markdown preview
+- **Snippets & Favorites** — Manage Hammoc `%snippets` (project / global / bundled) alongside Claude Code slash-command favorites in a single panel
+- **Share badges + mode banner** — See at a glance which files are git-tracked vs local, with an export-bundle workflow for private setups
+- **Static lint (7 rules)** — Surfaces duplicate names, invalid hook regex, missing env vars, malformed MCP URLs, non-standard agent tools, etc.; per-rule on/off preferences
+- **Secret-on-shared guard** — Blocks plaintext API keys / tokens from sneaking into committed config files, with one-click "move to local sibling" remediation
+- **Fullscreen editor overlay** — Maximize any body field (skill, command, agent, CLAUDE.md, snippet) into a fullscreen CodeMirror
 
 ### File Explorer & Editor
 
@@ -190,6 +202,7 @@ Real-time conversations with Claude through a rich web UI.
 - **Branch management** — Create, switch, and view branches
 - **Pull & Push** — Sync with remote repositories
 - **Quick Git panel** — Lightweight Git access from the chat view
+- **AI-assisted split-commit** — One-click chip delegates "split this messy working tree into logical commits" to Claude in a fresh session
 
 ### Terminal
 
@@ -201,16 +214,16 @@ Real-time conversations with Claude through a rich web UI.
 
 Automate repetitive prompt sequences.
 
-- **Queue editor** — Write prompt sequences line by line
-- **Special commands** — `@new`, `@save`, `@load`, `@pause`, `@model`, `@delay`, `@pauseword`, `@loop`/`@end`, `@(/@)`, `#` comments
+- **Queue editor** — Write prompt sequences line by line, with a sticky line-number gutter
+- **Special commands** — `@new`, `@save`, `@load`, `@pause`, `@model`, `@delay`, `@pauseword`, `@loop`/`@end`, `@label`/`@jumpif` (forward jumps), `@(/@)`, `#` comments
 - **Execution control** — Start, pause (deferred), resume, abort, and edit remaining items while paused
-- **Templates** — Save and load reusable queue scripts
+- **Templates** — Save and load reusable queue scripts; ships a ready-to-use BMad story workflow template in the source repo
 - **Story-based generation** — Auto-generate queue from PRD epics and stories
 - **Variable substitution** — Use `{story_num}`, `{epic_num}`, `{story_index}`, `{story_title}`, `{date}` in templates
 
 ### Project Board (Issue Tracking)
 
-- **Kanban board** — Visual cards across customizable status columns
+- **Kanban board** — Visual cards across customizable status columns; issue cards show a `#N` prefix matching their `ISSUE-N.md` file
 - **List view** — Tabular alternative with sorting and filtering
 - **Issue types** — Bug, Improvement
 - **Severity levels** — Low, Medium, High, Critical
@@ -315,8 +328,11 @@ npm run dev
 | Chain failures | `~/.hammoc/chain-failures/<sessionId>.json` (per session) |
 | Snippets (global) | `~/.hammoc/snippets/` (shared across projects) |
 | Snippets (project) | `<project-root>/.hammoc/snippets/` (per project) |
+| Harness items (global) | `~/.claude/` (skills, agents, commands, hooks, `CLAUDE.md`, `.mcp.json`, `settings.json`) |
+| Harness items (project) | `<project-root>/.claude/` (same layout; project wins on conflict) |
 | TLS certificates | `~/.hammoc/cert.pem`, `~/.hammoc/key.pem` |
 | Manual shards (synced) | `~/.hammoc/docs/manual/` and `~/.hammoc/docs/.manual-version` (auto-synced from package on server boot) |
+| Internals docs (synced) | `~/.hammoc/docs/internals/` (agent-only mechanism reference; also re-synced on package version change) |
 | Session data | `~/.claude/projects/` (managed by Claude Code CLI) |
 
 ---

@@ -1,4 +1,4 @@
-## 13. Keyboard Shortcuts
+## 14. Keyboard Shortcuts
 
 ### Chat
 

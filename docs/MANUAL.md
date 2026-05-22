@@ -15,10 +15,11 @@ Complete guide to every feature in Hammoc.
 9. [Queue Runner](#9-queue-runner)
 10. [Project Board](#10-project-board)
 11. [BMAD-METHOD Integration](#11-bmad-method-integration)
-12. [Settings](#12-settings)
-13. [Keyboard Shortcuts](#13-keyboard-shortcuts)
-14. [Environment Variables](#14-environment-variables)
-15. [Troubleshooting](#15-troubleshooting)
+12. [Harness Workbench](#12-harness-workbench)
+13. [Settings](#13-settings)
+14. [Keyboard Shortcuts](#14-keyboard-shortcuts)
+15. [Environment Variables](#15-environment-variables)
+16. [Troubleshooting](#16-troubleshooting)
 
 ---
 
@@ -312,6 +313,7 @@ Behavior:
 - Click the currently active level again to reset to default
 - Cannot be changed while Claude is responding
 - If you switch to a model that doesn't support the current level (e.g., XHigh → non-Opus-4.7, or Max → model without Max), the effort automatically resets to the highest supported level
+- When the active model is temporarily unknown (e.g., right after switching projects before the resolved model arrives), the dropdown keeps your saved choice instead of resetting it. As soon as the model is known, the effort is reclamped if necessary
 
 The default thinking effort for new sessions can be configured in Settings > Global.
 
@@ -403,7 +405,7 @@ Browse all conversation branches in a read-only mode:
 
 ### 2.24 Max Budget Warning Banner
 
-When the **Max Budget (USD)** advanced setting (see §12.16) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
+When the **Max Budget (USD)** advanced setting (see §13.16) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
 
 - **Yellow warning** (80% threshold) — "Budget warning: $X.XXXX / $Y.YYYY used (ZZ%) — approaching Max Budget limit."
 - **Red critical warning** (95% threshold) — "Budget critical: $X.XXXX / $Y.YYYY used (ZZ%) — stream will auto-stop when limit is exceeded."
@@ -470,7 +472,7 @@ Access sessions without leaving the chat:
 
 Type `/` in the chat input to open the command palette:
 
-- Browse available commands grouped by category (Agents, Tasks, Skills, Commands)
+- Browse available commands grouped by category — **Agents**, **Tasks**, **Skills**, **Slash Commands** (project / global / plugin `.claude/commands/*.md` files), and **Commands** (everything else)
 - Filter by typing: `/test` shows commands containing "test"
 - Commands are project-specific — loaded from the project's configured agents and tasks
 - **Real-time refresh** — The command and skill list is fetched from the server each time the palette opens, reflecting newly added or removed commands
@@ -652,12 +654,21 @@ Each card has a **kebab menu** (⋮) with:
 
 ### 5.3 Project Settings
 
-Configure per-project overrides (accessible from the Settings page):
+Per-project settings live in their own tab inside each project (Overview / Queue / Git / Files / Terminal / Board / **Settings**), no longer under the global Settings page. Opening the tab takes you directly to that project's configuration — there is no project dropdown to disambiguate.
+
+The Settings tab has a two-pane layout:
+
+- **Left nav** — Two top-level groups: **General** and **Harness Workbench** (see §12)
+- **Right panel** — Form contents for the selected group
+
+**General group** (per-project override fields):
 
 - **Default model** — Override the global model selection
 - **Permission mode** — Override the global permission mode (Plan, Ask before edits, Edit automatically). Note: Bypass permissions is not available at project level
 - **Hidden toggle** — Hide the project from the project list
 - **Reset to Global Defaults** — Remove all overrides at once
+
+On narrow screens, the left nav becomes a horizontally-scrolling pill row above the right panel.
 
 ### 5.4 Hiding Projects
 
@@ -859,6 +870,18 @@ If the project directory is not a Git repository:
 - **Quick Git panel** — Shows a message and init button
 - After initialization, the Git status refreshes automatically
 
+### 7.10 AI-Assisted Split Commit
+
+A purple dashed chip — **"Split changes into logical commits / Claude handles it in a new session"** — appears in the Git tab below the file list whenever there are uncommitted changes (staged, unstaged, or untracked). The chip is hidden on a clean working tree.
+
+Clicking it:
+
+1. Creates a fresh chat session
+2. Auto-sends the bundled `%split-commit` snippet, which asks Claude to inspect the working tree (`git status` / `git diff`), group changes into coherent units, and produce one conventional-style commit per group
+3. Navigates you into that session so you can watch the work and approve each commit
+
+The chip lives only on the full Git tab — the Quick Git panel keeps its single "Stage All & Commit" action for fast manual commits.
+
 ---
 
 ## 8. Terminal
@@ -936,14 +959,16 @@ The editor provides **syntax highlighting**:
 - **Comments** (`#`) — gray
 - **Regular prompts** — default text color
 
+A non-selectable **line-number gutter** runs down the left side, sticky during both vertical and horizontal scroll, so error messages like "parse error at line 47" become directly clickable without manual counting.
+
 **Toolbar buttons:**
 - **Run** (Play icon) — Start queue execution; also available via `Ctrl+Enter` / `Cmd+Enter`
-- **Load File** (Upload icon) — Import a `.txt` or `.qlaude-queue` file (max 1MB)
+- **Load File** (Upload icon) — Import a `.txt`, `.qlaude-queue`, or similar script file (max 1 MB). Useful for loading shipped sample templates such as the BMad story workflow (see §9.9)
 - **Template** (FileText icon) — Open the template dialog (see §9.9)
 - **Word Wrap** (WrapText icon) — Toggle line wrapping (persisted across sessions)
 
 **Editor behavior:**
-- **Validation warnings** displayed above the editor (e.g., missing arguments, unclosed multiline blocks, unknown directives)
+- **Validation warnings** displayed above the editor (e.g., missing arguments, unclosed multiline blocks, unknown directives). When more than one warning exists, only the **most recent** is shown with a `(+N)` count badge for the others — keeps the warning area from pushing the editor down on scripts with many issues
 - **Empty state** shows a visual command reference overlay listing all available directives
 - Editor is hidden during queue execution, replaced by the runner panel
 
@@ -1067,6 +1092,8 @@ If the QA gate is PASS, write exactly QA_GATE_PASS as the last line.
 
 The token search uses a plain substring match against the previous prompt's complete response text, so prefer artificial single-word tokens like `QA_GATE_PASS` over natural phrases.
 
+**Runner panel display** — In the queue runner item list, `@label` items show as `Label: <name>` and `@jumpif` items show as `Jump if: "<token>" → <target>`, so the control flow is easy to follow at a glance while the queue runs.
+
 **`@new` boundary** — the "previous prompt response" buffer is **not** cleared by `@new`. It only updates when the next prompt actually runs. So a `@jumpif` placed immediately after `@new` (with no prompt in between) will still see the *previous* session's last prompt response. Place a real prompt between `@new` and `@jumpif` if you need a fresh evaluation.
 
 **UI display of skipped items** — when a jump fires, the items between the `@jumpif` and its `@label` are not executed, but the runner panel currently shows them with the same green check icon as completed items. This is a cosmetic limitation; the items did not run and their session-link slots remain empty. The progress bar still advances correctly to the post-label position.
@@ -1166,6 +1193,10 @@ Implement Story {story_num}: {story_title}
 - **Update** — Overwrite a previously saved template
 - **Delete** — Remove a saved template (with confirmation)
 - Templates are saved per-project
+
+**Bundled sample template:**
+
+The Hammoc git repository ships a ready-to-use BMad story workflow template at `docs/queue-templates/bmad-story-workflow.qlaude-queue`. It drives a single story through Draft → Validate → Develop → QA Review → Commit and uses `@label` / `@jumpif` (see §9.6) so a first-pass QA PASS skips the fix loop entirely. To use it, download the file from the GitHub repository and import it via the **Load File** toolbar button, or paste its contents into the editor. The `{story_num}` placeholder must be replaced before running.
 
 ### 9.10 Queue Status Badge
 
@@ -1333,6 +1364,7 @@ Cards display information based on their type:
 - **Type badge** — [I], [S], or [E] with color coding
 - **Severity badge** — For issues only, color-coded by level
 - **Status badge** — Color-coded status indicator (stories also show QA gate badges such as QA Passed, QA Failed, etc.)
+- **Issue number prefix** — Issues now show a short `#N` prefix (e.g., `#1`, `#42`) in monospace gray immediately before the title, so a board card and a chat mention or filename like `ISSUE-42.md` can be matched at a glance. Legacy issues without an `ISSUE-N` ID do not get a prefix
 - **Epic progress bar** — On epic cards, shows completion percentage with done/total count
 - **Story epic number** — Shows the parent epic reference
 - **Unmapped status warning** — ⚠ triangle icon when a card's status doesn't map to any column
@@ -1472,6 +1504,7 @@ The Next Step Recommender analyzes the project state and suggests actions based 
 **Phase 1: Pre-PRD** (PRD does not exist)
 - **Primary:** Create PRD → PM agent
 - **Secondary:** Brainstorming, Market Research, Competitor Analysis, Project Brief → Analyst agent
+- Once a Project Brief already exists, the **Brainstorming** suggestion is hidden — the recommender treats the Brief as the brainstorm output and stops nagging
 
 **Phase 2: Pre-Architecture** (PRD exists, Architecture does not)
 - **Primary:** Create Backend / Frontend / Full-stack Architecture → Architect agent
@@ -1501,17 +1534,194 @@ Queue templates automate story development in batch. For details, see §9.9 (Que
 
 ---
 
-## 12. Settings
+## 12. Harness Workbench
+
+The **Harness Workbench** is the unified surface for managing everything Claude Code reads from the `.claude/` configuration tree — plugins, skills, MCP servers, hooks, slash commands, sub-agents, `CLAUDE.md`, and Hammoc-native `%snippets`. It lives inside each project's **Settings** tab (see §5.3) under the "Harness Workbench" group, so the workbench is always scoped to the project you're working on but can also reach the global (`~/.claude/`) versions of each item.
+
+### 12.1 Layout
+
+The workbench has two stacked headers above an eight-section navigator:
+
+- **Mode banner** — Workbench-wide; explains whether the project's `.claude/` is git-tracked or ignored (see §12.2)
+- **Lint preferences button** — Top-right; opens a dialog to toggle the seven static-lint rules (see §12.12)
+
+The section navigator is a vertical sidebar on desktop and a horizontally-scrolling pill row on mobile. Sections, in order:
+
+1. **Plugins** — Installed Claude Code plugins (see §12.4)
+2. **Skills** — `SKILL.md` skill bundles (see §12.5)
+3. **MCP** — MCP server entries from `.mcp.json` / `~/.claude/.mcp.json` (see §12.6)
+4. **Hooks** — Lifecycle hooks declared in `settings.json` (see §12.7)
+5. **Commands** — Slash command files (see §12.8)
+6. **Agents** — Sub-agent definitions (see §12.9)
+7. **CLAUDE.md** — Project and global instruction documents (see §12.10)
+8. **Snippets** — Hammoc `%snippet` library + Claude Code slash-command favorites (see §12.11)
+
+When the workbench loads, every section's data is fetched in parallel and cached, so switching between sections feels instant. Each section's data also stays in sync with disk: any external change (made outside Hammoc) updates the corresponding card without a reload.
+
+### 12.2 Share Mode Banner
+
+A workbench-wide banner just above the navigator tells you how the project shares its `.claude/` configuration:
+
+- **Team-shared** (gray banner) — `.claude/` is **not** ignored by git. Files committed here (skills, hook definitions, the project `CLAUDE.md`, etc.) ship with the repo and reach every teammate.
+- **Private** (amber banner) — `.claude/` (or a parent path) is excluded by `.gitignore`. Files here stay on your machine. An **"Export bundle"** button lets you ship the current harness state to a teammate as a single bundle file when you want to.
+
+The banner is derived from the project root's `.gitignore`. Edit the rules and the banner updates the next time the workbench refreshes.
+
+### 12.3 Share Badges
+
+Every editable card (skill, MCP, hook, command, agent, `CLAUDE.md`, snippet) shows a small **share badge** indicating that specific file's git scope:
+
+- **Shared** (blue) — File tracked by git; team will see your edits after a commit
+- **Local** (gray) — File exists but is not tracked
+- **Ignored** (amber) — `.claude/` is fully git-excluded; this file will not be committed
+
+The badge is computed per-file so a single project can mix shared and local items.
+
+### 12.4 Plugins Panel
+
+Lists every Claude Code plugin discovered under the project and global plugin roots:
+
+- One card per plugin with name, version, and small component counts (skills, commands, agents, hooks, MCP servers it ships)
+- A toggle switch enables or disables the plugin without uninstalling it
+- Plugin-provided items appear (read-only) in the other workbench sections too, with a **"Plugin: <key>"** scope badge
+
+### 12.5 Skills Panel
+
+Card grid for skill bundles (a `SKILL.md` plus optional supporting files):
+
+- **Scope filter** — All / Project / Global / Plugin
+- **Card front** — Name, description, scope badge, share badge, lint marker (if the skill has lint issues), and a kebab menu for copy actions
+- **Open** — Click the card to open the **Skill Editor**, a modal with two modes:
+  - **Form mode** — Separate fields for the YAML frontmatter (Name, Description, Version) and a Markdown body with edit/preview toggle
+  - **Raw mode** — Edit the raw `SKILL.md` text directly when the frontmatter cannot be parsed
+- **Bundle resources** — A nested tree of supporting files (references, examples, scripts, assets) with file counts. Binary files are marked read-only; files over 1 MB are truncated
+- **Copy actions** — Copy a skill between Project / Global / Plugin scopes. If the destination already has a skill with the same name, a **conflict dialog** offers Overwrite / Skip / Rename
+- **Auto-save** — Edits debounce-save every ~300 ms; no manual save button
+- **External-change banner** — If another tool overwrites the skill while you are editing, the editor reloads with a banner explaining the change
+
+Bundled skills (from a plugin's `skills/`) can only be opened read-only — copy them to Project or Global scope first to customize.
+
+### 12.6 MCP Panel
+
+Card grid for MCP server entries (from `.mcp.json` or `~/.claude/.mcp.json`):
+
+- **Type badges** — `stdio`, `sse`, `http`, `ws`
+- **Toggle** — Enable / Disable a server. Disabling moves the entry to a backup section of the JSON file rather than deleting it, so you can re-enable later
+- **Editor** — Form fields for the server type, command, arguments (one per line), URL, headers (key/value rows), and environment variables (key/value rows). A mask toggle hides secret-looking values
+- **Secret detection** — Values that look like API keys are marked inline. When you copy a server between scopes, a warning dialog lists detected secrets and requires explicit acknowledgement before copying
+- **Fresh-spawn banner** — After enabling/disabling or editing a server, a banner reminds you that MCP changes only take effect on your **next** message in a new chat turn. A **Start new session** button is available
+
+### 12.7 Hooks Panel
+
+Hooks are grouped by lifecycle event (PreToolUse, PostToolUse, Stop, SubagentStop, SessionStart, SessionEnd, UserPromptSubmit, PreCompact, Notification):
+
+- **Per-event sections** — Each event shows its hook cards and an inline "+ Add" button
+- **Type badges** — `command` (shell command) and `prompt` (LLM-invoking)
+- **Toggle** — Enable / Disable individual hooks
+- **Matcher field** — Regex pattern that filters which tool calls (or events) the hook applies to; empty matcher means "all"
+- **Parallel-execution badge** — Indicates when the hook runs alongside hooks from other sources for the same event
+- **Cost warning** — `prompt`-type hooks invoke the LLM each time and show a cost/latency warning banner
+- **Copy actions** — Same Project ↔ Global ↔ Plugin copy matrix as skills, with a review dialog that surfaces secret-looking values and command bodies before copying
+
+### 12.8 Commands Panel
+
+Slash command files (the `.md` files behind `/your-command`):
+
+- One card per command with name, description, scope badge, share badge, and lint marker
+- **Editor** — Markdown body with edit/preview toggle and frontmatter fields (description, argument hints)
+- **Copy / Override-clone** — Copy to the other scope, or clone a plugin-provided command into Project / Global so you can customize it without losing the upstream copy
+
+### 12.9 Agents Panel
+
+Sub-agent definitions (`AGENT.md`-style files used by the `Agent` tool):
+
+- One card per agent with name, role description, scope badge, share badge, lint marker
+- **Editor** — Frontmatter fields (Name, Description, Tools), Markdown system prompt body, edit/preview toggle
+- **Non-standard tools warning** — Lint rule flags tools that aren't part of the standard Claude Code toolset
+
+### 12.10 CLAUDE.md Editor
+
+Two-column editor for the instruction documents Claude Code loads at session start:
+
+- **Left column** — Global `~/.claude/CLAUDE.md`
+- **Right column** — Project `<root>/.claude/CLAUDE.md` with its own share badge
+- **Mobile** — Columns collapse to a User / Project toggle above a single editor pane
+
+Each column is a CodeMirror Markdown editor with edit/preview toggle and the same 300 ms debounce auto-save as the other panels. Copy buttons (← / →) move content between columns; if both files have content, a confirmation dialog warns before overwriting.
+
+Both files load into every Claude Code session in this project; the project version takes precedence when an instruction is defined in both.
+
+### 12.11 Snippets & Favorites Panel
+
+A single panel manages both Hammoc-native snippets and Claude Code slash-command favorites.
+
+**Snippets section** (top):
+
+- Manages `%name` snippets from `<project-root>/.hammoc/snippets/`, `~/.hammoc/snippets/`, and the bundled set shipped with Hammoc (see §4.6)
+- **Scope filter** — All / Project / Global / Bundled
+- **+ New snippet** — Choose scope (Project or Global) and a name; an empty file is created and the editor opens
+- **Editor** — CodeMirror with syntax highlighting for `%name%`, `{arg1}`, `{context}` tokens and an inline warning when a snippet references itself or forms a reference cycle (heuristic only — saves are not blocked)
+- **Kebab menu** — Copy to the other scope, delete (with confirmation)
+- **Bundled snippets** are read-only — copy to Project or Global scope first to customize
+
+**Command Favorites section** (bottom):
+
+- Drag-reorder list of slash command favorites (the same favorites shown in the chat input's favorites bar, see §4.3)
+- Each entry shows the command name, scope, and a star toggle that moves it between regular and star favorites
+- **Invalid chip** marker on favorites whose underlying command no longer exists on disk
+- Up to 20 regular + 10 star favorites per scope
+
+### 12.12 Static Lint
+
+Every harness panel (skills, MCP, hooks, commands, agents) runs a background static-lint pass against its files. Lint output surfaces in three places:
+
+- **Count badges on section nav** — A red dot with the error count and an amber dot with the warning count appear on the section tab when issues exist
+- **Inline marker on cards** — The card header shows a small red or amber pill with the issue count; clicking jumps to the card detail or opens the editor
+- **Issues list at the top of each panel** — Expandable list of every issue with file path, severity, message, and a "Open" link
+
+**Rule preferences:** The **Lint preferences** button at the top-right of the workbench opens a dialog listing all seven rules. Each rule has an on/off toggle plus a description, and a **Restore defaults** button reverts the preferences. Preferences are stored globally (not per-project).
+
+**Available rules:**
+
+| Rule | Default | Catches |
+|------|---------|---------|
+| `naming/duplicate-across-sources` | on | The same name exists in two scopes (project + global, etc.) — surfaces which copy will actually load |
+| `hook/matcher-regex-invalid` | on | Hook `matcher` regex won't compile |
+| `parse/yaml-json-error` | on | Frontmatter or JSON config can't be parsed |
+| `mcp/command-not-on-path` | off | MCP `stdio` command is not on the server's `PATH` |
+| `mcp/url-invalid` | on | MCP `url` field is malformed for the chosen transport |
+| `agent/tools-non-standard` | on | Agent declares a tool name Claude Code does not recognize |
+| `hook/env-var-undefined` | on | Hook body references `${VAR}` that is not set on the server |
+
+### 12.13 Secret-on-Shared Guard
+
+When you save (or copy) a harness file whose share badge is **Shared**, Hammoc scans the content for plaintext secrets — long base64-looking values, AWS-style keys, bearer tokens — using both pattern and Shannon-entropy checks. If a likely secret is detected, the save is blocked and a dialog appears with three options:
+
+- **Move to local file** — Auto-create a sibling file (e.g., `settings.local.json` next to `settings.json`), move the value there, and re-save the original with a reference. This keeps the secret out of git
+- **Mark this value as not a secret** — One-shot opt-out for this save only; the heuristic does not persist the decision
+- **Cancel** — Close the dialog without saving
+
+The dialog lists exactly which values were flagged (line numbers for text files, dot-paths for JSON/YAML) so you can verify before deciding. The entropy gate avoids tripping on ordinary base64-looking strings (image tokens, integration test fixtures) that fall below the threshold.
+
+### 12.14 Fullscreen Editor
+
+Every body field (skill body, command body, agent prompt, CLAUDE.md, snippet body) shows a **Maximize** button (⤢ icon) next to the editor's close button. Clicking it opens a fullscreen overlay with the same CodeMirror editor and Markdown preview toggle, so you can write long content without scrolling inside a narrow modal. Edits in the overlay sync back to the host panel through the same debounce auto-save — there is no separate save button. Close the overlay with **X** or `Escape`.
+
+---
+
+## 13. Settings
 
 Access settings via the gear icon or the Settings page. The page has **8 tabs**: Global, Project, Notifications, Claude Account, Hammoc User, Advanced, Help, and About. On desktop, tabs appear as a sidebar; on mobile, they use an accordion layout.
 
-### 12.1 Theme
+> Per-project overrides have moved out of this page. See §5.3 — they now live in each project's own Settings tab (the workbench-level General section).
+
+### 13.1 Theme
 
 - **Dark** — Dark background, light text (default)
 - **Light** — Warm gray background, dark text
 - **System** — Follows your OS/browser preference
 
-### 12.2 Language
+### 13.2 Language
 
 Hammoc supports 6 languages:
 
@@ -1524,7 +1734,7 @@ Hammoc supports 6 languages:
 
 Language is auto-detected from your browser settings. Override it manually in settings.
 
-### 12.3 Default Model
+### 13.3 Default Model
 
 Choose the default Claude model:
 
@@ -1546,9 +1756,9 @@ Choose the default Claude model:
 - Haiku 3.5
 - Opus 3, Sonnet 3, Haiku 3
 
-Can be overridden per-project (see §12.8).
+Can be overridden per-project (see §5.3).
 
-### 12.4 Default Permission Mode
+### 13.4 Default Permission Mode
 
 Set how Claude handles file modifications:
 
@@ -1562,23 +1772,23 @@ Set how Claude handles file modifications:
 
 **Auto-approve safety checks** — When Bypass mode is selected, a checkbox option appears to automatically approve CLI safety check prompts without user confirmation. Enabled by default.
 
-Can be overridden per-project (see §12.8). Quick-cycle with `Shift+Tab` when the chat input is focused.
+Can be overridden per-project (see §5.3). Quick-cycle with `Shift+Tab` when the chat input is focused.
 
-### 12.5 Markdown File Open Mode
+### 13.5 Markdown File Open Mode
 
 Choose how `.md` files open by default:
 
 - **Edit** — Opens in text editing mode
 - **Preview** — Opens in rendered preview mode
 
-### 12.6 File Explorer View
+### 13.6 File Explorer View
 
 Default view for the file explorer:
 
 - **Grid** — Icon-based Finder-style layout (default)
 - **List** — Traditional file list
 
-### 12.7 Layout Mode
+### 13.7 Layout Mode
 
 Control the overall page width:
 
@@ -1587,20 +1797,11 @@ Control the overall page width:
 
 Toggle via the layout button in the header.
 
-### 12.8 Project Settings
+### 13.8 Project Settings
 
-Override global settings on a per-project basis:
+Per-project overrides have moved out of the global Settings page. They now live inside each project under **Project → Settings → General** (see §5.3). The Harness Workbench group on the same tab covers plugin / skill / hook / MCP / command / agent / CLAUDE.md / snippet management for that project (see §12).
 
-1. Select a project from the **dropdown** (defaults to the currently active project)
-2. Configure overrides:
-   - **Model override** — Choose a specific model or "Use global default"
-   - **Permission mode override** — Plan, Ask before edits, or Edit automatically (or use global default). Note: Bypass permissions is not available at project level
-   - **Hide in sidebar** — Toggle to hide the project from the sidebar navigation
-3. **Reset to Global Defaults** — Clears all project-level overrides (with confirmation). Only enabled when overrides exist
-
-Active overrides are indicated with a blue "Project override" label next to each setting.
-
-### 12.9 Chat Timeout
+### 13.9 Chat Timeout
 
 How long to wait for Claude's response:
 
@@ -1612,7 +1813,7 @@ How long to wait for Claude's response:
 
 The timeout resets on every activity. If overridden by an environment variable, the field is disabled with an amber warning.
 
-### 12.10 Default Thinking Effort
+### 13.10 Default Thinking Effort
 
 Set the default thinking effort for new sessions:
 
@@ -1620,8 +1821,9 @@ Set the default thinking effort for new sessions:
 - Max is available on Opus 4.6, Sonnet 4.6, and Opus 4.7
 - XHigh is available only on Opus 4.7 (and is the SDK default for that model)
 - If the active model does not support the configured level, it falls back to High automatically — the saved preference is kept, only the request to the SDK is clamped
+- The chosen level is preserved while the active model is still resolving (no flicker back to Default during project switches)
 
-### 12.11 Quick Panel Defaults
+### 13.11 Quick Panel Defaults
 
 - **Default Open** — Whether the quick panel opens automatically when entering a chat page (default: On)
 - **Default Side** — Which side the quick panel appears on:
@@ -1629,11 +1831,11 @@ Set the default thinking effort for new sessions:
   - **Right** — Always opens on the right (default)
   - **Last Used** — Remembers the last side you used and restores it
 
-### 12.12 Notifications
+### 13.12 Notifications
 
 The Notifications tab contains two sections: Web Push and Telegram.
 
-#### 12.12.1 Web Push Notifications
+#### 13.12.1 Web Push Notifications
 
 Receive browser push notifications when Claude needs attention. Requires HTTPS and a browser that supports the Push API (Chrome, Firefox, Edge, Safari 16+).
 
@@ -1645,7 +1847,7 @@ Receive browser push notifications when Claude needs attention. Requires HTTPS a
 
 > iOS: Add Hammoc to Home Screen first, then subscribe from within the PWA.
 
-#### 12.12.2 Telegram Notifications
+#### 13.12.2 Telegram Notifications
 
 Get notified on your phone when Claude needs attention:
 
@@ -1677,7 +1879,7 @@ Get notified on your phone when Claude needs attention:
 
 **Environment Variables:** Bot Token and Chat ID can be set via environment variables, which take priority over saved values (shown with an amber "Env" indicator).
 
-### 12.13 Claude Account
+### 13.13 Claude Account
 
 Shows the Claude Code account that Hammoc is using, plus live subscription usage:
 
@@ -1686,14 +1888,14 @@ Shows the Claude Code account that Hammoc is using, plus live subscription usage
 - **Refresh** — Manually fetch the latest account info and usage from the API (spinner shown while refreshing). Toast confirms success or failure
 - If no data has been fetched yet, a helper line explains that account info fills in automatically after the first chat or after clicking Refresh
 
-### 12.14 Hammoc User
+### 13.14 Hammoc User
 
 Local Hammoc authentication (independent of your Claude Code account):
 
 - **Change password** — Enter your current password, new password, and confirm. Minimum 4 characters. After changing, you'll be signed out and redirected to the login page.
 - **Logout** — Sign out immediately.
 
-### 12.15 System Prompt
+### 13.15 System Prompt
 
 Customize Claude's behavior with a fully editable system prompt template:
 
@@ -1705,7 +1907,9 @@ Customize Claude's behavior with a fully editable system prompt template:
 - **Template variables** — Listed below the editor with descriptions (e.g., `{gitBranch}`, `{gitMainBranch}`, `{gitStatus}`); variables are resolved at runtime
 - **Resolved preview** — Toggle to see the fully rendered prompt with variables replaced for the current project
 
-### 12.16 Advanced Settings
+> The default template focuses Claude on Hammoc-specific features (snippets, queue runner, board, BMAD, permission modes, sessions) and points at the manual + internals docs that Hammoc syncs to `~/.hammoc/docs/` on every server boot, so agents always have current docs even when run from a fresh install. The `{gitStatus}` block is no longer baked into the default — re-add it via this editor if you want it pre-included.
+
+### 13.16 Advanced Settings
 
 **Server Management (mode-dependent):**
 
@@ -1723,7 +1927,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 > **Scope (as of v1.3.0)**: these SDK parameters now apply to **both** direct chat sends and Queue Runner executions. Earlier releases silently dropped them in the queue path — if your queue runs started honoring Max Turns or Max Thinking Tokens after upgrading, this is why. Adjust the values if the new behavior surprises you.
 
-### 12.17 Help
+### 13.17 Help
 
 In-app usage guide within the Settings page:
 
@@ -1733,7 +1937,7 @@ In-app usage guide within the Settings page:
 - **BMad Method** — Quick guide to the BMad workflow
 - **Keyboard shortcuts** — Key bindings table (Enter, Shift+Enter, Escape, Ctrl+C, F7/Shift+F7, /)
 
-### 12.18 About
+### 13.18 About
 
 Displays app information:
 
@@ -1748,7 +1952,7 @@ Displays app information:
 
 ---
 
-## 13. Keyboard Shortcuts
+## 14. Keyboard Shortcuts
 
 ### Chat
 
@@ -1818,7 +2022,7 @@ Note: Quick panel shortcuts are disabled when an input or textarea is focused.
 
 ---
 
-## 14. Environment Variables
+## 15. Environment Variables
 
 ### Server
 
@@ -1848,9 +2052,9 @@ Note: Quick panel shortcuts are disabled when an input or textarea is focused.
 
 ---
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
-### 15.1 "Claude Code CLI not found"
+### 16.1 "Claude Code CLI not found"
 
 Claude Code CLI must be installed and in your PATH:
 
@@ -1860,7 +2064,7 @@ claude --version
 
 If not installed, follow the [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code). The Onboarding page shows CLI installation, authentication, and API key status at a glance.
 
-### 15.2 "Authentication required" / `claude login`
+### 16.2 "Authentication required" / `claude login`
 
 If the chat displays an authentication error, Claude Code CLI needs to be logged in:
 
@@ -1870,7 +2074,7 @@ claude login
 
 The Onboarding page (shown when CLI is not authenticated) displays the current auth status and provides setup commands.
 
-### 15.3 API rate limit exceeded
+### 16.3 API rate limit exceeded
 
 When Anthropic API rate limits are reached, the chat shows a rate limit error with a retry delay. Solutions:
 
@@ -1879,7 +2083,7 @@ When Anthropic API rate limits are reached, the chat shows a rate limit error wi
 3. Check your API usage / plan limits on the Anthropic console
 4. The header status indicator shows API health (yellow triangle = API unavailable)
 
-### 15.4 "Connection lost" / Reconnecting
+### 16.4 "Connection lost" / Reconnecting
 
 Hammoc automatically reconnects when the connection is lost. The header shows a status indicator: green (connected), yellow spinning (reconnecting), or red (disconnected with manual Reconnect button).
 
@@ -1892,7 +2096,7 @@ If the connection doesn't recover:
 3. Refresh the browser
 4. Restart the server: `hammoc` or `npm start`
 
-### 15.5 Port already in use
+### 16.5 Port already in use
 
 The server automatically retries when the port is in use. If it still fails:
 
@@ -1902,7 +2106,7 @@ hammoc --port 3001
 
 Or set the environment variable: `PORT=3001 hammoc`
 
-### 15.6 Terminal not available
+### 16.6 Terminal not available
 
 Terminal may be disabled when:
 
@@ -1910,7 +2114,7 @@ Terminal may be disabled when:
 - `TERMINAL_ENABLED=false` is set in environment
 - Maximum terminal sessions reached (default 10, configurable via `MAX_TERMINAL_SESSIONS`)
 
-### 15.7 Reset password
+### 16.7 Reset password
 
 If you forgot your password:
 
@@ -1920,7 +2124,7 @@ hammoc --reset-password
 
 This prompts you to set a new password. Alternatively, delete `~/.hammoc/config.json` and restart the server to re-trigger the password setup flow in the browser.
 
-### 15.8 Chat timeout
+### 16.8 Chat timeout
 
 If Claude's responses are timing out:
 
@@ -1929,7 +2133,7 @@ If Claude's responses are timing out:
 3. Complex tasks (large codebases, multi-file edits) may need longer timeouts
 4. If the `CHAT_TIMEOUT_MS` environment variable is set, it overrides the UI setting (shown with an indicator)
 
-### 15.9 Large file warning
+### 16.9 Large file warning
 
 Files over 1 MB display a truncation warning. Consider:
 
@@ -1937,7 +2141,7 @@ Files over 1 MB display a truncation warning. Consider:
 - Opening in an external editor
 - Breaking large files into smaller ones
 
-### 15.10 Data locations
+### 16.10 Data locations
 
 If you need to find or back up your data:
 
@@ -1949,9 +2153,12 @@ If you need to find or back up your data:
 | Chain failures | `~/.hammoc/chain-failures/<sessionId>.json` (per session) |
 | Global snippets | `~/.hammoc/snippets/` (shared across all projects) |
 | Project snippets | `<project-root>/.hammoc/snippets/` (per project) |
+| Global harness items | `~/.claude/` (skills, agents, commands, hooks, `CLAUDE.md`, `.mcp.json`, `settings.json`) |
+| Project harness items | `<project-root>/.claude/` (same layout as global; project takes precedence) |
 | Session data | `~/.claude/projects/` |
 | Web Push VAPID keys | `~/.hammoc/vapid-keys.json` |
 | Web Push subscriptions | `~/.hammoc/push-subscriptions.json` |
 | TLS certificates | `~/.hammoc/key.pem`, `~/.hammoc/cert.pem` |
 | Manual shards (synced) | `~/.hammoc/docs/manual/` and `~/.hammoc/docs/.manual-version` (auto-synced from the npm package on server boot; agents read these via the absolute path embedded in the system prompt) |
+| Internals docs (synced) | `~/.hammoc/docs/internals/` (agent-only mechanism reference; also re-synced when the package version changes) |
 | Server logs | `./logs/server-YYYY-MM-DD.log` (daily log files in working directory) |

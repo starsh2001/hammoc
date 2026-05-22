@@ -9,6 +9,7 @@ Read individual entries **on demand** when the user's request involves the under
 ## Entries
 
 - [Image Storage](./image-storage.md) — On-disk path and filename scheme for chat-attached images
+- [Harness File Layout](./harness-files.md) — Where `.claude/` items (skills, commands, agents, hooks, MCP servers, `CLAUDE.md`) live on disk, when changes take effect, and how the Secret-on-Shared guard relates to direct file writes
 
 ## Maintenance
 
