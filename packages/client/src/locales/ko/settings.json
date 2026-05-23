@@ -1308,6 +1308,70 @@
                         "hookEnvVarUndefined": "훅 command 의 ${VAR} 참조가 Hammoc 서버 process.env 에 없을 때 경고합니다."
                     }
                 }
+            },
+            "bundle": {
+                "entry": {
+                    "button": "번들",
+                    "menuExport": "번들 내보내기",
+                    "menuImport": "번들 가져오기",
+                    "menuTitle": "번들 작업"
+                },
+                "export": {
+                    "title": "번들 내보내기",
+                    "includesLabel": "포함할 섹션",
+                    "secretsPolicyLabel": "시크릿 정책",
+                    "exportButton": "내보내기",
+                    "exporting": "내보내는 중…",
+                    "downloadSuccess": "번들 다운로드 완료: {{filename}}"
+                },
+                "secretsPolicy": {
+                    "excluded": "제외 (기본값)",
+                    "excludedDetail": "시크릿을 모두 제거합니다.",
+                    "placeholder": "플레이스홀더",
+                    "placeholderDetail": "환경변수 참조로 치환합니다.",
+                    "includedExplicit": "포함 — 명시적",
+                    "includedExplicitDetail": "평문 시크릿을 그대로 포함합니다 — 위험.",
+                    "includedExplicitConfirm": "이 번들에 평문 시크릿이 포함됨을 이해합니다.",
+                    "includedExplicitFilenameNotice": "파일명에 WITH-SECRETS 가 포함됩니다.",
+                    "includedExplicitDownloadToast": "평문 시크릿 포함 — 안전한 경로로만 전달하세요.",
+                    "importIncludedSecretsWarning": "평문 시크릿이 포함된 번들입니다 — 출처를 확인하세요.",
+                    "excludedImportToast": "이 번들은 시크릿이 제거된 상태로 내보내졌습니다 — 해당 필드는 비어 있습니다.",
+                    "placeholderImportToast": "이 번들은 플레이스홀더 시크릿을 사용합니다 — 가져온 뒤 ${ENV_REF} 값을 채우세요."
+                },
+                "importPreview": {
+                    "title": "가져오기 미리보기",
+                    "statusNew": "신규",
+                    "statusOverwrite": "덮어쓰기",
+                    "statusSame": "동일",
+                    "statusConflict": "충돌",
+                    "actionOverwrite": "덮어쓰기",
+                    "actionSkip": "건너뛰기",
+                    "actionRename": "이름 변경",
+                    "actionAppendSection": "섹션으로 추가",
+                    "bulkOverwrite": "모두 덮어쓰기",
+                    "bulkSkip": "모두 스킵",
+                    "bulkAddOnly": "기존 유지 + 신규만 추가",
+                    "applyButton": "적용",
+                    "applying": "적용 중…",
+                    "applySuccess": "{{applied}}건 적용 · {{skipped}}건 스킵 · {{renamed}}건 이름 변경",
+                    "applyPartialRollback": "{{count}}건 적용 후 실패로 롤백되었습니다.",
+                    "applyAbort": "적용이 중단되었습니다. 어떤 파일도 변경되지 않았습니다."
+                },
+                "pluginDependencies": {
+                    "bannerTitle": "플러그인 의존성",
+                    "bannerDetail": "이 번들은 {{total}}개 플러그인에 의존합니다 — {{missing}}개 미설치.",
+                    "missingLabel": "{{name}} @ {{marketplace}}",
+                    "installCta": "설치",
+                    "installFallbackToast": "마켓플레이스 {{marketplace}}에서 {{name}}을 설치한 뒤 다시 시도하세요."
+                },
+                "compat": {
+                    "futureBundleTitle": "최신 Hammoc 버전의 번들",
+                    "futureBundleDetail": "이 번들은 Hammoc 의 최신 버전에서 생성되었습니다 (bundleVersion={{bundleVersion}}). 현재 버전(1)에서는 안전하게 가져올 수 없습니다.",
+                    "invalidBundleTitle": "잘못된 번들입니다",
+                    "unknownSectionWarning": "알려지지 않은 섹션 \"{{name}}\"은 무시됩니다.",
+                    "malformedManifestTitle": "손상된 번들입니다",
+                    "malformedManifestDetail": "매니페스트 파일이 없거나 파싱에 실패했습니다. 아래 상세 정보를 참고하세요."
+                }
             }
         }
     },

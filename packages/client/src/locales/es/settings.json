@@ -1307,6 +1307,70 @@
                         "hookEnvVarUndefined": "Avisa cuando una referencia ${VAR} en un command de hook no está definida en el process.env del servidor Hammoc."
                     }
                 }
+            },
+            "bundle": {
+                "entry": {
+                    "button": "Paquete",
+                    "menuExport": "Exportar paquete",
+                    "menuImport": "Importar paquete",
+                    "menuTitle": "Acciones del paquete"
+                },
+                "export": {
+                    "title": "Exportar paquete",
+                    "includesLabel": "Secciones a incluir",
+                    "secretsPolicyLabel": "Política de secretos",
+                    "exportButton": "Exportar",
+                    "exporting": "Exportando…",
+                    "downloadSuccess": "Paquete descargado: {{filename}}"
+                },
+                "secretsPolicy": {
+                    "excluded": "Excluidos (predeterminado)",
+                    "excludedDetail": "Todos los secretos se eliminan del paquete.",
+                    "placeholder": "Marcador",
+                    "placeholderDetail": "Los secretos se sustituyen por referencias a variables de entorno.",
+                    "includedExplicit": "Incluidos — explícito",
+                    "includedExplicitDetail": "Los secretos en texto plano se incluyen tal cual — arriesgado.",
+                    "includedExplicitConfirm": "Entiendo que este paquete contendrá secretos en texto plano.",
+                    "includedExplicitFilenameNotice": "El nombre de archivo incluirá WITH-SECRETS.",
+                    "includedExplicitDownloadToast": "Secretos en texto plano incluidos — compártalo solo por un canal seguro.",
+                    "importIncludedSecretsWarning": "Este paquete contiene secretos en texto plano — verifique la fuente.",
+                    "excludedImportToast": "El paquete se exportó sin secretos — los campos afectados estarán vacíos.",
+                    "placeholderImportToast": "El paquete usa marcadores de secretos — rellene los valores ${ENV_REF} tras importar."
+                },
+                "importPreview": {
+                    "title": "Vista previa de importación",
+                    "statusNew": "Nuevo",
+                    "statusOverwrite": "Sobrescribir",
+                    "statusSame": "Igual",
+                    "statusConflict": "Conflicto",
+                    "actionOverwrite": "Sobrescribir",
+                    "actionSkip": "Omitir",
+                    "actionRename": "Renombrar",
+                    "actionAppendSection": "Añadir como sección",
+                    "bulkOverwrite": "Sobrescribir todo",
+                    "bulkSkip": "Omitir todo",
+                    "bulkAddOnly": "Mantener existentes, añadir solo nuevos",
+                    "applyButton": "Aplicar",
+                    "applying": "Aplicando…",
+                    "applySuccess": "{{applied}} aplicados · {{skipped}} omitidos · {{renamed}} renombrados",
+                    "applyPartialRollback": "{{count}} elementos aplicados y luego revertidos por un fallo.",
+                    "applyAbort": "Aplicación cancelada. No se modificó ningún archivo."
+                },
+                "pluginDependencies": {
+                    "bannerTitle": "Dependencias de plugins",
+                    "bannerDetail": "Este paquete depende de {{total}} plugin(s) — {{missing}} no instalado(s).",
+                    "missingLabel": "{{name}} @ {{marketplace}}",
+                    "installCta": "Instalar",
+                    "installFallbackToast": "Instale {{name}} desde el marketplace {{marketplace}} y vuelva a intentarlo."
+                },
+                "compat": {
+                    "futureBundleTitle": "Paquete de una versión más reciente de Hammoc",
+                    "futureBundleDetail": "Este paquete se creó con una versión más reciente de Hammoc (bundleVersion={{bundleVersion}}). La versión actual (1) no puede importarlo de forma segura.",
+                    "invalidBundleTitle": "Paquete no válido",
+                    "unknownSectionWarning": "La sección \"{{name}}\" es desconocida para esta versión y se omitirá.",
+                    "malformedManifestTitle": "Paquete corrupto",
+                    "malformedManifestDetail": "El manifiesto falta o no se pudo analizar. Consulte los detalles a continuación."
+                }
             }
         }
     },

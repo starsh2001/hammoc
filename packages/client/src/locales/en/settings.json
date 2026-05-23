@@ -1308,6 +1308,70 @@
                         "hookEnvVarUndefined": "Warn when a ${VAR} reference in a hook command is not defined on the Hammoc server's process.env."
                     }
                 }
+            },
+            "bundle": {
+                "entry": {
+                    "button": "Bundle",
+                    "menuExport": "Export bundle",
+                    "menuImport": "Import bundle",
+                    "menuTitle": "Bundle actions"
+                },
+                "export": {
+                    "title": "Export bundle",
+                    "includesLabel": "Sections to include",
+                    "secretsPolicyLabel": "Secrets policy",
+                    "exportButton": "Export",
+                    "exporting": "Exporting…",
+                    "downloadSuccess": "Bundle downloaded: {{filename}}"
+                },
+                "secretsPolicy": {
+                    "excluded": "Excluded (default)",
+                    "excludedDetail": "All secrets are stripped from the bundle.",
+                    "placeholder": "Placeholder",
+                    "placeholderDetail": "Secrets are replaced with environment-variable references.",
+                    "includedExplicit": "Included — explicit",
+                    "includedExplicitDetail": "Plaintext secrets are included as-is. Risky.",
+                    "includedExplicitConfirm": "I understand this bundle will contain plaintext secrets.",
+                    "includedExplicitFilenameNotice": "The filename will include WITH-SECRETS to flag the contents.",
+                    "includedExplicitDownloadToast": "Plaintext secrets included — share only over a trusted channel.",
+                    "importIncludedSecretsWarning": "This bundle contains plaintext secrets. Confirm the source before proceeding.",
+                    "excludedImportToast": "The bundle was exported with secrets stripped — affected fields will be empty.",
+                    "placeholderImportToast": "The bundle uses placeholder secrets — fill in the ${ENV_REF} values after import."
+                },
+                "importPreview": {
+                    "title": "Import preview",
+                    "statusNew": "New",
+                    "statusOverwrite": "Overwrite",
+                    "statusSame": "Same",
+                    "statusConflict": "Conflict",
+                    "actionOverwrite": "Overwrite",
+                    "actionSkip": "Skip",
+                    "actionRename": "Rename",
+                    "actionAppendSection": "Append as section",
+                    "bulkOverwrite": "Overwrite all",
+                    "bulkSkip": "Skip all",
+                    "bulkAddOnly": "Keep existing, add new only",
+                    "applyButton": "Apply",
+                    "applying": "Applying…",
+                    "applySuccess": "{{applied}} applied · {{skipped}} skipped · {{renamed}} renamed",
+                    "applyPartialRollback": "{{count}} items applied, then rolled back due to a failure.",
+                    "applyAbort": "Apply aborted. No files were changed."
+                },
+                "pluginDependencies": {
+                    "bannerTitle": "Plugin dependencies",
+                    "bannerDetail": "This bundle depends on {{total}} plugin(s); {{missing}} not installed.",
+                    "missingLabel": "{{name}} @ {{marketplace}}",
+                    "installCta": "Install",
+                    "installFallbackToast": "Install {{name}} from the {{marketplace}} marketplace, then retry."
+                },
+                "compat": {
+                    "futureBundleTitle": "Bundle from a newer Hammoc version",
+                    "futureBundleDetail": "This bundle was created on a newer Hammoc release (bundleVersion={{bundleVersion}}). The current version (1) cannot import it safely.",
+                    "invalidBundleTitle": "Invalid bundle",
+                    "unknownSectionWarning": "Section \"{{name}}\" is unknown to this Hammoc version and will be skipped.",
+                    "malformedManifestTitle": "Malformed bundle",
+                    "malformedManifestDetail": "The manifest file is missing or could not be parsed. See details below."
+                }
             }
         }
     },

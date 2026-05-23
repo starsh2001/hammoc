@@ -1307,6 +1307,70 @@
                         "hookEnvVarUndefined": "フック command の ${VAR} 参照が Hammoc サーバーの process.env にない場合に警告します。"
                     }
                 }
+            },
+            "bundle": {
+                "entry": {
+                    "button": "バンドル",
+                    "menuExport": "バンドルをエクスポート",
+                    "menuImport": "バンドルをインポート",
+                    "menuTitle": "バンドル操作"
+                },
+                "export": {
+                    "title": "バンドルをエクスポート",
+                    "includesLabel": "含めるセクション",
+                    "secretsPolicyLabel": "シークレットポリシー",
+                    "exportButton": "エクスポート",
+                    "exporting": "エクスポート中…",
+                    "downloadSuccess": "バンドルをダウンロードしました: {{filename}}"
+                },
+                "secretsPolicy": {
+                    "excluded": "除外 (デフォルト)",
+                    "excludedDetail": "シークレットをすべて除去します。",
+                    "placeholder": "プレースホルダー",
+                    "placeholderDetail": "環境変数参照に置き換えます。",
+                    "includedExplicit": "含める — 明示的",
+                    "includedExplicitDetail": "平文シークレットをそのまま含めます — 危険。",
+                    "includedExplicitConfirm": "このバンドルに平文シークレットが含まれることを理解しました。",
+                    "includedExplicitFilenameNotice": "ファイル名に WITH-SECRETS が含まれます。",
+                    "includedExplicitDownloadToast": "平文シークレットを含みます — 安全な経路でのみ共有してください。",
+                    "importIncludedSecretsWarning": "平文シークレットを含むバンドルです — 出所を確認してください。",
+                    "excludedImportToast": "このバンドルはシークレットが除去された状態でエクスポートされています — 該当フィールドは空になります。",
+                    "placeholderImportToast": "このバンドルはプレースホルダーシークレットを使用しています — インポート後に ${ENV_REF} 値を埋めてください。"
+                },
+                "importPreview": {
+                    "title": "インポートプレビュー",
+                    "statusNew": "新規",
+                    "statusOverwrite": "上書き",
+                    "statusSame": "同一",
+                    "statusConflict": "競合",
+                    "actionOverwrite": "上書き",
+                    "actionSkip": "スキップ",
+                    "actionRename": "リネーム",
+                    "actionAppendSection": "セクションとして追加",
+                    "bulkOverwrite": "すべて上書き",
+                    "bulkSkip": "すべてスキップ",
+                    "bulkAddOnly": "既存を維持し新規のみ追加",
+                    "applyButton": "適用",
+                    "applying": "適用中…",
+                    "applySuccess": "{{applied}}件適用 · {{skipped}}件スキップ · {{renamed}}件リネーム",
+                    "applyPartialRollback": "{{count}}件適用後にエラーが発生しロールバックされました。",
+                    "applyAbort": "適用が中止されました。ファイルは変更されていません。"
+                },
+                "pluginDependencies": {
+                    "bannerTitle": "プラグイン依存関係",
+                    "bannerDetail": "このバンドルは {{total}} 個のプラグインに依存します — {{missing}} 個が未インストール。",
+                    "missingLabel": "{{name}} @ {{marketplace}}",
+                    "installCta": "インストール",
+                    "installFallbackToast": "マーケットプレース {{marketplace}} から {{name}} をインストールしてから再試行してください。"
+                },
+                "compat": {
+                    "futureBundleTitle": "新しい Hammoc バージョンのバンドル",
+                    "futureBundleDetail": "このバンドルは新しい Hammoc バージョン (bundleVersion={{bundleVersion}}) で作成されました。現在のバージョン (1) では安全にインポートできません。",
+                    "invalidBundleTitle": "無効なバンドル",
+                    "unknownSectionWarning": "未知のセクション \"{{name}}\" は無視されます。",
+                    "malformedManifestTitle": "破損したバンドル",
+                    "malformedManifestDetail": "マニフェストファイルが見つからないか解析に失敗しました。以下の詳細を確認してください。"
+                }
             }
         }
     },

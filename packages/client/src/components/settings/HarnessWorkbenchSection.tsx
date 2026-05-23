@@ -39,6 +39,10 @@ import {
   deriveLocalSiblingPath,
 } from '../../stores/secretOnSharedDialogStore';
 import { SecretOnSharedDialog } from './harness/SecretOnSharedDialog';
+import { BundleEntryButton } from './harness/BundleEntryButton';
+import { BundleExportDialog } from './harness/BundleExportDialog';
+import { BundleImportDialog } from './harness/BundleImportDialog';
+import { useHarnessBundleStore } from '../../stores/harnessBundleStore';
 
 type HarnessSubSection =
   | 'plugins'
@@ -150,13 +154,17 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
     <div className="flex flex-col gap-3">
       {/* Story 30.1 (AC3.b): Mode banner sits above the sub-section nav so
           the verdict is workbench-wide and not duplicated per panel. */}
-      {/* Story 30.4: onExportClick={null} hides the CTA while Story 30.3 is
-          unimplemented — replace with the ExportBundleDialog open handler when
-          Story 30.3 (Task 4) lands. */}
-      <ModeBanner mode={shareMode} onExportClick={null} />
-      {/* Story 30.2 (AC4.a): "lint 규칙" entry point sits above the sub-section
-          nav as a workbench-wide meta line — same level as ModeBanner. */}
-      <div className="flex justify-end">
+      {/* Story 30.6 — Mode B 에서 Export CTA 활성 (Story 30.4 인계 종결).
+          The CTA opens the BundleExportDialog mounted below this tree. */}
+      <ModeBanner
+        mode={shareMode}
+        onExportClick={() => void useHarnessBundleStore.getState().openExport(projectSlug)}
+      />
+      {/* Story 30.2 (AC4.a) / Story 30.6 (AC8.b): "lint 규칙" + "번들" entry
+          points sit above the sub-section nav as a workbench-wide meta line —
+          siblings inside the same flex-end wrap container so they share the
+          mobile wrap slot. */}
+      <div className="flex justify-end gap-2 flex-wrap">
         <button
           type="button"
           onClick={() => setLintPrefsOpen(true)}
@@ -165,6 +173,7 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
         >
           {t('harness.tools.lint.preferences.title')}
         </button>
+        <BundleEntryButton projectSlug={projectSlug} />
       </div>
     <div className="flex flex-col sm:flex-row gap-4">
       {/* Sub-section nav: pill row on mobile (horizontal scroll, no wrap),
@@ -245,6 +254,11 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
       </div>
     </div>
     <LintRulePreferencesDialog open={lintPrefsOpen} onClose={() => setLintPrefsOpen(false)} />
+    {/* Story 30.6 — Bundle dialogs mount once per workbench. Open/close state
+        is owned by harnessBundleStore so dialog lifecycle stays inside the
+        store rather than threading through props. */}
+    <BundleExportDialog projectSlug={projectSlug} />
+    <BundleImportDialog projectSlug={projectSlug} />
     {secretDialogPayload && (
       <SecretOnSharedDialog
         targetPath={secretDialogPayload.targetPath}

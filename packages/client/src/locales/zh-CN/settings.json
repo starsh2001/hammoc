@@ -1307,6 +1307,70 @@
                         "hookEnvVarUndefined": "Hook command 中的 ${VAR} 引用未在 Hammoc 服务 process.env 中定义时发出警告。"
                     }
                 }
+            },
+            "bundle": {
+                "entry": {
+                    "button": "捆绑包",
+                    "menuExport": "导出捆绑包",
+                    "menuImport": "导入捆绑包",
+                    "menuTitle": "捆绑包操作"
+                },
+                "export": {
+                    "title": "导出捆绑包",
+                    "includesLabel": "包含的部分",
+                    "secretsPolicyLabel": "密钥策略",
+                    "exportButton": "导出",
+                    "exporting": "导出中…",
+                    "downloadSuccess": "捆绑包已下载: {{filename}}"
+                },
+                "secretsPolicy": {
+                    "excluded": "排除 (默认)",
+                    "excludedDetail": "从捆绑包中移除所有密钥。",
+                    "placeholder": "占位符",
+                    "placeholderDetail": "用环境变量引用替换密钥。",
+                    "includedExplicit": "包含 — 显式",
+                    "includedExplicitDetail": "原样包含明文密钥 — 风险。",
+                    "includedExplicitConfirm": "我了解此捆绑包将包含明文密钥。",
+                    "includedExplicitFilenameNotice": "文件名将包含 WITH-SECRETS。",
+                    "includedExplicitDownloadToast": "包含明文密钥 — 仅通过可信渠道分享。",
+                    "importIncludedSecretsWarning": "此捆绑包包含明文密钥 — 请确认来源。",
+                    "excludedImportToast": "此捆绑包导出时已移除密钥 — 相关字段将为空。",
+                    "placeholderImportToast": "此捆绑包使用占位符密钥 — 导入后请填充 ${ENV_REF} 值。"
+                },
+                "importPreview": {
+                    "title": "导入预览",
+                    "statusNew": "新增",
+                    "statusOverwrite": "覆盖",
+                    "statusSame": "相同",
+                    "statusConflict": "冲突",
+                    "actionOverwrite": "覆盖",
+                    "actionSkip": "跳过",
+                    "actionRename": "重命名",
+                    "actionAppendSection": "作为段落追加",
+                    "bulkOverwrite": "全部覆盖",
+                    "bulkSkip": "全部跳过",
+                    "bulkAddOnly": "保留现有, 仅添加新增",
+                    "applyButton": "应用",
+                    "applying": "应用中…",
+                    "applySuccess": "已应用 {{applied}} · 已跳过 {{skipped}} · 已重命名 {{renamed}}",
+                    "applyPartialRollback": "已应用 {{count}} 项后因错误回滚。",
+                    "applyAbort": "应用已中止。未更改任何文件。"
+                },
+                "pluginDependencies": {
+                    "bannerTitle": "插件依赖",
+                    "bannerDetail": "此捆绑包依赖 {{total}} 个插件 — {{missing}} 个未安装。",
+                    "missingLabel": "{{name}} @ {{marketplace}}",
+                    "installCta": "安装",
+                    "installFallbackToast": "从 {{marketplace}} 应用市场安装 {{name}} 后重试。"
+                },
+                "compat": {
+                    "futureBundleTitle": "来自更新版本 Hammoc 的捆绑包",
+                    "futureBundleDetail": "此捆绑包由更新的 Hammoc 版本创建 (bundleVersion={{bundleVersion}})。当前版本 (1) 无法安全导入。",
+                    "invalidBundleTitle": "无效的捆绑包",
+                    "unknownSectionWarning": "未知段落 \"{{name}}\" 将被忽略。",
+                    "malformedManifestTitle": "损坏的捆绑包",
+                    "malformedManifestDetail": "清单文件缺失或解析失败。请参阅下方详情。"
+                }
             }
         }
     },
