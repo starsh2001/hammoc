@@ -25,12 +25,20 @@ const querySchema = z
   })
   .strict();
 
-const MAPPED_CODES = ['HARNESS_ROOT_MISSING', 'HARNESS_FORBIDDEN', 'HARNESS_PATH_DENIED'] as const;
+const MAPPED_CODES = [
+  'HARNESS_ROOT_MISSING',
+  'HARNESS_FORBIDDEN',
+  'HARNESS_PATH_DENIED',
+  'HARNESS_PARSE_ERROR',
+  'HARNESS_WRITE_ERROR',
+] as const;
 
 const MESSAGE_KEY: Record<typeof MAPPED_CODES[number], string> = {
   HARNESS_ROOT_MISSING: 'harness.error.rootMissing',
   HARNESS_FORBIDDEN: 'harness.error.forbidden',
   HARNESS_PATH_DENIED: 'harness.error.pathDenied',
+  HARNESS_PARSE_ERROR: 'harness.error.parseError',
+  HARNESS_WRITE_ERROR: 'harness.error.writeError',
 };
 
 function handleError(req: Request, res: Response, error: unknown): void {
@@ -52,6 +60,17 @@ function handleError(req: Request, res: Response, error: unknown): void {
   });
 }
 
+/**
+ * Story 30.7 (Task D.3): body schema for `appendGitignore` — the route takes
+ * the project slug from the URL (defense in depth: the helper rejects
+ * traversal-bearing slugs again) and the pattern from the body.
+ */
+const appendBodySchema = z
+  .object({
+    pattern: z.string().min(1, 'pattern is required'),
+  })
+  .strict();
+
 export const harnessShareScopeController = {
   /** GET /api/harness/share-scope?scope=project&projectSlug=<slug>&paths=<comma> */
   async evaluate(req: Request, res: Response): Promise<void> {
@@ -72,6 +91,35 @@ export const harnessShareScopeController = {
         projectSlug: parsed.data.projectSlug,
         relativePaths,
       });
+      res.json(result);
+    } catch (error) {
+      handleError(req, res, error);
+    }
+  },
+
+  /**
+   * POST /api/harness/share-scope/:projectSlug/append-gitignore
+   *
+   * Story 30.7 (Task D.3): append `body.pattern` to the project's
+   * `.gitignore`, creating the file when missing. Idempotent — when the
+   * pattern is already present, the response carries `appended: false` and
+   * the file is untouched.
+   */
+  async appendGitignore(req: Request, res: Response): Promise<void> {
+    const slug = req.params.projectSlug;
+    if (!slug || slug.length === 0) {
+      res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'projectSlug is required' } });
+      return;
+    }
+    const body = appendBodySchema.safeParse(req.body ?? {});
+    if (!body.success) {
+      res.status(400).json({
+        error: { code: 'INVALID_REQUEST', message: body.error.issues[0]?.message ?? 'invalid body' },
+      });
+      return;
+    }
+    try {
+      const result = await harnessShareScopeService.appendGitignorePattern(slug, body.data.pattern);
       res.json(result);
     } catch (error) {
       handleError(req, res, error);

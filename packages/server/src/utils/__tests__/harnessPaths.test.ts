@@ -13,6 +13,7 @@ import {
   getProjectHarnessRoot,
   resolveHarnessPath,
   resolveProjectClaudeMdPath,
+  resolveProjectGitignorePath,
 } from '../harnessPaths.js';
 import { projectService } from '../../services/projectService.js';
 
@@ -169,6 +170,43 @@ describe('resolveProjectClaudeMdPath (Story 29.1)', () => {
   it('rejects projectSlug containing "..", path separators, or null byte', async () => {
     for (const evil of ['..', '../escape', 'a/b', 'a\\b', 'a\0b']) {
       await expect(resolveProjectClaudeMdPath(evil)).rejects.toMatchObject({
+        code: HARNESS_ERRORS.HARNESS_PATH_DENIED.code,
+      });
+    }
+  });
+});
+
+describe('resolveProjectGitignorePath (Story 30.7)', () => {
+  let tmpProject: string;
+
+  beforeEach(async () => {
+    tmpProject = await fs.mkdtemp(path.join(os.tmpdir(), 'gitignore-proj-'));
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(tmpProject, { recursive: true, force: true });
+  });
+
+  it('returns <projectRoot>/.gitignore (sibling of .claude/) for an existing slug', async () => {
+    vi.spyOn(projectService, 'resolveOriginalPath').mockResolvedValue(tmpProject);
+    const { resolvedRoot, absolutePath } = await resolveProjectGitignorePath('my-slug');
+    expect(resolvedRoot).toBe(path.resolve(tmpProject));
+    expect(absolutePath).toBe(path.join(path.resolve(tmpProject), '.gitignore'));
+  });
+
+  it('wraps unknown slug errors as HARNESS_ROOT_MISSING', async () => {
+    vi.spyOn(projectService, 'resolveOriginalPath').mockRejectedValue(
+      Object.assign(new Error('not found'), { code: 'PROJECT_NOT_FOUND' }),
+    );
+    await expect(resolveProjectGitignorePath('unknown')).rejects.toMatchObject({
+      code: HARNESS_ERRORS.HARNESS_ROOT_MISSING.code,
+    });
+  });
+
+  it('rejects projectSlug containing "..", path separators, or null byte with HARNESS_PATH_DENIED', async () => {
+    for (const evil of ['', '..', '../escape', 'a/b', 'a\\b', 'a\0b']) {
+      await expect(resolveProjectGitignorePath(evil)).rejects.toMatchObject({
         code: HARNESS_ERRORS.HARNESS_PATH_DENIED.code,
       });
     }

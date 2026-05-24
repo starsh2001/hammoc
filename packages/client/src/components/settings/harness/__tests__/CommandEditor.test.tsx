@@ -93,10 +93,26 @@ vi.mock('../../../../hooks/useSlashCommands', () => ({
   SLASH_COMMANDS_CHANGED_EVENT: 'hammoc:slashCommandsChanged',
 }));
 
+// Story 30.7 (Task C.5): mock the router so the secret-shared branch can be
+// observed without hitting the network.
+vi.mock('../../../../services/secretOnSharedRouter', () => ({
+  getActionLabelKey: (domain: string) => `harness.tools.secretOnShared.action.${
+    domain === 'mcp' ? 'routeToLocalMcp' :
+    domain === 'hook' ? 'routeToLocalHook' :
+    domain === 'command' ? 'replaceWithEnvRefCommand' :
+    'replaceWithEnvRefAgent'
+  }`,
+  routeToLocal: vi.fn(),
+  appendGitignorePattern: vi.fn(),
+  REQUIRED_LOCAL_PATTERN: '**/.claude/**/*.local.*',
+}));
+
 import {
   readCommand,
   updateCommand,
 } from '../../../../services/api/harnessCommandsApi';
+import { routeToLocal as mockedRouteToLocal } from '../../../../services/secretOnSharedRouter';
+import { useSecretOnSharedDialogStore } from '../../../../stores/secretOnSharedDialogStore';
 import { CommandEditor } from '../CommandEditor';
 import { useHarnessCommandStore } from '../../../../stores/harnessCommandStore';
 
@@ -284,5 +300,42 @@ describe('CommandEditor', () => {
     const desc = await screen.findByTestId('cmd-frontmatter-description');
     const fieldset = desc.closest('fieldset');
     expect(fieldset?.hasAttribute('disabled')).toBe(true);
+  });
+
+  /**
+   * Story 30.7 (Task C.5): regression guard — the command editor must wire
+   * its SecretOnSharedDialog to the command-domain routeToLocal call with
+   * the matching actionLabelKey.
+   */
+  it('opens the SecretOnSharedDialog with the command actionLabelKey + dispatches routeToLocal on click', async () => {
+    const { ApiError } = await import('../../../../services/api/client');
+    mockedRead.mockResolvedValue(sampleRead());
+    mockedUpdate.mockRejectedValueOnce(
+      new ApiError(409, 'HARNESS_SECRET_ON_SHARED', 'blocked', {
+        relativePath: '.claude/commands/foo.md',
+        lines: [2],
+      }),
+    );
+    vi.mocked(mockedRouteToLocal).mockResolvedValue({ ok: true });
+    useSecretOnSharedDialogStore.getState().close();
+
+    const user = userEvent.setup();
+    await renderEditor();
+    const desc = await screen.findByTestId('cmd-frontmatter-description');
+    await user.type(desc, 'X');
+    await waitFor(() => {
+      expect(useSecretOnSharedDialogStore.getState().payload).not.toBeNull();
+    }, { timeout: 1500 });
+    const payload = useSecretOnSharedDialogStore.getState().payload!;
+    expect(payload.origin).toBe('command');
+    expect(payload.actionLabelKey).toBe(
+      'harness.tools.secretOnShared.action.replaceWithEnvRefCommand',
+    );
+    payload.onMoveToLocal();
+    await waitFor(() => {
+      expect(mockedRouteToLocal).toHaveBeenCalledWith(
+        expect.objectContaining({ domain: 'command', projectSlug: 'slug' }),
+      );
+    });
   });
 });

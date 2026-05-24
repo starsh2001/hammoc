@@ -25,6 +25,17 @@ interface Props {
   willAutoCreateSibling: boolean;
   /** Detected secret locations (line numbers OR dot-paths). */
   secretLocations?: string[];
+  /**
+   * Story 30.7 (Task C.0): caller-supplied i18n key for the 1st action
+   * button. Defaults to `harness.tools.secretOnShared.action.moveToLocal`
+   * (the v0.7 label) so any call site that does not opt into the
+   * domain-aware label gets the same visual as before. The router/store
+   * decides the label — the dialog only does the `t()` lookup.
+   *
+   * Visual integrity: layout, color, button placement do not change. Only
+   * the label text inside the primary button switches.
+   */
+  actionLabelKey?: string;
   onMoveToLocal(): void;
   onMarkNotSecret(): void;
   onCancel(): void;
@@ -35,6 +46,7 @@ export function SecretOnSharedDialog({
   siblingLocalPath,
   willAutoCreateSibling,
   secretLocations,
+  actionLabelKey,
   onMoveToLocal,
   onMarkNotSecret,
   onCancel,
@@ -117,7 +129,7 @@ export function SecretOnSharedDialog({
             onClick={onMoveToLocal}
             className="px-3 py-1.5 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {t('harness.tools.secretOnShared.action.moveToLocal')}
+            {t(actionLabelKey ?? 'harness.tools.secretOnShared.action.moveToLocal')}
           </button>
         </div>
       </div>

@@ -597,4 +597,78 @@ describe('harnessHookService', () => {
       expect(detectSecretsInHook({ type: 'command', command: 'echo hi' }).matched).toBe(false);
     });
   });
+
+  /**
+   * Story 30.7 (Task A.4): sibling-save into `.claude/settings.local.json`.
+   * The local sibling sits inside `.claude/`, so the write flows through
+   * `harnessService.write` → `resolveHarnessPath` naturally. Tests pin the
+   * share-scope verdict to `local` so the secret guard does not fire.
+   */
+  describe('writeLocalSibling (Story 30.7 Task A.2)', () => {
+    beforeEach(async () => {
+      await fs.writeFile(path.join(projectRoot, '.gitignore'), '**/.claude/**/*.local.*\n', 'utf-8');
+    });
+
+    it('creates .claude/settings.local.json with the supplied hook when the file is missing', async () => {
+      const res = await harnessHookService.writeLocalSibling({
+        projectSlug: 'slug',
+        event: 'PreToolUse',
+        matcher: 'Bash',
+        config: { type: 'command', command: 'echo "Bearer aaaaaaaaaaaaaaaaaaaaaaaa"' },
+      });
+      expect(res.success).toBe(true);
+      expect(res.siblingRelativePath).toBe('.claude/settings.local.json');
+      const text = await fs.readFile(path.join(projectRoot, '.claude', 'settings.local.json'), 'utf-8');
+      const parsed = JSON.parse(text);
+      expect(parsed.hooks.PreToolUse[0].matcher).toBe('Bash');
+      expect(parsed.hooks.PreToolUse[0].hooks[0].command).toContain('Bearer');
+    });
+
+    it('appends to an existing settings.local.json without dropping prior events', async () => {
+      await fs.writeFile(
+        path.join(projectRoot, '.claude', 'settings.local.json'),
+        JSON.stringify(
+          { hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo first' }] }] } },
+          null,
+          2,
+        ),
+        'utf-8',
+      );
+      const res = await harnessHookService.writeLocalSibling({
+        projectSlug: 'slug',
+        event: 'PreToolUse',
+        matcher: 'Read',
+        config: { type: 'command', command: 'echo second' },
+      });
+      expect(res.newGroupIndex).toBe(1);
+      const text = await fs.readFile(path.join(projectRoot, '.claude', 'settings.local.json'), 'utf-8');
+      const parsed = JSON.parse(text);
+      expect(parsed.hooks.PreToolUse).toHaveLength(2);
+      expect(parsed.hooks.PreToolUse[0].hooks[0].command).toBe('echo first');
+      expect(parsed.hooks.PreToolUse[1].hooks[0].command).toBe('echo second');
+    });
+
+    it('re-throws HARNESS_SECRET_ON_SHARED when the sibling itself is not gitignored', async () => {
+      // No `.local.*` rule in .gitignore — share-scope verdict for
+      // `.claude/settings.local.json` is `shared`, so the guard fires.
+      await fs.writeFile(path.join(projectRoot, '.gitignore'), '# empty\n', 'utf-8');
+      await expect(
+        harnessHookService.writeLocalSibling({
+          projectSlug: 'slug',
+          event: 'PreToolUse',
+          config: { type: 'command', command: 'echo "Bearer aaaaaaaaaaaaaaaaaaaaaaaa"' },
+        }),
+      ).rejects.toMatchObject({ code: HARNESS_ERRORS.HARNESS_SECRET_ON_SHARED.code });
+    });
+
+    it('rejects an unknown event with HARNESS_HOOK_INVALID_EVENT', async () => {
+      await expect(
+        harnessHookService.writeLocalSibling({
+          projectSlug: 'slug',
+          event: 'BogusEvent' as never,
+          config: { type: 'command', command: 'echo hi' },
+        }),
+      ).rejects.toMatchObject({ code: HARNESS_ERRORS.HARNESS_HOOK_INVALID_EVENT.code });
+    });
+  });
 });

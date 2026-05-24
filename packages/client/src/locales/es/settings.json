@@ -1211,7 +1211,13 @@
             "shareBadge": {
                 "shared": "Compartido",
                 "local": "Local",
-                "fullyIgnored": "Ignorado"
+                "fullyIgnored": "Ignorado",
+                "gitignorePatternMissing": {
+                    "toastTitle": "Primero añade una regla a `.gitignore`",
+                    "toastDetail": "Guardar en `{{sibling}}` seguiría siendo rastreado por git. Añade `{{pattern}}` a `.gitignore` para excluir el archivo hermano local.",
+                    "confirmCta": "Añadir a .gitignore y continuar",
+                    "fallbackHint": "Añade `{{pattern}}` manualmente al `.gitignore` del proyecto y vuelve a guardar."
+                }
             },
             "modeBanner": {
                 "modeA": {
@@ -1230,7 +1236,14 @@
                 "action": {
                     "moveToLocal": "Mover a archivo local",
                     "markNotSecret": "Marcar este valor como no secreto",
-                    "cancel": "Cancelar"
+                    "cancel": "Cancelar",
+                    "routeToLocalMcp": "Mover la entrada MCP a `.mcp.local.json`",
+                    "routeToLocalHook": "Mover el hook a `settings.local.json`",
+                    "replaceWithEnvRefCommand": "Reemplazar el secreto del comando con `${ENV_REF}`",
+                    "replaceWithEnvRefAgent": "Reemplazar el secreto del agente con `${ENV_REF}`"
+                },
+                "routing": {
+                    "apiErrorToast": "Error de comunicación al enrutar. Vuelve a intentarlo más tarde."
                 },
                 "autoCreateSiblingNotice": "Se creará un nuevo archivo `{{path}}`.",
                 "errorMessage": "Secreto en texto plano detectado. Guardado bloqueado.",

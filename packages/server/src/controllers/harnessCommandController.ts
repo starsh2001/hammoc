@@ -432,4 +432,37 @@ export const harnessCommandController = {
       handleError(req, res, error);
     }
   },
+
+  /**
+   * Story 30.7 (Task B.2): rewrite every detected secret in the command body
+   * as a `${ENV_REF}` placeholder. The route is the client-side dialog's
+   * `replaceWithEnvRefCommand` action target — distinct from `update` so the
+   * intent is auditable in the access log.
+   */
+  async replaceSecretWithEnvRef(req: Request, res: Response): Promise<void> {
+    const bodySchema = z.object({
+      scope: editableScopeSchema,
+      projectSlug: z.string().min(1).optional(),
+      relativePath: relativePathSchema,
+      expectedMtime: z.string().optional(),
+    });
+    const body = bodySchema.safeParse(req.body ?? {});
+    if (!body.success) {
+      res.status(400).json({
+        error: { code: 'INVALID_REQUEST', message: body.error.issues[0]?.message ?? 'invalid body' },
+      });
+      return;
+    }
+    try {
+      const result = await harnessCommandService.replaceSecretWithEnvRef({
+        scope: body.data.scope,
+        projectSlug: body.data.projectSlug,
+        relativePath: body.data.relativePath,
+        expectedMtime: body.data.expectedMtime,
+      });
+      res.json(result);
+    } catch (error) {
+      handleError(req, res, error);
+    }
+  },
 };

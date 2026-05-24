@@ -265,6 +265,7 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
         siblingLocalPath={deriveLocalSiblingPath(secretDialogPayload.targetPath) ?? secretDialogPayload.targetPath}
         willAutoCreateSibling
         secretLocations={secretDialogPayload.secretLocations}
+        actionLabelKey={secretDialogPayload.actionLabelKey}
         onMoveToLocal={() => {
           secretDialogPayload.onMoveToLocal();
           closeSecretDialog();

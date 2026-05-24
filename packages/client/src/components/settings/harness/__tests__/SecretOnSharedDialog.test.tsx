@@ -86,4 +86,26 @@ describe('SecretOnSharedDialog', () => {
     expect(screen.getByText('env.AWS_KEY')).toBeInTheDocument();
     expect(screen.getByText('env.STRIPE')).toBeInTheDocument();
   });
+
+  /**
+   * Story 30.7 (Task C.6): the dialog now lets the caller (the workbench
+   * mount, forwarded from the panel's secret-shared dialog payload) pick
+   * the 1st-action label key. When unset, the v0.7 default kicks in so the
+   * existing visual layout is preserved.
+   */
+  it('falls back to the default `action.moveToLocal` label when actionLabelKey is omitted (visual default)', () => {
+    renderDialog();
+    expect(
+      screen.getByTestId('secret-on-shared-move-to-local').textContent,
+    ).toContain('harness.tools.secretOnShared.action.moveToLocal');
+  });
+
+  it('uses the supplied actionLabelKey for the 1st-action label when provided', () => {
+    renderDialog({
+      actionLabelKey: 'harness.tools.secretOnShared.action.routeToLocalMcp',
+    });
+    expect(
+      screen.getByTestId('secret-on-shared-move-to-local').textContent,
+    ).toContain('harness.tools.secretOnShared.action.routeToLocalMcp');
+  });
 });

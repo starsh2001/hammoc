@@ -139,3 +139,39 @@ export async function resolveProjectClaudeMdPath(projectSlug: string): Promise<R
   const absolutePath = path.join(resolvedRoot, 'CLAUDE.md');
   return { resolvedRoot, absolutePath };
 }
+
+/**
+ * Story 30.7 (Task A.5): resolve the project-root `<projectRoot>/.gitignore`
+ * path. Like `resolveProjectClaudeMdPath`, `.gitignore` sits outside the
+ * `.claude/` subtree, so `resolveHarnessPath` cannot reach it. This helper
+ * accepts only `projectSlug` (no caller-supplied relative path), so traversal
+ * is impossible by construction. Used by
+ * `harnessShareScopeService.appendGitignorePattern()` to safely append
+ * patterns like `**\/.claude/**\/*.local.*` when the sibling-save flow detects
+ * the pattern is missing.
+ */
+export async function resolveProjectGitignorePath(projectSlug: string): Promise<ResolvedHarnessPath> {
+  if (!projectSlug || projectSlug.includes('\0')) {
+    const err = new Error('invalid projectSlug') as NodeJS.ErrnoException;
+    err.code = HARNESS_ERRORS.HARNESS_PATH_DENIED.code;
+    throw err;
+  }
+  if (projectSlug.includes('..') || projectSlug.includes('/') || projectSlug.includes('\\')) {
+    const err = new Error('projectSlug must not contain path separators') as NodeJS.ErrnoException;
+    err.code = HARNESS_ERRORS.HARNESS_PATH_DENIED.code;
+    throw err;
+  }
+  let projectRoot: string;
+  try {
+    projectRoot = await projectService.resolveOriginalPath(projectSlug);
+  } catch (error) {
+    const wrapped = new Error(
+      `Unable to resolve project root for "${projectSlug}": ${(error as Error).message}`,
+    ) as NodeJS.ErrnoException;
+    wrapped.code = HARNESS_ERRORS.HARNESS_ROOT_MISSING.code;
+    throw wrapped;
+  }
+  const resolvedRoot = path.resolve(projectRoot);
+  const absolutePath = path.join(resolvedRoot, '.gitignore');
+  return { resolvedRoot, absolutePath };
+}

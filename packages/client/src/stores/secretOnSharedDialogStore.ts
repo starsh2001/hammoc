@@ -30,6 +30,15 @@ export interface SecretOnSharedDialogPayload {
    */
   origin: 'agent' | 'command' | 'hook' | 'mcp';
   /**
+   * Story 30.7 (Task C.0): caller-supplied i18n key for the 1st action
+   * button. When present, the workbench mount forwards this to
+   * `SecretOnSharedDialog.actionLabelKey` so the primary button label
+   * matches the domain's routing policy (sibling save vs env-ref
+   * substitution). Undefined keeps the v0.7 default
+   * (`action.moveToLocal`).
+   */
+  actionLabelKey?: string;
+  /**
    * Caller-supplied callback invoked when the user picks "Move to local".
    * The panel knows how to compute and route the save to the
    * `*.local.<ext>` sibling for its domain.

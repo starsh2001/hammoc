@@ -74,10 +74,22 @@ const updateBody = z
     raw: z.string().optional(),
     enabled: z.boolean().optional(),
     expectedMtime: z.string().optional(),
+    /**
+     * Story 30.7 (Task A.3): when present and equal to `'local'`, the
+     * controller routes the save to `<projectRoot>/.mcp.local.json` via
+     * `harnessMcpService.writeLocalSibling()` instead of the main
+     * `.mcp.json`. Only valid alongside `config` or `raw` — sibling save
+     * does not honor the enabled toggle path.
+     */
+    scope: z.literal('local').optional(),
   })
   .refine(
     (v) => [v.config, v.raw, v.enabled].filter((x) => x !== undefined).length === 1,
     { message: 'exactly one of config / raw / enabled is required' },
+  )
+  .refine(
+    (v) => v.scope !== 'local' || v.enabled === undefined,
+    { message: "scope='local' is incompatible with enabled toggle" },
   );
 
 // OS-reserved characters and trailing dot/space — blocked at validation time so
@@ -282,6 +294,57 @@ export const harnessMcpController = {
     }
     try {
       validateMcpName(name);
+      // Story 30.7 (Task A.3): { scope: 'local' } reroutes to the
+      // `.mcp.local.json` sibling. Only the project scope owns a sibling —
+      // user scope is rejected since `~/.claude/.mcp.json` has no shared/local
+      // distinction. `config` (or `raw` parsed back to config) is required.
+      if (body.data.scope === 'local') {
+        if (query.data.scope !== 'project' || !query.data.projectSlug) {
+          res.status(400).json({
+            error: { code: 'INVALID_REQUEST', message: "scope='local' requires project scope with projectSlug" },
+          });
+          return;
+        }
+        let config = body.data.config;
+        if (!config && body.data.raw !== undefined) {
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(body.data.raw);
+          } catch (cause) {
+            res.status(400).json({
+              error: {
+                code: HARNESS_ERRORS.HARNESS_PARSE_ERROR.code,
+                message: `raw payload is not valid JSON: ${(cause as Error).message}`,
+              },
+            });
+            return;
+          }
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            res.status(400).json({
+              error: {
+                code: HARNESS_ERRORS.HARNESS_PARSE_ERROR.code,
+                message: 'raw payload must be an object',
+              },
+            });
+            return;
+          }
+          config = parsed as unknown as typeof config;
+        }
+        if (!config) {
+          res.status(400).json({
+            error: { code: 'INVALID_REQUEST', message: "scope='local' requires config or raw payload" },
+          });
+          return;
+        }
+        const local = await harnessMcpService.writeLocalSibling({
+          projectSlug: query.data.projectSlug,
+          name,
+          config,
+          expectedMtime: body.data.expectedMtime,
+        });
+        res.json(local);
+        return;
+      }
       const source = await resolveSourceLocation({
         scope: query.data.scope,
         name,

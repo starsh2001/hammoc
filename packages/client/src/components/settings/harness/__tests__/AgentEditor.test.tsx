@@ -85,10 +85,26 @@ vi.mock('../../../../services/api/harnessAgentsApi', () => ({
   deleteAgent: vi.fn(),
 }));
 
+// Story 30.7 (Task C.5): mock the router so the secret-shared branch can be
+// observed without hitting the network.
+vi.mock('../../../../services/secretOnSharedRouter', () => ({
+  getActionLabelKey: (domain: string) => `harness.tools.secretOnShared.action.${
+    domain === 'mcp' ? 'routeToLocalMcp' :
+    domain === 'hook' ? 'routeToLocalHook' :
+    domain === 'command' ? 'replaceWithEnvRefCommand' :
+    'replaceWithEnvRefAgent'
+  }`,
+  routeToLocal: vi.fn(),
+  appendGitignorePattern: vi.fn(),
+  REQUIRED_LOCAL_PATTERN: '**/.claude/**/*.local.*',
+}));
+
 import {
   readAgent,
   updateAgent,
 } from '../../../../services/api/harnessAgentsApi';
+import { routeToLocal as mockedRouteToLocal } from '../../../../services/secretOnSharedRouter';
+import { useSecretOnSharedDialogStore } from '../../../../stores/secretOnSharedDialogStore';
 import { AgentEditor } from '../AgentEditor';
 import { useHarnessAgentStore } from '../../../../stores/harnessAgentStore';
 
@@ -319,5 +335,41 @@ describe('AgentEditor', () => {
       },
       { timeout: 1500 },
     );
+  });
+
+  /**
+   * Story 30.7 (Task C.5): regression guard — the agent editor must wire
+   * its SecretOnSharedDialog to the agent-domain routeToLocal call with
+   * the matching actionLabelKey.
+   */
+  it('opens the SecretOnSharedDialog with the agent actionLabelKey + dispatches routeToLocal on click', async () => {
+    const { ApiError } = await import('../../../../services/api/client');
+    mockedUpdate.mockRejectedValueOnce(
+      new ApiError(409, 'HARNESS_SECRET_ON_SHARED', 'blocked', {
+        relativePath: '.claude/agents/code-reviewer.md',
+        lines: [3],
+      }),
+    );
+    vi.mocked(mockedRouteToLocal).mockResolvedValue({ ok: true });
+    useSecretOnSharedDialogStore.getState().close();
+
+    await renderEditor();
+    const user = userEvent.setup();
+    const desc = await screen.findByTestId('agent-frontmatter-description');
+    await user.type(desc, 'X');
+    await waitFor(() => {
+      expect(useSecretOnSharedDialogStore.getState().payload).not.toBeNull();
+    }, { timeout: 1500 });
+    const payload = useSecretOnSharedDialogStore.getState().payload!;
+    expect(payload.origin).toBe('agent');
+    expect(payload.actionLabelKey).toBe(
+      'harness.tools.secretOnShared.action.replaceWithEnvRefAgent',
+    );
+    payload.onMoveToLocal();
+    await waitFor(() => {
+      expect(mockedRouteToLocal).toHaveBeenCalledWith(
+        expect.objectContaining({ domain: 'agent', projectSlug: 'slug' }),
+      );
+    });
   });
 });

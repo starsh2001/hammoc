@@ -32,6 +32,12 @@ import {
 } from '../../../services/api/harnessCommandsApi';
 import { useHarnessCommandStore } from '../../../stores/harnessCommandStore';
 import { useSecretOnSharedDialogStore } from '../../../stores/secretOnSharedDialogStore';
+import {
+  getActionLabelKey,
+  routeToLocal,
+  appendGitignorePattern,
+  REQUIRED_LOCAL_PATTERN,
+} from '../../../services/secretOnSharedRouter';
 import { useTextExpansionStore } from '../../../stores/textExpansionStore';
 import { getSocket } from '../../../services/socket';
 
@@ -98,6 +104,11 @@ export function CommandEditor({ card, projectSlug, onClose }: Props) {
   const [bodyExtensions, setBodyExtensions] = useState<Extension[] | null>(null);
   const [rawParseError, setRawParseError] = useState(false);
   const [showTokenGuide, setShowTokenGuide] = useState(false);
+  // Story 30.7 (Task D.1-D.4): see McpEditor for prompt contract.
+  const [gitignorePrompt, setGitignorePrompt] = useState<
+    | null
+    | { siblingRelativePath: string; retry: () => Promise<void> }
+  >(null);
 
   // Form drafts
   const [descriptionDraft, setDescriptionDraft] = useState<string>('');
@@ -210,13 +221,13 @@ export function CommandEditor({ card, projectSlug, onClose }: Props) {
           setRawParseError(true);
           return;
         }
-        // Story 30.1 (AC4.b/c): server hard-blocked the save because the
-        // command file is git-tracked and contains a plaintext secret.
-        // Surface the cross-panel dialog (Move-to-local / Mark-not-secret /
-        // Cancel) instead of the flat error toast. Until the auto-route
-        // implementation lands (deferred to Story 30.3), the two action
-        // callbacks fall back to a guidance message that explains the next
-        // manual step.
+        // Story 30.7 (Task C.2): server hard-blocked because the command
+        // file is git-tracked and contains a plaintext secret. Open the
+        // cross-panel dialog with the command domain's label + a real
+        // env-ref routing callback. The callback hits
+        // `POST /api/harness/commands/replace-secret-with-env-ref` which
+        // walks the body via `applyPolicyToText` (Story 30.5 single source
+        // of truth) and writes the placeholder-rewritten file back.
         if (err instanceof ApiError && err.code === 'HARNESS_SECRET_ON_SHARED') {
           const details = (err.details ?? {}) as {
             relativePath?: string;
@@ -227,6 +238,32 @@ export function CommandEditor({ card, projectSlug, onClose }: Props) {
             ...(details.lines?.map((n) => `line ${n}`) ?? []),
             ...(details.paths ?? []),
           ];
+          const performMoveToLocal = async (): Promise<void> => {
+            if (card.scope !== 'project') {
+              // User scope is not git-tracked — share-scope guard cannot
+              // fire here. Close silently to avoid confusing fallback noise.
+              useSecretOnSharedDialogStore.getState().close();
+              return;
+            }
+            const result = await routeToLocal({
+              domain: 'command',
+              projectSlug,
+              card: { relativePath: card.relativePath, expectedMtime: mtime },
+              payload: {},
+            });
+            if (result.ok) {
+              void reload(projectSlug);
+              return;
+            }
+            if (result.reason === 'gitignorePatternMissing') {
+              setGitignorePrompt({
+                siblingRelativePath: result.siblingRelativePath,
+                retry: performMoveToLocal,
+              });
+              return;
+            }
+            setError(t('harness.tools.secretOnShared.routing.apiErrorToast'));
+          };
           useSecretOnSharedDialogStore.getState().open({
             origin: 'command',
             targetPath:
@@ -235,11 +272,12 @@ export function CommandEditor({ card, projectSlug, onClose }: Props) {
                 ? `.claude/commands/${card.relativePath}`
                 : `~/.claude/commands/${card.relativePath}`),
             secretLocations: locations,
+            actionLabelKey: getActionLabelKey('command'),
             onMoveToLocal: () => {
-              setError(t('harness.tools.secretOnShared.body'));
+              void performMoveToLocal();
             },
             onMarkNotSecret: () => {
-              setError(t('harness.tools.secretOnShared.body'));
+              useSecretOnSharedDialogStore.getState().close();
             },
           });
           return;
@@ -482,6 +520,58 @@ export function CommandEditor({ card, projectSlug, onClose }: Props) {
         {error && (
           <div role="alert" className="rounded-md border border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/30 px-3 py-2 text-xs text-red-900 dark:text-red-100">
             {error}
+          </div>
+        )}
+
+        {gitignorePrompt && (
+          <div
+            role="alert"
+            data-testid="gitignore-pattern-missing-alert"
+            className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-100 flex flex-col gap-2"
+          >
+            <p className="font-semibold">
+              {t('harness.tools.shareBadge.gitignorePatternMissing.toastTitle')}
+            </p>
+            <p>
+              {t('harness.tools.shareBadge.gitignorePatternMissing.toastDetail', {
+                pattern: REQUIRED_LOCAL_PATTERN,
+                sibling: gitignorePrompt.siblingRelativePath,
+              })}
+            </p>
+            <div className="flex gap-2 self-end">
+              <button
+                type="button"
+                data-testid="gitignore-pattern-missing-cancel"
+                onClick={() => {
+                  setError(
+                    t('harness.tools.shareBadge.gitignorePatternMissing.fallbackHint', {
+                      pattern: REQUIRED_LOCAL_PATTERN,
+                    }),
+                  );
+                  setGitignorePrompt(null);
+                }}
+                className="px-2 py-1 text-xs rounded-md text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-800/40"
+              >
+                {t('common.button.cancel', { ns: 'common', defaultValue: 'Cancel' })}
+              </button>
+              <button
+                type="button"
+                data-testid="gitignore-pattern-missing-confirm"
+                onClick={async () => {
+                  const retry = gitignorePrompt.retry;
+                  setGitignorePrompt(null);
+                  try {
+                    await appendGitignorePattern(projectSlug, REQUIRED_LOCAL_PATTERN);
+                    await retry();
+                  } catch (err) {
+                    setError(err instanceof ApiError ? err.message : (err as Error).message);
+                  }
+                }}
+                className="px-2 py-1 text-xs rounded-md bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {t('harness.tools.shareBadge.gitignorePatternMissing.confirmCta')}
+              </button>
+            </div>
           </div>
         )}
 

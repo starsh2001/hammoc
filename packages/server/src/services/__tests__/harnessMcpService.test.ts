@@ -423,4 +423,74 @@ describe('harnessMcpService', () => {
       expect(res.matched).toBe(false);
     });
   });
+
+  /**
+   * Story 30.7 (Task A.4): sibling-save into `<projectRoot>/.mcp.local.json`.
+   * The accessor bypasses `harnessService.write` because the target lives
+   * outside `.claude/`. Tests pin the share-scope verdict to `local` so the
+   * `assertNoSecretOnShared` guard does not fire — the gitignore-missing case
+   * is exercised separately at the share-scope layer.
+   */
+  describe('writeLocalSibling (Story 30.7 Task A.1)', () => {
+    beforeEach(async () => {
+      // Pretend the project gitignores `*.local.*` so the secret guard sees
+      // the sibling as `local`, not `shared`.
+      await fs.writeFile(path.join(projectRoot, '.gitignore'), '**/*.local.*\n', 'utf-8');
+    });
+
+    it('creates .mcp.local.json with the supplied config when the file is missing', async () => {
+      const res = await harnessMcpService.writeLocalSibling({
+        projectSlug: 'slug',
+        name: 'context7',
+        config: { command: 'node', args: ['ctx.js'], env: { TOKEN: 'Bearer aaaaaaaaaaaaaaaaaaaaaaaa' } },
+      });
+      expect(res.success).toBe(true);
+      expect(res.siblingRelativePath).toBe('.mcp.local.json');
+      const text = await fs.readFile(path.join(projectRoot, '.mcp.local.json'), 'utf-8');
+      const parsed = JSON.parse(text);
+      expect(parsed.mcpServers.context7.command).toBe('node');
+      expect(parsed.mcpServers.context7.env.TOKEN).toContain('Bearer');
+    });
+
+    it('merges a new entry into an existing .mcp.local.json without clobbering siblings', async () => {
+      await fs.writeFile(
+        path.join(projectRoot, '.mcp.local.json'),
+        JSON.stringify({ mcpServers: { existing: { command: 'echo' } } }, null, 2),
+        'utf-8',
+      );
+      await harnessMcpService.writeLocalSibling({
+        projectSlug: 'slug',
+        name: 'newone',
+        config: { command: 'node' },
+      });
+      const text = await fs.readFile(path.join(projectRoot, '.mcp.local.json'), 'utf-8');
+      const parsed = JSON.parse(text);
+      expect(parsed.mcpServers.existing.command).toBe('echo');
+      expect(parsed.mcpServers.newone.command).toBe('node');
+    });
+
+    it('registers the sibling write with fileWatcherService so the own-write echo is suppressed', async () => {
+      const { fileWatcherService } = await import('../fileWatcherService.js');
+      const spy = vi.spyOn(fileWatcherService, 'noteLocalWrite');
+      await harnessMcpService.writeLocalSibling({
+        projectSlug: 'slug',
+        name: 'context7',
+        config: { command: 'node' },
+      });
+      expect(spy).toHaveBeenCalledWith(path.join(projectRoot, '.mcp.local.json'));
+    });
+
+    it('re-throws HARNESS_SECRET_ON_SHARED when the sibling itself is not gitignored', async () => {
+      // Project has NO gitignore for `*.local.*` — share-scope verdict
+      // for `.mcp.local.json` is `shared`, so the guard fires.
+      await fs.writeFile(path.join(projectRoot, '.gitignore'), '# empty\n', 'utf-8');
+      await expect(
+        harnessMcpService.writeLocalSibling({
+          projectSlug: 'slug',
+          name: 'context7',
+          config: { command: 'node', env: { T: 'Bearer aaaaaaaaaaaaaaaaaaaaaaaa' } },
+        }),
+      ).rejects.toMatchObject({ code: HARNESS_ERRORS.HARNESS_SECRET_ON_SHARED.code });
+    });
+  });
 });

@@ -522,6 +522,83 @@ class HarnessMcpService {
     return { success: true };
   }
 
+  /**
+   * Story 30.7 (Task A.1): redirect a project-scope mcp save to the
+   * `.mcp.local.json` sibling. The local sibling sits alongside `.mcp.json`
+   * at the project root (outside `.claude/`), so we follow the same own
+   * write path the project accessor uses for `.mcp.json` — bypassing
+   * `harnessService.write` because the target is not in the harness
+   * whitelist. The `assertNoSecretOnShared` guard still runs against the
+   * `.mcp.local.json` relative path; if the project's `.gitignore` excludes
+   * the local sibling, the verdict is `local` and the write succeeds. When
+   * the pattern is missing the guard re-throws `HARNESS_SECRET_ON_SHARED`
+   * for the local path, which the client should pre-empt with the gitignore
+   * guidance flow (Task D).
+   */
+  async writeLocalSibling(input: {
+    projectSlug: string;
+    name: string;
+    config: HarnessMcpServerConfig;
+    expectedMtime?: string;
+  }): Promise<{ success: true; mtime: string; siblingRelativePath: string }> {
+    if (!input.projectSlug) {
+      throwMapped(HARNESS_ERRORS.HARNESS_ROOT_MISSING.code, 'projectSlug required for sibling save');
+    }
+    const projectRoot = await projectService.resolveOriginalPath(input.projectSlug);
+    const siblingPath = path.join(projectRoot, '.mcp.local.json');
+    if (path.basename(siblingPath) !== '.mcp.local.json' || path.dirname(siblingPath) !== projectRoot) {
+      throwMapped(HARNESS_ERRORS.HARNESS_PATH_DENIED.code, 'sibling path escapes project root');
+    }
+
+    let currentText = '';
+    let currentMtime = '';
+    try {
+      const stat = await fs.stat(siblingPath);
+      if (!stat.isFile()) {
+        throwMapped(HARNESS_ERRORS.HARNESS_NOT_A_FILE.code, '.mcp.local.json is not a regular file');
+      }
+      currentText = await fs.readFile(siblingPath, 'utf-8');
+      currentMtime = stat.mtime.toISOString();
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw err;
+      }
+      // File missing — treat as create. expectedMtime '' is the "no prior file" sentinel.
+    }
+    if (input.expectedMtime !== undefined && input.expectedMtime !== currentMtime) {
+      throwMapped(HARNESS_ERRORS.HARNESS_STALE_WRITE.code, 'file changed on disk', {
+        currentMtime,
+      });
+    }
+
+    const secrets = detectSecretsInValue(input.config);
+    await assertNoSecretOnShared({
+      scope: 'project',
+      projectSlug: input.projectSlug,
+      relativePath: '.mcp.local.json',
+      secretDetected: secrets.matched,
+      detectedAt: { paths: secrets.paths },
+    });
+
+    const sourceText = currentText.trim().length === 0 ? '{}' : currentText;
+    const patched = applyJsoncPatch(sourceText, [{ path: ['mcpServers', input.name], value: input.config }]);
+    try {
+      await fs.writeFile(siblingPath, patched, 'utf-8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'EACCES') {
+        throwMapped(HARNESS_ERRORS.HARNESS_FORBIDDEN.code, 'permission denied');
+      }
+      throwMapped(HARNESS_ERRORS.HARNESS_WRITE_ERROR.code, 'failed to write .mcp.local.json');
+    }
+    fileWatcherService.noteLocalWrite(siblingPath);
+    const stat = await fs.stat(siblingPath);
+    return {
+      success: true,
+      mtime: stat.mtime.toISOString(),
+      siblingRelativePath: '.mcp.local.json',
+    };
+  }
+
   // ---- enumeration -------------------------------------------------------
 
   private async enumerateProjectMcps(

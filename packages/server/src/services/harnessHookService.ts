@@ -277,6 +277,19 @@ function buildSettingsRef(scope: 'project' | 'user', projectSlug?: string): Harn
   return { scope: 'project', projectSlug, relativePath: 'settings.json' };
 }
 
+/**
+ * Story 30.7 (Task A.2): build the local sibling ref for the project-scope
+ * settings file — `.claude/settings.local.json`. Caller uses this when
+ * routing a `SecretOnSharedDialog → Move to local` action so the hook entry
+ * lands in the gitignored sibling instead of the shared `settings.json`.
+ */
+function buildLocalSettingsRef(projectSlug: string): HarnessPathRef {
+  if (!projectSlug) {
+    throwMapped(HARNESS_ERRORS.HARNESS_ROOT_MISSING.code, 'projectSlug required for local sibling');
+  }
+  return { scope: 'project', projectSlug, relativePath: 'settings.local.json' };
+}
+
 function buildBackupRef(scope: 'project' | 'user', projectSlug?: string): HarnessPathRef {
   if (scope === 'user') {
     return { scope: 'user', relativePath: 'hooks.disabled.json' };
@@ -485,6 +498,58 @@ class HarnessHookService {
       patched,
     );
     return { success: true, mtime: result.mtime, newGroupIndex, newHookIndex: 0 };
+  }
+
+  /**
+   * Story 30.7 (Task A.2): redirect a project-scope hook save to the
+   * `.claude/settings.local.json` sibling. Re-uses the same JSONC patch
+   * helpers as the main settings.json path, but targets the local sibling
+   * (which is gitignored when the project sets up the `*.local.*` pattern).
+   * `writePatched` invokes `assertNoSecretOnShared` against the local
+   * sibling's relative path — if the project's `.gitignore` excludes the
+   * sibling, the verdict is `local` and the write succeeds; otherwise the
+   * helper re-throws `HARNESS_SECRET_ON_SHARED` for the client to handle
+   * via the gitignore guidance flow (Task D).
+   *
+   * Append-only semantics: the new hook lands at the end of the existing
+   * event's groups array in the sibling file. If the sibling does not yet
+   * exist, the patch creates it with the canonical `{ "hooks": {} }` seed.
+   */
+  async writeLocalSibling(input: {
+    projectSlug: string;
+    event: HarnessHookEvent;
+    matcher?: string;
+    config: HarnessHookConfig;
+  }): Promise<{ success: true; mtime: string; siblingRelativePath: string; newGroupIndex: number; newHookIndex: number }> {
+    if (!input.projectSlug) {
+      throwMapped(HARNESS_ERRORS.HARNESS_ROOT_MISSING.code, 'projectSlug required for sibling save');
+    }
+    if (!HARNESS_HOOK_EVENTS.includes(input.event)) {
+      throwMapped(HARNESS_ERRORS.HARNESS_HOOK_INVALID_EVENT.code, `unknown event: ${input.event}`);
+    }
+    validateConfigShape(input.config);
+    const ref = buildLocalSettingsRef(input.projectSlug);
+    const file = await readHarnessRefFile(ref);
+    const newGroup: MatcherGroup = input.matcher
+      ? { matcher: input.matcher, hooks: [input.config] }
+      : { hooks: [input.config] };
+    const existing = file.groups[input.event] ?? [];
+    const newGroupIndex = existing.length;
+    const patched = buildHooksPatch(
+      { ref, expectedMtime: file.mtime, source: file.rawText },
+      [{ path: [input.event, newGroupIndex], value: newGroup }],
+    );
+    const result = await writePatched(
+      { ref, expectedMtime: file.mtime, source: file.rawText },
+      patched,
+    );
+    return {
+      success: true,
+      mtime: result.mtime,
+      siblingRelativePath: '.claude/settings.local.json',
+      newGroupIndex,
+      newHookIndex: 0,
+    };
   }
 
   async updateHook(

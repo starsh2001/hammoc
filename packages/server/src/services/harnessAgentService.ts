@@ -53,6 +53,7 @@ import { projectService } from './projectService.js';
 import { getUserHarnessRoot } from '../utils/harnessPaths.js';
 import { detectSecretsInText as detectSecretsInTextCanonical } from '../utils/secretHeuristic.js';
 import { assertNoSecretOnShared } from '../utils/assertNoSecretOnShared.js';
+import { applyPolicyToText } from '../utils/applySecretsPolicy.js';
 import { splitFrontmatterAndBody } from './utils/applyYamlFrontmatterPatch.js';
 
 const SCOPE_PRIORITY: Record<HarnessAgentSourceScope, number> = {
@@ -994,6 +995,65 @@ class HarnessAgentService {
       mtime: written.mtime,
       toolsState,
       hasExampleBlock: detectExampleBlock(nextBody),
+    };
+  }
+
+  /**
+   * Story 30.7 (Task B.2): rewrite every detected secret in the agent body
+   * as an `${ENV_REF}` placeholder. Frontmatter is preserved byte-for-byte;
+   * only the markdown body is scanned. The save flows through
+   * `harnessService.write`, so the share-scope guard, stale-mtime check,
+   * and watcher-suppression remain unchanged — only the body substitution
+   * is new.
+   */
+  async replaceSecretWithEnvRef(input: {
+    scope: 'project' | 'user';
+    projectSlug?: string;
+    name: string;
+    expectedMtime?: string;
+  }): Promise<{ success: true; mtime: string; replacedCount: number }> {
+    const ref = await this.buildEditableRef(input.scope, input.name, input.projectSlug);
+    const current = await harnessService.read(ref);
+    const sourceText = current.content ?? '';
+    if (input.expectedMtime !== undefined && input.expectedMtime !== current.mtime) {
+      throwMapped(HARNESS_ERRORS.HARNESS_STALE_WRITE.code, 'file changed on disk', {
+        currentMtime: current.mtime,
+      });
+    }
+    const { frontmatterRaw, body } = splitFrontmatterAndBody(sourceText);
+    const policyResult = applyPolicyToText({
+      policy: 'placeholder',
+      domain: 'agent',
+      cardName: input.name,
+      text: body,
+    });
+    let nextText: string;
+    if (frontmatterRaw === null) {
+      nextText = policyResult.text;
+    } else {
+      const re = /^---\s*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n)?/;
+      const match = re.exec(sourceText);
+      const head = match ? sourceText.slice(0, match[0].length) : '';
+      nextText = `${head}${policyResult.text}`;
+    }
+    if (input.scope === 'project' && input.projectSlug) {
+      const secrets = detectSecretsInText(nextText);
+      await assertNoSecretOnShared({
+        scope: 'project',
+        projectSlug: input.projectSlug,
+        relativePath: `.claude/agents/${input.name}.md`,
+        secretDetected: secrets.matched,
+        detectedAt: { lines: secrets.lines },
+      });
+    }
+    const written = await harnessService.write(ref, {
+      content: nextText,
+      expectedMtime: current.mtime,
+    });
+    return {
+      success: true,
+      mtime: written.mtime,
+      replacedCount: policyResult.replacedCount,
     };
   }
 

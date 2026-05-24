@@ -1211,7 +1211,13 @@
             "shareBadge": {
                 "shared": "共有",
                 "local": "ローカル",
-                "fullyIgnored": "全体除外"
+                "fullyIgnored": "全体除外",
+                "gitignorePatternMissing": {
+                    "toastTitle": "先に `.gitignore` ルールを追加してください",
+                    "toastDetail": "`{{sibling}}` へ保存しても git に追跡され続けます。`{{pattern}}` を `.gitignore` に追加してローカル兄弟ファイルを除外してください。",
+                    "confirmCta": ".gitignore に追加して続行",
+                    "fallbackHint": "プロジェクトの `.gitignore` に `{{pattern}}` を手動で追加してから保存を再試行してください。"
+                }
             },
             "modeBanner": {
                 "modeA": {
@@ -1230,7 +1236,14 @@
                 "action": {
                     "moveToLocal": "ローカルファイルへ移動",
                     "markNotSecret": "この値はシークレットではないとマーク",
-                    "cancel": "キャンセル"
+                    "cancel": "キャンセル",
+                    "routeToLocalMcp": "MCP エントリを `.mcp.local.json` へ移動",
+                    "routeToLocalHook": "フックを `settings.local.json` へ移動",
+                    "replaceWithEnvRefCommand": "コマンド本文のシークレットを `${ENV_REF}` に置換",
+                    "replaceWithEnvRefAgent": "エージェント本文のシークレットを `${ENV_REF}` に置換"
+                },
+                "routing": {
+                    "apiErrorToast": "ルーティング中に通信エラーが発生しました。しばらくしてから再試行してください。"
                 },
                 "autoCreateSiblingNotice": "新しいファイル `{{path}}` が作成されます。",
                 "errorMessage": "平文のシークレットが検出されたため保存をブロックしました。",

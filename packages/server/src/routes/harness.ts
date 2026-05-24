@@ -66,6 +66,14 @@ router.delete('/hooks/:event/:groupIndex/:hookIndex', largeBodyParser, harnessHo
 // splat so Express prefers them.
 router.post('/commands/copy-directory', largeBodyParser, harnessCommandController.copyDirectory);
 router.post('/commands/copy', largeBodyParser, harnessCommandController.copy);
+// Story 30.7 (Task B.2) — env-ref replace endpoint. Must live above the
+// splat so Express does not treat `replace-secret-with-env-ref` as a
+// command relative path.
+router.post(
+  '/commands/replace-secret-with-env-ref',
+  largeBodyParser,
+  harnessCommandController.replaceSecretWithEnvRef,
+);
 router.post('/commands', largeBodyParser, harnessCommandController.create);
 router.get('/commands', harnessCommandController.list);
 router.get('/commands/*', harnessCommandController.read);
@@ -77,6 +85,13 @@ router.delete('/commands/*', largeBodyParser, harnessCommandController.delete);
 // Literal `/agents/copy` and the splat-free POST live above the dynamic
 // `:name` segment so Express prefers them.
 router.post('/agents/copy', largeBodyParser, harnessAgentController.copy);
+// Story 30.7 (Task B.2) — env-ref replace endpoint. Lives above the dynamic
+// `:name` so Express does not match the literal as an agent name.
+router.post(
+  '/agents/replace-secret-with-env-ref',
+  largeBodyParser,
+  harnessAgentController.replaceSecretWithEnvRef,
+);
 router.post('/agents', largeBodyParser, harnessAgentController.create);
 router.get('/agents', harnessAgentController.list);
 router.get('/agents/:name', harnessAgentController.read);
@@ -96,6 +111,14 @@ router.post('/claude-md', largeBodyParser, claudeMdController.create);
 // Mode A/B verdict. Project scope only — `.gitignore` is irrelevant for
 // the user-scope (`~/.claude`) tree.
 router.get('/share-scope', harnessShareScopeController.evaluate);
+// Story 30.7 (Task D.3) — append a pattern to the project `.gitignore`
+// (idempotent). Used by the `SecretOnSharedDialog → Move to local` flow
+// when the sibling pre-check detects `**/.claude/**/*.local.*` is missing.
+router.post(
+  '/share-scope/:projectSlug/append-gitignore',
+  express.json({ limit: '4kb' }),
+  harnessShareScopeController.appendGitignore,
+);
 
 // Story 30.2 — Static harness lint: 7 rules across the 5 harness domains
 // (skill / mcp / hook / command / agent). Returns LintIssue[] + the user's

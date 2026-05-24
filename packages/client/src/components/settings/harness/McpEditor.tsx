@@ -32,6 +32,12 @@ import { readMcp, updateMcp } from '../../../services/api/harnessMcpsApi';
 import { useHarnessMcpStore } from '../../../stores/harnessMcpStore';
 import { useSecretOnSharedDialogStore } from '../../../stores/secretOnSharedDialogStore';
 import { getSocket } from '../../../services/socket';
+import {
+  getActionLabelKey,
+  routeToLocal,
+  appendGitignorePattern,
+  REQUIRED_LOCAL_PATTERN,
+} from '../../../services/secretOnSharedRouter';
 
 const LazyCodeMirror = lazy(() => import('@uiw/react-codemirror'));
 const lazyJsonExt = (): Promise<Extension> =>
@@ -86,6 +92,18 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
   });
 
   const isReadOnly = selectedSource.scope === 'plugin';
+
+  // Story 30.7 (Task D.1-D.4): inline alert state for the
+  // `.gitignore` pattern-missing flow. When set, the user sees a confirm/
+  // cancel prompt; confirming appends `**/.claude/**/*.local.*` and retries
+  // the sibling save. Cancel surfaces the fallback-hint and aborts.
+  const [gitignorePrompt, setGitignorePrompt] = useState<
+    | null
+    | {
+        siblingRelativePath: string;
+        retry: () => Promise<void>;
+      }
+  >(null);
 
   const [typeDraft, setTypeDraft] = useState<HarnessMcpServerType>('stdio');
   const [commandDraft, setCommandDraft] = useState('');
@@ -155,13 +173,50 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Story 30.1 (AC4.b/c): when the server hard-blocks the save with
-  // `HARNESS_SECRET_ON_SHARED`, surface the cross-panel dialog instead of the
-  // flat error toast. Returns true when the error was the secret block, so
-  // the caller can short-circuit its generic error path. Until the auto-route
-  // implementation lands (deferred to Story 30.3 polish), the dialog actions
-  // fall back to a guidance message that mirrors the dialog body.
-  const handleSecretOnSharedError = useCallback((err: unknown): boolean => {
+  // Story 30.7 (Task C.4): when the server hard-blocks the save with
+  // `HARNESS_SECRET_ON_SHARED`, open the cross-panel dialog with the mcp
+  // domain's label + a real routing callback. The routing call invokes
+  // `secretOnSharedRouter.routeToLocal('mcp', …)` which performs a
+  // share-scope pre-check and dispatches the sibling-save via the
+  // `{scope:'local'}` body branch on the existing update route.
+  // - gitignorePatternMissing → opens the inline gitignore-append prompt
+  //   below; the prompt's "Confirm" retries the same routing call.
+  // - apiError → surfaces a network-style toast.
+  // The `onMarkNotSecret` callback just closes the dialog — re-saving will
+  // re-trigger the block (per-save opt-out is the original intent).
+  const performMoveToLocal = useCallback(
+    async (cfgForRoute: HarnessMcpServerConfig): Promise<void> => {
+      if (selectedSource.scope !== 'project') {
+        // User scope (`~/.claude`) is not git-tracked, so the server's
+        // share-scope guard never fires here — reaching this branch would
+        // be a server-side bug, not a UX path we need to explain. Just
+        // close the dialog silently to avoid a confusing toast.
+        useSecretOnSharedDialogStore.getState().close();
+        return;
+      }
+      const result = await routeToLocal({
+        domain: 'mcp',
+        projectSlug: selectedSource.projectSlug ?? projectSlug,
+        card: { name: card.name, expectedMtime: save.mtime },
+        payload: { mcpConfig: cfgForRoute },
+      });
+      if (result.ok) {
+        void reload(projectSlug);
+        return;
+      }
+      if (result.reason === 'gitignorePatternMissing') {
+        setGitignorePrompt({
+          siblingRelativePath: result.siblingRelativePath,
+          retry: () => performMoveToLocal(cfgForRoute),
+        });
+        return;
+      }
+      setError(t('harness.tools.secretOnShared.routing.apiErrorToast'));
+    },
+    [card.name, projectSlug, reload, save.mtime, selectedSource.projectSlug, selectedSource.scope, t],
+  );
+
+  const handleSecretOnSharedError = useCallback((err: unknown, cfgForRoute: HarnessMcpServerConfig): boolean => {
     if (!(err instanceof ApiError) || err.code !== 'HARNESS_SECRET_ON_SHARED') {
       return false;
     }
@@ -184,11 +239,16 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
       origin: 'mcp',
       targetPath: details.relativePath ?? fallbackPath,
       secretLocations: locations,
-      onMoveToLocal: () => setError(t('harness.tools.secretOnShared.body')),
-      onMarkNotSecret: () => setError(t('harness.tools.secretOnShared.body')),
+      actionLabelKey: getActionLabelKey('mcp'),
+      onMoveToLocal: () => {
+        void performMoveToLocal(cfgForRoute);
+      },
+      onMarkNotSecret: () => {
+        useSecretOnSharedDialogStore.getState().close();
+      },
     });
     return true;
-  }, [selectedSource.scope, selectedSource.sourceFileKind, t]);
+  }, [performMoveToLocal, selectedSource.scope, selectedSource.sourceFileKind]);
 
   const scheduleFormSave = useCallback(
     (cfg: HarnessMcpServerConfig) => {
@@ -226,7 +286,7 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
               fileKind: selectedSource.sourceFileKind,
             });
             setSave((s) => ({ ...s, staleBanner: true, freshFromDisk: fresh }));
-          } else if (!handleSecretOnSharedError(err)) {
+          } else if (!handleSecretOnSharedError(err, cfg)) {
             setError(err instanceof ApiError ? err.message : (err as Error).message);
           }
         }
@@ -276,7 +336,20 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
               fileKind: selectedSource.sourceFileKind,
             });
             setSave((s) => ({ ...s, staleBanner: true, freshFromDisk: fresh }));
-          } else if (!handleSecretOnSharedError(err)) {
+          } else {
+            // Raw mode: parse the JSON back to a config so the router can
+            // forward it via the {scope:'local'} sibling-save path. If the
+            // parse fails (the user just typed garbage), fall back to the
+            // generic error toast.
+            let rawCfg: HarnessMcpServerConfig | null = null;
+            try {
+              rawCfg = JSON.parse(next) as HarnessMcpServerConfig;
+            } catch {
+              rawCfg = null;
+            }
+            if (rawCfg && handleSecretOnSharedError(err, rawCfg)) {
+              return;
+            }
             setError(err instanceof ApiError ? err.message : (err as Error).message);
           }
         }
@@ -368,7 +441,17 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
       void reload(projectSlug);
     } catch (err) {
       setSave((s) => ({ ...s, isSaving: false }));
-      if (!handleSecretOnSharedError(err)) {
+      let cfgForRoute: HarnessMcpServerConfig | null = null;
+      if (mode === 'raw') {
+        try {
+          cfgForRoute = JSON.parse(rawDraft) as HarnessMcpServerConfig;
+        } catch {
+          cfgForRoute = null;
+        }
+      } else {
+        cfgForRoute = buildConfig();
+      }
+      if (!cfgForRoute || !handleSecretOnSharedError(err, cfgForRoute)) {
         setError(err instanceof ApiError ? err.message : (err as Error).message);
       }
     }
@@ -534,6 +617,60 @@ export function McpEditor({ card, projectSlug, onClose }: Props) {
               className="rounded-md border border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/30 px-3 py-2 text-xs text-red-800 dark:text-red-200"
             >
               {error}
+            </div>
+          )}
+          {gitignorePrompt && (
+            <div
+              role="alert"
+              data-testid="gitignore-pattern-missing-alert"
+              className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-100 flex flex-col gap-2"
+            >
+              <p className="font-semibold">
+                {t('harness.tools.shareBadge.gitignorePatternMissing.toastTitle')}
+              </p>
+              <p>
+                {t('harness.tools.shareBadge.gitignorePatternMissing.toastDetail', {
+                  pattern: REQUIRED_LOCAL_PATTERN,
+                  sibling: gitignorePrompt.siblingRelativePath,
+                })}
+              </p>
+              <div className="flex gap-2 self-end">
+                <button
+                  type="button"
+                  data-testid="gitignore-pattern-missing-cancel"
+                  onClick={() => {
+                    setError(
+                      t('harness.tools.shareBadge.gitignorePatternMissing.fallbackHint', {
+                        pattern: REQUIRED_LOCAL_PATTERN,
+                      }),
+                    );
+                    setGitignorePrompt(null);
+                  }}
+                  className="px-2 py-1 text-xs rounded-md text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-800/40"
+                >
+                  {t('common.button.cancel', { ns: 'common', defaultValue: 'Cancel' })}
+                </button>
+                <button
+                  type="button"
+                  data-testid="gitignore-pattern-missing-confirm"
+                  onClick={async () => {
+                    const retry = gitignorePrompt.retry;
+                    setGitignorePrompt(null);
+                    try {
+                      await appendGitignorePattern(
+                        selectedSource.projectSlug ?? projectSlug,
+                        REQUIRED_LOCAL_PATTERN,
+                      );
+                      await retry();
+                    } catch (err) {
+                      setError(err instanceof ApiError ? err.message : (err as Error).message);
+                    }
+                  }}
+                  className="px-2 py-1 text-xs rounded-md bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {t('harness.tools.shareBadge.gitignorePatternMissing.confirmCta')}
+                </button>
+              </div>
             </div>
           )}
           {isLoading && (

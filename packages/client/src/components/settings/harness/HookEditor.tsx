@@ -35,6 +35,12 @@ import {
 } from '../../../services/api/harnessHooksApi';
 import { useHarnessHookStore } from '../../../stores/harnessHookStore';
 import { useSecretOnSharedDialogStore } from '../../../stores/secretOnSharedDialogStore';
+import {
+  getActionLabelKey,
+  routeToLocal,
+  appendGitignorePattern,
+  REQUIRED_LOCAL_PATTERN,
+} from '../../../services/secretOnSharedRouter';
 import { getSocket } from '../../../services/socket';
 
 interface ExistingProps {
@@ -96,6 +102,11 @@ export function HookEditor(props: Props) {
   const [mtime, setMtime] = useState<string>(card?.mtime ?? '');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Story 30.7 (Task D.1-D.4): see McpEditor for prompt contract.
+  const [gitignorePrompt, setGitignorePrompt] = useState<
+    | null
+    | { siblingRelativePath: string; retry: () => Promise<void> }
+  >(null);
   const [staleBanner, setStaleBanner] = useState(false);
   const [freshFromDisk, setFreshFromDisk] = useState<{
     matcher?: string;
@@ -205,41 +216,79 @@ export function HookEditor(props: Props) {
 
   // --- Auto-save (existing card) -------------------------------------------
 
-  // Story 30.1 (AC4.b/c): when the server hard-blocks a save with
-  // `HARNESS_SECRET_ON_SHARED`, surface the cross-panel dialog instead of the
-  // flat error toast. Returns true when the error was the secret block, so
-  // the caller can short-circuit its generic error path. Until the auto-route
-  // implementation lands (deferred to Story 30.3 polish), the two action
-  // callbacks fall back to a guidance message that mirrors the dialog body.
-  const handleSecretOnSharedError = useCallback((err: unknown): boolean => {
-    if (!(err instanceof ApiError) || err.code !== 'HARNESS_SECRET_ON_SHARED') {
-      return false;
-    }
-    const details = (err.details ?? {}) as {
-      relativePath?: string;
-      lines?: number[];
-      paths?: string[];
-    };
-    const locations = [
-      ...(details.lines?.map((n) => `line ${n}`) ?? []),
-      ...(details.paths ?? []),
-    ];
-    const fallbackPath = card
-      ? card.scope === 'project'
-        ? '.claude/settings.json'
-        : '~/.claude/settings.json'
-      : isCreateMode
-        ? '.claude/settings.json'
-        : '.claude/settings.json';
-    useSecretOnSharedDialogStore.getState().open({
-      origin: 'hook',
-      targetPath: details.relativePath ?? fallbackPath,
-      secretLocations: locations,
-      onMoveToLocal: () => setSaveError(t('harness.tools.secretOnShared.body')),
-      onMarkNotSecret: () => setSaveError(t('harness.tools.secretOnShared.body')),
-    });
-    return true;
-  }, [card, isCreateMode, t]);
+  // Story 30.7 (Task C.3): when the server hard-blocks a save with
+  // `HARNESS_SECRET_ON_SHARED`, open the cross-panel dialog with the hook
+  // domain's label + a real sibling-save routing callback. The callback
+  // hits `PUT /api/harness/hooks/<event>/0/0?scope=project&projectSlug=…`
+  // with `{scope:'local'}` body which writes the hook into
+  // `.claude/settings.local.json`. NOTE (S1): this editor uses
+  // `setSaveError` (not `setError`) — the polled grep in Task F.5 must
+  // OR-match both names so the fallback removal verification finds the
+  // patched call site here.
+  const handleSecretOnSharedError = useCallback(
+    (err: unknown, hookConfig: HarnessHookConfig | null): boolean => {
+      if (!(err instanceof ApiError) || err.code !== 'HARNESS_SECRET_ON_SHARED') {
+        return false;
+      }
+      const details = (err.details ?? {}) as {
+        relativePath?: string;
+        lines?: number[];
+        paths?: string[];
+      };
+      const locations = [
+        ...(details.lines?.map((n) => `line ${n}`) ?? []),
+        ...(details.paths ?? []),
+      ];
+      const fallbackPath = card
+        ? card.scope === 'project'
+          ? '.claude/settings.json'
+          : '~/.claude/settings.json'
+        : isCreateMode
+          ? '.claude/settings.json'
+          : '.claude/settings.json';
+      const performMoveToLocal = async (): Promise<void> => {
+        // user-scope writes never trigger the share-scope guard, and
+        // missing card/config indicates a server-side bug — close
+        // silently to avoid confusing fallback noise.
+        if (!card || card.scope !== 'project' || !hookConfig) {
+          useSecretOnSharedDialogStore.getState().close();
+          return;
+        }
+        const result = await routeToLocal({
+          domain: 'hook',
+          projectSlug: props.projectSlug,
+          card: { hookEvent: card.event, matcher, expectedMtime: mtime },
+          payload: { hookConfig },
+        });
+        if (result.ok) {
+          void reload(props.projectSlug);
+          return;
+        }
+        if (result.reason === 'gitignorePatternMissing') {
+          setGitignorePrompt({
+            siblingRelativePath: result.siblingRelativePath,
+            retry: performMoveToLocal,
+          });
+          return;
+        }
+        setSaveError(t('harness.tools.secretOnShared.routing.apiErrorToast'));
+      };
+      useSecretOnSharedDialogStore.getState().open({
+        origin: 'hook',
+        targetPath: details.relativePath ?? fallbackPath,
+        secretLocations: locations,
+        actionLabelKey: getActionLabelKey('hook'),
+        onMoveToLocal: () => {
+          void performMoveToLocal();
+        },
+        onMarkNotSecret: () => {
+          useSecretOnSharedDialogStore.getState().close();
+        },
+      });
+      return true;
+    },
+    [card, isCreateMode, matcher, mtime, props.projectSlug, t],
+  );
 
   const buildConfigFromDraft = useCallback((): HarnessHookConfig | null => {
     if (!bodyDraft) return null;
@@ -267,7 +316,7 @@ export function HookEditor(props: Props) {
       } catch (err) {
         if (err instanceof ApiError && err.code === 'HARNESS_STALE_WRITE') {
           await loadFreshFromDisk();
-        } else if (!handleSecretOnSharedError(err)) {
+        } else if (!handleSecretOnSharedError(err, next)) {
           setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
         }
       } finally {
@@ -301,14 +350,14 @@ export function HookEditor(props: Props) {
       } catch (err) {
         if (err instanceof ApiError && err.code === 'HARNESS_STALE_WRITE') {
           await loadFreshFromDisk();
-        } else if (!handleSecretOnSharedError(err)) {
+        } else if (!handleSecretOnSharedError(err, buildConfigFromDraft())) {
           setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
         }
       } finally {
         setIsSaving(false);
       }
     },
-    [card, handleSecretOnSharedError, isReadOnly, mtime, splitFromGroup],
+    [card, handleSecretOnSharedError, isReadOnly, mtime, splitFromGroup, buildConfigFromDraft],
   );
 
   const saveRaw = useCallback(
@@ -325,8 +374,22 @@ export function HookEditor(props: Props) {
       } catch (err) {
         if (err instanceof ApiError && err.code === 'HARNESS_STALE_WRITE') {
           await loadFreshFromDisk();
-        } else if (!handleSecretOnSharedError(err)) {
-          setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
+        } else {
+          // Raw mode: parse the JSON to extract the inner hook config so
+          // the router can re-submit it via the {scope:'local'} sibling
+          // save. If parse fails, fall back to the generic error.
+          let rawCfg: HarnessHookConfig | null = null;
+          try {
+            const parsed = JSON.parse(next) as { hooks?: HarnessHookConfig[] };
+            if (Array.isArray(parsed.hooks) && parsed.hooks[0]) {
+              rawCfg = parsed.hooks[0];
+            }
+          } catch {
+            rawCfg = null;
+          }
+          if (!handleSecretOnSharedError(err, rawCfg)) {
+            setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
+          }
         }
       } finally {
         setIsSaving(false);
@@ -415,7 +478,7 @@ export function HookEditor(props: Props) {
       props.onClose();
       void res; // res unused but documents the contract
     } catch (err) {
-      if (!handleSecretOnSharedError(err)) {
+      if (!handleSecretOnSharedError(err, cfg)) {
         setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
       }
     } finally {
@@ -460,7 +523,7 @@ export function HookEditor(props: Props) {
       setStaleBanner(false);
       setFreshFromDisk(null);
     } catch (err) {
-      if (!handleSecretOnSharedError(err)) {
+      if (!handleSecretOnSharedError(err, cfg)) {
         setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
       }
     } finally {
@@ -626,6 +689,58 @@ export function HookEditor(props: Props) {
               className="rounded-md border border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/30 px-3 py-2 text-sm text-red-800 dark:text-red-200"
             >
               {saveError}
+            </div>
+          )}
+
+          {gitignorePrompt && (
+            <div
+              role="alert"
+              data-testid="gitignore-pattern-missing-alert"
+              className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-100 flex flex-col gap-2"
+            >
+              <p className="font-semibold">
+                {t('harness.tools.shareBadge.gitignorePatternMissing.toastTitle')}
+              </p>
+              <p>
+                {t('harness.tools.shareBadge.gitignorePatternMissing.toastDetail', {
+                  pattern: REQUIRED_LOCAL_PATTERN,
+                  sibling: gitignorePrompt.siblingRelativePath,
+                })}
+              </p>
+              <div className="flex gap-2 self-end">
+                <button
+                  type="button"
+                  data-testid="gitignore-pattern-missing-cancel"
+                  onClick={() => {
+                    setSaveError(
+                      t('harness.tools.shareBadge.gitignorePatternMissing.fallbackHint', {
+                        pattern: REQUIRED_LOCAL_PATTERN,
+                      }),
+                    );
+                    setGitignorePrompt(null);
+                  }}
+                  className="px-2 py-1 text-xs rounded-md text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-800/40"
+                >
+                  {t('common.button.cancel', { ns: 'common', defaultValue: 'Cancel' })}
+                </button>
+                <button
+                  type="button"
+                  data-testid="gitignore-pattern-missing-confirm"
+                  onClick={async () => {
+                    const retry = gitignorePrompt.retry;
+                    setGitignorePrompt(null);
+                    try {
+                      await appendGitignorePattern(props.projectSlug, REQUIRED_LOCAL_PATTERN);
+                      await retry();
+                    } catch (err) {
+                      setSaveError(err instanceof ApiError ? err.message : (err as Error).message);
+                    }
+                  }}
+                  className="px-2 py-1 text-xs rounded-md bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {t('harness.tools.shareBadge.gitignorePatternMissing.confirmCta')}
+                </button>
+              </div>
             </div>
           )}
 

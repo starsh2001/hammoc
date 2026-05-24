@@ -111,3 +111,59 @@ describe('harnessShareScopeService.evaluate', () => {
     ).rejects.toMatchObject({ code: 'HARNESS_ROOT_MISSING' });
   });
 });
+
+describe('harnessShareScopeService.appendGitignorePattern (Story 30.7 Task D.3)', () => {
+  let projectRoot: string;
+
+  beforeEach(async () => {
+    projectRoot = await makeProject();
+    vi.spyOn(projectService, 'resolveOriginalPath').mockResolvedValue(projectRoot);
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(projectRoot, { recursive: true, force: true });
+  });
+
+  it('creates .gitignore when missing and writes the pattern', async () => {
+    const res = await harnessShareScopeService.appendGitignorePattern('slug', '**/.claude/**/*.local.*');
+    expect(res).toEqual({ success: true, appended: true });
+    const text = await fs.readFile(path.join(projectRoot, '.gitignore'), 'utf-8');
+    expect(text.trim()).toBe('**/.claude/**/*.local.*');
+  });
+
+  it('appends to an existing .gitignore without dropping prior content', async () => {
+    await fs.writeFile(path.join(projectRoot, '.gitignore'), '# header\nnode_modules\n', 'utf-8');
+    const res = await harnessShareScopeService.appendGitignorePattern('slug', '**/.claude/**/*.local.*');
+    expect(res).toEqual({ success: true, appended: true });
+    const text = await fs.readFile(path.join(projectRoot, '.gitignore'), 'utf-8');
+    expect(text).toContain('node_modules');
+    expect(text).toContain('**/.claude/**/*.local.*');
+  });
+
+  it('is idempotent: skips the write when the pattern already exists as a non-comment line', async () => {
+    await fs.writeFile(
+      path.join(projectRoot, '.gitignore'),
+      'node_modules\n**/.claude/**/*.local.*\n',
+      'utf-8',
+    );
+    const statBefore = await fs.stat(path.join(projectRoot, '.gitignore'));
+    const res = await harnessShareScopeService.appendGitignorePattern('slug', '**/.claude/**/*.local.*');
+    expect(res).toEqual({ success: true, appended: false });
+    const statAfter = await fs.stat(path.join(projectRoot, '.gitignore'));
+    expect(statAfter.mtime.getTime()).toBe(statBefore.mtime.getTime());
+  });
+
+  it('registers the .gitignore write with fileWatcherService so the own-write echo is suppressed', async () => {
+    const { fileWatcherService } = await import('../fileWatcherService.js');
+    const spy = vi.spyOn(fileWatcherService, 'noteLocalWrite');
+    await harnessShareScopeService.appendGitignorePattern('slug', '**/.claude/**/*.local.*');
+    expect(spy).toHaveBeenCalledWith(path.join(projectRoot, '.gitignore'));
+  });
+
+  it('rejects an empty pattern with HARNESS_PARSE_ERROR', async () => {
+    await expect(
+      harnessShareScopeService.appendGitignorePattern('slug', '   '),
+    ).rejects.toMatchObject({ code: 'HARNESS_PARSE_ERROR' });
+  });
+});

@@ -1211,7 +1211,13 @@
             "shareBadge": {
                 "shared": "Compartilhado",
                 "local": "Local",
-                "fullyIgnored": "Ignorado"
+                "fullyIgnored": "Ignorado",
+                "gitignorePatternMissing": {
+                    "toastTitle": "Adicione primeiro uma regra ao `.gitignore`",
+                    "toastDetail": "Salvar em `{{sibling}}` ainda seria rastreado pelo git. Adicione `{{pattern}}` ao `.gitignore` para excluir o arquivo irmão local.",
+                    "confirmCta": "Adicionar ao .gitignore e continuar",
+                    "fallbackHint": "Adicione `{{pattern}}` manualmente ao `.gitignore` do projeto e tente salvar novamente."
+                }
             },
             "modeBanner": {
                 "modeA": {
@@ -1230,7 +1236,14 @@
                 "action": {
                     "moveToLocal": "Mover para arquivo local",
                     "markNotSecret": "Marcar este valor como não-segredo",
-                    "cancel": "Cancelar"
+                    "cancel": "Cancelar",
+                    "routeToLocalMcp": "Mover a entrada MCP para `.mcp.local.json`",
+                    "routeToLocalHook": "Mover o hook para `settings.local.json`",
+                    "replaceWithEnvRefCommand": "Substituir o segredo do comando por `${ENV_REF}`",
+                    "replaceWithEnvRefAgent": "Substituir o segredo do agente por `${ENV_REF}`"
+                },
+                "routing": {
+                    "apiErrorToast": "Erro de comunicação durante o roteamento. Tente novamente mais tarde."
                 },
                 "autoCreateSiblingNotice": "Um novo arquivo `{{path}}` será criado.",
                 "errorMessage": "Segredo em texto puro detectado. Salvamento bloqueado.",

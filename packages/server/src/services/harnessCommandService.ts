@@ -43,6 +43,7 @@ import { projectService } from './projectService.js';
 import { getUserHarnessRoot } from '../utils/harnessPaths.js';
 import { detectSecretsInText as detectSecretsInTextCanonical } from '../utils/secretHeuristic.js';
 import { assertNoSecretOnShared } from '../utils/assertNoSecretOnShared.js';
+import { applyPolicyToText } from '../utils/applySecretsPolicy.js';
 import {
   applyYamlFrontmatterPatch,
   splitFrontmatterAndBody,
@@ -735,6 +736,74 @@ class HarnessCommandService {
       mtime: written.mtime,
       slashName: deriveSlashName(loc.relativePath),
       tokens: analyzeTokens(nextBody),
+    };
+  }
+
+  /**
+   * Story 30.7 (Task B.2): rewrite every detected secret in the file's body
+   * as an `${ENV_REF}` placeholder using Story 30.5's `applyPolicyToText`
+   * helper (single source of truth shared with the bundle exporter). The
+   * frontmatter is preserved byte-for-byte; only the markdown body is
+   * scanned. The save still flows through `harnessService.write`, so the
+   * canonical share-scope / stale-mtime / watcher-suppression guards remain
+   * unchanged — the only difference from `updateCommand` is the body
+   * substitution and the secret guard re-checking the rewritten text.
+   */
+  async replaceSecretWithEnvRef(input: {
+    scope: 'project' | 'user';
+    projectSlug?: string;
+    relativePath: string;
+    expectedMtime?: string;
+  }): Promise<{ success: true; mtime: string; replacedCount: number; slashName: string }> {
+    const ref = await this.buildEditableRef(input.scope, input.relativePath, input.projectSlug);
+    const current = await harnessService.read(ref);
+    const sourceText = current.content ?? '';
+    if (input.expectedMtime !== undefined && input.expectedMtime !== current.mtime) {
+      throwMapped(HARNESS_ERRORS.HARNESS_STALE_WRITE.code, 'file changed on disk', {
+        currentMtime: current.mtime,
+      });
+    }
+    const { frontmatterRaw, body } = splitFrontmatterAndBody(sourceText);
+    const slashName = deriveSlashName(input.relativePath);
+    const policyResult = applyPolicyToText({
+      policy: 'placeholder',
+      domain: 'command',
+      cardName: slashName,
+      text: body,
+    });
+    // Compose: keep the original frontmatter byte-for-byte, swap in the
+    // rewritten body. If there was no frontmatter, the body IS the full file.
+    let nextText: string;
+    if (frontmatterRaw === null) {
+      nextText = policyResult.text;
+    } else {
+      const re = /^---\s*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n)?/;
+      const match = re.exec(sourceText);
+      const head = match ? sourceText.slice(0, match[0].length) : '';
+      nextText = `${head}${policyResult.text}`;
+    }
+    // Re-check the rewritten text against the share-scope guard so a leftover
+    // secret (e.g. inside frontmatter — out of scope for `applyPolicyToText`)
+    // still triggers the hard block instead of a silent overwrite.
+    if (input.scope === 'project' && input.projectSlug) {
+      const secrets = detectSecretsInTextCanonical(nextText);
+      await assertNoSecretOnShared({
+        scope: 'project',
+        projectSlug: input.projectSlug,
+        relativePath: `.claude/commands/${input.relativePath}`,
+        secretDetected: secrets.matched,
+        detectedAt: { lines: secrets.lines },
+      });
+    }
+    const written = await harnessService.write(ref, {
+      content: nextText,
+      expectedMtime: current.mtime,
+    });
+    return {
+      success: true,
+      mtime: written.mtime,
+      replacedCount: policyResult.replacedCount,
+      slashName,
     };
   }
 

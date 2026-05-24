@@ -1212,7 +1212,13 @@
             "shareBadge": {
                 "shared": "공유",
                 "local": "로컬",
-                "fullyIgnored": "ignored (전체)"
+                "fullyIgnored": "ignored (전체)",
+                "gitignorePatternMissing": {
+                    "toastTitle": "먼저 `.gitignore` 규칙이 필요합니다",
+                    "toastDetail": "`{{sibling}}` 에 저장해도 git 추적이 계속됩니다. `{{pattern}}` 패턴을 `.gitignore` 에 추가해 로컬 형제 파일을 git 에서 제외하세요.",
+                    "confirmCta": ".gitignore 에 추가하고 계속",
+                    "fallbackHint": "프로젝트 `.gitignore` 에 `{{pattern}}` 을 직접 추가한 뒤 다시 저장해 주세요."
+                }
             },
             "modeBanner": {
                 "modeA": {
@@ -1231,7 +1237,14 @@
                 "action": {
                     "moveToLocal": "로컬 파일로 이동",
                     "markNotSecret": "이 값을 시크릿이 아니라고 표시",
-                    "cancel": "취소"
+                    "cancel": "취소",
+                    "routeToLocalMcp": "MCP 항목을 `.mcp.local.json` 으로 이동",
+                    "routeToLocalHook": "훅을 `settings.local.json` 으로 이동",
+                    "replaceWithEnvRefCommand": "커맨드 본문의 시크릿을 `${ENV_REF}` 로 치환",
+                    "replaceWithEnvRefAgent": "에이전트 본문의 시크릿을 `${ENV_REF}` 로 치환"
+                },
+                "routing": {
+                    "apiErrorToast": "라우팅 중 통신 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
                 },
                 "autoCreateSiblingNotice": "새 파일 `{{path}}` 이 생성됩니다.",
                 "errorMessage": "평문 시크릿이 감지되어 저장이 차단되었습니다.",

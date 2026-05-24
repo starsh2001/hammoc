@@ -40,11 +40,27 @@ vi.mock('../../../../services/api/harnessHooksApi', () => ({
   deleteHook: vi.fn(),
 }));
 
+// Story 30.7 (Task C.5): mock the router so the secret-shared branch can be
+// observed without hitting the network.
+vi.mock('../../../../services/secretOnSharedRouter', () => ({
+  getActionLabelKey: (domain: string) => `harness.tools.secretOnShared.action.${
+    domain === 'mcp' ? 'routeToLocalMcp' :
+    domain === 'hook' ? 'routeToLocalHook' :
+    domain === 'command' ? 'replaceWithEnvRefCommand' :
+    'replaceWithEnvRefAgent'
+  }`,
+  routeToLocal: vi.fn(),
+  appendGitignorePattern: vi.fn(),
+  REQUIRED_LOCAL_PATTERN: '**/.claude/**/*.local.*',
+}));
+
 import {
   readHook,
   createHook,
   updateHook,
 } from '../../../../services/api/harnessHooksApi';
+import { routeToLocal as mockedRouteToLocal } from '../../../../services/secretOnSharedRouter';
+import { useSecretOnSharedDialogStore } from '../../../../stores/secretOnSharedDialogStore';
 import { HookEditor } from '../HookEditor';
 import { useHarnessHookStore } from '../../../../stores/harnessHookStore';
 
@@ -240,6 +256,56 @@ describe('HookEditor', () => {
       scope: 'project',
       event: 'Stop',
       config: { type: 'command', command: 'echo hi' },
+    });
+  });
+
+  /**
+   * Story 30.7 (Task C.5): regression guard — the hook editor must wire
+   * its SecretOnSharedDialog to the hook-domain routeToLocal call with
+   * the matching actionLabelKey. The editor here uses `setSaveError` (not
+   * `setError`) — the polled grep in Task F.5 must OR-match both.
+   */
+  it('opens the SecretOnSharedDialog with the hook actionLabelKey + dispatches routeToLocal on click', async () => {
+    const { ApiError } = await import('../../../../services/api/client');
+    mockedRead.mockResolvedValue({
+      source: sampleCard(),
+      matcher: 'Write',
+      config: { type: 'command', command: 'echo "Bearer aaaaaaaaaaaaaaaaaaaaaaaa"' },
+      raw: '{"hooks":[{"type":"command","command":"echo"}]}',
+      mtime: '2026-04-24T00:00:00Z',
+      disabledByBackup: false,
+    });
+    mockedUpdate.mockRejectedValueOnce(
+      new ApiError(409, 'HARNESS_SECRET_ON_SHARED', 'blocked', {
+        relativePath: '.claude/settings.json',
+        lines: [3],
+      }),
+    );
+    vi.mocked(mockedRouteToLocal).mockResolvedValue({ ok: true });
+    useSecretOnSharedDialogStore.getState().close();
+
+    await act(async () => {
+      render(<HookEditor card={sampleCard()} projectSlug="slug" onClose={() => {}} />);
+      for (let i = 0; i < 3; i += 1) await Promise.resolve();
+    });
+    const user = userEvent.setup();
+    const matcherInput = await screen.findByDisplayValue('Write');
+    // Trigger any save — a matcher change will do.
+    await user.clear(matcherInput);
+    await user.type(matcherInput, 'Read');
+    await waitFor(() => {
+      expect(useSecretOnSharedDialogStore.getState().payload).not.toBeNull();
+    }, { timeout: 1500 });
+    const payload = useSecretOnSharedDialogStore.getState().payload!;
+    expect(payload.origin).toBe('hook');
+    expect(payload.actionLabelKey).toBe(
+      'harness.tools.secretOnShared.action.routeToLocalHook',
+    );
+    payload.onMoveToLocal();
+    await waitFor(() => {
+      expect(mockedRouteToLocal).toHaveBeenCalledWith(
+        expect.objectContaining({ domain: 'hook', projectSlug: 'slug' }),
+      );
     });
   });
 });

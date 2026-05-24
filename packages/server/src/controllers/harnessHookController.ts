@@ -109,13 +109,25 @@ const updateBody = z
     expectedMtime: z.string().optional(),
     expectedBackupMtime: z.string().optional(),
     splitFromGroup: z.boolean().optional(),
+    /**
+     * Story 30.7 (Task A.3): when present and equal to `'local'`, the
+     * controller routes the save to `.claude/settings.local.json` via
+     * `harnessHookService.writeLocalSibling()` instead of touching the
+     * shared `settings.json`. Only valid alongside `config` — sibling save
+     * is append-only (new event/group), so matcher/raw/enabled paths are
+     * not honored. The route still requires the existing path params so
+     * the editor's resave maintains a stable URL.
+     */
+    scope: z.literal('local').optional(),
   })
   .refine(
     (v) =>
-      [v.config, v.matcher !== undefined ? 1 : undefined, v.raw, v.enabled].filter(
-        (x) => x !== undefined,
-      ).length === 1,
-    { message: 'exactly one of config / matcher / raw / enabled is required' },
+      v.scope === 'local'
+        ? v.config !== undefined
+        : [v.config, v.matcher !== undefined ? 1 : undefined, v.raw, v.enabled].filter(
+            (x) => x !== undefined,
+          ).length === 1,
+    { message: "exactly one of config / matcher / raw / enabled is required (scope='local' requires config)" },
   )
   .refine(
     (v) => v.splitFromGroup === undefined || v.matcher !== undefined,
@@ -358,6 +370,37 @@ export const harnessHookController = {
     }
     try {
       const { event, groupIndex, hookIndex } = parsePathParams(req);
+      // Story 30.7 (Task A.3): { scope: 'local' } reroutes to the
+      // `.claude/settings.local.json` sibling. The path params are still
+      // required (the editor's stable URL) but the sibling save appends a
+      // new event/group rather than overwriting `groupIndex/hookIndex` in
+      // the shared file.
+      if (body.data.scope === 'local') {
+        if (query.data.scope !== 'project' || !query.data.projectSlug) {
+          res.status(400).json({
+            error: { code: 'INVALID_REQUEST', message: "scope='local' requires project scope with projectSlug" },
+          });
+          return;
+        }
+        if (!body.data.config) {
+          res.status(400).json({
+            error: { code: 'INVALID_REQUEST', message: "scope='local' requires config payload" },
+          });
+          return;
+        }
+        const local = await harnessHookService.writeLocalSibling({
+          projectSlug: query.data.projectSlug,
+          event,
+          matcher: body.data.matcher === null ? undefined : body.data.matcher,
+          config: body.data.config,
+        });
+        // hookIndex is dropped — sibling save always appends. The response
+        // surfaces the new location so the editor can reseat its cursor.
+        void hookIndex;
+        void groupIndex;
+        res.json(local);
+        return;
+      }
       const source = await resolveSourceLocation({
         scope: query.data.scope,
         event,

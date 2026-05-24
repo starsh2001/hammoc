@@ -12,10 +12,13 @@
  */
 
 import path from 'path';
+import fs from 'fs/promises';
 import type { Ignore } from 'ignore';
 import { HARNESS_ERRORS, type HarnessShareScopeResponse, type ShareScope } from '@hammoc/shared';
 import { projectService } from './projectService.js';
 import { loadGitignore, isIgnored } from '../utils/gitignoreFilter.js';
+import { resolveProjectGitignorePath } from '../utils/harnessPaths.js';
+import { fileWatcherService } from './fileWatcherService.js';
 
 const CLAUDE_DIR = '.claude';
 /**
@@ -80,6 +83,72 @@ class HarnessShareScopeService {
     }
 
     return { mode, cards };
+  }
+
+  /**
+   * Story 30.7 (Task D.3): append `pattern` to `<projectRoot>/.gitignore`,
+   * creating the file if missing. Idempotent: when the trimmed pattern
+   * already appears as a non-comment line, the method returns
+   * `{ appended: false }` without writing. Used by the client's
+   * `SecretOnSharedDialog → Move to local` flow when the sibling pre-check
+   * detects that `**\/.claude/**\/*.local.*` is missing.
+   *
+   * The target file sits outside the `.claude/` whitelist that
+   * `harnessService.write` clamps to, so the method (a) resolves the
+   * canonical path via `resolveProjectGitignorePath` (a defense-in-depth
+   * helper that rejects traversal-bearing slugs) and (b) registers the
+   * write with `fileWatcherService.noteLocalWrite` directly so the chokidar
+   * watcher does not surface our own change as an external edit.
+   */
+  async appendGitignorePattern(
+    projectSlug: string,
+    pattern: string,
+  ): Promise<{ success: true; appended: boolean }> {
+    const trimmedPattern = pattern.trim();
+    if (trimmedPattern.length === 0) {
+      const err = new Error('pattern must be a non-empty string') as NodeJS.ErrnoException;
+      err.code = HARNESS_ERRORS.HARNESS_PARSE_ERROR.code;
+      throw err;
+    }
+    const { absolutePath } = await resolveProjectGitignorePath(projectSlug);
+
+    let existing = '';
+    try {
+      existing = await fs.readFile(absolutePath, 'utf-8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw err;
+      }
+      // File missing → create it with just the pattern below.
+    }
+    // Idempotency check: scan non-comment, non-blank lines for an exact
+    // match. Comments (lines starting with `#`) are skipped because
+    // `# **/.claude/**/*.local.*` is not the same as the live pattern.
+    const alreadyPresent = existing
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && !l.startsWith('#'))
+      .some((l) => l === trimmedPattern);
+    if (alreadyPresent) {
+      return { success: true, appended: false };
+    }
+
+    const sep = existing.length === 0 || existing.endsWith('\n') ? '' : '\n';
+    const next = `${existing}${sep}${trimmedPattern}\n`;
+    try {
+      await fs.writeFile(absolutePath, next, 'utf-8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'EACCES') {
+        const denied = new Error('permission denied on .gitignore') as NodeJS.ErrnoException;
+        denied.code = HARNESS_ERRORS.HARNESS_FORBIDDEN.code;
+        throw denied;
+      }
+      const wrapped = new Error('failed to write .gitignore') as NodeJS.ErrnoException;
+      wrapped.code = HARNESS_ERRORS.HARNESS_WRITE_ERROR.code;
+      throw wrapped;
+    }
+    fileWatcherService.noteLocalWrite(absolutePath);
+    return { success: true, appended: true };
   }
 }
 

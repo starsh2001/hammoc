@@ -79,7 +79,25 @@ vi.mock('../../../../services/api/harnessMcpsApi', () => ({
   deleteMcp: vi.fn(),
 }));
 
+// Story 30.7 (Task C.5): the secret-on-shared router is the side-effect
+// boundary the editor crosses on the `Move to local` click. The test
+// captures the route invocation so we can verify the domain + the
+// `actionLabelKey` payload without actually touching the network.
+vi.mock('../../../../services/secretOnSharedRouter', () => ({
+  getActionLabelKey: (domain: string) => `harness.tools.secretOnShared.action.${
+    domain === 'mcp' ? 'routeToLocalMcp' :
+    domain === 'hook' ? 'routeToLocalHook' :
+    domain === 'command' ? 'replaceWithEnvRefCommand' :
+    'replaceWithEnvRefAgent'
+  }`,
+  routeToLocal: vi.fn(),
+  appendGitignorePattern: vi.fn(),
+  REQUIRED_LOCAL_PATTERN: '**/.claude/**/*.local.*',
+}));
+
 import { readMcp, updateMcp } from '../../../../services/api/harnessMcpsApi';
+import { routeToLocal as mockedRouteToLocal } from '../../../../services/secretOnSharedRouter';
+import { useSecretOnSharedDialogStore } from '../../../../stores/secretOnSharedDialogStore';
 import { McpEditor } from '../McpEditor';
 
 const mockedRead = vi.mocked(readMcp);
@@ -323,5 +341,64 @@ describe('McpEditor', () => {
     await renderEditor(card);
     const input = screen.getByLabelText('harness.mcp.editor.command') as HTMLInputElement;
     expect(input).toBeDisabled();
+  });
+
+  /**
+   * Story 30.7 (Task C.5): when the server hard-blocks with
+   * HARNESS_SECRET_ON_SHARED, the editor must (a) open the cross-panel
+   * dialog with the mcp-domain `actionLabelKey` and (b) wire the dialog's
+   * 1st action to a call to `routeToLocal({ domain: 'mcp', … })`.
+   */
+  it('opens the SecretOnSharedDialog with the mcp actionLabelKey + dispatches routeToLocal on click', async () => {
+    const user = userEvent.setup();
+    // Project-scope card so the move-to-local path is wired up.
+    const card: HarnessMcpCard = {
+      ...sampleCard(),
+      activeScope: 'project',
+      sources: [
+        {
+          scope: 'project',
+          absoluteFile: '/tmp/.mcp.json',
+          sourceFileKind: 'mcp.json',
+          config: { command: 'echo' },
+          mtime: '2026-04-24T00:00:00Z',
+          disabledByBackup: false,
+          projectSlug: 'slug',
+        },
+      ],
+    };
+    mockedRead.mockResolvedValue(readResponse({
+      source: { scope: 'project', projectSlug: 'slug', absoluteFile: '/tmp/.mcp.json', sourceFileKind: 'mcp.json' },
+    }));
+    const { ApiError } = await import('../../../../services/api/client');
+    mockedUpdate.mockRejectedValueOnce(
+      new ApiError(409, 'HARNESS_SECRET_ON_SHARED', 'blocked', {
+        relativePath: '.mcp.json',
+        paths: ['env.TOKEN'],
+      }),
+    );
+    vi.mocked(mockedRouteToLocal).mockResolvedValue({ ok: true });
+    // Reset the dialog store between tests (other tests may have left it open).
+    useSecretOnSharedDialogStore.getState().close();
+
+    await renderEditor(card);
+    const input = screen.getByLabelText('harness.mcp.editor.command') as HTMLInputElement;
+    await user.clear(input);
+    await user.type(input, 'x');
+    // Wait for the debounced save → secret block → dialog opened.
+    await waitFor(() => {
+      expect(useSecretOnSharedDialogStore.getState().payload).not.toBeNull();
+    }, { timeout: 1500 });
+    const payload = useSecretOnSharedDialogStore.getState().payload!;
+    expect(payload.origin).toBe('mcp');
+    expect(payload.actionLabelKey).toBe('harness.tools.secretOnShared.action.routeToLocalMcp');
+
+    // Fire the dialog's primary action — it should invoke routeToLocal with the mcp domain.
+    payload.onMoveToLocal();
+    await waitFor(() => {
+      expect(mockedRouteToLocal).toHaveBeenCalledWith(
+        expect.objectContaining({ domain: 'mcp', projectSlug: 'slug' }),
+      );
+    });
   });
 });
