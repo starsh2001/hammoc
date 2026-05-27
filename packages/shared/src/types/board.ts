@@ -148,6 +148,13 @@ export interface BoardItem {
   externalRef?: string;
   /** Latest QA gate decision: 'PASS' | 'CONCERNS' | 'FAIL' | 'WAIVED' */
   gateResult?: string;
+  /**
+   * True when the story file mtime is newer than the gate file mtime.
+   * Indicates Dev applied fixes after QA's verdict and the story is awaiting
+   * QA re-review. Used to derive the qa-fixed board badge without a non-standard
+   * gate value.
+   */
+  gateStale?: boolean;
   /** Project-relative path to the source file (story/epic markdown) */
   filePath?: string;
   attachments?: IssueAttachment[];

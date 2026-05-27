@@ -551,6 +551,92 @@ describe('bmadStatusService', () => {
     expect(epic28!.stories[0].gateResult).toBe('PASS');
   });
 
+  // TC-BS-13c: 스토리 파일이 gate 보다 더 늦게 수정되면 gateStale=true 로 마크된다
+  // This replaces the legacy non-standard gate=FIXED signal. When Dev runs
+  // apply-qa-fixes, the gate file is left untouched per BMad standard, but the
+  // story file mtime advances past the gate file mtime. The server derives
+  // gateStale from that comparison so the UI can distinguish "Dev fixed,
+  // awaiting QA re-review" from "QA verdict still pending Dev action".
+  it('marks gateStale=true when story file mtime > gate file mtime', async () => {
+    (yaml.load as ReturnType<typeof vi.fn>).mockImplementation((content: string) => {
+      if (typeof content === 'string' && content.includes('gate:')) {
+        return { gate: 'CONCERNS', story: '1.1' };
+      }
+      return {
+        prd: { prdFile: 'docs/prd.md', prdSharded: false },
+        architecture: { architectureFile: 'docs/architecture.md', architectureSharded: false },
+        devStoryLocation: 'docs/stories',
+        qa: { qaLocation: 'docs/qa' },
+      };
+    });
+    mockReadFile.mockImplementation(async (filePath: string) => {
+      if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
+      if (filePath.includes('prd.md')) return '## Epic 1: Foundation\n';
+      if (filePath.endsWith('1.1-foo.yml')) {
+        return 'schema: 1\nstory: \'1.1\'\ngate: CONCERNS\n';
+      }
+      throw makeEnoent();
+    });
+    mockStat.mockImplementation(async (p: string) => {
+      if (p.endsWith('1.1-foo.yml')) return { mtimeMs: 1000 }; // gate written at T=1000
+      if (p.endsWith('1.1.story.md')) return { mtimeMs: 2000 }; // story edited at T=2000 (Dev applied fixes after)
+      throw makeEnoent();
+    });
+    mockReaddir.mockImplementation(async (dir: string) => {
+      if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return ['1.1.story.md'];
+      if (dir === path.join(PROJECT_ROOT, 'docs/qa', 'gates')) return ['1.1-foo.yml'];
+      throw makeEnoent();
+    });
+    setupOpenMock('# Story 1.1\n\n## Status\n\nReady for Review\n');
+
+    const result = await bmadStatusService.scanProject(PROJECT_ROOT);
+
+    const epic1 = result.epics.find((e) => e.number === 1);
+    expect(epic1!.stories[0].gateResult).toBe('CONCERNS');
+    expect(epic1!.stories[0].gateStale).toBe(true);
+  });
+
+  // TC-BS-13d: gate 가 스토리보다 더 늦게 작성된 경우 gateStale=false
+  // This is the "fresh QA verdict, Dev has not yet acted" case.
+  it('marks gateStale=false when gate file mtime >= story file mtime', async () => {
+    (yaml.load as ReturnType<typeof vi.fn>).mockImplementation((content: string) => {
+      if (typeof content === 'string' && content.includes('gate:')) {
+        return { gate: 'CONCERNS', story: '1.1' };
+      }
+      return {
+        prd: { prdFile: 'docs/prd.md', prdSharded: false },
+        architecture: { architectureFile: 'docs/architecture.md', architectureSharded: false },
+        devStoryLocation: 'docs/stories',
+        qa: { qaLocation: 'docs/qa' },
+      };
+    });
+    mockReadFile.mockImplementation(async (filePath: string) => {
+      if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
+      if (filePath.includes('prd.md')) return '## Epic 1: Foundation\n';
+      if (filePath.endsWith('1.1-foo.yml')) {
+        return 'schema: 1\nstory: \'1.1\'\ngate: CONCERNS\n';
+      }
+      throw makeEnoent();
+    });
+    mockStat.mockImplementation(async (p: string) => {
+      if (p.endsWith('1.1-foo.yml')) return { mtimeMs: 2000 }; // gate written at T=2000
+      if (p.endsWith('1.1.story.md')) return { mtimeMs: 1000 }; // story last touched at T=1000
+      throw makeEnoent();
+    });
+    mockReaddir.mockImplementation(async (dir: string) => {
+      if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return ['1.1.story.md'];
+      if (dir === path.join(PROJECT_ROOT, 'docs/qa', 'gates')) return ['1.1-foo.yml'];
+      throw makeEnoent();
+    });
+    setupOpenMock('# Story 1.1\n\n## Status\n\nReady for Review\n');
+
+    const result = await bmadStatusService.scanProject(PROJECT_ROOT);
+
+    const epic1 = result.epics.find((e) => e.number === 1);
+    expect(epic1!.stories[0].gateResult).toBe('CONCERNS');
+    expect(epic1!.stories[0].gateStale).toBe(false);
+  });
+
   // TC-BS-14: 스토리 파일이 없는 에픽도 빈 stories 배열로 반환한다
   it('returns epics with empty stories when no story files exist', async () => {
     (yaml.load as ReturnType<typeof vi.fn>).mockReturnValue({

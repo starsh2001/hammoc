@@ -228,7 +228,7 @@
 1. Q-04-03 PASS 검증 직후, 같은 gate 파일을 `gate: CONCERNS` (또는 `FAIL`) 로 덮어쓴다 (Write 로 재기록)
 2. 보드 새로고침 → 카드 badge 가 `QA Concerns` (또는 `QA Failed`) 로 전환되는지 확인
 3. 카드 메뉴 재오픈 → menuitem 1개 `"QA 반영"` 만 노출되는지 확인 (PASS 경로의 3개 메뉴가 사라졌는지가 핵심 분기 증거)
-4. (옵션) "QA 반영" 클릭 → 새 세션 배지 `"💻 Dev"` + 첫 user 메시지에 `*review-qa 1.1` 또는 `apply-qa-fixes` 관련 텍스트 주입 확인 후 abort. 서버 스니펫 [apply-qa-fixes](../../packages/server/src/snippets/apply-qa-fixes) 가 Dev 에이전트 + `*review-qa 1.1` + "After completing QA fixes, update the gate YAML file's gate field to 'FIXED'." 문구로 확장
+4. (옵션) "QA 반영" 클릭 → 새 세션 배지 `"💻 Dev"` + 첫 user 메시지에 `*review-qa 1.1` 또는 `apply-qa-fixes` 관련 텍스트 주입 확인 후 abort. 서버 스니펫 [apply-qa-fixes](../../packages/server/src/snippets/apply-qa-fixes) 가 Dev 에이전트 + `*review-qa 1.1` 으로 확장된다. (이전에는 Dev 가 gate YAML 의 `gate` 필드를 비표준 값 `FIXED` 로 갱신하도록 지시했으나, BMad 표준상 Dev 는 gate 파일을 건드리지 않는다 — Dev `*review-qa` 가 끝난 후의 "수정 완료, QA 재검토 대기" 상태는 서버가 스토리 파일과 gate 파일의 mtime 비교로 `gateStale=true` 를 파생해 카드의 `QA Fixed` 뱃지로 표시한다)
 
 **기대 결과**:
 - PASS → Done 이동 가능 (Dev 에이전트가 파일 status `Done`으로 업데이트, `%mark-done` 태스크로 처리됨)

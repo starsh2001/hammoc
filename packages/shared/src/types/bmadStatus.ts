@@ -57,6 +57,13 @@ export interface BmadStoryStatus {
   title?: string; // Story title extracted from the file header
   /** Latest QA gate decision: 'PASS' | 'CONCERNS' | 'FAIL' | 'WAIVED' */
   gateResult?: string;
+  /**
+   * True when the story file mtime is newer than the gate file mtime.
+   * Indicates the story has been modified after QA issued its verdict —
+   * typically because Dev ran apply-qa-fixes. Used by the UI to distinguish
+   * "Dev applied fixes, awaiting QA re-review" from "QA found issues, Dev must fix".
+   */
+  gateStale?: boolean;
 }
 
 /** Epic with its stories */

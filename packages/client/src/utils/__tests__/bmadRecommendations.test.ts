@@ -402,6 +402,60 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     expect(fixRec!.variant).toBe('primary');
   });
 
+  // gateStale=true is the BMad-standard-conformant signal that Dev ran
+  // apply-qa-fixes after QA's verdict — the next action is QA re-review,
+  // not another apply-fixes pass.
+  it('recommends QA re-review when Review + FAIL gate + gateStale=true', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{
+          number: 1,
+          name: 'E1',
+          stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'FAIL', gateStale: true }],
+        }],
+      }),
+    );
+    const reviewRec = recommendations.find((r) => r.id === 'review-fixed');
+    expect(reviewRec).toBeDefined();
+    expect(reviewRec!.variant).toBe('primary');
+    expect(reviewRec!.taskCommand).toBe('%qa-review 1.1');
+    // The apply-fixes recommendation must NOT appear — Dev already fixed.
+    expect(recommendations.find((r) => r.id === 'review-apply-fixes')).toBeUndefined();
+  });
+
+  it('recommends QA re-review when Review + CONCERNS gate + gateStale=true', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{
+          number: 1,
+          name: 'E1',
+          stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'CONCERNS', gateStale: true }],
+        }],
+      }),
+    );
+    const reviewRec = recommendations.find((r) => r.id === 'review-fixed');
+    expect(reviewRec).toBeDefined();
+    expect(reviewRec!.variant).toBe('primary');
+    expect(recommendations.find((r) => r.id === 'review-apply-fixes')).toBeUndefined();
+  });
+
+  it('still recommends apply-fixes when FAIL gate and gateStale is undefined (fresh QA verdict)', () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{
+          number: 1,
+          name: 'E1',
+          stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'FAIL' }], // no gateStale field
+        }],
+      }),
+    );
+    expect(recommendations.find((r) => r.id === 'review-apply-fixes')).toBeDefined();
+    expect(recommendations.find((r) => r.id === 'review-fixed')).toBeUndefined();
+  });
+
   it('recommends creating next story when stories are Done but more are planned', () => {
     const { recommendations } = computeNextSteps(
       makeData({

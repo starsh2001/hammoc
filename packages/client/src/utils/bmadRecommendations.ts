@@ -292,13 +292,28 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
   return recs;
 }
 
-/** Find the first review-status story matching specific gate results */
-function firstReviewStoryByGate(data: BmadStatusResponse, ...gates: (string | undefined)[]): BmadStoryStatus | undefined {
+/**
+ * Find the first review-status story matching specific gate results.
+ *
+ * The optional `stale` filter distinguishes "Dev applied apply-qa-fixes after
+ * the QA verdict" (gateStale=true) from "QA verdict is fresh, Dev has not yet
+ * touched the story" (gateStale!=true). This lets us derive the "QA Fixed"
+ * state without a non-standard gate value: instead of looking for gate='FIXED',
+ * look for gate in ['FAIL','CONCERNS'] AND gateStale=true.
+ */
+function firstReviewStoryByGate(
+  data: BmadStatusResponse,
+  options: { gates: (string | undefined)[]; stale?: boolean },
+): BmadStoryStatus | undefined {
   const reviewStatuses = ['Review', 'Ready for Review', 'Ready for Done'];
   for (const epic of data.epics) {
-    const found = epic.stories.find(
-      (s) => reviewStatuses.some((rs) => statusMatches(s.status, rs)) && gates.includes(s.gateResult),
-    );
+    const found = epic.stories.find((s) => {
+      if (!reviewStatuses.some((rs) => statusMatches(s.status, rs))) return false;
+      if (!options.gates.includes(s.gateResult)) return false;
+      if (options.stale === undefined) return true;
+      if (options.stale) return s.gateStale === true;
+      return s.gateStale !== true;
+    });
     if (found) return found;
   }
   return undefined;
@@ -307,11 +322,15 @@ function firstReviewStoryByGate(data: BmadStatusResponse, ...gates: (string | un
 function buildImplementationRecommendations(data: BmadStatusResponse): NextStepRecommendation[] {
   const recs: NextStepRecommendation[] = [];
 
-  // Discover stories at each workflow stage
-  const qaDoneStory = firstReviewStoryByGate(data, 'PASS', 'WAIVED');
-  const qaFixedStory = firstReviewStoryByGate(data, 'FIXED');
-  const qaFailedStory = firstReviewStoryByGate(data, 'FAIL', 'CONCERNS');
-  const reviewStory = firstReviewStoryByGate(data, undefined);
+  // Discover stories at each workflow stage.
+  // qaFixed vs qaFailed share the same gate values (FAIL/CONCERNS); they're
+  // distinguished by gateStale — stale=true means Dev already applied fixes
+  // and the next action is QA re-review, stale!=true means Dev still needs to
+  // address QA findings.
+  const qaDoneStory = firstReviewStoryByGate(data, { gates: ['PASS', 'WAIVED'] });
+  const qaFixedStory = firstReviewStoryByGate(data, { gates: ['FAIL', 'CONCERNS'], stale: true });
+  const qaFailedStory = firstReviewStoryByGate(data, { gates: ['FAIL', 'CONCERNS'], stale: false });
+  const reviewStory = firstReviewStoryByGate(data, { gates: [undefined] });
   const inProgressStory = firstStoryByStatus(data, 'In Progress', 'InProgress');
   const approvedStory = firstStoryByStatus(data, 'Approved');
   const draftStory = firstStoryByStatus(data, 'Draft');
@@ -465,7 +484,9 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
   }
 
   // Priority 7: Draft — validate story (two variants)
-  if (draftStory) {
+  // Skip if any earlier-stage story (Priority 1-6) already produced recommendations:
+  // "next action" should focus on the most-advanced live story, not span two workflow stages.
+  if (draftStory && recs.length === 0) {
     const num = storyNum(draftStory.file);
     const label = draftStory.title ? `${num}. ${draftStory.title}` : draftStory.file;
     const hasPrior = recs.length > 0;
