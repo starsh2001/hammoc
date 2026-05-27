@@ -204,14 +204,48 @@ export interface ExportBundleRequest {
 }
 
 /**
+ * Compatibility verdict of an import preview — see AC5 of Story 30.5.
+ *   - 'compatible' : bundleVersion === 1, manifest Zod-valid, apply allowed
+ *   - 'future'     : bundleVersion > 1 (later Hammoc release wrote this bundle)
+ *   - 'invalid'    : bundleVersion missing or < 1 (theoretical, since the
+ *                    first published version is 1)
+ *   - 'malformed'  : manifest.json missing, JSON parse failed, or Zod refused
+ *                    the strict schema
+ */
+export type ImportCompatibility = 'compatible' | 'future' | 'invalid' | 'malformed';
+
+/**
+ * Diagnostic payload accompanying a non-'compatible' compatibility verdict.
+ * Surfaced verbatim to the UI so the user can understand the rejection.
+ */
+export interface ImportCompatibilityDetail {
+  /** Set when the manifest had a parseable `bundleVersion` field. */
+  bundleVersion?: number;
+  /** JSON.parse error message for malformed manifests. */
+  jsonError?: string;
+  /** Zod refine issues for schema-mismatch manifests. */
+  issues?: Array<{ path: (string | number)[]; message: string }>;
+}
+
+/**
  * Server response of `POST /api/harness/bundle/import/preview`. The
  * `bundleToken` is the handle the apply call must echo (the server stashes
  * the parsed ZIP in a temp directory keyed by this token until apply or TTL).
+ *
+ * `manifest` and `preview` are best-effort:
+ *   - compatibility === 'compatible' → manifest is fully Zod-validated; preview
+ *     has per-item rows + missing-plugin diff + unknown-section list.
+ *   - compatibility === 'future'    → manifest carries the loosely-parsed
+ *     fields (bundleVersion + raw passthrough); preview is empty.
+ *   - compatibility === 'invalid'/'malformed' → manifest may be a stub with
+ *     placeholder fields; preview is empty. Detail carries the rejection cause.
  */
 export interface ImportPreviewResponse {
   bundleToken: string;
   manifest: BundleManifest;
   preview: ImportPreview;
+  compatibility: ImportCompatibility;
+  compatibilityDetail?: ImportCompatibilityDetail;
 }
 
 export interface PluginDependenciesResponse {

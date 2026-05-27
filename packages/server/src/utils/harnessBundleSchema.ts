@@ -60,6 +60,16 @@ const bundleItemSchema = z.object({
  * future-version bundles fall through to the AC5.a "futureBundle" branch
  * before this schema is even consulted (the import service inspects the raw
  * JSON's version field first, then runs full Zod validation).
+ *
+ * `includes` is intentionally LOOSE (`z.array(z.string())`) rather than
+ * `z.array(sectionSchema)` so a `bundleVersion === 1` manifest carrying a
+ * future-domain stranger section (e.g. `['claude-md', 'future-section']`)
+ * still parses. The import service's `computePreview` then surfaces unknown
+ * sections via `preview.unknownSections` per AC5.b instead of bailing with
+ * `compatibility: 'malformed'`. Export-request validation
+ * (`exportBundleRequestSchema`) keeps `sectionSchema` strict — we never
+ * accept unknown sections from outbound callers, only tolerate them
+ * inbound.
  */
 export const bundleManifestSchema = z.object({
   bundleVersion: z.literal(HARNESS_BUNDLE_VERSION),
@@ -67,7 +77,7 @@ export const bundleManifestSchema = z.object({
   claudeCodeSpecVersion: z.union([z.string().min(1), z.null()]),
   createdAt: z.string().min(1),
   sourceProjectSlug: z.string().min(1),
-  includes: z.array(sectionSchema),
+  includes: z.array(z.string().min(1)),
   secretsPolicy: secretsPolicySchema,
   pluginDependencies: z.array(pluginRefSchema),
   items: z.array(bundleItemSchema),

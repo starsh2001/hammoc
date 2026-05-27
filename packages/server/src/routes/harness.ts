@@ -16,6 +16,7 @@ import { harnessAgentController } from '../controllers/harnessAgentController.js
 import { claudeMdController } from '../controllers/claudeMdController.js';
 import { harnessShareScopeController } from '../controllers/harnessShareScopeController.js';
 import { harnessLintController } from '../controllers/harnessLintController.js';
+import { harnessBundleController, handleBundleUpload } from '../controllers/harnessBundleController.js';
 
 const router = Router();
 
@@ -124,5 +125,14 @@ router.post(
 // (skill / mcp / hook / command / agent). Returns LintIssue[] + the user's
 // effective rule preferences (defaults merged with ~/.hammoc/preferences.json).
 router.get('/lint', harnessLintController.evaluate);
+
+// Story 30.5 — Harness Export/Import bundle: 4 endpoints providing the
+// server-side single source of truth for serializing a project's harness
+// surface into a ZIP + manifest.json and back. Multipart upload is only
+// required by the import-preview endpoint; the other three use JSON bodies.
+router.post('/bundle/export', largeBodyParser, harnessBundleController.export);
+router.post('/bundle/import/preview', handleBundleUpload, harnessBundleController.importPreview);
+router.post('/bundle/import/apply', largeBodyParser, harnessBundleController.importApply);
+router.get('/bundle/plugin-deps', harnessBundleController.pluginDeps);
 
 export default router;
