@@ -183,6 +183,7 @@ Edit the `.claude/` configuration tree from inside Hammoc — no need to hand-ed
 - **Share badges + mode banner** — See at a glance which files are git-tracked vs local, so you know which edits will reach teammates
 - **Static lint (7 rules)** — Surfaces duplicate names, invalid hook regex, missing env vars, malformed MCP URLs, non-standard agent tools, etc.; per-rule on/off preferences
 - **Secret-on-shared guard** — Blocks plaintext API keys / tokens from sneaking into committed config files, with one-click "move to local sibling" remediation
+- **Bundle Export / Import** — Pack the entire workbench (5 domains + `CLAUDE.md` + snippets) into a single `.zip` with a chosen secrets policy (exclude / env-ref placeholders / explicit with multi-layer guards), import on another machine with a per-item conflict preview — round-trip identical, ideal for Mode B projects where `.claude/` is git-ignored
 - **Fullscreen editor overlay** — Maximize any body field (skill, command, agent, CLAUDE.md, snippet) into a fullscreen CodeMirror
 
 ### File Explorer & Editor

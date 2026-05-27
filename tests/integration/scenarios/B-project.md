@@ -937,12 +937,13 @@
 
 **절차**:
 1. 워크벤치 진입 → `[data-testid="mode-banner-B"]` 가 amber 톤으로 렌더된다
-2. 배너 우측에 `[data-testid="mode-banner-export-cta"]` 요소가 **존재하지 않음** — Story 30.3 (진짜 구현) 미완료 동안 `HarnessWorkbenchSection` 이 `onExportClick={null}` 을 명시적으로 전달하기 때문 (Story 30.4)
-3. 모든 하네스 파일 카드에 `[data-testid="share-badge-fullyIgnored"]` (amber) 배지가 표시된다
+2. 배너 우측에 `[data-testid="mode-banner-export-cta"]` 가 amber 톤으로 **노출됨** — Story 30.6 의 `<ModeBanner onExportClick={...} />` 콜백 swap 으로 `HarnessWorkbenchSection` 이 `BundleExportDialog` open 핸들러를 전달하기 때문
+3. CTA 클릭 → `[data-testid="bundle-export-dialog"]` 모달이 열린다 (Story 30.6 의 진입점 wiring)
+4. 모든 하네스 파일 카드에 `[data-testid="share-badge-fullyIgnored"]` (amber) 배지가 표시된다
 
 **기대 결과**:
 - Mode 판정은 `.claude/settings.json` 가상 경로의 `isIgnored()` 결과 단일 분기점만 사용 (파일 물리 존재 여부와 무관)
-- Story 30.3 (진짜 구현) 완료 전까지 가짜 진입점이 노출되지 않음 (회귀 가드) — Story 30.3 머지 시 `HarnessWorkbenchSection` 이 `onExportClick` 을 실 다이얼로그 open 콜백으로 교체하면 CTA 가 자연 부활
+- Mode B 배너의 Export CTA 가 정식으로 wiring 되어 `BundleEntryButton` 의 Export 메뉴와 동일한 다이얼로그를 연다 (Story 30.6 머지 후 정식 동작 — Story 30.4 시점의 *"미렌더"* 가드는 해제)
 
 ### B-14-03: `.gitignore` 외부 변경 → 배지·배너 자동 재계산 `[EDGE]`
 
@@ -969,16 +970,18 @@
 1. Hooks 또는 MCP 패널에서 `settings.json` 의 어떤 hook 의 `command`/`prompt` 에 `Bearer ghp_AbcdefghIJKLMNOPQRST...` 같은 평문 시크릿을 입력
 2. 저장 시도 → 서버가 `HARNESS_SECRET_ON_SHARED` (HTTP 409) 반환 + 클라이언트의 `[data-testid="secret-on-shared-dialog"]` 모달 발화
 3. 모달은 검출된 시크릿 위치(라인 번호 또는 dot-path) 와 자동 생성될 `*.local.*` 형제 파일명을 표시
-4. **(1차 액션)** "로컬 파일로 이동" 클릭 → 같은 디렉토리의 `settings.local.json` 으로 저장 라우팅, 형제 파일이 없으면 자동 생성, 신규 파일에 즉시 `로컬` 배지가 표시
-5. **(2차 액션 — 별도 시도)** "이 값을 시크릿이 아니라고 표시" 클릭 → 단일 저장 통과 (Story 30.3 후속 폴리시 이전 단계는 안내 토스트로 fallback)
-6. **(3차 액션)** "취소" 클릭 → 저장하지 않고 에디터로 복귀
+4. **(1차 액션)** `[data-testid="secret-on-shared-move-to-local"]` 클릭 → Story 30.7 의 sibling save 자동 라우팅 발화 → 같은 디렉토리의 `settings.local.json` 으로 저장 자동 완료, 형제 파일이 없으면 자동 생성, 신규 파일에 즉시 `로컬` 배지 표시. **`.gitignore` 패턴 분기**: 프로젝트 루트 `.gitignore` 에 `**/.claude/**/*.local.*` 패턴이 부재할 경우 안내 토스트 (`harness.tools.shareBadge.gitignorePatternMissing.*`) 발화 + 확인 클릭 → `.gitignore` 에 패턴 append 후 라우팅 진행 (Story 30.7 AC6 분기). 라우팅 실패 시 `harness.tools.secretOnShared.routing.apiErrorToast` (Story 30.7 AC11.b) 토스트 노출
+5. **(2차 액션 — 별도 시도)** `[data-testid="secret-on-shared-mark-not-secret"]` 클릭 → dialog close 만 호출되어 다음 저장 재시도가 의도된 동작 (Story 30.7 AC6.e-2 정합 — 별도 자동 라우팅 없음, 사용자가 본문을 직접 정리해 재저장)
+6. **(3차 액션)** `[data-testid="secret-on-shared-cancel"]` 클릭 → 저장하지 않고 에디터로 복귀
 
 **기대 결과**:
 - 서버 가드 (`assertNoSecretOnShared`) 와 클라 모달 양쪽 다 발화 — API 직접 호출에도 동일 정책 (회귀 가드)
+- 1차 액션의 sibling save 자동 완료 — `.mcp.json` / `settings.json` 의 다양한 도메인 케이스에서 모두 동일하게 동작 (Story 30.7 의 4 에디터 콜백 교체 검증)
+- `.gitignore` 패턴 부재 시 안내 토스트 + 확인 클릭 → append → 라우팅 진행이 자연 흐름으로 이어짐 (사용자 추가 작업 0)
 - `로컬` / `ignored (전체)` 배지 파일에 같은 시크릿을 입력하면 저장이 통과 (AC4.e — 자물쇠 툴팁만 표시)
 - 환경변수 참조 (`Authorization: Bearer ${GH_TOKEN}`) 는 `${...}` strip 후 검사하므로 차단되지 않음 (AC4.f false-positive 방지)
 
-<!-- T-domain migration trigger: re-evaluate after Story 30.2 (B15) and Story 30.3 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
+<!-- T-domain migration trigger: re-evaluate after Story 30.2 (B15) and Story 30.8 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
 
 ## B15. 정적 하네스 Lint (Story 30.2) `[EDGE]`
 
@@ -1036,4 +1039,102 @@
 - 툴팁이 hover 와 keyboard focus 양쪽에서 발화 (a11y 가드: `role="tooltip"` + `aria-describedby` 파리티)
 - 안내 본문에 *"Hammoc 서버 프로세스의 PATH 기준입니다 — 유저 CLI 세션과 일치하지 않을 수 있습니다"* 가 i18n 키 `harness.tools.lint.rule.mcpCommandNotOnPath.serverPathNotice` 로 표시
 - *"이 규칙 끄기"* CTA 클릭 시 `LintRulePreferencesDialog` 가 열려 해당 규칙 토글이 즉시 가능
+
+<!-- T-domain migration trigger: re-evaluate after Story 30.8 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
+
+## B16. 하네스 Export/Import 번들 (Story 30.5+30.6+30.7) `[CORE]` `[EDGE]`
+
+**대상 동작**: 프로젝트 설정 → 하네스 워크벤치에서 (1) `BundleEntryButton` 의 Export/Import 메뉴로 진입, (2) `BundleExportDialog` 가 `secretsPolicy` 3 모드 (excluded / included-explicit / included-as-env-refs) 와 다층 방어 (2차 확인 체크 + `WITH-SECRETS` 파일명 + 평문 acknowledge) 를 제공, (3) `BundleImportDialog` 가 충돌 미리보기 + 일괄 액션 + `bundleVersion` 미래값 차단 + 평문 시크릿 포함 번들 acknowledge 를 제공, (4) ZIP round-trip 시 5 도메인 카드 + CLAUDE.md + 매니페스트 `items[].identity` 가 1:1 매칭, (5) Story 30.1 의 시크릿 차단 모달 *"로컬 파일로 이동"* 액션이 sibling save 자동 라우팅 (Story 30.7) 으로 정식 종결되는지 검증.
+
+### B-16-01: round-trip 동등 복원 `[CORE]`
+
+**시나리오**:
+1. Mode A 가짜 픽스처 프로젝트 (skills 2 / mcps 2 / hooks 1 / commands 1 / agents 1 + CLAUDE.md 1) 워크벤치 진입
+2. `[data-testid="bundle-entry-trigger"]` → `[data-testid="bundle-entry-export"]` 클릭 → `BundleExportDialog` open
+3. `secretsPolicy=excluded` (기본값) 유지 + `[data-testid="bundle-export-submit"]` 클릭 → ZIP 다운로드 capture
+4. 빈 프로젝트 (워크벤치 5 도메인 카드 모두 0) 워크벤치 진입 → `[data-testid="bundle-entry-import"]` → 다운로드한 ZIP 을 `[data-testid="bundle-import-file-input"]` 에 업로드
+5. `[data-testid="bundle-import-preview-body"]` 노출 확인 → `[data-testid="bundle-import-apply"]` 클릭 → `[data-testid="bundle-import-applying"]` 표시 → 적용 완료 후 워크벤치 새로고침
+
+**기대 결과**:
+- 적용 후 빈 프로젝트의 워크벤치 5 도메인 카드가 원본 프로젝트와 정확히 일치 (skills 2 / mcps 2 / hooks 1 / commands 1 / agents 1)
+- CLAUDE.md 본문 byte-level 일치
+- 다운로드된 ZIP 의 `manifest.json` 의 `items[].identity` 가 원본 워크벤치 5 도메인 카드의 `identity` 와 1:1 매칭 (이름·domain·version 모두 동일)
+- `secretsPolicy` 필드값 = `"excluded"`, `bundleVersion` = `1`
+
+### B-16-02: `secretsPolicy=excluded` 시 시크릿 제거 + Import 시 안내 토스트 `[EDGE]`
+
+**시나리오**:
+1. 픽스처 프로젝트의 `settings.json` 에 `"Authorization": "Bearer abc123def456ghi789jkl012mno345"` (시크릿 휴리스틱 발화 패턴) 사전 배치
+2. 워크벤치 → Export 진입 → `secretsPolicy=excluded` 선택 → 제출 → ZIP 다운로드
+3. ZIP 의 `manifest.json` 정적 검사 + 매니페스트의 `secretsScrubbed` 카운트 노출 확인
+4. 빈 프로젝트로 Import → 적용 완료 후 토스트 메시지 검출 (`harness.tools.bundle.import.toast.secretsScrubbed` 또는 동등 i18n 키)
+
+**기대 결과**:
+- 다운로드된 ZIP 의 `manifest.json` 에 `secretsPolicy: "excluded"` + `secretsScrubbed >= 1`
+- ZIP 내부 `settings.json` 의 `Authorization` 값이 원본 시크릿 평문이 아니라 제거 placeholder (예: `"***SCRUBBED***"`) 또는 키 제거
+- Import 직후 *"시크릿 N건 제거됨"* 토스트가 5초 노출 (i18n locale en/ko 양쪽 검증)
+- 안내 토스트에는 *"평문 시크릿이 평문 그대로 옮겨가지 않았다"* 는 의미가 명확히 전달
+
+### B-16-03: `included-explicit` 다층 방어 `[EDGE]`
+
+**시나리오**:
+1. Export 진입 → `secretsPolicy=included-explicit` 선택
+2. `[data-testid="bundle-export-included-explicit-block"]` 영역 노출 확인 + `[data-testid="bundle-export-submit"]` 비활성 (`disabled` attribute)
+3. `[data-testid="bundle-export-ack"]` 체크박스 toggle → 제출 버튼 활성으로 전이 확인
+4. 제출 → ZIP 다운로드 capture → 파일명에 `WITH-SECRETS` 토큰 포함 확인
+5. 다운로드 5초 후 *"평문 시크릿 포함 번들이 다운로드됨"* 경고 토스트 노출
+6. 다른 프로젝트로 Import → 파일 업로드 직후 `[data-testid="bundle-import-incoming-ack"]` 영역 노출 + `[data-testid="bundle-import-incoming-ack-button"]` 클릭 전까지 `[data-testid="bundle-import-apply"]` 비활성
+
+**기대 결과**:
+- 2차 확인 체크박스 미체크 시 제출 비활성 (다층 방어 1단)
+- 다운로드 파일명에 `WITH-SECRETS` 포함 (다층 방어 2단 — 파일 시각 가드)
+- 다운로드 후 5초 경고 토스트 (다층 방어 3단 — 시각·시간 가드)
+- Import 시 incoming acknowledge 모달 노출 + 명시 confirm 전까지 적용 차단 (다층 방어 4단 — 수입자 측 가드)
+- 매니페스트의 `secretsPolicy: "included-explicit"` 명시
+
+### B-16-04: 충돌 미리보기 + 일괄 액션 `[EDGE]`
+
+**시나리오**:
+1. 기존 프로젝트 (skills 2개 사전 보유) 워크벤치에서 같은 스킬 이름 2개를 포함한 번들 Import
+2. 파일 업로드 후 `[data-testid="bundle-import-preview-body"]` 노출 → 동일 스킬 2건의 `[data-testid="bundle-import-status-overwrite"]` 표시 확인
+3. `[data-testid="bundle-import-bulk-skip"]` 클릭 → 두 스킬 항목 모두 `[data-testid="bundle-import-action-{key}"]` 가 `skip` 으로 일괄 전환
+4. `[data-testid="bundle-import-apply"]` 클릭 → 적용 완료
+5. 워크벤치 새로고침 → 기존 스킬 2개의 본문이 무변경인지 확인
+
+**기대 결과**:
+- preview 단계에서 `overwrite` 2건 사전 노출 (충돌 시각화)
+- *"모두 스킵"* 일괄 액션이 충돌 항목 전체에 1회 클릭으로 적용 (item-by-item 클릭 불필요)
+- 적용 후 기존 스킬 2개 변경 0 — 본문 byte-level 일치
+- 일괄 액션 이후에도 개별 행에서 액션 재변경 가능 (lock 회귀 없음)
+
+### B-16-05: `bundleVersion` 미래값 차단 `[EDGE]`
+
+**시나리오**:
+1. 사전 조작 — `manifest.json` 의 `bundleVersion` 을 `2` (현재 서버 지원 = `1`) 로 변조한 ZIP 준비
+2. Import 진입 → 변조 ZIP 을 `[data-testid="bundle-import-file-input"]` 에 업로드
+3. `[data-testid="bundle-import-scanning"]` 노출 후 `[data-testid="bundle-import-error"]` 발화
+4. `[data-testid="bundle-import-apply"]` 비활성 유지 + 적용 시도 시 서버 측 HTTP 422 응답
+
+**기대 결과**:
+- 클라 매니페스트 정적 스캔 단계에서 `bundleVersion=2` 차단 (UI 가드)
+- 서버 측 `assertBundleVersion` 가드가 HTTP 422 응답으로 재차 차단 (defense-in-depth)
+- 차단 모달에 *"이 번들은 더 최신 Hammoc 버전에서 만들어졌습니다"* 또는 동등 안내 + 업그레이드 가이드 reference
+- 변조 ZIP 의 다른 entry (skills/CLAUDE.md) 가 별도 부분 적용되지 않음 (all-or-nothing 가드)
+
+### B-16-06: Story 30.1 인계 — 시크릿 차단 모달 *"로컬 파일로 이동"* 실제 라우팅 `[CORE]`
+
+**시나리오**:
+1. Mode A 프로젝트의 `.mcp.json` 에디터 진입 → `mcpServers.remote.headers.Authorization` 에 `"Bearer abc123def456ghi789jkl012mno345"` 입력 + 저장 시도
+2. `[data-testid="secret-on-shared-dialog"]` 발화 (Story 30.1 회귀 가드)
+3. `[data-testid="secret-on-shared-move-to-local"]` 클릭 → Story 30.7 의 자동 라우팅 발화
+4. `.gitignore` 에 `**/.claude/**/*.local.*` 패턴 부재 시: 안내 토스트 노출 + 확인 클릭 → `.gitignore` append 자동 수행 후 라우팅 진행 (Story 30.7 AC6 분기)
+5. 라우팅 완료 후 `.mcp.local.json` 자동 생성 + 시크릿 본문이 그쪽에 저장 + 다이얼로그 close
+6. 파일 트리 새로고침 → 새 형제 파일 `.mcp.local.json` 노출 + 옆에 `[data-testid="share-badge-local"]` 배지 즉시 표시
+
+**기대 결과**:
+- `.mcp.json` 본문에는 시크릿 평문이 남지 않음 (sibling save 자동 완료 — Story 30.7 AC6.a 정합)
+- `.mcp.local.json` 본문에 시크릿 평문이 저장 + `로컬` 배지 노출
+- `.gitignore` 패턴 부재 시 안내 토스트 + 확인 클릭 → append → 라우팅 진행 (Story 30.7 의 `.gitignore` 패턴 부재 안내 플로우 검증)
+- B-14-04 의 fallback 토스트 폴백이 본 시나리오의 자동 라우팅으로 정식 종결 — 의미 정반대 갱신의 sibling 시나리오
+- 라우팅 실패 시 `harness.tools.secretOnShared.routing.apiErrorToast` (Story 30.7 AC11.b) 토스트 노출 분기 (회귀 가드)
 

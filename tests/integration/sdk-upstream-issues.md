@@ -235,6 +235,8 @@ CLI 다운그레이드 시나리오 또는 응답이 다시 `'unsupported'` 로 
 
 → Task 1.4 의 `packages/server/package.json` 에 `jszip@^3.10.1` 추가 (현재 최신 stable).
 
+**실측 완료 (2026-05-26, Story 30.8 B-16-01·03 시나리오)**: 30.5+30.6 머지 후 통합 시나리오 실행 결과 5 카드 + 1MB assets 규모에서 `jszip` in-memory ZIP 생성/언패킹의 RSS 증가량이 임계 (50MB) 이내로 측정 — OOM 위험 없음. 임계 초과 시 *"archiver+unzipper 격상 후행 검증"* 분기는 운영 신호 수신 시 격상. 본 spike 의 *"실측 미수행 분기"* 는 본 통합 시나리오 실행으로 정성 검증 완료.
+
 ---
 
 ## 9. Story 30.3 spike #2 — 시크릿 휴리스틱 entropy 보정 (2026-05-12)
@@ -268,6 +270,8 @@ CLI 다운그레이드 시나리오 또는 응답이 다시 `'unsupported'` 로 
 [`packages/server/src/utils/secretHeuristic.ts`](../../packages/server/src/utils/secretHeuristic.ts) 단일 모듈 1곳만 수정. 4 도메인 서비스 + 30.3 의 `applySecretsPolicy.ts` 가 모두 이 단일 출처를 import — 자동 반영. 단위 테스트는 동일 파일의 기존 테스트에 entropy 케이스 4건 (가짜 3 + 실 1) 추가.
 
 **후행 검증**: 운영 중 false-negative (놓침) / false-positive (오탐) 가 보고되면 임계값 재조정. 현재는 *"3건 fall-through + 2건 catch"* 정성 검증으로 충분 — 정량 PR/REC 곡선은 후속 스토리.
+
+**실측 완료 (2026-05-26, Story 30.8 B-16-02·06 시나리오)**: 30.5+30.7 머지 후 통합 시나리오 실행 결과 base64 entropy AND-결합 가드의 오탐 0 확인 — Mode A 의 `.mcp.json` 시크릿 차단 (B-16-06) + Export 시 시크릿 제거 (B-16-02) 양쪽에서 영문 합성어 false-positive 발생 없음. 본 spike 의 *"운영 중 false-negative/false-positive 후행 검증"* 단락 중 *"정성 검증 충분"* 항목은 본 통합 시나리오로 보강 완료. 정량 PR/REC 곡선은 운영 단계 진입 후 별도 spike 유지.
 
 ---
 
@@ -306,6 +310,8 @@ agent   → envRefReplace(동일 파일 in-place, 같은 정책)
 - AC6.b 의 모달 1차 액션 라벨은 도메인별 i18n 키로 분기 (`harness.tools.secretOnShared.action.{routeToLocalMcp, routeToLocalHook, replaceWithEnvRefCommand, replaceWithEnvRefAgent}`)
 
 **후행 검증**: command/agent 도메인에서 *"환경변수 치환 후 저장"* 의 UX 가 *"형제 파일 저장"* 보다 직관적인지 운영 단계 피드백 수집. 만약 유저가 *"command/agent 도 .local 파일이 있었으면 좋겠다"* 라고 명시적으로 요청하면 SDK 인식 여부 재spike 후 (c) 대안 격상 검토.
+
+**실측 완료 (2026-05-26, Story 30.8 B-16-06 시나리오)**: 30.7 머지 후 통합 시나리오 실행 결과 라우팅 매트릭스 4 도메인 모두 실측 통과 — mcp/hook 의 sibling save 자동 완료 (B-16-06 의 `.mcp.json` → `.mcp.local.json` round-trip 통과) + command/agent 의 env-ref 치환 동작 확인. 본 spike 의 *"command/agent 도 .local 파일 격상 검토"* 분기는 운영 피드백 수집 항목이라 *"운영 단계 진입 후 별도 spike"* 표기 유지 — 본 통합 시나리오로는 (a) 환경변수 치환 분기 동작이 정상 흐름임을 확인했고 (b) 격상 요구는 운영 신호로만 발생 가능하다는 spike 결과 자체가 변하지 않음.
 
 ---
 

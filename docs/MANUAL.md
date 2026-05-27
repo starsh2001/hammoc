@@ -1567,7 +1567,7 @@ A workbench-wide banner just above the navigator tells you how the project share
 
 The banner is derived from the project root's `.gitignore`. Edit the rules and the banner updates the next time the workbench refreshes.
 
-> An **Export bundle** action is planned for the Private mode banner so you can ship the current harness state to a teammate as a single file. The button is intentionally hidden until the export/import flow is fully wired — until then, copy individual files by hand or via the workbench's Project ↔ Global copy actions.
+> The Private mode banner surfaces an **Export** action on its right edge (in addition to the workbench-wide Bundle menu) so you can ship the current harness state to a teammate as a single `.zip` bundle. See §12.15 for the full export/import flow.
 
 ### 12.3 Share Badges
 
@@ -1708,6 +1708,18 @@ The dialog lists exactly which values were flagged (line numbers for text files,
 ### 12.14 Fullscreen Editor
 
 Every Markdown body in the workbench — skill body and raw view, skill bundle files, command body and raw view, agent system prompt and raw view, `CLAUDE.md` (both columns), snippet body — shows a small **Expand** button (⤢ icon) above the editor area. Clicking it opens a fullscreen overlay with the same CodeMirror instance, line wrapping, and a Markdown edit / preview toggle, so you can write long content without scrolling inside a narrow modal. Edits in the overlay sync back to the host panel through the same 300 ms debounce auto-save — there is no separate save button. Close the overlay with **X** or `Escape`. Read-only buffers (a plugin-scope file, a bundled snippet) show a small "read-only" chip in the overlay header.
+
+### 12.15 Bundle Export / Import (Team Sharing)
+
+When your project's `.claude/` tree is **fully git-ignored** (Mode B — typical when you use Hammoc itself to develop on Hammoc, or when your team intentionally keeps the harness out of source control), you can still share the entire workbench configuration with a teammate by exporting it as a single `.zip` bundle and importing on the other side. The workbench shows a **Bundle** menu (top-right of the workbench header, also surfaced as an **Export** button on the Mode B banner), with two actions:
+
+- **Export bundle** — Opens a dialog summarizing what will be packed (the five domain cards + `CLAUDE.md` + snippets) and lets you choose how secrets are handled:
+  - **Exclude (default)** — Secrets detected by the heuristic are stripped before packing; the recipient sees a *"N secrets removed"* toast after import. Use this when you want your teammate to fill in their own credentials.
+  - **Include as `${ENV_REF}` placeholders** — Detected secrets are replaced with named environment-variable references and a hint table lists which keys the recipient needs to set. Good for sharing a config skeleton without leaking real values.
+  - **Include explicit (with secrets)** — Plain-text secrets are packed as-is. This is the *"send it over secure DM and delete after use"* mode: you must check a second confirmation box before the dialog enables the download button, the resulting filename contains a visible `WITH-SECRETS` token, and a 5-second warning toast appears after the download starts.
+- **Import bundle** — Drop a `.zip` (or browse for one). Before anything is applied, Hammoc shows a preview of every incoming item alongside what already exists, with three per-item actions (Overwrite / Skip / Add only if missing) and three bulk-action shortcuts. Bundles tagged *"with secrets"* require the recipient to acknowledge a separate *"this bundle contains plaintext secrets"* checkbox before the apply button activates, and bundles produced by a newer Hammoc version (`bundleVersion` greater than what the local server supports) are rejected outright with an upgrade hint.
+
+The export/import flow only touches the workbench items themselves — `package.json`, repository code, and tracked files outside `.claude/` are never bundled. Bundles produced and consumed by the same Hammoc version are round-trip identical: re-importing your own export into an empty project reproduces the workbench cards byte-for-byte (handy for backups or for setting up a new dev machine).
 
 ---
 

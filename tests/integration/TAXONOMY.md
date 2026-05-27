@@ -1,7 +1,7 @@
 # Hammoc 유즈케이스 택소노미
 
 > 통합 테스트 지시서([TEST_PLAN.md](TEST_PLAN.md))의 기반 계층 구조.
-> 총 **19개 도메인 / 78개 리프 기능 노드 / 167개 시나리오**.
+> 총 **19개 도메인 / 79개 리프 기능 노드 / 173개 시나리오**.
 
 ---
 
@@ -43,8 +43,9 @@
 - B11. 하네스 서브에이전트 섹션 (Story 28.6) `[CORE]`
 - B12. 하네스 CLAUDE.md 편집기 섹션 (Story 29.1) `[CORE] [EDGE]`
 - B13. 하네스 스니펫 / 즐겨찾기 칩 섹션 (Story 29.2) `[CORE] [EDGE]`
-- B14. 하네스 공유/로컬 배지 + Mode 배너 + 시크릿 차단 (Story 30.1) `[EDGE]` <!-- T-domain migration trigger: re-evaluate after Story 30.2 (B15) and Story 30.3 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
-- B15. 정적 하네스 Lint (Story 30.2) `[EDGE]` <!-- T-domain migration trigger: re-evaluate after Story 30.3 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
+- B14. 하네스 공유/로컬 배지 + Mode 배너 + 시크릿 차단 (Story 30.1) `[EDGE]` <!-- T-domain migration trigger: re-evaluate after Story 30.2 (B15) and Story 30.8 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
+- B15. 정적 하네스 Lint (Story 30.2) `[EDGE]` <!-- T-domain migration trigger: re-evaluate after Story 30.8 (B16) merge — see Epic 30 PRD § Integration Test Mapping -->
+- B16. 하네스 Export/Import 번들 (Story 30.5+30.6+30.7) `[CORE]` `[EDGE]` <!-- DECISION REQUIRED IN THIS PR — see Story 30.8 Task D -->
 
 ### C. 채팅 · 세션 ★ SDK 핵심
 - C1. 새 세션 시작 · 첫 메시지 송신 `[CORE] [SDK] [ASYNC]`
@@ -157,10 +158,10 @@
 B9, C1, C2, C3, C4, C5, C7, C8, C9, C10, D1, D2, D3, E1, E2, E3, E4, F2, H2, H5, P4, R1, R2
 
 ### `[CORE]` (smoke 모드)
-A1, A2, B1, B2, B4, B5, B7, C1, C2, C6, C10, D1, E1, F1, F3, F4, G1, H1, H4, I1, I2, I4, J1, J2, J5, K1, K2, L1, M1, M2, N1, P1, P2, Q1, Q2, Q3, S1, S2, S3, S4
+A1, A2, B1, B2, B4, B5, B7, B16, C1, C2, C6, C10, D1, E1, F1, F3, F4, G1, H1, H4, I1, I2, I4, J1, J2, J5, K1, K2, L1, M1, M2, N1, P1, P2, Q1, Q2, Q3, S1, S2, S3, S4
 
 ### `[EDGE]` (심층 회귀)
-A3, B3, B9, C3, C4, C8, C9, D3, D4, E3, E4, F2, G2, G3, H3, H5, J4, K3, L2, L3, N2, O1, O2, P3, P4, P5, Q4, R3, S5
+A3, B3, B9, B16, C3, C4, C8, C9, D3, D4, E3, E4, F2, G2, G3, H3, H5, J4, K3, L2, L3, N2, O1, O2, P3, P4, P5, Q4, R3, S5
 
 ### `[ASYNC]` (타이밍 · 동시성)
 B1, C1, C2, C5, C7, G2, H2, L1, N1, R1, R2
