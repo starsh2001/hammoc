@@ -15,6 +15,10 @@ export enum SDKErrorCode {
   NETWORK_ERROR = 'NETWORK_ERROR',
   INVALID_REQUEST = 'INVALID_REQUEST',
   CONTEXT_OVERFLOW = 'CONTEXT_OVERFLOW',
+  // Resume rejected because thinking blocks in the latest assistant turn no
+  // longer match their original signatures (typically after the CLI restructures
+  // a long conversation on resume). Recoverable by stripping thinking blocks.
+  RESUME_THINKING_INVALID = 'RESUME_THINKING_INVALID',
   SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
   PERMISSION_DENIED = 'PERMISSION_DENIED',
   INVALID_PATH = 'INVALID_PATH',
@@ -31,6 +35,7 @@ export const SDK_ERROR_STATUS: Record<SDKErrorCode, number> = {
   [SDKErrorCode.NETWORK_ERROR]: 503,
   [SDKErrorCode.INVALID_REQUEST]: 400,
   [SDKErrorCode.CONTEXT_OVERFLOW]: 400,
+  [SDKErrorCode.RESUME_THINKING_INVALID]: 400,
   [SDKErrorCode.SERVICE_UNAVAILABLE]: 503,
   [SDKErrorCode.PERMISSION_DENIED]: 403,
   [SDKErrorCode.INVALID_PATH]: 400,
@@ -208,6 +213,21 @@ export function parseSDKError(error: unknown, lang?: string): SDKError {
     // Check for abort errors
     if (message.includes('abort') || error.name === 'AbortError') {
       return new AbortedError(error, t?.('error.aborted'));
+    }
+
+    // Check for resume-time thinking-block signature rejection.
+    // The API rejects a resumed conversation whose latest assistant turn carries
+    // thinking blocks that no longer match their original signatures, e.g. after
+    // the CLI compacts/restructures a long conversation on resume. The message is:
+    // "`thinking` or `redacted_thinking` blocks in the latest assistant message
+    //  cannot be modified. These blocks must remain as they were..."
+    if (
+      message.includes('thinking') &&
+      (message.includes('cannot be modified') || message.includes('must remain as they were'))
+    ) {
+      return new SDKError(error.message, SDKErrorCode.RESUME_THINKING_INVALID, {
+        originalError: error,
+      });
     }
 
     // Check for context overflow / token limit errors

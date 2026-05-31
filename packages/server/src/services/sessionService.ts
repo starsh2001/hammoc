@@ -143,6 +143,97 @@ export class SessionService {
   }
 
   /**
+   * Recovery for RESUME_THINKING_INVALID: strip every thinking / redacted_thinking
+   * block from the session JSONL so a resumed request carries no thinking blocks
+   * for the API to signature-validate. Thinking blocks are auxiliary and not
+   * required when continuing with a new user message, so removing them unblocks
+   * resume without losing conversation text or tool results.
+   *
+   * Assistant lines that are thinking-only become empty, so they are dropped and
+   * their children's parentUuid is rewired to the nearest surviving ancestor to
+   * keep the message tree connected. The file is replaced atomically and ONLY if
+   * the result validates (no thinking left, no empty assistant turn, no dangling
+   * parent) — otherwise the original is left untouched.
+   *
+   * @returns true if the JSONL was modified.
+   */
+  stripThinkingForResume(projectPath: string, sessionId: string): boolean {
+    type Block = { type?: string };
+    type Line = { type?: string; uuid?: string; parentUuid?: string | null; message?: { content?: Block[] | string } };
+
+    const jsonlPath = path.join(this.getSessionsDir(projectPath), `${sessionId}.jsonl`);
+    if (!existsSync(jsonlPath)) return false;
+
+    const rawLines = readFileSync(jsonlPath, 'utf8').split('\n');
+    const parsed = rawLines.map((text) => {
+      if (!text.trim()) return { text, obj: null as Line | null };
+      try { return { text, obj: JSON.parse(text) as Line }; } catch { return { text, obj: null as Line | null }; }
+    });
+
+    const isThinking = (b: Block) => b.type === 'thinking' || b.type === 'redacted_thinking';
+    const isThinkingOnly = (o: Line | null): boolean =>
+      !!o && o.type === 'assistant' && Array.isArray(o.message?.content) &&
+      o.message!.content.length > 0 && (o.message!.content as Block[]).every(isThinking);
+
+    const removed = new Set<string>();
+    for (const { obj } of parsed) {
+      if (isThinkingOnly(obj) && obj!.uuid) removed.add(obj!.uuid);
+    }
+
+    const uuidToParent = new Map<string, string | null>();
+    for (const { obj } of parsed) {
+      if (obj?.uuid) uuidToParent.set(obj.uuid, obj.parentUuid ?? null);
+    }
+    const nearestSurvivor = (u: string | null): string | null => {
+      const seen = new Set<string>();
+      let cur = u;
+      while (cur && removed.has(cur) && !seen.has(cur)) { seen.add(cur); cur = uuidToParent.get(cur) ?? null; }
+      return cur ?? null;
+    };
+
+    let changed = false;
+    const out: string[] = [];
+    for (const { text, obj } of parsed) {
+      if (!obj) { out.push(text); continue; } // blank / unparseable preserved verbatim
+      if (obj.uuid && removed.has(obj.uuid)) { changed = true; continue; }
+      if (obj.type === 'assistant' && Array.isArray(obj.message?.content)) {
+        const content = obj.message!.content as Block[];
+        const before = content.length;
+        obj.message!.content = content.filter((b) => !isThinking(b));
+        if ((obj.message!.content as Block[]).length !== before) changed = true;
+        if ((obj.message!.content as Block[]).length === 0) { changed = true; continue; }
+      }
+      if (obj.parentUuid && removed.has(obj.parentUuid)) { obj.parentUuid = nearestSurvivor(obj.parentUuid); changed = true; }
+      out.push(JSON.stringify(obj));
+    }
+
+    if (!changed) return false;
+
+    // Validate before replacing the canonical file.
+    const survivors = new Set<string>();
+    for (const line of out) {
+      if (!line.trim()) continue;
+      try { const o = JSON.parse(line) as Line; if (o.uuid) survivors.add(o.uuid); } catch { /* ignore */ }
+    }
+    for (const line of out) {
+      if (!line.trim()) continue;
+      let o: Line;
+      try { o = JSON.parse(line) as Line; } catch { continue; }
+      const c = o.message?.content;
+      if (Array.isArray(c)) {
+        if (c.some(isThinking)) { log.warn(`stripThinkingForResume: residual thinking block, aborting for ${sessionId}`); return false; }
+        if (o.type === 'assistant' && c.length === 0) { log.warn(`stripThinkingForResume: empty assistant content, aborting for ${sessionId}`); return false; }
+      }
+      if (o.parentUuid && !survivors.has(o.parentUuid)) { log.warn(`stripThinkingForResume: dangling parent, aborting for ${sessionId}`); return false; }
+    }
+
+    const tmpPath = `${jsonlPath}.tmp.${Date.now()}`;
+    writeFileSync(tmpPath, out.join('\n'), 'utf8');
+    renameSync(tmpPath, jsonlPath);
+    return true;
+  }
+
+  /**
    * Get the sessions-index.json path for a project
    */
   getSessionsIndexPath(projectPath: string): string {

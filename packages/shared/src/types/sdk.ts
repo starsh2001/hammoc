@@ -149,7 +149,7 @@ export const CONTEXT_TOKEN_RESERVES = {
  * Models whose native context window is 1M but SDK may under-report as 200K.
  * See: https://github.com/anthropics/claude-code/issues/24208
  */
-const NATIVE_1M_MODELS = ['claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'opus', 'sonnet'];
+const NATIVE_1M_MODELS = ['claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'opus', 'sonnet'];
 
 /**
  * True when the model is known to natively support a 1M token context window.
@@ -245,7 +245,7 @@ export interface AccountInfo {
   subscriptionType?: string;
   tokenSource?: string;
   apiKeySource?: string;
-  apiProvider?: 'firstParty' | 'bedrock' | 'vertex' | 'foundry' | 'anthropicAws' | 'mantle';
+  apiProvider?: 'firstParty' | 'bedrock' | 'vertex' | 'foundry' | 'anthropicAws' | 'mantle' | 'gateway';
 }
 
 /**

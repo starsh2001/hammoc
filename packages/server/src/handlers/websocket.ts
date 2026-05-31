@@ -38,6 +38,7 @@ import { preferencesService } from '../services/preferencesService.js';
 import { getOrCreateQueueService, getQueueInstances } from '../controllers/queueController.js';
 import { createLogger } from '../utils/logger.js';
 import { clampEffortForModel, supportsAdaptiveThinking } from '../utils/effortUtils.js';
+import { modelMissingNative1MSupport } from '../utils/bundledBinaryModelSupport.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
 import { rateLimitProbeService } from '../services/rateLimitProbeService.js';
 import { ptyService } from '../services/ptyService.js';
@@ -55,6 +56,9 @@ const log = createLogger('websocket');
 
 // Alias for concise usage in guards
 const queueInstances = getQueueInstances;
+
+// Defense B: models already warned about a stale-binary 1M fallback (warn once per model per process)
+const warnedMissing1M = new Set<string>();
 
 // Socket-to-terminal mapping: socket.id → Set of terminalIds (Story 17.1)
 const socketTerminals = new Map<string, Set<string>>();
@@ -2587,7 +2591,7 @@ async function handleChatSend(
 
     const effectiveEffort = clampEffortForModel(effort ?? effectivePrefs.defaultEffort, model);
 
-    // Opus 4.7 flipped `thinking.display` default to 'omitted' — ThinkingBlock UI stays blank
+    // Opus 4.7+ flipped `thinking.display` default to 'omitted' — ThinkingBlock UI stays blank
     // unless we explicitly opt in. For adaptive-thinking models, forward an explicit `thinking`
     // config based on the user's showThinkingBlocks preference (Hammoc default: true).
     // Legacy models (Sonnet 4.5, Opus 4.5, Haiku, Sonnet 4) keep the `maxThinkingTokens` path
@@ -2606,7 +2610,7 @@ async function handleChatSend(
       // Advanced settings from preferences
       customSystemPrompt: effectivePrefs.customSystemPrompt,
       // maxThinkingTokens: legacy path; SDK docs say it takes precedence for backward-compat,
-      // which conflicts with adaptive mode on Opus 4.7 (rejects enabled+budget). Skip on
+      // which conflicts with adaptive mode on Opus 4.7+ (rejects enabled+budget). Skip on
       // adaptive-capable models so the explicit `thinking` field governs.
       ...(!adaptiveCapable && { maxThinkingTokens: effectivePrefs.maxThinkingTokens }),
       ...(thinkingConfig && { thinking: thinkingConfig }),
@@ -2833,6 +2837,21 @@ async function handleChatSend(
         }
         origOnError?.(error);
       };
+    }
+
+    // Defense B: if the bundled engine doesn't recognize this native-1M model, its
+    // 1M context silently falls back to ~200K (long sessions then compact early and
+    // can break on resume). Warn once per model so the fallback isn't invisible.
+    // Non-blocking: the binary scan must not delay the query.
+    const warnModel = model;
+    if (warnModel && !warnedMissing1M.has(warnModel)) {
+      void modelMissingNative1MSupport(warnModel).then((missing) => {
+        if (missing && !warnedMissing1M.has(warnModel)) {
+          warnedMissing1M.add(warnModel);
+          log.warn(`Bundled Claude Code engine does not recognize model "${warnModel}" — native 1M context will not apply (falls back to ~200K). Update @anthropic-ai/claude-agent-sdk.`);
+          emit('system:info', { message: `⚠️ "${warnModel}" 1M context is not active — the bundled engine doesn't recognize this model yet, so it's limited to ~200K. Update @anthropic-ai/claude-agent-sdk to enable the full 1M window.` });
+        }
+      }).catch(() => {});
     }
 
     try {
