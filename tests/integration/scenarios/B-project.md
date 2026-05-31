@@ -36,6 +36,22 @@
 >
 > `browser_tabs`로 멀티탭 시뮬레이션 가능. 복잡도를 이유로 스킵하지 말 것.
 
+### B-01-03: 헤더 Hammoc 로고로 프로젝트 리스트 복귀 `[CORE]`
+**목적**: 어느 페이지에서나 헤더 좌측의 Hammoc 브랜드 로고를 누르면 즉시 프로젝트 리스트(`/`)로 이동한다.
+**절차**:
+1. 프로젝트 리스트에서 임의의 프로젝트 카드 클릭 → 프로젝트 페이지(`/project/<slug>`) 진입
+2. `[data-testid="brand-logo"]` 버튼 클릭 → URL 이 `/` 로 변경되는지 확인 (프로젝트 리스트 헤더 노출)
+3. 다시 프로젝트 진입 후 "세션 리스트" 탭으로 이동 → 임의 세션 클릭 → 채팅 페이지(`/project/<slug>/session/<id>`) 진입
+4. 채팅 페이지 헤더의 `[data-testid="brand-logo"]` 클릭 → URL 이 `/` 로 복귀하는지 확인
+
+**기대 결과**:
+- 두 진입점(프로젝트 페이지 / 채팅 페이지) 모두에서 동일 셀렉터로 동작
+- 버튼은 `aria-label` 을 노출 (스크린리더 접근성)
+- 콘솔 오류 없음
+
+**엣지케이스**:
+- E1. 이미 프로젝트 리스트(`/`) 에 있을 때 클릭 → React Router 가 같은 경로로 navigate 하므로 URL 변화 없음·재마운트 없음 (시각적으로 무해)
+
 ---
 
 ## B2. 프로젝트 생성 `[CORE]`
@@ -1137,4 +1153,69 @@
 - `.gitignore` 패턴 부재 시 안내 토스트 + 확인 클릭 → append → 라우팅 진행 (Story 30.7 의 `.gitignore` 패턴 부재 안내 플로우 검증)
 - B-14-04 의 fallback 토스트 폴백이 본 시나리오의 자동 라우팅으로 정식 종결 — 의미 정반대 갱신의 sibling 시나리오
 - 라우팅 실패 시 `harness.tools.secretOnShared.routing.apiErrorToast` (Story 30.7 AC11.b) 토스트 노출 분기 (회귀 가드)
+
+## B17. BMad core-config 편집기 (Story 31.1) `[EDGE]`
+
+**대상 동작**: 프로젝트 설정 탭 좌측 nav 에 **BMad 프로젝트에서만** 노출되는 *"BMad 설정"* 항목 (`isBmadProject` 게이트) 으로 진입해 `BmadConfigPanel` 에서 (1) `.bmad-core/core-config.yaml` 18 키를 5 그룹 접이식 폼 + 값 타입별 위젯 (토글 · 텍스트 · 파일 picker · glob 미리보기 · dnd 배열) 으로 편집, (2) 편집 즉시 300~500ms debounce 후 디스크 AST 패치 (주석·순서·인용 보존), (3) 알려지지 않은 키 round-trip 보존 + 읽기 전용 섹션 노출, (4) Raw/Form 토글로 직접 YAML 편집, (5) 외부 변경 감지 → STALE_WRITE reload/overwrite 모달 분기를 검증. **Q 도메인 교차** (AC8.c): `devStoryLocation`·`qaLocation`·`epicFilePattern` 폼 편집 후 Q3·Q4 가 새 경로/패턴 기준으로 동작하는지 cross-link.
+
+### B-17-01: BMad 프로젝트에서만 노출 (AC1 검증) `[EDGE]`
+
+**시나리오**:
+1. BMad 프로젝트 (`.bmad-core/core-config.yaml` 보유) 설정 탭 진입
+2. 좌측 nav 에 `[data-testid="project-settings-nav-bmad"]` (*"BMad 설정"*) 항목 노출 확인
+3. 클릭 → `[data-testid="bmad-config-panel"]` 마운트 + 5 그룹 (`[data-testid="bmad-group-general|qa|prd|architecture|brownfieldEpic"]`) 노출 확인
+4. 비-BMad 프로젝트 (빈 프로젝트, `.bmad-core/` 부재) 설정 탭 진입
+5. 좌측 nav 에 `[data-testid="project-settings-nav-bmad"]` **부재** 확인 — 빈 섹션·placeholder 카드 노출 0
+
+**기대 결과**:
+- BMad 프로젝트에서만 nav 항목 노출 (`isBmadProject=true` 단일 출처 게이트)
+- 비-BMad 프로젝트에서는 nav 항목 자체가 렌더되지 않음 (`project-settings-nav-bmad` DOM 부재)
+- 기존 `project-settings-nav-general` · `project-settings-nav-harness` 항목은 양쪽 프로젝트 모두 정상 노출 (회귀 0)
+
+### B-17-02: 18 키 폼 편집 + round-trip + Q3·Q4 cross-link (AC2 + AC3 + AC4 + AC8.c 검증) `[EDGE]`
+
+**시나리오**:
+1. 사전 조작 — 픽스처 BMad 프로젝트의 `.bmad-core/core-config.yaml` 에 알려지지 않은 키 `customFooBar: "hello"` 주입 + 주석 1줄 포함
+2. BMad 설정 진입 → `general` 그룹의 `devStoryLocation` 입력 (`[data-testid="bmad-input-devStoryLocation"]`) 을 `docs/stories` → `docs/v2-stories` 로 변경
+3. 300ms 뒤 디스크 파일이 `devStoryLocation: docs/v2-stories` 로 갱신 확인 + `customFooBar: "hello"` + 주석 그대로 보존 확인 (round-trip)
+4. `prd` 그룹의 `epicFilePattern` glob 위젯 (`[data-testid="bmad-input-prd.epicFilePattern"]`) 에 입력 → `[data-testid="bmad-glob-preview"]` 의 매치 카운트가 500ms debounce 후 갱신 확인
+5. 알려지지 않은 키 섹션 (`[data-testid="bmad-unknown-keys-header"]`) 펼침 → `[data-testid="bmad-unknown-key-customFooBar"]` 가 값 + type hint `string` 으로 읽기 전용 노출 확인
+6. **Q 교차 검증** — 위 `devStoryLocation` 변경 후 [Q4 (스토리 워크플로우)](Q-bmad.md) 재실행 시 새 디렉토리 `docs/v2-stories` 에서 스토리 파일을 발견하는지 + `qaLocation` 변경 후 Q4 QA 산출물 디렉토리가 새 경로로 갱신되는지 + `epicFilePattern` 변경 후 [Q3 (PRD → Queue 생성)](Q-bmad.md) 의 에픽 인식 대상이 새 패턴으로 바뀌는지 확인
+
+**기대 결과**:
+- 폼 입력 → 디스크 파일이 새 값으로 갱신 (AST 패치, debounce 후)
+- 알려지지 않은 키 `customFooBar` + 주석이 round-trip 보존 (변경 0)
+- glob 위젯 매치 미리보기 카운트가 입력 변경에 반응 (searchFiles 재사용)
+- 알려지지 않은 키는 읽기 전용 — 폼 위젯 부재, type hint 노출
+- **Q3·Q4 가 폼 편집으로 바뀐 경로/패턴 기준으로 동작** (AC3 BMad 에이전트 정상 로드의 통합 검증 완결)
+
+### B-17-03: Raw YAML 토글 + 주석 보존 (AC5 검증) `[EDGE]`
+
+**시나리오**:
+1. 주석 3종 + 의도적 비표준 키 순서 + 다양한 인용 스타일을 가진 fixture `core-config.yaml` 준비
+2. BMad 설정 진입 → `[data-testid="bmad-mode-raw"]` 클릭 → Raw 모드 전환
+3. `[data-testid="bmad-raw-editor"]` 의 CodeMirror 에 원본 텍스트 (주석 포함) 가 그대로 로드되는지 확인
+4. 의도적으로 YAML 구문 오류 입력 → `[data-testid="bmad-raw-parse-error"]` 인라인 경고 노출 + `[data-testid="bmad-raw-save"]` 비활성 확인 → 다시 유효 YAML 로 복구
+5. `[data-testid="bmad-mode-form"]` 클릭 → Form 모드 복귀 → 폼 정상 렌더 확인
+6. 디스크 파일이 주석·키 순서·인용 byte-for-byte 동일 확인 (Form 모드에서 no-op 이면 변경 0)
+
+**기대 결과**:
+- Raw 모드에 원본 YAML (주석 포함) 노출
+- 구문 오류 시 인라인 경고 + 저장 차단 + Form 전환 차단 (Raw 유지)
+- Form 복귀 후 폼 정상 렌더 + 디스크 주석·순서·인용 보존
+- Form↔Raw 전환 시 미저장 변경분 있으면 `[data-testid="bmad-unsaved-confirm"]` 확인 모달
+
+### B-17-04: 외부 변경 감지 + STALE_WRITE 모달 (AC3.d/e 검증) `[EDGE]`
+
+**시나리오**:
+1. BMad 설정 Form 모드 열린 상태에서, Hammoc UI 밖 (외부 에디터/스크립트) 으로 `.bmad-core/core-config.yaml` 직접 수정
+2. fileWatcher 가 외부 변경 감지 → `harness:external-change` (`path: '../.bmad-core/core-config.yaml'`) emit → `[data-testid="bmad-external-change-banner"]` 노출 확인
+3. 폼에서 같은 키 (`slashPrefix` 등) 수정 시도 → 저장 시 mtime 충돌 → `[data-testid="bmad-stale-modal"]` 발화
+4. `[data-testid="bmad-stale-reload"]` 클릭 분기 → 디스크 최신 내용으로 재로드 확인
+5. (별도 회차) `[data-testid="bmad-stale-overwrite"]` 클릭 분기 → 서버 currentMtime 기준 강제 저장 확인
+
+**기대 결과**:
+- 외부 변경이 watcher 를 통해 감지되어 배너 노출 (`.bmad-core/core-config.yaml` 카논 watch 등록 확인)
+- 같은 키 저장 시도 시 `HARNESS_STALE_WRITE` → reload/overwrite 모달 분기
+- reload → 디스크 최신값 재로드 / overwrite → 사용자 버전으로 강제 저장 (Story 28.4 훅 에디터 stale 패턴 답습)
 

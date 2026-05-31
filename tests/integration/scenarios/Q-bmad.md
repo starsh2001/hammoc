@@ -81,6 +81,8 @@
 > 즉 기본 세팅에서는 단일 `docs/prd.md`를 생성해도 스토리 추출 API([queueTemplateController.ts extractStories](../../packages/server/src/controllers/queueTemplateController.ts#L141))가 읽지 않습니다. 반드시 **`docs/prd/epic-<N>-<slug>.md`** 형태의 sharded 파일로 배치해야 합니다.
 > `prdSharded: false`로 변경하면 단일 `docs/prd.md`(= `prdFile` 경로) fallback이 동작합니다.
 
+> **Story 31.1 교차 (AC8.c)**: [B-17-02](B-project.md) 의 BMad core-config 폼 편집으로 `epicFilePattern` (또는 `prdShardedLocation`) 을 변경한 뒤 본 시나리오를 재실행하면, 에픽 인식 대상이 폼으로 바뀐 새 패턴/경로 기준으로 동작해야 합니다 (BMad 에이전트 정상 로드의 통합 검증).
+
 ### Q-03-01: PRD 파싱 & 스토리 추출 (sharded 구조 — 기본)
 **선행 조건**: BMad 프로젝트 (B-02-02). `.bmad-core/core-config.yaml`이 기본 `prdSharded: true`.
 
@@ -140,6 +142,8 @@
 ---
 
 ## Q4. 스토리 워크플로우 `[EDGE]`
+
+> **Story 31.1 교차 (AC8.c)**: [B-17-02](B-project.md) 의 BMad core-config 폼 편집으로 `devStoryLocation` (스토리 파일 위치) 또는 `qaLocation` (QA 산출물 위치) 을 변경한 뒤 본 시나리오를 재실행하면, 스토리 발견·QA 산출물 디렉토리가 폼으로 바뀐 새 경로 기준으로 동작해야 합니다.
 
 > **공통 전제 (BMad 스토리 카드가 보드에 나타나기 위한 조건)**:
 > 1. BMad 초기화된 프로젝트 (`.bmad-core/` 존재)

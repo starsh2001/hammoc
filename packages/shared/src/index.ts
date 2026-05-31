@@ -148,3 +148,6 @@ export {
 
 // Story 30.3: Harness Export/Import bundle DTOs
 export * from './types/harnessBundle.js';
+
+// Story 31.1: BMad core-config.yaml editor DTOs (Epic 31)
+export * from './types/bmadCoreConfig.js';

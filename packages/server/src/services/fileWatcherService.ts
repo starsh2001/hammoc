@@ -214,12 +214,21 @@ class FileWatcherService {
     const projectGitignorePath = ref.scope === 'project'
       ? path.join(path.dirname(resolvedRoot), '.gitignore')
       : null;
+    // Story 31.1 (Task A.4): the BMad config file lives at
+    // `<projectRoot>/.bmad-core/core-config.yaml`, outside `.claude/`. We watch
+    // it on the same chokidar instance and emit a discriminated path
+    // (`'../.bmad-core/core-config.yaml'`) so the client can route the event to
+    // the BMad config store without a new socket event.
+    const projectBmadConfigPath = ref.scope === 'project'
+      ? path.join(path.dirname(resolvedRoot), '.bmad-core', 'core-config.yaml')
+      : null;
     const watchTargets: string | string[] = ref.scope === 'project'
       ? [
           resolvedRoot,
           projectMcpFilePath as string,
           projectClaudeMdPath as string,
           projectGitignorePath as string,
+          projectBmadConfigPath as string,
         ]
       : resolvedRoot;
 
@@ -236,6 +245,9 @@ class FileWatcherService {
           return false;
         }
         if (projectGitignorePath && path.resolve(target) === path.resolve(projectGitignorePath)) {
+          return false;
+        }
+        if (projectBmadConfigPath && path.resolve(target) === path.resolve(projectBmadConfigPath)) {
           return false;
         }
         const rel = path.relative(resolvedRoot, target).replace(/\\/g, '/');
@@ -280,6 +292,12 @@ class FileWatcherService {
             // discriminated path the client store keys on to trigger a full
             // share-scope reload (everything depends on `.gitignore`).
             rel = '../.gitignore';
+          } else if (projectBmadConfigPath
+            && path.resolve(absolutePath) === path.resolve(projectBmadConfigPath)) {
+            // Story 31.1 (Task A.4): `'../.bmad-core/core-config.yaml'` is the
+            // discriminated path the BMad config store keys on to surface the
+            // external-change → STALE_WRITE reload/overwrite modal (AC3.d/e).
+            rel = '../.bmad-core/core-config.yaml';
           } else {
             rel = path.relative(resolvedRoot, absolutePath).replace(/\\/g, '/');
             if (!rel || rel === '.' || rel.startsWith('..')) return;

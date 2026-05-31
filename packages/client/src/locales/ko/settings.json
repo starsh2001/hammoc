@@ -316,6 +316,148 @@
         "about": "만든이"
     },
     "harness": {
+        "bmad": {
+            "nav": {
+                "title": "BMad 설정"
+            },
+            "title": "BMad core-config.yaml",
+            "loading": "불러오는 중…",
+            "requiredKeyEmptyWarning": "이 키는 BMad 동작에 필수입니다 — 빈 값으로 저장하면 에이전트가 정상 로드되지 않을 수 있습니다.",
+            "groupTitles": {
+                "general": "일반",
+                "qa": "QA",
+                "prd": "PRD",
+                "architecture": "아키텍처",
+                "brownfieldEpic": "브라운필드 에픽"
+            },
+            "keys": {
+                "markdownExploder": {
+                    "label": "Markdown Exploder",
+                    "description": "md-tree 명령으로 문서를 샤드로 분할합니다."
+                },
+                "qa": {
+                    "qaLocation": {
+                        "label": "QA 위치",
+                        "description": "QA 게이트·평가 산출물이 저장되는 디렉터리입니다."
+                    }
+                },
+                "prd": {
+                    "prdFile": {
+                        "label": "PRD 파일",
+                        "description": "(단일 파일) PRD 문서 경로입니다."
+                    },
+                    "prdVersion": {
+                        "label": "PRD 버전",
+                        "description": "PRD 컨벤션 버전 (예: v3 또는 v4)."
+                    },
+                    "prdSharded": {
+                        "label": "PRD 샤딩",
+                        "description": "에픽을 별도 샤드 파일로 분리하는지 여부입니다."
+                    },
+                    "prdShardedLocation": {
+                        "label": "PRD 샤드 위치",
+                        "description": "샤딩된 PRD/에픽 파일이 있는 디렉터리입니다."
+                    },
+                    "epicFilePattern": {
+                        "label": "에픽 파일 패턴",
+                        "description": "에픽 파일명 glob; {n} 은 에픽 번호와 매칭됩니다."
+                    }
+                },
+                "architecture": {
+                    "architectureFile": {
+                        "label": "아키텍처 파일",
+                        "description": "(단일 파일) 아키텍처 문서 경로입니다."
+                    },
+                    "architectureVersion": {
+                        "label": "아키텍처 버전",
+                        "description": "아키텍처 컨벤션 버전 (예: v3 또는 v4)."
+                    },
+                    "architectureSharded": {
+                        "label": "아키텍처 샤딩",
+                        "description": "아키텍처를 컴포넌트 파일로 분리하는지 여부입니다."
+                    },
+                    "architectureShardedLocation": {
+                        "label": "아키텍처 샤드 위치",
+                        "description": "샤딩된 아키텍처 파일이 있는 디렉터리입니다."
+                    }
+                },
+                "customTechnicalDocuments": {
+                    "label": "커스텀 기술 문서",
+                    "description": "에이전트가 추가로 로드할 기술 문서 (선택)."
+                },
+                "devLoadAlwaysFiles": {
+                    "label": "Dev 항상 로드 파일",
+                    "description": "dev 에이전트가 모든 작업에서 로드하는 파일들입니다."
+                },
+                "brownfieldEpic": {
+                    "updateOnCreate": {
+                        "label": "생성 시 갱신",
+                        "description": "브라운필드 에픽 생성 시 갱신되는 파일들입니다."
+                    },
+                    "doNotUpdate": {
+                        "label": "갱신 제외",
+                        "description": "브라운필드 에픽 갱신에서 제외할 경로 패턴입니다."
+                    }
+                },
+                "devDebugLog": {
+                    "label": "Dev 디버그 로그",
+                    "description": "dev 에이전트가 반복 실패를 기록하는 파일입니다."
+                },
+                "devStoryLocation": {
+                    "label": "Dev 스토리 위치",
+                    "description": "스토리 파일이 생성·로드되는 디렉터리입니다."
+                },
+                "slashPrefix": {
+                    "label": "슬래시 접두사",
+                    "description": "BMad 슬래시 명령 접두사 (예: BMad → /BMad:agents:dev)."
+                }
+            },
+            "widgets": {
+                "path": {
+                    "browse": "찾아보기",
+                    "pickerTitle": "{{key}} 경로 선택",
+                    "loading": "파일 불러오는 중…",
+                    "noSelection": "선택된 경로 없음",
+                    "cancel": "취소",
+                    "select": "선택"
+                },
+                "glob": {
+                    "matching": "매칭 중…",
+                    "matchPreview": "매칭 파일 {{count}}건"
+                },
+                "array": {
+                    "add": "추가",
+                    "remove": "삭제",
+                    "dragToReorder": "드래그하여 정렬",
+                    "patternHint": "glob/경로 패턴 (예: 디렉터리 또는 glob)."
+                }
+            },
+            "unknownKeys": {
+                "title": "알려지지 않은 키",
+                "description": "이 편집기가 인식하지 못하는 키입니다 (BMad 스키마 확장 또는 사용자 정의 키). 저장 시 그대로 보존됩니다.",
+                "readOnly": "읽기 전용 — Raw 모드에서 편집하세요."
+            },
+            "raw": {
+                "toggleToRaw": "Raw",
+                "toggleToForm": "폼",
+                "parseError": "YAML 구문 오류 — Raw 모드에서 수정 후 다시 시도하세요.",
+                "save": "저장",
+                "cancel": "취소",
+                "discardAndSwitch": "폐기하고 전환",
+                "unsavedFormChangesWarning": "저장되지 않은 폼 변경분이 있습니다 — Raw 로 전환하면 폐기됩니다.",
+                "unsavedRawChangesWarning": "저장되지 않은 Raw 변경분이 있습니다 — 폼으로 전환하면 폐기됩니다."
+            },
+            "externalChange": {
+                "banner": "이 파일이 Hammoc 외부에서 변경되었습니다.",
+                "reload": "다시 불러오기"
+            },
+            "stale": {
+                "modalTitle": "파일이 디스크에서 변경됨",
+                "body": "파일이 Hammoc 외부에서 변경되었습니다. 최신 내용을 불러오거나, 현재 버전으로 덮어쓰세요.",
+                "reload": "다시 불러오기",
+                "overwrite": "덮어쓰기"
+            }
+        },
         "workbench": {
             "title": "하네스 워크벤치",
             "nav": {

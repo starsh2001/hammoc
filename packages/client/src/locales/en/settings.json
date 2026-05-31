@@ -316,6 +316,148 @@
         "about": "About"
     },
     "harness": {
+        "bmad": {
+            "nav": {
+                "title": "BMad Settings"
+            },
+            "title": "BMad core-config.yaml",
+            "loading": "Loading…",
+            "requiredKeyEmptyWarning": "This key is required by BMad — saving an empty value may prevent agents from loading correctly.",
+            "groupTitles": {
+                "general": "General",
+                "qa": "QA",
+                "prd": "PRD",
+                "architecture": "Architecture",
+                "brownfieldEpic": "Brownfield Epic"
+            },
+            "keys": {
+                "markdownExploder": {
+                    "label": "Markdown Exploder",
+                    "description": "Use the md-tree command to explode documents into shards."
+                },
+                "qa": {
+                    "qaLocation": {
+                        "label": "QA Location",
+                        "description": "Directory where QA gates and assessments are written."
+                    }
+                },
+                "prd": {
+                    "prdFile": {
+                        "label": "PRD File",
+                        "description": "Path to the (monolithic) PRD document."
+                    },
+                    "prdVersion": {
+                        "label": "PRD Version",
+                        "description": "PRD convention version (e.g. v3 or v4)."
+                    },
+                    "prdSharded": {
+                        "label": "PRD Sharded",
+                        "description": "Whether epics live in separate sharded files."
+                    },
+                    "prdShardedLocation": {
+                        "label": "PRD Sharded Location",
+                        "description": "Directory holding the sharded PRD/epic files."
+                    },
+                    "epicFilePattern": {
+                        "label": "Epic File Pattern",
+                        "description": "Glob for epic filenames; {n} matches the epic number."
+                    }
+                },
+                "architecture": {
+                    "architectureFile": {
+                        "label": "Architecture File",
+                        "description": "Path to the (monolithic) architecture document."
+                    },
+                    "architectureVersion": {
+                        "label": "Architecture Version",
+                        "description": "Architecture convention version (e.g. v3 or v4)."
+                    },
+                    "architectureSharded": {
+                        "label": "Architecture Sharded",
+                        "description": "Whether the architecture is split into component files."
+                    },
+                    "architectureShardedLocation": {
+                        "label": "Architecture Sharded Location",
+                        "description": "Directory holding the sharded architecture files."
+                    }
+                },
+                "customTechnicalDocuments": {
+                    "label": "Custom Technical Documents",
+                    "description": "Extra technical documents agents should load (optional)."
+                },
+                "devLoadAlwaysFiles": {
+                    "label": "Dev Load Always Files",
+                    "description": "Files the dev agent loads for every task."
+                },
+                "brownfieldEpic": {
+                    "updateOnCreate": {
+                        "label": "Update On Create",
+                        "description": "Files updated when a brownfield epic is created."
+                    },
+                    "doNotUpdate": {
+                        "label": "Do Not Update",
+                        "description": "Path patterns excluded from brownfield epic updates."
+                    }
+                },
+                "devDebugLog": {
+                    "label": "Dev Debug Log",
+                    "description": "File where the dev agent logs repeated failures."
+                },
+                "devStoryLocation": {
+                    "label": "Dev Story Location",
+                    "description": "Directory where story files are created and read."
+                },
+                "slashPrefix": {
+                    "label": "Slash Prefix",
+                    "description": "Prefix for BMad slash commands (e.g. BMad → /BMad:agents:dev)."
+                }
+            },
+            "widgets": {
+                "path": {
+                    "browse": "Browse",
+                    "pickerTitle": "Select a path for {{key}}",
+                    "loading": "Loading files…",
+                    "noSelection": "No path selected",
+                    "cancel": "Cancel",
+                    "select": "Select"
+                },
+                "glob": {
+                    "matching": "Matching…",
+                    "matchPreview": "{{count}} matching file(s)"
+                },
+                "array": {
+                    "add": "Add",
+                    "remove": "Remove",
+                    "dragToReorder": "Drag to reorder",
+                    "patternHint": "Glob/path pattern (e.g. a directory or a glob)."
+                }
+            },
+            "unknownKeys": {
+                "title": "Unknown Keys",
+                "description": "Keys this editor does not recognize (BMad schema extensions or custom keys). They are preserved as-is on save.",
+                "readOnly": "Read-only — edit these in Raw mode."
+            },
+            "raw": {
+                "toggleToRaw": "Raw",
+                "toggleToForm": "Form",
+                "parseError": "YAML syntax error — fix it in Raw mode and try again.",
+                "save": "Save",
+                "cancel": "Cancel",
+                "discardAndSwitch": "Discard & switch",
+                "unsavedFormChangesWarning": "You have unsaved form changes — switching to Raw will discard them.",
+                "unsavedRawChangesWarning": "You have unsaved raw changes — switching to Form will discard them."
+            },
+            "externalChange": {
+                "banner": "This file was changed outside Hammoc.",
+                "reload": "Reload"
+            },
+            "stale": {
+                "modalTitle": "File changed on disk",
+                "body": "The file was changed outside Hammoc. Reload to get the latest, or overwrite with your version.",
+                "reload": "Reload",
+                "overwrite": "Overwrite"
+            }
+        },
         "workbench": {
             "title": "Harness Workbench",
             "nav": {

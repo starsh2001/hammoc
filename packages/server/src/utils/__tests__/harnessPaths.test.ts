@@ -14,6 +14,7 @@ import {
   resolveHarnessPath,
   resolveProjectClaudeMdPath,
   resolveProjectGitignorePath,
+  resolveBmadCoreConfigPath,
 } from '../harnessPaths.js';
 import { projectService } from '../../services/projectService.js';
 
@@ -207,6 +208,43 @@ describe('resolveProjectGitignorePath (Story 30.7)', () => {
   it('rejects projectSlug containing "..", path separators, or null byte with HARNESS_PATH_DENIED', async () => {
     for (const evil of ['', '..', '../escape', 'a/b', 'a\\b', 'a\0b']) {
       await expect(resolveProjectGitignorePath(evil)).rejects.toMatchObject({
+        code: HARNESS_ERRORS.HARNESS_PATH_DENIED.code,
+      });
+    }
+  });
+});
+
+describe('resolveBmadCoreConfigPath (Story 31.1)', () => {
+  let tmpProject: string;
+
+  beforeEach(async () => {
+    tmpProject = await fs.mkdtemp(path.join(os.tmpdir(), 'bmadcfg-proj-'));
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(tmpProject, { recursive: true, force: true });
+  });
+
+  it('returns <projectRoot>/.bmad-core/core-config.yaml (sibling of .claude/) for an existing slug', async () => {
+    vi.spyOn(projectService, 'resolveOriginalPath').mockResolvedValue(tmpProject);
+    const { resolvedRoot, absolutePath } = await resolveBmadCoreConfigPath('my-slug');
+    expect(resolvedRoot).toBe(path.resolve(tmpProject));
+    expect(absolutePath).toBe(path.join(path.resolve(tmpProject), '.bmad-core', 'core-config.yaml'));
+  });
+
+  it('wraps unknown slug errors as HARNESS_ROOT_MISSING', async () => {
+    vi.spyOn(projectService, 'resolveOriginalPath').mockRejectedValue(
+      Object.assign(new Error('not found'), { code: 'PROJECT_NOT_FOUND' }),
+    );
+    await expect(resolveBmadCoreConfigPath('unknown')).rejects.toMatchObject({
+      code: HARNESS_ERRORS.HARNESS_ROOT_MISSING.code,
+    });
+  });
+
+  it('rejects projectSlug containing "..", path separators, or null byte with HARNESS_PATH_DENIED', async () => {
+    for (const evil of ['', '..', '../escape', 'a/b', 'a\\b', 'a\0b']) {
+      await expect(resolveBmadCoreConfigPath(evil)).rejects.toMatchObject({
         code: HARNESS_ERRORS.HARNESS_PATH_DENIED.code,
       });
     }

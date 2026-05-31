@@ -17,6 +17,7 @@ import { claudeMdController } from '../controllers/claudeMdController.js';
 import { harnessShareScopeController } from '../controllers/harnessShareScopeController.js';
 import { harnessLintController } from '../controllers/harnessLintController.js';
 import { harnessBundleController, handleBundleUpload } from '../controllers/harnessBundleController.js';
+import { bmadCoreConfigController } from '../controllers/bmadCoreConfigController.js';
 
 const router = Router();
 
@@ -134,5 +135,13 @@ router.post('/bundle/export', largeBodyParser, harnessBundleController.export);
 router.post('/bundle/import/preview', handleBundleUpload, harnessBundleController.importPreview);
 router.post('/bundle/import/apply', largeBodyParser, harnessBundleController.importApply);
 router.get('/bundle/plugin-deps', harnessBundleController.pluginDeps);
+
+// Story 31.1 — BMad core-config editor: read / AST-patch / raw-overwrite of a
+// single project's `.bmad-core/core-config.yaml` (BMad projects only — the nav
+// gate is client-side via `isBmadProject`). The `/raw` segment lives above the
+// bare `:projectSlug` PATCH so Express does not treat `raw` as a slug value.
+router.get('/bmad-config/:projectSlug', bmadCoreConfigController.read);
+router.put('/bmad-config/:projectSlug/raw', largeBodyParser, bmadCoreConfigController.writeRaw);
+router.patch('/bmad-config/:projectSlug', largeBodyParser, bmadCoreConfigController.patch);
 
 export default router;

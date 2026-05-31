@@ -315,6 +315,148 @@
         "about": "バージョン情報"
     },
     "harness": {
+        "bmad": {
+            "nav": {
+                "title": "BMad 設定"
+            },
+            "title": "BMad core-config.yaml",
+            "loading": "読み込み中…",
+            "requiredKeyEmptyWarning": "このキーは BMad に必須です — 空の値で保存するとエージェントが正しく読み込まれない場合があります。",
+            "groupTitles": {
+                "general": "一般",
+                "qa": "QA",
+                "prd": "PRD",
+                "architecture": "アーキテクチャ",
+                "brownfieldEpic": "ブラウンフィールドエピック"
+            },
+            "keys": {
+                "markdownExploder": {
+                    "label": "Markdown Exploder",
+                    "description": "md-tree コマンドでドキュメントをシャードに分割します。"
+                },
+                "qa": {
+                    "qaLocation": {
+                        "label": "QA の場所",
+                        "description": "QA ゲートと評価を書き込むディレクトリです。"
+                    }
+                },
+                "prd": {
+                    "prdFile": {
+                        "label": "PRD ファイル",
+                        "description": "（単一ファイル）PRD ドキュメントのパスです。"
+                    },
+                    "prdVersion": {
+                        "label": "PRD バージョン",
+                        "description": "PRD 規約バージョン（例: v3 または v4）。"
+                    },
+                    "prdSharded": {
+                        "label": "PRD シャード化",
+                        "description": "エピックを個別のシャードファイルに分けるかどうか。"
+                    },
+                    "prdShardedLocation": {
+                        "label": "PRD シャードの場所",
+                        "description": "シャード化された PRD/エピックファイルのディレクトリです。"
+                    },
+                    "epicFilePattern": {
+                        "label": "エピックファイルパターン",
+                        "description": "エピックファイル名の glob。{n} はエピック番号に一致します。"
+                    }
+                },
+                "architecture": {
+                    "architectureFile": {
+                        "label": "アーキテクチャファイル",
+                        "description": "（単一ファイル）アーキテクチャドキュメントのパスです。"
+                    },
+                    "architectureVersion": {
+                        "label": "アーキテクチャバージョン",
+                        "description": "アーキテクチャ規約バージョン（例: v3 または v4）。"
+                    },
+                    "architectureSharded": {
+                        "label": "アーキテクチャシャード化",
+                        "description": "アーキテクチャをコンポーネントファイルに分割するかどうか。"
+                    },
+                    "architectureShardedLocation": {
+                        "label": "アーキテクチャシャードの場所",
+                        "description": "シャード化されたアーキテクチャファイルのディレクトリです。"
+                    }
+                },
+                "customTechnicalDocuments": {
+                    "label": "カスタム技術ドキュメント",
+                    "description": "エージェントが追加で読み込む技術ドキュメント（任意）。"
+                },
+                "devLoadAlwaysFiles": {
+                    "label": "Dev 常時ロードファイル",
+                    "description": "dev エージェントが全タスクで読み込むファイルです。"
+                },
+                "brownfieldEpic": {
+                    "updateOnCreate": {
+                        "label": "作成時に更新",
+                        "description": "ブラウンフィールドエピック作成時に更新されるファイルです。"
+                    },
+                    "doNotUpdate": {
+                        "label": "更新しない",
+                        "description": "ブラウンフィールドエピック更新から除外するパスパターンです。"
+                    }
+                },
+                "devDebugLog": {
+                    "label": "Dev デバッグログ",
+                    "description": "dev エージェントが繰り返しの失敗を記録するファイルです。"
+                },
+                "devStoryLocation": {
+                    "label": "Dev ストーリーの場所",
+                    "description": "ストーリーファイルを作成・読み込むディレクトリです。"
+                },
+                "slashPrefix": {
+                    "label": "スラッシュ接頭辞",
+                    "description": "BMad スラッシュコマンドの接頭辞（例: BMad → /BMad:agents:dev）。"
+                }
+            },
+            "widgets": {
+                "path": {
+                    "browse": "参照",
+                    "pickerTitle": "{{key}} のパスを選択",
+                    "loading": "ファイルを読み込み中…",
+                    "noSelection": "パス未選択",
+                    "cancel": "キャンセル",
+                    "select": "選択"
+                },
+                "glob": {
+                    "matching": "マッチング中…",
+                    "matchPreview": "一致ファイル {{count}} 件"
+                },
+                "array": {
+                    "add": "追加",
+                    "remove": "削除",
+                    "dragToReorder": "ドラッグで並べ替え",
+                    "patternHint": "glob/パスパターン（例: ディレクトリまたは glob）。"
+                }
+            },
+            "unknownKeys": {
+                "title": "不明なキー",
+                "description": "このエディタが認識しないキー（BMad スキーマ拡張またはユーザー定義キー）。保存時はそのまま保持されます。",
+                "readOnly": "読み取り専用 — Raw モードで編集してください。"
+            },
+            "raw": {
+                "toggleToRaw": "Raw",
+                "toggleToForm": "フォーム",
+                "parseError": "YAML 構文エラー — Raw モードで修正して再試行してください。",
+                "save": "保存",
+                "cancel": "キャンセル",
+                "discardAndSwitch": "破棄して切り替え",
+                "unsavedFormChangesWarning": "未保存のフォーム変更があります — Raw に切り替えると破棄されます。",
+                "unsavedRawChangesWarning": "未保存の Raw 変更があります — フォームに切り替えると破棄されます。"
+            },
+            "externalChange": {
+                "banner": "このファイルは Hammoc の外部で変更されました。",
+                "reload": "再読み込み"
+            },
+            "stale": {
+                "modalTitle": "ファイルがディスク上で変更されました",
+                "body": "このファイルは Hammoc の外部で変更されました。最新を読み込むか、あなたのバージョンで上書きしてください。",
+                "reload": "再読み込み",
+                "overwrite": "上書き"
+            }
+        },
         "workbench": {
             "title": "ハーネス ワークベンチ",
             "nav": {

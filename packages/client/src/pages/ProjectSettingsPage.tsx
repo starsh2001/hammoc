@@ -13,20 +13,39 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ProjectSettingsSection } from '../components/settings/ProjectSettingsSection';
 import { HarnessWorkbenchSection } from '../components/settings/HarnessWorkbenchSection';
+import { BmadConfigPanel } from '../components/settings/BmadConfigPanel';
+import { useProjectStore } from '../stores/projectStore';
 
-type TopSection = 'general' | 'harness';
+type TopSection = 'general' | 'harness' | 'bmad';
 
 export function ProjectSettingsPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const { t } = useTranslation(['settings', 'common']);
   const [active, setActive] = useState<TopSection>('general');
+  // Story 31.1 (AC1.b/c): the BMad nav item is gated by the existing
+  // `ProjectInfo.isBmadProject` flag — no new detection logic. Reading it from
+  // the project store means the nav auto-appears when `.bmad-core/` is added
+  // mid-session (the store refresh that BmadOverview/ChatPage already trigger
+  // updates this list — AC1.c).
+  const isBmadProject = useProjectStore(
+    (s) => s.projects.find((p) => p.projectSlug === projectSlug)?.isBmadProject ?? false,
+  );
 
   if (!projectSlug) return null;
 
   const navItems: { key: TopSection; label: string }[] = [
     { key: 'general', label: t('settings:harness.workbench.nav.general', 'General') },
     { key: 'harness', label: t('common:tabs.harnessWorkbench', 'Harness Workbench') },
+    // AC1.a: render the BMad nav slot only for BMad projects — no empty section
+    // / placeholder card for non-BMad projects.
+    ...(isBmadProject
+      ? [{ key: 'bmad' as const, label: t('settings:harness.bmad.nav.title', 'BMad 설정') }]
+      : []),
   ];
+
+  // AC1.a: if BMad was removed mid-session while this tab was active, fall back
+  // to General so the panel for a now-hidden nav item is never shown.
+  const activeSection: TopSection = active === 'bmad' && !isBmadProject ? 'general' : active;
 
   return (
     <div className="p-4 sm:p-6">
@@ -45,18 +64,20 @@ export function ProjectSettingsPage() {
               onClick={() => setActive(item.key)}
               className={
                 'px-3 py-2 text-left rounded-md text-sm transition-colors '
-                + (active === item.key
+                + (activeSection === item.key
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 font-medium'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800')
               }
+              data-testid={`project-settings-nav-${item.key}`}
             >
               {item.label}
             </button>
           ))}
         </nav>
         <div className="flex-1 min-w-0">
-          {active === 'general' && <ProjectSettingsSection projectSlug={projectSlug} />}
-          {active === 'harness' && <HarnessWorkbenchSection projectSlug={projectSlug} />}
+          {activeSection === 'general' && <ProjectSettingsSection projectSlug={projectSlug} />}
+          {activeSection === 'harness' && <HarnessWorkbenchSection projectSlug={projectSlug} />}
+          {activeSection === 'bmad' && <BmadConfigPanel projectSlug={projectSlug} />}
         </div>
       </div>
     </div>

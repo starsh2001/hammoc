@@ -315,6 +315,148 @@
         "about": "Sobre"
     },
     "harness": {
+        "bmad": {
+            "nav": {
+                "title": "Configurações do BMad"
+            },
+            "title": "BMad core-config.yaml",
+            "loading": "Carregando…",
+            "requiredKeyEmptyWarning": "O BMad exige esta chave — salvar um valor vazio pode impedir que os agentes carreguem corretamente.",
+            "groupTitles": {
+                "general": "Geral",
+                "qa": "QA",
+                "prd": "PRD",
+                "architecture": "Arquitetura",
+                "brownfieldEpic": "Épico Brownfield"
+            },
+            "keys": {
+                "markdownExploder": {
+                    "label": "Markdown Exploder",
+                    "description": "Use o comando md-tree para dividir documentos em fragmentos."
+                },
+                "qa": {
+                    "qaLocation": {
+                        "label": "Local do QA",
+                        "description": "Diretório onde os portões e avaliações de QA são gravados."
+                    }
+                },
+                "prd": {
+                    "prdFile": {
+                        "label": "Arquivo PRD",
+                        "description": "Caminho para o documento PRD (monolítico)."
+                    },
+                    "prdVersion": {
+                        "label": "Versão do PRD",
+                        "description": "Versão da convenção do PRD (ex.: v3 ou v4)."
+                    },
+                    "prdSharded": {
+                        "label": "PRD Fragmentado",
+                        "description": "Se os épicos ficam em arquivos fragmentados separados."
+                    },
+                    "prdShardedLocation": {
+                        "label": "Local fragmentado do PRD",
+                        "description": "Diretório com os arquivos PRD/épico fragmentados."
+                    },
+                    "epicFilePattern": {
+                        "label": "Padrão de arquivo de épico",
+                        "description": "Glob para nomes de épicos; {n} corresponde ao número do épico."
+                    }
+                },
+                "architecture": {
+                    "architectureFile": {
+                        "label": "Arquivo de arquitetura",
+                        "description": "Caminho para o documento de arquitetura (monolítico)."
+                    },
+                    "architectureVersion": {
+                        "label": "Versão da arquitetura",
+                        "description": "Versão da convenção de arquitetura (ex.: v3 ou v4)."
+                    },
+                    "architectureSharded": {
+                        "label": "Arquitetura fragmentada",
+                        "description": "Se a arquitetura é dividida em arquivos de componentes."
+                    },
+                    "architectureShardedLocation": {
+                        "label": "Local fragmentado da arquitetura",
+                        "description": "Diretório com os arquivos de arquitetura fragmentados."
+                    }
+                },
+                "customTechnicalDocuments": {
+                    "label": "Documentos técnicos personalizados",
+                    "description": "Documentos técnicos extras que os agentes devem carregar (opcional)."
+                },
+                "devLoadAlwaysFiles": {
+                    "label": "Arquivos sempre carregados pelo Dev",
+                    "description": "Arquivos que o agente dev carrega em cada tarefa."
+                },
+                "brownfieldEpic": {
+                    "updateOnCreate": {
+                        "label": "Atualizar ao criar",
+                        "description": "Arquivos atualizados quando um épico brownfield é criado."
+                    },
+                    "doNotUpdate": {
+                        "label": "Não atualizar",
+                        "description": "Padrões de caminho excluídos das atualizações de épico brownfield."
+                    }
+                },
+                "devDebugLog": {
+                    "label": "Log de depuração do Dev",
+                    "description": "Arquivo onde o agente dev registra falhas repetidas."
+                },
+                "devStoryLocation": {
+                    "label": "Local das histórias do Dev",
+                    "description": "Diretório onde os arquivos de história são criados e lidos."
+                },
+                "slashPrefix": {
+                    "label": "Prefixo de barra",
+                    "description": "Prefixo dos comandos de barra do BMad (ex.: BMad → /BMad:agents:dev)."
+                }
+            },
+            "widgets": {
+                "path": {
+                    "browse": "Procurar",
+                    "pickerTitle": "Selecione um caminho para {{key}}",
+                    "loading": "Carregando arquivos…",
+                    "noSelection": "Nenhum caminho selecionado",
+                    "cancel": "Cancelar",
+                    "select": "Selecionar"
+                },
+                "glob": {
+                    "matching": "Procurando correspondências…",
+                    "matchPreview": "{{count}} arquivo(s) correspondente(s)"
+                },
+                "array": {
+                    "add": "Adicionar",
+                    "remove": "Remover",
+                    "dragToReorder": "Arraste para reordenar",
+                    "patternHint": "Padrão glob/caminho (ex.: um diretório ou um glob)."
+                }
+            },
+            "unknownKeys": {
+                "title": "Chaves desconhecidas",
+                "description": "Chaves que este editor não reconhece (extensões do esquema BMad ou chaves personalizadas). São preservadas como estão ao salvar.",
+                "readOnly": "Somente leitura — edite-as no modo Raw."
+            },
+            "raw": {
+                "toggleToRaw": "Raw",
+                "toggleToForm": "Formulário",
+                "parseError": "Erro de sintaxe YAML — corrija no modo Raw e tente novamente.",
+                "save": "Salvar",
+                "cancel": "Cancelar",
+                "discardAndSwitch": "Descartar e alternar",
+                "unsavedFormChangesWarning": "Há alterações de formulário não salvas — alternar para Raw irá descartá-las.",
+                "unsavedRawChangesWarning": "Há alterações Raw não salvas — alternar para Formulário irá descartá-las."
+            },
+            "externalChange": {
+                "banner": "Este arquivo foi alterado fora do Hammoc.",
+                "reload": "Recarregar"
+            },
+            "stale": {
+                "modalTitle": "Arquivo alterado no disco",
+                "body": "O arquivo foi alterado fora do Hammoc. Recarregue para obter o mais recente, ou sobrescreva com a sua versão.",
+                "reload": "Recarregar",
+                "overwrite": "Sobrescrever"
+            }
+        },
         "workbench": {
             "title": "Bancada do Harness",
             "nav": {

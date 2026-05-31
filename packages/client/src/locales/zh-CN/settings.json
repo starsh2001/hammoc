@@ -315,6 +315,148 @@
         "about": "关于"
     },
     "harness": {
+        "bmad": {
+            "nav": {
+                "title": "BMad 设置"
+            },
+            "title": "BMad core-config.yaml",
+            "loading": "加载中…",
+            "requiredKeyEmptyWarning": "该键为 BMad 必需项——保存空值可能导致代理无法正常加载。",
+            "groupTitles": {
+                "general": "通用",
+                "qa": "QA",
+                "prd": "PRD",
+                "architecture": "架构",
+                "brownfieldEpic": "棕地史诗"
+            },
+            "keys": {
+                "markdownExploder": {
+                    "label": "Markdown Exploder",
+                    "description": "使用 md-tree 命令将文档拆分为分片。"
+                },
+                "qa": {
+                    "qaLocation": {
+                        "label": "QA 位置",
+                        "description": "写入 QA 门禁与评估的目录。"
+                    }
+                },
+                "prd": {
+                    "prdFile": {
+                        "label": "PRD 文件",
+                        "description": "（单文件）PRD 文档路径。"
+                    },
+                    "prdVersion": {
+                        "label": "PRD 版本",
+                        "description": "PRD 约定版本（如 v3 或 v4）。"
+                    },
+                    "prdSharded": {
+                        "label": "PRD 分片",
+                        "description": "史诗是否存放于独立的分片文件中。"
+                    },
+                    "prdShardedLocation": {
+                        "label": "PRD 分片位置",
+                        "description": "存放分片 PRD/史诗文件的目录。"
+                    },
+                    "epicFilePattern": {
+                        "label": "史诗文件模式",
+                        "description": "史诗文件名 glob；{n} 匹配史诗编号。"
+                    }
+                },
+                "architecture": {
+                    "architectureFile": {
+                        "label": "架构文件",
+                        "description": "（单文件）架构文档路径。"
+                    },
+                    "architectureVersion": {
+                        "label": "架构版本",
+                        "description": "架构约定版本（如 v3 或 v4）。"
+                    },
+                    "architectureSharded": {
+                        "label": "架构分片",
+                        "description": "架构是否拆分为组件文件。"
+                    },
+                    "architectureShardedLocation": {
+                        "label": "架构分片位置",
+                        "description": "存放分片架构文件的目录。"
+                    }
+                },
+                "customTechnicalDocuments": {
+                    "label": "自定义技术文档",
+                    "description": "代理需额外加载的技术文档（可选）。"
+                },
+                "devLoadAlwaysFiles": {
+                    "label": "Dev 始终加载文件",
+                    "description": "dev 代理在每个任务都会加载的文件。"
+                },
+                "brownfieldEpic": {
+                    "updateOnCreate": {
+                        "label": "创建时更新",
+                        "description": "创建棕地史诗时更新的文件。"
+                    },
+                    "doNotUpdate": {
+                        "label": "不更新",
+                        "description": "棕地史诗更新时排除的路径模式。"
+                    }
+                },
+                "devDebugLog": {
+                    "label": "Dev 调试日志",
+                    "description": "dev 代理记录重复失败的文件。"
+                },
+                "devStoryLocation": {
+                    "label": "Dev 故事位置",
+                    "description": "创建与读取故事文件的目录。"
+                },
+                "slashPrefix": {
+                    "label": "斜杠前缀",
+                    "description": "BMad 斜杠命令前缀（如 BMad → /BMad:agents:dev）。"
+                }
+            },
+            "widgets": {
+                "path": {
+                    "browse": "浏览",
+                    "pickerTitle": "为 {{key}} 选择路径",
+                    "loading": "加载文件中…",
+                    "noSelection": "未选择路径",
+                    "cancel": "取消",
+                    "select": "选择"
+                },
+                "glob": {
+                    "matching": "匹配中…",
+                    "matchPreview": "匹配到 {{count}} 个文件"
+                },
+                "array": {
+                    "add": "添加",
+                    "remove": "删除",
+                    "dragToReorder": "拖动排序",
+                    "patternHint": "glob/路径模式（如目录或 glob）。"
+                }
+            },
+            "unknownKeys": {
+                "title": "未知键",
+                "description": "该编辑器无法识别的键（BMad 架构扩展或自定义键）。保存时按原样保留。",
+                "readOnly": "只读——请在 Raw 模式下编辑。"
+            },
+            "raw": {
+                "toggleToRaw": "Raw",
+                "toggleToForm": "表单",
+                "parseError": "YAML 语法错误——请在 Raw 模式下修复后重试。",
+                "save": "保存",
+                "cancel": "取消",
+                "discardAndSwitch": "放弃并切换",
+                "unsavedFormChangesWarning": "存在未保存的表单更改——切换到 Raw 将被丢弃。",
+                "unsavedRawChangesWarning": "存在未保存的 Raw 更改——切换到表单将被丢弃。"
+            },
+            "externalChange": {
+                "banner": "该文件已在 Hammoc 外部被更改。",
+                "reload": "重新加载"
+            },
+            "stale": {
+                "modalTitle": "文件在磁盘上已更改",
+                "body": "该文件已在 Hammoc 外部被更改。重新加载以获取最新内容，或用你的版本覆盖。",
+                "reload": "重新加载",
+                "overwrite": "覆盖"
+            }
+        },
         "workbench": {
             "title": "Harness 工作台",
             "nav": {

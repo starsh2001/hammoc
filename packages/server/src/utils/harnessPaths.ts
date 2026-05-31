@@ -175,3 +175,39 @@ export async function resolveProjectGitignorePath(projectSlug: string): Promise<
   const absolutePath = path.join(resolvedRoot, '.gitignore');
   return { resolvedRoot, absolutePath };
 }
+
+/**
+ * Story 31.1 (Task A.1): resolve the project-root
+ * `<projectRoot>/.bmad-core/core-config.yaml` path. Like
+ * `resolveProjectClaudeMdPath` / `resolveProjectGitignorePath`, the
+ * `.bmad-core/` tree sits OUTSIDE the project's `.claude/` subtree, so
+ * `resolveHarnessPath` would reject it as a traversal. This helper accepts
+ * only `projectSlug` (no caller-supplied relative path), so traversal is
+ * impossible by construction. Used by `bmadCoreConfigService` to read/patch
+ * the single config file the BMad config form edits.
+ */
+export async function resolveBmadCoreConfigPath(projectSlug: string): Promise<ResolvedHarnessPath> {
+  if (!projectSlug || projectSlug.includes('\0')) {
+    const err = new Error('invalid projectSlug') as NodeJS.ErrnoException;
+    err.code = HARNESS_ERRORS.HARNESS_PATH_DENIED.code;
+    throw err;
+  }
+  if (projectSlug.includes('..') || projectSlug.includes('/') || projectSlug.includes('\\')) {
+    const err = new Error('projectSlug must not contain path separators') as NodeJS.ErrnoException;
+    err.code = HARNESS_ERRORS.HARNESS_PATH_DENIED.code;
+    throw err;
+  }
+  let projectRoot: string;
+  try {
+    projectRoot = await projectService.resolveOriginalPath(projectSlug);
+  } catch (error) {
+    const wrapped = new Error(
+      `Unable to resolve project root for "${projectSlug}": ${(error as Error).message}`,
+    ) as NodeJS.ErrnoException;
+    wrapped.code = HARNESS_ERRORS.HARNESS_ROOT_MISSING.code;
+    throw wrapped;
+  }
+  const resolvedRoot = path.resolve(projectRoot);
+  const absolutePath = path.join(resolvedRoot, '.bmad-core', 'core-config.yaml');
+  return { resolvedRoot, absolutePath };
+}

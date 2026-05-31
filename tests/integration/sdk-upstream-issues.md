@@ -315,4 +315,63 @@ agent   → envRefReplace(동일 파일 in-place, 같은 정책)
 
 ---
 
+## 11. Story 31.1 선행 spike #1 — BMad core-config.yaml 필수/선택 키 식별 (2026-05-30)
+
+**확인 방법**: `.bmad-core/` 디렉토리 전수 grep (`agents/*.md` + `tasks/*.md` +
+`templates/*.yaml` + `data/bmad-kb.md`) 로 18 키 각각의 **실제 참조처**를 추출.
+본 repo 에 vendored 된 공식 BMad KB ([`.bmad-core/data/bmad-kb.md`](../../.bmad-core/data/bmad-kb.md)
+§ "Key Configuration Areas", line 195-243) 가 official schema 문서 역할 — 외부
+fetch 불요 (설치 매니페스트와 함께 install 시 동봉되는 공식 KB). **런타임 per-key
+제거 실측은 환경 부재** — BMad 슬래시 에이전트(`/dev`·`/sm`·`/qa`)는 마크다운
+페르소나라 "키 1개 제거 → 슬래시 재호출 → 실패 관측" 루프를 프로그래매틱하게 돌릴
+수 있는 하네스가 없음. Story 30.7/30.2 spike 정책(정적 증거 + 실측 미수행 분기
+명시)을 답습 — 정적 참조 grep 을 1차 증거로 채택하고 동적 제거는 후행 검증.
+
+### 키별 참조 매트릭스 (정적 grep 실측)
+
+| 키 | 참조처 (실측) | 분류 |
+|---|---|---|
+| `devStoryLocation` | create-next-story · review-story · apply-qa-fixes · nfr-assess · validate-next-story | **필수** |
+| `qa.qaLocation` | qa.md(agent) · qa-gate · review-story · nfr-assess · trace-requirements · apply-qa-fixes · qa-gate-tmpl | **필수** (/qa 전반) |
+| `devLoadAlwaysFiles` | dev.md(agent) CRITICAL activation step ("Read … devLoadAlwaysFiles list") | **필수** (/dev) |
+| `slashPrefix` | 슬래시 명령 namespace 결정 (예: `BMad` → `/BMad:agents:dev`) | **필수** |
+| `prdSharded` | create-next-story (epic 위치 sharded/monolithic 분기) | 조건부 필수 |
+| `prdShardedLocation` | create-next-story (sharded epic 경로) | 조건부 (`prdSharded=true`) |
+| `epicFilePattern` | create-next-story (epic 파일 glob) | 조건부 (`prdSharded=true`) |
+| `prdFile` | create-next-story (monolithic PRD) | 조건부 (`prdSharded=false`) |
+| `prdVersion` | agents v3/v4 컨벤션 판정 | 조건부 |
+| `architectureSharded` | create-next-story (architecture 읽기 분기) | 조건부 필수 |
+| `architectureShardedLocation` | create-next-story (`{loc}/index.md`) | 조건부 (`architectureSharded=true`) |
+| `architectureFile` | create-next-story · nfr-assess (monolithic) | 조건부 (`architectureSharded=false`) |
+| `architectureVersion` | create-next-story (`>= v4` 체크) | 조건부 |
+| `markdownExploder` | shard-doc only (`md-tree explode` on/off) | 선택 |
+| `devDebugLog` | dev.md (반복 실패 로깅 위치) | 선택 |
+| `customTechnicalDocuments` | (현 config `null`) 명시적 옵션 키 | 선택 |
+| `brownfieldEpic.updateOnCreate` | brownfield-create-epic flow | 선택 |
+| `brownfieldEpic.doNotUpdate` | brownfield-create-epic flow | 선택 |
+
+### 결과 요약 (AC6.b 형식)
+
+- **필수 키 N=4**: `devStoryLocation` · `qa.qaLocation` · `devLoadAlwaysFiles` · `slashPrefix` (이 4 키가 누락/공백이면 핵심 워크플로우 — 스토리 생성·QA 게이트·dev 표준 로드·명령 namespace — 가 직접 깨짐)
+- **조건부 필수 9**: `prd.*` 5 (`prdSharded`·`prdShardedLocation`·`epicFilePattern`·`prdFile`·`prdVersion`) + `architecture.*` 4 (`architectureSharded`·`architectureShardedLocation`·`architectureFile`·`architectureVersion`) — 다른 키 값(`*Sharded` boolean)에 따라 필수/무관이 갈림
+- **선택 키 5**: `markdownExploder` · `devDebugLog` · `customTechnicalDocuments` · `brownfieldEpic.updateOnCreate` · `brownfieldEpic.doNotUpdate`
+- **미정 키 M=0**: 18 키 전부 정적 참조로 분류 완료. 단 **런타임 강제 제거 실측은 미수행(환경 부재)** — 위 분류는 정적 grep 근거. 운영 중 특정 키 누락이 예상과 다른 거동을 보이면 본 매트릭스 재조정.
+
+### Story 31.1 본 스토리 반영 (AC6.c — `BMAD_REQUIRED_KEYS` 시드)
+
+AC6.c 의 *"필수 키 빈 값 저장 직전 인라인 경고"* 용 클라이언트 상수
+`BMAD_REQUIRED_KEYS` 는 **빈 값(공백/null)이 곧 치명적인 스칼라 3 키**로 한정:
+`devStoryLocation` · `qa.qaLocation` · `slashPrefix`.
+
+- `devLoadAlwaysFiles` 는 필수(load-bearing)이지만 **빈 배열 `[]` 이 기능적으로 유효**(dev 가 추가 로드 파일 없이 동작) — 빈 값 경고 대상에서 제외. false-positive 경고가 신뢰를 잠식하는 것을 피함 (spike #7 *"한 번이라도 오탐을 본 유저는 차단을 신뢰하지 않는다"* 교훈 정합)
+- 조건부 필수 9 키는 다른 키 값에 의존하므로 정적 상수로 시드하지 않음(오탐 회피) — round-trip 보존(AC4)으로 자연 보호
+- 강제 차단 0 — 경고 후 유저 의사로 저장 진행 가능 (Hammoc "안내만 하고 끝나지 않는다" 정책)
+
+**후행 검증**: BMad 슬래시 에이전트를 프로그래매틱하게 구동할 수 있는 환경이
+생기면 4 필수 키를 1개씩 제거 후 `/dev`·`/sm`·`/qa` 호출 실패를 실측해 본 분류를
+확정. 현재는 정적 참조 grep 으로 충분 (참조처가 task 본문에 명시적이라 추정이 아닌
+실측).
+
+---
+
 <!-- Add new upstream issues above this line as they are discovered. -->
